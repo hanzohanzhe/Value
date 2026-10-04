@@ -875,6 +875,7 @@
     "gridform_core/zonal_results.py",
     "gridform_core/zonal_solver_contract.py",
     "gridform_validation/__init__.py",
+    "gridform_validation/cbc.py",
     "gridform_validation/golden.py",
     "gridform_validation/hydrology_oracle.py",
     "gridform_validation/independent_oracle.py",
@@ -1139,6 +1140,7 @@
     "tests/test_build_value_uk_research_suite.py",
     "tests/test_carbon_factor_database.py",
     "tests/test_carbon_ledger.py",
+    "tests/test_cbc_locator.py",
     "tests/test_cem_identity.py",
     "tests/test_compare_release_roots.py",
     "tests/test_comparison_identity.py",
@@ -7819,6 +7821,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_validation/cbc.py",
+      "sha256": "316a4f11dfbbb83257b23ebb07bb2db85dcdd22147c129df9ec13dce67432718",
+      "bytes": 3056,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_validation/golden.py",
       "sha256": "d789f45c5a5d1430af7e3fcb4afdc9f332a9656ff278faa68aa8853b9ce23c22",
       "bytes": 16957,
@@ -7832,9 +7840,9 @@
     },
     {
       "path": "gridform_validation/independent_oracle.py",
-      "sha256": "7fe37ae421a89060a63ef50dff23f462b75dee9a9ac0b9f8ba19c2658d2fef58",
-      "bytes": 11497,
-      "transform": "byte copy"
+      "sha256": "ff429dc61f17e928ea0b86fdcf605f4f2c8d1b5c470b7cd92478a40ccb14e9e3",
+      "bytes": 11698,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_validation/network_ac_oracle.py",
@@ -7850,9 +7858,9 @@
     },
     {
       "path": "gridform_validation/value_clearing_oracle.py",
-      "sha256": "4999dad021e9dca5e4e3b700d59007d7856ff8c2bb9371a647e71d35a508e266",
-      "bytes": 16349,
-      "transform": "byte copy"
+      "sha256": "37952eff87bbed858aed2cad160bec5bf813df17ae24bf2bec52fb315ed2ad1e",
+      "bytes": 16495,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_validation/zonal_case_generator.py",
@@ -7862,9 +7870,9 @@
     },
     {
       "path": "gridform_validation/zonal_oracle.py",
-      "sha256": "5146f9114541e8e9ae9a9e4edfe4b7d36af007206aac244ca4e354e9ad9b2fc7",
-      "bytes": 39862,
-      "transform": "byte copy"
+      "sha256": "7da91a0b1518dcd9a7c8e8d5567dc43335b9297f00a484e95e57ee29374edd9b",
+      "bytes": 40008,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "install-value.cmd",
@@ -8862,9 +8870,9 @@
     },
     {
       "path": "scripts/run_zonal_validation.py",
-      "sha256": "106c29c02250bfece0b1edaa8ac8a04fa37c019dc7e3fa5d026998f6c41726f8",
-      "bytes": 13715,
-      "transform": "byte copy"
+      "sha256": "2ecc90542257fa49cfba9808e76339caead8fc682abab1deed7b2bf562f9e706",
+      "bytes": 13721,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/seal_runtime_overlay.py",
@@ -9024,8 +9032,8 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "172a381154594b629f20ae0080655dc98208f5e408a8575d33db14e5d8e7d2f5",
-      "bytes": 24643,
+      "sha256": "4e22aeda93f02e548dbd00acdbf37a3fa9862709dbfef4acefd498f508287dd1",
+      "bytes": 23496,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9395,6 +9403,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/test_cbc_locator.py",
+      "sha256": "36f64cf0c96d5acbb66ccc1b29b3659fe796bc6bdde0f557b28f03c2c1a2a12f",
+      "bytes": 3655,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_cem_identity.py",
       "sha256": "78e82b59bba08c7ffd30842f7f92a49a8af62a602bc120f9f178ca8ddc55c910",
       "bytes": 1625,
@@ -9660,15 +9674,15 @@
     },
     {
       "path": "tests/test_force_actual_random_clearing.py",
-      "sha256": "64d124d76edb2307d1c06732553ba73a0ac418e9d768c9c72213891d702d6e9e",
+      "sha256": "5d0552cd0b93fb1270125e9958cec1963ed65c6a443c379d7c69c82b07a78138",
       "bytes": 11788,
-      "transform": "byte copy"
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_force_declared_clearing_validation.py",
-      "sha256": "70b46f895477ea5928d5845bb9763eef6f7982157caaab1fba93a5956b3011aa",
+      "sha256": "bd76dbcaa7c2092f7d92fc840f5d9c79bb305d8631962d2f637772cd118f444d",
       "bytes": 4520,
-      "transform": "byte copy"
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_force_market_replay_runtime.py",
@@ -9972,9 +9986,9 @@
     },
     {
       "path": "tests/test_prompt103_zonal_validation.py",
-      "sha256": "0cb6829e53ac90d1d796b3dca02654e932c198369dfbe66662b8c19bc971b920",
-      "bytes": 29027,
-      "transform": "byte copy"
+      "sha256": "60955130b209f7a2dd23d954bc061e92456574b6e79b8067a23312e0504b5cbe",
+      "bytes": 29092,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt104_comparison_eligibility.py",

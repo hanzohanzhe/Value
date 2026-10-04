@@ -14,7 +14,7 @@ from gridform_core.builtin.scheme_c_1000twh.runtime_compat.modular_simulation_mo
     GasGenerator,
     ahead_market_bidding,
 )
-from gridform_validation.force_clearing_oracle import validate_declared_database
+from gridform_validation.value_clearing_oracle import validate_declared_database
 from scripts.audit_prompt107_vre_attribution import (
     CommandSpec,
     SHORT_COMMAND_IDS,

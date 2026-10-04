@@ -11,6 +11,8 @@ from copy import deepcopy
 
 import pulp
 
+from gridform_validation.cbc import cbc_path
+
 
 DOMAIN_SCHEMA = "value.zonal-redispatch-domain/v1"
 PACK_SCHEMA = "value.zonal-network-pack/v1"
@@ -325,8 +327,11 @@ def _read_case(declaration: Mapping[str, object]) -> dict[str, object]:
 
 
 def _cbc() -> pulp.COIN_CMD:
-    solver = pulp.COIN_CMD(msg=False, mip=False, threads=1)
-    if not solver.available():
+    try:
+        solver = pulp.COIN_CMD(msg=False, mip=False, threads=1, path=cbc_path())
+    except RuntimeError:
+        solver = None
+    if solver is None or not solver.available():
         raise RuntimeError("The independent CBC executable is unavailable")
     return solver
 

@@ -1,6 +1,6 @@
 import unittest
 
-from gridform_validation.force_clearing_oracle import (
+from gridform_validation.value_clearing_oracle import (
     audit_declared_solution,
     audit_declared_storage_limits,
     audit_storage_transition,

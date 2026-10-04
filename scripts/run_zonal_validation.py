@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from gridform_validation.cbc import cbc_identity
 from gridform_validation.zonal_case_generator import (
     analytical_cases,
     production_solution,
@@ -236,7 +237,7 @@ def build_report(*, run_chronology: bool = True) -> dict[str, object]:
             "python": platform.python_version(),
             "platform": platform.platform(),
             "pulp": pulp.__version__,
-            "cbc": str(pulp.COIN_CMD(msg=False).available() or "unavailable"),
+            "cbc": cbc_identity(),
             "scipy": scipy_version,
         },
         "tolerances": TOLERANCES,
