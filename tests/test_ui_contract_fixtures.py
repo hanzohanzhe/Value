@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -9,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
@@ -70,11 +73,34 @@ class CommittedFixtureTests(unittest.TestCase):
         self.assertEqual(committed["toy-v8.dispatch-half-hour.json"]["payload"]["dispatch_source"], "dispatch_summary")
         self.assertEqual(committed["value-101-day.dispatch-half-hour.json"]["payload"]["total"], 48)
 
+    def test_toy_v8_daily_bucket_matches_the_plan_oracles(self) -> None:
+        # Plan 6.9 R3-02 (S4): stackSupply on v8 daily gives ccgt=32, onshore_wind=8,
+        # total 40 = accepted_supply; R3-01 (S3): the v8 daily price is £55/MWh.
+        # The toy keeps the raw names the staged writer records (CCGT, onshore).
+        payload = _committed()["toy-v8.dispatch-daily.json"]["payload"]
+        (bucket,) = payload["items"]
+        by_technology: dict[str, float] = {}
+        for flow in bucket["flows"]:
+            self.assertIn(";stage:final_dispatch", flow["evidence_scope"])
+            by_technology[flow["technology"]] = by_technology.get(flow["technology"], 0.0) + flow["energy_mwh"]
+        oracle = fixtures.TOY_V8_DAILY_ORACLE
+        self.assertEqual(by_technology, {"CCGT": oracle["CCGT"], "onshore": oracle["onshore"]})
+        self.assertEqual(bucket["accepted_supply_mwh"], oracle["accepted_supply_mwh"])
+        self.assertEqual(sum(by_technology.values()), bucket["accepted_supply_mwh"])
+        self.assertEqual(bucket["price_gbp_per_mwh"], oracle["price_gbp_per_mwh"])
+        self.assertEqual(payload["price_aggregation"], "demand_weighted_mean_gbp_per_mwh")
+        zones = {flow["evidence_scope"].split(";")[0] for flow in bucket["flows"] if flow["technology"] == "CCGT"}
+        self.assertEqual(zones, {"zone:north", "zone:south"}, "the same technology in both zones")
+        prices = [item["price_gbp_per_mwh"] for item in _committed()["toy-v8.dispatch-half-hour.json"]["payload"]["items"]]
+        self.assertIn(0.0, prices, "a legitimate 0.0 price stays in the toy")
+
     def test_committed_fixtures_hold_both_invariants_and_fit_the_budget(self) -> None:
         report = fixtures.invariant_report(_committed())
         self.assertTrue(report["passed"], report)
         self.assertIn("v8_period_conservation:toy-v8.dispatch-half-hour.json", report["checks"])
         self.assertLessEqual(fixtures.total_bytes(), fixtures.SIZE_BUDGET_BYTES)
+        # The raised budget is pinned so that a further raise is a visible, reviewed change.
+        self.assertEqual(fixtures.SIZE_BUDGET_BYTES, 256_000)
 
     def test_only_the_sqlite_file_hash_is_masked(self) -> None:
         text = "".join(path.read_text(encoding="utf-8") for path in fixtures.FIXTURE_DIR.glob("*.json"))
@@ -133,7 +159,7 @@ class GeneratorHelperTests(unittest.TestCase):
                     {"flow_type": "accepted_dispatch", "evidence_scope": "zone:north;stage:final_dispatch", "energy_mwh": item["accepted_supply_mwh"]},
                 ], **item} for index, item in enumerate(items)]}
 
-        # TOY_V8_PERIODS by hand: period 2 is 19 supply - 18 demand - 1 storage charge = 0.
+        # TOY_V8_PERIODS by hand: period 2 is 9 supply - 8 demand - 1 storage charge = 0.
         rows = []
         for demand, _, dispatch, charge, discharge in fixtures.TOY_V8_PERIODS:
             rows.append(self._v8_terms(sum(energy for _, _, energy in dispatch), demand, storage_charge_mwh=charge, storage_discharge_mwh=discharge))
@@ -159,6 +185,22 @@ class GeneratorHelperTests(unittest.TestCase):
             self.assertEqual(len(problems), 1, key)
             self.assertIn(key, problems[0])
 
+    def test_check_differences_carry_the_regeneration_hint(self) -> None:
+        documents = {"toy-v8.capabilities.json": {"schema_version": fixtures.SCHEMA_VERSION, "generated_by": fixtures.GENERATOR,
+                                                  "source": "toy-v8", "request": {"path": "/api/runs/{run_id}/market/capabilities", "query": {}},
+                                                  "payload": {"value": 1.0}}}
+        with tempfile.TemporaryDirectory() as folder:
+            fixtures.write(documents, Path(folder))
+            changed = {name: dict(document, payload={"value": 2.0}) for name, document in documents.items()}
+            self.assertEqual(len(fixtures.check(changed, Path(folder))), 1)
+            with mock.patch.object(fixtures, "generate", return_value=(changed, {"checks": {}, "passed": True, "seconds": 0.1})), \
+                    contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
+                status = fixtures.main(["--check", "--directory", folder])
+        self.assertEqual(status, 1)
+        self.assertEqual(json.loads(out.getvalue())["hint"], fixtures.REGENERATE_HINT)
+        self.assertIn("tests/ui_contract_fixtures.py --write", err.getvalue())
+        self.assertIn("P0_CONVENTIONS section 11", fixtures.REGENERATE_HINT)
+
     def test_render_is_line_oriented_json(self) -> None:
         document = {"payload": {"items": [{"a": 1, "b": [1, 2]}, {"a": 2, "b": []}], "empty": [], "scalar": 0.5}}
         text = fixtures.render(document)
@@ -176,9 +218,10 @@ class RegenerationTests(unittest.TestCase):
                 cwd=ROOT, env=environment, capture_output=True, text=True, timeout=300,
             )
             leftovers = list(Path(scratch).iterdir())
-        self.assertEqual(completed.returncode, 0, completed.stdout[-4000:] + completed.stderr[-4000:])
+        self.assertEqual(completed.returncode, 0, fixtures.REGENERATE_HINT + "\n" + completed.stdout[-4000:] + completed.stderr[-4000:])
         summary = json.loads(completed.stdout)
-        self.assertEqual(summary["differences"], [])
+        self.assertEqual(summary["differences"], [], fixtures.REGENERATE_HINT)
+        self.assertNotIn("hint", summary)
         self.assertEqual(summary["budget_violations"], [])
         self.assertLessEqual(summary["seconds"], fixtures.TIME_BUDGET_SECONDS)
         self.assertLessEqual(summary["bytes"], fixtures.SIZE_BUDGET_BYTES)

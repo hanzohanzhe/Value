@@ -12,7 +12,7 @@
   "physical_dispatch": false,
   "physical_dispatch_rows": 0,
   "dispatch_summary_available": true,
-  "dispatch_summary_rows": 12,
+  "dispatch_summary_rows": 10,
   "zonal_redispatch": false,
   "zonal_results_schema_version": null,
   "auction_replay": false,
