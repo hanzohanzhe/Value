@@ -1637,7 +1637,15 @@
      "operating_cost_gbp": 0.0
     }
    },
-   "a4_expected_decision": "s4_defines_source_of_operating_cost",
+   "a4_expected_decision": {
+    "fails_closed": {
+     "asset_ids": [
+      "ccgt-opex"
+     ],
+     "error": "ValueError",
+     "rule": "single_operating_cost_source"
+    }
+   },
    "cashflow_inputs": {
     "ccgt-opex": {
      "carbon_cost_gbp_per_mwh": 22.0,

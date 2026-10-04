@@ -17,7 +17,8 @@ parts:
    depreciation only, no OPEX). Every income and cost component is a
    required argument: a left-out component is an error, never a zero.
    ``a4_net_revenue_for_decidable_groups`` applies it only to groups whose
-   investment mode can reach a decision (mode filter first).
+   investment mode can reach a decision (mode filter first), and admits
+   exactly one operating-cost source (``A4_OPERATING_COST_RULE``).
 3. The ``head_*`` functions: the investment rule of the v2
    ``SchemeCAgentInvestmentDefinition.decide`` at 35aadb3, decomposed without
    any change of arithmetic or evaluation order. ``head_decide_accounts``
@@ -65,6 +66,18 @@ STORAGE_TECHNOLOGIES = frozenset({"1c_battery", "0.5c_battery", "0.25c_battery",
 GROSS_PROFIT_TECHNOLOGIES = VRE_TECHNOLOGIES | STORAGE_TECHNOLOGIES
 
 RECOMMENDATIONS = ("Invest_High", "Invest_Profit", "Do_Nothing", "Deplete")
+
+# HEAD decide() nets extensions.annual_operational_cost_gbp (never written in
+# production at 35aadb3). Under A4 the energy x gen_cost term is the operating
+# cost; keeping both would charge the same cost twice (review M0-P0-7-S1 round
+# 3: a CCGT carrying both would go from net 0 to -10.95e6 and be retired).
+A4_OPERATING_COST_RULE = (
+    "under A4 exactly one operating-cost source enters the net: the energy x gen_cost term of "
+    "scheme_c_investment_net_revenue (zero for VRE and storage). A non-zero "
+    "extensions.annual_operational_cost_gbp on a member of a decidable group fails closed; it is "
+    "neither added to nor silently dropped from the A4 net."
+)
+RECORDED_OPERATIONAL_COST_KEY = "annual_operational_cost_gbp"
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +212,12 @@ def scheme_c_investment_net_revenue(
     The basis is chosen by ``deducts_energy_cost`` (technology first). VRE,
     whose source gen_cost is 0.0001, and storage keep gross revenue as profit,
     so their operating cost here is exactly zero.
+
+    Single operating-cost source (P0-7 S4, ``A4_OPERATING_COST_RULE``): the
+    ``operating_cost_gbp`` returned here replaces the
+    ``annual_operational_cost_gbp`` term that HEAD decide() subtracts; S4
+    must not subtract both. ``a4_net_revenue_for_decidable_groups`` refuses
+    an asset that carries a non-zero recorded operational cost.
     """
     income = finite_number(electricity_income_gbp, "electricity income")
     hydrogen = finite_number(hydrogen_income_gbp, "hydrogen income")
@@ -245,6 +264,12 @@ def a4_net_revenue_for_decidable_groups(
     technology; a missing row is a ``ValueError``, never a zero. A row may
     name its technology, which must then equal the group's. Returns the A4
     result row by asset id.
+
+    ``A4_OPERATING_COST_RULE``: a member whose ``extensions`` carry a
+    non-zero ``annual_operational_cost_gbp`` is a ``ValueError``. The A4
+    operating cost is the only operating-cost term, so S4 feeds these net
+    values to the HEAD tier rule, whose recorded-operational-cost term is
+    then zero for every member, and nothing is charged twice.
     """
     if not isinstance(cashflow_inputs, Mapping):
         raise ValueError("A4 cashflow inputs must be a mapping keyed by asset id")
@@ -255,6 +280,12 @@ def a4_net_revenue_for_decidable_groups(
             continue
         for member in group["members"]:  # type: ignore[union-attr]
             asset_id = str(member["asset_id"])
+            recorded = dict(member.get("extensions") or {}).get(RECORDED_OPERATIONAL_COST_KEY)
+            if recorded is not None and finite_number(
+                    recorded, f"{asset_id} {RECORDED_OPERATIONAL_COST_KEY}") != 0.0:
+                raise ValueError(
+                    f"{asset_id} carries {RECORDED_OPERATIONAL_COST_KEY} = {recorded!r} beside the A4 "
+                    "energy x gen_cost operating cost; " + A4_OPERATING_COST_RULE)
             row = cashflow_inputs.get(asset_id)
             if not isinstance(row, Mapping):
                 raise ValueError(f"A4 cashflow inputs missing for asset {asset_id}")

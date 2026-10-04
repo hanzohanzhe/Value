@@ -285,7 +285,10 @@ def scenarios():
                 "ccgt-opex": {"basis": "scheme_c_income_less_energy_times_gen_cost", "gen_cost_gbp_per_mwh": 60.0,
                               "operating_cost_gbp": 10_950_000.0, "net_revenue_gbp": 0.0},
             },
-            "a4_expected_decision": "s4_defines_source_of_operating_cost",
+            # A4_OPERATING_COST_RULE: ccgt-opex carries both operating-cost sources -> the A4 path fails
+            # closed (HEAD net 0; subtracting both would give -10.95e6 and a 100 MW retirement).
+            "a4_expected_decision": {"fails_closed": {"error": "ValueError", "asset_ids": ["ccgt-opex"],
+                                                      "rule": "single_operating_cost_source"}},
         },
         {
             "id": "eligibility_and_grouping",

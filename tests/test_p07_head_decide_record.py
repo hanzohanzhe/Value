@@ -270,6 +270,9 @@ class DecisionA4FixtureTest(unittest.TestCase):
         for entry in self.record["scenarios"]:
             if not entry["cashflow_inputs"]:
                 continue
+            expected_decision = entry["a4_expected_decision"]
+            if isinstance(expected_decision, dict) and "fails_closed" in expected_decision:
+                continue  # test_recorded_operational_cost_beside_a4_fails_closed
             with self.subTest(entry["id"]):
                 rows = self._a4_net(entry)
                 self.assertEqual(set(rows), set(entry["a4_expected"]))
@@ -278,6 +281,38 @@ class DecisionA4FixtureTest(unittest.TestCase):
                         self.assertEqual(rows[asset_id][key], value)
                 checked += 1
         self.assertGreaterEqual(checked, 7)
+
+    def test_recorded_operational_cost_beside_a4_fails_closed(self):
+        """Review M0-P0-7-S1 round 3: one operating-cost source under A4, never both (no double deduction)."""
+        entry = {row["id"]: row for row in self.record["scenarios"]}["loss_profit_and_recorded_opex"]
+        expected = entry["a4_expected_decision"]["fails_closed"]
+        self.assertEqual(expected, {"error": "ValueError", "asset_ids": ["ccgt-opex"],
+                                    "rule": "single_operating_cost_source"})
+        inputs = REC.decanonical(entry["inputs"])
+        opex = {row["asset_id"]: row["extensions"].get("annual_operational_cost_gbp")
+                for row in inputs["assets"]}
+        self.assertEqual(opex["ccgt-opex"], 10_950_000.0)
+        with self.assertRaisesRegex(ValueError, "ccgt-opex .*annual_operational_cost_gbp"):
+            self._a4_net(entry)
+        # The hazard the rule closes: the A4 net (0) minus the recorded opex would be -10.95e6 and,
+        # through the HEAD rule, retire the whole 100 MW CCGT; the HEAD record nets 0 and keeps it.
+        a4 = entry["a4_expected"]["ccgt-opex"]
+        self.assertEqual(a4["operating_cost_gbp"], opex["ccgt-opex"])
+        self.assertEqual(a4["net_revenue_gbp"], 0.0)
+        groups, _ = ia.head_group_assets(inputs["assets"], {"ccgt-opex": a4["net_revenue_gbp"]})
+        double = {f"{row['owner']}|{row['technology']}": row
+                  for row in ia.head_decide_accounts(groups, {}, investment_mode)["outcomes"]}
+        self.assertEqual(double["owner-opex|CCGT"]["account"]["net_revenue_gbp"], -10_950_000.0)
+        self.assertEqual(double["owner-opex|CCGT"]["retirement_mw"], 100.0)
+        self.assertNotIn("ccgt-opex", entry["head_decision"]["retirements_mw"])
+        # With the recorded opex removed (S4 keeps a single source) the A4 path computes every row.
+        stripped = {**entry, "inputs": {**entry["inputs"], "assets": [
+            {**row, "extensions": {key: value for key, value in row["extensions"].items()
+                                   if key != "annual_operational_cost_gbp"}}
+            for row in entry["inputs"]["assets"]]}}
+        rows = self._a4_net(stripped)
+        self.assertEqual({asset_id: row["net_revenue_gbp"] for asset_id, row in rows.items()},
+                         {asset_id: row["net_revenue_gbp"] for asset_id, row in entry["a4_expected"].items()})
 
     def test_unchanged_from_head_scenarios_keep_the_head_decision_under_a4(self):
         """VRE and storage keep gross = profit, so the HEAD rule on the A4 net map repeats HEAD exactly."""

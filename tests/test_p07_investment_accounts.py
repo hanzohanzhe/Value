@@ -200,6 +200,54 @@ class SchemeCNetRevenueTest(unittest.TestCase):
                                                **self.ZERO)
 
 
+class SingleOperatingCostSourceTest(unittest.TestCase):
+    """A4_OPERATING_COST_RULE: the A4 path refuses a recorded annual_operational_cost_gbp (round 3)."""
+
+    ROW = {"technology": "CCGT", "electricity_income_gbp": 1e6, "hydrogen_income_gbp": 0.0,
+           "generated_mwh": 1e4, "generation_cost_gbp_per_mwh": 0.0, "fuel_cost_gbp_per_mwh": 35.0,
+           "carbon_cost_gbp_per_mwh": 22.0, "unit_time_cost_gbp_per_mwh": 3.0}
+
+    def _groups(self, extensions, technology="CCGT"):
+        return [{"owner": "o", "technology": technology, "region": "GB",
+                 "members": [{"asset_id": "a", "capacity_mw": 10.0, "income_gbp": 1e6, "extensions": extensions}]}]
+
+    def test_absent_none_or_zero_recorded_cost_is_accepted(self):
+        for extensions in ({}, {"annual_operational_cost_gbp": None}, {"annual_operational_cost_gbp": 0.0},
+                           {"annual_operational_cost_gbp": 0}):
+            with self.subTest(extensions=extensions):
+                rows = ia.a4_net_revenue_for_decidable_groups(
+                    self._groups(extensions), lambda technology: "explicit_uncapped", {"a": self.ROW})
+                self.assertEqual(rows["a"]["net_revenue_gbp"], 1e6 - 1e4 * 60.0)
+        # A member row without extensions (plain data) is accepted too.
+        groups = [{"owner": "o", "technology": "CCGT", "region": "GB", "members": [{"asset_id": "a"}]}]
+        self.assertIn("a", ia.a4_net_revenue_for_decidable_groups(
+            groups, lambda technology: "explicit_uncapped", {"a": self.ROW}))
+
+    def test_non_zero_or_invalid_recorded_cost_fails_closed(self):
+        for value in (1.0, -1.0, 10_950_000.0, math.nan, math.inf, "5", True):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                ia.a4_net_revenue_for_decidable_groups(
+                    self._groups({"annual_operational_cost_gbp": value}),
+                    lambda technology: "explicit_uncapped", {"a": self.ROW})
+
+    def test_vre_and_storage_are_held_to_the_same_rule(self):
+        row = {**self.ROW, "technology": "solar", "fuel_cost_gbp_per_mwh": 0.0, "carbon_cost_gbp_per_mwh": 0.0,
+               "unit_time_cost_gbp_per_mwh": 0.0}
+        with self.assertRaises(ValueError):
+            ia.a4_net_revenue_for_decidable_groups(
+                self._groups({"annual_operational_cost_gbp": 1.0}, "solar"),
+                lambda technology: "headroom_required", {"a": row})
+
+    def test_skipped_groups_are_not_checked(self):
+        rows = ia.a4_net_revenue_for_decidable_groups(
+            self._groups({"annual_operational_cost_gbp": 5.0}, "Nuclear"), lambda technology: "denied", {})
+        self.assertEqual(rows, {})
+
+    def test_rule_text_names_the_single_source(self):
+        self.assertIn("exactly one operating-cost source", ia.A4_OPERATING_COST_RULE)
+        self.assertIn("annual_operational_cost_gbp", ia.A4_OPERATING_COST_RULE)
+
+
 class TechnologyClassTest(unittest.TestCase):
     """The A4 thermal / VRE / storage classes and how they relate to other sets."""
 
