@@ -5854,8 +5854,8 @@
     },
     {
       "path": "e2e/castle-101.spec.ts",
-      "sha256": "b4f64224c9524cccd3b00ce758ee271e340301de35335581b72f5c1f22840058",
-      "bytes": 8496,
+      "sha256": "46a019ebaa38d0417edfb62f9071474370b32a352cfac27e457cfc505cf51dcc",
+      "bytes": 9488,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
