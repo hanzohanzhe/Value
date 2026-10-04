@@ -510,8 +510,11 @@ def allocate_capped_requests(
     sum fits the cap exactly; the clamp takes the excess back from the largest
     share (a change of a few ulp, never below zero). A stage that fits only
     under the left-to-right sum is clamped but not scaled, and its reported
-    factor is 1.0. Returns accepted MW by request id and the scale factors
-    applied per technology and per pool.
+    factor is 1.0. The guarantee covers exactly these two summations: another
+    order (``numpy.sum`` pairwise, pandas) can still land a rounding step above the
+    cap, so a strict check must use ``sum`` in request order or
+    ``math.fsum``, or allow a few ulp. Returns accepted MW by request id and
+    the scale factors applied per technology and per pool.
     """
     tech_caps = {
         str(tech): finite_number(value, f"{tech} technology cap", nonnegative=True)
