@@ -1031,6 +1031,7 @@
     "scripts/redraw_excess_and_curtailment_readable.py",
     "scripts/redraw_group1_cost_ci_readable.py",
     "scripts/redraw_three_decarb_cost_ci_readable.py",
+    "scripts/refresh_source_release_manifest.py",
     "scripts/release_scan.py",
     "scripts/render_prompt46_release_report.py",
     "scripts/render_prompt52_final_report.py",
@@ -1069,6 +1070,7 @@
     "start-value.cmd",
     "stop-value.cmd",
     "task-2-report.md",
+    "tests/baselines/release-exclusions.txt",
     "tests/data-workbench-frontend.test.mjs",
     "tests/data_workbench/fixtures/discovery/neso-catalogue.json",
     "tests/data_workbench/test_acquisition.py",
@@ -1253,6 +1255,7 @@
     "tests/test_psm_entrypoint_identity.py",
     "tests/test_public_uk_distribution.py",
     "tests/test_recovery_capability.py",
+    "tests/test_refresh_source_release_manifest.py",
     "tests/test_release_parity.py",
     "tests/test_release_rights_ledger.py",
     "tests/test_release_upgrade_ledgers.py",
@@ -8718,6 +8721,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "scripts/refresh_source_release_manifest.py",
+      "sha256": "fd612a46f687f053fe89aa1d8699eb6e520705dc5009b227635c53eb95bfabd5",
+      "bytes": 5251,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/release_scan.py",
       "sha256": "17668e970b6170eb1d61b39120e92545e6b3a71311de5a0848fb18fa2e5370c3",
       "bytes": 5275,
@@ -8938,6 +8947,12 @@
       "sha256": "bb937291e6309d78dcaf07ecf9cf9f2bc487f24c95bb5d234a82055f8ef207cc",
       "bytes": 3705,
       "transform": "documentation personal path redaction"
+    },
+    {
+      "path": "tests/baselines/release-exclusions.txt",
+      "sha256": "98a882bddeae4047a0a7f6405158fe4b5e73b83261dac3139062e18c32319082",
+      "bytes": 409,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/data-workbench-frontend.test.mjs",
@@ -10042,6 +10057,12 @@
       "sha256": "2f75ce3c22f29918730d66bbf4f96736843fe65287efa76a645f56d97d235f58",
       "bytes": 2412,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_refresh_source_release_manifest.py",
+      "sha256": "06f59928a0fcfa7d2e9fb91190b879739c19e0d56a93fa6ba216f41b4a9deb44",
+      "bytes": 4604,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_release_parity.py",
