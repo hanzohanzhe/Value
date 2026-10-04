@@ -43,6 +43,9 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# Plan matrix (F5-03/P7-08): 2-3 processes x 1500 status merges each.
+RACE_ITERATIONS = 1500
+
 RACE_WRITER = """
 import sys
 from pathlib import Path
@@ -244,7 +247,7 @@ class RunStatusTests(unittest.TestCase):
         thread = threading.Thread(target=reader)
         thread.start()
         writers = [
-            subprocess.Popen([sys.executable, "-B", "-c", RACE_WRITER, str(self.run_dir), f"field{i}", "300"],
+            subprocess.Popen([sys.executable, "-B", "-c", RACE_WRITER, str(self.run_dir), f"field{i}", str(RACE_ITERATIONS)],
                              cwd=ROOT, env=_environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             for i in range(3)
         ]
@@ -255,7 +258,7 @@ class RunStatusTests(unittest.TestCase):
             thread.join(timeout=30)
         self.assertEqual([int(out.strip()) for out, _ in outputs], [0, 0, 0], [err for _, err in outputs])
         final = json.loads((self.run_dir / "status.json").read_text("utf-8"))
-        self.assertEqual([final[f"field{i}"] for i in range(3)], [300, 300, 300])
+        self.assertEqual([final[f"field{i}"] for i in range(3)], [RACE_ITERATIONS] * 3)
         self.assertEqual(reader_errors, [])
         self.assertEqual([path.name for path in self.run_dir.iterdir() if path.suffix == ".tmp"], [])
 
