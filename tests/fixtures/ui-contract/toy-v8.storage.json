@@ -1,0 +1,10 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v8",
+ "request": {
+  "path": "/api/runs/{run_id}/market/storage",
+  "query": {"year":2025,"period":1,"limit":100}
+ },
+ "payload": {"total":0,"limit":100,"offset":0,"items":[],"trace_level":"summary"}
+}

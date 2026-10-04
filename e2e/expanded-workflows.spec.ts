@@ -1,11 +1,12 @@
-import fs from "node:fs";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const hash = (letter: string) => letter.repeat(64);
 // Browser-test screenshots are ephemeral.  The reviewed Prompt 84 evidence in
 // publication/ is immutable and must not be rewritten by a normal test run.
-const screenshotRoot = "test-results/prompt84-browser-screenshots";
+// They go to the test's output folder (Playwright's outputDir), which an
+// offline run places in a temporary folder that it removes (P0-9 S0).
+const screenshotPath = (name: string) => test.info().outputPath("prompt84-browser-screenshots", name);
 
 const run = {
   id: "domain-demo", project_id: "domain-project", project_name: "Bounded network fixture", mode: "full",
@@ -59,7 +60,6 @@ function resolution(request?: Record<string, unknown>) {
 }
 
 test.beforeEach(async ({ page }) => {
-  fs.mkdirSync(screenshotRoot, { recursive: true });
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -102,17 +102,17 @@ test.beforeEach(async ({ page }) => {
 
 test("expanded composer and conditional Data stay capability-driven", async ({ page }) => {
   await page.goto("/");
-  await page.screenshot({ path: `${screenshotRoot}/01-home.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("01-home.png"), fullPage: true });
   await page.getByRole("button", { name: /Studies/ }).click();
   await page.getByRole("button", { name: /System domain/ }).click();
   await expect(page.getByRole("button", { name: /Chronological DC network/ })).toBeVisible();
   await expect(page.getByText("not AC OPF", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: /Chronological DC network/ }).click();
-  await page.screenshot({ path: `${screenshotRoot}/02-study-composer.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("02-study-composer.png"), fullPage: true });
   await page.getByRole("button", { name: /Data:/ }).click();
   await expect(page.getByText("Network buses")).toBeVisible();
   await expect(page.getByText("value.network.nodal-demand", { exact: true })).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/03-conditional-data.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("03-conditional-data.png"), fullPage: true });
 });
 
 test("zonal solver settings require valid ranges and one revision acknowledgement", async ({ page }) => {
@@ -186,23 +186,23 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
 });
 
 test("optional-domain results expose evidence and non-evaluated states", async ({ page }) => {
-  await page.goto("/");
+  // The workspace fixture lists no Study, so the Run is opened by its link:
+  // a Run is selected only together with the Study that owns it.
+  await page.goto(`/?study=${run.project_id}&run=${run.id}`);
   await page.getByRole("button", { name: /Network & water/ }).click();
   await expect(page.getByRole("heading", { name: "Nodal balance and constrained transfers" })).toBeVisible();
   await expect(page.getByText("Electrical schematic only", { exact: false })).toBeVisible();
   await expect(page.getByText("168 periods", { exact: true })).toBeVisible();
   await expect(page.getByText("not evaluated", { exact: true }).last()).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/04-dc-results.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("04-dc-results.png"), fullPage: true });
 
-  await page.getByRole("tab", { name: "AC feasibility" }).click();
-  await expect(page.getByText("Not AC OPF", { exact: true })).toBeVisible();
-  await expect(page.getByText("0.1 MW")).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/05-ac-feasibility.png`, fullPage: true });
-
+  // The public "AC feasibility" tab is intentionally absent (no AC model is
+  // shipped; the frontend guards forbid it from coming back), so its old
+  // assertions are removed rather than reworded (P0-9 S0/S10).
   await page.getByRole("tab", { name: "Transmission expansion" }).click();
   await expect(page.getByText("candidate → proposal → planning → commissioned / failed / retired")).toBeVisible();
   await expect(page.getByText("line:NS2")).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/06-transmission-expansion.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("06-transmission-expansion.png"), fullPage: true });
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);

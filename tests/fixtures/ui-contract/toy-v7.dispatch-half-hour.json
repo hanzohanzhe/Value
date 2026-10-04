@@ -1,0 +1,32 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v7",
+ "request": {
+  "path": "/api/runs/{run_id}/market/dispatch",
+  "query": {"year":2025,"period_from":0,"period_to":47,"limit":96,"offset":0,"resolution":"half_hour"}
+ },
+ "payload": {
+  "schema_version": "value.dispatch-timeline/v1",
+  "physical_dispatch_schema_version": "value.physical-dispatch-view/v1",
+  "year": 2025,
+  "resolution": "half_hour",
+  "period_hours": 0.5,
+  "timezone": "Europe/London",
+  "calendar": "fixed_365_day_local_periods",
+  "total": 4,
+  "limit": 96,
+  "offset": 0,
+  "dispatch_source": "physical_dispatch",
+  "dispatch_summary_available": false,
+  "items": [
+   {"period_start":0,"period_end":0,"period_count":1,"forecast_demand_mwh":10.0,"real_demand_mwh":10.0,"accepted_supply_mwh":10.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":4.0,"vre_accepted_mwh":4.0,"curtailed_mwh":0.0,"import_mwh":0.0,"price_gbp_per_mwh":61.25,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0,"timestamp_start":"2025-01-01T00:00:00","timestamp_end":"2025-01-01T00:30:00","flows":[{"technology":"ccgt","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":6.0,"balance_component_mwh":6.0},{"technology":"solar","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":4.0,"balance_component_mwh":4.0}]},
+   {"period_start":1,"period_end":1,"period_count":1,"forecast_demand_mwh":12.0,"real_demand_mwh":12.0,"accepted_supply_mwh":13.0,"storage_charge_mwh":1.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":5.0,"vre_accepted_mwh":5.0,"curtailed_mwh":0.0,"import_mwh":0.0,"price_gbp_per_mwh":70.5,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0,"timestamp_start":"2025-01-01T00:30:00","timestamp_end":"2025-01-01T01:00:00","flows":[{"technology":"ccgt","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":8.0,"balance_component_mwh":8.0},{"technology":"solar","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":5.0,"balance_component_mwh":5.0},{"technology":"battery_storage","flow_type":"storage_charge","evidence_scope":"final_storage_input","energy_mwh":1.0,"balance_component_mwh":-1.0}]},
+   {"period_start":2,"period_end":2,"period_count":1,"forecast_demand_mwh":9.0,"real_demand_mwh":9.0,"accepted_supply_mwh":9.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":7.0,"vre_accepted_mwh":6.0,"curtailed_mwh":1.0,"import_mwh":0.0,"price_gbp_per_mwh":0.0,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0,"timestamp_start":"2025-01-01T01:00:00","timestamp_end":"2025-01-01T01:30:00","flows":[{"technology":"vre_aggregate","flow_type":"balancing_curtailment","evidence_scope":"reported balancing-stage curtailment","energy_mwh":1.0,"balance_component_mwh":0.0},{"technology":"ccgt","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":3.0,"balance_component_mwh":3.0},{"technology":"solar","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":6.0,"balance_component_mwh":6.0}]},
+   {"period_start":3,"period_end":3,"period_count":1,"forecast_demand_mwh":11.0,"real_demand_mwh":11.0,"accepted_supply_mwh":11.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":1.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":0.5,"vre_accepted_mwh":0.5,"curtailed_mwh":0.0,"import_mwh":1.5,"price_gbp_per_mwh":85.0,"blackout_mwh":0.0,"excess_mwh":2.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0,"timestamp_start":"2025-01-01T01:30:00","timestamp_end":"2025-01-01T02:00:00","flows":[{"technology":"inflexible_mixed","flow_type":"excess_generation","evidence_scope":"pre-balancing excess may include VRE, nuclear or natural-flow hydro","energy_mwh":2.0,"balance_component_mwh":0.0},{"technology":"ccgt","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":8.0,"balance_component_mwh":8.0},{"technology":"solar","flow_type":"generation","evidence_scope":"final_demand_serving_generation","energy_mwh":0.5,"balance_component_mwh":0.5},{"technology":"boundary_import","flow_type":"import","evidence_scope":"final_boundary_import","energy_mwh":1.5,"balance_component_mwh":1.5},{"technology":"battery_storage","flow_type":"storage_discharge","evidence_scope":"final_storage_output","energy_mwh":1.0,"balance_component_mwh":1.0}]}
+  ],
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
+  "units": {"energy":"MWh","price":"GBP/MWh"}
+ }
+}

@@ -1,0 +1,50 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "value-101-day",
+ "request": {"path":"/api/runs/{run_id}/market/capabilities","query":{}},
+ "payload": {
+  "schema_version": "value.market-replay-capabilities/v1",
+  "ledger_schema_version": "value.market-ledger/v7",
+  "trace_level": "full",
+  "years": [2025],
+  "period_summary": true,
+  "physical_dispatch": true,
+  "physical_dispatch_rows": 127,
+  "dispatch_summary_available": false,
+  "dispatch_summary_rows": 0,
+  "zonal_redispatch": false,
+  "zonal_results_schema_version": null,
+  "auction_replay": true,
+  "bid_replay_available": true,
+  "bid_replay_missing_reason": null,
+  "missing_detail": [],
+  "auction_stages": [
+   {"stage":"ahead","declared_periods":48,"outcome_periods":48,"order_detail":"complete"},
+   {"stage":"balancing","declared_periods":47,"outcome_periods":47,"order_detail":"complete"},
+   {"stage":"curtailment","declared_periods":1,"outcome_periods":1,"order_detail":"stage_summary_only"}
+  ],
+  "storage_state": true,
+  "storage_cost_module_id": "dynamic-annual-storage-cost",
+  "declared_inputs": true,
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "semantic_metadata": {
+   "psm_module_id": "value-bid-at-cost-psm",
+   "psm_module_version": "5.1.0",
+   "period_hours": 0.5,
+   "timezone": "Europe/London",
+   "calendar": "fixed_365_day_local_periods",
+   "requested_trace_level": "full",
+   "dispatch_formulation": "bid_at_cost_continuous_no_commitment",
+   "pricing_rule": "retained_bid_at_cost_pay_as_clear_agent_income",
+   "period_price_semantics": "demand_normalised_total_period_cost; not a stage clearing-price proof",
+   "excess_scope": "inflexible_mixed",
+   "excess_relationship": "separate_prebalancing",
+   "curtailment_semantics": "balancing_stage_down_regulation_after_storage_export_and_flexible_demand",
+   "stage_order": ["ahead","curtailment_or_balancing","final_dispatch"]
+  },
+  "missing_reason": null,
+  "legacy_staged_market_jsonl": false,
+  "legacy_jsonl_resource": null
+ }
+}

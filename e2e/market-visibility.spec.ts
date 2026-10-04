@@ -11,12 +11,17 @@ const flows = [
   { technology: "offshore_wind", flow_type: "generation", evidence_scope: "physical_asset", energy_mwh: 4, balance_component_mwh: 4 },
   { technology: "ccgt", flow_type: "generation", evidence_scope: "physical_asset", energy_mwh: 6, balance_component_mwh: 6 },
 ];
+// The dispatch read model (gridform_core/market_replay.py query_dispatch_timeline)
+// returns the bucket price as `price_gbp_per_mwh` with a declared aggregation.
+// The price (61.25 + period) deliberately differs from every offer price below
+// so that an assertion on it cannot be satisfied by the merit-order table.
 const timeline = {
   year: 2025, resolution: "daily", total: 4, limit: 500, offset: 0, source_artifact_sha256: "a".repeat(64),
+  period_hours: 0.5, price_aggregation: "demand_weighted_mean_gbp_per_mwh",
   items: Array.from({ length: 4 }, (_, period) => ({
     period_start: period, period_end: period, period_count: 1,
     timestamp_start: `2025-01-01T0${period}:00:00`, timestamp_end: `2025-01-01T0${period}:30:00`,
-    real_demand_mwh: 10, accepted_supply_mwh: 10, clearing_price_gbp_per_mwh: 50 + period,
+    real_demand_mwh: 10, accepted_supply_mwh: 10, price_gbp_per_mwh: 61.25 + period,
     storage_charge_mwh: period === 1 ? 1 : 0, storage_discharge_mwh: 0,
     curtailed_mwh: period === 2 ? 1 : 0, excess_mwh: period === 2 ? 2 : 0,
     vre_available_mwh: 5, vre_accepted_mwh: period === 2 ? 4 : 5,
@@ -30,7 +35,10 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
     const url = route.request().url();
     let body: unknown;
     if (url.endsWith("/api/workspace")) body = {
-      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [], projects: [],
+      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [],
+      // A Study must exist for its Run to be selected: the workspace opens the
+      // Run only when run.project_id matches the selected Study.
+      projects: [{ id: run.project_id, name: run.project_name, data_pack_id: "fixture", start_year: 2025, end_year: 2025, modules: {}, updated_at: run.updated_at }],
       data_packs: [{ id: "fixture", name: "Fixture", country: "GB", timezone: "Europe/London", bindings: {}, required_count: 0, bound_required_count: 0, valid_required_count: 0, binding_issues: {}, complete: true }],
       runs: [run], runtime: { python: "3.10.11", compatible: true, selected_capability: "value-native" },
     };
@@ -67,7 +75,12 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
   await expect(page.getByRole("table").getByText("offshore wind")).toBeVisible();
   await expect(page.getByText("£50/MWh").first()).toBeVisible();
-  await page.screenshot({ path: "test-results/prompt56-market-replay.png", fullPage: true });
+  // R3-01: the selected-period strip must show the recorded bucket price. HEAD
+  // reads a field the API never sends and shows £0/MWh, so this soft assertion
+  // is the one registered failure of this spec (e2e/offline-subset.json) until
+  // P0-9 S3 (M2) fixes the read; the rest of the test still runs and must pass.
+  await expect.soft(page.locator(".selected-period-strip")).toContainText("£61.25/MWh");
+  await page.screenshot({ path: test.info().outputPath("prompt56-market-replay.png"), fullPage: true });
 
   await page.getByRole("button", { name: /VRE & curtailment/ }).click();
   await expect(page.getByRole("heading", { name: "See how much VRE was available, used and left unused" })).toBeVisible();
@@ -75,5 +88,5 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await expect(page.getByText("inflexible mixed", { exact: true })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
-  await page.screenshot({ path: "test-results/prompt57-vre-curtailment.png", fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("prompt57-vre-curtailment.png"), fullPage: true });
 });

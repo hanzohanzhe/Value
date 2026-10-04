@@ -1,0 +1,21 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v7",
+ "request": {
+  "path": "/api/runs/{run_id}/market/periods",
+  "query": {"limit":50,"offset":0}
+ },
+ "payload": {
+  "total": 4,
+  "limit": 50,
+  "offset": 0,
+  "items": [
+   {"year":2025,"period":0,"stage":"final_dispatch","forecast_demand_mwh":10.0,"real_demand_mwh":10.0,"accepted_supply_mwh":10.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":4.0,"vre_accepted_mwh":4.0,"curtailed_mwh":0.0,"import_mwh":0.0,"clearing_price_gbp_per_mwh":61.25,"physical_resource_cost_gbp":330.0,"market_payment_gbp":612.5,"policy_transfer_gbp":0.0,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0},
+   {"year":2025,"period":1,"stage":"final_dispatch","forecast_demand_mwh":12.0,"real_demand_mwh":12.0,"accepted_supply_mwh":13.0,"storage_charge_mwh":1.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":5.0,"vre_accepted_mwh":5.0,"curtailed_mwh":0.0,"import_mwh":0.0,"clearing_price_gbp_per_mwh":70.5,"physical_resource_cost_gbp":440.0,"market_payment_gbp":846.0,"policy_transfer_gbp":0.0,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0},
+   {"year":2025,"period":2,"stage":"final_dispatch","forecast_demand_mwh":9.0,"real_demand_mwh":9.0,"accepted_supply_mwh":9.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":7.0,"vre_accepted_mwh":6.0,"curtailed_mwh":1.0,"import_mwh":0.0,"clearing_price_gbp_per_mwh":0.0,"physical_resource_cost_gbp":165.0,"market_payment_gbp":0.0,"policy_transfer_gbp":0.0,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0},
+   {"year":2025,"period":3,"stage":"final_dispatch","forecast_demand_mwh":11.0,"real_demand_mwh":11.0,"accepted_supply_mwh":11.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":1.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":0.5,"vre_accepted_mwh":0.5,"curtailed_mwh":0.0,"import_mwh":1.5,"clearing_price_gbp_per_mwh":85.0,"physical_resource_cost_gbp":440.0,"market_payment_gbp":935.0,"policy_transfer_gbp":0.0,"blackout_mwh":0.0,"excess_mwh":2.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0}
+  ],
+  "trace_level": "full"
+ }
+}

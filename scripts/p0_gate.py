@@ -86,9 +86,14 @@ TRAJECTORY_ALLOWLIST_FILE = "tests/golden/doctoral_trajectory_rebaselines.json"
 MANDATORY_STEPS = (
     "guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet",
     "golden_full", "golden_nightly", "version_ledger", "release_manifest",
+    # P0-9 S0 delivered the offline e2e subset; plan C13 makes it part of
+    # ``full``, so a run without a browser is a waiver, never a pass.
+    "e2e_offline",
 )
 SKIPPED_BY_FLAG = "skipped by --skip"
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
+NODE_TEST_GROUP_DIRECTORIES = ("tests/frontend/unit", "tests/frontend/render")
+OFFLINE_E2E_COMMAND = "node e2e/run-tests.mjs --offline"  # P0-9 S0: UI-only subset plus ratchet in e2e/offline-subset.json
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
 
@@ -431,6 +436,10 @@ def step_node_tests(gate: Gate) -> dict[str, Any]:
     if node is None:
         return _status(False, "node executable not found (set VALUE_NODE)")
     files = sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / "tests").glob("*.test.mjs") if path.name not in NODE_TEST_EXCLUDE)
+    # Pure view logic and offline SSR tests (P0-9 S0) need no browser; the
+    # browser-backed tests/frontend/*.test.mjs harnesses are not part of quick.
+    for group in NODE_TEST_GROUP_DIRECTORIES:
+        files += sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / group).glob("*.test.mjs"))
     completed = run([node, "--test", *files], timeout=900)
     counts = dict(re.findall(r"^# (pass|fail) (\d+)", completed.stdout, flags=re.MULTILINE))
     return _status(completed.returncode == 0, {"files": files, "counts": counts, "tail": "" if completed.returncode == 0 else _tail(completed.stdout)})
@@ -759,12 +768,60 @@ def step_publication_scope(gate: Gate) -> dict[str, Any]:
     return _status(not errors, {"source_errors": errors, "ignored_non_source_errors": other})
 
 
+# Browsers Playwright caches offline (P0-9 S0): the headless shell first, then
+# full Chromium; within a kind the newest revision wins.
+PLAYWRIGHT_BROWSER_GLOBS = (
+    "chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell",
+    "chromium-*/chrome-linux*/chrome",
+)
+
+
+def cached_playwright_browser(cache: Path | None = None) -> Path | None:
+    """The newest cached Playwright Chromium (headless shell preferred), or None."""
+
+    if cache is None:
+        configured = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+        cache = Path(configured) if configured and configured != "0" else Path.home() / ".cache" / "ms-playwright"
+    if not cache.is_dir():
+        return None
+    for pattern in PLAYWRIGHT_BROWSER_GLOBS:
+        found = []
+        for candidate in cache.glob(pattern):
+            folder = candidate.relative_to(cache).parts[0]
+            match = re.search(r"-(\d+)$", folder)
+            if candidate.is_file() and match:
+                found.append((int(match.group(1)), candidate))
+        if found:
+            return max(found)[1]
+    return None
+
+
 def step_e2e_offline(gate: Gate) -> dict[str, Any]:
-    command = os.environ.get("VALUE_P0_E2E_COMMAND")
-    if not os.environ.get("VALUE_E2E_CHROMIUM") or not command:
-        return _skipped("offline e2e needs VALUE_E2E_CHROMIUM and VALUE_P0_E2E_COMMAND (infrastructure: P0-9 S0)")
-    completed = run(command.split(), timeout=3600, environment=python_environment({"VALUE_E2E_UI_ONLY": "1"}))
-    return _status(completed.returncode == 0, _tail(completed.stdout + completed.stderr))
+    command = os.environ.get("VALUE_P0_E2E_COMMAND") or OFFLINE_E2E_COMMAND
+    chromium = os.environ.get("VALUE_E2E_CHROMIUM")
+    if not chromium:
+        cached = cached_playwright_browser()
+        if cached is None:
+            # e2e_offline is mandatory: this skip turns the run into passed_with_waivers.
+            return _skipped("offline e2e found no browser: VALUE_E2E_CHROMIUM is unset and no cached Playwright "
+                            "Chromium under PLAYWRIGHT_BROWSERS_PATH or ~/.cache/ms-playwright (see e2e/run-tests.mjs)")
+        chromium = str(cached)
+    if not Path(chromium).is_file():
+        return _status(False, f"VALUE_E2E_CHROMIUM does not name an existing file: {chromium}")
+    argv = command.split()
+    if argv and argv[0] == "node":
+        node = node_executable()
+        if node is None:
+            return _status(False, "node executable not found (set VALUE_NODE)")
+        argv[0] = node
+    extra = {"VALUE_E2E_UI_ONLY": "1", "VALUE_E2E_CHROMIUM": chromium}
+    if argv and argv[0] != "node" and os.sep in argv[0]:
+        # playwright.config.ts starts the services with process.execPath; the
+        # resolved node's folder also goes first on PATH for any tool that
+        # still spawns a bare `node` (node may not be on PATH at all).
+        extra["PATH"] = os.pathsep.join([str(Path(argv[0]).parent), os.environ.get("PATH", "")])
+    completed = run(argv, timeout=3600, environment=python_environment(extra))
+    return _status(completed.returncode == 0, {"browser": chromium, "output": _tail(completed.stdout + completed.stderr)})
 
 
 def step_energy_balance(gate: Gate) -> dict[str, Any]:

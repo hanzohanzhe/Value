@@ -1,0 +1,19 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v7",
+ "request": {"path":"/api/runs/{run_id}/market/vre-summary","query":{}},
+ "payload": {
+  "schema_version": "value.vre-curtailment-summary/v1",
+  "definition_id": "value.vre-excess-curtailment-accounting/v1",
+  "years": [
+   {"year":2025,"period_count":4,"full_chronology":false,"available_vre_mwh":16.5,"accepted_vre_mwh":15.5,"neutral_unused_vre_mwh":1.0,"pre_balancing_excess_mwh":2.0,"pre_balancing_excess_scope":"inflexible_mixed","balancing_curtailment_mwh":1.0,"reported_excess_mwh":2.0,"reported_balancing_curtailment_mwh":1.0,"vre_utilisation_fraction":0.9393939393939394,"average_unused_vre_fraction":0.06060606060606061,"affected_periods":2,"longest_event_periods":2,"longest_event_hours":1.0,"peak_event_mwh":2.0,"peak_event_period":3,"peak_event_timestamp":"2025-01-01T01:30:00","storage_charge_mwh":1.0,"export_mwh":0.0,"flexible_demand_mwh":0.0,"vre_identity_residual_mwh":0.0,"coverage_status":"complete_vre_boundary_with_separate_inflexible_excess","marginal_curtailment_status":"not_evaluated","marginal_curtailment_reason":"No versioned marginal-capacity experiment artifact is attached to this run."}
+  ],
+  "period_hours": 0.5,
+  "timezone": "Europe/London",
+  "excess_relationship": "separate_prebalancing",
+  "excess_scope": "inflexible_mixed",
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "units": {"energy":"MWh","rate":"fraction"}
+ }
+}

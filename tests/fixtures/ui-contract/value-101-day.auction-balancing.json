@@ -1,0 +1,48 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "value-101-day",
+ "request": {
+  "path": "/api/runs/{run_id}/market/auction",
+  "query": {"year":2025,"period":0,"stage":"balancing"}
+ },
+ "payload": {
+  "schema_version": "value.market-auction-view/v1",
+  "year": 2025,
+  "period": 0,
+  "stage": "balancing",
+  "information_scope": "realised demand and post-ahead state; only residual upward requirement is cleared",
+  "input_sha256": "40bc033bee95fd8acb58aa96ea3a81ca100a0875a1ba0587c60a5e3011aebc4f",
+  "declared_before_clearing": true,
+  "period_hours": 0.5,
+  "requirement_mwh": 0.0,
+  "offers": [
+   {"asset_id":"CCGT","asset_type":"GasGenerator","maximum_power_mw":32.304993896994596,"minimum_power_mw":0.0,"offer_id":"balancing:g:0:CCGT","offer_price_gbp_per_mwh":66.5,"resource_kind":"up_regulation","side":"supply","input_order":0,"execution_order":0,"technology":"ccgt","offered_mwh":16.152496948497298,"accepted_mwh":0.0,"asset_accepted_mwh":0.0,"acceptance_granularity":"offer","cumulative_offered_mwh":16.152496948497298,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"Interconnect_France","asset_type":"Connection","maximum_power_mw":12.0,"minimum_power_mw":0.0,"offer_id":"balancing:i:2:Interconnect_France","offer_price_gbp_per_mwh":82.0,"resource_kind":"import","side":"supply","input_order":2,"execution_order":1,"technology":"boundary_import","offered_mwh":6.0,"accepted_mwh":0.0,"asset_accepted_mwh":0.0,"acceptance_granularity":"offer","cumulative_offered_mwh":22.152496948497298,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"Interconnect_Beligum","asset_type":"Connection","maximum_power_mw":0.0,"minimum_power_mw":0.0,"offer_id":"balancing:i:1:Interconnect_Beligum","offer_price_gbp_per_mwh":200.0,"resource_kind":"import","side":"supply","input_order":1,"execution_order":2,"technology":"boundary_import","offered_mwh":0.0,"accepted_mwh":0.0,"asset_accepted_mwh":0.0,"acceptance_granularity":"offer","cumulative_offered_mwh":22.152496948497298,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"Interconnect_Ireland","asset_type":"Connection","maximum_power_mw":0.0,"minimum_power_mw":0.0,"offer_id":"balancing:i:3:Interconnect_Ireland","offer_price_gbp_per_mwh":200.0,"resource_kind":"import","side":"supply","input_order":3,"execution_order":3,"technology":"boundary_import","offered_mwh":0.0,"accepted_mwh":0.0,"asset_accepted_mwh":0.0,"acceptance_granularity":"offer","cumulative_offered_mwh":22.152496948497298,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"Interconnect_Netherland","asset_type":"Connection","maximum_power_mw":0.0,"minimum_power_mw":0.0,"offer_id":"balancing:i:4:Interconnect_Netherland","offer_price_gbp_per_mwh":200.0,"resource_kind":"import","side":"supply","input_order":4,"execution_order":4,"technology":"boundary_import","offered_mwh":0.0,"accepted_mwh":0.0,"asset_accepted_mwh":0.0,"acceptance_granularity":"offer","cumulative_offered_mwh":22.152496948497298,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"Interconnect_Norway","asset_type":"Connection","maximum_power_mw":0.0,"minimum_power_mw":0.0,"offer_id":"balancing:i:5:Interconnect_Norway","offer_price_gbp_per_mwh":200.0,"resource_kind":"import","side":"supply","input_order":5,"execution_order":5,"technology":"boundary_import","offered_mwh":0.0,"accepted_mwh":0.0,"asset_accepted_mwh":0.0,"acceptance_granularity":"offer","cumulative_offered_mwh":22.152496948497298,"cumulative_exact_accepted_mwh":0.0}
+  ],
+  "outcome": {
+   "accepted": [
+    {"accepted_power_mw":0.0,"asset_id":"CCGT","asset_type":"GasGenerator"}
+   ],
+   "accepted_supply_power_mw": 0.0,
+   "import_cost_gbp": 0.0,
+   "objective_gbp": 0.0,
+   "stage": "balancing",
+   "storage_post_state": [
+    {"asset_id":"1c_battery","charge_efficiency":0.9,"charge_power_limit_mw":10.0,"discharge_efficiency":0.9,"discharge_power_limit_mw":10.0,"energy_capacity_mwh":10.0,"period_hours":0.5,"state_of_charge_mwh":0.0,"stored_tranches_mwh":[],"technology":"1c"}
+   ],
+   "unserved_target_power_mw": 0.0
+  },
+  "pricing_rule": "retained_stage_specific_settlement",
+  "marginal_offer_price_gbp_per_mwh": null,
+  "marginal_offer_status": "not_separately_defined_by_stage_outcome",
+  "offer_acceptance_coverage": "complete",
+  "offer_ordering": "ascending offer price; stable input order for ties",
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "units": {"energy":"MWh/period","power":"MW","price":"GBP/MWh"}
+ }
+}

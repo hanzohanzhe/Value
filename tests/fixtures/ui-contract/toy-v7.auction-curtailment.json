@@ -1,0 +1,31 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v7",
+ "request": {
+  "path": "/api/runs/{run_id}/market/auction",
+  "query": {"year":2025,"period":2,"stage":"curtailment"}
+ },
+ "payload": {
+  "schema_version": "value.market-auction-view/v1",
+  "year": 2025,
+  "period": 2,
+  "stage": "curtailment",
+  "information_scope": "realised demand and post-ahead schedule",
+  "input_sha256": "a344abaed34cb9379838863c909361323fecc83806e4ed5630c0a1c0a0f3d23d",
+  "declared_before_clearing": true,
+  "period_hours": 0.5,
+  "requirement_mwh": 1.0,
+  "offers": [
+   {"asset_id":"battery-a","asset_type":"Battery","maximum_power_mw":2.0,"offer_id":"charge","offer_price_gbp_per_mwh":1.0,"resource_kind":"storage_charge","input_order":0,"execution_order":0,"technology":"battery_storage","offered_mwh":1.0,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":1.0,"cumulative_exact_accepted_mwh":0.0}
+  ],
+  "outcome": {"remaining_excess_power_mw":2.0,"storage_charge_power_mw":0.0},
+  "pricing_rule": "retained_stage_specific_settlement",
+  "marginal_offer_price_gbp_per_mwh": null,
+  "marginal_offer_status": "not_separately_defined_by_stage_outcome",
+  "offer_acceptance_coverage": "stage_summary_only",
+  "offer_ordering": "ascending offer price; stable input order for ties",
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "units": {"energy":"MWh/period","power":"MW","price":"GBP/MWh"}
+ }
+}

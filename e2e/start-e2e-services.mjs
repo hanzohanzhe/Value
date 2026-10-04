@@ -5,14 +5,32 @@ import path from "node:path";
 import process from "node:process";
 
 const root = path.resolve(import.meta.dirname, "..");
-const state = fs.mkdtempSync(path.join(os.tmpdir(), "force-browser-e2e-"));
+// e2e/run-tests.mjs passes VALUE_E2E_STATE_ROOT and removes it afterwards, so
+// the state cannot leak even when this process is stopped without a signal.
+const stateRoot = process.env.VALUE_E2E_STATE_ROOT || os.tmpdir();
+fs.mkdirSync(stateRoot, { recursive: true });
+const state = fs.mkdtempSync(path.join(stateRoot, "force-browser-e2e-"));
 const packs = path.join(state, "data-packs");
 const modules = path.join(state, "modules");
 fs.mkdirSync(packs, { recursive: true });
 fs.mkdirSync(modules, { recursive: true });
-fs.cpSync(path.join(root, "data-packs", "value-synthetic-contract-pack-v1"), path.join(packs, "value-synthetic-contract-pack-v1"), { recursive: true });
-fs.cpSync(path.join(root, "data-packs", "force-castle-101-v1"), path.join(packs, "force-castle-101-v1"), { recursive: true });
-fs.cpSync(path.join(root, "examples", "external_modules", "manifests"), modules, { recursive: true });
+// A pack that the source tree does not ship (force-castle-101-v1 is not in
+// this repository) is skipped, not fatal: specs that need it skip
+// themselves (see e2e/castle-101.spec.ts). Missing optional inputs must never
+// stop the whole service from starting (P0-9 S0).
+const uiOnly = process.env.VALUE_E2E_UI_ONLY === "1";
+function copyIfPresent(source, destination) {
+  if (!fs.existsSync(source)) {
+    console.warn(`VALUE_E2E_SKIP_COPY missing ${path.relative(root, source)}`);
+    return false;
+  }
+  fs.cpSync(source, destination, { recursive: true });
+  return true;
+}
+for (const pack of ["value-synthetic-contract-pack-v1", "force-castle-101-v1"]) {
+  copyIfPresent(path.join(root, "data-packs", pack), path.join(packs, pack));
+}
+copyIfPresent(path.join(root, "examples", "external_modules", "manifests"), modules);
 // Repository examples are deliberately marked `fixture` so that they never
 // appear as user-selectable scientific modules in a normal installation.
 // The isolated browser-test workspace explicitly promotes those copies to
@@ -49,11 +67,12 @@ if (process.env.VALUE_PYTHON) {
     pythonArgs = ["-3.10", "-m", "backend.server", "--host", "127.0.0.1", "--port", "18766"];
   }
 } else {
-  pythonCommand = "python";
+  // Linux and macOS ship `python3`, not `python`; VALUE_PYTHON overrides both.
+  pythonCommand = "python3";
   pythonArgs = ["-m", "backend.server", "--host", "127.0.0.1", "--port", "18766"];
 }
 const children = [
-  ...(process.env.VALUE_E2E_UI_ONLY === "1" ? [] : [
+  ...(uiOnly ? [] : [
     spawn(pythonCommand, pythonArgs, { cwd: root, env: environment, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }),
   ]),
   spawn(process.execPath, [path.join(root, "scripts", "serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", "18800"], { cwd: root, env: environment, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }),
@@ -72,7 +91,7 @@ async function ready(url) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 await Promise.all([
-  ...(process.env.VALUE_E2E_UI_ONLY === "1" ? [] : [ready("http://127.0.0.1:18766/api/health")]),
+  ...(uiOnly ? [] : [ready("http://127.0.0.1:18766/api/health")]),
   ready("http://127.0.0.1:18800/"),
 ]);
 console.log(`VALUE_E2E_READY state=${state}`);

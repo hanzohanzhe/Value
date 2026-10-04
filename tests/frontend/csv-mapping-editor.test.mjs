@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createServer } from 'node:http';
 import { build } from 'esbuild';
 import { chromium } from '@playwright/test';
+import { chromiumLaunchOptions } from './helpers/chromium.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const sha = 'a'.repeat(64), normalized = 'b'.repeat(64), spec = 'c'.repeat(64);
@@ -24,7 +25,7 @@ test('CSV mapping requires review confirmation, refreshes only after bound commi
     await writeFile(path.join(directory, 'index.html'), '<div id="root"></div><script type="module" src="/harness.js"></script>');
     server = createServer(async (request, response) => { try { const file = request.url === '/harness.js' ? 'harness.js' : 'index.html'; response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : 'text/html'); response.end(await readFile(path.join(directory, file))); } catch { response.writeHead(500).end(); } });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    browser = await chromium.launch({ headless: true, ...(process.env.CSV_MAPPING_CHROMIUM_EXECUTABLE ? { executablePath: process.env.CSV_MAPPING_CHROMIUM_EXECUTABLE } : {}) });
+    browser = await chromium.launch(chromiumLaunchOptions());
     const page = await browser.newPage();
     let commitCount = 0, delayReview = false, pending;
     await page.route('**/api/**', async route => {
