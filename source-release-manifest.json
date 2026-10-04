@@ -785,6 +785,7 @@
     "gridform_core/interfaces.py",
     "gridform_core/internal_experimental/extension_manifests/value-ac-data-extension.json",
     "gridform_core/internal_experimental/manifests/value-reference-ac-feasibility.json",
+    "gridform_core/investment_accounts.py",
     "gridform_core/legacy_module_ids.py",
     "gridform_core/manifests/agent-investment.json",
     "gridform_core/manifests/dynamic-annual-storage-cost.json",
@@ -1032,6 +1033,7 @@
     "scripts/methodology/render_math.cjs",
     "scripts/methodology/requirements.txt",
     "scripts/p04_capture_trajectory_golden.py",
+    "scripts/p07_record_head_decide.py",
     "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
     "scripts/portable_path_scan.py",
@@ -1118,6 +1120,7 @@
     "tests/fixtures/native_psm/head_run_simulation_35aadb3.py",
     "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
     "tests/fixtures/p04_trajectory_golden.json",
+    "tests/fixtures/p07/head_decide_record.json",
     "tests/fixtures/prompt08_audit_project.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
     "tests/fixtures/zonal_redispatch/binding-cut.json",
@@ -1252,6 +1255,9 @@
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
     "tests/test_p04_variant_fixtures.py",
+    "tests/test_p07_doctoral_source_oracle.py",
+    "tests/test_p07_head_decide_record.py",
+    "tests/test_p07_investment_accounts.py",
     "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
     "tests/test_path_hygiene.py",
@@ -7314,6 +7320,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_core/investment_accounts.py",
+      "sha256": "f8cd3e85f23985fbfcead9353647f1874490ce5740218bd140e0f79294d40670",
+      "bytes": 29787,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/legacy_module_ids.py",
       "sha256": "35b1241447e84a6bfc3caca111dde7483ded42b5126f465075112f98af9e0fa0",
       "bytes": 1862,
@@ -8794,6 +8806,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "scripts/p07_record_head_decide.py",
+      "sha256": "950e600f322cd3344b7744712aa8caf684cb540a83551a18aeaf9e2c9589586e",
+      "bytes": 31921,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/p0_gate.py",
       "sha256": "f0fb11ddb311238157d2ec53c3a25d1262075286ac4500f9a5748543e1cf3d1b",
       "bytes": 42798,
@@ -9301,6 +9319,12 @@
       "path": "tests/fixtures/p04_trajectory_golden.json",
       "sha256": "2935a61f041b6b747e7233df629eedec7ce3036a55618108eda97679c08f1e40",
       "bytes": 415235,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/p07/head_decide_record.json",
+      "sha256": "5f1c69c247a9d31d32df34b83140eab48394ccf5ea26645e1afcf03d95815436",
+      "bytes": 111542,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10105,6 +10129,24 @@
       "path": "tests/test_p04_variant_fixtures.py",
       "sha256": "f9bb3dac732d49751a0139e292ddbd80f68aee124d28b74a5527035bd0ede770",
       "bytes": 11189,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p07_doctoral_source_oracle.py",
+      "sha256": "b407105b9b0f74cebcd1e6d7c4aae59dce05a26b88519c10dcc54ac3211183ce",
+      "bytes": 23141,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p07_head_decide_record.py",
+      "sha256": "1022478aef788cd4172b7ff0a0ed512a6c2a33cc99c4e02725e812d3974d0ea4",
+      "bytes": 24321,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p07_investment_accounts.py",
+      "sha256": "323008f92a720ba99b2bce9928d0d9070dfac276684f2b67cafb7a52d44e2a73",
+      "bytes": 35021,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
