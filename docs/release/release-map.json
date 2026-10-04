@@ -7,7 +7,8 @@
     "id": "source-2026-10-04",
     "manifest": "source-release-manifest.json",
     "status": "VALUE_only_public_source",
-    "clean_clone_model_run_verified": false
+    "clean_clone_model_run_verified": true,
+    "validation_scope": "Fresh pinned dependency environment, frontend build, wheel includes 13 parameter objects, one VALUE 101 day: execution/contract passed; scientific not_evaluated"
   },
   "methodology": {
     "edition": "0.3",
@@ -75,8 +76,13 @@
       "value-101-baseline-v1",
       "value-101-network-v1"
     ],
-    "research_data": "Separate qualified assets; not released with this source snapshot",
-    "rights_map": "DATA-LICENSING.json"
+    "research_data": "Qualified independent data assets; see public-data-assets.json and per-package instructions/limits",
+    "rights_map": "DATA-LICENSING.json",
+    "assets": "docs/release/public-data-assets.json",
+    "limitations": [
+      "R029 doctoral frozen replay not accepted: nuclear investment eligibility initialization",
+      "11zone family provides runtime overlays, not the complete original annual research replay"
+    ]
   },
   "history": {
     "existing_repository": "private archive",

@@ -1,0 +1,35 @@
+{
+  "destination_repository": "hanzohanzhe/Value",
+  "assets": [
+    {
+      "name": "VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
+      "bytes": 467218327,
+      "sha256": "aaaf0adcf9a3b74e89e66fc378c1879656325222e776d95b173c97b23cbcba56",
+      "role": "software"
+    },
+    {
+      "name": "VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
+      "bytes": 309939521,
+      "sha256": "5540a324af4f2ba98d5dd2eb9c744ba42efa2198b86c9adf4d73632733fc291c",
+      "role": "software"
+    },
+    {
+      "name": "VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
+      "bytes": 243768080,
+      "sha256": "e17b4b9c7dc8a1227253bd3d0f3be0fa0203c772978ca238d565626ec24fd676",
+      "role": "software"
+    },
+    {
+      "name": "VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
+      "bytes": 309120538,
+      "sha256": "72360d942ec277530d9c7f094dd5465605b86f12ee5fecdb3e1af26a0c2756f5",
+      "role": "software"
+    },
+    {
+      "name": "force-uk-benchmark-2025-v1.zip",
+      "bytes": 842050611,
+      "sha256": "0bc3a78d535fbb6198ee16d708343e6d70a01de76fa2e5459ffb27cebd2cb672",
+      "role": "reuse_source"
+    }
+  ]
+}

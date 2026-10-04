@@ -69,5 +69,106 @@
       "filename": "VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
       "native_acceptance": false
     }
-  ]
+  ],
+  "data_assets": [
+    {
+      "filename": "VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip",
+      "bytes": 62224519,
+      "sha256": "3b885bdb8b0945c580c027ea76113cf74ca0304ccda5bfe2ba54d8e3a797afb8",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip",
+      "title": {
+        "en": "11-zone overlay family",
+        "zh": "11 区 overlay 集合"
+      },
+      "interface": {
+        "en": "Unzip the container and select one of 33 nested eight-role ZIPs; use the bundled Python installer and extension dataset slots. Do not import the family into national Data.",
+        "zh": "解压容器，选择 33 个八类角色嵌套 ZIP 之一，通过包内 Python 安装方法与扩展数据槽接入；整个集合不能导入 national Data。"
+      }
+    },
+    {
+      "filename": "VALUE-Package2-national-demand-component-2026-10-04.zip",
+      "bytes": 1183359,
+      "sha256": "0ae76f16982e8eda29274f2cce2b5296c3af5971e4ac2b2ed178ef8b2f578190",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-Package2-national-demand-component-2026-10-04.zip",
+      "title": {
+        "en": "National demand component",
+        "zh": "全国需求补充组件"
+      },
+      "interface": {
+        "en": "Supplementary input files; not an installable value.data-bundle/v1 ZIP.",
+        "zh": "补充输入文件，不是可安装的 value.data-bundle/v1 ZIP。"
+      }
+    },
+    {
+      "filename": "VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip",
+      "bytes": 644362870,
+      "sha256": "c6fa4a09bd94967a820d8f3c6dbd02df58a7d1c242663dd9461b564f974ce453",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip",
+      "title": {
+        "en": "GBP1 + 23-zone suite",
+        "zh": "GBP1 与 23 区研究套件"
+      },
+      "interface": {
+        "en": "Import through the research-suite UI/API. Its national and network components use their own configuration boundaries.",
+        "zh": "通过研究套件 UI/API 导入；全国与网络组件分别使用对应配置边界。"
+      }
+    },
+    {
+      "filename": "value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip",
+      "bytes": 4776057,
+      "sha256": "9800610146cc5022b7ea8e4b0caba9ab76a32c857cb328c42bec746e2493d48a",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip",
+      "title": {
+        "en": "23-zone network overlay",
+        "zh": "23 区网络 overlay"
+      },
+      "interface": {
+        "en": "Install through the Python interface and zonal conditional dataset slots; network-only roles are not accepted by national Data.",
+        "zh": "通过 Python 接口与分区条件数据槽安装；national Data 不接收仅网络角色。"
+      }
+    },
+    {
+      "filename": "value-uk-calendar-vx-trade001-public1-2026-10-04.zip",
+      "bytes": 638859841,
+      "sha256": "cdab4222b6030b377499e5060e2d03b6a7c704c0ddf0d6cc2ea73dee202b2f04",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-calendar-vx-trade001-public1-2026-10-04.zip",
+      "title": {
+        "en": "R029 national inputs",
+        "zh": "R029 全国输入"
+      },
+      "interface": {
+        "en": "Import as ordinary national Data inputs. Doctoral frozen replay is unsupported on the current Full; no failed doctoral Study template is provided.",
+        "zh": "作为普通 national Data 输入导入；当前 Full 不支持博士冻结精确复跑，不提供失败的博士 Study 模板。"
+      }
+    },
+    {
+      "filename": "value-uk-open-data-pack-v1-public1-2026-10-04.zip",
+      "bytes": 639583456,
+      "sha256": "0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-open-data-pack-v1-public1-2026-10-04.zip",
+      "title": {
+        "en": "GBP1 national data",
+        "zh": "GBP1 全国数据"
+      },
+      "interface": {
+        "en": "Import through national Data UI/API; preserve runtime pack ID value-uk-open-data-pack-v1.",
+        "zh": "通过 national Data UI/API 导入，保留运行时 pack ID value-uk-open-data-pack-v1。"
+      }
+    }
+  ],
+  "source_validation": {
+    "clean_install": true,
+    "frontend_build": true,
+    "wheel_objects": 13,
+    "teaching_short_run": "passed",
+    "historical_scientific_replay": false
+  },
+  "methodology_release_assets": {
+    "VALUE_模型方法学_2026-10-04.docx": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_ZH_2026-10-04.docx",
+    "VALUE_模型方法学_2026-10-04.pdf": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_ZH_2026-10-04.pdf",
+    "VALUE_methodology_ZH_2026-10-04.html": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_methodology_ZH_2026-10-04.html",
+    "VALUE_Model_Methodology_EN_2026-10-04.docx": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_EN_2026-10-04.docx",
+    "VALUE_Model_Methodology_EN_2026-10-04.pdf": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_EN_2026-10-04.pdf",
+    "VALUE_methodology_EN_2026-10-04.html": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_methodology_EN_2026-10-04.html"
+  }
 }

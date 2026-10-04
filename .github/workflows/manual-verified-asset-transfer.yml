@@ -1,0 +1,48 @@
+name: Manual verified draft asset transfer
+
+on:
+  workflow_dispatch:
+    inputs:
+      software_target_tag:
+        description: Existing draft software release tag in this approved repository
+        required: true
+        type: string
+      build_data:
+        description: Also build six approved data ZIPs with the reviewed fixture
+        required: true
+        default: false
+        type: boolean
+      data_target_tag:
+        description: Existing distinct draft data release tag (required for data build)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manual-verified-asset-transfer
+  cancel-in-progress: false
+
+jobs:
+  transfer:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - name: Check out reviewed clean source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Download, verify, optionally build, then upload to drafts only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALUE_ASSET_TRANSFER: ${{ secrets.VALUE_ASSET_TRANSFER }}
+          SOFTWARE_TARGET_TAG: ${{ inputs.software_target_tag }}
+          DATA_TARGET_TAG: ${{ inputs.data_target_tag }}
+          BUILD_DATA: ${{ inputs.build_data }}
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONNOUSERSITE: '1'
+          GH_PROMPT_DISABLED: '1'
+        run: python3 -B scripts/transfer_release_assets.py

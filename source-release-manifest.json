@@ -3,6 +3,7 @@
   "snapshot_status": "VALUE-only public source with exact original runtime parameters; research inputs distributed as independent data assets; Full build provenance recorded separately",
   "include": [
     ".gitattributes",
+    ".github/workflows/manual-verified-asset-transfer.yml",
     ".gitignore",
     "AUTHORS.md",
     "CHANGELOG.md",
@@ -301,6 +302,7 @@
     "docs/methodology/zh/r029_cem.md",
     "docs/methodology/zh/transmission.md",
     "docs/release/installer-source-alignment.json",
+    "docs/release/public-data-assets.json",
     "docs/release/release-map.json",
     "docs/scientific-readiness/FRONTEND_EXPANSION_PROMPTS_77_84.md",
     "docs/scientific-readiness/POST_28_COMPATIBILITY_REMEDIATION.md",
@@ -945,6 +947,8 @@
     "public/window.svg",
     "publication-scope.json",
     "publication/RUNTIME_PARAMETER_NOTICES.md",
+    "publication/cloud-transfer-approved-data.json",
+    "publication/cloud-transfer-approved-sources.json",
     "publication/runtime-parameter-rights.json",
     "pyproject.toml",
     "requirements/value-all-py310.lock",
@@ -995,6 +999,7 @@
     "scripts/build_windows_pilot_installer.py",
     "scripts/check-value-101.ps1",
     "scripts/check_publication_scope.py",
+    "scripts/cloud_transfer_data_hook.py",
     "scripts/compare_release_roots.py",
     "scripts/compare_scheme_c_parity.py",
     "scripts/compare_scientific_run_artifacts.py",
@@ -1045,6 +1050,7 @@
     "scripts/start-local.ps1",
     "scripts/start-portable-local.ps1",
     "scripts/stop-local.ps1",
+    "scripts/transfer_release_assets.py",
     "scripts/uninstall-value.ps1",
     "scripts/validate_force_declared_clearing.py",
     "scripts/validate_gb_zonal_pack.py",
@@ -2555,6 +2561,12 @@
       "transform": "publication documentation or repository packaging update"
     },
     {
+      "path": ".github/workflows/manual-verified-asset-transfer.yml",
+      "transform": "publication execution metadata, rights or packaging update",
+      "sha256": "3a4818e44a92de0a6e9fa7af423ee773848d54c13cafc1220c04dfa8f4ba58bf",
+      "bytes": 1563
+    },
+    {
       "path": ".gitignore",
       "sha256": "1c35e87372167c12cdcdeb318bab7a6051a914798873569425f7660c2a9ef4ca",
       "bytes": 1039,
@@ -3270,9 +3282,9 @@
     },
     {
       "path": "data-packs/README.md",
-      "sha256": "082966c2fc4b719ef5e7894e1b0f2554f503b710c1f541ff6da0200e595468ef",
-      "bytes": 2045,
-      "transform": "Apache-2.0 restoration and VALUE-only publication scope update"
+      "sha256": "f756014964ab4bd5da6edd8c224b951929264e1aca2654b3da976543938f8ee9",
+      "bytes": 1949,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "data-packs/value-101-baseline-v1/LICENSE",
@@ -3906,9 +3918,9 @@
     },
     {
       "path": "docs/PUBLICATION_PLAN.md",
-      "sha256": "bde41219d2629e9687c67d3219a686931752363f4f00908408ba55ca127934b4",
-      "bytes": 8893,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "59ce784456fc3c48e13e2c81b7279af4ae72a2d06053dbf467fc3b80462d1671",
+      "bytes": 5712,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "docs/REPOSITORY_STRUCTURE.md",
@@ -4342,10 +4354,16 @@
       "sha256": "ab909b7225ae28d3faa28b23e26c6f1dbd103947acf42ba7cf24ab43b027eadb"
     },
     {
+      "path": "docs/release/public-data-assets.json",
+      "transform": "publication execution metadata, rights or packaging update",
+      "sha256": "bc47d12c874339fc719de66ed50579eeef7716d4403b25d0695d2f5bab689010",
+      "bytes": 2984
+    },
+    {
       "path": "docs/release/release-map.json",
-      "sha256": "f7b26ca142f337ab9111d4996ea18cb4ef7ddcf7583609e4fe29e1f8613ea79d",
-      "bytes": 3094,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "6fba0c516da223c06b6f091d8b6f0ee8e510cfcdec56d92c7ecd168821946126",
+      "bytes": 3591,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "docs/scientific-readiness/FRONTEND_EXPANSION_PROMPTS_77_84.md",
@@ -8196,6 +8214,18 @@
       "sha256": "374f9df0140919c097b618e9797ef1cd28f75766116b1e2ac96e6bb7b86a4995"
     },
     {
+      "path": "publication/cloud-transfer-approved-data.json",
+      "transform": "publication execution metadata, rights or packaging update",
+      "sha256": "9069e919ac39b7231ade2698f621aa9b9574ffe4575a7e76d38787e24e353af2",
+      "bytes": 1184
+    },
+    {
+      "path": "publication/cloud-transfer-approved-sources.json",
+      "transform": "publication execution metadata, rights or packaging update",
+      "sha256": "dcd4e28c8ab4f93e0626434e6d29a74a8df97f06149460f0f0852dfb6f34afed",
+      "bytes": 1106
+    },
+    {
       "path": "publication/runtime-parameter-rights.json",
       "bytes": 15701,
       "sha256": "6987251841de4f678a64634c3db8f1b9a00879804f13c711fa255b60ceca0c77"
@@ -8493,6 +8523,12 @@
       "sha256": "1d44ce812091b6f273869af5985d7f4d8541ee3e4407c971c1a88e926434b22c",
       "bytes": 15815,
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+    },
+    {
+      "path": "scripts/cloud_transfer_data_hook.py",
+      "transform": "publication execution metadata, rights or packaging update",
+      "sha256": "cd9fa4e6b3e2c5288b587bffe6ae0e9bbb8818d817e02ae7ddc62f3f738eaf49",
+      "bytes": 726
     },
     {
       "path": "scripts/compare_release_roots.py",
@@ -8793,6 +8829,12 @@
       "sha256": "9f9ece8771173eaf136fbd13aa05e0a53ff49c99951165c04252b53c3d599f40",
       "bytes": 4400,
       "transform": "byte copy"
+    },
+    {
+      "path": "scripts/transfer_release_assets.py",
+      "transform": "publication execution metadata, rights or packaging update",
+      "sha256": "e05297fb9dafd49a4891acd73f8b6d8127cd44d10ed37796f49efb5e6eb1a15b",
+      "bytes": 20100
     },
     {
       "path": "scripts/uninstall-value.ps1",
@@ -10314,15 +10356,15 @@
     },
     {
       "path": "website/content.py",
-      "sha256": "df7a7233b5b7876c33e61230ba3b26f51d7eac24ea5c4d540f5a323b3fb8d6bb",
-      "bytes": 34102,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "c1b7800312fa51a78de9db5627feb476d15949a8b066d4370b5b11b1da5d141a",
+      "bytes": 34081,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/journey.py",
-      "sha256": "28fdfd2e4ab69c274459b0ab7938be85404ea22736b64ad8810dbdfedd3ea6b0",
-      "bytes": 9786,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "63f5b8c3507ef2895085641de9d4e84f753ac4075955b2132567fe221885f094",
+      "bytes": 9851,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/methodology-sync.json",
@@ -10362,8 +10404,9 @@
     },
     {
       "path": "website/publication.py",
-      "bytes": 1630,
-      "sha256": "2d1caed9280e786864fef31d84bbe39d596870c17a981b0eceab7d8cb5756b99"
+      "bytes": 5075,
+      "sha256": "ca510d6cd8a814691e0939e4d21bc065ec81bb66231ca079b4d7e249658fcd9d",
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/release_candidate.py",
@@ -10373,9 +10416,9 @@
     },
     {
       "path": "website/site.json",
-      "sha256": "8ca3fde924efaca571266f12ea3b0d9b8f5dba6884e0e62c8b51496922994c4f",
-      "bytes": 3000,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "88707788b4039bd7d3bd2521726fce208ba4d6e4422d68f7451c3a572aeb6ef4",
+      "bytes": 8719,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-04.docx",

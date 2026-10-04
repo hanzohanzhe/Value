@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-04",
+  "assets": [
+    {
+      "name": "VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip",
+      "bytes": 62224519,
+      "sha256": "3b885bdb8b0945c580c027ea76113cf74ca0304ccda5bfe2ba54d8e3a797afb8",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip"
+    },
+    {
+      "name": "VALUE-Package2-national-demand-component-2026-10-04.zip",
+      "bytes": 1183359,
+      "sha256": "0ae76f16982e8eda29274f2cce2b5296c3af5971e4ac2b2ed178ef8b2f578190",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-Package2-national-demand-component-2026-10-04.zip"
+    },
+    {
+      "name": "VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip",
+      "bytes": 644362870,
+      "sha256": "c6fa4a09bd94967a820d8f3c6dbd02df58a7d1c242663dd9461b564f974ce453",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip"
+    },
+    {
+      "name": "value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip",
+      "bytes": 4776057,
+      "sha256": "9800610146cc5022b7ea8e4b0caba9ab76a32c857cb328c42bec746e2493d48a",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip"
+    },
+    {
+      "name": "value-uk-calendar-vx-trade001-public1-2026-10-04.zip",
+      "bytes": 638859841,
+      "sha256": "cdab4222b6030b377499e5060e2d03b6a7c704c0ddf0d6cc2ea73dee202b2f04",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-calendar-vx-trade001-public1-2026-10-04.zip"
+    },
+    {
+      "name": "value-uk-open-data-pack-v1-public1-2026-10-04.zip",
+      "bytes": 639583456,
+      "sha256": "0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-open-data-pack-v1-public1-2026-10-04.zip"
+    }
+  ],
+  "installation_boundary": {
+    "GBP1-suite": "Existing research-suite UI/API import",
+    "national-base-and-R029": "Existing national Data UI/API import",
+    "23zone-and-11zone-overlays": "Existing Python installer with zonal conditional dataset slots; national Data endpoint does not accept network-only roles",
+    "11zone-family": "Unzip container; install selected nested ZIP, not the family ZIP",
+    "11zone-national-component": "Supplementary dataset, not a value.data-bundle/v1 installation ZIP"
+  },
+  "GBP1_pack_id": "value-uk-open-data-pack-v1",
+  "R029_pack_id": "value-uk-calendar-vx-trade001",
+  "metadata_revision": "public1 in manifest/artifact name, not changed runtime pack ID",
+  "science_gate": "Bounded interface acceptance only; no historical/annual scientific equivalence; GBP1 original nuclear policy preserved and checked in actual short-run checkpoint"
+}
