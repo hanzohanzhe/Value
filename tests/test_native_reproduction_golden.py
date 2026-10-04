@@ -490,6 +490,32 @@ class Value101BaselineTests(unittest.TestCase):
                 self.assertEqual([], gated[:20], f"{case}: value_101_day market.sqlite differs from the HEAD baseline")
 
 
+class CaptureProvenanceTests(unittest.TestCase):
+    def test_capture_refuses_a_dirty_checkout_and_records_the_tooling(self):
+        from unittest import mock
+
+        capture = _capture_module()
+        output = harness.GOLDEN_PATH
+        relative = output.relative_to(ROOT).as_posix()
+        status = f" D {relative}\n M tests/native_reproduction_harness.py\n?? scratch.txt\n"
+        with mock.patch.object(capture, "_git", lambda *arguments: status):
+            with self.assertRaisesRegex(SystemExit, "uncommitted changes"):
+                capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=False)
+            record = capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=True)
+        self.assertEqual(record["checkout_state"], "dirty")
+        self.assertEqual(record["dirty_paths"], ["scratch.txt", "tests/native_reproduction_harness.py"])
+        with mock.patch.object(capture, "_git", lambda *arguments: f" D {relative}\n"):
+            record = capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=False)
+        self.assertEqual(record["checkout_state"], "clean")
+        self.assertEqual(set(record["capture_tooling"]), set(capture.SYNTHETIC_TOOLING))
+        self.assertEqual(
+            record["capture_tooling"]["tests/native_reproduction_harness.py"],
+            harness.sha256_text((ROOT / "tests" / "native_reproduction_harness.py").read_text(encoding="utf-8")),
+        )
+        for path in capture.E2E_TOOLING:
+            self.assertTrue((ROOT / path).is_file(), path)
+
+
 class E2ERetirementTests(unittest.TestCase):
     def _successors(self, directory: Path, revisions: dict[str, int]) -> dict[str, Path]:
         paths = {}

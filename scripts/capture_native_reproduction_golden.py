@@ -11,6 +11,9 @@ Commands::
     capture_native_reproduction_golden.py check-e2e        # compare a fresh 48-period run with that baseline
                                                            # (until it is retired, see e2e_retirement)
 
+``capture`` and ``capture-e2e`` refuse to run from a checkout with uncommitted
+changes (``--allow-dirty`` overrides and is recorded) and record the SHA-256 of
+their tooling files, so the recorded base commit reproduces the fixture.
 ``capture`` and ``write-head-copy`` refuse to run unless the live kernel file is
 byte-identical to the pinned 35aadb3 source (whole-file SHA-256 plus the
 SHA-256 of every copied line range) and, when git and the commit are
@@ -89,6 +92,59 @@ def verified_source() -> tuple[str, dict[str, Any]]:
     return source, {"git_show_35aadb3": git_check}
 
 
+# Files that determine a capture.  Their SHA-256 at capture time is recorded
+# in the fixture's source record, and a capture refuses to run from a checkout
+# with uncommitted changes (unless --allow-dirty, which is recorded), so
+# ``git checkout <base_commit>`` reproduces revision 0 exactly.
+SYNTHETIC_TOOLING = (
+    "tests/native_reproduction_harness.py",
+    "scripts/capture_native_reproduction_golden.py",
+    "tests/fixtures/native_psm/head_run_simulation_35aadb3.py",
+    "tests/golden/zones.json",
+    "gridform_validation/golden.py",
+)
+E2E_TOOLING = (
+    "tests/native_reproduction_harness.py",
+    "scripts/capture_native_reproduction_golden.py",
+    "tests/golden/zones.json",
+    "gridform_validation/golden.py",
+    "scripts/golden/run_case.py",
+    *(f"tests/golden/projects/{case}.json" for case in E2E_CASES),
+)
+
+
+def capture_provenance(tooling: tuple[str, ...], outputs: tuple[Path, ...], *, allow_dirty: bool) -> dict[str, Any]:
+    """Tooling hashes and checkout state for the source record.
+
+    Refuses (SystemExit) when the checkout has uncommitted or untracked
+    changes other than the fixture being written, unless ``allow_dirty``.
+    """
+
+    record: dict[str, Any] = {
+        "capture_tooling": {
+            path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in tooling
+        },
+    }
+    status = _git("status", "--porcelain=v1", "-uall")
+    if status is None:
+        record["checkout_state"] = "unavailable"
+        return record
+    skipped = {output.relative_to(ROOT).as_posix() for output in outputs}
+    dirty = sorted(
+        line[3:] for line in status.splitlines()
+        if line.strip() and line[3:] not in skipped
+    )
+    if dirty and not allow_dirty:
+        raise SystemExit(
+            "refusing to capture from a checkout with uncommitted changes (commit the tooling first so "
+            "base_commit reproduces the capture, or pass --allow-dirty):\n  " + "\n  ".join(dirty[:20])
+        )
+    record["checkout_state"] = "dirty" if dirty else "clean"
+    if dirty:
+        record["dirty_paths"] = dirty
+    return record
+
+
 def _guarded_tree() -> dict[str, str | None]:
     """State of the checkout that a capture must not change."""
 
@@ -126,9 +182,10 @@ def command_write_head_copy(_arguments) -> int:
     return 0
 
 
-def command_capture(_arguments) -> int:
+def command_capture(arguments) -> int:
     if harness.GOLDEN_PATH.exists():
         raise SystemExit(f"{harness.GOLDEN_PATH.relative_to(ROOT)} exists; revision 0 is written once (use check or revise)")
+    provenance = capture_provenance(SYNTHETIC_TOOLING, (harness.GOLDEN_PATH,), allow_dirty=arguments.allow_dirty)
     source, git_record = verified_source()
     if harness.render_head_copy(source) != harness.HEAD_COPY_PATH.read_text(encoding="utf-8"):
         raise SystemExit("the committed head copy is not the rendering of the pinned source (run write-head-copy)")
@@ -148,7 +205,7 @@ def command_capture(_arguments) -> int:
         ]
         if differences:
             raise SystemExit(f"{label} differ:\n" + "\n".join(item.describe() for item in differences[:20]))
-    record = _source_record(git_record)
+    record = _source_record({**git_record, **provenance})
     record["gridform_core_tree_sha256_before_after"] = before["gridform_core_tree_sha256"]
     record["git_status_unchanged"] = "unavailable" if before["git_status_sha256"] is None else "matched"
     golden = harness.new_golden(first, base_commit=head_commit(), source=record)
@@ -311,10 +368,11 @@ def e2e_retirement(successors: Mapping[str, Path] | None = None) -> str | None:
     return None
 
 
-def command_capture_e2e(_arguments) -> int:
+def command_capture_e2e(arguments) -> int:
     if harness.E2E_BASELINE_PATH.exists():
         raise SystemExit(f"{harness.E2E_BASELINE_PATH.relative_to(ROOT)} exists; v1 is written once")
-    verified_source()
+    provenance = capture_provenance(E2E_TOOLING, (harness.E2E_BASELINE_PATH,), allow_dirty=arguments.allow_dirty)
+    _, git_record = verified_source()
     before = _guarded_tree()
     with tempfile.TemporaryDirectory(prefix="p06-e2e-") as temporary:
         cases = {case: run_e2e_case(case, Path(temporary) / "first") for case in E2E_CASES}
@@ -331,7 +389,7 @@ def command_capture_e2e(_arguments) -> int:
         "id": "value101_baseline_48p_head_v1",
         "notes": E2E_NOTES,
         "base_commit": head_commit(),
-        "source": _source_record({}),
+        "source": _source_record({**git_record, **provenance}),
         "zones": zones,
         "cases": cases,
     }
@@ -360,7 +418,10 @@ def command_check_e2e(arguments) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("capture").set_defaults(handler=command_capture)
+    dirty_help = "capture although the checkout has uncommitted changes (recorded as checkout_state 'dirty')"
+    capture = commands.add_parser("capture")
+    capture.add_argument("--allow-dirty", action="store_true", help=dirty_help)
+    capture.set_defaults(handler=command_capture)
     check = commands.add_parser("check")
     check.add_argument("--loop", action="append", choices=harness.LOOPS,
                        help="loop(s) to check (default: frozen and live)")
@@ -370,7 +431,9 @@ def main(argv: list[str] | None = None) -> int:
     revise.add_argument("--correction-id", action="append", required=True)
     revise.set_defaults(handler=command_revise)
     commands.add_parser("write-head-copy").set_defaults(handler=command_write_head_copy)
-    commands.add_parser("capture-e2e").set_defaults(handler=command_capture_e2e)
+    capture_e2e = commands.add_parser("capture-e2e")
+    capture_e2e.add_argument("--allow-dirty", action="store_true", help=dirty_help)
+    capture_e2e.set_defaults(handler=command_capture_e2e)
     check_e2e = commands.add_parser("check-e2e")
     check_e2e.add_argument("--even-if-retired", action="store_true",
                            help="compare even after an X0 D3/C3 revision retired the baseline (informational)")
