@@ -1029,6 +1029,7 @@
     "scripts/methodology/package.json",
     "scripts/methodology/render_math.cjs",
     "scripts/methodology/requirements.txt",
+    "scripts/p07_record_head_decide.py",
     "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
     "scripts/portable_path_scan.py",
@@ -1111,6 +1112,7 @@
     "tests/fixtures/doctoral_alignment/investment.json",
     "tests/fixtures/doctoral_alignment/planning.json",
     "tests/fixtures/doctoral_alignment/source_manifest.json",
+    "tests/fixtures/p07/head_decide_record.json",
     "tests/fixtures/prompt08_audit_project.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
     "tests/fixtures/zonal_redispatch/binding-cut.json",
@@ -1240,6 +1242,7 @@
     "tests/test_orchestrator.py",
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
+    "tests/test_p07_head_decide_record.py",
     "tests/test_p07_investment_accounts.py",
     "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
@@ -8764,6 +8767,12 @@
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
     },
     {
+      "path": "scripts/p07_record_head_decide.py",
+      "sha256": "8687069352aa26e572622e7eda298dd5e4f372fac2166f94e53fa7cba5571701",
+      "bytes": 23061,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/p0_gate.py",
       "sha256": "b73016e7b93d3f4c5ff0d4e522acddd01f5fb4a3a0b472da1e17aecc812c8b6c",
       "bytes": 37592,
@@ -9248,6 +9257,12 @@
       "sha256": "77f3d5de52a1217ceb53177e5d3cbd81be9ebfd372a8c93ccf72e9a5f284c7e6",
       "bytes": 3484,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/fixtures/p07/head_decide_record.json",
+      "sha256": "3f8f1df194ac15ba4892929735ac427985e62519c0f9f3dd71c91e4c96d45f67",
+      "bytes": 76643,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/prompt08_audit_project.json",
@@ -10022,6 +10037,12 @@
       "sha256": "d56606e3ea097f98e3a40a63db43617310607164b6e0619f67b0dea2b9936d0f",
       "bytes": 7312,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_p07_head_decide_record.py",
+      "sha256": "61a46008d3e5b5cf773e2cdcce0b1f8cdbad92c42be2da3c3f973bbb5c5f2bf7",
+      "bytes": 10261,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_p07_investment_accounts.py",
