@@ -6674,9 +6674,9 @@
     },
     {
       "path": "gridform_core/canonical_psm_data.py",
-      "sha256": "b8ddd85b69d5d8688fdff38d75bae84c039d33fcc4cb8690448af60ff36750c4",
-      "bytes": 61433,
-      "transform": "byte copy"
+      "sha256": "cc13eac67a169c87f23c8b37b097781fb0960637d3e5b82201203edaa88652d5",
+      "bytes": 61467,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/carbon_factors.py",
@@ -7295,8 +7295,8 @@
     },
     {
       "path": "gridform_core/investment_accounts.py",
-      "sha256": "5610031694cf3555ddd7af2fa97e73915112d7c56d14e92998ced068483a6af1",
-      "bytes": 20895,
+      "sha256": "7d93c1609fe4dc4c4b29a544e13fe93fdda3b7eaac3531ec4ed9301e88395661",
+      "bytes": 22924,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8769,8 +8769,8 @@
     },
     {
       "path": "scripts/p07_record_head_decide.py",
-      "sha256": "8687069352aa26e572622e7eda298dd5e4f372fac2166f94e53fa7cba5571701",
-      "bytes": 23061,
+      "sha256": "d10e2ad9e50eb505783a4ab8478be6d9b2ffeee400879e2c39602990279e93ef",
+      "bytes": 25407,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9261,8 +9261,8 @@
     },
     {
       "path": "tests/fixtures/p07/head_decide_record.json",
-      "sha256": "3f8f1df194ac15ba4892929735ac427985e62519c0f9f3dd71c91e4c96d45f67",
-      "bytes": 76643,
+      "sha256": "7793f1727b67e4527862d96011b01c2766b2066b119cb0b8689d8c1fe92bc58c",
+      "bytes": 83680,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10047,14 +10047,14 @@
     },
     {
       "path": "tests/test_p07_head_decide_record.py",
-      "sha256": "61a46008d3e5b5cf773e2cdcce0b1f8cdbad92c42be2da3c3f973bbb5c5f2bf7",
-      "bytes": 10261,
+      "sha256": "8fed69c974ac9aedd83c078f31d2b6bd97d74f926ced9ab7726406790d1d3f29",
+      "bytes": 11477,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_p07_investment_accounts.py",
-      "sha256": "18459f379a765975cf08d73e6cb2b31ba67802db8f49c3a65914f7a05532d74d",
-      "bytes": 14618,
+      "sha256": "2b953780fb6d107ba385c620c32a4fb57b3a3ff3abdd158b66828e1d85fb6157",
+      "bytes": 20008,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -10,8 +10,10 @@ to 35aadb3 (and re-checked on a ``git archive 35aadb3`` copy). This test
 * requires ``investment_accounts.head_decide_accounts`` (the decomposed HEAD
   rule) to reproduce the same proposals, retirements and headroom bit for bit;
 * checks the decision-A4 fixtures: restored Scheme C thermal net revenue for
-  gas/biomass/OCGT, gross = profit for VRE and storage, and the decisions the
-  HEAD rule yields on that net revenue (what P0-7 S4 must produce).
+  CCGT/gas/biomass/OCGT (decided by technology, so gas with zero fuel and
+  carbon cost still deducts), gross = profit for VRE and storage, and the
+  decisions the HEAD rule yields on that net revenue (what P0-7 S4 must
+  produce).
 
 P0-7 S4 changes decide() under correction p07 thermal net revenue (A4, both
 profiles); it must then update the first assertion with the declared deltas.
@@ -138,15 +140,33 @@ class DecisionA4FixtureTest(unittest.TestCase):
             for asset_id, expected in entry["a4_expected"].items():
                 bases.setdefault(expected["basis"], set()).add(assets[asset_id])
                 technologies[asset_id] = assets[asset_id]
-        self.assertTrue({"CCGT", "gas", "bio_and_waste", "OCGT"} <= bases[ia.NET_REVENUE_BASIS_THERMAL])
+        self.assertEqual(bases[ia.NET_REVENUE_BASIS_THERMAL], set(ia.THERMAL_TECHNOLOGIES))
         self.assertTrue({"solar", "onshore", "1c_battery", "0.25c_battery"} <= bases[ia.NET_REVENUE_BASIS_GROSS])
+        self.assertTrue(bases[ia.NET_REVENUE_BASIS_GROSS] <= ia.GROSS_PROFIT_TECHNOLOGIES)
+
+    def test_a4_rule_text_names_the_technology_classes(self):
+        rule = self.record["a4_rule"]
+        self.assertIn("by technology", rule)
+        for technology in sorted(ia.THERMAL_TECHNOLOGIES):
+            self.assertIn(technology, rule)
+
+    def test_zero_fuel_and_carbon_gas_still_deducts(self):
+        entry = {row["id"]: row for row in self.record["scenarios"]}["gas_zero_fuel_and_carbon"]
+        inputs = entry["cashflow_inputs"]["gas-z"]
+        self.assertEqual((inputs["fuel_cost_gbp_per_mwh"], inputs["carbon_cost_gbp_per_mwh"]), (0.0, 0.0))
+        self.assertEqual(entry["a4_expected"]["gas-z"]["basis"], ia.NET_REVENUE_BASIS_THERMAL)
+        head = entry["head_decision"]["proposals"]
+        self.assertEqual([(row["capacity_mw"], row["extensions"]["investment_recommendation"]) for row in head],
+                         [(9.0, "Invest_High")])
 
     def test_net_revenue_matches_hand_computed_expectations(self):
         for entry in self.record["scenarios"]:
             income = entry["inputs"]["market"]["market_income_gbp_by_agent"]
+            technology = {row["asset_id"]: row["technology"] for row in entry["inputs"]["assets"]}
             for asset_id, inputs in entry["cashflow_inputs"].items():
                 with self.subTest(scenario=entry["id"], asset=asset_id):
                     self.assertEqual(inputs["electricity_income_gbp"], income[asset_id])
+                    self.assertEqual(inputs["technology"], technology[asset_id])
                     row = ia.scheme_c_investment_net_revenue(**inputs)
                     expected = entry["a4_expected"][asset_id]
                     self.assertEqual(row["basis"], expected["basis"])
@@ -175,7 +195,7 @@ class DecisionA4FixtureTest(unittest.TestCase):
                     self.assertTrue(math.isclose(row["retirement_mw"], target["retirement_mw"],
                                                  rel_tol=1e-12, abs_tol=1e-12))
                     checked += 1
-        self.assertGreaterEqual(checked, 5)
+        self.assertGreaterEqual(checked, 6)
 
 
 if __name__ == "__main__":

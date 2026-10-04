@@ -8,11 +8,12 @@ parts:
    inputs (a missing asset, field, NaN, infinity, boolean or negative cost is
    an error, never a zero).
 2. ``scheme_c_investment_net_revenue``: the Scheme C investment net revenue
-   restored by decision A4. Assets with a fuel or carbon cost (gas, biomass,
-   any thermal asset) deduct ``generated MWh x gen_cost`` where gen_cost is
-   generation + fuel + carbon + unit-time cost, as in
-   ``runtime_compat/modular_investment_support.py:2150-2152, 2246-2247``. VRE
-   and storage keep gross revenue as profit (thesis assumption: CAPEX and
+   restored by decision A4. Thermal assets deduct ``generated MWh x gen_cost``
+   where gen_cost is generation + fuel + carbon + unit-time cost, as in
+   ``runtime_compat/modular_investment_support.py:2150-2152, 2246-2247``.
+   Thermal is decided by technology first (``THERMAL_TECHNOLOGIES``: gas and
+   biomass), then by a fuel or carbon cost for any other technology. VRE and
+   storage keep gross revenue as profit (thesis assumption: CAPEX and
    depreciation only, no OPEX).
 3. The ``head_*`` functions: the investment rule of the v2
    ``SchemeCAgentInvestmentDefinition.decide`` at 35aadb3, decomposed without
@@ -46,6 +47,14 @@ HEAD_SKIPPED_MODES = frozenset({"denied", "site_data_required"})
 
 NET_REVENUE_BASIS_THERMAL = "scheme_c_income_less_energy_times_gen_cost"
 NET_REVENUE_BASIS_GROSS = "gross_revenue_is_profit"
+
+# Decision A4 technology classes. THERMAL_TECHNOLOGIES is the one thermal set
+# of the repository: canonical_psm_data._doctoral_marginal_cost imports it, and
+# tests pin it to the explicit_uncapped modes of data/cem/investment_eligibility.json.
+THERMAL_TECHNOLOGIES = frozenset({"CCGT", "OCGT", "gas", "bio_and_waste"})
+VRE_TECHNOLOGIES = frozenset({"solar", "onshore", "offshore"})
+STORAGE_TECHNOLOGIES = frozenset({"1c_battery", "0.5c_battery", "0.25c_battery", "hydrogen_battery"})
+GROSS_PROFIT_TECHNOLOGIES = VRE_TECHNOLOGIES | STORAGE_TECHNOLOGIES
 
 RECOMMENDATIONS = ("Invest_High", "Invest_Profit", "Do_Nothing", "Deplete")
 
@@ -113,15 +122,40 @@ def require_agent_cashflow(
 # Scheme C investment net revenue (decision A4)
 # ---------------------------------------------------------------------------
 
-def deducts_energy_cost(*, fuel_cost_gbp_per_mwh: float, carbon_cost_gbp_per_mwh: float) -> bool:
-    """A4: an asset with a fuel or carbon cost is thermal and nets its energy cost."""
+def deducts_energy_cost(
+    *, technology: str, fuel_cost_gbp_per_mwh: float, carbon_cost_gbp_per_mwh: float,
+) -> bool:
+    """A4: whether an asset nets its energy cost from its investment revenue.
+
+    * ``THERMAL_TECHNOLOGIES`` (gas, biomass) always deduct, even when a data
+      set carries zero fuel and carbon cost: the generation and unit-time
+      parts of gen_cost are still owed.
+    * VRE and storage never deduct (gross revenue is profit). A fuel or carbon
+      cost on them contradicts the thesis assumption and is an error.
+    * Any other technology deducts when it has a fuel or carbon cost (e.g.
+      coal). Without one, A4 defines no basis and the call fails closed; at
+      HEAD such technologies (Nuclear, hydro, unknown) never reach a proposal
+      because their investment mode is denied or site_data_required.
+    """
+    if not isinstance(technology, str) or not technology:
+        raise ValueError("A4 net revenue needs a technology name")
     fuel = finite_number(fuel_cost_gbp_per_mwh, "fuel cost", nonnegative=True)
     carbon = finite_number(carbon_cost_gbp_per_mwh, "carbon cost", nonnegative=True)
-    return fuel > 0 or carbon > 0
+    if technology in GROSS_PROFIT_TECHNOLOGIES:
+        if fuel > 0 or carbon > 0:
+            raise ValueError(
+                f"{technology} keeps gross revenue as profit (A4) but carries a fuel or carbon cost")
+        return False
+    if technology in THERMAL_TECHNOLOGIES:
+        return True
+    if fuel > 0 or carbon > 0:
+        return True
+    raise ValueError(f"A4 defines no net revenue basis for {technology} without a fuel or carbon cost")
 
 
 def scheme_c_investment_net_revenue(
     *,
+    technology: str,
     electricity_income_gbp: float,
     generated_mwh: float,
     hydrogen_income_gbp: float = 0.0,
@@ -137,11 +171,12 @@ def scheme_c_investment_net_revenue(
     the summed per-period MW; ``generated_mwh`` here is already that energy in
     MWh. Lines 2246-2247 give ``net = electricity + hydrogen - operating``.
     The source ``gen_cost`` of Gas/BiomassGenerator is generation + carbon +
-    fuel + unit-time cost (modular_simulation_model.py:422, 503).
+    fuel + unit-time cost (runtime_compat/modular_simulation_model.py:480, 561;
+    compat/modular_simulation_model.py:422, 503 in the preserved copy).
 
-    Decision A4 keeps gross revenue as profit for assets without fuel or
-    carbon cost (VRE, whose source gen_cost is 0.0001, and storage), so their
-    operating cost here is exactly zero.
+    The basis is chosen by ``deducts_energy_cost`` (technology first). VRE,
+    whose source gen_cost is 0.0001, and storage keep gross revenue as profit,
+    so their operating cost here is exactly zero.
     """
     income = finite_number(electricity_income_gbp, "electricity income")
     hydrogen = finite_number(hydrogen_income_gbp, "hydrogen income")
@@ -151,7 +186,7 @@ def scheme_c_investment_net_revenue(
     carbon = finite_number(carbon_cost_gbp_per_mwh, "carbon cost", nonnegative=True)
     unit_time = finite_number(unit_time_cost_gbp_per_mwh, "unit-time cost", nonnegative=True)
     total_income = income + hydrogen
-    if deducts_energy_cost(fuel_cost_gbp_per_mwh=fuel, carbon_cost_gbp_per_mwh=carbon):
+    if deducts_energy_cost(technology=technology, fuel_cost_gbp_per_mwh=fuel, carbon_cost_gbp_per_mwh=carbon):
         gen_cost = generation + carbon + fuel + unit_time
         operating = energy * gen_cost
         basis = NET_REVENUE_BASIS_THERMAL
@@ -160,6 +195,7 @@ def scheme_c_investment_net_revenue(
         operating = 0.0
         basis = NET_REVENUE_BASIS_GROSS
     return {
+        "technology": technology,
         "electricity_income_gbp": income,
         "hydrogen_income_gbp": hydrogen,
         "total_income_gbp": total_income,

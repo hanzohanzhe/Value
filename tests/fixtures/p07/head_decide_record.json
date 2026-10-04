@@ -1,5 +1,5 @@
 {
- "a4_rule": "thermal (fuel or carbon cost > 0): net = electricity + hydrogen income - generated_mwh x (generation + fuel + carbon + unit_time cost); VRE and storage: net = gross income",
+ "a4_rule": "by technology (gridform_core.investment_accounts.deducts_energy_cost): thermal technologies CCGT, OCGT, gas and bio_and_waste always deduct, whatever their fuel and carbon cost; any other technology deducts only with a fuel or carbon cost > 0. Deducting: net = electricity + hydrogen income - generated_mwh x (generation + fuel + carbon + unit_time cost). VRE (solar, onshore, offshore) and storage (1c, 0.5c, 0.25c, hydrogen battery): net = gross income, and a fuel or carbon cost on them is an error. A non-thermal, non-VRE, non-storage technology without fuel or carbon cost has no A4 basis (error).",
  "decide": "gridform_core.builtin.scheme_c_1000twh.v2_module_definitions.SchemeCAgentInvestmentDefinition.decide (agent-investment 2.2.0)",
  "freeze_commit": "35aadb3",
  "head_sources_sha256": {
@@ -39,6 +39,7 @@
      "fuel_cost_gbp_per_mwh": 35.0,
      "generated_mwh": 182500.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "CCGT",
      "unit_time_cost_gbp_per_mwh": 3.0
     }
    },
@@ -231,6 +232,7 @@
      "fuel_cost_gbp_per_mwh": 35.0,
      "generated_mwh": 182500.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "CCGT",
      "unit_time_cost_gbp_per_mwh": 3.0
     }
    },
@@ -445,6 +447,7 @@
      "fuel_cost_gbp_per_mwh": 30.0,
      "generated_mwh": 300000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "bio_and_waste",
      "unit_time_cost_gbp_per_mwh": 5.0
     },
     "gas-1": {
@@ -453,6 +456,7 @@
      "fuel_cost_gbp_per_mwh": 40.0,
      "generated_mwh": 400000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "gas",
      "unit_time_cost_gbp_per_mwh": 2.0
     },
     "ocgt-1": {
@@ -461,6 +465,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 10000.0,
      "generation_cost_gbp_per_mwh": 1.0,
+     "technology": "OCGT",
      "unit_time_cost_gbp_per_mwh": 9.0
     }
    },
@@ -762,6 +767,197 @@
   },
   {
    "a4_expected": {
+    "gas-z": {
+     "basis": "scheme_c_income_less_energy_times_gen_cost",
+     "gen_cost_gbp_per_mwh": 20.0,
+     "net_revenue_gbp": -1000000.0,
+     "operating_cost_gbp": 10000000.0
+    }
+   },
+   "a4_expected_decision": {
+    "groups": {
+     "owner-gasz|gas|GB": {
+      "accepted_addition_mw": 0.0,
+      "recommendation": "Deplete",
+      "retirement_mw": 25.0
+     }
+    }
+   },
+   "cashflow_inputs": {
+    "gas-z": {
+     "carbon_cost_gbp_per_mwh": 0.0,
+     "electricity_income_gbp": 9000000.0,
+     "fuel_cost_gbp_per_mwh": 0.0,
+     "generated_mwh": 500000.0,
+     "generation_cost_gbp_per_mwh": 12.0,
+     "technology": "gas",
+     "unit_time_cost_gbp_per_mwh": 8.0
+    }
+   },
+   "head_decision": {
+    "artifacts": [],
+    "decision_id": "p07-head:gas_zero_fuel_and_carbon:investment:2030",
+    "extensions": {
+     "grouped_investment_owners": 1,
+     "ineligible_assets": [],
+     "ineligible_groups": [],
+     "initial_headroom_mw_by_technology": {},
+     "investment_policy": {
+      "default_mode": "denied",
+      "policy_id": "value-cem-v1-expansion-eligibility",
+      "schema_version": "value.cem-investment-eligibility/v1",
+      "version": "2026.08.31"
+     },
+     "native_typed_execution": true,
+     "remaining_headroom_mw_by_technology": {}
+    },
+    "module_id": "agent-investment",
+    "proposals": [
+     {
+      "agent_id": "owner-gasz",
+      "capacity_mw": 9.0,
+      "evidence": {
+       "payback_years": 11.11111111111111,
+       "preferred_rate": 0.08,
+       "recommendation_code": 3.0,
+       "roi": 0.09,
+       "target_payback_years": 25.0
+      },
+      "expected_completion_year": 2031,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 638572.1156930664,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 1000000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "development_years": 1.0,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh": null,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "explicit_override",
+       "investment_eligibility_mode": "explicit_uncapped",
+       "investment_owner_id": "owner-gasz",
+       "investment_recommendation": "Invest_High",
+       "preferred_rate": 0.08,
+       "source_agent_id": "owner-gasz",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-head:gas_zero_fuel_and_carbon:2030:owner-gasz:0",
+       "success_probability": 1.0,
+       "target_payback_years": 25.0,
+       "total_capex_gbp": 9000000.0
+      },
+      "proposal_id": "p07-head:gas_zero_fuel_and_carbon:2030:owner-gasz:0",
+      "region": "GB",
+      "schema_version": "value.investment-proposal/v2",
+      "technology": "gas",
+      "year": 2030
+     }
+    ],
+    "retirements_mw": {},
+    "schema_version": "value.investment-decision/v2",
+    "year": 2030
+   },
+   "id": "gas_zero_fuel_and_carbon",
+   "inputs": {
+    "assets": [
+     {
+      "asset_id": "gas-z",
+      "capacity_mw": 100.0,
+      "energy_capacity_mwh": null,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 7095245.72992296,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 1000000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "no_separate_non_storage_fom_term",
+       "investment_owner_id": "owner-gasz",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-fixture:gas",
+       "total_capex_gbp": 100000000.0
+      },
+      "region": "GB",
+      "schema_version": "value.asset-state/v2",
+      "status": "operating",
+      "technology": "gas"
+     }
+    ],
+    "headroom": [],
+    "market": {
+     "artifacts": [],
+     "extensions": {},
+     "generation_mwh_by_asset": {},
+     "market_income_gbp_by_agent": {
+      "gas-z": 9000000.0
+     },
+     "module_id": "value-bid-at-cost-psm",
+     "module_version": "5.1.0",
+     "period_summaries": [],
+     "result_id": "p07-market:gas_zero_fuel_and_carbon",
+     "schema_version": "value.market-year-result/v2",
+     "total_blackout_mwh": 0.0,
+     "total_demand_mwh": 1.0,
+     "total_excess_mwh": 0.0,
+     "total_generation_mwh": 1.0,
+     "total_levelized_capital_cost_gbp": 1.0,
+     "total_operational_cost_gbp": 1.0,
+     "total_system_cost_gbp": 1.0,
+     "units": {
+      "capacity": "MW",
+      "cost": "GBP",
+      "energy": "MWh"
+     },
+     "year": 2030
+    },
+    "run": {
+     "data_pack_id": "p07-pack",
+     "end_year": 2031,
+     "extensions": {},
+     "modules": {
+      "investment": {
+       "contract_version": "value.investment/v2",
+       "module_id": "agent-investment",
+       "module_version": "test",
+       "schema_version": "value.module-selection/v2",
+       "slot": "investment"
+      },
+      "pipeline": {
+       "contract_version": "value.pipeline/v2",
+       "module_id": "planning-pipeline",
+       "module_version": "test",
+       "schema_version": "value.module-selection/v2",
+       "slot": "pipeline"
+      },
+      "psm": {
+       "contract_version": "value.psm/v2",
+       "module_id": "value-bid-at-cost-psm",
+       "module_version": "test",
+       "schema_version": "value.module-selection/v2",
+       "slot": "psm"
+      }
+     },
+     "project_id": "p07-project",
+     "run_id": "p07-head:gas_zero_fuel_and_carbon",
+     "runtime_controls": {},
+     "scenario_id": "p07-scenario",
+     "schema_version": "value.resolved-run/v2",
+     "scientific_parameters": {
+      "clock.period_hours": 0.5
+     },
+     "start_year": 2030
+    },
+    "year": 2030
+   },
+   "purpose": "A4 is decided by technology: a gas asset whose data carry zero fuel and zero carbon cost still deducts energy x (generation + unit-time cost). HEAD builds 9 MW Invest_High (ROI 0.09); restored net is 9e6 - 500,000 x 20 = -1e6 -> Deplete, retire 1e6 x 25 / 1e6 = 25 MW."
+  },
+  {
+   "a4_expected": {
     "onshore-a": {
      "basis": "gross_revenue_is_profit",
      "gen_cost_gbp_per_mwh": null,
@@ -789,6 +985,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 90000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "technology": "onshore",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
     "solar-a": {
@@ -797,6 +994,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 100000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "technology": "solar",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
     "solar-b": {
@@ -805,6 +1003,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 100000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "technology": "solar",
      "unit_time_cost_gbp_per_mwh": 0.0
     }
    },
@@ -1165,6 +1364,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 30000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "0.25c_battery",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
     "bat-1c": {
@@ -1173,6 +1373,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 40000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "1c_battery",
      "unit_time_cost_gbp_per_mwh": 0.0
     }
    },
@@ -1433,6 +1634,7 @@
      "fuel_cost_gbp_per_mwh": 35.0,
      "generated_mwh": 182500.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "technology": "CCGT",
      "unit_time_cost_gbp_per_mwh": 3.0
     },
     "onshore-profit": {
@@ -1441,6 +1643,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 30000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "technology": "onshore",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
     "solar-loss": {
@@ -1449,6 +1652,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 20000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "technology": "solar",
      "unit_time_cost_gbp_per_mwh": 0.0
     }
    },

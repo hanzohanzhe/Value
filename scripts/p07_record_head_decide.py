@@ -14,9 +14,12 @@ and compares with the stored record without writing.
 
 Each scenario also carries the cashflow inputs that decide() does not read at
 HEAD (dispatched MWh and per-MWh cost components) and the hand-computed
-expectations of the restored Scheme C thermal net revenue (decision A4): gas
-and biomass net ``energy x (generation + fuel + carbon + unit-time cost)``;
-VRE and storage keep gross revenue as profit. P0-7 S4 consumes them.
+expectations of the restored Scheme C thermal net revenue (decision A4): the
+thermal technologies (``investment_accounts.THERMAL_TECHNOLOGIES``: CCGT, OCGT,
+gas, bio_and_waste) net ``energy x (generation + fuel + carbon + unit-time
+cost)`` even with zero fuel and carbon cost; VRE and storage keep gross revenue
+as profit. Each cashflow row names its technology, copied from the asset.
+P0-7 S4 consumes them.
 """
 from __future__ import annotations
 
@@ -178,6 +181,24 @@ def scenarios():
                 "owner-ocgt|OCGT|GB": {"recommendation": "Invest_Profit", "accepted_addition_mw": 1.2,
                                        "retirement_mw": 0.0},
             }},
+        },
+        {
+            "id": "gas_zero_fuel_and_carbon",
+            "purpose": "A4 is decided by technology: a gas asset whose data carry zero fuel and zero carbon cost "
+                       "still deducts energy x (generation + unit-time cost). HEAD builds 9 MW Invest_High "
+                       "(ROI 0.09); restored net is 9e6 - 500,000 x 20 = -1e6 -> Deplete, retire 1e6 x 25 / 1e6 "
+                       "= 25 MW.",
+            "assets": [_asset("gas-z", "gas", 100.0, capex_per_mw=1_000_000.0, investment_owner_id="owner-gasz")],
+            "income": {"gas-z": 9_000_000.0},
+            "headroom": [],
+            "cashflow_inputs": {"gas-z": {"electricity_income_gbp": 9_000_000.0,
+                                          **_thermal(500_000.0, generation=12.0, unit_time=8.0)}},
+            "a4_expected": {"gas-z": {"basis": "scheme_c_income_less_energy_times_gen_cost",
+                                      "gen_cost_gbp_per_mwh": 20.0, "operating_cost_gbp": 10_000_000.0,
+                                      "net_revenue_gbp": -1_000_000.0}},
+            "a4_expected_decision": {"groups": {"owner-gasz|gas|GB": {"recommendation": "Deplete",
+                                                                      "accepted_addition_mw": 0.0,
+                                                                      "retirement_mw": 25.0}}},
         },
         {
             "id": "vre_gross_shared_headroom",
@@ -360,6 +381,9 @@ def build_record() -> dict:
     for spec in scenarios():
         run, state, market, headroom = build_inputs(spec)
         decision = SchemeCAgentInvestmentDefinition().decide(run, state, market, headroom)
+        technology_of = {asset.asset_id: asset.technology for asset in spec["assets"]}
+        cashflow = {asset_id: {"technology": technology_of[asset_id], **row}
+                    for asset_id, row in spec["cashflow_inputs"].items()}
         entries.append({
             "id": spec["id"],
             "purpose": spec["purpose"],
@@ -369,7 +393,7 @@ def build_record() -> dict:
                 "market": market.to_dict(),
                 "headroom": [row.to_dict() for row in headroom],
             }),
-            "cashflow_inputs": spec["cashflow_inputs"],
+            "cashflow_inputs": cashflow,
             "a4_expected": spec["a4_expected"],
             "a4_expected_decision": spec["a4_expected_decision"],
             "head_decision": decision_record(decision),
@@ -382,8 +406,14 @@ def build_record() -> dict:
         "head_sources_sha256": source_hashes(),
         "identity_extension_keys_excluded": list(IDENTITY_EXTENSION_KEYS),
         "money_basis": "constant_base_year_gbp_undiscounted (decision A6)",
-        "a4_rule": "thermal (fuel or carbon cost > 0): net = electricity + hydrogen income - generated_mwh x "
-                   "(generation + fuel + carbon + unit_time cost); VRE and storage: net = gross income",
+        "a4_rule": "by technology (gridform_core.investment_accounts.deducts_energy_cost): thermal "
+                   "technologies CCGT, OCGT, gas and bio_and_waste always deduct, whatever their fuel and "
+                   "carbon cost; any other technology deducts only with a fuel or carbon cost > 0. Deducting: "
+                   "net = electricity + hydrogen income - generated_mwh x (generation + fuel + carbon + "
+                   "unit_time cost). VRE (solar, onshore, offshore) and storage (1c, 0.5c, 0.25c, hydrogen "
+                   "battery): net = gross income, and a fuel or carbon cost on them is an error. A "
+                   "non-thermal, non-VRE, non-storage technology without fuel or carbon cost has no A4 basis "
+                   "(error).",
         "scenarios": entries,
     }
 

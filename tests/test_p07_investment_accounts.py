@@ -1,10 +1,16 @@
 """P0-7 S1: pure investment-decision arithmetic (gridform_core.investment_accounts)."""
 from __future__ import annotations
 
+import ast
+import json
 import math
 import unittest
+from pathlib import Path
 
 from gridform_core import investment_accounts as ia
+from gridform_core.builtin.scheme_c_1000twh import doctoral_policy
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class FiniteNumberTest(unittest.TestCase):
@@ -56,7 +62,7 @@ class RequireAgentCashflowTest(unittest.TestCase):
 class SchemeCNetRevenueTest(unittest.TestCase):
     """Decision A4: thermal nets energy x gen_cost; VRE and storage keep gross."""
 
-    CCGT = dict(generated_mwh=182_500.0, fuel_cost_gbp_per_mwh=35.0,
+    CCGT = dict(technology="CCGT", generated_mwh=182_500.0, fuel_cost_gbp_per_mwh=35.0,
                 carbon_cost_gbp_per_mwh=22.0, unit_time_cost_gbp_per_mwh=3.0)
 
     def test_ccgt_at_price_equal_to_gen_cost_has_zero_net(self):
@@ -72,21 +78,25 @@ class SchemeCNetRevenueTest(unittest.TestCase):
 
     def test_fuel_only_and_carbon_only_assets_deduct(self):
         biomass = ia.scheme_c_investment_net_revenue(
-            electricity_income_gbp=24e6, generated_mwh=3e5, fuel_cost_gbp_per_mwh=30.0,
+            technology="bio_and_waste", electricity_income_gbp=24e6, generated_mwh=3e5, fuel_cost_gbp_per_mwh=30.0,
             unit_time_cost_gbp_per_mwh=5.0)
         self.assertEqual((biomass["operating_cost_gbp"], biomass["net_revenue_gbp"]), (10.5e6, 13.5e6))
         carbon_only = ia.scheme_c_investment_net_revenue(
-            electricity_income_gbp=1.6e6, generated_mwh=1e4, generation_cost_gbp_per_mwh=1.0,
+            technology="OCGT", electricity_income_gbp=1.6e6, generated_mwh=1e4, generation_cost_gbp_per_mwh=1.0,
             carbon_cost_gbp_per_mwh=90.0, unit_time_cost_gbp_per_mwh=9.0)
         self.assertEqual(carbon_only["gen_cost_gbp_per_mwh"], 100.0)
         self.assertEqual(carbon_only["net_revenue_gbp"], 6e5)
 
     def test_vre_and_storage_gross_is_profit(self):
         vre = ia.scheme_c_investment_net_revenue(
-            electricity_income_gbp=6e6, generated_mwh=1e5, generation_cost_gbp_per_mwh=0.0001,
-            unit_time_cost_gbp_per_mwh=0.0)
-        storage = ia.scheme_c_investment_net_revenue(electricity_income_gbp=-3.0, generated_mwh=4e4)
-        for row, gross in ((vre, 6e6), (storage, -3.0)):
+            technology="solar", electricity_income_gbp=6e6, generated_mwh=1e5,
+            generation_cost_gbp_per_mwh=0.0001, unit_time_cost_gbp_per_mwh=0.0)
+        storage = ia.scheme_c_investment_net_revenue(
+            technology="1c_battery", electricity_income_gbp=-3.0, generated_mwh=4e4)
+        offshore = ia.scheme_c_investment_net_revenue(
+            technology="offshore", electricity_income_gbp=5.0, generated_mwh=1.0,
+            generation_cost_gbp_per_mwh=7.0, unit_time_cost_gbp_per_mwh=2.0)
+        for row, gross in ((vre, 6e6), (storage, -3.0), (offshore, 5.0)):
             self.assertEqual(row["basis"], ia.NET_REVENUE_BASIS_GROSS)
             self.assertIsNone(row["gen_cost_gbp_per_mwh"])
             self.assertEqual(row["operating_cost_gbp"], 0.0)
@@ -94,16 +104,91 @@ class SchemeCNetRevenueTest(unittest.TestCase):
 
     def test_hydrogen_income_joins_total_income(self):
         row = ia.scheme_c_investment_net_revenue(
-            electricity_income_gbp=100.0, hydrogen_income_gbp=50.0, generated_mwh=1.0,
+            technology="gas", electricity_income_gbp=100.0, hydrogen_income_gbp=50.0, generated_mwh=1.0,
             fuel_cost_gbp_per_mwh=10.0)
         self.assertEqual((row["total_income_gbp"], row["net_revenue_gbp"]), (150.0, 140.0))
 
     def test_invalid_inputs_fail_closed(self):
         for kwargs in ({"generated_mwh": -1.0}, {"fuel_cost_gbp_per_mwh": math.nan},
                        {"carbon_cost_gbp_per_mwh": -1.0}, {"electricity_income_gbp": math.inf}):
-            payload = {"electricity_income_gbp": 1.0, "generated_mwh": 1.0, **kwargs}
+            payload = {"technology": "CCGT", "electricity_income_gbp": 1.0, "generated_mwh": 1.0, **kwargs}
             with self.subTest(kwargs), self.assertRaises(ValueError):
                 ia.scheme_c_investment_net_revenue(**payload)
+
+
+    def test_thermal_is_decided_by_technology_not_by_cost(self):
+        """Review M0-P0-7-S1 #1: zero fuel and carbon cost does not make gas gross."""
+        for technology in sorted(ia.THERMAL_TECHNOLOGIES):
+            with self.subTest(technology):
+                row = ia.scheme_c_investment_net_revenue(
+                    technology=technology, electricity_income_gbp=1e6, generated_mwh=1e4,
+                    generation_cost_gbp_per_mwh=5.0, unit_time_cost_gbp_per_mwh=3.0)
+                self.assertEqual(row["basis"], ia.NET_REVENUE_BASIS_THERMAL)
+                self.assertEqual(row["gen_cost_gbp_per_mwh"], 8.0)
+                self.assertEqual(row["operating_cost_gbp"], 8e4)
+                self.assertEqual(row["net_revenue_gbp"], 9.2e5)
+                self.assertEqual(row["technology"], technology)
+
+    def test_vre_or_storage_with_fuel_or_carbon_cost_is_an_error(self):
+        for technology in sorted(ia.GROSS_PROFIT_TECHNOLOGIES):
+            for cost in ({"carbon_cost_gbp_per_mwh": 1.0}, {"fuel_cost_gbp_per_mwh": 0.5}):
+                with self.subTest(technology=technology, cost=cost), self.assertRaises(ValueError):
+                    ia.scheme_c_investment_net_revenue(
+                        technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0, **cost)
+
+    def test_other_technologies_deduct_only_with_a_fuel_or_carbon_cost(self):
+        coal = ia.scheme_c_investment_net_revenue(
+            technology="coal", electricity_income_gbp=100.0, generated_mwh=2.0, fuel_cost_gbp_per_mwh=10.0)
+        self.assertEqual((coal["basis"], coal["net_revenue_gbp"]), (ia.NET_REVENUE_BASIS_THERMAL, 80.0))
+        for technology in ("Nuclear", "Hydro_natural_flow", "pumped_hydro", "unknown"):
+            with self.subTest(technology), self.assertRaises(ValueError):
+                ia.scheme_c_investment_net_revenue(
+                    technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0)
+        for technology in ("", None, 5):
+            with self.subTest(technology=technology), self.assertRaises(ValueError):
+                ia.scheme_c_investment_net_revenue(
+                    technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0,
+                    fuel_cost_gbp_per_mwh=1.0)
+        with self.assertRaises(TypeError):
+            ia.scheme_c_investment_net_revenue(electricity_income_gbp=1.0, generated_mwh=1.0)  # type: ignore[call-arg]
+
+
+class TechnologyClassTest(unittest.TestCase):
+    """One thermal / VRE / storage classification for the repository."""
+
+    def test_classes_are_disjoint(self):
+        self.assertFalse(ia.THERMAL_TECHNOLOGIES & ia.GROSS_PROFIT_TECHNOLOGIES)
+        self.assertEqual(ia.GROSS_PROFIT_TECHNOLOGIES, ia.VRE_TECHNOLOGIES | ia.STORAGE_TECHNOLOGIES)
+
+    def test_classes_match_the_investment_eligibility_policy(self):
+        policy = json.loads((ROOT / "gridform_core/data/cem/investment_eligibility.json").read_text(encoding="utf-8"))
+        modes = policy["modes"]
+        self.assertEqual({tech for tech, mode in modes.items() if mode == "explicit_uncapped"},
+                         set(ia.THERMAL_TECHNOLOGIES))
+        self.assertEqual({tech for tech, mode in modes.items() if mode == "headroom_required"},
+                         set(ia.GROSS_PROFIT_TECHNOLOGIES))
+
+    def test_classes_match_the_doctoral_policy(self):
+        self.assertEqual(set(doctoral_policy.VRE_TECHNOLOGIES), set(ia.VRE_TECHNOLOGIES))
+        self.assertEqual(set(doctoral_policy.STORAGE_TECHNOLOGIES), set(ia.STORAGE_TECHNOLOGIES))
+        self.assertTrue(set(doctoral_policy.THERMAL_HIGH_TECHNOLOGIES) <= ia.THERMAL_TECHNOLOGIES)
+
+    def test_doctoral_marginal_cost_uses_the_shared_thermal_set(self):
+        from gridform_core import canonical_psm_data
+
+        self.assertIs(canonical_psm_data.THERMAL_TECHNOLOGIES, ia.THERMAL_TECHNOLOGIES)
+        source = (ROOT / "gridform_core/canonical_psm_data.py").read_text(encoding="utf-8")
+        function = next(node for node in ast.parse(source).body
+                        if isinstance(node, ast.FunctionDef) and node.name == "_doctoral_marginal_cost")
+        tests = [ast.unparse(node.test) for node in ast.walk(function) if isinstance(node, ast.If)]
+        self.assertIn("technology in THERMAL_TECHNOLOGIES", tests)
+        raw = {"gen_cost": 1.0, "unit_time_cost": 2.0}
+        for technology in sorted(ia.THERMAL_TECHNOLOGIES):
+            with self.subTest(technology), self.assertRaises(ValueError):
+                canonical_psm_data._doctoral_marginal_cost(raw, technology, "fixture")
+            self.assertEqual(canonical_psm_data._doctoral_marginal_cost(
+                {**raw, "fuel_cost": 3.0, "carbon_price": 4.0}, technology, "fixture"), 10.0)
+        self.assertEqual(canonical_psm_data._doctoral_marginal_cost(raw, "solar", "fixture"), 3.0)
 
 
 class HeadRuleTest(unittest.TestCase):
