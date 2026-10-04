@@ -1,6 +1,6 @@
 # VALUE
 
-VALUE stands for **V**ariable renewable electricity **A**llocation, **L**oad-enabled excess-generation **U**tilisation, and system **E**volution：可变可再生电力的分配、通过负荷利用富余发电，以及电力系统演化。
+VALUE (Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution)：可变可再生电力的分配、通过负荷利用富余发电，以及电力系统演化。
 
 VALUE 连接电力系统的半小时运行与年度投资，研究发电、储能、网络和资产演化。Power-system operation and annual investment in one modelling workspace.
 

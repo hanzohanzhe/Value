@@ -20,3 +20,5 @@ html:has(.methodology-body){scroll-behavior:auto}
 .methodology-language{display:flex;align-items:center;flex-wrap:wrap;gap:14px 28px;margin:0 0 24px;font-size:.94rem}.methodology-language span{font-weight:700}.methodology-language a{color:var(--blue);text-decoration:underline;text-underline-offset:4px}
 
 .release-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.release-card{min-width:0}.release-card h2{font-size:1.6rem}.release-filename,.release-checksum{overflow-wrap:anywhere;word-break:break-word}.release-checksum{display:block;font-size:.875rem}.table-scroll td{overflow-wrap:anywhere}.table-scroll th{min-width:120px}.table-scroll td:nth-child(2){min-width:240px}.table-scroll td:nth-child(3){min-width:220px}@media(max-width:650px){.release-grid{grid-template-columns:1fr}}
+
+.hero .eyebrow .value-full-name{text-transform:none;letter-spacing:normal;font-weight:400;white-space:normal;overflow-wrap:normal}

@@ -9,8 +9,8 @@ def paths(w):
  return '<div class="path-grid">'+''.join('<a class="path-card" href="'+w.url('community')+'#'+key+'"><span class="card-index">0'+str(i+1)+'</span><h3>'+label+'</h3><p>'+w.t(en,zh)+'</p></a>' for i,(key,label,en,zh) in enumerate(ROLES))+'</div>'
 
 def name_explanation(w):
- full='<strong>V</strong>ariable renewable electricity <strong>A</strong>llocation, <strong>L</strong>oad-enabled excess-generation <strong>U</strong>tilisation, and system <strong>E</strong>volution'
- return '<p class="small value-name">'+w.t('VALUE stands for '+full+'.','VALUE 全称为 '+full+'，意为“可变可再生电力的分配、通过负荷利用富余发电，以及电力系统演化”。')+'</p>'
+ full='Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution'
+ return '<p class="small value-name">'+w.t('VALUE ('+full+').','VALUE（'+full+'）：可变可再生电力的分配、通过负荷利用富余发电，以及电力系统演化。')+'</p>'
 
 def home(w):
  t=w.t
@@ -21,7 +21,7 @@ def home(w):
   import json
   info=json.loads(manifest.read_text())
   metadata='<p class="small">'+info['revision'][w.LANG]+' · '+info['basisLabel'][w.LANG]+'</p>'
- return '<section class="hero wrap"><div class="hero-copy">'+w.heading('VALUE',t('Electricity systems,<br>operating and evolving.','电力系统，<br>运行与演化。'),t('Connect half-hourly operation with annual investment decisions.','连接半小时运行与年度投资决策。'))+name_explanation(w)+'<div class="actions">'+w.a('community','Get started','开始使用','button')+w.a('models/value','Explore the model','了解模型','button button-outline')+'</div></div>'+w.diagram()+'</section><section class="section wrap">'+w.section_head(t('CHOOSE YOUR TASK','选择你的任务'),t('Start with a small example.','从小型案例开始。'))+paths(w)+'</section><section class="section soft-band"><div class="wrap">'+w.cards([(t('Install','安装'),(t('Full candidates are available. Check platform validation before starting.','Full 候选包可下载；开始前查看平台验收状态。') if w.CONFIG.get('publication_ready') else t('Full installers are pending. Check platform availability before starting.','完整安装包待发布；开始前查看平台状态。')),w.a('docs/value','Installation guide','安装指南')),(t('Data','数据'),t('Begin with CC0 teaching inputs, then bring data with its own source and terms.','从 CC0 教学输入开始，再接入有来源与许可的数据。'),w.a('data','Find the inputs','获取输入')),(t('Methodology','方法学'),t('Read the equations, algorithms and inputs for your VALUE configuration.','阅读对应 VALUE 配置的公式、算法与输入。'),w.a('methodology','Read the methods','阅读方法'))])+metadata+'</div></section>'
+ return '<section class="hero wrap"><div class="hero-copy">'+w.heading('VALUE <span class="value-full-name">(Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution)</span>',t('Electricity systems,<br>operating and evolving.','电力系统，<br>运行与演化。'),t('Connect half-hourly operation with annual investment decisions.','连接半小时运行与年度投资决策。'))+'<div class="actions">'+w.a('community','Get started','开始使用','button')+w.a('models/value','Explore the model','了解模型','button button-outline')+'</div></div>'+w.diagram()+'</section><section class="section wrap">'+w.section_head(t('CHOOSE YOUR TASK','选择你的任务'),t('Start with a small example.','从小型案例开始。'))+paths(w)+'</section><section class="section soft-band"><div class="wrap">'+w.cards([(t('Install','安装'),(t('Full candidates are available. Check platform validation before starting.','Full 候选包可下载；开始前查看平台验收状态。') if w.CONFIG.get('publication_ready') else t('Full installers are pending. Check platform availability before starting.','完整安装包待发布；开始前查看平台状态。')),w.a('docs/value','Installation guide','安装指南')),(t('Data','数据'),t('Begin with CC0 teaching inputs, then bring data with its own source and terms.','从 CC0 教学输入开始，再接入有来源与许可的数据。'),w.a('data','Find the inputs','获取输入')),(t('Methodology','方法学'),t('Read the equations, algorithms and inputs for your VALUE configuration.','阅读对应 VALUE 配置的公式、算法与输入。'),w.a('methodology','Read the methods','阅读方法'))])+metadata+'</div></section>'
 
 def pages(w):
  t=w.t;out=[]

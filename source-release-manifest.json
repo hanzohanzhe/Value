@@ -2647,9 +2647,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "16d4d1e7cf63b1f6c4f70ddee94d73c6f78cffabcf15a7377f0861ed9b4ea2e8",
-      "bytes": 2683,
-      "transform": "Prominent VALUE name expansion and bilingual meaning in homepage, About and README"
+      "sha256": "c9bb15c21ce02c751c30450e7d884eea6e1641bc110ea2b0749d97706e654df4",
+      "bytes": 2654,
+      "transform": "Present VALUE name in parentheses above the homepage title and simplify naming prose"
     },
     {
       "path": "README_BILINGUAL.md",
@@ -10364,9 +10364,9 @@
     },
     {
       "path": "website/journey.py",
-      "sha256": "76de992dcbef2e3c71deef26c1e12bc9bc796adb11bdd0e95e301d93b87559c0",
-      "bytes": 10502,
-      "transform": "Prominent VALUE name expansion and bilingual meaning in homepage, About and README"
+      "sha256": "5a1766936f201d3e3ffd5f873f2f6312101aa9209c6bb7ac645db728a508ef28",
+      "bytes": 10518,
+      "transform": "Present VALUE name in parentheses above the homepage title and simplify naming prose"
     },
     {
       "path": "website/methodology-sync.json",
@@ -17558,9 +17558,9 @@
     },
     {
       "path": "website/static/assets/site.css",
-      "sha256": "91d862797af89755556fe3cae7db7faf2d2e433704339a071835b1423c5b79c4",
-      "bytes": 20520,
-      "transform": "publication execution metadata, rights or packaging update"
+      "sha256": "a0f4b4fb807e6324d7ed0fac087fa08552abaa39cb11182d78aff0ad87087637",
+      "bytes": 20652,
+      "transform": "Present VALUE name in parentheses above the homepage title and simplify naming prose"
     },
     {
       "path": "website/static/assets/site.js",
