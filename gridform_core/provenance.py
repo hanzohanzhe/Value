@@ -190,11 +190,17 @@ def write_failed_run_provenance(
     project_id: str,
     error_code: str,
 ) -> Path:
-    """Write an explicitly incomplete identity record for a newly failed run."""
+    """Write an explicitly incomplete identity record for a newly failed run.
+
+    The run directory must exist: a run moved to the trash is never recreated
+    (``FileNotFoundError``).
+    """
 
     bundle_root = bundle_root.resolve()
+    if not bundle_root.is_dir():
+        raise FileNotFoundError(f"Run directory does not exist: {bundle_root}")
     output_dir = bundle_root / "model-output"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(exist_ok=True)
     project = {}
     pack = {}
     for path, target in (

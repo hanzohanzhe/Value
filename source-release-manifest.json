@@ -3460,8 +3460,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "31519572fd70296189e737a7171e3ff0c68add63556cd4895dc4fc29b8afb187",
-      "bytes": 172505,
+      "sha256": "786ff9756badf3febeca29b82d045d8cda23cd8f6b7091e1e3521f6b608f7ecb",
+      "bytes": 173737,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7735,8 +7735,8 @@
     },
     {
       "path": "gridform_core/provenance.py",
-      "sha256": "e44d57621e63fa9a0c1fd1f4018bf7927edf92e06e9f7399e3ae2b58a91e8f57",
-      "bytes": 17719,
+      "sha256": "5b36e530f1da3a97e0c5cea11d2e2a062107b2c971787f0883602dc8fd34718c",
+      "bytes": 17937,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11087,8 +11087,8 @@
     },
     {
       "path": "tests/test_run_supervisor.py",
-      "sha256": "98af9eaf6ec271c72042c019716ff341086f8f4745f00df1b427aca4b375f734",
-      "bytes": 21433,
+      "sha256": "a753dedd4d53002453cca24d59887ecc32019ba9abd1d6c1efe56ad37984cbe8",
+      "bytes": 24272,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

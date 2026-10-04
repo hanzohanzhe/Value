@@ -170,6 +170,7 @@ from backend.lifecycle.run_status import (
     WRITER_SERVER,
     LeaseHeldError,
     create_status,
+    read_status,
     update_status,
 )
 from backend.lifecycle.states import ACTIVE_STATES, DELETABLE_STATES, classify
@@ -240,28 +241,55 @@ SUPERVISOR: RunSupervisor | None = None
 _SUPERVISOR_GUARD = threading.Lock()
 
 
+def _seal_still_wanted(run_dir: Path, queued: Mapping[str, Any]) -> bool:
+    """Is the run still exactly the failed run that was queued for sealing?
+
+    A delete may have moved it to the trash, or a resume may have queued it
+    again, between ``settle`` and the sealer (review M1-P0-3 #2).
+    """
+
+    if not run_dir.is_dir() or (run_dir / "provenance.json").exists():
+        return False
+    current = read_status(run_dir)
+    if not current or classify(current) != "failed":
+        return False
+    history = current.get("lifecycle_history")
+    queued_history = queued.get("lifecycle_history")
+    if not isinstance(history, list) or not isinstance(queued_history, list):
+        return False
+    return len(history) == len(queued_history) and current.get("worker_outcome") == queued.get("worker_outcome")
+
+
 def _seal_failed_run(run_dir: Path, status: Mapping[str, Any]) -> None:
-    """Background sealer: failed provenance for a run settled by the server."""
+    """Background sealer: failed provenance for a run settled by the server.
+
+    Runs under the run's action lock, like every server-side change of a run,
+    and seals only a run that is still the failed run it was queued for.
+    """
 
     from gridform_core.provenance import write_failed_run_provenance
 
-    try:
-        path = write_failed_run_provenance(
-            run_dir, run_id=str(status.get("id") or run_dir.name),
-            project_id=str(status.get("project_id") or ""),
-            error_code=str(status.get("error_code") or "GF_WORKER_LOST"),
-        )
-    except (RuntimeError, OSError, ValueError) as exc:
-        update_status(run_dir, writer=WRITER_SERVER, mutate=lambda current: current.update({
-            "warnings": [*(current.get("warnings") if isinstance(current.get("warnings"), list) else []), {
-                "schema_version": "value.warning/v1", "code": "GF_FAILED_PROVENANCE_WARNING",
-                "category": "artifact", "severity": "warning",
-                "message": f"The stopped run could not be sealed: {exc}",
-            }],
-        }))
-        return
-    update_status(run_dir, writer=WRITER_SERVER,
-                  mutate=lambda current: current.__setitem__("provenance_artifact", path.name))
+    with run_action_lock(run_dir.name):
+        if not _seal_still_wanted(run_dir, status):
+            return
+        try:
+            path = write_failed_run_provenance(
+                run_dir, run_id=str(status.get("id") or run_dir.name),
+                project_id=str(status.get("project_id") or ""),
+                error_code=str(status.get("error_code") or "GF_WORKER_LOST"),
+            )
+        except (RuntimeError, OSError, ValueError) as exc:
+            if run_dir.is_dir():
+                update_status(run_dir, writer=WRITER_SERVER, mutate=lambda current: current.update({
+                    "warnings": [*(current.get("warnings") if isinstance(current.get("warnings"), list) else []), {
+                        "schema_version": "value.warning/v1", "code": "GF_FAILED_PROVENANCE_WARNING",
+                        "category": "artifact", "severity": "warning",
+                        "message": f"The stopped run could not be sealed: {exc}",
+                    }],
+                }))
+            return
+        update_status(run_dir, writer=WRITER_SERVER,
+                      mutate=lambda current: current.__setitem__("provenance_artifact", path.name))
 
 
 def run_supervisor() -> RunSupervisor:

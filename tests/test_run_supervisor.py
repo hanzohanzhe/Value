@@ -420,6 +420,67 @@ class RunSupervisorTests(unittest.TestCase):
         self.assertTrue(run_dir.is_dir())
 
 
+class FailedRunSealerTests(unittest.TestCase):
+    """Review M1-P0-3 #2: the background sealer works under the run's action
+    lock and seals only the failed run it was queued for."""
+
+    def setUp(self) -> None:
+        from backend import server
+
+        self.server = server
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.runs = Path(self.folder.name) / "state" / "runs"
+        self.trash = Path(self.folder.name) / "state" / "trash"
+        self.runs.mkdir(parents=True)
+        self.trash.mkdir()
+        self.supervisor = RunSupervisor(
+            self.runs, run_lock=server.run_action_lock, sealer=server._seal_failed_run,
+            reconciler_mode="apply", windows=False,
+        )
+
+    def _settled(self, run_id: str) -> Path:
+        run_dir = self.runs / run_id
+        run_dir.mkdir()
+        create_status(run_dir, {"id": run_id, "project_id": "p", "mode": "smoke", "status": "running"})
+        with self.server.run_action_lock(run_id):
+            settled = self.supervisor.settle(run_dir, "GF_WORKER_LOST", {"liveness": "lost"})
+        self.assertEqual(settled["status"], "failed")
+        return run_dir
+
+    def test_settled_run_is_sealed(self) -> None:
+        run_dir = self._settled("r-seal")
+        self.supervisor.drain_seals()
+        self.assertTrue((run_dir / "provenance.json").is_file())
+        self.assertEqual(read_status(run_dir)["provenance_artifact"], "provenance.json")
+
+    def test_run_moved_to_the_trash_is_not_recreated(self) -> None:
+        run_dir = self._settled("r-trash")
+        with self.server.run_action_lock("r-trash"):
+            os.rename(run_dir, self.trash / "r-trash")
+        self.supervisor.drain_seals()
+        self.assertFalse(run_dir.exists())
+        self.assertEqual(sorted(path.name for path in self.runs.iterdir()), [])
+        self.assertFalse((self.trash / "r-trash" / "provenance.json").exists())
+
+    def test_resumed_run_is_left_untouched(self) -> None:
+        run_dir = self._settled("r-resumed")
+        with self.server.run_action_lock("r-resumed"):
+            queued = update_status(run_dir, transition="queued", reason_code="GF_RUN_RESUME_QUEUED", writer="server")
+        self.supervisor.drain_seals()
+        self.assertFalse((run_dir / "provenance.json").exists())
+        self.assertFalse((run_dir / "model-output").exists())
+        self.assertEqual(read_status(run_dir), queued)
+
+    def test_failed_provenance_refuses_a_missing_run_directory(self) -> None:
+        from gridform_core.provenance import write_failed_run_provenance
+
+        missing = self.runs / "r-missing"
+        with self.assertRaises(FileNotFoundError):
+            write_failed_run_provenance(missing, run_id="r-missing", project_id="p", error_code="GF_WORKER_LOST")
+        self.assertFalse(missing.exists())
+
+
 @unittest.skipUnless(sys.platform.startswith("linux"), "POSIX process groups")
 class BackendSingletonTests(unittest.TestCase):
     def test_second_backend_on_the_same_data_directory_exits_3(self) -> None:
