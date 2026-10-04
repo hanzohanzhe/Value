@@ -170,3 +170,11 @@ def worker_python_argv(python: str, prefix: Path) -> list[str]:
 ## 10 口径（methodology profile）约定预告
 
 口径机制由 X0 S8–S9 建立。各包规则集只能通过 `ResolvedMethodology.enabled(correction_id)` 判断开关，不得对口径 id（`doctoral-lineage-0.6.0a2`、`value-corrected`）做字符串比较（C15）。编码 35aadb3 数值的测试统一用 `with_profile("doctoral-lineage-0.6.0a2")` 固定口径。
+
+## 11 前端测试：UI 契约夹具与离线 e2e（P0-9 S0/S2）
+
+- **UI 契约夹具跟随数值重新生成。** `tests/fixtures/ui-contract/` 由 `tests/ui_contract_fixtures.py` 从真实读模型生成，其中 `value-101-day.*` 来自 corrected 族 golden case C3 的真实 Run，`toy-v7`/`toy-v8` 来自账本写入器。凡改变市场数值或读模型输出的提交（P0-4、P0-5b、P0-6、P0-7、P0-8、P0-9 S3 及以后，包括只改字段或键顺序的提交），必须在**同一提交**中运行 `build/bin/vpy tests/ui_contract_fixtures.py --write`（任何 Python 都要带 `-B`），逐项审阅夹具 diff，在提交正文 `Tests:` 中写明“ui-contract fixtures regenerated”。不重新生成时，`tests/test_ui_contract_fixtures.py` 会在 backend_ratchet 中作为新失败出现，报错信息给出同一条命令。
+- **合并时不手工合并夹具 JSON。** 两条线都改了夹具时，任取一侧，合并后由集成者在合并结果上重新运行 `--write` 并单独提交（或并入合并提交），再跑 `--check`。夹具总量预算 256 KB（计划写的是 200 KB，提高的理由与待批准状态见 M0-P0-9-S0 报告），生成时间预算 30 s，都由 `--check` 和测试检查。
+- **e2e 与 `p0_gate full` 跨 lane 串行。** e2e 服务使用固定端口 18800（UI）与 18766（API）：API 的 CORS 白名单和若干 spec 写死了这两个端口，不能按 lane 改。同一台机器上同一时间只能有一个 e2e 运行（`e2e/run-tests.mjs`、`p0_gate full`/`nightly` 的 `e2e_offline`）。端口被占用时 `run-tests.mjs` 在构建之前就以退出码 1 结束并说明原因；此时等待另一条线结束后重跑，不得结束别人的进程。
+- **e2e 不依赖 PATH 上的 node。** `playwright.config.ts` 用运行 Playwright 的同一个 node（`process.execPath`）启动服务；门禁通过 `VALUE_NODE`（施工环境为 `build/bin/vnode`）找到 node。新增的 Playwright 配置不得在 `webServer.command` 中写裸 `node`。
+- **离线运行不留产物。** `node e2e/run-tests.mjs --offline` 把 JSON 报告和失败用例的 trace、截图写到临时目录，结束后删除；需要保留时设置 `VALUE_E2E_OUTPUT_DIR=<目录>`。spec 中的截图一律写到 `test.info().outputPath(...)`，不写死 `test-results/`。
