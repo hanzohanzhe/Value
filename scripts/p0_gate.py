@@ -61,6 +61,7 @@ RATCHET_BASELINE_FILES = (
 QUARANTINE_FILE = "tests/baselines/quarantine.txt"
 ESLINT_BASELINE_FILE = "tests/baselines/eslint-baseline.json"
 UNQUARANTINABLE_MODULE_PREFIX = "test_golden"
+TRAJECTORY_ALLOWLIST_FILE = "tests/golden/doctoral_trajectory_rebaselines.json"
 # Anti-tamper steps: skipping any of them can never yield "passed".
 MANDATORY_STEPS = ("guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet")
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
@@ -602,6 +603,21 @@ def append_only_violations(
     golden_ids = sorted(identifier for identifier in head_quarantine if _test_module(identifier).startswith(UNQUARANTINABLE_MODULE_PREFIX))
     if golden_ids:
         violations.append(f"{QUARANTINE_FILE}: golden tests may never be quarantined: {golden_ids}")
+
+    base_allowlist, head_allowlist = read_base(TRAJECTORY_ALLOWLIST_FILE), read_head(TRAJECTORY_ALLOWLIST_FILE)
+    if base_allowlist is not None:
+        if head_allowlist is None:
+            violations.append(f"{TRAJECTORY_ALLOWLIST_FILE}: deleted")
+        else:
+            base_findings = set((json.loads(base_allowlist).get("findings") or {}))
+            head_findings = set((json.loads(head_allowlist).get("findings") or {}))
+            added = sorted(head_findings - base_findings)
+            if added:
+                violations.append(
+                    f"{TRAJECTORY_ALLOWLIST_FILE}: finding(s) {added} added (the doctoral trajectory exceptions are "
+                    "fixed by the P0 decisions; a new author-approved exception needs an integrator change of "
+                    "APPEND_ONLY_BASE and the pinned set in tests/test_golden_digest.py)"
+                )
 
     base_eslint, head_eslint = read_base(ESLINT_BASELINE_FILE), read_head(ESLINT_BASELINE_FILE)
     if head_eslint is not None:

@@ -234,6 +234,22 @@ class GoldenDigestTests(unittest.TestCase):
         self.assertTrue(any("weaker zone" in error for error in errors), errors)
         self.assertTrue(any("without an approved universal finding" in error for error in errors), errors)
 
+    def test_doctoral_trajectory_exceptions_are_exactly_the_approved_decisions(self) -> None:
+        """Only the author-approved universal corrections may move doctoral trajectory.
+
+        P0_DECISIONS: Q9/A3 (P6-24 interconnector clock), A5 (P6-02/03/04 GBP1
+        reading), A4 (thermal net revenue).  Adding a finding here also needs
+        an integrator move of p0_gate.APPEND_ONLY_BASE (append_only refuses it).
+        """
+
+        allowlist = json.loads((ROOT / "tests" / "golden" / "doctoral_trajectory_rebaselines.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(allowlist["findings"]), {"P6-24", "P6-02", "P6-03", "P6-04", "P4-01-thermal"})
+        for finding, decision in (("P6-24", "A3"), ("P6-02", "A5"), ("P6-03", "A5"), ("P6-04", "A5"), ("P4-01-thermal", "A4")):
+            self.assertIn(decision, allowlist["findings"][finding])
+        decisions = (ROOT / "docs" / "dev" / "P0_DECISIONS.md").read_text(encoding="utf-8")
+        for decision in ("| Q9 |", "| A3 |", "| A4 |", "| A5 |"):
+            self.assertIn(decision, decisions)
+
     def test_pinned_zones_follow_first_record_and_only_tighten(self) -> None:
         def revision(zone: str) -> dict:
             return {"digest": {"columns": {"t::c": {"zone": zone}}}}

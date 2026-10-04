@@ -325,6 +325,22 @@ class AppendOnlyTests(unittest.TestCase):
         del self.head[project]
         self.assertTrue(GATE.append_only_violations(self.base.get, self.head.get, [self.GOLDEN], [project]))
 
+    def test_trajectory_allowlist_findings_cannot_be_added(self) -> None:
+        allowlist = GATE.TRAJECTORY_ALLOWLIST_FILE
+
+        def text(findings: dict, note: str = "n") -> str:
+            return json.dumps({"schema_version": "value.golden-trajectory-allowlist/v1", "notes": [note], "findings": findings})
+
+        self.base[allowlist] = text({"P6-24": "Q9/A3", "P6-02": "A5"})
+        self.head[allowlist] = text({"P6-24": "Q9/A3 reworded", "P6-02": "A5"}, note="new note")
+        self.assertEqual(self._violations(), [])
+        self.head[allowlist] = text({"P6-24": "Q9/A3"})
+        self.assertEqual(self._violations(), [])  # dropping an exception only tightens the freeze
+        self.head[allowlist] = text({"P6-24": "Q9/A3", "P6-02": "A5", "P6-08": "wind output"})
+        self.assertTrue(any("P6-08" in row and "added" in row for row in self._violations()), self._violations())
+        del self.head[allowlist]
+        self.assertTrue(any(allowlist in row and "deleted" in row for row in self._violations()))
+
     def test_eslint_baseline_growth_is_refused(self) -> None:
         self.head[self.ESLINT] = json.dumps({"schema_version": GATE.ESLINT_SCHEMA, "counts": {
             json.dumps(["app/a.tsx", "r", "m"]): 2, json.dumps(["app/b.tsx", "r", "m"]): 1}})
