@@ -171,17 +171,37 @@ class P0GateTests(unittest.TestCase):
         self.assertEqual(gate.results[0]["status"], "skipped")
 
     def test_skipped_or_omitted_mandatory_steps_are_waivers_not_a_pass(self) -> None:
-        passed = [{"step": name, "status": "passed"} for name in GATE.MANDATORY_STEPS]
-        self.assertEqual(GATE.waivers("quick", passed, GATE.APPEND_ONLY_BASE), [])
-        for name in GATE.MANDATORY_STEPS:
-            with self.subTest(step=name):
-                skipped = [dict(row, status="skipped") if row["step"] == name else row for row in passed]
-                self.assertTrue(any(name in row for row in GATE.waivers("quick", skipped, GATE.APPEND_ONLY_BASE)))
-                omitted = [row for row in passed if row["step"] != name]
-                self.assertTrue(any(name in row for row in GATE.waivers("quick", omitted, GATE.APPEND_ONLY_BASE)))
-        self.assertTrue(any("--append-base" in row for row in GATE.waivers("quick", passed, "HEAD")))
         for tier in GATE.TIERS:
-            self.assertTrue(set(GATE.MANDATORY_STEPS) <= {step.name for step in GATE.STEPS[tier]})
+            passed = [{"step": step.name, "status": "passed"} for step in GATE.STEPS[tier]]
+            self.assertEqual(GATE.waivers(tier, passed, GATE.APPEND_ONLY_BASE), [])
+            for step in GATE.STEPS[tier]:
+                name = step.name
+                with self.subTest(tier=tier, step=name):
+                    # --skip and --only waive every step, mandatory or not (golden_full is the D4/C5 check)
+                    flagged = [dict(row, status="skipped", detail=GATE.SKIPPED_BY_FLAG) if row["step"] == name else row for row in passed]
+                    self.assertTrue(any(name in row for row in GATE.waivers(tier, flagged, GATE.APPEND_ONLY_BASE)))
+                    omitted = [row for row in passed if row["step"] != name]
+                    self.assertTrue(any(name in row for row in GATE.waivers(tier, omitted, GATE.APPEND_ONLY_BASE)))
+                    # a self-skip with a recorded reason is acceptable only for non-mandatory steps
+                    self_skipped = [dict(row, status="skipped", detail="no frontend change since --changed-since")
+                                    if row["step"] == name else row for row in passed]
+                    waived = any(name in row for row in GATE.waivers(tier, self_skipped, GATE.APPEND_ONLY_BASE))
+                    self.assertEqual(waived, name in GATE.MANDATORY_STEPS)
+                    silent = [dict(row, status="skipped", detail=None) if row["step"] == name else row for row in passed]
+                    self.assertTrue(any(name in row for row in GATE.waivers(tier, silent, GATE.APPEND_ONLY_BASE)))
+        passed = [{"step": step.name, "status": "passed"} for step in GATE.QUICK_STEPS]
+        self.assertTrue(any("--append-base" in row for row in GATE.waivers("quick", passed, "HEAD")))
+        tier_steps = {name: {step.name for step in GATE.STEPS[name]} for name in GATE.TIERS}
+        self.assertTrue(set(GATE.MANDATORY_STEPS) <= tier_steps["nightly"])
+        self.assertTrue({"guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet",
+                         "version_ledger", "release_manifest"} <= set(GATE.MANDATORY_STEPS) & tier_steps["quick"])
+        self.assertIn("golden_full", set(GATE.MANDATORY_STEPS) & tier_steps["full"])
+        self.assertIn("golden_nightly", GATE.MANDATORY_STEPS)
+
+    def test_skip_flag_on_full_tier_golden_is_a_waiver(self) -> None:
+        results = [{"step": step.name, "status": "passed"} for step in GATE.FULL_STEPS if step.name != "golden_full"]
+        results.append({"step": "golden_full", "status": "skipped", "detail": GATE.SKIPPED_BY_FLAG})
+        self.assertEqual(GATE.waivers("full", results, GATE.APPEND_ONLY_BASE), ["step golden_full was skipped by --skip"])
 
     def test_waived_run_reports_passed_false_and_exit_two(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
@@ -192,7 +212,7 @@ class P0GateTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(payload["status"], "passed_with_waivers")
         self.assertFalse(payload["passed"])
-        self.assertEqual(len(payload["waivers"]), len(GATE.MANDATORY_STEPS))
+        self.assertEqual(len(payload["waivers"]), len(GATE.QUICK_STEPS))
         self.assertEqual(GATE.NETGUARD, {})
 
     def test_gate_subprocesses_cannot_reach_the_live_ports(self) -> None:

@@ -20,9 +20,12 @@ scripts/value-test-netguard.mjs through NODE_OPTIONS=--import): connections to
 and listeners on the live install's ports are refused, logged, and fail the
 gate (``network_guard``); the backend ratchet carries its own guard per module.
 
-Waivers: a mandatory step (MANDATORY_STEPS) that is skipped or left out by
---skip/--only, or an --append-base other than APPEND_ONLY_BASE, turns the
-result into ``passed_with_waivers`` with ``passed: false`` and exit code 2.
+Waivers: any step of the tier that is skipped by --skip or left out by
+--only, a mandatory step (MANDATORY_STEPS) that skips itself, or an
+--append-base other than APPEND_ONLY_BASE turns the result into
+``passed_with_waivers`` with ``passed: false`` and exit code 2.  Only a
+non-mandatory step may skip itself, and only with a recorded reason (for
+example "no frontend change since --changed-since" or "arrives with X0 S8").
 Only ``status: passed`` (exit 0) counts as "p0_gate passed".
 """
 
@@ -62,8 +65,15 @@ QUARANTINE_FILE = "tests/baselines/quarantine.txt"
 ESLINT_BASELINE_FILE = "tests/baselines/eslint-baseline.json"
 UNQUARANTINABLE_MODULE_PREFIX = "test_golden"
 TRAJECTORY_ALLOWLIST_FILE = "tests/golden/doctoral_trajectory_rebaselines.json"
-# Anti-tamper steps: skipping any of them can never yield "passed".
-MANDATORY_STEPS = ("guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet")
+# Steps that may not even skip themselves: anti-tamper checks, the golden
+# checks of the long cases (golden_full is the only check of D4 and C5) and
+# the release bookkeeping.  Any step skipped by --skip or left out by --only
+# is a waiver whether it is listed here or not (``waivers``).
+MANDATORY_STEPS = (
+    "guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet",
+    "golden_full", "golden_nightly", "version_ledger", "release_manifest",
+)
+SKIPPED_BY_FLAG = "skipped by --skip"
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
@@ -186,7 +196,7 @@ class Gate:
     def execute(self, steps: Iterable[Step]) -> None:
         for step in steps:
             if step.name in (self.arguments.skip or []):
-                self.results.append({"step": step.name, "status": "skipped", "detail": "skipped by --skip", "seconds": 0})
+                self.results.append({"step": step.name, "status": "skipped", "detail": SKIPPED_BY_FLAG, "seconds": 0})
                 continue
             started = time.monotonic()
             try:
@@ -764,17 +774,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 def waivers(tier: str, results: Sequence[dict[str, Any]], append_base: str) -> list[str]:
     """Reasons this gate run cannot count as passed although nothing failed."""
 
-    statuses = {row["step"]: row["status"] for row in results}
-    tier_steps = {step.name for step in STEPS[tier]}
+    recorded = {row["step"]: row for row in results}
     rows = []
-    for name in MANDATORY_STEPS:
-        if name not in tier_steps:
+    for step in STEPS[tier]:
+        name = step.name
+        row = recorded.get(name)
+        if row is None:
+            rows.append(f"step {name} was not run (left out by --only)")
+        elif row["status"] != "skipped":
             continue
-        if name not in statuses:
-            rows.append(f"mandatory step {name} was not run (--only)")
-        elif statuses[name] == "skipped":
-            detail = next((row.get("detail") for row in results if row["step"] == name), None)
-            rows.append(f"mandatory step {name} was skipped ({detail})")
+        elif row.get("detail") == SKIPPED_BY_FLAG:
+            rows.append(f"step {name} was skipped by --skip")
+        elif name in MANDATORY_STEPS:
+            rows.append(f"mandatory step {name} skipped itself ({row.get('detail')})")
+        elif not str(row.get("detail") or "").strip():
+            rows.append(f"step {name} skipped itself without a recorded reason")
     if append_base != APPEND_ONLY_BASE:
         rows.append(f"--append-base {append_base} differs from APPEND_ONLY_BASE {APPEND_ONLY_BASE}")
     return rows
