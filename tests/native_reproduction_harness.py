@@ -56,6 +56,7 @@ import contextlib
 import copy
 import dataclasses
 import fnmatch
+import functools
 import hashlib
 import json
 import math
@@ -64,6 +65,8 @@ import random
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
+
+from gridform_validation.golden import ZONE_STRENGTH, ZoneRules
 
 ROOT = Path(__file__).resolve().parents[1]
 KERNEL_RELPATH = "gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_simulation_model.py"
@@ -153,9 +156,15 @@ RETURN_NAMES = (
 
 # Harness-local zone rules, evaluated before tests/golden/zones.json (first
 # match wins; unmatched keys fall through to zones.json, whose default is
-# trajectory).  Cost, fee, income and declared-audit columns are accounting
-# (Q12); prices, dispatch, flows, SoC and asset state stay trajectory.  Each
-# rule is (pattern, zone, why).
+# trajectory).  tests/golden/zones.json is the single zone authority
+# (P0_CONVENTIONS section 2): these rules only cover keys that exist nowhere
+# but in this harness ('kernel/*' columns and the per-asset storage_state
+# split) and never override zones.json for a real market.sqlite column.
+# Cost, fee, income and attribution columns are accounting (Q12); prices,
+# dispatch, flows, SoC, asset state and the declared clearing inputs and
+# outcomes stay trajectory, as their market.sqlite tables
+# (clearing_inputs / clearing_outcomes) are in zones.json and in the X0
+# goldens.  Each rule is (pattern, zone, why).
 LOCAL_ZONE_RULES = (
     ("kernel/run_simulation::storage_fees", "accounting", "Q12 cost ledger"),
     ("kernel/run_simulation::generation_costs", "accounting", "Q12 cost ledger"),
@@ -169,22 +178,22 @@ LOCAL_ZONE_RULES = (
     ("kernel/run_simulation::total_income_dict*", "accounting", "Q12 income ledger"),
     ("kernel/run_simulation::ahead_*", "accounting", "Q12 attribution: category cost shares of real demand (HEAD 1449/1695/2827)"),
     ("kernel/run_simulation::balance_*", "accounting", "Q12 attribution: category cost shares of real demand"),
-    ("kernel/declared::*", "accounting", "Q12 audit tables: declared clearing inputs and outcomes"),
     # P3-14: StorageStateRow.charge_mwh is the literal 0.0 at HEAD (kernel
     # 2997); DECISIONS override (d) lists charge accounting as a universal
-    # accounting-zone correction and plan 6.4 marks P3-14 'universal (revise
-    # the accounting section, Q12)', applied by P0-4 S4.  Both key forms: the
-    # per-asset harness column and the table column of the e2e baseline.  Not
-    # '*charge_mwh', which would also catch discharge_mwh (trajectory).
+    # accounting-zone correction (P0-4 S4).  The per-asset split
+    # 'storage_state.<asset>.charge_mwh' exists only in this harness.  The
+    # real table column 'storage_state.charge_mwh' is left to zones.json
+    # (trajectory today, as pinned by the X0 goldens) until the lead decides
+    # the X0 P3-14 zone question.  Not '*charge_mwh', which would also catch
+    # discharge_mwh (trajectory).
     ("market/market.sqlite::storage_state.*.charge_mwh", "accounting",
-     "Q12 audit table, P3-14 charge accounting (decision (d)); HEAD literal 0.0, P0-4 S4"),
-    ("market/market.sqlite::storage_state.charge_mwh", "accounting",
-     "Q12 audit table, P3-14 charge accounting (decision (d)); HEAD literal 0.0, P0-4 S4"),
+     "harness-only per-asset key; Q12 audit table, P3-14 charge accounting (decision (d)); HEAD literal 0.0, P0-4 S4"),
     # Order ledger: the cost and settlement fields (zones.json already classes
     # orders.physical_resource_cost_gbp / market_payment_gbp as accounting;
-    # P5-06, P0-6 S4) are hashed separately from the bid/acceptance fields.
+    # P5-06, P0-6 S4) are hashed separately from the bid/acceptance fields
+    # into this harness-only column.
     ("market/market.sqlite::orders.accounting_row_sha", "accounting",
-     "Q12 cost ledger: orders.physical_resource_cost_gbp and market_payment_gbp (P5-06, P0-6 S4)"),
+     "harness-only key: orders.physical_resource_cost_gbp and market_payment_gbp (zones.json accounting; P5-06, P0-6 S4)"),
     # Battery.storage_cost_report(): cost-recovery report (annualised capital,
     # fixed opex, recovery adequacy); recovery_adequacy v2 lands in P0-6 S10.
     # Bid effects of its parameters show up in the trajectory columns.
@@ -1090,23 +1099,18 @@ def columns_from_run(result: Mapping[str, Any], periods: int = PERIODS) -> dict[
 # ---------------------------------------------------------------------------
 
 
-def _zones_json_rules() -> tuple[list[tuple[str, str]], str]:
-    payload = json.loads(ZONES_PATH.read_text(encoding="utf-8"))
-    return [(str(row["pattern"]), str(row["zone"])) for row in payload["rules"]], str(payload.get("default", "trajectory"))
+@functools.lru_cache(maxsize=1)
+def _zones_json() -> ZoneRules:
+    return ZoneRules.load(ZONES_PATH)
 
 
 def zone_of(key: str) -> str:
+    """Zone of a golden key: harness-local rules, then tests/golden/zones.json."""
+
     for pattern, zone, _ in LOCAL_ZONE_RULES:
         if fnmatch.fnmatchcase(key, pattern):
             return zone
-    rules, default = _zones_json_rules()
-    for pattern, zone in rules:
-        if fnmatch.fnmatchcase(key, pattern):
-            return zone
-    return default
-
-
-_STRENGTH = {"identity": 0, "accounting": 1, "trajectory": 2}
+    return _zones_json().zone(key)
 
 
 def _same(expected: Any, actual: Any) -> bool:
@@ -1200,7 +1204,7 @@ def pinned_zones(golden: Mapping[str, Any]) -> dict[str, str]:
     for revision in golden.get("revisions", [])[1:]:
         for key, zone in revision.get("zones", {}).items():
             previous = zones.get(key)
-            if previous is None or _STRENGTH[zone] >= _STRENGTH[previous]:
+            if previous is None or ZONE_STRENGTH[zone] >= ZONE_STRENGTH[previous]:
                 zones[key] = zone
     return zones
 

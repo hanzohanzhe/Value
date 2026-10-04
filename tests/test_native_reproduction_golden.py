@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import fnmatch
 import importlib.util
 import json
 import os
@@ -19,6 +20,7 @@ import unittest
 from pathlib import Path
 
 from gridform_core import market_ledger
+from gridform_validation.golden import ZONE_STRENGTH, ZoneRules
 from tests import native_reproduction_harness as harness
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -250,7 +252,9 @@ class SyntheticGoldenTests(unittest.TestCase):
         for asset in ("li_battery", "pumpedhydro_battery", "thermal_battery"):
             self.assertEqual(zones[f"market/market.sqlite::storage_state.{asset}.charge_mwh"], "accounting", asset)
             self.assertEqual(zones[f"market/market.sqlite::storage_state.{asset}.discharge_mwh"], "trajectory", asset)
-        self.assertEqual(harness.zone_of("market/market.sqlite::storage_state.charge_mwh"), "accounting")
+        # The real table column is zoned by zones.json alone (trajectory, as
+        # in the X0 goldens) until the lead decides the X0 P3-14 question.
+        self.assertEqual(harness.zone_of("market/market.sqlite::storage_state.charge_mwh"), "trajectory")
         self.assertEqual(harness.zone_of("market/market.sqlite::storage_state.discharge_mwh"), "trajectory")
         # Orders: bid/acceptance fields trajectory, cost/settlement accounting (P5-06).
         self.assertEqual(zones["market/market.sqlite::orders.trajectory_row_sha"], "trajectory")
@@ -261,9 +265,31 @@ class SyntheticGoldenTests(unittest.TestCase):
             {field.name for field in dataclasses.fields(market_ledger.OrderLedgerRow)},
         )
         self.assertEqual(zones["kernel/storage_cost_report"], "accounting")
-        strength = {"identity": 0, "accounting": 1, "trajectory": 2}
         for key, zone in zones.items():
-            self.assertGreaterEqual(strength[harness.zone_of(key)], strength[zone], key)
+            self.assertGreaterEqual(ZONE_STRENGTH[harness.zone_of(key)], ZONE_STRENGTH[zone], key)
+
+    def test_local_rules_never_override_zones_json_for_real_columns(self):
+        """zones.json is the single zone authority (P0_CONVENTIONS 2): the
+        harness-local rules only match keys that exist only in this harness."""
+
+        rules = ZoneRules.load(harness.ZONES_PATH)
+        self.assertEqual(rules, harness._zones_json())
+        real_keys = set(json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))["zones"])
+        for relative in ("doctoral/D3.json", "corrected/C3.json"):
+            golden = json.loads((ROOT / "tests" / "golden" / relative).read_text(encoding="utf-8"))
+            real_keys |= set(golden["revisions"][-1]["digest"]["columns"])
+        self.assertIn("market/market.sqlite::storage_state.charge_mwh", real_keys)
+        self.assertIn("market/market.sqlite::clearing_outcomes.outcome_json", real_keys)
+        for pattern, _, _ in harness.LOCAL_ZONE_RULES:
+            matched = sorted(key for key in real_keys if fnmatch.fnmatchcase(key, pattern))
+            self.assertEqual([], matched[:5], pattern)
+        for key in real_keys:
+            self.assertEqual(harness.zone_of(key), rules.zone(key), key)
+        # Declared clearing inputs/outcomes: trajectory like their tables
+        # (the derived unserved target falls under the A2 '*unserved*' rule).
+        self.assertEqual(harness.zone_of("kernel/declared::ahead.storage_accepted_mw"), "trajectory")
+        self.assertEqual(harness.zone_of("kernel/declared::ahead.input_payload_sha"), "trajectory")
+        self.assertEqual(harness.zone_of("kernel/declared::ahead.unserved_target_mw"), "accounting")
 
     def test_revision_accepts_accounting_and_refuses_trajectory_changes(self):
         golden = copy.deepcopy(self.golden)
@@ -395,8 +421,9 @@ class E2EZoneGateTests(unittest.TestCase):
         zones = baseline["zones"]
         price = "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh"
         self.assertEqual(zones[price], "trajectory")
-        self.assertEqual(zones["market/market.sqlite::storage_state.charge_mwh"], "accounting")
         self.assertEqual(zones["market/market.sqlite::storage_state.discharge_mwh"], "trajectory")
+        # No harness-local rule for the real charge_mwh column: zones.json says trajectory.
+        self.assertEqual(capture.gate_zone("market/market.sqlite::storage_state.charge_mwh", zones), "trajectory")
         # A later rule that weakens a stored trajectory column is ignored.
         from unittest import mock
 
@@ -404,7 +431,7 @@ class E2EZoneGateTests(unittest.TestCase):
             self.assertEqual(capture.gate_zone(price, zones), "trajectory")
             self.assertEqual(capture.gate_zone("market/market.sqlite::new_table.x", zones), "identity")
         with mock.patch.object(capture, "e2e_zone", lambda key: "trajectory"):
-            self.assertEqual(capture.gate_zone("market/market.sqlite::storage_state.charge_mwh", zones), "trajectory")
+            self.assertEqual(capture.gate_zone("market/market.sqlite::period_summary.physical_resource_cost_gbp", zones), "trajectory")
         expected = {"tables": {"period_summary": {"rows": 1, "columns": {"clearing_price_gbp_per_mwh": "a"}}}, "metadata": {}}
         actual = {"tables": {"period_summary": {"rows": 1, "columns": {"clearing_price_gbp_per_mwh": "b"}}}, "metadata": {}}
         with mock.patch.object(capture, "e2e_zone", lambda key: "identity"):

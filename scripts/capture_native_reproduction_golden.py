@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from gridform_validation.golden import ZONE_STRENGTH  # noqa: E402
 from tests import native_reproduction_harness as harness  # noqa: E402
 
 E2E_SCHEMA = "value.native-e2e-baseline/v1"
@@ -251,9 +252,6 @@ def e2e_entries(digest: Mapping[str, Any]) -> dict[str, Any]:
     return entries
 
 
-_STRENGTH = {"identity": 0, "accounting": 1, "trajectory": 2}
-
-
 def gate_zone(key: str, stored_zones: Mapping[str, str] | None = None) -> str:
     """Zone of ``key`` for gating: the baseline's stored zone, made stricter by
     the current rules if they say so but never weaker; current rules only for
@@ -263,7 +261,7 @@ def gate_zone(key: str, stored_zones: Mapping[str, str] | None = None) -> str:
     stored = (stored_zones or {}).get(key)
     if stored is None:
         return current
-    return stored if _STRENGTH[stored] >= _STRENGTH[current] else current
+    return stored if ZONE_STRENGTH[stored] >= ZONE_STRENGTH[current] else current
 
 
 def e2e_differences(expected: Mapping[str, Any], actual: Mapping[str, Any],

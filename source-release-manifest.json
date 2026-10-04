@@ -8601,8 +8601,8 @@
     },
     {
       "path": "scripts/capture_native_reproduction_golden.py",
-      "sha256": "619077cd49069623c1037c6c34e732821a3a03d49552e576d485a7d2b248a501",
-      "bytes": 16131,
+      "sha256": "8e2392beb5193a5972ca171cb7beb82812a630275ce06b1a412b16f0d51339ae",
+      "bytes": 16142,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9471,8 +9471,8 @@
     },
     {
       "path": "tests/native_reproduction_harness.py",
-      "sha256": "53d33536b12ac34ae8f1cce7302e927e48e6777eec9aa2e71feedb63055cfe51",
-      "bytes": 72935,
+      "sha256": "c71fb1563b4c773d5976d7fc9807ff4f73260101660b1559da7e144d5f7e3b37",
+      "bytes": 73122,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,8 +10017,8 @@
     },
     {
       "path": "tests/test_native_reproduction_golden.py",
-      "sha256": "5098e0a0945edd9bfc0bb50e134b9ffb2ca8b6f6692f5eb670d711af0ddb6163",
-      "bytes": 22614,
+      "sha256": "e1a779e21fab78a37f60a5a329a216c5efde32adc0cb616ac9dc818baaf28977",
+      "bytes": 24526,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
