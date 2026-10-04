@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import tempfile
@@ -71,6 +72,10 @@ internal static class PayloadPathHarness
             self.assertEqual(exercised.returncode, 0, exercised.stdout + exercised.stderr)
 
     def test_portable_launcher_refuses_an_unowned_listener_before_starting_services(self) -> None:
+        if shutil.which("powershell.exe") is None:
+            # Without PowerShell the launcher cannot run; never occupy the
+            # live install's port 8766 for nothing (P0 hard rule, M0-X0 review).
+            self.skipTest("needs Windows PowerShell (powershell.exe)")
         portable = ROOT / "scripts" / "start-portable-local.ps1"
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener, tempfile.TemporaryDirectory() as temporary:
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

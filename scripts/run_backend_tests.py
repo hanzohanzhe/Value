@@ -29,6 +29,18 @@ pytest is not importable those ids are reported as ``not_run``.
 Every subprocess runs with ``-B``, ``PYTHONDONTWRITEBYTECODE=1`` and private
 ``PYTHONPYCACHEPREFIX``/``VALUE_DATA_HOME``/``HOME``/``TMPDIR`` directories
 created with ``mkdtemp`` and removed afterwards.
+
+Network guard: the first ``PYTHONPATH`` entry of every test subprocess holds a
+generated ``sitecustomize.py`` that installs ``scripts/value_test_netguard.py``
+in the worker and in every Python child that inherits the environment, and
+``NODE_OPTIONS`` preloads ``scripts/value-test-netguard.mjs`` in node children.  Any
+connect/bind to a local host on the live install's ports 8766/8800 is refused
+and logged with the running test id; a run with any such attempt fails
+(``forbidden_port_attempts``), whatever the baseline says.
+
+The milestone that decides quarantine expiry is ``tests/baselines/milestone.txt``.
+``--milestone`` overrides it for tests of this script only; the override is
+recorded in the report (``milestone_source``) and p0_gate fails on it.
 """
 
 from __future__ import annotations
@@ -39,6 +51,7 @@ import concurrent.futures
 import datetime as _dt
 import hashlib
 import importlib
+import importlib.util
 import json
 import os
 import platform
@@ -109,12 +122,47 @@ def refuse_installed_paths(paths: Iterable[Path | str | None], installed: Path |
             raise SystemExit(f"refusing to write test state inside the managed install: {candidate}")
 
 
-def hermetic_environment(scratch: Path, base: Mapping[str, str] | None = None) -> dict[str, str]:
-    """Return a subprocess environment whose writable state lives in ``scratch``."""
+NETGUARD_SOURCE = ROOT / "scripts" / "value_test_netguard.py"
+NODE_NETGUARD_SOURCE = ROOT / "scripts" / "value-test-netguard.mjs"
+NETGUARD_DIR = "netguard"
+NETGUARD_LOG = "netguard.log"
+
+
+def install_netguard(scratch: Path) -> Path:
+    """Write the guard module and its ``sitecustomize.py`` into ``scratch/netguard``."""
+
+    folder = scratch / NETGUARD_DIR
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(NETGUARD_SOURCE, folder / "value_test_netguard.py")
+    guard = _netguard_module()
+    (folder / "sitecustomize.py").write_text(guard.SITECUSTOMIZE, encoding="utf-8")
+    return folder
+
+
+def _netguard_module():
+    spec = importlib.util.spec_from_file_location("value_test_netguard_runner", NETGUARD_SOURCE)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def forbidden_port_attempts(scratch: Path) -> list[dict[str, Any]]:
+    """Refused attempts logged by the network guard of one hermetic scratch."""
+
+    return _netguard_module().read_log(scratch / NETGUARD_LOG)
+
+
+def hermetic_environment(scratch: Path, base: Mapping[str, str] | None = None, *, python_root: Path = ROOT) -> dict[str, str]:
+    """Return a subprocess environment whose writable state lives in ``scratch``.
+
+    ``PYTHONPATH`` is the network-guard directory followed by ``python_root``.
+    """
 
     environment = dict(base if base is not None else os.environ)
     for name in ("home", "tmp", "data", "pycache", "xdg-cache", "xdg-config", "xdg-data"):
         (scratch / name).mkdir(parents=True, exist_ok=True)
+    guard = install_netguard(scratch)
     environment.update(
         {
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -127,11 +175,17 @@ def hermetic_environment(scratch: Path, base: Mapping[str, str] | None = None) -
             "XDG_CACHE_HOME": str(scratch / "xdg-cache"),
             "XDG_CONFIG_HOME": str(scratch / "xdg-config"),
             "XDG_DATA_HOME": str(scratch / "xdg-data"),
-            "PYTHONPATH": os.pathsep.join([str(ROOT)]),
+            "PYTHONPATH": os.pathsep.join([str(guard), str(python_root)]),
             "PYTHONIOENCODING": "utf-8",
+            "VALUE_TEST_NETGUARD_LOG": str(scratch / NETGUARD_LOG),
         }
     )
     environment.pop("PYTHONSTARTUP", None)
+    environment.pop("VALUE_TEST_NETGUARD_TEST", None)
+    node_guard = f"--import={NODE_NETGUARD_SOURCE.resolve().as_uri()}"
+    options = environment.get("NODE_OPTIONS", "")
+    if node_guard not in options.split():
+        environment["NODE_OPTIONS"] = f"{options} {node_guard}".strip()
     refuse_installed_paths([environment["VALUE_DATA_HOME"], environment["TMPDIR"], environment["HOME"]])
     return environment
 
@@ -219,9 +273,8 @@ def write_baseline(path: Path, fingerprint: Mapping[str, Any], entries: Mapping[
 
 
 def current_milestone(path: Path = MILESTONE_FILE) -> str:
-    override = os.environ.get("VALUE_P0_MILESTONE")
-    if override:
-        return override.strip()
+    """The milestone in ``tests/baselines/milestone.txt`` (environment ignored)."""
+
     if path.is_file():
         return path.read_text(encoding="utf-8").strip() or "M0"
     return "M0"
@@ -231,8 +284,7 @@ def read_quarantine(path: Path) -> dict[str, dict[str, str]]:
     """Parse ``id | reason=... | owner=... | expires=M3|host`` lines.
 
     ``expires=Mk`` means *valid through* milestone Mk: the entry fails the run
-    once ``tests/baselines/milestone.txt`` (or VALUE_P0_MILESTONE) is later
-    than Mk.  ``expires=host`` never expires (permanent host quarantine).
+    once ``tests/baselines/milestone.txt`` is later than Mk.  ``expires=host`` never expires (permanent host quarantine).
     """
 
     entries: dict[str, dict[str, str]] = {}
@@ -356,6 +408,12 @@ def _worker(module: str, output: Path, tests_dir: Path = TESTS) -> int:
     import unittest
 
     sys.path[:0] = [str(tests_dir), str(ROOT)]
+    try:
+        import value_test_netguard as guard  # on PYTHONPATH via hermetic_environment
+    except ImportError:  # worker started outside the hermetic environment
+        guard = None
+    else:
+        guard.install()
     outcomes: dict[str, str] = {}
     details: dict[str, str] = {}
     rank = {"pass": 0, "skip": 1, "expected_failure": 1, "unexpected_success": 3, "fail": 4, "error": 5}
@@ -369,6 +427,16 @@ def _worker(module: str, output: Path, tests_dir: Path = TESTS) -> int:
                 details[identifier] = detail[-2000:]
 
     class Recorder(unittest.TextTestResult):
+        def startTest(self, test: Any) -> None:  # noqa: N802
+            if guard is not None:
+                guard.set_current_test(_normalise_test_id(test))
+            super().startTest(test)
+
+        def stopTest(self, test: Any) -> None:  # noqa: N802
+            super().stopTest(test)
+            if guard is not None:
+                guard.set_current_test(None)
+
         def addSuccess(self, test: Any) -> None:  # noqa: N802
             super().addSuccess(test)
             record(test, "pass")
@@ -443,24 +511,27 @@ def _run_module(module: str, python: str, timeout: float, tests_dir: Path = TEST
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            return {
+            payload = {
                 "module": module,
                 "outcomes": {f"TIMEOUT:{module}": "error"},
                 "details": {f"TIMEOUT:{module}": f"module exceeded {timeout} s"},
                 "seconds": round(time.monotonic() - started, 3),
             }
-        if output.is_file():
-            payload = json.loads(output.read_text(encoding="utf-8"))
-            if completed.returncode != 0:
-                payload["outcomes"][f"CRASH:{module}"] = "error"
-                payload["details"][f"CRASH:{module}"] = (completed.stderr or "")[-2000:]
-            return payload
-        return {
-            "module": module,
-            "outcomes": {f"CRASH:{module}": "error"},
-            "details": {f"CRASH:{module}": (completed.stderr or completed.stdout or "")[-2000:]},
-            "seconds": round(time.monotonic() - started, 3),
-        }
+        else:
+            if output.is_file():
+                payload = json.loads(output.read_text(encoding="utf-8"))
+                if completed.returncode != 0:
+                    payload["outcomes"][f"CRASH:{module}"] = "error"
+                    payload["details"][f"CRASH:{module}"] = (completed.stderr or "")[-2000:]
+            else:
+                payload = {
+                    "module": module,
+                    "outcomes": {f"CRASH:{module}": "error"},
+                    "details": {f"CRASH:{module}": (completed.stderr or completed.stdout or "")[-2000:]},
+                    "seconds": round(time.monotonic() - started, 3),
+                }
+        payload["forbidden_port_attempts"] = [dict(row, module=module) for row in forbidden_port_attempts(scratch)]
+        return payload
     finally:
         if not keep_scratch:
             shutil.rmtree(scratch, ignore_errors=True)
@@ -489,15 +560,18 @@ def run_modules(
     outcomes: dict[str, str] = {}
     details: dict[str, str] = {}
     timings: dict[str, float] = {}
+    attempts: list[dict[str, Any]] = []
     for payload in results:
         outcomes.update(payload["outcomes"])
         details.update(payload.get("details", {}))
         timings[payload["module"]] = payload["seconds"]
+        attempts.extend(payload.get("forbidden_port_attempts", []))
     return {
         "outcomes": dict(sorted(outcomes.items())),
         "details": details,
         "timings": dict(sorted(timings.items())),
         "wall_seconds": round(time.monotonic() - started, 3),
+        "forbidden_port_attempts": sorted(attempts, key=lambda row: (row.get("module", ""), row.get("test", ""), row.get("op", ""))),
     }
 
 
@@ -562,6 +636,7 @@ def run_pytest(python: str) -> dict[str, Any]:
             capture_output=True,
             text=True,
         )
+        attempts = forbidden_port_attempts(scratch)
         outcomes: dict[str, str] = {}
         if report.is_file():
             for case in element_tree.parse(report).iter("testcase"):
@@ -576,7 +651,7 @@ def run_pytest(python: str) -> dict[str, Any]:
                     outcomes[identifier] = "skip"
                 else:
                     outcomes[identifier] = "pass"
-        return {"status": "ran", "pytest": version, "ids": identifiers, "outcomes": outcomes}
+        return {"status": "ran", "pytest": version, "ids": identifiers, "outcomes": outcomes, "forbidden_port_attempts": attempts}
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
 
@@ -607,6 +682,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--pytest", action="store_true", help="run the pytest-style modules instead")
     parser.add_argument("--json-output", type=Path)
     parser.add_argument("--progress", action="store_true")
+    parser.add_argument("--milestone", choices=MILESTONES,
+                        help="tests of this script only: override tests/baselines/milestone.txt (recorded; p0_gate fails on it)")
     arguments = parser.parse_args(argv)
 
     if arguments._worker:
@@ -621,7 +698,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     baseline_path = arguments.baseline or (DEFAULT_PYTEST_BASELINE if arguments.pytest else DEFAULT_BASELINE)
     baseline = read_baseline(baseline_path)
     quarantine = read_quarantine(arguments.quarantine)
-    milestone = current_milestone()
+    milestone = arguments.milestone or current_milestone()
+    milestone_source = "--milestone" if arguments.milestone else MILESTONE_FILE.relative_to(ROOT).as_posix()
     expired = expired_quarantine(quarantine, milestone)
     differences = fingerprint_differences(baseline.fingerprint, fingerprint)
 
@@ -642,12 +720,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             _emit(report, arguments.json_output)
             return 0
         runs = [result["outcomes"]]
+        attempts = result.get("forbidden_port_attempts", [])
     else:
         modules = arguments.modules or discover_modules(arguments.tests_dir)
         runs = []
         timings: dict[str, float] = {}
         wall = 0.0
         details: dict[str, str] = {}
+        attempts = []
         for _ in range(max(1, arguments.runs)):
             run = run_modules(
                 modules,
@@ -661,6 +741,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             timings = run["timings"]
             wall += run["wall_seconds"]
             details.update(run["details"])
+            attempts.extend(run["forbidden_port_attempts"])
 
     failing_sets = [failing_ids(outcomes) for outcomes in runs]
     always_failing = set.intersection(*failing_sets) if failing_sets else set()
@@ -691,6 +772,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             for identifier in refused:
                 print("  " + identifier, file=sys.stderr)
             return 1
+        if attempts:
+            print(f"{len(attempts)} refused attempt(s) to reach the live VALUE ports; fix the tests:", file=sys.stderr)
+            for row in attempts:
+                print(f"  {row.get('test')} {row.get('op')} {row.get('host')}:{row.get('port')}", file=sys.stderr)
+            return 1
         return 0
 
     errors: list[str] = []
@@ -704,6 +790,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         errors.append(f"{len(expired)} quarantine entr(y/ies) expired at {milestone}")
     if differences and arguments.strict:
         errors.append("environment fingerprint differs from the baseline (--strict)")
+    if attempts:
+        tests = sorted({str(row.get("test")) for row in attempts})
+        errors.append(
+            f"{len(attempts)} attempt(s) by {len(tests)} test(s) to reach the live VALUE ports "
+            f"{'/'.join(str(port) for port in _netguard_module().DEFAULT_FORBIDDEN_PORTS)} (refused; never baselined)"
+        )
 
     all_outcomes = runs[-1]
     report = {
@@ -711,6 +803,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "suite": "pytest" if arguments.pytest else "unittest",
         "baseline": str(baseline_path.relative_to(ROOT)) if baseline_path.is_relative_to(ROOT) else str(baseline_path),
         "milestone": milestone,
+        "milestone_source": milestone_source,
         "fingerprint": fingerprint,
         "fingerprint_differences": differences,
         "counts": _summary(all_outcomes),
@@ -719,6 +812,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "baseline_size": len(baseline.ids),
         "flaky": sorted(sometimes_failing),
         "expired_quarantine": expired,
+        "forbidden_port_attempts": attempts,
         **ratchet,
         "errors": errors,
         "passed": not errors,

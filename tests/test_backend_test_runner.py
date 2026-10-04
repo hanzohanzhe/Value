@@ -98,11 +98,11 @@ class BackendTestRunnerTests(unittest.TestCase):
             "--quarantine", str(self.quarantine),
             "--json-output", str(self.report),
             "--jobs", "4",
+            "--milestone", milestone,
             *extra,
         ]
         stdout, stderr = io.StringIO(), io.StringIO()
-        with mock.patch.dict(os.environ, {"VALUE_P0_MILESTONE": milestone}), \
-                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = RUNNER.main(arguments)
         report = json.loads(self.report.read_text(encoding="utf-8")) if self.report.is_file() and "--update-baseline" not in extra else {}
         return code, report
@@ -240,6 +240,22 @@ class BackendTestRunnerTests(unittest.TestCase):
             RUNNER.refuse_installed_paths([self.root / "inside" / "state"], installed=self.root)
         RUNNER.refuse_installed_paths([self.root / "elsewhere"], installed=self.root / "inside")
 
+    def test_milestone_comes_from_the_committed_file_not_the_environment(self) -> None:
+        committed = RUNNER.current_milestone()
+        with mock.patch.dict(os.environ, {"VALUE_P0_MILESTONE": "M8"}):
+            self.assertEqual(RUNNER.current_milestone(), committed)
+        self._write_baseline(EXPECTED_FAILING)
+        code, report = self._main("--modules", "test_toy_pass")
+        self.assertEqual(report["milestone_source"], "--milestone")
+        stdout = io.StringIO()
+        with mock.patch.dict(os.environ, {"VALUE_P0_MILESTONE": "M8"}), contextlib.redirect_stdout(stdout), \
+                contextlib.redirect_stderr(io.StringIO()):
+            RUNNER.main(["--tests-dir", str(self.tests_dir), "--baseline", str(self.baseline), "--quarantine",
+                         str(self.quarantine), "--json-output", str(self.report), "--modules", "test_toy_pass"])
+        report = json.loads(self.report.read_text(encoding="utf-8"))
+        self.assertEqual(report["milestone"], committed)
+        self.assertEqual(report["milestone_source"], "tests/baselines/milestone.txt")
+
     def test_static_pytest_ids_cover_known_pytest_style_modules(self) -> None:
         identifiers = RUNNER.static_pytest_ids(ROOT)
         self.assertTrue(any(identifier.startswith("tests/test_market_ledger_v6.py::") for identifier in identifiers))
@@ -252,6 +268,104 @@ class BackendTestRunnerTests(unittest.TestCase):
             self.assertIn(key, baseline.fingerprint)
         quarantine = RUNNER.read_quarantine(RUNNER.DEFAULT_QUARANTINE)
         self.assertFalse(baseline.ids & set(quarantine))
+
+
+LIVE_PORT_MODULE = """
+    import os
+    import socket
+    import subprocess
+    import sys
+    import unittest
+
+    class LivePorts(unittest.TestCase):
+        def test_reach_live_api(self):
+            # The sentinel is a port the outer test is listening on and has
+            # also forbidden: if the guard were inactive this connect would
+            # succeed and the test stops before it could reach 8766.
+            sentinel = int(os.environ["TOY_SENTINEL_PORT"])
+            with self.assertRaises(ConnectionRefusedError):
+                socket.create_connection(("127.0.0.1", sentinel), timeout=2)
+            with self.assertRaises(ConnectionRefusedError) as raised:
+                socket.create_connection(("127.0.0.1", 8766), timeout=2)
+            self.assertIn("value_test_netguard", str(raised.exception))
+
+        def test_child_process_and_bind(self):
+            code = "import socket, sys; sys.exit(socket.socket().connect_ex(('localhost', 8800)))"
+            child = subprocess.run([sys.executable, "-B", "-c", code])
+            self.assertNotEqual(child.returncode, 0)
+            with socket.socket() as listener:
+                with self.assertRaises(OSError):
+                    listener.bind(("127.0.0.1", 8766))
+
+        def test_harmless(self):
+            with socket.socket() as listener:
+                listener.bind(("127.0.0.1", 0))
+"""
+
+
+class NetworkGuardTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.root = Path(self._temporary.name)
+        self.tests_dir = self.root / "toy_tests"
+        self.tests_dir.mkdir()
+        (self.tests_dir / "test_toy_live_ports.py").write_text(textwrap.dedent(LIVE_PORT_MODULE), encoding="utf-8")
+        self.baseline = self.root / "baseline.txt"
+        RUNNER.write_baseline(self.baseline, RUNNER.environment_fingerprint(), {})
+        self.report = self.root / "report.json"
+
+    def test_live_ports_are_refused_reported_and_fail_the_run(self) -> None:
+        import socket
+
+        with socket.socket() as sentinel:
+            sentinel.bind(("127.0.0.1", 0))
+            sentinel.listen(8)
+            port = sentinel.getsockname()[1]
+            environment = {"VALUE_TEST_FORBIDDEN_PORTS": str(port), "TOY_SENTINEL_PORT": str(port)}
+            with mock.patch.dict(os.environ, environment), contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                code = RUNNER.main([
+                    "--tests-dir", str(self.tests_dir), "--baseline", str(self.baseline),
+                    "--quarantine", str(self.root / "none.txt"), "--json-output", str(self.report), "--jobs", "1",
+                ])
+        report = json.loads(self.report.read_text(encoding="utf-8"))
+        self.assertEqual(code, 1, report)
+        # the toy tests themselves pass: every attempt was refused by the guard
+        self.assertEqual(report["new_failures"], [], report.get("new_failure_details"))
+        attempts = {(row["test"].rsplit(".", 1)[-1], row["op"], row["port"]) for row in report["forbidden_port_attempts"]}
+        self.assertEqual(
+            attempts,
+            {
+                ("test_reach_live_api", "connect", port),
+                ("test_reach_live_api", "connect", 8766),
+                ("test_child_process_and_bind", "connect_ex", 8800),
+                ("test_child_process_and_bind", "bind", 8766),
+            },
+        )
+        self.assertTrue(any("live VALUE ports" in error for error in report["errors"]), report["errors"])
+
+    def test_hermetic_environment_puts_the_guard_first(self) -> None:
+        environment = RUNNER.hermetic_environment(self.root / "scratch", base={"PATH": "/usr/bin", "VALUE_TEST_NETGUARD_TEST": "x"})
+        first = Path(environment["PYTHONPATH"].split(os.pathsep)[0])
+        self.assertTrue((first / "sitecustomize.py").is_file())
+        self.assertTrue((first / "value_test_netguard.py").is_file())
+        self.assertEqual(environment["PYTHONPATH"].split(os.pathsep)[1], str(RUNNER.ROOT))
+        self.assertTrue(environment["VALUE_TEST_NETGUARD_LOG"].startswith(str(self.root)))
+        self.assertNotIn("VALUE_TEST_NETGUARD_TEST", environment)
+
+    def test_guard_classifies_local_hosts_and_ports(self) -> None:
+        import socket
+
+        guard = RUNNER._netguard_module()
+        with socket.socket() as sock, mock.patch.dict(os.environ, {"VALUE_TEST_FORBIDDEN_PORTS": "9999"}):
+            for host in ("127.0.0.1", "127.1.2.3", "localhost", "0.0.0.0", "", socket.gethostname()):
+                self.assertEqual(guard.forbidden_target(sock, (host, 8766))[1], 8766, host)
+            self.assertIsNotNone(guard.forbidden_target(sock, ("127.0.0.1", 9999)))
+            self.assertIsNone(guard.forbidden_target(sock, ("127.0.0.1", 18766)))
+            self.assertIsNone(guard.forbidden_target(sock, ("192.0.2.1", 8766)))
+        with mock.patch.dict(os.environ, {"VALUE_TEST_FORBIDDEN_PORTS": ""}):
+            self.assertEqual(guard.forbidden_ports(), frozenset({8766, 8800}))
 
 
 if __name__ == "__main__":

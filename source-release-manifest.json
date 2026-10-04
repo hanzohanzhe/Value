@@ -1066,6 +1066,8 @@
     "scripts/validate_force_declared_clearing.py",
     "scripts/validate_gb_zonal_pack.py",
     "scripts/validate_local_uk_pack.py",
+    "scripts/value-test-netguard.mjs",
+    "scripts/value_test_netguard.py",
     "scripts/verify_doctoral_project_weather.py",
     "scripts/verify_doctoral_weather.py",
     "scripts/verify_install_scripts.py",
@@ -8857,8 +8859,8 @@
     },
     {
       "path": "scripts/run_backend_tests.py",
-      "sha256": "aa15511cc7cbf4004533b4736bb66847bef7a807165f21740b9f9cdf89537239",
-      "bytes": 31470,
+      "sha256": "0619cabb314cced54b4f2d65dde6534807d4cc78b69697369750eb127299d6f5",
+      "bytes": 36170,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8980,6 +8982,18 @@
       "sha256": "f619fa93ed25c346d5109e0b295097ef676aae877d2b17a4d7c719e84cf49f48",
       "bytes": 1788,
       "transform": "byte copy"
+    },
+    {
+      "path": "scripts/value-test-netguard.mjs",
+      "sha256": "e55b8ee80089d1762a96af3aa10c40a442ad0440c8780acd8e072d8d5b7c4f8a",
+      "bytes": 3336,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "scripts/value_test_netguard.py",
+      "sha256": "3a27fe38d867cc9d0dd75fa5e4c0566e60a58b7a7cf7bcbec1c5d7be361467fe",
+      "bytes": 6915,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/verify_doctoral_project_weather.py",
@@ -9487,8 +9501,8 @@
     },
     {
       "path": "tests/test_backend_test_runner.py",
-      "sha256": "64c6fef3a94eee43c3127afb580ba98511d086da97aab13bfe003f36626124d6",
-      "bytes": 12397,
+      "sha256": "d2caca571009b5346f8cbd4a8748f8c167888697896cb00b3f0950c6cd257527",
+      "bytes": 18556,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10177,9 +10191,9 @@
     },
     {
       "path": "tests/test_prompt117_value_101_release_gate.py",
-      "sha256": "4bd10e9fecdec0345d40ef229bcadcae2e76a2db3d83d2f069bf8c5beeb2753d",
-      "bytes": 43873,
-      "transform": "byte copy"
+      "sha256": "e06e8745a1ada962b5f3487815f56edd667f403a088681fab8e077b233c1d396",
+      "bytes": 44530,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt118_value_context_contracts.py",
@@ -10639,9 +10653,9 @@
     },
     {
       "path": "tests/test_windows_pilot_installer.py",
-      "sha256": "a6c3a6507993444e1264b125b1f6a141ed7f11ab34b2c8bb48b8ebc64c1f55d8",
-      "bytes": 36497,
-      "transform": "byte copy"
+      "sha256": "e2021c606b2823347c84e3cbe348f371e55538df2d2a223b1129a70b51d78c18",
+      "bytes": 36789,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_zonal_solver_contract.py",
