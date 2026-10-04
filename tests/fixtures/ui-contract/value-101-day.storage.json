@@ -1,0 +1,18 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "value-101-day",
+ "request": {
+  "path": "/api/runs/{run_id}/market/storage",
+  "query": {"year":2025,"period":1,"limit":100}
+ },
+ "payload": {
+  "total": 1,
+  "limit": 100,
+  "offset": 0,
+  "items": [
+   {"year":2025,"period":1,"asset_id":"1c_battery","state_of_charge_mwh":0.0,"charge_mwh":0.0,"discharge_mwh":0.0,"power_capacity_mw":10.0,"energy_capacity_mwh":10.0}
+  ],
+  "trace_level": "full"
+ }
+}

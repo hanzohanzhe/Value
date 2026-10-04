@@ -1,0 +1,45 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "value-101-day",
+ "request": {
+  "path": "/api/runs/{run_id}/market/auction",
+  "query": {"year":2025,"period":30,"stage":"curtailment"}
+ },
+ "payload": {
+  "schema_version": "value.market-auction-view/v1",
+  "year": 2025,
+  "period": 30,
+  "stage": "curtailment",
+  "information_scope": "realised demand and post-ahead schedule; sequential storage/export/flexible-demand/down-regulation waterfall",
+  "input_sha256": "2acd9e2884399ad717d1ab34ecf86cb590ac33f8a7b88f5d164e4ed6b0c1fa37",
+  "declared_before_clearing": true,
+  "period_hours": 0.5,
+  "requirement_mwh": 6.0,
+  "offers": [
+   {"asset_id":"1c_battery","asset_type":"Battery","maximum_power_mw":0.0013999706002070726,"minimum_power_mw":0.0,"offer_id":"curtailment:storage:1c_battery","offer_price_gbp_per_mwh":0.0,"resource_kind":"storage_charge","side":"consume_surplus","input_order":0,"execution_order":0,"technology":"battery_storage","offered_mwh":0.0006999853001035363,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":0.0006999853001035363,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"Electrolyzer","asset_type":"Electrolyzer","maximum_power_mw":0.0,"minimum_power_mw":0.0,"offer_id":"curtailment:flexible-demand:Electrolyzer","offer_price_gbp_per_mwh":0.0,"resource_kind":"flexible_demand","side":"consume_surplus","input_order":1,"execution_order":1,"technology":"flexible_demand","offered_mwh":0.0,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":0.0006999853001035363,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"onshore_Portsmouth","asset_type":"ExpensiverenewableGenerator","maximum_power_mw":0.2895176962692234,"minimum_power_mw":0.0,"offer_id":"curtailment:down:0:onshore_Portsmouth","offer_price_gbp_per_mwh":0.0,"resource_kind":"down_regulation","side":"consume_surplus","input_order":2,"execution_order":2,"technology":"onshore_wind","offered_mwh":0.1447588481346117,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":0.14545883343471525,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"solar_Portsmouth","asset_type":"ExpensiverenewableGenerator","maximum_power_mw":23.363745,"minimum_power_mw":0.0,"offer_id":"curtailment:down:1:solar_Portsmouth","offer_price_gbp_per_mwh":0.0,"resource_kind":"down_regulation","side":"consume_surplus","input_order":3,"execution_order":3,"technology":"solar","offered_mwh":11.6818725,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":11.827331333434715,"cumulative_exact_accepted_mwh":0.0},
+   {"asset_id":"CCGT","asset_type":"GasGenerator","maximum_power_mw":15.57019632754461,"minimum_power_mw":0.0,"offer_id":"curtailment:down:2:CCGT","offer_price_gbp_per_mwh":66.5,"resource_kind":"down_regulation","side":"consume_surplus","input_order":4,"execution_order":4,"technology":"ccgt","offered_mwh":7.785098163772305,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":19.61242949720702,"cumulative_exact_accepted_mwh":0.0}
+  ],
+  "outcome": {
+   "curtailed_power_mw": 11.998600029399793,
+   "curtailment_cost_gbp": 0.0,
+   "export_revenue_gbp": 0.0,
+   "remaining_excess_power_mw": 0.0,
+   "stage": "curtailment",
+   "storage_charge_power_mw": 0.0013999706002070726,
+   "storage_post_state": [
+    {"asset_id":"1c_battery","charge_efficiency":0.9,"charge_power_limit_mw":10.0,"discharge_efficiency":0.9,"discharge_power_limit_mw":10.0,"energy_capacity_mwh":10.0,"period_hours":0.5,"state_of_charge_mwh":10.0,"stored_tranches_mwh":[{"charge_period":20,"stored_mwh":0.8168826456597896},{"charge_period":21,"stored_mwh":1.5255275558460493},{"charge_period":22,"stored_mwh":3.1689876273331836},{"charge_period":23,"stored_mwh":3.5261464305000607},{"charge_period":24,"stored_mwh":0.961195806809062},{"charge_period":25,"stored_mwh":0.00020997795092701207},{"charge_period":26,"stored_mwh":0.00020998236055480755},{"charge_period":27,"stored_mwh":0.00020998677027698337},{"charge_period":30,"stored_mwh":0.0006299867700931827}],"technology":"1c"}
+   ]
+  },
+  "pricing_rule": "retained_stage_specific_settlement",
+  "marginal_offer_price_gbp_per_mwh": null,
+  "marginal_offer_status": "not_separately_defined_by_stage_outcome",
+  "offer_acceptance_coverage": "stage_summary_only",
+  "offer_ordering": "ascending offer price; stable input order for ties",
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "units": {"energy":"MWh/period","power":"MW","price":"GBP/MWh"}
+ }
+}

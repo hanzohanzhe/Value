@@ -1,0 +1,39 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v7",
+ "request": {
+  "path": "/api/runs/{run_id}/market/auction",
+  "query": {"year":2025,"period":0,"stage":"ahead"}
+ },
+ "payload": {
+  "schema_version": "value.market-auction-view/v1",
+  "year": 2025,
+  "period": 0,
+  "stage": "ahead",
+  "information_scope": "forecast demand and eligible offers",
+  "input_sha256": "e4664ca09d0349f5a1b101bbc6c1dc97b42370880c7c2a45d9e781d194ba8c12",
+  "declared_before_clearing": true,
+  "period_hours": 0.5,
+  "requirement_mwh": 10.0,
+  "offers": [
+   {"asset_id":"solar-a","asset_type":"SolarGenerator","maximum_power_mw":8.0,"offer_id":"solar-a:0","offer_price_gbp_per_mwh":0.0,"resource_kind":"vre","input_order":1,"execution_order":0,"technology":"solar","offered_mwh":4.0,"accepted_mwh":4.0,"asset_accepted_mwh":4.0,"acceptance_granularity":"offer","cumulative_offered_mwh":4.0,"cumulative_exact_accepted_mwh":4.0},
+   {"asset_id":"battery-a","asset_type":"Battery","maximum_power_mw":2.0,"offer_id":"battery-a:0","offer_price_gbp_per_mwh":20.0,"resource_kind":"storage_discharge","input_order":2,"execution_order":1,"technology":"battery_storage","offered_mwh":1.0,"accepted_mwh":null,"asset_accepted_mwh":0.0,"acceptance_granularity":"asset_aggregate","cumulative_offered_mwh":5.0,"cumulative_exact_accepted_mwh":4.0},
+   {"asset_id":"battery-a","asset_type":"Battery","maximum_power_mw":2.0,"offer_id":"battery-a:1","offer_price_gbp_per_mwh":30.0,"resource_kind":"storage_discharge","input_order":3,"execution_order":2,"technology":"battery_storage","offered_mwh":1.0,"accepted_mwh":null,"asset_accepted_mwh":0.0,"acceptance_granularity":"asset_aggregate","cumulative_offered_mwh":6.0,"cumulative_exact_accepted_mwh":4.0},
+   {"asset_id":"gas-a","asset_type":"CCGTGenerator","maximum_power_mw":16.0,"offer_id":"gas-a:0","offer_price_gbp_per_mwh":50.0,"resource_kind":"thermal","input_order":0,"execution_order":3,"technology":"ccgt","offered_mwh":8.0,"accepted_mwh":6.0,"asset_accepted_mwh":6.0,"acceptance_granularity":"offer","cumulative_offered_mwh":14.0,"cumulative_exact_accepted_mwh":10.0}
+  ],
+  "outcome": {
+   "accepted": [
+    {"accepted_power_mw":8.0,"asset_id":"solar-a","offer_price_gbp_per_mwh":0.0},
+    {"accepted_power_mw":12.0,"asset_id":"gas-a","offer_price_gbp_per_mwh":50.0}
+   ]
+  },
+  "pricing_rule": "retained_bid_at_cost_pay_as_clear_income",
+  "marginal_offer_price_gbp_per_mwh": 50.0,
+  "marginal_offer_status": "defined_from_accepted_outcome_prices",
+  "offer_acceptance_coverage": "asset_aggregate_for_multi_tranche_resources",
+  "offer_ordering": "ascending offer price; stable input order for ties",
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "units": {"energy":"MWh/period","power":"MW","price":"GBP/MWh"}
+ }
+}
