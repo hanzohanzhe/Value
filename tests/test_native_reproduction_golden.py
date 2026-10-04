@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import importlib.util
 import json
 import os
@@ -17,6 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from gridform_core import market_ledger
 from tests import native_reproduction_harness as harness
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +41,7 @@ REQUIRED_SITUATIONS = (
     "imports",
     "electrolysis",
     "vre_skim_leak",
+    "storage_discharge_above_rated_power",
     "compatibility_adjustment",
 )
 
@@ -51,6 +54,16 @@ def _capture_module():
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
+
+def _head_sources() -> list[str]:
+    sources = []
+    if harness.live_kernel_is_head():
+        sources.append(harness.kernel_path().read_text(encoding="utf-8"))
+    git_source = _git_head_source()
+    if git_source is not None:
+        sources.append(git_source)
+    return sources
 
 
 def _git_head_source() -> str | None:
@@ -74,12 +87,7 @@ class HeadSourceIdentityTests(unittest.TestCase):
         self.assertEqual(golden["source"]["segments"], record["segments"])
 
     def test_copy_is_the_rendering_of_the_pinned_source(self):
-        candidates = []
-        if harness.live_kernel_is_head():
-            candidates.append(harness.kernel_path().read_text(encoding="utf-8"))
-        git_source = _git_head_source()
-        if git_source is not None:
-            candidates.append(git_source)
+        candidates = _head_sources()
         if not candidates:
             self.skipTest("neither the live kernel nor git provides the 35aadb3 source")
         for source in candidates:
@@ -104,6 +112,31 @@ class HeadSourceIdentityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not the pinned"):
             harness.render_head_copy("def run_simulation():\n    pass\n")
 
+    def test_text_outside_the_verbatim_blocks_is_checked(self):
+        text = harness.HEAD_COPY_PATH.read_text(encoding="utf-8")
+        line = "    _p06_driver = __p06_synthetic_driver__\n"
+        self.assertIn(line, text)
+        for tampered in (
+            text.replace(line, line + "    bidding_factor = 1.5\n", 1),
+            text.replace("# Do not edit.", "# Edit freely.", 1),
+            text + "\nbidding_factor = 1.5\n",
+        ):
+            self.assertNotEqual(text, tampered)
+            with self.assertRaisesRegex(ValueError, "outside VERBATIM|sha256"):
+                harness.verify_head_copy(tampered)
+
+    def test_live_loop_renders_the_frozen_copy_from_the_head_source(self):
+        candidates = _head_sources()
+        if not candidates:
+            self.skipTest("neither the live kernel nor git provides the 35aadb3 source")
+        copy_text = harness.HEAD_COPY_PATH.read_text(encoding="utf-8")
+        for source in candidates:
+            ranges = harness.live_loop_ranges(source)
+            self.assertEqual(ranges, {name: (first, last) for name, first, last, _ in harness.HEAD_SEGMENTS})
+            self.assertEqual(harness.render_live_loop(source, label=harness.HEAD_COMMIT, header=harness.HEADER), copy_text)
+        with self.assertRaises(LookupError):
+            harness.live_loop_ranges("def run_simulation(periods):\n    return ()\n")
+
 
 class SyntheticGoldenTests(unittest.TestCase):
     @classmethod
@@ -119,12 +152,38 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(self.golden["loop_environment"], harness.LOOP_ENVIRONMENT)
 
     def test_live_market_functions_reproduce_the_golden_exactly(self):
-        differences = harness.compare_with_golden(self.golden, self.observed)
+        gated = harness.gated_zones(self.golden, "frozen")
+        differences = [
+            item for item in harness.compare_with_golden(self.golden, self.observed) if item.zone in gated
+        ]
         self.assertEqual(
             [], [item.describe() for item in differences[:30]],
-            "the default PSM no longer reproduces the 35aadb3 synthetic golden",
+            "the default PSM no longer reproduces the 35aadb3 synthetic golden (frozen loop)",
         )
         self.assertEqual(sorted(self.observed), sorted(harness.VARIANTS))
+
+    def test_live_kernel_loop_reproduces_the_golden_exactly(self):
+        # P0-6 S3 acceptance ('synthetic golden equal value by value') runs
+        # through this loop.  If S3 moves the period body out of run_simulation
+        # the anchors fail here: update LIVE_ANCHORS or pass a callable loop=.
+        live = harness.observe(loop="live")
+        gated = harness.gated_zones(self.golden, "live")
+        differences = [item for item in harness.compare_with_golden(self.golden, live) if item.zone in gated]
+        self.assertEqual(
+            [], [item.describe() for item in differences[:30]],
+            "the live kernel loop no longer reproduces the synthetic golden",
+        )
+        if harness.live_kernel_is_head():
+            self.assertEqual([], harness.compare_with_golden(self.golden, live))
+
+    def test_frozen_loop_accounting_is_gated_only_until_an_accounting_revision(self):
+        self.assertEqual(harness.gated_zones(self.golden, "live"), ("trajectory", "accounting"))
+        revised = copy.deepcopy(self.golden)
+        self.assertEqual(len(revised["revisions"]), 1)
+        self.assertEqual(harness.gated_zones(revised, "frozen"), ("trajectory", "accounting"))
+        revised["revisions"].append({"index": 1, "correction_ids": ["p04.storage-charge-audit"], "patch": {}})
+        self.assertEqual(harness.gated_zones(revised, "frozen"), ("trajectory",))
+        self.assertEqual(harness.gated_zones(revised, "live"), ("trajectory", "accounting"))
 
     def test_scenario_exercises_every_situation_named_by_the_plan(self):
         latest = harness.latest_columns(self.golden)
@@ -146,9 +205,28 @@ class SyntheticGoldenTests(unittest.TestCase):
         for period in facts["nuclear_blocking_vre_unrecorded"]:
             self.assertEqual(latest[summary + "vre_accepted_mwh"][period], 0.0)
             self.assertEqual(latest[summary + "curtailed_mwh"][period], 0.0)
-        # HEAD 2815: a curtailment period still carries the last balancing storage fee.
+        # HEAD 2815: a curtailment period whose ahead stage accepted no
+        # storage still books the last balancing period's storage fee.
+        ahead_storage = dict(zip(latest["kernel/declared::ahead.periods"], latest["kernel/declared::ahead.storage_accepted_mw"]))
         carry = facts["storage_fee_carry_into_curtailment"]
-        self.assertTrue(any(latest["kernel/run_simulation::storage_fees"][p] > 0 for p in carry))
+        self.assertTrue(set(range(41, 52, 2)) <= set(carry), carry)
+        for period in carry:
+            self.assertEqual(ahead_storage[period], 0.0)
+            self.assertGreater(latest["kernel/run_simulation::storage_fees"][period], 0.0)
+        # HEAD 1173 (P3-08): the skim zeroes a VRE whose availability is below
+        # the skim, and that availability is booked nowhere.
+        self.assertEqual(facts["vre_skim_leak"], [72, 73, 77])
+        self.assertEqual(latest["kernel/state::offshore1.real_energy"][72], 0.0)
+        self.assertEqual(latest["kernel/dispatch::<ExpensiverenewableGenerator:offshore1>"][72], 0.0)
+        # P5-03: per-stage power reset; pumped hydro (15 MW) discharges 30 MW,
+        # li_battery (20 MW) 28 MW.
+        state = "market/market.sqlite::storage_state."
+        for period in (40, 42, 44, 46):
+            self.assertIn(period, facts["storage_discharge_above_rated_power"])
+            self.assertEqual(latest[state + "pumpedhydro_battery.discharge_mwh"][period] / harness.PERIOD_HOURS, 30.0)
+            self.assertEqual(latest[state + "pumpedhydro_battery.power_capacity_mw"][period], 15.0)
+        self.assertEqual(latest[state + "li_battery.discharge_mwh"][90] / harness.PERIOD_HOURS, 28.0)
+        self.assertEqual(latest[state + "li_battery.power_capacity_mw"][90], 20.0)
 
     def test_fixture_is_small_and_one_column_per_line(self):
         size = harness.GOLDEN_PATH.stat().st_size
@@ -167,6 +245,22 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(zones["kernel/run_simulation::storage_fees"], "accounting")
         self.assertEqual(zones["kernel/dispatch::<NuclearGenerator:Nuclear>"], "trajectory")
         self.assertEqual(zones["market/market.sqlite::storage_state.li_battery.state_of_charge_mwh"], "trajectory")
+        # P3-14 / decision (d): the per-asset charge audit column (HEAD literal
+        # 0.0) is accounting; discharge stays trajectory.
+        for asset in ("li_battery", "pumpedhydro_battery", "thermal_battery"):
+            self.assertEqual(zones[f"market/market.sqlite::storage_state.{asset}.charge_mwh"], "accounting", asset)
+            self.assertEqual(zones[f"market/market.sqlite::storage_state.{asset}.discharge_mwh"], "trajectory", asset)
+        self.assertEqual(harness.zone_of("market/market.sqlite::storage_state.charge_mwh"), "accounting")
+        self.assertEqual(harness.zone_of("market/market.sqlite::storage_state.discharge_mwh"), "trajectory")
+        # Orders: bid/acceptance fields trajectory, cost/settlement accounting (P5-06).
+        self.assertEqual(zones["market/market.sqlite::orders.trajectory_row_sha"], "trajectory")
+        self.assertEqual(zones["market/market.sqlite::orders.accounting_row_sha"], "accounting")
+        self.assertNotIn("market/market.sqlite::orders.row_sha", zones)
+        self.assertEqual(
+            set(harness.ORDER_TRAJECTORY_FIELDS) | set(harness.ORDER_ACCOUNTING_FIELDS),
+            {field.name for field in dataclasses.fields(market_ledger.OrderLedgerRow)},
+        )
+        self.assertEqual(zones["kernel/storage_cost_report"], "accounting")
         strength = {"identity": 0, "accounting": 1, "trajectory": 2}
         for key, zone in zones.items():
             self.assertGreaterEqual(strength[harness.zone_of(key)], strength[zone], key)
@@ -190,6 +284,23 @@ class SyntheticGoldenTests(unittest.TestCase):
         trajectory["legacy_tariff"]["market/market.sqlite::period_summary.accepted_supply_mwh"][5] += 1.0
         with self.assertRaisesRegex(ValueError, "frozen"):
             harness.append_revision(golden, trajectory, reason="x", correction_ids=["p06.x"], base_commit="t")
+        with self.assertRaisesRegex(ValueError, "live loop"):
+            harness.append_revision(golden, observed, reason="x", correction_ids=["p06.x"], base_commit="t", loop="frozen")
+        self.assertEqual(revised["revisions"][1]["loop"], "live")
+
+    def test_planned_accounting_corrections_are_revisable(self):
+        """P0-4 S4 (charge audit), P0-6 S4 (order cost) and S10 (recovery report) only touch accounting."""
+
+        observed = copy.deepcopy(self.observed)
+        for variant in harness.VARIANTS:
+            columns = observed[variant]
+            columns["market/market.sqlite::storage_state.li_battery.charge_mwh"][11] = 10.0
+            columns["market/market.sqlite::orders.accounting_row_sha"][3] = "000000000000"
+            columns["kernel/storage_cost_report"]["li_battery"]["recovery_adequacy"] = {"version": 2}
+        revised = harness.append_revision(
+            copy.deepcopy(self.golden), observed, reason="toy", correction_ids=["p04.storage-charge-audit"], base_commit="t",
+        )
+        self.assertEqual(len(revised["revisions"][1]["delta"]), 6)
 
 
 class GoldenSensitivityTests(unittest.TestCase):
@@ -224,11 +335,14 @@ class HarnessIsolationTests(unittest.TestCase):
         ledger = market_ledger._ACTIVE_LEDGER
         capture = _capture_module()
         before = harness.tree_sha256(ROOT / "gridform_core")
-        status_before = capture.worktree_status_sha256()
+        # Scoped to the paths the harness could write: other test modules run
+        # concurrently in the same checkout (scripts/run_backend_tests.py).
+        scope = ("gridform_core", "tests/fixtures")
+        status_before = capture.worktree_status_sha256(scope)
         first = harness.columns_from_run(harness.run_case("legacy_tariff"))
         second = harness.columns_from_run(harness.run_case("legacy_tariff"))
         self.assertEqual(before, harness.tree_sha256(ROOT / "gridform_core"))
-        self.assertEqual(status_before, capture.worktree_status_sha256())
+        self.assertEqual(status_before, capture.worktree_status_sha256(scope))
         self.assertEqual([], harness.compare_columns("legacy_tariff", first, second, {}))
         self.assertEqual(environment, {key: os.environ.get(key) for key in harness.LOOP_ENVIRONMENT})
         self.assertEqual(bidding, config.simulation_parameters.get("bidding_factor"))
@@ -268,10 +382,33 @@ class Value101BaselineTests(unittest.TestCase):
                 actual = capture.run_e2e_case(case, Path(temporary))
                 gated = [
                     f"[{zone}] {key}: {left!r} -> {right!r}"
-                    for zone, key, left, right in capture.e2e_differences(expected, actual)
+                    for zone, key, left, right in capture.e2e_differences(expected, actual, baseline["zones"])
                     if zone != "identity"
                 ]
                 self.assertEqual([], gated[:20], f"{case}: value_101_day market.sqlite differs from the HEAD baseline")
+
+
+class E2EZoneGateTests(unittest.TestCase):
+    def test_stored_baseline_zones_gate_and_only_tighten(self):
+        capture = _capture_module()
+        baseline = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
+        zones = baseline["zones"]
+        price = "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh"
+        self.assertEqual(zones[price], "trajectory")
+        self.assertEqual(zones["market/market.sqlite::storage_state.charge_mwh"], "accounting")
+        self.assertEqual(zones["market/market.sqlite::storage_state.discharge_mwh"], "trajectory")
+        # A later rule that weakens a stored trajectory column is ignored.
+        from unittest import mock
+
+        with mock.patch.object(capture, "e2e_zone", lambda key: "identity"):
+            self.assertEqual(capture.gate_zone(price, zones), "trajectory")
+            self.assertEqual(capture.gate_zone("market/market.sqlite::new_table.x", zones), "identity")
+        with mock.patch.object(capture, "e2e_zone", lambda key: "trajectory"):
+            self.assertEqual(capture.gate_zone("market/market.sqlite::storage_state.charge_mwh", zones), "trajectory")
+        expected = {"tables": {"period_summary": {"rows": 1, "columns": {"clearing_price_gbp_per_mwh": "a"}}}, "metadata": {}}
+        actual = {"tables": {"period_summary": {"rows": 1, "columns": {"clearing_price_gbp_per_mwh": "b"}}}, "metadata": {}}
+        with mock.patch.object(capture, "e2e_zone", lambda key: "identity"):
+            self.assertEqual(capture.e2e_differences(expected, actual, zones)[0][0], "trajectory")
 
 
 if __name__ == "__main__":

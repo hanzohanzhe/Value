@@ -3,9 +3,9 @@
 Commands::
 
     capture_native_reproduction_golden.py capture          # write the 96-period synthetic golden (never overwrites)
-    capture_native_reproduction_golden.py check            # compare the live kernel with the synthetic golden
+    capture_native_reproduction_golden.py check            # compare the frozen and the live loop with the synthetic golden
     capture_native_reproduction_golden.py revise --reason TEXT --correction-id ID [...]
-                                                           # append an accounting-only revision
+                                                           # append an accounting-only revision (live loop)
     capture_native_reproduction_golden.py write-head-copy  # regenerate the frozen 35aadb3 loop copy
     capture_native_reproduction_golden.py capture-e2e      # write the VALUE 101 48-period market.sqlite baseline
     capture_native_reproduction_golden.py check-e2e        # compare a fresh 48-period run with that baseline
@@ -17,8 +17,10 @@ available, ``git show 35aadb3:<kernel>`` has the same hash.  They also check
 that the capture leaves the checkout unchanged: the content hash of
 ``gridform_core/`` (no trace files, no caches) and, when git is available, the
 full ``git status --porcelain --ignored -uall`` listing are compared before and
-after the runs.  The synthetic run is executed twice and must be
-identical.  See tests/native_reproduction_harness.py for the scenario, the
+after the runs.  The synthetic run is executed twice through the frozen loop
+and once through the live loop (render_live_loop, byte-identical to the frozen
+copy at 35aadb3); all three must be identical.  ``check-e2e`` gates on the
+zones stored in the baseline (a zone may only become stricter).  See tests/native_reproduction_harness.py for the scenario, the
 frozen loop and the zone rules.
 """
 
@@ -85,10 +87,14 @@ def _guarded_tree() -> dict[str, str | None]:
     }
 
 
-def worktree_status_sha256() -> str | None:
-    """Hash of ``git status`` including untracked and ignored files (None without git)."""
+def worktree_status_sha256(paths: tuple[str, ...] = ()) -> str | None:
+    """Hash of ``git status`` including untracked and ignored files (None without git).
 
-    status = _git("status", "--porcelain=v1", "--ignored", "-uall")
+    ``paths`` limits the listing (``git status ... -- <paths>``); the capture
+    commands, which run alone, check the whole checkout.
+    """
+
+    status = _git("status", "--porcelain=v1", "--ignored", "-uall", *(("--", *paths) if paths else ()))
     return None if status is None else hashlib.sha256(status.encode("utf-8")).hexdigest()
 
 
@@ -115,17 +121,22 @@ def command_capture(_arguments) -> int:
     source, git_record = verified_source()
     if harness.render_head_copy(source) != harness.HEAD_COPY_PATH.read_text(encoding="utf-8"):
         raise SystemExit("the committed head copy is not the rendering of the pinned source (run write-head-copy)")
+    if harness.render_live_loop(source, label=harness.HEAD_COMMIT, header=harness.HEADER) != \
+            harness.HEAD_COPY_PATH.read_text(encoding="utf-8"):
+        raise SystemExit("render_live_loop of the pinned source is not the frozen copy")
     before = _guarded_tree()
-    first = harness.observe()
-    second = harness.observe()
+    first = harness.observe(loop="frozen")
+    second = harness.observe(loop="frozen")
+    live = harness.observe(loop="live")
     after = _guarded_tree()
     if before != after:
         raise SystemExit(f"the checkout changed during the capture: {before} -> {after}")
-    differences = [
-        item for case in first for item in harness.compare_columns(case, first[case], second[case], {})
-    ]
-    if differences:
-        raise SystemExit("two synthetic runs differ:\n" + "\n".join(item.describe() for item in differences[:20]))
+    for label, other in (("two frozen-loop runs", second), ("the frozen and the live loop", live)):
+        differences = [
+            item for case in first for item in harness.compare_columns(case, first[case], other[case], {})
+        ]
+        if differences:
+            raise SystemExit(f"{label} differ:\n" + "\n".join(item.describe() for item in differences[:20]))
     record = _source_record(git_record)
     record["gridform_core_tree_sha256_before_after"] = before["gridform_core_tree_sha256"]
     record["git_status_unchanged"] = "unavailable" if before["git_status_sha256"] is None else "matched"
@@ -136,23 +147,26 @@ def command_capture(_arguments) -> int:
     return 0
 
 
-def command_check(_arguments) -> int:
+def command_check(arguments) -> int:
     golden = harness.load_golden()
-    differences = harness.compare_with_golden(golden, harness.observe())
-    if not differences:
-        print("native reproduction golden: identical")
-        return 0
-    for item in differences[:60]:
-        print(item.describe())
-    print(f"{len(differences)} column difference(s)")
-    return 1
+    failed = False
+    for loop in arguments.loop or harness.LOOPS:
+        gated = harness.gated_zones(golden, loop)
+        differences = harness.compare_with_golden(golden, harness.observe(loop=loop))
+        blocking = [item for item in differences if item.zone in gated]
+        for item in differences[:60]:
+            print(f"{loop}: {item.describe()}" + ("" if item.zone in gated else " (informational)"))
+        print(f"{loop} loop: {len(differences)} column difference(s), {len(blocking)} in gated zones {list(gated)}")
+        failed = failed or bool(blocking)
+    print("native reproduction golden: " + ("DIFFERENT" if failed else "identical in the gated zones"))
+    return 1 if failed else 0
 
 
 def command_revise(arguments) -> int:
     golden = harness.load_golden()
     revised = harness.append_revision(
-        golden, harness.observe(), reason=arguments.reason,
-        correction_ids=arguments.correction_id, base_commit=head_commit(),
+        golden, harness.observe(loop="live"), reason=arguments.reason,
+        correction_ids=arguments.correction_id, base_commit=head_commit(), loop="live",
     )
     harness.GOLDEN_PATH.write_text(harness.dump_golden(revised), encoding="utf-8")
     revision = revised["revisions"][-1]
@@ -237,12 +251,28 @@ def e2e_entries(digest: Mapping[str, Any]) -> dict[str, Any]:
     return entries
 
 
-def e2e_differences(expected: Mapping[str, Any], actual: Mapping[str, Any]) -> list[tuple[str, str, Any, Any]]:
+_STRENGTH = {"identity": 0, "accounting": 1, "trajectory": 2}
+
+
+def gate_zone(key: str, stored_zones: Mapping[str, str] | None = None) -> str:
+    """Zone of ``key`` for gating: the baseline's stored zone, made stricter by
+    the current rules if they say so but never weaker; current rules only for
+    keys the baseline did not record."""
+
+    current = e2e_zone(key)
+    stored = (stored_zones or {}).get(key)
+    if stored is None:
+        return current
+    return stored if _STRENGTH[stored] >= _STRENGTH[current] else current
+
+
+def e2e_differences(expected: Mapping[str, Any], actual: Mapping[str, Any],
+                    stored_zones: Mapping[str, str] | None = None) -> list[tuple[str, str, Any, Any]]:
     left, right = e2e_entries(expected), e2e_entries(actual)
     differences = []
     for key in sorted(set(left) | set(right)):
         if left.get(key) != right.get(key):
-            differences.append((e2e_zone(key), key, left.get(key), right.get(key)))
+            differences.append((gate_zone(key, stored_zones), key, left.get(key), right.get(key)))
     return differences
 
 
@@ -280,7 +310,8 @@ def command_check_e2e(_arguments) -> int:
     failed = False
     with tempfile.TemporaryDirectory(prefix="p06-e2e-") as temporary:
         for case, expected in baseline["cases"].items():
-            for zone, key, left, right in e2e_differences(expected, run_e2e_case(case, Path(temporary))):
+            actual = run_e2e_case(case, Path(temporary))
+            for zone, key, left, right in e2e_differences(expected, actual, baseline.get("zones")):
                 failed = failed or zone != "identity"
                 print(f"[{zone}] {case} {key}: {left!r} -> {right!r}")
     print("e2e baseline: " + ("DIFFERENT" if failed else "identical in trajectory and accounting zones"))
@@ -291,7 +322,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capture").set_defaults(handler=command_capture)
-    commands.add_parser("check").set_defaults(handler=command_check)
+    check = commands.add_parser("check")
+    check.add_argument("--loop", action="append", choices=harness.LOOPS,
+                       help="loop(s) to check (default: frozen and live)")
+    check.set_defaults(handler=command_check)
     revise = commands.add_parser("revise")
     revise.add_argument("--reason", required=True)
     revise.add_argument("--correction-id", action="append", required=True)

@@ -8601,8 +8601,8 @@
     },
     {
       "path": "scripts/capture_native_reproduction_golden.py",
-      "sha256": "393dd9d2e8cf93d2d0d5f21dcfc523af5a33307dd971c4a2f5c1a7b4f7f66bf4",
-      "bytes": 13995,
+      "sha256": "619077cd49069623c1037c6c34e732821a3a03d49552e576d485a7d2b248a501",
+      "bytes": 16131,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9255,8 +9255,8 @@
     },
     {
       "path": "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
-      "sha256": "4944a0e3f6d61b05a96585e415d2cfd7da93f8133b3357ce7f85ee6636e558f3",
-      "bytes": 254142,
+      "sha256": "7e59910c2504af4e4c3453e7ff3b2eaa5c6d7942c9c71dfd7e61fbe0683fc7ae",
+      "bytes": 257591,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9267,7 +9267,7 @@
     },
     {
       "path": "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
-      "sha256": "0d65b51c2e681b606099f1348955c41ff036daa7f53c5480f5deb83647f6bf4f",
+      "sha256": "f3674df9dc2b0480fb62ab46cc3fc46a1ec3d216718027b4f73c0573c960fc61",
       "bytes": 108684,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -9471,8 +9471,8 @@
     },
     {
       "path": "tests/native_reproduction_harness.py",
-      "sha256": "bcf8a2f25f66639d9235804ffa5d064a1a3a9f460ce86cc09c85113d02f04ca0",
-      "bytes": 59775,
+      "sha256": "53d33536b12ac34ae8f1cce7302e927e48e6777eec9aa2e71feedb63055cfe51",
+      "bytes": 72935,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,8 +10017,8 @@
     },
     {
       "path": "tests/test_native_reproduction_golden.py",
-      "sha256": "b78744dc7060237262c2bec9b68f7376a608ac15b07239806eb0cce8949a5648",
-      "bytes": 13826,
+      "sha256": "5098e0a0945edd9bfc0bb50e134b9ffb2ca8b6f6692f5eb670d711af0ddb6163",
+      "bytes": 22614,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

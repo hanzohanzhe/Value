@@ -7,7 +7,7 @@
   "Every table column is hashed over its rowid-ordered values (exact repr); period_summary is also kept in full. Zones follow tests/golden/zones.json with metadata keys classified individually; identity-zone entries and the whole-file hash are informational.",
   "Universal corrections that legitimately change these values (P0-4 accounting, P0-5a readers) re-capture as value101_baseline_48p_head_v2.json (plan M3); v1 is never rewritten."
  ],
- "base_commit": "bce710228c1a475f82d7cd2c9ca5e3d3359d0737",
+ "base_commit": "28ee84c595cb056141451e72448a09c5913444fa",
  "source": {
   "head_commit": "35aadb3",
   "kernel": "gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_simulation_model.py",
@@ -197,7 +197,7 @@
   "market/market.sqlite::storage_state.period": "trajectory",
   "market/market.sqlite::storage_state.asset_id": "trajectory",
   "market/market.sqlite::storage_state.state_of_charge_mwh": "trajectory",
-  "market/market.sqlite::storage_state.charge_mwh": "trajectory",
+  "market/market.sqlite::storage_state.charge_mwh": "accounting",
   "market/market.sqlite::storage_state.discharge_mwh": "trajectory",
   "market/market.sqlite::storage_state.power_capacity_mw": "trajectory",
   "market/market.sqlite::storage_state.energy_capacity_mwh": "trajectory",

@@ -18,15 +18,26 @@ Source identity is built in:
 * ``HEAD_KERNEL_SHA256`` pins the whole 35aadb3 kernel file;
 * ``HEAD_SEGMENTS`` pins the SHA-256 of every copied line range;
 * :func:`render_head_copy` regenerates the copy file from the pinned source and
-  :func:`verify_head_copy` checks the committed copy is exactly that rendering.
+  :func:`verify_head_copy` checks the committed copy is exactly that rendering
+  (segment hashes, whole-file re-rendering from the verified segments and the
+  pinned ``HEAD_COPY_SHA256``); :func:`compile_head_loop` calls it.
 
 The market functions that the frozen loop calls (``ahead_market_bidding``,
 ``curtailment_market_bidding``, ``balancing_market_bidding`` ...) are resolved
 from the *current* kernel module, so later rule-set work (P0-6 S2+) is checked
 against the golden ``tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json``
-through the same loop.  A replacement loop (for example a future
-``realise_period`` driver) can be passed to :func:`run_case` as ``loop=``; it
-must have ``run_simulation``'s signature, must call
+through the same loop.
+
+Because the frozen copy also freezes the HEAD ledger boundary (2857-3002), its
+accounting columns are HEAD-boundary values.  :func:`render_live_loop` applies
+the same two input replacements to the *current* kernel text (located by
+anchors), so ``loop="live"`` runs the current boundary and market functions;
+at 35aadb3 it is byte-identical to the frozen copy.  Accounting revisions are
+captured through the live loop, and :func:`gated_zones` says which zones a
+loop is checked in.  Another replacement loop (for example a P0-6 S3
+``realise_period`` driver, once the anchors no longer apply) can be passed to
+:func:`run_case` as a callable ``loop=``; it must have ``run_simulation``'s
+signature, must call
 ``driver.begin_period(period, generators, batterys, connections, electrolyzer)``
 where HEAD assigned weather and interconnector inputs, and must not read
 weather files.  It reaches the driver through the module global
@@ -71,6 +82,8 @@ REPLACED_RANGES = {
 }
 FIXTURE_DIR = ROOT / "tests" / "fixtures" / "native_psm"
 HEAD_COPY_PATH = FIXTURE_DIR / "head_run_simulation_35aadb3.py"
+# SHA-256 of the whole committed copy (header, markers, replacements, segments).
+HEAD_COPY_SHA256 = "07ad59660191a3c840bd3f48783589e9f959cea1271f4f1141d2b0583e00e3a8"
 GOLDEN_PATH = FIXTURE_DIR / "doctoral_reproduction_golden_v1.json"
 E2E_BASELINE_PATH = FIXTURE_DIR / "value101_baseline_48p_head_v1.json"
 ZONES_PATH = ROOT / "tests" / "golden" / "zones.json"
@@ -141,21 +154,42 @@ RETURN_NAMES = (
 # Harness-local zone rules, evaluated before tests/golden/zones.json (first
 # match wins; unmatched keys fall through to zones.json, whose default is
 # trajectory).  Cost, fee, income and declared-audit columns are accounting
-# (Q12); prices, dispatch, flows, SoC and asset state stay trajectory.
+# (Q12); prices, dispatch, flows, SoC and asset state stay trajectory.  Each
+# rule is (pattern, zone, why).
 LOCAL_ZONE_RULES = (
-    ("kernel/run_simulation::storage_fees", "accounting"),
-    ("kernel/run_simulation::generation_costs", "accounting"),
-    ("kernel/run_simulation::avg_gen_fees", "accounting"),
-    ("kernel/run_simulation::avg_curtailment_fees", "accounting"),
-    ("kernel/run_simulation::avg_balancing_fees", "accounting"),
-    ("kernel/run_simulation::avg_storage_fees", "accounting"),
-    ("kernel/run_simulation::total_annual_cost", "accounting"),
-    ("kernel/run_simulation::sold_fees", "accounting"),
-    ("kernel/run_simulation::purchase_fees", "accounting"),
-    ("kernel/run_simulation::total_income_dict*", "accounting"),
-    ("kernel/run_simulation::ahead_*", "accounting"),
-    ("kernel/run_simulation::balance_*", "accounting"),
-    ("kernel/declared::*", "accounting"),
+    ("kernel/run_simulation::storage_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::generation_costs", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::avg_gen_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::avg_curtailment_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::avg_balancing_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::avg_storage_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::total_annual_cost", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::sold_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::purchase_fees", "accounting", "Q12 cost ledger"),
+    ("kernel/run_simulation::total_income_dict*", "accounting", "Q12 income ledger"),
+    ("kernel/run_simulation::ahead_*", "accounting", "Q12 attribution: category cost shares of real demand (HEAD 1449/1695/2827)"),
+    ("kernel/run_simulation::balance_*", "accounting", "Q12 attribution: category cost shares of real demand"),
+    ("kernel/declared::*", "accounting", "Q12 audit tables: declared clearing inputs and outcomes"),
+    # P3-14: StorageStateRow.charge_mwh is the literal 0.0 at HEAD (kernel
+    # 2997); DECISIONS override (d) lists charge accounting as a universal
+    # accounting-zone correction and plan 6.4 marks P3-14 'universal (revise
+    # the accounting section, Q12)', applied by P0-4 S4.  Both key forms: the
+    # per-asset harness column and the table column of the e2e baseline.  Not
+    # '*charge_mwh', which would also catch discharge_mwh (trajectory).
+    ("market/market.sqlite::storage_state.*.charge_mwh", "accounting",
+     "Q12 audit table, P3-14 charge accounting (decision (d)); HEAD literal 0.0, P0-4 S4"),
+    ("market/market.sqlite::storage_state.charge_mwh", "accounting",
+     "Q12 audit table, P3-14 charge accounting (decision (d)); HEAD literal 0.0, P0-4 S4"),
+    # Order ledger: the cost and settlement fields (zones.json already classes
+    # orders.physical_resource_cost_gbp / market_payment_gbp as accounting;
+    # P5-06, P0-6 S4) are hashed separately from the bid/acceptance fields.
+    ("market/market.sqlite::orders.accounting_row_sha", "accounting",
+     "Q12 cost ledger: orders.physical_resource_cost_gbp and market_payment_gbp (P5-06, P0-6 S4)"),
+    # Battery.storage_cost_report(): cost-recovery report (annualised capital,
+    # fixed opex, recovery adequacy); recovery_adequacy v2 lands in P0-6 S10.
+    # Bid effects of its parameters show up in the trajectory columns.
+    ("kernel/storage_cost_report*", "accounting",
+     "Q12 cost ledger / validation report: storage cost-recovery report (P0-6 S10)"),
 )
 
 
@@ -192,17 +226,15 @@ def verify_head_source(source: str) -> None:
             raise ValueError(f"segment {name} {first}-{last}: expected {expected}, got {got}")
 
 
-def render_head_copy(source: str) -> str:
-    """The frozen copy file, rendered from the pinned 35aadb3 kernel source."""
+def _render(segments: Mapping[str, str], ranges: Mapping[str, tuple[int, int]], label: str, header: str) -> str:
+    """Assemble a loop file from the A/C/E segment texts and the two replacements."""
 
-    verify_head_source(source)
-    segments = {name: (first, last) for name, first, last, _ in HEAD_SEGMENTS}
-    out = [HEADER]
+    out = [header]
 
     def verbatim(name: str) -> None:
-        first, last = segments[name]
-        out.append(f"# >>> VERBATIM {name} {HEAD_COMMIT}:{first}-{last}\n")
-        out.append(segment_text(source, first, last))
+        first, last = ranges[name]
+        out.append(f"# >>> VERBATIM {name} {label}:{first}-{last}\n")
+        out.append(segments[name])
         out.append(f"# <<< VERBATIM {name}\n")
 
     verbatim("A")
@@ -217,6 +249,19 @@ def render_head_copy(source: str) -> str:
     out.append("        # <<< HARNESS REPLACEMENT D\n")
     verbatim("E")
     return "".join(out)
+
+
+def _head_ranges() -> dict[str, tuple[int, int]]:
+    return {name: (first, last) for name, first, last, _ in HEAD_SEGMENTS}
+
+
+def render_head_copy(source: str) -> str:
+    """The frozen copy file, rendered from the pinned 35aadb3 kernel source."""
+
+    verify_head_source(source)
+    ranges = _head_ranges()
+    segments = {name: segment_text(source, first, last) for name, (first, last) in ranges.items()}
+    return _render(segments, ranges, HEAD_COMMIT, HEADER)
 
 
 def copied_segments(copy_text: str) -> dict[str, str]:
@@ -238,11 +283,14 @@ def copied_segments(copy_text: str) -> dict[str, str]:
 
 
 def verify_head_copy(copy_text: str | None = None) -> dict[str, Any]:
-    """Check the committed copy against the pinned segment hashes.
+    """Check the committed copy: pinned segment hashes and the whole file.
 
     This does not need the 35aadb3 source: the per-segment SHA-256 values are
     the hashes of the HEAD lines, so a byte change anywhere in a VERBATIM block
-    is detected even after the live kernel diverges.
+    is detected even after the live kernel diverges.  Text outside the VERBATIM
+    blocks (header, markers, the two replacements) is checked by re-rendering
+    the whole file from the verified segments and by the pinned
+    ``HEAD_COPY_SHA256``, so an injected line anywhere is rejected.
     """
 
     text = HEAD_COPY_PATH.read_text(encoding="utf-8") if copy_text is None else copy_text
@@ -254,14 +302,88 @@ def verify_head_copy(copy_text: str | None = None) -> dict[str, Any]:
         got = sha256_text(segments[name])
         if got != expected:
             raise ValueError(f"head copy segment {name} ({HEAD_COMMIT}:{first}-{last}) was edited: {got}")
+    if _render(segments, _head_ranges(), HEAD_COMMIT, HEADER) != text:
+        raise ValueError("head copy differs from the rendering of its verified segments (text outside VERBATIM blocks was edited)")
+    copy_sha = sha256_text(text)
+    if copy_sha != HEAD_COPY_SHA256:
+        raise ValueError(f"head copy sha256 {copy_sha} is not the pinned {HEAD_COPY_SHA256}")
     return {
         "head_commit": HEAD_COMMIT,
         "kernel": KERNEL_RELPATH,
         "kernel_sha256": HEAD_KERNEL_SHA256,
         "segments": {name: {"lines": [first, last], "sha256": sha} for name, first, last, sha in HEAD_SEGMENTS},
         "replaced": {name: {"lines": [first, last], "what": what} for name, (first, last, what) in REPLACED_RANGES.items()},
-        "copy_sha256": sha256_text(text),
+        "copy_sha256": copy_sha,
     }
+
+
+# Anchors that locate the same A/B/C/D/E split in the *current* kernel text.
+LIVE_ANCHORS = {
+    "function": "def run_simulation(",
+    "B": "    # This part was moved from the if __name__",
+    "C": "    for period in range(periods):",
+    "D": "        solar_Nottingham.capacity_limit",
+    "E": "        # chosen generation in wholesale",
+}
+LIVE_LABEL = "live"
+LIVE_HEADER = """# Live default-PSM period loop rendered by tests/native_reproduction_harness.py
+# (render_live_loop) from the current kernel text with the same two synthetic
+# input replacements as the frozen 35aadb3 copy.  Generated in memory only.
+
+"""
+
+
+def live_loop_ranges(source: str) -> dict[str, tuple[int, int]]:
+    """1-based A/C/E line ranges of ``run_simulation`` in ``source``, found by anchors.
+
+    A runs from ``def run_simulation(`` to the line before the weather-loading
+    block, C from ``for period in range(periods):`` to the line before the
+    per-period weather assignment, E from the blank lines before the first
+    clearing comment to the last non-blank line of the function (the next
+    column-0 line ends it).  Raises ``LookupError`` when an anchor is missing,
+    e.g. after P0-6 S3 moves the period body into ``realise_period``; such a
+    step must update these anchors or pass its own ``loop=``.
+    """
+
+    lines = source.splitlines(keepends=True)
+
+    def find(prefix: str, after: int) -> int:
+        for index in range(after, len(lines)):
+            if lines[index].startswith(prefix):
+                return index
+        raise LookupError(f"live kernel has no line starting with {prefix!r} after line {after + 1}")
+
+    function = find(LIVE_ANCHORS["function"], 0)
+    b_start = find(LIVE_ANCHORS["B"], function + 1)
+    c_start = find(LIVE_ANCHORS["C"], b_start + 1)
+    d_start = find(LIVE_ANCHORS["D"], c_start + 1)
+    e_anchor = find(LIVE_ANCHORS["E"], d_start + 1)
+    e_start = e_anchor
+    while e_start - 1 > d_start and not lines[e_start - 1].strip():
+        e_start -= 1
+    end = len(lines)
+    for index in range(e_anchor + 1, len(lines)):
+        if lines[index][:1] not in ("", " ", "\t", "\n", "\r"):
+            end = index
+            break
+    while end - 1 > e_anchor and not lines[end - 1].strip():
+        end -= 1
+    return {"A": (function + 1, b_start), "C": (c_start + 1, d_start), "E": (e_start + 1, end)}
+
+
+def render_live_loop(source: str, *, label: str = LIVE_LABEL, header: str = LIVE_HEADER) -> str:
+    """The current kernel loop with the same B/D input replacements as the frozen copy.
+
+    At 35aadb3, ``render_live_loop(source, label=HEAD_COMMIT, header=HEADER)``
+    is byte-identical to the committed frozen copy (tested).  Unlike the
+    frozen copy it carries the *current* ledger boundary, so universal
+    accounting corrections made in the loop (P0-4 S4-S6, P0-6 S4, A2 stress
+    events) reach the golden only through this loop.
+    """
+
+    ranges = live_loop_ranges(source)
+    segments = {name: segment_text(source, first, last) for name, (first, last) in ranges.items()}
+    return _render(segments, ranges, label, header)
 
 
 def live_kernel_is_head(root: Path = ROOT) -> bool:
@@ -701,16 +823,44 @@ def kernel_module():
     return importlib.import_module(KERNEL_MODULE)
 
 
+def _compile_loop(text: str, filename: str, kernel) -> tuple[Callable[..., Any], dict[str, Any]]:
+    namespace = dict(vars(kernel))
+    namespace["__name__"] = "p06_synthetic_loop"
+    code = compile(text, filename, "exec")
+    exec(code, namespace)  # noqa: S102 - hash-verified frozen copy or anchored live kernel text
+    return namespace["run_simulation"], namespace
+
+
 def compile_head_loop(kernel=None) -> tuple[Callable[..., Any], dict[str, Any]]:
     """Compile the frozen copy into a namespace cloned from the live kernel."""
 
     kernel = kernel or kernel_module()
     verify_head_copy()
-    namespace = dict(vars(kernel))
-    namespace["__name__"] = "p06_frozen_head_loop"
-    code = compile(HEAD_COPY_PATH.read_text(encoding="utf-8"), str(HEAD_COPY_PATH), "exec")
-    exec(code, namespace)  # noqa: S102 - pinned, hash-verified test fixture
-    return namespace["run_simulation"], namespace
+    return _compile_loop(HEAD_COPY_PATH.read_text(encoding="utf-8"), str(HEAD_COPY_PATH), kernel)
+
+
+def compile_live_loop(kernel=None) -> tuple[Callable[..., Any], dict[str, Any]]:
+    """Compile :func:`render_live_loop` of the current kernel file (live ledger boundary)."""
+
+    kernel = kernel or kernel_module()
+    source = kernel_path().read_text(encoding="utf-8")
+    return _compile_loop(render_live_loop(source), f"<live {KERNEL_RELPATH}>", kernel)
+
+
+# Loop drivers.  "frozen": the verbatim 35aadb3 loop (HEAD ledger boundary,
+# live market functions); "live": the current kernel loop with the same input
+# replacements (current ledger boundary and market functions).
+LOOPS = ("frozen", "live")
+
+
+def resolve_loop(loop, kernel=None) -> tuple[Callable[..., Any], dict[str, Any]]:
+    if loop is None or loop == "frozen":
+        return compile_head_loop(kernel)
+    if loop == "live":
+        return compile_live_loop(kernel)
+    if callable(loop):
+        return loop, getattr(loop, "__globals__", {})
+    raise ValueError(f"unknown loop {loop!r}; expected one of {LOOPS} or a callable")
 
 
 def build_assets(kernel, scenario: Mapping[str, Any]):
@@ -724,9 +874,13 @@ def build_assets(kernel, scenario: Mapping[str, Any]):
     return generators, batteries, connections, electrolyzer
 
 
-def run_case(variant: str, scenario: Mapping[str, Any] | None = None, *, loop: Callable[..., Any] | None = None,
+def run_case(variant: str, scenario: Mapping[str, Any] | None = None, *, loop=None,
              runtime_attributes: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Run one storage variant of the synthetic scenario; return raw results.
+
+    ``loop`` is ``"frozen"`` (default, the verbatim 35aadb3 loop), ``"live"``
+    (:func:`compile_live_loop`) or a callable with ``run_simulation``'s
+    signature.
 
     ``runtime_attributes`` are added to the module runtime next to
     ``storage_cost`` (for example the doctoral ``market_rules`` of P0-6 S2);
@@ -739,10 +893,7 @@ def run_case(variant: str, scenario: Mapping[str, Any] | None = None, *, loop: C
     scenario = scenario or build_scenario()
     kernel = kernel_module()
     driver = SyntheticDriver(scenario)
-    if loop is None:
-        loop, namespace = compile_head_loop(kernel)
-    else:
-        namespace = getattr(loop, "__globals__", {})
+    loop, namespace = resolve_loop(loop, kernel)
     ledger = RecordingLedger()
     with _loop_environment(kernel, variant, float(scenario["bidding_factor"]), runtime_attributes):
         namespace["__p06_synthetic_driver__"] = driver
@@ -808,6 +959,13 @@ def _per_period(values: Sequence[Any], periods: int, name: str) -> list[Any]:
     return values
 
 
+ORDER_TRAJECTORY_FIELDS = (
+    "order_id", "year", "period", "stage", "asset_id", "asset_type", "side",
+    "offer_price_gbp_per_mwh", "offered_mwh", "accepted_mwh", "status", "reason_code",
+)
+ORDER_ACCOUNTING_FIELDS = ("physical_resource_cost_gbp", "market_payment_gbp")
+
+
 def columns_from_run(result: Mapping[str, Any], periods: int = PERIODS) -> dict[str, Any]:
     """Column-oriented canonical view of one run (key -> per-period list or value)."""
 
@@ -830,9 +988,19 @@ def columns_from_run(result: Mapping[str, Any], periods: int = PERIODS) -> dict[
     if len(ledger.orders) != periods:
         raise AssertionError(f"ledger recorded orders for {len(ledger.orders)} periods")
     columns["market/market.sqlite::orders.#rows"] = [len(rows) for rows in ledger.orders]
-    columns["market/market.sqlite::orders.row_sha"] = [
-        _short(json.dumps(canonical(rows), sort_keys=True)) for rows in ledger.orders
-    ]
+    # Bid and acceptance fields (trajectory) and cost/settlement fields
+    # (accounting, P5-06) are hashed separately so an accounting correction
+    # never moves a trajectory column.
+    for name, fields in (("trajectory_row_sha", ORDER_TRAJECTORY_FIELDS), ("accounting_row_sha", ORDER_ACCOUNTING_FIELDS)):
+        columns[f"market/market.sqlite::orders.{name}"] = [
+            _short(json.dumps([{field: canonical(row[field]) for field in fields} for row in rows], sort_keys=True))
+            for rows in ledger.orders
+        ]
+    for rows in ledger.orders:
+        for row in rows:
+            unknown = set(row) - set(ORDER_TRAJECTORY_FIELDS) - set(ORDER_ACCOUNTING_FIELDS)
+            if unknown:
+                raise AssertionError(f"OrderLedgerRow has unclassified fields {sorted(unknown)}")
     for stage in ("ahead", "curtailment", "balancing"):
         inputs = [row for row in ledger.declared if row["kind"] == "input" and row["stage"] == stage]
         by_input = {row["input_sha256"]: row for row in ledger.declared if row["kind"] == "outcome"}
@@ -928,7 +1096,7 @@ def _zones_json_rules() -> tuple[list[tuple[str, str]], str]:
 
 
 def zone_of(key: str) -> str:
-    for pattern, zone in LOCAL_ZONE_RULES:
+    for pattern, zone, _ in LOCAL_ZONE_RULES:
         if fnmatch.fnmatchcase(key, pattern):
             return zone
     rules, default = _zones_json_rules()
@@ -1037,11 +1205,12 @@ def pinned_zones(golden: Mapping[str, Any]) -> dict[str, str]:
     return zones
 
 
-def observe(variants: Iterable[str] = VARIANTS, *, loop: Callable[..., Any] | None = None,
+def observe(variants: Iterable[str] = VARIANTS, *, loop=None,
             runtime_attributes: Mapping[str, Any] | None = None) -> dict[str, dict[str, Any]]:
     scenario = build_scenario()
+    function, _ = resolve_loop(loop)
     return {
-        variant: columns_from_run(run_case(variant, scenario, loop=loop, runtime_attributes=runtime_attributes))
+        variant: columns_from_run(run_case(variant, scenario, loop=function, runtime_attributes=runtime_attributes))
         for variant in variants
     }
 
@@ -1061,6 +1230,24 @@ def compare_with_golden(golden: Mapping[str, Any], observed: Mapping[str, Mappin
     return differences
 
 
+def gated_zones(golden: Mapping[str, Any], loop: str) -> tuple[str, ...]:
+    """Zones in which a difference from the latest golden revision fails a check.
+
+    The live loop carries the current ledger boundary and is gated in the
+    trajectory and accounting zones.  The frozen loop keeps the 35aadb3 ledger
+    boundary (2857-3002), so its accounting columns are HEAD-boundary values:
+    they are gated only while the golden has no accounting revision; after one,
+    the frozen loop is gated in the trajectory zone only and its accounting
+    differences are informational (the live loop gates them).
+    """
+
+    if loop == "live":
+        return ("trajectory", "accounting")
+    if loop == "frozen":
+        return ("trajectory", "accounting") if len(golden.get("revisions", [])) <= 1 else ("trajectory",)
+    raise ValueError(f"unknown loop {loop!r}")
+
+
 def new_golden(observed: Mapping[str, Mapping[str, Any]], *, base_commit: str, source: Mapping[str, Any]) -> dict[str, Any]:
     scenario = build_scenario()
     zones: dict[str, str] = {}
@@ -1073,7 +1260,8 @@ def new_golden(observed: Mapping[str, Mapping[str, Any]], *, base_commit: str, s
         "notes": [
             "P0-6 S1: 96-period synthetic golden of the default PSM loop, captured at HEAD with the frozen verbatim 35aadb3 loop (tests/fixtures/native_psm/head_run_simulation_35aadb3.py) and the live market functions.",
             "Values are exact doubles. Zones follow decision Q12 (tests/golden/zones.json plus harness-local rules in tests/native_reproduction_harness.py); the trajectory zone of this doctoral golden is frozen, accounting columns change only through an appended revision with a universal correction id (capture script 'revise').",
-            "Revision 0 is written once; it is never rewritten.",
+            "Revision 0 is written once; it is never rewritten. At capture the frozen loop and the live loop (render_live_loop of the HEAD kernel) are byte-identical and give identical columns.",
+            "Accounting revisions are captured through the live loop: the frozen loop keeps the 35aadb3 ledger boundary, so its accounting columns stay HEAD-boundary values (gated_zones).",
         ],
         "source": dict(source),
         "scenario_sha256": sha256_text(json.dumps(scenario, sort_keys=True)),
@@ -1085,15 +1273,24 @@ def new_golden(observed: Mapping[str, Mapping[str, Any]], *, base_commit: str, s
         "loop_environment": dict(LOOP_ENVIRONMENT),
         "zones": zones,
         "cases": {case: {"columns": dict(columns)} for case, columns in observed.items()},
-        "revisions": [{"index": 0, "base_commit": base_commit, "reason": "P0-6 S1 HEAD capture", "correction_ids": []}],
+        "revisions": [{"index": 0, "base_commit": base_commit, "reason": "P0-6 S1 HEAD capture", "correction_ids": [],
+                       "loop": "frozen (identical to live at capture)"}],
     }
 
 
 def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, Any]], *, reason: str,
-                    correction_ids: Sequence[str], base_commit: str) -> dict[str, Any]:
-    """Append an accounting-only revision; trajectory changes are refused."""
+                    correction_ids: Sequence[str], base_commit: str, loop: str = "live") -> dict[str, Any]:
+    """Append an accounting-only revision; trajectory changes are refused.
+
+    ``observed`` must come from the live loop (or a replacement driver of the
+    current kernel, recorded as ``loop``); the frozen loop cannot carry a
+    correction of the ledger boundary.
+    """
 
     import re
+
+    if loop == "frozen":
+        raise ValueError("revisions are captured through the live loop; the frozen loop keeps the 35aadb3 ledger boundary")
 
     if not correction_ids or not all(re.match(CORRECTION_ID_PATTERN, item) for item in correction_ids):
         raise ValueError("a revision needs at least one correction id matching " + CORRECTION_ID_PATTERN)
@@ -1123,6 +1320,7 @@ def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, 
         "base_commit": base_commit,
         "reason": reason,
         "correction_ids": list(correction_ids),
+        "loop": loop,
         "delta": sorted({f"{item.case}:{item.key}:{item.kind}" for item in differences}),
         "zones": zones,
         "patch": patch,
@@ -1186,15 +1384,58 @@ def coverage_facts(columns: Mapping[str, Any], scenario: Mapping[str, Any] | Non
     curtailment_branch = [p for p in range(periods) if real[p] < forecast[p]]
     balancing_branch = [p for p in range(periods) if real[p] >= forecast[p]]
     ahead_unserved = dict(zip(columns["kernel/declared::ahead.periods"], columns["kernel/declared::ahead.unserved_target_mw"]))
+    ahead_storage = dict(zip(columns["kernel/declared::ahead.periods"], columns["kernel/declared::ahead.storage_accepted_mw"]))
     balancing_storage = dict(zip(columns["kernel/declared::balancing.periods"], columns["kernel/declared::balancing.storage_accepted_mw"]))
+    storage_fees = columns["kernel/run_simulation::storage_fees"]
+    electrolyser_vre = [
+        item["args"]["name"] for item in scenario["fleet"]["generators"]
+        if item["args"]["name"] in VRE_NAMES and float(item["args"].get("electrolyzer_limit", 0)) > 0
+    ]
+    batteries = [item["name"] for item in scenario["fleet"]["batteries"]]
 
     def nuclear_excess(p: int) -> bool:
         value = excess_lists[p]
         return isinstance(value, list) and any(str(item[0]).startswith("<NuclearGenerator") for item in value)
 
     def carried_storage_fee(p: int) -> bool:
+        # Observed carry (HEAD 2274/2768/2815): a curtailment-branch period
+        # whose ahead stage accepted no storage still books a storage fee, and
+        # the last balancing period before it accepted storage.
         previous = [b for b in balancing_branch if b < p]
-        return bool(previous) and (balancing_storage.get(previous[-1]) or 0.0) > 0.0
+        return (
+            bool(previous) and (balancing_storage.get(previous[-1]) or 0.0) > 0.0
+            and (ahead_storage.get(p) or 0.0) == 0.0 and storage_fees[p] > 0.0
+        )
+
+    def named_total(value: Any, name: str) -> float:
+        if not isinstance(value, list):
+            return 0.0
+        label = f"<ExpensiverenewableGenerator:{name}>"
+        return sum(float(item[1]) for item in value if isinstance(item, list) and item and item[0] == label)
+
+    def skim_leak(p: int) -> bool:
+        # Observed HEAD 1173 leak: the pre-clearing skim zeroed the VRE's
+        # capacity before using it (real_energy == 0 although the electrolyser
+        # skim is positive), and the availability is neither skimmed,
+        # dispatched, curtailed nor recorded as surplus.
+        for name in electrolyser_vre:
+            available = float(scenario["vre_availability_mw"][name][p])
+            skim = float(columns[f"kernel/state::{name}.real_energy"][p])
+            dispatched = columns.get(f"kernel/dispatch::<ExpensiverenewableGenerator:{name}>", [0.0] * periods)[p]
+            curtailed_vre = named_total(columns["kernel/run_simulation::curtailed_energy_dict"][p], name)
+            surplus = named_total(columns["kernel/run_simulation::excess_energy_dict"][p], name)
+            if available > 0 and skim == 0.0 and available - skim - dispatched - curtailed_vre - surplus > 0:
+                return True
+        return False
+
+    def discharge_above_rating(p: int) -> bool:
+        # P5-03: per-stage power reset lets one period discharge above rating.
+        prefix = "market/market.sqlite::storage_state."
+        return any(
+            columns[f"{prefix}{name}.discharge_mwh"][p] / PERIOD_HOURS
+            > columns[f"{prefix}{name}.power_capacity_mw"][p] + 1e-9
+            for name in batteries
+        )
 
     return {
         "curtailment_branch": curtailment_branch,
@@ -1219,9 +1460,7 @@ def coverage_facts(columns: Mapping[str, Any], scenario: Mapping[str, Any] | Non
         "thermal_down_regulation": [p for p in curtailment_branch if curtailed[p] > 0 and vre_available[p] == 0.0],
         "imports": [p for p in range(periods) if columns[summary + "import_mwh"][p] > 0],
         "electrolysis": [p for p in range(periods) if columns["kernel/run_simulation::flexible_demand_list"][p] > 0],
-        "vre_skim_leak": [
-            p for p in range(periods)
-            if any(0 < scenario["vre_availability_mw"][name][p] < 1.0 for name in VRE_NAMES[:2])
-        ],
+        "vre_skim_leak": [p for p in range(periods) if skim_leak(p)],
+        "storage_discharge_above_rated_power": [p for p in range(periods) if discharge_above_rating(p)],
         "compatibility_adjustment": [p for p in range(periods) if columns[summary + "compatibility_adjustment_mwh"][p] != 0.0],
     }
