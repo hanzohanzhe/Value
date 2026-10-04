@@ -22,7 +22,10 @@ capacity, investment proposals) of the doctoral family is frozen; the
 accounting zone (residuals, adjustments, audit tables, cost ledgers,
 validation reports) may be revised under a universal correction id.  Zone
 rules live in ``tests/golden/zones.json``; the first matching pattern wins and
-anything unmatched is trajectory (the conservative default).
+anything unmatched is trajectory (the conservative default).  A column's zone
+is pinned by the first revision that records it (``pinned_zones``): later
+revisions may only make it stricter, and deltas are classified with the pinned
+zone, so editing zones.json cannot unfreeze a doctoral trajectory column.
 
 Exact comparison is meant for the reference platform (linux-x86_64,
 CPython 3.10, numpy 1.24.4); elsewhere ``tolerance`` mode compares the
@@ -51,6 +54,10 @@ ZONES = ("trajectory", "accounting", "identity")
 # realistic concern for regression detection.
 HASH_CHARS = 32
 GATED_ZONES = ("trajectory", "accounting")
+# Strictness order.  A column's zone is pinned by the first revision that
+# records it; a later revision may move it to a stricter zone but never to a
+# weaker one, so editing zones.json cannot relabel a frozen trajectory column.
+ZONE_STRENGTH = {"identity": 0, "accounting": 1, "trajectory": 2}
 
 VOLATILE_KEYS = frozenset(
     {
@@ -323,21 +330,66 @@ class Difference:
         return {"key": self.key, "kind": self.kind, "zone": self.zone, "section": self.section}
 
 
-def compare_digests(expected: Mapping[str, Any], actual: Mapping[str, Any], mode: str = "exact") -> list[Difference]:
+def compare_digests(
+    expected: Mapping[str, Any],
+    actual: Mapping[str, Any],
+    mode: str = "exact",
+    pinned: Mapping[str, str] | None = None,
+) -> list[Difference]:
+    """Per-column differences.  ``pinned`` (see :func:`pinned_zones`) overrides
+    the zone recorded in either digest, so a delta is always classified with
+    the zone a column had when it entered the golden file."""
+
     if mode not in {"exact", "tolerance"}:
         raise ValueError(f"unknown comparison mode {mode!r}")
     field = "sha256" if mode == "exact" else "sha256_9g"
     left = expected["columns"]
     right = actual["columns"]
     differences: list[Difference] = []
+    pinned = pinned or {}
+
+    def zone(key: str, recorded: str) -> str:
+        return _stricter(pinned.get(key, recorded), recorded)
+
     for key in sorted(set(left) | set(right)):
         if key not in right:
-            differences.append(Difference(key, "removed", left[key]["zone"], section_of(key)))
+            differences.append(Difference(key, "removed", zone(key, left[key]["zone"]), section_of(key)))
         elif key not in left:
-            differences.append(Difference(key, "added", right[key]["zone"], section_of(key)))
+            differences.append(Difference(key, "added", zone(key, right[key]["zone"]), section_of(key)))
         elif left[key][field] != right[key][field] or left[key]["count"] != right[key]["count"]:
-            differences.append(Difference(key, "changed", left[key]["zone"], section_of(key)))
+            differences.append(
+                Difference(key, "changed", _stricter(zone(key, left[key]["zone"]), right[key]["zone"]), section_of(key))
+            )
     return differences
+
+
+def _stricter(first: str, second: str) -> str:
+    return first if ZONE_STRENGTH.get(first, 2) >= ZONE_STRENGTH.get(second, 2) else second
+
+
+def pinned_zones(golden: Mapping[str, Any], upto: int | None = None) -> dict[str, str]:
+    """Zone of every column as pinned by the revisions ``0..upto-1``.
+
+    A column takes the zone of the first revision that records it; a later
+    revision can only make it stricter.
+    """
+
+    pinned: dict[str, str] = {}
+    revisions = golden.get("revisions") or []
+    for revision in revisions[: len(revisions) if upto is None else upto]:
+        for key, record in revision["digest"]["columns"].items():
+            pinned[key] = _stricter(pinned[key], record["zone"]) if key in pinned else record["zone"]
+    return pinned
+
+
+def zone_weakenings(pinned: Mapping[str, str], digest: Mapping[str, Any]) -> list[tuple[str, str, str]]:
+    """``(key, pinned zone, recorded zone)`` for columns recorded in a weaker zone."""
+
+    rows = []
+    for key, record in digest["columns"].items():
+        if key in pinned and ZONE_STRENGTH.get(record["zone"], 2) < ZONE_STRENGTH.get(pinned[key], 2):
+            rows.append((key, pinned[key], record["zone"]))
+    return sorted(rows)
 
 
 def summarise(differences: Iterable[Difference]) -> dict[str, Any]:
@@ -383,12 +435,22 @@ def validate_golden_file(golden: Mapping[str, Any], trajectory_allowlist: Mappin
             errors.append(f"{name}: revision {index} has no reason")
         if not revision.get("correction_ids") and not revision.get("findings"):
             errors.append(f"{name}: revision {index} names no correction id or finding")
-        delta = compare_digests(revisions[index - 1]["digest"], revision["digest"], "exact")
+        pinned = pinned_zones(golden, index)
+        weakened = zone_weakenings(pinned, revision["digest"])
+        if weakened:
+            sample = ", ".join(f"{key} {before}->{after}" for key, before, after in weakened[:5])
+            errors.append(
+                f"{name}: revision {index} moves {len(weakened)} column(s) to a weaker zone than revision "
+                f"{_first_revision(golden, weakened[0][0])} recorded ({sample})"
+            )
+        delta = compare_digests(revisions[index - 1]["digest"], revision["digest"], "exact", pinned)
         if not delta:
             errors.append(f"{name}: revision {index} does not change the digest")
-        recorded = sorted(row["key"] for row in revision.get("delta", {}).get("differences", []))
-        if recorded != sorted(row.key for row in delta):
+        recorded_rows = revision.get("delta", {}).get("differences", [])
+        if sorted(row["key"] for row in recorded_rows) != sorted(row.key for row in delta):
             errors.append(f"{name}: revision {index} delta does not match its digests")
+        elif sorted((row["key"], row["zone"]) for row in recorded_rows) != sorted((row.key, row.zone) for row in delta):
+            errors.append(f"{name}: revision {index} delta records zones that differ from the pinned zones")
         if golden.get("family") == "doctoral":
             trajectory = [row for row in delta if row.zone == "trajectory"]
             if trajectory:
@@ -403,6 +465,13 @@ def validate_golden_file(golden: Mapping[str, Any], trajectory_allowlist: Mappin
                     errors.append(f"{name}: revision {index} re-baselines trajectory again for {sorted(reused)}")
                 used |= approved
     return errors
+
+
+def _first_revision(golden: Mapping[str, Any], key: str) -> int:
+    for revision in golden.get("revisions") or []:
+        if key in revision["digest"]["columns"]:
+            return int(revision.get("revision", 0))
+    return 0
 
 
 def new_golden(family: str, case: str, digest: Mapping[str, Any], base_commit: str, reason: str) -> dict[str, Any]:
@@ -436,7 +505,7 @@ def append_revision(
         raise ValueError("a golden revision needs a reason")
     if not correction_ids and not findings:
         raise ValueError("a golden revision needs at least one correction id or finding")
-    delta = compare_digests(latest_digest(golden), digest, "exact")
+    delta = compare_digests(latest_digest(golden), digest, "exact", pinned_zones(golden))
     if not delta:
         raise ValueError("digest is unchanged; no revision needed")
     revision = {

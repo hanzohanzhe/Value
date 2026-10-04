@@ -34,7 +34,9 @@ class GoldenCorrectedFamilyTests(unittest.TestCase):
                 record = json.loads(CAPTURE.golden_path(FAMILY, case_id).read_text(encoding="utf-8"))
                 differences = [
                     row.to_dict()
-                    for row in golden.compare_digests(golden.latest_digest(record), digests[case_id], mode)
+                    for row in golden.compare_digests(
+                        golden.latest_digest(record), digests[case_id], mode, golden.pinned_zones(record)
+                    )
                     if row.zone in golden.GATED_ZONES
                 ]
                 self.assertEqual(differences, [], f"{FAMILY}/{case_id} differs from revision {record['revisions'][-1]['revision']}")

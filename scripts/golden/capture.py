@@ -3,7 +3,7 @@
 Commands::
 
     capture.py check    [--tier fast|full|nightly] [--cases D1 C1 ...] [--mode exact|tolerance]
-    capture.py init     --cases ...                      # write revision 0 (refuses to overwrite)
+    capture.py init     --cases ...                      # write revision 0 (never overwrites)
     capture.py revise   --cases ... --reason TEXT [--correction-id ID ...] [--finding ID ...]
     capture.py validate                                  # bookkeeping only, no model runs
     capture.py dump     --cases ... --out-dir DIR        # raw digests for inspection
@@ -130,7 +130,9 @@ def command_check(arguments: argparse.Namespace) -> int:
             report["errors"].append(f"{family}/{case_id}: no golden file (run capture.py init)")
             continue
         golden = json.loads(path.read_text(encoding="utf-8"))
-        differences = golden_lib.compare_digests(golden_lib.latest_digest(golden), digests[case_id], mode)
+        differences = golden_lib.compare_digests(
+            golden_lib.latest_digest(golden), digests[case_id], mode, golden_lib.pinned_zones(golden)
+        )
         gated = [row for row in differences if row.zone in GATED_ZONES]
         report["cases"][case_id] = {
             "family": family,
@@ -153,8 +155,10 @@ def command_init(arguments: argparse.Namespace) -> int:
     cases = load_cases()
     selected = select_cases(cases, arguments.tier, arguments.cases)
     existing = [case_id for case_id in selected if golden_path(cases[case_id]["family"], case_id).exists()]
-    if existing and not arguments.force_reinit:
-        raise SystemExit(f"golden file(s) already exist: {', '.join(existing)}")
+    if existing:
+        # Revision 0 is written exactly once; there is no override.  A changed
+        # result is recorded with ``revise`` (p0_gate append_only enforces it).
+        raise SystemExit(f"golden file(s) already exist, revision 0 is immutable: {', '.join(existing)}")
     first = run_cases(selected, arguments.jobs)
     second = run_cases(selected, arguments.jobs) if arguments.twice else first
     head = _git_head()
@@ -260,7 +264,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         if name == "init":
             command.add_argument("--reason", default="revision 0: behaviour of the model code at 35aadb3")
             command.add_argument("--twice", action="store_true", help="capture twice and require identical digests")
-            command.add_argument("--force-reinit", action="store_true", help=argparse.SUPPRESS)
         if name == "revise":
             command.add_argument("--reason", required=True)
             command.add_argument("--correction-id", action="append")

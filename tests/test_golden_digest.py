@@ -163,6 +163,89 @@ class GoldenDigestTests(unittest.TestCase):
         record["revisions"][1]["delta"]["differences"] = []
         self.assertTrue(any("delta" in error for error in golden.validate_golden_file(record, {"findings": {}})))
 
+    def test_zone_relabel_cannot_unfreeze_a_doctoral_trajectory_column(self) -> None:
+        """Relabelling via zones.json and changing the price under an accounting id is refused."""
+
+        allowlist = {"findings": {"P6-24": "approved"}}
+        price = "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh"
+        relabel = golden.ZoneRules(((price.replace("clearing", "*clearing"), "accounting"),) + ZONES.rules)
+        record = self._golden("doctoral")
+        moved = golden.digest_run(_write_run(self.root / "moved", price=50.0), relabel)
+        self.assertEqual(moved["columns"][price]["zone"], "accounting")
+        golden.append_revision(record, moved, base_commit="d", reason="relabel", correction_ids=["p04.ledger"])
+        self.assertEqual(record["revisions"][1]["delta"]["by_zone"], {"trajectory": 1})
+        errors = golden.validate_golden_file(record, allowlist)
+        self.assertTrue(any("weaker zone" in error for error in errors), errors)
+        self.assertTrue(any("trajectory column" in error for error in errors), errors)
+        # the same relabel without any value change is still refused
+        unchanged = golden.digest_run(_write_run(self.root / "same", residual=0.5), relabel)
+        quiet = self._golden("doctoral")
+        golden.append_revision(quiet, unchanged, base_commit="d", reason="relabel", correction_ids=["p04.ledger"])
+        self.assertTrue(any("weaker zone" in error for error in golden.validate_golden_file(quiet, allowlist)))
+        # a hand-written delta that books the change under accounting is caught too
+        forged = copy.deepcopy(record)
+        for row in forged["revisions"][1]["delta"]["differences"]:
+            row["zone"] = "accounting"
+        self.assertTrue(any("pinned" in error for error in golden.validate_golden_file(forged, allowlist)))
+        # making a column stricter is allowed
+        stricter = golden.ZoneRules((("market/market.sqlite::period_summary.energy_balance_residual_mwh", "trajectory"),))
+        tightened = self._golden("corrected")
+        golden.append_revision(
+            tightened,
+            golden.digest_run(_write_run(self.root / "tight", residual=0.5), stricter),
+            base_commit="d", reason="x", correction_ids=["a.b"],
+        )
+        self.assertEqual(golden.validate_golden_file(tightened, allowlist), [])
+
+    def test_relabel_on_the_committed_d1_golden_is_refused(self) -> None:
+        record = json.loads((ROOT / "tests" / "golden" / "doctoral" / "D1.json").read_text(encoding="utf-8"))
+        price = "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh"
+        self.assertEqual(record["revisions"][0]["digest"]["columns"][price]["zone"], "trajectory")
+        digest = copy.deepcopy(golden.latest_digest(record))
+        digest["columns"][price]["zone"] = "accounting"
+        digest["columns"][price]["sha256"] = "0" * golden.HASH_CHARS
+        golden.append_revision(record, digest, base_commit="x", reason="relabel", correction_ids=["p04.ledger"])
+        allowlist = json.loads((ROOT / "tests" / "golden" / "doctoral_trajectory_rebaselines.json").read_text(encoding="utf-8"))
+        errors = golden.validate_golden_file(record, allowlist)
+        self.assertTrue(any("weaker zone" in error for error in errors), errors)
+        self.assertTrue(any("without an approved universal finding" in error for error in errors), errors)
+
+    def test_pinned_zones_follow_first_record_and_only_tighten(self) -> None:
+        def revision(zone: str) -> dict:
+            return {"digest": {"columns": {"t::c": {"zone": zone}}}}
+
+        record = {"revisions": [revision("accounting"), revision("trajectory"), revision("identity")]}
+        self.assertEqual(golden.pinned_zones(record, 1), {"t::c": "accounting"})
+        self.assertEqual(golden.pinned_zones(record), {"t::c": "trajectory"})
+        self.assertEqual(
+            golden.zone_weakenings(golden.pinned_zones(record, 2), record["revisions"][2]["digest"]),
+            [("t::c", "trajectory", "identity")],
+        )
+
+
+class GoldenInitTests(unittest.TestCase):
+    def setUp(self) -> None:
+        import contextlib
+        import importlib.util
+        import io
+
+        spec = importlib.util.spec_from_file_location("golden_capture_init", ROOT / "scripts" / "golden" / "capture.py")
+        self.capture = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(self.capture)
+        self._quiet = contextlib.redirect_stderr(io.StringIO())
+
+    def test_revision_zero_cannot_be_rewritten(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(self.capture, "run_cases", side_effect=AssertionError("must not run")):
+            with self._quiet, self.assertRaises(SystemExit) as raised:
+                self.capture.main(["init", "--cases", "D1", "--force-reinit"])
+            self.assertEqual(raised.exception.code, 2)  # the flag no longer exists
+            with self.assertRaises(SystemExit) as raised:
+                self.capture.main(["init", "--cases", "D1"])
+            self.assertIn("immutable", str(raised.exception.code))
+
 
 if __name__ == "__main__":
     unittest.main()
