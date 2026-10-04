@@ -8,6 +8,15 @@
 
 from __future__ import annotations
 
+# P0 rule (P0_CONVENTIONS section 2): never write bytecode, even when started
+# without -B; the managed install's runtime is read-only and must stay
+# byte-identical.  Inherited by every subprocess through the environment.
+import os as _os
+import sys as _sys
+
+_sys.dont_write_bytecode = True
+_os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+
 import argparse
 import importlib
 import json

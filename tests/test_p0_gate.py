@@ -256,6 +256,123 @@ class P0GateTests(unittest.TestCase):
             self.assertEqual(seen["node"], "ECONNREFUSED")
             self.assertTrue(any(str(row["test"]).startswith("node:") for row in attempts), attempts)
 
+    def _fake_install(self, folder: str) -> Path:
+        installed = Path(folder) / "installed"
+        for name in ("app/gridform_core", "runtime/python/lib/python3.10/json", "installer", "state", "logs"):
+            (installed / name).mkdir(parents=True)
+        (installed / "runtime" / "python" / "lib" / "python3.10" / "json" / "__init__.py").write_text("x = 1\n", encoding="utf-8")
+        (installed / "app" / "gridform_core" / "core.py").write_text("y = 2\n", encoding="utf-8")
+        (installed / "install-receipt.json").write_text("{}", encoding="utf-8")
+        old = 1_700_000_000
+        for path in [*installed.rglob("*"), installed]:
+            os.utime(path, (old, old))
+        os.utime(installed / "install-receipt.json", (old + 10, old + 10))
+        return installed
+
+    def test_installed_inventory_detects_any_write_outside_state_and_logs(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            installed = self._fake_install(folder)
+            before = GATE.installed_inventory(installed)
+            self.assertIn("runtime/python/lib/python3.10/json/__init__.py", before)
+            self.assertNotIn("state", before)
+            (installed / "state" / "run.json").write_text("{}", encoding="utf-8")
+            (installed / "logs" / "backend.log").write_text("line\n", encoding="utf-8")
+            (installed / ".supervisor.lock").write_text("pid", encoding="utf-8")
+            self.assertEqual(GATE.inventory_changes(before, GATE.installed_inventory(installed))["counts"],
+                             {"added": 0, "removed": 0, "changed": 0})
+            cache = installed / "runtime" / "python" / "lib" / "python3.10" / "json" / "__pycache__"
+            cache.mkdir()
+            (cache / "__init__.cpython-310.pyc").write_bytes(b"pyc")
+            (installed / "app" / "gridform_core" / "core.py").write_text("y = 3  # edited\n", encoding="utf-8")
+            changes = GATE.inventory_changes(before, GATE.installed_inventory(installed))
+            self.assertIn("runtime/python/lib/python3.10/json/__pycache__/__init__.cpython-310.pyc", changes["added"])
+            self.assertIn("runtime/python/lib/python3.10/json/__pycache__", changes["added"])
+            self.assertIn("app/gridform_core/core.py", changes["changed"])
+            self.assertIn("runtime/python/lib/python3.10/json", changes["changed"])  # directory mtime
+
+    def test_guard_fails_when_the_install_was_written_after_its_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            installed = self._fake_install(folder)
+            environment = {"VALUE_DATA_HOME": tempfile.gettempdir()}
+            with mock.patch.object(GATE.RATCHET, "installed_root", return_value=installed), mock.patch.dict(os.environ, environment):
+                self.assertEqual(GATE.step_guard(_gate())["status"], "passed")
+                (installed / "state" / "run.json").write_text("{}", encoding="utf-8")
+                (installed / ".supervisor.lock").write_text("pid", encoding="utf-8")
+                self.assertEqual(GATE.step_guard(_gate())["status"], "passed")
+                cache = installed / "runtime" / "python" / "lib" / "python3.10" / "json" / "__pycache__"
+                cache.mkdir()
+                (cache / "decoder.cpython-310.pyc").write_bytes(b"pyc")
+                outcome = GATE.step_guard(_gate())
+            self.assertEqual(outcome["status"], "failed")
+            self.assertEqual(outcome["detail"]["installed_written_after_receipt"],
+                             ["runtime/python/lib/python3.10/json/__pycache__/decoder.cpython-310.pyc"])
+
+    def test_gate_fails_when_a_step_writes_into_the_install(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            installed = self._fake_install(folder)
+            target = installed / "runtime" / "python" / "lib" / "python3.10" / "json" / "scanner.cpython-310.pyc"
+
+            def harmless(gate):
+                (installed / "state" / "run.json").write_text("{}", encoding="utf-8")
+                return {"status": "passed"}
+
+            def polluting(gate):
+                target.write_bytes(b"pyc")
+                return {"status": "passed"}
+
+            outcomes = {}
+            for name, function in (("harmless", harmless), ("polluting", polluting)):
+                report = Path(folder) / f"{name}.json"
+                with mock.patch.object(GATE.RATCHET, "installed_root", return_value=installed), \
+                        mock.patch.dict(GATE.STEPS, {"quick": [GATE.Step(name, function)]}), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    code = GATE.main(["quick", "--report", str(report), "--quiet"])
+                outcomes[name] = (code, json.loads(report.read_text(encoding="utf-8")))
+        code, payload = outcomes["harmless"]
+        self.assertEqual((code, payload["status"]), (0, "passed"), payload)
+        code, payload = outcomes["polluting"]
+        self.assertEqual(code, 1)
+        self.assertIn("installed_inventory", payload["failed"])
+        detail = next(row for row in payload["steps"] if row["step"] == "installed_inventory")["detail"]
+        self.assertEqual(detail["added"], ["runtime/python/lib/python3.10/json/scanner.cpython-310.pyc"])
+
+    def test_p0_scripts_never_write_bytecode_even_without_minus_b(self) -> None:
+        """Each P0 entry script disables bytecode writing before importing
+        project modules, so a call without -B cannot pollute a read-only
+        install (M0-X0 round-3 review, major 2).  The child runs with a
+        private PYTHONPYCACHEPREFIX so nothing it writes lands anywhere real."""
+
+        import re
+        import subprocess
+        import sys
+
+        scripts = ("scripts/p0_gate.py", "scripts/run_backend_tests.py", "scripts/golden/capture.py",
+                   "scripts/golden/run_case.py", "scripts/seal_runtime_overlay.py",
+                   "scripts/refresh_source_release_manifest.py", "scripts/check_version_ledger.py")
+        spawn = re.compile(r"\[\s*(?:python|gate\.python|self\.python|sys\.executable|arguments\.python)\s*,(?!\s*\"-B\")")
+        child = (
+            "import runpy, sys\n"
+            "path = sys.argv[1]\n"
+            "sys.argv = [path, '--help']\n"
+            "try:\n"
+            "    runpy.run_path(path, run_name='__main__')\n"
+            "except SystemExit:\n"
+            "    pass\n"
+            "sys.stderr.write('DONT_WRITE=%s\\n' % sys.dont_write_bytecode)\n"
+        )
+        for script in scripts:
+            with self.subTest(script=script):
+                text = (ROOT / script).read_text(encoding="utf-8")
+                self.assertEqual(spawn.findall(text), [], "every Python subprocess is started with -B")
+                with tempfile.TemporaryDirectory() as prefix:
+                    environment = {key: value for key, value in os.environ.items() if key != "PYTHONDONTWRITEBYTECODE"}
+                    environment.update({"PYTHONPYCACHEPREFIX": prefix, "PYTHONPATH": str(ROOT)})
+                    completed = subprocess.run([sys.executable, "-c", child, str(ROOT / script)], cwd=ROOT, env=environment,
+                                               capture_output=True, text=True, timeout=120)
+                    self.assertIn("DONT_WRITE=True", completed.stderr, completed.stderr[-2000:])
+                    project = [path for path in Path(prefix).rglob("*.pyc") if str(ROOT).lstrip("/") in str(path)]
+                    self.assertEqual(project, [], "project modules were compiled to bytecode")
+
     def test_quick_tier_enforces_append_only(self) -> None:
         self.assertIn("append_only", [step.name for step in GATE.QUICK_STEPS])
 

@@ -14,6 +14,11 @@ until their entry point exists, so the gate grows without being rewritten.
 Guard rails: refuses to run when VALUE_DATA_HOME, TMPDIR or the report path
 lies inside the managed install, never starts services on ports 8766/8800,
 and every Python subprocess runs with -B and PYTHONDONTWRITEBYTECODE=1.
+The managed install must stay byte-identical: ``guard`` fails when any file
+under its app/, runtime/ or installer/ is newer than install-receipt.json,
+and the path/type/size/mtime inventory of those trees (plus its top-level
+files) taken at gate start is compared at the end (``installed_inventory``);
+any added, removed or changed entry fails the gate.
 Every Python and node subprocess runs under the network guard
 (scripts/value_test_netguard.py through a generated sitecustomize,
 scripts/value-test-netguard.mjs through NODE_OPTIONS=--import): connections to
@@ -30,6 +35,15 @@ Only ``status: passed`` (exit 0) counts as "p0_gate passed".
 """
 
 from __future__ import annotations
+
+# P0 rule (P0_CONVENTIONS section 2): never write bytecode, even when started
+# without -B; the managed install's runtime is read-only and must stay
+# byte-identical.  Inherited by every subprocess through the environment.
+import os as _os
+import sys as _sys
+
+_sys.dont_write_bytecode = True
+_os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 import argparse
 import collections
@@ -228,6 +242,60 @@ def _tail(text: str, limit: int = 3000) -> str:
 # steps
 
 
+# The managed install's trees that nothing may write into (state/ and logs/
+# belong to the live install; dot-files such as .supervisor.lock to its
+# supervisor).
+INSTALLED_TREES = ("app", "runtime", "installer")
+INSTALL_RECEIPT = "install-receipt.json"
+
+
+def installed_inventory(installed: Path) -> dict[str, list[Any]]:
+    """``relative path -> [type, size, mtime_ns]`` of the install's app/,
+    runtime/ and installer/ trees (directories included, symlinks not
+    followed) and of its top-level regular files except dot-files."""
+
+    inventory: dict[str, list[Any]] = {}
+
+    def record(path: Path) -> None:
+        info = path.lstat()
+        kind = "l" if path.is_symlink() else "d" if path.is_dir() else "f"
+        inventory[path.relative_to(installed).as_posix()] = [kind, None if kind == "d" else info.st_size, info.st_mtime_ns]
+
+    for entry in sorted(installed.iterdir()):
+        if entry.name in INSTALLED_TREES and entry.is_dir() and not entry.is_symlink():
+            for directory, subdirectories, files in os.walk(entry, followlinks=False):
+                record(Path(directory))
+                for name in files + [name for name in subdirectories if (Path(directory) / name).is_symlink()]:
+                    record(Path(directory) / name)
+        elif not entry.name.startswith(".") and (entry.is_file() or entry.is_symlink()):
+            record(entry)
+    return inventory
+
+
+def inventory_changes(before: dict[str, list[Any]], after: dict[str, list[Any]], limit: int = 50) -> dict[str, Any]:
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
+    changed = sorted(path for path in set(before) & set(after) if before[path] != after[path])
+    return {
+        "added": added[:limit], "removed": removed[:limit], "changed": changed[:limit],
+        "counts": {"added": len(added), "removed": len(removed), "changed": len(changed)},
+    }
+
+
+def written_after_receipt(installed: Path, limit: int = 50) -> list[str]:
+    """Files and symlinks under app/, runtime/, installer/ newer than the install receipt."""
+
+    receipt = installed / INSTALL_RECEIPT
+    if not receipt.is_file():
+        return [f"{INSTALL_RECEIPT} missing"]
+    stamp = receipt.stat().st_mtime_ns
+    newer = sorted(
+        path for path, (kind, _size, mtime) in installed_inventory(installed).items()
+        if kind != "d" and "/" in path and mtime > stamp
+    )
+    return newer[:limit] + ([f"... {len(newer) - limit} more"] if len(newer) > limit else [])
+
+
 def step_guard(gate: Gate) -> dict[str, Any]:
     installed = RATCHET.installed_root()
     paths = [os.environ.get("VALUE_DATA_HOME"), tempfile.gettempdir(), gate.arguments.report]
@@ -238,7 +306,14 @@ def step_guard(gate: Gate) -> dict[str, Any]:
         return _status(False, "the gate must run in a source checkout, not inside the managed install")
     free = shutil.disk_usage(tempfile.gettempdir()).free
     minimum = DISK_MINIMUM_BYTES[gate.tier]
-    return _status(free >= minimum, {"free_bytes": free, "minimum_bytes": minimum, "installed_root": str(installed) if installed else None})
+    detail: dict[str, Any] = {"free_bytes": free, "minimum_bytes": minimum, "installed_root": str(installed) if installed else None}
+    polluted: list[str] = []
+    if installed is not None:
+        polluted = written_after_receipt(installed)
+        detail["installed_written_after_receipt"] = polluted
+        if polluted:
+            detail["rule"] = "nothing may write into the managed install (e.g. .pyc from a python call without -B)"
+    return _status(free >= minimum and not polluted, detail)
 
 
 def step_release_manifest(gate: Gate) -> dict[str, Any]:
@@ -794,16 +869,31 @@ def waivers(tier: str, results: Sequence[dict[str, Any]], append_base: str) -> l
     return rows
 
 
+def installed_check(installed: Path | None, before: dict[str, list[Any]] | None) -> dict[str, Any]:
+    """Result row comparing the install inventory taken at gate start with now."""
+
+    if installed is None or before is None:
+        return {"step": "installed_inventory", "status": "skipped", "seconds": 0,
+                "detail": "no managed install found (VALUE_INSTALLED_ROOT or an interpreter under <install>/runtime)"}
+    changes = inventory_changes(before, installed_inventory(installed))
+    unchanged = not any(changes["counts"].values())
+    return {"step": "installed_inventory", "status": "passed" if unchanged else "failed", "seconds": 0,
+            "detail": {"installed_root": str(installed), "entries": len(before), **changes}}
+
+
 def _main(arguments: argparse.Namespace) -> int:
     gate = Gate(arguments.tier, arguments)
     steps = STEPS[arguments.tier]
     if arguments.only:
         steps = [step for step in steps if step.name in arguments.only]
     started = time.monotonic()
+    installed = RATCHET.installed_root()
+    inventory = installed_inventory(installed) if installed is not None and installed.is_dir() else None
     gate.execute(steps)
     attempts = netguard_attempts()
     gate.results.append({"step": "network_guard", "status": "failed" if attempts else "passed",
                          "detail": {"forbidden_port_attempts": attempts}, "seconds": 0})
+    gate.results.append(installed_check(installed, inventory))
     failed = [row["step"] for row in gate.results if row["status"] == "failed"]
     waived = waivers(arguments.tier, gate.results, arguments.append_base)
     status = "failed" if failed else ("passed_with_waivers" if waived else "passed")
