@@ -253,16 +253,24 @@ def reserve_run_space(
 
 def remove_legacy_reservation_lock(runs_root: Path) -> bool:
     """Start-up only (the backend singleton is held): drop a pre-P0-3 O_EXCL
-    lock file, which may still contain a dead process id."""
+    lock file, which may still contain a dead process id.
+
+    The legacy file is recognised by its content, a decimal process id.  The
+    current flock file is empty on POSIX and holds the single byte ``0`` on
+    Windows (the byte msvcrt locks), and is left alone.
+    """
 
     path = Path(runs_root) / RESERVATION_LOCK
     try:
-        if path.is_file() and path.stat().st_size > 0:
-            path.unlink()
-            return True
+        if not path.is_file() or path.stat().st_size > 64:
+            return False
+        content = path.read_bytes().strip()
+        if not content.isdigit() or content == b"0":
+            return False
+        path.unlink()
+        return True
     except OSError:
         return False
-    return False
 
 
 def quarantine_orphan_run_directories(runs_root: Path, trash_root: Path) -> list[str]:

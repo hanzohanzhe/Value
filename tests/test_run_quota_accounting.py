@@ -115,6 +115,9 @@ class QuotaAccountingTests(unittest.TestCase):
         self.assertFalse(legacy.exists())
         legacy.write_bytes(b"")  # the new, empty flock file is left alone
         self.assertFalse(remove_legacy_reservation_lock(self.runs))
+        legacy.write_bytes(b"0")  # the Windows flock file holds the locked byte
+        self.assertFalse(remove_legacy_reservation_lock(self.runs))
+        self.assertEqual(legacy.read_bytes(), b"0")
 
     def test_t6_held_lock_times_out_as_lock_timeout(self) -> None:
         environment = dict(os.environ, PYTHONPATH=str(ROOT), PYTHONDONTWRITEBYTECODE="1")
