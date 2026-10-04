@@ -5926,14 +5926,14 @@
     },
     {
       "path": "e2e/offline-ratchet.mjs",
-      "sha256": "d28ac4f97eecfb7ccd3cd1024c16e5efb9575e19625d5aa83177c2a6812e632c",
-      "bytes": 5609,
+      "sha256": "04e2874bfc818fd89abd2450320db6eab8134df32e65e1e7a63374b3deafa5e4",
+      "bytes": 5953,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "f89473a6f4417e475424e709be89b62c1a4df490a085de9dc3e475b456a4e0d2",
-      "bytes": 3313,
+      "sha256": "b9b0274ab58480a6d3c4a9cedab7f1fe9f6e06a73f874ed9299cb699f76f0181",
+      "bytes": 3445,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9515,8 +9515,8 @@
     },
     {
       "path": "tests/frontend/unit/offline-ratchet.test.mjs",
-      "sha256": "f995c8dc1220f164fbc729a874b5c5fbdb686f799b1b1bde40bcda66a68dc049",
-      "bytes": 5812,
+      "sha256": "4783714b614b48ff54abfb238b6bd4165ab720fb7eb11cfb0bd1accb14fdc002",
+      "bytes": 7962,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

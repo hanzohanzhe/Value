@@ -4,7 +4,8 @@
 //   * a registered failure that now passes must be removed from the registry
 //     (otherwise a fixed spec could silently regress again);
 //   * every registered spec must actually have run (a missing report or a
-//     renamed test must not read as green);
+//     renamed test must not read as green), and a registered failure that is
+//     now skipped (test.skip / test.fixme / a skip condition) did not run either;
 //   * skipped tests are reported, never counted as passes;
 //   * a registered failure may pin *why* it fails: with "error_must_match"
 //     (a regular expression) every error of that test must match it, so a
@@ -56,6 +57,7 @@ export function evaluateOffline(report, subset) {
   const passedIds = new Set(passed.map((row) => row.id));
   const fixedButListed = [...known.keys()].filter((id) => passedIds.has(id));
   const knownMissing = [...known.keys()].filter((id) => !inScope.some((row) => row.id === id));
+  const skippedKnown = [...known.keys()].filter((id) => skipped.some((row) => row.id === id));
   const unexpectedErrors = [];
   for (const row of failed) {
     const pattern = known.get(row.id)?.error_must_match;
@@ -78,9 +80,9 @@ export function evaluateOffline(report, subset) {
     .map(([name, minimum]) => [name.replace(/^e2e\//, ""), minimum])
     .filter(([name, minimum]) => (perSpec[name]?.passed ?? 0) < minimum)
     .map(([name, minimum]) => `${name}: ${perSpec[name]?.passed ?? 0} passed < required ${minimum}`);
-  const ok = !newFailures.length && !fixedButListed.length && !knownMissing.length && !specsNotRun.length && !minimums.length && !unexpectedErrors.length;
+  const ok = !newFailures.length && !fixedButListed.length && !knownMissing.length && !skippedKnown.length && !specsNotRun.length && !minimums.length && !unexpectedErrors.length;
   return {
-    ok, perSpec, newFailures, fixedButListed, knownMissing, specsNotRun, minimums, unexpectedErrors,
+    ok, perSpec, newFailures, fixedButListed, knownMissing, skippedKnown, specsNotRun, minimums, unexpectedErrors,
     totals: { passed: passed.length, failed: failed.length, skipped: skipped.length, known_failures: failed.length - newFailures.length },
   };
 }
@@ -91,6 +93,7 @@ export function describeEvaluation(result) {
   for (const id of result.newFailures) lines.push(`NEW FAILURE ${id}`);
   for (const id of result.fixedButListed) lines.push(`FIXED BUT STILL REGISTERED (remove from e2e/offline-subset.json) ${id}`);
   for (const id of result.knownMissing) lines.push(`REGISTERED TEST DID NOT RUN ${id}`);
+  for (const id of result.skippedKnown ?? []) lines.push(`REGISTERED TEST WAS SKIPPED ${id}`);
   for (const name of result.specsNotRun) lines.push(`SPEC PRODUCED NO RESULTS ${name}`);
   for (const line of result.minimums) lines.push(`BELOW MINIMUM ${line}`);
   for (const line of result.unexpectedErrors) lines.push(`REGISTERED FAILURE BROKE DIFFERENTLY ${line}`);
