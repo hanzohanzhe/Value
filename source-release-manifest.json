@@ -1394,6 +1394,7 @@
     "tests/test_result_queries.py",
     "tests/test_results_summary.py",
     "tests/test_retained_source_manifest.py",
+    "tests/test_run_delete_safety.py",
     "tests/test_run_execution_admission.py",
     "tests/test_run_input_snapshot.py",
     "tests/test_run_lifecycle.py",
@@ -3457,8 +3458,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "9095c7386bd0119bcf3e61a1117e8d42135e287db16e4c61f3e944b731c5f3ce",
-      "bytes": 168450,
+      "sha256": "ec430285321c7eb5a9dfeee19ffe4e5f51de2b2b658bd6e1fbe3ac99a2006712",
+      "bytes": 170649,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11027,6 +11028,12 @@
       "sha256": "e8fd7350cc8e5d7bdb3008857b56e642e741b64a2832672ed123e80205b1cbc9",
       "bytes": 2925,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_run_delete_safety.py",
+      "sha256": "6331342f320d4549b8fa72244b72bf5df42cbed2d9b66f674981c8fa5f2b52e8",
+      "bytes": 7317,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_run_execution_admission.py",

@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import mimetypes
+import os
 import re
 import shutil
 import signal
@@ -162,7 +163,7 @@ from gridform_core.domain_results import (
     query_network_periods,
     query_network_summary,
 )
-from gridform_core.run_lifecycle import LifecycleError, atomic_status_transition
+from gridform_core.run_lifecycle import LifecycleError
 from backend.lifecycle.atomic_io import atomic_write_json
 from backend.lifecycle.file_locks import LockTimeout
 from backend.lifecycle.run_status import (
@@ -171,7 +172,9 @@ from backend.lifecycle.run_status import (
     create_status,
     update_status,
 )
-from backend.lifecycle.states import ACTIVE_STATES
+from backend.lifecycle.states import ACTIVE_STATES, DELETABLE_STATES, classify
+from backend.lifecycle.run_status import STATUS_LOCK, STATUS_LOCK_TIMEOUT_SECONDS, is_lifecycle_root_file
+from backend.lifecycle.file_locks import hold_lock
 from backend.lifecycle.file_locks import FileLock, LOCK_HELD
 from backend.lifecycle.worker_lease import lease_state
 from backend.run_supervisor import RunSupervisor, WorkerSpawnError, worker_liveness
@@ -520,6 +523,14 @@ def _run_root(run_id: str) -> Path | None:
     return root if (root / "status.json").is_file() else None
 
 
+def _downloadable_artifact(relative: str) -> bool:
+    """Lock files and root lifecycle records are never listed or served."""
+    name = relative.rsplit("/", 1)[-1]
+    if name.endswith(".lock"):
+        return False
+    return "/" in relative or not is_lifecycle_root_file(name)
+
+
 def safe_run_artifact(run_id: str, relative_path: str) -> Path | None:
     """Resolve a downloadable artifact without permitting traversal."""
 
@@ -531,8 +542,10 @@ def safe_run_artifact(run_id: str, relative_path: str) -> Path | None:
         return None
     candidate = (root / Path(decoded)).resolve()
     try:
-        candidate.relative_to(root)
+        relative = candidate.relative_to(root).as_posix()
     except ValueError:
+        return None
+    if not _downloadable_artifact(relative):
         return None
     return candidate if candidate.is_file() else None
 
@@ -551,6 +564,8 @@ def list_run_artifacts(run_id: str) -> list[dict[str, object]]:
         if not path.is_file() or path.suffix in {".tmp", ".wal", ".shm"}:
             continue
         relative = path.relative_to(root).as_posix()
+        if not _downloadable_artifact(relative):
+            continue
         rows.append({
             "id": relative,
             "name": path.name,
@@ -2759,6 +2774,47 @@ class Handler(BaseHTTPRequestHandler):
         with run_action_lock(run_id):
             self._run_lifecycle_action_locked(run_id, action, body)
 
+    def _delete_run(self, run_id: str, root: Path) -> None:
+        """Move a terminal run to the trash first; record ``deleting`` only there.
+
+        A failed move leaves the run exactly as it was (F5-12): no state is
+        written before the directory has moved.  The check happens under the
+        run's status lock, which is released before the rename (Windows cannot
+        rename a directory holding an open lock file).
+        """
+
+        with hold_lock(root / STATUS_LOCK, timeout=STATUS_LOCK_TIMEOUT_SECONDS):
+            state = classify(read_json(root / "status.json"))
+            alive = lease_state(root) == LOCK_HELD
+        if state not in DELETABLE_STATES:
+            self._json({"error": "Active runs must be cancelled first", "error_code": "GF_RUN_NOT_TERMINAL",
+                        "status": state}, 409); return
+        if alive:
+            self._json({"error": "A model worker of this run is still alive", "error_code": "GF_WORKER_ALIVE"}, 409); return
+        TRASH_ROOT.mkdir(parents=True, exist_ok=True)
+        stem = f"{run_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        target = TRASH_ROOT / stem
+        suffix = 1
+        while target.exists():
+            suffix += 1
+            target = TRASH_ROOT / f"{stem}-{suffix}"
+        size = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+        try:
+            os.rename(root, target)
+        except OSError as exc:
+            self._json({"error": f"The run could not be moved to the trash; nothing changed: {exc}",
+                        "error_code": "GF_RUN_TRASH_MOVE_FAILED"}, 409); return
+        warnings = []
+        try:
+            update_status(
+                target, transition="deleting", reason_code="GF_RUN_MOVING_TO_TRASH",
+                details={"trash_name": target.name}, writer=WRITER_SERVER,
+            )
+        except (LifecycleError, OSError) as exc:
+            warnings.append(f"The trash copy's status could not record the deletion: {exc}")
+        self._json({"ok": True, "run_id": run_id, "moved_to": str(target), "bytes": size,
+                    "recoverable": True, "warnings": warnings})
+
     def _run_lifecycle_action_locked(self, run_id: str, action: str, body: dict[str, Any]) -> None:
         root = _run_root(run_id)
         if root is None:
@@ -2799,6 +2855,8 @@ class Handler(BaseHTTPRequestHandler):
             if action == "archive":
                 if status.get("status") not in {"completed", "failed", "cancelled"}:
                     self._json({"error": "Only terminal runs can be archived"}, 409); return
+                if lease_state(root) == LOCK_HELD:
+                    self._json({"error": "A model worker of this run is still alive", "error_code": "GF_WORKER_ALIVE"}, 409); return
                 ARCHIVES_ROOT.mkdir(parents=True, exist_ok=True)
                 destination = ARCHIVES_ROOT / f"{run_id}.zip"
                 manifest = export_run_bundle(root, destination, profile="complete_audit")
@@ -2828,16 +2886,7 @@ class Handler(BaseHTTPRequestHandler):
             if action == "delete":
                 if str(body.get("confirm_run_id") or "") != run_id:
                     self._json({"error": "Exact run ID confirmation is required", "run_id": run_id, "path": str(root)}, 409); return
-                if status.get("status") in {"running", "queued", "snapshotting", "cancel_requested"}:
-                    self._json({"error": "Active runs must be cancelled first"}, 409); return
-                atomic_status_transition(status_path, "deleting", reason_code="GF_RUN_MOVING_TO_TRASH")
-                TRASH_ROOT.mkdir(parents=True, exist_ok=True)
-                target = TRASH_ROOT / f"{run_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-                if target.exists():
-                    self._json({"error": "Trash target already exists"}, 409); return
-                size = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
-                shutil.move(str(root), str(target))
-                self._json({"ok": True, "run_id": run_id, "moved_to": str(target), "bytes": size, "recoverable": True}); return
+                self._delete_run(run_id, root); return
             self._json({"error": "unknown lifecycle action"}, 404)
         except LockTimeout:
             raise
