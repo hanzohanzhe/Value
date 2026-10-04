@@ -181,6 +181,20 @@ class P0GateTests(unittest.TestCase):
         self.assertEqual(runner.call_args.kwargs["environment"]["VALUE_E2E_CHROMIUM"], str(browser))
         self.assertIn("e2e_offline", [step.name for step in GATE.FULL_STEPS])
 
+    def test_offline_e2e_puts_the_resolved_node_first_on_path(self) -> None:
+        # The construction setup reaches node only through VALUE_NODE (vnode),
+        # never through PATH; the step must not depend on a `node` on PATH.
+        with tempfile.TemporaryDirectory() as folder:
+            browser = Path(folder) / "chrome"
+            browser.write_text("", encoding="utf-8")
+            node = str(Path(folder) / "bin" / "vnode")
+            with mock.patch.dict(os.environ, {"VALUE_E2E_CHROMIUM": str(browser), "VALUE_NODE": node, "PATH": "/usr/bin:/bin"}), \
+                    mock.patch.object(GATE, "run", return_value=SimpleNamespace(returncode=0, stdout="ok", stderr="")) as runner:
+                self.assertEqual(GATE.step_e2e_offline(_gate("full"))["status"], "passed")
+        self.assertEqual(runner.call_args.args[0][0], node)
+        self.assertEqual(runner.call_args.kwargs["environment"]["PATH"].split(os.pathsep),
+                         [str(Path(node).parent), "/usr/bin", "/bin"])
+
     def test_offline_e2e_finds_the_cached_playwright_browser_when_unset(self) -> None:
         with tempfile.TemporaryDirectory() as cache:
             root = Path(cache)

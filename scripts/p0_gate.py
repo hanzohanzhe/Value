@@ -814,7 +814,13 @@ def step_e2e_offline(gate: Gate) -> dict[str, Any]:
         if node is None:
             return _status(False, "node executable not found (set VALUE_NODE)")
         argv[0] = node
-    completed = run(argv, timeout=3600, environment=python_environment({"VALUE_E2E_UI_ONLY": "1", "VALUE_E2E_CHROMIUM": chromium}))
+    extra = {"VALUE_E2E_UI_ONLY": "1", "VALUE_E2E_CHROMIUM": chromium}
+    if argv and argv[0] != "node" and os.sep in argv[0]:
+        # playwright.config.ts starts the services with process.execPath; the
+        # resolved node's folder also goes first on PATH for any tool that
+        # still spawns a bare `node` (node may not be on PATH at all).
+        extra["PATH"] = os.pathsep.join([str(Path(argv[0]).parent), os.environ.get("PATH", "")])
+    completed = run(argv, timeout=3600, environment=python_environment(extra))
     return _status(completed.returncode == 0, {"browser": chromium, "output": _tail(completed.stdout + completed.stderr)})
 
 

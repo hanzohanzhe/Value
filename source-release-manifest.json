@@ -1151,6 +1151,7 @@
     "tests/frontend/helpers/chromium.mjs",
     "tests/frontend/helpers/render-tsx.mjs",
     "tests/frontend/render/render-harness.test.mjs",
+    "tests/frontend/unit/e2e-runner.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-test-groups.test.mjs",
@@ -8253,8 +8254,8 @@
     },
     {
       "path": "playwright.config.ts",
-      "sha256": "00201016021afd004020bff6faf58af48c22a01accf57a2d58b47ea789d2d87e",
-      "bytes": 1997,
+      "sha256": "5867e4b901b4ef325c7bb5cf236fb80536c16edcce81a71e0d338c037f56e782",
+      "bytes": 2265,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8809,8 +8810,8 @@
     },
     {
       "path": "scripts/p0_gate.py",
-      "sha256": "6d9a4767a609cc835d508aa5a18cb051cdb73539f1c565fd316e14b12709af0b",
-      "bytes": 45322,
+      "sha256": "ef121ccebd1f6462da98a7d628c042234b4a024025086bbc49ee14cdc5f7220c",
+      "bytes": 45718,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9525,6 +9526,12 @@
       "path": "tests/frontend/render/render-harness.test.mjs",
       "sha256": "e20d5da77f6261348f7c2eadec4884363fc9122a1703987f37d58beaa5671b3a",
       "bytes": 1124,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/e2e-runner.test.mjs",
+      "sha256": "698bc7083ba12adf56a76c2cc46eefcbf85ebebc8e1f4218af69c0740e9504f3",
+      "bytes": 830,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10285,8 +10292,8 @@
     },
     {
       "path": "tests/test_p0_gate.py",
-      "sha256": "26a91e67df44d2bfd3d6c5f14cec64cd7883777762fd6d4fead808264034d95c",
-      "bytes": 33519,
+      "sha256": "1526452d3e5811426c3c5399c02b81865040f932157b4604dba3dd27118a4c44",
+      "bytes": 34534,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

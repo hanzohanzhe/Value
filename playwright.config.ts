@@ -30,7 +30,10 @@ export default defineConfig({
     ...(chromiumPath ? { launchOptions: { executablePath: chromiumPath } } : {}),
   },
   webServer: {
-    command: "node e2e/start-e2e-services.mjs",
+    // The node that runs Playwright also starts the services: a bare `node`
+    // would need node on PATH, which the construction setup (build/bin/vnode,
+    // the gate's VALUE_NODE) does not provide (exit 127, "node: not found").
+    command: `${JSON.stringify(process.execPath)} e2e/start-e2e-services.mjs`,
     url: "http://127.0.0.1:18800",
     timeout: 120_000,
     reuseExistingServer: false,
