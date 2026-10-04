@@ -15,7 +15,8 @@ captured in.  A run fails (exit code 1) when
 * a failing id is not in the baseline (``new_failures``),
 * a baseline id now passes (``fixed_but_listed``; remove it with
   ``--update-baseline``),
-* a quarantine entry has expired, or
+* a quarantine entry has expired (``expires=Mk`` is valid through Mk;
+  ``expires=host`` marks a permanent host quarantine), or
 * ``--strict`` is given and the environment fingerprint differs.
 
 Ids listed in ``tests/baselines/quarantine.txt`` are reported but never take
@@ -61,6 +62,11 @@ FINGERPRINT_PACKAGES = ("numpy", "scipy", "pandas", "pulp", "cbcbox", "pytest", 
 FINGERPRINT_LOCKS = ("requirements/value-all-py310.lock", "requirements/value-test-py310.lock")
 FAILING_OUTCOMES = frozenset({"fail", "error", "unexpected_success"})
 MILESTONES = tuple(f"M{index}" for index in range(0, 9))
+# ``expires=host``: permanent host quarantine.  Only for failures caused by a
+# property of this host that no P0 package can change (the author's private
+# Windows R0 source tree, Windows-only tools, the live install holding port
+# 8766, the free-disk reserve).  Everything else expires at a milestone.
+HOST_EXPIRY = "host"
 PYTEST_TOP_LEVEL_MODULES = (
     "tests/test_full_desktop_installer.py",
     "tests/test_market_ledger_v6.py",
@@ -222,7 +228,12 @@ def current_milestone(path: Path = MILESTONE_FILE) -> str:
 
 
 def read_quarantine(path: Path) -> dict[str, dict[str, str]]:
-    """Parse ``id | reason=... | owner=... | expires=M3`` lines."""
+    """Parse ``id | reason=... | owner=... | expires=M3|host`` lines.
+
+    ``expires=Mk`` means *valid through* milestone Mk: the entry fails the run
+    once ``tests/baselines/milestone.txt`` (or VALUE_P0_MILESTONE) is later
+    than Mk.  ``expires=host`` never expires (permanent host quarantine).
+    """
 
     entries: dict[str, dict[str, str]] = {}
     if not path.is_file():
@@ -239,7 +250,7 @@ def read_quarantine(path: Path) -> dict[str, dict[str, str]]:
         missing = [key for key in ("reason", "owner", "expires") if not fields.get(key)]
         if missing:
             raise ValueError(f"quarantine entry {parts[0]!r} lacks {', '.join(missing)}")
-        if fields["expires"] not in MILESTONES:
+        if fields["expires"] not in MILESTONES and fields["expires"] != HOST_EXPIRY:
             raise ValueError(f"quarantine entry {parts[0]!r} has unknown milestone {fields['expires']!r}")
         entries[parts[0]] = fields
     return entries
@@ -249,7 +260,11 @@ def expired_quarantine(entries: Mapping[str, Mapping[str, str]], milestone: str)
     if milestone not in MILESTONES:
         raise ValueError(f"unknown milestone {milestone!r}")
     position = MILESTONES.index(milestone)
-    return sorted(identifier for identifier, fields in entries.items() if MILESTONES.index(fields["expires"]) < position)
+    return sorted(
+        identifier
+        for identifier, fields in entries.items()
+        if fields["expires"] != HOST_EXPIRY and MILESTONES.index(fields["expires"]) < position
+    )
 
 
 # --------------------------------------------------------------------------

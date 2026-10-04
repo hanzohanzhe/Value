@@ -190,6 +190,30 @@ class BackendTestRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             RUNNER.read_quarantine(self.quarantine)
 
+    def test_expiry_is_valid_through_and_host_entries_never_expire(self) -> None:
+        entries = {
+            "a.B.through_m2": {"reason": "r", "owner": "o", "expires": "M2"},
+            "a.B.host": {"reason": "r", "owner": "o", "expires": RUNNER.HOST_EXPIRY},
+        }
+        self.assertEqual(RUNNER.expired_quarantine(entries, "M2"), [])
+        self.assertEqual(RUNNER.expired_quarantine(entries, "M3"), ["a.B.through_m2"])
+        self.assertEqual(RUNNER.expired_quarantine(entries, "M8"), ["a.B.through_m2"])
+        self.quarantine.write_text("a.B.c | reason=x | owner=y | expires=host\n", encoding="utf-8")
+        self.assertEqual(RUNNER.read_quarantine(self.quarantine)["a.B.c"]["expires"], "host")
+
+    def test_committed_quarantine_can_expire(self) -> None:
+        """Every milestone-bound entry fails the run at M8; only host entries are permanent."""
+
+        quarantine = RUNNER.read_quarantine(RUNNER.DEFAULT_QUARANTINE)
+        bounded = sorted(identifier for identifier, fields in quarantine.items() if fields["expires"] != RUNNER.HOST_EXPIRY)
+        self.assertTrue(bounded)
+        self.assertEqual(RUNNER.expired_quarantine(quarantine, "M8"), bounded)
+        self.assertEqual(RUNNER.expired_quarantine(quarantine, RUNNER.current_milestone()), [])
+        for identifier, fields in quarantine.items():
+            with self.subTest(identifier=identifier):
+                if fields["owner"] == "X0-gate-venv":
+                    self.assertNotEqual(fields["expires"], RUNNER.HOST_EXPIRY)
+
     def test_module_filter_limits_fixed_but_listed_to_selected_modules(self) -> None:
         self._write_baseline(EXPECTED_FAILING)
         code, report = self._main("--modules", "test_toy_fail", "test_toy_pass")

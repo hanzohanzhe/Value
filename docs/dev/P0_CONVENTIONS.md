@@ -44,7 +44,7 @@
 
 规则：
 
-- **测试棘轮。** 基线 `tests/baselines/known-failures-linux-py310.txt`（首行为环境指纹）。新失败或“已修好仍在基线”都让门禁失败。真回归一律修复，不进基线。环境相关的失败放在 `tests/baselines/quarantine.txt`，必须写 reason/owner/expires（里程碑），过期即失败；当前里程碑写在 `tests/baselines/milestone.txt`，每个里程碑结束时由集成者推进。
+- **测试棘轮。** 基线 `tests/baselines/known-failures-linux-py310.txt`（首行为环境指纹）。新失败或“已修好仍在基线”都让门禁失败。真回归一律修复，不进基线。环境相关的失败放在 `tests/baselines/quarantine.txt`，必须写 reason/owner/expires；当前里程碑写在 `tests/baselines/milestone.txt`，每个里程碑结束时由集成者推进。`expires=Mk` 的含义是“有效至 Mk（含）”：当前里程碑晚于 Mk 时该条目让棘轮失败，owner 必须在此之前处理（gate venv 的 6 条为 `M7`，作者须在最后一个里程碑之前决定是否批准离线安装）。`expires=host` 是永久的宿主隔离，只用于本机固有、任何 P0 包都改变不了的原因（作者私有 Windows R0 源码树、Windows 专用工具或被现网安装占用的 8766 端口、磁盘余量）。
 - **golden 两族。** `tests/golden/doctoral/*`（冻结）与 `tests/golden/corrected/*`（快照）。digest 按“产物 × 列”保存，分三个区：
   - trajectory：出力、潮流、价格、SoC、装机、投资提案（Q12）。doctoral 族永不修订，唯一例外是 `tests/golden/doctoral_trajectory_rebaselines.json` 中作者批准的 universal correction（P6-24、P6-02/03/04、火电净收入 A4），每个 finding 对每个 case 只能重基线一次，提交中附差异报告（`revise` 输出的 delta）。
   - accounting：残差、调整项、审计表、成本与收入账、验证与归因报告。可以在 universal correction id 下修订。
