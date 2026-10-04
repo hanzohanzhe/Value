@@ -1,0 +1,161 @@
+# P0 施工约定（P0_CONVENTIONS）
+
+本文件是 `fix/review-2026-10-04` 上所有 P0 工作包共用的工程约定。权威顺序：`P0_DECISIONS.md` > 本文件 > `P0_CONSTRUCTION_PLAN.md`。本文件由 X0（M0）建立；第 4–8 节所述的公共骨架由对应工作包实现，实现时必须遵守这里写定的接口，接口如需改动，先改本文件并在提交正文中说明。
+
+## 1 分支、提交与清单
+
+- 所有工作合入 `fix/review-2026-10-04`。各包可在本地 worktree 开话题分支，合回时保持线性、可审查的小提交，不 squash。不 push，不开 PR，不改 remote。
+- 一个提交只做一件可审查的事。改变数值的提交单独成提交，纯重构不得与数值改动混在一起。
+- 提交正文必须包含下列小节（没有内容的写 `none` / `n/a`），末尾空一行后附 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`：
+
+  ```
+  Findings: <审查发现 id，如 P7-24>
+  Track: universal | profile-gated
+  Correction ids: <修正目录 id，如 p05.interconnector-clock>
+  Golden: doctoral 不变 | doctoral accounting 修订(原因) | corrected 已追加修订 | n/a
+  Delta: <数值类提交填写，引用 capture.py revise 输出的 by_zone 计数>
+  Tests: <新增/运行的测试；棘轮 new/fixed 计数>
+  ```
+
+- correction id 必须匹配 `^[a-z0-9]+(\.[a-z0-9-]+)+$`：第一段是不含连字符的包名（`x0`、`p04`、`p05` …），后面各段可含连字符，例如 `p05.interconnector-clock`、`p04.surplus-node-boundary`。
+- 凡新增、删除或修改文件的提交，都在同一提交中刷新发布清单：
+
+  ```bash
+  git add <本提交的文件>
+  python -B scripts/refresh_source_release_manifest.py --index   # 按暂存区内容精确刷新
+  git add source-release-manifest.json
+  ```
+
+  `--index` 只看暂存区（路径与内容都取自 index），未暂存的其他工作不会混进清单。不进入公开发布的路径写在 `tests/baselines/release-exclusions.txt`（目前为 `docs/dev/`，因为这些施工文档含本机绝对路径）。清单冲突时任选一侧，再重跑刷新脚本（C25）。
+- 所有 Python 命令加 `-B`，并设置 `PYTHONDONTWRITEBYTECODE=1`、`PYTHONPYCACHEPREFIX=<scratch>`。源码树中不得出现 `.pyc`。
+
+## 2 门禁、测试棘轮与 golden
+
+| 命令 | 用途 |
+|---|---|
+| `python -B scripts/p0_gate.py quick` | 每个提交前。约 2–3 分钟（参考机 32 核） |
+| `python -B scripts/p0_gate.py full` | 每个工作包合入前 |
+| `python -B scripts/p0_gate.py nightly` | 每个里程碑结束 |
+| `python -B scripts/run_backend_tests.py [--modules m ...]` | 后端单元测试棘轮（每个模块独立子进程、隔离的 HOME/TMPDIR/VALUE_DATA_HOME） |
+| `python -B scripts/run_backend_tests.py --update-baseline` | 修好已知失败后删除基线条目（只删不增） |
+| `python -B scripts/golden/capture.py check --tier fast` | golden 快速集合 |
+| `python -B scripts/golden/capture.py revise --cases C1 ... --reason ... --correction-id ...` | 在改变数值的同一提交中追加 golden 修订 |
+| `python -B scripts/seal_runtime_overlay.py --correction <id>` | 每次改动 `runtime_compat/` 之后登记 |
+
+规则：
+
+- **测试棘轮。** 基线 `tests/baselines/known-failures-linux-py310.txt`（首行为环境指纹）。新失败或“已修好仍在基线”都让门禁失败。真回归一律修复，不进基线。环境相关的失败放在 `tests/baselines/quarantine.txt`，必须写 reason/owner/expires（里程碑），过期即失败；当前里程碑写在 `tests/baselines/milestone.txt`，每个里程碑结束时由集成者推进。
+- **golden 两族。** `tests/golden/doctoral/*`（冻结）与 `tests/golden/corrected/*`（快照）。digest 按“产物 × 列”保存，分三个区：
+  - trajectory：出力、潮流、价格、SoC、装机、投资提案（Q12）。doctoral 族永不修订，唯一例外是 `tests/golden/doctoral_trajectory_rebaselines.json` 中作者批准的 universal correction（P6-24、P6-02/03/04、火电净收入 A4），每个 finding 对每个 case 只能重基线一次，提交中附差异报告（`revise` 输出的 delta）。
+  - accounting：残差、调整项、审计表、成本与收入账、验证与归因报告。可以在 universal correction id 下修订。
+  - identity：代码/模块/上下文身份哈希与版本号，任何代码改动都会变，由方法身份与 `VERSION_LEDGER.json` 管理；门禁只报告不拦截。
+  - 区的划分写在 `tests/golden/zones.json`（首个匹配生效，未匹配的列默认 trajectory）。修改 zones.json 需在提交正文说明理由，并且**不得把 Q12 列出的 trajectory 列改划到 accounting 或 identity**。
+- corrected 族任何 trajectory/accounting 变化都必须在同一提交中 `capture.py revise`，写明 correction id、原因；`capture.py validate`（quick 档）检查修订簿记与 delta 的一致性。
+- 每个 golden case 在独立子进程中直接调用 `run_project_application`（避开 P7-02 的进程级天气缓存与 R2-05 的磁盘预检）。
+
+## 3 运行时内核（runtime_compat）
+
+- `RUNTIME_OVERLAY.json` v2 逐文件登记 `runtime_compat/`：`source_identical`、`mechanical_substitution`、`value_instrumentation`（P0 之前已有的 VALUE 插桩，即 pre-P0 基线）、`declared_runtime_edit`（必须带 correction ids）、`value_added_module`、`data`。
+- 改内核的提交顺序：改代码 → `seal_runtime_overlay.py --correction <id>` → 跑门禁 → 提交。`compat/`（保留源）必须逐字节不变。
+- 每次运行在入口调用 `ensure_runtime_overlay_sealed()`（进程内缓存），结果写入 provenance 的 `runtime_overlay` 字段。内核文件串行修改顺序见计划 5.1-3。
+
+## 4 HTTP Handler 骨架（C1；由 P0-3 S7 实现，P0-1 S6、P0-2 S6 往里填）
+
+```python
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):  self._dispatch(self._route_get)
+    def do_POST(self): self._dispatch(self._route_post)
+    def do_OPTIONS(self): self._dispatch(self._route_options)
+
+    def _dispatch(self, route):
+        self.response_started = False          # 每个请求先复位
+        try:
+            self._guard()                      # P0-1：Host/Origin/令牌/方法；自带 try，拒绝时直接写 4xx
+            route()
+        except Exception as exc:               # 唯一的异常出口
+            self._send_mapped_error(exc)
+```
+
+异常映射（`_send_mapped_error`，按顺序匹配；响应头已发出时只关闭连接，不再写体）：
+
+| 异常 | 状态码 | 说明 |
+|---|---|---|
+| `ConnectionError`（含 BrokenPipe/Reset） | 不响应 | 关闭连接 |
+| `QueryParameterError` | 400 | |
+| `UnsupportedMediaType` | 415 | |
+| `DataMappingError` / `DataPackCloneError` | 按其 `status` | |
+| 带 `code` 的 `ContractError`、`ModuleQuarantinedError` | 查 P0-2 的错误码表 | 体内带 `error_code` |
+| `ValueError` | 400 | 体内带 `error_code` |
+| `LockTimeout` | 503 | 带 `Retry-After` |
+| 其他 | 500 | 不回显内部路径 |
+
+`end_headers` 的覆盖（安全头）由 P0-1 放在同一个类里。新路由一律在 `_route_*` 中分派，不得自己 try/except 后写 500。
+
+## 5 全局锁顺序（C6；P0-2、P0-3 实现，附断言测试）
+
+获取顺序（只能从左往右拿，释放顺序相反）：
+
+```
+.backend.lock (进程单例, 文件锁)
+  → STUDY_LIFECYCLE_LOCK (server.py, RLock)
+    → RUN_ACTION_LOCKS[run_id]
+      → MODULE_LIFECYCLE_LOCK
+        → <runs>/.reservation.lock (run_quota._reservation_lock, 文件锁)
+          → <run>/status.lock (status 写入 API 内部)
+```
+
+- 持有 `MODULE_LIFECYCLE_LOCK` 时不得再申请 `STUDY_LIFECYCLE_LOCK`。
+- start-run 在拿预留锁之前取好缓存的模块注册表，不在持锁期间扫描磁盘上的模块。
+- `REPLAY_EXPORT_JOBS_LOCK` 是叶子锁：持有它时不得申请上表任何锁。
+- 断言测试（由先落地的 P0-2/P0-3 提交新增，放在 `tests/test_lock_order.py`）：两个线程交叉执行“启停模块”和“启动 Run”各 50 次，`join(timeout=30)` 不超时；并对 `acquire` 打桩记录顺序，断言符合上表。
+
+## 6 后端 HTTP 测试夹具（C14；P0-1 S2 实现）
+
+```python
+from tests.local_api_harness import start_local_api
+
+with start_local_api(data_home=tmp) as (httpd, origin, token):
+    # origin = "http://127.0.0.1:<随机端口>"；token 为本次会话令牌
+    # 安装一个只补 Host/Origin/令牌头的 urllib opener，退出上下文后恢复原 opener
+    ...
+```
+
+- 端口一律 bind 0；不得使用 8766/8800；`VALUE_DATA_HOME` 必须是测试自己的临时目录，不触碰默认用户目录。
+- 新写的 HTTP 测试不得直接 `ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)`；`p0_gate quick` 的 `http_harness` 步骤对自分支点以来新增的测试文件做静态检查。
+
+## 7 status.json 写入 API（C5；P0-3 S1–S2 实现）
+
+```python
+create_status(run_dir, payload) -> dict                      # 仅新建，已存在则报错
+update_status(run_dir, *, mutate: Callable[[dict], None]) -> dict
+record_run_failure(...)    # 签名保持不变
+record_run_cancelled(...)  # 签名保持不变
+```
+
+- `update_status` 在 `status.lock` 内读—改—原子写（tmp + replace），`mutate` 原地修改字典；不得整体覆盖 status.json。
+- 写入方（`model_runner.py`、`application.py`、`server.py`）全部迁到这两个函数；其他包新增的字段（P0-4 验证、P0-2 降级原因、P0-9 证据、X0 口径、P0-6 stress 汇总）通过 `mutate` 或 final patch 透传。
+- GET 请求只读，不写 status。
+
+## 8 worker 解释器参数（C4/C31；P0-3 S9 实现）
+
+`backend/lifecycle/python_argv.py`：
+
+```python
+def isolated_python_argv(python: str, prefix: Path) -> list[str]:
+    return [python, "-B", "-s", "-X", f"pycache_prefix={prefix}"]   # prefix 每次新建临时目录
+
+def worker_python_argv(python: str, prefix: Path) -> list[str]:
+    return [*isolated_python_argv(python, prefix), "-m", "backend.worker_entry"]
+```
+
+- P0-3 的 `_spawn_worker`、P0-2 的子进程探针、`desktop_value.py` / `local_value.py` 启动器都从这里取参数；P0-1 的 `--api-origin` 追加在 helper 输出末尾。
+- `clean_environment` 设置 `PYTHONPYCACHEPREFIX`；会话令牌不进入 worker 环境变量。
+- 不使用 `-I`（linux-local 依赖 PYTHONPATH）。
+
+## 9 版本台账
+
+`docs/release/VERSION_LEDGER.json` 记录每个模块版本的每一次升级：`{module_id, from, to, package, correction_ids, reason, requires_user_opt_in}`。合并时以当时的现行版本递增；`requires_user_opt_in=true` 的升级在 Study 迁移中归为 `method_upgrade_required`（需要界面确认，Q13）。`scripts/check_version_ledger.py`（quick 档）检查：台账的最新版本与模块清单一致、版本单调递增。
+
+## 10 口径（methodology profile）约定预告
+
+口径机制由 X0 S8–S9 建立。各包规则集只能通过 `ResolvedMethodology.enabled(correction_id)` 判断开关，不得对口径 id（`doctoral-lineage-0.6.0a2`、`value-corrected`）做字符串比较（C15）。编码 35aadb3 数值的测试统一用 `with_profile("doctoral-lineage-0.6.0a2")` 固定口径。
