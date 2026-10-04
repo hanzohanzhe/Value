@@ -315,6 +315,24 @@ class AtomicWriteTests(unittest.TestCase):
                 with self.assertRaises(PermissionError):
                     atomic_write_json(target, {"done": False}, replace_retry_seconds=10)
 
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_new_file_has_the_umask_default_mode_and_existing_mode_is_kept(self) -> None:
+        """Review M1-P0-3: mkstemp's 0600 must not leak into artifacts."""
+
+        umask = os.umask(0o022)
+        os.umask(umask)
+        self.assertEqual(atomic_io.process_umask(), umask)
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "status.json"
+            atomic_write_json(target, {"a": 1})
+            self.assertEqual(target.stat().st_mode & 0o777, 0o666 & ~umask)
+            os.chmod(target, 0o640)
+            atomic_write_json(target, {"a": 2})
+            self.assertEqual(target.stat().st_mode & 0o777, 0o640)
+            explicit = Path(folder) / "explicit.json"
+            atomic_io.atomic_write_bytes(explicit, b"{}", mode=0o600)
+            self.assertEqual(explicit.stat().st_mode & 0o777, 0o600)
+
     def test_write_new_json_refuses_existing_file(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder) / "status.json"

@@ -3382,8 +3382,8 @@
     },
     {
       "path": "backend/lifecycle/atomic_io.py",
-      "sha256": "b2f69c167fcee0179ca629ec62dc62273577baee3b1f9498fe3b1978b363008a",
-      "bytes": 3819,
+      "sha256": "a0633253754130f01e248f45b0646d5aa6c7e3e7123942454afad9a60c3c5fb5",
+      "bytes": 5221,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10391,8 +10391,8 @@
     },
     {
       "path": "tests/test_lifecycle_primitives.py",
-      "sha256": "d6af067b4f71c3a8bea0f73b40883c3664ba12b086ac1636945f0e7c9e31f3a5",
-      "bytes": 17547,
+      "sha256": "07e1202325f2a05a2f27a87cce7b8b320c4996d982f890dd3727f83ef1859ab6",
+      "bytes": 18464,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

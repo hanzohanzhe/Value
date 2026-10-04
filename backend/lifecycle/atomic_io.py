@@ -12,6 +12,11 @@ first.
 
 On Windows ``os.replace`` fails while another process has the destination
 open; terminal-state writes pass ``replace_retry_seconds`` (10 s) to retry.
+
+Permissions: ``mkstemp`` creates 0600 files.  Unless ``mode`` is given, the
+replacement gets the permission bits of the file it replaces, or -- for a new
+file -- what ``open()`` would have created (0666 minus the process umask), so
+moving a writer to these helpers never changes artifact permissions.
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -26,6 +32,37 @@ from typing import Any
 
 TERMINAL_REPLACE_RETRY_SECONDS = 10.0
 _IS_WINDOWS = os.name == "nt"
+_UMASK: int | None = None
+_UMASK_GUARD = threading.Lock()
+
+
+def process_umask() -> int:
+    """The process umask, read without changing it where the OS allows."""
+
+    global _UMASK
+    with _UMASK_GUARD:
+        if _UMASK is None:
+            value = None
+            try:
+                with open("/proc/self/status", encoding="ascii") as handle:
+                    for line in handle:
+                        if line.startswith("Umask:"):
+                            value = int(line.split()[1], 8)
+                            break
+            except (OSError, ValueError, IndexError):
+                value = None
+            if value is None:  # no /proc: set and restore once, then cache
+                value = os.umask(0o022)
+                os.umask(value)
+            _UMASK = value
+        return _UMASK
+
+
+def _target_mode(destination: Path) -> int:
+    try:
+        return destination.stat().st_mode & 0o7777
+    except FileNotFoundError:
+        return 0o666 & ~process_umask()
 
 
 def _fsync_directory(directory: Path) -> None:
@@ -76,6 +113,8 @@ def atomic_write_bytes(
             os.fsync(handle.fileno())
         if mode is not None:
             os.chmod(temporary, mode)
+        elif not _IS_WINDOWS:
+            os.chmod(temporary, _target_mode(destination))
         _replace(temporary, destination, replace_retry_seconds)
     except BaseException:
         try:
