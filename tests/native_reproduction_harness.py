@@ -103,6 +103,15 @@ SEGMENT_LENGTH = 8
 SIMULATION_YEAR = 2030
 PERIOD_HOURS = 0.5
 CORRECTION_ID_PATTERN = r"^[a-z0-9]+(\.[a-z0-9-]+)+$"
+# Size budgets (plan 4.6 S1: "fixture < 300 KB" is the acceptance limit of the
+# capture, i.e. revision 0 with the scenario and the cases).  Every appended
+# accounting revision has its own budget: a revision that rewrites every numeric
+# accounting column of both variants measures about 47 KB today, so 160 KiB leaves
+# room for the planned P0-4 S4/S6, A2 and P0-6 S4/S10 revisions.  A revision
+# above it is refused (split it, or raise the budget in the same commit with
+# a reason).
+REVISION_ZERO_BUDGET_BYTES = 300 * 1024
+APPENDED_REVISION_BUDGET_BYTES = 160 * 1024
 SHORT_HASH = 12
 
 # Environment of the frozen loop: half-hour periods, no CSV trace files (the
@@ -1346,8 +1355,7 @@ def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, 
         patch.setdefault(item.case, {})[item.key] = None if item.kind == "removed" else observed[item.case][item.key]
         if item.kind == "added":
             zones[item.key] = item.zone
-    revised = copy.deepcopy(golden)
-    revised["revisions"].append({
+    revision: dict[str, Any] = {
         "index": len(golden["revisions"]),
         "base_commit": base_commit,
         "reason": reason,
@@ -1356,15 +1364,61 @@ def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, 
         "delta": sorted({f"{item.case}:{item.key}:{item.kind}" for item in differences}),
         "zones": zones,
         "patch": patch,
-    })
+    }
+    size = revision_bytes(revision)
+    if size > APPENDED_REVISION_BUDGET_BYTES:
+        raise ValueError(
+            f"revision {revision['index']} is {size} bytes, above the appended-revision budget of "
+            f"{APPENDED_REVISION_BUDGET_BYTES} bytes (APPENDED_REVISION_BUDGET_BYTES)"
+        )
+    revised = copy.deepcopy(golden)
+    revised["revisions"].append(revision)
     return revised
 
 
-def dump_golden(golden: Mapping[str, Any]) -> str:
-    """Stable text: one column per line so reviews show changed columns."""
+def _dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
-    def dumps(value: Any) -> str:
-        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+def _dump_columns(columns: Mapping[str, Any], indent: str) -> list[str]:
+    keys = list(columns)
+    return [f"{indent}{_dumps(key)}: {_dumps(columns[key])}{',' if index < len(keys) - 1 else ''}"
+            for index, key in enumerate(keys)]
+
+
+def _dump_revision(revision: Mapping[str, Any], comma: str) -> list[str]:
+    """One revision: metadata one key per line, ``delta`` one entry per line
+    and ``patch`` one column per line (as in ``cases``)."""
+
+    if "patch" not in revision and "delta" not in revision:
+        return [f"  {json.dumps(revision, ensure_ascii=False)}{comma}"]
+    lines = ["  {"]
+    keys = list(revision)
+    for index, key in enumerate(keys):
+        key_comma = "," if index < len(keys) - 1 else ""
+        value = revision[key]
+        if key == "patch" and isinstance(value, Mapping):
+            lines.append(f"   {_dumps(key)}: {{")
+            cases = list(value)
+            for case_index, case in enumerate(cases):
+                lines.append(f"    {_dumps(case)}: {{")
+                lines.extend(_dump_columns(value[case], "     "))
+                lines.append("    }" + ("," if case_index < len(cases) - 1 else ""))
+            lines.append("   }" + key_comma)
+        elif key == "delta" and isinstance(value, list) and value:
+            lines.append(f"   {_dumps(key)}: [")
+            lines.extend(f"    {_dumps(item)}{',' if item_index < len(value) - 1 else ''}"
+                         for item_index, item in enumerate(value))
+            lines.append("   ]" + key_comma)
+        else:
+            lines.append(f"   {_dumps(key)}: {json.dumps(value, ensure_ascii=False)}{key_comma}")
+    lines.append("  }" + comma)
+    return lines
+
+
+def dump_golden(golden: Mapping[str, Any]) -> str:
+    """Stable text: one column per line (in ``cases`` and in every revision
+    ``patch``) so reviews show the changed columns."""
 
     lines = ["{"]
     keys = list(golden)
@@ -1372,22 +1426,37 @@ def dump_golden(golden: Mapping[str, Any]) -> str:
         comma = "," if index < len(keys) - 1 else ""
         value = golden[key]
         if key == "cases":
-            lines.append(f' "cases": {{')
+            lines.append(' "cases": {')
             case_names = list(value)
             for case_index, case in enumerate(case_names):
-                lines.append(f'  {dumps(case)}: {{"columns": {{')
-                columns = value[case]["columns"]
-                column_keys = list(columns)
-                for column_index, column in enumerate(column_keys):
-                    column_comma = "," if column_index < len(column_keys) - 1 else ""
-                    lines.append(f"   {dumps(column)}: {dumps(columns[column])}{column_comma}")
+                lines.append(f'  {_dumps(case)}: {{"columns": {{')
+                lines.extend(_dump_columns(value[case]["columns"], "   "))
                 case_comma = "," if case_index < len(case_names) - 1 else ""
                 lines.append(f"  }}}}{case_comma}")
             lines.append(f" }}{comma}")
+        elif key == "revisions":
+            lines.append(' "revisions": [')
+            for revision_index, revision in enumerate(value):
+                lines.extend(_dump_revision(revision, "," if revision_index < len(value) - 1 else ""))
+            lines.append(f" ]{comma}")
         else:
-            lines.append(f" {dumps(key)}: {json.dumps(value, ensure_ascii=False, sort_keys=False)}{comma}")
+            lines.append(f" {_dumps(key)}: {json.dumps(value, ensure_ascii=False, sort_keys=False)}{comma}")
     lines.append("}")
     return "\n".join(lines) + "\n"
+
+
+def revision_zero_bytes(golden: Mapping[str, Any]) -> int:
+    """Size of the golden as captured (scenario, cases, revision 0 only)."""
+
+    base = dict(golden)
+    base["revisions"] = list(golden["revisions"][:1])
+    return len(dump_golden(base).encode("utf-8"))
+
+
+def revision_bytes(revision: Mapping[str, Any]) -> int:
+    """Size of one appended revision as :func:`dump_golden` writes it."""
+
+    return len("\n".join(_dump_revision(revision, ",")).encode("utf-8"))
 
 
 # ---------------------------------------------------------------------------

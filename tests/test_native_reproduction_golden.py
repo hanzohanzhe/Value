@@ -231,9 +231,49 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(latest[state + "li_battery.power_capacity_mw"][90], 20.0)
 
     def test_fixture_is_small_and_one_column_per_line(self):
-        size = harness.GOLDEN_PATH.stat().st_size
-        self.assertLess(size, 300 * 1024)
+        # Plan 4.6 S1 acceptance (< 300 KB) applies to the capture: scenario,
+        # cases and revision 0.  Appended revisions have their own budget.
+        self.assertLess(harness.revision_zero_bytes(self.golden), harness.REVISION_ZERO_BUDGET_BYTES)
+        for revision in self.golden["revisions"][1:]:
+            self.assertLessEqual(harness.revision_bytes(revision), harness.APPENDED_REVISION_BUDGET_BYTES)
         self.assertEqual(harness.GOLDEN_PATH.read_text(encoding="utf-8"), harness.dump_golden(self.golden))
+
+    def test_revision_patches_are_dumped_one_column_per_line(self):
+        observed = copy.deepcopy(self.observed)
+        accounting = [key for key, zone in harness.pinned_zones(self.golden).items()
+                      if zone == "accounting" and isinstance(observed["dynamic"][key], list)]
+        self.assertGreater(len(accounting), 10)
+        for variant in harness.VARIANTS:
+            for key in accounting:
+                values = observed[variant][key]
+                observed[variant][key] = [value + 1.0 if isinstance(value, float) else value for value in values]
+        revised = harness.append_revision(
+            copy.deepcopy(self.golden), observed, reason="every accounting column", correction_ids=["p04.toy"],
+            base_commit="t",
+        )
+        revision = revised["revisions"][1]
+        self.assertLessEqual(harness.revision_bytes(revision), harness.APPENDED_REVISION_BUDGET_BYTES)
+        text = harness.dump_golden(revised)
+        self.assertEqual(json.loads(text), revised)
+        self.assertEqual(harness.dump_golden(json.loads(text)), text)
+        lines = text.splitlines()
+        patch_start = lines.index('   "patch": {')
+        patched = [key for columns in revision["patch"].values() for key in columns]
+        self.assertGreater(len(patched), 40)  # numeric accounting columns of both variants
+        for key in set(patched):
+            matching = [line for line in lines[patch_start:] if line.startswith(f"     {json.dumps(key)}: ")]
+            self.assertEqual(patched.count(key), len(matching), key)
+        revision_start = lines.index("  {", lines.index(' "revisions": ['))
+        self.assertTrue(all(len(line) < 4096 for line in lines[revision_start:patch_start]),
+                        "revision metadata and delta stay one short entry per line")
+        self.assertEqual(harness.revision_zero_bytes(revised), harness.revision_zero_bytes(self.golden))
+
+    def test_an_oversized_revision_is_refused(self):
+        observed = copy.deepcopy(self.observed)
+        observed["dynamic"]["kernel/run_simulation::shortfall_mwh"] = [0.123456789] * 20000
+        with self.assertRaisesRegex(ValueError, "appended-revision budget"):
+            harness.append_revision(copy.deepcopy(self.golden), observed, reason="x", correction_ids=["a2.stress"],
+                                    base_commit="t")
 
     def test_zones_are_pinned_and_q12_columns_are_trajectory(self):
         zones = harness.pinned_zones(self.golden)

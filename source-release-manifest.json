@@ -9255,8 +9255,8 @@
     },
     {
       "path": "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
-      "sha256": "7e59910c2504af4e4c3453e7ff3b2eaa5c6d7942c9c71dfd7e61fbe0683fc7ae",
-      "bytes": 257591,
+      "sha256": "d388fde68d3345e361f6f52f0afc1ff121ff49ca9bbdca4202249d356f898ffa",
+      "bytes": 257596,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9471,8 +9471,8 @@
     },
     {
       "path": "tests/native_reproduction_harness.py",
-      "sha256": "daf78beb14bcbe4bd595d3e1c49af8bf1b0793b72b0e883fdb937ce19e1cfec7",
-      "bytes": 74664,
+      "sha256": "1ec07da569f90255ab3b00cec13ab0368d46be0d486cb92a98c7f8608effffaf",
+      "bytes": 77805,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,8 +10017,8 @@
     },
     {
       "path": "tests/test_native_reproduction_golden.py",
-      "sha256": "e64c4985417c7cb6e9ab0067dd2c4171007e2d3cc895b2ed0fa02f87a4023ab4",
-      "bytes": 26283,
+      "sha256": "f3538b2c25273413bf02c099e20e115f3dd1904fefe06b0b581c9cc7aac108cd",
+      "bytes": 28968,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
