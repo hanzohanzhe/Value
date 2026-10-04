@@ -457,13 +457,16 @@ def allocate_capped_requests(
     nonnegative ``requested_mw``. A technology absent from ``technology_caps``
     is not capped at that stage. ``pools`` maps a pool id to ``cap_mw`` and the
     ``technologies`` it covers; a technology may belong to at most one pool.
-    Each stage multiplies before dividing (``request * cap / total``) so equal
-    shares come out exact. A scaled stage is then clamped so that its sum,
-    left to right in request order and as ``math.fsum``, never exceeds the cap:
-    rounding of the proportional shares can overshoot by an ulp, and the clamp
-    takes that back from the largest share (a change of a few ulp, never below
-    zero). Returns accepted MW by request id and the scale factors applied per
-    technology and per pool.
+    Each stage multiplies before dividing (``request * cap / total``, total
+    summed left to right in request order) so equal shares come out exact.
+    Every stage then ends with its sum, left to right in request order and as
+    ``math.fsum``, at or below the cap: rounding of the proportional shares can
+    overshoot by an ulp, and so can ``math.fsum`` of requests whose left-to-right
+    sum fits the cap exactly; the clamp takes the excess back from the largest
+    share (a change of a few ulp, never below zero). A stage that fits only
+    under the left-to-right sum is clamped but not scaled, and its reported
+    factor is 1.0. Returns accepted MW by request id and the scale factors
+    applied per technology and per pool.
     """
     tech_caps = {
         str(tech): finite_number(value, f"{tech} technology cap", nonnegative=True)
@@ -495,11 +498,16 @@ def allocate_capped_requests(
         return max(sum(values), math.fsum(values))
 
     def scale(members: list[str], cap: float) -> float:
-        total = sum(accepted[key] for key in members)
-        if total <= cap:
+        if stage_total(members) <= cap:
             return 1.0
-        for key in members:
-            accepted[key] = accepted[key] * cap / total
+        total = sum(accepted[key] for key in members)
+        factor = 1.0
+        if total > cap:
+            for key in members:
+                accepted[key] = accepted[key] * cap / total
+            factor = cap / total
+        # Otherwise only math.fsum exceeds the cap (the left-to-right sum fits):
+        # no proportional scaling, the clamp alone takes back the ulp overshoot.
         for _ in range(64):
             excess = stage_total(members) - cap
             if excess <= 0:
@@ -509,7 +517,7 @@ def allocate_capped_requests(
             accepted[largest] = max(0.0, min(value - excess, math.nextafter(value, 0.0)))
         else:  # pragma: no cover - each pass removes at least one ulp of the excess
             raise ArithmeticError("capped allocation could not be clamped to its cap")
-        return cap / total
+        return factor
 
     technology_scale: dict[str, float] = {}
     for tech in dict.fromkeys(technology[key] for key in order):

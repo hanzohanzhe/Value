@@ -427,6 +427,58 @@ class AllocateCappedRequestsTest(unittest.TestCase):
         self.assertGreater(clamped, 0)
 
 
+    def test_fsum_overshoot_of_a_fitting_left_to_right_sum_is_clamped(self):
+        """Review M0-P0-7-S1 round 2: sum <= cap but fsum > cap used to come back unclamped."""
+        requests = [176.637, 329.6, 191.84, 259.34, 213.0, 240.551]
+        cap = 1410.9679999999998
+        self.assertLessEqual(sum(requests), cap)
+        self.assertGreater(math.fsum(requests), cap)  # the counterexample still holds
+        rows = [{"request_id": f"r{index}", "technology": "1c_battery", "requested_mw": value}
+                for index, value in enumerate(requests)]
+        for kwargs in ({"pools": {"pool": {"cap_mw": cap, "technologies": ["1c_battery"]}}},
+                       {"technology_caps": {"1c_battery": cap}}):
+            with self.subTest(stage=sorted(kwargs)):
+                result = ia.allocate_capped_requests(rows, **kwargs)
+                values = [result["accepted_mw"][row["request_id"]] for row in rows]
+                self.assertLessEqual(sum(values), cap)
+                self.assertLessEqual(math.fsum(values), cap)
+                for value, requested in zip(values, requests):
+                    self.assertLessEqual(value, requested)
+                    self.assertLessEqual(requested - value, 4 * math.ulp(requested))
+                self.assertEqual(result.get("pool_scale", {}).get("pool", 1.0), 1.0)
+                self.assertEqual(result["technology_scale"].get("1c_battery", 1.0), 1.0)
+
+    def test_caps_equal_to_the_left_to_right_sum_hold_under_both_summations(self):
+        rng = random.Random(4110968)
+        technologies = ["1c_battery", "0.5c_battery", "0.25c_battery"]
+        overshooting = 0
+        for case in range(4000):
+            requests = [{"request_id": f"r{i}", "technology": rng.choice(technologies),
+                         "requested_mw": round(rng.uniform(0, 400), 3)} for i in range(rng.randint(2, 8))]
+            values = [row["requested_mw"] for row in requests]
+            cap = sum(values)
+            overshooting += math.fsum(values) > cap
+            tech_caps = {}
+            for tech in technologies:
+                own = [row["requested_mw"] for row in requests if row["technology"] == tech]
+                if own and rng.random() < 0.5:
+                    tech_caps[tech] = sum(own)
+            result = ia.allocate_capped_requests(
+                requests, technology_caps=tech_caps, pools={"pool": {"cap_mw": cap, "technologies": technologies}})
+            accepted = [result["accepted_mw"][row["request_id"]] for row in requests]
+            with self.subTest(case=case):
+                self.assertLessEqual(sum(accepted), cap)
+                self.assertLessEqual(math.fsum(accepted), cap)
+                for tech, tech_cap in tech_caps.items():
+                    own = [result["accepted_mw"][row["request_id"]] for row in requests if row["technology"] == tech]
+                    self.assertLessEqual(sum(own), tech_cap)
+                    self.assertLessEqual(math.fsum(own), tech_cap)
+                for row, value in zip(requests, accepted):
+                    self.assertLessEqual(0.0, value)
+                    self.assertLessEqual(row["requested_mw"] - value, 16 * math.ulp(cap))
+        self.assertGreater(overshooting, 100)  # the property exercises the fsum-only branch
+
+
 class ScopeTest(unittest.TestCase):
     def test_no_discounting_rule_is_introduced(self):
         """A6: P4-02 is out of scope; decisions stay undiscounted in base-year money."""
