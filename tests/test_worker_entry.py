@@ -112,6 +112,15 @@ class WorkerEntryTests(unittest.TestCase):
     def test_argv_helpers_follow_the_conventions(self) -> None:
         self.assertEqual(isolated_python_argv("py", "/p"), ["py", "-B", "-s", "-X", "pycache_prefix=/p"])
         self.assertEqual(worker_python_argv("py", "/p")[-2:], ["-m", "backend.worker_entry"])
+        # no_user_site is part of the execution identity: the worker mirrors
+        # the spawning backend (the managed launchers run it with -s).
+        from unittest.mock import patch
+        from backend.lifecycle import python_argv
+        for flag, expected in ((0, False), (1, True)):
+            flags = type("Flags", (), {"no_user_site": flag})()
+            with patch.object(python_argv.sys, "flags", flags):
+                argv = worker_python_argv("py", "/p", match_parent_user_site=True)
+            self.assertEqual("-s" in argv, expected)
 
     def test_phase_one_takes_the_lease_fast_without_numpy(self) -> None:
         started = time.monotonic()

@@ -14,6 +14,7 @@ layout relies on ``PYTHONPATH`` (P0_CONVENTIONS section 8).
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -31,8 +32,22 @@ def isolated_python_argv(python: os.PathLike[str] | str, prefix: os.PathLike[str
     return [os.fspath(python), "-B", "-s", "-X", f"pycache_prefix={os.fspath(prefix)}"]
 
 
-def worker_python_argv(python: os.PathLike[str] | str, prefix: os.PathLike[str] | str) -> list[str]:
-    return [*isolated_python_argv(python, prefix), "-m", WORKER_MODULE]
+def worker_python_argv(
+    python: os.PathLike[str] | str,
+    prefix: os.PathLike[str] | str,
+    *,
+    match_parent_user_site: bool = False,
+) -> list[str]:
+    """Worker argv.  ``match_parent_user_site`` keeps ``-s`` only when the
+    spawning backend itself runs without the user site: ``no_user_site`` is
+    part of the execution identity the worker must reproduce exactly, so a
+    developer backend started without ``-s`` gets a worker without it (the
+    managed launchers start the backend with ``-s``)."""
+
+    argv = [*isolated_python_argv(python, prefix), "-m", WORKER_MODULE]
+    if match_parent_user_site and not sys.flags.no_user_site:
+        argv.remove("-s")
+    return argv
 
 
 def isolated_environment(environment: dict[str, str], prefix: os.PathLike[str] | str) -> dict[str, str]:

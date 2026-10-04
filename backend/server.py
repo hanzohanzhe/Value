@@ -8,6 +8,7 @@ import json
 import mimetypes
 import re
 import shutil
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -171,6 +172,9 @@ from backend.lifecycle.run_status import (
     update_status,
 )
 from backend.lifecycle.states import ACTIVE_STATES
+from backend.lifecycle.file_locks import FileLock, LOCK_HELD
+from backend.lifecycle.worker_lease import lease_state
+from backend.run_supervisor import RunSupervisor, WorkerSpawnError, worker_liveness
 from gridform_core.run_lineage import copperplate_rerun_project
 from gridform_core.run_quota import (
     RunQuotaPolicy,
@@ -219,6 +223,46 @@ def run_action_lock(run_id: str) -> threading.RLock:
         if lock is None:
             lock = RUN_ACTION_LOCKS[run_id] = threading.RLock()
         return lock
+
+
+BACKEND_LOCK_NAME = ".backend.lock"
+EXIT_BACKEND_ALREADY_RUNNING = 3
+SUPERVISOR: RunSupervisor | None = None
+_SUPERVISOR_GUARD = threading.Lock()
+
+
+def _seal_failed_run(run_dir: Path, status: Mapping[str, Any]) -> None:
+    """Background sealer: failed provenance for a run settled by the server."""
+
+    from gridform_core.provenance import write_failed_run_provenance
+
+    try:
+        path = write_failed_run_provenance(
+            run_dir, run_id=str(status.get("id") or run_dir.name),
+            project_id=str(status.get("project_id") or ""),
+            error_code=str(status.get("error_code") or "GF_WORKER_LOST"),
+        )
+    except (RuntimeError, OSError, ValueError) as exc:
+        update_status(run_dir, writer=WRITER_SERVER, mutate=lambda current: current.update({
+            "warnings": [*(current.get("warnings") if isinstance(current.get("warnings"), list) else []), {
+                "schema_version": "value.warning/v1", "code": "GF_FAILED_PROVENANCE_WARNING",
+                "category": "artifact", "severity": "warning",
+                "message": f"The stopped run could not be sealed: {exc}",
+            }],
+        }))
+        return
+    update_status(run_dir, writer=WRITER_SERVER,
+                  mutate=lambda current: current.__setitem__("provenance_artifact", path.name))
+
+
+def run_supervisor() -> RunSupervisor:
+    """The process's supervisor (created lazily for embedded/test servers)."""
+
+    global SUPERVISOR
+    with _SUPERVISOR_GUARD:
+        if SUPERVISOR is None or SUPERVISOR.runs_root != RUNS_ROOT:
+            SUPERVISOR = RunSupervisor(RUNS_ROOT, run_lock=run_action_lock, sealer=_seal_failed_run)
+        return SUPERVISOR
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_SPACE_BYTES = 1024 * 1024 * 1024
 ALLOWED_ORIGINS = {
@@ -959,6 +1003,11 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
             # the persisted status stays with the worker until it stops.
             run["persisted_status"] = run.get("status")
             run["status"] = "cancel_requested"
+    if run.get("id") and run_root.is_dir():
+        liveness, worker = worker_liveness(run_root, run)
+        run["worker_liveness"] = liveness
+        if worker:
+            run["worker"] = worker
     selected_modules = (run.get("modules") or {}).values()
     run["recovery"] = {
         **recovery_capability(selected_modules),
@@ -2411,17 +2460,28 @@ class Handler(BaseHTTPRequestHandler):
             reason_code="GF_RUN_QUEUED",
             writer=WRITER_SERVER,
         )
-        with (run_dir / "model.log").open("w", encoding="utf-8") as log:
-            process = subprocess.Popen(
-                [sys.executable, "-B", "-X", f"pycache_prefix={run_dir / 'unused-bytecode-cache'}", "-m", "backend.model_runner", "--project", project_id,
-                 "--run", run_id, "--mode", mode], cwd=PROJECT_ROOT, stdout=log,
-                stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        atomic_json(run_dir / "worker.json", {
-            "schema_version": "value.worker-identity/v1", "pid": process.pid,
-            "created_at": now(), "executable": sys.executable,
-            "ownership": "local_child_process_only",
-        })
+        if not self._spawn_or_fail(run_dir, run_id=run_id, project_id=project_id, mode=mode, log_mode="w"):
+            return
         self._json({"ok": True, "run": initial}, 202)
+
+    def _spawn_or_fail(self, run_dir: Path, *, run_id: str, project_id: str, mode: str,
+                       log_mode: str, extra: Mapping[str, Any] | None = None) -> bool:
+        """Spawn the run's worker; on failure record it and answer 500 JSON."""
+
+        try:
+            run_supervisor().spawn_worker(
+                run_dir=run_dir, run_id=run_id, project_id=project_id, mode=mode,
+                python=sys.executable, cwd=PROJECT_ROOT, log_mode=log_mode, extra=extra,
+            )
+        except WorkerSpawnError as exc:
+            failed = _record_start_failure(run_dir, {
+                "current_stage": "Model worker could not start",
+                "error_code": "GF_WORKER_SPAWN_FAILED",
+                "error": str(exc),
+            }, "GF_WORKER_SPAWN_FAILED")
+            self._json({"error": str(exc), "error_code": "GF_WORKER_SPAWN_FAILED", "run": failed}, 500)
+            return False
+        return True
 
     def _rerun_as_copperplate(self, run_id: str) -> None:
         with STUDY_LIFECYCLE_LOCK:
@@ -2479,6 +2539,8 @@ class Handler(BaseHTTPRequestHandler):
             }, 409); return
         if status.get("status") not in {"failed", "cancelled"}:
             self._json({"error": "Only a failed or cancelled run can be resumed safely"}, 409); return
+        if lease_state(root) == LOCK_HELD:
+            self._json({"error": "A model worker of this run is still alive", "error_code": "GF_WORKER_ALIVE"}, 409); return
         legacy_checkpoints = list((root / "model-output" / "checkpoints").glob("*_checkpoint.pkl"))
         safe_checkpoints = list((root / "model-output" / "checkpoints-v2").glob("state-*.json"))
         if not safe_checkpoints and (
@@ -2554,17 +2616,11 @@ class Handler(BaseHTTPRequestHandler):
             reason_code="GF_RUN_RESUME_QUEUED",
             writer=WRITER_SERVER,
         )
-        with (root / "model.log").open("a", encoding="utf-8") as log:
-            process = subprocess.Popen(
-                [sys.executable, "-B", "-X", f"pycache_prefix={root / 'unused-bytecode-cache'}", "-m", "backend.model_runner", "--project", str(project["id"]),
-                 "--run", run_id, "--mode", mode], cwd=PROJECT_ROOT, stdout=log,
-                stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        atomic_json(root / "worker.json", {
-            "schema_version": "value.worker-identity/v1", "pid": process.pid,
-            "created_at": now(), "executable": sys.executable,
-            "ownership": "local_child_process_only", "resume_attempt": status["resume_attempt"],
-        })
+        if not self._spawn_or_fail(
+            root, run_id=run_id, project_id=str(project["id"]), mode=mode, log_mode="a",
+            extra={"resume_attempt": status["resume_attempt"]},
+        ):
+            return
         self._json({"ok": True, "run": status}, 202)
 
     def _run_lifecycle_action(self, run_id: str, action: str, body: dict[str, Any]) -> None:
@@ -2592,6 +2648,13 @@ class Handler(BaseHTTPRequestHandler):
                         "guaranteed_boundary": "native: after annual checkpoint; VALUE compatibility: after copied-kernel return",
                     })
                 self._json({"ok": True, "run": present_run(read_json(status_path, {}))}, 202); return
+            if action == "mark-lost":
+                code, payload = run_supervisor().mark_lost(
+                    root, confirm_run_id=str(body.get("confirm_run_id") or ""),
+                )
+                if code == 200:
+                    payload["run"] = present_run(dict(payload["run"]))
+                self._json(payload, code); return
             if action == "export":
                 profile = str(body.get("profile") or "compact_results")
                 destination = root / "exports" / f"{run_id}-{profile}.zip"
@@ -3179,7 +3242,7 @@ class Handler(BaseHTTPRequestHandler):
                 }, 202)
             elif route.startswith("/api/runs/"):
                 parts = route.strip("/").split("/")
-                if len(parts) == 4 and parts[3] in {"cancel", "archive", "restore", "delete", "export"}:
+                if len(parts) == 4 and parts[3] in {"cancel", "archive", "restore", "delete", "export", "mark-lost"}:
                     self._run_lifecycle_action(slug(parts[2], "run"), parts[3], body)
                 else:
                     self._json({"error": "not found"}, 404)
@@ -3201,20 +3264,74 @@ class Handler(BaseHTTPRequestHandler):
             }, 500)
 
 
+def acquire_backend_singleton(state_root: Path) -> FileLock | None:
+    """Hold ``<state>/.backend.lock`` for the life of this backend (C2).
+
+    ``None`` when another backend already serves this data directory.  The
+    lock descriptor is not inheritable, so workers never keep it alive.
+    """
+
+    try:
+        return FileLock(Path(state_root) / BACKEND_LOCK_NAME).acquire(timeout=0)
+    except LockTimeout:
+        return None
+
+
+def _raise_keyboard_interrupt(signum: int, _frame: object) -> None:
+    raise KeyboardInterrupt(f"signal {signum}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="VALUE modular local API")
     parser.add_argument("--host", default="127.0.0.1"); parser.add_argument("--port", default=8766, type=int)
     args = parser.parse_args()
     if args.host not in {"127.0.0.1", "localhost"}:
         raise SystemExit("VALUE local API only permits loopback binding")
-    ensure_state_layout(STATE_ROOT); ensure_default_pack()
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    workbench_root = resolve_data_workbench_root(STATE_ROOT)
-    server.data_workbench_api = DataWorkbenchApi(  # type: ignore[attr-defined]
-        LocalDataWorkbenchService(workbench_root),
-        SQLiteJobStore(workbench_root / "jobs.sqlite"),
-    )
-    print(f"VALUE modular API: http://{args.host}:{args.port}", flush=True); server.serve_forever()
+    # Start-up order (P0 C2): state layout -> .backend.lock -> default pack ->
+    # reconcile_all -> workbench -> bind -> supervisor threads -> serve.
+    ensure_state_layout(STATE_ROOT)
+    singleton = acquire_backend_singleton(STATE_ROOT)
+    if singleton is None:
+        print(
+            f"VALUE: another VALUE backend already uses the data directory {STATE_ROOT}; "
+            "this one stops without changing anything.",
+            file=sys.stderr, flush=True,
+        )
+        raise SystemExit(EXIT_BACKEND_ALREADY_RUNNING)
+    supervisor = run_supervisor()
+    try:
+        ensure_default_pack()
+        report = supervisor.reconcile_all()
+        if report.settled or report.repaired or report.unverifiable:
+            print("VALUE run reconciliation: " + json.dumps(report.to_dict(), ensure_ascii=False), flush=True)
+        server = ThreadingHTTPServer((args.host, args.port), Handler)
+        workbench_root = resolve_data_workbench_root(STATE_ROOT)
+        server.data_workbench_api = DataWorkbenchApi(  # type: ignore[attr-defined]
+            LocalDataWorkbenchService(workbench_root),
+            SQLiteJobStore(workbench_root / "jobs.sqlite"),
+        )
+        supervisor.start()
+        for name in ("SIGTERM", "SIGHUP", "SIGBREAK"):
+            number = getattr(signal, name, None)
+            if number is not None:
+                signal.signal(number, _raise_keyboard_interrupt)
+        print(f"VALUE modular API: http://{args.host}:{args.port}", flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.server_close()
+    finally:
+        supervisor.stop()
+        background = supervisor.background_runs()
+        if background:
+            print(
+                f"VALUE: {len(background)} run(s) continue in the background and will be "
+                "supervised again when VALUE next starts: " + ", ".join(background),
+                flush=True,
+            )
+        singleton.release()
 
 
 if __name__ == "__main__":
