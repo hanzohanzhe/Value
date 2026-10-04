@@ -61,6 +61,36 @@ def solver_contract_acknowledgement_key(module_id: str, version: str) -> str:
     return f"solver-contract:{module_id}@{version}"
 
 
+def maturity_acknowledgement_key(kind: str, item_id: str, version: str) -> str:
+    """The one place that spells a maturity acknowledgement key."""
+
+    if kind not in {"module", "extension"}:
+        raise ValueError(f"Unknown acknowledgement kind: {kind}")
+    return f"{kind}:{item_id}@{version}"
+
+
+def builtin_maturity_acknowledgement_key(
+    kind: str, item_id: str, registry: ModuleRegistryV2 | None = None
+) -> str:
+    """Acknowledgement key for a module/extension at its registered version.
+
+    Built-in Study templates (VALUE 101 network lesson, VALUE UK suite) derive
+    their keys here so a module version bump cannot leave a stale key behind.
+    """
+
+    if registry is None:
+        from .v2.module_manifest import builtin_registry
+
+        registry = builtin_registry()
+    if kind == "module":
+        version = registry.manifest(item_id).version
+    elif kind == "extension":
+        version = registry.extension_registry.manifest(item_id).version
+    else:
+        raise ValueError(f"Unknown acknowledgement kind: {kind}")
+    return maturity_acknowledgement_key(kind, item_id, version)
+
+
 def _canonical_solver_settings(payload: object) -> dict[str, object]:
     if not isinstance(payload, Mapping):
         raise ProjectSolverContractError(
@@ -408,7 +438,7 @@ def maturity_acknowledgement_requirements(
             continue
         if manifest.status in {"experimental", "not_evaluated"}:
             result.append({
-                "key": f"module:{manifest.id}@{manifest.version}",
+                "key": maturity_acknowledgement_key("module", manifest.id, manifest.version),
                 "kind": "module", "id": manifest.id, "version": manifest.version,
                 "maturity": manifest.status, "acknowledgement": EXPERIMENTAL_ACK,
             })
@@ -419,7 +449,7 @@ def maturity_acknowledgement_requirements(
             continue
         if manifest.maturity in {"experimental", "not_evaluated"}:
             result.append({
-                "key": f"extension:{manifest.id}@{manifest.version}",
+                "key": maturity_acknowledgement_key("extension", manifest.id, manifest.version),
                 "kind": "extension", "id": manifest.id, "version": manifest.version,
                 "maturity": manifest.maturity, "acknowledgement": EXPERIMENTAL_ACK,
             })

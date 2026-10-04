@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import logging
 import math
 import importlib.util
 import shutil
@@ -51,6 +52,8 @@ from .zonal_solver_contract import (
     gbp1_stored_policy_matches,
     validate_stored_lock_evidence,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 SCHEMA_VERSION = "value.market-ledger/v8"
@@ -2242,8 +2245,10 @@ class SQLiteMarketLedger:
             finally:
                 if lease is not None:
                     lease.close()
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - a finaliser must never raise
+            # Interpreter shutdown may already have torn down sqlite/locks; the
+            # explicit close() path reports real errors.  Record, do not hide.
+            _LOGGER.debug("Market ledger finaliser ignored %s: %s", type(exc).__name__, exc)
 
     def _close_owned(self) -> dict[str, object]:
         if not self._authoritative_v8:

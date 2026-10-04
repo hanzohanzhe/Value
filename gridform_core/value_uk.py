@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import re
 
+from .frontend_contract import EXPERIMENTAL_ACK, builtin_maturity_acknowledgement_key
 from .zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 
 
@@ -73,9 +74,10 @@ def value_uk_study_templates(
         },
         "solver_contract": DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict(),
         "maturity_acknowledgements": {
-            "module:value-zonal-redispatch-balancing@3.0.0": "value.experimental-ack/v1",
-            "module:value-representative-point-weather@1.0.0": "value.experimental-ack/v1",
-            "extension:value-zonal-redispatch-extension@1.0.0": "value.experimental-ack/v1",
+            # Keys follow the registered module versions (X0 S7).
+            builtin_maturity_acknowledgement_key("module", "value-zonal-redispatch-balancing"): EXPERIMENTAL_ACK,
+            builtin_maturity_acknowledgement_key("module", "value-representative-point-weather"): EXPERIMENTAL_ACK,
+            builtin_maturity_acknowledgement_key("extension", "value-zonal-redispatch-extension"): EXPERIMENTAL_ACK,
         },
     }
     return copperplate, zonal

@@ -36,6 +36,7 @@ from backend.frozen_run_recovery import (
 )
 from backend.run_execution import current_execution, bind_run_execution, verify_run_execution
 from gridform_core.execution_archive import verify_execution_bundle
+from gridform_core.legacy_module_ids import ORCHESTRATOR_ENGINES as LEGACY_ORCHESTRATOR_ENGINES
 
 from gridform_core.catalog import (
     DATASET_SLOTS,
@@ -191,6 +192,9 @@ IMPORT_STAGING_ROOT = STATE_ROOT / "import-staging"
 ARCHIVES_ROOT = STATE_ROOT / "archives"
 TRASH_ROOT = STATE_ROOT / "trash"
 STUDY_LIFECYCLE_LOCK = threading.RLock()
+# Runs written before the gridform -> value rename keep their stored engine
+# label; both labels denote the v2 annual application service (R2-08).
+ORCHESTRATOR_ENGINES = LEGACY_ORCHESTRATOR_ENGINES
 REPLAY_EXPORT_JOBS_LOCK = threading.RLock()
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_SPACE_BYTES = 1024 * 1024 * 1024
@@ -934,7 +938,7 @@ def list_runs(*, compact: bool = True) -> list[dict[str, Any]]:
         for row in _list_json(RUNS_ROOT, "status.json")
         if row.get("project_id")
         and row.get("status")
-        and row.get("execution_engine") == "value-annual-orchestrator/v2"
+        and row.get("execution_engine") in ORCHESTRATOR_ENGINES
     ]
     if not compact:
         return rows

@@ -164,9 +164,13 @@ def build_value_101_network_pair(
     runtime_options["runtime.market_trace_level"] = "full"
     common["runtime_options"] = runtime_options
 
+    # Acknowledgement keys follow the registered module versions (X0 S7), so a
+    # later version bump cannot leave the lesson with a stale key.
+    from .frontend_contract import EXPERIMENTAL_ACK, builtin_maturity_acknowledgement_key
+
     weather_acknowledgement = {
-        "module:value-representative-point-weather@1.0.0":
-            "value.experimental-ack/v1"
+        builtin_maturity_acknowledgement_key("module", "value-representative-point-weather"):
+            EXPERIMENTAL_ACK
     }
 
     copperplate = copy.deepcopy(common)
@@ -205,8 +209,8 @@ def build_value_101_network_pair(
         "solver_contract": DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict(),
         "maturity_acknowledgements": {
             **weather_acknowledgement,
-            "module:value-zonal-redispatch-balancing@3.0.0": "value.experimental-ack/v1",
-            "extension:value-zonal-redispatch-extension@1.0.0": "value.experimental-ack/v1",
+            builtin_maturity_acknowledgement_key("module", "value-zonal-redispatch-balancing"): EXPERIMENTAL_ACK,
+            builtin_maturity_acknowledgement_key("extension", "value-zonal-redispatch-extension"): EXPERIMENTAL_ACK,
         },
     })
     constrained_modules = copy.deepcopy(modules)

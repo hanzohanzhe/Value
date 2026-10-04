@@ -12,6 +12,13 @@
       "kinds": ["compat_config", "environment", "working_directory"],
       "owner": "Prompt 33",
       "status": "retained_reference_boundary"
+    },
+    {
+      "path": "gridform_core/execution_archive.py",
+      "kinds": ["environment"],
+      "owner": "X0 S7 (P0 review)",
+      "status": "read_only_environment_capture",
+      "note": "Reads loader variables (os.environ[key]) to record execution identity; never writes the environment."
     }
   ]
 }

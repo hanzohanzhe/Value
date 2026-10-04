@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .frontend_contract import validate_project_solver_contract
+from .legacy_module_ids import LEGACY_MODULE_IDS
 from .doctoral_weather import uses_doctoral_weather, weather_execution_identity
 from .v2.module_manifest import ModuleRegistryV2
 from .zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
@@ -106,14 +107,7 @@ def derive_zonal_execution_project(
     if not isinstance(decoded, Mapping):
         raise ValueError("Zonal source study must be a JSON object")
     candidate = dict(decoded)
-    legacy_ids = {
-        "force-staged-bid-at-cost-psm": "value-staged-bid-at-cost-psm",
-        "force-zonal-redispatch-balancing": "value-zonal-redispatch-balancing",
-        "force-representative-point-weather": "value-representative-point-weather",
-        "storage-expansion-scheme-c": "value-storage-expansion-policy",
-        "scheme-c-state-transition": "value-annual-state-transition",
-        "force-zonal-redispatch-extension": "value-zonal-redispatch-extension",
-    }
+    legacy_ids = LEGACY_MODULE_IDS
 
     # Prompt 104 is retained as immutable historical evidence.  Its execution
     # copy is renamed in memory so no FORCE identity can enter a current VALUE

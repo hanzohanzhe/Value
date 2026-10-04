@@ -11,14 +11,16 @@ class RunPolicyTests(unittest.TestCase):
     def test_all_entry_modes_have_one_policy(self):
         self.assertEqual(set(RUN_POLICIES), {
             "smoke", "two_year_smoke", "validation_24h", "validation_168h",
-            "tutorial", "two_year", "full",
+            "value_101_day", "two_year", "full",
         })
         expected = {
             "smoke": (2025, 2025, 2),
             "two_year_smoke": (2025, 2026, 2),
             "validation_24h": (2025, 2025, 48),
             "validation_168h": (2025, 2025, 336),
-            "tutorial": (2025, 2026, 48),
+            # The two-year "tutorial" mode was replaced by the one-day
+            # VALUE 101 market lesson (value_101_day, one 48-period year).
+            "value_101_day": (2025, 2025, 48),
             "two_year": (2025, 2026, 17_520),
             "full": (2025, 2034, 17_520),
         }
@@ -26,7 +28,7 @@ class RunPolicyTests(unittest.TestCase):
             with self.subTest(mode=mode):
                 project = (
                     {"start_year": 2025, "end_year": 2026}
-                    if mode == "tutorial"
+                    if mode == "value_101_day"
                     else PROJECT
                 )
                 self.assertEqual(_years_for_mode(project, mode), values)
@@ -41,7 +43,7 @@ class RunPolicyTests(unittest.TestCase):
         self.assertFalse(resolve_run_policy("two_year_smoke").annual_economics_candidate)
         self.assertFalse(resolve_run_policy("validation_24h").annual_economics_candidate)
         self.assertFalse(resolve_run_policy("validation_168h").annual_economics_candidate)
-        self.assertFalse(resolve_run_policy("tutorial").annual_economics_candidate)
+        self.assertFalse(resolve_run_policy("value_101_day").annual_economics_candidate)
         self.assertTrue(resolve_run_policy("two_year").annual_economics_candidate)
 
     def test_only_independent_validation_modes_require_pre_clearing_declarations(self):
