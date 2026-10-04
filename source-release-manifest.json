@@ -1,6 +1,6 @@
 {
   "schema_version": "value.source-release-manifest/v1",
-  "snapshot_status": "VALUE-only public source with exact original runtime parameters; research inputs distributed as independent data assets; Full build provenance recorded separately",
+  "snapshot_status": "VALUE-only public source; reader documentation updated after the source-2026-10-04 archived snapshot; runtime application release remains unchanged pending frontend review",
   "include": [
     ".gitattributes",
     ".github/workflows/manual-verified-asset-transfer.yml",
@@ -1313,6 +1313,7 @@
     "website/methodology/chapters.json",
     "website/methodology/edition.json",
     "website/methodology_page.py",
+    "website/presentation.py",
     "website/publication.py",
     "website/release_candidate.py",
     "website/site.json",
@@ -2646,9 +2647,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "39a4213c1722f84fad9387a6efdb696753b5b6ff63227fa74a37b57158ea626b",
-      "bytes": 2295,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "0049caa45f290e23117b453a1ca13db93622c07d196e37e78938f769258992c4",
+      "bytes": 2441,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "README_BILINGUAL.md",
@@ -3876,9 +3877,9 @@
     },
     {
       "path": "docs/DEPLOYMENT.md",
-      "sha256": "c98677d9dcb7fe9b7b10cef82df2ca2f1569cab7427cc041338d0ee7723a99fd",
-      "bytes": 4166,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "7657041bc4e784b75cc69c0fab008d6bd16ae52e08429408b14f9286f755c97d",
+      "bytes": 4675,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "docs/GIT_SNAPSHOT_POLICY.md",
@@ -3918,9 +3919,9 @@
     },
     {
       "path": "docs/PUBLICATION_PLAN.md",
-      "sha256": "59ce784456fc3c48e13e2c81b7279af4ae72a2d06053dbf467fc3b80462d1671",
-      "bytes": 5712,
-      "transform": "publication execution metadata, rights or packaging update"
+      "sha256": "39bab26cd1d3acc6f2939328ee24a8f11eb060df08e7c9bc70e95c4cb8c90b84",
+      "bytes": 3619,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "docs/REPOSITORY_STRUCTURE.md",
@@ -10333,9 +10334,9 @@
     },
     {
       "path": "website/README.md",
-      "sha256": "718672e7f98487a5b86cbfd5bdae92155d6ca57237ef8e8135069bd93efe3ff3",
-      "bytes": 2389,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "8cae3751c124232c55f4b632422c1b1b0aac2d77e4db92a915fede3f6611106a",
+      "bytes": 2729,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "website/UPLOAD-FILES.txt",
@@ -10345,9 +10346,9 @@
     },
     {
       "path": "website/build.py",
-      "sha256": "e35199c9129cea43b5c93bf7479246830b1d7a8c4b79009195cbe29a0382a377",
-      "bytes": 10184,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "7022d1119d2aa3192a7a197e8b1f76b5f33b47c4f204525930e35599e1d6e685",
+      "bytes": 10321,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "website/check_site.py",
@@ -10357,15 +10358,15 @@
     },
     {
       "path": "website/content.py",
-      "sha256": "c1b7800312fa51a78de9db5627feb476d15949a8b066d4370b5b11b1da5d141a",
-      "bytes": 34081,
-      "transform": "publication execution metadata, rights or packaging update"
+      "sha256": "66dfc9c028c1e2006a53c2755bc378c1c824d7a01f23ed4699bf8d5ca2278204",
+      "bytes": 28788,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "website/journey.py",
-      "sha256": "a02c39540c162da83f27ea32e15065a54a021345030219ea8f7bf914f2304920",
-      "bytes": 10039,
-      "transform": "publication execution metadata, rights or packaging update"
+      "sha256": "f04c77ebaf8c9fc5f882419c4d77b1360e08b93cd10e50a83462528b9328566f",
+      "bytes": 10040,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "website/methodology-sync.json",
@@ -10404,10 +10405,16 @@
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
     },
     {
+      "path": "website/presentation.py",
+      "sha256": "ba566dbc349d9382b5a85a727e59f4f204fcfbcf5fb71004d450da97c600750f",
+      "bytes": 11105,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
+    },
+    {
       "path": "website/publication.py",
-      "bytes": 6769,
-      "sha256": "4c8ca13051e01fb88b90337baaee70611159e35de8b26da3686e5b8ace675540",
-      "transform": "publication execution metadata, rights or packaging update"
+      "bytes": 5745,
+      "sha256": "8499294c4c970e07fa237e18acbd954ebb133ced84468bd612be47487ceb6214",
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "website/release_candidate.py",
@@ -10417,9 +10424,9 @@
     },
     {
       "path": "website/site.json",
-      "sha256": "c60937df4a39b82e05671b2716b591b3bf6c4572f3255b2fee02265eb835c769",
-      "bytes": 11163,
-      "transform": "publication execution metadata, rights or packaging update"
+      "sha256": "d0881f0194a160b063baa837081e3026ed5526a18ab91ea9999b8d1f1e5256c7",
+      "bytes": 10896,
+      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
     },
     {
       "path": "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-04.docx",

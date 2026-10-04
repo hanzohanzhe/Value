@@ -15,7 +15,9 @@ VALUE 连接电力系统的半小时运行与年度投资，研究发电、储�
 | Edit module | [模块开发导引](docs/MODULE_DEVELOPER_101_ZH.md) |
 | add new function to VALUE | [扩展与项目结构](docs/REPOSITORY_STRUCTURE.md) |
 
-Linux Full 已通过离线安装及四类短任务验收。Windows/macOS 为实验候选，完成归档和依赖检查，原生安装验收、签名与公证待完成。这些运行检查不代替科学验证。
+当前安装包为候选版，改进前端正在代码审查中；审查修改验收后发布更新。
+
+Linux Full 已通过离线安装及四类短任务验收。Windows/macOS 为实验候选，完成归档和依赖检查，原生安装验收、签名与公证待完成。科学结论结合具体配置、输入、研究时间范围与独立审阅判断。
 
 [中英文方法学](docs/methodology/README.md)为 **0.3（2026-10-04）**，科学依据为 **2026-10-02**；网页、Word、PDF、离线 HTML 从同一套 VALUE 正文生成。真实研究输入由[独立数据发行](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-04)提供，按包内来源和许可使用。
 

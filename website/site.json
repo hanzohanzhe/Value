@@ -130,8 +130,8 @@
         "zh": "11 区 overlay 集合"
       },
       "interface": {
-        "en": "Unzip the container and select one of 33 nested eight-role ZIPs; use the bundled Python installer and extension dataset slots. Do not import the family into national Data.",
-        "zh": "解压容器，选择 33 个八类角色嵌套 ZIP 之一，通过包内 Python 安装方法与扩展数据槽接入；整个集合不能导入 national Data。"
+        "en": "Unzip the container, select one of the 33 nested eight-role ZIPs, and follow its bundled Python installer instructions using extension dataset slots.",
+        "zh": "解压容器，选择 33 个八类角色子包之一，按包内 Python 安装说明通过扩展数据槽接入。"
       }
     },
     {
@@ -144,8 +144,8 @@
         "zh": "全国需求补充组件"
       },
       "interface": {
-        "en": "Supplementary input files; not an installable value.data-bundle/v1 ZIP.",
-        "zh": "补充输入文件，不是可安装的 value.data-bundle/v1 ZIP。"
+        "en": "Follow the bundled README to add these supplementary input files to your dataset.",
+        "zh": "按包内 README 将这些补充输入文件加入数据集。"
       }
     },
     {
@@ -158,8 +158,8 @@
         "zh": "GBP1 与 23 区研究套件"
       },
       "interface": {
-        "en": "Import through the research-suite UI/API. Its national and network components use their own configuration boundaries.",
-        "zh": "通过研究套件 UI/API 导入；全国与网络组件分别使用对应配置边界。"
+        "en": "Import through the research-suite UI/API; configure the national and network components using their corresponding settings.",
+        "zh": "通过研究套件 UI/API 导入；按对应设置配置全国与网络组件。"
       }
     },
     {
@@ -172,8 +172,8 @@
         "zh": "23 区网络 overlay"
       },
       "interface": {
-        "en": "Install through the Python interface and zonal conditional dataset slots; network-only roles are not accepted by national Data.",
-        "zh": "通过 Python 接口与分区条件数据槽安装；national Data 不接收仅网络角色。"
+        "en": "Follow the Python installation instructions and use the zonal conditional dataset slots.",
+        "zh": "按 Python 安装说明，通过分区条件数据槽接入。"
       }
     },
     {
@@ -186,8 +186,8 @@
         "zh": "R029 全国输入"
       },
       "interface": {
-        "en": "Import as ordinary national Data inputs. Doctoral frozen replay is unsupported on the current Full; no failed doctoral Study template is provided.",
-        "zh": "作为普通 national Data 输入导入；当前 Full 不支持博士冻结精确复跑，不提供失败的博士 Study 模板。"
+        "en": "Import as ordinary national Data inputs. Frozen doctoral replay remains to be verified, including initialization and investment eligibility.",
+        "zh": "作为普通全国 Data 输入导入；博士冻结复跑仍待验证，包括初始化与投资资格路径。"
       }
     },
     {
@@ -200,8 +200,8 @@
         "zh": "GBP1 全国数据"
       },
       "interface": {
-        "en": "Import through national Data UI/API; preserve runtime pack ID value-uk-open-data-pack-v1.",
-        "zh": "通过 national Data UI/API 导入，保留运行时 pack ID value-uk-open-data-pack-v1。"
+        "en": "Import through the national Data UI/API.",
+        "zh": "通过全国 Data UI/API 导入。"
       }
     }
   ],

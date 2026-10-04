@@ -65,19 +65,20 @@ def build():
     global LANG
     if DIST.exists(): shutil.rmtree(DIST)
     shutil.copytree(ROOT / "static", DIST)
-    import journey, publication
+    import journey, publication, presentation
     routes=[]
     for LANG in ['en','zh']:
-        page('',t('Electricity System Modelling','电力系统建模'),t('VALUE for power-system operation and investment evolution.','VALUE 电力系统运行与投资演化。'),home(),True)
+        homebody=presentation.pages(__import__(__name__), [('', '', '', home())])[0][3]
+        page('',t('Electricity System Modelling','电力系统建模'),t('VALUE for power-system operation and investment evolution.','VALUE 电力系统运行与投资演化。'),homebody,True)
         routes.append(f'/{LANG}/')
         import content
         import methodology_page
         import release_candidate
-        for path,title,desc,body in publication.pages(__import__(__name__), content.pages(__import__(__name__)) + journey.pages(__import__(__name__)) + methodology_page.pages(__import__(__name__)) + release_candidate.pages(__import__(__name__))):
+        for path,title,desc,body in presentation.pages(__import__(__name__), publication.pages(__import__(__name__), content.pages(__import__(__name__)) + journey.pages(__import__(__name__)) + methodology_page.pages(__import__(__name__)) + release_candidate.pages(__import__(__name__)))):
             page(path,title,desc,body)
             routes.append(f'/{LANG}/{path}/')
     (DIST/'index.html').write_text('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VALUE | Electricity System Modelling</title><meta http-equiv="refresh" content="0;url=/en/"></head><body><a href="/en/">VALUE · English</a> <a href="/zh/">中文</a></body></html>')
-    (DIST/'404.html').write_text('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | VALUE</title><link rel="stylesheet" href="/assets/site.css"></head><body><main class="wrap page-main"><p class="eyebrow">VALUE / 404</p><h1>Page not found.<br>页面不存在。</h1><p>This address may have changed.</p><a class="button" href="/en/">English home</a> <a class="button button-outline" href="/zh/">中文首页</a></main></body></html>')
+    (DIST/'404.html').write_text('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Find a page | VALUE</title><link rel="stylesheet" href="/assets/site.css"></head><body><main class="wrap page-main"><p class="eyebrow">VALUE / 404</p><h1>Find a page.<br>查找页面。</h1><p>This address may have changed.</p><a class="button" href="/en/">English home</a> <a class="button button-outline" href="/zh/">中文首页</a></main></body></html>')
     if ORIGIN:
         (DIST/'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join('<url><loc>'+ORIGIN+p+'</loc></url>' for p in routes)+'</urlset>')
     (DIST/'robots.txt').write_text('User-agent: *\nAllow: /\n'+('Sitemap: '+ORIGIN+'/sitemap.xml\n' if ORIGIN else ''))
