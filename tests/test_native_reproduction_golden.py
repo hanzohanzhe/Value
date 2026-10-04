@@ -327,6 +327,20 @@ class SyntheticGoldenTests(unittest.TestCase):
             self.assertEqual([], matched[:5], pattern)
         for key in real_keys:
             self.assertEqual(harness.zone_of(key), rules.zone(key), key)
+        # The e2e baseline has no zone rule of its own: for every key it
+        # produces, the stored zone, the capture script's zone and zones.json
+        # agree (metadata rows are identity, as metadata.key/value in X0).
+        capture = _capture_module()
+        baseline = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
+        e2e_keys = set()
+        for digest in baseline["cases"].values():
+            e2e_keys |= set(capture.e2e_entries(digest))
+        self.assertEqual(e2e_keys, set(baseline["zones"]))
+        for key in sorted(e2e_keys):
+            self.assertEqual((baseline["zones"][key], capture.e2e_zone(key)), (rules.zone(key), rules.zone(key)), key)
+        metadata = sorted(key for key in e2e_keys if key.startswith("market/market.sqlite::metadata."))
+        self.assertGreaterEqual(len(metadata), 16)
+        self.assertEqual({baseline["zones"][key] for key in metadata}, {"identity"})
         # Declared clearing inputs/outcomes: trajectory like their tables
         # (the derived unserved target falls under the A2 '*unserved*' rule).
         self.assertEqual(harness.zone_of("kernel/declared::ahead.storage_accepted_mw"), "trajectory")
@@ -548,7 +562,16 @@ class CaptureProvenanceTests(unittest.TestCase):
             except LookupError as error:
                 # No git (an archive copy): the recorded hashes remain the record.
                 self.skipTest(f"git unavailable: {error}")
-            self.assertIsNotNone(commit, f"{name}: no commit reachable from HEAD has the recorded tooling")
+            if commit is None:
+                # The capture and its tooling are about to be committed together
+                # (pre-commit gate run): the checkout itself must then hold the
+                # recorded tooling.  In any committed checkout this is the same
+                # as HEAD matching, so it adds no way around the commit check.
+                current = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in tooling}
+                self.assertEqual(
+                    current, source["capture_tooling"],
+                    f"{name}: neither a commit reachable from HEAD nor the checkout has the recorded tooling",
+                )
 
     def test_find_tooling_commit_matches_content_and_fails_closed(self):
         capture = _capture_module()
@@ -652,6 +675,25 @@ class E2ERetirementTests(unittest.TestCase):
 
 
 class E2EZoneGateTests(unittest.TestCase):
+    def test_new_ledger_metadata_rows_are_identity_and_never_gated(self):
+        """P0-6 S2 writes the market_rule_set record into the ledger metadata
+        and C20 adds leftover_relationship: identity changes, not failures."""
+
+        capture = _capture_module()
+        baseline = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
+        expected = baseline["cases"]["D3"]
+        actual = copy.deepcopy(expected)
+        actual["metadata"]["market_rule_set"] = '{"id": "doctoral-lineage-0.6.0a2"}'
+        actual["metadata"]["leftover_relationship"] = '"separate_prebalancing"'
+        actual["metadata"]["curtailment_semantics"] = '"changed"'
+        differences = capture.e2e_differences(expected, actual, baseline["zones"])
+        self.assertEqual(
+            sorted(key for _, key, _, _ in differences),
+            ["market/market.sqlite::metadata.#rows", "market/market.sqlite::metadata.curtailment_semantics",
+             "market/market.sqlite::metadata.leftover_relationship", "market/market.sqlite::metadata.market_rule_set"],
+        )
+        self.assertEqual({zone for zone, _, _, _ in differences}, {"identity"})
+
     def test_stored_baseline_zones_gate_and_only_tighten(self):
         capture = _capture_module()
         baseline = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))

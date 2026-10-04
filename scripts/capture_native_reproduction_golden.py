@@ -52,12 +52,13 @@ from gridform_validation.golden import ZONE_STRENGTH  # noqa: E402
 from tests import native_reproduction_harness as harness  # noqa: E402
 
 E2E_SCHEMA = "value.native-e2e-baseline/v1"
+E2E_ARTIFACT_PREFIX = "market/market.sqlite::"
 E2E_CASES = ("D3", "C3")
 E2E_NOTES = [
     "P0-6 S1: VALUE 101 value_101_day (48 periods) market.sqlite of the default PSM at HEAD, for the S3 byte/value identity check.",
     "Cases are the frozen golden projects tests/golden/projects/<case>.json run through scripts/golden/run_case.py (D3: doctoral reference configuration with the legacy storage tariff; C3: default dynamic storage cost).",
-    "Every table column is hashed over its rowid-ordered values (exact repr); period_summary is also kept in full. Zones follow tests/golden/zones.json with metadata keys classified individually; identity-zone entries and the whole-file hash are informational.",
-    "This baseline has no revision path and is never rewritten. It gates only until the X0 golden of the same case (tests/golden/doctoral/D3.json or tests/golden/corrected/C3.json) takes its first revision (e2e_retirement); from then on X0, which has the accounting-revision and doctoral re-baseline paths, is the gate for value_101_day, and no v2 of this file is captured.",
+    "Every table column is hashed over its rowid-ordered values (exact repr); period_summary is also kept in full. Each metadata row is keyed market/market.sqlite::metadata.<name> (plus metadata.#rows). Zones come from tests/golden/zones.json alone (the single zone authority), so every metadata row is identity like metadata.key/value in the X0 goldens; identity-zone entries and the whole-file hash are informational.",
+    "This baseline has no revision path and is never rewritten. It gates only until an X0 golden of the same case (tests/golden/doctoral/D3.json or tests/golden/corrected/C3.json) takes a revision that changes a gated market/market.sqlite key (e2e_retirement); from then on X0, which has the accounting-revision and doctoral re-baseline paths, is the gate for value_101_day, and no v2 of this file is captured.",
 ]
 
 # The X0 goldens of the same VALUE 101 cases.  They carry the revision path
@@ -351,24 +352,22 @@ def run_e2e_case(case: str, workdir: Path) -> dict[str, Any]:
 
 
 def e2e_zone(key: str) -> str:
-    """Zone of an ``market/market.sqlite::<table>.<column>`` or metadata key."""
+    """Zone of an e2e key: tests/golden/zones.json through harness.zone_of,
+    with no rule of its own (P0_CONVENTIONS 2: zones.json is the single zone
+    authority; metadata rows fall under 'market/market.sqlite::metadata.*')."""
 
-    if key.startswith("market/market.sqlite::metadata["):
-        name = key[len("market/market.sqlite::metadata["):-1]
-        if name in {"schema_version", "psm_module_version"} or name.endswith("_version"):
-            return "identity"
-        return "accounting"
     return harness.zone_of(key)
 
 
 def e2e_entries(digest: Mapping[str, Any]) -> dict[str, Any]:
     entries: dict[str, Any] = {}
     for table, payload in digest["tables"].items():
-        entries[f"market/market.sqlite::{table}.#rows"] = payload["rows"]
+        entries[f"{E2E_ARTIFACT_PREFIX}{table}.#rows"] = payload["rows"]
         for column, value in payload["columns"].items():
-            entries[f"market/market.sqlite::{table}.{column}"] = value
-    for key, value in digest["metadata"].items():
-        entries[f"market/market.sqlite::metadata[{key}]"] = value
+            entries[f"{E2E_ARTIFACT_PREFIX}{table}.{column}"] = value
+    entries[f"{E2E_ARTIFACT_PREFIX}metadata.#rows"] = len(digest["metadata"])
+    for name, value in digest["metadata"].items():
+        entries[f"{E2E_ARTIFACT_PREFIX}metadata.{name}"] = value
     return entries
 
 
@@ -392,9 +391,6 @@ def e2e_differences(expected: Mapping[str, Any], actual: Mapping[str, Any],
         if left.get(key) != right.get(key):
             differences.append((gate_zone(key, stored_zones), key, left.get(key), right.get(key)))
     return differences
-
-
-E2E_ARTIFACT_PREFIX = "market/market.sqlite::"
 
 
 def market_ledger_changes(previous: Mapping[str, Any], current: Mapping[str, Any]) -> list[str]:
