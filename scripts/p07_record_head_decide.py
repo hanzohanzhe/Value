@@ -320,6 +320,86 @@ def scenarios():
             "a4_expected": {},
             "a4_expected_decision": "not_applicable",
         },
+        {
+            "id": "deplete_multi_member_unequal",
+            "purpose": "Review M0-P0-7-S1 round 3: one owner with three CCGT of unequal capacity (60/30/10 MW) "
+                       "in one region nets a loss. The group target payback is min(12, 15, 12) = 12, the group "
+                       "life min(25, 30, 25) = 25, so retirement sized by life would differ. HEAD retires "
+                       "500,000 x 12 / 1e6 = 6 MW, split by capacity (3.6 / 1.8 / 0.6 MW), not equally. "
+                       "Restored net -2.6e6 -> 31.2 MW (18.72 / 9.36 / 3.12 MW).",
+            "assets": [
+                _asset("ccgt-m1", "CCGT", 60.0, region="Wales", capex_per_mw=1_000_000.0, life=25.0,
+                       target_payback_years=12.0, investment_owner_id="owner-fleet"),
+                _asset("ccgt-m2", "CCGT", 30.0, region="Wales", capex_per_mw=1_000_000.0, life=30.0,
+                       target_payback_years=15.0, investment_owner_id="owner-fleet"),
+                _asset("ccgt-m3", "CCGT", 10.0, region="Wales", capex_per_mw=1_000_000.0, life=25.0,
+                       target_payback_years=12.0, investment_owner_id="owner-fleet"),
+            ],
+            "income": {"ccgt-m1": -300_000.0, "ccgt-m2": -150_000.0, "ccgt-m3": -50_000.0},
+            "headroom": [],
+            "cashflow_inputs": {
+                "ccgt-m1": {"electricity_income_gbp": -300_000.0,
+                            **_thermal(20_000.0, fuel=35.0, carbon=22.0, unit_time=3.0)},
+                "ccgt-m2": {"electricity_income_gbp": -150_000.0,
+                            **_thermal(10_000.0, fuel=35.0, carbon=22.0, unit_time=3.0)},
+                "ccgt-m3": {"electricity_income_gbp": -50_000.0,
+                            **_thermal(5_000.0, fuel=35.0, carbon=22.0, unit_time=3.0)},
+            },
+            "a4_expected": {
+                "ccgt-m1": {"basis": "scheme_c_income_less_energy_times_gen_cost", "gen_cost_gbp_per_mwh": 60.0,
+                            "operating_cost_gbp": 1_200_000.0, "net_revenue_gbp": -1_500_000.0},
+                "ccgt-m2": {"basis": "scheme_c_income_less_energy_times_gen_cost", "gen_cost_gbp_per_mwh": 60.0,
+                            "operating_cost_gbp": 600_000.0, "net_revenue_gbp": -750_000.0},
+                "ccgt-m3": {"basis": "scheme_c_income_less_energy_times_gen_cost", "gen_cost_gbp_per_mwh": 60.0,
+                            "operating_cost_gbp": 300_000.0, "net_revenue_gbp": -350_000.0},
+            },
+            "a4_expected_decision": {
+                # 2.6e6 x 12 / 1e6 = 31.2 MW, split 60/30/10 of 100 MW
+                "groups": {"owner-fleet|CCGT|Wales": {"recommendation": "Deplete", "accepted_addition_mw": 0.0,
+                                                      "retirement_mw": 31.2}},
+                "retirements_mw": {"ccgt-m1": 18.72, "ccgt-m2": 9.36, "ccgt-m3": 3.12},
+            },
+        },
+        {
+            "id": "tier_boundaries_and_region_default",
+            "purpose": "Review M0-P0-7-S1 round 3: exact tier boundaries and the region default. onshore: ROI "
+                       "1e6 / 8e6 = 0.125 == preferred 0.125 -> not Invest_High (strict), payback 8 <= 10 -> "
+                       "Invest_Profit 1.25 MW. offshore: payback 4e7 / 5e6 = 8 == target 8 (ROI 0.125 < 0.2) -> "
+                       "Invest_Profit 2.5 MW (inclusive). solar net exactly 0 -> Do_Nothing, no retirement. "
+                       "solar with region None joins the 'GB' asset of its owner (one group, proposal region "
+                       "GB); a lone region-None solar of another owner proposes in region GB.",
+            "assets": [
+                _asset("onshore-roi", "onshore", 10.0, capex_per_mw=800_000.0, preferred_rate=0.125,
+                       target_payback_years=10.0, investment_owner_id="owner-roi"),
+                _asset("offshore-payback", "offshore", 20.0, capex_per_mw=2_000_000.0, preferred_rate=0.2,
+                       target_payback_years=8.0, investment_owner_id="owner-payback"),
+                _asset("solar-breakeven", "solar", 10.0, capex_per_mw=600_000.0, investment_owner_id="owner-even"),
+                _asset("solar-r-gb", "solar", 10.0, capex_per_mw=600_000.0, investment_owner_id="owner-r"),
+                _asset("solar-r-none", "solar", 5.0, region=None, capex_per_mw=600_000.0,
+                       investment_owner_id="owner-r"),
+                _asset("solar-n-none", "solar", 4.0, region=None, capex_per_mw=600_000.0,
+                       investment_owner_id="owner-n"),
+            ],
+            "income": {"onshore-roi": 1_000_000.0, "offshore-payback": 5_000_000.0, "solar-breakeven": 0.0,
+                       "solar-r-gb": 900_000.0, "solar-r-none": 450_000.0, "solar-n-none": 360_000.0},
+            "headroom": [{"module_id": "vre-expansion-cap",
+                          "allowed": {"solar": 100.0, "onshore": 100.0, "offshore": 100.0}}],
+            "cashflow_inputs": {
+                asset_id: {"electricity_income_gbp": income, **_thermal(energy, generation=0.0001)}
+                for asset_id, income, energy in (
+                    ("onshore-roi", 1_000_000.0, 25_000.0), ("offshore-payback", 5_000_000.0, 80_000.0),
+                    ("solar-breakeven", 0.0, 10_000.0), ("solar-r-gb", 900_000.0, 10_000.0),
+                    ("solar-r-none", 450_000.0, 5_000.0), ("solar-n-none", 360_000.0, 4_000.0))
+            },
+            "a4_expected": {
+                key: {"basis": "gross_revenue_is_profit", "gen_cost_gbp_per_mwh": None,
+                      "operating_cost_gbp": 0.0, "net_revenue_gbp": income}
+                for key, income in (("onshore-roi", 1_000_000.0), ("offshore-payback", 5_000_000.0),
+                                    ("solar-breakeven", 0.0), ("solar-r-gb", 900_000.0),
+                                    ("solar-r-none", 450_000.0), ("solar-n-none", 360_000.0))
+            },
+            "a4_expected_decision": "unchanged_from_head",
+        },
     ]
 
 

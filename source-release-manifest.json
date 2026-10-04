@@ -8769,8 +8769,8 @@
     },
     {
       "path": "scripts/p07_record_head_decide.py",
-      "sha256": "7954fd9db460ae2aca7a4c4214fbd5f709474560a6053db1fee3de55b886f7da",
-      "bytes": 25625,
+      "sha256": "c63632c099a32c53a7ae36632ffd108ed5386fd52c12795eb9d562e27a4f7569",
+      "bytes": 31593,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9261,8 +9261,8 @@
     },
     {
       "path": "tests/fixtures/p07/head_decide_record.json",
-      "sha256": "8db2709169acd7b488f0f3931d462637547100c6494a75e9ce94ed467e8ff2f1",
-      "bytes": 84142,
+      "sha256": "87dd6c8729fd730c35f5e44df4c25933d212cc656518950763822c8cae8ac95f",
+      "bytes": 111427,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10047,8 +10047,8 @@
     },
     {
       "path": "tests/test_p07_head_decide_record.py",
-      "sha256": "ae116335faebb2028c7346feaf6233d2fb6c44d61668266990c48d3b1105cefa",
-      "bytes": 17775,
+      "sha256": "0561900e497675291ffaa46fee6d5ce33faf402e6e8f9ef5c4ba0252e1699b35",
+      "bytes": 21700,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -100,7 +100,7 @@ class HeadDecideRecordTest(unittest.TestCase):
         self.assertEqual(self.record["identity_extension_keys_excluded"], ["cem_model_identity"])
         ids = [entry["id"] for entry in self.record["scenarios"]]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertGreaterEqual(len(ids), 7)
+        self.assertGreaterEqual(len(ids), 10)
 
     def test_live_decide_reproduces_the_head_record(self):
         for entry in self.record["scenarios"]:
@@ -127,6 +127,59 @@ class HeadDecideRecordTest(unittest.TestCase):
         solar = [row["capacity_mw"] for row in by_id["vre_gross_shared_headroom"]["proposals"]
                  if row["technology"] == "solar"]
         self.assertEqual(solar, [10.0, 2.0])
+
+    def _entry(self, scenario_id):
+        return {entry["id"]: entry for entry in self.record["scenarios"]}[scenario_id]
+
+    def test_multi_member_deplete_scenario_pins_sizing_and_split(self):
+        """Review M0-P0-7-S1 round 3: a multi-member loss group with target payback != economic life."""
+        entry = self._entry("deplete_multi_member_unequal")
+        inputs = REC.decanonical(entry["inputs"])
+        capacity = {row["asset_id"]: row["capacity_mw"] for row in inputs["assets"]}
+        extensions = [row["extensions"] for row in inputs["assets"]]
+        self.assertGreaterEqual(len(set(capacity.values())), 3)
+        target = min(row["target_payback_years"] for row in extensions)
+        life = min(row["economic_lifetime_years"] for row in extensions)
+        self.assertNotEqual(target, life)
+        head = entry["head_decision"]
+        self.assertEqual(head["proposals"], [])
+        retirements = head["retirements_mw"]
+        self.assertEqual(set(retirements), set(capacity))
+        loss = -sum(inputs["market"]["market_income_gbp_by_agent"].values())
+        group = loss * target / 1e6  # unit cost 1e6 GBP/MW
+        self.assertTrue(math.isclose(math.fsum(retirements.values()), group, rel_tol=1e-15))
+        total = sum(capacity.values())
+        for asset_id, value in retirements.items():
+            with self.subTest(asset=asset_id):
+                self.assertEqual(value, group * capacity[asset_id] / total)
+        self.assertNotEqual(len(set(retirements.values())), 1)
+
+    def test_tier_boundary_scenario_sits_exactly_on_both_boundaries(self):
+        """ROI == preferred is not Invest_High (strict); payback == target is Invest_Profit (inclusive)."""
+        head = self._entry("tier_boundaries_and_region_default")["head_decision"]
+        by_owner = {row["agent_id"]: row for row in head["proposals"]}
+        roi = by_owner["owner-roi"]["evidence"]
+        self.assertEqual(roi["roi"].hex(), roi["preferred_rate"].hex())
+        self.assertEqual(by_owner["owner-roi"]["extensions"]["investment_recommendation"], "Invest_Profit")
+        payback = by_owner["owner-payback"]["evidence"]
+        self.assertEqual(payback["payback_years"].hex(), payback["target_payback_years"].hex())
+        self.assertLess(payback["roi"], payback["preferred_rate"])
+        self.assertEqual(by_owner["owner-payback"]["extensions"]["investment_recommendation"], "Invest_Profit")
+        self.assertNotIn("owner-even", by_owner)  # net exactly 0: Do_Nothing, not Deplete
+        self.assertEqual(head["retirements_mw"], {})
+
+    def test_region_none_defaults_to_gb(self):
+        entry = self._entry("tier_boundaries_and_region_default")
+        regions = {row["asset_id"]: row["region"] for row in entry["inputs"]["assets"]}
+        self.assertIsNone(regions["solar-r-none"])
+        self.assertIsNone(regions["solar-n-none"])
+        self.assertEqual(regions["solar-r-gb"], "GB")
+        head = entry["head_decision"]
+        self.assertEqual(head["extensions"]["grouped_investment_owners"], 5)  # solar-r-none joins solar-r-gb
+        self.assertEqual({row["agent_id"]: row["region"] for row in head["proposals"]
+                          if row["agent_id"] in {"owner-r", "owner-n"}}, {"owner-r": "GB", "owner-n": "GB"})
+        self.assertEqual([row["capacity_mw"] for row in head["proposals"] if row["agent_id"] == "owner-r"],
+                         [(900_000.0 + 450_000.0) / 600_000.0])
 
 
 class DecisionA4FixtureTest(unittest.TestCase):
@@ -182,7 +235,7 @@ class DecisionA4FixtureTest(unittest.TestCase):
         checked = 0
         for entry in self.record["scenarios"]:
             expected = entry["a4_expected_decision"]
-            if not isinstance(expected, dict):
+            if not isinstance(expected, dict) or "groups" not in expected:
                 continue
             net = {asset_id: row["net_revenue_gbp"] for asset_id, row in entry["a4_expected"].items()}
             inputs = REC.decanonical(entry["inputs"])
@@ -199,7 +252,12 @@ class DecisionA4FixtureTest(unittest.TestCase):
                     self.assertTrue(math.isclose(row["retirement_mw"], target["retirement_mw"],
                                                  rel_tol=1e-12, abs_tol=1e-12))
                     checked += 1
-        self.assertGreaterEqual(checked, 6)
+            for asset_id, value in expected.get("retirements_mw", {}).items():
+                with self.subTest(scenario=entry["id"], retirement=asset_id):
+                    actual = ia.head_decide_accounts(groups, caps, investment_mode)["retirements_mw"][asset_id]
+                    self.assertTrue(math.isclose(actual, value, rel_tol=1e-12, abs_tol=1e-12))
+                    checked += 1
+        self.assertGreaterEqual(checked, 10)
 
     def _a4_net(self, entry):
         """A4 rows through the S4 path: mode filter first, then the A4 net revenue per member."""
@@ -234,7 +292,8 @@ class DecisionA4FixtureTest(unittest.TestCase):
                 net = {asset_id: row["net_revenue_gbp"] for asset_id, row in rows.items()}
                 assert_recomposition_matches_head(self, entry, net)
                 checked.append(entry["id"])
-        self.assertEqual(checked, ["vre_gross_shared_headroom", "storage_gross_headroom"])
+        self.assertEqual(checked, ["vre_gross_shared_headroom", "storage_gross_headroom",
+                                   "tier_boundaries_and_region_default"])
 
     def test_a4_path_skips_denied_and_site_data_groups_before_any_a4_call(self):
         """Review M0-P0-7-S1 round 2: Nuclear and hydro beside thermal must not reach deducts_energy_cost."""
