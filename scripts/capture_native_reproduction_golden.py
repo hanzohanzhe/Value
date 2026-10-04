@@ -11,9 +11,13 @@ Commands::
     capture_native_reproduction_golden.py check-e2e        # compare a fresh 48-period run with that baseline
                                                            # (until it is retired, see e2e_retirement)
 
-``capture`` and ``capture-e2e`` refuse to run from a checkout with uncommitted
-changes (``--allow-dirty`` overrides and is recorded) and record the SHA-256 of
-their tooling files, so the recorded base commit reproduces the fixture.
+``capture`` and ``capture-e2e`` record the SHA-256 of their tooling files and
+refuse to run from a checkout with uncommitted changes outside those tooling
+files and the fixture being written (``--allow-dirty`` overrides and is
+recorded).  Provenance is verified by content, not by commit id:
+:func:`find_tooling_commit` finds the commit in ``git rev-list HEAD`` whose
+blobs match every recorded tooling hash (``base_commit`` is informational and
+does not survive a rebase).
 ``capture`` and ``write-head-copy`` refuse to run unless the live kernel file is
 byte-identical to the pinned 35aadb3 source (whole-file SHA-256 plus the
 SHA-256 of every copied line range) and, when git and the commit are
@@ -93,9 +97,12 @@ def verified_source() -> tuple[str, dict[str, Any]]:
 
 
 # Files that determine a capture.  Their SHA-256 at capture time is recorded
-# in the fixture's source record, and a capture refuses to run from a checkout
-# with uncommitted changes (unless --allow-dirty, which is recorded), so
-# ``git checkout <base_commit>`` reproduces revision 0 exactly.
+# in the fixture's source record.  A capture refuses to run from a checkout with
+# uncommitted changes other than these files and the fixture being written
+# (unless --allow-dirty, which is recorded), so the commit that contains exactly
+# the recorded tooling (find_tooling_commit) reproduces revision 0.  The
+# tooling may be uncommitted at capture time because its content is recorded:
+# the capture and its tooling then land in one commit.
 SYNTHETIC_TOOLING = (
     "tests/native_reproduction_harness.py",
     "scripts/capture_native_reproduction_golden.py",
@@ -117,7 +124,8 @@ def capture_provenance(tooling: tuple[str, ...], outputs: tuple[Path, ...], *, a
     """Tooling hashes and checkout state for the source record.
 
     Refuses (SystemExit) when the checkout has uncommitted or untracked
-    changes other than the fixture being written, unless ``allow_dirty``.
+    changes other than the tooling files (whose content is recorded) and the
+    fixture being written, unless ``allow_dirty``.
     """
 
     record: dict[str, Any] = {
@@ -130,19 +138,64 @@ def capture_provenance(tooling: tuple[str, ...], outputs: tuple[Path, ...], *, a
         record["checkout_state"] = "unavailable"
         return record
     skipped = {output.relative_to(ROOT).as_posix() for output in outputs}
-    dirty = sorted(
+    changed = sorted(
         line[3:] for line in status.splitlines()
         if line.strip() and line[3:] not in skipped
     )
+    uncommitted_tooling = [path for path in changed if path in tooling]
+    dirty = [path for path in changed if path not in tooling]
     if dirty and not allow_dirty:
         raise SystemExit(
-            "refusing to capture from a checkout with uncommitted changes (commit the tooling first so "
-            "base_commit reproduces the capture, or pass --allow-dirty):\n  " + "\n  ".join(dirty[:20])
+            "refusing to capture from a checkout with uncommitted changes outside the recorded tooling "
+            "(commit or remove them, or pass --allow-dirty):\n  " + "\n  ".join(dirty[:20])
         )
     record["checkout_state"] = "dirty" if dirty else "clean"
     if dirty:
         record["dirty_paths"] = dirty
+    if uncommitted_tooling:
+        record["uncommitted_tooling"] = uncommitted_tooling
     return record
+
+
+def find_tooling_commit(tooling: Mapping[str, str]) -> str | None:
+    """The newest commit reachable from HEAD whose blobs match every recorded
+    tooling SHA-256, or None.  Raises LookupError when git is unavailable.
+
+    Every distinct state of the tooling paths is the tree of some commit in
+    ``git rev-list HEAD -- <paths>``, so walking that list is exhaustive.
+    """
+
+    if _git("rev-parse", "--git-dir") is None:
+        raise LookupError("git is not available for this checkout")
+    paths = sorted(tooling)
+    listing = _git("rev-list", "HEAD", "--", *paths)
+    if listing is None:
+        raise LookupError("git rev-list failed")
+    blob_sha256: dict[str, str] = {}
+    for commit in listing.split():
+        tree = _git("ls-tree", "-r", commit, "--", *paths) or ""
+        blobs = {}
+        for line in tree.splitlines():
+            meta, _, path = line.partition("\t")
+            blobs[path] = meta.split()[2]
+        if set(blobs) != set(paths):
+            continue
+        matched = True
+        for path in paths:
+            blob = blobs[path]
+            if blob not in blob_sha256:
+                try:
+                    content = subprocess.run(["git", "cat-file", "blob", blob], cwd=ROOT, capture_output=True,
+                                             check=True).stdout
+                except (OSError, subprocess.CalledProcessError):
+                    raise LookupError(f"git cat-file blob {blob} failed") from None
+                blob_sha256[blob] = hashlib.sha256(content).hexdigest()
+            if blob_sha256[blob] != tooling[path]:
+                matched = False
+                break
+        if matched:
+            return commit
+    return None
 
 
 def _guarded_tree() -> dict[str, str | None]:
@@ -341,14 +394,40 @@ def e2e_differences(expected: Mapping[str, Any], actual: Mapping[str, Any],
     return differences
 
 
+E2E_ARTIFACT_PREFIX = "market/market.sqlite::"
+
+
+def market_ledger_changes(previous: Mapping[str, Any], current: Mapping[str, Any]) -> list[str]:
+    """Gated ``market/market.sqlite::`` keys whose record differs between two
+    X0 digests (``revision["digest"]``).  Identity-zone keys are left out: the
+    e2e baseline never gates them, so they cannot be why it would fail."""
+
+    before, after = previous.get("columns", {}), current.get("columns", {})
+    changed = []
+    for key in sorted(set(before) | set(after)):
+        if not key.startswith(E2E_ARTIFACT_PREFIX):
+            continue
+        left, right = before.get(key) or {}, after.get(key) or {}
+        if (left.get("count"), left.get("sha256")) == (right.get("count"), right.get("sha256")) and left and right:
+            continue
+        zones = {record.get("zone") for record in (left, right) if record} | {harness.zone_of(key)}
+        if zones <= {"identity"}:
+            continue
+        changed.append(key)
+    return changed
+
+
 def e2e_retirement(successors: Mapping[str, Path] | None = None) -> str | None:
     """Why the v1 e2e baseline no longer gates, or None while it does.
 
     The baseline is the P0-6 S3 acceptance check ('48-period market.sqlite
     identical'): S2 and S3 are behaviour-preserving, so it must hold through
-    them.  The first universal correction that changes value_101_day (P0-4
-    S4-S6, A2, P0-5a) revises the X0 golden of D3 or C3 in the same commit;
-    that revision retires this baseline for both cases.  It is deliberately
+    them.  The first universal correction that changes value_101_day's
+    market.sqlite (P0-4 S4-S6, A2, P0-5a) revises the X0 golden of D3 or C3 in
+    the same commit; a revision whose digest changes a gated
+    ``market/market.sqlite::`` key compared with the previous revision retires
+    this baseline for both cases.  A revision that leaves market.sqlite alone
+    (planning, other artifacts, identity only) does not.  It is deliberately
     not retired by S3 itself, whose acceptance it is.
     """
 
@@ -357,13 +436,17 @@ def e2e_retirement(successors: Mapping[str, Path] | None = None) -> str | None:
         if golden.get("case") != case:
             raise ValueError(f"{path} is the X0 golden of {golden.get('case')!r}, expected {case!r}")
         revisions = golden.get("revisions", [])
-        if len(revisions) > 1:
-            latest = revisions[-1]
-            why = ", ".join([*latest.get("correction_ids", []), *latest.get("findings", [])]) or "no id"
+        for index in range(1, len(revisions)):
+            changed = market_ledger_changes(revisions[index - 1].get("digest", {}), revisions[index].get("digest", {}))
+            if not changed:
+                continue
+            revision = revisions[index]
+            why = ", ".join([*revision.get("correction_ids", []), *revision.get("findings", [])]) or "no id"
+            shown = ", ".join(changed[:3]) + (f" (+{len(changed) - 3} more)" if len(changed) > 3 else "")
             return (
-                f"X0 golden {case} ({path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}) has revision "
-                f"{latest.get('revision', len(revisions) - 1)} ({why}); value_101_day is gated by the X0 goldens "
-                "tests/golden/doctoral/D3.json and tests/golden/corrected/C3.json from here on"
+                f"X0 golden {case} ({path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}) revision "
+                f"{revision.get('revision', index)} ({why}) changes {shown}; value_101_day is gated by the X0 "
+                "goldens tests/golden/doctoral/D3.json and tests/golden/corrected/C3.json from here on"
             )
     return None
 

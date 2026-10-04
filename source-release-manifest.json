@@ -8601,8 +8601,8 @@
     },
     {
       "path": "scripts/capture_native_reproduction_golden.py",
-      "sha256": "a1a40fead40950b08329aacc5f7389a75686bccb62cc58b1eee5af9a76d7b8ae",
-      "bytes": 21588,
+      "sha256": "6782ab515e75e561f75e530b97ca7338a6d2e2b918c88542665fef0d6f35d75a",
+      "bytes": 25547,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,8 +10017,8 @@
     },
     {
       "path": "tests/test_native_reproduction_golden.py",
-      "sha256": "5f01a4630010b03d2acbe1f3af9cb12b9cea1e1a165650381bfc7b6f428ddfd8",
-      "bytes": 34740,
+      "sha256": "5164d0e8bd090a7ed4c3ba30b9d7207be709e42dbce738c0ca0b0a2127d0c651",
+      "bytes": 38502,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -19,6 +19,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from gridform_core import market_ledger
 from gridform_validation.golden import ZONE_STRENGTH, ZoneRules
@@ -498,16 +499,26 @@ class CaptureProvenanceTests(unittest.TestCase):
         capture = _capture_module()
         output = harness.GOLDEN_PATH
         relative = output.relative_to(ROOT).as_posix()
-        status = f" D {relative}\n M tests/native_reproduction_harness.py\n?? scratch.txt\n"
+        status = (f" D {relative}\n M tests/native_reproduction_harness.py\n?? scratch.txt\n"
+                  " M gridform_core/market_ledger.py\n")
         with mock.patch.object(capture, "_git", lambda *arguments: status):
-            with self.assertRaisesRegex(SystemExit, "uncommitted changes"):
+            with self.assertRaisesRegex(SystemExit, "uncommitted changes outside the recorded tooling"):
                 capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=False)
             record = capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=True)
         self.assertEqual(record["checkout_state"], "dirty")
-        self.assertEqual(record["dirty_paths"], ["scratch.txt", "tests/native_reproduction_harness.py"])
+        self.assertEqual(record["dirty_paths"], ["gridform_core/market_ledger.py", "scratch.txt"])
+        self.assertEqual(record["uncommitted_tooling"], ["tests/native_reproduction_harness.py"])
+        # Uncommitted tooling alone is allowed: its content is recorded and
+        # the provenance test requires a commit with exactly that content.
+        status = f" D {relative}\n M tests/native_reproduction_harness.py\n"
+        with mock.patch.object(capture, "_git", lambda *arguments: status):
+            record = capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=False)
+        self.assertEqual(record["checkout_state"], "clean")
+        self.assertEqual(record["uncommitted_tooling"], ["tests/native_reproduction_harness.py"])
         with mock.patch.object(capture, "_git", lambda *arguments: f" D {relative}\n"):
             record = capture.capture_provenance(capture.SYNTHETIC_TOOLING, (output,), allow_dirty=False)
         self.assertEqual(record["checkout_state"], "clean")
+        self.assertNotIn("uncommitted_tooling", record)
         self.assertEqual(set(record["capture_tooling"]), set(capture.SYNTHETIC_TOOLING))
         self.assertEqual(
             record["capture_tooling"]["tests/native_reproduction_harness.py"],
@@ -517,63 +528,114 @@ class CaptureProvenanceTests(unittest.TestCase):
             self.assertTrue((ROOT / path).is_file(), path)
 
 
-    def test_fixtures_were_captured_clean_from_their_base_commit(self):
-        """Revision 0 of each fixture names the commit whose tooling produced it."""
+    def test_fixtures_were_captured_clean_from_committed_tooling(self):
+        """Provenance by content: some commit reachable from HEAD holds exactly
+        the tooling recorded in each fixture (base_commit is informational and
+        does not survive the integration rebase)."""
 
         capture = _capture_module()
         golden = harness.load_golden()
         e2e = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
-        unverifiable = []
-        for name, fixture, base, tooling in (
-            ("synthetic", golden, golden["revisions"][0]["base_commit"], capture.SYNTHETIC_TOOLING),
-            ("e2e", e2e, e2e["base_commit"], capture.E2E_TOOLING),
+        for name, fixture, tooling in (
+            ("synthetic", golden, capture.SYNTHETIC_TOOLING),
+            ("e2e", e2e, capture.E2E_TOOLING),
         ):
             source = fixture["source"]
             self.assertEqual(source["checkout_state"], "clean", name)
             self.assertEqual(set(source["capture_tooling"]), set(tooling), name)
-            for path, sha in source["capture_tooling"].items():
-                try:
-                    blob = subprocess.run(["git", "show", f"{base}:{path}"], cwd=ROOT, capture_output=True,
-                                          check=True).stdout
-                except (OSError, subprocess.CalledProcessError):
-                    unverifiable.append(f"{name}:{base}:{path}")
-                    continue
-                self.assertEqual(hashlib.sha256(blob).hexdigest(), sha, f"{name}: {path} at {base}")
-        if unverifiable:
-            # No git, or the base commit is not in this repository (archive
-            # copy or rewritten history): the recorded hashes remain the record.
-            self.skipTest("base commit not available: " + ", ".join(unverifiable[:3]))
+            try:
+                commit = capture.find_tooling_commit(source["capture_tooling"])
+            except LookupError as error:
+                # No git (an archive copy): the recorded hashes remain the record.
+                self.skipTest(f"git unavailable: {error}")
+            self.assertIsNotNone(commit, f"{name}: no commit reachable from HEAD has the recorded tooling")
+
+    def test_find_tooling_commit_matches_content_and_fails_closed(self):
+        capture = _capture_module()
+        try:
+            head = {path: hashlib.sha256(subprocess.run(["git", "show", f"HEAD:{path}"], cwd=ROOT,
+                                                         capture_output=True, check=True).stdout).hexdigest()
+                    for path in capture.SYNTHETIC_TOOLING}
+            found = capture.find_tooling_commit(head)
+        except (OSError, subprocess.CalledProcessError, LookupError) as error:
+            self.skipTest(f"git unavailable: {error}")
+        self.assertIsNotNone(found)
+        listing = subprocess.run(["git", "show", f"{found}:{capture.SYNTHETIC_TOOLING[0]}"], cwd=ROOT,
+                                 capture_output=True, check=True).stdout
+        self.assertEqual(hashlib.sha256(listing).hexdigest(), head[capture.SYNTHETIC_TOOLING[0]])
+        tampered = dict(head)
+        tampered[capture.SYNTHETIC_TOOLING[0]] = "0" * 64
+        self.assertIsNone(capture.find_tooling_commit(tampered))
+        from unittest import mock
+
+        with mock.patch.object(capture, "_git", lambda *arguments: None):
+            with self.assertRaises(LookupError):
+                capture.find_tooling_commit(head)
 
 
 class E2ERetirementTests(unittest.TestCase):
-    def _successors(self, directory: Path, revisions: dict[str, int]) -> dict[str, Path]:
+    MARKET_KEY = "market/market.sqlite::period_summary.storage_charge_mwh"
+
+    @staticmethod
+    def _digest(changes: dict[str, str]) -> dict[str, Any]:
+        columns = {
+            E2ERetirementTests.MARKET_KEY: {"count": 48, "sha256": "a" * 32, "zone": "trajectory"},
+            "market/market.sqlite::metadata.value": {"count": 15, "sha256": "b" * 32, "zone": "identity"},
+            "planning/project-index.sqlite::projects.capacity_mw": {"count": 3, "sha256": "c" * 32,
+                                                                   "zone": "trajectory"},
+        }
+        for key, sha in changes.items():
+            columns[key] = {**columns[key], "sha256": sha}
+        return {"columns": columns}
+
+    def _successors(self, directory: Path, revisions: dict[str, list[dict[str, str]]]) -> dict[str, Path]:
         paths = {}
-        for case, count in revisions.items():
+        for case, changes in revisions.items():
             path = directory / f"{case}.json"
             path.write_text(json.dumps({"case": case, "revisions": [
-                {"revision": index, "correction_ids": [] if index == 0 else ["p04.storage-charge-audit"], "findings": []}
-                for index in range(count)
+                {"revision": index, "correction_ids": [] if index == 0 else ["p04.storage-charge-audit"],
+                 "findings": [], "digest": self._digest(change)}
+                for index, change in enumerate(changes)
             ]}), encoding="utf-8")
             paths[case] = path
         return paths
 
-    def test_the_first_x0_d3_or_c3_revision_retires_the_baseline(self):
+    def test_an_x0_revision_that_changes_market_sqlite_retires_the_baseline(self):
         capture = _capture_module()
         self.assertEqual(set(capture.E2E_SUCCESSORS), set(capture.E2E_CASES))
         for case, path in capture.E2E_SUCCESSORS.items():
             self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["case"], case)
         with tempfile.TemporaryDirectory(prefix="p06-retire-") as temporary:
             directory = Path(temporary)
-            self.assertIsNone(capture.e2e_retirement(self._successors(directory, {"D3": 1, "C3": 1})))
+            base = [{}]
+            self.assertIsNone(capture.e2e_retirement(self._successors(directory, {"D3": base, "C3": base})))
+            # Revisions that leave the gated market.sqlite keys alone do not retire it.
+            planning = [{}, {"planning/project-index.sqlite::projects.capacity_mw": "d" * 32}]
+            identity = [{}, {"market/market.sqlite::metadata.value": "e" * 32}]
+            for other in (planning, identity):
+                self.assertIsNone(capture.e2e_retirement(self._successors(directory, {"D3": other, "C3": base})))
             for revised in ("D3", "C3"):
-                counts = {"D3": 1, "C3": 1, revised: 2}
+                counts = {"D3": base, "C3": base, revised: [*planning, {self.MARKET_KEY: "f" * 32}]}
                 reason = capture.e2e_retirement(self._successors(directory, counts))
                 self.assertIsNotNone(reason)
                 self.assertIn(f"X0 golden {revised}", reason)
+                self.assertIn("revision 2", reason)
                 self.assertIn("p04.storage-charge-audit", reason)
-            wrong = self._successors(directory, {"D3": 1})
+                self.assertIn(self.MARKET_KEY, reason)
+            wrong = self._successors(directory, {"D3": base})
             with self.assertRaisesRegex(ValueError, "expected 'C3'"):
                 capture.e2e_retirement({"C3": wrong["D3"]})
+
+    def test_added_or_removed_market_columns_count_as_changes(self):
+        capture = _capture_module()
+        previous = self._digest({})
+        current = copy.deepcopy(previous)
+        current["columns"]["market/market.sqlite::stress_events.shortfall_mwh"] = {
+            "count": 1, "sha256": "0" * 32, "zone": "accounting"}
+        self.assertEqual(capture.market_ledger_changes(previous, current),
+                         ["market/market.sqlite::stress_events.shortfall_mwh"])
+        del current["columns"][self.MARKET_KEY]
+        self.assertIn(self.MARKET_KEY, capture.market_ledger_changes(previous, current))
 
     def test_check_e2e_reports_retirement_without_running(self):
         import contextlib
