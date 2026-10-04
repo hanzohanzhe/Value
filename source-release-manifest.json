@@ -1030,6 +1030,7 @@
     "scripts/methodology/package.json",
     "scripts/methodology/render_math.cjs",
     "scripts/methodology/requirements.txt",
+    "scripts/p04_capture_trajectory_golden.py",
     "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
     "scripts/portable_path_scan.py",
@@ -1112,6 +1113,7 @@
     "tests/fixtures/doctoral_alignment/investment.json",
     "tests/fixtures/doctoral_alignment/planning.json",
     "tests/fixtures/doctoral_alignment/source_manifest.json",
+    "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/prompt08_audit_project.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
     "tests/fixtures/zonal_redispatch/binding-cut.json",
@@ -1145,6 +1147,7 @@
     "tests/golden/projects/D3.json",
     "tests/golden/projects/D4.json",
     "tests/golden/zones.json",
+    "tests/p04_variants.py",
     "tests/preflight-identity.test.mjs",
     "tests/prompt124-ui-contract.test.mjs",
     "tests/rendered-html.test.mjs",
@@ -1242,6 +1245,7 @@
     "tests/test_orchestrator.py",
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
+    "tests/test_p04_variant_fixtures.py",
     "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
     "tests/test_path_hygiene.py",
@@ -8771,6 +8775,12 @@
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
     },
     {
+      "path": "scripts/p04_capture_trajectory_golden.py",
+      "sha256": "e0887c3e056f5cf05fc2cca79ef752ebad15350068bbd561886be69664f8f1a9",
+      "bytes": 7195,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/p0_gate.py",
       "sha256": "b73016e7b93d3f4c5ff0d4e522acddd01f5fb4a3a0b472da1e17aecc812c8b6c",
       "bytes": 37592,
@@ -9257,6 +9267,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/fixtures/p04_trajectory_golden.json",
+      "sha256": "2935a61f041b6b747e7233df629eedec7ce3036a55618108eda97679c08f1e40",
+      "bytes": 415235,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/fixtures/prompt08_audit_project.json",
       "sha256": "26fab9038bd2f341ead8d7f309c30980b197885cdd4dd290132740e2cc02758a",
       "bytes": 580,
@@ -9452,6 +9468,12 @@
       "path": "tests/golden/zones.json",
       "sha256": "08a1e9011195f81d6b1394d858ee6bf5d2875ece25389250b9872eab31b674b5",
       "bytes": 12959,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/p04_variants.py",
+      "sha256": "43cd4e84c4d1ec117d86b55a57561a9a13098011d5c2d18c18016d0869a617ea",
+      "bytes": 11649,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10035,6 +10057,12 @@
       "sha256": "d56606e3ea097f98e3a40a63db43617310607164b6e0619f67b0dea2b9936d0f",
       "bytes": 7312,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_p04_variant_fixtures.py",
+      "sha256": "f9bb3dac732d49751a0139e292ddbd80f68aee124d28b74a5527035bd0ede770",
+      "bytes": 11189,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_p0_gate.py",
