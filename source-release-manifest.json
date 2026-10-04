@@ -8728,8 +8728,8 @@
     },
     {
       "path": "scripts/refresh_source_release_manifest.py",
-      "sha256": "fd612a46f687f053fe89aa1d8699eb6e520705dc5009b227635c53eb95bfabd5",
-      "bytes": 5251,
+      "sha256": "b5faf7bbebe4a7273050b2eb7fc8c313295d7e95b72e41f473c75df34499f213",
+      "bytes": 7196,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10102,8 +10102,8 @@
     },
     {
       "path": "tests/test_refresh_source_release_manifest.py",
-      "sha256": "06f59928a0fcfa7d2e9fb91190b879739c19e0d56a93fa6ba216f41b4a9deb44",
-      "bytes": 4604,
+      "sha256": "d881c6f694e51465d4757585e9b9fa130f8fde00d1c28de1b0984cfc320fe9d0",
+      "bytes": 5369,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -13,6 +13,8 @@ manifest itself has a ``files`` entry carrying its sha256 and byte count.
 
 ``--check`` writes nothing and exits 1 when the manifest is out of date.
 Run it in every commit that adds, removes or edits a file (plan 3.2, C25).
+With ``--index`` the staged index defines both the file set and the content,
+so a commit can be refreshed exactly while other work stays unstaged.
 """
 
 from __future__ import annotations
@@ -67,16 +69,57 @@ def repository_files(root: Path) -> list[str]:
     return sorted(name for name in names if (root / PurePosixPath(name)).is_file() and not (root / PurePosixPath(name)).is_symlink())
 
 
+def index_files(root: Path) -> dict[str, bytes]:
+    """Staged content of every regular file in the git index (``--index`` mode)."""
+
+    listing = subprocess.run(
+        ["git", "-c", f"safe.directory={root.as_posix()}", "ls-files", "-s", "-z"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    ).stdout
+    entries: list[tuple[str, str]] = []
+    for record in listing.split(b"\0"):
+        if not record:
+            continue
+        meta, _, name = record.partition(b"\t")
+        mode, blob, _stage = meta.decode("ascii").split(" ")
+        if mode in {"100644", "100755"}:
+            entries.append((name.decode("utf-8"), blob))
+    contents: dict[str, bytes] = {}
+    if not entries:
+        return contents
+    process = subprocess.run(
+        ["git", "-c", f"safe.directory={root.as_posix()}", "cat-file", "--batch"],
+        cwd=root,
+        input=b"".join(f"{blob}\n".encode("ascii") for _, blob in entries),
+        check=True,
+        capture_output=True,
+    ).stdout
+    offset = 0
+    for name, _blob in entries:
+        header_end = process.index(b"\n", offset)
+        size = int(process[offset:header_end].split(b" ")[2])
+        start = header_end + 1
+        contents[name] = process[start:start + size]
+        offset = start + size + 1
+    return contents
+
+
 def _digest(path: Path) -> tuple[str, int]:
     payload = path.read_bytes()
     return hashlib.sha256(payload).hexdigest(), len(payload)
 
 
-def refreshed_manifest(root: Path, transform: str = DEFAULT_TRANSFORM) -> tuple[dict[str, Any], dict[str, list[str]]]:
+def refreshed_manifest(
+    root: Path, transform: str = DEFAULT_TRANSFORM, use_index: bool = False
+) -> tuple[dict[str, Any], dict[str, list[str]]]:
     manifest_path = root / MANIFEST_NAME
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     patterns = read_exclusions(root)
-    include = sorted(name for name in repository_files(root) if not is_excluded(name, patterns))
+    staged = index_files(root) if use_index else None
+    names = sorted(staged) if staged is not None else repository_files(root)
+    include = sorted(name for name in names if not is_excluded(name, patterns))
     if MANIFEST_NAME not in include:
         include.append(MANIFEST_NAME)
         include.sort()
@@ -86,7 +129,11 @@ def refreshed_manifest(root: Path, transform: str = DEFAULT_TRANSFORM) -> tuple[
     for name in include:
         if name == MANIFEST_NAME:
             continue
-        sha256, size = _digest(root / PurePosixPath(name))
+        if staged is not None:
+            payload = staged[name]
+            sha256, size = hashlib.sha256(payload).hexdigest(), len(payload)
+        else:
+            sha256, size = _digest(root / PurePosixPath(name))
         entry = previous.get(name)
         if entry is None:
             files.append({"path": name, "sha256": sha256, "bytes": size, "transform": transform})
@@ -115,9 +162,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--check", action="store_true", help="exit 1 if the manifest is stale; write nothing")
     parser.add_argument("--transform", default=DEFAULT_TRANSFORM)
+    parser.add_argument(
+        "--index",
+        action="store_true",
+        help="use the staged git index (paths and content) instead of the working tree",
+    )
     arguments = parser.parse_args(argv)
     root = arguments.root.resolve()
-    manifest, changes = refreshed_manifest(root, arguments.transform)
+    manifest, changes = refreshed_manifest(root, arguments.transform, arguments.index)
     text = render(manifest)
     current = (root / MANIFEST_NAME).read_text(encoding="utf-8")
     stale = text != current

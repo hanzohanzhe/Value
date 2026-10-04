@@ -87,6 +87,18 @@ class RefreshSourceReleaseManifestTests(unittest.TestCase):
         code, _ = self._run("--check")
         self.assertEqual(code, 0)
 
+    def test_index_mode_uses_staged_paths_and_content(self) -> None:
+        (self.root / "changed.txt").write_text("staged\n", encoding="utf-8")
+        _git(self.root, "add", "changed.txt")
+        (self.root / "changed.txt").write_text("unstaged edit\n", encoding="utf-8")
+        (self.root / "untracked.txt").write_text("not staged\n", encoding="utf-8")
+        code, report = self._run("--index")
+        self.assertEqual(code, 0)
+        manifest = json.loads((self.root / "source-release-manifest.json").read_text(encoding="utf-8"))
+        entries = {entry["path"]: entry for entry in manifest["files"]}
+        self.assertNotIn("untracked.txt", entries)
+        self.assertEqual(entries["changed.txt"]["sha256"], hashlib.sha256(b"staged\n").hexdigest())
+
     def test_repository_manifest_is_current(self) -> None:
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
