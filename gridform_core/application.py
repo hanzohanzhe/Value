@@ -33,6 +33,7 @@ from .comparison_eligibility import (
 from .parameters import resolve_scheme_c_parameters
 from .parity import write_stage_parity_report
 from .provenance import snapshot_module_manifests, write_run_provenance
+from .builtin.scheme_c_1000twh.runtime_overlay import ensure_runtime_overlay_sealed
 from .performance import write_performance_report
 from .planning_index import materialize_planning_index
 from .scientific_validation import (
@@ -1826,6 +1827,7 @@ def _run_native_project(
                 "periods": periods,
                 "year": resolved.start_year,
                 "result_artifact": day_path.relative_to(output_dir).as_posix(),
+                "runtime_overlay": ensure_runtime_overlay_sealed(),
             },
         )
         # Publish the executed effective configuration for frozen Run comparison,
@@ -2129,6 +2131,7 @@ def _run_native_project(
         manifest_snapshots=manifest_snapshots,
         initial_state=source_initial_state,
         year_results=typed_results,
+        runtime_overlay=ensure_runtime_overlay_sealed(),
     )
     payload = _native_result_payload(
         typed_results,
@@ -2309,6 +2312,10 @@ def run_project_application(
     """Run the selected project without fallback to any other module set."""
 
     preparation_started = time.perf_counter()
+    # The sealed runtime kernel is verified once per process before any run
+    # (RUNTIME_OVERLAY v2, X0 S5); a changed or unregistered kernel file fails
+    # closed here instead of silently producing numbers.
+    ensure_runtime_overlay_sealed()
     pack_root = pack_root.resolve()
     output_dir = output_dir.resolve()
     registry = registry or workspace_registry()

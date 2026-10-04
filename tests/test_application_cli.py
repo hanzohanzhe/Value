@@ -63,13 +63,16 @@ class ApplicationCliTests(unittest.TestCase):
         self.assertEqual(summary["engine"], "value-annual-orchestrator/v2")
         self.assertEqual(summary["years"], 1)
         self.assertEqual(Path(summary["output"]), output.resolve())
+        provenance = json.loads((output / "provenance.json").read_text(encoding="utf-8"))
+        self.assertTrue(provenance["runtime_overlay"]["verified"])
 
     def test_psm_only_value_101_day_exits_zero_with_valid_json(self) -> None:
         completed, output = self._run_cli("value_101_day")
         summary = self._summary(completed)
         self.assertEqual(summary["engine"], "value-psm-only/v1")
         self.assertEqual(summary["years"], 0)
-        self.assertTrue((output / "provenance.json").is_file())
+        provenance = json.loads((output / "provenance.json").read_text(encoding="utf-8"))
+        self.assertTrue(provenance["runtime_overlay"]["verified"])
 
 
 if __name__ == "__main__":

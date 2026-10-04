@@ -39,7 +39,6 @@ test_local_uk_source_inventory.LocalUkSourceInventoryTests.test_local_runtime_an
 test_module_installation_api.ModuleInstallationApiTests.test_loopback_upload_refresh_and_disable_guard  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_module_runtime.SchemeCModuleRuntimeTests.test_legacy_cost_selection_is_shared_by_psm_and_storage_cap  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_module_runtime.SchemeCModuleRuntimeTests.test_project_ids_resolve_to_executable_stages_and_emit_evidence  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
-test_path_hygiene.PathHygieneTests.test_runtime_copy_matches_source_hashed_overlay_manifest  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_prompt100_zonal_ledger.Prompt100ZonalLedgerTests.test_generic_query_api_accepts_new_tables  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_prompt100_zonal_ledger.Prompt100ZonalLedgerTests.test_interrupted_batch_is_recoverable_and_malformed_rows_fail  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_prompt100_zonal_ledger.Prompt100ZonalLedgerTests.test_summary_and_full_modes_have_identical_scientific_totals  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)

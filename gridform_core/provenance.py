@@ -302,6 +302,7 @@ def write_run_provenance(
     manifest_snapshots: Mapping[str, Path],
     initial_state: YearState,
     year_results: Sequence[YearResult],
+    runtime_overlay: Mapping[str, object] | None = None,
 ) -> Path:
     """Write provenance only after immutable model artifacts have closed."""
 
@@ -433,6 +434,8 @@ def write_run_provenance(
         "artifact_index_artifact_id": artifact_index_path.relative_to(bundle_root).as_posix(),
         "artifacts": _artifact_index(bundle_root, output_dir),
     }
+    if runtime_overlay is not None:
+        record["runtime_overlay"] = dict(runtime_overlay)
     path = bundle_root / "provenance.json"
     temporary = path.with_suffix(".json.tmp")
     temporary.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")

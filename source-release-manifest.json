@@ -1050,6 +1050,7 @@
     "scripts/run_prompt17b_gate.py",
     "scripts/run_scheme_c_parity.py",
     "scripts/run_zonal_validation.py",
+    "scripts/seal_runtime_overlay.py",
     "scripts/serve-value-ui.mjs",
     "scripts/sign_install_gb_zonal_pack.py",
     "scripts/source_release_scan.py",
@@ -1301,6 +1302,7 @@
     "tests/test_run_policy.py",
     "tests/test_run_reproduction.py",
     "tests/test_runtime_capabilities.py",
+    "tests/test_runtime_overlay_seal.py",
     "tests/test_runtime_paths_and_upgrade.py",
     "tests/test_scenario_comparison.py",
     "tests/test_scheme_c_1000twh.py",
@@ -6111,8 +6113,8 @@
     },
     {
       "path": "gridform_core/application.py",
-      "sha256": "00a2ae7b36dfe9022b23f670e6280cd461e851ed18c5fd25001086cd84676127",
-      "bytes": 110186,
+      "sha256": "848b17d8045690486be48feacbb5e6622b54d6b8046f2321f5573a38a2868290",
+      "bytes": 110649,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6147,9 +6149,9 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/RUNTIME_OVERLAY.json",
-      "sha256": "f040f1595ee283504a545ae79d7e39b9e8e3f0ea61cbf548fb617d0c68b12cdf",
-      "bytes": 2153,
-      "transform": "byte copy"
+      "sha256": "1e994b0c3e4016849c669c6787763961fde6c35d277d8a1ba7d5868ccad1d10c",
+      "bytes": 7150,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/__init__.py",
@@ -6555,9 +6557,9 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/runtime_overlay.py",
-      "sha256": "23810f78eafc71fc64d71889c944b48250112ceddabd071fb1771a111272c2ee",
-      "bytes": 1757,
-      "transform": "byte copy"
+      "sha256": "2b17fbb9d4177ef2c76b97d29b4bf615cf124318d90a520370cbd3929cda4825",
+      "bytes": 9278,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/scheme_c_context.py",
@@ -7524,9 +7526,9 @@
     },
     {
       "path": "gridform_core/provenance.py",
-      "sha256": "0400c37216adaca82d92afe389addca42e8284c877a38992b60168da7ce11a4a",
-      "bytes": 17794,
-      "transform": "byte copy"
+      "sha256": "ca93398ba5eb81b1e40e5b7870f51f49e4e7c656972a0dc315801deee425bccc",
+      "bytes": 17948,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/recovery_capability.py",
@@ -8865,6 +8867,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "scripts/seal_runtime_overlay.py",
+      "sha256": "0ede345bad4c58b33587f7684527bb615b1b5adde72b079731e240f64457d016",
+      "bytes": 8496,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/serve-value-ui.mjs",
       "sha256": "059fe88a857dacdbe79fdba041dcb0f94bd56b5ff6835f0b03aac4d542f7fa7c",
       "bytes": 1517,
@@ -9016,8 +9024,8 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "6ebc31519d9115be88f4dcd36fc78b14963b0175f6b4c8242be9c5adc740aa3a",
-      "bytes": 24805,
+      "sha256": "172a381154594b629f20ae0080655dc98208f5e408a8575d33db14e5d8e7d2f5",
+      "bytes": 24643,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9340,8 +9348,8 @@
     },
     {
       "path": "tests/test_application_cli.py",
-      "sha256": "839cafac2f64d7637a37491998c473f4145eb9ef915f827421d8e95eee92109e",
-      "bytes": 2704,
+      "sha256": "fdd8f26bc024f30b142b09e76d11068d8c11c2123c5a855118eccec59a2d83e9",
+      "bytes": 2954,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10363,6 +10371,12 @@
       "sha256": "18941e83487510e8e338c3fd9a118119ca048caac44ea0155f999681cc639264",
       "bytes": 3241,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_runtime_overlay_seal.py",
+      "sha256": "8d3446b3b0d9e87835af5e4d63647b601c8d882331710c354129f28adfd8e782",
+      "bytes": 7030,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_runtime_paths_and_upgrade.py",

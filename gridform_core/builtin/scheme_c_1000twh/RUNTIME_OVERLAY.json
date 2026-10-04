@@ -1,10 +1,13 @@
 {
-  "schema_version": "force.scheme-c-runtime-overlay/v1",
-  "generator_version": "prompt-104-runtime-overlay-freeze-v1",
+  "schema_version": "value.scheme-c-runtime-overlay/v2",
+  "previous_schema_version": "force.scheme-c-runtime-overlay/v1",
+  "generator_version": "x0-s5-runtime-overlay-v2",
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
+  "runtime_tree_sha256": "2ee8c594dd2db3953854c0bb6de3e32dc63c839aec341a85d0cffafbf1fff733",
+  "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
+  "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
     "market_trace_outputs/"
   ],
@@ -45,5 +48,139 @@
   "packaged_support_files": [
     "runtime_compat/scenarios_v2/decarbonization_cost_scenarios_v2.csv"
   ],
-  "preservation_rule": "The source package is reference-only and must remain byte-identical."
+  "preservation_rule": "The source package is reference-only and must remain byte-identical.",
+  "runtime_files": [
+    {
+      "path": "__init__.py",
+      "sha256": "d210da97a525d12cf25cd2068ac57552ab288ae2f8f0f1d78f9dc3283c6ee2f5",
+      "kind": "mechanical_substitution",
+      "correction_ids": [],
+      "note": "declared mechanical substitution"
+    },
+    {
+      "path": "case3.py",
+      "sha256": "68baa3c61630e3959087ba863e1ba697ec3e3c76a4eb1384d8751de4f9e77dd8",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "cm_battery_cm_allocation.py",
+      "sha256": "9fafbec66c02e82d0965e805659d216ffb89a2f54472a8675f85f83b6e76654c",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "config.py",
+      "sha256": "84fc43bacda1bb87f13c9e48d353be242dbea61ee05d7383009e58e2ad349a20",
+      "kind": "mechanical_substitution",
+      "correction_ids": [],
+      "note": "declared mechanical substitution"
+    },
+    {
+      "path": "generation_trace_io.py",
+      "sha256": "6b993dd2b9bc7b63ea0c014f1024e4b12ae77dbe30854b879f9fdee7453b15d6",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "investment_support.py",
+      "sha256": "9c98e90e1894f926d050568bdb2422c7efaf1a7e5d03e1addbebf6ecdcef9dba",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "load_decarbonization_cost_breakdown.py",
+      "sha256": "8c259a986f718277f1c407b08d149674f656d27f0946ccbfbdc083ab9636677a",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "load_mechanism_costs.py",
+      "sha256": "401048cf92f3c22ede158d5b2e4e112f6b1aa2b6cbb001d5a8dce8b7117dc04a",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "map_projects_to_generators_by_location.py",
+      "sha256": "153a9df25054909da849b32709eb228b4cb1d9aadb8ce8b8c5bcf36a668c4745",
+      "kind": "mechanical_substitution",
+      "correction_ids": [],
+      "note": "declared mechanical substitution"
+    },
+    {
+      "path": "modular_apply_storage_expansion.py",
+      "sha256": "fc554c72e9fe5f5898d709924143fac7a66fb74f7db63fe2cd3e2b1cd142f848",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "modular_case3.py",
+      "sha256": "de3f7025c863b11fb5c302051541c966e049c0dc28395af7a310eb2377b2a540",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "modular_investment_support.py",
+      "sha256": "93aaea361ef48c326eb831f631a7237733a8df87de70ecc216c0d586f6d3d076",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "modular_simulation_model.py",
+      "sha256": "dc4f8164ed2c74187fa9bf954bb12d9dced57fb35ee98f8891233d52683b9e5a",
+      "kind": "value_instrumentation",
+      "correction_ids": [],
+      "note": "VALUE market-ledger, trace and storage-cost instrumentation present at 35aadb3"
+    },
+    {
+      "path": "modular_storage_expansion_cap.py",
+      "sha256": "74e4c9c85573268577438dbedbe2c2b85a41267dbbb40a0350d350447973b43f",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "module_context.py",
+      "sha256": "a32bdf407eb448df521b35b0d9b5199fca7d7f5792a50c60db6f40ca754f4559",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "scenarios_v2/__init__.py",
+      "sha256": "273db08a29e18fdcaf2c1bf00cbfd646b279020232c7f3aa11aafd2742856252",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "scenarios_v2/decarbonization_cost_scenarios_v2.csv",
+      "sha256": "aae3c3c28a44fd32cf999d85dba06d7a510ca4f8871b9449d206da6c473b1513",
+      "kind": "data",
+      "correction_ids": [],
+      "note": "packaged runtime data"
+    },
+    {
+      "path": "scenarios_v2/expansion_policy_v2.py",
+      "sha256": "3ebb7b205999f6250d8aace238b221fe51c9c64feae8627b5812eea8f32f3a52",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "scenarios_v2/load_scenarios_v2.py",
+      "sha256": "1edc037773de57dacfd32c4072efd507169ab7331de21ffd79172bec282ced6a",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "simulation_model.py",
+      "sha256": "c4a8e1d73dc60091bab4b00467490149c989bc2e69a117b64e375cc09e3be614",
+      "kind": "source_identical",
+      "correction_ids": []
+    },
+    {
+      "path": "storage_cost.py",
+      "sha256": "846162f71ccec3ad67688de88a770b5f36745b60fc910b4f11626f770b642796",
+      "kind": "value_instrumentation",
+      "correction_ids": [],
+      "note": "VALUE storage-cost function boundary present at 35aadb3"
+    }
+  ]
 }
