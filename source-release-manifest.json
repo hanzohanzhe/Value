@@ -1024,6 +1024,7 @@
     "scripts/methodology/package.json",
     "scripts/methodology/render_math.cjs",
     "scripts/methodology/requirements.txt",
+    "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
     "scripts/portable_path_scan.py",
     "scripts/prepare_archived_workspace.py",
@@ -1074,6 +1075,7 @@
     "start-value.cmd",
     "stop-value.cmd",
     "task-2-report.md",
+    "tests/baselines/eslint-baseline.json",
     "tests/baselines/known-failures-linux-py310.txt",
     "tests/baselines/milestone.txt",
     "tests/baselines/quarantine.txt",
@@ -1216,6 +1218,7 @@
     "tests/test_orchestrator.py",
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
+    "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
     "tests/test_path_hygiene.py",
     "tests/test_perfect_foresight_psm.py",
@@ -8706,6 +8709,12 @@
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
     },
     {
+      "path": "scripts/p0_gate.py",
+      "sha256": "d693a29f220ef54d010fe9d818544fab2c5eede508014e1165731ebe36934d01",
+      "bytes": 22039,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/package_policy_scan.py",
       "sha256": "640a894a1992c251cd5775f79b21eb21a88959871db6437010dcb270a11810f0",
       "bytes": 4265,
@@ -8998,6 +9007,12 @@
       "sha256": "bb937291e6309d78dcaf07ecf9cf9f2bc487f24c95bb5d234a82055f8ef207cc",
       "bytes": 3705,
       "transform": "documentation personal path redaction"
+    },
+    {
+      "path": "tests/baselines/eslint-baseline.json",
+      "sha256": "36d04c8b9a54b4749b0e5eeff9a29cdf7549852b63bbae3da36aef2b8c6b4969",
+      "bytes": 2511,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
@@ -9850,6 +9865,12 @@
       "sha256": "d56606e3ea097f98e3a40a63db43617310607164b6e0619f67b0dea2b9936d0f",
       "bytes": 7312,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_p0_gate.py",
+      "sha256": "a4a4c341536d3b61d0595c0316ed03b9f7f915c6037e057f0d47623c07eedf0a",
+      "bytes": 5665,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_parameter_registry.py",
