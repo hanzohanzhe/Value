@@ -697,7 +697,9 @@ test("unknown balancing module with no zonal evidence is not labelled copperplat
 test("run page keeps only compact v2 curtailment attribution metrics", async ({ page }) => {
   await mockNetwork(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /Runs/ }).click();
+  // The Study card for the fixture is itself a button whose text contains
+  // "Runs"; target the sidebar navigation entry by its exact accessible name.
+  await page.getByRole("button", { name: "Runs: Launch and compare" }).click();
 
   await expect(page.getByText("Final VRE curtailment", { exact: true })).toBeVisible();
   await expect(page.getByText("VRE curtailment rate", { exact: true })).toBeVisible();

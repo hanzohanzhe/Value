@@ -89,6 +89,7 @@ MANDATORY_STEPS = (
 )
 SKIPPED_BY_FLAG = "skipped by --skip"
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
+OFFLINE_E2E_COMMAND = "node e2e/run-tests.mjs --offline"  # P0-9 S0: UI-only subset plus ratchet in e2e/offline-subset.json
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
 
@@ -760,10 +761,19 @@ def step_publication_scope(gate: Gate) -> dict[str, Any]:
 
 
 def step_e2e_offline(gate: Gate) -> dict[str, Any]:
-    command = os.environ.get("VALUE_P0_E2E_COMMAND")
-    if not os.environ.get("VALUE_E2E_CHROMIUM") or not command:
-        return _skipped("offline e2e needs VALUE_E2E_CHROMIUM and VALUE_P0_E2E_COMMAND (infrastructure: P0-9 S0)")
-    completed = run(command.split(), timeout=3600, environment=python_environment({"VALUE_E2E_UI_ONLY": "1"}))
+    command = os.environ.get("VALUE_P0_E2E_COMMAND") or OFFLINE_E2E_COMMAND
+    chromium = os.environ.get("VALUE_E2E_CHROMIUM")
+    if not chromium:
+        return _skipped("offline e2e needs VALUE_E2E_CHROMIUM=<path to chrome or chrome-headless-shell> (see e2e/run-tests.mjs)")
+    if not Path(chromium).is_file():
+        return _status(False, f"VALUE_E2E_CHROMIUM does not name an existing file: {chromium}")
+    argv = command.split()
+    if argv and argv[0] == "node":
+        node = node_executable()
+        if node is None:
+            return _status(False, "node executable not found (set VALUE_NODE)")
+        argv[0] = node
+    completed = run(argv, timeout=3600, environment=python_environment({"VALUE_E2E_UI_ONLY": "1"}))
     return _status(completed.returncode == 0, _tail(completed.stdout + completed.stderr))
 
 

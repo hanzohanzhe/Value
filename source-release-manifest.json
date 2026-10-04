@@ -548,6 +548,8 @@
     "e2e/market-visibility.spec.ts",
     "e2e/module-authoring.spec.ts",
     "e2e/network-redispatch.spec.ts",
+    "e2e/offline-ratchet.mjs",
+    "e2e/offline-subset.json",
     "e2e/research-journey.spec.ts",
     "e2e/result-queries.spec.ts",
     "e2e/run-tests.mjs",
@@ -1116,6 +1118,8 @@
     "tests/fixtures/zonal_solver_failures/period-bound-noise.json",
     "tests/frontend/csv-mapping-editor.test.mjs",
     "tests/frontend/frozen-input-recovery.test.mjs",
+    "tests/frontend/helpers/chromium.mjs",
+    "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/golden/cases.json",
     "tests/golden/corrected/C1.json",
     "tests/golden/corrected/C2.json",
@@ -5816,9 +5820,9 @@
     },
     {
       "path": "e2e/castle-101.spec.ts",
-      "sha256": "4925d40712932ebd02886c3c735ebbb7e395efb2649f2425874f5177cca9429a",
-      "bytes": 7744,
-      "transform": "byte copy"
+      "sha256": "b4f64224c9524cccd3b00ce758ee271e340301de35335581b72f5c1f22840058",
+      "bytes": 8496,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/community-workspace.spec.ts",
@@ -5846,9 +5850,9 @@
     },
     {
       "path": "e2e/expanded-workflows.spec.ts",
-      "sha256": "d680745111682b5d290b8caf6900ff1743f0e44233e36ae93d782cb9a547ae4a",
-      "bytes": 17740,
-      "transform": "byte copy"
+      "sha256": "8661641bfdbdafcf01cf56446ae7272c0099a236fd7968836d9e97df0817a6e3",
+      "bytes": 17841,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/happy-path.spec.ts",
@@ -5870,9 +5874,9 @@
     },
     {
       "path": "e2e/market-visibility.spec.ts",
-      "sha256": "5627dbf9c5d7a91f4b21764f36383ab586138f1a6ad4652ae4a1206b9508e7c1",
-      "bytes": 6013,
-      "transform": "byte copy"
+      "sha256": "e1624b7706a24d8e7d8d93ecedb18a4430e07fac84e3cd430c8507dfe8bb0b51",
+      "bytes": 7126,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/module-authoring.spec.ts",
@@ -5882,9 +5886,21 @@
     },
     {
       "path": "e2e/network-redispatch.spec.ts",
-      "sha256": "4cc452d843544514e59fd101b908596d923320e9c8480785f662ee70612ee877",
-      "bytes": 39404,
-      "transform": "byte copy"
+      "sha256": "b448805dfe3ca297ddc970a9a58fe31e84ef82f152853ec5b5aa9ba96df04c26",
+      "bytes": 39580,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "e2e/offline-ratchet.mjs",
+      "sha256": "d28ac4f97eecfb7ccd3cd1024c16e5efb9575e19625d5aa83177c2a6812e632c",
+      "bytes": 5609,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "e2e/offline-subset.json",
+      "sha256": "f89473a6f4417e475424e709be89b62c1a4df490a085de9dc3e475b456a4e0d2",
+      "bytes": 3313,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/research-journey.spec.ts",
@@ -5900,15 +5916,15 @@
     },
     {
       "path": "e2e/run-tests.mjs",
-      "sha256": "642f4b20d3e53b0c1798e946cb9ff31622c01eb6892ff6f80cd054ec61c50d35",
-      "bytes": 730,
-      "transform": "byte copy"
+      "sha256": "30650639cca274e61a4e97cc8a209195e49bda541eee693ba00c8a38c4c8b864",
+      "bytes": 3427,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/start-e2e-services.mjs",
-      "sha256": "954e8c3e9344086b1587f7f28dcfcaa4f8758f3c79afa63005620b37aaf7b302",
-      "bytes": 4591,
-      "transform": "byte copy"
+      "sha256": "6a8aa727bff5d2658f6c0c1c9753bfc62e7c196d5ae93f113601e260c5a21af4",
+      "bytes": 5069,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "eslint.config.mjs",
@@ -7937,9 +7953,9 @@
     },
     {
       "path": "package.json",
-      "sha256": "db03c5e4a671d8c6bd881ef58a904df14169121b190c3d60f60d4246802b4585",
-      "bytes": 2191,
-      "transform": "byte copy"
+      "sha256": "9d95d5fc2eee6a3e7c6a1acc6424abf78ad79733f0e969cc5bdd7cc0967b160d",
+      "bytes": 2252,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/desktop-local/desktop_value.py",
@@ -8201,9 +8217,9 @@
     },
     {
       "path": "playwright.config.ts",
-      "sha256": "5e6132eea4979c707c4512cf1d1751883320925b5da2b298e416fd69b7be547c",
-      "bytes": 878,
-      "transform": "byte copy"
+      "sha256": "8985e2b2ed415f42ff8de2039c348e27cd6c6d1c11291e29c8384b371d3a2479",
+      "bytes": 1784,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "playwright.evidence-isolation.config.ts",
@@ -8757,8 +8773,8 @@
     },
     {
       "path": "scripts/p0_gate.py",
-      "sha256": "f0fb11ddb311238157d2ec53c3a25d1262075286ac4500f9a5748543e1cf3d1b",
-      "bytes": 42798,
+      "sha256": "8f9b6baf64f9544b181776033552c114f07b9b3402959a2a25c24c19386c903a",
+      "bytes": 43314,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9267,15 +9283,27 @@
     },
     {
       "path": "tests/frontend/csv-mapping-editor.test.mjs",
-      "sha256": "2eaa4d8a9fafac7434bbeb8260f0f45cc9a945081c90347e1e730c7eb135d6d4",
-      "bytes": 7488,
-      "transform": "byte copy"
+      "sha256": "591be186f0165830361f98d25f21fd0e29acea5f792d42a746873e0bd5e219c1",
+      "bytes": 7436,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/frontend/frozen-input-recovery.test.mjs",
-      "sha256": "8a8bb12abdd3d8ad2120c8045b024fa3afac496e1718f5f2b90577ff107b9a76",
-      "bytes": 5282,
-      "transform": "byte copy"
+      "sha256": "791a2b5b57e90c8893b9964790f112574e6c98591b5df9f40ecb0abe90857afc",
+      "bytes": 5230,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/helpers/chromium.mjs",
+      "sha256": "a46157ea6e0e6e95e92ecab90409f6c52895173a7e914f40d1087909a9549f3d",
+      "bytes": 599,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/offline-ratchet.test.mjs",
+      "sha256": "f995c8dc1220f164fbc729a874b5c5fbdb686f799b1b1bde40bcda66a68dc049",
+      "bytes": 5812,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/golden/cases.json",
@@ -10017,8 +10045,8 @@
     },
     {
       "path": "tests/test_p0_gate.py",
-      "sha256": "89820f49196de37a5992f9a1152610c5415755c0231b2057a762ffffdddcd029",
-      "bytes": 28873,
+      "sha256": "e980a0de04b679e2957f31baa1046db2fdfbd43caf5bb9b88fca564ce46a01ed",
+      "bytes": 30135,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

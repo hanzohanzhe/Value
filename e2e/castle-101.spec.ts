@@ -1,5 +1,18 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import fs from "node:fs";
+import path from "node:path";
+
+// Every test here talks to the real Python service and needs the bundled Castle
+// pack. A source checkout may not ship that pack, and the offline subset serves
+// only the UI (VALUE_E2E_UI_ONLY=1): both are an environment gap, not a Castle
+// regression, so the file skips (visibly) instead of failing (P0-9 S0).
+const castlePackPresent = fs.existsSync(path.resolve("data-packs", "force-castle-101-v1"));
+const uiOnly = process.env.VALUE_E2E_UI_ONLY === "1";
+test.beforeEach(() => {
+  test.skip(!castlePackPresent, "data-packs/force-castle-101-v1 is not part of this source tree");
+  test.skip(uiOnly, "needs the real Python service; VALUE_E2E_UI_ONLY=1 serves the UI only");
+});
 
 test("Castle 101 loads the ordinary Study editor without silently saving", async ({ page }) => {
   const projectWrites: string[] = [];

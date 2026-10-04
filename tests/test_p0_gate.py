@@ -154,6 +154,23 @@ class P0GateTests(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     GATE.run(command)
 
+    def test_offline_e2e_needs_a_browser_and_defaults_to_the_ratcheted_subset(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("VALUE_E2E_CHROMIUM", None)
+            self.assertEqual(GATE.step_e2e_offline(_gate("full"))["status"], "skipped")
+        with mock.patch.dict(os.environ, {"VALUE_E2E_CHROMIUM": "/nonexistent/chrome"}):
+            self.assertEqual(GATE.step_e2e_offline(_gate("full"))["status"], "failed")
+        with tempfile.TemporaryDirectory() as folder:
+            browser = Path(folder) / "chrome"
+            browser.write_text("", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"VALUE_E2E_CHROMIUM": str(browser), "VALUE_NODE": "node-for-test"}), \
+                    mock.patch.object(GATE, "run", return_value=SimpleNamespace(returncode=0, stdout="ok", stderr="")) as runner:
+                self.assertEqual(GATE.step_e2e_offline(_gate("full"))["status"], "passed")
+        command = runner.call_args.args[0]
+        self.assertEqual(command, ["node-for-test", "e2e/run-tests.mjs", "--offline"])
+        self.assertEqual(runner.call_args.kwargs["environment"]["VALUE_E2E_UI_ONLY"], "1")
+        self.assertIn("e2e_offline", [step.name for step in GATE.FULL_STEPS])
+
     def test_every_tier_extends_the_previous_one(self) -> None:
         quick = [step.name for step in GATE.QUICK_STEPS]
         full = [step.name for step in GATE.FULL_STEPS]

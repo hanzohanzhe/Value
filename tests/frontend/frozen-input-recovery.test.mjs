@@ -6,6 +6,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { build } from 'esbuild';
 import { chromium } from '@playwright/test';
+import { chromiumLaunchOptions } from './helpers/chromium.mjs';
 const root = path.resolve(import.meta.dirname, '../..'), sha = 'a'.repeat(64);
 const report = (run, mode) => ({ schema_version: 'value.frozen-recovery-review/v1', source_run_id: run, source_snapshot_id: 'snapshot-1', recovery_mode: mode, review_sha256: sha, allowed: true, input_integrity: 'verified', scope: { mode: 'smoke', start_year: 2025, end_year: 2025, periods_per_year: 2 }, canonical_role_count: 2, source_execution_identity_sha256: null, current_execution_identity_sha256: sha, missing_evidence: ['Historical source not bundled'], changes: [{ field: 'method', recorded: null, current: 'current' }], blocking_reasons: [], limitations: ['Input recovery does not restore checkpoints'] });
 test('frozen recovery discards late reviews across mode/Run and creates only an explicitly confirmed Study', { timeout: 45000 }, async () => {
@@ -15,7 +16,7 @@ test('frozen recovery discards late reviews across mode/Run and creates only an 
     await writeFile(path.join(directory, 'index.html'), '<div id="root"></div><script type="module" src="/harness.js"></script>');
     server = createServer(async (req, res) => { const file = req.url === '/harness.js' ? 'harness.js' : 'index.html'; res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : 'text/html'); res.end(await readFile(path.join(directory, file))); });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    browser = await chromium.launch({ headless: true, ...(process.env.CSV_MAPPING_CHROMIUM_EXECUTABLE ? { executablePath: process.env.CSV_MAPPING_CHROMIUM_EXECUTABLE } : {}) });
+    browser = await chromium.launch(chromiumLaunchOptions());
     const page = await browser.newPage(); let pending, delayed = true, creates = 0;
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url()), run = url.pathname.split('/')[3], body = route.request().postDataJSON();

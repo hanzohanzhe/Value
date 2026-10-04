@@ -1,0 +1,60 @@
+{
+  "schema": "value.e2e-offline-subset/v1",
+  "description": "Specs that run with VALUE_E2E_UI_ONLY=1 (UI served, every /api route mocked in the spec) and that P0-9 depends on as its acceptance net. `node e2e/run-tests.mjs --offline` runs them and applies e2e/offline-ratchet.mjs: an unregistered failure fails, a registered failure that starts passing must be removed from known_failures, and a registered failure with error_must_match fails the ratchet if any of its errors does not match. Ids are '<spec file> > <test title>' (no line numbers). castle-101 needs the real service and skips itself here.",
+  "project": "desktop-chromium",
+  "timeout_ms": 30000,
+  "specs": [
+    "e2e/market-visibility.spec.ts",
+    "e2e/network-redispatch.spec.ts",
+    "e2e/expanded-workflows.spec.ts",
+    "e2e/castle-101.spec.ts",
+    "e2e/result-queries.spec.ts",
+    "e2e/comparison-review.spec.ts",
+    "e2e/evidence-isolation.spec.ts"
+  ],
+  "min_passed": {
+    "e2e/network-redispatch.spec.ts": 19,
+    "e2e/expanded-workflows.spec.ts": 1,
+    "e2e/result-queries.spec.ts": 2,
+    "e2e/comparison-review.spec.ts": 1,
+    "e2e/evidence-isolation.spec.ts": 1
+  },
+  "known_failures": [
+    {
+      "id": "market-visibility.spec.ts > market replay and VRE evidence render from versioned bounded APIs",
+      "reason": "R3-01: the dispatch API sends price_gbp_per_mwh but app/page.tsx reads clearing_price_gbp_per_mwh, so the selected-period strip shows £0/MWh. Only the soft price assertion may fail.",
+      "owner": "P0-9 S3 (M2)",
+      "error_must_match": "selected-period-strip[\\s\\S]*61\\.25/MWh"
+    },
+    {
+      "id": "network-redispatch.spec.ts > validated, custom and numerically warned solver states remain distinct",
+      "reason": "Solver-validation summary wording drifted (the spec expects 'Custom contract — not yet solver validated').",
+      "owner": "P0-8",
+      "error_must_match": "Custom contract — not yet solver validated"
+    },
+    {
+      "id": "network-redispatch.spec.ts > unsafe solver evidence states never render as green validation",
+      "reason": "Solver-validation summary wording drifted (the spec expects 'Solver validation status unavailable').",
+      "owner": "P0-8",
+      "error_must_match": "Solver validation status unavailable"
+    },
+    {
+      "id": "network-redispatch.spec.ts > failed zonal run creates a separate copperplate run",
+      "reason": "getByRole('status') became ambiguous (3 status regions) after the Run context bar was added.",
+      "owner": "P1",
+      "error_must_match": "strict mode violation: getByRole\\('status'\\)"
+    },
+    {
+      "id": "expanded-workflows.spec.ts > expanded composer and conditional Data stay capability-driven",
+      "reason": "Stale spec: the Basic composer now offers only the national single node and the fixed zonal method, so the fixture's 'Chronological DC network' domain is not rendered.",
+      "owner": "P1",
+      "error_must_match": "Chronological DC network"
+    },
+    {
+      "id": "expanded-workflows.spec.ts > zonal solver settings require valid ranges and one revision acknowledgement",
+      "reason": "Stale spec: the solver-settings editor no longer shows 'Built-in default settings' for this fixture.",
+      "owner": "P1",
+      "error_must_match": "Built-in default settings"
+    }
+  ]
+}

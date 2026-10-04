@@ -186,7 +186,9 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
 });
 
 test("optional-domain results expose evidence and non-evaluated states", async ({ page }) => {
-  await page.goto("/");
+  // The workspace fixture lists no Study, so the Run is opened by its link:
+  // a Run is selected only together with the Study that owns it.
+  await page.goto(`/?study=${run.project_id}&run=${run.id}`);
   await page.getByRole("button", { name: /Network & water/ }).click();
   await expect(page.getByRole("heading", { name: "Nodal balance and constrained transfers" })).toBeVisible();
   await expect(page.getByText("Electrical schematic only", { exact: false })).toBeVisible();
@@ -194,11 +196,9 @@ test("optional-domain results expose evidence and non-evaluated states", async (
   await expect(page.getByText("not evaluated", { exact: true }).last()).toBeVisible();
   await page.screenshot({ path: `${screenshotRoot}/04-dc-results.png`, fullPage: true });
 
-  await page.getByRole("tab", { name: "AC feasibility" }).click();
-  await expect(page.getByText("Not AC OPF", { exact: true })).toBeVisible();
-  await expect(page.getByText("0.1 MW")).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/05-ac-feasibility.png`, fullPage: true });
-
+  // The public "AC feasibility" tab is intentionally absent (no AC model is
+  // shipped; the frontend guards forbid it from coming back), so its old
+  // assertions are removed rather than reworded (P0-9 S0/S10).
   await page.getByRole("tab", { name: "Transmission expansion" }).click();
   await expect(page.getByText("candidate → proposal → planning → commissioned / failed / retired")).toBeVisible();
   await expect(page.getByText("line:NS2")).toBeVisible();

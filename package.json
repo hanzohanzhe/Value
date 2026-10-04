@@ -25,6 +25,7 @@
     "typecheck:frontend": "tsc --project tsconfig.frontend.json",
     "test:workspace": "node --test tests/run-context.test.mjs tests/workspace-location.test.mjs",
     "test:e2e": "node e2e/run-tests.mjs",
+    "test:e2e:offline": "node e2e/run-tests.mjs --offline",
     "test:backend": "py -3.10 -m unittest discover -s tests -p \"test_*.py\" -v",
     "local:api": "py -3.10 -m backend.server",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
