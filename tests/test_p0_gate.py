@@ -177,6 +177,7 @@ class P0GateTests(unittest.TestCase):
         outcome = GATE.step_append_only(_gate())
         self.assertEqual(outcome["status"], "passed", outcome)
         self.assertGreater(outcome["detail"]["golden_files"], 0)
+        self.assertGreater(outcome["detail"]["frozen_projects"], 0)
         self.assertEqual(GATE.step_append_only(_gate(append_base="0" * 40))["status"], "failed")
 
 
@@ -244,6 +245,17 @@ class AppendOnlyTests(unittest.TestCase):
         self.assertTrue(any("quarantine only shrinks" in row for row in violations), violations)
         self.assertTrue(any("expiry moved later" in row for row in violations), violations)
         self.assertTrue(any("never be quarantined" in row for row in violations), violations)
+
+    def test_frozen_projects_are_immutable(self) -> None:
+        project = "tests/golden/projects/D1.json"
+        self.base[project] = '{"id": "golden-study", "parameters": {}}\n'
+        self.head[project] = self.base[project]
+        self.assertEqual(GATE.append_only_violations(self.base.get, self.head.get, [self.GOLDEN], [project]), [])
+        self.head[project] = '{"id": "golden-study", "parameters": {"x": 1}}\n'
+        violations = GATE.append_only_violations(self.base.get, self.head.get, [self.GOLDEN], [project])
+        self.assertTrue(any("frozen golden project" in row for row in violations), violations)
+        del self.head[project]
+        self.assertTrue(GATE.append_only_violations(self.base.get, self.head.get, [self.GOLDEN], [project]))
 
     def test_eslint_baseline_growth_is_refused(self) -> None:
         self.head[self.ESLINT] = json.dumps({"schema_version": GATE.ESLINT_SCHEMA, "counts": {

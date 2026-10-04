@@ -39,10 +39,11 @@ FORBIDDEN_PORTS = ("8766", "8800")
 ESLINT_BASELINE = ROOT / "tests" / "baselines" / "eslint-baseline.json"
 ESLINT_SCHEMA = "value.eslint-ratchet/v2"
 # Anchor of the append-only rules (plan 3.9): the M0 commit that fixed golden
-# revision 0 and the ratchet baselines.  Moving it is an integrator decision
-# recorded in the commit message, never a lane's.
-APPEND_ONLY_BASE = "71fb98b4c4fad9ce94dc9916dbbd8efb3ec3a477"
+# revision 0, the frozen golden projects and the ratchet baselines.  Moving it
+# is an integrator decision recorded in the commit message, never a lane's.
+APPEND_ONLY_BASE = "8336d1881680678917c02ca32f4fce5a9c036f5f"
 GOLDEN_FAMILY_DIRS = ("tests/golden/doctoral", "tests/golden/corrected")
+GOLDEN_PROJECT_DIR = "tests/golden/projects"
 RATCHET_BASELINE_FILES = (
     "tests/baselines/known-failures-linux-py310.txt",
     "tests/baselines/known-failures-pytest-linux-py310.txt",
@@ -500,8 +501,10 @@ def append_only_violations(
     read_base: Callable[[str], str | None],
     read_head: Callable[[str], str | None],
     base_golden_paths: Iterable[str],
+    base_project_paths: Iterable[str] = (),
 ) -> list[str]:
-    """Violations of: goldens append-only, ratchet baselines and quarantine only shrink.
+    """Violations of: goldens append-only, frozen projects immutable, ratchet
+    baselines and quarantine only shrink.
 
     ``read_base``/``read_head`` return a file's text (``None`` when absent).
     """
@@ -525,6 +528,11 @@ def append_only_violations(
         for index, revision in enumerate(base_revisions[: len(head_revisions)]):
             if _canonical(revision) != _canonical(head_revisions[index]):
                 violations.append(f"{path}: revision {index} was rewritten (golden files are append-only)")
+
+    for path in sorted(base_project_paths):
+        base_text = read_base(path)
+        if base_text is not None and read_head(path) != base_text:
+            violations.append(f"{path}: frozen golden project changed or deleted (snapshots are immutable)")
 
     for path in RATCHET_BASELINE_FILES:
         base_text, head_text = read_base(path), read_head(path)
@@ -581,8 +589,12 @@ def step_append_only(gate: Gate) -> dict[str, Any]:
         return target.read_text(encoding="utf-8") if target.is_file() else None
 
     listed = run(["git", "ls-tree", "-r", "--name-only", commit, "--", *GOLDEN_FAMILY_DIRS]).stdout.split()
-    violations = append_only_violations(read_base, read_head, [path for path in listed if path.endswith(".json")])
-    return _status(not violations, {"base": commit, "golden_files": len(listed), "violations": violations})
+    projects = run(["git", "ls-tree", "-r", "--name-only", commit, "--", GOLDEN_PROJECT_DIR]).stdout.split()
+    violations = append_only_violations(
+        read_base, read_head, [path for path in listed if path.endswith(".json")], projects
+    )
+    return _status(not violations, {"base": commit, "golden_files": len(listed), "frozen_projects": len(projects),
+                                    "violations": violations})
 
 
 def step_reference_tables(gate: Gate) -> dict[str, Any]:
