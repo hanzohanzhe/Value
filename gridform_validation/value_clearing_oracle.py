@@ -17,7 +17,7 @@ from typing import Any, Mapping
 
 import pulp
 
-from gridform_validation.cbc import cbc_path
+from gridform_validation.cbc import cbc_identity, cbc_path
 
 
 ORACLE_ID = "value.declared-clearing-pulp-cbc-oracle/v1"
@@ -331,6 +331,7 @@ def validate_declared_database(database: Path, *, tolerance: float = 1e-3) -> di
     return {
         "schema_version": "value.declared-clearing-validation/v1",
         "oracle_id": ORACLE_ID,
+        "solver_locator": cbc_identity(),
         "power_tolerance_mw": tolerance,
         "cost_tolerance_gbp": "max(0.05, 1e-8 * comparison scale)",
         "database": str(database),

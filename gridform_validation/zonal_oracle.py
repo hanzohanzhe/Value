@@ -11,7 +11,7 @@ from copy import deepcopy
 
 import pulp
 
-from gridform_validation.cbc import cbc_path
+from gridform_validation.cbc import cbc_identity, cbc_path
 
 
 DOMAIN_SCHEMA = "value.zonal-redispatch-domain/v1"
@@ -575,6 +575,7 @@ def solve_zonal_oracle(declaration: Mapping[str, object]) -> dict[str, object]:
         "success": True,
         "status": "optimal",
         "solver": "independent-pulp-cbc",
+        "solver_locator": cbc_identity(),
         "primary_objective_gbp": optima["primary"],
         "secondary_objective_mwh": optima["secondary"],
         "physical_tie_objective": optima["physical"],

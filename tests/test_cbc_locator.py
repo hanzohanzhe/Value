@@ -81,5 +81,53 @@ class CbcLocatorTests(unittest.TestCase):
             self.assertTrue(Path(located[1]).is_file())
 
 
+class OracleSolverLocatorTests(unittest.TestCase):
+    """Every independent-oracle report states which CBC binary solved it (plan X0 S6)."""
+
+    def setUp(self) -> None:
+        if cbc.locate_cbc() is None:
+            self.skipTest("no CBC executable on this host")
+
+    def test_zonal_oracle_result_names_the_cbc_binary(self) -> None:
+        from gridform_validation.zonal_case_generator import random_convex_case
+        from gridform_validation.zonal_oracle import solve_zonal_oracle
+
+        result = solve_zonal_oracle(random_convex_case(41))
+        self.assertEqual(result["solver"], "independent-pulp-cbc")
+        self.assertEqual(result["solver_locator"], cbc.cbc_identity())
+        self.assertTrue(result["solver_locator"]["available"])
+        self.assertEqual(len(result["solver_locator"]["binary_sha256"]), 64)
+
+    def test_declared_clearing_report_names_the_cbc_binary(self) -> None:
+        import hashlib
+        import json
+        import sqlite3
+
+        from gridform_validation.value_clearing_oracle import ORACLE_ID, validate_declared_database
+        from tests.test_force_declared_clearing_validation import declared_case
+
+        payload_json = json.dumps({"payload": declared_case()}, sort_keys=True)
+        database = self.folder / "declared.sqlite"
+        with sqlite3.connect(database) as connection:
+            connection.execute("CREATE TABLE clearing_inputs (input_sha256 TEXT, year INTEGER, period INTEGER, stage TEXT, payload_json TEXT)")
+            connection.execute("CREATE TABLE clearing_outcomes (input_sha256 TEXT, outcome_json TEXT)")
+            connection.execute(
+                "INSERT INTO clearing_inputs VALUES (?, 2025, 0, 'ahead', ?)",
+                (hashlib.sha256(payload_json.encode("utf-8")).hexdigest(), payload_json),
+            )
+        report = validate_declared_database(database)
+        self.assertEqual(report["oracle_id"], ORACLE_ID)
+        self.assertEqual(report["solver_locator"], cbc.cbc_identity())
+        self.assertEqual(report["lp_supported_rows"], 1)
+
+    @property
+    def folder(self) -> Path:
+        if not hasattr(self, "_folder"):
+            temporary = tempfile.TemporaryDirectory()
+            self.addCleanup(temporary.cleanup)
+            self._folder = Path(temporary.name)
+        return self._folder
+
+
 if __name__ == "__main__":
     unittest.main()
