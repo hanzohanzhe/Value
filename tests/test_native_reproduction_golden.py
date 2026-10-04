@@ -375,6 +375,36 @@ class HarnessIsolationTests(unittest.TestCase):
         self.assertIs(runtime, module_context._runtime)
         self.assertIs(ledger, market_ledger._ACTIVE_LEDGER)
 
+    def test_callable_loop_module_globals_are_restored(self):
+        import types
+
+        kernel = harness.kernel_module()
+        frozen, _ = harness.compile_head_loop(kernel)
+        reference = harness.columns_from_run(harness.run_case("dynamic", loop=frozen))
+        # A callable whose globals are a real module's namespace, as a P0-6 S3
+        # realise_period driver in the kernel would be.
+        module = types.ModuleType("p06_probe_loop")
+        module.__dict__.update({key: value for key, value in vars(kernel).items() if not key.startswith("__")})
+        exec(compile(harness.HEAD_COPY_PATH.read_text(encoding="utf-8"), "p06_probe_loop", "exec"), module.__dict__)
+        self.assertNotIn(harness.DRIVER_GLOBAL, module.__dict__)
+        columns = harness.columns_from_run(harness.run_case("dynamic", loop=module.run_simulation))
+        self.assertNotIn(harness.DRIVER_GLOBAL, module.__dict__)
+        self.assertEqual([], harness.compare_columns("dynamic", reference, columns, {}))
+        marker = object()
+        module.__dict__[harness.DRIVER_GLOBAL] = marker
+        harness.run_case("dynamic", loop=module.run_simulation)
+        self.assertIs(module.__dict__[harness.DRIVER_GLOBAL], marker)
+        self.assertNotIn(harness.DRIVER_GLOBAL, vars(kernel))
+
+    def test_unknown_ledger_writers_fail_closed_with_a_named_error(self):
+        ledger = harness.RecordingLedger()
+        for name in ("record_storage_energy_audit", "record_surplus_routing", "declare_balance_boundary"):
+            with self.assertRaisesRegex(NotImplementedError, name):
+                getattr(ledger, name)
+            with self.assertRaises(NotImplementedError):
+                hasattr(ledger, name)
+        self.assertFalse(hasattr(ledger, "flush"))
+
     def test_runtime_attributes_reach_the_module_runtime_and_are_restored(self):
         from gridform_core.builtin.scheme_c_1000twh.runtime_compat import module_context
 

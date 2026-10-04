@@ -41,7 +41,11 @@ signature, must call
 ``driver.begin_period(period, generators, batterys, connections, electrolyzer)``
 where HEAD assigned weather and interconnector inputs, and must not read
 weather files.  It reaches the driver through the module global
-``__p06_synthetic_driver__``, as the frozen copy does.
+``__p06_synthetic_driver__``, as the frozen copy does; :func:`run_case` sets
+that global in the callable's ``__globals__`` only for the run and restores
+the previous state afterwards.  Ledger writers the loop calls must exist on
+:class:`RecordingLedger` (unknown ``record_*``/``declare_*`` writers raise
+``NotImplementedError``).
 
 Golden values are compared exactly (bit-identical doubles).  Every column has a
 zone (trajectory / accounting / identity, decision Q12): the doctoral
@@ -728,8 +732,18 @@ class RecordingLedger:
         })
 
     def __getattr__(self, name: str):
-        if name.startswith("record_"):
-            raise AssertionError(f"the default PSM loop unexpectedly called {name}")
+        # Fail closed: a ledger writer this harness does not know is an error,
+        # also for hasattr()/getattr(..., None) probes (hasattr only swallows
+        # AttributeError).  Writers that later steps add to the loop must be
+        # added here: P0-4 S4 (storage energy audit), P0-4 S5 (surplus
+        # routing), P0-4 S6 (declare_balance_boundary, compatibility
+        # adjustment metadata) and the A2 stress-event writers.
+        if name.startswith(("record_", "declare_")):
+            raise NotImplementedError(
+                f"RecordingLedger has no {name}(): the loop called a ledger writer that "
+                "tests/native_reproduction_harness.py does not record; add it to RecordingLedger "
+                "and to columns_from_run (with a zone rule) in the same commit"
+            )
         raise AttributeError(name)
 
     def close(self) -> dict[str, object]:
@@ -856,6 +870,9 @@ def compile_live_loop(kernel=None) -> tuple[Callable[..., Any], dict[str, Any]]:
     return _compile_loop(render_live_loop(source), f"<live {KERNEL_RELPATH}>", kernel)
 
 
+# Module global through which a loop reaches the SyntheticDriver.
+DRIVER_GLOBAL = "__p06_synthetic_driver__"
+
 # Loop drivers.  "frozen": the verbatim 35aadb3 loop (HEAD ledger boundary,
 # live market functions); "live": the current kernel loop with the same input
 # replacements (current ledger boundary and market functions).
@@ -904,18 +921,29 @@ def run_case(variant: str, scenario: Mapping[str, Any] | None = None, *, loop=No
     driver = SyntheticDriver(scenario)
     loop, namespace = resolve_loop(loop, kernel)
     ledger = RecordingLedger()
-    with _loop_environment(kernel, variant, float(scenario["bidding_factor"]), runtime_attributes):
-        namespace["__p06_synthetic_driver__"] = driver
-        generators, batteries, connections, electrolyzer = build_assets(kernel, scenario)
-        ledger_module.set_active_market_ledger(ledger)
-        raw = loop(
-            int(scenario["periods"]), generators, batteries,
-            np.asarray(scenario["forecast_mw"], dtype=float),
-            np.asarray(scenario["real_mw"], dtype=float),
-            connections, electrolyzer,
-        )
-        driver.finish(generators, batteries, connections, electrolyzer)
-        storage_reports = {str(battery.name): battery.storage_cost_report() for battery in batteries}
+    # A callable loop may live in a real module (for example a P0-6 S3
+    # realise_period driver in the kernel): its globals get the driver only
+    # for the duration of the run.
+    missing = object()
+    saved_driver = namespace.get(DRIVER_GLOBAL, missing)
+    try:
+        with _loop_environment(kernel, variant, float(scenario["bidding_factor"]), runtime_attributes):
+            namespace[DRIVER_GLOBAL] = driver
+            generators, batteries, connections, electrolyzer = build_assets(kernel, scenario)
+            ledger_module.set_active_market_ledger(ledger)
+            raw = loop(
+                int(scenario["periods"]), generators, batteries,
+                np.asarray(scenario["forecast_mw"], dtype=float),
+                np.asarray(scenario["real_mw"], dtype=float),
+                connections, electrolyzer,
+            )
+            driver.finish(generators, batteries, connections, electrolyzer)
+            storage_reports = {str(battery.name): battery.storage_cost_report() for battery in batteries}
+    finally:
+        if saved_driver is missing:
+            namespace.pop(DRIVER_GLOBAL, None)
+        else:
+            namespace[DRIVER_GLOBAL] = saved_driver
     if len(raw) != len(RETURN_NAMES):
         raise AssertionError(f"loop returned {len(raw)} values, expected {len(RETURN_NAMES)}")
     return {
