@@ -1314,6 +1314,7 @@
     "tests/test_public_uk_distribution.py",
     "tests/test_recovery_capability.py",
     "tests/test_refresh_source_release_manifest.py",
+    "tests/test_release_members_cover_imports.py",
     "tests/test_release_parity.py",
     "tests/test_release_rights_ledger.py",
     "tests/test_release_upgrade_ledgers.py",
@@ -10470,6 +10471,12 @@
       "path": "tests/test_refresh_source_release_manifest.py",
       "sha256": "d881c6f694e51465d4757585e9b9fa130f8fde00d1c28de1b0984cfc320fe9d0",
       "bytes": 5369,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_release_members_cover_imports.py",
+      "sha256": "657250383814614461ee1ca5855b83ff0ec171b021702e7e00b4a63ba9c97243",
+      "bytes": 6670,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
