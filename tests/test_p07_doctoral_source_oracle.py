@@ -12,17 +12,31 @@ Only these pieces of ``analyze_investment`` are extracted with ``ast`` and run:
   (2270) assignments;
 * the nested ``assign_recommendation`` (2273), ``_profit_based_addition_mw``
   (2330) and ``calculate_new_capacity`` (2337);
-* the proportional VRE / battery scaling loop
-  ``for tech_type in vre_battery_techs`` (2385-2435).
+* the technology lists ``vre_battery_techs = [...]`` (2381) and
+  ``battery_techs = {...}`` (2383), and the proportional VRE / battery scaling
+  loop ``for tech_type in vre_battery_techs`` (2385-2435).
 
-The annual entry point, its I/O, dispatch and configuration loading never run;
-configuration (per-technology CAPEX, thermal High multiplier, annual caps) is
-fixture input. Nothing from the candidate enters the oracle namespace. This
-replaces, for this host, the external-tree oracle of
-``tests/test_doctoral_investment_alignment.py`` whose source lives only on the
-author's Windows machine (quarantined, R2-09).
+``_sec.EXPANDABLE_STORAGE_KEYS`` is read from the preserved
+``compat/modular_storage_expansion_cap.py`` (sha256 pinned, equal to its
+35aadb3 blob): ``tuple(BATTERY_ELIGIBLE_TIERS.keys())`` with the dict literal
+evaluated by ``ast.literal_eval``. The annual entry point, its I/O, dispatch
+and configuration loading never run; configuration (per-technology CAPEX,
+thermal High multiplier, annual caps) is fixture input. No value from the
+candidate (``doctoral_policy``) enters the oracle namespace; a separate test
+only checks that the source technology lists equal the candidate constants.
 
-Five cases agree value by value. A sixth documents the one approved deviation
+Cross-check: ``compat/case3.py`` (``analyze_investment_case3``, sha256 pinned,
+equal to its 35aadb3 blob) is the in-repo copy of the doctoral Case 3 code that
+``doctoral_policy`` cites (896-904, 991-1029, 1168-1216). Its
+``assign_recommendation`` (896), ``_profit_based_addition_mw`` (989),
+``calculate_new_capacity`` (996), payback / ROI assignments, technology lists
+and scaling loop (1168) are asserted ``ast.dump``-equal to the extracted
+pieces, so the oracle stands for Case 3 as well. The author's private file
+(sha256 e0e11057..., AUTHORITATIVE_SOURCE.json) differs from case3.py by sha
+only; it is not on this host. This replaces, for this host, the external-tree
+oracle of ``tests/test_doctoral_investment_alignment.py`` (quarantined, R2-09).
+
+Six cases agree value by value. A seventh documents the one approved deviation
 of the typed rule: a depletion in a VRE technology whose positive proposals are
 scaled is overwritten to "no change" by the source loop, and kept by the typed
 rule (doctoral_policy module docstring, "approved defect correction").
@@ -57,22 +71,70 @@ NESTED_FUNCTIONS = {
     "calculate_new_capacity": (2337, 2371),
 }
 FRAME_ASSIGNMENTS = {"df_analysis['payback_years']": 2257, "df_analysis['ROI']": 2270}
+TECHNOLOGY_LISTS = {"vre_battery_techs": 2381, "battery_techs": 2383}
 SCALING_LOOP_SPAN = (2385, 2435)
-STORAGE = doctoral_policy.STORAGE_TECHNOLOGIES
-VRE = doctoral_policy.VRE_TECHNOLOGIES
+STORAGE_CAP_PATH = ROOT / "gridform_core/builtin/scheme_c_1000twh/compat/modular_storage_expansion_cap.py"
+STORAGE_CAP_SHA256 = "74e4c9c85573268577438dbedbe2c2b85a41267dbbb40a0350d350447973b43f"
+STORAGE_TIERS_LINE, STORAGE_KEYS_LINE = 77, 133
+CASE3_PATH = ROOT / "gridform_core/builtin/scheme_c_1000twh/compat/case3.py"
+CASE3_SHA256 = "68baa3c61630e3959087ba863e1ba697ec3e3c76a4eb1384d8751de4f9e77dd8"
+CASE3_FUNCTION = "analyze_investment_case3"
+CASE3_LINES = {
+    "assign_recommendation": [896], "_profit_based_addition_mw": [989], "calculate_new_capacity": [996],
+    "df_analysis['payback_years']": [882, 945], "df_analysis['ROI']": [894, 950],
+    "vre_battery_techs": [1093], "battery_techs": [1097], "scaling_loop": [1168],
+}
 THERMAL_HIGH_MULTIPLIER = 1.01  # source regulated target for CCGT/OCGT/bio_and_waste; policy default
 
 
-def _source_nodes():
-    raw = SOURCE_PATH.read_bytes()
+def _pinned_tree(path, sha256):
+    raw = path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
-    if digest != SOURCE_SHA256:
-        raise AssertionError(f"preserved investment source changed: {digest}")
-    tree = ast.parse(raw.decode("utf-8-sig"), filename=str(SOURCE_PATH))
-    matches = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == SOURCE_FUNCTION]
+    if digest != sha256:
+        raise AssertionError(f"preserved source {path.name} changed: {digest}")
+    return ast.parse(raw.decode("utf-8-sig"), filename=str(path))
+
+
+def _function_body(tree, name):
+    matches = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name]
     if len(matches) != 1:
-        raise AssertionError(f"{SOURCE_FUNCTION} is not unique in the preserved source")
-    body = matches[0].body
+        raise AssertionError(f"{name} is not unique in the preserved source")
+    return matches[0].body
+
+
+def _decision_pieces(body):
+    """Decision pieces of an analyze_investment body, keyed by name, in source order."""
+    pieces: dict[str, list] = {}
+    for node in body:
+        if isinstance(node, ast.FunctionDef) and node.name in NESTED_FUNCTIONS:
+            pieces.setdefault(node.name, []).append(node)
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = ast.unparse(node.targets[0])
+            if target in FRAME_ASSIGNMENTS or target in TECHNOLOGY_LISTS:
+                pieces.setdefault(target, []).append(node)
+        elif (isinstance(node, ast.For) and isinstance(node.target, ast.Name) and node.target.id == "tech_type"
+              and isinstance(node.iter, ast.Name) and node.iter.id == "vre_battery_techs"):
+            pieces.setdefault("scaling_loop", []).append(node)
+    return pieces
+
+
+def source_storage_keys():
+    """``_sec.EXPANDABLE_STORAGE_KEYS`` evaluated from the preserved module text."""
+    tree = _pinned_tree(STORAGE_CAP_PATH, STORAGE_CAP_SHA256)
+    tiers = [node for node in tree.body if isinstance(node, ast.AnnAssign)
+             and ast.unparse(node.target) == "BATTERY_ELIGIBLE_TIERS"]
+    keys = [node for node in tree.body if isinstance(node, ast.Assign) and len(node.targets) == 1
+            and ast.unparse(node.targets[0]) == "EXPANDABLE_STORAGE_KEYS"]
+    if ([node.lineno for node in tiers], [node.lineno for node in keys]) != ([STORAGE_TIERS_LINE], [STORAGE_KEYS_LINE]):
+        raise AssertionError("storage expansion keys moved or are not unique")
+    if ast.unparse(keys[0].value) != "tuple(BATTERY_ELIGIBLE_TIERS.keys())":
+        raise AssertionError("EXPANDABLE_STORAGE_KEYS is no longer the keys of BATTERY_ELIGIBLE_TIERS")
+    return tuple(ast.literal_eval(tiers[0].value).keys())
+
+
+def _source_nodes():
+    tree = _pinned_tree(SOURCE_PATH, SOURCE_SHA256)
+    body = _function_body(tree, SOURCE_FUNCTION)
     functions = [node for node in body if isinstance(node, ast.FunctionDef) and node.name in NESTED_FUNCTIONS]
     spans = {node.name: (node.lineno, node.end_lineno) for node in functions}
     if spans != NESTED_FUNCTIONS:
@@ -84,14 +146,26 @@ def _source_nodes():
     ]
     if {ast.unparse(node.targets[0]): node.lineno for node in assignments} != FRAME_ASSIGNMENTS:
         raise AssertionError("ROI / payback frame assignments moved or are not unique")
-    loops = [
+    lists = [
         node for node in body
-        if isinstance(node, ast.For) and isinstance(node.target, ast.Name) and node.target.id == "tech_type"
-        and isinstance(node.iter, ast.Name) and node.iter.id == "vre_battery_techs"
+        if isinstance(node, ast.Assign) and len(node.targets) == 1
+        and ast.unparse(node.targets[0]) in TECHNOLOGY_LISTS
     ]
+    if {ast.unparse(node.targets[0]): node.lineno for node in lists} != TECHNOLOGY_LISTS or len(lists) != 2:
+        raise AssertionError("source technology lists moved or are not unique")
+    loops = _decision_pieces(body).get("scaling_loop", [])
     if len(loops) != 1 or (loops[0].lineno, loops[0].end_lineno) != SCALING_LOOP_SPAN:
         raise AssertionError("source proportional scaling loop moved or is not unique")
-    return assignments, functions, loops
+    return assignments, functions, lists + loops
+
+
+def source_technology_lists():
+    """The literal ``vre_battery_techs`` and ``battery_techs`` of the source."""
+    _, _, nodes = _source_nodes()
+    namespace: dict = {}
+    exec(compile(ast.Module(body=[node for node in nodes if isinstance(node, ast.Assign)], type_ignores=[]),
+                 "<source-technology-lists>", "exec"), namespace)
+    return namespace["vre_battery_techs"], namespace["battery_techs"]
 
 
 def source_oracle(accounts, caps):
@@ -123,9 +197,7 @@ def source_oracle(accounts, caps):
             "CCGT": THERMAL_HIGH_MULTIPLIER, "OCGT": THERMAL_HIGH_MULTIPLIER,
             "bio_and_waste": THERMAL_HIGH_MULTIPLIER, **{str(k): float(v) for k, v in caps.items()},
         },
-        "_sec": SimpleNamespace(EXPANDABLE_STORAGE_KEYS=STORAGE),
-        "vre_battery_techs": [*VRE, *STORAGE],
-        "battery_techs": set(STORAGE),
+        "_sec": SimpleNamespace(EXPANDABLE_STORAGE_KEYS=source_storage_keys()),
     }
     exec(compile(ast.Module(body=assignments + functions, type_ignores=[]),
                  "<source-investment-functions>", "exec"), namespace)
@@ -165,7 +237,7 @@ def account(name, tech, capacity, net, capex, *, preferred=0.08, target=25.0):
     }
 
 
-# Five agreement cases. Comments give the hand-computed outcome.
+# Six agreement cases. Comments give the hand-computed outcome.
 CASES = {
     "tier_boundaries_uncapped_gas": (
         [
@@ -217,6 +289,15 @@ CASES = {
         ],
         {"1c_battery": 15.0, "hydrogen_battery": 30.0},
     ),
+    "offshore_proportional_scaling": (
+        [
+            # ROI 0.05 <= 0.08, payback 20 <= 30 -> Profit, request 4e7 / 2e6 = 20 MW.
+            account("off-a", "offshore", 400, 4e7, 2e6, target=30.0),
+            # ROI 0.06, payback 16.67 <= 30 -> Profit, request 12 MW. 32 MW against cap 16 -> scale 1/2.
+            account("off-b", "offshore", 200, 2.4e7, 2e6, target=30.0),
+        ],
+        {"offshore": 16.0},
+    ),
     "depletion_without_positive_scaling": (
         [
             # offshore: one loss, one hold; no positive proposal so the loop skips the technology.
@@ -251,12 +332,36 @@ def _close(source_delta, candidate_delta, current):
 
 class DoctoralSourceOracleTest(unittest.TestCase):
     def test_preserved_source_is_pinned_and_extracted_spans_match_the_plan(self):
-        assignments, functions, loops = _source_nodes()
+        assignments, functions, nodes = _source_nodes()
         self.assertEqual(len(assignments), 2)
         self.assertEqual({node.name for node in functions}, set(NESTED_FUNCTIONS))
-        self.assertEqual((loops[0].lineno, loops[0].end_lineno), SCALING_LOOP_SPAN)
+        self.assertEqual([node.lineno for node in nodes], [2381, 2383, 2385])
+        self.assertEqual((nodes[-1].lineno, nodes[-1].end_lineno), SCALING_LOOP_SPAN)
 
-    def test_five_cases_agree_value_by_value(self):
+    def test_source_technology_lists_equal_the_candidate_constants(self):
+        """The oracle reads its lists from the source; the candidate must agree as sets."""
+        vre_battery, battery = source_technology_lists()
+        storage_keys = source_storage_keys()
+        self.assertEqual(vre_battery, ["solar", "onshore", "offshore",
+                                       "1c_battery", "0.5c_battery", "0.25c_battery", "hydrogen_battery"])
+        self.assertEqual(set(battery), set(doctoral_policy.STORAGE_TECHNOLOGIES))
+        self.assertEqual(set(storage_keys), set(doctoral_policy.STORAGE_TECHNOLOGIES))
+        self.assertEqual(set(vre_battery) - set(battery), set(doctoral_policy.VRE_TECHNOLOGIES))
+        self.assertEqual(set(vre_battery), set(doctoral_policy.VRE_TECHNOLOGIES) | set(doctoral_policy.STORAGE_TECHNOLOGIES))
+
+    def test_case3_decision_pieces_are_ast_identical_to_the_extracted_source(self):
+        """compat/case3.py is the in-repo Case 3 copy cited by doctoral_policy."""
+        case3 = _decision_pieces(_function_body(_pinned_tree(CASE3_PATH, CASE3_SHA256), CASE3_FUNCTION))
+        source = _decision_pieces(_function_body(_pinned_tree(SOURCE_PATH, SOURCE_SHA256), SOURCE_FUNCTION))
+        self.assertEqual({key: [node.lineno for node in nodes] for key, nodes in case3.items()}, CASE3_LINES)
+        self.assertEqual(set(source), set(CASE3_LINES))
+        for key, nodes in case3.items():
+            self.assertEqual(len(source[key]), 1, key)
+            for node in nodes:
+                with self.subTest(piece=key, case3_line=node.lineno):
+                    self.assertEqual(ast.dump(node), ast.dump(source[key][0]))
+
+    def test_six_cases_agree_value_by_value(self):
         for name, (accounts, caps) in CASES.items():
             with self.subTest(name):
                 source = source_oracle(accounts, caps)
@@ -299,6 +404,9 @@ class DoctoralSourceOracleTest(unittest.TestCase):
         self.assertEqual(storage["bat-a"]["delta_mw"], 20.0)
         self.assertAlmostEqual(storage["bat-b"]["delta_mw"], 15.0 * 22.5 / 35.0, places=12)
         self.assertEqual(storage["h2-a"]["delta_mw"], 30.0)
+        offshore = out["offshore_proportional_scaling"]
+        self.assertEqual([offshore[key]["recommendation"] for key in ("off-a", "off-b")], ["Invest_Profit"] * 2)
+        self.assertEqual((offshore["off-a"]["delta_mw"], offshore["off-b"]["delta_mw"]), (10.0, 6.0))
         loss = out["depletion_without_positive_scaling"]
         self.assertEqual(loss["off-loss"]["delta_mw"], -30.0)
         self.assertEqual(loss["bat-loss"]["delta_mw"], -5.0)

@@ -10041,8 +10041,8 @@
     },
     {
       "path": "tests/test_p07_doctoral_source_oracle.py",
-      "sha256": "be7827db8647386a6fe694eda1dba17304b3f8fc960193d1134fbcedf6b9ffe6",
-      "bytes": 16502,
+      "sha256": "b407105b9b0f74cebcd1e6d7c4aae59dce05a26b88519c10dcc54ac3211183ce",
+      "bytes": 23141,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
