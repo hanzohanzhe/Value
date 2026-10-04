@@ -497,7 +497,10 @@ CONNECTION_NAMES = ("Interconnect_France", "Interconnect_Norway")
 # Twelve 8-period segments.  Each row: forecast F, real R, VRE availability
 # (offshore, onshore, solar) and interconnector (transfer MW, price GBP/MWh) for
 # France and Norway; positive transfer = import capability, negative = export.
-# "purpose" names the HEAD behaviour the segment is built to exercise.
+# "purpose" names the HEAD behaviour the segment is built to exercise; the
+# coverage_facts observed from the run (not the inputs) are what the tests
+# require.  The nuclear-surplus segment follows the VRE-surplus segment so that
+# storage is full and cannot absorb the nuclear surplus before the exports.
 SEGMENTS: tuple[dict[str, Any], ...] = (
     {"purpose": "warm-up: forecast met by VRE and thermal, realised slightly above forecast (balancing with VRE excess)",
      "rows": [
@@ -532,17 +535,6 @@ SEGMENTS: tuple[dict[str, Any], ...] = (
         (14, 14, (40, 24, 12), (0, 50), (0, 45)),
         (12, 16, (38, 22, 10), (0, 50), (0, 45)),
      ]},
-    {"purpose": "nuclear surplus consumed by exports in the curtailment branch; zero and negative export prices",
-     "rows": [
-        (10, 6, (10, 6, 0), (-6, 35), (-4, 20)),
-        (10, 5, (12, 6, 0), (-6, 35), (-4, 0)),
-        (12, 7, (12, 8, 0), (-3, 35), (-6, 20)),
-        (14, 8, (14, 8, 0), (-6, -2), (-6, 20)),
-        (16, 12, (14, 8, 0), (-6, 35), (0, 20)),
-        (20, 17, (12, 6, 0), (0, 35), (-6, 20)),
-        (26, 24, (10, 6, 0), (-6, 35), (-6, 20)),
-        (32, 31, (8, 4, 0), (0, 35), (0, 20)),
-     ]},
     {"purpose": "VRE surplus with realised below forecast: curtailment branch charges storage from need and excess, exports, electrolysis",
      "rows": [
         (100, 92, (60, 30, 30), (-15, 40), (0, 30)),
@@ -553,6 +545,20 @@ SEGMENTS: tuple[dict[str, Any], ...] = (
         (92, 88, (70, 40, 26), (0, 40), (-10, -5)),
         (92, 84, (65, 35, 22), (0, 40), (0, 25)),
         (90, 85, (60, 30, 18), (0, 40), (0, 25)),
+     ]},
+    {"purpose": ("nuclear surplus with storage full after the VRE-surplus segment: the nuclear ramp floor stays above "
+                 "the forecast and the non-VRE surplus is exported in the curtailment branch (Q7 non_vre_spill "
+                 "path), the rest goes to electrolysis and down-regulation; zero and negative export prices "
+                 "refuse the export"),
+     "rows": [
+        (10, 6, (10, 6, 0), (-6, 35), (-4, 20)),
+        (10, 5, (12, 6, 0), (-6, 35), (-4, 0)),
+        (12, 7, (12, 8, 0), (-3, 35), (-6, 20)),
+        (14, 8, (14, 8, 0), (-6, -2), (-6, 20)),
+        (16, 12, (14, 8, 0), (-6, 35), (0, 20)),
+        (20, 17, (12, 6, 0), (0, 35), (-6, 20)),
+        (26, 24, (10, 6, 0), (-6, 35), (-6, 20)),
+        (32, 31, (8, 4, 0), (0, 35), (0, 20)),
      ]},
     {"purpose": "balancing periods with storage discharge followed by curtailment periods (storage-fee carry, HEAD 2274/2768/2815)",
      "rows": [
@@ -1498,6 +1504,29 @@ def coverage_facts(columns: Mapping[str, Any], scenario: Mapping[str, Any] | Non
         value = excess_lists[p]
         return isinstance(value, list) and any(str(item[0]).startswith("<NuclearGenerator") for item in value)
 
+    def ahead_excess(p: int, *, non_vre: bool = False) -> float:
+        # Surplus carried from the ahead stage (excess_energy_dict amounts).
+        value = excess_lists[p]
+        if not isinstance(value, list):
+            return 0.0
+        return sum(
+            float(item[1]) for item in value
+            if not non_vre or not str(item[0]).startswith("<ExpensiverenewableGenerator")
+        )
+
+    connections = [item["name"] for item in scenario["fleet"]["connections"]]
+
+    def stale_export(p: int) -> bool:
+        # HEAD curtailment path (modular_simulation_model.py ~955-1070): with
+        # a non-empty soldable list only connections with transfer < 0 get
+        # sold_energy assigned or reset, so a connection with transfer >= 0
+        # keeps the previous period's sold_energy (a phantom export).
+        return any(
+            float(scenario["interconnectors"][name]["transfer_constraint_mw"][p]) >= 0.0
+            and float(columns[f"kernel/state::{name}.sold_energy"][p]) > 0.0
+            for name in connections
+        )
+
     def carried_storage_fee(p: int) -> bool:
         # Observed carry (HEAD 2274/2768/2815): a curtailment-branch period
         # whose ahead stage accepted no storage still books a storage fee, and
@@ -1547,7 +1576,11 @@ def coverage_facts(columns: Mapping[str, Any], scenario: Mapping[str, Any] | Non
             p for p in range(periods) if nuclear_excess(p) and vre_available[p] > 0 and vre_dispatch[p] == 0.0
         ],
         "nuclear_surplus_in_balancing": [p for p in balancing_branch if nuclear_excess(p) and real[p] > forecast[p]],
-        "export_consumes_surplus": [p for p in curtailment_branch if sold[p] > 0],
+        "export_consumes_surplus": [p for p in curtailment_branch if sold[p] > 0 and ahead_excess(p) > 0],
+        "non_vre_surplus_exported": [
+            p for p in curtailment_branch if nuclear_excess(p) and ahead_excess(p, non_vre=True) > 0 and sold[p] > 0
+        ],
+        "stale_export_carry": [p for p in range(periods) if stale_export(p)],
         "forecast_above_ahead_supply": [p for p in range(periods) if (ahead_unserved.get(p) or 0.0) > 0],
         "hidden_shortage_in_curtailment_branch": [
             p for p in curtailment_branch if (ahead_unserved.get(p) or 0.0) > 0 and blackout[p] == 0

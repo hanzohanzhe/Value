@@ -33,6 +33,8 @@ REQUIRED_SITUATIONS = (
     "nuclear_surplus",
     "nuclear_surplus_in_balancing",
     "export_consumes_surplus",
+    "non_vre_surplus_exported",
+    "stale_export_carry",
     "forecast_above_ahead_supply",
     "hidden_shortage_in_curtailment_branch",
     "p3_01_toy_f120_r28",
@@ -205,10 +207,20 @@ class SyntheticGoldenTests(unittest.TestCase):
         # stage could not meet the forecast (HEAD 2765).
         for period in facts["hidden_shortage_in_curtailment_branch"]:
             self.assertEqual(latest[summary + "blackout_mwh"][period], 0.0)
-        # HEAD 1463: VRE squeezed out by nuclear is neither dispatched nor curtailed.
+        # HEAD 1463: VRE squeezed out by nuclear is neither dispatched nor
+        # curtailed.  (curtailed_mwh can be positive in such a period: in 33
+        # it is the non-VRE down-regulation of the nuclear surplus.)
         for period in facts["nuclear_blocking_vre_unrecorded"]:
             self.assertEqual(latest[summary + "vre_accepted_mwh"][period], 0.0)
-            self.assertEqual(latest[summary + "curtailed_mwh"][period], 0.0)
+            curtailed = latest["kernel/run_simulation::curtailed_energy_dict"][period]
+            self.assertFalse(
+                isinstance(curtailed, list)
+                and any(str(item[0]).startswith("<ExpensiverenewableGenerator") for item in curtailed),
+                period,
+            )
+        self.assertEqual(
+            [p for p in facts["nuclear_blocking_vre_unrecorded"] if latest[summary + "curtailed_mwh"][p] != 0.0], [33],
+        )
         # HEAD 2815: a curtailment period whose ahead stage accepted no
         # storage still books the last balancing period's storage fee.
         ahead_storage = dict(zip(latest["kernel/declared::ahead.periods"], latest["kernel/declared::ahead.storage_accepted_mw"]))
@@ -222,15 +234,43 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(facts["vre_skim_leak"], [72, 73, 77])
         self.assertEqual(latest["kernel/state::offshore1.real_energy"][72], 0.0)
         self.assertEqual(latest["kernel/dispatch::<ExpensiverenewableGenerator:offshore1>"][72], 0.0)
-        # P5-03: per-stage power reset; pumped hydro (15 MW) discharges 30 MW,
-        # li_battery (20 MW) 28 MW.
+        # P5-03: per-stage power reset; pumped hydro (15 MW) discharges 30 MW
+        # (two stages at full power; the exact doubles, e.g. 29.999999999999996
+        # in 46, are pinned by the golden itself), li_battery (20 MW) 28 MW.
         state = "market/market.sqlite::storage_state."
         for period in (40, 42, 44, 46):
             self.assertIn(period, facts["storage_discharge_above_rated_power"])
-            self.assertEqual(latest[state + "pumpedhydro_battery.discharge_mwh"][period] / harness.PERIOD_HOURS, 30.0)
+            self.assertAlmostEqual(
+                latest[state + "pumpedhydro_battery.discharge_mwh"][period] / harness.PERIOD_HOURS, 30.0, places=9)
             self.assertEqual(latest[state + "pumpedhydro_battery.power_capacity_mw"][period], 15.0)
         self.assertEqual(latest[state + "li_battery.discharge_mwh"][90] / harness.PERIOD_HOURS, 28.0)
         self.assertEqual(latest[state + "li_battery.power_capacity_mw"][90], 20.0)
+        # Q7 path: with storage full (after the VRE-surplus segment) the
+        # nuclear surplus of the curtailment branch is exported (32-35).
+        nuclear_segment = [item for item in self.golden["scenario"]["segments"] if item["first_period"] == 32]
+        self.assertEqual(len(nuclear_segment), 1)
+        self.assertIn("nuclear surplus", nuclear_segment[0]["purpose"])
+        self.assertEqual(facts["non_vre_surplus_exported"], [32, 33, 34, 35])
+        for period in facts["non_vre_surplus_exported"]:
+            self.assertGreater(latest[summary + "export_mwh"][period], 0.0)
+        # New HEAD defect (third review of P0-6 S1, not in the 2026-10-04
+        # review): on the curtailment path with a non-empty soldable list, a
+        # connection with transfer >= 0 keeps the previous period's
+        # sold_energy, a phantom export without a fee.  The doctoral rule
+        # set reproduces it; the corrected rule set resets it (P0-6 S5).
+        self.assertEqual(facts["stale_export_carry"], [29, 36, 37])
+        france, norway = "kernel/state::Interconnect_France.", "kernel/state::Interconnect_Norway."
+        transfers = {name: self.golden["scenario"]["interconnectors"][name]["transfer_constraint_mw"]
+                     for name in harness.CONNECTION_NAMES}
+        self.assertEqual(transfers["Interconnect_France"][29], 0.0)
+        self.assertEqual(latest[france + "sold_energy"][28], 15.0)
+        self.assertEqual(latest[france + "sold_energy"][29], 15.0)
+        self.assertEqual(latest[norway + "sold_energy"][29], 0)
+        self.assertEqual(latest["kernel/run_simulation::interconnector_exports_list"][29], 15.0)
+        self.assertEqual(latest[summary + "export_mwh"][29], 7.5)
+        self.assertEqual(latest["kernel/run_simulation::sold_fees"][29], 0)
+        self.assertEqual(transfers["Interconnect_Norway"][36], 0.0)
+        self.assertEqual(latest[norway + "sold_energy"][36], 6.0)
 
     def test_fixture_is_small_and_one_column_per_line(self):
         # Plan 4.6 S1 acceptance (< 300 KB) applies to the capture: scenario,
