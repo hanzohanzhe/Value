@@ -201,6 +201,17 @@ class BackendTestRunnerTests(unittest.TestCase):
         self.quarantine.write_text("a.B.c | reason=x | owner=y | expires=host\n", encoding="utf-8")
         self.assertEqual(RUNNER.read_quarantine(self.quarantine)["a.B.c"]["expires"], "host")
 
+    def test_golden_family_tests_are_never_baselined_or_quarantined(self) -> None:
+        for identifier in (
+            "test_golden_doctoral.GoldenDoctoralFamilyTests.test_fast_cases_match_latest_revision",
+            "IMPORT:test_golden_corrected",
+        ):
+            self.assertTrue(RUNNER._never_baselined(identifier))
+        self.assertFalse(RUNNER._never_baselined("test_gold_prices.A.test_b"))
+        self.quarantine.write_text("test_golden_doctoral.G.test_x | reason=x | owner=y | expires=M1\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            RUNNER.read_quarantine(self.quarantine)
+
     def test_committed_quarantine_can_expire(self) -> None:
         """Every milestone-bound entry fails the run at M8; only host entries are permanent."""
 

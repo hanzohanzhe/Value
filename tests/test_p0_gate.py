@@ -23,6 +23,7 @@ def _gate(tier: str = "quick", **overrides) -> "GATE.Gate":
     arguments = argparse.Namespace(
         changed_since=None, base="35aadb3", report=str(Path(tempfile.gettempdir()) / "p0-gate-test.json"),
         python="python3", jobs=None, skip=None, only=None, update_eslint_baseline=False, quiet=True,
+        append_base=GATE.APPEND_ONLY_BASE,
     )
     for key, value in overrides.items():
         setattr(arguments, key, value)
@@ -166,6 +167,89 @@ class P0GateTests(unittest.TestCase):
         gate = _gate(skip=["release_manifest"])
         gate.execute([GATE.Step("release_manifest", lambda _: {"status": "passed"})])
         self.assertEqual(gate.results[0]["status"], "skipped")
+
+    def test_quick_tier_enforces_append_only(self) -> None:
+        self.assertIn("append_only", [step.name for step in GATE.QUICK_STEPS])
+
+    def test_append_only_step_passes_on_this_checkout(self) -> None:
+        if GATE.run(["git", "rev-parse", "--git-dir"]).returncode != 0:
+            self.skipTest("not a git checkout")
+        outcome = GATE.step_append_only(_gate())
+        self.assertEqual(outcome["status"], "passed", outcome)
+        self.assertGreater(outcome["detail"]["golden_files"], 0)
+        self.assertEqual(GATE.step_append_only(_gate(append_base="0" * 40))["status"], "failed")
+
+
+def _golden_text(*revisions: dict) -> str:
+    return json.dumps({"schema_version": "value.golden-case/v1", "family": "doctoral", "case": "D1",
+                       "revisions": list(revisions)}, indent=1, sort_keys=True) + "\n"
+
+
+def _revision(index: int, price_hash: str) -> dict:
+    return {"revision": index, "reason": "r", "correction_ids": [] if index == 0 else ["p05.x"], "findings": [],
+            "digest": {"columns": {"m::price": {"zone": "trajectory", "count": 2, "sha256": price_hash, "sha256_9g": price_hash}}}}
+
+
+class AppendOnlyTests(unittest.TestCase):
+    GOLDEN = "tests/golden/doctoral/D1.json"
+    BASELINE = "tests/baselines/known-failures-linux-py310.txt"
+    QUARANTINE = "tests/baselines/quarantine.txt"
+    ESLINT = "tests/baselines/eslint-baseline.json"
+
+    def setUp(self) -> None:
+        self.base = {
+            self.GOLDEN: _golden_text(_revision(0, "aa")),
+            self.BASELINE: "# fingerprint: {}\ntest_a.A.test_one  # old\ntest_b.B.test_two\n",
+            self.QUARANTINE: "# header\ntest_c.C.test_host | reason=r | owner=P1-1 | expires=host\n"
+                             "IMPORT:test_d | reason=r | owner=X0-gate-venv | expires=M7\n",
+            self.ESLINT: json.dumps({"schema_version": GATE.ESLINT_SCHEMA, "counts": {json.dumps(["app/a.tsx", "r", "m"]): 2}}),
+        }
+        self.head = dict(self.base)
+
+    def _violations(self) -> list[str]:
+        return GATE.append_only_violations(self.base.get, self.head.get, [self.GOLDEN])
+
+    def test_unchanged_appended_and_shrunk_state_passes(self) -> None:
+        self.assertEqual(self._violations(), [])
+        self.head[self.GOLDEN] = _golden_text(_revision(0, "aa"), _revision(1, "bb"))
+        self.head[self.BASELINE] = "# fingerprint: {}\ntest_b.B.test_two\n"
+        self.head[self.QUARANTINE] = "test_c.C.test_host | reason=r | owner=P1-1 | expires=host\n" \
+                                     "IMPORT:test_d | reason=r | owner=X0-gate-venv | expires=M5\n"
+        self.head[self.ESLINT] = json.dumps({"schema_version": GATE.ESLINT_SCHEMA, "counts": {json.dumps(["app/a.tsx", "r", "m"]): 1}})
+        self.assertEqual(self._violations(), [])
+
+    def test_revision_zero_rewrite_is_refused(self) -> None:
+        self.head[self.GOLDEN] = _golden_text(_revision(0, "cc"))
+        self.assertTrue(any("revision 0 was rewritten" in row for row in self._violations()))
+        self.head[self.GOLDEN] = _golden_text(_revision(0, "cc"), _revision(1, "aa"))
+        self.assertTrue(any("revision 0 was rewritten" in row for row in self._violations()))
+
+    def test_golden_deletion_and_truncation_are_refused(self) -> None:
+        self.base[self.GOLDEN] = _golden_text(_revision(0, "aa"), _revision(1, "bb"))
+        self.head[self.GOLDEN] = _golden_text(_revision(0, "aa"))
+        self.assertTrue(any("revisions removed" in row for row in self._violations()))
+        del self.head[self.GOLDEN]
+        self.assertTrue(any("deleted" in row for row in self._violations()))
+
+    def test_baseline_growth_and_golden_ids_are_refused(self) -> None:
+        self.head[self.BASELINE] = self.base[self.BASELINE] + "test_golden_doctoral.GoldenDoctoralFamilyTests.test_fast_cases_match_latest_revision  # 2026-10-05: silenced\n"
+        violations = self._violations()
+        self.assertTrue(any("added (the baseline only shrinks)" in row for row in violations), violations)
+        self.assertTrue(any("golden tests may never be baselined" in row for row in violations), violations)
+
+    def test_quarantine_growth_extension_and_golden_ids_are_refused(self) -> None:
+        self.head[self.QUARANTINE] = self.base[self.QUARANTINE].replace("expires=M7", "expires=host") + \
+            "IMPORT:test_golden_corrected | reason=r | owner=x | expires=M1\n"
+        violations = self._violations()
+        self.assertTrue(any("quarantine only shrinks" in row for row in violations), violations)
+        self.assertTrue(any("expiry moved later" in row for row in violations), violations)
+        self.assertTrue(any("never be quarantined" in row for row in violations), violations)
+
+    def test_eslint_baseline_growth_is_refused(self) -> None:
+        self.head[self.ESLINT] = json.dumps({"schema_version": GATE.ESLINT_SCHEMA, "counts": {
+            json.dumps(["app/a.tsx", "r", "m"]): 2, json.dumps(["app/b.tsx", "r", "m"]): 1}})
+        self.assertTrue(any("ESLint baseline only shrinks" in row for row in self._violations()))
+
 
 
 if __name__ == "__main__":

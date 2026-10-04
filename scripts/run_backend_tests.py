@@ -252,6 +252,8 @@ def read_quarantine(path: Path) -> dict[str, dict[str, str]]:
             raise ValueError(f"quarantine entry {parts[0]!r} lacks {', '.join(missing)}")
         if fields["expires"] not in MILESTONES and fields["expires"] != HOST_EXPIRY:
             raise ValueError(f"quarantine entry {parts[0]!r} has unknown milestone {fields['expires']!r}")
+        if _never_baselined(parts[0]):
+            raise ValueError(f"quarantine entry {parts[0]!r}: golden-family tests are never quarantined")
         entries[parts[0]] = fields
     return entries
 
@@ -269,6 +271,18 @@ def expired_quarantine(entries: Mapping[str, Mapping[str, str]], milestone: str)
 
 # --------------------------------------------------------------------------
 # Discovery
+
+
+NEVER_BASELINED_MODULE_PREFIX = "test_golden"
+
+
+def _never_baselined(identifier: str) -> bool:
+    """Golden-family tests guard the doctoral freeze; they can never be silenced."""
+
+    for prefix in ("IMPORT:", "CRASH:", "TIMEOUT:"):
+        if identifier.startswith(prefix):
+            identifier = identifier[len(prefix):]
+    return identifier.split(".", 1)[0].startswith(NEVER_BASELINED_MODULE_PREFIX)
 
 
 def discover_modules(tests_dir: Path = TESTS, pattern_prefix: str = "test_") -> list[str]:
@@ -658,15 +672,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.update_baseline:
         entries = {identifier: comment for identifier, comment in baseline.entries.items() if identifier not in ratchet["fixed_but_listed"]}
         added: list[str] = []
+        never = [identifier for identifier in ratchet["new_failures"] if _never_baselined(identifier)]
         if arguments.allow_add:
             stamp = _dt.date.today().isoformat()
             for identifier in ratchet["new_failures"]:
+                if identifier in never:
+                    continue
                 entries[identifier] = f"{stamp}: {arguments.reason.strip()}"
                 added.append(identifier)
         write_baseline(baseline_path, fingerprint, entries)
         removed = ratchet["fixed_but_listed"]
         print(json.dumps({"baseline": str(baseline_path), "removed": removed, "added": added}, indent=2))
-        refused = [] if arguments.allow_add else ratchet["new_failures"]
+        refused = never if arguments.allow_add else ratchet["new_failures"]
+        if never:
+            print("golden-family tests guard the doctoral freeze and are never baselined:", file=sys.stderr)
         if refused:
             print("new failures were NOT added (use --allow-add --reason):", file=sys.stderr)
             for identifier in refused:

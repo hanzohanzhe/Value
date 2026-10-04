@@ -49,7 +49,9 @@
   - trajectory：出力、潮流、价格、SoC、装机、投资提案（Q12）。doctoral 族永不修订，唯一例外是 `tests/golden/doctoral_trajectory_rebaselines.json` 中作者批准的 universal correction（P6-24、P6-02/03/04、火电净收入 A4），每个 finding 对每个 case 只能重基线一次，提交中附差异报告（`revise` 输出的 delta）。
   - accounting：残差、调整项、审计表、成本与收入账、验证与归因报告。可以在 universal correction id 下修订。
   - identity：代码/模块/上下文身份哈希与版本号，任何代码改动都会变，由方法身份与 `VERSION_LEDGER.json` 管理；门禁只报告不拦截。
-  - 区的划分写在 `tests/golden/zones.json`（首个匹配生效，未匹配的列默认 trajectory）。修改 zones.json 需在提交正文说明理由，并且**不得把 Q12 列出的 trajectory 列改划到 accounting 或 identity**。
+  - 区的划分写在 `tests/golden/zones.json`（首个匹配生效，未匹配的列默认 trajectory）。修改 zones.json 需在提交正文说明理由，并且**不得把 Q12 列出的 trajectory 列改划到 accounting 或 identity**。这一点由工具强制：每列的区由 golden 文件中**第一次记录它的修订**固定（`golden.pinned_zones`），之后的修订只能把它改得更严（identity < accounting < trajectory），delta 一律按固定的区归类；`capture.py validate` 对任何“改弱”报错。
+  - **append-only（quick 档 `append_only` 步骤）**：以 `p0_gate.APPEND_ONLY_BASE`（M0 锚点提交，可用 `--append-base` 覆盖，但改锚点只能由集成者在提交正文中说明）为基准，要求：每个 golden 文件在基准处的修订是当前文件修订的逐条相同前缀（不得改写、删除、截断）；`known-failures-*.txt` 的 id 是基准的子集；`quarantine.txt` 的 id 不增加、`expires` 不后移；ESLint 基线各键计数不增加；`test_golden_*` 的 id 永远不得进入基线或隔离区（`run_backend_tests.py --allow-add` 与 `read_quarantine` 也直接拒绝）。
+  - 第 0 号修订只写一次：`capture.py init` 遇到已存在的文件一律拒绝，没有覆盖开关。
 - corrected 族任何 trajectory/accounting 变化都必须在同一提交中 `capture.py revise`，写明 correction id、原因；`capture.py validate`（quick 档）检查修订簿记与 delta 的一致性。
 - 每个 golden case 在独立子进程中直接调用 `run_project_application`（避开 P7-02 的进程级天气缓存与 R2-05 的磁盘预检）。
 

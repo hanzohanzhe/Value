@@ -38,6 +38,18 @@ DISK_MINIMUM_BYTES = {"quick": 1 * 1024**3, "full": int(1.5 * 1024**3), "nightly
 FORBIDDEN_PORTS = ("8766", "8800")
 ESLINT_BASELINE = ROOT / "tests" / "baselines" / "eslint-baseline.json"
 ESLINT_SCHEMA = "value.eslint-ratchet/v2"
+# Anchor of the append-only rules (plan 3.9): the M0 commit that fixed golden
+# revision 0 and the ratchet baselines.  Moving it is an integrator decision
+# recorded in the commit message, never a lane's.
+APPEND_ONLY_BASE = "71fb98b4c4fad9ce94dc9916dbbd8efb3ec3a477"
+GOLDEN_FAMILY_DIRS = ("tests/golden/doctoral", "tests/golden/corrected")
+RATCHET_BASELINE_FILES = (
+    "tests/baselines/known-failures-linux-py310.txt",
+    "tests/baselines/known-failures-pytest-linux-py310.txt",
+)
+QUARANTINE_FILE = "tests/baselines/quarantine.txt"
+ESLINT_BASELINE_FILE = "tests/baselines/eslint-baseline.json"
+UNQUARANTINABLE_MODULE_PREFIX = "test_golden"
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
@@ -416,7 +428,11 @@ def step_eslint(gate: Gate) -> dict[str, Any]:
 def load_eslint_baseline(path: Path = ESLINT_BASELINE, root: Path | str = ROOT) -> dict[str, int]:
     """Baseline counts re-keyed with :func:`eslint_message_key` (reads v1 and v2)."""
 
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    return eslint_baseline_counts(path.read_text(encoding="utf-8"), root)
+
+
+def eslint_baseline_counts(text: str, root: Path | str = ROOT) -> dict[str, int]:
+    payload = json.loads(text)
     counts: collections.Counter[str] = collections.Counter()
     for key, count in payload["counts"].items():
         file_name, rule, message = json.loads(key)
@@ -433,6 +449,140 @@ def write_eslint_baseline(counts: dict[str, int]) -> None:
         "counts": counts,
     }
     ESLINT_BASELINE.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
+
+
+# --------------------------------------------------------------------------
+# append-only rules for goldens and baselines (plan 3.9 hotspot rules)
+
+
+def _listed_ids(text: str) -> set[str]:
+    ids = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        identifier = line.split("|", 1)[0].split("#", 1)[0].strip()
+        if identifier:
+            ids.add(identifier)
+    return ids
+
+
+def _quarantine_expiries(text: str) -> dict[str, str]:
+    expiries = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [part.strip() for part in line.split("|")]
+        fields = dict(part.partition("=")[::2] for part in parts[1:])
+        expiries[parts[0]] = fields.get("expires", "").strip()
+    return expiries
+
+
+def _expiry_rank(expires: str) -> int:
+    if expires in RATCHET.MILESTONES:
+        return RATCHET.MILESTONES.index(expires)
+    return len(RATCHET.MILESTONES)  # host (permanent) or malformed: the latest
+
+
+def _test_module(identifier: str) -> str:
+    for prefix in ("IMPORT:", "CRASH:", "TIMEOUT:"):
+        if identifier.startswith(prefix):
+            identifier = identifier[len(prefix):]
+    return identifier.split("::", 1)[0].rsplit("/", 1)[-1].split(".", 1)[0]
+
+
+def _canonical(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def append_only_violations(
+    read_base: Callable[[str], str | None],
+    read_head: Callable[[str], str | None],
+    base_golden_paths: Iterable[str],
+) -> list[str]:
+    """Violations of: goldens append-only, ratchet baselines and quarantine only shrink.
+
+    ``read_base``/``read_head`` return a file's text (``None`` when absent).
+    """
+
+    violations: list[str] = []
+    for path in sorted(base_golden_paths):
+        base_text = read_base(path)
+        if base_text is None:
+            continue
+        head_text = read_head(path)
+        if head_text is None:
+            violations.append(f"{path}: golden file deleted")
+            continue
+        base, head = json.loads(base_text), json.loads(head_text)
+        for field in ("schema_version", "family", "case"):
+            if base.get(field) != head.get(field):
+                violations.append(f"{path}: header field {field!r} changed")
+        base_revisions, head_revisions = base.get("revisions") or [], head.get("revisions") or []
+        if len(head_revisions) < len(base_revisions):
+            violations.append(f"{path}: revisions removed ({len(base_revisions)} -> {len(head_revisions)})")
+        for index, revision in enumerate(base_revisions[: len(head_revisions)]):
+            if _canonical(revision) != _canonical(head_revisions[index]):
+                violations.append(f"{path}: revision {index} was rewritten (golden files are append-only)")
+
+    for path in RATCHET_BASELINE_FILES:
+        base_text, head_text = read_base(path), read_head(path)
+        head_ids = _listed_ids(head_text or "")
+        added = sorted(head_ids - _listed_ids(base_text or ""))
+        if added:
+            violations.append(f"{path}: {len(added)} id(s) added (the baseline only shrinks): {added[:5]}")
+        golden_ids = sorted(identifier for identifier in head_ids if _test_module(identifier).startswith(UNQUARANTINABLE_MODULE_PREFIX))
+        if golden_ids:
+            violations.append(f"{path}: golden tests may never be baselined: {golden_ids}")
+
+    base_quarantine = _quarantine_expiries(read_base(QUARANTINE_FILE) or "")
+    head_quarantine = _quarantine_expiries(read_head(QUARANTINE_FILE) or "")
+    added = sorted(set(head_quarantine) - set(base_quarantine))
+    if added:
+        violations.append(f"{QUARANTINE_FILE}: {len(added)} id(s) added (quarantine only shrinks): {added[:5]}")
+    extended = sorted(
+        identifier
+        for identifier in set(head_quarantine) & set(base_quarantine)
+        if _expiry_rank(head_quarantine[identifier]) > _expiry_rank(base_quarantine[identifier])
+    )
+    if extended:
+        violations.append(f"{QUARANTINE_FILE}: expiry moved later for {extended[:5]}")
+    golden_ids = sorted(identifier for identifier in head_quarantine if _test_module(identifier).startswith(UNQUARANTINABLE_MODULE_PREFIX))
+    if golden_ids:
+        violations.append(f"{QUARANTINE_FILE}: golden tests may never be quarantined: {golden_ids}")
+
+    base_eslint, head_eslint = read_base(ESLINT_BASELINE_FILE), read_head(ESLINT_BASELINE_FILE)
+    if head_eslint is not None:
+        base_counts = eslint_baseline_counts(base_eslint) if base_eslint is not None else {}
+        grown = compare_eslint(base_counts, eslint_baseline_counts(head_eslint))["increased"]
+        if grown:
+            violations.append(f"{ESLINT_BASELINE_FILE}: {len(grown)} key(s) grew (the ESLint baseline only shrinks)")
+    return violations
+
+
+def step_append_only(gate: Gate) -> dict[str, Any]:
+    if run(["git", "rev-parse", "--git-dir"]).returncode != 0:
+        return _skipped("not a git checkout")
+    base = gate.arguments.append_base
+    resolved = run(["git", "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"])
+    if resolved.returncode != 0:
+        return _status(False, f"append-only base {base} is not a commit in this repository")
+    commit = resolved.stdout.strip()
+    if run(["git", "merge-base", "--is-ancestor", commit, "HEAD"]).returncode != 0:
+        return _status(False, f"append-only base {commit} is not an ancestor of HEAD")
+
+    def read_base(path: str) -> str | None:
+        shown = run(["git", "show", f"{commit}:{path}"])
+        return shown.stdout if shown.returncode == 0 else None
+
+    def read_head(path: str) -> str | None:
+        target = ROOT / path
+        return target.read_text(encoding="utf-8") if target.is_file() else None
+
+    listed = run(["git", "ls-tree", "-r", "--name-only", commit, "--", *GOLDEN_FAMILY_DIRS]).stdout.split()
+    violations = append_only_violations(read_base, read_head, [path for path in listed if path.endswith(".json")])
+    return _status(not violations, {"base": commit, "golden_files": len(listed), "violations": violations})
 
 
 def step_reference_tables(gate: Gate) -> dict[str, Any]:
@@ -493,6 +643,7 @@ QUICK_STEPS = [
     Step("runtime_overlay", step_runtime_overlay),
     Step("version_ledger", step_version_ledger),
     Step("golden_bookkeeping", step_golden_bookkeeping),
+    Step("append_only", step_append_only),
     Step("backend_ratchet", step_backend_ratchet),
     Step("node_tests", step_node_tests),
     Step("http_harness", step_http_harness),
@@ -520,6 +671,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("tier", choices=TIERS)
     parser.add_argument("--changed-since", help="git ref; frontend checks run only when app/ etc. changed")
     parser.add_argument("--base", default="35aadb3", help="branch point used by the new-HTTP-test check")
+    parser.add_argument("--append-base", default=APPEND_ONLY_BASE,
+                        help="commit whose golden revisions and baselines HEAD may only extend or shrink")
     parser.add_argument("--report", default=str(Path(tempfile.gettempdir()) / "p0-gate-report.json"))
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--jobs", type=int)
