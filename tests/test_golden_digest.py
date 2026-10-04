@@ -103,6 +103,30 @@ class GoldenDigestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             golden.ZoneRules.load(self._zones_file([{"pattern": "*", "zone": "bogus"}]))
 
+    def test_planned_stress_and_boundary_outputs_are_preregistered_accounting(self) -> None:
+        rules = golden.ZoneRules.load(ROOT / "tests" / "golden" / "zones.json")
+        for key in (
+            "market/market.sqlite::period_summary.shortfall_mwh",  # A2
+            "market/market.sqlite::period_summary.stress_flag",  # A2
+            "market/market.sqlite::stress_event.event_id",  # A2
+            "year-results-v2.json::market.stress_summary.total_shortfall_mwh",  # A2
+            "year-results-v2.json::market.stress_summary.stress_periods",  # A2
+            "market/market.sqlite::energy_balance_ledger.unserved_mwh",  # A2
+            "market/market.sqlite::period_summary.non_vre_spill_mwh",  # Q7
+            "market/metadata.json::semantic_metadata.energy_balance_boundary",  # Q7
+        ):
+            with self.subTest(key=key):
+                self.assertEqual(rules.zone(key), "accounting")
+
+    def test_committed_zone_rules_never_weaken_a_pinned_golden_column(self) -> None:
+        rules = golden.ZoneRules.load(ROOT / "tests" / "golden" / "zones.json")
+        for path in sorted((ROOT / "tests" / "golden").glob("*/*.json")):
+            record = json.loads(path.read_text(encoding="utf-8"))
+            pinned = golden.pinned_zones(record)
+            current = {"columns": {key: {"zone": rules.zone(key)} for key in pinned}}
+            with self.subTest(golden=path.name):
+                self.assertEqual(golden.zone_weakenings(pinned, current), [])
+
     def _zones_file(self, rules) -> Path:
         path = self.root / "zones.json"
         path.write_text(json.dumps({"rules": rules}), encoding="utf-8")

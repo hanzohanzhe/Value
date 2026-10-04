@@ -9337,8 +9337,8 @@
     },
     {
       "path": "tests/golden/zones.json",
-      "sha256": "5e94c9ffbf24c6392258886727678ce933c326046c0589ff55a819e233e9ad9f",
-      "bytes": 11464,
+      "sha256": "08a1e9011195f81d6b1394d858ee6bf5d2875ece25389250b9872eab31b674b5",
+      "bytes": 12959,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9751,8 +9751,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "13f63eca8c75a5885c3ccbec4fe08868ced019e9afa1a4311ab55ab06d4b98e4",
-      "bytes": 14766,
+      "sha256": "cd50219d2e117883cd2374c90e3498ddecf9212a7bda569ee48fbcd9f24cafe0",
+      "bytes": 16255,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

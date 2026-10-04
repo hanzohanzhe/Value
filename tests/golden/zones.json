@@ -2,7 +2,8 @@
  "schema_version": "value.golden-zones/v1",
  "notes": [
   "Zones per decision Q12. trajectory: dispatch, flows, prices, SoC, capacity, investment proposals (frozen in the doctoral family). accounting: residuals, adjustments, audit tables, cost and income ledgers, validation and attribution reports (revisable under a universal correction id). identity: code, module and context identity hashes and versions, which change with any code edit and are governed by method identity and docs/release/VERSION_LEDGER.json; reported but never gated.",
-  "Rules are fnmatch patterns on '<artifact>::<column>'; the first match wins; unmatched columns are trajectory."
+  "Rules are fnmatch patterns on '<artifact>::<column>'; the first match wins; unmatched columns are trajectory.",
+  "Pre-registered accounting rules (A2 stress events, Q7 node boundary) cover outputs that P0-4/P0-6 add to both profiles. Any other purely added accounting column gets its zone rule in the same commit that adds it, citing the decision id. A column's zone is pinned by the first golden revision that records it and can only become stricter (gridform_validation.golden.pinned_zones), so existing trajectory columns are immovable."
  ],
  "default": "trajectory",
  "rules": [
@@ -335,6 +336,36 @@
    "pattern": "market/market.sqlite::reliability_event.*",
    "zone": "accounting",
    "why": "unserved-energy / stress event accounting"
+  },
+  {
+   "pattern": "*::*shortfall*",
+   "zone": "accounting",
+   "why": "pre-registered (A2): stress-event shortfall_mwh per period and annual totals; dispatch is unchanged in both profiles"
+  },
+  {
+   "pattern": "*::*stress_*",
+   "zone": "accounting",
+   "why": "pre-registered (A2): stress flags, stress_periods, stress-event tables and annual stress summaries"
+  },
+  {
+   "pattern": "*::*unserved*",
+   "zone": "accounting",
+   "why": "pre-registered (A2, P0-6 Q4): unserved energy booked in the energy-balance ledger, unreported_unserved_mwh diagnostic"
+  },
+  {
+   "pattern": "*::*non_vre_spill*",
+   "zone": "accounting",
+   "why": "pre-registered (Q7): W_in reported as the explicit non_vre_spill sink of the source-classified node boundary"
+  },
+  {
+   "pattern": "*::*non_vre_double_counted*",
+   "zone": "accounting",
+   "why": "pre-registered (Q7, DEV-BAL-04): doctoral boundary diagnostic"
+  },
+  {
+   "pattern": "*::*balance_boundary*",
+   "zone": "accounting",
+   "why": "pre-registered (Q7): energy-balance boundary id and its decomposition"
   },
   {
    "pattern": "market/market.sqlite::redispatch_settlement.cashflow_to_agent_gbp",
