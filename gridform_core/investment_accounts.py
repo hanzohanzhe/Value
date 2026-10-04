@@ -34,6 +34,7 @@ NPV test, and no NPV, IRR or annuity hurdle is introduced.
 from __future__ import annotations
 
 import math
+import numbers
 from typing import Callable, Iterable, Mapping, Sequence
 
 SCHEMA_VERSION = "value.investment-accounts/v1"
@@ -66,9 +67,11 @@ RECOMMENDATIONS = ("Invest_High", "Invest_Profit", "Do_Nothing", "Deplete")
 def finite_number(value: object, label: str, *, nonnegative: bool = False) -> float:
     """Return ``value`` as a finite float or raise ``ValueError``.
 
-    Booleans and non-numeric values are rejected rather than coerced.
+    Any real number is accepted, including numpy scalars (``np.int64``,
+    ``np.float32``) from pandas or sqlite aggregates. Booleans (Python and
+    numpy) and non-numeric values are rejected rather than coerced.
     """
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
         raise ValueError(f"{label} must be a number, got {type(value).__name__}")
     result = float(value)
     if not math.isfinite(result):
@@ -444,8 +447,12 @@ def allocate_capped_requests(
     is not capped at that stage. ``pools`` maps a pool id to ``cap_mw`` and the
     ``technologies`` it covers; a technology may belong to at most one pool.
     Each stage multiplies before dividing (``request * cap / total``) so equal
-    shares come out exact. Returns accepted MW by request id and the scale
-    factors applied per technology and per pool.
+    shares come out exact. A scaled stage is then clamped so that its sum,
+    left to right in request order and as ``math.fsum``, never exceeds the cap:
+    rounding of the proportional shares can overshoot by an ulp, and the clamp
+    takes that back from the largest share (a change of a few ulp, never below
+    zero). Returns accepted MW by request id and the scale factors applied per
+    technology and per pool.
     """
     tech_caps = {
         str(tech): finite_number(value, f"{tech} technology cap", nonnegative=True)
@@ -472,12 +479,25 @@ def allocate_capped_requests(
         accepted[request_id] = finite_number(row.get("requested_mw"), f"request {request_id}", nonnegative=True)
         order.append(request_id)
 
+    def stage_total(members: list[str]) -> float:
+        values = [accepted[key] for key in members]
+        return max(sum(values), math.fsum(values))
+
     def scale(members: list[str], cap: float) -> float:
         total = sum(accepted[key] for key in members)
         if total <= cap:
             return 1.0
         for key in members:
             accepted[key] = accepted[key] * cap / total
+        for _ in range(64):
+            excess = stage_total(members) - cap
+            if excess <= 0:
+                break
+            largest = max(members, key=lambda key: accepted[key])
+            value = accepted[largest]
+            accepted[largest] = max(0.0, min(value - excess, math.nextafter(value, 0.0)))
+        else:  # pragma: no cover - each pass removes at least one ulp of the excess
+            raise ArithmeticError("capped allocation could not be clamped to its cap")
         return cap / total
 
     technology_scale: dict[str, float] = {}

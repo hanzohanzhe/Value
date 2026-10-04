@@ -4,8 +4,11 @@ from __future__ import annotations
 import ast
 import json
 import math
+import random
 import unittest
 from pathlib import Path
+
+import numpy as np
 
 from gridform_core import investment_accounts as ia
 from gridform_core.builtin.scheme_c_1000twh import doctoral_policy
@@ -23,6 +26,23 @@ class FiniteNumberTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ia.finite_number(-1e-300, "x", nonnegative=True)
         self.assertEqual(ia.finite_number(0.0, "x", nonnegative=True), 0.0)
+
+    def test_numpy_scalars_are_numbers_but_numpy_bools_are_not(self):
+        """pandas / sqlite aggregates arrive as numpy scalars (S2-S4 cashflow)."""
+        for value, expected in ((np.int64(3), 3.0), (np.int32(-2), -2.0), (np.float32(1.5), 1.5),
+                                (np.float64(2.25), 2.25), (np.uint8(7), 7.0)):
+            with self.subTest(type=type(value).__name__):
+                result = ia.finite_number(value, "x")
+                self.assertIs(type(result), float)
+                self.assertEqual(result, expected)
+        for value in (np.bool_(True), np.bool_(False), np.float32("nan"), np.float64("inf")):
+            with self.subTest(value=repr(value)), self.assertRaises(ValueError):
+                ia.finite_number(value, "x")
+        with self.assertRaises(ValueError):
+            ia.finite_number(np.int64(-1), "x", nonnegative=True)
+        parsed = ia.require_agent_cashflow(
+            {"a": {"market_income_gbp": np.int64(5), "operating_cost_gbp": np.float32(0.5)}}, ["a"])
+        self.assertEqual(parsed, {"a": {"market_income_gbp": 5.0, "operating_cost_gbp": 0.5}})
 
 
 class RequireAgentCashflowTest(unittest.TestCase):
@@ -276,10 +296,11 @@ class AllocateCappedRequestsTest(unittest.TestCase):
             pools={"power_battery_pool": {"cap_mw": 400.0,
                                           "technologies": ["1c_battery", "0.5c_battery", "0.25c_battery"]}})
         accepted = result["accepted_mw"]
-        self.assertEqual(accepted["1c"], 200.0)
+        # 200 + 400/3 + 200/3 rounds to 400 + 1 ulp; the clamp takes that ulp from the largest share.
+        self.assertAlmostEqual(accepted["1c"], 200.0, places=12)
         self.assertAlmostEqual(accepted["05c"], 400.0 / 3.0, places=12)
         self.assertAlmostEqual(accepted["025c"], 200.0 / 3.0, places=12)
-        self.assertLessEqual(sum(accepted.values()), 400.0 * (1 + 1e-15))
+        self.assertLessEqual(sum(accepted.values()), 400.0)
         self.assertAlmostEqual(result["pool_scale"]["power_battery_pool"], 2.0 / 3.0, places=15)
 
     def test_shared_technology_cap_splits_equal_requests_equally(self):
@@ -329,11 +350,52 @@ class AllocateCappedRequestsTest(unittest.TestCase):
                 ia.allocate_capped_requests(**kwargs)
 
 
+    def test_scaled_sums_never_exceed_the_cap(self):
+        """Review M0-P0-7-S1 #5: strict sum <= cap (S7 acceptance), proportional to a few ulp."""
+        rng = random.Random(20261005)
+        technologies = ["1c_battery", "0.5c_battery", "0.25c_battery"]
+        clamped = 0
+        for case in range(3000):
+            requests = [{"request_id": f"r{i}", "technology": rng.choice(technologies),
+                         "requested_mw": rng.choice([rng.uniform(0, 1e4), rng.uniform(0, 1), float(rng.randint(0, 900))])}
+                        for i in range(rng.randint(1, 9))]
+            cap = rng.choice([rng.uniform(0, 5e3), float(rng.randint(0, 3000)), rng.uniform(0, 1e-3)])
+            tech_caps = {tech: rng.uniform(0, 4e3) for tech in technologies if rng.random() < 0.3}
+            result = ia.allocate_capped_requests(
+                requests, technology_caps=tech_caps,
+                pools={"pool": {"cap_mw": cap, "technologies": technologies}})
+            accepted = result["accepted_mw"]
+            values = [accepted[row["request_id"]] for row in requests]
+            with self.subTest(case=case):
+                self.assertLessEqual(sum(values), cap)
+                self.assertLessEqual(math.fsum(values), cap)
+                for row in requests:
+                    value = accepted[row["request_id"]]
+                    self.assertGreaterEqual(value, 0.0)
+                    self.assertLessEqual(value, row["requested_mw"])
+                    tech = row["technology"]
+                    if tech in tech_caps:
+                        members = [r["request_id"] for r in requests if r["technology"] == tech]
+                        self.assertLessEqual(sum(accepted[key] for key in members), tech_caps[tech])
+                total = sum(row["requested_mw"] for row in requests)
+                if total > 0:
+                    # Proportionality survives the clamp to within a few ulp of the cap.
+                    scale_bound = 8 * math.ulp(max(cap, total))
+                    tech_factor = {tech: result["technology_scale"].get(tech, 1.0) for tech in technologies}
+                    for row in requests:
+                        ideal = row["requested_mw"] * tech_factor[row["technology"]] * result["pool_scale"]["pool"]
+                        self.assertLessEqual(abs(accepted[row["request_id"]] - ideal), scale_bound + 1e-9 * ideal)
+                if math.fsum(values) != sum(values) or sum(values) == cap:
+                    clamped += 1
+        self.assertGreater(clamped, 0)
+
+
 class ScopeTest(unittest.TestCase):
     def test_no_discounting_rule_is_introduced(self):
         """A6: P4-02 is out of scope; decisions stay undiscounted in base-year money."""
         self.assertEqual(ia.MONEY_BASIS, "constant_base_year_gbp_undiscounted")
-        for name in ("npv_flat_annuity", "irr_flat_annuity", "classify_npv_annuity", "effective_hurdle_rate"):
+        for name in ("npv_flat_annuity", "irr_flat_annuity", "classify_npv_annuity", "effective_hurdle_rate",
+                     "effective_storage_life"):
             self.assertFalse(hasattr(ia, name), name)
 
 
