@@ -301,6 +301,7 @@
     "docs/methodology/zh/optional_modules.md",
     "docs/methodology/zh/r029_cem.md",
     "docs/methodology/zh/transmission.md",
+    "docs/release/VERSION_LEDGER.json",
     "docs/release/installer-source-alignment.json",
     "docs/release/public-data-assets.json",
     "docs/release/release-map.json",
@@ -1002,6 +1003,7 @@
     "scripts/build_windows_pilot_installer.py",
     "scripts/check-value-101.ps1",
     "scripts/check_publication_scope.py",
+    "scripts/check_version_ledger.py",
     "scripts/cloud_transfer_data_hook.py",
     "scripts/compare_release_roots.py",
     "scripts/compare_scheme_c_parity.py",
@@ -1326,6 +1328,7 @@
     "tests/test_two_period_scheme_c.py",
     "tests/test_value_101_day_configuration.py",
     "tests/test_value_methodology.py",
+    "tests/test_version_ledger.py",
     "tests/test_vre_curtailment_attribution.py",
     "tests/test_weather_demand_ensembles.py",
     "tests/test_windows_pilot_installer.py",
@@ -4386,6 +4389,12 @@
       "sha256": "4ca63e23c11a752b28884b556a48f4bcf8fd71a054662fc42220bb27fddbb714",
       "bytes": 15582,
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+    },
+    {
+      "path": "docs/release/VERSION_LEDGER.json",
+      "sha256": "84dc888424f7359f75d1b07db290376bd1cedfed7cc9b13b1e50d912fb35a5b6",
+      "bytes": 5437,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/release/installer-source-alignment.json",
@@ -8583,6 +8592,12 @@
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
     },
     {
+      "path": "scripts/check_version_ledger.py",
+      "sha256": "92223946f1ffc0e9e52ef4babfad45afb37b220276f2412a621ac8dfcf47e00d",
+      "bytes": 4806,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/cloud_transfer_data_hook.py",
       "transform": "publication execution metadata, rights or packaging update",
       "sha256": "dc73357324e22b852a8ed8a983a5ecef43c4d470cc19fc167b59451a96aca5be",
@@ -10519,6 +10534,12 @@
       "sha256": "b369dd78a2de9e75ded5f7c37010568ef3e2b82d42be9a9f1698ee89c39dc1b4",
       "bytes": 1371,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_version_ledger.py",
+      "sha256": "28ebaa5509022fcc8d766e31b4314733f1827f31075af1ccbca055b9b7e8aa34",
+      "bytes": 2446,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_vre_curtailment_attribution.py",
