@@ -55,13 +55,13 @@ def release_members(root: Path = ROOT) -> tuple[Path, ...]:
 def _git_tracking(root: Path, members: tuple[Path, ...]) -> dict[str, object]:
     try:
         completed = subprocess.run(
-            ["git", "-c", f"safe.directory={root.as_posix()}", "ls-files"],
+            ["git", "-c", f"safe.directory={root.as_posix()}", "ls-files", "-z"],
             cwd=root,
             check=True,
             capture_output=True,
             text=True,
         )
-        tracked = {line.strip().replace("\\", "/") for line in completed.stdout.splitlines()}
+        tracked = {name for name in completed.stdout.split("\0") if name}
     except (OSError, subprocess.CalledProcessError) as exc:
         return {"available": False, "github_checkout_ready": False, "error": str(exc)}
     member_names = {path.relative_to(root).as_posix() for path in members}

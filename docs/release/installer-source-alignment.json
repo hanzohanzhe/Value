@@ -82,7 +82,8 @@
   "python_code_alignment": {
     "files": 325,
     "same": 324,
-    "difference": "scripts/source_release_scan.py release-boundary scanner only"
+    "difference": "scripts/source_release_scan.py release-boundary scanner only",
+    "comparison_scope": "Existing 325 Full application Python paths; additional publication transfer helpers are outside runtime correspondence."
   },
   "frontend_runtime_source_alignment": {
     "extensions": [
@@ -110,25 +111,25 @@
     {
       "path": "LICENSING.md",
       "archive_sha256": "b8f09fb1954630ee2c480accb401a1b505e71e44febd49a335bc0810369f848f",
-      "publication_candidate_sha256": "8701ca0a18f1d38bd8f9856c5f8646624141db8f7ff051582c8b0dd6f931727b",
+      "publication_candidate_sha256": "2cec0754e69d9fc5cbf0225e771bd8c3ece2927b9060e6e48c9c2d38918aee17",
       "class": "publication_or_licensing_document_delta"
     },
     {
       "path": "README.md",
       "archive_sha256": "c135f741f2a8259a489b6ad9503a094ea59179b5829f467a7ad5526fb61cadb0",
-      "publication_candidate_sha256": "f11156e3797b7fc83610c385253698f454e539e21b8fa2233481d5fb51dbb029",
+      "publication_candidate_sha256": "39a4213c1722f84fad9387a6efdb696753b5b6ff63227fa74a37b57158ea626b",
       "class": "publication_or_licensing_document_delta"
     },
     {
       "path": "README_BILINGUAL.md",
       "archive_sha256": "176d889d24936115067cab331767748f02353a847739b37a4c3804f9e9f65056",
-      "publication_candidate_sha256": "b503519b0eabd7ed0be5bde4dfd40022fb30939cffdf4475470c25b41b8f3339",
+      "publication_candidate_sha256": "f5768c735282178a8c01da91171e478035287c7affa02f8db016e676b8e3e43f",
       "class": "publication_or_licensing_document_delta"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
       "archive_sha256": "2592fb0d62124cc9419b5b444c5330d9744cfa9abe210ea729bf517aed3a2228",
-      "publication_candidate_sha256": "d07122bce6785cfae8f37daabb28716ca6ca8b8e0a883897193e6066a22d1fca",
+      "publication_candidate_sha256": "b1de7c67cdd23adefefd9edddbea2cfaf96f309d4a4122be4101e84f3d85def1",
       "class": "publication_or_licensing_document_delta"
     },
     {
@@ -194,7 +195,7 @@
     {
       "path": "scripts/source_release_scan.py",
       "archive_sha256": "44df751b310ef71013a7bc7f728bcd2db9fc28e79432a65728c35ecf29b5b1e2",
-      "publication_candidate_sha256": "bf7aaf3296a2d36b43c1d1854d3849b48e1d3e39a06434a92d63750ca1bb98f0",
+      "publication_candidate_sha256": "9ad311b90d4fc78a4651397a9da2214983b3b6c03f0990a1af51aa9802e6ddf6",
       "class": "source_release_boundary_script_delta"
     }
   ],
@@ -206,5 +207,6 @@
   "models_or_installer_or_four_role_tests_run": false,
   "archives_repacked": false,
   "uploads_performed": false,
-  "runtime_upstream_license_claim": "Bundled upstream terms and notices are retained and inventoried; no assertion that third-party runtimes are Apache-2.0, and no new independent legal completeness review."
+  "runtime_upstream_license_claim": "Bundled upstream terms and notices are retained and inventoried; no assertion that third-party runtimes are Apache-2.0, and no new independent legal completeness review.",
+  "audit_scope": "This is a byte/licence correspondence audit; execution acceptance is recorded separately in TEST_PLAN, ACCEPTANCE and clean-source verification."
 }

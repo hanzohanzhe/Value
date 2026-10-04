@@ -184,7 +184,8 @@ def clean_hook_env() -> dict[str, str]:
 def prepare_fixture(scratch: Path, repository: str) -> Path:
     approved = json.loads((ROOT / "publication/cloud-transfer-approved-data.json").read_text())
     fixture = approved.get("fixture", {})
-    require(set(fixture) == {"name", "sha256", "bytes", "tag"}, "reviewed fixture metadata missing")
+    require(isinstance(fixture, dict) and set(fixture) == {"name", "sha256", "bytes", "tag"},
+            "reviewed fixture metadata missing")
     name = fixture["name"]
     require(isinstance(name, str) and NAME_RE.fullmatch(name)
             and name.endswith((".zip", ".tar.gz")) and type(fixture["bytes"]) is int

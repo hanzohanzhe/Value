@@ -3,32 +3,44 @@
     {
       "name": "VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip",
       "bytes": 62224519,
-      "sha256": "3b885bdb8b0945c580c027ea76113cf74ca0304ccda5bfe2ba54d8e3a797afb8"
+      "sha256": "3b885bdb8b0945c580c027ea76113cf74ca0304ccda5bfe2ba54d8e3a797afb8",
+      "target_tag": "value-data-2026-10-04"
     },
     {
       "name": "VALUE-Package2-national-demand-component-2026-10-04.zip",
       "bytes": 1183359,
-      "sha256": "0ae76f16982e8eda29274f2cce2b5296c3af5971e4ac2b2ed178ef8b2f578190"
+      "sha256": "0ae76f16982e8eda29274f2cce2b5296c3af5971e4ac2b2ed178ef8b2f578190",
+      "target_tag": "value-data-2026-10-04"
     },
     {
       "name": "VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip",
       "bytes": 644362870,
-      "sha256": "c6fa4a09bd94967a820d8f3c6dbd02df58a7d1c242663dd9461b564f974ce453"
+      "sha256": "c6fa4a09bd94967a820d8f3c6dbd02df58a7d1c242663dd9461b564f974ce453",
+      "target_tag": "value-data-2026-10-04"
     },
     {
       "name": "value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip",
       "bytes": 4776057,
-      "sha256": "9800610146cc5022b7ea8e4b0caba9ab76a32c857cb328c42bec746e2493d48a"
+      "sha256": "9800610146cc5022b7ea8e4b0caba9ab76a32c857cb328c42bec746e2493d48a",
+      "target_tag": "value-data-2026-10-04"
     },
     {
       "name": "value-uk-calendar-vx-trade001-public1-2026-10-04.zip",
       "bytes": 638859841,
-      "sha256": "cdab4222b6030b377499e5060e2d03b6a7c704c0ddf0d6cc2ea73dee202b2f04"
+      "sha256": "cdab4222b6030b377499e5060e2d03b6a7c704c0ddf0d6cc2ea73dee202b2f04",
+      "target_tag": "value-data-2026-10-04"
     },
     {
       "name": "value-uk-open-data-pack-v1-public1-2026-10-04.zip",
       "bytes": 639583456,
-      "sha256": "0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2"
+      "sha256": "0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2",
+      "target_tag": "value-data-2026-10-04"
     }
-  ]
+  ],
+  "fixture": {
+    "name": "VALUE-public-data-cloud-fixture-2026-10-04.zip",
+    "sha256": "7960f47ed797dc74d4bbcf8a493213b17b3fe31990003be15b6cbf9337179af2",
+    "bytes": 560400616,
+    "tag": "transfer-fixture-2026-10-04"
+  }
 }

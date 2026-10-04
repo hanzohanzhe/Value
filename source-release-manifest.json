@@ -4350,8 +4350,9 @@
     },
     {
       "path": "docs/release/installer-source-alignment.json",
-      "bytes": 12172,
-      "sha256": "ab909b7225ae28d3faa28b23e26c6f1dbd103947acf42ba7cf24ab43b027eadb"
+      "bytes": 12484,
+      "sha256": "fe3841107cbc8815c4b64dc368d23d452a475b72950df0f3409c458fb626fcde",
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "docs/release/public-data-assets.json",
@@ -8216,8 +8217,8 @@
     {
       "path": "publication/cloud-transfer-approved-data.json",
       "transform": "publication execution metadata, rights or packaging update",
-      "sha256": "9069e919ac39b7231ade2698f621aa9b9574ffe4575a7e76d38787e24e353af2",
-      "bytes": 1184
+      "sha256": "054f8db0208b5d49387271c8b58358af6695263d638e6e8b5c067bca192c1621",
+      "bytes": 1683
     },
     {
       "path": "publication/cloud-transfer-approved-sources.json",
@@ -8527,8 +8528,8 @@
     {
       "path": "scripts/cloud_transfer_data_hook.py",
       "transform": "publication execution metadata, rights or packaging update",
-      "sha256": "cd9fa4e6b3e2c5288b587bffe6ae0e9bbb8818d817e02ae7ddc62f3f738eaf49",
-      "bytes": 726
+      "sha256": "dc73357324e22b852a8ed8a983a5ecef43c4d470cc19fc167b59451a96aca5be",
+      "bytes": 12312
     },
     {
       "path": "scripts/compare_release_roots.py",
@@ -8808,9 +8809,9 @@
     },
     {
       "path": "scripts/source_release_scan.py",
-      "sha256": "bf7aaf3296a2d36b43c1d1854d3849b48e1d3e39a06434a92d63750ca1bb98f0",
-      "bytes": 8059,
-      "transform": "release scanner guard for structured source_sha256 metadata; no scientific change"
+      "sha256": "9ad311b90d4fc78a4651397a9da2214983b3b6c03f0990a1af51aa9802e6ddf6",
+      "bytes": 8045,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "scripts/start-local.ps1",
@@ -8833,8 +8834,8 @@
     {
       "path": "scripts/transfer_release_assets.py",
       "transform": "publication execution metadata, rights or packaging update",
-      "sha256": "e05297fb9dafd49a4891acd73f8b6d8127cd44d10ed37796f49efb5e6eb1a15b",
-      "bytes": 20100
+      "sha256": "218378a7828926bae2d0f73c2bbf22ff13a1ea6ee0fa4dceafd9801f5c566b21",
+      "bytes": 20142
     },
     {
       "path": "scripts/uninstall-value.ps1",
