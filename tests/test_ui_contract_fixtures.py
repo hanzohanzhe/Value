@@ -45,6 +45,22 @@ class CommittedFixtureTests(unittest.TestCase):
         self.assertIn("toy-v7.auction-ahead.json", committed)
         self.assertIn("value-101-day.auction-ahead.json", committed)
 
+    def test_audit_view_orders_follow_the_full_trace_rule(self) -> None:
+        # AuditView.tsx requests market/orders?limit=50&offset=..&year=..&period=.. for
+        # the selected (first) period, and only when the ledger's trace level is full.
+        committed = _committed()
+        for source in ("toy-v7", "value-101-day"):
+            document = committed[f"{source}.orders.json"]
+            self.assertEqual(document["request"], {"path": "/api/runs/{run_id}/market/orders",
+                                                   "query": {"limit": 50, "offset": 0, "year": fixtures.YEAR, "period": 0}})
+            payload = document["payload"]
+            self.assertEqual(payload["trace_level"], "full")
+            self.assertGreater(payload["total"], 0, source)
+            self.assertTrue(all((row["year"], row["period"]) == (fixtures.YEAR, 0) for row in payload["items"]), source)
+        self.assertNotIn("toy-v8.orders.json", committed, "summary trace: the UI does not request orders")
+        statuses = {row["status"] for row in committed["toy-v7.orders.json"]["payload"]["items"]}
+        self.assertEqual(statuses, {"accepted", "partially_accepted", "rejected"})
+
     def test_sources_are_the_ledgers_they_claim(self) -> None:
         committed = _committed()
         self.assertEqual(committed["toy-v7.capabilities.json"]["payload"]["ledger_schema_version"], "value.market-ledger/v7")

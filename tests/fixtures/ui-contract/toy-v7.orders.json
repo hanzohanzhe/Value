@@ -1,0 +1,21 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "toy-v7",
+ "request": {
+  "path": "/api/runs/{run_id}/market/orders",
+  "query": {"limit":50,"offset":0,"year":2025,"period":0}
+ },
+ "payload": {
+  "total": 4,
+  "limit": 50,
+  "offset": 0,
+  "items": [
+   {"order_id":"2025:0:ahead:0","year":2025,"period":0,"stage":"ahead_offer","asset_id":"solar-a","asset_type":"SolarGenerator","side":"supply","offer_price_gbp_per_mwh":0.0,"offered_mwh":4.0,"accepted_mwh":4.0,"status":"accepted","reason_code":"cleared","physical_resource_cost_gbp":0.0,"market_payment_gbp":245.0},
+   {"order_id":"2025:0:ahead:1","year":2025,"period":0,"stage":"ahead_offer","asset_id":"gas-a","asset_type":"CCGTGenerator","side":"supply","offer_price_gbp_per_mwh":50.0,"offered_mwh":8.0,"accepted_mwh":6.0,"status":"partially_accepted","reason_code":"demand_filled","physical_resource_cost_gbp":330.0,"market_payment_gbp":367.5},
+   {"order_id":"2025:0:ahead:2","year":2025,"period":0,"stage":"ahead_offer","asset_id":"battery-a","asset_type":"Battery","side":"supply","offer_price_gbp_per_mwh":20.0,"offered_mwh":1.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},
+   {"order_id":"2025:0:ahead:3","year":2025,"period":0,"stage":"ahead_offer","asset_id":"battery-a","asset_type":"Battery","side":"supply","offer_price_gbp_per_mwh":30.0,"offered_mwh":1.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0}
+  ],
+  "trace_level": "full"
+ }
+}

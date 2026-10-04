@@ -8,14 +8,15 @@ P0-9 S2 generator (plan 4.9; the generator is part of M0, captured on HEAD).
 The frontend's market views are written against hand-made mocks, and R3-01 /
 R3-02 showed that those mocks drift from what the API really sends.  These
 fixtures are produced by the *same functions with the same arguments* that
-``backend/server.py`` uses for each request the UI makes
-(``app/page.tsx`` MarketReplayView/CurtailmentView, ``AuditView.tsx``), on
-three ledgers:
+``backend/server.py`` uses for each market request the UI makes
+(``app/page.tsx`` MarketReplayView/CurtailmentView: capabilities, dispatch,
+vre-summary, vre-timeline, auction, storage; ``AuditView.tsx``: periods and,
+for a full-trace ledger, the selected period's orders), on three ledgers:
 
 ``toy-v7``
     four half-hour periods written with ``create_market_ledger`` (the v7
     writer of the default PSM): physical-dispatch flows, ahead and
-    curtailment clearing evidence, storage state.  Prices are distinct from
+    curtailment clearing evidence, period-0 order evidence, storage state.  Prices are distinct from
     every offer price, include a legitimate 0.0, and a curtailment and an
     excess period are kept apart.
 ``toy-v8``
@@ -144,7 +145,7 @@ def build_toy_v7(folder: Path) -> Path:
     """Four periods through the v7 writer used by the default PSM."""
 
     from gridform_core.clearing_inputs import ClearingInputRow, ClearingOutcomeRow
-    from gridform_core.market_ledger import PhysicalDispatchRow, StorageStateRow, create_market_ledger
+    from gridform_core.market_ledger import OrderLedgerRow, PhysicalDispatchRow, StorageStateRow, create_market_ledger
 
     database = folder / "market.sqlite"
     ledger = create_market_ledger(
@@ -192,6 +193,21 @@ def build_toy_v7(folder: Path) -> Path:
         },
     )
     ledger.record_clearing_input(ahead)
+    # Order evidence for period 0 in the form the v7 runtime writes it
+    # (modular_simulation_model.py: "<year>:<period>:ahead:<i>", stage
+    # "ahead_offer", class-name asset types, accepted / partially_accepted /
+    # rejected), consistent with the ahead outcome below and with period 0.
+    price = TOY_V7_PERIODS[0][1]
+    ledger.record_orders([
+        OrderLedgerRow(f"{YEAR}:0:ahead:{index}", YEAR, 0, "ahead_offer", asset, asset_type, "supply",
+                       offer, offered, accepted, status, reason, cost * accepted, price * accepted)
+        for index, (asset, asset_type, offer, offered, accepted, status, reason, cost) in enumerate((
+            ("solar-a", "SolarGenerator", 0.0, 4.0, 4.0, "accepted", "cleared", 0.0),
+            ("gas-a", "CCGTGenerator", 50.0, 8.0, 6.0, "partially_accepted", "demand_filled", 55.0),
+            ("battery-a", "Battery", 20.0, 1.0, 0.0, "rejected", "not_selected_after_merit_and_balance", 0.0),
+            ("battery-a", "Battery", 30.0, 1.0, 0.0, "rejected", "not_selected_after_merit_and_balance", 0.0),
+        ))
+    ])
     ledger.record_clearing_outcome(ClearingOutcomeRow.create(ahead.input_sha256, {"accepted": [
         {"asset_id": "solar-a", "accepted_power_mw": 8.0, "offer_price_gbp_per_mwh": 0.0},
         {"asset_id": "gas-a", "accepted_power_mw": 12.0, "offer_price_gbp_per_mwh": 50.0},
@@ -334,6 +350,13 @@ def _requests(database: Path) -> list[tuple[str, str, dict[str, Any], Callable[[
                              lambda period=period, stage=stage: query_auction_view(database, year=YEAR, period=period, stage=stage)))
     requests.append(("storage", "storage", {"year": YEAR, "period": 1, "limit": 100},
                      table("storage_state", year=YEAR, period=1, limit=100)))
+    # AuditView: order evidence of the selected period (the first row of the
+    # periods page), requested only when the ledger's trace level is "full".
+    periods = table("period_summary", limit=50, offset=0)()
+    if periods["trace_level"] == "full" and periods["items"]:
+        first = periods["items"][0]
+        selected = {"limit": 50, "offset": 0, "year": int(first["year"]), "period": int(first["period"])}
+        requests.append(("orders", "orders", selected, table("orders", **selected)))
     return requests
 
 

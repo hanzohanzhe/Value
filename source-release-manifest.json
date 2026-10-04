@@ -1121,6 +1121,7 @@
     "tests/fixtures/ui-contract/toy-v7.capabilities.json",
     "tests/fixtures/ui-contract/toy-v7.dispatch-daily.json",
     "tests/fixtures/ui-contract/toy-v7.dispatch-half-hour.json",
+    "tests/fixtures/ui-contract/toy-v7.orders.json",
     "tests/fixtures/ui-contract/toy-v7.periods.json",
     "tests/fixtures/ui-contract/toy-v7.storage.json",
     "tests/fixtures/ui-contract/toy-v7.vre-summary.json",
@@ -1138,6 +1139,7 @@
     "tests/fixtures/ui-contract/value-101-day.capabilities.json",
     "tests/fixtures/ui-contract/value-101-day.dispatch-daily.json",
     "tests/fixtures/ui-contract/value-101-day.dispatch-half-hour.json",
+    "tests/fixtures/ui-contract/value-101-day.orders.json",
     "tests/fixtures/ui-contract/value-101-day.periods.json",
     "tests/fixtures/ui-contract/value-101-day.storage.json",
     "tests/fixtures/ui-contract/value-101-day.vre-summary.json",
@@ -9311,8 +9313,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/index.json",
-      "sha256": "8ecb3b7a69575b2f22c296c9ebaa9c0beb4180788e1454f8d9d97d221df4df6e",
-      "bytes": 4357,
+      "sha256": "0de81fba5d54d77adc0f3d217180737efbc80635fee7f2642d878a7bbc25fdb7",
+      "bytes": 4667,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9343,6 +9345,12 @@
       "path": "tests/fixtures/ui-contract/toy-v7.dispatch-half-hour.json",
       "sha256": "67b128d5a033d5029f6ca3368d3a59df5ffdd6aedbea585471890e0fc967db8f",
       "bytes": 5098,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/ui-contract/toy-v7.orders.json",
+      "sha256": "8209fdd50968f3c76114dee64362df08b08e287037d4ced6ff713e93f2b6b87b",
+      "bytes": 1680,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9445,6 +9453,12 @@
       "path": "tests/fixtures/ui-contract/value-101-day.dispatch-half-hour.json",
       "sha256": "ebe32fde695230587bc85f5d4ec3d36176fc1f10ad2e9154c60fb5761a9720cd",
       "bytes": 54496,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/ui-contract/value-101-day.orders.json",
+      "sha256": "1632d838665fed97ffd93724543507708b5538cf9f25d731b56183f9f4fbba23",
+      "bytes": 16524,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10877,8 +10891,8 @@
     },
     {
       "path": "tests/test_ui_contract_fixtures.py",
-      "sha256": "fa771145fb825772619cd545dce9d1c2779485e59a686efe0df70d9eb1c8f706",
-      "bytes": 10724,
+      "sha256": "4039b53b2ee48d8d7aea7e036f73bbb25c5982d6db1e7e63cb50a6130fe55b60",
+      "bytes": 11907,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10937,8 +10951,8 @@
     },
     {
       "path": "tests/ui_contract_fixtures.py",
-      "sha256": "cccf639ad0db6e7488703f7bfd56346cc98b057998cd070e14dc898e5e39eb5c",
-      "bytes": 31879,
+      "sha256": "3da8e70afde32c53d7b3b429baa6d355482930ab29cb76fa54ebd628d4faa04d",
+      "bytes": 33654,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
