@@ -9255,8 +9255,8 @@
     },
     {
       "path": "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
-      "sha256": "d388fde68d3345e361f6f52f0afc1ff121ff49ca9bbdca4202249d356f898ffa",
-      "bytes": 257596,
+      "sha256": "3e41aad5d1ebd53ccb2b73f66aae8ef3eff732c8a7697fd884df7c1d3562cd59",
+      "bytes": 258193,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
