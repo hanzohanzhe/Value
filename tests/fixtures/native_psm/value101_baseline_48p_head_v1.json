@@ -5,9 +5,9 @@
   "P0-6 S1: VALUE 101 value_101_day (48 periods) market.sqlite of the default PSM at HEAD, for the S3 byte/value identity check.",
   "Cases are the frozen golden projects tests/golden/projects/<case>.json run through scripts/golden/run_case.py (D3: doctoral reference configuration with the legacy storage tariff; C3: default dynamic storage cost).",
   "Every table column is hashed over its rowid-ordered values (exact repr); period_summary is also kept in full. Zones follow tests/golden/zones.json with metadata keys classified individually; identity-zone entries and the whole-file hash are informational.",
-  "Universal corrections that legitimately change these values (P0-4 accounting, P0-5a readers) re-capture as value101_baseline_48p_head_v2.json (plan M3); v1 is never rewritten."
+  "This baseline has no revision path and is never rewritten. It gates only until the X0 golden of the same case (tests/golden/doctoral/D3.json or tests/golden/corrected/C3.json) takes its first revision (e2e_retirement); from then on X0, which has the accounting-revision and doctoral re-baseline paths, is the gate for value_101_day, and no v2 of this file is captured."
  ],
- "base_commit": "28ee84c595cb056141451e72448a09c5913444fa",
+ "base_commit": "102c663dda677c7c93844fdb8a9a95d1293e0170",
  "source": {
   "head_commit": "35aadb3",
   "kernel": "gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_simulation_model.py",
@@ -52,6 +52,17 @@
    }
   },
   "copy_sha256": "07ad59660191a3c840bd3f48783589e9f959cea1271f4f1141d2b0583e00e3a8",
+  "git_show_35aadb3": "matched",
+  "capture_tooling": {
+   "tests/native_reproduction_harness.py": "1ec07da569f90255ab3b00cec13ab0368d46be0d486cb92a98c7f8608effffaf",
+   "scripts/capture_native_reproduction_golden.py": "a1a40fead40950b08329aacc5f7389a75686bccb62cc58b1eee5af9a76d7b8ae",
+   "tests/golden/zones.json": "08a1e9011195f81d6b1394d858ee6bf5d2875ece25389250b9872eab31b674b5",
+   "gridform_validation/golden.py": "5a42d8139b356e115e8d6d242446ad4704874a72899a8ef5e9b0495cbcdc6cbd",
+   "scripts/golden/run_case.py": "96be22c68f8256f9c75ce988a299e261cab98223eeab2818b879232550df07d1",
+   "tests/golden/projects/D3.json": "def2911c6ac6337a501bf5751d2a1186d74c545f42a402d934c0dbe40a6d5c1c",
+   "tests/golden/projects/C3.json": "b5b61dad4610af1a8fe55beb887a769e8054907e2ea3cdf0146f36ed80193fad"
+  },
+  "checkout_state": "clean",
   "live_kernel_sha256_at_capture": "dc4f8164ed2c74187fa9bf954bb12d9dced57fb35ee98f8891233d52683b9e5a",
   "runtime_compat_tree_sha256_at_capture": "2ee8c594dd2db3953854c0bb6de3e32dc63c839aec341a85d0cffafbf1fff733"
  },
@@ -197,7 +208,7 @@
   "market/market.sqlite::storage_state.period": "trajectory",
   "market/market.sqlite::storage_state.asset_id": "trajectory",
   "market/market.sqlite::storage_state.state_of_charge_mwh": "trajectory",
-  "market/market.sqlite::storage_state.charge_mwh": "accounting",
+  "market/market.sqlite::storage_state.charge_mwh": "trajectory",
   "market/market.sqlite::storage_state.discharge_mwh": "trajectory",
   "market/market.sqlite::storage_state.power_capacity_mw": "trajectory",
   "market/market.sqlite::storage_state.energy_capacity_mwh": "trajectory",

@@ -9267,8 +9267,8 @@
     },
     {
       "path": "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
-      "sha256": "f3674df9dc2b0480fb62ab46cc3fc46a1ec3d216718027b4f73c0573c960fc61",
-      "bytes": 108684,
+      "sha256": "ba8bac1cc3db4dc8f0dba932bea63f5a016211df9c9883632fdbec718b8daa71",
+      "bytes": 109708,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,8 +10017,8 @@
     },
     {
       "path": "tests/test_native_reproduction_golden.py",
-      "sha256": "45b975bf9a2603455cb0871531413608c4945a853145ca183136bb6b1fb095a2",
-      "bytes": 33186,
+      "sha256": "5f01a4630010b03d2acbe1f3af9cb12b9cea1e1a165650381bfc7b6f428ddfd8",
+      "bytes": 34740,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

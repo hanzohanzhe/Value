@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import fnmatch
+import hashlib
 import importlib.util
 import json
 import os
@@ -514,6 +515,34 @@ class CaptureProvenanceTests(unittest.TestCase):
         )
         for path in capture.E2E_TOOLING:
             self.assertTrue((ROOT / path).is_file(), path)
+
+
+    def test_fixtures_were_captured_clean_from_their_base_commit(self):
+        """Revision 0 of each fixture names the commit whose tooling produced it."""
+
+        capture = _capture_module()
+        golden = harness.load_golden()
+        e2e = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
+        unverifiable = []
+        for name, fixture, base, tooling in (
+            ("synthetic", golden, golden["revisions"][0]["base_commit"], capture.SYNTHETIC_TOOLING),
+            ("e2e", e2e, e2e["base_commit"], capture.E2E_TOOLING),
+        ):
+            source = fixture["source"]
+            self.assertEqual(source["checkout_state"], "clean", name)
+            self.assertEqual(set(source["capture_tooling"]), set(tooling), name)
+            for path, sha in source["capture_tooling"].items():
+                try:
+                    blob = subprocess.run(["git", "show", f"{base}:{path}"], cwd=ROOT, capture_output=True,
+                                          check=True).stdout
+                except (OSError, subprocess.CalledProcessError):
+                    unverifiable.append(f"{name}:{base}:{path}")
+                    continue
+                self.assertEqual(hashlib.sha256(blob).hexdigest(), sha, f"{name}: {path} at {base}")
+        if unverifiable:
+            # No git, or the base commit is not in this repository (archive
+            # copy or rewritten history): the recorded hashes remain the record.
+            self.skipTest("base commit not available: " + ", ".join(unverifiable[:3]))
 
 
 class E2ERetirementTests(unittest.TestCase):
