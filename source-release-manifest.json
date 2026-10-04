@@ -10053,8 +10053,8 @@
     },
     {
       "path": "tests/test_p07_investment_accounts.py",
-      "sha256": "df8c4dbeb1a6d4c467a13906f93c018e9e13798eb1f16584a6c515330f1e3a11",
-      "bytes": 29589,
+      "sha256": "adc6306da7be4faba7f9addd35f7cd5e3a973560a0b0553e63ddb17e850e51ff",
+      "bytes": 32116,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -295,6 +295,41 @@ class HeadRuleTest(unittest.TestCase):
         self.assertEqual(ia.head_retirement_mw(-1_825_000.0, 100.0, 25.0, 1e6), 45.625)
         self.assertEqual(ia.head_retirement_mw(-1e9, 100.0, 25.0, 1e6), 100.0)
 
+    def test_deplete_retirement_is_sized_by_target_payback_and_split_by_capacity(self):
+        """Review M0-P0-7-S1 round 3: per-member retirement = group retirement x member / group capacity."""
+        def member(asset_id, capacity, income, life, target):
+            return {"asset_id": asset_id, "capacity_mw": capacity, "income_gbp": income,
+                    "extensions": {"total_capex_gbp": capacity * 1e6, "economic_lifetime_years": life,
+                                   "target_payback_years": target}}
+
+        members = [member("m1", 60.0, -300_000.0, 25.0, 12.0), member("m2", 30.0, -150_000.0, 30.0, 15.0),
+                   member("m3", 10.0, -50_000.0, 25.0, 12.0)]
+        group = {"owner": "o", "technology": "CCGT", "region": "GB", "members": members}
+        result = ia.head_decide_accounts([group], {}, lambda technology: "explicit_uncapped")
+        outcome = result["outcomes"][0]
+        account = outcome["account"]
+        self.assertEqual(outcome["recommendation"], "Deplete")
+        self.assertEqual((account["economic_lifetime_years"], account["target_payback_years"]), (25.0, 12.0))
+        # Sized with the target payback (12 years), not the economic life (25 years).
+        self.assertEqual(outcome["retirement_mw"], 500_000.0 * 12.0 / 1e6)
+        self.assertNotEqual(outcome["retirement_mw"], 500_000.0 * 25.0 / 1e6)
+        group_retirement = outcome["retirement_mw"]
+        retirements = result["retirements_mw"]
+        self.assertEqual(list(retirements), ["m1", "m2", "m3"])
+        for row in members:
+            with self.subTest(member=row["asset_id"]):
+                self.assertEqual(retirements[row["asset_id"]],
+                                 group_retirement * row["capacity_mw"] / account["capacity_mw"])
+        self.assertTrue(math.isclose(math.fsum(retirements.values()), group_retirement, rel_tol=1e-15))
+        self.assertTrue(math.isclose(retirements["m1"], 3.6, rel_tol=1e-15))
+        self.assertTrue(math.isclose(retirements["m2"], 1.8, rel_tol=1e-15))
+        self.assertTrue(math.isclose(retirements["m3"], 0.6, rel_tol=1e-15))
+        # Capped at the group capacity, still split by capacity.
+        heavy = [dict(row, income_gbp=row["income_gbp"] * 1e3) for row in members]
+        capped = ia.head_decide_accounts([dict(group, members=heavy)], {}, lambda technology: "explicit_uncapped")
+        self.assertEqual(capped["outcomes"][0]["retirement_mw"], 100.0)
+        self.assertEqual(capped["retirements_mw"], {"m1": 60.0, "m2": 30.0, "m3": 10.0})
+
     def test_requested_addition_is_net_over_unit_cost(self):
         self.assertEqual(ia.head_requested_addition_mw(10_950_000.0, 1e6), 10.95)
 
