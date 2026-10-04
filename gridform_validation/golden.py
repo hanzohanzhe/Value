@@ -44,7 +44,7 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 SCHEMA_VERSION = "value.golden-digest/v1"
 JSON_COLUMN_DEPTH = 4
@@ -410,8 +410,17 @@ def latest_digest(golden: Mapping[str, Any]) -> Mapping[str, Any]:
     return golden["revisions"][-1]["digest"]
 
 
-def validate_golden_file(golden: Mapping[str, Any], trajectory_allowlist: Mapping[str, Any]) -> list[str]:
-    """Return bookkeeping errors for one golden case file (no runs needed)."""
+def validate_golden_file(
+    golden: Mapping[str, Any],
+    trajectory_allowlist: Mapping[str, Any],
+    numeric_reports: Callable[[int], Mapping[str, Any] | None] | None = None,
+) -> list[str]:
+    """Return bookkeeping errors for one golden case file (no runs needed).
+
+    ``numeric_reports(k)`` returns the committed numeric report of revision k
+    (or ``None``); a doctoral revision that changes trajectory columns needs
+    one (:func:`validate_numeric_report`).
+    """
 
     errors: list[str] = []
     name = f"{golden.get('family')}/{golden.get('case')}"
@@ -464,6 +473,8 @@ def validate_golden_file(golden: Mapping[str, Any], trajectory_allowlist: Mappin
                 if reused:
                     errors.append(f"{name}: revision {index} re-baselines trajectory again for {sorted(reused)}")
                 used |= approved
+                report = numeric_reports(index) if numeric_reports is not None else None
+                errors.extend(validate_numeric_report(report, golden, index, delta))
     return errors
 
 
@@ -524,3 +535,203 @@ def append_revision(
 def write_golden(path: Path, golden: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(golden, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+
+
+# --------------------------------------------------------------------------
+# Numeric before/after reports for doctoral trajectory re-baselines
+#
+# Decisions Q9/A4/A5 require every doctoral trajectory re-baseline to come with
+# a diff report.  Golden files keep hashes only, so the report is computed from
+# two kept run outputs (parent commit and child) and committed next to the
+# revision as tests/golden/reports/<case>-r<k>.json.  ``validate_golden_file``
+# refuses a doctoral trajectory revision without a matching report.
+
+NUMERIC_REPORT_SCHEMA = "value.golden-numeric-report/v1"
+_YEAR_IN_PATH = re.compile(r"(?:^|[.\[])(\d{4})(?=$|[.:\]\[])")
+
+
+def digest_fingerprint(digest: Mapping[str, Any]) -> str:
+    """sha256 of a digest as stored in a golden revision (runtime fields dropped)."""
+
+    stored = {key: value for key, value in digest.items() if key not in {"seconds", "case"}}
+    return hashlib.sha256(json.dumps(stored, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def column_values(output_dir: Path) -> dict[str, list[tuple[str, Any, Any]]]:
+    """The raw values behind every digest column: ``key -> [(label, value, year)]``.
+
+    Keys, labels and volatile-key handling are those of :func:`digest_run`;
+    ``year`` is the row's ``year`` column (SQLite) or a year found in the JSON
+    path, else ``None``.
+    """
+
+    values: dict[str, list[tuple[str, Any, Any]]] = {}
+    for artifact, path in iter_artifacts(output_dir):
+        if path.suffix == ".sqlite":
+            connection = sqlite3.connect(f"file:{path.as_posix()}?mode=ro&immutable=1", uri=True)
+            try:
+                tables = [
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                    )
+                ]
+                for table in tables:
+                    columns = [row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')]
+                    quoted = ", ".join(f'"{column}"' for column in columns)
+                    try:
+                        cursor = connection.execute(f'SELECT {quoted} FROM "{table}" ORDER BY rowid')
+                    except sqlite3.OperationalError:
+                        cursor = connection.execute(f'SELECT {quoted} FROM "{table}" ORDER BY {quoted}')
+                    year_index = columns.index("year") if "year" in columns else None
+                    lists = [values.setdefault(f"{artifact}::{table}.{column}", []) for column in columns]
+                    rows = 0
+                    for row in cursor:
+                        year = row[year_index] if year_index is not None else None
+                        for index, value in enumerate(row):
+                            lists[index].append((str(rows), "<volatile>" if columns[index] in VOLATILE_KEYS else value, year))
+                        rows += 1
+                    values[f"{artifact}::{table}{ROW_COUNT_SUFFIX}"] = [("rows", rows, None)]
+            finally:
+                connection.close()
+            continue
+        if path.suffix == ".jsonl":
+            payload: Any = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        else:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        for leaf_path, concrete, value in _json_leaves(payload):
+            column = ".".join(leaf_path[:JSON_COLUMN_DEPTH]) or "$"
+            match = _YEAR_IN_PATH.search(concrete)
+            values.setdefault(f"{artifact}::{column}", []).append((concrete, value, match.group(1) if match else None))
+    return values
+
+
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    number = float(value)
+    return number if math.isfinite(number) else None
+
+
+def _column_change(before: Sequence[tuple[str, Any, Any]], after: Sequence[tuple[str, Any, Any]]) -> dict[str, Any]:
+    left = {label: (value, year) for label, value, year in before}
+    right = {label: (value, year) for label, value, year in after}
+    changed = 0
+    max_abs = 0.0
+    max_rel: float | None = None
+    zero_base_changes = 0
+    samples: list[dict[str, Any]] = []
+    for label in sorted(set(left) | set(right), key=lambda item: (len(item), item)):
+        old = left.get(label, (None, None))[0]
+        new = right.get(label, (None, None))[0]
+        if label in left and label in right and _encode(old, False) == _encode(new, False):
+            continue
+        changed += 1
+        old_number, new_number = _number(old), _number(new)
+        if label in left and label in right and old_number is not None and new_number is not None:
+            delta = abs(new_number - old_number)
+            max_abs = max(max_abs, delta)
+            if old_number != 0:
+                relative = delta / abs(old_number)
+                max_rel = relative if max_rel is None else max(max_rel, relative)
+            elif delta:
+                zero_base_changes += 1
+        elif len(samples) < 3:
+            samples.append({"label": label, "before": None if label not in left else str(old)[:120],
+                            "after": None if label not in right else str(new)[:120]})
+
+    def totals(rows: Sequence[tuple[str, Any, Any]]) -> tuple[float, dict[str, float]]:
+        total = 0.0
+        by_year: dict[str, float] = {}
+        for _, value, year in rows:
+            number = _number(value)
+            if number is None:
+                continue
+            total += number
+            if year is not None:
+                by_year[str(year)] = by_year.get(str(year), 0.0) + number
+        return total, by_year
+
+    numeric = any(_number(value) is not None for _, value, _ in (*before, *after))
+    record: dict[str, Any] = {
+        "values_before": len(before),
+        "values_after": len(after),
+        "changed_values": changed,
+        "numeric": numeric,
+    }
+    if numeric:
+        sum_before, years_before = totals(before)
+        sum_after, years_after = totals(after)
+        record.update({
+            "max_abs_delta": max_abs,
+            "max_rel_delta": max_rel,
+            "changes_from_zero": zero_base_changes,
+            "sum_before": sum_before,
+            "sum_after": sum_after,
+            "annual_totals": {year: [years_before.get(year, 0.0), years_after.get(year, 0.0)]
+                              for year in sorted(set(years_before) | set(years_after))},
+        })
+    if samples:
+        record["non_numeric_samples"] = samples
+    return record
+
+
+def build_numeric_report(
+    before_dir: Path,
+    after_dir: Path,
+    zones: ZoneRules,
+    *,
+    family: str,
+    case: str,
+    revision: int,
+    parent_commit: str,
+    child_commit: str,
+    pinned: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """Per-column magnitudes of every changed digest column between two run outputs."""
+
+    before, after = column_values(before_dir), column_values(after_dir)
+    after_digest = digest_run(after_dir, zones)
+    pinned = pinned or {}
+    columns: dict[str, Any] = {}
+    by_zone: dict[str, int] = {}
+    for key in sorted(set(before) | set(after)):
+        old, new = before.get(key), after.get(key)
+        if old is not None and new is not None and [(label, _encode(value, False)) for label, value, _ in old] == [
+            (label, _encode(value, False)) for label, value, _ in new
+        ]:
+            continue
+        zone = _stricter(pinned.get(key, zones.zone(key)), zones.zone(key))
+        kind = "added" if old is None else "removed" if new is None else "changed"
+        columns[key] = {"zone": zone, "section": section_of(key), "kind": kind, **_column_change(old or [], new or [])}
+        by_zone[zone] = by_zone.get(zone, 0) + 1
+    return {
+        "schema_version": NUMERIC_REPORT_SCHEMA,
+        "family": family,
+        "case": case,
+        "revision": revision,
+        "parent_commit": parent_commit,
+        "child_commit": child_commit,
+        "digest_sha256": digest_fingerprint(after_digest),
+        "summary": {"changed_columns": len(columns), "by_zone": dict(sorted(by_zone.items()))},
+        "columns": columns,
+    }
+
+
+def validate_numeric_report(report: Mapping[str, Any] | None, golden: Mapping[str, Any], index: int, delta: Sequence[Difference]) -> list[str]:
+    name = f"{golden.get('family')}/{golden.get('case')}"
+    where = f"tests/golden/reports/{golden.get('case')}-r{index}.json"
+    if report is None:
+        return [f"{name}: revision {index} changes doctoral trajectory without a numeric before/after report ({where}; capture.py numeric-report)"]
+    errors = []
+    expected = {"schema_version": NUMERIC_REPORT_SCHEMA, "family": golden.get("family"), "case": golden.get("case"), "revision": index}
+    for field, value in expected.items():
+        if report.get(field) != value:
+            errors.append(f"{where}: {field} is {report.get(field)!r}, expected {value!r}")
+    if report.get("digest_sha256") != digest_fingerprint(golden["revisions"][index]["digest"]):
+        errors.append(f"{where}: digest_sha256 does not match revision {index}")
+    reported = set((report.get("columns") or {}))
+    changed = {row.key for row in delta}
+    if reported != changed:
+        errors.append(f"{where}: reports {len(reported)} column(s) but revision {index} changes {len(changed)}")
+    return errors

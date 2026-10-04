@@ -160,10 +160,15 @@ class GoldenDigestTests(unittest.TestCase):
 
         approved = copy.deepcopy(record)
         golden.append_revision(approved, moved, base_commit="d", reason="interconnector clock", correction_ids=["p0-5.ic"], findings=["P6-24"])
-        self.assertEqual(golden.validate_golden_file(approved, allowlist), [])
+        # an approved trajectory re-baseline still needs its numeric before/after report
+        missing = golden.validate_golden_file(approved, allowlist)
+        self.assertTrue(any("numeric before/after report" in error for error in missing), missing)
+        report = golden.build_numeric_report(self.root / "base", self.root / "moved", ZONES, family="doctoral", case="X1",
+                                             revision=1, parent_commit="c", child_commit="d")
+        self.assertEqual(golden.validate_golden_file(approved, allowlist, {1: report}.get), [])
         moved_again = golden.digest_run(_write_run(self.root / "again", price=60.0), ZONES)
         golden.append_revision(approved, moved_again, base_commit="e", reason="again", correction_ids=["p0-5.ic"], findings=["P6-24"])
-        self.assertTrue(any("again" in error for error in golden.validate_golden_file(approved, allowlist)))
+        self.assertTrue(any("again" in error for error in golden.validate_golden_file(approved, allowlist, {1: report}.get)))
 
         accounting_only = copy.deepcopy(record)
         golden.append_revision(
@@ -174,6 +179,51 @@ class GoldenDigestTests(unittest.TestCase):
             correction_ids=["p0-4.ledger"],
         )
         self.assertEqual(golden.validate_golden_file(accounting_only, allowlist), [])
+
+    def test_numeric_report_records_magnitudes_and_is_bound_to_the_revision(self) -> None:
+        record = self._golden("doctoral")
+        moved_dir = _write_run(self.root / "moved", price=50.0)
+        golden.append_revision(record, golden.digest_run(moved_dir, ZONES), base_commit="d", reason="ic clock",
+                               correction_ids=["p0-5.ic"], findings=["P6-24"])
+        report = golden.build_numeric_report(self.root / "base", moved_dir, ZONES, family="doctoral", case="X1",
+                                             revision=1, parent_commit="c", child_commit="d")
+        price = report["columns"]["market/market.sqlite::period_summary.clearing_price_gbp_per_mwh"]
+        self.assertEqual(price["zone"], "trajectory")
+        self.assertEqual(price["changed_values"], 3)
+        self.assertAlmostEqual(price["max_abs_delta"], 7.5)
+        self.assertAlmostEqual(price["max_rel_delta"], 7.5 / 42.5)
+        self.assertAlmostEqual(price["sum_before"], 42.5 * 3 + 3)
+        self.assertAlmostEqual(price["sum_after"], 50.0 * 3 + 3)
+        self.assertEqual(price["annual_totals"], {"2025": [price["sum_before"], price["sum_after"]]})
+        self.assertEqual(set(report["columns"]), {row["key"] for row in record["revisions"][1]["delta"]["differences"]})
+        allowlist = {"findings": {"P6-24": "approved"}}
+        self.assertEqual(golden.validate_golden_file(record, allowlist, {1: report}.get), [])
+        for field, value in (("revision", 2), ("case", "X2"), ("digest_sha256", "0" * 64)):
+            with self.subTest(field=field):
+                forged = dict(report, **{field: value})
+                errors = golden.validate_golden_file(record, allowlist, {1: forged}.get)
+                self.assertTrue(any(field in error for error in errors), errors)
+        trimmed = dict(report, columns={})
+        self.assertTrue(golden.validate_golden_file(record, allowlist, {1: trimmed}.get))
+
+    def test_capture_validate_reads_reports_and_refuses_orphans(self) -> None:
+        import contextlib
+        import importlib.util
+        import io
+        from unittest import mock
+
+        spec = importlib.util.spec_from_file_location("golden_capture_reports", ROOT / "scripts" / "golden" / "capture.py")
+        capture = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(capture)
+        self.assertEqual(capture.validate_all(), [])
+        reports = self.root / "reports"
+        reports.mkdir()
+        (reports / "D1-r1.json").write_text("{}", encoding="utf-8")
+        with mock.patch.object(capture, "REPORT_DIR", reports):
+            self.assertTrue(any("D1-r1.json" in error for error in capture.validate_all()))
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            capture.main(["numeric-report", "--case", "D1"])  # D1 has only revision 0
 
     def test_tampered_delta_is_detected(self) -> None:
         record = self._golden("corrected")

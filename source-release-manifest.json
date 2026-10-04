@@ -7859,8 +7859,8 @@
     },
     {
       "path": "gridform_validation/golden.py",
-      "sha256": "b1b3dcc3cdfddb8b6dab133cf94b697307e49ceda14487b14b79773579867067",
-      "bytes": 20177,
+      "sha256": "99f46cccda76208581ce61f7fed660901d544af946bbcb50de9b0171adc05fc8",
+      "bytes": 30073,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8661,8 +8661,8 @@
     },
     {
       "path": "scripts/golden/capture.py",
-      "sha256": "dc61a93abf90cc18d736ee7a8d92aab5917741fd490521761827f2f29763d906",
-      "bytes": 13961,
+      "sha256": "f3d63815e029d75e4354fe5e19b53007be679ab5da67386f433c96f549962c3a",
+      "bytes": 20575,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9849,8 +9849,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "5a6ef0f5b58ec5abed064fa3248e8afa0a16d7a2c9b6c7d3ab96a08496b9c228",
-      "bytes": 22012,
+      "sha256": "2a0c34b7577dab0e1385510cccf4e5753e55f97e084f661917d3f1527e9f122e",
+      "bytes": 25412,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

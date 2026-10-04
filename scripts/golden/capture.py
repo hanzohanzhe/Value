@@ -8,6 +8,8 @@ Commands::
     capture.py validate                                  # bookkeeping only, no model runs
     capture.py dump     --cases ... --out-dir DIR        # raw digests for inspection
     capture.py freeze-projects --cases ...               # write tests/golden/projects/<case>.json for NEW cases
+    capture.py numeric-report --case D1 [--parent HEAD] [--revision K]
+                                                         # numeric before/after report of revision K
 
 Each case runs in its own hermetic subprocess (scripts/golden/run_case.py).
 ``check`` exits 1 when any case differs from its latest revision in a
@@ -15,7 +17,12 @@ trajectory or accounting column; identity-zone differences (code and module
 identity hashes, versions) are reported only.  ``revise`` appends a revision
 carrying the delta; for the doctoral family a trajectory change is accepted
 only for a finding listed in tests/golden/doctoral_trajectory_rebaselines.json
-and only once per finding and case.
+and only once per finding and case, and only with a numeric before/after
+report ``tests/golden/reports/<case>-r<k>.json`` (``numeric-report``: the
+case is run with ``run_case.py --keep-output`` on a ``git archive`` of the
+parent commit and on the working tree; per changed column it records max
+abs/rel delta, totals and annual totals; ``validate`` checks the report
+exists and is bound to the revision's digest).
 """
 
 from __future__ import annotations
@@ -28,6 +35,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 from pathlib import Path
@@ -42,6 +50,8 @@ from gridform_validation import golden as golden_lib  # noqa: E402
 GOLDEN_DIR = ROOT / "tests" / "golden"
 CASES = GOLDEN_DIR / "cases.json"
 TRAJECTORY_ALLOWLIST = GOLDEN_DIR / "doctoral_trajectory_rebaselines.json"
+REPORT_DIR = GOLDEN_DIR / "reports"
+ZONES = GOLDEN_DIR / "zones.json"
 TIER_ORDER = {"fast": 0, "full": 1, "nightly": 2}
 GATED_ZONES = ("trajectory", "accounting")
 
@@ -88,6 +98,9 @@ def run_case_subprocess(case_id: str, python: str = sys.executable, timeout: flo
             errors="replace",
             timeout=timeout,
         )
+        attempts = runner.forbidden_port_attempts(scratch)
+        if attempts:
+            raise RuntimeError(f"golden case {case_id} tried to reach the live VALUE ports: {attempts}")
         if completed.returncode != 0:
             raise RuntimeError(f"golden case {case_id} failed (exit {completed.returncode}):\n{completed.stderr[-4000:]}")
         digest = json.loads(completed.stdout.strip().splitlines()[-1])
@@ -202,6 +215,11 @@ def command_revise(arguments: argparse.Namespace) -> int:
             raise SystemExit("refusing revision:\n" + "\n".join(errors))
         golden_lib.write_golden(path, golden)
         summary[case_id] = revision["delta"]["by_zone"]
+        if family == "doctoral" and revision["delta"]["by_zone"].get("trajectory"):
+            summary[f"{case_id}:next"] = (
+                f"commit tests/golden/reports/{case_id}-r{revision['revision']}.json: "
+                f"capture.py numeric-report --case {case_id} --parent HEAD"
+            )
     print(json.dumps(summary, indent=2))
     return 0
 
@@ -218,7 +236,14 @@ def validate_all() -> list[str]:
         golden = json.loads(path.read_text(encoding="utf-8"))
         if golden.get("case") != case_id or golden.get("family") != case["family"]:
             errors.append(f"{path.relative_to(ROOT)}: case/family header mismatch")
-        errors.extend(golden_lib.validate_golden_file(golden, allowlist))
+        errors.extend(golden_lib.validate_golden_file(golden, allowlist, lambda index, case_id=case_id: load_report(case_id, index)))
+    for report_path in sorted(REPORT_DIR.glob("*.json")) if REPORT_DIR.is_dir() else []:
+        case_id, _, suffix = report_path.stem.rpartition("-r")
+        case = cases.get(case_id)
+        golden_file = golden_path(case["family"], case_id) if case else None
+        revisions = json.loads(golden_file.read_text(encoding="utf-8"))["revisions"] if golden_file and golden_file.is_file() else []
+        if not suffix.isdigit() or not 0 < int(suffix) < len(revisions):
+            errors.append(f"tests/golden/reports/{report_path.name}: no matching golden revision")
     run_case = _run_case_module()
     for case_id, case in cases.items():
         if not run_case.project_path(dict(case, id=case_id)).is_file():
@@ -228,6 +253,79 @@ def validate_all() -> list[str]:
             if path.stem not in cases:
                 errors.append(f"{path.relative_to(ROOT)}: no case definition")
     return errors
+
+
+def load_report(case_id: str, index: int) -> dict[str, Any] | None:
+    path = REPORT_DIR / f"{case_id}-r{index}.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+
+def run_case_at(case_id: str, output: Path, scratch: Path, ref: str | None = None, python: str = sys.executable) -> str:
+    """Run one case with ``--keep-output`` on a ``git archive`` of ``ref``
+    (``None``: this working tree).  Returns the commit (or ``working-tree``)."""
+
+    runner = _runner_module()
+    tree = ROOT
+    commit = "working-tree"
+    if ref is not None:
+        commit = subprocess.run(["git", "rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=ROOT, check=True,
+                                capture_output=True, text=True).stdout.strip()
+        tree = scratch / f"tree-{commit[:12]}"
+        tree.mkdir(parents=True)
+        archive = subprocess.Popen(["git", "archive", "--format=tar", commit], cwd=ROOT, stdout=subprocess.PIPE)
+        assert archive.stdout is not None
+        with tarfile.open(fileobj=archive.stdout, mode="r|") as stream:
+            stream.extractall(tree)
+        if archive.wait() != 0:
+            raise SystemExit(f"git archive {ref} failed")
+    environment = runner.hermetic_environment(scratch / f"env-{commit[:12]}", python_root=tree)
+    completed = subprocess.run(
+        [python, "-B", str(tree / "scripts" / "golden" / "run_case.py"), case_id, "--keep-output", str(output)],
+        cwd=tree, env=environment, capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    attempts = runner.forbidden_port_attempts(scratch / f"env-{commit[:12]}")
+    if attempts:
+        raise SystemExit(f"golden case {case_id} at {commit} tried to reach the live VALUE ports: {attempts}")
+    if completed.returncode != 0:
+        raise SystemExit(f"golden case {case_id} at {commit} failed:\n{completed.stderr[-4000:]}")
+    return commit
+
+
+def command_numeric_report(arguments: argparse.Namespace) -> int:
+    cases = load_cases()
+    if arguments.case not in cases:
+        raise SystemExit(f"unknown golden case {arguments.case!r}")
+    family = cases[arguments.case]["family"]
+    golden = json.loads(golden_path(family, arguments.case).read_text(encoding="utf-8"))
+    index = len(golden["revisions"]) - 1 if arguments.revision is None else arguments.revision
+    if not 0 < index < len(golden["revisions"]):
+        raise SystemExit(f"{arguments.case}: revision {index} does not exist or is revision 0 (append it with revise first)")
+    zones = golden_lib.ZoneRules.load(ZONES)
+    scratch = Path(tempfile.mkdtemp(prefix=f"value-golden-report-{arguments.case}-"))
+    try:
+        if arguments.before_output and arguments.after_output:
+            before, after = arguments.before_output, arguments.after_output
+            parent, child = arguments.parent or "unknown", "given-output"
+        else:
+            before, after = scratch / "before", scratch / "after"
+            parent = run_case_at(arguments.case, before, scratch, arguments.parent or "HEAD")
+            child = run_case_at(arguments.case, after, scratch, None)
+        for side, directory, revision in (("parent", before, index - 1), ("child", after, index)):
+            if golden_lib.digest_fingerprint(golden_lib.digest_run(directory, zones)) != golden_lib.digest_fingerprint(
+                golden["revisions"][revision]["digest"]
+            ):
+                raise SystemExit(f"{arguments.case}: the {side} output does not reproduce revision {revision}")
+        report = golden_lib.build_numeric_report(
+            before, after, zones, family=family, case=arguments.case, revision=index,
+            parent_commit=parent, child_commit=child, pinned=golden_lib.pinned_zones(golden, index),
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    destination = arguments.out or (REPORT_DIR / f"{arguments.case}-r{index}.json")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    print(json.dumps({"report": str(destination), **report["summary"]}, indent=2))
+    return 0
 
 
 def command_validate(arguments: argparse.Namespace) -> int:
@@ -285,10 +383,18 @@ def _emit(report: dict[str, Any], destination: Path | None) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("check", "init", "revise", "validate", "dump", "freeze-projects"):
+    for name in ("check", "init", "revise", "validate", "dump", "freeze-projects", "numeric-report"):
         command = sub.add_parser(name)
         command.add_argument("--json-output", type=Path)
         if name == "validate":
+            continue
+        if name == "numeric-report":
+            command.add_argument("--case", required=True)
+            command.add_argument("--parent", help="commit before the change (default HEAD)")
+            command.add_argument("--revision", type=int, help="golden revision the report documents (default: latest)")
+            command.add_argument("--before-output", type=Path, help="kept run output of the parent (skips running it)")
+            command.add_argument("--after-output", type=Path, help="kept run output of the child (skips running it)")
+            command.add_argument("--out", type=Path)
             continue
         command.add_argument("--cases", nargs="*")
         command.add_argument("--tier", choices=sorted(TIER_ORDER), default=None)
@@ -312,6 +418,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "validate": command_validate,
         "dump": command_dump,
         "freeze-projects": command_freeze_projects,
+        "numeric-report": command_numeric_report,
     }[arguments.command]
     return handler(arguments)
 

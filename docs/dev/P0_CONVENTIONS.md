@@ -40,13 +40,15 @@
 | `python -B scripts/run_backend_tests.py --update-baseline` | 修好已知失败后删除基线条目（只删不增） |
 | `python -B scripts/golden/capture.py check --tier fast` | golden 快速集合 |
 | `python -B scripts/golden/capture.py revise --cases C1 ... --reason ... --correction-id ...` | 在改变数值的同一提交中追加 golden 修订 |
+| `python -B scripts/golden/capture.py numeric-report --case D1 --parent HEAD` | doctoral trajectory 重基线的数值差异报告，写入 `tests/golden/reports/<case>-r<k>.json` |
 | `python -B scripts/seal_runtime_overlay.py --correction <id>` | 每次改动 `runtime_compat/` 之后登记 |
 
 规则：
 
 - **测试棘轮。** 基线 `tests/baselines/known-failures-linux-py310.txt`（首行为环境指纹）。新失败或“已修好仍在基线”都让门禁失败。真回归一律修复，不进基线。环境相关的失败放在 `tests/baselines/quarantine.txt`，必须写 reason/owner/expires；当前里程碑写在 `tests/baselines/milestone.txt`，每个里程碑结束时由集成者推进。`expires=Mk` 的含义是“有效至 Mk（含）”：当前里程碑晚于 Mk 时该条目让棘轮失败，owner 必须在此之前处理（gate venv 的 6 条为 `M7`，作者须在最后一个里程碑之前决定是否批准离线安装）。`expires=host` 是永久的宿主隔离，只用于本机固有、任何 P0 包都改变不了的原因（作者私有 Windows R0 源码树、Windows 专用工具或被现网安装占用的 8766 端口、磁盘余量）。
 - **golden 两族。** `tests/golden/doctoral/*`（冻结）与 `tests/golden/corrected/*`（快照）。digest 按“产物 × 列”保存，分三个区：
-  - trajectory：出力、潮流、价格、SoC、装机、投资提案（Q12）。doctoral 族永不修订，唯一例外是 `tests/golden/doctoral_trajectory_rebaselines.json` 中作者批准的 universal correction（P6-24、P6-02/03/04、火电净收入 A4），每个 finding 对每个 case 只能重基线一次，提交中附差异报告（`revise` 输出的 delta）。
+  - trajectory：出力、潮流、价格、SoC、装机、投资提案（Q12）。doctoral 族永不修订，唯一例外是 `tests/golden/doctoral_trajectory_rebaselines.json` 中作者批准的 universal correction（P6-24 [Q9/A3]、P6-02/03/04 [A5]、火电净收入 P4-01-thermal [A4]），每个 finding 对每个 case 只能重基线一次。这份名单被钉死：`test_golden_digest` 断言其键集合恰为上述五项，`append_only` 拒绝相对锚点新增 finding（说明文字可改，删除 finding 只会收紧冻结）；今后作者再批准例外，必须由集成者同时修改该测试并移动 `APPEND_ONLY_BASE`。
+  - **数值差异报告（Q9/A4/A5 的“差异报告”）**：`revise` 打印的 delta 只有变化的列名与区，没有幅度，不能作为差异报告。每个改变 trajectory 列的 doctoral 修订，必须在同一提交中附 `tests/golden/reports/<case>-r<k>.json`：先 `capture.py revise ... --finding <id>` 追加修订 k，再 `capture.py numeric-report --case <case> --parent HEAD`（在 `git archive HEAD` 与工作树上各用 `run_case.py --keep-output` 跑一次该 case，先核对两边分别复现修订 k-1 与 k 的 digest）。报告逐列给出 max abs / max rel 变化、变化值个数、总和与按年合计（覆盖 period_summary 价格与供给、physical_dispatch、storage_state、装机与投资提案等全部变化列），并记录 parent/child 提交与修订 k 的 digest 指纹。`capture.py validate`（quick 档 `golden_bookkeeping`）对缺失、指纹不符、列集合与 delta 不一致的报告，以及没有对应修订的孤立报告一律报错。S13 的 `delta_report.py` 落地之前以此为准。
   - accounting：残差、调整项、审计表、成本与收入账、验证与归因报告。可以在 universal correction id 下修订。
   - identity：代码/模块/上下文身份哈希与版本号，任何代码改动都会变，由方法身份与 `VERSION_LEDGER.json` 管理；门禁只报告不拦截。
   - 区的划分写在 `tests/golden/zones.json`（首个匹配生效，未匹配的列默认 trajectory）。修改 zones.json 需在提交正文说明理由，并且**不得把 Q12 列出的 trajectory 列改划到 accounting 或 identity**。这一点由工具强制：每列的区由 golden 文件中**第一次记录它的修订**固定（`golden.pinned_zones`），之后的修订只能把它改得更严（identity < accounting < trajectory），delta 一律按固定的区归类；`capture.py validate` 对任何“改弱”报错。
@@ -56,6 +58,7 @@
 - corrected 族任何 trajectory/accounting 变化都必须在同一提交中 `capture.py revise`，写明 correction id、原因；`capture.py validate`（quick 档）检查修订簿记与 delta 的一致性。
 - 每个 golden case 在独立子进程中直接调用 `run_project_application`（避开 P7-02 的进程级天气缓存与 R2-05 的磁盘预检）。
 - golden case 的输入是冻结的 `tests/golden/projects/<case>.json`（35aadb3 课程模板 + 网络变体 + case 覆盖项一次性解析，已用 35aadb3 代码复核逐字节相同），不再读取可变的 `value_101_study()` 模板；cases.json 中的覆盖项在其上合并。已有快照不可修改，新 case 用 `capture.py freeze-projects` 冻结。
+- 快照中的 `maturity_acknowledgements`（如 `module:value-zonal-redispatch-balancing@3.0.0`）不约束 golden：`run_case.build_project` 在运行时按注册表中的当前版本重新推导实验性模块/扩展的确认键（用户同意的语义不适用于 golden 夹具），仍有效的键保持原顺序与取值，过期的键丢弃。因此按 `VERSION_LEDGER` 升级模块版本（如 P0-8 把 zonal 升到 4.0.0）不需要、也不允许修改快照；版本号变化本身只出现在 identity 区。
 - **X0 S8 的硬性要求**：引入口径参数的同一提交必须给每个 D case 的 parameters 加上 `"methodology.profile": "doctoral-lineage-0.6.0a2"`，否则 D1–D4 会在默认的 value-corrected 口径下运行。
 
 ## 3 运行时内核（runtime_compat）
