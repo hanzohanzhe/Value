@@ -80,7 +80,7 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   // is the one registered failure of this spec (e2e/offline-subset.json) until
   // P0-9 S3 (M2) fixes the read; the rest of the test still runs and must pass.
   await expect.soft(page.locator(".selected-period-strip")).toContainText("£61.25/MWh");
-  await page.screenshot({ path: "test-results/prompt56-market-replay.png", fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("prompt56-market-replay.png"), fullPage: true });
 
   await page.getByRole("button", { name: /VRE & curtailment/ }).click();
   await expect(page.getByRole("heading", { name: "See how much VRE was available, used and left unused" })).toBeVisible();
@@ -88,5 +88,5 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await expect(page.getByText("inflexible mixed", { exact: true })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
-  await page.screenshot({ path: "test-results/prompt57-vre-curtailment.png", fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("prompt57-vre-curtailment.png"), fullPage: true });
 });

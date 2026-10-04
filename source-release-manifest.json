@@ -5887,8 +5887,8 @@
     },
     {
       "path": "e2e/expanded-workflows.spec.ts",
-      "sha256": "8661641bfdbdafcf01cf56446ae7272c0099a236fd7968836d9e97df0817a6e3",
-      "bytes": 17841,
+      "sha256": "15ea2b63170eec044a63f9d012cbc9bec2002cee05580aac06a2bd8f08baa087",
+      "bytes": 17934,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -5911,8 +5911,8 @@
     },
     {
       "path": "e2e/market-visibility.spec.ts",
-      "sha256": "e1624b7706a24d8e7d8d93ecedb18a4430e07fac84e3cd430c8507dfe8bb0b51",
-      "bytes": 7126,
+      "sha256": "a298af002860886840bb03aa110b64186b2936b6a057791f1579dbd62b70cb15",
+      "bytes": 7148,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -5953,8 +5953,8 @@
     },
     {
       "path": "e2e/run-tests.mjs",
-      "sha256": "10bac4458b89b245fc355bbe1d588ca25dfa3f4395737d92f77069997aaf6d60",
-      "bytes": 4144,
+      "sha256": "98e878871a870fe1938827134ee03a7984709a2dc78af4c1e747a070dc6a6dbb",
+      "bytes": 5857,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9530,8 +9530,8 @@
     },
     {
       "path": "tests/frontend/unit/e2e-runner.test.mjs",
-      "sha256": "698bc7083ba12adf56a76c2cc46eefcbf85ebebc8e1f4218af69c0740e9504f3",
-      "bytes": 830,
+      "sha256": "e731e77a0eb458f7e7e3bd40c7890edf0cdfad3df618f0149d58a4a87c45925e",
+      "bytes": 2357,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
