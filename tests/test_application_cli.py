@@ -1,4 +1,4 @@
-"""The documented CLI (python -m gridform_core.application) exits 0 (P7-24)."""
+"""The documented CLI (python -m gridform_core.application) exits 0 and its stdout is one JSON document (P7-24)."""
 
 from __future__ import annotations
 
@@ -53,9 +53,10 @@ class ApplicationCliTests(unittest.TestCase):
 
     def _summary(self, completed: subprocess.CompletedProcess[str]) -> dict:
         self.assertEqual(completed.returncode, 0, completed.stderr[-3000:])
-        lines = [line for line in completed.stdout.splitlines() if line.strip()]
-        self.assertTrue(lines, completed.stdout)
-        return json.loads(lines[-1])
+        # stdout is exactly one JSON document; kernel progress goes to stderr
+        summary = json.loads(completed.stdout)
+        self.assertEqual(len(completed.stdout.strip().splitlines()), 1, completed.stdout[:2000])
+        return summary
 
     def test_annual_smoke_reports_one_year(self) -> None:
         completed, output = self._run_cli("smoke")
@@ -69,6 +70,7 @@ class ApplicationCliTests(unittest.TestCase):
     def test_psm_only_value_101_day_exits_zero_with_valid_json(self) -> None:
         completed, output = self._run_cli("value_101_day")
         summary = self._summary(completed)
+        self.assertTrue(completed.stderr.strip(), "kernel progress output is kept, on stderr")
         self.assertEqual(summary["engine"], "value-psm-only/v1")
         self.assertEqual(summary["years"], 0)
         provenance = json.loads((output / "provenance.json").read_text(encoding="utf-8"))

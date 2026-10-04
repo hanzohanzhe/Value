@@ -11,7 +11,7 @@ import sqlite3
 import sys
 import time
 from collections import Counter
-from contextlib import closing
+from contextlib import closing, contextmanager, redirect_stdout
 from dataclasses import replace
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -2439,6 +2439,28 @@ def run_project_application(
     )
 
 
+@contextmanager
+def _stdout_to_stderr():
+    """Send everything written to stdout (Python prints, the sealed kernel's
+    progress output, child processes inheriting fd 1) to stderr, so the CLI's
+    stdout carries only its JSON summary (P7-24)."""
+
+    sys.stdout.flush()
+    try:
+        saved = os.dup(1)
+        os.dup2(2, 1)
+    except OSError:  # no usable fd 1/2 (embedded or detached interpreter)
+        saved = None
+    try:
+        with redirect_stdout(sys.stderr):
+            yield
+    finally:
+        sys.stderr.flush()
+        if saved is not None:
+            os.dup2(saved, 1)
+            os.close(saved)
+
+
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -2473,27 +2495,29 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
     pack_manifest = json.loads((args.pack / "manifest.json").read_text(encoding="utf-8"))
-    preflight = run_preflight(
-        project,
-        mode=args.mode,
-        pack_root=args.pack.resolve(),
-        pack_manifest=pack_manifest,
-        dataset_slots=DATASET_SLOTS,
-        output_root=args.output.resolve(),
-        network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
-    )
+    with _stdout_to_stderr():
+        preflight = run_preflight(
+            project,
+            mode=args.mode,
+            pack_root=args.pack.resolve(),
+            pack_manifest=pack_manifest,
+            dataset_slots=DATASET_SLOTS,
+            output_root=args.output.resolve(),
+            network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
+        )
     (args.output / "preflight.json").write_text(
         json.dumps(preflight, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     if not preflight["accepted"]:
         print(json.dumps(preflight, ensure_ascii=False))
         raise SystemExit(2)
-    result = run_project_application(
-        project, run_id=args.run_id, pack_root=args.pack.resolve(),
-        output_dir=args.output.resolve(), mode=args.mode,
-        network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
-        resume_checkpoint_id=args.resume_checkpoint_id,
-    )
+    with _stdout_to_stderr():
+        result = run_project_application(
+            project, run_id=args.run_id, pack_root=args.pack.resolve(),
+            output_dir=args.output.resolve(), mode=args.mode,
+            network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
+            resume_checkpoint_id=args.resume_checkpoint_id,
+        )
     print(json.dumps({
         "engine": result["engine"],
         # PSM-only and native paths return orchestrator_results instead of the
