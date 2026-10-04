@@ -156,6 +156,19 @@ class WorkerEntryTests(unittest.TestCase):
         diagnostic = json.loads((self.run_dir / "diagnostics" / "error.json").read_text("utf-8"))
         self.assertIn("deliberately broken numpy", diagnostic["exception_message"])
 
+    def test_ctrl_c_while_importing_is_a_termination_with_exit_130(self) -> None:
+        """Review M1-P0-3: Ctrl+C in phase two's imports is not an import failure."""
+
+        interrupted = Path(self.folder.name) / "interrupted"
+        (interrupted / "numpy").mkdir(parents=True)
+        (interrupted / "numpy" / "__init__.py").write_text("raise KeyboardInterrupt\n", "utf-8")
+        process = self._worker(interrupted)
+        _, stderr = process.communicate(timeout=300)
+        self.assertEqual(process.returncode, 130, stderr)
+        status = read_status(self.run_dir)
+        self.assertEqual(status["status"], "failed")
+        self.assertEqual(status["error_code"], "GF_WORKER_TERMINATED")
+
     def test_sigterm_records_termination_and_exits_143(self) -> None:
         process = self._driver("sleep")
         self.assertEqual(process.stdout.readline().strip(), "running")

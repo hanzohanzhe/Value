@@ -165,18 +165,18 @@ from gridform_core.domain_results import (
 )
 from gridform_core.run_lifecycle import LifecycleError
 from backend.lifecycle.atomic_io import atomic_write_json
-from backend.lifecycle.file_locks import LockTimeout
+from backend.lifecycle.file_locks import LOCK_HELD, FileLock, LockTimeout, hold_lock
 from backend.lifecycle.run_status import (
+    STATUS_LOCK,
+    STATUS_LOCK_TIMEOUT_SECONDS,
     WRITER_SERVER,
     LeaseHeldError,
     create_status,
+    is_lifecycle_root_file,
     read_status,
     update_status,
 )
 from backend.lifecycle.states import ACTIVE_STATES, DELETABLE_STATES, classify
-from backend.lifecycle.run_status import STATUS_LOCK, STATUS_LOCK_TIMEOUT_SECONDS, is_lifecycle_root_file
-from backend.lifecycle.file_locks import hold_lock
-from backend.lifecycle.file_locks import FileLock, LOCK_HELD
 from backend.lifecycle.worker_lease import lease_state
 from backend.run_supervisor import SHUTDOWN_SEAL_SECONDS, RunSupervisor, WorkerSpawnError, worker_liveness
 from gridform_core.run_lineage import copperplate_rerun_project
@@ -300,6 +300,8 @@ def run_supervisor() -> RunSupervisor:
         if SUPERVISOR is None or SUPERVISOR.runs_root != RUNS_ROOT:
             SUPERVISOR = RunSupervisor(RUNS_ROOT, run_lock=run_action_lock, sealer=_seal_failed_run)
         return SUPERVISOR
+
+
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_SPACE_BYTES = 1024 * 1024 * 1024
 ALLOWED_ORIGINS = {
@@ -398,6 +400,7 @@ def _record_start_failure(run_dir: Path, fields: Mapping[str, Any], reason_code:
         writer=WRITER_SERVER,
     )
 
+
 def _mark_unfinished_start_failed(run_dir: Path) -> None:
     """After an unexpected error, never leave a start in snapshotting/queued."""
 
@@ -410,7 +413,6 @@ def _mark_unfinished_start_failed(run_dir: Path) -> None:
             }, "GF_RUN_START_FAILED")
     except (LifecycleError, OSError) as exc:  # the original error is re-raised
         print(f"VALUE: could not record the failed start of {run_dir.name}: {exc}", file=sys.stderr)
-
 
 
 def read_json(path: Path, fallback: Any = None) -> Any:

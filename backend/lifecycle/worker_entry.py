@@ -38,6 +38,7 @@ from .worker_lease import (  # noqa: E402
     write_lease_record,
 )
 
+EXIT_INTERRUPTED = 130
 MODES = ("smoke", "two_year_smoke", "validation_24h", "validation_168h", "value_101_day", "two_year", "full")
 
 
@@ -111,6 +112,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         except WorkerTerminated as exc:
             _record(run_dir, args, "GF_WORKER_TERMINATED", str(exc), exc)
             return 128 + exc.signum
+        except KeyboardInterrupt as exc:  # Ctrl+C while importing: a termination
+            _record(run_dir, args, "GF_WORKER_TERMINATED",
+                    "The model worker was interrupted (Ctrl+C) while importing.", exc)
+            return EXIT_INTERRUPTED
         except BaseException as exc:  # noqa: BLE001 - any import failure is recorded
             traceback.print_exc()
             _record(

@@ -3412,8 +3412,8 @@
     },
     {
       "path": "backend/lifecycle/worker_entry.py",
-      "sha256": "4f4711af18c7d66f293886b2d1b8b1117dd5e502bd4e0fb32db795e1f46eae89",
-      "bytes": 5362,
+      "sha256": "a594f2f7f03fe2fcf9bd96aaba27417f3e7d9b508177a7f403e3216baee5ebe0",
+      "bytes": 5649,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3460,8 +3460,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "420bce6a4240f081a53f432e959e816b463d058cbe44e3e5953110398fdc18b8",
-      "bytes": 174723,
+      "sha256": "8abd0b5007b8f7e5c69e28d31e8824da8204056d80824984bd9027b8db126a27",
+      "bytes": 174616,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11249,8 +11249,8 @@
     },
     {
       "path": "tests/test_worker_entry.py",
-      "sha256": "81ec92de2dcbcadfbe2d22862beccf4fb724042987fb228e8a5c7ed9194cb0ca",
-      "bytes": 10061,
+      "sha256": "994dc4ce3f867874a4930cc4d3a8d1a4b1c05dacdf226360f6d23745819d9a41",
+      "bytes": 10763,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
