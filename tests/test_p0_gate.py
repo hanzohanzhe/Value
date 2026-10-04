@@ -155,9 +155,18 @@ class P0GateTests(unittest.TestCase):
                     GATE.run(command)
 
     def test_offline_e2e_needs_a_browser_and_defaults_to_the_ratcheted_subset(self) -> None:
-        with mock.patch.dict(os.environ, {}, clear=False):
+        # No variable and no cached browser: a recorded self-skip, which is a
+        # waiver because e2e_offline is mandatory (full/nightly cannot pass).
+        with tempfile.TemporaryDirectory() as empty, \
+                mock.patch.dict(os.environ, {"PLAYWRIGHT_BROWSERS_PATH": empty}, clear=False):
             os.environ.pop("VALUE_E2E_CHROMIUM", None)
-            self.assertEqual(GATE.step_e2e_offline(_gate("full"))["status"], "skipped")
+            skipped = GATE.step_e2e_offline(_gate("full"))
+        self.assertEqual(skipped["status"], "skipped")
+        self.assertIn("no browser", skipped["detail"])
+        self.assertIn("e2e_offline", GATE.MANDATORY_STEPS)
+        results = [{"step": step.name, "status": "passed"} for step in GATE.FULL_STEPS if step.name != "e2e_offline"]
+        results.append({"step": "e2e_offline", **skipped})
+        self.assertEqual(len(GATE.waivers("full", results, GATE.APPEND_ONLY_BASE)), 1)
         with mock.patch.dict(os.environ, {"VALUE_E2E_CHROMIUM": "/nonexistent/chrome"}):
             self.assertEqual(GATE.step_e2e_offline(_gate("full"))["status"], "failed")
         with tempfile.TemporaryDirectory() as folder:
@@ -169,7 +178,31 @@ class P0GateTests(unittest.TestCase):
         command = runner.call_args.args[0]
         self.assertEqual(command, ["node-for-test", "e2e/run-tests.mjs", "--offline"])
         self.assertEqual(runner.call_args.kwargs["environment"]["VALUE_E2E_UI_ONLY"], "1")
+        self.assertEqual(runner.call_args.kwargs["environment"]["VALUE_E2E_CHROMIUM"], str(browser))
         self.assertIn("e2e_offline", [step.name for step in GATE.FULL_STEPS])
+
+    def test_offline_e2e_finds_the_cached_playwright_browser_when_unset(self) -> None:
+        with tempfile.TemporaryDirectory() as cache:
+            root = Path(cache)
+            def browser(relative: str) -> Path:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("", encoding="utf-8")
+                return path
+            full = browser("chromium-1300/chrome-linux/chrome")
+            self.assertEqual(GATE.cached_playwright_browser(root), full)
+            browser("chromium_headless_shell-1200/chrome-headless-shell-linux64/chrome-headless-shell")
+            newest = browser("chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell")
+            (root / "chromium_headless_shell-1999").mkdir()  # a revision folder without the executable
+            self.assertEqual(GATE.cached_playwright_browser(root), newest, "headless shell first, newest revision")
+            with mock.patch.dict(os.environ, {"PLAYWRIGHT_BROWSERS_PATH": cache, "VALUE_NODE": "node-for-test"}), \
+                    mock.patch.object(GATE, "run", return_value=SimpleNamespace(returncode=0, stdout="ok", stderr="")) as runner:
+                os.environ.pop("VALUE_E2E_CHROMIUM", None)
+                outcome = GATE.step_e2e_offline(_gate("full"))
+            self.assertEqual(outcome["status"], "passed")
+            self.assertEqual(outcome["detail"]["browser"], str(newest))
+            self.assertEqual(runner.call_args.kwargs["environment"]["VALUE_E2E_CHROMIUM"], str(newest))
+        self.assertIsNone(GATE.cached_playwright_browser(Path(cache) / "gone"))
 
     def test_quick_node_tests_include_the_browserless_frontend_groups(self) -> None:
         self.assertEqual(GATE.NODE_TEST_GROUP_DIRECTORIES, ("tests/frontend/unit", "tests/frontend/render"))
