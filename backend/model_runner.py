@@ -19,6 +19,7 @@ from backend.lifecycle.run_status import (
     guard_worker_write,
     update_status,
 )
+from backend.lifecycle.worker_lease import WorkerTerminated
 from backend.run_execution import verify_run_execution
 from gridform_core.application import run_project_application
 from gridform_core.errors import public_failure, warning_event
@@ -679,14 +680,6 @@ def main() -> None:
     args = parser.parse_args()
     status_path = STATE_ROOT / "runs" / args.run / "status.json"
     raise SystemExit(execute(args.project, args.run, args.mode, status_path=status_path))
-
-
-class WorkerTerminated(BaseException):
-    """A termination signal reached the worker (SIGTERM/SIGHUP/SIGBREAK)."""
-
-    def __init__(self, signum: int) -> None:
-        super().__init__(f"The model worker received signal {signum}")
-        self.signum = signum
 
 
 def execute(project_id: str, run_id: str, mode: str, *, status_path: Path) -> int:

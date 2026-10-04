@@ -118,8 +118,11 @@
     "backend/lifecycle/__init__.py",
     "backend/lifecycle/atomic_io.py",
     "backend/lifecycle/file_locks.py",
+    "backend/lifecycle/python_argv.py",
     "backend/lifecycle/run_status.py",
     "backend/lifecycle/states.py",
+    "backend/lifecycle/worker_entry.py",
+    "backend/lifecycle/worker_lease.py",
     "backend/model_runner.py",
     "backend/module_authoring.py",
     "backend/result_queries.py",
@@ -127,6 +130,7 @@
     "backend/run_reproduction.py",
     "backend/server.py",
     "backend/study_derivation.py",
+    "backend/worker_entry.py",
     "check-value-101.cmd",
     "data-packs/README.md",
     "data-packs/value-101-baseline-v1/LICENSE",
@@ -1418,6 +1422,7 @@
     "tests/test_vre_curtailment_attribution.py",
     "tests/test_weather_demand_ensembles.py",
     "tests/test_windows_pilot_installer.py",
+    "tests/test_worker_entry.py",
     "tests/test_zonal_solver_contract.py",
     "tests/test_zonal_solver_project_contract.py",
     "tests/test_zonal_subannual_resume.py",
@@ -3380,6 +3385,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "backend/lifecycle/python_argv.py",
+      "sha256": "ed93966a886fdeb60ed300ea044ef234d2e4f18487d57f3e6561ff59d3c562a2",
+      "bytes": 2007,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "backend/lifecycle/run_status.py",
       "sha256": "0dcae7d1c6d298eea64c19de273626ef2c189da073a7ce9c0213b5a2ce5ba77f",
       "bytes": 16820,
@@ -3392,9 +3403,21 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "backend/lifecycle/worker_entry.py",
+      "sha256": "4f4711af18c7d66f293886b2d1b8b1117dd5e502bd4e0fb32db795e1f46eae89",
+      "bytes": 5362,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "backend/lifecycle/worker_lease.py",
+      "sha256": "e0736443703acaebc6813387d24659da501b437139cbc3d05b2b39e108bdc39b",
+      "bytes": 5226,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "backend/model_runner.py",
-      "sha256": "77e0ced2e23b5ad492f2e90043429c5124afabb02e42bc6e711957d6545d266b",
-      "bytes": 31889,
+      "sha256": "51d4cc9e63960c41d112fa74783fe45ab29c7762edc725aad52a93a817241eaa",
+      "bytes": 31677,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3432,6 +3455,12 @@
       "sha256": "c1d9fd662763b3723c085ca58cf953707c531da51b117793b5dc483d2aa02253",
       "bytes": 17267,
       "transform": "byte copy"
+    },
+    {
+      "path": "backend/worker_entry.py",
+      "sha256": "c33b541ecba149998a21adfd5c6667176377f3deeca60269c2f6b97cce726ad7",
+      "bytes": 331,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "check-value-101.cmd",
@@ -10330,8 +10359,8 @@
     },
     {
       "path": "tests/test_lifecycle_primitives.py",
-      "sha256": "a5f9130aaae24099f54c0a2c9484054cae9ddea028c673084c9c521bc60c0180",
-      "bytes": 16686,
+      "sha256": "d6af067b4f71c3a8bea0f73b40883c3664ba12b086ac1636945f0e7c9e31f3a5",
+      "bytes": 17547,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11160,6 +11189,12 @@
       "path": "tests/test_windows_pilot_installer.py",
       "sha256": "e2021c606b2823347c84e3cbe348f371e55538df2d2a223b1129a70b51d78c18",
       "bytes": 36789,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_worker_entry.py",
+      "sha256": "9c678fa3b306c3510602155da57bc454b47ec1530682dfea03711be87b539dc4",
+      "bytes": 9504,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

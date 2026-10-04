@@ -361,6 +361,17 @@ class StandardLibraryOnlyTests(unittest.TestCase):
         offenders: list[str] = []
         for path in sorted(LIFECYCLE.glob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"))
+            if path.name == "worker_entry.py":
+                # Phase two's deliberate, function-local ``from backend import
+                # model_runner`` is the only heavy import, after the lease.
+                lazy = [
+                    node for function in ast.walk(tree) if isinstance(function, ast.FunctionDef)
+                    for node in ast.walk(function)
+                    if isinstance(node, ast.ImportFrom) and node.module == "backend"
+                ]
+                self.assertEqual([[alias.name for alias in node.names] for node in lazy], [["model_runner"]])
+                for node in lazy:
+                    node.module = allowed_local
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     names = [alias.name for alias in node.names]
@@ -383,6 +394,8 @@ class StandardLibraryOnlyTests(unittest.TestCase):
             "import sys, time, json\n"
             "start = time.perf_counter()\n"
             "import backend.lifecycle.file_locks, backend.lifecycle.atomic_io, backend.lifecycle.states\n"
+            "import backend.lifecycle.run_status, backend.lifecycle.worker_lease, backend.lifecycle.python_argv\n"
+            "import backend.lifecycle.worker_entry, backend.worker_entry\n"
             "elapsed = time.perf_counter() - start\n"
             "print(json.dumps({'seconds': elapsed, 'numpy': 'numpy' in sys.modules,"
             " 'gridform_core': any(m.startswith('gridform_core') for m in sys.modules)}))\n"
