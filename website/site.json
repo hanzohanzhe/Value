@@ -1,0 +1,73 @@
+{
+  "origin": "https://value.ac",
+  "evidence_date": "2026-10-02",
+  "products": [
+    {
+      "id": "value",
+      "name": "VALUE",
+      "repository": "https://github.com/hanzohanzhe/Value",
+      "releases": [],
+      "citation": null
+    }
+  ],
+  "candidate_release_id": "2026-10-03-rc1",
+  "package_evidence_date": "2026-10-03",
+  "website_repository": "https://github.com/hanzohanzhe/Value/tree/main/website",
+  "methodology_revision_date": "2026-10-04",
+  "methodology_edition": "0.3",
+  "download_host": "https://github.com/hanzohanzhe/Value/releases",
+  "publication_ready": false,
+  "source_tag": "source-2026-10-04",
+  "methodology_tag": "methodology-0.3-2026-10-04",
+  "data_tag": "value-data-2026-10-04",
+  "planned_release_assets": [
+    {
+      "version": "2026-10-03-rc1",
+      "platform": "linux-x64",
+      "date": "2026-10-04",
+      "size": "445.57 MiB",
+      "bytes": 467218327,
+      "requirements": "Bundled Python and Node; see platform installation guide",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
+      "sha256": "aaaf0adcf9a3b74e89e66fc378c1879656325222e776d95b173c97b23cbcba56",
+      "filename": "VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
+      "native_acceptance": true
+    },
+    {
+      "version": "2026-10-03-rc1",
+      "platform": "macos-arm64",
+      "date": "2026-10-04",
+      "size": "232.48 MiB",
+      "bytes": 243768080,
+      "requirements": "Bundled Python and Node; see platform installation guide",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
+      "sha256": "e17b4b9c7dc8a1227253bd3d0f3be0fa0203c772978ca238d565626ec24fd676",
+      "filename": "VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
+      "native_acceptance": false
+    },
+    {
+      "version": "2026-10-03-rc1",
+      "platform": "macos-x64",
+      "date": "2026-10-04",
+      "size": "294.80 MiB",
+      "bytes": 309120538,
+      "requirements": "Bundled Python and Node; see platform installation guide",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
+      "sha256": "72360d942ec277530d9c7f094dd5465605b86f12ee5fecdb3e1af26a0c2756f5",
+      "filename": "VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
+      "native_acceptance": false
+    },
+    {
+      "version": "2026-10-03-rc1",
+      "platform": "windows-x64",
+      "date": "2026-10-04",
+      "size": "295.58 MiB",
+      "bytes": 309939521,
+      "requirements": "Bundled Python and Node; see platform installation guide",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
+      "sha256": "5540a324af4f2ba98d5dd2eb9c744ba42efa2198b86c9adf4d73632733fc291c",
+      "filename": "VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
+      "native_acceptance": false
+    }
+  ]
+}

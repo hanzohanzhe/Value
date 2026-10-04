@@ -1,0 +1,29 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "neso.dno-license-areas",
+  "authority": "NESO",
+  "semantic_role": "dso_zone_geometry",
+  "landing_page": "https://www.neso.energy/data-portal/gis-boundaries-gb-dno-license-areas",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "neso.energy",
+    "api.neso.energy",
+    "83025b28472d6aa2bf5ae59f3724aa78.eu.r2.cloudflarestorage.com"
+  ],
+  "licence_expected": "NESO Open Data Licence",
+  "candidate_uses": [
+    "DSO resource-zone construction",
+    "asset-to-zone mapping",
+    "audit-map rendering"
+  ],
+  "expected_media_types": [
+    "application/geo+json"
+  ],
+  "redistribution_policy": "redistributable",
+  "discovery_config": {
+    "download_url": "https://api.neso.energy/dataset/0e377f16-95e9-4c15-a1fc-49e06a39cfa0/resource/1c6a7dc0-1b6c-443a-bc67-5f7125649434/download/gb-dno-license-areas-20240503-as-geojson.geojson",
+    "revision_id": "2024-05-03",
+    "publication_date": "2024-05-03",
+    "format": "GeoJSON"
+  }
+}

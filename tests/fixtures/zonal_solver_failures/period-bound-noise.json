@@ -1,0 +1,119 @@
+{
+  "declared_input": {
+    "ahead_result_sha256": "fd90ff6419dc5d6507705b4efd4dd753f7b96a4a3e7577884bbfaa75bb192f3e",
+    "bids": [],
+    "domain_payload": {
+      "ahead_result": {
+        "accepted_volume_mwh": 0.0,
+        "clearing_price_gbp_per_mwh": 50.0,
+        "extensions": {},
+        "information_scope": "forecast_only",
+        "period": 0,
+        "period_id": "p0",
+        "run_id": "run-zonal",
+        "schedule_mwh_by_asset": {
+          "battery": 0.0
+        },
+        "schema_version": "value.ahead-market-result/v1",
+        "settlement_mwh_by_asset": {
+          "battery": 0.0
+        },
+        "source_input_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "storage_scheduled_action_mwh_by_asset": {},
+        "year": 2025
+      },
+      "asset_zone_id_by_asset": {
+        "battery": "gb"
+      },
+      "corridor_limits_mw_by_id": {},
+      "interconnector_envelope_mwh_by_asset": {},
+      "network_pack": {
+        "asset_mappings": [],
+        "corridors": [],
+        "cutsets": [],
+        "geometry_artifact": null,
+        "interconnector_landings": [],
+        "loss_capability_absent_reason": "lossless_v1",
+        "network_pack_id": "fixture-zonal-v1",
+        "provenance": {},
+        "rating_profiles": [],
+        "schema_version": "value.zonal-network-pack/v1",
+        "scientific_sha256": "0a03adc605f6cfa4b352219df8dcdbcfb16cdcd10ce7b18a22444ba9f5c4d8de",
+        "spatial_audit": {
+          "active_asset_ids": [],
+          "capacity_mw_by_technology": {},
+          "excluded_northern_ireland_asset_ids": [],
+          "fallback_asset_ids": [],
+          "mapped_capacity_mw_by_technology": {},
+          "schema_version": "value.spatial-audit/v1",
+          "source_sha256_by_role": {},
+          "tolerance_mw": 1e-09
+        },
+        "zonal_demand": {
+          "demand_mwh_by_zone": {
+            "gb": [
+              0.0
+            ]
+          },
+          "national_demand_mwh": [
+            0.0
+          ],
+          "period_ids": [
+            "p0"
+          ],
+          "reconciliation_tolerance_mwh": 1e-08,
+          "schema_version": "value.zonal-demand/v1"
+        },
+        "zones": [
+          {
+            "display_name": "Gb",
+            "dso_owner": "fixture DSO",
+            "geometry_feature_id": null,
+            "is_unconstrained_fallback": false,
+            "island_reason": null,
+            "nation": "England",
+            "schema_version": "value.network-zone/v1",
+            "zone_id": "gb"
+          }
+        ]
+      },
+      "real_demand_mwh_by_zone": {
+        "gb": 0.0
+      },
+      "resource_class_by_asset": {
+        "battery": "storage"
+      },
+      "resource_cost_gbp_per_mwh_by_asset": {
+        "battery": 0.0
+      },
+      "schema_version": "value.zonal-redispatch-domain/v1",
+      "storage": {
+        "battery": {
+          "bid_contract": "convex_net_power_v1",
+          "charge_efficiency": 0.9,
+          "charge_power_mw": 4.0,
+          "discharge_efficiency": 0.8,
+          "discharge_power_mw": 4.0,
+          "energy_capacity_mwh": 5.0
+        }
+      },
+      "zonal_demand_mode": "network_pack_absolute_demand"
+    },
+    "extensions": {},
+    "initial_soc_mwh_by_asset": {
+      "battery": 0.0
+    },
+    "period": 0,
+    "period_hours": 1.0,
+    "period_id": "p0",
+    "real_demand_mwh": 0.0,
+    "realised_availability_mw_by_asset": {
+      "battery": 1000.0
+    },
+    "run_id": "run-zonal",
+    "schema_version": "value.balancing-input/v1",
+    "voll_gbp_per_mwh": 17000.0,
+    "year": 2025
+  },
+  "source_sha256": "413f8ac97b5ff7fa6c27ac6176edd0bda5054e6de4c8e3a8673338270a366296"
+}

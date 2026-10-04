@@ -1,0 +1,11 @@
+{
+  "schema_version": "value.module/v2", "id": "example-storage-cap", "name": "Example storage cap",
+  "version": "1.0.0", "scientific_version": "fixture-only", "slot": "storage_cap",
+  "implementation": "examples.external_modules.value_example_modules:ExampleStorageCap",
+  "contract_version": "value.expansion-policy/v2", "inputs": ["market_year_result"],
+  "outputs": ["expansion_headroom"], "parameters": [], "state_reads": ["operating_state"],
+  "state_writes": [], "determinism": "deterministic", "artifacts": [],
+  "description": "Test-only storage cap contract fixture.", "status": "fixture", "selection_required": true,
+  "provides_capabilities": ["expansion.headroom"], "requires_capabilities": ["market.year-result"],
+  "units": {"market_year_result": "MWh", "expansion_headroom": "MW"}
+}

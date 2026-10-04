@@ -1,0 +1,65 @@
+{
+  "asset_mappings": [
+    {
+      "asset_class": "generator",
+      "asset_id": "onshore_Portsmouth",
+      "fixed_after_assignment": true,
+      "mapping_method": "teaching_assignment",
+      "schema_version": "value.zonal-asset-map/v1",
+      "share": 1.0,
+      "technology": "onshore",
+      "zone_id": "north"
+    },
+    {
+      "asset_class": "generator",
+      "asset_id": "solar_Portsmouth",
+      "fixed_after_assignment": true,
+      "mapping_method": "teaching_assignment",
+      "schema_version": "value.zonal-asset-map/v1",
+      "share": 1.0,
+      "technology": "solar",
+      "zone_id": "north"
+    },
+    {
+      "asset_class": "storage",
+      "asset_id": "1c_battery",
+      "fixed_after_assignment": true,
+      "mapping_method": "teaching_assignment",
+      "schema_version": "value.zonal-asset-map/v1",
+      "share": 1.0,
+      "technology": "1c_battery",
+      "zone_id": "central"
+    },
+    {
+      "asset_class": "generator",
+      "asset_id": "CCGT",
+      "fixed_after_assignment": true,
+      "mapping_method": "teaching_assignment",
+      "schema_version": "value.zonal-asset-map/v1",
+      "share": 1.0,
+      "technology": "CCGT",
+      "zone_id": "south"
+    },
+    {
+      "asset_class": "boundary_interconnector",
+      "asset_id": "import:france",
+      "fixed_after_assignment": true,
+      "mapping_method": "landing_zone",
+      "schema_version": "value.zonal-asset-map/v1",
+      "share": 1.0,
+      "technology": "interconnector",
+      "zone_id": "south"
+    },
+    {
+      "asset_class": "generator",
+      "asset_id": "value101-solar-planning",
+      "fixed_after_assignment": true,
+      "mapping_method": "synthetic_project_location",
+      "schema_version": "value.zonal-asset-map/v1",
+      "share": 1.0,
+      "technology": "solar",
+      "zone_id": "south"
+    }
+  ],
+  "schema_version": "value.zonal-asset-map-collection/v1"
+}

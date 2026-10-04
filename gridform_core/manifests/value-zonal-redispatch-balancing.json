@@ -1,0 +1,99 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-zonal-redispatch-balancing",
+  "name": "VALUE lossless zonal redispatch balancing",
+  "version": "3.0.0",
+  "scientific_version": "value-lossless-zonal-redispatch-gbp1-candidate-2026.10.01",
+  "slot": "balancing",
+  "implementation": "gridform_core.zonal_redispatch:ZonalRedispatchBalancing",
+  "contract_version": "value.balancing-module/v1",
+  "inputs": [
+    "market.ahead-schedule/v1",
+    "demand.real.zonal",
+    "fleet.realised-availability",
+    "market.flexibility-bids",
+    "value.run-static-context/v1",
+    "value.year-context/v1",
+    "value.zonal-redispatch-period-slice/v2"
+  ],
+  "outputs": [
+    "market.balancing-result/v1",
+    "network.zonal-redispatch-result/v1",
+    "evidence.network-solver-diagnostics/v7"
+  ],
+  "parameters": [
+    "market.voll_gbp_per_mwh"
+  ],
+  "state_reads": [
+    "storage.actual-soc"
+  ],
+  "state_writes": [
+    "storage.actual-soc"
+  ],
+  "determinism": "deterministic",
+  "artifacts": [
+    "market/failures/zonal-redispatch-<input-sha256>.json"
+  ],
+  "description": "Independent-half-hour bid-cost balancing on a lossless computational corridor graph with directed corridor envelopes and simultaneous ETYS cut-set limits. This is not DC power flow, AC power flow, security analysis or transmission expansion.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": [
+    "market.balancing/v1",
+    "domain.network.zonal_redispatch",
+    "value.module-context-lifecycle/v1",
+    "value.balancing-input/v1",
+    "value.zonal-redispatch-domain/v2"
+  ],
+  "requires_capabilities": [],
+  "units": {
+    "demand.real.zonal": "MWh/period",
+    "market.flexibility-bids": "MW, MWh, GBP/MWh",
+    "market.voll_gbp_per_mwh": "GBP/MWh",
+    "network.zonal-redispatch-result/v1": "MW, MWh, GBP"
+  },
+  "solver_contract": {
+    "schema_path": "gridform_core/data/contracts/network-solver-contract-v3.schema.json",
+    "semantics": "four_phase_lexicographic_primary_total_bid_cost_gbp1_hard_cap_mwh_coefficient_aware",
+    "defaults": {
+      "schema_version": "value.network-solver-contract/v3",
+      "contract_version": "value.zonal-lexicographic-gbp1/v3",
+      "method": "highs-ds",
+      "presolve": true,
+      "primal_feasibility_tolerance": 1e-09,
+      "dual_feasibility_tolerance": 1e-09,
+      "ipm_optimality_tolerance": 1e-09,
+      "warning_fraction": 0.1,
+      "validated_ceilings": {
+        "primary_bid_cost_gbp": 1.0,
+        "secondary_schedule_deviation_mwh": 0.001,
+        "physical_throughput_mwh": 0.001
+      },
+      "absolute_ceilings": {
+        "primary_bid_cost_gbp": 1.0,
+        "secondary_schedule_deviation_mwh": 0.01,
+        "physical_throughput_mwh": 0.01
+      },
+      "is_builtin_default": true,
+      "requires_acknowledgement": false
+    },
+    "ranges": {
+      "method": ["highs-ds", "highs-ipm", "highs"],
+      "primal_feasibility_tolerance": [1e-10, 1e-07],
+      "dual_feasibility_tolerance": [1e-10, 1e-07],
+      "ipm_optimality_tolerance": [1e-12, 1e-07],
+      "warning_fraction": {"exclusive_minimum": 0.0, "maximum": 1.0}
+    },
+    "recorded_reference_thresholds": {
+      "primary_bid_cost_gbp": 1.0,
+      "secondary_schedule_deviation_mwh": 0.01,
+      "physical_throughput_mwh": 0.01
+    },
+    "stable_key_rule": {
+      "objective": "sum((variable_index + 1) * variable_value)",
+      "variable_order": "sorted bid, corridor, zone, storage-asset and absolute-flow keys",
+      "locked": false
+    },
+    "automatic_solver_fallback": false,
+    "automatic_copperplate_fallback": false
+  }
+}

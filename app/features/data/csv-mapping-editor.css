@@ -1,0 +1,11 @@
+.csv-mapping-editor { display:grid; gap:12px; padding:16px; background:var(--paper); border:1px solid var(--line); border-radius:8px; min-width:0; }
+.csv-mapping-editor h4,.csv-mapping-editor h5 { margin:0; }
+.csv-mapping-editor code { display:inline; overflow-wrap:anywhere; }
+.csv-mapping-columns { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; min-width:0; }
+.csv-mapping-columns fieldset { min-width:0; display:grid; gap:10px; border:1px solid var(--line); border-radius:6px; }
+.csv-mapping-columns label { display:grid; gap:6px; }
+.csv-mapping-review { display:grid; gap:12px; min-width:0; }
+.csv-mapping-review pre { max-height:300px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; padding:12px; font-size:12px; }
+.csv-mapping-confirm { display:flex; align-items:flex-start; gap:10px; }
+.csv-mapping-confirm input { flex:0 0 16px; width:16px; height:16px; min-height:16px; margin:3px 0 0; padding:0; }
+@media(max-width:640px) { .csv-mapping-columns { grid-template-columns:minmax(0,1fr); } .csv-mapping-editor { padding:12px; } }

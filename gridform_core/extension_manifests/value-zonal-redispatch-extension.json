@@ -1,0 +1,31 @@
+{
+  "schema_version": "value.extension-bundle/v1",
+  "id": "value-zonal-redispatch-extension",
+  "name": "VALUE zonal redispatch data contract",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "namespace": "value.zonal",
+  "provided_capabilities": ["contract.zonal-network-pack/v1", "data.network.zonal-redispatch/v1"],
+  "required_capabilities": ["domain.network.zonal_redispatch"],
+  "composed_module_ids": [],
+  "data_roles": [
+    {"role": "value.zonal.zones", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "DSO resource zones", "formats": ["json"], "required": true, "validation_rules": {"stable_id": true, "exclude_northern_ireland": true}},
+    {"role": "value.zonal.corridors", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Computational routing corridors", "formats": ["json"], "required": true, "validation_rules": {"valid_endpoints": true, "reject_impedance": true}},
+    {"role": "value.zonal.cutsets", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "ETYS boundary cut sets", "formats": ["json"], "required": true, "unit": "MW", "validation_rules": {"signed_members": true, "asymmetric_limits": true}},
+    {"role": "value.zonal.asset-map", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Asset-to-zone mapping", "formats": ["json"], "required": true, "validation_rules": {"shares_sum_to_one": true, "fixed_after_assignment": true}},
+    {"role": "value.zonal.demand", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Chronological zonal demand", "formats": ["json"], "required": true, "unit": "MWh/period", "time_semantics": "same clock as national demand", "validation_rules": {"reconcile_national_demand_mwh": 1e-8}},
+    {"role": "value.zonal.ratings", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Boundary maintenance multipliers", "formats": ["json"], "required": true, "unit": "per-unit availability", "validation_rules": {"minimum": 0, "maximum": 1, "fixed_across_model_years": true}},
+    {"role": "value.zonal.interconnector-landings", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Interconnector landing zones", "formats": ["json"], "required": true, "validation_rules": {"signed_profile_envelope": true, "not_internal_corridor": true}},
+    {"role": "value.zonal.spatial-audit", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Spatial capacity and coverage audit", "formats": ["json"], "required": true, "unit": "MW", "validation_rules": {"active_assets_covered": true, "technology_capacity_reconciled": true}},
+    {"role": "value.zonal.geometry", "capability": "data.network.zonal-redispatch/v1", "group": "Zonal network", "label": "Optional display geometry", "formats": ["geojson", "json"], "required": false, "coordinate_semantics": "display only; zone_id remains the scientific identity", "validation_rules": {}}
+  ],
+  "parameters": [],
+  "artifacts": [],
+  "hooks": [],
+  "state_schema_version": "value.zonal-state/v1",
+  "state_migrations": {},
+  "required_value_version": ">=0.5.0",
+  "required_contract_versions": {"zonal_network_pack": "value.zonal-network-pack/v1"},
+  "member_inventory": [],
+  "maturity": "experimental"
+}

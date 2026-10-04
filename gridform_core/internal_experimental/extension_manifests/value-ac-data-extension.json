@@ -1,0 +1,26 @@
+{
+  "schema_version": "value.extension-bundle/v1",
+  "id": "value-ac-data-extension",
+  "name": "VALUE AC feasibility data contract",
+  "version": "0.1.0",
+  "licence": "Apache-2.0",
+  "namespace": "value.network.ac",
+  "provided_capabilities": ["contract.network-ac-feasibility/v1", "data.network.ac/v1"],
+  "required_capabilities": ["domain.network.ac", "contract.network-psm/v1"],
+  "composed_module_ids": ["value-reference-ac-feasibility"],
+  "data_roles": [
+    {"role": "value.network.ac.generators", "capability": "data.network.ac/v1", "group": "AC network", "label": "Generator P/Q limits, voltage setpoints and slack identity", "formats": ["csv", "json"], "required": true, "unit": "MW, Mvar, p.u.", "validation_rules": {"one_slack_asset_per_island": true, "complete_resource_identity": true}},
+    {"role": "value.network.ac.reactive-demand", "capability": "data.network.ac/v1", "group": "AC network", "label": "Chronological bus reactive demand", "formats": ["csv", "parquet"], "required": true, "unit": "Mvar", "time_semantics": "same period IDs as base active demand", "validation_rules": {"complete_bus_period_grid": true}},
+    {"role": "value.network.ac.active-schedule", "capability": "data.network.ac/v1", "group": "AC network", "label": "Declared active-power schedule to check", "formats": ["csv", "parquet"], "required": true, "unit": "MWh/period", "time_semantics": "declared before AC feasibility; one row per asset and period", "validation_rules": {"complete_asset_period_grid": true}},
+    {"role": "value.network.ac.initial-voltage", "capability": "data.network.ac/v1", "group": "AC network", "label": "Optional initial voltage state", "formats": ["csv", "json"], "required": false, "unit": "p.u., degrees", "validation_rules": {"stable_bus_id": true}}
+  ],
+  "parameters": [],
+  "artifacts": [{"artifact_type": "network.ac-feasibility-results", "media_type": "application/json", "schema_version": "value.ac-feasibility-output/v1", "summary_fields": ["solver_status", "convergence_class", "maximum_active_residual_mw", "maximum_reactive_residual_mvar", "maximum_equipment_violation"]}],
+  "hooks": [],
+  "state_schema_version": null,
+  "state_migrations": {},
+  "required_value_version": ">=0.5.0",
+  "required_contract_versions": {"psm_input": "value.network-psm-input/v1"},
+  "member_inventory": [],
+  "maturity": "experimental"
+}

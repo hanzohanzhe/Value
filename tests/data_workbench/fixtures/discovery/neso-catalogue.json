@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-08-21T09:00:00+00:00",
+  "resources": [
+    {
+      "format": "GeoJSON",
+      "id": "revision-2020",
+      "last_modified": "2020-05-06",
+      "licence": "NESO Open Data Licence",
+      "name": "DNO GeoJSON 2020",
+      "url": "https://api.neso.energy/dno-2020.geojson"
+    },
+    {
+      "format": "GeoJSON",
+      "id": "revision-2024",
+      "last_modified": "2024-05-03",
+      "licence": "NESO Open Data Licence",
+      "name": "DNO GeoJSON 2024",
+      "url": "https://api.neso.energy/dno-2024.geojson"
+    }
+  ]
+}

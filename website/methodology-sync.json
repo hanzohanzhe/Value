@@ -1,0 +1,19 @@
+{
+  "edition": "0.3",
+  "revision_date": "2026-10-04",
+  "basis_date": "2026-10-02",
+  "canonical_chapters": "../docs/methodology",
+  "state": "reviewed-artifacts-imported",
+  "downloads_enabled": true,
+  "required_languages": [
+    "zh",
+    "en"
+  ],
+  "required_formats": [
+    "docx",
+    "pdf",
+    "html"
+  ],
+  "integration_contract": "Before enabling downloads, require nine continuously numbered VALUE-only chapters in both languages, every referenced formula SVG, six reviewed document files, and hashes from the owner-approved manifest. Replace the full methodology input directory; never merge an old mixed edition.",
+  "integration_command": "python3 sync_methodology.py --source ../docs/methodology --build <rendered-work-dir> --documents <six-files-dir>"
+}

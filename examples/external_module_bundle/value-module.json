@@ -1,0 +1,27 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "example-flat-storage-offer",
+  "name": "Example flat storage offer",
+  "version": "1.0.0",
+  "scientific_version": "example-only-not-a-baseline",
+  "slot": "storage_cost",
+  "implementation": "value_example_flat_offer.plugin:FlatStorageCostDefinition",
+  "contract_version": "value.storage-cost/v1",
+  "inputs": ["storage_technology", "previous_year_sales"],
+  "outputs": ["storage_offer_cost"],
+  "parameters": [],
+  "state_reads": [],
+  "state_writes": ["storage_cost_state"],
+  "determinism": "deterministic",
+  "artifacts": [],
+  "description": "Minimal uploadable storage-cost example; not a scientific baseline.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": ["storage.bid-cost-function"],
+  "requires_capabilities": [],
+  "units": {
+    "storage_technology": "technology ID",
+    "previous_year_sales": "MWh",
+    "storage_offer_cost": "GBP/MWh"
+  }
+}

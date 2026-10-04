@@ -1,0 +1,9 @@
+{
+  "schema_version": "value.zonal-demand-collection/v1",
+  "zonal_demand": {
+    "period_ids": ["p0", "p1"],
+    "demand_mwh_by_zone": {"north": [3.0, 4.0], "south": [7.0, 8.0], "england-fallback": [0.0, 0.0]},
+    "national_demand_mwh": [10.0, 12.0],
+    "reconciliation_tolerance_mwh": 1e-8
+  }
+}

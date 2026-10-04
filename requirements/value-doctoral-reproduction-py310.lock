@@ -1,0 +1,12 @@
+-r value-native-py310.lock
+# Retained whole-kernel comparison only; not required by normal FORCE runs.
+contourpy==1.3.2
+cycler==0.12.1
+et-xmlfile==2.0.0
+fonttools==4.60.2
+kiwisolver==1.4.8
+matplotlib==3.10.3
+openpyxl==3.1.0
+pillow==12.3.0
+pyparsing==3.0.9
+seaborn==0.13.2

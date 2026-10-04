@@ -1,0 +1,54 @@
+{
+  "schema_version": "value.doctoral-planning-fixture/v1",
+  "source_root": "C:/Users/86150/Desktop/Dr.seal/能源投资/invest!/人人如龙/人人谦让/newpredictedVRE0.03 - sum - seperate prediction - 0.2c43_REPD2025_physical_income_fixed/decarbonization_cost_research",
+  "source_sha256": {
+    "run_investment_analysis.py": "81446a975e51983aef6806a64ca1e5e7bbd70efc97903d8a08b6c9691697e528",
+    "config.py": "587ad317e89305fb60342ed06cd309ee79a00df3e3bcc7dbc2f235fe63478de5"
+  },
+  "source_statements": {
+    "probability": "config.py:330-360; run_investment_analysis.py:546-552,1124-1186",
+    "timeline": "run_investment_analysis.py:478-527,608-699",
+    "filtering": "run_investment_analysis.py:702-828,1536-1608",
+    "spread": "run_investment_analysis.py:310-345",
+    "random": "run_investment_analysis.py:17-20,530-533,575-595"
+  },
+  "units": {"capacity": "MW", "timelines": "months", "completion": "calendar year"},
+  "context": {
+    "start_year": 2025,
+    "include_uncertain_projects": true,
+    "zombie_filter_enabled": true,
+    "zombie_status_stale_year": 2015,
+    "zombie_snapshot_year": 2025,
+    "construction_grace_years": 2,
+    "minimum_project_size_mw": 1.0,
+    "max_completion_year": 2040,
+    "timeline_statistic": "median",
+    "apply_repd_initial_snapshot": true,
+    "defer_spread_years": 3,
+    "success_mode": "expected_capacity",
+    "random_seed": 42,
+    "development_stage_timelines": {
+      "solar": {"planning_consenting_mean": 8.1, "planning_consenting_median": 6.9, "pre_construction_mean": 18.0, "pre_construction_median": 14.8, "construction_mean": 6.4, "construction_median": 4.9, "total_mean": 32.5, "total_median": 27.8},
+      "onshore": {"planning_consenting_mean": 24.1, "planning_consenting_median": 19.8, "pre_construction_mean": 30.4, "pre_construction_median": 24.3, "construction_mean": 18.3, "construction_median": 15.0, "total_mean": 72.8, "total_median": 62.5},
+      "offshore": {"planning_consenting_mean": 36.3, "planning_consenting_median": 30.4, "pre_construction_mean": 48.4, "pre_construction_median": 41.6, "construction_mean": 36.0, "construction_median": 32.2, "total_mean": 120.7, "total_median": 110.1},
+      "battery": {"planning_consenting_mean": 7.4, "planning_consenting_median": 6.2, "pre_construction_mean": 15.1, "pre_construction_median": 13.0, "construction_mean": 11.9, "construction_median": 10.1, "total_mean": 34.4, "total_median": 31.3}
+    },
+    "repd_status_to_timeline": {
+      "Application Submitted": {"stage": "planning_consenting", "apply_success_rate": true, "timeline_type": "total_median"},
+      "Appeal Lodged": {"stage": "planning_consenting", "apply_success_rate": true, "timeline_type": "total_median"},
+      "Revised": {"stage": "planning_consenting", "apply_success_rate": true, "timeline_type": "total_median"},
+      "Planning Permission Granted": {"stage": "pre_construction", "apply_success_rate": false, "timeline_type": "pre_construction_median"},
+      "Awaiting Construction": {"stage": "construction", "apply_success_rate": false, "timeline_type": "construction_median"},
+      "Under Construction": {"stage": "construction", "apply_success_rate": false, "timeline_type": "construction_median"}
+    },
+    "success_rates": {
+      "Solar Photovoltaics": {"England": 0.6, "Scotland": 0.4}
+    }
+  },
+  "environment_note": "Controlled fixture explicitly enables uncertain projects. This is not an inferred 03/05 historical environment; production must freeze the selected run environment independently. The source success draw ignores seed and uses MD5(name|region|technology).",
+  "rows": [
+    {"Ref ID": "granted", "Site Name": "Granted solar", "Technology Type": "Solar Photovoltaics", "Development Status (short)": "Planning Permission Granted", "Installed Capacity (MWelec)": 100.0, "Region": "England"},
+    {"Ref ID": "submitted", "Site Name": "Submitted solar", "Technology Type": "Solar Photovoltaics", "Development Status (short)": "Application Submitted", "Installed Capacity (MWelec)": 100.0, "Region": "England"}
+  ],
+  "expected": {"capacity_by_project_mw": {"granted": 100.0, "submitted": 60.0}, "missing_region_capacity_mw": 50.0, "missing_technology_capacity_mw": 75.0}
+}

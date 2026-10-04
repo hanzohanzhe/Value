@@ -1,0 +1,28 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "neso.fes-gsp-regional-demand",
+  "authority": "NESO",
+  "semantic_role": "fes_gsp_regional_demand",
+  "landing_page": "https://www.neso.energy/data-portal/regional-breakdown-fes-data-electricity",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "neso.energy",
+    "api.neso.energy",
+    "83025b28472d6aa2bf5ae59f3724aa78.eu.r2.cloudflarestorage.com"
+  ],
+  "licence_expected": "NESO Open Data Licence",
+  "candidate_uses": [
+    "future regional-demand evolution",
+    "GSP-to-DSO validation"
+  ],
+  "expected_media_types": [
+    "text/csv"
+  ],
+  "redistribution_policy": "redistributable",
+  "discovery_config": {
+    "download_url": "https://api.neso.energy/dataset/963525d6-5d83-4448-a99c-663f1c76330a/resource/7bd643c0-6aad-41ac-aa59-92b68992d9a4/download/fes2024_regional_breakdown_active_power.csv",
+    "revision_id": "FES-2024-active-power",
+    "publication_date": "2024",
+    "format": "CSV"
+  }
+}

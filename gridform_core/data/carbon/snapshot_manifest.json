@@ -1,0 +1,53 @@
+{
+  "schema_version": "value.carbon-snapshot/v1",
+  "snapshot_id": "chapter4-scheme-c-carbon-2026-08-06",
+  "created_on": "2026-08-06",
+  "hash_algorithm": "sha256",
+  "policy": "Freeze literal inputs and record discrepancies; never correct a reproduction snapshot in place.",
+  "source_artifacts": [
+    {
+      "artifact_id": "thesis_ch4_source",
+      "portable_name": "PhD thesis7.20_stuart.docx",
+      "sha256": "70f7531abe763a781ec1a21f1ee17e6177951353e2cc73df1d6f6bc21d40f9c5",
+      "size_bytes": 12544787,
+      "modified_at": "2026-08-03T18:50:35.2818146+01:00",
+      "copied_into_repository": false,
+      "reason_not_copied": "The thesis is a large private source document; only the audited Chapter 4 factor rows and fingerprint are stored."
+    },
+    {
+      "artifact_id": "scheme_c_config",
+      "portable_name": "gridform_core/builtin/scheme_c_1000twh/compat/config.py",
+      "sha256": "339a3ca01ce33ec26fa63e10ea5449500e9df8a30163439623f21ed012d04012",
+      "size_bytes": 31202,
+      "modified_at": "2026-07-22T07:35:00.1438628+01:00",
+      "copied_into_repository": false,
+      "reason_not_copied": "The retained VALUE source already exists in the repository and is protected from modification."
+    },
+    {
+      "artifact_id": "paper_factor_csv",
+      "portable_name": "embodied_factors_desnz_unece.csv",
+      "sha256": "0d8c576f354a868d65892870a66b629d64f39b329bf242b9360682f42d9d3996",
+      "size_bytes": 1856,
+      "modified_at": "2026-07-10T16:31:20.0235415+01:00",
+      "copied_into_repository": true,
+      "repository_copy": "legacy_postprocessor_snapshot.csv",
+      "copy_note": "Repository text is UTF-8 and line-ending normalised; the hash above fingerprints the original local file."
+    },
+    {
+      "artifact_id": "paper_postprocessor_code",
+      "portable_name": "embodied_emissions.py",
+      "sha256": "20ed4b0eda36af07ab3cf06234fb1358394b52099cfab779726b86aa2d66c72d",
+      "size_bytes": 4701,
+      "modified_at": "2026-07-10T20:14:54.3822795+01:00",
+      "copied_into_repository": false,
+      "reason_not_copied": "The database snapshots its input factors and documents the formula without duplicating the analysis script."
+    }
+  ],
+  "known_discrepancies": [
+    "Chapter 4 reports annual wind/solar/interconnector embodied factors that are not directly traceable to a unique row in the cited government reports.",
+    "Chapter 4 storage references 164 and 166 appear swapped between compressed-air and lithium-ion technologies.",
+    "The thesis text states 1394 tCO2e/MW for solar, whereas the actual postprocessor CSV uses 1349.0 tCO2e/MW.",
+    "The postprocessor's selected 40/18/20 gCO2e/kWh values for solar/offshore/hydro are representative modelling choices, not literal single UNECE Table 13 rows.",
+    "VALUE storage carbon_emission values 40/50 have no declared physical unit and are mixed with energy-weighted operational emissions in the retained loop."
+  ]
+}

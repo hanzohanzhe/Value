@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "user-formula-storage-cost",
+  "name": "User arithmetic storage-cost formula",
+  "version": "1.0.0",
+  "scientific_version": "user-formula-storage-cost/v1",
+  "slot": "storage_cost",
+  "implementation": "gridform_core.builtin.value_modules:ValueUserFormulaStorageCost",
+  "contract_version": "value.storage-cost/v1",
+  "inputs": ["storage.asset", "storage.previous-year-sales", "storage.sales-weighted-dwell"],
+  "outputs": ["storage.bid-cost-function"],
+  "parameters": ["storage.cost.discount_rate", "storage.cost.utilisation_floor_fraction", "storage.cost.custom_formula"],
+  "state_reads": ["storage.cost-observation"],
+  "state_writes": ["storage.cost-observation"],
+  "determinism": "deterministic",
+  "artifacts": ["storage-cost-audit.json"],
+  "description": "Arithmetic-only user formula over approved storage recovery variables; arbitrary Python is forbidden.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["storage.bid-cost-function"],
+  "requires_capabilities": []
+}

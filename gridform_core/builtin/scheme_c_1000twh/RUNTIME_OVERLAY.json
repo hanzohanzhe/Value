@@ -1,0 +1,49 @@
+{
+  "schema_version": "force.scheme-c-runtime-overlay/v1",
+  "generator_version": "prompt-104-runtime-overlay-freeze-v1",
+  "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
+  "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
+  "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
+  "runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
+  "excluded_generated_paths": [
+    "market_trace_outputs/"
+  ],
+  "mechanical_substitutions": [
+    {
+      "path": "config.py",
+      "source_sha256": "339a3ca01ce33ec26fa63e10ea5449500e9df8a30163439623f21ed012d04012",
+      "runtime_sha256": "84fc43bacda1bb87f13c9e48d353be242dbea61ee05d7383009e58e2ad349a20",
+      "field": "simulation_parameters.solar_data",
+      "replacement": "__GRIDFORM_UNBOUND_WEATHER__"
+    },
+    {
+      "path": "config.py",
+      "source_sha256": "339a3ca01ce33ec26fa63e10ea5449500e9df8a30163439623f21ed012d04012",
+      "runtime_sha256": "84fc43bacda1bb87f13c9e48d353be242dbea61ee05d7383009e58e2ad349a20",
+      "field": "simulation_parameters.wind_data",
+      "replacement": "__GRIDFORM_UNBOUND_WEATHER__"
+    },
+    {
+      "path": "__init__.py",
+      "source_sha256": "a44c00ab937c68be7e7a260e7b396034459a91defe5176b6bb2547efbbad456d",
+      "runtime_sha256": "d210da97a525d12cf25cd2068ac57552ab288ae2f8f0f1d78f9dc3283c6ee2f5",
+      "field": "module_docstring",
+      "replacement": "portable-runtime-boundary"
+    },
+    {
+      "path": "map_projects_to_generators_by_location.py",
+      "source_sha256": "846c215b595b36e6133c91b918b5fb3714662b0bdaf6e7b442ccc609bfda0068",
+      "runtime_sha256": "153a9df25054909da849b32709eb228b4cb1d9aadb8ce8b8c5bcf36a668c4745",
+      "field": "investment_support_import",
+      "replacement": ".modular_investment_support.get_asset_type"
+    }
+  ],
+  "required_bindings": [
+    "weather.solar",
+    "weather.wind"
+  ],
+  "packaged_support_files": [
+    "runtime_compat/scenarios_v2/decarbonization_cost_scenarios_v2.csv"
+  ],
+  "preservation_rule": "The source package is reference-only and must remain byte-identical."
+}

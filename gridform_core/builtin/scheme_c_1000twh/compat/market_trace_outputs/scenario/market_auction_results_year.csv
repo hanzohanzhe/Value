@@ -1,0 +1,7 @@
+scenario,year,period,market_stage,asset_name,accepted_energy_mwh,accepted_price_gbp_per_mwh,bid_cost_or_curtail_cost,forecast_demand_mwh,real_demand_mwh,period_total_gen_cost_gbp,storage_fee_gbp,curtailment_fee_gbp,balancing_fee_gbp,sold_fee_gbp,purchase_fee_gbp,energy_deficit_mwh,excess_energy_mwh
+scenario,year,0,ahead_accepted,CCGT,10.0,150.0,48.04,10.0,10.0,1500.0,0,0,0.0,0,0,0,0
+scenario,year,0,real_dispatch,CCGT,10.0,,,10.0,10.0,1500.0,0,0,0.0,0,0,0,0
+scenario,year,0,real_dispatch,CCGT,10.0,,,10.0,10.0,1500.0,0,0,0.0,0,0,0,0
+scenario,year,1,ahead_accepted,CCGT,10.0,100.0,48.04,10.0,10.0,1000.0,0,0,0.0,0,0,0,0
+scenario,year,1,real_dispatch,CCGT,10.0,,,10.0,10.0,1000.0,0,0,0.0,0,0,0,0
+scenario,year,1,real_dispatch,CCGT,10.0,,,10.0,10.0,1000.0,0,0,0.0,0,0,0,0

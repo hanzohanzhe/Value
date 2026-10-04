@@ -1,0 +1,94 @@
+{
+  "passed": true,
+  "run_dir": "historical-evidence-not-bundled/postedit-two-year-smoke-v2-20260804",
+  "years": [
+    2025,
+    2026
+  ],
+  "project_snapshot": true,
+  "data_pack_snapshot": true,
+  "checks_passed": 10,
+  "checks_total": 10,
+  "checks": [
+    {
+      "year": 2025,
+      "slot": "psm",
+      "module_id": "scheme-c-psm",
+      "action": "psm.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "slot": "investment",
+      "module_id": "agent-investment",
+      "action": "investment.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "slot": "pipeline",
+      "module_id": "planning-pipeline",
+      "action": "pipeline.complete_year",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "slot": "vre_cap",
+      "module_id": "vre-expansion-cap",
+      "action": "vre_cap.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "slot": "storage_cap",
+      "module_id": "storage-expansion-scheme-c",
+      "action": "storage_cap.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "slot": "psm",
+      "module_id": "scheme-c-psm",
+      "action": "psm.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "slot": "investment",
+      "module_id": "agent-investment",
+      "action": "investment.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "slot": "pipeline",
+      "module_id": "planning-pipeline",
+      "action": "pipeline.complete_year",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "slot": "vre_cap",
+      "module_id": "vre-expansion-cap",
+      "action": "vre_cap.complete",
+      "event_count": 1,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "slot": "storage_cap",
+      "module_id": "storage-expansion-scheme-c",
+      "action": "storage_cap.complete",
+      "event_count": 1,
+      "pass": true
+    }
+  ]
+}

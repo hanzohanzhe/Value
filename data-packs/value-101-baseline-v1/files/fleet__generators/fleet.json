@@ -1,0 +1,807 @@
+{
+  "batteries": {
+    "1c_battery": {
+      "battery_type": "1c",
+      "capital_cost": 500000.0,
+      "carbon_emission": 50.0,
+      "n_1": 0.9,
+      "n_2": 0.9,
+      "name": "1c_battery",
+      "per_pool_limit": 10.0,
+      "per_storage_fee": 0.0,
+      "pool_limit": 10.0,
+      "storage_fee": 0.0
+    }
+  },
+  "connections": {
+    "Interconnect_Beligum": {
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "carbon_intensity": 179.0,
+      "name": "Interconnect_Beligum"
+    },
+    "Interconnect_France": {
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "carbon_intensity": 53.0,
+      "name": "Interconnect_France"
+    },
+    "Interconnect_Ireland": {
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "carbon_intensity": 458.0,
+      "name": "Interconnect_Ireland"
+    },
+    "Interconnect_Netherland": {
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "carbon_intensity": 474.0,
+      "name": "Interconnect_Netherland"
+    },
+    "Interconnect_Norway": {
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "carbon_intensity": 100.0,
+      "name": "Interconnect_Norway"
+    }
+  },
+  "electrolyzer": {
+    "body_emission": 0.0,
+    "capacity_limit": 0.0,
+    "capital_cost": 0.0,
+    "cycle_life": 50000,
+    "energy_efficiency": 0.65,
+    "name": "electrolyzer",
+    "operational_cost": 0.0,
+    "rampup_rate": 0.125
+  },
+  "generators": {
+    "CCGT": {
+      "alter_limit": 50.0,
+      "capacity_limit": 50.0,
+      "capital_cost": 50000000.0,
+      "carbon_emission": 0.0,
+      "carbon_intensity": 394.0,
+      "carbon_price": 8.0,
+      "curtail_cost": 66.5,
+      "fuel_cost": 58.0,
+      "gen_cost": 0.5,
+      "name": "CCGT",
+      "real_gen_energy": 0.0,
+      "startup_cost": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore1": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore1",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore10": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore10",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore11": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore11",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore12": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore12",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore13": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore13",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore14": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore14",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore15": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore15",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore16": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore16",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore17": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore17",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore18": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore18",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore19": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore19",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore2": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore2",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore20": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore20",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore21": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore21",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore3": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore3",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore4": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore4",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore5": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore5",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore6": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore6",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore7": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore7",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore8": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore8",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "offshore9": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "offshore9",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Birmingham": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Birmingham",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Bournemouth": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Bournemouth",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Cardiff": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Cardiff",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Edinburgh": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Edinburgh",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Ipswich": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Ipswich",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_London": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_London",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Manchester": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Manchester",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Newcastle": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Newcastle",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Nottingham": {
+      "capacity_multiplier": 1.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Nottingham",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Portsmouth": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Portsmouth",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "onshore_Sheffield": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "onshore_Sheffield",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Birmingham": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Birmingham",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Bournemouth": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Bournemouth",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Cardiff": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Cardiff",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Edinburgh": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Edinburgh",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Ipswich": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Ipswich",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_London": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_London",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Manchester": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Manchester",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Newcastle": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Newcastle",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Nottingham": {
+      "capacity_multiplier": 1.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Nottingham",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Portsmouth": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Portsmouth",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    },
+    "solar_Sheffield": {
+      "capacity_multiplier": 0.0,
+      "capital_cost": 0.0,
+      "carbon_emission": 0.0,
+      "curtail_cost": 0.0,
+      "electrolyzer_cost": 15000.0,
+      "electrolyzer_limit": 1.0,
+      "energy_efficiency": 0.65,
+      "gen_cost": 0.0001,
+      "name": "solar_Sheffield",
+      "rampup_rate": 0.125,
+      "real_gen_energy": 0.0,
+      "unit_time_cost": 0.0
+    }
+  },
+  "locations": {
+    "Birmingham": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Bournemouth": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Cardiff": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Edinburgh": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Ipswich": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "London": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Manchester": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Newcastle": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Nottingham": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Portsmouth": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "Sheffield": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore1": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore10": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore11": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore12": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore13": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore14": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore15": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore16": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore17": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore18": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore19": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore2": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore20": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore21": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore3": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore4": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore5": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore6": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore7": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore8": {
+      "lat": 52.0,
+      "lon": 0.0
+    },
+    "offshore9": {
+      "lat": 52.0,
+      "lon": 0.0
+    }
+  }
+}

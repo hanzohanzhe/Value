@@ -1,0 +1,14 @@
+{
+  "schema_version": "value.etys-cutset-collection/v1",
+  "cutsets": [
+    {
+      "boundary_id": "B6",
+      "display_name": "Synthetic north to south boundary",
+      "members": [{"corridor_id": "north-south", "coefficient": 1}],
+      "forward_limit_mw": 8.0,
+      "reverse_limit_mw": 6.0,
+      "rating_profile_id": "winter-maintenance",
+      "reverse_limit_method": "independent_source"
+    }
+  ]
+}

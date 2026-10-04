@@ -1,0 +1,52 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "example-thermal-quantity-offer-psm",
+  "name": "Example thermal quantity-offer PSM",
+  "version": "1.0.0",
+  "scientific_version": "tutorial-only-not-a-baseline",
+  "slot": "psm",
+  "implementation": "value_example_quantity_offer_psm.plugin:ThermalQuantityOfferPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": [
+    "chronology.demand",
+    "chronology.resources",
+    "chronology.storage"
+  ],
+  "outputs": [
+    "market.year-result",
+    "market.period-summary"
+  ],
+  "parameters": [
+    "clock.period_hours",
+    "market.perfect_foresight_terminal_soc_rule",
+    "market.voll_gbp_per_mwh"
+  ],
+  "state_reads": [
+    "operating.assets"
+  ],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": [
+    "solver/perfect-foresight-<year>.json",
+    "solver/perfect-foresight-<year>.npz",
+    "market/market.sqlite"
+  ],
+  "description": "Tutorial PSM: thermal resources offer 90% of physical availability, then the public perfect-foresight LP clears generation and storage. It does not produce the three-case VRE counterfactual snapshot, so VRE curtailment attribution remains unavailable. Not a scientific baseline.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": [
+    "market.year-result",
+    "storage.central-cooptimization"
+  ],
+  "requires_capabilities": [],
+  "units": {
+    "chronology.demand": "MWh/period",
+    "chronology.resources": "MW, p.u., GBP/MWh",
+    "chronology.storage": "MW, MWh, fraction",
+    "market.year-result": "GBP, MWh",
+    "market.period-summary": "GBP/MWh, MWh",
+    "clock.period_hours": "hours",
+    "market.perfect_foresight_terminal_soc_rule": "enum",
+    "market.voll_gbp_per_mwh": "GBP/MWh"
+  }
+}

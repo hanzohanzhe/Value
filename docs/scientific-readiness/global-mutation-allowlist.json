@@ -1,0 +1,17 @@
+{
+  "schema_version": "force.global-mutation-allowlist/v1",
+  "entries": [
+    {
+      "path": "gridform_core/builtin/scheme_c_1000twh/scheme_c_context.py",
+      "kinds": ["compat_config", "environment", "working_directory"],
+      "owner": "Prompt 30 LegacyConfigSession",
+      "status": "reference_boundary"
+    },
+    {
+      "path": "gridform_core/builtin/scheme_c_1000twh/exact_run.py",
+      "kinds": ["compat_config", "environment", "working_directory"],
+      "owner": "Prompt 33",
+      "status": "retained_reference_boundary"
+    }
+  ]
+}

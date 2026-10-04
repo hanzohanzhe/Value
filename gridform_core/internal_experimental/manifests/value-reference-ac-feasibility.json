@@ -1,0 +1,31 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-reference-ac-feasibility",
+  "name": "VALUE experimental AC feasibility checker",
+  "version": "0.1.0",
+  "scientific_version": "ac-feasibility-polar-power-flow-v1",
+  "slot": "psm",
+  "implementation": "gridform_core.network_ac:ReferenceACFeasibilityPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": ["value.network-psm-input/v1", "value.ac-feasibility-input/v1", "chronology.resources", "chronology.storage"],
+  "outputs": ["market.year-result", "value.ac-feasibility-output/v1"],
+  "parameters": ["clock.period_hours"],
+  "state_reads": ["operating.assets", "storage.soc"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["solver/ac/ac-feasibility-<year>.json"],
+  "description": "Experimental nonlinear AC power-flow feasibility check for a declared active-power schedule. It models P/Q balance, voltage magnitude, real losses, branch MVA limits and fixed transformer taps. It is not AC OPF and makes no global-optimum claim.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": ["domain.network.solver", "domain.network.ac", "domain.network.losses", "domain.network.reactive-balance", "domain.network.voltage-magnitude", "domain.network.fixed-transformer-taps", "market.year-result"],
+  "requires_capabilities": ["contract.network-psm/v1", "data.network.topology/v1", "contract.network-ac-feasibility/v1", "data.network.ac/v1"],
+  "units": {
+    "value.network-psm-input/v1": "MW, MWh, p.u.",
+    "value.ac-feasibility-input/v1": "MW, Mvar, p.u., radians",
+    "chronology.resources": "MW, p.u., GBP/MWh",
+    "chronology.storage": "MW, MWh, fraction",
+    "market.year-result": "GBP, MWh",
+    "value.ac-feasibility-output/v1": "MW, Mvar, MVA, p.u., radians",
+    "clock.period_hours": "hours"
+  }
+}

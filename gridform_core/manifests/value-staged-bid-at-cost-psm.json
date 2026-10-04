@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-staged-bid-at-cost-psm",
+  "name": "VALUE staged national bid-at-cost PSM",
+  "version": "1.1.0",
+  "scientific_version": "value-staged-national-market-2026.08.21",
+  "slot": "psm",
+  "implementation": "gridform_core.builtin.value_modules:ValueStagedBidAtCostPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": ["demand.forecast", "demand.real", "fleet.generators", "market.interconnectors", "network.zonal-redispatch-result/v1", "value.run-static-context/v1", "value.year-context/v1"],
+  "outputs": ["market.ahead-schedule/v1", "market.year-result", "market.period-summary", "value.vre-counterfactual-snapshot/v1", "value.balancing-input/v1", "value.zonal-redispatch-domain/v2"],
+  "parameters": ["market.bid_multiplier", "runtime.market_trace_level"],
+  "state_reads": ["operating.assets", "storage.cost-observation"],
+  "state_writes": ["storage.cost-observation"],
+  "determinism": "deterministic",
+  "artifacts": ["market/staged-market-year-<year>.json", "market/market.sqlite"],
+  "description": "Forecast-only national bid-at-cost scheduling followed by one project-selected current-period balancing module.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["market.ahead-schedule/v1", "market.year-result", "evidence.vre-counterfactual-snapshot/v1", "value.module-context-lifecycle/v1", "value.subannual-checkpoint/v1"],
+  "requires_capabilities": ["market.balancing/v1", "storage.bid-cost-function"]
+}

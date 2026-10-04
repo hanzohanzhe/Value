@@ -1,0 +1,28 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "neso.etys-boundary-gis",
+  "authority": "NESO",
+  "semantic_role": "etys_boundary_geometry",
+  "landing_page": "https://www.neso.energy/data-portal/etys-gb-transmission-system-boundaries",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "neso.energy",
+    "api.neso.energy",
+    "83025b28472d6aa2bf5ae59f3724aa78.eu.r2.cloudflarestorage.com"
+  ],
+  "licence_expected": "NESO Open Data Licence",
+  "candidate_uses": [
+    "ETYS cut candidate geometry",
+    "cut-membership audit map"
+  ],
+  "expected_media_types": [
+    "application/zip"
+  ],
+  "redistribution_policy": "redistributable",
+  "discovery_config": {
+    "download_url": "https://api.neso.energy/dataset/997f4820-1ad4-499b-b1fe-4b8d3d7fbc72/resource/e914fcec-1dc9-4f1f-97e7-59c0d9521bea/download/etys-boundary-gis-data-mar25.zip",
+    "revision_id": "ETYS-GIS-2024-Mar25",
+    "publication_date": "2025-03",
+    "format": "ZIP"
+  }
+}

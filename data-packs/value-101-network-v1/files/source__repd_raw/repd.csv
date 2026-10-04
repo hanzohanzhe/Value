@@ -1,0 +1,5 @@
+Ref ID,Site Name,Technology Type,Installed Capacity (MWelec),Development Status,Development Status (short),Country,Region,Planning Application Submitted,Planning Permission Granted,Under Construction,Operational
+value101-solar-operating,VALUE 101 Solar,Solar Photovoltaics,35.0,Operational,Operational,Synthetic,South East,,,,01/01/2024
+value101-wind-operating,VALUE 101 Wind,Wind Onshore,20.0,Operational,Operational,Synthetic,South East,,,,01/01/2024
+value101-battery-operating,VALUE 101 Battery,Battery,10.0,Operational,Operational,Synthetic,South East,,,,01/01/2024
+value101-solar-planning,VALUE 101 Solar Extension,Solar Photovoltaics,15.0,Application Submitted,Application Submitted,Synthetic,South East,01/01/2025,,,

@@ -1,0 +1,11 @@
+{
+  "schema_version": "value.module/v2", "id": "example-state-transition", "name": "Example state transition",
+  "version": "1.0.0", "scientific_version": "fixture-only", "slot": "transition",
+  "implementation": "examples.external_modules.value_example_modules:ExampleTransition",
+  "contract_version": "value.state-transition/v2", "inputs": ["year_state", "planning_result", "investment_decision"],
+  "outputs": ["next_year_state"], "parameters": [], "state_reads": ["operating_assets", "planning_projects"],
+  "state_writes": ["operating_assets", "planning_projects"], "determinism": "deterministic", "artifacts": [],
+  "description": "Test-only transition contract fixture.", "status": "fixture", "selection_required": true,
+  "provides_capabilities": ["state.next-year"], "requires_capabilities": ["planning.admission", "investment.proposals"],
+  "units": {"year_state": "MW and MWh", "planning_result": "MW", "investment_decision": "MW", "next_year_state": "MW and MWh"}
+}

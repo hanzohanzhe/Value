@@ -1,0 +1,24 @@
+{
+  "edition": "0.3",
+  "date": "2026-10-04",
+  "basis": "2026-10-02",
+  "chapterIDs": [
+    "introduction",
+    "datasets",
+    "core_weather",
+    "core",
+    "national_alternatives",
+    "r029_cem",
+    "transmission",
+    "optional_modules",
+    "appendix"
+  ],
+  "revision": {
+    "zh": "修订版 0.3   2026年10月4日",
+    "en": "Edition 0.3   4 October 2026"
+  },
+  "basisLabel": {
+    "zh": "模型实现与数据依据 2026年10月2日",
+    "en": "Implementation and data basis 2 October 2026"
+  }
+}

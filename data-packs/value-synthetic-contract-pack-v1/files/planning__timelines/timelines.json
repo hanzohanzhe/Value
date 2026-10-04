@@ -1,0 +1,13 @@
+{
+  "development_stage_timelines": {
+    "solar": {
+      "total_median": 12
+    }
+  },
+  "development_timelines": {
+    "battery": 12,
+    "offshore": 48,
+    "onshore": 24,
+    "solar": 12
+  }
+}

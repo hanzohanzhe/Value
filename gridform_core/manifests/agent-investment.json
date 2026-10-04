@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "agent-investment",
+  "name": "Agent investment logic",
+  "version": "2.2.0",
+  "scientific_version": "value-cem-v1-2026.08.10",
+  "slot": "investment",
+  "implementation": "gridform_core.builtin.value_modules:ValueAgentInvestment",
+  "contract_version": "value.investment/v2",
+  "inputs": ["market.year-result", "costs.capital", "policy.support", "config.model_parameters", "expansion.headroom"],
+  "outputs": ["investment.proposals", "investment.retirements", "investment.asset-economics"],
+  "parameters": [],
+  "state_reads": ["operating.assets"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["investment/decisions.json"],
+  "description": "VALUE CEM owner-grouped four-tier investment and retirement decisions with technology-wide headroom budgets and explicit eligibility.",
+  "status": "ready",
+  "selection_required": true,
+  "provides_capabilities": ["investment.proposals", "investment.asset-economics"],
+  "requires_capabilities": ["market.year-result", "expansion.headroom"]
+}

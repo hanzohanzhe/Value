@@ -1,0 +1,125 @@
+{
+  "schema_version": "gridform.runtime-audit/v1",
+  "audited_at": "2026-08-04",
+  "scope": "website production runner and Scheme C package",
+  "production_entrypoint": [
+    {
+      "file": "backend/model_runner.py",
+      "lines": "9-12, 139-147",
+      "finding": "The background process invokes run_modular_scheme_c."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/modular_run.py",
+      "lines": "179-183",
+      "finding": "The production boundary imports compat.modular_case3 and calls main()."
+    }
+  ],
+  "positional_run_simulation_results": [
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_case3.py",
+      "lines": "416-425, 1420",
+      "indices": [20, -8, -5, -4, -3, -1, 22, 2]
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_investment_support.py",
+      "lines": "1794-1833, 1949-1954, 2003",
+      "indices": [20, 0, 2, 22, -8, -5, -4]
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/psm.py",
+      "lines": "112-146",
+      "indices": [20, -8, 0, 23, -1, 22],
+      "note": "Typed public adapter also decodes the tuple independently."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/case3.py",
+      "lines": "404-413, 1394",
+      "indices": [20, -8, -5, -4, -3, -1, 22, 2],
+      "note": "Immutable reference duplicate; never rewrite during the migration."
+    }
+  ],
+  "scientific_environment_variables": [
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/modular_run.py",
+      "lines": "124-166",
+      "keys": [
+        "START_YEAR", "END_YEAR", "PLANNING_USE_MEDIAN", "PIPELINE_DEFER_SPREAD_YEARS",
+        "CAPITAL_COST_PROFILE", "PHYSICAL_PERIOD_HOURS", "REPD_ZOMBIE_STATUS_STALE_YEAR",
+        "REPD_ZOMBIE_SNAPSHOT_YEAR", "APPLY_REPD_INITIAL_SNAPSHOT",
+        "REPD_INCLUDE_UNCERTAIN_PROJECTS", "REPD_UNCERTAIN_AS_MODEL_DECISION",
+        "STORAGE_EXPANSION_CAP_FRACTION", "STORAGE_CAP_CREDIT_MODE", "STORAGE_CAP_METHOD",
+        "STORAGE_VIRTUAL_POOL_ENERGY_MWH", "STORAGE_VIRTUAL_POOL_POWER_MW",
+        "MODEL_SUCCESS_MODE", "SCENARIO_V2", "DECARB_V2_SCENARIO", "DECARB_SCENARIO"
+      ]
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_case3.py",
+      "lines": "18-27, 196-213, 314-329, 399-400, 1599, 1635-1636, 1808",
+      "finding": "Many values are read at import time; run identity cannot be inferred from project JSON."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_investment_support.py",
+      "lines": "14-22, 260-321, 473, 532, 626-711, 786, 919-942, 1309-1321, 1469-1525, 1860",
+      "finding": "Planning filters, success mode, timelines and storage credit are environment-controlled."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_storage_expansion_cap.py",
+      "lines": "34-47, 336",
+      "finding": "Storage cap, virtual-pool sentinel, duration and profile units are import-time environment controls."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/psm.py",
+      "lines": "68-74",
+      "finding": "The separate typed adapter mutates period, year and trace environment variables."
+    }
+  ],
+  "global_compat_config_mutation": [
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/modular_run.py",
+      "lines": "103-122",
+      "fields": ["generators", "batteries", "connections", "electrolyzer", "locations", "investment_parameters", "investment_methodology_external", "capital_costs_per_mw", "simulation_parameters", "file_paths"]
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/factory.py",
+      "lines": "73-82, 117-125",
+      "finding": "The unused clean orchestrator builder also mutates compat.config and process environment."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/psm.py",
+      "lines": "31-59",
+      "finding": "The typed PSM adapter mutates the same module globals."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/exact_run.py",
+      "lines": "101-118",
+      "note": "Immutable reference runner; contain rather than edit."
+    }
+  ],
+  "broad_exception_followed_by_pass": [
+    {
+      "file": "backend/model_runner.py",
+      "lines": "190-191",
+      "finding": "A malformed existing status is silently discarded while reporting a run failure."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_simulation_model.py",
+      "lines": "1988-1989, 2028-2029",
+      "finding": "Weather dataset close failures are silent inside market setup."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/modular_case3.py",
+      "lines": "120-121",
+      "finding": "Checkpoint backup cleanup failure is silent."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/load_mechanism_costs.py",
+      "lines": "96-97",
+      "finding": "Cell coercion failure is silently ignored."
+    },
+    {
+      "file": "gridform_core/builtin/scheme_c_1000twh/compat/simulation_model.py",
+      "lines": "1825-1826, 1865-1866",
+      "note": "Immutable reference duplicate; recorded but not edited."
+    }
+  ]
+}

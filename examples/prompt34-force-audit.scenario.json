@@ -1,0 +1,21 @@
+{
+  "schema_version": "value.project/v1",
+  "id": "prompt34-force-audit",
+  "name": "Prompt 34 live VALUE audit trace",
+  "data_pack_id": "value-uk-1000twh-reproduction",
+  "start_year": 2025,
+  "end_year": 2025,
+  "modules": {
+    "psm": "value-bid-at-cost-psm",
+    "storage_cost": "dynamic-annual-storage-cost",
+    "investment": "agent-investment",
+    "pipeline": "planning-pipeline",
+    "vre_cap": "vre-expansion-cap",
+    "storage_cap": "value-storage-expansion-policy",
+    "transition": "value-annual-state-transition"
+  },
+  "parameters": {},
+  "runtime_options": {
+    "runtime.market_trace_level": "full"
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "value.staged-market-contracts/v1",
+  "title": "VALUE staged national-market and balancing contracts",
+  "$defs": {
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "StringNumberMap": {
+      "type": "object",
+      "additionalProperties": {"type": "number"}
+    },
+    "AheadMarketInput": {
+      "type": "object",
+      "required": [
+        "schema_version", "run_id", "year", "period", "period_id",
+        "period_hours", "information_scope", "forecast_demand_mwh", "offers",
+        "storage_state_mwh"
+      ],
+      "properties": {
+        "schema_version": {"const": "value.ahead-market-input/v1"},
+        "run_id": {"type": "string", "minLength": 1},
+        "year": {"type": "integer"},
+        "period": {"type": "integer", "minimum": 0},
+        "period_id": {"type": "string", "minLength": 1},
+        "period_hours": {"type": "number", "exclusiveMinimum": 0},
+        "information_scope": {"const": "forecast_only"},
+        "forecast_demand_mwh": {"type": "number", "minimum": 0},
+        "offers": {"type": "array", "items": {"type": "object"}},
+        "storage_state_mwh": {"$ref": "#/$defs/StringNumberMap"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "AheadMarketResult": {
+      "type": "object",
+      "required": [
+        "schema_version", "run_id", "year", "period", "period_id",
+        "information_scope", "schedule_mwh_by_asset",
+        "clearing_price_gbp_per_mwh", "accepted_volume_mwh",
+        "settlement_mwh_by_asset", "storage_scheduled_action_mwh_by_asset",
+        "source_input_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "value.ahead-market-result/v1"},
+        "run_id": {"type": "string", "minLength": 1},
+        "year": {"type": "integer"},
+        "period": {"type": "integer", "minimum": 0},
+        "period_id": {"type": "string", "minLength": 1},
+        "information_scope": {"const": "forecast_only"},
+        "schedule_mwh_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "clearing_price_gbp_per_mwh": {"type": "number"},
+        "accepted_volume_mwh": {"type": "number", "minimum": 0},
+        "settlement_mwh_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "storage_scheduled_action_mwh_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "source_input_sha256": {"$ref": "#/$defs/Sha256"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "FlexibilityBid": {
+      "type": "object",
+      "required": [
+        "schema_version", "bid_id", "agent_id", "asset_id", "technology",
+        "zone_id", "period_id", "direction", "available_mw",
+        "price_gbp_per_mwh", "baseline_mw", "physical_cost_gbp_per_mwh",
+        "network_effect_id", "provenance"
+      ],
+      "properties": {
+        "schema_version": {"const": "value.flexibility-bid/v1"},
+        "bid_id": {"type": "string", "minLength": 1},
+        "agent_id": {"type": "string", "minLength": 1},
+        "asset_id": {"type": "string", "minLength": 1},
+        "technology": {"type": "string", "minLength": 1},
+        "zone_id": {"type": "string", "minLength": 1},
+        "period_id": {"type": "string", "minLength": 1},
+        "direction": {"enum": ["up", "down"]},
+        "available_mw": {"type": "number", "exclusiveMinimum": 0},
+        "price_gbp_per_mwh": {"type": "number"},
+        "baseline_mw": {"type": "number"},
+        "physical_cost_gbp_per_mwh": {"type": "number"},
+        "network_effect_id": {"type": "string", "minLength": 1},
+        "provenance": {"type": "object"},
+        "units": {"type": "object"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "BalancingInput": {
+      "type": "object",
+      "required": [
+        "schema_version", "run_id", "year", "period", "period_id",
+        "ahead_result_sha256", "real_demand_mwh",
+        "realised_availability_mw_by_asset", "initial_soc_mwh_by_asset",
+        "bids", "period_hours", "voll_gbp_per_mwh"
+      ],
+      "properties": {
+        "schema_version": {"const": "value.balancing-input/v1"},
+        "run_id": {"type": "string", "minLength": 1},
+        "year": {"type": "integer"},
+        "period": {"type": "integer", "minimum": 0},
+        "period_id": {"type": "string", "minLength": 1},
+        "ahead_result_sha256": {"$ref": "#/$defs/Sha256"},
+        "real_demand_mwh": {"type": "number", "minimum": 0},
+        "realised_availability_mw_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "initial_soc_mwh_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "bids": {"type": "array", "items": {"$ref": "#/$defs/FlexibilityBid"}},
+        "period_hours": {"type": "number", "exclusiveMinimum": 0},
+        "voll_gbp_per_mwh": {"type": "number", "exclusiveMinimum": 0},
+        "domain_payload": {"type": "object"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "AcceptedAdjustment": {
+      "type": "object",
+      "required": [
+        "bid_id", "agent_id", "asset_id", "zone_id",
+        "accepted_delta_mwh", "bid_price_gbp_per_mwh",
+        "cashflow_to_agent_gbp", "reason_code"
+      ],
+      "properties": {
+        "bid_id": {"type": "string", "minLength": 1},
+        "agent_id": {"type": "string", "minLength": 1},
+        "asset_id": {"type": "string", "minLength": 1},
+        "zone_id": {"type": "string", "minLength": 1},
+        "accepted_delta_mwh": {"type": "number"},
+        "bid_price_gbp_per_mwh": {"type": "number"},
+        "cashflow_to_agent_gbp": {"type": "number"},
+        "reason_code": {"type": "string", "minLength": 1},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "BalancingResult": {
+      "type": "object",
+      "required": [
+        "schema_version", "run_id", "year", "period", "period_id",
+        "ahead_result_sha256", "source_input_sha256", "accepted_adjustments",
+        "final_dispatch_mwh_by_asset", "final_soc_mwh_by_asset",
+        "curtailment_mwh_by_class", "blackout_mwh",
+        "settlement_cashflow_gbp_by_agent", "resource_cost_gbp_by_class",
+        "energy_balance_residual_mwh"
+      ],
+      "properties": {
+        "schema_version": {"const": "value.balancing-result/v1"},
+        "run_id": {"type": "string", "minLength": 1},
+        "year": {"type": "integer"},
+        "period": {"type": "integer", "minimum": 0},
+        "period_id": {"type": "string", "minLength": 1},
+        "ahead_result_sha256": {"$ref": "#/$defs/Sha256"},
+        "source_input_sha256": {"$ref": "#/$defs/Sha256"},
+        "accepted_adjustments": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/AcceptedAdjustment"}
+        },
+        "final_dispatch_mwh_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "final_soc_mwh_by_asset": {"$ref": "#/$defs/StringNumberMap"},
+        "curtailment_mwh_by_class": {"$ref": "#/$defs/StringNumberMap"},
+        "blackout_mwh": {"type": "number", "minimum": 0},
+        "settlement_cashflow_gbp_by_agent": {"$ref": "#/$defs/StringNumberMap"},
+        "resource_cost_gbp_by_class": {"$ref": "#/$defs/StringNumberMap"},
+        "energy_balance_residual_mwh": {"type": "number"},
+        "artifacts": {"type": "array"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "StagedMarketYearResult": {
+      "type": "object",
+      "required": [
+        "schema_version", "result_id", "run_id", "year", "psm_module_id",
+        "psm_module_version", "balancing_module_id", "balancing_module_version",
+        "ahead_result_sha256_by_period", "balancing_result_sha256_by_period"
+      ],
+      "properties": {
+        "schema_version": {"const": "value.staged-market-year-result/v1"},
+        "result_id": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1},
+        "year": {"type": "integer"},
+        "psm_module_id": {"type": "string", "minLength": 1},
+        "psm_module_version": {"type": "string", "minLength": 1},
+        "balancing_module_id": {"type": "string", "minLength": 1},
+        "balancing_module_version": {"type": "string", "minLength": 1},
+        "ahead_result_sha256_by_period": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/Sha256"}
+        },
+        "balancing_result_sha256_by_period": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/Sha256"}
+        },
+        "artifacts": {"type": "array"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

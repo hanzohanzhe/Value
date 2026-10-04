@@ -1,0 +1,19 @@
+{
+  "schema_version": "value.dispatch-benchmark/v1",
+  "description": "Single-node convex economic dispatch with truthful marginal-cost offers and no unit-commitment constraints.",
+  "period_hours": 1.0,
+  "demand_mwh": 130.0,
+  "offers": [
+    {"asset_id": "vre", "asset_type": "renewable", "capacity_mwh": 60.0, "marginal_cost_gbp_per_mwh": 0.0},
+    {"asset_id": "storage", "asset_type": "storage_discharge", "capacity_mwh": 40.0, "marginal_cost_gbp_per_mwh": 25.0},
+    {"asset_id": "thermal", "asset_type": "thermal", "capacity_mwh": 100.0, "marginal_cost_gbp_per_mwh": 70.0}
+  ],
+  "expected": {
+    "dispatch_mwh": {"vre": 60.0, "storage": 40.0, "thermal": 30.0},
+    "accepted_supply_mwh": 130.0,
+    "blackout_mwh": 0.0,
+    "energy_balance_residual_mwh": 0.0,
+    "clearing_price_gbp_per_mwh": 70.0,
+    "physical_resource_cost_gbp": 3100.0
+  }
+}

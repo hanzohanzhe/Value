@@ -1,0 +1,75 @@
+{
+  "schema_version": "value.doctoral-reference-source-manifest/v1",
+  "source_root": "C:/Users/86150/Desktop/Dr.seal/能源投资/invest!/人人如龙/人人谦让/newpredictedVRE0.03 - sum - seperate prediction - 0.2c43_REPD2025_physical_income_fixed/decarbonization_cost_research",
+  "frozen_at": "2026-09-06",
+  "evidence": "publication/doctoral-model-difference-audit-20260906/evidence.json",
+  "reference_layer": "R0_original_unmodified",
+  "scope": "Qualified small source-function cases only; annual and multiyear oracle not qualified",
+  "default_environment": {
+    "PHYSICAL_PERIOD_HOURS": "0.5",
+    "SIM_DEBUG_MARKET": "0"
+  },
+  "sources": {
+    "simulation_model.py": {
+      "sha256": "434f43ca9607ba1b9588826c924d48755965ad99bcf4b3dc0e13089a512e3da0",
+      "source_ranges": {
+        "Generator_and_asset_classes": [163, 425],
+        "decay_func": [526, 544],
+        "acm_income": [609, 624],
+        "acm_income_balance": [627, 639],
+        "store_service_three": [642, 888],
+        "ahead_market_bidding": [892, 1155],
+        "curtailment_market_bidding": [1158, 1182],
+        "balancing_market_bidding": [1185, 1605]
+      }
+    },
+    "config.py": {
+      "sha256": "587ad317e89305fb60342ed06cd309ee79a00df3e3bcc7dbc2f235fe63478de5",
+      "execution": "not imported; frozen source identity only"
+    },
+    "run_investment_analysis.py": {
+      "sha256": "81446a975e51983aef6806a64ca1e5e7bbd70efc97903d8a08b6c9691697e528",
+      "source_ranges": {
+        "critical_capacity_for_threshold": [1743, 1768],
+        "calculate_expansion_limit": [1771, 1777]
+      }
+    },
+    "run_investment_analysis_case3_decarbonization_breakdown_cm.py": {
+      "sha256": "e0e11057715f5f26a99e804fdd7d9fa386a9b744c85174965584695060d373c9",
+      "execution": "not imported; frozen source identity only"
+    }
+  },
+  "qualification_cases": [
+    {
+      "case_id": "raw_income_separate_prices",
+      "source": "simulation_model.py:acm_income/acm_income_balance",
+      "inputs": {"generator_mw": 10, "generator_price": 50, "battery_mw": 4, "battery_price": 70, "period_hours": 0.5},
+      "r0_expected": {"generator_income_gbp": 250, "battery_income_gbp": 140},
+      "cash_absolute_tolerance_gbp": 0.0001
+    },
+    {
+      "case_id": "raw_battery_decay",
+      "source": "simulation_model.py:decay_func",
+      "inputs": {"stored_energy": 100, "battery_type": "1c"},
+      "r0_expected": {"stored_energy": 99.9979},
+      "units": "original storage quantity; no unit conversion by harness",
+      "absolute_tolerance": 1e-7
+    },
+    {
+      "case_id": "raw_charge_before_positive_export",
+      "source": "simulation_model.py:store_service_three",
+      "inputs": {"excess_energy": 30, "empty_battery_power": 20, "efficiency": 1, "export_limit": 100, "export_price": 80, "electrolyzer_capacity": 0},
+      "r0_expected": {"storage_charge": 20, "export": 10, "remaining_excess": 0},
+      "units": "source period quantities; source storage units retained",
+      "absolute_tolerance": 1e-7
+    },
+    {
+      "case_id": "raw_vre_200_point_threshold",
+      "source": "run_investment_analysis.py:critical_capacity_for_threshold/calculate_expansion_limit",
+      "inputs": {"demand_per_period": 100, "profile": 1, "negative_threshold": 200, "period_counts": [199, 200]},
+      "r0_expected": {"threshold_199": 0, "threshold_200": 100},
+      "units": "MW; raw 30-step bisection output, caller's 0.03 factor not applied",
+      "absolute_tolerance_mw": 1e-6
+    }
+  ]
+}

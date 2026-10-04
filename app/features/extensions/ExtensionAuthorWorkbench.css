@@ -1,0 +1,43 @@
+.extension-author-workbench { display: grid; gap: 20px; min-width: 0; }
+.extension-author-workbench h3, .extension-author-workbench h4, .extension-author-workbench p { margin: 0; }
+.extension-author-workbench header { display: grid; gap: 6px; }
+.extension-author-workbench header > span { font-size: 12px; color: #607369; }
+.extension-author-workbench p, .extension-author-workbench li { line-height: 1.6; }
+.extension-author-boundary { display: grid; gap: 8px; background: #f3f5ef; border-left: 3px solid #687c5d; padding: 14px; border-radius: 6px; }
+.extension-author-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.extension-author-form label, .extension-author-advanced > label:not(.extension-author-toggle) { display: grid; gap: 6px; min-width: 0; }
+.extension-author-wide { grid-column: 1 / -1; }
+.extension-author-workbench input:not([type="checkbox"]), .extension-author-workbench textarea { display: block; box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 9px 11px; color: #21372c; background: #fff; border: 1px solid #ced8d1; border-radius: 6px; font: inherit; }
+.extension-author-workbench textarea { resize: vertical; }
+.extension-author-workbench input:focus-visible, .extension-author-workbench textarea:focus-visible, .extension-author-workbench summary:focus-visible { outline: 2px solid #427158; outline-offset: 2px; }
+.extension-author-advanced, .extension-author-report, .extension-author-declarations, .extension-author-next { display: grid; gap: 14px; }
+.extension-author-advanced, .extension-author-next { border-top: 1px solid #dbe2db; padding-top: 18px; }
+.extension-author-toggle { display: flex; align-items: center; gap: 9px; line-height: 1.5; }
+.extension-author-toggle input { flex: none; }
+.extension-author-workbench .extension-author-json { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; }
+.extension-author-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.extension-author-actions button { white-space: normal; }
+.extension-author-message { background: #f4f6f2; padding: 12px; border-radius: 6px; overflow-wrap: anywhere; }
+.extension-author-message.error { background: #fff0e7; color: #74442c; }
+ul.extension-author-message { margin: 0; padding-left: 30px; }
+.extension-author-facts, .extension-author-contract-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.extension-author-facts { background: #f4f6f2; padding: 12px; border-radius: 6px; }
+.extension-author-facts > span { display: grid; gap: 5px; min-width: 0; }
+.extension-author-facts small { color: #637269; }
+.extension-author-declaration { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.extension-author-declaration > ul { margin: 0; padding-left: 20px; }
+.extension-author-declaration code, .extension-author-facts code, .extension-author-identities code { overflow-wrap: anywhere; font-size: 12px; }
+.extension-author-declarations details > pre { max-height: 440px; margin: 12px 0 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: #f4f6f2; border-radius: 6px; font-size: 12px; }
+.extension-author-identities { display: grid; gap: 10px; margin: 0; }
+.extension-author-identities > div { display: grid; gap: 4px; min-width: 0; }
+.extension-author-identities dt { font-size: 12px; color: #637269; }
+.extension-author-identities dd { margin: 0; }
+.extension-author-next ol { margin: 0; padding-left: 22px; }
+.extension-author-command { display: block; white-space: pre-wrap; overflow-wrap: anywhere; background: #f4f6f2; padding: 12px; border-radius: 6px; font-size: 12px; }
+.extension-author-registry { border-top: 1px solid #dbe2db; padding-top: 18px; min-width: 0; }
+.extension-author-registry > p { margin-top: 12px; }
+.extension-author-registry ul { display: grid; gap: 10px; margin: 12px 0; padding: 0; list-style: none; }
+.extension-author-registry li { display: grid; gap: 4px; min-width: 0; }
+.extension-author-registry code { font-size: 12px; overflow-wrap: anywhere; }
+.extension-author-registry span { font-size: 12px; color: #637269; }
+@media (max-width: 600px) { .extension-author-form, .extension-author-facts, .extension-author-contract-grid { grid-template-columns: 1fr; } .extension-author-wide { grid-column: auto; } .extension-author-actions button { max-width: 100%; } }

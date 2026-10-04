@@ -1,0 +1,34 @@
+{
+  "schema_version": "value.extension-bundle/v1",
+  "id": "value-hydrology-extension",
+  "name": "VALUE run-of-river and reservoir hydrology",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "namespace": "value.hydrology",
+  "provided_capabilities": [
+    "resource.hydrology.run_of_river",
+    "resource.hydrology.reservoir"
+  ],
+  "required_capabilities": [],
+  "composed_module_ids": [],
+  "data_roles": [
+    {"role": "value.hydrology.site-catalogue", "capability": "resource.hydrology.run_of_river", "group": "Hydrology", "label": "Hydrological site catalogue", "formats": ["csv", "json"], "required": true, "validation_rules": {"stable_site_ids": true}},
+    {"role": "value.hydrology.asset-site-map", "capability": "resource.hydrology.run_of_river", "group": "Hydrology", "label": "Electrical asset to hydrological site map", "formats": ["csv", "json"], "required": true, "validation_rules": {"shares_at_most_one": true}},
+    {"role": "value.hydrology.run-of-river-inflow", "capability": "resource.hydrology.run_of_river", "group": "Hydrology", "label": "Run-of-river inflow or usable availability", "formats": ["csv", "parquet", "nc"], "required": true, "time_semantics": "timezone-aware complete model chronology", "validation_rules": {"nonnegative": true, "unique_timestamps": true}},
+    {"role": "value.hydrology.reservoir-inflow", "capability": "resource.hydrology.reservoir", "group": "Hydrology", "label": "Reservoir natural inflow", "formats": ["csv", "parquet", "nc"], "required": true, "time_semantics": "timezone-aware complete model chronology", "validation_rules": {"nonnegative": true, "unique_timestamps": true}},
+    {"role": "value.hydrology.reservoir-parameters", "capability": "resource.hydrology.reservoir", "group": "Hydrology", "label": "Reservoir volume, release and conversion parameters", "formats": ["csv", "json"], "required": true, "validation_rules": {"finite_volume": true, "explicit_conversion": true}}
+  ],
+  "parameters": [
+    {"name": "value.hydrology.information-structure", "value_type": "string", "default": "perfect_foresight", "title": "Reservoir information structure", "description": "Declares whether reservoir release sees current, rolling or complete future inflow.", "visibility": "advanced", "enum": ["myopic", "rolling_horizon", "perfect_foresight"]}
+  ],
+  "artifacts": [
+    {"artifact_type": "hydrology.period-results", "media_type": "application/x-sqlite3", "schema_version": "value.hydrology-period-results/v1", "summary_fields": ["available_mwh", "generation_mwh", "spill_water_units"]}
+  ],
+  "hooks": [],
+  "state_schema_version": "value.hydrology-state/v1",
+  "state_migrations": {},
+  "required_value_version": ">=0.5.0",
+  "required_contract_versions": {"psm": "value.network-psm-input/v1"},
+  "member_inventory": [],
+  "maturity": "experimental"
+}

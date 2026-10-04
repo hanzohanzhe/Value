@@ -1,0 +1,28 @@
+include README.md
+include LICENSE
+include NOTICE
+include LICENSING.md
+include AUTHORS.md
+include LICENSE-PENDING.md
+include pyproject.toml
+recursive-include gridform_core/data_workbench/sources *.json
+prune .github
+prune app
+prune data-packs
+prune dist
+prune docs
+prune e2e
+prune examples
+prune node_modules
+prune playwright-report
+prune public
+prune publication
+prune scripts
+prune test-results
+prune tests
+prune gridform_core/builtin/scheme_c_1000twh/compat
+global-exclude *.py[cod]
+global-exclude __pycache__
+
+include publication/RUNTIME_PARAMETER_NOTICES.md
+include publication/runtime-parameter-rights.json

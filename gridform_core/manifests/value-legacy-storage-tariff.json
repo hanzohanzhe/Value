@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-legacy-storage-tariff",
+  "name": "VALUE retained storage tariff",
+  "version": "1.0.0",
+  "scientific_version": "doctoral-reproduction-storage-tariffs-2026.07.18",
+  "slot": "storage_cost",
+  "implementation": "gridform_core.builtin.value_modules:ValueLegacyStorageCost",
+  "contract_version": "value.storage-cost/v1",
+  "inputs": ["storage.asset", "fleet.generators"],
+  "outputs": ["storage.bid-cost-function"],
+  "parameters": [],
+  "state_reads": [],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["storage-cost-audit.json"],
+  "description": "Historical VALUE fixed plus dwell-time tariff, isolated for reproduction comparisons.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["storage.bid-cost-function"],
+  "requires_capabilities": []
+}

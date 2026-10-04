@@ -1,0 +1,14 @@
+tech,desnz_tech,load_factor,lifetime_years,lca_g_per_kwh,lifetime_mwh_per_mw,embodied_t_per_mw,embodied_t_per_mw_year,embodied_kg_per_mw_year,method,intensity_source
+solar,Large-scale Solar,0.11,35,40.0,33726.0,1349.0,38.544,38544.0,reverse: g/kWh x DESNZ LF x life,UNECE 2021 PV central (~40 within 8-83)
+onshore,Onshore Wind,0.45,25,12.0,98550.0,1182.6,47.304,47304.0,reverse: g/kWh x DESNZ LF x life,UNECE 2021 onshore mid (7.8-16)
+offshore,Offshore Wind,0.61,30,18.0,160308.0,2885.5,96.185,96184.8,reverse: g/kWh x DESNZ LF x life,UNECE 2021 offshore mid (12-23)
+nuclear,Generic (not updated in DESNZ 2023; BEIS-style),0.9,60,5.5,473040.0,2601.7,43.362,43362.0,reverse: g/kWh x BEIS-style LF/life,UNECE 2021 nuclear mid (5.1-6.4)
+hydro,Hydro 5-16MW,0.35,41,20.0,125706.0,2514.1,61.32,61320.0,reverse: g/kWh x DESNZ LF x life,UNECE 2021 hydro central (~20 within 6-147)
+pumped_hydro,Hydro Large Storage (PHS civil proxy),0.45,41,25.0,161622.0,4040.6,98.55,98550.0,reverse: g/kWh x DESNZ Hydro Large Storage,Civil-heavy PHS proxy 25 g/kWh
+ccgt,CCGT H Class,0.93,25,2.0,203670.0,407.3,16.294,16293.6,reverse at DESNZ CCGT baseload LF,Plant infra only ~2 g/kWh (not full NGCC LCA)
+ocgt,OCGT 600MW 500hr,0.06,25,,,407.3,16.294,16293.6,equal to CCGT plant stock (peaking LF must not shrink embodied),Same as CCGT plant infra
+biomass,Dedicated Biomass,0.84,25,3.0,183960.0,551.9,22.075,22075.2,reverse at DESNZ biomass LF,Plant infra only ~3 g/kWh
+battery_1c,n/a,,10,,,60.0,6.0,6000.0,capacity-based; not in DESNZ EGC,60 kgCO2/kWh x 1h (LFP mid)
+battery_0_5c,n/a,,10,,,120.0,12.0,12000.0,capacity-based; not in DESNZ EGC,60 kgCO2/kWh x 2h
+battery_0_25c,n/a,,10,,,240.0,24.0,24000.0,capacity-based; not in DESNZ EGC,60 kgCO2/kWh x 4h
+electrolyzer,n/a,,20,,,25.0,1.25,1250.0,capacity-based; not in DESNZ EGC,Literature electrolyzer plant ~25 t/MW

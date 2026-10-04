@@ -1,0 +1,13 @@
+.frozen-input-recovery { display:grid; gap:12px; padding:16px; border:1px solid var(--border,#d9dde5); border-radius:8px; min-width:0; background:white; }
+.frozen-input-recovery h3,.frozen-input-recovery h4 { margin:0; }
+.frozen-input-recovery label { display:grid; gap:6px; }
+.frozen-input-recovery code { overflow-wrap:anywhere; }
+.frozen-input-recovery pre { max-height:280px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
+.frozen-input-recovery .frozen-recovery-confirm { display:flex; align-items:flex-start; gap:8px; }
+.frozen-recovery-confirm input { flex:none; }
+
+.frozen-recovery-changes { display:grid; gap:10px; padding-left:22px; margin:0; }
+.frozen-recovery-changes li span { display:block; overflow-wrap:anywhere; line-height:1.5; }
+
+.frozen-archive-instructions summary { cursor:pointer; }
+.frozen-archive-instructions p { line-height:1.5; }

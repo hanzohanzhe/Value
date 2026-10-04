@@ -1,0 +1,122 @@
+{
+  "schema_version": "value.data-licensing/v1",
+  "as_of": "2026-10-04",
+  "publication_status": "VALUE-only publication with qualified per-object data assets",
+  "precedence": "Each dataset and document retains its explicit per-object licence and attribution. Existing CC0, CC-BY-4.0, NESO and OGL grants remain effective. No blanket software licence is applied to third-party or unresolved data.",
+  "self_owned_current_release_roles": [
+    {
+      "role": "config.model_parameters",
+      "licence": "Apache-2.0",
+      "scope": "Identified owner-authored configuration or parameters only; upstream facts and source terms remain unchanged."
+    },
+    {
+      "role": "costs.capital",
+      "licence": "Apache-2.0",
+      "scope": "Identified owner-authored configuration or parameters only; upstream facts and source terms remain unchanged."
+    },
+    {
+      "role": "fleet.generators",
+      "licence": "Apache-2.0",
+      "scope": "Identified owner-authored configuration or parameters only; upstream facts and source terms remain unchanged."
+    },
+    {
+      "role": "model_fleet",
+      "licence": "Apache-2.0",
+      "scope": "Identified owner-authored configuration or parameters only; upstream facts and source terms remain unchanged."
+    },
+    {
+      "role": "etys_boundaries",
+      "licence": "CC-BY-4.0",
+      "scope": "Identified owner-authored configuration or parameters only; upstream facts and source terms remain unchanged."
+    }
+  ],
+  "existing_cc0_exceptions": [
+    {
+      "pack_id": "value-101-baseline-v1",
+      "licence": "CC0-1.0",
+      "path": "data-packs/value-101-baseline-v1",
+      "action": "Preserve existing manifest, payload, LICENSE and deterministic legacy generator; CC0 is not withdrawn."
+    },
+    {
+      "pack_id": "value-101-network-v1",
+      "licence": "CC0-1.0",
+      "path": "data-packs/value-101-network-v1",
+      "action": "Preserve existing manifest, payload, LICENSE and deterministic legacy generator; CC0 is not withdrawn."
+    },
+    {
+      "pack_id": "value-synthetic-contract-pack-v1",
+      "licence": "CC0-1.0",
+      "path": "data-packs/value-synthetic-contract-pack-v1",
+      "action": "Preserve existing manifest, payload, LICENSE and deterministic legacy generator; CC0 is not withdrawn."
+    }
+  ],
+  "upstream_exceptions": [
+    {
+      "roles": [
+        "demand.forecast",
+        "demand.real",
+        "market.*.profile",
+        "dso_areas",
+        "interconnector_landings",
+        "neso_national_demand"
+      ],
+      "licence": "NESO Open Data Licence v1.0"
+    },
+    {
+      "roles": [
+        "market.*.price",
+        "weather.*",
+        "profiles.vre_*",
+        "era5_aggregated_profiles",
+        "era5_representative_profiles"
+      ],
+      "licence": "CC-BY-4.0"
+    },
+    {
+      "roles": [
+        "planning.success_rates",
+        "planning.timelines",
+        "projects.repd",
+        "source.repd_raw",
+        "repd"
+      ],
+      "licence": "OGL-UK-3.0"
+    },
+    {
+      "roles": [
+        "regional_demand_evidence"
+      ],
+      "licence": "OGL-UK-3.0 with ONS, OS and Royal Mail notices"
+    },
+    {
+      "roles": [
+        "policy.support"
+      ],
+      "licence": "Existing owner-authored aggregation/projections CC-BY-4.0; upstream public facts retain source terms"
+    }
+  ],
+  "mixed_or_unresolved": [
+    {
+      "scope": "Historical research inputs and mixed network objects",
+      "action": "Retain object-level rights and frozen scientific identity; only explicit per-object grants apply."
+    }
+  ],
+  "historical_source_notice": "materialize_official August 21 model_fleet source Apache-2.0 remains its historical source licence; it is not rewritten as a new upstream grant.",
+  "software_and_owner_authored_software_configuration": {
+    "licence": "Apache-2.0",
+    "document": "LICENSE",
+    "scope": "VALUE software and identified owner-authored software configuration. Research, teaching, commercial and government use are permitted subject to Apache-2.0. This does not relicense datasets or documentation."
+  },
+  "generated_research_identity": {
+    "base_pack_id": "value-uk-open-data-pack-v1",
+    "network_prefix": "value-gb-zonal-network-v1",
+    "suite_id": "value-uk-research-suite-v1",
+    "status": "Original open-licence generator restored; no research data rebuilt or published by this licensing change."
+  },
+  "runtime_parameter_compilation": {
+    "rights": "publication/runtime-parameter-rights.json",
+    "notices": "publication/RUNTIME_PARAMETER_NOTICES.md",
+    "exact_original_objects": 13,
+    "full_source_publications_included": false
+  }
+}

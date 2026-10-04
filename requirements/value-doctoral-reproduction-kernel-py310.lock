@@ -1,0 +1,2 @@
+# Deprecated lock alias retained for installer compatibility.
+-r value-doctoral-reproduction-py310.lock

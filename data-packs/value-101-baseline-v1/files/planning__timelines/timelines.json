@@ -1,0 +1,31 @@
+{
+  "development_stage_timelines": {
+    "battery": {
+      "total_mean": 12.0,
+      "total_median": 12.0
+    },
+    "offshore": {
+      "total_mean": 30.0,
+      "total_median": 30.0
+    },
+    "onshore": {
+      "total_mean": 18.0,
+      "total_median": 18.0
+    },
+    "solar": {
+      "total_mean": 12.0,
+      "total_median": 12.0
+    }
+  },
+  "development_timelines": {
+    "battery": 12.0,
+    "offshore": 30.0,
+    "onshore": 18.0,
+    "solar": 12.0
+  },
+  "repd_status_to_timeline": {
+    "Application Submitted": {
+      "timeline_type": "total_median"
+    }
+  }
+}

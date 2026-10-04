@@ -1,0 +1,35 @@
+{
+  "schema_version": "value.solver-validation-registry/v1",
+  "entries": [
+    {
+      "registry_id": "scipy-1.8.1-highs-ea7abc64",
+      "module_id": "value-zonal-redispatch-balancing",
+      "module_version": "2.0.0",
+      "solver_contract_version": "value.zonal-lexicographic/v2",
+      "scipy_version": "1.8.1",
+      "highs_binary_sha256": "ea7abc641063940981f8d231335373b6609973889bd2c2ecf4c68328c56262b3",
+      "highs_identity": "scipy-embedded-highs:ea7abc641063940981f8d231335373b6609973889bd2c2ecf4c68328c56262b3",
+      "status": "candidate",
+      "evidence_references": [
+        "tests/test_prompt103_zonal_validation.py::Prompt103IndependenceAndAnalyticalTests::test_seeded_random_convex_cases_match",
+        "tests/test_prompt103_zonal_validation.py::Prompt103IndependenceAndAnalyticalTests::test_24_and_168_hour_sequences_match_without_future_information",
+        "tests/test_zonal_solver_contract.py::LockFormulaTests::test_zero_optimum_uses_coefficient_norm_for_bound_canonicalisation"
+      ]
+    },
+    {
+      "registry_id": "scipy-1.8.1-highs-ea7abc64-gbp1-v3",
+      "module_id": "value-zonal-redispatch-balancing",
+      "module_version": "3.0.0",
+      "solver_contract_version": "value.zonal-lexicographic-gbp1/v3",
+      "scipy_version": "1.8.1",
+      "highs_binary_sha256": "ea7abc641063940981f8d231335373b6609973889bd2c2ecf4c68328c56262b3",
+      "highs_identity": "scipy-embedded-highs:ea7abc641063940981f8d231335373b6609973889bd2c2ecf4c68328c56262b3",
+      "status": "candidate",
+      "evidence_references": [
+        "tests/test_zonal_solver_contract.py::LockFormulaTests::test_gbp1_hard_acceptance_boundary",
+        "tests/test_prompt99_zonal_redispatch.py::ZonalRedispatchSolverContractTests::test_gbp1_policy_changes_only_primary_lock_allowance",
+        "tests/test_prompt99_zonal_redispatch.py::ZonalRedispatchSolverContractTests::test_lock_repair_exhaustion_remains_a_hard_failure"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+.result-query { display: grid; gap: 16px; min-width: 0; }
+.result-query h3, .result-query p { margin: 0; }
+.result-query header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.result-query header small { display: block; margin-bottom: 6px; }
+.result-query-definition { line-height: 1.6; }
+.result-query-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.result-query-controls label { display: grid; gap: 6px; min-width: 120px; flex: 1; }
+.result-query-controls select, .result-query-controls input { width: 100%; min-height: 40px; border: 1px solid #ced8d1; border-radius: 6px; padding: 8px; background: #fff; color: #21372c; }
+.result-query-controls input { max-width: 170px; }
+.result-query-message { padding: 12px; border-radius: 6px; background: #f4f6f2; overflow-wrap: anywhere; }
+.result-query-message.error { background: #fff0e7; color: #74442c; }
+.result-query-provenance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; background: #f4f6f2; border-radius: 6px; }
+.result-query-provenance span { display: grid; gap: 4px; min-width: 0; }
+.result-query-provenance small { color: #637269; }
+.result-query-provenance code { font-size: 12px; overflow-wrap: anywhere; }
+.result-query-table { overflow-x: auto; }
+.result-query-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.result-query-table th, .result-query-table td { text-align: right; white-space: nowrap; padding: 10px; border-bottom: 1px solid #dbe2db; }
+.result-query-table th:first-child, .result-query-table td:first-child { text-align: left; }
+.result-query-table caption { text-align: left; padding-bottom: 8px; }
+.result-query-page { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.result-query details pre { max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+@media (max-width: 600px) { .result-query-provenance { grid-template-columns: 1fr; } .result-query header { display: block; } .result-query-controls label { min-width: 125px; } }
+
+.surface > .result-query { margin: 0 45px 24px; }
+@media(max-width:700px){.surface > .result-query { margin:0 18px 20px; }}

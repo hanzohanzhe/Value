@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-storage-expansion-policy",
+  "name": "Storage expansion policy - VALUE",
+  "version": "4.0.0",
+  "scientific_version": "storage-cost-policy-injected-2026.08.04",
+  "slot": "storage_cap",
+  "implementation": "gridform_core.builtin.value_modules:ValueStorageExpansionPolicy",
+  "contract_version": "value.expansion-policy/v2",
+  "inputs": ["market.year-result", "dispatch.storage", "system.excess"],
+  "outputs": ["expansion.storage-headroom"],
+  "parameters": ["expansion.storage_cap_fraction", "expansion.storage_credit_method"],
+  "state_reads": ["operating.assets"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": [],
+  "description": "VALUE aligned-utilisation storage investment ceiling evaluated from the selected PSM's physical dispatch trace.",
+  "status": "ready",
+  "selection_required": true,
+  "provides_capabilities": ["expansion.headroom"],
+  "requires_capabilities": ["market.year-result"]
+}

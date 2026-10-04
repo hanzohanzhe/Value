@@ -1,0 +1,27 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "desnz.postcode-electricity-consumption",
+  "authority": "DESNZ",
+  "semantic_role": "postcode_electricity_consumption",
+  "landing_page": "https://www.gov.uk/government/statistics/postcode-level-electricity-statistics-2024",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "gov.uk",
+    "assets.publishing.service.gov.uk"
+  ],
+  "licence_expected": "Open Government Licence v3.0 unless otherwise stated",
+  "candidate_uses": [
+    "measured base-year DSO demand weights",
+    "regional-demand reconciliation"
+  ],
+  "expected_media_types": [
+    "text/csv"
+  ],
+  "redistribution_policy": "redistributable",
+  "discovery_config": {
+    "download_url": "https://assets.publishing.service.gov.uk/media/694282a1fdbd8404f9e1f1da/Postcode_level_all_meters_electricity_2024.csv",
+    "revision_id": "DESNZ-postcode-electricity-2024",
+    "publication_date": "2025-12-18",
+    "format": "CSV"
+  }
+}

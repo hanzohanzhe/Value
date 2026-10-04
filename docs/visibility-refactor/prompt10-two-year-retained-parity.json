@@ -1,0 +1,160 @@
+{
+  "source_run": "20260718_decarb_virtual_pool_1000twh_scheme_c/03_future_cm_decarb_base_2025_2035",
+  "passed": false,
+  "checks_passed": 7,
+  "checks_total": 19,
+  "checks": [
+    {
+      "year": 2025,
+      "metric": "total_system_cost_gbp",
+      "actual": 42605875468.47292,
+      "expected": 42697698747.09755,
+      "absolute_difference": 91823278.62462616,
+      "pass": false
+    },
+    {
+      "year": 2025,
+      "metric": "cost_per_mwh_gbp",
+      "actual": 183.44168275457864,
+      "expected": 182.9231445778693,
+      "absolute_difference": 0.5185381767093418,
+      "pass": false
+    },
+    {
+      "year": 2025,
+      "metric": "total_energy_generated_mwh",
+      "actual": 232258420.3802475,
+      "expected": 233418788.2327892,
+      "absolute_difference": 1160367.852541685,
+      "pass": false
+    },
+    {
+      "year": 2025,
+      "metric": "solar_capacity_mw",
+      "actual": 10066.980000000003,
+      "expected": 10066.980000000003,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "metric": "onshore_capacity_mw",
+      "actual": 14711.649999999996,
+      "expected": 14711.649999999996,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "metric": "offshore_capacity_mw",
+      "actual": 14678.999999999998,
+      "expected": 14678.999999999998,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "metric": "quarter_c_battery_capacity_mw",
+      "actual": 299.98416468725264,
+      "expected": 299.98416468725264,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2025,
+      "metric": "quarter_c_battery_suggested_addition_mw",
+      "actual": 800.0,
+      "expected": 1040.43,
+      "absolute_difference": 240.43000000000006,
+      "pass": false
+    },
+    {
+      "year": 2025,
+      "metric": "solar_suggested_addition_mw",
+      "actual": 842.5742219762953,
+      "expected": 851.15,
+      "absolute_difference": 8.575778023704629,
+      "pass": false
+    },
+    {
+      "year": 2025,
+      "metric": "onshore_suggested_addition_mw",
+      "actual": 1260.8523265052615,
+      "expected": 1320.46,
+      "absolute_difference": 59.60767349473849,
+      "pass": false
+    },
+    {
+      "year": 2025,
+      "metric": "offshore_suggested_addition_mw",
+      "actual": 824.2062621990865,
+      "expected": 840.34,
+      "absolute_difference": 16.133737800913536,
+      "pass": false
+    },
+    {
+      "year": 2026,
+      "metric": "total_system_cost_gbp",
+      "actual": 43605049974.709885,
+      "expected": 43640757818.78533,
+      "absolute_difference": 35707844.07544708,
+      "pass": false
+    },
+    {
+      "year": 2026,
+      "metric": "cost_per_mwh_gbp",
+      "actual": 187.31467603144037,
+      "expected": 186.9691759060536,
+      "absolute_difference": 0.34550012538676356,
+      "pass": false
+    },
+    {
+      "year": 2026,
+      "metric": "total_energy_generated_mwh",
+      "actual": 232790355.2383203,
+      "expected": 233411510.78674862,
+      "absolute_difference": 621155.5484283268,
+      "pass": false
+    },
+    {
+      "year": 2026,
+      "metric": "solar_capacity_mw",
+      "actual": 14755.563718808997,
+      "expected": 14756.028128194372,
+      "absolute_difference": 0.46440938537489274,
+      "pass": false
+    },
+    {
+      "year": 2026,
+      "metric": "onshore_capacity_mw",
+      "actual": 14982.299999999997,
+      "expected": 14982.299999999997,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "metric": "offshore_capacity_mw",
+      "actual": 14678.999999999998,
+      "expected": 14678.999999999998,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "metric": "quarter_c_battery_capacity_mw",
+      "actual": 2531.4784903668533,
+      "expected": 2531.4784903668533,
+      "absolute_difference": 0.0,
+      "pass": true
+    },
+    {
+      "year": 2026,
+      "metric": "quarter_c_battery_suggested_addition_mw",
+      "actual": 975.3549178910171,
+      "expected": 1219.79,
+      "absolute_difference": 244.4350821089829,
+      "pass": false
+    }
+  ]
+}

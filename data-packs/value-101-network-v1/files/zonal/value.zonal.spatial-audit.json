@@ -1,0 +1,28 @@
+{
+  "active_asset_ids": [
+    "onshore_Portsmouth",
+    "solar_Portsmouth",
+    "1c_battery",
+    "CCGT",
+    "import:france"
+  ],
+  "capacity_mw_by_technology": {
+    "1c_battery": 10.0,
+    "CCGT": 50.0,
+    "interconnector": 24.0,
+    "onshore": 20.0,
+    "solar": 35.0
+  },
+  "excluded_northern_ireland_asset_ids": [],
+  "fallback_asset_ids": [],
+  "mapped_capacity_mw_by_technology": {
+    "1c_battery": 10.0,
+    "CCGT": 50.0,
+    "interconnector": 24.0,
+    "onshore": 20.0,
+    "solar": 35.0
+  },
+  "schema_version": "value.spatial-audit/v1",
+  "source_sha256_by_role": {},
+  "tolerance_mw": 1e-09
+}

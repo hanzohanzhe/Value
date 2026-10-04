@@ -1,0 +1,21 @@
+{
+  "corridors": [
+    {
+      "corridor_id": "north-central",
+      "from_zone_id": "north",
+      "positive_direction": "from_to_positive",
+      "purpose": "computational_routing",
+      "schema_version": "value.transport-corridor/v1",
+      "to_zone_id": "central"
+    },
+    {
+      "corridor_id": "central-south",
+      "from_zone_id": "central",
+      "positive_direction": "from_to_positive",
+      "purpose": "computational_routing",
+      "schema_version": "value.transport-corridor/v1",
+      "to_zone_id": "south"
+    }
+  ],
+  "schema_version": "value.transport-corridor-collection/v1"
+}

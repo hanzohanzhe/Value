@@ -1,0 +1,6 @@
+{
+  "schema_version": "value.boundary-rating-profile-collection/v1",
+  "rating_profiles": [
+    {"profile_id": "winter-maintenance", "period_ids": ["p0", "p1"], "multipliers": [1.0, 0.5], "fixed_across_model_years": true}
+  ]
+}

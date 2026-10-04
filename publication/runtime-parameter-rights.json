@@ -1,0 +1,225 @@
+{
+  "schema_version": "value.runtime-parameter-rights/v1",
+  "date": "2026-10-04",
+  "product": "VALUE owner-authored runtime parameter compilation and configuration",
+  "software_licence": "Apache-2.0",
+  "upstream_fact_and_document_boundary": "Cited numerical facts retain source attribution and source terms. This licence grants no rights to entire third-party source publications or proprietary datasets.",
+  "includes_private_electrace_engine": false,
+  "includes_original_thesis": false,
+  "objects": [
+    {
+      "path": "gridform_core/data/carbon/datasets.csv",
+      "bytes": 1355,
+      "sha256": "cee605af0501d929d499eb13d6288dbdc91142f139251383ee414e7f9908907d",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/datasets.csv",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/factor_catalog.csv",
+      "bytes": 31953,
+      "sha256": "117a7dd385e077a50b7c487b7e913484c7112369715f08b54cc450ca31d0a39a",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/factor_catalog.csv",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/legacy_postprocessor_snapshot.csv",
+      "bytes": 1842,
+      "sha256": "eee16a45e4901810d9b5cab21d12f75d1b26cf7ec936e8fad4bb31b7cbda3552",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/legacy_postprocessor_snapshot.csv",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/methodology_rules.csv",
+      "bytes": 2404,
+      "sha256": "872e293b074839808c0abf64b7416b526627e831a419f1899718c16134d7be2f",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/methodology_rules.csv",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/scenarios/doctoral_reproduction_2026_07_18.json",
+      "bytes": 594,
+      "sha256": "cbe24d34df5b474bc654cd352fbf39b53a64b6b14670facab653c24d57b4b15a",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/scenarios/doctoral_reproduction_2026_07_18.json",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": false,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/scenarios/value_current_authoritative_v1.json",
+      "bytes": 870,
+      "sha256": "a204f1b1fe82d017768c7161cff021234ad1735a35bde98d59a303bcd6c49251",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/scenarios/value_current_authoritative_v1.json",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": false,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/schema.sql",
+      "bytes": 2663,
+      "sha256": "efdecd978d6ac60296e336911c35fc506fa7fcf964a54afb72c688ab78705215",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/schema.sql",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/snapshot_manifest.json",
+      "bytes": 2939,
+      "sha256": "21e0a1348d6463930c9840c63343d31d2c193f0654e916de4e63cae850c311da",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/snapshot_manifest.json",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": false,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/sources.csv",
+      "bytes": 6276,
+      "sha256": "d34c6e64456de3820da6829f8a802bd853575e970cd1d49ba6bc85ed4ebb8eb6",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/sources.csv",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/carbon/value_carbon_factors.sqlite",
+      "bytes": 106496,
+      "sha256": "ae4b1bb952249a93bf5c7cc4699d1666fdb7ae4f9cec9dc21539017775c33a1c",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/carbon/value_carbon_factors.sqlite",
+        "publication/release-rights-ledger.json carbon product/object decision",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": true,
+      "source_documents_included": false
+    },
+    {
+      "path": "gridform_core/data/doctoral_alignment/pumped_hydro_schedule.json",
+      "bytes": 2853,
+      "sha256": "2c9764a9b385d6995ffdfab666d65e339a084f843fc7d79fc8c42b5762b5ae92",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/doctoral_alignment/pumped_hydro_schedule.json",
+        "owner-selected model constants or author thesis numerical contract",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": false,
+      "source_documents_included": false,
+      "scope_review": "Owner-authored configuration under original software licensing scope; not a separate newly claimed grant for the original thesis document."
+    },
+    {
+      "path": "gridform_core/data/doctoral_alignment/thesis_final96_contract.json",
+      "bytes": 3412,
+      "sha256": "28daae8b2dfa8d053fccf8b150e57c208c59fca1c9eaafeacb6236676aa509d1",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/doctoral_alignment/thesis_final96_contract.json",
+        "owner-selected model constants or author thesis numerical contract",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": false,
+      "source_documents_included": false,
+      "scope_review": "Owner-authored configuration under original software licensing scope; not a separate newly claimed grant for the original thesis document."
+    },
+    {
+      "path": "gridform_core/data/storage/storage_technology_catalogue.json",
+      "bytes": 3000,
+      "sha256": "88742e409912b6149147ff6ca728df64194a80578bc6d130ee9a52f92bbd5caa",
+      "scientific_original_bytes_identical": true,
+      "disposition": "RECOMMENDED_INCLUDE_OWNER_AUTHORED_RUNTIME_PARAMETERS_WITH_CITATIONS",
+      "licence_scope": "Apache-2.0 for owner-authored software configuration/compilation; upstream factual sources retain terms and attribution; no source document grant",
+      "evidence": [
+        "Maintainer audit: owner-authored runtime compilation identified against original source, existing release-rights ledger and original NOTICE/LICENSING; original source documents excluded.",
+        "scientific-original gridform_core/data/storage/storage_technology_catalogue.json",
+        "owner-selected model constants or author thesis numerical contract",
+        "Original root LICENSE Apache-2.0, LICENSING.md software/configuration scope, NOTICE copyright holder Hanzhe Xing"
+      ],
+      "prior_ledger_same_bytes": false,
+      "source_documents_included": false,
+      "scope_review": "Owner-authored configuration under original software licensing scope; not a separate newly claimed grant for the original thesis document."
+    }
+  ],
+  "carbon_row_sources": "gridform_core/data/carbon/sources.csv",
+  "original_authority_sha256": "9fca4d603b2b327bad9417cca0face6c58c66690b0dd2173b6e4e7d064556394",
+  "original_authority_status": "Original scope is carried forward for VALUE runtime parameter compilation. Older FORCE/GridForm identifiers are historical and are not treated as current path/hash claims."
+}

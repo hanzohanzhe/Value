@@ -1,0 +1,2 @@
+-r value-open-core-py310.lock
+scipy==1.8.1

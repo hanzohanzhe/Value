@@ -1,0 +1,23 @@
+{
+  "source_release": "scheme-c-1000twh-2026-07-18_19",
+  "usage": "read-only parity source; GridForm executes only the packaged copy",
+  "sha256": {
+    "run_investment_analysis_case3_decarbonization_breakdown_cm.py": "e0e11057715f5f26a99e804fdd7d9fa386a9b744c85174965584695060d373c9",
+    "run_investment_analysis.py": "81446a975e51983aef6806a64ca1e5e7bbd70efc97903d8a08b6c9691697e528",
+    "simulation_model.py": "434f43ca9607ba1b9588826c924d48755965ad99bcf4b3dc0e13089a512e3da0",
+    "config.py": "587ad317e89305fb60342ed06cd309ee79a00df3e3bcc7dbc2f235fe63478de5"
+  },
+  "external_storage_source": {
+    "path_at_packaging": "Desktop/storage_expansion_corrected_caps",
+    "sha256": {
+      "storage_expansion_cap.py": "fd8bdfa1bc71d40334d2bd8ebe88012c7489806c09af9aa7ced33f73a0f60279",
+      "apply_storage_expansion.py": "fef44e1ae5fbf42491a1efb3a225a5d4a472378d72eb2d6a8be51023fae3e654"
+    }
+  },
+  "packaging_changes": [
+    "absolute sibling imports were changed to package-relative imports",
+    "the external storage-expansion modules were copied into the package and changed only to package-relative imports",
+    "data file paths are injected through gridform.data-pack/v1 bindings",
+    "model equations and annual calculation order are unchanged"
+  ]
+}

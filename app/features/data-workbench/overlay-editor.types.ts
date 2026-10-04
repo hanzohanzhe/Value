@@ -1,0 +1,4 @@
+export type OverlayRole = { role: string; format: string; filename: string; sha256: string; bytes: number; unit: string | null };
+export type OverlayRecord = { pack_id: string; name: string; source_manifest_sha256: string; scientific_sha256: string; installation_origin: "bundle" | "local_copy"; roles: OverlayRole[]; years: number[]; status: "available" | "invalid"; reason: string | null };
+export type OverlayValidation = { schema_version: string; candidate_id: string; status: "passed" | "blocked"; errors: string[]; warnings: string[]; years: number[]; scientific_validation_status: string; replaced_roles: string[] };
+export type OverlayCandidate = { schema_version: string; directory_id: string; candidate_id: string; pack_id: string; name: string; parent_pack_id: string; source_manifest_sha256: string; roles: OverlayRole[]; validation: OverlayValidation | null };

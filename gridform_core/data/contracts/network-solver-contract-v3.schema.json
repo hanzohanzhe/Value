@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VALUE network solver contract v3 GBP1 study policy",
+  "description": "The per-period total bid-cost objective has a hard GBP 1 acceptance lock; MWh locks retain coefficient-aware numerical tolerances.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "method",
+    "presolve",
+    "primal_feasibility_tolerance",
+    "dual_feasibility_tolerance",
+    "ipm_optimality_tolerance",
+    "warning_fraction",
+    "validated_ceilings",
+    "absolute_ceilings",
+    "is_builtin_default",
+    "requires_acknowledgement"
+  ],
+  "properties": {
+    "schema_version": {"const": "value.network-solver-contract/v3"},
+    "contract_version": {"const": "value.zonal-lexicographic-gbp1/v3"},
+    "method": {"enum": ["highs-ds", "highs-ipm", "highs"]},
+    "presolve": {"const": true},
+    "primal_feasibility_tolerance": {"type": "number", "minimum": 1e-10, "maximum": 1e-7},
+    "dual_feasibility_tolerance": {"type": "number", "minimum": 1e-10, "maximum": 1e-7},
+    "ipm_optimality_tolerance": {"type": "number", "minimum": 1e-12, "maximum": 1e-7},
+    "warning_fraction": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+    "validated_ceilings": {"$ref": "#/$defs/ceilings"},
+    "absolute_ceilings": {"$ref": "#/$defs/absolute_ceilings"},
+    "is_builtin_default": {"type": "boolean"},
+    "requires_acknowledgement": {"type": "boolean"}
+  },
+  "$defs": {
+    "ceilings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_bid_cost_gbp",
+        "secondary_schedule_deviation_mwh",
+        "physical_throughput_mwh"
+      ],
+      "properties": {
+        "primary_bid_cost_gbp": {"const": 1.0},
+        "secondary_schedule_deviation_mwh": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 0.01},
+        "physical_throughput_mwh": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 0.01}
+      }
+    },
+    "absolute_ceilings": {
+      "description": "Immutable study acceptance boundaries. The GBP boundary is a hard per-period total-objective limit.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_bid_cost_gbp",
+        "secondary_schedule_deviation_mwh",
+        "physical_throughput_mwh"
+      ],
+      "properties": {
+        "primary_bid_cost_gbp": {"const": 1.0},
+        "secondary_schedule_deviation_mwh": {"const": 0.01},
+        "physical_throughput_mwh": {"const": 0.01}
+      }
+    }
+  }
+}

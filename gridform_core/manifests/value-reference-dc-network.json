@@ -1,0 +1,33 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-reference-dc-network",
+  "name": "VALUE open reference DC network PSM",
+  "version": "1.0.0",
+  "scientific_version": "reference-chronological-dc-opf-v1",
+  "slot": "psm",
+  "implementation": "gridform_core.network_dc:ReferenceDCNetworkPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": ["chronology.demand", "chronology.resources", "chronology.storage", "value.network-psm-input/v1"],
+  "outputs": ["market.year-result", "value.network-psm-output/v1", "output.nodal_prices"],
+  "parameters": ["clock.period_hours", "market.voll_gbp_per_mwh"],
+  "state_reads": ["operating.assets", "storage.soc"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["solver/network/dc-network-<year>.json", "solver/network/dc-network-<year>.sqlite", "solver/network/declared-network-inputs-<year>.jsonl"],
+  "description": "Open chronological linear DC OPF with nodal balance, finite branch capacity, voltage angles, thermal/VRE/import competition, load shedding and storage SOC. It does not model reactive power, voltage magnitude or losses.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["domain.network.solver", "domain.network.dc", "output.nodal_prices", "market.year-result", "storage.central-cooptimization"],
+  "requires_capabilities": ["contract.network-psm/v1", "data.network.topology/v1"],
+  "units": {
+    "chronology.demand": "MWh/period",
+    "chronology.resources": "MW, p.u., GBP/MWh",
+    "chronology.storage": "MW, MWh, fraction",
+    "value.network-psm-input/v1": "MW, MWh, p.u., radians",
+    "market.year-result": "GBP, MWh",
+    "value.network-psm-output/v1": "MW, MWh, radians, GBP/MWh",
+    "output.nodal_prices": "GBP/MWh",
+    "clock.period_hours": "hours",
+    "market.voll_gbp_per_mwh": "GBP/MWh"
+  }
+}

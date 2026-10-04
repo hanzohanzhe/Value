@@ -1,0 +1,61 @@
+{
+  "schema_version": "value.cem-model-identity/v1",
+  "model_id": "value-cem-v1",
+  "name": "VALUE Capacity Expansion Model v1",
+  "version": "2026.08.10",
+  "relationship_to_doctoral_reproduction": "method_derived_declared_divergence",
+  "numerical_reproduction_claim": false,
+  "retained_reference_id": "doctoral-reproduction-1000twh-2026-07-18",
+  "decision_stages": [
+    {
+      "stage": "investment_four_tier_rule",
+      "typed_rule": "one decision per stable investment owner/technology/region; ROI above preferred rate; otherwise payback at or below target; negative net revenue retires; otherwise no action",
+      "retained_rule": "Invest_High, Invest_Profit, Deplete, Do_Nothing",
+      "status": "aligned_equation_with_typed_inputs",
+      "remaining_difference": "typed path groups physical asset income by stable owner and does not yet reproduce every retained policy-support income allocation"
+    },
+    {
+      "stage": "vre_and_storage_expansion_caps",
+      "typed_rule": "manifest-selected typed headroom policies applied once as technology-year MW budgets; an explicit eligibility catalogue governs uncapped and site-constrained technologies",
+      "retained_rule": "annual trace-derived cap functions inside the retained loop",
+      "status": "method_derived_not_strict_parity",
+      "remaining_difference": "typed evidence and retained intermediate arrays are not yet identical"
+    },
+    {
+      "stage": "repd_filtering",
+      "typed_rule": "normalized non-terminal project inventory retained for audit",
+      "retained_rule": "status, schedule, uncertainty and zombie filters before admission",
+      "status": "declared_divergence",
+      "remaining_difference": "Prompt 43 does not claim retained zombie-filter parity"
+    },
+    {
+      "stage": "planning_success",
+      "typed_rule": "expected-capacity or seeded stochastic probability",
+      "retained_rule": "regional/technology success probability with retained pipeline timing",
+      "status": "aligned_modes_not_strict_trace_parity",
+      "remaining_difference": "record-level retained random and timing traces are not identical"
+    },
+    {
+      "stage": "spatial_assignment",
+      "typed_rule": "project assets preserved; live PSM capacity aggregated to technology/region-compatible market agents",
+      "retained_rule": "location and proportional allocation into pre-existing aggregate agents",
+      "status": "declared_replacement",
+      "remaining_difference": "asset lineage is new and aggregate allocation is deterministic but not a retained numerical replay"
+    },
+    {
+      "stage": "commissioning_and_retirement",
+      "typed_rule": "versioned project-to-asset record; next-year physical and cost coupling; proportional retirement economics",
+      "retained_rule": "mutates aggregate Python market objects and their capital_cost fields",
+      "status": "declared_replacement",
+      "remaining_difference": "typed immutable state replaces retained object mutation"
+    },
+    {
+      "stage": "pumped_hydro_pipeline",
+      "typed_rule": "initial pumped-hydro stock is exogenous; no additional default reservoir project schedule",
+      "retained_rule": "retained loop contains scenario-specific exogenous pumped-hydro capacity updates",
+      "status": "declared_divergence",
+      "remaining_difference": "future pumped-hydro projects require an explicit hydrology/planning data module"
+    }
+  ],
+  "publication_rule": "Results may be called VALUE CEM v1 results. They must not be called an exact doctoral-reproduction result."
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "neso.etys-capabilities",
+  "authority": "NESO",
+  "semantic_role": "etys_boundary_capability",
+  "landing_page": "https://www.neso.energy/document/383896/download",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "neso.energy"
+  ],
+  "licence_expected": "NESO Open Data Licence",
+  "candidate_uses": [
+    "ETYS cut capability",
+    "directional-rating audit"
+  ],
+  "expected_media_types": [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ],
+  "redistribution_policy": "pointer-only",
+  "discovery_config": {
+    "download_url": "https://www.neso.energy/document/383896/download",
+    "revision_id": "ETYS-2025",
+    "publication_date": "2025",
+    "format": "XLSX"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "ons.postcode-directory",
+  "authority": "ONS",
+  "semantic_role": "postcode_coordinates",
+  "landing_page": "https://www.arcgis.com/home/item.html?id=6fff67d204fd4f339591ed667a6e3642",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "statistics.gov.uk",
+    "arcgis.com"
+  ],
+  "licence_expected": "Open Government Licence v3.0 subject to ONSPD notices",
+  "candidate_uses": [
+    "postcode point-in-polygon assignment",
+    "regional-demand coverage audit"
+  ],
+  "expected_media_types": [
+    "application/zip"
+  ],
+  "redistribution_policy": "local-use-only",
+  "discovery_config": {
+    "download_url": "https://www.arcgis.com/sharing/rest/content/items/6fff67d204fd4f339591ed667a6e3642/data",
+    "revision_id": "ONSPD-May-2026-corrected-2026-06-04",
+    "publication_date": "2026-06-04",
+    "format": "ZIP"
+  }
+}

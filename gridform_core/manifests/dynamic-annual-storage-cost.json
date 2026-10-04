@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "dynamic-annual-storage-cost",
+  "name": "Dynamic annual-average storage cost recovery",
+  "version": "1.0.0",
+  "scientific_version": "dynamic-storage-recovery-2026.08.04",
+  "slot": "storage_cost",
+  "implementation": "gridform_core.builtin.value_modules:ValueDynamicStorageCost",
+  "contract_version": "value.storage-cost/v1",
+  "inputs": ["storage.asset", "storage.previous-year-sales", "storage.sales-weighted-dwell"],
+  "outputs": ["storage.bid-cost-function"],
+  "parameters": ["storage.cost.discount_rate", "storage.cost.utilisation_floor_fraction"],
+  "state_reads": ["storage.cost-observation"],
+  "state_writes": ["storage.cost-observation"],
+  "determinism": "deterministic",
+  "artifacts": ["storage-cost-audit.json"],
+  "description": "First-year full-utilisation initialisation followed by previous-year average project-cost recovery; cycle depreciation applies only to batteries.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["storage.bid-cost-function"],
+  "requires_capabilities": []
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-perfect-foresight-lp",
+  "name": "Perfect-foresight co-optimization",
+  "version": "1.0.0",
+  "scientific_version": "value-perfect-foresight-single-node-lp-v1",
+  "slot": "psm",
+  "implementation": "gridform_core.perfect_foresight_psm:PerfectForesightPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": ["chronology.demand", "chronology.resources", "chronology.storage"],
+  "outputs": ["market.year-result", "market.period-summary"],
+  "parameters": ["clock.period_hours", "market.perfect_foresight_terminal_soc_rule", "market.voll_gbp_per_mwh"],
+  "state_reads": ["operating.assets"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["solver/perfect-foresight-<year>.json", "solver/perfect-foresight-<year>.npz"],
+  "description": "Optional single-node chronological LP. Storage is centrally co-optimized, so a storage offer rule is not applicable.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["market.year-result", "storage.central-cooptimization"],
+  "requires_capabilities": [],
+  "units": {
+    "chronology.demand": "MWh/period",
+    "chronology.resources": "MW, p.u., GBP/MWh",
+    "chronology.storage": "MW, MWh, fraction",
+    "market.year-result": "GBP, MWh",
+    "market.period-summary": "GBP/MWh, MWh",
+    "clock.period_hours": "hours",
+    "market.perfect_foresight_terminal_soc_rule": "enum",
+    "market.voll_gbp_per_mwh": "GBP/MWh"
+  }
+}

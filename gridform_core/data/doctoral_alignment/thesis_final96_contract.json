@@ -1,0 +1,47 @@
+{
+  "schema_version": "value.doctoral-thesis-contract/v1",
+  "profile_id": "thesis_final9.6",
+  "source_filename": "PhD_thesis_final9.6.docx",
+  "source_sha256": "47983aea5c201549cb3b212c554e5f04cfcfb5d7fce413fb5a28ddd939b16d22",
+  "source_body_index_note": "P identifiers index direct OOXML body children; rendered page numbers were checked separately.",
+  "period_hours": 0.5,
+  "periods_per_year": 17520,
+  "investment": {
+    "source_paragraphs": [547, 548, 549, 560, 567, 575, 608],
+    "profit_basis": "annual revenue minus all OPEX minus annualized capital",
+    "payback_rate_denominator": "annualized capital",
+    "vre_cap_input": "total demand minus all operational VRE available generation",
+    "vre_agent_cap_allocation": "operational capacity share within technology",
+    "preferred_rates": {"solar": 0.076, "onshore": 0.076, "offshore": 0.089, "storage": 0.12},
+    "negative_period_threshold": 200,
+    "cap_fraction": 0.2,
+    "cost_of_capital": 0.05
+  },
+  "policy": {
+    "source_paragraphs": [630, 632, 641, 644, 645],
+    "forward_annual_cm_budget_gbp": 5440000000.0,
+    "cm_derating": {"CCGT": 0.95, "OCGT": 0.95, "bio_and_waste": 0.95, "Nuclear": 0.85, "pumped_hydro": 0.95, "1c_battery": 0.05, "0.5c_battery": 0.15, "0.25c_battery": 0.6},
+    "existing_support_is_investable": false
+  },
+  "pumped_hydro": {
+    "source_table": "Chapter 4 Table 10",
+    "source_body_index": 587,
+    "monetary_precision": "annual CAPEX is approximate; values transcribed at the precision reported in the thesis",
+    "units": {"power_mw": "MW", "energy_mwh": "MWh", "annual_opex_gbp": "GBP/year", "annualized_capital_gbp": "GBP/year"},
+    "rows": [
+      {"year": 2025, "power_mw": 2828.0, "energy_mwh": 26700.0, "annual_opex_gbp": 85400000.0, "annualized_capital_gbp": 377900000.0},
+      {"year": 2026, "power_mw": 2927.9, "energy_mwh": 27400.0, "annual_opex_gbp": 87800000.0, "annualized_capital_gbp": 388500000.0},
+      {"year": 2027, "power_mw": 2927.9, "energy_mwh": 27400.0, "annual_opex_gbp": 87800000.0, "annualized_capital_gbp": 388500000.0},
+      {"year": 2028, "power_mw": 3377.9, "energy_mwh": 30200.0, "annual_opex_gbp": 96100000.0, "annualized_capital_gbp": 425100000.0},
+      {"year": 2029, "power_mw": 3587.9, "energy_mwh": 31800.0, "annual_opex_gbp": 99900000.0, "annualized_capital_gbp": 441500000.0},
+      {"year": 2030, "power_mw": 4187.9, "energy_mwh": 40800.0, "annual_opex_gbp": 112400000.0, "annualized_capital_gbp": 496800000.0},
+      {"year": 2031, "power_mw": 5687.9, "energy_mwh": 70800.0, "annual_opex_gbp": 134900000.0, "annualized_capital_gbp": 596400000.0},
+      {"year": 2032, "power_mw": 5687.9, "energy_mwh": 70800.0, "annual_opex_gbp": 134900000.0, "annualized_capital_gbp": 596400000.0},
+      {"year": 2033, "power_mw": 5687.9, "energy_mwh": 70800.0, "annual_opex_gbp": 134900000.0, "annualized_capital_gbp": 596400000.0},
+      {"year": 2034, "power_mw": 5687.9, "energy_mwh": 70800.0, "annual_opex_gbp": 134900000.0, "annualized_capital_gbp": 596400000.0},
+      {"year": 2035, "power_mw": 11387.9, "energy_mwh": 195800.0, "annual_opex_gbp": 241900000.0, "annualized_capital_gbp": 1070800000.0}
+    ]
+  },
+  "retained_authorized_exceptions": ["exogenous_nuclear_policy_and_national_aggregation", "direct_electrolysis_disabled_independent_hydrogen_storage_preserved", "zonal_method_adaptation_deferred"],
+  "scientific_release_status": "not_evaluated"
+}

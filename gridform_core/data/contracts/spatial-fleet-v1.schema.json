@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "value.spatial-fleet/v1",
+  "title": "VALUE immutable spatial fleet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pack_revision", "allocations", "source_capacity_mw_by_technology", "mapped_capacity_mw_by_technology", "fallback_asset_ids", "excluded_northern_ireland_asset_ids", "material_spatial_fallback_by_technology", "scientific_sha256", "schema_version"],
+  "properties": {
+    "pack_revision": {"type": "string", "minLength": 1},
+    "allocations": {"type": "array", "items": {"$ref": "#/$defs/allocation"}},
+    "source_capacity_mw_by_technology": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
+    "mapped_capacity_mw_by_technology": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
+    "fallback_asset_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "excluded_northern_ireland_asset_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "material_spatial_fallback_by_technology": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "scientific_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "schema_version": {"const": "value.spatial-fleet/v1"}
+  },
+  "$defs": {
+    "allocation": {
+      "type": "object",
+      "required": ["allocation_id", "economic_owner_id", "technology", "source_id", "source_kind", "zone_id", "capacity_mw", "zone_share", "location_method", "pack_revision", "source_capacity_unit", "capacity_unit_conversion", "schema_version"],
+      "properties": {
+        "allocation_id": {"type": "string", "minLength": 1},
+        "economic_owner_id": {"type": "string", "minLength": 1},
+        "technology": {"type": "string", "minLength": 1},
+        "source_id": {"type": "string", "minLength": 1},
+        "source_kind": {"enum": ["economic_asset", "repd_project", "model_project", "model_growth"]},
+        "zone_id": {"type": "string", "minLength": 1},
+        "capacity_mw": {"type": "number", "minimum": 0},
+        "zone_share": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "location_method": {"type": "string", "minLength": 1},
+        "pack_revision": {"type": "string", "minLength": 1},
+        "source_capacity_unit": {"type": "string", "minLength": 1},
+        "capacity_unit_conversion": {"type": "string", "minLength": 1},
+        "provenance": {"type": "object"},
+        "schema_version": {"const": "value.agent-zone-allocation/v1"}
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "value.data-pack-manifest/v2",
+  "id": "force-zonal-template-v1",
+  "name": "VALUE synthetic zonal-network template",
+  "licence": "CC0-1.0",
+  "teaching_only": true,
+  "periods_per_year": 2,
+  "annual_economics_eligible": false,
+  "scientific_baseline_eligible": false,
+  "zonal_network_pack": {
+    "network_pack_id": "force-zonal-template-v1",
+    "scientific_sha256": "5b6bceab380da8750f506473444670154496fc51f8b1346331702ef6ebf092c5",
+    "loss_capability_absent_reason": "lossless_v1",
+    "geometry_artifact": null,
+    "provenance": {"status": "synthetic_template", "runtime_downloads": false}
+  },
+  "bindings": {
+    "value.zonal.zones": {"uri": "files/zones.json", "format": "json", "sha256": "664dddeb276d7dc4dafd1dabefa60a428322256fd0129550333dce327d5df086"},
+    "value.zonal.corridors": {"uri": "files/corridors.json", "format": "json", "sha256": "117cc2f14b4056cc1fd7b538a57b3630e7a6487e0950ffb677f4095a2d148198"},
+    "value.zonal.cutsets": {"uri": "files/cutsets.json", "format": "json", "sha256": "53f042ab1ff918abea5a1540e9a8a8d494bd4de513c77153e594495a60c469ec"},
+    "value.zonal.asset-map": {"uri": "files/asset-map.json", "format": "json", "sha256": "f120b337745f788f684250fc0feea3e3364c601da37f199256f56711371dad87"},
+    "value.zonal.demand": {"uri": "files/zonal-demand.json", "format": "json", "sha256": "6123b1124a66c176a44f8f974d46430a65d9e4df300d7b5720f68ac25e3a526c"},
+    "value.zonal.ratings": {"uri": "files/ratings.json", "format": "json", "sha256": "0d40f0a39c43489dfe7a1e8f8366dc004bf336989873a4c7d1b8bfd2e05b28ee"},
+    "value.zonal.interconnector-landings": {"uri": "files/interconnector-landings.json", "format": "json", "sha256": "a216cc4449b3a7abeff5b01dc662cd02cd215034bcbf2af49f44d1f3128f3e54"},
+    "value.zonal.spatial-audit": {"uri": "files/spatial-audit.json", "format": "json", "sha256": "1f914c2ae4258fa8f3591768bca7716613b182f4aab176937a8c243b650695cd"}
+  }
+}

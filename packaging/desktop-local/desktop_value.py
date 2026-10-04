@@ -1,0 +1,337 @@
+"""Verified per-user VALUE installation and foreground service supervision."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.request
+from contextlib import contextmanager
+from pathlib import Path, PurePosixPath
+
+SCHEMA = "value.desktop-local-release/v1"
+PACKS = ["value-101-baseline-v1", "value-101-network-v1"]
+GENERATED = {"release-manifest.json", "install-receipt.json", ".supervisor.lock"}
+DESKTOP_METADATA = {".DS_Store", "desktop.ini", "Thumbs.db"}
+
+
+def digest(path):
+    h = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def architecture(value):
+    return {"amd64": "x64", "x86_64": "x64", "aarch64": "arm64", "arm64": "arm64"}.get(value.lower(), value.lower())
+
+
+def verify_inventory(root, *, installed=False):
+    root = Path(root).absolute()
+    if root.is_symlink():
+        raise ValueError("Bundle root must not be a symbolic link")
+    manifest = json.loads((root / "release-manifest.json").read_text("utf-8"))
+    if manifest.get("schema_version", manifest.get("schema")) != SCHEMA:
+        raise ValueError("Unsupported release manifest")
+    if manifest.get("target_platform") != sys.platform:
+        raise ValueError("This installer targets a different operating system")
+    if architecture(platform.machine()) not in manifest.get("architectures", []):
+        raise ValueError("This installer targets a different CPU architecture")
+    if manifest.get("teaching_packs") != PACKS:
+        raise ValueError("Unexpected teaching data packs")
+    names = set()
+    for item in manifest["files"]:
+        name = item["path"]
+        pure = PurePosixPath(name)
+        if not name or "\\" in name or pure.is_absolute() or any(p in ("", ".", "..") for p in name.split("/")) or ":" in name:
+            raise ValueError(f"Unsafe inventory path: {name}")
+        if name in names or name in GENERATED or name.split("/")[0] in {"state", "logs"}:
+            raise ValueError(f"Duplicate or reserved inventory path: {name}")
+        names.add(name)
+        path = root / name
+        if any(parent.is_symlink() for parent in [path, *path.parents] if parent != root.parent):
+            raise ValueError(f"Symbolic link in inventory: {name}")
+        if not path.is_file() or path.stat().st_size != item["bytes"] or digest(path) != item["sha256"]:
+            raise ValueError(f"Release integrity failed: {name}")
+    actual = set()
+    for directory, directories, files in os.walk(root, followlinks=False):
+        if installed and Path(directory) == root:
+            directories[:] = [name for name in directories if name not in {"state", "logs"}]
+        for leaf in directories + files:
+            path = Path(directory) / leaf
+            name = path.relative_to(root).as_posix()
+            if path.is_symlink():
+                raise ValueError(f"Symbolic link in release: {name}")
+            if path.is_file() and leaf not in DESKTOP_METADATA and name not in (GENERATED if installed else {"release-manifest.json"}):
+                actual.add(name)
+    if actual != names:
+        raise ValueError(f"Inventory differs: missing={sorted(names-actual)[:5]}, unknown={sorted(actual-names)[:5]}")
+    entries = {"app/backend/server.py", "app/dist/server/index.js", "app/gridform_core/application.py", "app/scripts/serve-value-ui.mjs"}
+    if not entries.issubset(names):
+        raise ValueError(f"Application entry points missing: {sorted(entries - names)}")
+    bundled = manifest.get("bundled_runtimes")
+    if bundled is not None:
+        expected = {"python": "runtime/python/python.exe", "node": "runtime/node/node.exe"} if sys.platform == "win32" else {"python": "runtime/python/bin/python3.10", "node": "runtime/node/bin/node"}
+        if bundled != expected or not set(expected.values()).issubset(names):
+            raise ValueError("Missing or invalid bundled runtime inventory")
+    return manifest
+
+
+def runtime_paths(root, manifest, python=None, node=None):
+    bundled = manifest.get("bundled_runtimes")
+    if bundled is not None:
+        if python is not None or node is not None:
+            raise ValueError("Bundled releases reject external --python and --node overrides")
+        return tuple(str(Path(root) / bundled[name]) for name in ("python", "node"))
+    return python or sys.executable, node or "node"
+
+
+def executable(value):
+    found = shutil.which(str(value)) if not Path(value).is_absolute() else str(value)
+    if not found or not Path(found).is_file():
+        raise ValueError(f"Runtime executable unavailable: {value}")
+    # Keep a venv's launcher path: resolving its symlink would invoke the base
+    # interpreter and silently discard that venv's installed dependencies.
+    return str(Path(found).absolute())
+
+
+def clean_environment(app=None, state=None):
+    environment = os.environ.copy()
+    for name in ("PYTHONHOME", "PYTHONPATH", "NODE_PATH", "NODE_OPTIONS", "PYTHONPYCACHEPREFIX", "PYTHONUSERBASE", "PYTHONSTARTUP", "PYTHONINSPECT", "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__"):
+        environment.pop(name, None)
+    environment.update(PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1", PYTHONHASHSEED="0", OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    if app is not None:
+        environment["PYTHONPATH"] = str(app)
+    if state is not None:
+        environment["VALUE_DATA_HOME"] = str(state)
+    return environment
+
+
+def check_runtimes(python, node, manifest):
+    python, node = executable(python), executable(node)
+    probe = "import json,sys,platform; import numpy,pandas,scipy,xarray,netCDF4,pyproj; print(json.dumps({'version':list(sys.version_info[:3]),'platform':sys.platform,'arch':platform.machine(),'dependencies':{m.__name__:getattr(m,'__version__','unknown') for m in [numpy,pandas,scipy,xarray,netCDF4,pyproj]}}))"
+    environment = clean_environment()
+    result = subprocess.run([python, "-B", "-s", "-c", probe], env=environment, check=True, capture_output=True, text=True, timeout=60)
+    py = json.loads(result.stdout.strip())
+    result = subprocess.run([node, "-p", "JSON.stringify({version:process.versions.node,platform:process.platform,arch:process.arch})"], env=environment, check=True, capture_output=True, text=True, timeout=15)
+    js = json.loads(result.stdout.strip())
+    if py["version"][:2] != [3, 10]:
+        raise ValueError("The model runtime requires Python 3.10")
+    if tuple(int(n) for n in js["version"].split(".")[:2]) < (22, 13):
+        raise ValueError("The frontend runtime requires Node.js 22.13 or newer")
+    arch = architecture(py["arch"])
+    if py["platform"] != manifest["target_platform"] or js["platform"] != manifest["target_platform"] or arch != architecture(js["arch"]) or arch not in manifest["architectures"]:
+        raise ValueError("Python and Node must match the release platform and architecture")
+    return {"python": {"path": python, "sha256": digest(python), **py}, "node": {"path": node, "sha256": digest(node), **js}}
+
+
+def install(args):
+    bundle = Path(args.bundle).absolute()
+    manifest = verify_inventory(bundle)
+    paths = runtime_paths(bundle, manifest, args.python, args.node)
+    runtime = None if manifest.get("bundled_runtimes") else check_runtimes(*paths, manifest)
+    prefix = Path(args.prefix).expanduser().absolute()
+    if prefix.is_symlink() or (prefix.exists() and (not prefix.is_dir() or any(prefix.iterdir()))):
+        raise ValueError("Installation destination must be absent or empty; existing state is never overwritten")
+    prefix.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix=".value-install-", dir=prefix.parent))
+    try:
+        for item in manifest["files"]:
+            target = temporary / item["path"]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(bundle / item["path"], target)
+            if os.name != "nt":
+                mode = item.get("mode", 0o644)
+                target.chmod(int(mode, 8) if isinstance(mode, str) else mode)
+        shutil.copy2(bundle / "release-manifest.json", temporary / "release-manifest.json")
+        verify_inventory(temporary)
+        if manifest.get("bundled_runtimes"):
+            runtime = check_runtimes(*runtime_paths(temporary, manifest), manifest)
+        state = temporary / "state"
+        environment = clean_environment(temporary / "app", state)
+        subprocess.run([runtime["python"]["path"], "-B", "-s", str(temporary / "app/scripts/install_synthetic_pack.py"), "--state-root", str(state), "--value-101-only"], cwd=temporary / "app", env=environment, check=True, timeout=120)
+        if manifest.get("bundled_runtimes"):
+            for name, relative in manifest["bundled_runtimes"].items():
+                runtime[name]["path"] = str(prefix / relative)
+        receipt = {"schema_version": "value.desktop-local-receipt/v1", "manifest_sha256": digest(temporary / "release-manifest.json"), "runtimes": runtime}
+        (temporary / "install-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", "utf-8")
+        if prefix.exists():
+            prefix.rmdir()
+        temporary.rename(prefix)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+    print(f"Installed VALUE at {prefix}", flush=True)
+    entry = "start-value.cmd" if os.name == "nt" else "Start VALUE.command" if sys.platform == "darwin" else "start-value"
+    print(f"Start VALUE with: {prefix / entry}", flush=True)
+
+
+def validate_install(prefix):
+    prefix = Path(prefix).expanduser().absolute()
+    manifest = verify_inventory(prefix, installed=True)
+    receipt = json.loads((prefix / "install-receipt.json").read_text("utf-8"))
+    if receipt.get("schema_version") != "value.desktop-local-receipt/v1" or receipt["manifest_sha256"] != digest(prefix / "release-manifest.json"):
+        raise ValueError("Installation receipt does not match this release")
+    recorded = receipt["runtimes"]
+    if manifest.get("bundled_runtimes"):
+        paths = runtime_paths(prefix, manifest)
+        if tuple(recorded[name]["path"] for name in ("python", "node")) != paths:
+            raise ValueError("Bundled runtime receipt paths do not match installation")
+    else:
+        paths = (recorded["python"]["path"], recorded["node"]["path"])
+    current = check_runtimes(*paths, manifest)
+    if current != recorded:
+        raise ValueError("Runtime executables or versions changed; reinstall into a new empty directory")
+    return prefix, current
+
+
+@contextmanager
+def supervisor_lock(prefix):
+    stream = (prefix / ".supervisor.lock").open("a+b")
+    try:
+        if os.name == "nt":
+            import msvcrt
+            stream.seek(0)
+            if not stream.read(1):
+                stream.write(b"0")
+                stream.flush()
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+    finally:
+        stream.close()
+
+
+def check_ports():
+    for port in (8766, 8800):
+        with socket.socket() as listener:
+            if os.name == "nt":
+                listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            else:
+                listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                listener.bind(("127.0.0.1", port))
+                listener.listen(1)
+            except OSError as error:
+                raise ValueError(f"Port {port} is occupied; VALUE did not stop that process") from error
+
+
+def start(args):
+    prefix, runtime = validate_install(args.prefix)
+    with supervisor_lock(prefix):
+        check_ports()
+        logs = prefix / "logs"
+        logs.mkdir(exist_ok=True)
+        environment = clean_environment(prefix / "app", prefix / "state")
+        children, streams = [], []
+        previous_handlers = {}
+        def request_shutdown(signum, frame):
+            raise KeyboardInterrupt
+        shutdown_signals = [signal.SIGTERM]
+        if hasattr(signal, "SIGHUP"):
+            shutdown_signals.append(signal.SIGHUP)
+        if hasattr(signal, "SIGBREAK"):
+            shutdown_signals.append(signal.SIGBREAK)
+        try:
+            for shutdown_signal in shutdown_signals:
+                previous_handlers[shutdown_signal] = signal.signal(shutdown_signal, request_shutdown)
+            commands = [("backend", [runtime["python"]["path"], "-B", "-s", "-m", "backend.server", "--host", "127.0.0.1", "--port", "8766"]), ("frontend", [runtime["node"]["path"], str(prefix / "app/scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", "8800"])]
+            for name, command in commands:
+                stream = (logs / f"{name}.log").open("ab")
+                streams.append(stream)
+                options = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
+                children.append(subprocess.Popen(command, cwd=prefix / "app", env=environment, stdout=stream, stderr=stream, **options))
+            ready = set()
+            deadline = time.monotonic() + 90
+            while len(ready) < 2:
+                if any(child.poll() is not None for child in children):
+                    raise RuntimeError(f"A VALUE service exited; see {logs}")
+                if time.monotonic() > deadline:
+                    raise RuntimeError(f"VALUE startup timed out; see {logs}")
+                for port in (8766, 8800):
+                    if port in ready:
+                        continue
+                    try:
+                        with urllib.request.urlopen(f"http://127.0.0.1:{port}" + ("/api/health" if port == 8766 else "/"), timeout=1) as response:
+                            if port == 8766 and json.load(response).get("service") != "value-modular-local":
+                                raise ValueError("Unexpected backend health response")
+                        ready.add(port)
+                    except (OSError, ValueError):
+                        pass
+                time.sleep(0.25)
+            print("VALUE ready: http://127.0.0.1:8800/\nKeep this window open. Ctrl+C stops the API and frontend.", flush=True)
+            while all(child.poll() is None for child in children):
+                time.sleep(0.5)
+            raise RuntimeError(f"A VALUE service exited; see {logs}")
+        except KeyboardInterrupt:
+            print("Stopping VALUE API and frontend.", flush=True)
+        finally:
+            # Ignore repeated shutdown signals during bounded child cleanup.
+            for shutdown_signal in previous_handlers:
+                signal.signal(shutdown_signal, signal.SIG_IGN)
+            for child in children:
+                if child.poll() is None:
+                    child.terminate()
+            for child in children:
+                try:
+                    child.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait()
+            for stream in streams:
+                stream.close()
+            for shutdown_signal, previous in previous_handlers.items():
+                signal.signal(shutdown_signal, previous)
+
+
+def diagnose(args):
+    prefix, runtime = validate_install(args.prefix)
+    print(json.dumps({"prefix": str(prefix), "runtimes": runtime}, indent=2))
+    for name in ("backend", "frontend"):
+        path = prefix / "logs" / f"{name}.log"
+        if path.is_file():
+            with path.open("rb") as stream:
+                stream.seek(max(0, path.stat().st_size - 8192))
+                print(f"\n{name} log:\n" + stream.read().decode("utf-8", errors="replace"))
+    print("Installation integrity and runtime checks passed.")
+
+
+def main():
+    if sys.version_info < (3, 10):
+        raise RuntimeError("The installer requires Python 3.10 or newer")
+    bundle = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    installing = commands.add_parser("install")
+    installing.add_argument("--bundle", default=str(bundle))
+    installing.add_argument("--prefix", default=str(Path.home() / "VALUE-four-role"))
+    installing.add_argument("--python")
+    installing.add_argument("--node")
+    installing.set_defaults(action=install)
+    for command, action in (("start", start), ("diagnose", diagnose)):
+        child = commands.add_parser(command)
+        child.add_argument("--prefix", default=str(bundle))
+        child.set_defaults(action=action)
+    args = parser.parse_args()
+    try:
+        args.action(args)
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyError) as error:
+        print(f"VALUE: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

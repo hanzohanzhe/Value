@@ -1,0 +1,42 @@
+{
+  "schema_version": "gridform.retained-sources/v1",
+  "baseline": "scheme-c-1000twh-2026-07-18_19",
+  "created_at": "2026-08-04",
+  "hash_algorithm": "sha256",
+  "files": [
+    {
+      "path": "gridform_core/builtin/scheme_c_1000twh/compat/case3.py",
+      "sha256": "68baa3c61630e3959087ba863e1ba697ec3e3c76a4eb1384d8751de4f9e77dd8",
+      "kind": "retained_source",
+      "required": true
+    },
+    {
+      "path": "gridform_core/builtin/scheme_c_1000twh/exact_run.py",
+      "sha256": "cd4373cf5979a88ab45c2878ddeaf8dbd06fa846c7bfd4e2e3dc62c29e35fc50",
+      "kind": "retained_source",
+      "required": true
+    },
+    {
+      "path": "gridform_core/builtin/scheme_c_1000twh/AUTHORITATIVE_SOURCE.json",
+      "sha256": "52ae01d7a50812a717b228e6c997cfe81169bf0403db1ddea1883a5d7b1071fe",
+      "kind": "source_metadata",
+      "required": true
+    },
+    {
+      "path": "tests/fixtures/scheme_c_2025_2026_authoritative.json",
+      "sha256": "c74c0d5cb27b699427875b94320a87e50eef0cd96c794962e6cb7fd221a6de64",
+      "kind": "authoritative_fixture",
+      "required": true
+    }
+  ],
+  "data_packs": [
+    {
+      "root": ".gridform/data-packs/uk-scheme-c-1000twh",
+      "manifest": "manifest.json",
+      "manifest_sha256": "0098ea69257edb97ca84e0ce00e40b7cc2acb9ade2d449e0db55196d210ea995",
+      "required_when_root_exists": true,
+      "validate_binding_sha256": true,
+      "note": "The local data pack is not required in a source-only clone. If its root exists, the manifest and every declared binding are immutable."
+    }
+  ]
+}

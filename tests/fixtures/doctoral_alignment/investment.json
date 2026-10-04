@@ -1,0 +1,29 @@
+{
+  "schema_version": "value.doctoral-investment-fixtures/v1",
+  "source_root": "C:/Users/86150/Desktop/Dr.seal/能源投资/invest!/人人如龙/人人谦让/newpredictedVRE0.03 - sum - seperate prediction - 0.2c43_REPD2025_physical_income_fixed/decarbonization_cost_research",
+  "storage_source_path": "C:/Users/86150/Desktop/storage_expansion_corrected_caps/storage_expansion_cap.py",
+  "storage_source_sha256": "fd8bdfa1bc71d40334d2bd8ebe88012c7489806c09af9aa7ced33f73a0f60279",
+  "source_hashes": {
+    "run_investment_analysis.py": "81446a975e51983aef6806a64ca1e5e7bbd70efc97903d8a08b6c9691697e528",
+    "run_investment_analysis_case3_decarbonization_breakdown_cm.py": "e0e11057715f5f26a99e804fdd7d9fa386a9b744c85174965584695060d373c9",
+    "config.py": "587ad317e89305fb60342ed06cd309ee79a00df3e3bcc7dbc2f235fe63478de5"
+  },
+  "source_mappings": {
+    "critical_capacity_for_threshold": "run_investment_analysis.py:1743-1768",
+    "vre_annual_expansion_cap": "run_investment_analysis_case3_decarbonization_breakdown_cm.py:963-965",
+    "classify_investment": "run_investment_analysis_case3_decarbonization_breakdown_cm.py:896-904",
+    "proposals": "run_investment_analysis_case3_decarbonization_breakdown_cm.py:991-1029",
+    "scale": "run_investment_analysis_case3_decarbonization_breakdown_cm.py:1168-1216",
+    "payback_targets": "config.py:54-66"
+  },
+  "approved_deviations": ["preserve_negative_capacity_events_independently_of_positive_scaling", "nuclear_no_endogenous_investment", "exclude_electrolyser_direct_load"],
+  "cases": {
+    "vre_cap_200": {"blocks": [[200, 50.0, 1.0], [100, 100.0, 0.1]], "cap_mw": 10.0},
+    "owner_cap": {"requests_mw": [80.0, 80.0], "cap_mw": 100.0, "accepted_mw": [50.0, 50.0]},
+    "thermal_high": {"capacity_mw": 100.0, "profit_funded_mw": 10.0, "accepted_mw": 1.0},
+    "storage_high": {"profit_funded_mw": 10.0, "cap_mw": 20.0, "accepted_mw": 20.0},
+    "storage_profit": {"profit_funded_mw": 10.0, "cap_mw": 5.0, "accepted_mw": 10.0},
+    "bio_payback": {"payback_years": 22.0, "economic_lifetime_years": 25.0, "recommendation": "Do_Nothing"},
+    "storage_credit": {"accepted_vre_mwh": [90.0, 0.0], "demand_mwh": [60.0, 20.0], "charge_mwh": [30.0, 0.0], "leftover_excess_mwh": [10.0, 0.0], "discharge_mwh": [0.0, 5.0], "excess_mwh": [10.0, 0.0], "deficit_mwh": [0.0, 15.0]}
+  }
+}

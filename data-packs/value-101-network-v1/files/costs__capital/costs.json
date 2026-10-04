@@ -1,0 +1,9 @@
+{
+  "capital_costs_per_mw": {
+    "CCGT": 1000000.0,
+    "battery": 50000.0,
+    "offshore": 2700000.0,
+    "onshore": 1350000.0,
+    "solar": 650000.0
+  }
+}

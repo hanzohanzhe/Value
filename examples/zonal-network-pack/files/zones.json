@@ -1,0 +1,8 @@
+{
+  "schema_version": "value.network-zone-collection/v1",
+  "zones": [
+    {"zone_id": "north", "display_name": "North", "dso_owner": "Northern Powergrid", "nation": "England"},
+    {"zone_id": "south", "display_name": "South", "dso_owner": "UK Power Networks", "nation": "England"},
+    {"zone_id": "england-fallback", "display_name": "England fallback", "dso_owner": "aggregate", "nation": "England", "is_unconstrained_fallback": true}
+  ]
+}

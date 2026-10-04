@@ -1,0 +1,22 @@
+{
+  "source_release": "scheme-c-1000twh-2026-07-18_19",
+  "reference_file": "compat/case3.py",
+  "reference_sha256": "68baa3c61630e3959087ba863e1ba697ec3e3c76a4eb1384d8751de4f9e77dd8",
+  "modular_copy": "compat/modular_case3.py",
+  "rule": "The reference file is read-only. All project-composition changes are made only in the modular copy.",
+  "injected_stage_boundaries": [
+    "psm",
+    "investment",
+    "pipeline",
+    "vre_cap",
+    "storage_cap"
+  ],
+  "execution_evidence": "Each selected module writes year, ID, version and action to module-events.jsonl.",
+  "validation": [
+    "reference-file SHA-256 regression test",
+    "module-registry contract tests",
+    "two-period stage-evidence test",
+    "full two-year execution test",
+    "retained-output comparison"
+  ]
+}

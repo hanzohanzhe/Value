@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-copperplate-balancing",
+  "name": "VALUE copperplate current-period balancing",
+  "version": "1.0.0",
+  "scientific_version": "value-copperplate-balancing-2026.08.21",
+  "slot": "balancing",
+  "implementation": "gridform_core.builtin.value_modules:ValueCopperplateBalancing",
+  "contract_version": "value.balancing-module/v1",
+  "inputs": ["market.ahead-schedule/v1", "demand.real", "fleet.realised-availability", "market.flexibility-bids"],
+  "outputs": ["market.balancing-result/v1"],
+  "parameters": [],
+  "state_reads": ["storage.actual-soc"],
+  "state_writes": ["storage.actual-soc"],
+  "determinism": "deterministic",
+  "artifacts": ["market/staged-market.jsonl"],
+  "description": "Lossless single-node pay-as-bid balancing against an immutable national ahead schedule.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["market.balancing/v1", "domain.single_node"],
+  "requires_capabilities": []
+}

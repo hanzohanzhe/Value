@@ -1,0 +1,5 @@
+-r value-doctoral-reproduction-py310.lock
+-r value-data-workbench-py310.lock
+cbcbox==2.929
+pulp==3.3.2
+scipy==1.8.1

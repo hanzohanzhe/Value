@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-repd-era5-aggregated-weather",
+  "name": "VALUE REPD-location ERA5 aggregated weather",
+  "version": "1.0.0",
+  "scientific_version": "value-repd-era5-aggregated-weather-2026.08.21",
+  "slot": "weather_spatializer",
+  "implementation": "gridform_core.weather_spatialization:REPDERA5AggregatedWeather",
+  "contract_version": "value.weather-spatializer/v1",
+  "inputs": ["value.agent-zone-allocation/v1", "projects.repd", "weather.wind", "weather.solar"],
+  "outputs": ["value.zonal-availability-profile/v1"],
+  "parameters": [],
+  "state_reads": [],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["data/zonal-availability-profiles.json"],
+  "description": "Offline preprocessing that samples installed weather data at REPD locations and writes MW-weighted agent-technology-zone profiles; runtime performs no GIS or ERA5 access.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": ["data.zonal-availability-profile/v1"],
+  "requires_capabilities": []
+}

@@ -1,0 +1,158 @@
+/** Presentation of one Run's recorded identity. No mutable workspace input belongs here. */
+export type ContextRun = {
+  id: string;
+  project_id: string;
+  project_name?: string;
+  mode?: string;
+  status?: string;
+  input_snapshot_id?: string;
+  input_tree_sha256?: string;
+  execution_status?: string;
+  contract_validation_status?: string;
+  scientific_validation_status?: string;
+  source_study_status?: string;
+  run_policy?: { label?: string; total_periods?: number; start_year?: number; end_year?: number };
+  diagnostic?: { total_periods?: number; years?: number[] };
+};
+
+export type FrozenContextProject = {
+  id?: string;
+  name?: string;
+  data_pack_id?: string;
+  revision_number?: number;
+  revision_sha256?: string;
+  market_configuration?: { network_pack_id?: string };
+};
+
+export type FrozenContextSnapshot = {
+  snapshot_id?: string;
+  state?: string;
+  input_tree_sha256?: string;
+  pack_manifest_sha256?: string;
+  network_pack_id?: string;
+  network_pack_manifest_sha256?: string;
+};
+
+export type FrozenRunContext = {
+  /** The Run whose artifacts were requested, not the currently selected Study. */
+  runId: string;
+  status: "loading" | "ready" | "unavailable";
+  project?: FrozenContextProject | null;
+  snapshot?: FrozenContextSnapshot | null;
+};
+
+export type RunContext = {
+  kind: "empty" | "loading" | "ready" | "partial" | "unavailable" | "mismatch";
+  runId?: string;
+  studyId?: string;
+  studyName?: string;
+  revisionNumber?: number;
+  revisionSha?: string;
+  dataPackId?: string;
+  dataPackSha?: string;
+  networkPackId?: string;
+  networkPackSha?: string;
+  snapshotId?: string;
+  inputTreeSha?: string;
+  sourceStudyStatus?: string;
+  scope: { mode?: string; label: string; configuredPeriods?: number; years?: number[] };
+  executionStatus: string;
+  contractStatus: string;
+  scientificStatus: string;
+  issue?: string;
+};
+
+function recorded(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
+function runScope(run?: ContextRun): RunContext["scope"] {
+  const labels: Record<string, string> = {
+    smoke: "Two-period wiring check",
+    two_year_smoke: "Two-year hand-off check",
+    value_101_day: "One-day market lesson",
+    two_year: "Two-year model scope",
+    full: "Full Study scope",
+  };
+  const diagnosticYears = run?.diagnostic?.years;
+  const years = Array.isArray(diagnosticYears)
+    && diagnosticYears.length > 0
+    && diagnosticYears.every((year) => positiveInteger(year) !== undefined)
+    ? [...diagnosticYears]
+    : undefined;
+  return {
+    mode: recorded(run?.mode),
+    label: recorded(run?.run_policy?.label) ?? labels[run?.mode ?? ""] ?? "Run scope not recorded",
+    configuredPeriods: positiveInteger(run?.diagnostic?.total_periods) ?? positiveInteger(run?.run_policy?.total_periods),
+    // Study start/end years are intentionally not accepted: a short Run may cover less.
+    years,
+  };
+}
+
+export function resolveRunContext({ run, frozen }: {
+  run?: ContextRun | null;
+  frozen?: FrozenRunContext | null;
+}): RunContext {
+  const base: RunContext = {
+    kind: "empty",
+    scope: runScope(run ?? undefined),
+    executionStatus: recorded(run?.execution_status) ?? recorded(run?.status) ?? "not_recorded",
+    contractStatus: recorded(run?.contract_validation_status) ?? "not_evaluated",
+    scientificStatus: recorded(run?.scientific_validation_status) ?? "not_evaluated",
+  };
+  if (!run) return { ...base, issue: "Select a Run to view its recorded identity." };
+  Object.assign(base, {
+    runId: run.id,
+    studyId: run.project_id,
+    studyName: recorded(run.project_name),
+    sourceStudyStatus: recorded(run.source_study_status),
+  });
+  if (!frozen || frozen.runId !== run.id || frozen.status === "loading") {
+    return { ...base, kind: "loading", issue: "Loading this Run’s frozen identity…" };
+  }
+  if (frozen.status === "unavailable" || !frozen.project || !recorded(frozen.project.id)) {
+    return { ...base, kind: "unavailable", issue: "Frozen Study unavailable. The current workspace data is not this Run’s source." };
+  }
+  const project = frozen.project;
+  const snapshot = frozen.snapshot;
+  const mismatch = (issue: string): RunContext => ({ ...base, kind: "mismatch", issue });
+  if (project.id !== run.project_id) return mismatch("The frozen Study does not match this Run. Source identity is withheld.");
+  if (snapshot?.state !== undefined && snapshot.state !== "ready") {
+    return { ...base, kind: "unavailable", issue: "The input snapshot is not ready. Source identity is unavailable." };
+  }
+  if (recorded(run.input_snapshot_id) && recorded(snapshot?.snapshot_id)
+    && run.input_snapshot_id !== snapshot?.snapshot_id) {
+    return mismatch("The input snapshot ID does not match this Run. Source identity is withheld.");
+  }
+  if (recorded(run.input_tree_sha256) && recorded(snapshot?.input_tree_sha256)
+    && run.input_tree_sha256 !== snapshot?.input_tree_sha256) {
+    return mismatch("The input tree identity does not match this Run. Source identity is withheld.");
+  }
+  const declaredNetwork = recorded(project.market_configuration?.network_pack_id);
+  const snapshottedNetwork = recorded(snapshot?.network_pack_id);
+  if (declaredNetwork && snapshottedNetwork && declaredNetwork !== snapshottedNetwork) {
+    return mismatch("The frozen network-pack identities disagree. Source identity is withheld.");
+  }
+  const dataPackId = recorded(project.data_pack_id);
+  const complete = Boolean(dataPackId && snapshot?.state === "ready"
+    && recorded(snapshot.snapshot_id) && recorded(snapshot.pack_manifest_sha256)
+    && (!run.input_tree_sha256 || recorded(snapshot.input_tree_sha256)));
+  return {
+    ...base,
+    kind: complete ? "ready" : "partial",
+    studyName: recorded(project.name) ?? base.studyName,
+    revisionNumber: positiveInteger(project.revision_number),
+    revisionSha: recorded(project.revision_sha256),
+    dataPackId,
+    dataPackSha: recorded(snapshot?.pack_manifest_sha256),
+    networkPackId: snapshottedNetwork ?? declaredNetwork,
+    networkPackSha: recorded(snapshot?.network_pack_manifest_sha256),
+    snapshotId: recorded(snapshot?.snapshot_id),
+    inputTreeSha: recorded(snapshot?.input_tree_sha256),
+    issue: complete ? undefined : "Some frozen identity fields were not recorded or could not be loaded. Available fields are shown below.",
+  };
+}

@@ -1,0 +1,38 @@
+{
+  "batteries": {},
+  "connections": {},
+  "electrolyzer": {},
+  "generators": {
+    "CCGT": {
+      "capacity_limit": 40,
+      "capital_cost": 40000000,
+      "carbon_price": 15,
+      "fuel_cost": 55,
+      "gen_cost": 0.1
+    },
+    "Hydro_natural_flow": {
+      "capacity_limit": 2,
+      "capital_cost": 2000000,
+      "carbon_price": 0,
+      "fuel_cost": 0,
+      "gen_cost": 0
+    },
+    "Nuclear": {
+      "capacity_limit": 5,
+      "capital_cost": 5000000,
+      "carbon_price": 0,
+      "fuel_cost": 10,
+      "gen_cost": 0
+    },
+    "OCGT": {
+      "capacity_limit": 10,
+      "capital_cost": 10000000,
+      "carbon_price": 20,
+      "fuel_cost": 85,
+      "gen_cost": 0.1
+    }
+  },
+  "locations": [
+    "GB"
+  ]
+}

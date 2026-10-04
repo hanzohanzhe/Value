@@ -1,0 +1,53 @@
+{
+  "runtime": "Windows-10-10.0.26200-SP0",
+  "python": "3.10.0",
+  "fixture": {
+    "periods": 2000,
+    "orders_per_period": 50
+  },
+  "results": [
+    {
+      "trace_level": "off",
+      "wall_seconds": 0.01194089998898562,
+      "schema_version": "gridform.market-ledger/v2",
+      "rows": 0,
+      "bytes": 0,
+      "writer_seconds": 0.0,
+      "wall_overhead_seconds_vs_off": 0.0
+    },
+    {
+      "trace_level": "summary",
+      "wall_seconds": 0.12831619998905808,
+      "schema_version": "gridform.market-ledger/v2",
+      "rows": {
+        "period_summary": 2000,
+        "orders": 0,
+        "storage_state": 2000
+      },
+      "bytes": 364544,
+      "writer_seconds": 0.014838200018857606,
+      "maximum_absolute_energy_balance_residual_mwh": 0.0,
+      "maximum_absolute_raw_energy_balance_residual_mwh": 0.0,
+      "compatibility_adjustment_periods": 0,
+      "energy_balance_relative_tolerance": 0.001,
+      "wall_overhead_seconds_vs_off": 0.11637530000007246
+    },
+    {
+      "trace_level": "full",
+      "wall_seconds": 5.085658500000136,
+      "schema_version": "gridform.market-ledger/v2",
+      "rows": {
+        "period_summary": 2000,
+        "orders": 100000,
+        "storage_state": 2000
+      },
+      "bytes": 15388672,
+      "writer_seconds": 2.1245647999312496,
+      "maximum_absolute_energy_balance_residual_mwh": 0.0,
+      "maximum_absolute_raw_energy_balance_residual_mwh": 0.0,
+      "compatibility_adjustment_periods": 0,
+      "energy_balance_relative_tolerance": 0.001,
+      "wall_overhead_seconds_vs_off": 5.07371760001115
+    }
+  ]
+}

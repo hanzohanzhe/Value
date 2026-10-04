@@ -1,0 +1,31 @@
+{
+  "schema_version": "value.extension-bundle/v1",
+  "id": "value-network-contract-extension",
+  "name": "VALUE solver-neutral network contract",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "namespace": "value.network",
+  "provided_capabilities": ["contract.network-psm/v1", "data.network.topology/v1"],
+  "required_capabilities": ["domain.network.solver"],
+  "composed_module_ids": [],
+  "data_roles": [
+    {"role": "value.network.buses", "capability": "data.network.topology/v1", "group": "Network", "label": "Buses and voltage levels", "formats": ["csv", "json"], "required": true, "unit": "kV", "coordinate_semantics": "optional WGS84; electrical identity uses stable bus_id", "validation_rules": {"unique_id": true}},
+    {"role": "value.network.branches", "capability": "data.network.topology/v1", "group": "Network", "label": "AC lines, DC links and transformers", "formats": ["csv", "json"], "required": true, "validation_rules": {"valid_endpoints": true, "explicit_units": true}},
+    {"role": "value.network.asset-map", "capability": "data.network.topology/v1", "group": "Network", "label": "Generator, storage, import and demand bus mapping", "formats": ["csv", "json"], "required": true, "validation_rules": {"shares_at_most_one": true}},
+    {"role": "value.network.nodal-demand", "capability": "data.network.topology/v1", "group": "Network", "label": "Chronological nodal demand", "formats": ["csv", "parquet"], "required": true, "unit": "MWh/period", "time_semantics": "same clock as base demand; bus sum must reconcile", "validation_rules": {"reconcile_base_demand": true}},
+    {"role": "value.network.contingencies", "capability": "data.network.topology/v1", "group": "Network", "label": "Optional contingency set", "formats": ["csv", "json"], "required": false, "validation_rules": {}},
+    {"role": "value.network.dynamic-ratings", "capability": "data.network.topology/v1", "group": "Network", "label": "Optional chronological branch ratings", "formats": ["csv", "parquet"], "required": false, "unit": "MW", "validation_rules": {}},
+    {"role": "value.network.expansion-candidates", "capability": "data.network.topology/v1", "group": "Network", "label": "Optional transmission expansion candidates", "formats": ["csv", "json"], "required": false, "validation_rules": {}}
+  ],
+  "parameters": [],
+  "artifacts": [
+    {"artifact_type": "network.period-results", "media_type": "application/x-sqlite3", "schema_version": "value.network-period-results/v1", "summary_fields": ["maximum_branch_utilisation", "congestion_periods", "maximum_nodal_residual"]}
+  ],
+  "hooks": [],
+  "state_schema_version": "value.network-state/v1",
+  "state_migrations": {},
+  "required_value_version": ">=0.5.0",
+  "required_contract_versions": {"psm_input": "value.network-psm-input/v1"},
+  "member_inventory": [],
+  "maturity": "ready"
+}

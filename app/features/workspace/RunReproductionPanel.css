@@ -1,0 +1,11 @@
+.run-reproduction-panel { margin: 4px 0 12px; padding: 16px 20px; background: white; min-width: 0; border: 1px solid var(--border, #d9dde5); border-radius: 8px; }
+.run-reproduction-panel summary { cursor: pointer; font-weight: 600; }
+.run-reproduction-panel p { margin: 10px 0; line-height: 1.5; }
+.run-reproduction-panel ul { padding-left: 22px; margin: 10px 0; }
+.run-reproduction-panel li { margin: 5px 0; overflow-wrap: anywhere; }
+.run-reproduction-panel button { padding: 10px 14px; min-height: 44px; border: 1px solid var(--border, #d9dde5); border-radius: 7px; background: white; color: var(--blue, #20529c); font: inherit; font-weight: 600; cursor: pointer; }
+.run-reproduction-panel button:disabled { cursor: wait; opacity: .65; }
+.run-reproduction-identity { font-family: monospace; overflow-wrap: anywhere; }
+
+.run-reproduction-details { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border, #d9dde5); }
+.run-reproduction-panel a { color: var(--blue, #20529c); }

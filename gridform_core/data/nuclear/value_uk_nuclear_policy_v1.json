@@ -1,0 +1,118 @@
+{
+  "schema_version": "value.uk-nuclear-policy/v1",
+  "policy_id": "value-uk-nuclear-exogenous-fleet-v1",
+  "version": "2026.08.31",
+  "evidence_as_of": "2026-08-31",
+  "endogenous_investment_allowed": false,
+  "declared_existing_capacity_mw": 5958.0,
+  "existing_stations": [
+    {
+      "station_id": "heysham-1",
+      "name": "Heysham 1",
+      "capacity_mw": 1155.0,
+      "model_unavailable_from_year": 2031,
+      "announced_generation_end": "2030-03",
+      "source_title": "EDF Energy — Heysham 1 power station",
+      "source_url": "https://www.edfenergy.com/energy/power-stations/heysham-1"
+    },
+    {
+      "station_id": "hartlepool",
+      "name": "Hartlepool",
+      "capacity_mw": 1185.0,
+      "model_unavailable_from_year": 2031,
+      "announced_generation_end": "2030-03",
+      "source_title": "EDF Energy — Hartlepool power station",
+      "source_url": "https://www.edfenergy.com/energy/power-stations/hartlepool"
+    },
+    {
+      "station_id": "heysham-2",
+      "name": "Heysham 2",
+      "capacity_mw": 1230.0,
+      "model_unavailable_from_year": 2031,
+      "announced_generation_end": "2030",
+      "source_title": "EDF Energy — Heysham 2 power station",
+      "source_url": "https://www.edfenergy.com/energy/power-stations/heysham-2"
+    },
+    {
+      "station_id": "torness",
+      "name": "Torness",
+      "capacity_mw": 1190.0,
+      "model_unavailable_from_year": 2031,
+      "announced_generation_end": "2030",
+      "source_title": "EDF Energy — Torness power station",
+      "source_url": "https://www.edfenergy.com/energy/power-stations/torness"
+    },
+    {
+      "station_id": "sizewell-b",
+      "name": "Sizewell B",
+      "capacity_mw": 1198.0,
+      "model_unavailable_from_year": 2056,
+      "announced_generation_end": "2055",
+      "source_title": "EDF Energy — Sizewell B power station",
+      "source_url": "https://www.edfenergy.com/energy/power-stations/sizewell-b"
+    }
+  ],
+  "planned_projects": [
+    {
+      "project_id": "hinkley-point-c-unit-1",
+      "name": "Hinkley Point C Unit 1",
+      "capacity_mw": 1630.0,
+      "expected_first_generation_year": 2030,
+      "model_first_full_operating_year": 2031,
+      "source_title": "DESNZ Annual Report and Accounts 2025 to 2026 — Hinkley Point C start dates",
+      "source_url": "https://www.gov.uk/government/publications/desnz-annual-report-and-accounts-2025-to-2026/financial-statements"
+    },
+    {
+      "project_id": "hinkley-point-c-unit-2",
+      "name": "Hinkley Point C Unit 2",
+      "capacity_mw": 1630.0,
+      "expected_first_generation_year": 2031,
+      "model_first_full_operating_year": 2032,
+      "source_title": "DESNZ Annual Report and Accounts 2025 to 2026 — Hinkley Point C start dates",
+      "source_url": "https://www.gov.uk/government/publications/desnz-annual-report-and-accounts-2025-to-2026/financial-statements"
+    },
+    {
+      "project_id": "sizewell-c",
+      "name": "Sizewell C",
+      "capacity_mw": 3200.0,
+      "expected_first_generation_year": null,
+      "model_first_full_operating_year": 2035,
+      "model_treatment": "retain_in_pipeline_beyond_model_horizon",
+      "completion_year_basis": "transparent_mid_2030s_point_estimate",
+      "final_investment_decision_date": "2025-07-22",
+      "financial_close_date": "2025-11-04",
+      "source_title": "GOV.UK — Sizewell C final investment decision and financial close",
+      "source_url": "https://www.gov.uk/government/collections/sizewell-c"
+    }
+  ],
+  "excluded_projects": [],
+  "cost_evidence": [
+    {
+      "evidence_id": "hinkley-point-c-2025-estimate",
+      "applies_to_project_ids": ["hinkley-point-c-unit-1", "hinkley-point-c-unit-2"],
+      "total_cost_gbp": 35000000000.0,
+      "price_year": 2015,
+      "primary_ledger_treatment": "excluded_pending_cost_year_normalisation",
+      "source_title": "EDF 2025 Annual Results",
+      "source_url": "https://www.edf.fr/en/2025-annual-results"
+    },
+    {
+      "evidence_id": "sizewell-b-life-extension-heads-of-terms",
+      "applies_to_station_ids": ["sizewell-b"],
+      "total_cost_gbp": 800000000.0,
+      "price_year": null,
+      "primary_ledger_treatment": "excluded_benefit_after_2034",
+      "source_title": "EDF Energy — milestone moment for Sizewell B life extension agreement",
+      "source_url": "https://www.edfenergy.com/media-centre/milestone-moment-sizewell-b-life-extension-agreement"
+    },
+    {
+      "evidence_id": "sizewell-c-2025-fid-target-construction-cost",
+      "applies_to_project_ids": ["sizewell-c"],
+      "total_cost_gbp": 38000000000.0,
+      "price_year": 2024,
+      "primary_ledger_treatment": "excluded_pending_cost_year_normalisation",
+      "source_title": "GOV.UK — Sizewell C final investment decision",
+      "source_url": "https://www.gov.uk/government/news/sizewell-c-gets-green-light-with-final-investment-decision"
+    }
+  ]
+}

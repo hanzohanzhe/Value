@@ -1,0 +1,11 @@
+{
+  "schema_version": "value.module/v2", "id": "example-storage-cost", "name": "Example storage cost",
+  "version": "1.0.0", "scientific_version": "fixture-only", "slot": "storage_cost",
+  "implementation": "examples.external_modules.value_example_modules:ExampleStorageCost",
+  "contract_version": "value.storage-cost/v1", "inputs": ["storage_technology", "previous_year_sales"],
+  "outputs": ["storage_offer_cost"], "parameters": [], "state_reads": ["previous_year_storage_audit"],
+  "state_writes": ["storage_cost_state"], "determinism": "deterministic", "artifacts": [],
+  "description": "Test-only storage-cost contract fixture.", "status": "fixture", "selection_required": false,
+  "provides_capabilities": ["storage.bid-cost-function"], "requires_capabilities": [],
+  "units": {"storage_technology": "technology ID", "previous_year_sales": "MWh", "storage_offer_cost": "GBP/MWh"}
+}

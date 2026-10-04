@@ -1,0 +1,11 @@
+{
+  "schema_version": "value.module/v2", "id": "example-agent-investment",
+  "name": "Example investment module", "version": "1.0.0", "scientific_version": "fixture-only",
+  "slot": "investment", "implementation": "examples.external_modules.value_example_modules:ExampleInvestment",
+  "contract_version": "value.investment/v2", "inputs": ["market_year_result", "expansion_headroom"],
+  "outputs": ["investment_decision"], "parameters": [], "state_reads": ["operating_state"],
+  "state_writes": [], "determinism": "deterministic", "artifacts": [],
+  "description": "Test-only investment contract fixture.", "status": "fixture", "selection_required": true,
+  "provides_capabilities": ["investment.proposals"], "requires_capabilities": ["market.year-result", "expansion.headroom"],
+  "units": {"market_year_result": "GBP and MWh", "expansion_headroom": "MW", "investment_decision": "MW"}
+}

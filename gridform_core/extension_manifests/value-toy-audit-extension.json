@@ -1,0 +1,61 @@
+{
+  "schema_version": "value.extension-bundle/v1",
+  "id": "value-toy-audit-extension",
+  "name": "VALUE toy audit extension",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "namespace": "value.toy-audit",
+  "provided_capabilities": ["extension.toy-audit/v1"],
+  "required_capabilities": [],
+  "composed_module_ids": [],
+  "data_roles": [
+    {
+      "role": "value.toy-audit.series",
+      "capability": "extension.toy-audit/v1",
+      "group": "Extension",
+      "label": "Toy extension audit series",
+      "formats": ["csv"],
+      "required": true,
+      "unit": "dimensionless",
+      "time_semantics": "one value per selected model year",
+      "validation_rules": {"minimum_rows": 1}
+    }
+  ],
+  "parameters": [
+    {
+      "name": "value.toy-audit.multiplier",
+      "value_type": "number",
+      "default": 1.0,
+      "title": "Audit multiplier",
+      "description": "A harmless bounded value used to demonstrate safe generated forms.",
+      "visibility": "advanced",
+      "unit": "dimensionless",
+      "minimum": 0.0,
+      "maximum": 10.0
+    }
+  ],
+  "artifacts": [
+    {
+      "artifact_type": "toy.audit.year-summary",
+      "media_type": "application/json",
+      "schema_version": "value.toy-audit-artifact/v1",
+      "summary_fields": ["year"]
+    }
+  ],
+  "hooks": [
+    {
+      "hook": "initialize",
+      "implementation": "gridform_core.toy_extension:ToyAuditHooks"
+    },
+    {
+      "hook": "after_psm",
+      "implementation": "gridform_core.toy_extension:ToyAuditHooks"
+    }
+  ],
+  "state_schema_version": "value.toy-audit-state/v1",
+  "state_migrations": {},
+  "required_value_version": ">=0.5.0",
+  "required_contract_versions": {"project": "value.project/v2"},
+  "member_inventory": [],
+  "maturity": "ready"
+}

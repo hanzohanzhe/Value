@@ -1,0 +1,91 @@
+{
+  "schema_version": "value.release-map/v1",
+  "as_of": "2026-10-04",
+  "product": "VALUE",
+  "software_license": "Apache-2.0",
+  "source": {
+    "id": "source-2026-10-04",
+    "manifest": "source-release-manifest.json",
+    "status": "VALUE_only_public_source",
+    "clean_clone_model_run_verified": false
+  },
+  "methodology": {
+    "edition": "0.3",
+    "revision_date": "2026-10-04",
+    "scientific_basis_date": "2026-10-02",
+    "source": "docs/methodology",
+    "artifacts": "docs/methodology/artifacts.json",
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "chapters_per_language": 9
+  },
+  "website": {
+    "source": "website",
+    "generated": "website/dist",
+    "user_entry": "https://value.ac",
+    "audience": "public"
+  },
+  "installers": {
+    "candidate": "2026-10-03-rc1",
+    "status": "prerelease",
+    "bytes_changed_in_this_revision": false,
+    "source_alignment": "docs/release/installer-source-alignment.json: exact runtime source/parameter correspondence; publication documentation and one package-data correction differ from original Full build.",
+    "application_files_sha256": "6c74f51a176ea238141dd3a10cd24e966b4dd3fc82615444f467e58e819b0010",
+    "platforms": [
+      {
+        "target": "linux-x64",
+        "file": "VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
+        "bytes": 467218327,
+        "sha256": "aaaf0adcf9a3b74e89e66fc378c1879656325222e776d95b173c97b23cbcba56"
+      },
+      {
+        "target": "macos-arm64",
+        "file": "VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
+        "bytes": 243768080,
+        "sha256": "e17b4b9c7dc8a1227253bd3d0f3be0fa0203c772978ca238d565626ec24fd676"
+      },
+      {
+        "target": "macos-x64",
+        "file": "VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
+        "bytes": 309120538,
+        "sha256": "72360d942ec277530d9c7f094dd5465605b86f12ee5fecdb3e1af26a0c2756f5"
+      },
+      {
+        "target": "windows-x64",
+        "file": "VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
+        "bytes": 309939521,
+        "sha256": "5540a324af4f2ba98d5dd2eb9c744ba42efa2198b86c9adf4d73632733fc291c"
+      }
+    ],
+    "validation": {
+      "linux": "Historical offline installation and bounded role tasks passed",
+      "windows": "Archive/dependency checks only; native acceptance pending",
+      "macos": "Archive/dependency checks only; native acceptance pending"
+    }
+  },
+  "data": {
+    "included_cc0_packs": [
+      "value-101-baseline-v1",
+      "value-101-network-v1",
+      "value-synthetic-contract-pack-v1"
+    ],
+    "full_bundled_packs": [
+      "value-101-baseline-v1",
+      "value-101-network-v1"
+    ],
+    "research_data": "Separate qualified assets; not released with this source snapshot",
+    "rights_map": "DATA-LICENSING.json"
+  },
+  "history": {
+    "existing_repository": "private archive",
+    "public_repository": "Clean VALUE-only Git history, no inherited private history"
+  },
+  "required_checks": [
+    "python3 website/build.py",
+    "python3 website/check_site.py",
+    "python3 scripts/source_release_scan.py",
+    "python3 scripts/check_publication_scope.py"
+  ]
+}

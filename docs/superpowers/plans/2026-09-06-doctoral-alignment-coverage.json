@@ -1,0 +1,615 @@
+{
+  "schema": "value.doctoral-alignment-plan/v1",
+  "date": "2026-09-06",
+  "status": "partial_components_verified_public_integration_pending",
+  "record_scope": "The findings/tasks arrays below retain the 2026-09-06 historical component snapshot. Use latest_update for current final9.6 status; historical items are not silently marked closed.",
+  "latest_update": {
+    "date": "2026-09-08",
+    "status": "partial_thesis96_repairs_verified_annual_cem_not_ready",
+    "report": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-thesis96-alignment-20260908/report.md",
+    "current_findings": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-thesis96-alignment-20260908/findings-status.json",
+    "evidence": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-thesis96-alignment-20260908/evidence.json",
+    "doctoral_tests_passed": 266,
+    "full_suite_tests": 1196,
+    "new_failure_nodes": 0,
+    "annual_cem_ready": false,
+    "full_model_parity": false
+  },
+  "scope": "Restore the national/copperplate core first, with declared source bug repairs. Preserve nuclear policy, weather corrections and monthly recovery. No formal model runs or monitors this turn.",
+  "source_audit": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-model-difference-audit-20260906/findings.json",
+  "decisions": {
+    "D1": {
+      "status": "approved",
+      "recommendation": "Repair evidenced source implementation defects and declare each intentional difference"
+    },
+    "D2": {
+      "status": "deferred_by_user",
+      "recommendation": "Retain fixed zonal network framework; explicitly version a new minimum-unserved-energy phase and source physical-priority phases, with complete ledger/checkpoint phase evidence."
+    },
+    "D3": {
+      "status": "approved_component_verified",
+      "topic": "nuclear_dispatch_aggregation",
+      "decision": "Retain authoritative station policy records and project their post-retirement/commissioning capacity into one national Nuclear dispatch/cashflow object. National ramp/startup/source CAPEX are used once. Station allocation in the zonal model is deferred.",
+      "evidence": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-core-restoration-20260906/nuclear-aggregation.json",
+      "public_annual_integration": false
+    }
+  },
+  "exceptions": {
+    "electrolysis_direct_load": "excluded_by_user",
+    "nuclear_policy": "preserve_current_policy_bytes",
+    "fixed_zonal_network": "do_not_modify_or_adapt_until_national_core_is_restored",
+    "monthly_checkpoint": "preserve_and_extend_complete_state"
+  },
+  "findings": [
+    {
+      "id": "F01",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T01",
+        "T03",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_only_public_entry_not_integrated",
+      "implemented_component": "静态源内核、事务式单期引擎、typed factory和博士profile分支已实现。",
+      "remaining": "application._execute_native尚未选择新profile/引擎；年度主循环未接通。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F02",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T03",
+        "T08",
+        "T12"
+      ],
+      "conditions": [
+        "D2"
+      ],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "按真实可用量减已接受量保留未接受风光，包含预测恰好满足/零预测情形。",
+      "remaining": "需正式入口、整月及全年逐期对照。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F03",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T03",
+        "T08",
+        "T12"
+      ],
+      "conditions": [
+        "D2"
+      ],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "原充电→出口→弃电顺序已在全国内核小例验证，保留资产归属。",
+      "remaining": "分区方法不改；全国年度调用待集成。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F04",
+      "disposition": "excluded_by_user",
+      "tasks": [
+        "T01"
+      ],
+      "conditions": [],
+      "implementation_status": "excluded_by_user_guard_tested",
+      "implemented_component": "两类电解槽直接负荷参数强制为零；独立氢储能未删除。",
+      "remaining": "此项为批准例外，不称原模型完整复刻。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F05",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T02",
+        "T10",
+        "T12"
+      ],
+      "conditions": [
+        "D1"
+      ],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "新建年度起点空库存；续期/跨年保留库存，不重置半满，缺状态拒绝。",
+      "remaining": "需接通实际年度状态和月度磁盘发布。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F06",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T02",
+        "T10",
+        "T12"
+      ],
+      "conditions": [
+        "D1"
+      ],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "批次、绝对年龄、分类衰减、充放转换损耗和源数值微量清理单列。",
+      "remaining": "现有月度存档尚未承载这些新字段。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F07",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T03",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_national_nuclear_aggregation_annual_integration_pending",
+      "implemented_component": "恢复原机组构造参数、前期出力/启停/自然能量状态；D3已批准并实现单一全国核电视图，容量来自当年真实投产/退役后的分站登记。",
+      "remaining": "正式年度runner尚未接通；新项目参数owner缺失时仍拒绝；核电分区分配延期。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F08",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T03",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "恢复VRE非零报价、unit_time费用、热电燃料/碳项、负互联价格。",
+      "remaining": "需正式运行配置启用并逐期对账。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F09",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T04",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "发电和储能不同电价、逐资产收入、小批次收入只累计一次。",
+      "remaining": "年度财务与终端账本待接通。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F10",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T04",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "实际运营成本进入单期/累计账本，净利润进入投资组件的桥接测试通过。",
+      "remaining": "生产年度现金流→投资流程仍使用旧路径。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F11",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T04",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "partial_policy_allocation_components",
+      "implemented_component": "实现显式CM/decarb转移支付按资格权重分配；缺政策账不默认零。",
+      "remaining": "原年度资格判定、预算/收费路径和投资前支付时序未迁入。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F12",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "恢复critical capacity阈值、30次二分及20%上限逻辑。",
+      "remaining": "年度runner尚未调用。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F13",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "同技术同比例缩放；owner/技术首次出现顺序归并后再分区域。",
+      "remaining": "年度runner尚未调用。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F14",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "恢复火电/生物质Invest_High的原1.01规模规则。",
+      "remaining": "年度runner尚未调用；不放开核电内生投资。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F15",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "博士profile生物质投资目标20年，寿命25年仍单独保留。",
+      "remaining": "公共入口尚未启用新profile。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F16",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "恢复storage High利润地板与Profit不裁剪规则，负退出与正新增分开。",
+      "remaining": "年度runner尚未调用。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F17",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "储能上限入口要求真实充电、剩余可用量和放电轨迹，源公式小例通过。",
+      "remaining": "全年度轨迹累积与投资入口待接通。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F18",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T05",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "preprocessing_verified_annual_pipeline_pending",
+      "implemented_component": "恢复REPD成功率范围/缺省，真实UK原始表预处理字段对照通过。",
+      "remaining": "年度投产与财务累计完整链未验收。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F19",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T05",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "preprocessing_verified_annual_pipeline_pending",
+      "implemented_component": "恢复僵尸、超期筛选，真实UK原始表预处理字段对照通过。",
+      "remaining": "年度项目演化完整链未验收。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F20",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T05",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "preprocessing_verified_annual_pipeline_pending",
+      "implemented_component": "恢复预计投产、延期散布等预处理规则，真实表字段对照通过。",
+      "remaining": "年度投产执行、库存和成本状态迁移待接通。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F21",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T06",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "财务agent归属与天气来源分离；项目归属/按比例分配组件测试通过。",
+      "remaining": "实际commissioning年度路径尚未切换。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F22",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T06",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "component_verified_integration_pending",
+      "implemented_component": "冻结原抽蓄逐年外生表，按原资产ID应用，并明确修正源功率/能量变量倒置。",
+      "remaining": "实际年界尚未调用此表。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F23",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T07",
+        "T12"
+      ],
+      "conditions": [
+        "D1"
+      ],
+      "implementation_status": "partial_exit_proposal_repair",
+      "implemented_component": "保留负投资/经济退出提议，避免被正新增缩放覆盖。",
+      "remaining": "生产退役落地与带电库存处置尚未贯通；不静默裁剪SOC。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F24",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T09",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "partial_dual_cost_view",
+      "implemented_component": "分开博士成本视图和物理资源成本视图；时长换算与进口费用不重复累计。",
+      "remaining": "全年度系统成本、分母、VoLL和终端元数据未集成验证。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F25",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T09",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "partial_legacy_carbon_view",
+      "implemented_component": "原碳因子口径保留并标注单位边界，未知源单位不擅称吨；储能碳未评估。",
+      "remaining": "完整物理碳清单、运行/总体碳年度对账未完成。",
+      "closed_as_full_model_parity": false
+    },
+    {
+      "id": "F26",
+      "disposition": "planned_restoration_with_declared_exceptions",
+      "tasks": [
+        "T01",
+        "T11",
+        "T12"
+      ],
+      "conditions": [],
+      "implementation_status": "small_reference_only",
+      "implemented_component": "冻结原源码哈希并用受限AST提取运行源函数；小例/恢复组件证据与整模型分开。",
+      "remaining": "整月、17520期、跨年、十年和完整发布门槛均未评估。",
+      "closed_as_full_model_parity": false
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "冻结参考、例外和独立测试工具",
+      "depends_on": [],
+      "files": [
+        "Create: gridform_core/doctoral_alignment.py",
+        "Create: gridform_core/data/doctoral_alignment/profile-v1.json",
+        "Create: tests/doctoral_reference_harness.py",
+        "Create: tests/test_doctoral_alignment_profile.py",
+        "Create: tests/fixtures/doctoral_alignment/manifest.json"
+      ],
+      "execution_status": "source_manifest_and_small_reference_harness_verified_release_profile_pending"
+    },
+    {
+      "id": "T02",
+      "title": "恢复储能批次、初始值和跨年机组状态",
+      "depends_on": [
+        "T01",
+        "D1"
+      ],
+      "files": [
+        "Create: gridform_core/builtin/scheme_c_1000twh/doctoral_state.py",
+        "Modify: gridform_core/canonical_psm_data.py",
+        "Modify: gridform_core/v2/orchestrator.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/psm_runtime_state.py",
+        "Test: tests/test_doctoral_state_alignment.py"
+      ],
+      "execution_status": "component_verified_orchestrator_integration_pending"
+    },
+    {
+      "id": "T03",
+      "title": "恢复全国日前及真实平衡的原调度顺序",
+      "depends_on": [
+        "T02"
+      ],
+      "files": [
+        "Create: gridform_core/builtin/scheme_c_1000twh/doctoral_market.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/staged_psm.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/copperplate_balancing.py",
+        "Modify: gridform_core/staged_market_contracts.py",
+        "Modify: gridform_core/canonical_psm_data.py",
+        "Test: tests/test_doctoral_market_alignment.py"
+      ],
+      "execution_status": "component_verified_public_entry_pending"
+    },
+    {
+      "id": "T04",
+      "title": "恢复结算、运营成本和政策资金进入agent",
+      "depends_on": [
+        "T03"
+      ],
+      "files": [
+        "Create: gridform_core/builtin/scheme_c_1000twh/doctoral_policy.py",
+        "Modify: gridform_core/cem_market_adapter.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/staged_psm.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/v2_module_definitions.py",
+        "Modify: gridform_core/v2/contracts.py",
+        "Test: tests/test_doctoral_agent_cashflow.py"
+      ],
+      "execution_status": "cashflow_components_verified_annual_policy_pending"
+    },
+    {
+      "id": "T05",
+      "title": "恢复REPD筛选、成功率与工期",
+      "depends_on": [
+        "T01"
+      ],
+      "files": [
+        "Modify: gridform_core/canonical_psm_data.py",
+        "Create: gridform_core/builtin/scheme_c_1000twh/doctoral_planning.py",
+        "Modify: gridform_core/planning_ledger.py",
+        "Modify: gridform_core/data/cem/planning_preprocessing_contract.json",
+        "Test: tests/test_doctoral_planning_alignment.py"
+      ],
+      "execution_status": "preprocessing_verified_annual_pipeline_pending"
+    },
+    {
+      "id": "T06",
+      "title": "恢复项目财务owner、抽蓄外生表并锁住核电",
+      "depends_on": [
+        "T05"
+      ],
+      "files": [
+        "Modify: gridform_core/asset_economics.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/v2_module_definitions.py",
+        "Modify: gridform_core/doctoral_weather_mapping.py",
+        "Modify: gridform_core/canonical_psm_data.py",
+        "Create: gridform_core/data/doctoral_alignment/pumped_hydro_schedule.json",
+        "Test: tests/test_doctoral_commissioning_alignment.py",
+        "Modify: tests/test_doctoral_project_weather.py"
+      ],
+      "execution_status": "components_and_national_nuclear_aggregation_verified_year_application_pending"
+    },
+    {
+      "id": "T07",
+      "title": "恢复四档投资、风光/储能cap及退出",
+      "depends_on": [
+        "T04",
+        "T06",
+        "D1"
+      ],
+      "files": [
+        "Modify: gridform_core/builtin/scheme_c_1000twh/doctoral_policy.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/v2_module_definitions.py",
+        "Modify: gridform_core/cem_investment_policy.py",
+        "Modify: gridform_core/canonical_psm_data.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/storage/storage_expansion_cap.py",
+        "Test: tests/test_doctoral_investment_alignment.py"
+      ],
+      "execution_status": "components_verified_annual_pipeline_pending"
+    },
+    {
+      "id": "T08",
+      "execution_status": "deferred_by_user",
+      "title": "保留固定分区框架，接入明确版本的全国物理意图",
+      "depends_on": [
+        "T03",
+        "T04",
+        "D2"
+      ],
+      "files": [
+        "Modify: gridform_core/staged_market_contracts.py",
+        "Modify: gridform_core/zonal_redispatch.py",
+        "Modify: gridform_core/zonal_solver_contract.py",
+        "Modify: gridform_core/builtin/scheme_c_1000twh/staged_psm.py",
+        "Modify: gridform_core/manifests/value-zonal-redispatch-balancing.json",
+        "Modify: gridform_core/runtime_capabilities.py",
+        "Test: tests/test_doctoral_zonal_alignment.py",
+        "Modify: gridform_core/market_ledger.py",
+        "Modify: gridform_core/data/contracts/solver-validation-registry-v1.json"
+      ]
+    },
+    {
+      "id": "T09",
+      "title": "分开恢复博士成本/碳口径与现行物理账本",
+      "depends_on": [
+        "T04"
+      ],
+      "files": [
+        "Create: gridform_core/doctoral_ledgers.py",
+        "Modify: gridform_core/cost_ledger.py",
+        "Modify: gridform_core/carbon_ledger.py",
+        "Modify: gridform_core/application.py",
+        "Test: tests/test_doctoral_ledgers.py"
+      ],
+      "execution_status": "partial_dual_ledger_components_verified"
+    },
+    {
+      "id": "T10",
+      "title": "为完整新状态升级月度与年度checkpoint",
+      "depends_on": [
+        "T02",
+        "T06",
+        "T09"
+      ],
+      "files": [
+        "Modify: gridform_core/builtin/scheme_c_1000twh/psm_runtime_state.py",
+        "Modify: gridform_core/subannual_checkpoint.py",
+        "Modify: gridform_core/recovery_capability.py",
+        "Modify: gridform_core/runtime_capabilities.py",
+        "Modify: gridform_core/v2/orchestrator.py",
+        "Test: tests/test_doctoral_checkpoint_alignment.py",
+        "Modify: tests/test_zonal_subannual_resume.py"
+      ],
+      "execution_status": "in_memory_state_and_ledger_resume_verified_disk_integration_pending"
+    },
+    {
+      "id": "T11",
+      "title": "把未评估与通过彻底分开，形成自动验收入口",
+      "depends_on": [
+        "T07",
+        "T09",
+        "T10"
+      ],
+      "files": [
+        "Modify: gridform_core/parity.py",
+        "Modify: gridform_core/scientific_validation.py",
+        "Modify: gridform_core/application.py",
+        "Create: scripts/verify_doctoral_alignment.py",
+        "Test: tests/test_doctoral_release_gates.py",
+        "Modify: tests/test_release_parity.py",
+        "Modify: tests/test_scientific_validation.py"
+      ],
+      "execution_status": "not_implemented"
+    },
+    {
+      "id": "T12",
+      "title": "逐级串行验证、差异归因和最终交付",
+      "depends_on": [
+        "T11"
+      ],
+      "files": [
+        "Create: publication/doctoral-alignment-restoration/verification-manifest.json",
+        "Create: publication/doctoral-alignment-restoration/report.md",
+        "Create: publication/doctoral-alignment-restoration/findings-status.json",
+        "Create: publication/doctoral-alignment-restoration/execution-handoff.md",
+        "Test: tests/test_doctoral_handoff.py"
+      ],
+      "execution_status": "bounded_component_evidence_only"
+    }
+  ],
+  "verification_tiers": [
+    "small",
+    "month",
+    "year_17520",
+    "two_year",
+    "ten_year_2025_2034"
+  ],
+  "artifacts": {
+    "spec": "C:/Users/86150/Documents/Codex/VALUE-1.1/docs/superpowers/specs/2026-09-06-doctoral-alignment-exceptions.md",
+    "plan": "C:/Users/86150/Documents/Codex/VALUE-1.1/docs/superpowers/plans/2026-09-06-doctoral-alignment-restoration.md",
+    "coverage": "C:/Users/86150/Documents/Codex/VALUE-1.1/docs/superpowers/plans/2026-09-06-doctoral-alignment-coverage.json"
+  },
+  "execution_report": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-core-restoration-20260906/report.md",
+  "execution_evidence": "C:/Users/86150/Documents/Codex/VALUE-1.1/publication/doctoral-core-restoration-20260906/evidence.json",
+  "ready_to_run": false
+}

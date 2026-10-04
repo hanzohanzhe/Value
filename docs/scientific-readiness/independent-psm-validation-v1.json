@@ -1,0 +1,56 @@
+{
+  "schema_version": "force.independent-psm-validation-report/v1",
+  "created_at": "2026-08-08",
+  "production_formulation": "force.perfect-foresight-single-node-lp/v1",
+  "production_engine": {
+    "modeler": "scipy.optimize.linprog",
+    "solver": "HiGHS",
+    "scipy": "1.8.1",
+    "python": "3.10.11"
+  },
+  "independent_oracle": {
+    "oracle_id": "force.independent-pulp-cbc-oracle/v1",
+    "modeler": "PuLP 3.3.2",
+    "solver": "COIN-OR CBC",
+    "solver_version_banner": "Welcome to the CBC MILP Solver",
+    "solver_binary_sha256": "233b7c9fa9b55d0cd6d36b00bd754254c14c2a9594c7f512f1a544276edcc38e"
+  },
+  "tests": [
+    {
+      "case": "24-hour thermal/VRE/import/two-storage chronology",
+      "criterion": "absolute objective difference <= 1e-4 GBP and residuals <= 1e-6 MWh",
+      "status": "passed"
+    },
+    {
+      "case": "168-hour thermal/VRE/import/two-storage chronology",
+      "criterion": "absolute objective difference <= 1e-4 GBP and residuals <= 1e-6 MWh",
+      "status": "passed"
+    },
+    {
+      "case": "three random convex 24-hour chronologies (seeds 7, 19, 101)",
+      "criterion": "absolute objective difference <= 1e-4 GBP",
+      "status": "passed"
+    },
+    {
+      "case": "constraint mutations",
+      "mutations": [
+        "demand_balance",
+        "storage_efficiency",
+        "storage_energy_capacity",
+        "terminal_soc",
+        "import_bound"
+      ],
+      "criterion": "each deliberately damaged solution must fail feasibility audit",
+      "status": "passed"
+    }
+  ],
+  "command": "python -m unittest discover -s tests -p test_*.py -v",
+  "full_suite": {
+    "tests_run": 160,
+    "passed": 159,
+    "failed": 0,
+    "skipped": 1,
+    "wall_time_seconds": 122.239
+  },
+  "claim_boundary": "This independently validates the optional perfect-foresight LP. It does not prove that the Scheme C compatibility market is the same optimization formulation or independently optimal."
+}

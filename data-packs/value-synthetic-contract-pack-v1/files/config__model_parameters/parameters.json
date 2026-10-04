@@ -1,0 +1,22 @@
+{
+  "investment_methodology_external": {
+    "preferred_rates": {}
+  },
+  "investment_parameters": {
+    "target_payback_years": {
+      "default": 25
+    }
+  },
+  "physical_period_hours": 0.5,
+  "repd_filtering": {
+    "apply_zombie_filter": true,
+    "max_completion_year": 2040,
+    "minimum_project_size_mw": 0.1,
+    "zombie_status_stale_year": 2015
+  },
+  "simulation_parameters": {
+    "bidding_factor": 1.0,
+    "periods": 17520
+  },
+  "storage_cap_fraction": 0.2
+}

@@ -1,0 +1,2361 @@
+{
+  "schema_version": "gridform.storage-cost-audit/v1",
+  "run_id": "scientific-dynamic-storage-2025-2034-20260804-205626-585b97",
+  "source": "trusted_local_annual_checkpoints",
+  "years": [
+    {
+      "year": 2025,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2025.pkl",
+        "sha256": "76fc8fa6ef46973fc96604effa7db8dd923f8059baa0960a47facb7579323cbf"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 5669.6,
+        "energy_capacity_mwh": 33094.16247030879,
+        "previous_year_sold_mwh": 0.0,
+        "current_year_sold_mwh": 4295781.939360373,
+        "annual_levelized_project_cost_gbp": 178827762.47025898,
+        "current_cycle_depreciation_gbp": 922669.2316915803,
+        "diagnostics": 0
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2025,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 518372.63657957263,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135804,
+          "holding_recovery_gbp_per_mwh_period": 1.3683002525441055,
+          "annual_levelized_project_cost_gbp": 13973877.166030923,
+          "annualized_capital_cost_gbp": 11993981.679095056,
+          "annual_fixed_opex_gbp": 1979895.4869358675,
+          "current_cycle_depreciation_gbp": 764628.3188311339,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 47757.02656410359,
+          "current_year_average_dwell_periods": 12.603346457577995,
+          "name": "air_battery",
+          "power_capacity_mw": 299.98416468725264,
+          "energy_capacity_mwh": 1199.9366587490106,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2025,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 1611034.958036421,
+          "pricing_basis_average_dwell_periods": 4.0,
+          "cycle_depreciation_gbp_per_mwh": 35.714285714285715,
+          "holding_recovery_gbp_per_mwh_period": 6.499923723176855,
+          "annual_levelized_project_cost_gbp": 99423380.1574477,
+          "annualized_capital_cost_gbp": 83148639.25483488,
+          "annual_fixed_opex_gbp": 16274740.902612828,
+          "current_cycle_depreciation_gbp": 158040.91286044643,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 4425.1455600925,
+          "current_year_average_dwell_periods": 2.2136062031678825,
+          "name": "li_battery",
+          "power_capacity_mw": 2465.869833729216,
+          "energy_capacity_mwh": 4931.739667458432,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2025,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 12149.358669833733,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580245,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892166,
+          "annual_levelized_project_cost_gbp": 2879319.6272167186,
+          "annualized_capital_cost_gbp": 2384345.755482752,
+          "annual_fixed_opex_gbp": 494973.87173396687,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 74.99604117181316,
+          "energy_capacity_mwh": 74.99604117181316,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2025,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 1872.3511638954872,
+          "pricing_basis_average_dwell_periods": 500.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.07802831449112711,
+          "annual_levelized_project_cost_gbp": 73048.20272713248,
+          "annualized_capital_cost_gbp": 58273.982616285284,
+          "annual_fixed_opex_gbp": 14774.22011084719,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 1111.5023437658147,
+          "current_year_average_dwell_periods": 5.121992780225953,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 0.7499604117181315,
+          "energy_capacity_mwh": 187.4901029295329,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2025,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 25435755.0,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.30703893651297415,
+          "annual_levelized_project_cost_gbp": 62478137.31683651,
+          "annualized_capital_cost_gbp": 24582937.316836514,
+          "annual_fixed_opex_gbp": 37895200.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 4242488.2648924105,
+          "current_year_average_dwell_periods": 11.402715055238948,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 2828.0,
+          "energy_capacity_mwh": 26700.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87
+        }
+      ],
+      "diagnostics": []
+    },
+    {
+      "year": 2026,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2026.pkl",
+        "sha256": "8095d455be859581be9f43214d6d64b490806e40673ec17a92e8c349cb69d0a8"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 26907.330000000005,
+        "energy_capacity_mwh": 81358.46402216946,
+        "previous_year_sold_mwh": 4295781.939360373,
+        "current_year_sold_mwh": 3286280.9804004123,
+        "annual_levelized_project_cost_gbp": 1046346746.4886866,
+        "current_cycle_depreciation_gbp": 0.0,
+        "diagnostics": 5
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2026,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 47757.02656410359,
+          "pricing_basis_average_dwell_periods": 12.603346457577995,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135808,
+          "holding_recovery_gbp_per_mwh_period": 194.645536678944,
+          "annual_levelized_project_cost_gbp": 117921455.98656996,
+          "annualized_capital_cost_gbp": 101213697.95014873,
+          "annual_fixed_opex_gbp": 16707758.03642123,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 47757.02656410359,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "air_battery",
+          "power_capacity_mw": 2531.4784903668533,
+          "energy_capacity_mwh": 10125.913961467413,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2026,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 4425.1455600925,
+          "pricing_basis_average_dwell_periods": 2.2136062031678825,
+          "cycle_depreciation_gbp_per_mwh": 35.71428571428571,
+          "holding_recovery_gbp_per_mwh_period": 85635.66940821723,
+          "annual_levelized_project_cost_gbp": 839004780.7041476,
+          "annualized_capital_cost_gbp": 701667009.6447651,
+          "annual_fixed_opex_gbp": 137337771.05938244,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 4425.1455600925,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "li_battery",
+          "power_capacity_mw": 20808.75319081552,
+          "energy_capacity_mwh": 41617.50638163104,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            },
+            {
+              "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+              "severity": "warning",
+              "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+              "value_gbp_per_mwh_period": 85635.66940821723
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2026,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 102524.87885985756,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580228,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 24297734.88473725,
+          "annualized_capital_cost_gbp": 20120795.375631943,
+          "annual_fixed_opex_gbp": 4176939.5091053075,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 632.8696225917133,
+          "energy_capacity_mwh": 632.8696225917133,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2026,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 1111.5023437658147,
+          "pricing_basis_average_dwell_periods": 5.121992780225953,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 108.27697190879987,
+          "annual_levelized_project_cost_gbp": 616432.3845442994,
+          "annualized_capital_cost_gbp": 491757.0688937319,
+          "annual_fixed_opex_gbp": 124675.3156505675,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 1111.5023437658147,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 6.328696225917132,
+          "energy_capacity_mwh": 1582.174056479283,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2026,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 4242488.2648924105,
+          "pricing_basis_average_dwell_periods": 11.402715055238948,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 1.3334400555639807,
+          "annual_levelized_project_cost_gbp": 64506342.52868745,
+          "annualized_capital_cost_gbp": 25272482.528687447,
+          "annual_fixed_opex_gbp": 39233860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 4242488.2648924105,
+          "current_year_sold_mwh": 3286280.9804004123,
+          "current_year_average_dwell_periods": 5.349830170285086,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 2927.9,
+          "energy_capacity_mwh": 27400.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2026,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2026,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2026,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+          "severity": "warning",
+          "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+          "value_gbp_per_mwh_period": 85635.66940821723
+        },
+        {
+          "year": 2026,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2026,
+          "object_key": "hydrogen_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        }
+      ]
+    },
+    {
+      "year": 2027,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2027.pkl",
+        "sha256": "97dd3265a3104ec5eb55fa78fa438717bc694671b7eae7850e51e65ae12e1e7d"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 59464.22098333585,
+        "energy_capacity_mwh": 155839.67517596926,
+        "previous_year_sold_mwh": 3286280.9804004123,
+        "current_year_sold_mwh": 1582912.4907026726,
+        "annual_levelized_project_cost_gbp": 2383328108.591324,
+        "current_cycle_depreciation_gbp": 27316354.225433305,
+        "diagnostics": 4
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2027,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 11392680.553613944,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135804,
+          "holding_recovery_gbp_per_mwh_period": 1.3683002525441064,
+          "annual_levelized_project_cost_gbp": 307114819.3671919,
+          "annualized_capital_cost_gbp": 263601108.91936088,
+          "annual_fixed_opex_gbp": 43513710.44783103,
+          "current_cycle_depreciation_gbp": 20971622.557244737,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 1309842.0642982735,
+          "current_year_average_dwell_periods": 3.3254609071022436,
+          "name": "air_battery",
+          "power_capacity_mw": 6592.986431489549,
+          "energy_capacity_mwh": 26371.945725958198,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2027,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 31657206.713158496,
+          "pricing_basis_average_dwell_periods": 4.0,
+          "cycle_depreciation_gbp_per_mwh": 35.71428571428569,
+          "holding_recovery_gbp_per_mwh_period": 6.499923723176853,
+          "annual_levelized_project_cost_gbp": 1953692241.1674352,
+          "annualized_capital_cost_gbp": 1633889846.8202217,
+          "annual_fixed_opex_gbp": 319802394.3472134,
+          "current_cycle_depreciation_gbp": 6344721.459380564,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 177652.20086265594,
+          "current_year_average_dwell_periods": 1.6460519709309893,
+          "name": "li_battery",
+          "power_capacity_mw": 48454.90823442627,
+          "energy_capacity_mwh": 96909.81646885254,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2027,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 238737.68655647986,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.8024691358023,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892166,
+          "annual_levelized_project_cost_gbp": 56579291.57735469,
+          "annualized_capital_cost_gbp": 46852941.38431292,
+          "annual_fixed_opex_gbp": 9726350.19304177,
+          "current_cycle_depreciation_gbp": 10.20880800549217,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.07517394985862424,
+          "current_year_average_dwell_periods": 17.9999859997232,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1473.6894231881472,
+          "energy_capacity_mwh": 1473.6894231881472,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2027,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 36792.13013931524,
+          "pricing_basis_average_dwell_periods": 500.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.07802831449112717,
+          "annual_levelized_project_cost_gbp": 1435413.950654484,
+          "annualized_capital_cost_gbp": 1145097.1342864195,
+          "annual_fixed_opex_gbp": 290316.81636806467,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 26336.75608056562,
+          "current_year_average_dwell_periods": 29.62842722643492,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 14.736894231881456,
+          "energy_capacity_mwh": 3684.223557970364,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2027,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 3286280.9804004123,
+          "pricing_basis_average_dwell_periods": 5.349830170285086,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 3.66908463211917,
+          "annual_levelized_project_cost_gbp": 64506342.52868745,
+          "annualized_capital_cost_gbp": 25272482.528687447,
+          "annual_fixed_opex_gbp": 39233860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 3286280.9804004123,
+          "current_year_sold_mwh": 69081.39428722797,
+          "current_year_average_dwell_periods": 1.490651510507559,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 2927.9,
+          "energy_capacity_mwh": 27400.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2027,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2027,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2027,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2027,
+          "object_key": "hydrogen_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        }
+      ]
+    },
+    {
+      "year": 2028,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2028.pkl",
+        "sha256": "eb4a7e2452efa3430e73c99d62c4c3a95fb7f4175216810892a042dc1605c04b"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 64813.156455844415,
+        "energy_capacity_mwh": 171240.28505606973,
+        "previous_year_sold_mwh": 1582912.4907026726,
+        "current_year_sold_mwh": 14970.076097385503,
+        "annual_levelized_project_cost_gbp": 2597406819.922747,
+        "current_cycle_depreciation_gbp": 5648.245469000171,
+        "diagnostics": 4
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2028,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 1309842.0642982735,
+          "pricing_basis_average_dwell_periods": 3.3254609071022436,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135815,
+          "holding_recovery_gbp_per_mwh_period": 79.8435799259916,
+          "annual_levelized_project_cost_gbp": 368756569.87266344,
+          "annualized_capital_cost_gbp": 316509118.4463954,
+          "annual_fixed_opex_gbp": 52247451.42626803,
+          "current_cycle_depreciation_gbp": 5648.245469000171,
+          "previous_year_sold_mwh": 1309842.0642982735,
+          "current_year_sold_mwh": 352.77716278670925,
+          "current_year_average_dwell_periods": 1.0,
+          "name": "air_battery",
+          "power_capacity_mw": 7916.280519131521,
+          "energy_capacity_mwh": 31665.122076526084,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2028,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 177652.20086265594,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 5874.456058051811,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 177652.20086265594,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2028,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 0.07517394985862424,
+          "pricing_basis_average_dwell_periods": 17.9999859997232,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 44807235.976832576,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.07517394985862424,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            },
+            {
+              "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+              "severity": "warning",
+              "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+              "value_gbp_per_mwh_period": 44807235.976832576
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2028,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 26336.75608056562,
+          "pricing_basis_average_dwell_periods": 29.62842722643492,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 1.9712265609168171,
+          "annual_levelized_project_cost_gbp": 1538180.9279184272,
+          "annualized_capital_cost_gbp": 1227079.1793338172,
+          "annual_fixed_opex_gbp": 311101.74858461,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 26336.75608056562,
+          "current_year_sold_mwh": 14617.298934598793,
+          "current_year_average_dwell_periods": 3.8949386656772327,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 15.791966933228935,
+          "energy_capacity_mwh": 3947.9917333072335,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2028,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 69081.39428722797,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 527.7631249700094,
+          "annual_levelized_project_cost_gbp": 72917225.05262557,
+          "annualized_capital_cost_gbp": 27653365.05262557,
+          "annual_fixed_opex_gbp": 45263860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 69081.39428722797,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 3377.9,
+          "energy_capacity_mwh": 30200.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2028,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2028,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2028,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+          "severity": "warning",
+          "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+          "value_gbp_per_mwh_period": 44807235.976832576
+        },
+        {
+          "year": 2028,
+          "object_key": "pumpedhydro_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        }
+      ]
+    },
+    {
+      "year": 2029,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2029.pkl",
+        "sha256": "4f2c912e92ca99304cc82adf78e9a5204525da9ec1cd709a07915ec45a17e06e"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 70072.97438570787,
+        "energy_capacity_mwh": 697140.3664328131,
+        "previous_year_sold_mwh": 14970.076097385503,
+        "current_year_sold_mwh": 2721208.5448467997,
+        "annual_levelized_project_cost_gbp": 2940659807.165918,
+        "current_cycle_depreciation_gbp": 596014.0147246405,
+        "diagnostics": 6
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2029,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 352.77716278670925,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 16.01080246913581,
+          "holding_recovery_gbp_per_mwh_period": 720747.2030692282,
+          "annual_levelized_project_cost_gbp": 508531955.015906,
+          "annualized_capital_cost_gbp": 436480361.1213932,
+          "annual_fixed_opex_gbp": 72051593.89451279,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 352.77716278670925,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "air_battery",
+          "power_capacity_mw": 10916.908165835272,
+          "energy_capacity_mwh": 43667.632663341086,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            },
+            {
+              "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+              "severity": "warning",
+              "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+              "value_gbp_per_mwh_period": 720747.2030692282
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2029,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 33923671.68728509,
+          "pricing_basis_average_dwell_periods": 4.0,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 6.499923723176853,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 596014.0147246405,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 16688.39241228994,
+          "current_year_average_dwell_periods": 6.622018709334628,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2029,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 255829.8643183091,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2029,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 14617.298934598793,
+          "pricing_basis_average_dwell_periods": 3.8949386656772327,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 3532.805821318967,
+          "annual_levelized_project_cost_gbp": 201134939.49253017,
+          "annualized_capital_cost_gbp": 160454789.1656992,
+          "annual_fixed_opex_gbp": 40680150.32683096,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 14617.298934598793,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 2064.982250092942,
+          "energy_capacity_mwh": 516245.56252323557,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2029,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 30294270.0,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.316883640816985,
+          "annual_levelized_project_cost_gbp": 76798068.58794211,
+          "annualized_capital_cost_gbp": 28720208.587942105,
+          "annual_fixed_opex_gbp": 48077860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 2704520.1524345097,
+          "current_year_average_dwell_periods": 12.831598727585996,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 3587.9,
+          "energy_capacity_mwh": 31800.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2029,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2029,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+          "severity": "warning",
+          "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+          "value_gbp_per_mwh_period": 720747.2030692282
+        },
+        {
+          "year": 2029,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2029,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2029,
+          "object_key": "hydrogen_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2029,
+          "object_key": "pumpedhydro_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        }
+      ]
+    },
+    {
+      "year": 2030,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2030.pkl",
+        "sha256": "9bdbb75c2944a3490ebf0794284ba2f1ab3b909b8237171dea880da11642a30c"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 74508.54742917849,
+        "energy_capacity_mwh": 721482.6586066955,
+        "previous_year_sold_mwh": 2721208.5448467997,
+        "current_year_sold_mwh": 2820481.0437720027,
+        "annual_levelized_project_cost_gbp": 3130966004.3523917,
+        "current_cycle_depreciation_gbp": 2416946.6878645783,
+        "diagnostics": 5
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2030,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 25492287.529680565,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135808,
+          "holding_recovery_gbp_per_mwh_period": 1.3683002525441061,
+          "annual_levelized_project_cost_gbp": 687200807.8424406,
+          "annualized_capital_cost_gbp": 589834431.8610218,
+          "annual_fixed_opex_gbp": 97366375.9814188,
+          "current_cycle_depreciation_gbp": 2416946.6878645783,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 150957.2485528912,
+          "current_year_average_dwell_periods": 11.523203622201589,
+          "name": "air_battery",
+          "power_capacity_mw": 14752.48120930588,
+          "energy_capacity_mwh": 59009.92483722352,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2030,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 16688.39241228994,
+          "pricing_basis_average_dwell_periods": 6.622018709334628,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 18939.035067969522,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 16688.39241228994,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            },
+            {
+              "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+              "severity": "warning",
+              "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+              "value_gbp_per_mwh_period": 18939.035067969522
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2030,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 255829.8643183091,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2030,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 5155434.685582039,
+          "pricing_basis_average_dwell_periods": 500.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.07802831449112711,
+          "annual_levelized_project_cost_gbp": 201134939.49253017,
+          "annualized_capital_cost_gbp": 160454789.1656992,
+          "annual_fixed_opex_gbp": 40680150.32683096,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 2661639.9233929417,
+          "current_year_average_dwell_periods": 97.68332060119951,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 2064.982250092942,
+          "energy_capacity_mwh": 516245.56252323557,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2030,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 2704520.1524345097,
+          "pricing_basis_average_dwell_periods": 12.831598727585996,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 2.5483273562683504,
+          "annual_levelized_project_cost_gbp": 88435412.9478814,
+          "annualized_capital_cost_gbp": 32317552.9478814,
+          "annual_fixed_opex_gbp": 56117859.99999999,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 2704520.1524345097,
+          "current_year_sold_mwh": 7883.871826169915,
+          "current_year_average_dwell_periods": 6.7090490097102835,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 4187.9,
+          "energy_capacity_mwh": 40800.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2030,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2030,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2030,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+          "severity": "warning",
+          "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+          "value_gbp_per_mwh_period": 18939.035067969522
+        },
+        {
+          "year": 2030,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2030,
+          "object_key": "hydrogen_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        }
+      ]
+    },
+    {
+      "year": 2031,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2031.pkl",
+        "sha256": "5ebae0b09da3974aad8e46ea5c843e5f1e0dfabf64b746bf488e941783506d92"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 80117.15952654931,
+        "energy_capacity_mwh": 767917.1069961789,
+        "previous_year_sold_mwh": 2820481.0437720027,
+        "current_year_sold_mwh": 1223899.690369372,
+        "annual_levelized_project_cost_gbp": 3348932698.7983193,
+        "current_cycle_depreciation_gbp": 1571271.5086370094,
+        "diagnostics": 4
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2031,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 150957.2485528912,
+          "pricing_basis_average_dwell_periods": 11.523203622201589,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135808,
+          "holding_recovery_gbp_per_mwh_period": 503.6883213658369,
+          "annual_levelized_project_cost_gbp": 878588379.3543724,
+          "annualized_capital_cost_gbp": 754105163.5303061,
+          "annual_fixed_opex_gbp": 124483215.8240663,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 150957.2485528912,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "air_battery",
+          "power_capacity_mw": 18861.09330667671,
+          "energy_capacity_mwh": 75444.37322670684,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2031,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 33923671.68728509,
+          "pricing_basis_average_dwell_periods": 4.0,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 6.499923723176853,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 1571271.5086370094,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 43995.60224183628,
+          "current_year_average_dwell_periods": 2.5829882865058584,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2031,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 255829.8643183091,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2031,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 2661639.9233929417,
+          "pricing_basis_average_dwell_periods": 97.68332060119951,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.773602389745076,
+          "annual_levelized_project_cost_gbp": 201134939.49253017,
+          "annualized_capital_cost_gbp": 160454789.1656992,
+          "annual_fixed_opex_gbp": 40680150.32683096,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 2661639.9233929417,
+          "current_year_sold_mwh": 1179904.0881275358,
+          "current_year_average_dwell_periods": 12.199471934883416,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 2064.982250092942,
+          "energy_capacity_mwh": 516245.56252323557,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2031,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 7883.871826169915,
+          "pricing_basis_average_dwell_periods": 6.7090490097102835,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 2174.4639492048022,
+          "annual_levelized_project_cost_gbp": 115014535.88187695,
+          "annualized_capital_cost_gbp": 38796675.881876945,
+          "annual_fixed_opex_gbp": 76217860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 7883.871826169915,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 5687.9,
+          "energy_capacity_mwh": 70800.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2031,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2031,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2031,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2031,
+          "object_key": "pumpedhydro_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        }
+      ]
+    },
+    {
+      "year": 2032,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2032.pkl",
+        "sha256": "b400b70e909657fcc608f1e282ef682225df76466c4a3298395cc83631632252"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 85559.56108055385,
+        "energy_capacity_mwh": 789686.713212197,
+        "previous_year_sold_mwh": 1223899.690369372,
+        "current_year_sold_mwh": 2194590.432641655,
+        "annual_levelized_project_cost_gbp": 3602450916.6121235,
+        "current_cycle_depreciation_gbp": 5274848.607338313,
+        "diagnostics": 5
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2032,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 41996439.11925719,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135804,
+          "holding_recovery_gbp_per_mwh_period": 1.3683002525441057,
+          "annual_levelized_project_cost_gbp": 1132106597.1681767,
+          "annualized_capital_cost_gbp": 971703531.0876806,
+          "annual_fixed_opex_gbp": 160403066.08049616,
+          "current_cycle_depreciation_gbp": 5274848.607338313,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 329455.6045836363,
+          "current_year_average_dwell_periods": 9.45217596670255,
+          "name": "air_battery",
+          "power_capacity_mw": 24303.49486068124,
+          "energy_capacity_mwh": 97213.97944272496,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2032,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 43995.60224183628,
+          "pricing_basis_average_dwell_periods": 2.5829882865058584,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 18408.93382108715,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 43995.60224183628,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            },
+            {
+              "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+              "severity": "warning",
+              "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+              "value_gbp_per_mwh_period": 18408.93382108715
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2032,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 255829.8643183091,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2032,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 1179904.0881275358,
+          "pricing_basis_average_dwell_periods": 12.199471934883416,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 13.973325669271626,
+          "annual_levelized_project_cost_gbp": 201134939.49253017,
+          "annualized_capital_cost_gbp": 160454789.1656992,
+          "annual_fixed_opex_gbp": 40680150.32683096,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 1179904.0881275358,
+          "current_year_sold_mwh": 71413.56482370196,
+          "current_year_average_dwell_periods": 1.3057196243681406,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 2064.982250092942,
+          "energy_capacity_mwh": 516245.56252323557,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2032,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 67447620.0,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.21315528976759474,
+          "annual_levelized_project_cost_gbp": 115014535.88187695,
+          "annualized_capital_cost_gbp": 38796675.881876945,
+          "annual_fixed_opex_gbp": 76217860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 1793721.263234317,
+          "current_year_average_dwell_periods": 36.19438669222051,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 5687.9,
+          "energy_capacity_mwh": 70800.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2032,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2032,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2032,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_HIGH_HOLDING_RECOVERY",
+          "severity": "warning",
+          "message": "The preceding-year allocation denominator produced a holding recovery above GBP 10,000/MWh/period.",
+          "value_gbp_per_mwh_period": 18408.93382108715
+        },
+        {
+          "year": 2032,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2032,
+          "object_key": "pumpedhydro_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        }
+      ]
+    },
+    {
+      "year": 2033,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2033.pkl",
+        "sha256": "120166b165c700fda3116fb54f1feef9fc26edabea415232fcdb1a5f76a730a7"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 91199.97409390107,
+        "energy_capacity_mwh": 812248.3652655858,
+        "previous_year_sold_mwh": 2194590.432641655,
+        "current_year_sold_mwh": 305349.2295193711,
+        "annual_levelized_project_cost_gbp": 3865192913.9984465,
+        "current_cycle_depreciation_gbp": 9654521.03027809,
+        "diagnostics": 4
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2033,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 329455.6045836363,
+          "pricing_basis_average_dwell_periods": 9.45217596670255,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135804,
+          "holding_recovery_gbp_per_mwh_period": 446.2239764452562,
+          "annual_levelized_project_cost_gbp": 1394848594.5544999,
+          "annualized_capital_cost_gbp": 1197218802.585912,
+          "annual_fixed_opex_gbp": 197629791.96858782,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 329455.6045836363,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "air_battery",
+          "power_capacity_mw": 29943.90787402846,
+          "energy_capacity_mwh": 119775.63149611384,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2033,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 33923671.68728509,
+          "pricing_basis_average_dwell_periods": 4.0,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 6.499923723176853,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 9654521.03027809,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 270326.58884778665,
+          "current_year_average_dwell_periods": 1.2510989682333742,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2033,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 255829.8643183091,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2033,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 71413.56482370196,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 1408.240437156934,
+          "annual_levelized_project_cost_gbp": 201134939.49253017,
+          "annualized_capital_cost_gbp": 160454789.1656992,
+          "annual_fixed_opex_gbp": 40680150.32683096,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 71413.56482370196,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 2064.982250092942,
+          "energy_capacity_mwh": 516245.56252323557,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2033,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 1793721.263234317,
+          "pricing_basis_average_dwell_periods": 36.19438669222051,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 1.7715628026780852,
+          "annual_levelized_project_cost_gbp": 115014535.88187695,
+          "annualized_capital_cost_gbp": 38796675.881876945,
+          "annual_fixed_opex_gbp": 76217860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 1793721.263234317,
+          "current_year_sold_mwh": 35022.64067158445,
+          "current_year_average_dwell_periods": 2.2149039542763167,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 5687.9,
+          "energy_capacity_mwh": 70800.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2033,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2033,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2033,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2033,
+          "object_key": "hydrogen_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        }
+      ]
+    },
+    {
+      "year": 2034,
+      "checkpoint": {
+        "artifact_name": "case3_v2_existing_decarb_base_checkpoint_2034.pkl",
+        "sha256": "0c0620eb13ed358f1109debd6c3c546347235968da0006458319ff3b7c6b57fa"
+      },
+      "summary": {
+        "assets": 5,
+        "power_capacity_mw": 96807.41377665769,
+        "energy_capacity_mwh": 834678.1239966124,
+        "previous_year_sold_mwh": 305349.2295193711,
+        "current_year_sold_mwh": 1040490.9410041915,
+        "annual_levelized_project_cost_gbp": 4126398946.071707,
+        "current_cycle_depreciation_gbp": 910160.7348752907,
+        "diagnostics": 5
+      },
+      "assets": [
+        {
+          "object_key": "0.25c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.25c",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 8000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2034,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 61432728.57812464,
+          "pricing_basis_average_dwell_periods": 8.0,
+          "cycle_depreciation_gbp_per_mwh": 16.010802469135804,
+          "holding_recovery_gbp_per_mwh_period": 1.3683002525441066,
+          "annual_levelized_project_cost_gbp": 1656054626.6277597,
+          "annualized_capital_cost_gbp": 1421415732.752978,
+          "annual_fixed_opex_gbp": 234638893.87478158,
+          "current_cycle_depreciation_gbp": 910160.7348752907,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 56846.66565775309,
+          "current_year_average_dwell_periods": 14.62310659678954,
+          "name": "air_battery",
+          "power_capacity_mw": 35551.34755678509,
+          "energy_capacity_mwh": 142205.39022714036,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "0.5c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "0.5c",
+          "technology_spec": {
+            "duration_hours": 2.0,
+            "maximum_cycles": 5000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2034,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 270326.58884778665,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 35.7142857142857,
+          "holding_recovery_gbp_per_mwh_period": 3854.430865419285,
+          "annual_levelized_project_cost_gbp": 2093564816.6271133,
+          "annualized_capital_cost_gbp": 1750866500.6024985,
+          "annual_fixed_opex_gbp": 342698316.0246147,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 270326.58884778665,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "li_battery",
+          "power_capacity_mw": 51923.98727645677,
+          "energy_capacity_mwh": 103847.97455291354,
+          "duration_hours": 2.0,
+          "charge_efficiency": 0.98,
+          "discharge_efficiency": 0.98,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        },
+        {
+          "object_key": "1c_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "1c",
+          "technology_spec": {
+            "duration_hours": 1.0,
+            "maximum_cycles": 3000.0,
+            "economic_lifetime_years": 15.0,
+            "fixed_opex_gbp_per_kw_year": 6.6,
+            "has_cycle_depreciation": true
+          },
+          "prepared_year": 2034,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 255829.8643183091,
+          "pricing_basis_average_dwell_periods": 2.0,
+          "cycle_depreciation_gbp_per_mwh": 135.80246913580234,
+          "holding_recovery_gbp_per_mwh_period": 50.59553984892164,
+          "annual_levelized_project_cost_gbp": 60630027.44242612,
+          "annualized_capital_cost_gbp": 50207329.26649501,
+          "annual_fixed_opex_gbp": 10422698.175931111,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "thermal_battery",
+          "power_capacity_mw": 1579.1966933228955,
+          "energy_capacity_mwh": 1579.1966933228955,
+          "duration_hours": 1.0,
+          "charge_efficiency": 0.81,
+          "discharge_efficiency": 0.81,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "hydrogen_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "hydrogen",
+          "technology_spec": {
+            "duration_hours": 250.0,
+            "maximum_cycles": 1000.0,
+            "economic_lifetime_years": 10.0,
+            "fixed_opex_gbp_per_kw_year": 19.7,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2034,
+          "pricing_basis": "full_utilisation_initialisation",
+          "pricing_basis_sold_mwh": 5155434.685582039,
+          "pricing_basis_average_dwell_periods": 500.0,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 0.07802831449112711,
+          "annual_levelized_project_cost_gbp": 201134939.49253017,
+          "annualized_capital_cost_gbp": 160454789.1656992,
+          "annual_fixed_opex_gbp": 40680150.32683096,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 0.0,
+          "current_year_sold_mwh": 983644.2753464384,
+          "current_year_average_dwell_periods": 91.03153776750777,
+          "name": "hydrogen_battery",
+          "power_capacity_mw": 2064.982250092942,
+          "energy_capacity_mwh": 516245.56252323557,
+          "duration_hours": 250.0,
+          "charge_efficiency": 0.57,
+          "discharge_efficiency": 0.57,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+              "severity": "information",
+              "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+            }
+          ]
+        },
+        {
+          "object_key": "pumpedhydro_battery",
+          "method": "dynamic_annual_average_depreciation_recovery",
+          "technology": "pumped_hydro",
+          "technology_spec": {
+            "duration_hours": 4.0,
+            "maximum_cycles": 1000000.0,
+            "economic_lifetime_years": 30.0,
+            "fixed_opex_gbp_per_kw_year": 13.4,
+            "has_cycle_depreciation": false
+          },
+          "prepared_year": 2034,
+          "pricing_basis": "previous_year_sales",
+          "pricing_basis_sold_mwh": 35022.64067158445,
+          "pricing_basis_average_dwell_periods": 2.2149039542763167,
+          "cycle_depreciation_gbp_per_mwh": 0.0,
+          "holding_recovery_gbp_per_mwh_period": 1482.6851724277676,
+          "annual_levelized_project_cost_gbp": 115014535.88187695,
+          "annualized_capital_cost_gbp": 38796675.881876945,
+          "annual_fixed_opex_gbp": 76217860.0,
+          "current_cycle_depreciation_gbp": 0.0,
+          "previous_year_sold_mwh": 35022.64067158445,
+          "current_year_sold_mwh": 0.0,
+          "current_year_average_dwell_periods": 0.0,
+          "name": "pumpedhydro_battery",
+          "power_capacity_mw": 5687.9,
+          "energy_capacity_mwh": 70800.0,
+          "duration_hours": 4.0,
+          "charge_efficiency": 0.87,
+          "discharge_efficiency": 0.87,
+          "diagnostics": [
+            {
+              "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+              "severity": "warning",
+              "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+            }
+          ]
+        }
+      ],
+      "diagnostics": [
+        {
+          "year": 2034,
+          "object_key": "0.25c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2034,
+          "object_key": "0.5c_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        },
+        {
+          "year": 2034,
+          "object_key": "1c_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2034,
+          "object_key": "hydrogen_battery",
+          "code": "GF_STORAGE_FULL_UTILISATION_FALLBACK",
+          "severity": "information",
+          "message": "No preceding-year sale was available; pricing returned to the full-utilisation design basis."
+        },
+        {
+          "year": 2034,
+          "object_key": "pumpedhydro_battery",
+          "code": "GF_STORAGE_ZERO_SALES_AFTER_OBSERVED_BASIS",
+          "severity": "warning",
+          "message": "The asset sold no electricity after pricing from a positive preceding-year sales observation."
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "start_year": 2025,
+    "end_year": 2034,
+    "years": 10,
+    "diagnostics": 42,
+    "warning_diagnostics": 21
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "value.zonal-availability-profile/v1",
+  "title": "VALUE aggregated zonal availability profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "economic_owner_id", "technology", "zone_id", "period_ids", "availability", "aggregated_capacity_mw", "source_ids", "aggregation_method", "source_sha256", "schema_version"],
+  "properties": {
+    "profile_id": {"type": "string", "minLength": 1},
+    "economic_owner_id": {"type": "string", "minLength": 1},
+    "technology": {"type": "string", "minLength": 1},
+    "zone_id": {"type": "string", "minLength": 1},
+    "period_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "availability": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 1},
+    "aggregated_capacity_mw": {"type": "number", "exclusiveMinimum": 0},
+    "source_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "aggregation_method": {"enum": ["copied_representative_agent_trace", "offline_repd_location_era5_mw_weighted"]},
+    "source_sha256": {"type": "string", "minLength": 1},
+    "schema_version": {"const": "value.zonal-availability-profile/v1"}
+  }
+}

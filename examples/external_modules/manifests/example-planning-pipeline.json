@@ -1,0 +1,11 @@
+{
+  "schema_version": "value.module/v2", "id": "example-planning-pipeline",
+  "name": "Example planning pipeline", "version": "1.0.0", "scientific_version": "fixture-only",
+  "slot": "pipeline", "implementation": "examples.external_modules.value_example_modules:ExamplePipeline",
+  "contract_version": "value.planning/v2", "inputs": ["year_state", "investment_proposals"],
+  "outputs": ["planning_result"], "parameters": [], "state_reads": ["planning_projects"],
+  "state_writes": ["planning_projects", "operating_assets"], "determinism": "seeded", "artifacts": [],
+  "description": "Test-only planning contract fixture.", "status": "fixture", "selection_required": true,
+  "provides_capabilities": ["planning.advance", "planning.admission"], "requires_capabilities": ["investment.proposals"],
+  "units": {"year_state": "MW and MWh", "investment_proposals": "MW", "planning_result": "MW"}
+}

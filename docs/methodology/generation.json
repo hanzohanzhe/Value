@@ -1,0 +1,36 @@
+{
+  "edition": "0.3",
+  "date": "2026-10-04",
+  "basis": "2026-10-02",
+  "chapterIDs": [
+    "introduction",
+    "datasets",
+    "core_weather",
+    "core",
+    "national_alternatives",
+    "r029_cem",
+    "transmission",
+    "optional_modules",
+    "appendix"
+  ],
+  "languages": [
+    "zh",
+    "en"
+  ],
+  "checks": {
+    "declared_nine_chapters": true,
+    "scientific_TeX_preserved": true,
+    "source_tables_preserved": true,
+    "numeric_tokens_preserved_after_chapter_reference_updates": true,
+    "bilingual_chapter_structure_matched": true
+  },
+  "scope_changes": [
+    "Remove independent site-capacity engine chapter and its introduction and dataset-guide cross-references",
+    "Renumber the retained nine chapters and update references to perfect-foresight and carbon-accounting chapters"
+  ],
+  "dependencies": {
+    "mathjax-full": "3.2.2",
+    "marked": "17.0.5",
+    "sharp": "0.35.4"
+  }
+}

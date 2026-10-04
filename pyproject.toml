@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools==83.0.0", "wheel==0.46.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "value-network-extensions"
+version = "0.6.0a2"
+description = "VALUE power-system evolution framework with optional network extensions"
+authors = [{name = "Hanzhe Xing"}]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10,<3.11"
+dependencies = [
+  "numpy==1.24.4",
+  "pandas==2.3.2",
+]
+
+[project.optional-dependencies]
+value-native = [
+  "netCDF4==1.7.2",
+  "pyproj==3.7.1",
+  "xarray==2025.6.1",
+]
+doctoral-reproduction = [
+  "matplotlib==3.10.3",
+  "netCDF4==1.7.2",
+  "openpyxl==3.1.0",
+  "pyproj==3.7.1",
+  "seaborn==0.13.2",
+  "xarray==2025.6.1",
+]
+scheme-c = [
+  "matplotlib==3.10.3",
+  "netCDF4==1.7.2",
+  "openpyxl==3.1.0",
+  "pyproj==3.7.1",
+  "seaborn==0.13.2",
+  "xarray==2025.6.1",
+]
+solver = ["scipy==1.8.1"]
+ac = ["scipy==1.8.1"]
+validation = ["pulp[cbc]==3.3.2"]
+export = ["matplotlib==3.10.3", "openpyxl==3.1.0"]
+data-workbench = [
+  "openpyxl==3.1.0",
+  "pyproj==3.7.1",
+  "pyshp==3.1.6",
+  "shapely==2.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*", "gridform_core*", "gridform_validation*"]
+exclude = [
+  "tests*",
+  "examples*",
+  "e2e*",
+  "node_modules*",
+  # Preserved research sources are repository/reference evidence. Portable
+  # runtime distributions contain the source-hashed runtime_compat copy.
+  "gridform_core.builtin.scheme_c_1000twh.compat*",
+]
+
+[tool.setuptools.package-data]
+gridform_core = [
+  "data/carbon/*.csv",
+  "data/carbon/*.json",
+  "data/carbon/*.sql",
+  "data/carbon/*.sqlite",
+  "data/carbon/scenarios/*.json",
+  "data/cem/*.json",
+  "data/doctoral_alignment/*.json",
+  "data/storage/*.json",
+  "data/contracts/*.json",
+  "data/contracts/*.sql",
+  "data_workbench/sources/**/*.json",
+  "manifests/*.json",
+  "builtin/scheme_c_1000twh/RUNTIME_OVERLAY.json",
+  "builtin/scheme_c_1000twh/runtime_compat/scenarios_v2/*.csv",
+]

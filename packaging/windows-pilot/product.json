@@ -1,0 +1,20 @@
+{
+  "product_name": "VALUE",
+  "version": "0.6.0-alpha.2",
+  "install_scope": "current-user",
+  "install_directory": "%LOCALAPPDATA%/VALUE/app",
+  "state_directory": "%LOCALAPPDATA%/VALUE/state",
+  "entrypoint": "VALUE-Setup.exe",
+  "bundled_python": true,
+  "bundled_node": true,
+  "administrator_required": false,
+  "terminal_required": false,
+  "internet_required_after_download": false,
+  "progress_window": true,
+  "data_packs": [
+    "value-101-baseline-v1",
+    "value-101-network-v1"
+  ],
+  "data_licence": "CC0-1.0",
+  "scientific_scope": "VALUE is the modular application; the bundled VALUE 101 packs are synthetic teaching data."
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "value.extension-bundle/v1",
+  "id": "value-network-expansion-extension",
+  "name": "VALUE network expansion lifecycle contract",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "namespace": "value.network.expansion",
+  "provided_capabilities": ["contract.network-expansion/v1", "data.network.expansion-candidates/v1"],
+  "required_capabilities": ["domain.network.expansion", "contract.network-psm/v1"],
+  "composed_module_ids": ["reference-transmission-expansion"],
+  "data_roles": [
+    {
+      "role": "value.network.expansion.candidates",
+      "capability": "data.network.expansion-candidates/v1",
+      "group": "Network expansion",
+      "label": "Candidate corridors and scientific/economic identity",
+      "formats": ["json"],
+      "required": true,
+      "unit": "MW, MVA, p.u., GBP, years, tCO2e/MW",
+      "validation_rules": {"explicit_endpoints": true, "shared_corridor_limit": true, "provenanced_carbon_if_present": true}
+    }
+  ],
+  "parameters": [],
+  "artifacts": [
+    {
+      "artifact_type": "network.expansion-history",
+      "media_type": "application/x-sqlite3",
+      "schema_version": "value.network-expansion-history/v1",
+      "summary_fields": ["proposals", "admitted", "commissioned", "failed", "retired"]
+    }
+  ],
+  "hooks": [],
+  "state_schema_version": "value.network-expansion-state/v1",
+  "state_migrations": {},
+  "required_value_version": ">=0.5.0",
+  "required_contract_versions": {"network_expansion": "value.network-expansion/v1"},
+  "member_inventory": [],
+  "maturity": "experimental"
+}

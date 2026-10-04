@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "value.zonal-network-pack/v1",
+  "title": "VALUE zonal network pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["network_pack_id", "scientific_sha256", "zones", "corridors", "cutsets", "asset_mappings", "zonal_demand", "rating_profiles", "interconnector_landings", "spatial_audit", "loss_capability_absent_reason", "schema_version"],
+  "properties": {
+    "network_pack_id": {"type": "string", "minLength": 1},
+    "scientific_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "zones": {"type": "array", "minItems": 1},
+    "corridors": {"type": "array"},
+    "cutsets": {"type": "array"},
+    "asset_mappings": {"type": "array"},
+    "zonal_demand": {"type": "object"},
+    "rating_profiles": {"type": "array"},
+    "interconnector_landings": {"type": "array"},
+    "spatial_audit": {"type": "object"},
+    "loss_capability_absent_reason": {"const": "lossless_v1"},
+    "geometry_artifact": {"type": ["string", "null"]},
+    "provenance": {"type": "object"},
+    "schema_version": {"const": "value.zonal-network-pack/v1"}
+  },
+  "$comment": "Detailed fail-closed semantic validation is implemented in gridform_core.zonal_contracts. Corridors are computational routing edges, never physical line records."
+}

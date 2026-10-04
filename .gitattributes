@@ -1,0 +1,36 @@
+# Retained Scheme C and its mechanically generated runtime overlay are
+# byte-preservation evidence. Do not normalize their historical line endings.
+gridform_core/builtin/scheme_c_1000twh/compat/** -text
+gridform_core/builtin/scheme_c_1000twh/runtime_compat/** -text
+gridform_core/builtin/scheme_c_1000twh/exact_run.py -text
+gridform_core/builtin/scheme_c_1000twh/AUTHORITATIVE_SOURCE.json -text
+gridform_core/builtin/scheme_c_1000twh/RUNTIME_OVERLAY.json -text
+tests/fixtures/scheme_c_2025_2026_authoritative.json -text
+
+# Synthetic-pack manifests hash exact bytes. Keep their generated LF form on
+# every platform so a Windows clone validates before any regeneration step.
+data-packs/value-synthetic-contract-pack-v1/** text eol=lf
+data-packs/value-101-*/** text eol=lf
+
+# The network contract and retained solver fixtures also hash exact JSON bytes.
+# A Windows checkout must not silently rewrite those scientific inputs to CRLF.
+examples/zonal-network-pack/**/*.json text eol=lf
+tests/fixtures/zonal_solver_failures/*.json text eol=lf
+tests/fixtures/zonal_solver_failures/*.json.gz -text
+publication/prompt104-copperplate-preflight.json -text
+publication/prompt104-zonal-preflight.json -text
+publication/prompt104-staged-copperplate-study.json text eol=lf
+publication/prompt104-zonal-study.json text eol=lf
+
+# The carbon rights ledger also records exact source bytes. Preserve text
+# objects across Windows checkouts while leaving the SQLite snapshot binary.
+gridform_core/data/carbon/*.csv text eol=lf
+gridform_core/data/carbon/*.json text eol=lf
+gridform_core/data/carbon/*.sql text eol=lf
+gridform_core/data/carbon/scenarios/*.json text eol=lf
+
+# Keep generated handouts byte-for-byte stable across Windows checkouts.
+*.pdf binary
+
+# NetCDF contains binary CR/LF byte sequences; preserve manifest-hashed bytes.
+*.nc binary

@@ -1,0 +1,35 @@
+{
+  "affected_roles": [
+    "value.zonal.zones",
+    "value.zonal.corridors",
+    "value.zonal.cutsets",
+    "value.zonal.asset-map",
+    "value.zonal.demand",
+    "value.zonal.ratings",
+    "value.zonal.interconnector-landings",
+    "value.zonal.spatial-audit"
+  ],
+  "builder_version": "scripts/build_value_101_network_pack.py@v2",
+  "excluded_methods": [
+    "DC load flow",
+    "AC power flow",
+    "N-1 security",
+    "transmission expansion"
+  ],
+  "known_congestion_fixture": {
+    "all_periods_have_north_export_congestion": false,
+    "hand_check": "north VRE availability minus north demand exceeds the maintained north-central transfer envelope",
+    "minimum_onshore_only_north_export_mwh": 0.02495214999999984,
+    "normal_north_central_limit_mwh": 1.0,
+    "north_central_limit_mwh": 0.8,
+    "north_demand_mwh": 1.465615325,
+    "period_id": "2025:31",
+    "unconstrained_north_export_mwh": 11.992094675,
+    "unconstrained_north_generation_mwh": 13.45771
+  },
+  "licence": "CC0-1.0",
+  "parent_pack_id": "value-101-baseline-v1",
+  "schema_version": "value.data-pack-derivation/v1",
+  "transform": "add a fixed lossless three-zone transport and redispatch overlay",
+  "unchanged_role_hashes_match": true
+}

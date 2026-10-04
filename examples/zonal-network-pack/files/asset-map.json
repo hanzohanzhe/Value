@@ -1,0 +1,10 @@
+{
+  "schema_version": "value.zonal-asset-map-collection/v1",
+  "asset_mappings": [
+    {"asset_id": "thermal", "zone_id": "north", "asset_class": "generator", "technology": "CCGT", "share": 1.0, "mapping_method": "source_coordinate"},
+    {"asset_id": "wind", "zone_id": "north", "asset_class": "generator", "technology": "onshore", "share": 0.6666666666666666, "mapping_method": "regional_share"},
+    {"asset_id": "wind", "zone_id": "south", "asset_class": "generator", "technology": "onshore", "share": 0.3333333333333333, "mapping_method": "regional_share"},
+    {"asset_id": "import:france", "zone_id": "south", "asset_class": "boundary_interconnector", "technology": "interconnector", "share": 1.0, "mapping_method": "landing_zone"},
+    {"asset_id": "unlocated", "zone_id": "england-fallback", "asset_class": "generator", "technology": "solar", "share": 1.0, "mapping_method": "england_fallback"}
+  ]
+}

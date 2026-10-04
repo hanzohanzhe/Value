@@ -1,0 +1,11 @@
+{
+  "name": "value-methodology-build",
+  "version": "0.3.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "dependencies": {
+    "mathjax-full": "3.2.2",
+    "marked": "17.0.5",
+    "sharp": "0.35.4"
+  }
+}

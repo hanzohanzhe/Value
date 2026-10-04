@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "vre-expansion-cap",
+  "name": "Solar / wind expansion policy",
+  "version": "2.0.0",
+  "scientific_version": "authoritative-copy-2026.07.18",
+  "slot": "vre_cap",
+  "implementation": "gridform_core.builtin.value_modules:ValueVREExpansionPolicy",
+  "contract_version": "value.expansion-policy/v2",
+  "inputs": ["market.year-result", "demand.real", "profiles.vre_solar", "profiles.vre_onshore", "profiles.vre_offshore"],
+  "outputs": ["expansion.vre-headroom"],
+  "parameters": ["expansion.vre_cap_fraction"],
+  "state_reads": ["operating.assets"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": [],
+  "description": "VALUE ceiling on agent-proposed solar, onshore and offshore additions.",
+  "status": "ready",
+  "selection_required": true,
+  "provides_capabilities": ["expansion.headroom"],
+  "requires_capabilities": ["market.year-result"]
+}

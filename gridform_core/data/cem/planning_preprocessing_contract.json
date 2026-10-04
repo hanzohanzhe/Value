@@ -1,0 +1,31 @@
+{
+  "schema_version": "value.planning-preprocessing-contract/v1",
+  "adapter_id": "value-canonical-planning-input-v1",
+  "implementation": "gridform_core.canonical_psm_data:native_initial_state",
+  "parameters": [
+    "fleet.repd_initial_snapshot",
+    "planning.uncertain_as_model_decision",
+    "planning.include_uncertain_projects",
+    "planning.zombie_filter_enabled",
+    "planning.zombie_status_stale_year",
+    "planning.construction_grace_years",
+    "planning.minimum_project_size_mw",
+    "planning.max_completion_year",
+    "planning.timeline_statistic",
+    "planning.defer_spread_years",
+    "planning.repd_battery_assignment"
+  ],
+  "annual_pipeline_parameters": [
+    "planning.success_mode",
+    "planning.random_seed"
+  ],
+  "outputs": [
+    "year_state.assets",
+    "year_state.planning_projects",
+    "year_state.extensions.planning_preprocessing"
+  ],
+  "notes": [
+    "The adapter prepares the immutable start-year state; it is not a second annual planning state machine.",
+    "The selected planning module owns annual success draws, admission, deferment and commissioning."
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": "value.storage-technology-catalogue/v1",
+  "catalogue_id": "value-doctoral-reproduction-storage",
+  "version": "2026.08.08",
+  "currency": "GBP",
+  "technologies": [
+    {
+      "technology_id": "pumped_hydro",
+      "duration_hours": 4.0,
+      "charge_efficiency": 0.87,
+      "discharge_efficiency": 0.87,
+      "economic_lifetime_years": 30.0,
+      "maximum_cycles": 1000000.0,
+      "has_battery_cycle_depreciation": false,
+      "capex_value": 360000.0,
+      "capex_unit": "GBP/MW",
+      "fixed_opex_value": 13.4,
+      "fixed_opex_unit": "GBP/kW/year",
+      "currency_base_year": 2025,
+      "source": {"classification": "doctoral_thesis_reproduction", "locator": "Chapter 4 storage table and VALUE fleet snapshot"}
+    },
+    {
+      "technology_id": "1c",
+      "duration_hours": 1.0,
+      "charge_efficiency": 0.81,
+      "discharge_efficiency": 0.81,
+      "economic_lifetime_years": 15.0,
+      "maximum_cycles": 3000.0,
+      "has_battery_cycle_depreciation": true,
+      "capex_value": 330000.0,
+      "capex_unit": "GBP/MW",
+      "fixed_opex_value": 6.6,
+      "fixed_opex_unit": "GBP/kW/year",
+      "currency_base_year": 2025,
+      "source": {"classification": "doctoral_thesis_reproduction", "locator": "Chapter 4 LFP 1C assumptions"}
+    },
+    {
+      "technology_id": "0.5c",
+      "duration_hours": 2.0,
+      "charge_efficiency": 0.98,
+      "discharge_efficiency": 0.98,
+      "economic_lifetime_years": 15.0,
+      "maximum_cycles": 5000.0,
+      "has_battery_cycle_depreciation": true,
+      "capex_value": 350000.0,
+      "capex_unit": "GBP/MW",
+      "fixed_opex_value": 6.6,
+      "fixed_opex_unit": "GBP/kW/year",
+      "currency_base_year": 2025,
+      "source": {"classification": "doctoral_thesis_reproduction", "locator": "Chapter 4 LFP 0.5C assumptions"}
+    },
+    {
+      "technology_id": "0.25c",
+      "duration_hours": 4.0,
+      "charge_efficiency": 0.81,
+      "discharge_efficiency": 0.81,
+      "economic_lifetime_years": 15.0,
+      "maximum_cycles": 8000.0,
+      "has_battery_cycle_depreciation": true,
+      "capex_value": 415000.0,
+      "capex_unit": "GBP/MW",
+      "fixed_opex_value": 6.6,
+      "fixed_opex_unit": "GBP/kW/year",
+      "currency_base_year": 2025,
+      "source": {"classification": "doctoral_thesis_reproduction", "locator": "Chapter 4 LFP 0.25C assumptions"}
+    },
+    {
+      "technology_id": "hydrogen",
+      "duration_hours": 250.0,
+      "charge_efficiency": 0.57,
+      "discharge_efficiency": 0.57,
+      "economic_lifetime_years": 10.0,
+      "maximum_cycles": 1000.0,
+      "has_battery_cycle_depreciation": false,
+      "capex_value": 600000.0,
+      "capex_unit": "GBP/MW",
+      "fixed_opex_value": 19.7,
+      "fixed_opex_unit": "GBP/kW/year",
+      "currency_base_year": 2025,
+      "source": {"classification": "doctoral_thesis_reproduction", "locator": "Chapter 4 hydrogen storage assumptions"}
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": "value.cem-investment-eligibility/v1",
+  "policy_id": "value-cem-v1-expansion-eligibility",
+  "version": "2026.08.31",
+  "default_mode": "denied",
+  "modes": {
+    "solar": "headroom_required",
+    "onshore": "headroom_required",
+    "offshore": "headroom_required",
+    "1c_battery": "headroom_required",
+    "0.5c_battery": "headroom_required",
+    "0.25c_battery": "headroom_required",
+    "hydrogen_battery": "headroom_required",
+    "CCGT": "explicit_uncapped",
+    "OCGT": "explicit_uncapped",
+    "bio_and_waste": "explicit_uncapped",
+    "Nuclear": "denied",
+    "gas": "explicit_uncapped",
+    "pumped_hydro": "site_data_required",
+    "Hydro_natural_flow": "site_data_required"
+  },
+  "site_requirements": {
+    "pumped_hydro": ["site_constraint_id", "hydrology_profile_id", "energy_capacity_mwh", "capital_cost_scope", "new_build_cost_source_id"],
+    "Hydro_natural_flow": ["hydrology_profile_id", "capital_cost_scope", "new_build_cost_source_id"]
+  },
+  "notes": [
+    "Existing site-constrained assets remain operable.",
+    "A missing headroom value is zero for headroom-required technologies.",
+    "Thermal new build is uncapped only because this policy states it explicitly.",
+    "Nuclear capacity changes are limited to declared station retirements and exogenous planning projects; agents cannot propose nuclear new build.",
+    "Unknown technologies cannot create model-investment proposals."
+  ]
+}

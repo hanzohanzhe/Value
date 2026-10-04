@@ -1,0 +1,37 @@
+{
+  "cutsets": [
+    {
+      "boundary_id": "VALUE101-NC",
+      "display_name": "North to Central teaching boundary",
+      "forward_limit_mw": 2.0,
+      "members": [
+        {
+          "coefficient": 1,
+          "corridor_id": "north-central",
+          "schema_version": "value.etys-cutset-member/v1"
+        }
+      ],
+      "rating_profile_id": "north-maintenance",
+      "reverse_limit_method": "independent_source",
+      "reverse_limit_mw": 1.5,
+      "schema_version": "value.etys-cutset/v1"
+    },
+    {
+      "boundary_id": "VALUE101-CS",
+      "display_name": "Central to South teaching boundary",
+      "forward_limit_mw": 10.0,
+      "members": [
+        {
+          "coefficient": 1,
+          "corridor_id": "central-south",
+          "schema_version": "value.etys-cutset-member/v1"
+        }
+      ],
+      "rating_profile_id": "south-maintenance",
+      "reverse_limit_method": "independent_source",
+      "reverse_limit_mw": 7.0,
+      "schema_version": "value.etys-cutset/v1"
+    }
+  ],
+  "schema_version": "value.etys-cutset-collection/v1"
+}

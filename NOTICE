@@ -1,0 +1,11 @@
+VALUE Network Extensions
+Variable renewable electricity Allocation, Load-enabled excess-generation
+Utilisation, and system Evolution
+Copyright 2026 Hanzhe Xing
+
+Stuart Scott and John Miles are acknowledged contributing supervisors and advisors. Their acknowledgement does not designate copyright ownership.
+
+This is a source-review snapshot. Third-party research datasets are not covered by Apache-2.0 merely because VALUE references them. See LICENSING.md and THIRD_PARTY_NOTICES.md for the included synthetic packs and excluded research payloads.
+
+
+VALUE software is licensed under Apache-2.0. The private Electrace differential optimisation engine, previously labelled VALUE-single, is a separate product and is excluded from VALUE and this licence grant. It is not distributed in this source release. VALUE national single-node calculations are a model configuration and do not refer to that private engine.

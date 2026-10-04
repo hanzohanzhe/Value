@@ -1,0 +1,196 @@
+{
+  "target": "windows-x64",
+  "packages": {
+    "cbcbox": "2.929",
+    "certifi": "2026.7.22",
+    "cftime": "1.6.4.post1",
+    "contourpy": "1.3.2",
+    "cycler": "0.12.1",
+    "et-xmlfile": "2.0.0",
+    "fonttools": "4.60.2",
+    "kiwisolver": "1.4.8",
+    "matplotlib": "3.10.3",
+    "netcdf4": "1.7.2",
+    "numpy": "1.24.4",
+    "openpyxl": "3.1.0",
+    "packaging": "25.0",
+    "pandas": "2.3.2",
+    "pillow": "12.3.0",
+    "pulp": "3.3.2",
+    "pyparsing": "3.0.9",
+    "pyproj": "3.7.1",
+    "pyshp": "3.1.6",
+    "python-dateutil": "2.8.2",
+    "pytz": "2022.1",
+    "scipy": "1.8.1",
+    "seaborn": "0.13.2",
+    "shapely": "2.1.1",
+    "six": "1.16.0",
+    "tzdata": "2025.2",
+    "xarray": "2025.6.1"
+  },
+  "wheels": [
+    {
+      "url": "https://files.pythonhosted.org/packages/0c/85/2fef9c7c3054ebfb9b0e84fabbeac776a18514b025efa5abd768c889f560/cbcbox-2.929-py3-none-win_amd64.whl",
+      "sha256": "0a91420befb965ec1763aab62d7908d3a89a51af845e2a4e05c09d99a67f1151",
+      "filename": "cbcbox-2.929-py3-none-win_amd64.whl",
+      "bytes": 135305901
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+      "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
+      "filename": "certifi-2026.7.22-py3-none-any.whl",
+      "bytes": 136983
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/68/0f/95ce359a3bd91a8ec9b79d4961753053c72a5115e820a072d451568684c3/cftime-1.6.4.post1-cp310-cp310-win_amd64.whl",
+      "sha256": "e60b8f24b20753f7548f410f7510e28b941f336f84bd34e3cfd7874af6e70281",
+      "filename": "cftime-1.6.4.post1-cp310-cp310-win_amd64.whl",
+      "bytes": 189078
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/54/ec/5162b8582f2c994721018d0c9ece9dc6ff769d298a8ac6b6a652c307e7df/contourpy-1.3.2-cp310-cp310-win_amd64.whl",
+      "sha256": "c440093bbc8fc21c637c03bafcbef95ccd963bc6e0514ad887932c18ca2a759a",
+      "filename": "contourpy-1.3.2-cp310-cp310-win_amd64.whl",
+      "bytes": 221188
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl",
+      "sha256": "85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30",
+      "filename": "cycler-0.12.1-py3-none-any.whl",
+      "bytes": 8321
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl",
+      "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa",
+      "filename": "et_xmlfile-2.0.0-py3-none-any.whl",
+      "bytes": 18059
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/d4/04/7d9a137e919d6c9ef26704b7f7b2580d9cfc5139597588227aacebc0e3b7/fonttools-4.60.2-cp310-cp310-win_amd64.whl",
+      "sha256": "9c68b287c7ffcd29dd83b5f961004b2a54a862a88825d52ea219c6220309ba45",
+      "filename": "fonttools-4.60.2-cp310-cp310-win_amd64.whl",
+      "bytes": 2326522
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/98/99/0dd05071654aa44fe5d5e350729961e7bb535372935a45ac89a8924316e6/kiwisolver-1.4.8-cp310-cp310-win_amd64.whl",
+      "sha256": "89c107041f7b27844179ea9c85d6da275aa55ecf28413e87624d033cf1f6b751",
+      "filename": "kiwisolver-1.4.8-cp310-cp310-win_amd64.whl",
+      "bytes": 71885
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/1f/78/8bf07bd8fb67ea5665a6af188e70b57fcb2ab67057daa06b85a08e59160a/matplotlib-3.10.3-cp310-cp310-win_amd64.whl",
+      "sha256": "fd5641a9bb9d55f4dd2afe897a53b537c834b9012684c8444cc105895c8c16fd",
+      "filename": "matplotlib-3.10.3-cp310-cp310-win_amd64.whl",
+      "bytes": 8057213
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/0b/eb/144709b60d89eb8995236f49a4e446be87f15b0d63f05dbda55e1315dba3/netcdf4-1.7.2-cp310-cp310-win_amd64.whl",
+      "sha256": "73bd7eda3cefb04c4076e76911f652f5ed56bf434e0a3958e367932953437557",
+      "filename": "netcdf4-1.7.2-cp310-cp310-win_amd64.whl",
+      "bytes": 7215191
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/22/55/3d5a7c1142e0d9329ad27cece17933b0e2ab4e54ddc5c1861fbfeb3f7693/numpy-1.24.4-cp310-cp310-win_amd64.whl",
+      "sha256": "b4bea75e47d9586d31e892a7401f76e909712a0fd510f58f5337bea9572c571e",
+      "filename": "numpy-1.24.4-cp310-cp310-win_amd64.whl",
+      "bytes": 14841514
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/0d/89/f78a9a895e221ec8b13ae7f9495f340a0fb43563b13e2891b5df134f20ea/openpyxl-3.1.0-py2.py3-none-any.whl",
+      "sha256": "24d7d361025d186ba91eff58135d50855cf035a84371b891e58fb6eb5125660f",
+      "filename": "openpyxl-3.1.0-py2.py3-none-any.whl",
+      "bytes": 250043
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl",
+      "sha256": "29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484",
+      "filename": "packaging-25.0-py3-none-any.whl",
+      "bytes": 66469
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/d8/df/5ab92fcd76455a632b3db34a746e1074d432c0cdbbd28d7cd1daba46a75d/pandas-2.3.2-cp310-cp310-win_amd64.whl",
+      "sha256": "b62d586eb25cb8cb70a5746a378fc3194cb7f11ea77170d59f889f5dfe3cec7a",
+      "filename": "pandas-2.3.2-cp310-cp310-win_amd64.whl",
+      "bytes": 11338099
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/48/7c/8fa0039574c476d7c6fa57dd7c32a130436877c6ec1e5ce1cc8ec44878c1/pillow-12.3.0-cp310-cp310-win_amd64.whl",
+      "sha256": "300557495eb45ebb8aec96c2da9c4be642fbf7cd937278b4013ba894ea8eb0eb",
+      "filename": "pillow-12.3.0-cp310-cp310-win_amd64.whl",
+      "bytes": 7226887
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/dd/6e/d674f1dde91c71e2ac19e5e5cf1ee6d5845e3aefecd9c39ed9c4b0c9a696/pulp-3.3.2-py3-none-any.whl",
+      "sha256": "631b166f72086971a9597f7a0233ababa99bb8d50a01cd543f7758be5a9f86c0",
+      "filename": "pulp-3.3.2-py3-none-any.whl",
+      "bytes": 16391742
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/6c/10/a7d0fa5baea8fe7b50f448ab742f26f52b80bfca85ac2be9d35cdd9a3246/pyparsing-3.0.9-py3-none-any.whl",
+      "sha256": "5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc",
+      "filename": "pyparsing-3.0.9-py3-none-any.whl",
+      "bytes": 98338
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/09/6a/ca145467fd2e5b21e3d5b8c2b9645dcfb3b68f08b62417699a1f5689008e/pyproj-3.7.1-cp310-cp310-win_amd64.whl",
+      "sha256": "3537668992a709a2e7f068069192138618c00d0ba113572fdd5ee5ffde8222f3",
+      "filename": "pyproj-3.7.1-cp310-cp310-win_amd64.whl",
+      "bytes": 6278581
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/ac/72/1f79dab76eb7651b5e3622a46b18a7f93f57c3a1317b712986c58810895e/pyshp-3.1.6-py3-none-any.whl",
+      "sha256": "be8cd9436dcbde477c63ea789f7dcdea3af19f17ea84f2744bfc12efe9145d1e",
+      "filename": "pyshp-3.1.6-py3-none-any.whl",
+      "bytes": 73744
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/36/7a/87837f39d0296e723bb9b62bbb257d0355c7f6128853c78955f57342a56d/python_dateutil-2.8.2-py2.py3-none-any.whl",
+      "sha256": "961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9",
+      "filename": "python_dateutil-2.8.2-py2.py3-none-any.whl",
+      "bytes": 247702
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/60/2e/dec1cc18c51b8df33c7c4d0a321b084cf38e1733b98f9d15018880fb4970/pytz-2022.1-py2.py3-none-any.whl",
+      "sha256": "e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c",
+      "filename": "pytz-2022.1-py2.py3-none-any.whl",
+      "bytes": 503520
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/31/c2/0b8758ebaeb43e089eb56168390824a830f9f419ae07d755d99a46e5a937/scipy-1.8.1-cp310-cp310-win_amd64.whl",
+      "sha256": "4e53a55f6a4f22de01ffe1d2f016e30adedb67a699a310cdcac312806807ca81",
+      "filename": "scipy-1.8.1-cp310-cp310-win_amd64.whl",
+      "bytes": 36930750
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl",
+      "sha256": "636f8336facf092165e27924f223d3c62ca560b1f2bb5dff7ab7fad265361987",
+      "filename": "seaborn-0.13.2-py3-none-any.whl",
+      "bytes": 294914
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/50/fc/a7187e6dadb10b91e66a9e715d28105cde6489e1017cce476876185a43da/shapely-2.1.1-cp310-cp310-win_amd64.whl",
+      "sha256": "2c7b2b6143abf4fa77851cef8ef690e03feade9a0d48acd6dc41d9e0e78d7ca6",
+      "filename": "shapely-2.1.1-cp310-cp310-win_amd64.whl",
+      "bytes": 1703061
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/d9/5a/e7c31adbe875f2abbb91bd84cf2dc52d792b5a01506781dbcf25c91daf11/six-1.16.0-py2.py3-none-any.whl",
+      "sha256": "8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254",
+      "filename": "six-1.16.0-py2.py3-none-any.whl",
+      "bytes": 11053
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl",
+      "sha256": "1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8",
+      "filename": "tzdata-2025.2-py2.py3-none-any.whl",
+      "bytes": 347839
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/82/8a/6b50c1dd2260d407c1a499d47cf829f59f07007e0dcebafdabb24d1d26a5/xarray-2025.6.1-py3-none-any.whl",
+      "sha256": "8b988b47f67a383bdc3b04c5db475cd165e580134c1f1943d52aee4a9c97651b",
+      "filename": "xarray-2025.6.1-py3-none-any.whl",
+      "bytes": 1314739
+    }
+  ]
+}

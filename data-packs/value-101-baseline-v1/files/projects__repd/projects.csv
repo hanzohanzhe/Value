@@ -1,0 +1,5 @@
+project_id,technology,capacity_mw,development_status,region,planning_application_submitted,planning_permission_granted,under_construction,operational
+value101-solar-operating,solar,35.0,Operational,GB,,,,01/01/2024
+value101-wind-operating,onshore,20.0,Operational,GB,,,,01/01/2024
+value101-battery-operating,battery,10.0,Operational,GB,,,,01/01/2024
+value101-solar-planning,solar,15.0,Application Submitted,GB,01/01/2025,,,

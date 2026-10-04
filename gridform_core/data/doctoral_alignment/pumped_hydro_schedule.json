@@ -1,0 +1,25 @@
+{
+  "schema_version": "value.doctoral-pumped-hydro-schedule/v1",
+  "source_file": "run_investment_analysis_case3_decarbonization_breakdown_cm.py",
+  "source_sha256": "e0e11057715f5f26a99e804fdd7d9fa386a9b744c85174965584695060d373c9",
+  "source_table_lines": [1659, 1697],
+  "source_annual_assignment_lines": [1773, 1793],
+  "source_pipeline_exclusion_lines": [2036, 2039],
+  "source_asset_id": "pumpedhydro_battery",
+  "declared_units": {"power_mw": "MW", "energy_mwh": "MWh", "capital_cost_gbp": "GBP"},
+  "source_assignment": {"pool_limit": "power_mw", "per_pool_limit": "energy_mwh", "capital_cost": "capital_cost_gbp"},
+  "source_runtime_unit_note": "The annual tables label power MW and energy MWh, but literal assignments put power into Battery.pool_limit and energy into per_pool_limit. simulation_model.py charge logic uses pool_limit as total stored energy and per_pool_limit as a per-period limit. Declared typed units and source literal assignments are recorded separately; this table alone does not prove source dispatch parity or authorize a runtime-unit correction.",
+  "rows": [
+    {"year": 2025, "power_mw": 2828.0, "energy_mwh": 26700.0, "capital_cost_gbp": 377900000.0, "source_pool_limit": 2828.0, "source_per_pool_limit": 26700.0},
+    {"year": 2026, "power_mw": 2927.9, "energy_mwh": 27400.0, "capital_cost_gbp": 388500000.0, "source_pool_limit": 2927.9, "source_per_pool_limit": 27400.0},
+    {"year": 2027, "power_mw": 2927.9, "energy_mwh": 27400.0, "capital_cost_gbp": 388500000.0, "source_pool_limit": 2927.9, "source_per_pool_limit": 27400.0},
+    {"year": 2028, "power_mw": 3377.9, "energy_mwh": 30200.0, "capital_cost_gbp": 425100000.0, "source_pool_limit": 3377.9, "source_per_pool_limit": 30200.0},
+    {"year": 2029, "power_mw": 3587.9, "energy_mwh": 31800.0, "capital_cost_gbp": 441500000.0, "source_pool_limit": 3587.9, "source_per_pool_limit": 31800.0},
+    {"year": 2030, "power_mw": 4187.9, "energy_mwh": 40800.0, "capital_cost_gbp": 496800000.0, "source_pool_limit": 4187.9, "source_per_pool_limit": 40800.0},
+    {"year": 2031, "power_mw": 5687.9, "energy_mwh": 70800.0, "capital_cost_gbp": 596400000.0, "source_pool_limit": 5687.9, "source_per_pool_limit": 70800.0},
+    {"year": 2032, "power_mw": 5687.9, "energy_mwh": 70800.0, "capital_cost_gbp": 596400000.0, "source_pool_limit": 5687.9, "source_per_pool_limit": 70800.0},
+    {"year": 2033, "power_mw": 5687.9, "energy_mwh": 70800.0, "capital_cost_gbp": 596400000.0, "source_pool_limit": 5687.9, "source_per_pool_limit": 70800.0},
+    {"year": 2034, "power_mw": 5687.9, "energy_mwh": 70800.0, "capital_cost_gbp": 596400000.0, "source_pool_limit": 5687.9, "source_per_pool_limit": 70800.0},
+    {"year": 2035, "power_mw": 11387.9, "energy_mwh": 195800.0, "capital_cost_gbp": 1070800000.0, "source_pool_limit": 11387.9, "source_per_pool_limit": 195800.0}
+  ]
+}

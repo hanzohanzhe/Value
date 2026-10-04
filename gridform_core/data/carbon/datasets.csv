@@ -1,0 +1,6 @@
+dataset_id,title,version,kind,model_status,frozen_on,description
+scheme_c_2026_07_18,"Scheme C retained operational-carbon snapshot","2026-07-18","reproducibility_snapshot","current_legacy_model","2026-08-06","Literal carbon-related values read from the retained Scheme C configuration; no values have been corrected."
+chapter4_thesis_2026_08_03,"Chapter 4 thesis carbon-data snapshot","2026-08-03","reproducibility_snapshot","paper_baseline","2026-08-06","Literal Chapter 4 table values; disputed citations and units are flagged rather than silently corrected."
+paper_postprocess_2026_07_10,"Paper overall-carbon postprocessor snapshot","2026-07-10","reproducibility_snapshot","paper_chart_pipeline","2026-08-06","Exact rows used by embodied_emissions.py and its CSV input for the published comparison plots."
+uk_authority_reference_2026_08_06,"UK authoritative and peer-reviewed carbon reference","2026-08-06","reference_catalogue","not_automatically_active","2026-08-06","Audited source rows. Users must select a technology variant and boundary explicitly before use."
+uk_transmission_reference_2026_08_06,"UK transmission embodied-carbon reference","2026-08-06","reference_catalogue","inactive_no_transmission_model","2026-08-06","Project and material factors for future transmission modelling; deliberately inactive in the present copper-plate PSM."

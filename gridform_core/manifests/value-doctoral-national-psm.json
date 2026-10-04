@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-doctoral-national-psm",
+  "name": "Doctoral national physical PSM (experimental)",
+  "version": "0.2.0",
+  "scientific_version": "doctoral-national-final96-signed-settlement-2026.09.10",
+  "slot": "psm",
+  "implementation": "gridform_core.builtin.scheme_c_1000twh.doctoral_national_psm:DoctoralNationalPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": ["demand.forecast", "demand.real", "fleet.generators", "weather.solar", "weather.wind"],
+  "outputs": ["market.year-result", "market.period-summary", "doctoral.cashflow", "doctoral.runtime-state", "doctoral.settlement-details"],
+  "parameters": ["clock.period_hours", "market.bid_multiplier", "market.voll_gbp_per_mwh"],
+  "state_reads": ["operating.assets", "doctoral.runtime-state"],
+  "state_writes": ["doctoral.runtime-state"],
+  "determinism": "deterministic",
+  "artifacts": ["doctoral-checkpoints/<year>/index.json", "doctoral-checkpoints/<year>/checkpoint-<period>.json", "doctoral-settlement-details/<year>/<period>.json"],
+  "description": "Explicit restored national physical engine; independent JSON monthly recovery. Not the staged/zonal model and not a scientifically released final9.6 CEM.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": ["market.year-result", "doctoral.national-physical-state/v1"],
+  "requires_capabilities": []
+}

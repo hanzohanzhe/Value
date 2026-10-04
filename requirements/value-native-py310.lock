@@ -1,0 +1,8 @@
+-r value-open-core-py310.lock
+# Live FORCE Scheme-C-derived PSM data/runtime dependencies.
+certifi==2026.7.22
+cftime==1.6.4.post1
+netCDF4==1.7.2
+packaging==25.0
+pyproj==3.7.1
+xarray==2025.6.1

@@ -1,0 +1,27 @@
+.run-context-bar { margin: 20px clamp(24px, 3vw, 46px) 0; padding: 18px 20px; border: 1px solid var(--line, #d9dee8); border-radius: 10px; background: var(--panel, #fff); color: var(--ink, #172033); min-width: 0; }
+.run-context-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.run-context-heading > div:first-child { display: grid; gap: 5px; min-width: 0; }
+.run-context-eyebrow { color: var(--muted, #596273); font-size: 11px; }
+.run-context-heading strong { font-size: 15px; }
+.run-context-bar code { font-size: 11px; overflow-wrap: anywhere; }
+.run-context-statuses { display: flex; flex-wrap: wrap; gap: 12px 22px; }
+.run-context-statuses > span, .run-context-sources > span { display: grid; align-content: start; gap: 4px; min-width: 0; }
+.run-context-statuses small, .run-context-sources small { color: var(--muted, #596273); font-size: 11px; }
+.run-context-statuses b { font-size: 12px; font-weight: 600; }
+.run-context-scope { margin: 14px 0 0; font-size: 12px; line-height: 1.6; }
+.run-context-scope > b { margin-right: 7px; }
+.run-context-scope small { display: block; color: var(--muted, #596273); font-size: 11px; }
+.run-context-sources { display: grid; grid-template-columns: minmax(110px, .65fr) repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft, #e9edf3); }
+.run-context-sources b { font-size: 12px; }
+.run-context-notice { margin: 12px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted, #596273); }
+.run-context-mismatch { border-color: var(--amber, #a15c12); }
+.run-context-mismatch .run-context-notice { color: var(--amber, #a15c12); }
+.run-context-details { margin-top: 13px; font-size: 12px; }
+.run-context-details summary { cursor: pointer; color: var(--blue-dark, #173ca5); width: fit-content; }
+.run-context-details summary:focus-visible { outline: 2px solid var(--blue, #2455d6); outline-offset: 4px; border-radius: 2px; }
+.run-context-details dl { display: grid; gap: 8px; margin: 12px 0; }
+.run-context-details dl > div { display: grid; grid-template-columns: minmax(150px, .5fr) minmax(0, 1fr); gap: 12px; }
+.run-context-details dt, .run-context-details p { color: var(--muted, #596273); }
+.run-context-details dd { margin: 0; min-width: 0; }
+@media (max-width: 1000px) { .run-context-heading { flex-direction: column; gap: 14px; } }
+@media (max-width: 600px) { .run-context-bar { margin: 16px 16px 0; padding: 16px; } .run-context-sources { grid-template-columns: 1fr; } .run-context-details dl > div { grid-template-columns: 1fr; gap: 4px; } .run-context-statuses { gap: 12px 18px; } }

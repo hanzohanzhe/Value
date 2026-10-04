@@ -1,0 +1,6 @@
+{
+  "schema_version": "value.interconnector-landing-collection/v1",
+  "interconnector_landings": [
+    {"interconnector_id": "france", "asset_id": "import:france", "zone_id": "south", "envelope_semantics": "signed_profile_envelope"}
+  ]
+}

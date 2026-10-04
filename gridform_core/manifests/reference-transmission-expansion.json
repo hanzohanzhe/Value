@@ -1,0 +1,33 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "reference-transmission-expansion",
+  "name": "VALUE transparent reference transmission expansion",
+  "version": "1.0.0",
+  "scientific_version": "observed-congestion-central-planner-v1",
+  "slot": "network_expansion",
+  "implementation": "gridform_core.network_expansion:ReferenceTransmissionExpansion",
+  "contract_version": "value.network-expansion/v1",
+  "inputs": ["value.network-expansion-state/v1", "value.network-psm-output/v1", "value.network-candidate/v1"],
+  "outputs": ["value.network-expansion-decision/v1", "value.network-expansion-advance/v1", "value.network-expansion-admission/v1"],
+  "parameters": ["network.expansion.annual_budget_gbp", "network.expansion.group_budget_gbp", "network.expansion.random_seed"],
+  "state_reads": ["value.network.expansion.candidates", "value.network.expansion.assets", "value.network.expansion.projects"],
+  "state_writes": ["value.network.expansion.assets", "value.network.expansion.projects", "value.network.expansion.events"],
+  "determinism": "seeded",
+  "artifacts": ["network/network-expansion.json", "network/network-expansion.sqlite"],
+  "description": "Transparent central-planner reference method using observed DC congestion and a declared benefit/cost screen. Candidate corridors and budgets are explicit data. It is a lifecycle exercise, not a recommended national planning model.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": ["domain.network.expansion", "lifecycle.network-assets", "ledger.network-capex-fom"],
+  "requires_capabilities": ["domain.network.dc", "contract.network-expansion/v1", "data.network.expansion-candidates/v1"],
+  "units": {
+    "value.network-expansion-state/v1": "mixed typed SI/GBP",
+    "value.network-psm-output/v1": "MW, MWh, radians, GBP/MWh",
+    "value.network-candidate/v1": "MW, MVA, p.u., GBP, years",
+    "value.network-expansion-decision/v1": "MW, GBP",
+    "value.network-expansion-advance/v1": "MW, GBP, years",
+    "value.network-expansion-admission/v1": "MW, years",
+    "network.expansion.annual_budget_gbp": "GBP/year",
+    "network.expansion.group_budget_gbp": "GBP/year per declared budget group",
+    "network.expansion.random_seed": "integer"
+  }
+}

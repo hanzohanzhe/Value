@@ -1,0 +1,7 @@
+{
+  "schema_version": "value.transport-corridor-collection/v1",
+  "corridors": [
+    {"corridor_id": "north-south", "from_zone_id": "north", "to_zone_id": "south", "positive_direction": "from_to_positive", "purpose": "computational_routing"},
+    {"corridor_id": "fallback-south", "from_zone_id": "england-fallback", "to_zone_id": "south", "positive_direction": "from_to_positive", "purpose": "computational_routing"}
+  ]
+}

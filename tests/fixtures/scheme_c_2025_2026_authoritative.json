@@ -1,0 +1,29 @@
+{
+  "source_run": "20260718_decarb_virtual_pool_1000twh_scheme_c/03_future_cm_decarb_base_2025_2035",
+  "scenario": "existing_decarb_base",
+  "years": {
+    "2025": {
+      "total_system_cost_gbp": 42697698747.09755,
+      "cost_per_mwh_gbp": 182.9231445778693,
+      "total_energy_generated_mwh": 233418788.2327892,
+      "solar_capacity_mw": 10066.980000000003,
+      "onshore_capacity_mw": 14711.649999999996,
+      "offshore_capacity_mw": 14678.999999999998,
+      "quarter_c_battery_capacity_mw": 299.98416468725264,
+      "quarter_c_battery_suggested_addition_mw": 1040.43,
+      "solar_suggested_addition_mw": 851.15,
+      "onshore_suggested_addition_mw": 1320.46,
+      "offshore_suggested_addition_mw": 840.34
+    },
+    "2026": {
+      "total_system_cost_gbp": 43640757818.78533,
+      "cost_per_mwh_gbp": 186.9691759060536,
+      "total_energy_generated_mwh": 233411510.78674862,
+      "solar_capacity_mw": 14756.028128194372,
+      "onshore_capacity_mw": 14982.299999999997,
+      "offshore_capacity_mw": 14678.999999999998,
+      "quarter_c_battery_capacity_mw": 2531.4784903668533,
+      "quarter_c_battery_suggested_addition_mw": 1219.79
+    }
+  }
+}

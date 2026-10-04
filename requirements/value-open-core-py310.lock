@@ -1,0 +1,8 @@
+# Generated for CPython 3.10.11 / Windows x86-64 on 2026-08-08.
+# Exact versions are the accepted runtime; recreate with scripts/verify_locks.py.
+numpy==1.24.4
+pandas==2.3.2
+python-dateutil==2.8.2
+pytz==2022.1
+six==1.16.0
+tzdata==2025.2

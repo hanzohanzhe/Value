@@ -1,0 +1,9 @@
+{
+  "schema_version": "value.spatial-audit/v1",
+  "active_asset_ids": ["thermal", "wind", "import:france", "unlocated"],
+  "capacity_mw_by_technology": {"CCGT": 10.0, "onshore": 6.0, "interconnector": 4.0, "solar": 1.0},
+  "mapped_capacity_mw_by_technology": {"CCGT": 10.0, "onshore": 6.0, "interconnector": 4.0, "solar": 1.0},
+  "tolerance_mw": 1e-8,
+  "fallback_asset_ids": ["unlocated"],
+  "excluded_northern_ireland_asset_ids": ["ni-generator"]
+}

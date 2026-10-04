@@ -1,0 +1,28 @@
+{
+  "schema_version": "value.data-source-definition/v1",
+  "source_id": "neso.interconnector-register",
+  "authority": "NESO",
+  "semantic_role": "interconnector_assets",
+  "landing_page": "https://www.neso.energy/data-portal/interconnector-register",
+  "discovery_adapter": "official_static_resource",
+  "allowed_domains": [
+    "neso.energy",
+    "api.neso.energy",
+    "83025b28472d6aa2bf5ae59f3724aa78.eu.r2.cloudflarestorage.com"
+  ],
+  "licence_expected": "NESO Open Data Licence",
+  "candidate_uses": [
+    "interconnector asset identity",
+    "landing-site and directional-capacity evidence"
+  ],
+  "expected_media_types": [
+    "text/csv"
+  ],
+  "redistribution_policy": "redistributable",
+  "discovery_config": {
+    "download_url": "https://api.neso.energy/dataset/a7cca714-9dbb-42b1-99c8-4bc7211605a8/resource/64f7908f-f787-4977-93e1-5342a5f1357f/download/interconnector-register-18-august-2026.csv",
+    "revision_id": "NESO-interconnector-register-2026-08-18",
+    "publication_date": "2026-08-18",
+    "format": "CSV"
+  }
+}

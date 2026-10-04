@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-representative-point-weather",
+  "name": "VALUE representative-point zonal weather",
+  "version": "1.0.0",
+  "scientific_version": "value-representative-point-weather-2026.08.21",
+  "slot": "weather_spatializer",
+  "implementation": "gridform_core.weather_spatialization:RepresentativePointWeather",
+  "contract_version": "value.weather-spatializer/v1",
+  "inputs": ["value.agent-zone-allocation/v1", "profiles.vre_solar", "profiles.vre_onshore", "profiles.vre_offshore"],
+  "outputs": ["value.zonal-availability-profile/v1"],
+  "parameters": [],
+  "state_reads": [],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["data/zonal-availability-profiles.json"],
+  "description": "Offline preprocessing that copies each regional economic agent's declared representative trace to its zonal physical tranches.",
+  "status": "experimental",
+  "selection_required": false,
+  "provides_capabilities": ["data.zonal-availability-profile/v1"],
+  "requires_capabilities": []
+}

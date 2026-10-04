@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+controller="$here/app/packaging/linux-local/local_value.py"
+if [ ! -f "$controller" ]; then controller="$here/local_value.py"; fi
+exec python3 "$controller" install "$@"

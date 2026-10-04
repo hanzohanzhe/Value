@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "planning-pipeline",
+  "name": "Planning pipeline",
+  "version": "2.2.0",
+  "scientific_version": "value-cem-v1-2026.08.10",
+  "slot": "pipeline",
+  "implementation": "gridform_core.builtin.value_modules:ValuePlanningPipeline",
+  "contract_version": "value.planning/v2",
+  "inputs": ["projects.repd", "planning.timelines", "planning.success_rates", "investment.proposals"],
+  "outputs": ["planning.advance", "planning.admission", "planning.events", "fleet.commissioned-asset-record"],
+  "parameters": ["planning.success_mode", "planning.random_seed"],
+  "state_reads": ["year_state.planning_projects"],
+  "state_writes": ["operating.assets", "next_state.planning_projects", "operating.asset-economics"],
+  "determinism": "seeded",
+  "artifacts": ["planning/pipeline.sqlite", "planning/summary.json"],
+  "description": "VALUE CEM two-phase planning lifecycle with fail-closed asset economics and explicit site/hydrology deferment.",
+  "status": "ready",
+  "selection_required": true,
+  "provides_capabilities": ["planning.advance", "planning.admission", "fleet.commissioned-asset-record"],
+  "requires_capabilities": ["investment.proposals", "investment.asset-economics"]
+}

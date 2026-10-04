@@ -1,0 +1,24 @@
+{
+  "schema_version": "value.zonal-redispatch-analytical-fixture/v1",
+  "case_id": "binding-north-south-cut",
+  "period_hours": 1.0,
+  "ahead_schedule_mwh": {
+    "cheap": 10.0,
+    "local": 0.0
+  },
+  "real_demand_mwh_by_zone": {
+    "north": 0.0,
+    "south": 10.0
+  },
+  "boundary": {
+    "boundary_id": "B_TEST",
+    "forward_limit_mw": 4.0,
+    "reverse_limit_mw": 2.0
+  },
+  "expected": {
+    "cheap_final_mwh": 4.0,
+    "local_final_mwh": 6.0,
+    "boundary_transfer_mwh": 4.0,
+    "primary_objective_gbp": 600.0
+  }
+}

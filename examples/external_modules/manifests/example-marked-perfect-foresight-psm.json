@@ -1,0 +1,23 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "example-marked-perfect-foresight-psm",
+  "name": "Example marked perfect-foresight PSM",
+  "version": "1.0.0",
+  "scientific_version": "fixture-only",
+  "slot": "psm",
+  "implementation": "examples.external_modules.value_example_modules:ExampleMarkedPSM",
+  "contract_version": "value.psm/v2",
+  "inputs": ["chronology"],
+  "outputs": ["market_year_result"],
+  "parameters": [],
+  "state_reads": ["operating_state"],
+  "state_writes": [],
+  "determinism": "deterministic",
+  "artifacts": ["solver_diagnostics"],
+  "description": "Test-only external PSM with an exact £123.45 execution marker.",
+  "status": "fixture",
+  "selection_required": true,
+  "provides_capabilities": ["market.year-result", "storage.central-cooptimization"],
+  "requires_capabilities": [],
+  "units": {"chronology": "MWh/period", "market_year_result": "GBP and MWh"}
+}

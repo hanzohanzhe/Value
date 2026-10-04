@@ -1,0 +1,15 @@
+{
+  "schema_version": "value.carbon-factor-scenario/v1",
+  "scenario_id": "doctoral_reproduction_2026_07_18",
+  "dataset_id": "doctoral_reproduction_2026_07_18",
+  "physical_boundary": "legacy reproduction only",
+  "legacy_storage_record_ids": [
+    "sc_phs_body", "sc_battery_1c_body", "sc_battery_025c_body",
+    "sc_battery_05c_body", "sc_hydrogen_body"
+  ],
+  "legacy_storage_unit_status": "not_physically_interpretable",
+  "notes": [
+    "The retained 40/50 storage scalars have no declared physical unit.",
+    "The exact legacy metric may be reproduced but is not labelled tCO2e."
+  ]
+}

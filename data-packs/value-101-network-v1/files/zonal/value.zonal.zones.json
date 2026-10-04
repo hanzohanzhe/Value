@@ -1,0 +1,35 @@
+{
+  "schema_version": "value.network-zone-collection/v1",
+  "zones": [
+    {
+      "display_name": "North",
+      "dso_owner": "Synthetic northern zone",
+      "geometry_feature_id": null,
+      "is_unconstrained_fallback": false,
+      "island_reason": null,
+      "nation": "SYNTHETIC",
+      "schema_version": "value.network-zone/v1",
+      "zone_id": "north"
+    },
+    {
+      "display_name": "Central",
+      "dso_owner": "Synthetic central zone",
+      "geometry_feature_id": null,
+      "is_unconstrained_fallback": false,
+      "island_reason": null,
+      "nation": "SYNTHETIC",
+      "schema_version": "value.network-zone/v1",
+      "zone_id": "central"
+    },
+    {
+      "display_name": "South",
+      "dso_owner": "Synthetic southern zone",
+      "geometry_feature_id": null,
+      "is_unconstrained_fallback": false,
+      "island_reason": null,
+      "nation": "SYNTHETIC",
+      "schema_version": "value.network-zone/v1",
+      "zone_id": "south"
+    }
+  ]
+}

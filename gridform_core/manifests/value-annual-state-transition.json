@@ -1,0 +1,22 @@
+{
+  "schema_version": "value.module/v2",
+  "id": "value-annual-state-transition",
+  "name": "VALUE annual state transition",
+  "version": "2.1.0",
+  "scientific_version": "value-cem-v1-2026.08.09",
+  "slot": "transition",
+  "implementation": "gridform_core.builtin.value_modules:ValueAnnualStateTransition",
+  "contract_version": "value.state-transition/v2",
+  "inputs": ["planning.admission", "investment.retirements"],
+  "outputs": ["year-state.next", "fleet.retirement-economics"],
+  "parameters": [],
+  "state_reads": ["year_state"],
+  "state_writes": ["year_state.next"],
+  "determinism": "deterministic",
+  "artifacts": ["checkpoints/year-state.json"],
+  "description": "Advances the accepted annual state and scales physical and economic records for retirements.",
+  "status": "ready",
+  "selection_required": false,
+  "provides_capabilities": ["state.transition"],
+  "requires_capabilities": ["planning.admission"]
+}

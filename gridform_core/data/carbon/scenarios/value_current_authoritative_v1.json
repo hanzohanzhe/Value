@@ -1,0 +1,16 @@
+{
+  "schema_version": "value.carbon-factor-scenario/v1",
+  "scenario_id": "value_current_authoritative_v1",
+  "dataset_id": "uk_authority_reference_2026_08_06",
+  "physical_boundary": "direct operational generation and exogenous imported electricity; storage charge carbon uses average-pool inventory when chronological source evidence is available",
+  "record_ids": [
+    "auth_biomass_op", "auth_ccgt_op", "auth_ocgt_op", "auth_hydro_op",
+    "auth_nuclear_op", "auth_solar_op", "auth_wind_op", "auth_phs_op",
+    "auth_import_fr", "auth_import_nl", "auth_import_be", "auth_import_ie"
+  ],
+  "embodied_status": "requires_asset_specific_allocation",
+  "notes": [
+    "Interconnectors are exogenous supply at the GB boundary, not an internal transmission network.",
+    "Missing technologies are reason-coded not_evaluated; they are never assigned a silent zero."
+  ]
+}
