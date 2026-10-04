@@ -764,6 +764,8 @@
     "gridform_core/doctoral_weather_mapping.py",
     "gridform_core/domain_readiness.py",
     "gridform_core/domain_results.py",
+    "gridform_core/energy_balance_contract.py",
+    "gridform_core/energy_balance_oracle.py",
     "gridform_core/ensembles.py",
     "gridform_core/errors.py",
     "gridform_core/execution_archive.py",
@@ -1193,6 +1195,7 @@
     "tests/test_doctoral_weather.py",
     "tests/test_documentation_consistency.py",
     "tests/test_dynamic_storage_cost.py",
+    "tests/test_energy_balance_oracle.py",
     "tests/test_ensembles.py",
     "tests/test_exact_scheme_c.py",
     "tests/test_executable_data_adapters.py",
@@ -7174,6 +7177,18 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_core/energy_balance_contract.py",
+      "sha256": "2ce5532cc17d4a6cb736ed943073d42a3fc27f492eeee731a384a4e7342cb968",
+      "bytes": 18268,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "gridform_core/energy_balance_oracle.py",
+      "sha256": "112305a88a023d31bc5967c1073fd68de00149d203074684ff293b3176920269",
+      "bytes": 28266,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/ensembles.py",
       "sha256": "dc82565278875f22a541506bdf78720a6b158dbaec70c2a6a94035f10efc889c",
       "bytes": 6839,
@@ -9738,6 +9753,12 @@
       "sha256": "eb8f5eb4d2305a67bdd5ebdff1d083cfe37aac9e9cfa0b19ef1e342c7a9c3c59",
       "bytes": 15188,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_energy_balance_oracle.py",
+      "sha256": "0c248f6042c5612615ed2c4abeb30f8e9f3140def753d326e06f23dc59588473",
+      "bytes": 21925,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_ensembles.py",
