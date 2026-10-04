@@ -1242,6 +1242,7 @@
     "tests/test_orchestrator.py",
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
+    "tests/test_p07_doctoral_source_oracle.py",
     "tests/test_p07_head_decide_record.py",
     "tests/test_p07_investment_accounts.py",
     "tests/test_p0_gate.py",
@@ -10037,6 +10038,12 @@
       "sha256": "d56606e3ea097f98e3a40a63db43617310607164b6e0619f67b0dea2b9936d0f",
       "bytes": 7312,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_p07_doctoral_source_oracle.py",
+      "sha256": "be7827db8647386a6fe694eda1dba17304b3f8fc960193d1134fbcedf6b9ffe6",
+      "bytes": 16502,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_p07_head_decide_record.py",
