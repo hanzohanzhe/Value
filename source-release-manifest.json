@@ -1290,6 +1290,7 @@
     "tests/test_lifecycle_primitives.py",
     "tests/test_local_backend.py",
     "tests/test_local_uk_source_inventory.py",
+    "tests/test_lock_order.py",
     "tests/test_market_ledger.py",
     "tests/test_market_ledger_benchmark.py",
     "tests/test_market_ledger_v6.py",
@@ -10405,6 +10406,12 @@
       "sha256": "0b4918437499dc084e3fd718397578454698e9b58d45dc504141506560dda8ae",
       "bytes": 1376,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_lock_order.py",
+      "sha256": "4f4ffd198ec35b6c115d840c81a2c48e0541489bbae101219810b8187d637465",
+      "bytes": 8070,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_market_ledger.py",
