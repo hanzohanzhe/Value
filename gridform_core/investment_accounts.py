@@ -16,6 +16,8 @@ parts:
    storage keep gross revenue as profit (thesis assumption: CAPEX and
    depreciation only, no OPEX). Every income and cost component is a
    required argument: a left-out component is an error, never a zero.
+   ``a4_net_revenue_for_decidable_groups`` applies it only to groups whose
+   investment mode can reach a decision (mode filter first).
 3. The ``head_*`` functions: the investment rule of the v2
    ``SchemeCAgentInvestmentDefinition.decide`` at 35aadb3, decomposed without
    any change of arithmetic or evaluation order. ``head_decide_accounts``
@@ -144,6 +146,12 @@ def deducts_energy_cost(
       coal). Without one, A4 defines no basis and the call fails closed; at
       HEAD such technologies (Nuclear, hydro, unknown) never reach a proposal
       because their investment mode is denied or site_data_required.
+
+    Ordering rule (P0-7 S4): A4 net revenue is computed only for groups whose
+    investment mode is not in ``HEAD_SKIPPED_MODES`` (denied,
+    site_data_required). The mode filter runs first; computing A4 for the
+    whole fleet would raise here for Nuclear, Hydro_natural_flow and
+    pumped_hydro. ``a4_net_revenue_for_decidable_groups`` applies that order.
     """
     if not isinstance(technology, str) or not technology:
         raise ValueError("A4 net revenue needs a technology name")
@@ -219,6 +227,43 @@ def scheme_c_investment_net_revenue(
         "net_revenue_gbp": total_income - operating,
         "basis": basis,
     }
+
+
+def a4_net_revenue_for_decidable_groups(
+    groups: Sequence[Mapping[str, object]],
+    mode_of: Callable[[str], str],
+    cashflow_inputs: Mapping[str, object],
+) -> dict[str, dict[str, object]]:
+    """A4 net revenue for the members of the groups that can reach a decision.
+
+    ``groups`` come from ``head_group_assets`` (each member has an
+    ``asset_id``). The investment-mode filter runs first: a group whose mode
+    is in ``HEAD_SKIPPED_MODES`` (Nuclear, hydro, coal, unknown technologies)
+    is skipped before any A4 call, and cashflow rows of its assets are
+    ignored. Every member of every other group needs a cashflow row carrying
+    all arguments of ``scheme_c_investment_net_revenue`` except the
+    technology; a missing row is a ``ValueError``, never a zero. A row may
+    name its technology, which must then equal the group's. Returns the A4
+    result row by asset id.
+    """
+    if not isinstance(cashflow_inputs, Mapping):
+        raise ValueError("A4 cashflow inputs must be a mapping keyed by asset id")
+    result: dict[str, dict[str, object]] = {}
+    for group in groups:
+        technology = str(group["technology"])
+        if mode_of(technology) in HEAD_SKIPPED_MODES:
+            continue
+        for member in group["members"]:  # type: ignore[union-attr]
+            asset_id = str(member["asset_id"])
+            row = cashflow_inputs.get(asset_id)
+            if not isinstance(row, Mapping):
+                raise ValueError(f"A4 cashflow inputs missing for asset {asset_id}")
+            arguments = dict(row)
+            named = arguments.pop("technology", technology)
+            if named != technology:
+                raise ValueError(f"A4 cashflow row of {asset_id} names {named}, its group is {technology}")
+            result[asset_id] = scheme_c_investment_net_revenue(technology=technology, **arguments)
+    return result
 
 
 # ---------------------------------------------------------------------------

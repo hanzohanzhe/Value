@@ -7295,8 +7295,8 @@
     },
     {
       "path": "gridform_core/investment_accounts.py",
-      "sha256": "fe2de028e6d31b4435b859aa0be2842f22e8342a9b2cb95d0a4d0e03c6d2e3d0",
-      "bytes": 25197,
+      "sha256": "0fd9756e46ab066d6554889d8e2355a1792e212af7709dd301bd4a78b4d02a2c",
+      "bytes": 27571,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10047,8 +10047,8 @@
     },
     {
       "path": "tests/test_p07_head_decide_record.py",
-      "sha256": "8fed69c974ac9aedd83c078f31d2b6bd97d74f926ced9ab7726406790d1d3f29",
-      "bytes": 11477,
+      "sha256": "ae116335faebb2028c7346feaf6233d2fb6c44d61668266990c48d3b1105cefa",
+      "bytes": 17775,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
