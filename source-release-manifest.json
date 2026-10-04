@@ -764,6 +764,8 @@
     "gridform_core/doctoral_weather_mapping.py",
     "gridform_core/domain_readiness.py",
     "gridform_core/domain_results.py",
+    "gridform_core/energy_balance_contract.py",
+    "gridform_core/energy_balance_oracle.py",
     "gridform_core/ensembles.py",
     "gridform_core/errors.py",
     "gridform_core/execution_archive.py",
@@ -1028,6 +1030,7 @@
     "scripts/methodology/package.json",
     "scripts/methodology/render_math.cjs",
     "scripts/methodology/requirements.txt",
+    "scripts/p04_capture_trajectory_golden.py",
     "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
     "scripts/portable_path_scan.py",
@@ -1110,6 +1113,7 @@
     "tests/fixtures/doctoral_alignment/investment.json",
     "tests/fixtures/doctoral_alignment/planning.json",
     "tests/fixtures/doctoral_alignment/source_manifest.json",
+    "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/prompt08_audit_project.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
     "tests/fixtures/zonal_redispatch/binding-cut.json",
@@ -1143,6 +1147,7 @@
     "tests/golden/projects/D3.json",
     "tests/golden/projects/D4.json",
     "tests/golden/zones.json",
+    "tests/p04_variants.py",
     "tests/preflight-identity.test.mjs",
     "tests/prompt124-ui-contract.test.mjs",
     "tests/rendered-html.test.mjs",
@@ -1193,6 +1198,7 @@
     "tests/test_doctoral_weather.py",
     "tests/test_documentation_consistency.py",
     "tests/test_dynamic_storage_cost.py",
+    "tests/test_energy_balance_oracle.py",
     "tests/test_ensembles.py",
     "tests/test_exact_scheme_c.py",
     "tests/test_executable_data_adapters.py",
@@ -1239,6 +1245,7 @@
     "tests/test_orchestrator.py",
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
+    "tests/test_p04_variant_fixtures.py",
     "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
     "tests/test_path_hygiene.py",
@@ -1307,6 +1314,7 @@
     "tests/test_public_uk_distribution.py",
     "tests/test_recovery_capability.py",
     "tests/test_refresh_source_release_manifest.py",
+    "tests/test_release_members_cover_imports.py",
     "tests/test_release_parity.py",
     "tests/test_release_rights_ledger.py",
     "tests/test_release_upgrade_ledgers.py",
@@ -7174,6 +7182,18 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_core/energy_balance_contract.py",
+      "sha256": "2ce5532cc17d4a6cb736ed943073d42a3fc27f492eeee731a384a4e7342cb968",
+      "bytes": 18268,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "gridform_core/energy_balance_oracle.py",
+      "sha256": "112305a88a023d31bc5967c1073fd68de00149d203074684ff293b3176920269",
+      "bytes": 28266,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/ensembles.py",
       "sha256": "dc82565278875f22a541506bdf78720a6b158dbaec70c2a6a94035f10efc889c",
       "bytes": 6839,
@@ -8756,6 +8776,12 @@
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
     },
     {
+      "path": "scripts/p04_capture_trajectory_golden.py",
+      "sha256": "e0887c3e056f5cf05fc2cca79ef752ebad15350068bbd561886be69664f8f1a9",
+      "bytes": 7195,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/p0_gate.py",
       "sha256": "f0fb11ddb311238157d2ec53c3a25d1262075286ac4500f9a5748543e1cf3d1b",
       "bytes": 42798,
@@ -9242,6 +9268,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/fixtures/p04_trajectory_golden.json",
+      "sha256": "2935a61f041b6b747e7233df629eedec7ce3036a55618108eda97679c08f1e40",
+      "bytes": 415235,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/fixtures/prompt08_audit_project.json",
       "sha256": "26fab9038bd2f341ead8d7f309c30980b197885cdd4dd290132740e2cc02758a",
       "bytes": 580,
@@ -9437,6 +9469,12 @@
       "path": "tests/golden/zones.json",
       "sha256": "08a1e9011195f81d6b1394d858ee6bf5d2875ece25389250b9872eab31b674b5",
       "bytes": 12959,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/p04_variants.py",
+      "sha256": "43cd4e84c4d1ec117d86b55a57561a9a13098011d5c2d18c18016d0869a617ea",
+      "bytes": 11649,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9740,6 +9778,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/test_energy_balance_oracle.py",
+      "sha256": "0c248f6042c5612615ed2c4abeb30f8e9f3140def753d326e06f23dc59588473",
+      "bytes": 21925,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_ensembles.py",
       "sha256": "c226c0a8cf61268c83ce913e3489fa1763f4dd475373302d721074ef47cf1d3a",
       "bytes": 1946,
@@ -10014,6 +10058,12 @@
       "sha256": "d56606e3ea097f98e3a40a63db43617310607164b6e0619f67b0dea2b9936d0f",
       "bytes": 7312,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_p04_variant_fixtures.py",
+      "sha256": "f9bb3dac732d49751a0139e292ddbd80f68aee124d28b74a5527035bd0ede770",
+      "bytes": 11189,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_p0_gate.py",
@@ -10421,6 +10471,12 @@
       "path": "tests/test_refresh_source_release_manifest.py",
       "sha256": "d881c6f694e51465d4757585e9b9fa130f8fde00d1c28de1b0984cfc320fe9d0",
       "bytes": 5369,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_release_members_cover_imports.py",
+      "sha256": "657250383814614461ee1ca5855b83ff0ec171b021702e7e00b4a63ba9c97243",
+      "bytes": 6670,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
