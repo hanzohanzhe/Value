@@ -410,6 +410,20 @@ def latest_digest(golden: Mapping[str, Any]) -> Mapping[str, Any]:
     return golden["revisions"][-1]["digest"]
 
 
+class _ReportPending:
+    """Marker returned by a ``numeric_reports`` loader for the revision that
+    ``capture.py revise`` is appending: its numeric report can only be built
+    once the revision exists (``capture.py numeric-report``), so ``revise``
+    does not check it; ``capture.py validate`` (gate ``golden_bookkeeping``)
+    still refuses the commit until the report is in place."""
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "REPORT_PENDING"
+
+
+REPORT_PENDING: Any = _ReportPending()
+
+
 def validate_golden_file(
     golden: Mapping[str, Any],
     trajectory_allowlist: Mapping[str, Any],
@@ -417,9 +431,12 @@ def validate_golden_file(
 ) -> list[str]:
     """Return bookkeeping errors for one golden case file (no runs needed).
 
-    ``numeric_reports(k)`` returns the committed numeric report of revision k
-    (or ``None``); a doctoral revision that changes trajectory columns needs
-    one (:func:`validate_numeric_report`).
+    ``numeric_reports(k)`` returns the committed numeric report of revision k,
+    ``None`` when there is none, or :data:`REPORT_PENDING` for a revision
+    whose report is still to be built.  A doctoral revision that changes
+    trajectory columns needs one (:func:`validate_numeric_report`); any other
+    revision must not have one (a report documents a doctoral trajectory
+    re-baseline and nothing else).
     """
 
     errors: list[str] = []
@@ -460,21 +477,26 @@ def validate_golden_file(
             errors.append(f"{name}: revision {index} delta does not match its digests")
         elif sorted((row["key"], row["zone"]) for row in recorded_rows) != sorted((row.key, row.zone) for row in delta):
             errors.append(f"{name}: revision {index} delta records zones that differ from the pinned zones")
-        if golden.get("family") == "doctoral":
-            trajectory = [row for row in delta if row.zone == "trajectory"]
-            if trajectory:
-                findings = set(revision.get("findings") or [])
-                approved = findings & allowed_findings
-                if not approved:
-                    errors.append(
-                        f"{name}: revision {index} changes {len(trajectory)} trajectory column(s) without an approved universal finding"
-                    )
-                reused = approved & used
-                if reused:
-                    errors.append(f"{name}: revision {index} re-baselines trajectory again for {sorted(reused)}")
-                used |= approved
-                report = numeric_reports(index) if numeric_reports is not None else None
+        trajectory = [row for row in delta if row.zone == "trajectory"] if golden.get("family") == "doctoral" else []
+        report = numeric_reports(index) if numeric_reports is not None else None
+        if trajectory:
+            findings = set(revision.get("findings") or [])
+            approved = findings & allowed_findings
+            if not approved:
+                errors.append(
+                    f"{name}: revision {index} changes {len(trajectory)} trajectory column(s) without an approved universal finding"
+                )
+            reused = approved & used
+            if reused:
+                errors.append(f"{name}: revision {index} re-baselines trajectory again for {sorted(reused)}")
+            used |= approved
+            if report is not REPORT_PENDING:
                 errors.extend(validate_numeric_report(report, golden, index, delta))
+        elif report is not None and report is not REPORT_PENDING:
+            errors.append(
+                f"tests/golden/reports/{golden.get('case')}-r{index}.json: {name} revision {index} changes no doctoral "
+                "trajectory column; numeric reports document doctoral trajectory re-baselines only"
+            )
     return errors
 
 

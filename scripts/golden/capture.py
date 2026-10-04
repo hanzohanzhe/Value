@@ -18,11 +18,17 @@ identity hashes, versions) are reported only.  ``revise`` appends a revision
 carrying the delta; for the doctoral family a trajectory change is accepted
 only for a finding listed in tests/golden/doctoral_trajectory_rebaselines.json
 and only once per finding and case, and only with a numeric before/after
-report ``tests/golden/reports/<case>-r<k>.json`` (``numeric-report``: the
-case is run with ``run_case.py --keep-output`` on a ``git archive`` of the
-parent commit and on the working tree; per changed column it records max
-abs/rel delta, totals and annual totals; ``validate`` checks the report
-exists and is bound to the revision's digest).
+report ``tests/golden/reports/<case>-r<k>.json``.
+
+Doctoral re-baseline workflow (one commit): ``revise`` appends revision k
+(its report is pending; earlier reports are checked), then
+``numeric-report --case <case> --parent HEAD`` runs the case with
+``run_case.py --keep-output`` on a ``git archive`` of the parent commit and
+on the working tree, checks they reproduce revisions k-1 and k, and writes
+the report (rows aligned on natural keys; per changed column max abs/rel
+delta, totals, annual and keyed group totals).  ``validate`` (gate
+``golden_bookkeeping``) refuses the commit until the report exists and is
+bound to the revision's digest; a report for any other revision is an error.
 """
 
 from __future__ import annotations
@@ -210,15 +216,28 @@ def command_revise(arguments: argparse.Namespace) -> int:
         except ValueError as exc:
             summary[case_id] = str(exc)
             continue
-        errors = golden_lib.validate_golden_file(golden, allowlist)
+        new_index = revision["revision"]
+        # The numeric report of the revision being appended can only be built
+        # after it exists (numeric-report checks that the child output
+        # reproduces it), so it is pending here; every earlier report is
+        # checked.  ``capture.py validate`` (gate golden_bookkeeping) refuses
+        # the commit until tests/golden/reports/<case>-r<k>.json is in place.
+        errors = golden_lib.validate_golden_file(
+            golden,
+            allowlist,
+            lambda index, case_id=case_id, new_index=new_index: (
+                golden_lib.REPORT_PENDING if index == new_index else load_report(case_id, index)
+            ),
+        )
         if errors:
             raise SystemExit("refusing revision:\n" + "\n".join(errors))
         golden_lib.write_golden(path, golden)
         summary[case_id] = revision["delta"]["by_zone"]
         if family == "doctoral" and revision["delta"]["by_zone"].get("trajectory"):
             summary[f"{case_id}:next"] = (
-                f"commit tests/golden/reports/{case_id}-r{revision['revision']}.json: "
-                f"capture.py numeric-report --case {case_id} --parent HEAD"
+                f"revision {new_index} needs its numeric report before commit: capture.py numeric-report "
+                f"--case {case_id} --parent HEAD  (writes tests/golden/reports/{case_id}-r{new_index}.json; "
+                "capture.py validate fails until it exists)"
             )
     print(json.dumps(summary, indent=2))
     return 0
@@ -237,12 +256,17 @@ def validate_all() -> list[str]:
         if golden.get("case") != case_id or golden.get("family") != case["family"]:
             errors.append(f"{path.relative_to(ROOT)}: case/family header mismatch")
         errors.extend(golden_lib.validate_golden_file(golden, allowlist, lambda index, case_id=case_id: load_report(case_id, index)))
-    for report_path in sorted(REPORT_DIR.glob("*.json")) if REPORT_DIR.is_dir() else []:
+    # Reports bound to an existing revision 1..n were validated above (a
+    # report for a revision that is not a doctoral trajectory re-baseline is
+    # an error there); anything else in the directory is an orphan.
+    for report_path in sorted(REPORT_DIR.iterdir()) if REPORT_DIR.is_dir() else []:
         case_id, _, suffix = report_path.stem.rpartition("-r")
         case = cases.get(case_id)
         golden_file = golden_path(case["family"], case_id) if case else None
         revisions = json.loads(golden_file.read_text(encoding="utf-8"))["revisions"] if golden_file and golden_file.is_file() else []
-        if not suffix.isdigit() or not 0 < int(suffix) < len(revisions):
+        if report_path.suffix != ".json" or not report_path.is_file():
+            errors.append(f"tests/golden/reports/{report_path.name}: not a numeric report (<case>-r<k>.json)")
+        elif not suffix.isdigit() or str(int(suffix)) != suffix or not 0 < int(suffix) < len(revisions):
             errors.append(f"tests/golden/reports/{report_path.name}: no matching golden revision")
     run_case = _run_case_module()
     for case_id, case in cases.items():
@@ -256,8 +280,19 @@ def validate_all() -> list[str]:
 
 
 def load_report(case_id: str, index: int) -> dict[str, Any] | None:
+    """The committed numeric report of revision ``index`` (``None`` when absent).
+
+    An unreadable report is returned as an empty-ish mapping so that
+    validation reports it instead of crashing."""
+
     path = REPORT_DIR / f"{case_id}-r{index}.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return {"unreadable": f"{type(exc).__name__}: {exc}"}
+    return payload if isinstance(payload, dict) else {"unreadable": f"top level is {type(payload).__name__}"}
 
 
 def run_case_at(case_id: str, output: Path, scratch: Path, ref: str | None = None, python: str = sys.executable) -> str:

@@ -42,7 +42,19 @@ class GoldenDoctoralFamilyTests(unittest.TestCase):
                 self.assertEqual(differences, [], f"{FAMILY}/{case_id} differs from revision {record['revisions'][-1]['revision']}")
 
     def test_family_bookkeeping_is_valid(self) -> None:
-        errors = [error for error in CAPTURE.validate_all() if error.startswith(f"{FAMILY}/") or f"/{FAMILY}/" in error]
+        # Errors are attributed by case id, so numeric-report errors
+        # ("tests/golden/reports/<case>-r<k>.json: ...") are enforced here too,
+        # not only by the gate's golden_bookkeeping step.
+        family_cases = {name for name, case in CAPTURE.load_cases().items() if case["family"] == FAMILY}
+
+        def concerns_family(error: str) -> bool:
+            return (
+                error.startswith(f"{FAMILY}/")
+                or f"/{FAMILY}/" in error
+                or any(f"reports/{case_id}-r" in error for case_id in family_cases)
+            )
+
+        errors = [error for error in CAPTURE.validate_all() if concerns_family(error)]
         missing_long = [error for error in errors if "golden file missing" in error]
         self.assertEqual([error for error in errors if error not in missing_long], [])
         self.assertEqual(missing_long, [], "every case in tests/golden/cases.json needs revision 0")

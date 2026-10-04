@@ -337,6 +337,123 @@ class GoldenInitTests(unittest.TestCase):
             self.assertIn("immutable", str(raised.exception.code))
 
 
+PRICE = "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh"
+RESIDUAL = "market/market.sqlite::period_summary.energy_balance_residual_mwh"
+
+
+class GoldenReviseWorkflowTests(unittest.TestCase):
+    """``capture.py revise`` -> ``numeric-report`` -> ``validate`` through
+    ``capture.main`` (model runs mocked), on a scratch copy of the golden files."""
+
+    def setUp(self) -> None:
+        import contextlib
+        import importlib.util
+        import io
+        import shutil
+        from unittest import mock
+
+        spec = importlib.util.spec_from_file_location("golden_capture_revise", ROOT / "scripts" / "golden" / "capture.py")
+        self.capture = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(self.capture)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.golden_dir = Path(temporary.name) / "golden"
+        for family in ("doctoral", "corrected"):
+            shutil.copytree(ROOT / "tests" / "golden" / family, self.golden_dir / family)
+        self.reports = self.golden_dir / "reports"
+        for name, value in (("GOLDEN_DIR", self.golden_dir), ("REPORT_DIR", self.reports)):
+            patcher = mock.patch.object(self.capture, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.assertEqual(self.capture.validate_all(), [])
+        self._stdout = io.StringIO
+        self._redirect = contextlib.redirect_stdout
+
+    def _record(self, family: str, case: str) -> dict:
+        return json.loads((self.golden_dir / family / f"{case}.json").read_text(encoding="utf-8"))
+
+    def _changed(self, family: str, case: str, key: str) -> dict:
+        digest = copy.deepcopy(dict(golden.latest_digest(self._record(family, case))))
+        digest["columns"][key] = dict(digest["columns"][key], sha256="1" * golden.HASH_CHARS, sha256_9g="1" * golden.HASH_CHARS)
+        return {**digest, "case": case, "seconds": 1.5}
+
+    def _revise(self, case: str, digest: dict, *arguments: str) -> tuple[int, str]:
+        from unittest import mock
+
+        output = self._stdout()
+        with mock.patch.object(self.capture, "run_cases", return_value={case: digest}), self._redirect(output):
+            code = self.capture.main(["revise", "--cases", case, "--reason", "test re-baseline", *arguments])
+        return code, output.getvalue()
+
+    def _report_for(self, family: str, case: str, index: int, keys: set[str]) -> dict:
+        record = self._record(family, case)
+        return {
+            "schema_version": golden.NUMERIC_REPORT_SCHEMA, "family": family, "case": case, "revision": index,
+            "parent_commit": "p", "child_commit": "c",
+            "digest_sha256": golden.digest_fingerprint(record["revisions"][index]["digest"]),
+            "summary": {}, "columns": {key: {"zone": "trajectory"} for key in keys},
+        }
+
+    def _write_report(self, name: str, payload: object) -> None:
+        self.reports.mkdir(exist_ok=True)
+        (self.reports / name).write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_doctoral_trajectory_revise_then_report_then_validate(self) -> None:
+        code, output = self._revise("D3", self._changed("doctoral", "D3", PRICE),
+                                    "--correction-id", "p05.ic", "--finding", "P6-24")
+        self.assertEqual(code, 0, output)
+        record = self._record("doctoral", "D3")
+        self.assertEqual(len(record["revisions"]), 2)
+        self.assertEqual(record["revisions"][1]["delta"]["by_zone"], {"trajectory": 1})
+        self.assertIn("numeric-report --case D3", output)
+        # the revision is written; the commit is refused until its report exists
+        errors = self.capture.validate_all()
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("doctoral/D3: revision 1 changes doctoral trajectory without a numeric before/after report", errors[0])
+        self._write_report("D3-r1.json", self._report_for("doctoral", "D3", 1, {PRICE}))
+        self.assertEqual(self.capture.validate_all(), [])
+        # a forged report is validated, not just checked for existence
+        self._write_report("D3-r1.json", dict(self._report_for("doctoral", "D3", 1, {PRICE}), digest_sha256="0" * 64))
+        self.assertTrue(any("digest_sha256" in error for error in self.capture.validate_all()))
+        self._write_report("D3-r1.json", [])
+        self.assertTrue(any("D3-r1.json" in error for error in self.capture.validate_all()))
+        self._write_report("D3-r1.json", self._report_for("doctoral", "D3", 1, {PRICE}))
+
+        # the next revise checks the committed report of r1 and leaves r2 pending
+        code, output = self._revise("D3", self._changed("doctoral", "D3", "market/market.sqlite::period_summary.accepted_supply_mwh"),
+                                    "--correction-id", "p05.gbp1", "--finding", "P6-02")
+        self.assertEqual(code, 0, output)
+        self.assertTrue(any("revision 2" in error and "numeric before/after report" in error for error in self.capture.validate_all()))
+
+    def test_revise_still_refuses_an_unapproved_doctoral_trajectory_change(self) -> None:
+        before = (self.golden_dir / "doctoral" / "D3.json").read_text(encoding="utf-8")
+        with self.assertRaises(SystemExit) as raised:
+            self._revise("D3", self._changed("doctoral", "D3", PRICE), "--correction-id", "p06.bid")
+        self.assertIn("without an approved universal finding", str(raised.exception.code))
+        self.assertEqual((self.golden_dir / "doctoral" / "D3.json").read_text(encoding="utf-8"), before)
+
+    def test_reports_only_document_doctoral_trajectory_revisions(self) -> None:
+        code, _ = self._revise("C3", self._changed("corrected", "C3", PRICE), "--correction-id", "p06.bid")
+        self.assertEqual(code, 0)
+        code, _ = self._revise("D3", self._changed("doctoral", "D3", RESIDUAL), "--correction-id", "p04.ledger")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.capture.validate_all(), [])  # neither revision needs a report
+        self._write_report("C3-r1.json", self._report_for("corrected", "C3", 1, {PRICE}))
+        self._write_report("D3-r1.json", self._report_for("doctoral", "D3", 1, {RESIDUAL}))
+        errors = self.capture.validate_all()
+        for name in ("C3-r1.json", "D3-r1.json"):
+            self.assertTrue(any(name in error and "changes no doctoral trajectory" in error for error in errors), errors)
+        (self.reports / "C3-r1.json").unlink()
+        (self.reports / "D3-r1.json").unlink()
+        for name in ("D3-r2.json", "D3-r01.json", "D9-r1.json", "notes.txt"):
+            with self.subTest(report=name):
+                self._write_report(name, {})
+                self.assertTrue(any(name in error for error in self.capture.validate_all()))
+                (self.reports / name).unlink()
+        self.assertEqual(self.capture.validate_all(), [])
+
+
 class GoldenProjectSnapshotTests(unittest.TestCase):
     def setUp(self) -> None:
         import importlib.util
