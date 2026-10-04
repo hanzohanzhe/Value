@@ -8667,8 +8667,8 @@
     },
     {
       "path": "scripts/golden/run_case.py",
-      "sha256": "efa14b28539c324606940fc7adcc498fc82fb132a0fbfc501fa5f0d073c4f1ac",
-      "bytes": 5432,
+      "sha256": "8f5c33e1c6baef8a411d52b1c8b102f092cfeca7937fc4c4d7808b9b8de04c2f",
+      "bytes": 7170,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9849,8 +9849,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "f8bced9ff0ce5bd6a110182ed75d1d2b21db0d2f866706168412bca33507e040",
-      "bytes": 19998,
+      "sha256": "5a6ef0f5b58ec5abed064fa3248e8afa0a16d7a2c9b6c7d3ab96a08496b9c228",
+      "bytes": 22012,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

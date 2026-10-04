@@ -51,7 +51,40 @@ def project_path(case: Mapping[str, Any]) -> Path:
     return PROJECTS / f"{case['id']}.json"
 
 
-def build_project(case: Mapping[str, Any]) -> dict[str, Any]:
+def derived_maturity_acknowledgements(project: Mapping[str, Any], registry: Any = None) -> dict[str, str]:
+    """Acknowledgements for the project's experimental modules/extensions at
+    their *registered* versions.
+
+    Frozen projects record keys such as
+    ``module:value-zonal-redispatch-balancing@3.0.0``.  The user-consent
+    meaning of an acknowledgement does not apply to golden fixtures, so the
+    keys are re-derived from the registry at run time
+    (``frontend_contract.maturity_acknowledgement_requirements``); a planned
+    module version bump (VERSION_LEDGER) then cannot break a golden case
+    whose snapshot is immutable.  Keys that are still current keep their
+    frozen order and value; stale keys are dropped.
+    """
+
+    from gridform_core.frontend_contract import EXPERIMENTAL_ACK, maturity_acknowledgement_requirements
+
+    if registry is None:
+        from gridform_core.v2.module_manifest import builtin_registry
+
+        registry = builtin_registry()
+    required = [
+        item["key"]
+        for item in maturity_acknowledgement_requirements(
+            registry, dict(project.get("modules") or {}), [str(item) for item in project.get("selected_extensions") or ()]
+        )
+    ]
+    frozen = dict(project.get("maturity_acknowledgements") or {})
+    derived = {key: value for key, value in frozen.items() if key in required and value == EXPERIMENTAL_ACK}
+    for key in required:
+        derived.setdefault(key, EXPERIMENTAL_ACK)
+    return derived
+
+
+def build_project(case: Mapping[str, Any], registry: Any = None) -> dict[str, Any]:
     """The frozen project of a golden case plus its overrides.
 
     The input is ``tests/golden/projects/<case>.json`` (the 35aadb3 course
@@ -59,7 +92,9 @@ def build_project(case: Mapping[str, Any]) -> dict[str, Any]:
     ``value_101_study()`` template, so later template edits cannot change the
     doctoral inputs.  ``modules``/``parameters``/``runtime_options`` from
     cases.json are merged on top (a no-op for the values already frozen); this
-    is how X0 S8 pins ``methodology.profile`` for the D cases.
+    is how X0 S8 pins ``methodology.profile`` for the D cases.  Maturity
+    acknowledgements are re-derived for the registered module versions
+    (:func:`derived_maturity_acknowledgements`).
     """
 
     path = project_path(case)
@@ -69,6 +104,7 @@ def build_project(case: Mapping[str, Any]) -> dict[str, Any]:
     _merge(project, "modules", case.get("modules"))
     _merge(project, "parameters", case.get("parameters"))
     _merge(project, "runtime_options", case.get("runtime_options"))
+    project["maturity_acknowledgements"] = derived_maturity_acknowledgements(project, registry)
     project["id"] = "golden-study"
     return project
 

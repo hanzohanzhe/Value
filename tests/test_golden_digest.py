@@ -323,6 +323,36 @@ class GoldenProjectSnapshotTests(unittest.TestCase):
                     self.assertEqual(project["modules"]["storage_cost"], "value-legacy-storage-tariff")
                     self.assertEqual(project["parameters"]["carbon.factor_scenario"], "doctoral_reproduction_2026_07_18")
 
+    def test_golden_projects_survive_a_module_version_bump(self) -> None:
+        """P0-8 bumps value-zonal-redispatch-balancing 3.0.0 -> 4.0.0 (VERSION_LEDGER);
+        C8's immutable snapshot acknowledges @3.0.0 and must still validate."""
+
+        import dataclasses
+
+        from gridform_core.frontend_contract import validate_maturity_acknowledgements
+        from gridform_core.v2.module_manifest import builtin_registry
+
+        registry = builtin_registry()
+        module_id = "value-zonal-redispatch-balancing"
+        current = registry.manifest(module_id)
+        registry._manifests[module_id] = dataclasses.replace(current, version="4.0.0")
+        case = dict(self.cases["C8"], id="C8")
+        frozen = json.loads(self.run_case.project_path(case).read_text(encoding="utf-8"))
+        self.assertIn(f"module:{module_id}@{current.version}", frozen["maturity_acknowledgements"])
+        with self.assertRaisesRegex(ValueError, "Experimental acknowledgement required"):
+            validate_maturity_acknowledgements(registry, frozen["modules"], frozen["selected_extensions"],
+                                               frozen["maturity_acknowledgements"])
+        project = self.run_case.build_project(case, registry)
+        self.assertIn(f"module:{module_id}@4.0.0", project["maturity_acknowledgements"])
+        self.assertNotIn(f"module:{module_id}@{current.version}", project["maturity_acknowledgements"])
+        validate_maturity_acknowledgements(registry, project["modules"], project["selected_extensions"],
+                                           project["maturity_acknowledgements"])
+        for case_id, definition in self.cases.items():
+            with self.subTest(case=case_id):
+                built = self.run_case.build_project(dict(definition, id=case_id), registry)
+                validate_maturity_acknowledgements(registry, built["modules"], built.get("selected_extensions") or [],
+                                                   built["maturity_acknowledgements"])
+
     def test_freeze_projects_never_overwrites(self) -> None:
         import importlib.util
 
