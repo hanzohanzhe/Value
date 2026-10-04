@@ -1003,6 +1003,7 @@
     "scripts/build_value_methodology_pdf.py",
     "scripts/build_value_uk_research_suite.py",
     "scripts/build_windows_pilot_installer.py",
+    "scripts/capture_native_reproduction_golden.py",
     "scripts/check-value-101.ps1",
     "scripts/check_publication_scope.py",
     "scripts/check_version_ledger.py",
@@ -1113,6 +1114,9 @@
     "tests/fixtures/doctoral_alignment/investment.json",
     "tests/fixtures/doctoral_alignment/planning.json",
     "tests/fixtures/doctoral_alignment/source_manifest.json",
+    "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
+    "tests/fixtures/native_psm/head_run_simulation_35aadb3.py",
+    "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
     "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/prompt08_audit_project.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
@@ -1147,6 +1151,7 @@
     "tests/golden/projects/D3.json",
     "tests/golden/projects/D4.json",
     "tests/golden/zones.json",
+    "tests/native_reproduction_harness.py",
     "tests/p04_variants.py",
     "tests/preflight-identity.test.mjs",
     "tests/prompt124-ui-contract.test.mjs",
@@ -1239,6 +1244,7 @@
     "tests/test_module_runtime.py",
     "tests/test_native_application_path.py",
     "tests/test_native_checkpoint_resume.py",
+    "tests/test_native_reproduction_golden.py",
     "tests/test_netcdf_preflight.py",
     "tests/test_no_positional_scheme_c_results.py",
     "tests/test_nuclear_policy.py",
@@ -8614,6 +8620,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "scripts/capture_native_reproduction_golden.py",
+      "sha256": "1c8ac7a304be0009fcfb4648f1082ae2dbe92b5ecb11a34f81e338ca75059c0d",
+      "bytes": 25701,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/check-value-101.ps1",
       "sha256": "d279e097a01a7bb2a19e801b4a813b529bcc33e1f96f360f164d664bc76f04d2",
       "bytes": 4056,
@@ -9268,6 +9280,24 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
+      "sha256": "2f4a783134cae3a2142e91d0faa5a995bad6fd7cc0645ae8bb04ee646c5634d0",
+      "bytes": 259604,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/native_psm/head_run_simulation_35aadb3.py",
+      "sha256": "07ad59660191a3c840bd3f48783589e9f959cea1271f4f1141d2b0583e00e3a8",
+      "bytes": 31328,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
+      "sha256": "8ec797671da2cf3c79b0765fc64233dfa4eed7e998f859bf53cce52ff4c7ea4c",
+      "bytes": 110000,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/fixtures/p04_trajectory_golden.json",
       "sha256": "2935a61f041b6b747e7233df629eedec7ce3036a55618108eda97679c08f1e40",
       "bytes": 415235,
@@ -9469,6 +9499,12 @@
       "path": "tests/golden/zones.json",
       "sha256": "08a1e9011195f81d6b1394d858ee6bf5d2875ece25389250b9872eab31b674b5",
       "bytes": 12959,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/native_reproduction_harness.py",
+      "sha256": "92016e3fde7289d10ad5ef5c4d60b9d83f1aca7477dbf396246f71070c42ecc6",
+      "bytes": 79628,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10022,6 +10058,12 @@
       "sha256": "22365a72a1c1ec5d6a5db0377f34d78f82e04a0ed458a2099f5e3fa682bf6464",
       "bytes": 7069,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_native_reproduction_golden.py",
+      "sha256": "0dd9fe9b33c9cbfe6b9d72b1292e9caa58f5d818096e2061a2c45c0fd4a9d616",
+      "bytes": 43813,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_netcdf_preflight.py",
