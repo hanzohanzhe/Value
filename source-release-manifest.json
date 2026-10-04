@@ -783,6 +783,7 @@
     "gridform_core/interfaces.py",
     "gridform_core/internal_experimental/extension_manifests/value-ac-data-extension.json",
     "gridform_core/internal_experimental/manifests/value-reference-ac-feasibility.json",
+    "gridform_core/investment_accounts.py",
     "gridform_core/legacy_module_ids.py",
     "gridform_core/manifests/agent-investment.json",
     "gridform_core/manifests/dynamic-annual-storage-cost.json",
@@ -1239,6 +1240,7 @@
     "tests/test_orchestrator.py",
     "tests/test_orchestrator_v2.py",
     "tests/test_overlay_editor.py",
+    "tests/test_p07_investment_accounts.py",
     "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
     "tests/test_path_hygiene.py",
@@ -7288,6 +7290,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_core/investment_accounts.py",
+      "sha256": "5610031694cf3555ddd7af2fa97e73915112d7c56d14e92998ced068483a6af1",
+      "bytes": 20895,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/legacy_module_ids.py",
       "sha256": "35b1241447e84a6bfc3caca111dde7483ded42b5126f465075112f98af9e0fa0",
       "bytes": 1862,
@@ -10014,6 +10022,12 @@
       "sha256": "d56606e3ea097f98e3a40a63db43617310607164b6e0619f67b0dea2b9936d0f",
       "bytes": 7312,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_p07_investment_accounts.py",
+      "sha256": "18459f379a765975cf08d73e6cb2b31ba67802db8f49c3a65914f7a05532d74d",
+      "bytes": 14618,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_p0_gate.py",
