@@ -9343,8 +9343,8 @@
     },
     {
       "path": "tests/golden/doctoral_trajectory_rebaselines.json",
-      "sha256": "789e85774b2cda8de4e215ff8cf4724e0eabf24deadabc74d2d5b84a83cc999e",
-      "bytes": 913,
+      "sha256": "35208fc7ad15ec21676c8672ad9fb507f45ce0896a9b1a291be2b4e7ff09ceeb",
+      "bytes": 969,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

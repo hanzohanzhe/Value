@@ -1,7 +1,7 @@
 {
  "schema_version": "value.golden-trajectory-allowlist/v1",
  "notes": [
-  "The doctoral family's trajectory zone is frozen (decision Q1/Q12). The only exceptions are the universal corrections the author approved in docs/dev/P0_DECISIONS.md; each may re-baseline a doctoral case's trajectory once, in the commit that introduces it, with a diff report.",
+  "The doctoral family's trajectory zone is frozen (decision Q1/Q12). The only exceptions are the universal corrections the author approved in the P0 decision record (decisions Q1, Q9/A3, A4 and A5, listed below by finding); each may re-baseline a doctoral case's trajectory once, in the commit that introduces it, with a diff report.",
   "Accounting-zone revisions do not need an entry here but must name a universal correction id."
  ],
  "findings": {
