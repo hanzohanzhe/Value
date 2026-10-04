@@ -5,7 +5,12 @@ def pages(w,existing):
  t=w.t;rows=[]
  for r in w.CONFIG['products'][0]['releases']:
   rows.append([r['platform'],'<a download href="'+r['url']+'">'+r['filename']+'</a><br>'+r['size'],t('Linux offline installation and scoped tasks passed.','Linux 断网安装与指定短任务已通过。') if r['native_acceptance'] else t('Experimental candidate; native installation, signing and notarisation are unverified.','实验候选；实机安装、签名与公证未验收。'),'<code>'+r['sha256']+'</code>'])
- body=w.heading('VALUE / 2026-10-03-rc1',t('Download the Full candidate','下载 Full 候选包'),t('Choose your platform, verify the checksum, then follow its installation guide.','选择平台，核对校验和，再按安装指南操作。'))+w.table([t('Platform','平台'),t('Package','安装包'),t('Validation','验收'),'SHA256'],rows)+w.note(t('Included environment','随包环境'),t('Full includes Python, Node and dependencies. These installer candidates have their own source identity; the documentation source tag is a separate snapshot.','Full 包包含 Python、Node 与依赖。安装候选包具有独立源码身份；文档源码 tag 是另一份快照。'))+'<p>'+w.a('docs/value','Installation steps','安装步骤')+'</p>'
+ cards=[]
+ for r in w.CONFIG['products'][0]['releases']:
+  status=t('Linux offline installation and scoped tasks passed.','Linux 断网安装与指定短任务已通过。') if r['native_acceptance'] else t('Experimental candidate; native installation, signing and notarisation are unverified.','实验候选；实机安装、签名与公证未验收。')
+  cards.append('<article class="release-card"><p class="eyebrow">'+r['platform']+'</p><h2>Full · '+r['version']+'</h2><p>'+status+'</p><p>'+r['size']+'</p><a class="button" download href="'+r['url']+'">'+t('Download candidate','下载候选包')+'</a><p class="release-filename">'+r['filename']+'</p><p class="small">SHA256</p><code class="release-checksum">'+r['sha256']+'</code></article>')
+ body=w.heading('VALUE / 2026-10-03-rc1',t('Download the Full candidate','下载 Full 候选包'),t('Choose your platform, verify the checksum, then follow its installation guide.','选择平台，核对校验和，再按安装指南操作。'))+'<div class="release-grid">'+''.join(cards)+'</div>'+w.note(t('Included environment','随包环境'),t('Full includes Python, Node and dependencies. These installer candidates have their own source identity; the documentation source tag is a separate snapshot.','Full 包包含 Python、Node 与依赖。安装候选包具有独立源码身份；文档源码 tag 是另一份快照。'))+'<p>'+w.a('docs/value','Installation steps','安装步骤')+'</p>'
+ existing=ready_copy(existing)
  return [(path,t('Download VALUE','下载 VALUE'),t('Versioned installation candidates.','有版本的安装候选包。'),body) if path in ['releases','release-check'] else (path,title,desc,text) for path,title,desc,text in existing]
 
 def data_pages(w,existing):
@@ -20,3 +25,8 @@ def data_pages(w,existing):
  source_note=w.note(t('Clean source snapshot','干净源码快照'),t('source-2026-10-04 passed clean installation, frontend build, thirteen wheel-object checks and a short teaching run. Installer candidates retain their own earlier application identity; the source checks do not establish frozen doctoral or annual research replay.','source-2026-10-04 已通过干净安装、前端构建、十三项 wheel 对象检查与教学短运行。安装候选保留其早期应用身份；源码检查不证明博士冻结或年度研究复跑。'))
  existing=[(p,title,desc,text+source_note if p in ['about','docs'] else text) for p,title,desc,text in existing]
  return [(path,t('Data and installation routes','数据与安装方式'),t('Six research archives with distinct interfaces and rights.','六份研究归档，各有安装接口与条款。'),body) if path=='data' else (path,title,desc,text) for path,title,desc,text in existing]
+
+def ready_copy(pages):
+ changes={'complete installer downloads remain pending.':'Full installer candidates are available from the matching software release.','完整安装包下载仍待发布。':'Full 安装候选包可从对应软件版本下载。','Public download packaging is pending.':'Downloadable software and teaching materials are provided by the matching release.','公开下载包仍待发布。':'可下载的软件与教学材料由匹配版本提供。','VALUE software use Apache-2.0':'VALUE software uses Apache-2.0','not a published tag or DOI':'a release-candidate tag, without a DOI','不代表已发布 tag 或 DOI':'标识已发布候选 tag，未分配 DOI','Unpublished local candidate':'Published release candidate','Unpublished local distribution candidate':'Published release candidate'}
+ for a,b in changes.items():pages=[(p,title.replace(a,b),desc.replace(a,b),body.replace(a,b)) for p,title,desc,body in pages]
+ return pages

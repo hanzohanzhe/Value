@@ -10339,9 +10339,9 @@
     },
     {
       "path": "website/UPLOAD-FILES.txt",
-      "sha256": "006ffedac2e967ddb438b1b82e131bd6bc795c9559ec7f7250f38c58a59fb6a0",
-      "bytes": 52265,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "a20aac7cbcd8d889811ba2f7306e990913275cd6406589102453d88367bf850d",
+      "bytes": 52280,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/build.py",
@@ -10363,8 +10363,8 @@
     },
     {
       "path": "website/journey.py",
-      "sha256": "63f5b8c3507ef2895085641de9d4e84f753ac4075955b2132567fe221885f094",
-      "bytes": 9851,
+      "sha256": "a02c39540c162da83f27ea32e15065a54a021345030219ea8f7bf914f2304920",
+      "bytes": 10039,
       "transform": "publication execution metadata, rights or packaging update"
     },
     {
@@ -10405,8 +10405,8 @@
     },
     {
       "path": "website/publication.py",
-      "bytes": 5075,
-      "sha256": "ca510d6cd8a814691e0939e4d21bc065ec81bb66231ca079b4d7e249658fcd9d",
+      "bytes": 6769,
+      "sha256": "4c8ca13051e01fb88b90337baaee70611159e35de8b26da3686e5b8ace675540",
       "transform": "publication execution metadata, rights or packaging update"
     },
     {
@@ -10417,8 +10417,8 @@
     },
     {
       "path": "website/site.json",
-      "sha256": "88707788b4039bd7d3bd2521726fce208ba4d6e4422d68f7451c3a572aeb6ef4",
-      "bytes": 8719,
+      "sha256": "c60937df4a39b82e05671b2716b591b3bf6c4572f3255b2fee02265eb835c769",
+      "bytes": 11163,
       "transform": "publication execution metadata, rights or packaging update"
     },
     {
@@ -17539,21 +17539,21 @@
     },
     {
       "path": "website/static/assets/release-candidate/CITATION.bib",
-      "sha256": "eabbd398edb75853beeeba759628d05a10af442a9665a48eaeda613d9fd37a96",
-      "bytes": 277,
-      "transform": "reviewed website/documentation input"
+      "sha256": "9ee57713b0ee07549dbfc25ed7ff9a8b77eb7529c8d0411cae49809a1bdba490",
+      "bytes": 287,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/static/assets/release-candidate/CITATION.cff",
-      "sha256": "33814f33bd114ca199bb1fef30c77b5d9269b10578c80284519dbf1df1c4c6b9",
-      "bytes": 439,
-      "transform": "reviewed website/documentation input"
+      "sha256": "9a676c913214d20e7120f5e3dfa9403ceb917edc3fa2ad7d9bba4800dd752d11",
+      "bytes": 424,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/static/assets/site.css",
-      "sha256": "b73b912f90dbe162a083d4eed768aaef7530d11f4e1e51040d06fb21ade56cd8",
-      "bytes": 20015,
-      "transform": "value.ac website integration or approved methodology 0.2 asset"
+      "sha256": "91d862797af89755556fe3cae7db7faf2d2e433704339a071835b1423c5b79c4",
+      "bytes": 20520,
+      "transform": "publication execution metadata, rights or packaging update"
     },
     {
       "path": "website/static/assets/site.js",

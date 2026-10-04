@@ -11,6 +11,7 @@ methodology/chapters-en.json
 methodology/chapters.json
 methodology/edition.json
 methodology_page.py
+publication.py
 release_candidate.py
 site.json
 static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-04.docx
