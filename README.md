@@ -1,5 +1,7 @@
 # VALUE
 
+VALUE stands for **V**ariable renewable electricity **A**llocation, **L**oad-enabled excess-generation **U**tilisation, and system **E**volution：可变可再生电力的分配、通过负荷利用富余发电，以及电力系统演化。
+
 VALUE 连接电力系统的半小时运行与年度投资，研究发电、储能、网络和资产演化。Power-system operation and annual investment in one modelling workspace.
 
 **从 [value.ac](https://value.ac) 开始，或直接下载 [完整安装包](https://github.com/hanzohanzhe/Value/releases/tag/value-2026-10-03-rc1)。** 模型在自己的计算机上运行；Full 自带 Python、Node、科学依赖和两个 VALUE 101 教学包。

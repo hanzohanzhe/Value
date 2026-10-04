@@ -1,6 +1,7 @@
 """Editorial content for both languages. No unverified download or DOI URLs."""
 from html import escape
 import json
+from journey import name_explanation
 
 def pages(w):
     t, a, url, tag, note, table, cards = (w.t, w.a, w.url, w.tag, w.note, w.table, w.cards)
@@ -73,7 +74,7 @@ def pages(w):
     add('validation', 'Know what the evidence supports.', '了解证据能够支持什么。', 'Engineering evidence is recorded for each product, configuration and version.', '验证对应具体产品、配置与版本，每项结论都需要明确范围。', body, t('RESEARCH / VALIDATION & LIMITS', '研究 / 验证与限制'))
     add('cite', 'Cite VALUE', '引用 VALUE', 'Record the software, configuration and data used.', '记录使用的软件、配置与数据。', '', t('PROJECT / CITATION', '项目 / 引用'))
     archive = w.external('https://github.com/hanzohanzhe/SCHEME-C-PhD-Reproduction', t('Open historical research archive on GitHub', '在 GitHub 查看历史研究档案'))
-    body = section(t('The name', '名称的含义'), para('VALUE stands for Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution. The website presents power-system operation and investment evolution.', 'VALUE 全称为 Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution。官网介绍电力系统运行与投资演化。'))
+    body = section(t('The name', '名称的含义'), name_explanation(w))
     body += section(t('Source availability', '源码获取状态'), para('The source-review snapshot is public in hanzohanzhe/Value, with synthetic teaching data and website source. Use value.ac for installation guidance; complete installer downloads remain pending.', '源码审阅快照已在 hanzohanzhe/Value 公开，包含合成教学数据和网站源码。用户从 value.ac 查看安装指引，完整安装包下载仍待发布。') + w.external('https://github.com/hanzohanzhe/Value', t('VALUE source and data on GitHub', 'GitHub 上的 VALUE 源码与数据')) + note(t('Historical archive', '历史研究档案'), t('The SCHEME-C PhD reproduction repository preserves earlier research. Its numerical reproduction has separate UK data conditions.', 'SCHEME-C 博士复现仓库保存较早的研究档案。其数值复现涉及独立的 UK 数据条件。') + '<br>' + archive))
     body += note(t('Software licence', '软件许可'), t('VALUE software uses Apache-2.0, including commercial use under its terms. Documentation uses CC BY 4.0; VALUE 101 synthetic data uses CC0; third-party dependencies and datasets retain their own terms. Research citation is recommended; software use follows Apache-2.0.', 'VALUE 软件均采用 Apache-2.0，可依其条款用于商业用途。文档采用 CC BY 4.0，VALUE 101 合成数据采用 CC0；第三方依赖与数据保留各自条款。建议在研究成果中引用项目；软件使用遵循 Apache-2.0。'))
     body += section(t('Distribution and permanent references', '分发与持久引用'), para('The website is lightweight. Public source and software releases will be distributed through GitHub; independent archives can preserve public research data and versioned software records. Links are added only after the actual files, licence and citation metadata are checked.', '官网保持轻量。公开源码与软件版本将通过 GitHub 分发；独立归档可保存公开研究数据和有版本的软件记录。只有实际文件、许可与引用元数据核验后才会接入链接。') + '<p>' + w.external('https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases', t('GitHub Releases documentation', 'GitHub Releases 官方说明')) + ' · ' + w.external('https://help.zenodo.org/docs/github/archive-software/github-upload/', t('Zenodo software archiving', 'Zenodo 软件归档')) + '</p>')

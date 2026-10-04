@@ -2647,9 +2647,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "0049caa45f290e23117b453a1ca13db93622c07d196e37e78938f769258992c4",
-      "bytes": 2441,
-      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
+      "sha256": "16d4d1e7cf63b1f6c4f70ddee94d73c6f78cffabcf15a7377f0861ed9b4ea2e8",
+      "bytes": 2683,
+      "transform": "Prominent VALUE name expansion and bilingual meaning in homepage, About and README"
     },
     {
       "path": "README_BILINGUAL.md",
@@ -10358,15 +10358,15 @@
     },
     {
       "path": "website/content.py",
-      "sha256": "66dfc9c028c1e2006a53c2755bc378c1c824d7a01f23ed4699bf8d5ca2278204",
-      "bytes": 28788,
-      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
+      "sha256": "5bdaf08e42436f84da8c890f44513e5fd52fcbc18af934ee24ed38e7dca990df",
+      "bytes": 28463,
+      "transform": "Prominent VALUE name expansion and bilingual meaning in homepage, About and README"
     },
     {
       "path": "website/journey.py",
-      "sha256": "f04c77ebaf8c9fc5f882419c4d77b1360e08b93cd10e50a83462528b9328566f",
-      "bytes": 10040,
-      "transform": "Reader-facing website and publication guide wording update; improved application frontend awaits review and acceptance"
+      "sha256": "76de992dcbef2e3c71deef26c1e12bc9bc796adb11bdd0e95e301d93b87559c0",
+      "bytes": 10502,
+      "transform": "Prominent VALUE name expansion and bilingual meaning in homepage, About and README"
     },
     {
       "path": "website/methodology-sync.json",
