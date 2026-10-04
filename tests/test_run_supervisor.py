@@ -100,6 +100,14 @@ class RunSupervisorTests(unittest.TestCase):
         self.runs.mkdir(parents=True)
         self.locks = _Locks()
         self.supervisor = RunSupervisor(self.runs, run_lock=self.locks, reconciler_mode="apply", windows=False)
+        # Worker pycache prefixes live in the test folder, never in the system
+        # temporary directory (a killed worker's reaper may not finish first).
+        prefixes = Path(self.folder.name) / "prefixes"
+        prefixes.mkdir()
+        made_prefix = supervisor_module.new_pycache_prefix
+        prefix_patch = patch.object(supervisor_module, "new_pycache_prefix", lambda: made_prefix(prefixes))
+        prefix_patch.start()
+        self.addCleanup(prefix_patch.stop)
         self.extra_pids: list[int] = []
         self.processes: list[subprocess.Popen] = []
         self.addCleanup(self._cleanup)
@@ -191,6 +199,35 @@ class RunSupervisorTests(unittest.TestCase):
         finally:
             os.kill(record["pid"], signal.SIGKILL)
         self._wait_status(run_dir, {"failed"})
+
+    def test_earlier_worker_exit_does_not_fail_a_resumed_run(self) -> None:
+        """Review M1-P0-3 #1: worker A recorded its failure and is still in
+        teardown when the run is resumed and worker B spawned; A's exit must
+        not settle the resumed (queued) run."""
+
+        run_dir = self._run("r-gen")
+        go = Path(self.folder.name) / "go-a"
+        first = self._spawn(run_dir, f"import os, sys, time\nwhile not os.path.exists({str(go)!r}): time.sleep(0.02)\nsys.exit(1)")
+        child_a = self.supervisor._children["r-gen"]
+        update_status(run_dir, transition="failed", reason_code="GF_TEST_WORKER_FAILED",
+                      mutate=lambda current: current.update({"execution_status": "failed"}))
+        with self.locks("r-gen"):  # the resume, as in the server
+            update_status(run_dir, transition="queued", reason_code="GF_RUN_RESUME_QUEUED", writer="server")
+            second = self._spawn(run_dir, "import time; time.sleep(60)")
+        self.extra_pids.append(second["pid"])
+        self.assertNotEqual(first["lease_nonce"], second["lease_nonce"])
+        go.write_text("1", "utf-8")
+        child_a.thread.join(timeout=30)
+        self.assertFalse(child_a.thread.is_alive())
+        status = read_status(run_dir)
+        self.assertEqual(status["status"], "queued")
+        self.assertEqual(status["lifecycle_reason_code"], "GF_RUN_RESUME_QUEUED")
+        self.assertNotIn("worker_outcome", status)
+        self.assertTrue(self.supervisor.owns("r-gen"))
+        self.assertEqual(json.loads((run_dir / "worker-exit.json").read_text("utf-8"))["returncode"], 1)
+        os.kill(second["pid"], signal.SIGKILL)
+        status = self._wait_status(run_dir, {"failed"})
+        self.assertEqual(status["worker_outcome"]["signal"], 9)
 
     def test_spawn_failure_raises_and_leaves_no_prefix(self) -> None:
         run_dir = self._run("r-spawn")
@@ -368,9 +405,11 @@ class RunSupervisorTests(unittest.TestCase):
 
     def test_singleton_lock_is_not_inherited_by_a_spawned_worker(self) -> None:
         run_dir = self._run("r1")
+        environment = _environment()
+        environment["TMPDIR"] = str(Path(self.folder.name) / "prefixes")  # the worker's pycache prefix
         spawner = subprocess.Popen(
             [sys.executable, "-B", "-c", SINGLETON_SPAWNER, str(self.state)],
-            cwd=ROOT, env=_environment(), stdout=subprocess.PIPE, text=True,
+            cwd=ROOT, env=environment, stdout=subprocess.PIPE, text=True,
         )
         self.processes.append(spawner)
         worker_pid = int(spawner.stdout.readline().strip())

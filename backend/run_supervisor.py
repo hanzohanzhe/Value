@@ -11,7 +11,10 @@ Lifecycle of a worker:
 2. A reaper thread per own child blocks in ``proc.wait()`` (no zombies, the
    exit status is kept in ``worker-exit.json``).  If the run is still active
    when its worker has exited, it becomes ``failed`` (or ``cancelled`` when a
-   cancellation was requested) with ``GF_WORKER_EXITED``.
+   cancellation was requested) with ``GF_WORKER_EXITED`` -- but only while
+   that worker is still the run's current generation (same child object and
+   the same lease nonce in ``worker.json``); the exit of a worker replaced by a
+   resume only writes ``worker-exit.json``.
 3. Every ``interval`` seconds ``tick`` looks only at *orphans*: active runs
    whose worker is not this backend's child (a previous backend spawned it).
    Liveness is the lease lock, never the pid.  A held lease means alive (the
@@ -186,6 +189,7 @@ class _Child:
     process: subprocess.Popen
     prefix: Path
     run_dir: Path
+    nonce: str
     thread: threading.Thread | None = None
 
 
@@ -303,7 +307,7 @@ class RunSupervisor:
             "state": "spawned",
         })
         atomic_write_json(run_dir / SPAWN_RECORD, record)
-        child = _Child(process=process, prefix=prefix, run_dir=run_dir)
+        child = _Child(process=process, prefix=prefix, run_dir=run_dir, nonce=nonce)
         with self._children_lock:
             self._children[run_id] = child
         child.thread = threading.Thread(
@@ -320,6 +324,7 @@ class RunSupervisor:
                 "schema_version": EXIT_SCHEMA,
                 "run_id": run_id,
                 "pid": child.process.pid,
+                "lease_nonce": child.nonce,
                 "returncode": returncode,
                 "signal": -returncode if returncode < 0 else None,
                 "exited_at": now(),
@@ -328,14 +333,34 @@ class RunSupervisor:
             _log(f"could not record the exit of {run_id}: {exc}")
         try:
             with self.run_lock(run_id):
-                self.settle(child.run_dir, "GF_WORKER_EXITED", {
-                    "returncode": returncode,
-                    "signal": -returncode if returncode < 0 else None,
-                })
+                # Settle only for the worker generation that is still current:
+                # after a resume a newer worker (other nonce) owns the run, and
+                # this earlier worker's exit must not fail it (review M1-P0-3).
+                if self.is_current_child(run_id, child):
+                    self.settle(child.run_dir, "GF_WORKER_EXITED", {
+                        "returncode": returncode,
+                        "signal": -returncode if returncode < 0 else None,
+                    })
+                else:
+                    _log(f"{run_id}: an earlier worker exited ({returncode}); a newer worker owns the run")
         finally:
             with self._children_lock:
                 if self._children.get(run_id) is child:
                     del self._children[run_id]
+
+    def is_current_child(self, run_id: str, child: _Child) -> bool:
+        """Is ``child`` this run's current worker generation?
+
+        Both the in-memory child table and the spawn record's lease nonce must
+        name it; the caller holds the run's action lock, under which every
+        spawn happens, so neither can change meanwhile.
+        """
+
+        with self._children_lock:
+            if self._children.get(run_id) is not child:
+                return False
+        spawn = read_spawn_record(child.run_dir) or {}
+        return spawn.get("lease_nonce") == child.nonce
 
     # -- settling ---------------------------------------------------------------
     def settle(self, run_dir: Path, reason_code: str, details: Mapping[str, Any]) -> dict[str, Any] | None:
