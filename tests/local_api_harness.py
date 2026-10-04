@@ -37,8 +37,7 @@ STATE_ROOT_NAMES = {
 class _HeaderProcessor(urllib.request.BaseHandler):
     handler_order = 100
 
-    def __init__(self, origin: str, token: str | None) -> None:
-        self.origin = origin
+    def __init__(self, token: str | None) -> None:
         self.token = token
 
     def http_request(self, request: urllib.request.Request) -> urllib.request.Request:
@@ -82,7 +81,7 @@ def start_local_api(*, data_home: Path, token: str | None = None) -> Iterator[tu
         thread = threading.Thread(target=httpd.serve_forever, name="local-api-harness", daemon=True)
         thread.start()
         origin = f"http://127.0.0.1:{httpd.server_address[1]}"
-        urllib.request.install_opener(urllib.request.build_opener(_HeaderProcessor(origin, token)))
+        urllib.request.install_opener(urllib.request.build_opener(_HeaderProcessor(token)))
         yield httpd, origin, token
     finally:
         urllib.request.install_opener(previous_opener)

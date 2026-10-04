@@ -2436,21 +2436,24 @@ class Handler(BaseHTTPRequestHandler):
             first = preflight["errors"][0]
             self._json({"error": first["message"], "preflight": preflight}, 400); return
         run_dir = RUNS_ROOT / run_id
-        run_dir.mkdir(parents=True, exist_ok=False)
-        # The run is visible from the moment its directory exists (R1-13): a
-        # start that fails later leaves a failed status, never an orphan.
-        create_status(run_dir, {
-            "id": run_id, "project_id": project_id,
-            "project_name": project.get("name"), "mode": mode,
-            "status": "snapshotting", "execution_status": "queued",
-            "execution_engine": "value-annual-orchestrator/v2",
-            "current_stage": "Freezing immutable run inputs",
-            "created_at": now(), "results": [],
-            "extensions": teaching_run_extensions,
-        })
+        # Every server-side status change of the run happens under its action
+        # lock from the first write on, so a supervisor tick never judges a run
+        # that is still being created (review M1-P0-3 #3).
         with run_action_lock(run_id):
+            run_dir.mkdir(parents=True, exist_ok=False)
+            # The run is visible from the moment its directory exists (R1-13): a
+            # start that fails later leaves a failed status, never an orphan.
+            create_status(run_dir, {
+                "id": run_id, "project_id": project_id,
+                "project_name": project.get("name"), "mode": mode,
+                "status": "snapshotting", "execution_status": "queued",
+                "execution_engine": "value-annual-orchestrator/v2",
+                "current_stage": "Freezing immutable run inputs",
+                "created_at": now(), "results": [],
+                "extensions": teaching_run_extensions,
+            })
             try:
-                self._freeze_and_queue_run(
+                queued = self._freeze_and_queue_run(
                     run_id=run_id, run_dir=run_dir, project=project, project_id=project_id,
                     mode=mode, policy=policy, run_start=run_start, run_end=run_end,
                     preflight=preflight, pack_root=pack_root, pack_selection=pack_selection,
@@ -2459,6 +2462,11 @@ class Handler(BaseHTTPRequestHandler):
             except BaseException:
                 _mark_unfinished_start_failed(run_dir)
                 raise
+        if queued is not None:
+            # Outside the start's failure boundary: the worker has been
+            # spawned, and a client that disconnects while this answer is sent
+            # must not fail its run (review M1-P0-3 #4).
+            self._json({"ok": True, "run": queued}, 202)
 
     def _freeze_and_queue_run(
         self,
@@ -2476,7 +2484,13 @@ class Handler(BaseHTTPRequestHandler):
         pack_selection: Any,
         teaching_run_extensions: dict[str, object],
         lineage: dict[str, object] | None,
-    ) -> None:
+    ) -> dict[str, Any] | None:
+        """Freeze inputs, queue the run and spawn its worker.
+
+        Returns the queued status once the worker is spawned; ``None`` after an
+        error that has already been answered.  The caller sends the 202.
+        """
+
         selected = dict(project.get("modules") or {})
         selected.setdefault("transition", "value-annual-state-transition")
         psm_manifest = MODULE_REGISTRY.manifest(str(selected["psm"]), expected_slot="psm")
@@ -2643,8 +2657,8 @@ class Handler(BaseHTTPRequestHandler):
             writer=WRITER_SERVER,
         )
         if not self._spawn_or_fail(run_dir, run_id=run_id, project_id=project_id, mode=mode, log_mode="w"):
-            return
-        self._json({"ok": True, "run": initial}, 202)
+            return None
+        return initial
 
     def _spawn_or_fail(self, run_dir: Path, *, run_id: str, project_id: str, mode: str,
                        log_mode: str, extra: Mapping[str, Any] | None = None) -> bool:

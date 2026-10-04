@@ -11,6 +11,7 @@ MODULE_LIFECYCLE_LOCK and the interleaved start/stop-module stress test here.
 
 from __future__ import annotations
 
+import http.client
 import json
 import tempfile
 import threading
@@ -171,6 +172,57 @@ class LockOrderTests(unittest.TestCase):
         self.assertEqual(self.recorder.violations, [])
         for name in ("study", "run_action", "reservation", "status"):
             self.assertIn(name, self.recorder.events)
+
+    def _runs(self) -> list[Path]:
+        return sorted(path for path in (self.home / "runs").iterdir() if path.is_dir())
+
+    def test_start_creates_the_run_under_its_action_lock(self) -> None:
+        """Review M1-P0-3 #3: a supervisor tick right after the first status
+        write must find the run's action lock held and leave it alone."""
+
+        from backend.lifecycle.run_status import read_status
+
+        real_create = server.create_status
+        seen: list[str] = []
+
+        def create_then_tick(run_dir, initial):
+            created = real_create(run_dir, initial)
+            ticker = threading.Thread(target=server.run_supervisor().tick)
+            ticker.start(); ticker.join(timeout=30)
+            seen.append(read_status(run_dir)["status"])
+            return created
+
+        with patch.object(server, "create_status", create_then_tick):
+            self.assertEqual(self._post("/api/projects/study/runs", {"mode": "value_101_day"}), 202)
+        self.assertEqual(seen, ["snapshotting"])
+        [run_dir] = self._runs()
+        status = read_status(run_dir)
+        self.assertEqual(status["status"], "queued")
+        self.assertEqual([entry["to"] for entry in status["lifecycle_history"]], ["snapshotting", "queued"])
+        self.assertNotIn("worker_outcome", status)
+
+    def test_client_gone_during_the_202_keeps_the_spawned_run(self) -> None:
+        """Review M1-P0-3 #4: the 202 is sent outside the start's failure
+        boundary, so a broken pipe there never fails a spawned run."""
+
+        from backend.lifecycle.run_status import read_status
+
+        real_json = server.Handler._json
+
+        def broken_202(handler, payload, status=200):
+            if status == 202:
+                raise BrokenPipeError("client went away")
+            return real_json(handler, payload, status)
+
+        with patch.object(server.Handler, "_json", broken_202):
+            try:
+                self._post("/api/projects/study/runs", {"mode": "value_101_day"})
+            except (OSError, urllib.error.URLError, http.client.HTTPException):
+                pass  # the client sees the dropped connection
+        [run_dir] = self._runs()
+        status = read_status(run_dir)
+        self.assertEqual(status["status"], "queued")
+        self.assertNotIn("GF_RUN_START_FAILED", json.dumps(status))
 
 
 class RecorderSelfTest(unittest.TestCase):
