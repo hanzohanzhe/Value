@@ -45,7 +45,9 @@
 
 规则：
 
-- **测试棘轮。** 基线 `tests/baselines/known-failures-linux-py310.txt`（首行为环境指纹）。新失败或“已修好仍在基线”都让门禁失败。真回归一律修复，不进基线。环境相关的失败放在 `tests/baselines/quarantine.txt`，必须写 reason/owner/expires；当前里程碑写在 `tests/baselines/milestone.txt`，每个里程碑结束时由集成者推进。`expires=Mk` 的含义是“有效至 Mk（含）”：当前里程碑晚于 Mk 时该条目让棘轮失败，owner 必须在此之前处理（gate venv 的 6 条为 `M7`，作者须在最后一个里程碑之前决定是否批准离线安装）。`expires=host` 是永久的宿主隔离，只用于本机固有、任何 P0 包都改变不了的原因（作者私有 Windows R0 源码树、Windows 专用工具或被现网安装占用的 8766 端口、磁盘余量）。
+- **“门禁通过”的定义。** 只有 `status: passed`（退出码 0）算通过；报告提交时写“p0_gate quick passed”即指此状态。`--skip`/`--only` 跳过或略去任一强制步骤（`guard`、`runtime_overlay`、`golden_bookkeeping`、`append_only`、`backend_ratchet`），或 `--append-base` 不等于 `APPEND_ONLY_BASE`，结果为 `passed_with_waivers`（`passed: false`，退出码 2），集成者按失败处理；`--only` 只用于本地迭代。
+- **不得访问现网安装。** 本机现网安装占用 127.0.0.1:8766（API）与 8800（UI）。测试与门禁一律不得连接或监听这两个端口：棘轮在每个测试子进程的 `PYTHONPATH` 首位放入生成的 `sitecustomize.py`（加载 `scripts/value_test_netguard.py`），node 子进程经 `NODE_OPTIONS=--import` 加载 `scripts/value-test-netguard.mjs`；对本机地址（回环、通配、localhost、本机主机名）上这两个端口的 connect/connect_ex/bind/listen 直接拒绝（不触网），连同测试 id 记入日志。只要有一次尝试，棘轮报告 `forbidden_port_attempts` 并失败（不受基线影响、不能进基线），p0_gate 另有 `network_guard` 结果覆盖门禁自身的子进程，golden case 子进程同样失败。凡调用默认指向 8766 的脚本（如 `audit_value_101_release.audit_release`、`doctor.py`、`build_value_101_release_evidence.py`），测试必须传入自己预留并释放的端口，或 patch 掉探测函数。守卫覆盖不到非 Python/node 子进程（curl、PowerShell）以及用 `-I/-S/-E` 或丢弃 `PYTHONPATH` 启动的 Python 子进程，这些仍靠代码审查。
+- **测试棘轮。** 基线 `tests/baselines/known-failures-linux-py310.txt`（首行为环境指纹）。新失败或“已修好仍在基线”都让门禁失败。真回归一律修复，不进基线。环境相关的失败放在 `tests/baselines/quarantine.txt`，必须写 reason/owner/expires；当前里程碑只取自 `tests/baselines/milestone.txt`，每个里程碑结束时由集成者推进（环境变量 `VALUE_P0_MILESTONE` 不再生效；`--milestone` 仅供运行器自身的测试使用，会记入报告的 `milestone_source`，门禁的 `backend_ratchet` 遇到它即失败）。`expires=Mk` 的含义是“有效至 Mk（含）”：当前里程碑晚于 Mk 时该条目让棘轮失败，owner 必须在此之前处理（gate venv 的 6 条为 `M7`，作者须在最后一个里程碑之前决定是否批准离线安装）。`expires=host` 是永久的宿主隔离，只用于本机固有、任何 P0 包都改变不了的原因（作者私有 Windows R0 源码树、Windows 专用工具或被现网安装占用的 8766 端口、磁盘余量）。
 - **golden 两族。** `tests/golden/doctoral/*`（冻结）与 `tests/golden/corrected/*`（快照）。digest 按“产物 × 列”保存，分三个区：
   - trajectory：出力、潮流、价格、SoC、装机、投资提案（Q12）。doctoral 族永不修订，唯一例外是 `tests/golden/doctoral_trajectory_rebaselines.json` 中作者批准的 universal correction（P6-24 [Q9/A3]、P6-02/03/04 [A5]、火电净收入 P4-01-thermal [A4]），每个 finding 对每个 case 只能重基线一次。这份名单被钉死：`test_golden_digest` 断言其键集合恰为上述五项，`append_only` 拒绝相对锚点新增 finding（说明文字可改，删除 finding 只会收紧冻结）；今后作者再批准例外，必须由集成者同时修改该测试并移动 `APPEND_ONLY_BASE`。
   - **数值差异报告（Q9/A4/A5 的“差异报告”）**：`revise` 打印的 delta 只有变化的列名与区，没有幅度，不能作为差异报告。每个改变 trajectory 列的 doctoral 修订，必须在同一提交中附 `tests/golden/reports/<case>-r<k>.json`：先 `capture.py revise ... --finding <id>` 追加修订 k，再 `capture.py numeric-report --case <case> --parent HEAD`（在 `git archive HEAD` 与工作树上各用 `run_case.py --keep-output` 跑一次该 case，先核对两边分别复现修订 k-1 与 k 的 digest）。报告逐列给出 max abs / max rel 变化、变化值个数、总和与按年合计（覆盖 period_summary 价格与供给、physical_dispatch、storage_state、装机与投资提案等全部变化列），并记录 parent/child 提交与修订 k 的 digest 指纹。`capture.py validate`（quick 档 `golden_bookkeeping`）对缺失、指纹不符、列集合与 delta 不一致的报告，以及没有对应修订的孤立报告一律报错。S13 的 `delta_report.py` 落地之前以此为准。
@@ -128,7 +130,7 @@ with start_local_api(data_home=tmp) as (httpd, origin, token):
     ...
 ```
 
-- 端口一律 bind 0；不得使用 8766/8800；`VALUE_DATA_HOME` 必须是测试自己的临时目录，不触碰默认用户目录。
+- 端口一律 bind 0；不得使用 8766/8800（棘轮的网络守卫强制执行，见第 2 节）；`VALUE_DATA_HOME` 必须是测试自己的临时目录，不触碰默认用户目录。
 - 新写的 HTTP 测试不得直接 `ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)`；`p0_gate quick` 的 `http_harness` 步骤对自分支点以来新增的测试文件做静态检查。
 
 ## 7 status.json 写入 API（C5；P0-3 S1–S2 实现）
