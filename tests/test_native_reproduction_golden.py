@@ -470,6 +470,12 @@ class HarnessIsolationTests(unittest.TestCase):
 class Value101BaselineTests(unittest.TestCase):
     def test_fresh_48_period_runs_match_the_head_baseline(self):
         capture = _capture_module()
+        # Scope: the P0-6 S3 identity check.  No revision path: the first X0
+        # D3/C3 revision (P0-4 S4-S6, A2, P0-5a) retires this test, and X0 is
+        # the gate for value_101_day from then on.
+        retired = capture.e2e_retirement()
+        if retired:
+            self.skipTest(f"{harness.E2E_BASELINE_PATH.name} retired: {retired}")
         baseline = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
         self.assertEqual(sorted(baseline["cases"]), ["C3", "D3"])
         with tempfile.TemporaryDirectory(prefix="p06-e2e-test-") as temporary:
@@ -482,6 +488,50 @@ class Value101BaselineTests(unittest.TestCase):
                     if zone != "identity"
                 ]
                 self.assertEqual([], gated[:20], f"{case}: value_101_day market.sqlite differs from the HEAD baseline")
+
+
+class E2ERetirementTests(unittest.TestCase):
+    def _successors(self, directory: Path, revisions: dict[str, int]) -> dict[str, Path]:
+        paths = {}
+        for case, count in revisions.items():
+            path = directory / f"{case}.json"
+            path.write_text(json.dumps({"case": case, "revisions": [
+                {"revision": index, "correction_ids": [] if index == 0 else ["p04.storage-charge-audit"], "findings": []}
+                for index in range(count)
+            ]}), encoding="utf-8")
+            paths[case] = path
+        return paths
+
+    def test_the_first_x0_d3_or_c3_revision_retires_the_baseline(self):
+        capture = _capture_module()
+        self.assertEqual(set(capture.E2E_SUCCESSORS), set(capture.E2E_CASES))
+        for case, path in capture.E2E_SUCCESSORS.items():
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["case"], case)
+        with tempfile.TemporaryDirectory(prefix="p06-retire-") as temporary:
+            directory = Path(temporary)
+            self.assertIsNone(capture.e2e_retirement(self._successors(directory, {"D3": 1, "C3": 1})))
+            for revised in ("D3", "C3"):
+                counts = {"D3": 1, "C3": 1, revised: 2}
+                reason = capture.e2e_retirement(self._successors(directory, counts))
+                self.assertIsNotNone(reason)
+                self.assertIn(f"X0 golden {revised}", reason)
+                self.assertIn("p04.storage-charge-audit", reason)
+            wrong = self._successors(directory, {"D3": 1})
+            with self.assertRaisesRegex(ValueError, "expected 'C3'"):
+                capture.e2e_retirement({"C3": wrong["D3"]})
+
+    def test_check_e2e_reports_retirement_without_running(self):
+        import contextlib
+        import io
+        from unittest import mock
+
+        capture = _capture_module()
+        output = io.StringIO()
+        with mock.patch.object(capture, "e2e_retirement", lambda: "X0 golden D3 has revision 1"), \
+                mock.patch.object(capture, "run_e2e_case", side_effect=AssertionError("must not run")), \
+                contextlib.redirect_stdout(output):
+            self.assertEqual(capture.main(["check-e2e"]), 0)
+        self.assertIn("e2e baseline retired: X0 golden D3 has revision 1", output.getvalue())
 
 
 class E2EZoneGateTests(unittest.TestCase):

@@ -9,6 +9,7 @@ Commands::
     capture_native_reproduction_golden.py write-head-copy  # regenerate the frozen 35aadb3 loop copy
     capture_native_reproduction_golden.py capture-e2e      # write the VALUE 101 48-period market.sqlite baseline
     capture_native_reproduction_golden.py check-e2e        # compare a fresh 48-period run with that baseline
+                                                           # (until it is retired, see e2e_retirement)
 
 ``capture`` and ``write-head-copy`` refuse to run unless the live kernel file is
 byte-identical to the pinned 35aadb3 source (whole-file SHA-256 plus the
@@ -49,8 +50,17 @@ E2E_NOTES = [
     "P0-6 S1: VALUE 101 value_101_day (48 periods) market.sqlite of the default PSM at HEAD, for the S3 byte/value identity check.",
     "Cases are the frozen golden projects tests/golden/projects/<case>.json run through scripts/golden/run_case.py (D3: doctoral reference configuration with the legacy storage tariff; C3: default dynamic storage cost).",
     "Every table column is hashed over its rowid-ordered values (exact repr); period_summary is also kept in full. Zones follow tests/golden/zones.json with metadata keys classified individually; identity-zone entries and the whole-file hash are informational.",
-    "Universal corrections that legitimately change these values (P0-4 accounting, P0-5a readers) re-capture as value101_baseline_48p_head_v2.json (plan M3); v1 is never rewritten.",
+    "This baseline has no revision path and is never rewritten. It gates only until the X0 golden of the same case (tests/golden/doctoral/D3.json or tests/golden/corrected/C3.json) takes its first revision (e2e_retirement); from then on X0, which has the accounting-revision and doctoral re-baseline paths, is the gate for value_101_day, and no v2 of this file is captured.",
 ]
+
+# The X0 goldens of the same VALUE 101 cases.  They carry the revision path
+# (accounting revisions under a correction id, doctoral trajectory
+# re-baselines with the allowlist and a numeric report), so this baseline
+# does not get a second one.
+E2E_SUCCESSORS = {
+    "D3": ROOT / "tests" / "golden" / "doctoral" / "D3.json",
+    "C3": ROOT / "tests" / "golden" / "corrected" / "C3.json",
+}
 
 
 def _git(*arguments: str) -> str | None:
@@ -274,6 +284,33 @@ def e2e_differences(expected: Mapping[str, Any], actual: Mapping[str, Any],
     return differences
 
 
+def e2e_retirement(successors: Mapping[str, Path] | None = None) -> str | None:
+    """Why the v1 e2e baseline no longer gates, or None while it does.
+
+    The baseline is the P0-6 S3 acceptance check ('48-period market.sqlite
+    identical'): S2 and S3 are behaviour-preserving, so it must hold through
+    them.  The first universal correction that changes value_101_day (P0-4
+    S4-S6, A2, P0-5a) revises the X0 golden of D3 or C3 in the same commit;
+    that revision retires this baseline for both cases.  It is deliberately
+    not retired by S3 itself, whose acceptance it is.
+    """
+
+    for case, path in (successors or E2E_SUCCESSORS).items():
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        if golden.get("case") != case:
+            raise ValueError(f"{path} is the X0 golden of {golden.get('case')!r}, expected {case!r}")
+        revisions = golden.get("revisions", [])
+        if len(revisions) > 1:
+            latest = revisions[-1]
+            why = ", ".join([*latest.get("correction_ids", []), *latest.get("findings", [])]) or "no id"
+            return (
+                f"X0 golden {case} ({path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}) has revision "
+                f"{latest.get('revision', len(revisions) - 1)} ({why}); value_101_day is gated by the X0 goldens "
+                "tests/golden/doctoral/D3.json and tests/golden/corrected/C3.json from here on"
+            )
+    return None
+
+
 def command_capture_e2e(_arguments) -> int:
     if harness.E2E_BASELINE_PATH.exists():
         raise SystemExit(f"{harness.E2E_BASELINE_PATH.relative_to(ROOT)} exists; v1 is written once")
@@ -303,7 +340,11 @@ def command_capture_e2e(_arguments) -> int:
     return 0
 
 
-def command_check_e2e(_arguments) -> int:
+def command_check_e2e(arguments) -> int:
+    retired = e2e_retirement()
+    if retired and not arguments.even_if_retired:
+        print(f"e2e baseline retired: {retired}")
+        return 0
     baseline = json.loads(harness.E2E_BASELINE_PATH.read_text(encoding="utf-8"))
     failed = False
     with tempfile.TemporaryDirectory(prefix="p06-e2e-") as temporary:
@@ -330,7 +371,10 @@ def main(argv: list[str] | None = None) -> int:
     revise.set_defaults(handler=command_revise)
     commands.add_parser("write-head-copy").set_defaults(handler=command_write_head_copy)
     commands.add_parser("capture-e2e").set_defaults(handler=command_capture_e2e)
-    commands.add_parser("check-e2e").set_defaults(handler=command_check_e2e)
+    check_e2e = commands.add_parser("check-e2e")
+    check_e2e.add_argument("--even-if-retired", action="store_true",
+                           help="compare even after an X0 D3/C3 revision retired the baseline (informational)")
+    check_e2e.set_defaults(handler=command_check_e2e)
     arguments = parser.parse_args(argv)
     return arguments.handler(arguments)
 
