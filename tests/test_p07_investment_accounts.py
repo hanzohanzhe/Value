@@ -201,7 +201,7 @@ class SchemeCNetRevenueTest(unittest.TestCase):
 
 
 class TechnologyClassTest(unittest.TestCase):
-    """One thermal / VRE / storage classification for the repository."""
+    """The A4 thermal / VRE / storage classes and how they relate to other sets."""
 
     def test_classes_are_disjoint(self):
         self.assertFalse(ia.THERMAL_TECHNOLOGIES & ia.GROSS_PROFIT_TECHNOLOGIES)
@@ -220,15 +220,25 @@ class TechnologyClassTest(unittest.TestCase):
         self.assertEqual(set(doctoral_policy.STORAGE_TECHNOLOGIES), set(ia.STORAGE_TECHNOLOGIES))
         self.assertTrue(set(doctoral_policy.THERMAL_HIGH_TECHNOLOGIES) <= ia.THERMAL_TECHNOLOGIES)
 
-    def test_doctoral_marginal_cost_uses_the_shared_thermal_set(self):
+    def test_doctoral_marginal_cost_thermal_literal_equals_the_a4_thermal_set(self):
+        """The A4 thermal set equals the literal in canonical_psm_data._doctoral_marginal_cost.
+
+        canonical_psm_data.py stays byte-identical to 35aadb3: it is hashed into
+        doctoral_weather.weather_execution_identity(), so even a cosmetic import
+        would change the code identity of every GBP1/1000twh project and run
+        (review M0-P0-7-S1 round 2). The literal is read with ast instead.
+        """
         from gridform_core import canonical_psm_data
 
-        self.assertIs(canonical_psm_data.THERMAL_TECHNOLOGIES, ia.THERMAL_TECHNOLOGIES)
         source = (ROOT / "gridform_core/canonical_psm_data.py").read_text(encoding="utf-8")
         function = next(node for node in ast.parse(source).body
                         if isinstance(node, ast.FunctionDef) and node.name == "_doctoral_marginal_cost")
-        tests = [ast.unparse(node.test) for node in ast.walk(function) if isinstance(node, ast.If)]
-        self.assertIn("technology in THERMAL_TECHNOLOGIES", tests)
+        tests = [node.test for node in ast.walk(function) if isinstance(node, ast.If)
+                 and isinstance(node.test, ast.Compare) and ast.unparse(node.test.left) == "technology"]
+        self.assertEqual(len(tests), 1)
+        self.assertIsInstance(tests[0].ops[0], ast.In)
+        self.assertIsInstance(tests[0].comparators[0], ast.Set)
+        self.assertEqual(ast.literal_eval(tests[0].comparators[0]), set(ia.THERMAL_TECHNOLOGIES))
         raw = {"gen_cost": 1.0, "unit_time_cost": 2.0}
         for technology in sorted(ia.THERMAL_TECHNOLOGIES):
             with self.subTest(technology), self.assertRaises(ValueError):

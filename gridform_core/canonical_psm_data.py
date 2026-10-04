@@ -20,7 +20,6 @@ import pandas as pd
 
 from .asset_economics import build_asset_economic_extensions
 from .doctoral_weather import METHOD_ID as DOCTORAL_WEATHER_METHOD, site_weather_profiles, uses_doctoral_weather
-from .investment_accounts import THERMAL_TECHNOLOGIES
 from .nuclear_policy import (
     applies_to_data_pack,
     build_value_uk_nuclear_projects,
@@ -174,7 +173,7 @@ def _doctoral_parameter_row(asset: AssetStateV2, fleet: Mapping, group: str) -> 
 
 def _doctoral_marginal_cost(raw: Mapping, technology: str, source_id: str) -> float:
     fields = ("gen_cost", "unit_time_cost")
-    if technology in THERMAL_TECHNOLOGIES:
+    if technology in {"CCGT", "OCGT", "gas", "bio_and_waste"}:
         fields += ("fuel_cost", "carbon_price")
     missing = [key for key in fields if key not in raw or raw[key] is None]
     if missing:

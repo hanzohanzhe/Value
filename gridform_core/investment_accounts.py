@@ -50,9 +50,13 @@ HEAD_SKIPPED_MODES = frozenset({"denied", "site_data_required"})
 NET_REVENUE_BASIS_THERMAL = "scheme_c_income_less_energy_times_gen_cost"
 NET_REVENUE_BASIS_GROSS = "gross_revenue_is_profit"
 
-# Decision A4 technology classes. THERMAL_TECHNOLOGIES is the one thermal set
-# of the repository: canonical_psm_data._doctoral_marginal_cost imports it, and
-# tests pin it to the explicit_uncapped modes of data/cem/investment_eligibility.json.
+# Decision A4 technology classes. THERMAL_TECHNOLOGIES equals the thermal
+# literal of canonical_psm_data._doctoral_marginal_cost (read with ast in the
+# tests; that file stays byte-identical to 35aadb3 because it feeds the doctoral
+# weather identity hash) and the explicit_uncapped modes of
+# data/cem/investment_eligibility.json. Other thermal sets exist for other
+# purposes and are not this one: doctoral_ledgers (CM/ancillary weights,
+# includes Nuclear) and doctoral_policy.THERMAL_HIGH_TECHNOLOGIES.
 THERMAL_TECHNOLOGIES = frozenset({"CCGT", "OCGT", "gas", "bio_and_waste"})
 VRE_TECHNOLOGIES = frozenset({"solar", "onshore", "offshore"})
 STORAGE_TECHNOLOGIES = frozenset({"1c_battery", "0.5c_battery", "0.25c_battery", "hydrogen_battery"})

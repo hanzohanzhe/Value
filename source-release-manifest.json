@@ -6674,9 +6674,9 @@
     },
     {
       "path": "gridform_core/canonical_psm_data.py",
-      "sha256": "cc13eac67a169c87f23c8b37b097781fb0960637d3e5b82201203edaa88652d5",
-      "bytes": 61467,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b8ddd85b69d5d8688fdff38d75bae84c039d33fcc4cb8690448af60ff36750c4",
+      "bytes": 61433,
+      "transform": "byte copy"
     },
     {
       "path": "gridform_core/carbon_factors.py",
@@ -7295,8 +7295,8 @@
     },
     {
       "path": "gridform_core/investment_accounts.py",
-      "sha256": "556da578d4d5edabecda1dcd0368b62d8eb4935b888bc8bafd14a70db52e7c80",
-      "bytes": 24438,
+      "sha256": "e59e2da733f0a81457cce41ab4062170b6780ee5b50753386f9ee5147cc13fe5",
+      "bytes": 24701,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10053,8 +10053,8 @@
     },
     {
       "path": "tests/test_p07_investment_accounts.py",
-      "sha256": "4671cce05d8423cccdf119f254c9b867982fff649772d4e696d4a078d32ddbb4",
-      "bytes": 25668,
+      "sha256": "d530494ff5c18e818bf706fea001f1aab48e1215f22abb2113f64908494a2402",
+      "bytes": 26309,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
