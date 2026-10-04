@@ -45,8 +45,9 @@ Two physical invariants are evaluated on the generated payloads
 to ``accepted_supply_mwh`` (supply = ``generation``/``import``/
 ``storage_discharge`` flows of a v4-v7 ledger, ``final_dispatch`` rows of a
 v8 dispatch summary), and every period of a v8 ledger conserves energy
-(per-period supply sum equals ``accepted_supply_mwh`` and the recorded
-balance residual is within tolerance).  The supply classification here
+(per-period supply sum equals ``accepted_supply_mwh``, and the balance
+recomputed from the payload's own terms is zero and agrees with the recorded
+residual; a missing term is a violation).  The supply classification here
 encodes HEAD semantics; P0-9 S4 replaces it with the backend's flow ``role``.
 
 Budgets (plan 4.9 S2): one generation <= 30 s, all fixtures <= 200 KB.
@@ -499,14 +500,50 @@ def supply_flow_violations(payload: Mapping[str, Any]) -> list[str]:
     return problems
 
 
+# The terms of the v8 (staged PSM) period balance as the read model sends them.
+# staged_psm.py: accepted_supply = sum of positive final dispatch, storage
+# charge and export are the negative final dispatch, and the balancing residual
+# is sum(final dispatch) + blackout - real demand.  excess_mwh is
+# max(vre_available - vre_accepted, 0): VRE that was never dispatched, so it is
+# outside this balance and is deliberately not a term here.
+V8_BALANCE_TERMS = (
+    "accepted_supply_mwh", "blackout_mwh", "real_demand_mwh", "storage_charge_mwh",
+    "export_mwh", "flexible_demand_mwh", "energy_balance_residual_mwh",
+)
+
+
+def v8_recomputed_balance_mwh(item: Mapping[str, Any]) -> float:
+    """supply + blackout - demand - storage charge - export - flexible demand."""
+
+    return math.fsum((
+        float(item["accepted_supply_mwh"]), float(item["blackout_mwh"]), -float(item["real_demand_mwh"]),
+        -float(item["storage_charge_mwh"]), -float(item["export_mwh"]), -float(item["flexible_demand_mwh"]),
+    ))
+
+
 def v8_period_conservation_violations(payload: Mapping[str, Any]) -> list[str]:
-    """A half-hour v8 timeline: every period conserves energy."""
+    """A half-hour v8 timeline: every period conserves energy.
+
+    The balance is recomputed from the payload's own terms rather than read
+    back from ``energy_balance_residual_mwh`` (the writer already rejects a
+    residual above tolerance, so reading it back proves nothing).  A missing
+    term is a violation, never zero (F1-07), and a recorded residual that
+    disagrees with the recomputed balance is reported as well.
+    """
 
     problems = supply_flow_violations(payload)
     for item in payload.get("items") or []:
-        residual = float(item.get("energy_balance_residual_mwh") or 0.0)
-        if abs(residual) > INVARIANT_TOLERANCE_MWH:
-            problems.append(f"period {item['period_start']}: energy_balance_residual_mwh {residual!r}")
+        where = f"period {item.get('period_start')}"
+        missing = [key for key in V8_BALANCE_TERMS if item.get(key) is None]
+        if missing:
+            problems.append(f"{where}: balance terms missing from the payload: {missing}")
+            continue
+        balance = v8_recomputed_balance_mwh(item)
+        recorded = float(item["energy_balance_residual_mwh"])
+        if abs(balance) > INVARIANT_TOLERANCE_MWH:
+            problems.append(f"{where}: recomputed balance {balance!r} MWh != 0")
+        if abs(balance - recorded) > INVARIANT_TOLERANCE_MWH:
+            problems.append(f"{where}: recorded energy_balance_residual_mwh {recorded!r} != recomputed {balance!r}")
     return problems
 
 

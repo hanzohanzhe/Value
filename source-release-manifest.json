@@ -10877,8 +10877,8 @@
     },
     {
       "path": "tests/test_ui_contract_fixtures.py",
-      "sha256": "60073c8e47e44650d59616ba99169991911fdbbede209e8ad51d6a153a4c23c2",
-      "bytes": 7972,
+      "sha256": "fa771145fb825772619cd545dce9d1c2779485e59a686efe0df70d9eb1c8f706",
+      "bytes": 10724,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10937,8 +10937,8 @@
     },
     {
       "path": "tests/ui_contract_fixtures.py",
-      "sha256": "0cd5d881bfaaccaddaabd0c729ca06d019b6fb2d7469cdff6a2d8c078a6b0b20",
-      "bytes": 29954,
+      "sha256": "cccf639ad0db6e7488703f7bfd56346cc98b057998cd070e14dc898e5e39eb5c",
+      "bytes": 31879,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

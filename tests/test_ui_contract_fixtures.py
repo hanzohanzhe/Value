@@ -97,13 +97,51 @@ class GeneratorHelperTests(unittest.TestCase):
         self.assertEqual(fixtures.supply_flow_violations(v7), [])
         v7["items"][0]["flows"].pop(0)
         self.assertEqual(len(fixtures.supply_flow_violations(v7)), 1)
-        v8 = {"dispatch_source": "dispatch_summary", "items": [{"period_start": 0, "period_end": 0, "accepted_supply_mwh": 4.0, "energy_balance_residual_mwh": 0.0, "flows": [
+        v8 = {"dispatch_source": "dispatch_summary", "items": [{"period_start": 0, "period_end": 0, "accepted_supply_mwh": 4.0, "flows": [
             {"flow_type": "accepted_dispatch", "evidence_scope": "zone:north;stage:final_dispatch", "energy_mwh": 4.0},
             {"flow_type": "accepted_dispatch", "evidence_scope": "zone:north;stage:ahead", "energy_mwh": 4.0},
-        ]}]}
-        self.assertEqual(fixtures.v8_period_conservation_violations(v8), [])
-        v8["items"][0]["energy_balance_residual_mwh"] = 0.1
-        self.assertEqual(len(fixtures.v8_period_conservation_violations(v8)), 1)
+        ], **self._v8_terms(4.0, 4.0)}]}
+        self.assertEqual(fixtures.supply_flow_violations(v8), [])
+        v8["items"][0]["flows"].pop(0)
+        self.assertEqual(len(fixtures.supply_flow_violations(v8)), 1)
+
+    @staticmethod
+    def _v8_terms(supply: float, demand: float, **terms: float) -> dict:
+        return {"accepted_supply_mwh": supply, "real_demand_mwh": demand, "blackout_mwh": 0.0, "storage_charge_mwh": 0.0,
+                "export_mwh": 0.0, "flexible_demand_mwh": 0.0, "excess_mwh": 0.0, "energy_balance_residual_mwh": 0.0, **terms}
+
+    def test_v8_conservation_recomputes_the_balance_from_the_payload_terms(self) -> None:
+        def payload(*items: dict) -> dict:
+            return {"dispatch_source": "dispatch_summary", "items": [
+                {"period_start": index, "period_end": index, "flows": [
+                    {"flow_type": "accepted_dispatch", "evidence_scope": "zone:north;stage:final_dispatch", "energy_mwh": item["accepted_supply_mwh"]},
+                ], **item} for index, item in enumerate(items)]}
+
+        # TOY_V8_PERIODS by hand: period 2 is 19 supply - 18 demand - 1 storage charge = 0.
+        rows = []
+        for demand, _, dispatch, charge, discharge in fixtures.TOY_V8_PERIODS:
+            rows.append(self._v8_terms(sum(energy for _, _, energy in dispatch), demand, storage_charge_mwh=charge, storage_discharge_mwh=discharge))
+        self.assertEqual(rows[2]["accepted_supply_mwh"] - rows[2]["real_demand_mwh"] - rows[2]["storage_charge_mwh"], 0.0)
+        self.assertEqual(fixtures.v8_period_conservation_violations(payload(*rows)), [])
+        # Blackout closes a shortfall; export and flexible demand are loads; excess is outside the balance.
+        closed = self._v8_terms(10.0, 12.0, blackout_mwh=3.0, export_mwh=0.5, flexible_demand_mwh=0.5, excess_mwh=7.0)
+        self.assertEqual(fixtures.v8_period_conservation_violations(payload(closed)), [])
+        # A recorded residual of 0 does not hide a non-zero recomputed balance.
+        hidden = self._v8_terms(10.0, 12.0)
+        problems = fixtures.v8_period_conservation_violations(payload(hidden))
+        self.assertEqual(len(problems), 2, problems)
+        self.assertIn("recomputed balance -2.0", problems[0])
+        self.assertIn("recorded energy_balance_residual_mwh 0.0 != recomputed -2.0", problems[1])
+        # A recorded residual that disagrees with a balanced payload is reported too.
+        disagree = self._v8_terms(4.0, 4.0, energy_balance_residual_mwh=0.1)
+        self.assertEqual(len(fixtures.v8_period_conservation_violations(payload(disagree))), 1)
+        # A term dropped by the read model is a violation, never zero (F1-07).
+        for key in ("energy_balance_residual_mwh", "storage_charge_mwh", "blackout_mwh"):
+            dropped = self._v8_terms(4.0, 4.0)
+            dropped.pop(key)
+            problems = fixtures.v8_period_conservation_violations(payload(dropped))
+            self.assertEqual(len(problems), 1, key)
+            self.assertIn(key, problems[0])
 
     def test_render_is_line_oriented_json(self) -> None:
         document = {"payload": {"items": [{"a": 1, "b": [1, 2]}, {"a": 2, "b": []}], "empty": [], "scalar": 0.5}}
