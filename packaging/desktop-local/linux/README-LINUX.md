@@ -24,3 +24,5 @@ Start supervises API/UI in the foreground: keep its terminal open. The UI is htt
 Previously verified execution-archive restoration is scoped to its matching Linux host and dependencies. This frontend installation is not a cross-platform scientific restoration or scientific release acceptance claim.
 
 此前已验历史执行归档恢复仅适用于匹配的 Linux 宿主与依赖；本安装包不代表跨平台复算或科学发布验收通过。
+
+关闭 VALUE 时，正在运行的 Run 会在后台继续，停止提示会列出它们；下次启动时 VALUE 通过各 Run 的租约（worker.lock）重新接管监督。同一个状态目录只能由一个 VALUE 后端使用，第二个后端会以退出码 3 停止且不改动任何内容。若诊断报告安装目录的 `__pycache__` 中有多余字节码（stray bytecode），VALUE 不会读取它们；运行 `diagnose-value --repair-bytecode` 可把它们移入 state/quarantine，只读安装会保留原位。

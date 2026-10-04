@@ -34,6 +34,24 @@ class SourceReleaseTreeTests(unittest.TestCase):
         }
         self.assertTrue(required.issubset(members), required.difference(members))
 
+    def test_run_lifecycle_sources_are_release_members(self):
+        """P0-3: the worker entry, lease, status API and supervisor ship with
+        the backend; without them an installed VALUE cannot start a Run."""
+        members = {
+            path.relative_to(ROOT).as_posix()
+            for path in MODULE.release_members(ROOT)
+        }
+        lifecycle = {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "backend" / "lifecycle").glob("*.py")
+        }
+        required = lifecycle | {"backend/run_supervisor.py", "backend/worker_entry.py"}
+        self.assertGreaterEqual(len(lifecycle), 8)
+        self.assertTrue(required.issubset(members), required.difference(members))
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        listed = set(json.dumps(manifest).split('"'))
+        self.assertTrue(required.issubset(listed), required.difference(listed))
+
     def test_prompt107_and_prompt108_authoritative_reports_are_release_members(self):
         members = {
             path.relative_to(ROOT).as_posix()

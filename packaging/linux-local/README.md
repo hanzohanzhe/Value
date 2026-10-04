@@ -32,3 +32,5 @@ python3 scripts/build_linux_frontend_release.py \
 ```
 
 `release-manifest.json` records every bundled file hash, source commit/dirty entries, external runtime requirements and existing build provenance. The adjacent `.sha256` file checks the archive. Installation and start verify the inventory. The bundled prebuilt UI is explicitly recorded as an existing build; source/build equivalence requires the maintainer's final build evidence. This is an installation candidate, not a claim that the GBP1 scientific release gate or ten-year scientific acceptance has passed.
+
+Model workers run in their own sessions: `stop-value` stops the API and UI, and its JSON lists `background_runs` whose worker still holds its lease; the next `start-value` resumes their supervision. Only one backend may use a `VALUE_DATA_HOME`; a second exits with code 3. The API starts with `-B -s -X pycache_prefix=<fresh directory>`, so bytecode under `app/**/__pycache__` is never read.

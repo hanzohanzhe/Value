@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased — P0 fixes on fix/review-2026-10-04
+
+### Run lifecycle (P0-3)
+
+- `status.json` has a single writer API (`backend/lifecycle/run_status.py`):
+  per-run file lock, field-level merges, a consecutive `lifecycle_history`,
+  late worker writes recorded in `late-worker-*.json` without touching
+  sealed artifacts. Cancellation is the `cancel-request.json` file only.
+- Workers start through `python -m backend.worker_entry`, take a lease
+  (`worker.lock`) before heavy imports, run detached from the backend and
+  are reaped, supervised and reconciled at start-up (`GF_WORKER_EXITED`,
+  `GF_WORKER_LOST`, `GF_WORKER_IMPORT_FAILED`, `GF_WORKER_TERMINATED`,
+  `GF_WORKER_SPAWN_FAILED`); `POST /api/runs/<id>/mark-lost`; one backend
+  per data directory (`.backend.lock`, exit code 3).
+- Delete moves the run to the trash before recording `deleting`; runs a
+  previous version left in `deleting` are repaired at start-up.
+- Disk quota counts physical bytes once per inode and reservations only
+  for the unwritten output of active runs; one rule for reservation,
+  preflight, snapshot readiness and resume; reservation lock is a flock
+  (timeout 503); reservation report v2.
+- Every API request has one exception boundary (`_dispatch`); listings
+  isolate bad records instead of failing.
+- Launchers start every interpreter with `-B -s -X pycache_prefix=<fresh
+  directory>`; stray `__pycache__` bytecode is quarantined instead of
+  blocking start/diagnose (`diagnose-value --repair-bytecode`).
+- API additions: `worker_liveness`, `worker`, `cancel_requested_at`,
+  `persisted_status`; `worker.json` v2.
+
 ## 0.6.0-alpha.2 — VALUE Network Extensions identity (2026-08-20)
 
 - Adopted the scientific name **VALUE**: Variable renewable electricity

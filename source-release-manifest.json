@@ -2722,9 +2722,9 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "5fe3f88faabc8d035a10da1ac18e1426330a3fa13975c26ef5022f486f094c25",
-      "bytes": 3942,
-      "transform": "byte copy"
+      "sha256": "7443ab8e17ba8d964aefb9c7314b932e6b251217925dcbaa326fd31858212fb6",
+      "bytes": 5581,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "CITATION.cff",
@@ -4144,15 +4144,15 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "e43204486ca7473ac0207721d534d435b0cbd1c8b9b67e7c9b878eccc7b9fed6",
-      "bytes": 26277,
-      "transform": "byte copy"
+      "sha256": "5de788a7835f09ba2f67d1651affd8b84ffdb70086e4e1f1f30b880ba6b4b808",
+      "bytes": 27727,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/USER_GUIDE_ZH.md",
-      "sha256": "8fc1d1981ee87636cb0ee6410e8445ccd82e50102b2b8940354d67b82e1bc425",
-      "bytes": 25531,
-      "transform": "byte copy"
+      "sha256": "718dc8bb68758b73bd38db0d57580e219c0869e1f1bc5d639668137e1ac14cd6",
+      "bytes": 26918,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/VALIDATION_AND_CLAIMS.md",
@@ -8125,9 +8125,9 @@
     },
     {
       "path": "packaging/desktop-local/linux/README-LINUX.md",
-      "sha256": "31ef0a94354512b75811b6d2a60a0421565268d5534fd260842d38d5657dbe39",
-      "bytes": 2372,
-      "transform": "byte copy"
+      "sha256": "3d1b2292140994da43d877241c0765e597a0f9871d6e3730061c1c0850ac8b09",
+      "bytes": 2897,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/desktop-local/linux/diagnose-value",
@@ -8161,9 +8161,9 @@
     },
     {
       "path": "packaging/desktop-local/macos/README-MACOS.md",
-      "sha256": "703d2b895dcaaf9ba4ded96908707f4b514174ecb5555f10ed75a5b968e2c980",
-      "bytes": 3158,
-      "transform": "byte copy"
+      "sha256": "484442ffb6f73cb3befe2e960226f65e42c94cdbfc77dd792c180d068436227a",
+      "bytes": 3691,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/desktop-local/macos/Start VALUE.command",
@@ -8173,9 +8173,9 @@
     },
     {
       "path": "packaging/desktop-local/windows/README-WINDOWS.md",
-      "sha256": "81d9cbb6d73606a2cef9a46b61dc1151253c57d889f1ebe485c0cf6376ee7254",
-      "bytes": 1843,
-      "transform": "byte copy"
+      "sha256": "abf651ec776912629a94ae0e23c2d293c7607194a9c222140538e04d7e3a5dd3",
+      "bytes": 2372,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/desktop-local/windows/diagnose-value.cmd",
@@ -8203,9 +8203,9 @@
     },
     {
       "path": "packaging/full-local/linux/README-LINUX.md",
-      "sha256": "507f62f572e7e1cd498ef8c5d951ed95d33498a115648feae5e5bc35329458a0",
-      "bytes": 1297,
-      "transform": "byte copy"
+      "sha256": "5181483e9c12dba66bf84148877dac335595e72cbd60ca97431565e5db5364aa",
+      "bytes": 1822,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/full-local/linux/diagnose-value",
@@ -8251,9 +8251,9 @@
     },
     {
       "path": "packaging/full-local/macos/README-MACOS.md",
-      "sha256": "8df27975991de0507486faf2463970c18a89432ce0c160d2d2ec6d64a949e5db",
-      "bytes": 1575,
-      "transform": "byte copy"
+      "sha256": "bda65d6293ef50074f9ea4865020263b86efab0b37cd1996f9dfc2ab505d5ceb",
+      "bytes": 2108,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/full-local/macos/Start VALUE.command",
@@ -8275,9 +8275,9 @@
     },
     {
       "path": "packaging/full-local/windows/README-WINDOWS.md",
-      "sha256": "e590a4a0c26636bedb739a231649af32516d61c2ab856b1077ec54caeb3dcc10",
-      "bytes": 1456,
-      "transform": "byte copy"
+      "sha256": "7df92a9ef6184c8250b0b870f9bed164516467a6aaba9ab5cac658d1a3146131",
+      "bytes": 1985,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/full-local/windows/diagnose-value.cmd",
@@ -8299,9 +8299,9 @@
     },
     {
       "path": "packaging/linux-local/README.md",
-      "sha256": "8da7f76916d6d1e2228bf764aa2066432b2fc211446c7c2403bf6d7bdc8d6689",
-      "bytes": 4705,
-      "transform": "byte copy"
+      "sha256": "0d23eff8fdfdcb4445d2177b85611ab55edf9607c9c3dd598452a5ab8b1cc3b6",
+      "bytes": 5098,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/linux-local/archived_value.py",
@@ -8645,9 +8645,9 @@
     },
     {
       "path": "scripts/build_desktop_installers.py",
-      "sha256": "9f25cd2d4c424bb41706ee68fa26f9969a8ac4d47da7c749ba02b5c5791aa1b6",
-      "bytes": 8946,
-      "transform": "byte copy"
+      "sha256": "5c1922e304eb982c47f2fcf476677ff5f2fe64dacbd69ac11cef8dd34838203e",
+      "bytes": 9201,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/build_extension_bundle.py",
@@ -11141,9 +11141,9 @@
     },
     {
       "path": "tests/test_source_release_tree.py",
-      "sha256": "929d19a43a1ffa6764c593e3fadca45fac84a8a2c38abad74f4532b3ee0e7c50",
-      "bytes": 8991,
-      "transform": "byte copy"
+      "sha256": "179c8253c7d0d33e501b66ae16b84028feb8221757bc719422f864c78eb1ae00",
+      "bytes": 9757,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_staged_psm_runtime_state.py",

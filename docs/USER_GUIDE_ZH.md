@@ -294,6 +294,10 @@ py -3.10 -m gridform_core.bundle_validator <run-directory>
 - Prepare audit bundle 生成可下载的审计包。
 - Move to trash 要求输入完整 run ID。它把目录移入可恢复 trash，不会立即永久删除。
 
+每个 Run 的模型 worker 持有 `<run>/worker.lock` 租约。关闭 VALUE 不会停止正在运行的 worker：停止提示会列出仍在后台运行的 Run，下次启动时 VALUE 通过租约接管监督。worker 退出或消失时，Run 会在几秒内（或在下次启动时）转为 failed（若已请求取消则为 cancelled），错误码为 `GF_WORKER_EXITED` 或 `GF_WORKER_LOST`，之后可以 Resume 或移入回收站。旧版 VALUE 启动的 Run 不一定能确认存活（`worker_liveness: unverifiable`）；Mark lost 需要输入完整 run ID，并且只有在 Run 目录 15 分钟内没有任何变化时才会接受。同一个数据目录只能有一个 VALUE 后端，第二个会以退出码 3 停止，不改动任何内容。
+
+Move to trash 先移动目录，再只在回收站中的副本里记录 `deleting`；移动失败时 Run 保持原状。磁盘预留只由活动 Run 持有，且只计尚未写出的输出；已结束的 Run 按实际字节计（硬链接只计一次）。移入回收站会释放配额，归档不会。
+
 不要手工复制某一个 checkpoint 到另一个情景。即使年份相同，科学身份不一致也必须拒绝恢复。
 
 ## 14. 情景比较
@@ -394,6 +398,10 @@ py -3.10 -m gridform_core.application `
 ### 长跑中断
 
 不要删除输出目录。先确认 `checkpoints-v2` 中最后一个 `state-YYYY.json` 完整，再从 Run centre 的 Resume 按钮恢复。恢复会重算尚未提交的当前年度，但不会重算已经 checkpoint 的年份。
+
+### 诊断报告 stray bytecode
+
+这是安装目录 `__pycache__` 中的 Python 字节码。VALUE 不会读取它们（每个解释器都使用新建的空 `pycache_prefix`）。运行 `diagnose-value --repair-bytecode` 可把它们移入 `state/quarantine/`；安装目录可写时，启动也会自动这样做。
 
 ### 结果与保留 Scheme C 不同
 

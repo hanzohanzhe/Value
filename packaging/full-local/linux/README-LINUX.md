@@ -19,3 +19,5 @@ Linux x64；系统要求见 runtime-provenance.json。
 启动保持前台；看到就绪提示后打开 http://127.0.0.1:8800/ 。按 Ctrl+C 停止本次服务。状态在安装目录的 state，日志在 logs；端口 8766、8800 须空闲。
 
 升级须安装到另一个空目录；当前不支持状态自动迁移或覆盖已有安装。失败只清理本次临时目录。安装完成后可删除解压源目录。运行时哈希或版本变化需重新旁路安装。
+
+关闭 VALUE 时，正在运行的 Run 会在后台继续，停止提示会列出它们；下次启动时 VALUE 通过各 Run 的租约（worker.lock）重新接管监督。同一个状态目录只能由一个 VALUE 后端使用，第二个后端会以退出码 3 停止且不改动任何内容。若诊断报告安装目录的 `__pycache__` 中有多余字节码（stray bytecode），VALUE 不会读取它们；运行 `diagnose-value --repair-bytecode` 可把它们移入 state/quarantine，只读安装会保留原位。

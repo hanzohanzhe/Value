@@ -297,6 +297,10 @@ Request safe cancellation writes a cancellation request. A native run stops afte
 
 Archive creates and validates a complete audit ZIP before changing run status. Restore validates that ZIP. Prepare audit bundle creates a downloadable result package. Move to trash requires the exact run ID and moves the run into recoverable local trash.
 
+Each run's model worker holds a lease on `<run>/worker.lock`. Closing VALUE does not stop a running worker: the stop message lists runs that continue in the background, and the next start takes over their supervision through the lease. If a worker exits or disappears, the run becomes failed (or cancelled when cancellation was requested) with `GF_WORKER_EXITED` or `GF_WORKER_LOST` within seconds, or at the next start, and can then be resumed or moved to trash. Runs started by an older VALUE cannot always be verified (`worker_liveness: unverifiable`); Mark lost needs the exact run ID and is accepted only after 15 minutes without any change in the run directory. Only one VALUE backend may use a data directory; a second one stops with exit code 3 without changing anything.
+
+Move to trash moves the run directory first and records `deleting` only in the trash copy; if the move fails, the run is unchanged. Disk reservations are held only by active runs and only for output they have not yet written; finished runs count with their actual bytes (hard links once). Moving a run to trash frees quota; archiving does not.
+
 Do not copy a checkpoint between scenarios. Matching years do not make two execution identities compatible.
 
 ## 13. Comparing runs
@@ -373,6 +377,8 @@ Twenty-five bound inputs do not guarantee preflight success. Units, chronology, 
 After an interrupted long run, keep the output directory. Resume from the last complete `checkpoints-v2/state-YYYY.json`. The incomplete current year is recomputed; checkpointed years are not.
 
 If a full GB annual run reports zero operational cost, inspect its mode, physical cost activities and ledger status. A wiring check does not publish annual economics.
+
+If diagnose reports stray bytecode, it is Python bytecode inside `__pycache__` folders of the installation. VALUE never reads it (every interpreter uses a fresh `pycache_prefix`). `diagnose-value --repair-bytecode` moves it to `state/quarantine/`; start does the same automatically when the installation is writable.
 
 ## 18. Reproducibility and claim boundary
 

@@ -20,3 +20,5 @@ diagnose-value.cmd --prefix "D:\VALUE 四角色"
 端口 8766、8800 被其他服务占用时启动会拒绝；安装器不会停止占用端口的服务。此包使用前台进程，不注册后台服务。安装前验证清单和文件 SHA-256；这些校验用于发现损坏，不代表发行者数字签名。
 
 本包在 Linux 上组装，尚未在 Windows 实机验证；交付形式是未签名脚本 ZIP，非 EXE 安装器。
+
+关闭 VALUE 时，正在运行的 Run 会在后台继续，停止提示会列出它们；下次启动时 VALUE 通过各 Run 的租约（worker.lock）重新接管监督。同一个状态目录只能由一个 VALUE 后端使用，第二个后端会以退出码 3 停止且不改动任何内容。若诊断报告安装目录的 `__pycache__` 中有多余字节码（stray bytecode），VALUE 不会读取它们；运行 `diagnose-value.cmd --repair-bytecode` 可把它们移入 state/quarantine，只读安装会保留原位。
