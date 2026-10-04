@@ -10364,9 +10364,9 @@
     },
     {
       "path": "website/journey.py",
-      "sha256": "5a1766936f201d3e3ffd5f873f2f6312101aa9209c6bb7ac645db728a508ef28",
-      "bytes": 10518,
-      "transform": "Present VALUE name in parentheses above the homepage title and simplify naming prose"
+      "sha256": "b3e6a49c85f5b15e88d485fd4c48231dff1ee72f9c95d43b2e1c8da71f727537",
+      "bytes": 10516,
+      "transform": "Show VALUE as its own line and the full name below in smaller type"
     },
     {
       "path": "website/methodology-sync.json",
@@ -17558,9 +17558,9 @@
     },
     {
       "path": "website/static/assets/site.css",
-      "sha256": "a0f4b4fb807e6324d7ed0fac087fa08552abaa39cb11182d78aff0ad87087637",
-      "bytes": 20652,
-      "transform": "Present VALUE name in parentheses above the homepage title and simplify naming prose"
+      "sha256": "d1ef89dcee8d6724b9ae2083e1fe3ad1f39d881b0baa770c8ab51acaefd91ee2",
+      "bytes": 20732,
+      "transform": "Show VALUE as its own line and the full name below in smaller type"
     },
     {
       "path": "website/static/assets/site.js",
