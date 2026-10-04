@@ -1206,6 +1206,7 @@
     "tests/golden/projects/D3.json",
     "tests/golden/projects/D4.json",
     "tests/golden/zones.json",
+    "tests/local_api_harness.py",
     "tests/native_reproduction_harness.py",
     "tests/p04_variants.py",
     "tests/p0_5_fixtures.py",
@@ -1277,6 +1278,7 @@
     "tests/test_frozen_input_recovery.py",
     "tests/test_frozen_run_recovery.py",
     "tests/test_full_desktop_installer.py",
+    "tests/test_get_error_boundary.py",
     "tests/test_global_mutation_allowlist.py",
     "tests/test_golden_corrected.py",
     "tests/test_golden_digest.py",
@@ -3455,8 +3457,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "c90634c11a036399a08b7ca886041790952d4a7cd859f0783610d6da29f09f96",
-      "bytes": 165377,
+      "sha256": "9095c7386bd0119bcf3e61a1117e8d42135e287db16e4c61f3e944b731c5f3ce",
+      "bytes": 168450,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7868,8 +7870,8 @@
     },
     {
       "path": "gridform_core/study_lifecycle.py",
-      "sha256": "13efb2c99339d22a2e2c8bbfd50d73ba813414823f7b912f9241a8027ddda482",
-      "bytes": 24786,
+      "sha256": "73c3f30175a20b6c11fd5a344267fa22849d9ef414b2a983de030d3934ec56ce",
+      "bytes": 24824,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9899,6 +9901,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/local_api_harness.py",
+      "sha256": "e6e9ee7c96cd1b5c21ceb7a83ce338d61e6d13abb62b276df9fd28754510f69e",
+      "bytes": 3745,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/native_reproduction_harness.py",
       "sha256": "92016e3fde7289d10ad5ef5c4d60b9d83f1aca7477dbf396246f71070c42ecc6",
       "bytes": 79628,
@@ -10323,6 +10331,12 @@
       "sha256": "dbe2cc82515e76125dce3e23095c8b697755f83abd9e1ab56a2b0a3bad60eb59",
       "bytes": 4522,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_get_error_boundary.py",
+      "sha256": "489cfacb1bf402ed46714bcfdc87c656e0f02637949f0989eb95c84b0ba66919",
+      "bytes": 8732,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_global_mutation_allowlist.py",

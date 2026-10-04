@@ -309,7 +309,7 @@ def extension_dependents(extension_id: str) -> dict[str, list[str]]:
     ]
     runs: list[str] = []
     for status_path in RUNS_ROOT.glob("*/status.json"):
-        project = read_json(status_path.parent / "input-snapshot" / "project.json", {})
+        project = read_object(status_path.parent / "input-snapshot" / "project.json")
         if extension_id in tuple(project.get("selected_extensions") or ()):
             runs.append(status_path.parent.name)
     return {
@@ -377,10 +377,32 @@ def _mark_unfinished_start_failed(run_dir: Path) -> None:
 
 
 def read_json(path: Path, fallback: Any = None) -> Any:
+    """Read one JSON record; a missing, unreadable or non-UTF-8 file is the
+    fallback (F5-05: one bad record never breaks a listing)."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
+    except FileNotFoundError:
         return fallback
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        print(f"VALUE: unreadable record {path.name} in {path.parent.name}: {type(exc).__name__}", file=sys.stderr)
+        return fallback
+
+
+def read_object(path: Path) -> dict[str, Any]:
+    """Read a JSON object record; anything else (list, scalar, unreadable) is {}."""
+    value = read_json(path, {})
+    return value if isinstance(value, dict) else {}
+
+
+class QueryParameterError(ValueError):
+    """An invalid query parameter (HTTP 400, GF_QUERY_INVALID)."""
+
+
+def _record_warning(code: str, message: str) -> dict[str, str]:
+    return {
+        "schema_version": "value.warning/v1", "code": code, "category": "artifact",
+        "severity": "warning", "message": message,
+    }
 
 
 def _replay_export_job_path(run_root: Path, job_id: str) -> Path:
@@ -473,7 +495,7 @@ def _integer_query(values: dict[str, list[str]], key: str, default: int) -> int:
     try:
         return int(values.get(key, [str(default)])[0])
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{key} must be an integer") from exc
+        raise QueryParameterError(f"{key} must be an integer") from exc
 
 
 def _optional_integer_query(values: dict[str, list[str]], key: str) -> int | None:
@@ -483,7 +505,7 @@ def _optional_integer_query(values: dict[str, list[str]], key: str) -> int | Non
     try:
         return int(raw)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{key} must be an integer") from exc
+        raise QueryParameterError(f"{key} must be an integer") from exc
 
 
 def _run_root(run_id: str) -> Path | None:
@@ -768,7 +790,10 @@ def list_packs() -> list[dict[str, Any]]:
 
 def _list_json(root: Path, filename: str) -> list[dict[str, Any]]:
     rows = [read_json(path) for path in root.glob(f"*/{filename}")]
-    return sorted((row for row in rows if row), key=lambda item: item.get("updated_at", ""), reverse=True)
+    return sorted(
+        (row for row in rows if isinstance(row, dict) and row),
+        key=lambda item: str(item.get("updated_at") or ""), reverse=True,
+    )
 
 
 def list_projects() -> list[dict[str, Any]]:
@@ -778,16 +803,20 @@ def list_projects() -> list[dict[str, Any]]:
         if project.get("revision_sha256"):
             result.append(project)
             continue
-        pack = read_json(PACKS_ROOT / str(project.get("data_pack_id")) / "manifest.json", {})
+        pack = read_object(PACKS_ROOT / str(project.get("data_pack_id")) / "manifest.json")
         try:
             result.append(attach_revision_identity(
                 project, MODULE_REGISTRY, _revision_manifest(project, pack)
             ))
         except (ValueError, KeyError):
             result.append(project)
+        except Exception as exc:  # noqa: BLE001 - isolate one bad Study (F5-05)
+            result.append({**project, "warnings": [_record_warning(
+                "GF_STUDY_PRESENTATION_FAILED", f"This Study could not be fully presented ({type(exc).__name__}).",
+            )]})
     linked_run_counts: dict[str, int] = {}
     for status_path in RUNS_ROOT.glob("*/status.json"):
-        status = read_json(status_path, {})
+        status = read_object(status_path)
         project_id = str(status.get("project_id") or "")
         if project_id:
             linked_run_counts[project_id] = linked_run_counts.get(project_id, 0) + 1
@@ -921,6 +950,10 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
             try:
                 for line in evidence_path.read_text(encoding="utf-8").splitlines():
                     event = json.loads(line)
+                    if not isinstance(event, dict):
+                        continue
+                    year = event.get("year")
+                    year = year if isinstance(year, int) and not isinstance(year, bool) else None
                     module_id = str(event.get("module_id") or "")
                     if module_id:
                         row = evidence.setdefault(module_id, {
@@ -929,9 +962,13 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                             "years": set(),
                         })
                         row["actions"] += 1
-                        row["years"].add(int(event["year"]))
-                    if event.get("action") == "pipeline.complete_year" or event.get("stage") == "state_transition.apply":
-                        completed_years.add(int(event["year"]))
+                        if year is not None:
+                            row["years"].add(year)
+                    if year is not None and (
+                        event.get("action") == "pipeline.complete_year"
+                        or event.get("stage") == "state_transition.apply"
+                    ):
+                        completed_years.add(year)
                 run["module_evidence"] = {
                     module_id: {
                         "version": row["version"],
@@ -962,7 +999,7 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
             run.get("scientific_validation_artifact")
             or "validation/scientific-validation.json"
         )
-        validation = read_json(validation_path, {})
+        validation = read_object(validation_path)
         storage_policy = str((run.get("modules") or {}).get("storage_cost") or "")
         alternative_policy = storage_policy in {
             "dynamic-annual-storage-cost", "user-formula-storage-cost"
@@ -1034,12 +1071,24 @@ def source_study_status(project_id: str) -> str:
     return "trash" if project_id in trashed else "missing"
 
 
+def _safe_present(row: dict[str, Any]) -> dict[str, Any]:
+    """present_run for one listed record; a failure keeps the raw record (F5-05)."""
+    try:
+        return present_run(dict(row))
+    except Exception as exc:  # noqa: BLE001 - isolate one bad run from the listing
+        print(f"VALUE: run {row.get('id')!r} could not be presented: {type(exc).__name__}: {exc}", file=sys.stderr)
+        warnings = row.get("warnings") if isinstance(row.get("warnings"), list) else []
+        return {**row, "warnings": [*warnings, _record_warning(
+            "GF_RUN_PRESENTATION_FAILED", "This run's evidence could not be read; its stored status is shown.",
+        )]}
+
+
 def list_runs(*, compact: bool = True) -> list[dict[str, Any]]:
     # Historical/reference files remain immutable on disk.  The normal website
     # lists only runs launched through the v2 application service; reference
     # comparison is an explicit CLI workflow, never a selectable production path.
     rows = [
-        present_run(row)
+        _safe_present(row)
         for row in _list_json(RUNS_ROOT, "status.json")
         if row.get("project_id")
         and row.get("status")
@@ -1120,6 +1169,37 @@ def validate_project(project: dict[str, Any]) -> dict[str, Any]:
         "draft_resolution": draft,
         "normalised_project": draft["normalised_project"],
     }
+
+
+def _error_body(message: str, code: str, **extra: Any) -> dict[str, Any]:
+    return {"error": message, "error_code": code, **extra}
+
+
+def map_request_exception(exc: BaseException) -> tuple[int, dict[str, Any], dict[str, str]]:
+    """The C1 exception table (ordered); P0-1/P0-2 add their entries here.
+
+    QueryParameterError 400 | DataMappingError/DataPackCloneError own status |
+    LockTimeout 503 + Retry-After | UnicodeError 500 (corrupt stored record) |
+    ValueError 400 | anything else 500 through public_failure (never an
+    internal path or traceback in the body).
+    """
+
+    if isinstance(exc, QueryParameterError):
+        return 400, _error_body(str(exc), "GF_QUERY_INVALID"), {}
+    if isinstance(exc, (DataMappingError, DataPackCloneError)):
+        return int(exc.status), _error_body(str(exc), str(exc.code)), {}
+    if isinstance(exc, LockTimeout):
+        return 503, _error_body(
+            "VALUE is busy with another change to the same records; retry shortly.",
+            "GF_LOCK_TIMEOUT",
+        ), {"Retry-After": "5"}
+    if isinstance(exc, UnicodeError):
+        failure = public_failure(exc)
+        return 500, _error_body(failure.message, failure.code, error_category=failure.category), {}
+    if isinstance(exc, ValueError):
+        return 400, _error_body(str(exc), "GF_REQUEST_INVALID"), {}
+    failure = public_failure(exc)
+    return 500, _error_body(failure.message, failure.code, error_category=failure.category), {}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1203,10 +1283,62 @@ class Handler(BaseHTTPRequestHandler):
             raise DataMappingError("GF_UPLOAD_INCOMPLETE", "Upload body is incomplete.")
         return raw
 
-    def do_OPTIONS(self) -> None:  # noqa: N802
-        self._headers(HTTPStatus.NO_CONTENT)
+    # -- request entry (P0_CONVENTIONS section 4, C1) -------------------------
+    response_started = False
+
+    def send_response(self, code: int, message: str | None = None) -> None:
+        self.response_started = True
+        super().send_response(code, message)
 
     def do_GET(self) -> None:  # noqa: N802
+        self._dispatch(self._route_get)
+
+    def do_POST(self) -> None:  # noqa: N802
+        self._dispatch(self._route_post)
+
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self._dispatch(self._route_options)
+
+    def _guard(self) -> None:
+        """Host/Origin/session checks (P0-1 S6 fills this; it answers 4xx itself)."""
+
+    def _dispatch(self, route: Any) -> None:
+        self.response_started = False  # reset for every request on the connection
+        try:
+            self._guard()
+            route()
+        except Exception as exc:  # the single exception exit of every request
+            self._send_mapped_error(exc)
+
+    def _send_mapped_error(self, exc: BaseException) -> None:
+        if isinstance(exc, ConnectionError):
+            self.close_connection = True
+            return
+        if self.response_started:
+            # Headers (and maybe part of a body) are out: a second response
+            # would corrupt the stream, so only close the connection.
+            traceback.print_exc()
+            self.close_connection = True
+            return
+        status, payload, headers = map_request_exception(exc)
+        if status >= 500 and status != 503:
+            traceback.print_exc()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", self._origin())
+        self.send_header("Cache-Control", "no-store")
+        for name, value in headers.items():
+            self.send_header(name, value)
+        self.end_headers()
+        try:
+            self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+        except ConnectionError:
+            self.close_connection = True
+
+    def _route_options(self) -> None:
+        self._headers(HTTPStatus.NO_CONTENT)
+
+    def _route_get(self) -> None:
         parsed = urlparse(self.path)
         route = parsed.path
         query = parse_qs(parsed.query)
@@ -2712,556 +2844,541 @@ class Handler(BaseHTTPRequestHandler):
         except (LifecycleError, OSError, ValueError) as exc:
             self._json({"error": str(exc)}, 409)
 
-    def do_POST(self) -> None:  # noqa: N802
-        try:
-            route = urlparse(self.path).path
-            mapping_stage = re.fullmatch(r"/api/data-packs/([^/]+)/csv-mapping/stages", route)
-            mapping_preview = re.fullmatch(r"/api/data-mapping/stages/([0-9a-f]{32})/preview", route)
-            mapping_commit = re.fullmatch(r"/api/data-mapping/reviews/([0-9a-f]{32})/commit", route)
-            if mapping_stage:
-                query = parse_qs(urlparse(self.path).query)
-                result = self._mapping_service().stage(
-                    unquote(mapping_stage[1]), str(query.get("role", [""])[0]), self._small_upload_body(),
-                    unquote(self.headers.get("X-Filename", "data.csv")),
-                    self.headers.get("X-Expected-Pack-Revision", ""),
-                )
-                self._json(result, 201); return
-            if mapping_preview:
-                self._json(self._mapping_service().preview(mapping_preview[1], self._json_body())); return
-            if mapping_commit:
-                self._json(self._mapping_service().commit(mapping_commit[1], self._json_body())); return
-            if re.fullmatch(re.escape(DATA_WORKBENCH_API_BASE) + r"/overlay-candidates/[^/]+/roles/[^/]+/file", route):
-                status, payload = self.server.data_workbench_api.handle_upload(  # type: ignore[attr-defined]
-                    "POST", route, self._small_upload_body(),
-                    unquote(self.headers.get("X-Filename", "")), self.headers.get("X-Expected-Candidate-Id", ""),
-                )
-                self._json(payload, status); return
-            if route.startswith(DATA_WORKBENCH_API_BASE):
-                body = self._json_body()
-                status, payload = self.server.data_workbench_api.handle("POST", route, body)  # type: ignore[attr-defined]
-                self._json(payload, status)
-                return
-            if route == "/api/data-packs/install":
-                self._upload_data_bundle(); return
-            if route == "/api/research-suites/install":
-                self._upload_research_suite(); return
-            if route.startswith("/api/data-packs/") and "/files/" in route:
-                self._upload_dataset(route); return
-            if route == "/api/modules/install":
-                self._upload_module_bundle(); return
-            if route == "/api/extensions/install":
-                self._upload_extension_bundle(); return
+    def _route_post(self) -> None:
+        route = urlparse(self.path).path
+        mapping_stage = re.fullmatch(r"/api/data-packs/([^/]+)/csv-mapping/stages", route)
+        mapping_preview = re.fullmatch(r"/api/data-mapping/stages/([0-9a-f]{32})/preview", route)
+        mapping_commit = re.fullmatch(r"/api/data-mapping/reviews/([0-9a-f]{32})/commit", route)
+        if mapping_stage:
+            query = parse_qs(urlparse(self.path).query)
+            result = self._mapping_service().stage(
+                unquote(mapping_stage[1]), str(query.get("role", [""])[0]), self._small_upload_body(),
+                unquote(self.headers.get("X-Filename", "data.csv")),
+                self.headers.get("X-Expected-Pack-Revision", ""),
+            )
+            self._json(result, 201); return
+        if mapping_preview:
+            self._json(self._mapping_service().preview(mapping_preview[1], self._json_body())); return
+        if mapping_commit:
+            self._json(self._mapping_service().commit(mapping_commit[1], self._json_body())); return
+        if re.fullmatch(re.escape(DATA_WORKBENCH_API_BASE) + r"/overlay-candidates/[^/]+/roles/[^/]+/file", route):
+            status, payload = self.server.data_workbench_api.handle_upload(  # type: ignore[attr-defined]
+                "POST", route, self._small_upload_body(),
+                unquote(self.headers.get("X-Filename", "")), self.headers.get("X-Expected-Candidate-Id", ""),
+            )
+            self._json(payload, status); return
+        if route.startswith(DATA_WORKBENCH_API_BASE):
             body = self._json_body()
-            recovery_route = re.fullmatch(r"/api/runs/([^/]+)/frozen-recovery(/review)?", route)
-            if recovery_route:
-                root = _run_root(unquote(recovery_route[1]))
-                if root is None:
-                    self._json({"error": "Run not found"}, 404); return
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        if recovery_route[2]:
-                            result, _ = _review_frozen_recovery(root, str(body.get("recovery_mode") or ""))
-                            status = 200
-                        else:
-                            result = publish_frozen_recovery(
-                                root, body, review=_review_frozen_recovery, projects_root=PROJECTS_ROOT,
-                                packs_root=PACKS_ROOT, network_packs_root=STATE_ROOT / "data-workbench" / "installed-packs",
-                                staging_root=STATE_ROOT / "frozen-recovery-staging", registry=MODULE_REGISTRY,
-                                validate_project=validate_project, revision_manifest=_revision_manifest,
-                                is_reserved=lambda sid: study_id_is_reserved(sid, projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT),
-                            )
-                            status = 201
-                except FrozenRecoveryError as exc:
-                    self._json({"error": str(exc), "error_code": exc.code}, exc.status); return
-                self._json(result, status); return
-            if route == "/api/extensions/authoring/validate":
-                self._json(validate_extension_proposal(body, MODULE_REGISTRY))
-            elif route == "/api/extensions/authoring/template":
-                try:
-                    data = extension_proposal_template(body, MODULE_REGISTRY)
-                except (ValueError, TypeError, KeyError, OSError) as exc:
-                    self._json({"error": str(exc), "error_code": "GF_EXTENSION_AUTHORING_INVALID"}, 400); return
-                self._bytes(data, "application/zip", "value-extension-source-project.zip")
-            elif route == "/api/tutorials/value-101/studies":
-                try:
-                    saved, validation = _save_value_101_project(value_101_study())
-                except ValueError as exc:
-                    self._json({
-                        "error": str(exc),
-                        "error_code": "GF_VALUE_101_STUDY_CREATE_FAILED",
-                    }, 409)
-                    return
+            status, payload = self.server.data_workbench_api.handle("POST", route, body)  # type: ignore[attr-defined]
+            self._json(payload, status)
+            return
+        if route == "/api/data-packs/install":
+            self._upload_data_bundle(); return
+        if route == "/api/research-suites/install":
+            self._upload_research_suite(); return
+        if route.startswith("/api/data-packs/") and "/files/" in route:
+            self._upload_dataset(route); return
+        if route == "/api/modules/install":
+            self._upload_module_bundle(); return
+        if route == "/api/extensions/install":
+            self._upload_extension_bundle(); return
+        body = self._json_body()
+        recovery_route = re.fullmatch(r"/api/runs/([^/]+)/frozen-recovery(/review)?", route)
+        if recovery_route:
+            root = _run_root(unquote(recovery_route[1]))
+            if root is None:
+                self._json({"error": "Run not found"}, 404); return
+            try:
+                with STUDY_LIFECYCLE_LOCK:
+                    if recovery_route[2]:
+                        result, _ = _review_frozen_recovery(root, str(body.get("recovery_mode") or ""))
+                        status = 200
+                    else:
+                        result = publish_frozen_recovery(
+                            root, body, review=_review_frozen_recovery, projects_root=PROJECTS_ROOT,
+                            packs_root=PACKS_ROOT, network_packs_root=STATE_ROOT / "data-workbench" / "installed-packs",
+                            staging_root=STATE_ROOT / "frozen-recovery-staging", registry=MODULE_REGISTRY,
+                            validate_project=validate_project, revision_manifest=_revision_manifest,
+                            is_reserved=lambda sid: study_id_is_reserved(sid, projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT),
+                        )
+                        status = 201
+            except FrozenRecoveryError as exc:
+                self._json({"error": str(exc), "error_code": exc.code}, exc.status); return
+            self._json(result, status); return
+        if route == "/api/extensions/authoring/validate":
+            self._json(validate_extension_proposal(body, MODULE_REGISTRY))
+        elif route == "/api/extensions/authoring/template":
+            try:
+                data = extension_proposal_template(body, MODULE_REGISTRY)
+            except (ValueError, TypeError, KeyError, OSError) as exc:
+                self._json({"error": str(exc), "error_code": "GF_EXTENSION_AUTHORING_INVALID"}, 400); return
+            self._bytes(data, "application/zip", "value-extension-source-project.zip")
+        elif route == "/api/tutorials/value-101/studies":
+            try:
+                saved, validation = _save_value_101_project(value_101_study())
+            except ValueError as exc:
                 self._json({
-                    "ok": True,
-                    "project": saved,
-                    "validation": validation,
-                    "run_started": False,
-                }, 201)
-            elif route.startswith("/api/tutorials/value-101/studies/") and route.endswith("/network-pair"):
-                parts = route.strip("/").split("/")
-                if len(parts) != 6:
-                    self._json({"error": "invalid VALUE 101 network-pair route"}, 404); return
-                base_id = slug(parts[4], "project")
-                base = read_json(PROJECTS_ROOT / base_id / "project.json")
-                if not base or not is_value_101_record(base):
-                    self._json({"error": "VALUE 101 base Study not found"}, 404); return
-                base_pack = PACKS_ROOT / VALUE_101_NETWORK_PACK_ID / "manifest.json"
-                overlay_pack = (
-                    STATE_ROOT / "data-workbench" / "installed-packs"
-                    / VALUE_101_NETWORK_PACK_ID / "manifest.json"
+                    "error": str(exc),
+                    "error_code": "GF_VALUE_101_STUDY_CREATE_FAILED",
+                }, 409)
+                return
+            self._json({
+                "ok": True,
+                "project": saved,
+                "validation": validation,
+                "run_started": False,
+            }, 201)
+        elif route.startswith("/api/tutorials/value-101/studies/") and route.endswith("/network-pair"):
+            parts = route.strip("/").split("/")
+            if len(parts) != 6:
+                self._json({"error": "invalid VALUE 101 network-pair route"}, 404); return
+            base_id = slug(parts[4], "project")
+            base = read_json(PROJECTS_ROOT / base_id / "project.json")
+            if not base or not is_value_101_record(base):
+                self._json({"error": "VALUE 101 base Study not found"}, 404); return
+            base_pack = PACKS_ROOT / VALUE_101_NETWORK_PACK_ID / "manifest.json"
+            overlay_pack = (
+                STATE_ROOT / "data-workbench" / "installed-packs"
+                / VALUE_101_NETWORK_PACK_ID / "manifest.json"
+            )
+            if not base_pack.is_file() or not overlay_pack.is_file():
+                self._json({
+                    "error": "The bundled VALUE 101 network teaching pack is not installed",
+                    "error_code": "GF_VALUE_101_NETWORK_PACK_NOT_INSTALLED",
+                }, 409); return
+            try:
+                pair, identity = build_value_101_network_pair(
+                    base, network_pack_id=VALUE_101_NETWORK_PACK_ID
                 )
-                if not base_pack.is_file() or not overlay_pack.is_file():
+                validations = {
+                    role: validate_project(dict(project))
+                    for role, project in pair.items()
+                }
+                invalid = [
+                    role for role, validation in validations.items()
+                    if not validation["valid"]
+                ]
+                if invalid:
+                    first = invalid[0]
+                    raise ValueError(str(validations[first]["errors"][0]))
+                if body.get("dry_run") is True:
                     self._json({
-                        "error": "The bundled VALUE 101 network teaching pack is not installed",
-                        "error_code": "GF_VALUE_101_NETWORK_PACK_NOT_INSTALLED",
-                    }, 409); return
-                try:
+                        "ok": True,
+                        "schema_version": "value.101-network-pair-preview/v1",
+                        "identity": identity,
+                        "studies": pair,
+                        "run_started": False,
+                    }); return
+                with STUDY_LIFECYCLE_LOCK:
+                    live_base = read_json(PROJECTS_ROOT / base_id / "project.json")
+                    if not live_base or not is_value_101_record(live_base):
+                        raise ValueError(
+                            "Restore the VALUE 101 base Study before creating the network pair"
+                        )
                     pair, identity = build_value_101_network_pair(
-                        base, network_pack_id=VALUE_101_NETWORK_PACK_ID
+                        live_base, network_pack_id=VALUE_101_NETWORK_PACK_ID
                     )
-                    validations = {
-                        role: validate_project(dict(project))
+                    existing = [
+                        str(project["id"])
+                        for project in pair.values()
+                        if study_id_is_reserved(
+                            str(project["id"]),
+                            projects_root=PROJECTS_ROOT,
+                            trash_root=TRASH_ROOT,
+                        )
+                    ]
+                    if existing:
+                        raise ValueError(
+                            "Restore or reset the existing VALUE 101 network Studies before recreating: "
+                            + ", ".join(existing)
+                        )
+                    saved_pair = {
+                        role: _save_value_101_project(dict(project))[0]
                         for role, project in pair.items()
                     }
-                    invalid = [
-                        role for role, validation in validations.items()
-                        if not validation["valid"]
-                    ]
-                    if invalid:
-                        first = invalid[0]
-                        raise ValueError(str(validations[first]["errors"][0]))
-                    if body.get("dry_run") is True:
-                        self._json({
-                            "ok": True,
-                            "schema_version": "value.101-network-pair-preview/v1",
-                            "identity": identity,
-                            "studies": pair,
-                            "run_started": False,
-                        }); return
-                    with STUDY_LIFECYCLE_LOCK:
-                        live_base = read_json(PROJECTS_ROOT / base_id / "project.json")
-                        if not live_base or not is_value_101_record(live_base):
-                            raise ValueError(
-                                "Restore the VALUE 101 base Study before creating the network pair"
-                            )
-                        pair, identity = build_value_101_network_pair(
-                            live_base, network_pack_id=VALUE_101_NETWORK_PACK_ID
-                        )
-                        existing = [
-                            str(project["id"])
-                            for project in pair.values()
-                            if study_id_is_reserved(
-                                str(project["id"]),
-                                projects_root=PROJECTS_ROOT,
-                                trash_root=TRASH_ROOT,
-                            )
-                        ]
-                        if existing:
-                            raise ValueError(
-                                "Restore or reset the existing VALUE 101 network Studies before recreating: "
-                                + ", ".join(existing)
-                            )
-                        saved_pair = {
-                            role: _save_value_101_project(dict(project))[0]
-                            for role, project in pair.items()
-                        }
-                except ValueError as exc:
-                    self._json({
-                        "error": str(exc),
-                        "error_code": "GF_VALUE_101_NETWORK_PAIR_FAILED",
-                    }, 409); return
+            except ValueError as exc:
                 self._json({
-                    "ok": True,
-                    "schema_version": "value.101-network-pair/v1",
-                    "identity": identity,
-                    "studies": saved_pair,
-                    "run_started": False,
-                }, 201)
-            elif route == "/api/tutorials/value-101/reset":
-                if body.get("confirm") is not True:
-                    self._json({
-                        "error": "Explicit confirmation is required to reset VALUE 101",
-                        "error_code": "GF_VALUE_101_RESET_CONFIRMATION_REQUIRED",
-                    }, 400); return
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        studies, runs = _value_101_reset_records()
-                        reset = _move_value_101_reset_records(studies, runs)
-                except ValueError as exc:
-                    self._json({
-                        "error": str(exc),
-                        "error_code": "GF_VALUE_101_RESET_BLOCKED",
-                    }, 409); return
-                self._json({"ok": True, **reset})
-            elif route.startswith("/api/data-packs/") and route.endswith("/clone"):
-                parts = route.strip("/").split("/")
-                if len(parts) != 4:
-                    self._json({"error": "invalid data pack clone route"}, 404); return
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        result = clone_data_pack(unquote(parts[2]), body, packs_root=PACKS_ROOT)
-                except DataPackCloneError as exc:
-                    self._json({"error": str(exc), "error_code": exc.code}, exc.status); return
-                self._json(result, 201)
-            elif route == "/api/data-packs":
-                pack_id = slug(str(body.get("id") or body.get("name") or "data-pack"), "data-pack")
-                path = PACKS_ROOT / pack_id / "manifest.json"
-                if path.exists(): self._json({"error": "data pack already exists"}, 409); return
-                manifest = {"schema_version": "value.data-pack/v1", "id": pack_id,
-                            "name": str(body.get("name") or pack_id), "country": str(body.get("country") or ""),
-                            "timezone": str(body.get("timezone") or "UTC"), "created_at": now(),
-                            "updated_at": now(), "bindings": {}}
-                atomic_json(path, manifest); self._json({"ok": True, "data_pack": manifest}, 201)
-            elif route.startswith("/api/projects/") and route.endswith("/derive"):
-                parts = route.strip("/").split("/")
-                if len(parts) != 4:
-                    self._json({"error": "invalid Study derivation route"}, 404); return
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        result = derive_study(
-                            unquote(parts[2]), body,
-                            projects_root=PROJECTS_ROOT,
-                            packs_root=PACKS_ROOT,
-                            registry=MODULE_REGISTRY,
-                            validate_project=validate_project,
-                            revision_manifest=_revision_manifest,
-                            is_reserved=lambda study_id: study_id_is_reserved(
-                                study_id, projects_root=PROJECTS_ROOT,
-                                trash_root=TRASH_ROOT,
-                            ),
-                        )
-                except StudyDerivationError as exc:
-                    payload = {"error": str(exc), "error_code": exc.code}
-                    if exc.validation is not None:
-                        payload["validation"] = exc.validation
-                    self._json(payload, exc.status); return
-                self._json(result, 201)
-            elif route == "/api/projects":
-                project_id = slug(str(body.get("id") or body.get("name") or "project"), "project")
-                project = {"schema_version": "value.project/v1", "id": project_id,
-                           "name": str(body.get("name") or project_id),
-                           "data_pack_id": str(body.get("data_pack_id") or "value-uk-1000twh-reproduction"),
-                           "start_year": int(body.get("start_year", 2025)), "end_year": int(body.get("end_year", 2034)),
-                           "modules": body.get("modules") or {"psm": "value-bid-at-cost-psm", "investment": "agent-investment",
-                               "pipeline": "planning-pipeline", "vre_cap": "vre-expansion-cap",
-                               "storage_cap": "value-storage-expansion-policy",
-                               "storage_cost": "dynamic-annual-storage-cost"},
-                           "purpose": str(body.get("purpose") or ""),
-                           "selected_extensions": body.get("selected_extensions") or [],
-                           "extension_parameters": body.get("extension_parameters") or {},
-                           "maturity_acknowledgements": body.get("maturity_acknowledgements") or {},
-                           "market_configuration": body.get("market_configuration") or {},
-                           "parameters": body.get("parameters") or {},
-                           "runtime_options": body.get("runtime_options") or {},
-                           "updated_at": now()}
-                if "solver_contract" in body:
-                    project["solver_contract"] = body.get("solver_contract")
-                validation = validate_project(project)
-                if not validation["valid"]:
-                    solver_ack_event = next((
-                        row for row in validation["error_events"]
-                        if row.get("code") == "GF_SOLVER_CONTRACT_ACK_REQUIRED"
-                    ), None)
-                    first = solver_ack_event or (
-                        validation["error_events"][0]
-                        if validation["error_events"] else {}
-                    )
-                    status = 422 if solver_ack_event is not None else 400
-                    self._json({
-                        "error": first.get("message", validation["errors"][0]),
-                        "error_code": first.get("code", "GF_STUDY_INVALID"),
-                        "validation": validation,
-                    }, status); return
-                project = dict(validation["normalised_project"])
-                project.update({
-                    "schema_version": "value.project/v1",
-                    "id": project_id,
-                    "name": str(body.get("name") or project_id),
-                    "data_pack_id": str(body.get("data_pack_id") or "value-uk-1000twh-reproduction"),
-                    "start_year": int(body.get("start_year", 2025)),
-                    "end_year": int(body.get("end_year", 2034)),
-                    "updated_at": now(),
-                })
-                pack_manifest = read_json(PACKS_ROOT / project["data_pack_id"] / "manifest.json", {})
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        project_path = PROJECTS_ROOT / project_id / "project.json"
-                        if not project_path.is_file() and study_id_is_reserved(
-                            project_id, projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT
-                        ):
-                            self._json({
-                                "error": "Restore the trashed Study before reusing this ID",
-                                "error_code": "GF_STUDY_ID_RESERVED_IN_TRASH",
-                                "study_id": project_id,
-                            }, 409); return
-                        existing_project = read_json(project_path, {})
-                        for metadata_key in ("derivation", "extensions"):
-                            if metadata_key in existing_project:
-                                project[metadata_key] = json.loads(json.dumps(existing_project[metadata_key]))
-                        verify_recovered_configuration(project)
-                        project = save_project_revision(
-                            PROJECTS_ROOT / project_id, project, MODULE_REGISTRY,
-                            _revision_manifest(project, pack_manifest),
-                            expected_base_revision=(str(body["base_revision_sha256"]) if body.get("base_revision_sha256") else None),
-                        )
-                except ValueError as exc:
-                    self._json({"error": str(exc)}, 409); return
-                self._json({"ok": True, "project": project, "validation": validation}, 201)
-            elif route == "/api/projects/validate":
-                self._json(validate_project(body))
-            elif route == "/api/projects/resolve-draft":
-                self._json(resolve_project_draft(body))
-            elif route == "/api/projects/resolve-readiness":
-                pack_id = slug(str(body.get("data_pack_id") or ""), "pack")
-                pack_root = PACKS_ROOT / pack_id
-                manifest = read_json(pack_root / "manifest.json")
-                if not manifest:
-                    self._json({"error": "data pack not found", "error_code": "GF_DATA_PACK_UNKNOWN"}, 404); return
-                try:
-                    policy = resolve_run_policy(str(body.get("mode") or "smoke"))
-                    self._json(build_domain_readiness(
-                        body,
-                        pack_root=pack_root,
-                        pack_manifest=manifest,
-                        registry=MODULE_REGISTRY,
-                        requested_periods=policy.periods_per_year,
-                    ))
-                except (ValueError, KeyError, TypeError) as exc:
-                    self._json({"error": str(exc), "error_code": "GF_DOMAIN_READINESS_INVALID"}, 400)
-            elif route.startswith("/api/projects/") and route.endswith("/trash"):
-                parts = route.strip("/").split("/")
-                if len(parts) != 4:
-                    self._json({"error": "invalid Study trash route"}, 404); return
-                project_id = slug(parts[2], "project")
-                if body.get("confirm") is not True:
-                    self._json({
-                        "error": "Confirm before moving this Study to recoverable trash",
-                        "error_code": "GF_STUDY_TRASH_CONFIRMATION_REQUIRED",
-                    }, 400); return
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        entry = move_study_to_trash(
-                            project_id,
-                            projects_root=PROJECTS_ROOT,
-                            runs_root=RUNS_ROOT,
-                            trash_root=TRASH_ROOT,
-                            confirmation_name=(
-                                str(body.get("confirm_name"))
-                                if body.get("confirm_name") is not None else None
-                            ),
-                            reason=(str(body.get("reason")) if body.get("reason") else None),
-                        )
-                except StudyLifecycleError as exc:
-                    code = (
-                        "GF_STUDY_TRASH_CONFIRMATION_REQUIRED"
-                        if "exact Study name" in str(exc)
-                        else "GF_STUDY_TRASH_BLOCKED"
-                    )
-                    self._json({"error": str(exc), "error_code": code}, 409); return
-                self._json({"ok": True, "trash_entry": entry})
-            elif route.startswith("/api/study-trash/") and route.endswith("/restore"):
-                parts = route.strip("/").split("/")
-                if len(parts) != 4:
-                    self._json({"error": "invalid Study restore route"}, 404); return
-                trash_id = parts[2]
-                try:
-                    with STUDY_LIFECYCLE_LOCK:
-                        restored = restore_study(
-                            trash_id,
-                            projects_root=PROJECTS_ROOT,
-                            runs_root=RUNS_ROOT,
-                            trash_root=TRASH_ROOT,
-                        )
-                except StudyLifecycleError as exc:
-                    self._json({
-                        "error": str(exc),
-                        "error_code": "GF_STUDY_RESTORE_BLOCKED",
-                    }, 409); return
-                project = read_json(
-                    PROJECTS_ROOT / str(restored["study_id"]) / "project.json", {}
-                )
-                validation = validate_project(project) if project else {
-                    "valid": False, "errors": ["Restored Study is unreadable"]
-                }
+                    "error": str(exc),
+                    "error_code": "GF_VALUE_101_NETWORK_PAIR_FAILED",
+                }, 409); return
+            self._json({
+                "ok": True,
+                "schema_version": "value.101-network-pair/v1",
+                "identity": identity,
+                "studies": saved_pair,
+                "run_started": False,
+            }, 201)
+        elif route == "/api/tutorials/value-101/reset":
+            if body.get("confirm") is not True:
                 self._json({
-                    "ok": True,
-                    "study": project,
-                    "trash_entry": restored,
-                    "validation": validation,
-                    "needs_attention": not validation["valid"],
-                })
-            elif route.startswith("/api/modules/") and route.endswith(("/enable", "/disable")):
-                parts = route.strip("/").split("/")
-                if len(parts) != 4:
-                    self._json({"error": "invalid module lifecycle route"}, 404); return
-                module_id = slug(parts[2], "module")
-                enabling = parts[3] == "enable"
-                dependents = self._module_dependents(module_id)
-                if not enabling and (dependents["projects"] or dependents["active_runs"]):
-                    self._json({
-                        "error": "This module is referenced by saved Studies or active runs and cannot be disabled",
-                        "error_code": "GF_MODULE_IN_USE",
-                        "dependents": dependents,
-                    }, 409)
-                    return
-                try:
-                    installation = set_module_enabled(module_id, enabling)
-                    refresh_module_catalog()
-                except ModuleInstallationError as exc:
-                    self._json({"error": str(exc), "error_code": exc.code}, 400); return
-                self._json({"ok": True, "installation": installation, "dependents": dependents})
-            elif route.startswith("/api/extensions/") and route.endswith(("/enable", "/disable")):
-                parts = route.strip("/").split("/")
-                if len(parts) != 4:
-                    self._json({"error": "invalid extension lifecycle route"}, 404); return
-                extension_id = slug(parts[2], "extension")
-                enabling = parts[3] == "enable"
-                dependents = extension_dependents(extension_id)
-                if not enabling and any(dependents.values()):
-                    self._json({
-                        "error": "This extension is referenced by saved Studies, snapshots or retained run history",
-                        "error_code": "GF_EXTENSION_IN_USE",
-                        "dependents": dependents,
-                    }, 409); return
-                try:
-                    installation = set_extension_enabled(
-                        extension_id, enabling, modules_root=external_modules_root()
-                    )
-                    refresh_module_catalog()
-                except ExtensionBundleError as exc:
-                    self._json({"error": str(exc), "error_code": exc.code}, 400); return
-                self._json({"ok": True, "installation": installation, "dependents": dependents})
-            elif route.startswith("/api/projects/") and route.endswith("/clone-storage-policy"):
-                base_id = slug(route.strip("/").split("/")[2], "project")
+                    "error": "Explicit confirmation is required to reset VALUE 101",
+                    "error_code": "GF_VALUE_101_RESET_CONFIRMATION_REQUIRED",
+                }, 400); return
+            try:
                 with STUDY_LIFECYCLE_LOCK:
-                    base = read_json(PROJECTS_ROOT / base_id / "project.json")
-                    if not base:
-                        self._json({"error": "base project not found"}, 404); return
-                    storage_module = str(body.get("storage_cost_module_id") or "")
-                    try:
-                        MODULE_REGISTRY.manifest(storage_module, expected_slot="storage_cost")
-                    except (ValueError, KeyError) as exc:
-                        self._json({"error": str(exc)}, 400); return
-                    clone = json.loads(json.dumps(base))
-                    clone_id = slug(str(body.get("id") or f"{base_id}-{storage_module}"), "project")
-                    clone["id"] = clone_id
-                    clone["name"] = str(body.get("name") or f"{base.get('name')} · {storage_module}")
-                    clone["modules"] = dict(clone.get("modules") or {}) | {"storage_cost": storage_module}
-                    clone["parent_revision_sha256"] = base.get("revision_sha256")
-                    clone.pop("revision_sha256", None); clone.pop("revision_number", None)
-                    clone["updated_at"] = now()
-                    pack_manifest = read_json(PACKS_ROOT / str(clone["data_pack_id"]) / "manifest.json", {})
-                    if study_id_is_reserved(
-                        clone_id, projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT
+                    studies, runs = _value_101_reset_records()
+                    reset = _move_value_101_reset_records(studies, runs)
+            except ValueError as exc:
+                self._json({
+                    "error": str(exc),
+                    "error_code": "GF_VALUE_101_RESET_BLOCKED",
+                }, 409); return
+            self._json({"ok": True, **reset})
+        elif route.startswith("/api/data-packs/") and route.endswith("/clone"):
+            parts = route.strip("/").split("/")
+            if len(parts) != 4:
+                self._json({"error": "invalid data pack clone route"}, 404); return
+            try:
+                with STUDY_LIFECYCLE_LOCK:
+                    result = clone_data_pack(unquote(parts[2]), body, packs_root=PACKS_ROOT)
+            except DataPackCloneError as exc:
+                self._json({"error": str(exc), "error_code": exc.code}, exc.status); return
+            self._json(result, 201)
+        elif route == "/api/data-packs":
+            pack_id = slug(str(body.get("id") or body.get("name") or "data-pack"), "data-pack")
+            path = PACKS_ROOT / pack_id / "manifest.json"
+            if path.exists(): self._json({"error": "data pack already exists"}, 409); return
+            manifest = {"schema_version": "value.data-pack/v1", "id": pack_id,
+                        "name": str(body.get("name") or pack_id), "country": str(body.get("country") or ""),
+                        "timezone": str(body.get("timezone") or "UTC"), "created_at": now(),
+                        "updated_at": now(), "bindings": {}}
+            atomic_json(path, manifest); self._json({"ok": True, "data_pack": manifest}, 201)
+        elif route.startswith("/api/projects/") and route.endswith("/derive"):
+            parts = route.strip("/").split("/")
+            if len(parts) != 4:
+                self._json({"error": "invalid Study derivation route"}, 404); return
+            try:
+                with STUDY_LIFECYCLE_LOCK:
+                    result = derive_study(
+                        unquote(parts[2]), body,
+                        projects_root=PROJECTS_ROOT,
+                        packs_root=PACKS_ROOT,
+                        registry=MODULE_REGISTRY,
+                        validate_project=validate_project,
+                        revision_manifest=_revision_manifest,
+                        is_reserved=lambda study_id: study_id_is_reserved(
+                            study_id, projects_root=PROJECTS_ROOT,
+                            trash_root=TRASH_ROOT,
+                        ),
+                    )
+            except StudyDerivationError as exc:
+                payload = {"error": str(exc), "error_code": exc.code}
+                if exc.validation is not None:
+                    payload["validation"] = exc.validation
+                self._json(payload, exc.status); return
+            self._json(result, 201)
+        elif route == "/api/projects":
+            project_id = slug(str(body.get("id") or body.get("name") or "project"), "project")
+            project = {"schema_version": "value.project/v1", "id": project_id,
+                       "name": str(body.get("name") or project_id),
+                       "data_pack_id": str(body.get("data_pack_id") or "value-uk-1000twh-reproduction"),
+                       "start_year": int(body.get("start_year", 2025)), "end_year": int(body.get("end_year", 2034)),
+                       "modules": body.get("modules") or {"psm": "value-bid-at-cost-psm", "investment": "agent-investment",
+                           "pipeline": "planning-pipeline", "vre_cap": "vre-expansion-cap",
+                           "storage_cap": "value-storage-expansion-policy",
+                           "storage_cost": "dynamic-annual-storage-cost"},
+                       "purpose": str(body.get("purpose") or ""),
+                       "selected_extensions": body.get("selected_extensions") or [],
+                       "extension_parameters": body.get("extension_parameters") or {},
+                       "maturity_acknowledgements": body.get("maturity_acknowledgements") or {},
+                       "market_configuration": body.get("market_configuration") or {},
+                       "parameters": body.get("parameters") or {},
+                       "runtime_options": body.get("runtime_options") or {},
+                       "updated_at": now()}
+            if "solver_contract" in body:
+                project["solver_contract"] = body.get("solver_contract")
+            validation = validate_project(project)
+            if not validation["valid"]:
+                solver_ack_event = next((
+                    row for row in validation["error_events"]
+                    if row.get("code") == "GF_SOLVER_CONTRACT_ACK_REQUIRED"
+                ), None)
+                first = solver_ack_event or (
+                    validation["error_events"][0]
+                    if validation["error_events"] else {}
+                )
+                status = 422 if solver_ack_event is not None else 400
+                self._json({
+                    "error": first.get("message", validation["errors"][0]),
+                    "error_code": first.get("code", "GF_STUDY_INVALID"),
+                    "validation": validation,
+                }, status); return
+            project = dict(validation["normalised_project"])
+            project.update({
+                "schema_version": "value.project/v1",
+                "id": project_id,
+                "name": str(body.get("name") or project_id),
+                "data_pack_id": str(body.get("data_pack_id") or "value-uk-1000twh-reproduction"),
+                "start_year": int(body.get("start_year", 2025)),
+                "end_year": int(body.get("end_year", 2034)),
+                "updated_at": now(),
+            })
+            pack_manifest = read_json(PACKS_ROOT / project["data_pack_id"] / "manifest.json", {})
+            try:
+                with STUDY_LIFECYCLE_LOCK:
+                    project_path = PROJECTS_ROOT / project_id / "project.json"
+                    if not project_path.is_file() and study_id_is_reserved(
+                        project_id, projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT
                     ):
                         self._json({
-                            "error": "Restore or rename the existing Study before creating this clone",
+                            "error": "Restore the trashed Study before reusing this ID",
                             "error_code": "GF_STUDY_ID_RESERVED_IN_TRASH",
-                            "study_id": clone_id,
+                            "study_id": project_id,
                         }, 409); return
-                    saved = save_project_revision(
-                        PROJECTS_ROOT / clone_id,
-                        clone,
-                        MODULE_REGISTRY,
-                        _revision_manifest(clone, pack_manifest),
+                    existing_project = read_json(project_path, {})
+                    for metadata_key in ("derivation", "extensions"):
+                        if metadata_key in existing_project:
+                            project[metadata_key] = json.loads(json.dumps(existing_project[metadata_key]))
+                    verify_recovered_configuration(project)
+                    project = save_project_revision(
+                        PROJECTS_ROOT / project_id, project, MODULE_REGISTRY,
+                        _revision_manifest(project, pack_manifest),
+                        expected_base_revision=(str(body["base_revision_sha256"]) if body.get("base_revision_sha256") else None),
                     )
-                controlled = {
-                    key: base.get(key) == saved.get(key) for key in ("data_pack_id", "start_year", "end_year", "parameters", "runtime_options")
-                }
-                self._json({"ok": True, "project": saved, "controlled_dimensions": controlled, "only_intended_module_changed": all(controlled.values())}, 201)
-            elif route == "/api/parameters/preview":
-                pack_id = slug(str(body.get("data_pack_id") or ""), "pack")
-                pack_root = PACKS_ROOT / pack_id
-                if not (pack_root / "manifest.json").is_file():
-                    self._json({"error": "data pack not found"}, 404); return
-                resolved = resolve_scheme_c_parameters(
-                    pack_root,
-                    body.get("parameters") or {},
-                    body.get("runtime_options") or {},
-                    periods_per_year=int(body.get("periods_per_year", 17_520)),
-                )
-                self._json(resolved.to_dict())
-            elif route.startswith("/api/projects/") and route.endswith("/runs"):
-                self._start_run(slug(route.strip("/").split("/")[2], "project"), body)
-            elif route.startswith("/api/projects/") and route.endswith("/preflight"):
-                project_id = slug(route.strip("/").split("/")[2], "project")
-                project = read_json(PROJECTS_ROOT / project_id / "project.json")
-                if not project:
-                    self._json({"error": "project not found"}, 404); return
-                pack_root = PACKS_ROOT / str(project["data_pack_id"])
-                manifest = read_json(pack_root / "manifest.json", {})
-                try:
-                    verify_recovered_configuration(project, mode=str(body.get("mode", "smoke")))
-                    if dict(project.get("extensions") or {}).get("frozen_recovery"):
-                        selection = resolve_zonal_pack_selection(project, base_pack_root=pack_root, data_home=STATE_ROOT)
-                        verify_recovered_inputs(project, pack_root, selection.network_pack_root)
-                        execution = current_execution(source_root=PROJECT_ROOT, data_home=STATE_ROOT)
-                        verify_recovered_configuration(project, execution_identity=execution["identity_sha256"])
-                except (ValueError, OSError) as exc:
-                    self._json({"error": str(exc), "error_code": "GF_FROZEN_RECOVERY_BLOCKED"}, 409); return
-                self._json(run_preflight(
-                    project,
-                    mode=str(body.get("mode", "smoke")),
+            except ValueError as exc:
+                self._json({"error": str(exc)}, 409); return
+            self._json({"ok": True, "project": project, "validation": validation}, 201)
+        elif route == "/api/projects/validate":
+            self._json(validate_project(body))
+        elif route == "/api/projects/resolve-draft":
+            self._json(resolve_project_draft(body))
+        elif route == "/api/projects/resolve-readiness":
+            pack_id = slug(str(body.get("data_pack_id") or ""), "pack")
+            pack_root = PACKS_ROOT / pack_id
+            manifest = read_json(pack_root / "manifest.json")
+            if not manifest:
+                self._json({"error": "data pack not found", "error_code": "GF_DATA_PACK_UNKNOWN"}, 404); return
+            try:
+                policy = resolve_run_policy(str(body.get("mode") or "smoke"))
+                self._json(build_domain_readiness(
+                    body,
                     pack_root=pack_root,
                     pack_manifest=manifest,
-                    dataset_slots=DATASET_SLOTS,
                     registry=MODULE_REGISTRY,
-                    output_root=RUNS_ROOT,
-                    runs_root=RUNS_ROOT,
+                    requested_periods=policy.periods_per_year,
                 ))
-            elif route.startswith("/api/runs/") and route.endswith("/resume"):
-                self._resume_run(slug(route.strip("/").split("/")[2], "run"))
-            elif route.startswith("/api/runs/") and route.endswith("/rerun-copperplate"):
-                self._rerun_as_copperplate(slug(route.strip("/").split("/")[2], "run"))
-            elif route.startswith("/api/runs/") and route.endswith("/replay-exports"):
-                parts = route.strip("/").split("/")
-                run_id = slug(parts[2], "run")
-                root = _run_root(run_id)
-                if root is None:
-                    self._json({"error": "run not found"}, 404); return
-                try:
-                    request = ReplayExportRequest(
-                        range_kind=str(body.get("range_kind") or ""),
-                        year=(int(body["year"]) if body.get("year") is not None else None),
-                        period_from=(
-                            int(body["period_from"])
-                            if body.get("period_from") is not None else None
-                        ),
-                        period_to=(
-                            int(body["period_to"])
-                            if body.get("period_to") is not None else None
-                        ),
-                        output_format=str(body.get("output_format") or ""),
-                    )
-                    job = create_replay_export_job(root, request)
-                except (FileNotFoundError, TypeError, ValueError) as exc:
-                    self._json({"error": str(exc)}, 400); return
+            except (ValueError, KeyError, TypeError) as exc:
+                self._json({"error": str(exc), "error_code": "GF_DOMAIN_READINESS_INVALID"}, 400)
+        elif route.startswith("/api/projects/") and route.endswith("/trash"):
+            parts = route.strip("/").split("/")
+            if len(parts) != 4:
+                self._json({"error": "invalid Study trash route"}, 404); return
+            project_id = slug(parts[2], "project")
+            if body.get("confirm") is not True:
                 self._json({
-                    **job,
-                    "status_url": f"/api/runs/{run_id}/replay-exports/{job['job_id']}",
-                }, 202)
-            elif route.startswith("/api/runs/"):
-                parts = route.strip("/").split("/")
-                if len(parts) == 4 and parts[3] in {"cancel", "archive", "restore", "delete", "export", "mark-lost"}:
-                    self._run_lifecycle_action(slug(parts[2], "run"), parts[3], body)
-                else:
-                    self._json({"error": "not found"}, 404)
+                    "error": "Confirm before moving this Study to recoverable trash",
+                    "error_code": "GF_STUDY_TRASH_CONFIRMATION_REQUIRED",
+                }, 400); return
+            try:
+                with STUDY_LIFECYCLE_LOCK:
+                    entry = move_study_to_trash(
+                        project_id,
+                        projects_root=PROJECTS_ROOT,
+                        runs_root=RUNS_ROOT,
+                        trash_root=TRASH_ROOT,
+                        confirmation_name=(
+                            str(body.get("confirm_name"))
+                            if body.get("confirm_name") is not None else None
+                        ),
+                        reason=(str(body.get("reason")) if body.get("reason") else None),
+                    )
+            except StudyLifecycleError as exc:
+                code = (
+                    "GF_STUDY_TRASH_CONFIRMATION_REQUIRED"
+                    if "exact Study name" in str(exc)
+                    else "GF_STUDY_TRASH_BLOCKED"
+                )
+                self._json({"error": str(exc), "error_code": code}, 409); return
+            self._json({"ok": True, "trash_entry": entry})
+        elif route.startswith("/api/study-trash/") and route.endswith("/restore"):
+            parts = route.strip("/").split("/")
+            if len(parts) != 4:
+                self._json({"error": "invalid Study restore route"}, 404); return
+            trash_id = parts[2]
+            try:
+                with STUDY_LIFECYCLE_LOCK:
+                    restored = restore_study(
+                        trash_id,
+                        projects_root=PROJECTS_ROOT,
+                        runs_root=RUNS_ROOT,
+                        trash_root=TRASH_ROOT,
+                    )
+            except StudyLifecycleError as exc:
+                self._json({
+                    "error": str(exc),
+                    "error_code": "GF_STUDY_RESTORE_BLOCKED",
+                }, 409); return
+            project = read_json(
+                PROJECTS_ROOT / str(restored["study_id"]) / "project.json", {}
+            )
+            validation = validate_project(project) if project else {
+                "valid": False, "errors": ["Restored Study is unreadable"]
+            }
+            self._json({
+                "ok": True,
+                "study": project,
+                "trash_entry": restored,
+                "validation": validation,
+                "needs_attention": not validation["valid"],
+            })
+        elif route.startswith("/api/modules/") and route.endswith(("/enable", "/disable")):
+            parts = route.strip("/").split("/")
+            if len(parts) != 4:
+                self._json({"error": "invalid module lifecycle route"}, 404); return
+            module_id = slug(parts[2], "module")
+            enabling = parts[3] == "enable"
+            dependents = self._module_dependents(module_id)
+            if not enabling and (dependents["projects"] or dependents["active_runs"]):
+                self._json({
+                    "error": "This module is referenced by saved Studies or active runs and cannot be disabled",
+                    "error_code": "GF_MODULE_IN_USE",
+                    "dependents": dependents,
+                }, 409)
+                return
+            try:
+                installation = set_module_enabled(module_id, enabling)
+                refresh_module_catalog()
+            except ModuleInstallationError as exc:
+                self._json({"error": str(exc), "error_code": exc.code}, 400); return
+            self._json({"ok": True, "installation": installation, "dependents": dependents})
+        elif route.startswith("/api/extensions/") and route.endswith(("/enable", "/disable")):
+            parts = route.strip("/").split("/")
+            if len(parts) != 4:
+                self._json({"error": "invalid extension lifecycle route"}, 404); return
+            extension_id = slug(parts[2], "extension")
+            enabling = parts[3] == "enable"
+            dependents = extension_dependents(extension_id)
+            if not enabling and any(dependents.values()):
+                self._json({
+                    "error": "This extension is referenced by saved Studies, snapshots or retained run history",
+                    "error_code": "GF_EXTENSION_IN_USE",
+                    "dependents": dependents,
+                }, 409); return
+            try:
+                installation = set_extension_enabled(
+                    extension_id, enabling, modules_root=external_modules_root()
+                )
+                refresh_module_catalog()
+            except ExtensionBundleError as exc:
+                self._json({"error": str(exc), "error_code": exc.code}, 400); return
+            self._json({"ok": True, "installation": installation, "dependents": dependents})
+        elif route.startswith("/api/projects/") and route.endswith("/clone-storage-policy"):
+            base_id = slug(route.strip("/").split("/")[2], "project")
+            with STUDY_LIFECYCLE_LOCK:
+                base = read_json(PROJECTS_ROOT / base_id / "project.json")
+                if not base:
+                    self._json({"error": "base project not found"}, 404); return
+                storage_module = str(body.get("storage_cost_module_id") or "")
+                try:
+                    MODULE_REGISTRY.manifest(storage_module, expected_slot="storage_cost")
+                except (ValueError, KeyError) as exc:
+                    self._json({"error": str(exc)}, 400); return
+                clone = json.loads(json.dumps(base))
+                clone_id = slug(str(body.get("id") or f"{base_id}-{storage_module}"), "project")
+                clone["id"] = clone_id
+                clone["name"] = str(body.get("name") or f"{base.get('name')} · {storage_module}")
+                clone["modules"] = dict(clone.get("modules") or {}) | {"storage_cost": storage_module}
+                clone["parent_revision_sha256"] = base.get("revision_sha256")
+                clone.pop("revision_sha256", None); clone.pop("revision_number", None)
+                clone["updated_at"] = now()
+                pack_manifest = read_json(PACKS_ROOT / str(clone["data_pack_id"]) / "manifest.json", {})
+                if study_id_is_reserved(
+                    clone_id, projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT
+                ):
+                    self._json({
+                        "error": "Restore or rename the existing Study before creating this clone",
+                        "error_code": "GF_STUDY_ID_RESERVED_IN_TRASH",
+                        "study_id": clone_id,
+                    }, 409); return
+                saved = save_project_revision(
+                    PROJECTS_ROOT / clone_id,
+                    clone,
+                    MODULE_REGISTRY,
+                    _revision_manifest(clone, pack_manifest),
+                )
+            controlled = {
+                key: base.get(key) == saved.get(key) for key in ("data_pack_id", "start_year", "end_year", "parameters", "runtime_options")
+            }
+            self._json({"ok": True, "project": saved, "controlled_dimensions": controlled, "only_intended_module_changed": all(controlled.values())}, 201)
+        elif route == "/api/parameters/preview":
+            pack_id = slug(str(body.get("data_pack_id") or ""), "pack")
+            pack_root = PACKS_ROOT / pack_id
+            if not (pack_root / "manifest.json").is_file():
+                self._json({"error": "data pack not found"}, 404); return
+            resolved = resolve_scheme_c_parameters(
+                pack_root,
+                body.get("parameters") or {},
+                body.get("runtime_options") or {},
+                periods_per_year=int(body.get("periods_per_year", 17_520)),
+            )
+            self._json(resolved.to_dict())
+        elif route.startswith("/api/projects/") and route.endswith("/runs"):
+            self._start_run(slug(route.strip("/").split("/")[2], "project"), body)
+        elif route.startswith("/api/projects/") and route.endswith("/preflight"):
+            project_id = slug(route.strip("/").split("/")[2], "project")
+            project = read_json(PROJECTS_ROOT / project_id / "project.json")
+            if not project:
+                self._json({"error": "project not found"}, 404); return
+            pack_root = PACKS_ROOT / str(project["data_pack_id"])
+            manifest = read_json(pack_root / "manifest.json", {})
+            try:
+                verify_recovered_configuration(project, mode=str(body.get("mode", "smoke")))
+                if dict(project.get("extensions") or {}).get("frozen_recovery"):
+                    selection = resolve_zonal_pack_selection(project, base_pack_root=pack_root, data_home=STATE_ROOT)
+                    verify_recovered_inputs(project, pack_root, selection.network_pack_root)
+                    execution = current_execution(source_root=PROJECT_ROOT, data_home=STATE_ROOT)
+                    verify_recovered_configuration(project, execution_identity=execution["identity_sha256"])
+            except (ValueError, OSError) as exc:
+                self._json({"error": str(exc), "error_code": "GF_FROZEN_RECOVERY_BLOCKED"}, 409); return
+            self._json(run_preflight(
+                project,
+                mode=str(body.get("mode", "smoke")),
+                pack_root=pack_root,
+                pack_manifest=manifest,
+                dataset_slots=DATASET_SLOTS,
+                registry=MODULE_REGISTRY,
+                output_root=RUNS_ROOT,
+                runs_root=RUNS_ROOT,
+            ))
+        elif route.startswith("/api/runs/") and route.endswith("/resume"):
+            self._resume_run(slug(route.strip("/").split("/")[2], "run"))
+        elif route.startswith("/api/runs/") and route.endswith("/rerun-copperplate"):
+            self._rerun_as_copperplate(slug(route.strip("/").split("/")[2], "run"))
+        elif route.startswith("/api/runs/") and route.endswith("/replay-exports"):
+            parts = route.strip("/").split("/")
+            run_id = slug(parts[2], "run")
+            root = _run_root(run_id)
+            if root is None:
+                self._json({"error": "run not found"}, 404); return
+            try:
+                request = ReplayExportRequest(
+                    range_kind=str(body.get("range_kind") or ""),
+                    year=(int(body["year"]) if body.get("year") is not None else None),
+                    period_from=(
+                        int(body["period_from"])
+                        if body.get("period_from") is not None else None
+                    ),
+                    period_to=(
+                        int(body["period_to"])
+                        if body.get("period_to") is not None else None
+                    ),
+                    output_format=str(body.get("output_format") or ""),
+                )
+                job = create_replay_export_job(root, request)
+            except (FileNotFoundError, TypeError, ValueError) as exc:
+                self._json({"error": str(exc)}, 400); return
+            self._json({
+                **job,
+                "status_url": f"/api/runs/{run_id}/replay-exports/{job['job_id']}",
+            }, 202)
+        elif route.startswith("/api/runs/"):
+            parts = route.strip("/").split("/")
+            if len(parts) == 4 and parts[3] in {"cancel", "archive", "restore", "delete", "export", "mark-lost"}:
+                self._run_lifecycle_action(slug(parts[2], "run"), parts[3], body)
             else:
                 self._json({"error": "not found"}, 404)
-        except (DataMappingError, DataPackCloneError) as exc:
-            self._json({"error": str(exc), "error_code": exc.code}, exc.status)
-        except LockTimeout as exc:
-            self._json({"error": str(exc), "error_code": "GF_LOCK_TIMEOUT"}, 503)
-        except (ValueError, json.JSONDecodeError) as exc:
-            self._json({"error": str(exc)}, 400)
-        except Exception as exc:  # pragma: no cover
-            traceback.print_exc()
-            failure = public_failure(exc)
-            self._json({
-                "error": failure.message,
-                "error_code": failure.code,
-                "error_category": failure.category,
-            }, 500)
+        else:
+            self._json({"error": "not found"}, 404)
 
 
 def acquire_backend_singleton(state_root: Path) -> FileLock | None:
