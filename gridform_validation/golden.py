@@ -568,8 +568,28 @@ def write_golden(path: Path, golden: Mapping[str, Any]) -> None:
 # revision as tests/golden/reports/<case>-r<k>.json.  ``validate_golden_file``
 # refuses a doctoral trajectory revision without a matching report.
 
-NUMERIC_REPORT_SCHEMA = "value.golden-numeric-report/v1"
+NUMERIC_REPORT_SCHEMA = "value.golden-numeric-report/v2"
 _YEAR_IN_PATH = re.compile(r"(?:^|[.\[])(\d{4})(?=$|[.:\]\[])")
+NOT_COMPARABLE = "not comparable (rows shifted)"
+# Natural row identity of SQLite run tables, in key order.  Sequence ids
+# (order_id "2025:0:ahead:17", bid_id, event_id) are positional and shift when
+# a row is inserted, so they are not part of the key.  A table is aligned on
+# the key columns it has when the key is unique on both sides.
+NATURAL_KEY_COLUMNS = (
+    "year", "period", "start_period", "stage", "zone_id", "boundary_id", "asset_id", "agent_id",
+    "bid_tranche_id", "technology", "flow_type", "side", "direction", "key",
+)
+# Columns that identify rows or carry identities: changed values are counted
+# but never summed or turned into magnitudes.
+IDENTIFIER_COLUMNS = frozenset(NATURAL_KEY_COLUMNS) | {
+    "order_id", "bid_id", "event_id", "period_id", "phase_id", "end_period", "schema_version",
+    "module_id", "module_version", "run_id", "owner_id", "input_sha256", "sequence", "seq", "index", "row_index",
+}
+IDENTIFIER_SUFFIXES = ("_id", "_sha256", "_hash", "_version")
+# Grouping of keyed aggregates: year (annual totals), period (summarised) and
+# the first resource dimension a table has (per technology / asset totals).
+RESOURCE_COLUMNS = ("technology", "asset_type", "asset_id", "zone_id", "boundary_id")
+GROUP_TABLE_LIMIT = 60
 
 
 def digest_fingerprint(digest: Mapping[str, Any]) -> str:
@@ -579,15 +599,32 @@ def digest_fingerprint(digest: Mapping[str, Any]) -> str:
     return hashlib.sha256(json.dumps(stored, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def column_values(output_dir: Path) -> dict[str, list[tuple[str, Any, Any]]]:
-    """The raw values behind every digest column: ``key -> [(label, value, year)]``.
+@dataclass
+class ColumnSeries:
+    """The raw values behind one digest column.
 
-    Keys, labels and volatile-key handling are those of :func:`digest_run`;
-    ``year`` is the row's ``year`` column (SQLite) or a year found in the JSON
-    path, else ``None``.
+    ``labels`` are the digest's positional labels (SQLite row number, JSON
+    concrete path); ``keys`` the natural-key label of each SQLite row (``None``
+    when the table has no natural key columns); ``groups`` the year / period /
+    resource of each value for keyed aggregates.
     """
 
-    values: dict[str, list[tuple[str, Any, Any]]] = {}
+    source: str  # sqlite | json | rows
+    column: str
+    labels: list[str]
+    values: list[Any]
+    groups: list[dict[str, Any]]
+    key_columns: tuple[str, ...] = ()
+    keys: list[str] | None = None
+
+
+def column_values(output_dir: Path) -> dict[str, ColumnSeries]:
+    """Every digest column of one run output with its raw values.
+
+    Keys, labels and volatile-key handling are those of :func:`digest_run`.
+    """
+
+    values: dict[str, ColumnSeries] = {}
     for artifact, path in iter_artifacts(output_dir):
         if path.suffix == ".sqlite":
             connection = sqlite3.connect(f"file:{path.as_posix()}?mode=ro&immutable=1", uri=True)
@@ -605,15 +642,32 @@ def column_values(output_dir: Path) -> dict[str, list[tuple[str, Any, Any]]]:
                         cursor = connection.execute(f'SELECT {quoted} FROM "{table}" ORDER BY rowid')
                     except sqlite3.OperationalError:
                         cursor = connection.execute(f'SELECT {quoted} FROM "{table}" ORDER BY {quoted}')
-                    year_index = columns.index("year") if "year" in columns else None
-                    lists = [values.setdefault(f"{artifact}::{table}.{column}", []) for column in columns]
+                    key_columns = tuple(column for column in NATURAL_KEY_COLUMNS if column in columns)
+                    key_index = [columns.index(column) for column in key_columns]
+                    resource = next((column for column in RESOURCE_COLUMNS if column in columns), None)
+                    group_index = {name: columns.index(name) for name in ("year", "period") if name in columns}
+                    if resource:
+                        group_index[resource] = columns.index(resource)
+                    series = [
+                        values.setdefault(
+                            f"{artifact}::{table}.{column}",
+                            ColumnSeries("sqlite", column, [], [], [], key_columns, [] if key_columns else None),
+                        )
+                        for column in columns
+                    ]
                     rows = 0
                     for row in cursor:
-                        year = row[year_index] if year_index is not None else None
+                        key = json.dumps([row[index] for index in key_index], default=str) if key_columns else None
+                        groups = {name: row[index] for name, index in group_index.items()}
                         for index, value in enumerate(row):
-                            lists[index].append((str(rows), "<volatile>" if columns[index] in VOLATILE_KEYS else value, year))
+                            target = series[index]
+                            target.labels.append(str(rows))
+                            target.values.append("<volatile>" if columns[index] in VOLATILE_KEYS else value)
+                            target.groups.append(groups)
+                            if target.keys is not None:
+                                target.keys.append(key)
                         rows += 1
-                    values[f"{artifact}::{table}{ROW_COUNT_SUFFIX}"] = [("rows", rows, None)]
+                    values[f"{artifact}::{table}{ROW_COUNT_SUFFIX}"] = ColumnSeries("rows", "#rows", ["rows"], [rows], [{}])
             finally:
                 connection.close()
             continue
@@ -624,7 +678,10 @@ def column_values(output_dir: Path) -> dict[str, list[tuple[str, Any, Any]]]:
         for leaf_path, concrete, value in _json_leaves(payload):
             column = ".".join(leaf_path[:JSON_COLUMN_DEPTH]) or "$"
             match = _YEAR_IN_PATH.search(concrete)
-            values.setdefault(f"{artifact}::{column}", []).append((concrete, value, match.group(1) if match else None))
+            series = values.setdefault(f"{artifact}::{column}", ColumnSeries("json", leaf_path[-1] if leaf_path else "$", [], [], []))
+            series.labels.append(concrete)
+            series.values.append(value)
+            series.groups.append({"year": match.group(1)} if match else {})
     return values
 
 
@@ -635,66 +692,140 @@ def _number(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
-def _column_change(before: Sequence[tuple[str, Any, Any]], after: Sequence[tuple[str, Any, Any]]) -> dict[str, Any]:
-    left = {label: (value, year) for label, value, year in before}
-    right = {label: (value, year) for label, value, year in after}
-    changed = 0
-    max_abs = 0.0
-    max_rel: float | None = None
-    zero_base_changes = 0
-    samples: list[dict[str, Any]] = []
-    for label in sorted(set(left) | set(right), key=lambda item: (len(item), item)):
-        old = left.get(label, (None, None))[0]
-        new = right.get(label, (None, None))[0]
-        if label in left and label in right and _encode(old, False) == _encode(new, False):
+def is_identifier_column(name: str) -> bool:
+    return name in IDENTIFIER_COLUMNS or name == "#rows" or name.endswith(IDENTIFIER_SUFFIXES)
+
+
+def _alignment(before: ColumnSeries, after: ColumnSeries) -> tuple[str, list[str] | None, list[str] | None]:
+    """How the values of one column pair up: ``(description, before labels,
+    after labels)``; labels are ``None`` when per-value deltas are not
+    comparable because rows were inserted, removed or reordered."""
+
+    if before.source == "sqlite" and after.source == "sqlite":
+        if before.key_columns and before.key_columns == after.key_columns:
+            assert before.keys is not None and after.keys is not None
+            if len(set(before.keys)) == len(before.keys) and len(set(after.keys)) == len(after.keys):
+                return f"keyed ({', '.join(before.key_columns)})", before.keys, after.keys
+            if before.keys == after.keys:
+                return "positional (natural keys identical)", before.labels, after.labels
+            return NOT_COMPARABLE, None, None
+        if not before.key_columns and not after.key_columns and len(before.labels) == len(after.labels):
+            return "positional (no natural key; row count unchanged)", before.labels, after.labels
+        return NOT_COMPARABLE, None, None
+    if before.source == "json" and after.source == "json":
+        differing = set(before.labels) ^ set(after.labels)
+        if any("[" in label for label in differing):
+            return NOT_COMPARABLE, None, None
+        return "json path", before.labels, after.labels
+    return NOT_COMPARABLE, None, None
+
+
+def _group_totals(series: ColumnSeries | None, dimension: str) -> dict[str, float]:
+    totals: dict[str, float] = {}
+    if series is None:
+        return totals
+    for value, groups in zip(series.values, series.groups):
+        number = _number(value)
+        if number is None or groups.get(dimension) is None:
             continue
-        changed += 1
-        old_number, new_number = _number(old), _number(new)
-        if label in left and label in right and old_number is not None and new_number is not None:
-            delta = abs(new_number - old_number)
-            max_abs = max(max_abs, delta)
-            if old_number != 0:
-                relative = delta / abs(old_number)
-                max_rel = relative if max_rel is None else max(max_rel, relative)
-            elif delta:
-                zero_base_changes += 1
-        elif len(samples) < 3:
-            samples.append({"label": label, "before": None if label not in left else str(old)[:120],
-                            "after": None if label not in right else str(new)[:120]})
+        label = str(groups[dimension])
+        totals[label] = totals.get(label, 0.0) + number
+    return totals
 
-    def totals(rows: Sequence[tuple[str, Any, Any]]) -> tuple[float, dict[str, float]]:
-        total = 0.0
-        by_year: dict[str, float] = {}
-        for _, value, year in rows:
-            number = _number(value)
-            if number is None:
-                continue
-            total += number
-            if year is not None:
-                by_year[str(year)] = by_year.get(str(year), 0.0) + number
-        return total, by_year
 
-    numeric = any(_number(value) is not None for _, value, _ in (*before, *after))
-    record: dict[str, Any] = {
-        "values_before": len(before),
-        "values_after": len(after),
-        "changed_values": changed,
-        "numeric": numeric,
+def _group_comparison(before: ColumnSeries | None, after: ColumnSeries | None, dimension: str, *, full: bool) -> dict[str, Any] | None:
+    left, right = _group_totals(before, dimension), _group_totals(after, dimension)
+    labels = sorted(set(left) | set(right))
+    if not labels:
+        return None
+    if full and len(labels) <= GROUP_TABLE_LIMIT:
+        return {label: [left.get(label, 0.0), right.get(label, 0.0)] for label in labels}
+    deltas = [(abs(right.get(label, 0.0) - left.get(label, 0.0)), left.get(label, 0.0)) for label in labels]
+    changed = [(delta, base) for delta, base in deltas if delta]
+    relative = [delta / abs(base) for delta, base in changed if base]
+    return {
+        "groups": len(labels),
+        "groups_changed": len(changed),
+        "max_abs_group_delta": max((delta for delta, _ in changed), default=0.0),
+        "max_rel_group_delta": max(relative, default=None),
+        "groups_only_before": len(set(left) - set(right)),
+        "groups_only_after": len(set(right) - set(left)),
     }
-    if numeric:
-        sum_before, years_before = totals(before)
-        sum_after, years_after = totals(after)
-        record.update({
-            "max_abs_delta": max_abs,
-            "max_rel_delta": max_rel,
-            "changes_from_zero": zero_base_changes,
-            "sum_before": sum_before,
-            "sum_after": sum_after,
-            "annual_totals": {year: [years_before.get(year, 0.0), years_after.get(year, 0.0)]
-                              for year in sorted(set(years_before) | set(years_after))},
-        })
-    if samples:
-        record["non_numeric_samples"] = samples
+
+
+def _column_change(before: ColumnSeries | None, after: ColumnSeries | None) -> dict[str, Any]:
+    reference = after if after is not None else before
+    assert reference is not None
+    if reference.source == "rows":
+        return {
+            "alignment": "row-count",
+            "identifier": True,
+            "rows_before": before.values[0] if before is not None else None,
+            "rows_after": after.values[0] if after is not None else None,
+        }
+    identifier = is_identifier_column(reference.column)
+    record: dict[str, Any] = {
+        "values_before": len(before.values) if before is not None else 0,
+        "values_after": len(after.values) if after is not None else 0,
+        "identifier": identifier,
+    }
+    if before is None or after is None:
+        record.update({"alignment": "column added" if before is None else "column removed", "comparable": False})
+    else:
+        alignment, left_labels, right_labels = _alignment(before, after)
+        record["alignment"] = alignment
+        record["comparable"] = left_labels is not None
+        if left_labels is None or right_labels is None:
+            record["per_value"] = NOT_COMPARABLE
+        else:
+            left = dict(zip(left_labels, before.values))
+            right = dict(zip(right_labels, after.values))
+            changed = 0
+            max_abs = 0.0
+            max_rel: float | None = None
+            zero_base_changes = 0
+            samples: list[dict[str, Any]] = []
+            for label in left.keys() & right.keys():
+                old, new = left[label], right[label]
+                if _encode(old, False) == _encode(new, False):
+                    continue
+                changed += 1
+                old_number, new_number = _number(old), _number(new)
+                if not identifier and old_number is not None and new_number is not None:
+                    delta = abs(new_number - old_number)
+                    max_abs = max(max_abs, delta)
+                    if old_number != 0:
+                        relative = delta / abs(old_number)
+                        max_rel = relative if max_rel is None else max(max_rel, relative)
+                    elif delta:
+                        zero_base_changes += 1
+                elif len(samples) < 3:
+                    samples.append({"label": label, "before": str(old)[:120], "after": str(new)[:120]})
+            record.update({
+                "changed_values": changed,
+                "rows_only_before": len(left.keys() - right.keys()),
+                "rows_only_after": len(right.keys() - left.keys()),
+            })
+            if not identifier:
+                record.update({"max_abs_delta": max_abs, "max_rel_delta": max_rel, "changes_from_zero": zero_base_changes})
+            if samples:
+                record["non_numeric_samples"] = samples
+    numeric = any(_number(value) is not None for series in (before, after) if series is not None for value in series.values)
+    record["numeric"] = numeric
+    if numeric and not identifier:
+        record["sum_before"] = sum(number for number in map(_number, before.values if before else []) if number is not None)
+        record["sum_after"] = sum(number for number in map(_number, after.values if after else []) if number is not None)
+        annual = _group_comparison(before, after, "year", full=True)
+        if annual is not None:
+            record["annual_totals"] = annual
+        period = _group_comparison(before, after, "period", full=False)
+        if period is not None:
+            record["period_totals"] = period
+        resource = next((name for name in RESOURCE_COLUMNS if any(name in groups for groups in reference.groups)), None)
+        if resource is not None:
+            totals = _group_comparison(before, after, resource, full=True)
+            if totals is not None:
+                record[f"totals_by_{resource}"] = totals
     return record
 
 
@@ -710,22 +841,33 @@ def build_numeric_report(
     child_commit: str,
     pinned: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Per-column magnitudes of every changed digest column between two run outputs."""
+    """Per-column magnitudes of every changed digest column between two run outputs.
+
+    SQLite rows are aligned on their natural key (``NATURAL_KEY_COLUMNS``)
+    when it is unique; when rows were inserted, removed or reordered and no
+    unique key exists, per-value deltas are marked ``not comparable (rows
+    shifted)`` and only totals and keyed group totals (year, period,
+    technology/asset) are reported.  Identifier and key columns are never
+    summed.
+    """
 
     before, after = column_values(before_dir), column_values(after_dir)
     after_digest = digest_run(after_dir, zones)
     pinned = pinned or {}
     columns: dict[str, Any] = {}
     by_zone: dict[str, int] = {}
+    not_comparable = 0
     for key in sorted(set(before) | set(after)):
         old, new = before.get(key), after.get(key)
-        if old is not None and new is not None and [(label, _encode(value, False)) for label, value, _ in old] == [
-            (label, _encode(value, False)) for label, value, _ in new
+        if old is not None and new is not None and [(label, _encode(value, False)) for label, value in zip(old.labels, old.values)] == [
+            (label, _encode(value, False)) for label, value in zip(new.labels, new.values)
         ]:
             continue
         zone = _stricter(pinned.get(key, zones.zone(key)), zones.zone(key))
         kind = "added" if old is None else "removed" if new is None else "changed"
-        columns[key] = {"zone": zone, "section": section_of(key), "kind": kind, **_column_change(old or [], new or [])}
+        change = _column_change(old, new)
+        not_comparable += change.get("per_value") == NOT_COMPARABLE
+        columns[key] = {"zone": zone, "section": section_of(key), "kind": kind, **change}
         by_zone[zone] = by_zone.get(zone, 0) + 1
     return {
         "schema_version": NUMERIC_REPORT_SCHEMA,
@@ -735,7 +877,8 @@ def build_numeric_report(
         "parent_commit": parent_commit,
         "child_commit": child_commit,
         "digest_sha256": digest_fingerprint(after_digest),
-        "summary": {"changed_columns": len(columns), "by_zone": dict(sorted(by_zone.items()))},
+        "summary": {"changed_columns": len(columns), "by_zone": dict(sorted(by_zone.items())),
+                    "not_comparable_columns": not_comparable},
         "columns": columns,
     }
 

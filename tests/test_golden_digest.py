@@ -206,6 +206,91 @@ class GoldenDigestTests(unittest.TestCase):
         trimmed = dict(report, columns={})
         self.assertTrue(golden.validate_golden_file(record, allowlist, {1: trimmed}.get))
 
+    def _orders_run(self, name: str, *, insert: bool, storage_bid: float) -> Path:
+        """A market log whose order ids are sequence numbers (as in the kernel)."""
+
+        root = self.root / name
+        (root / "market").mkdir(parents=True)
+        connection = sqlite3.connect(root / "market" / "market.sqlite")
+        connection.execute(
+            "CREATE TABLE orders (order_id TEXT, year INTEGER, period INTEGER, stage TEXT, asset_id TEXT, "
+            "asset_type TEXT, side TEXT, offer_price_gbp_per_mwh REAL, offered_mwh REAL)"
+        )
+        connection.execute("CREATE TABLE event_log (sequence INTEGER, note TEXT, energy_mwh REAL)")
+        assets = [("ccgt", "Thermal", 60.0), ("battery", "Storage", storage_bid), ("wind", "Renewable", 0.0)]
+        if insert:
+            assets.insert(1, ("ocgt", "Thermal", 90.0))  # a new order in the middle of every period
+        for period in range(2):
+            for index, (asset, asset_type, price) in enumerate(assets):
+                connection.execute(
+                    "INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?)",
+                    (f"2025:{period}:ahead:{index}", 2025, period, "ahead_offer", asset, asset_type, "supply", price, 10.0 + period),
+                )
+            for index, (asset, _, _) in enumerate(assets):
+                connection.execute("INSERT INTO event_log VALUES (?,?,?)", (period * 10 + index, asset, 1.0 + index))
+        connection.commit()
+        connection.close()
+        return root
+
+    def test_numeric_report_aligns_rows_on_natural_keys_when_a_row_is_inserted(self) -> None:
+        before = self._orders_run("orders-before", insert=False, storage_bid=5.0)
+        after = self._orders_run("orders-after", insert=True, storage_bid=12.0)  # +7 GBP/MWh on storage
+        report = golden.build_numeric_report(before, after, golden.ZoneRules(()), family="doctoral", case="X1",
+                                             revision=1, parent_commit="c", child_commit="d")
+        self.assertEqual(report["schema_version"], "value.golden-numeric-report/v2")
+        columns = report["columns"]
+        price = columns["market/market.sqlite::orders.offer_price_gbp_per_mwh"]
+        self.assertEqual(price["alignment"], "keyed (year, period, stage, asset_id, side)")
+        self.assertTrue(price["comparable"])
+        self.assertEqual(price["changed_values"], 2)  # the storage offer in each period, not the shifted rows
+        self.assertAlmostEqual(price["max_abs_delta"], 7.0)
+        self.assertAlmostEqual(price["max_rel_delta"], 7.0 / 5.0)
+        self.assertEqual((price["rows_only_before"], price["rows_only_after"]), (0, 2))
+        self.assertAlmostEqual(price["sum_after"] - price["sum_before"], 2 * 7.0 + 2 * 90.0)
+        self.assertEqual(price["annual_totals"], {"2025": [price["sum_before"], price["sum_after"]]})
+        self.assertEqual(price["totals_by_asset_type"]["Storage"], [10.0, 24.0])
+        self.assertEqual(price["totals_by_asset_type"]["Thermal"], [120.0, 300.0])
+        self.assertEqual(price["period_totals"]["groups"], 2)
+        self.assertEqual(price["period_totals"]["groups_changed"], 2)
+        # sequence ids shift for every row after the insertion: counted, never summed
+        order_id = columns["market/market.sqlite::orders.order_id"]
+        self.assertTrue(order_id["identifier"])
+        self.assertEqual(order_id["changed_values"], 4)  # battery and wind moved from :1/:2 to :2/:3
+        self.assertNotIn("sum_before", order_id)
+        self.assertNotIn("max_abs_delta", order_id)
+        self.assertNotIn("annual_totals", columns["market/market.sqlite::orders.period"])
+        self.assertNotIn("sum_before", columns["market/market.sqlite::orders.period"])
+        rows = columns["market/market.sqlite::orders.#rows"]
+        self.assertEqual((rows["rows_before"], rows["rows_after"]), (6, 8))
+        self.assertNotIn("sum_before", rows)
+        # a table without a natural key cannot be aligned after an insertion
+        energy = columns["market/market.sqlite::event_log.energy_mwh"]
+        self.assertEqual(energy["alignment"], "not comparable (rows shifted)")
+        self.assertEqual(energy["per_value"], "not comparable (rows shifted)")
+        self.assertFalse(energy["comparable"])
+        self.assertNotIn("max_abs_delta", energy)
+        self.assertNotIn("changed_values", energy)
+        self.assertEqual((energy["sum_before"], energy["sum_after"]), (12.0, 20.0))
+        self.assertNotIn("sum_before", columns["market/market.sqlite::event_log.sequence"])
+        self.assertGreaterEqual(report["summary"]["not_comparable_columns"], 3)
+
+    def test_numeric_report_marks_shifted_json_lists_not_comparable(self) -> None:
+        def run(name: str, rows: list) -> Path:
+            root = self.root / name
+            root.mkdir()
+            (root / "investment.json").write_text(json.dumps({"proposals": rows}), encoding="utf-8")
+            return root
+
+        before = run("json-before", [{"asset_id": "a", "capacity_mw": 10.0}, {"asset_id": "b", "capacity_mw": 20.0}])
+        after = run("json-after", [{"asset_id": "n", "capacity_mw": 5.0}, {"asset_id": "a", "capacity_mw": 10.0},
+                                   {"asset_id": "b", "capacity_mw": 20.0}])
+        report = golden.build_numeric_report(before, after, golden.ZoneRules(()), family="doctoral", case="X1",
+                                             revision=1, parent_commit="c", child_commit="d")
+        capacity = report["columns"]["investment.json::proposals.capacity_mw"]
+        self.assertEqual(capacity["per_value"], "not comparable (rows shifted)")
+        self.assertEqual((capacity["sum_before"], capacity["sum_after"]), (30.0, 35.0))
+        self.assertTrue(report["columns"]["investment.json::proposals.asset_id"]["identifier"])
+
     def test_capture_validate_reads_reports_and_refuses_orphans(self) -> None:
         import contextlib
         import importlib.util
