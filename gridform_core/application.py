@@ -2489,7 +2489,9 @@ def main() -> None:
     )
     print(json.dumps({
         "engine": result["engine"],
-        "years": len(result["system_cost_history"]),
+        # PSM-only and native paths return orchestrator_results instead of the
+        # legacy system_cost_history (P7-24); count whichever the engine wrote.
+        "years": len(result.get("system_cost_history") or result.get("orchestrator_results") or []),
         "output": str(args.output.resolve()),
     }, ensure_ascii=False))
 

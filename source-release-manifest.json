@@ -1110,6 +1110,7 @@
     "tests/run-context.test.mjs",
     "tests/run-scope.test.mjs",
     "tests/study-lifecycle-ui.test.mjs",
+    "tests/test_application_cli.py",
     "tests/test_application_service.py",
     "tests/test_archived_workspace_launcher.py",
     "tests/test_asset_economics_and_coupling.py",
@@ -6086,9 +6087,9 @@
     },
     {
       "path": "gridform_core/application.py",
-      "sha256": "263e74a363c3298fd8f3c05c55be61e7693fc947d4e0a48dde6b63777307e545",
-      "bytes": 109977,
-      "transform": "byte copy"
+      "sha256": "00a2ae7b36dfe9022b23f670e6280cd461e851ed18c5fd25001086cd84676127",
+      "bytes": 110186,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/asset_economics.py",
@@ -9192,6 +9193,12 @@
       "sha256": "129ce72b6a1de5b40d00180d7641fe865600ca0c0b8e117377cf86a8254c23dd",
       "bytes": 1790,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_application_cli.py",
+      "sha256": "839cafac2f64d7637a37491998c473f4145eb9ef915f827421d8e95eee92109e",
+      "bytes": 2704,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_application_service.py",
