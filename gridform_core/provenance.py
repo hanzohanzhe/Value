@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from backend.lifecycle.atomic_io import atomic_write_json
+
 from .v2.contracts import ResolvedRun, YearResult, YearState
 from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph
 from .v2.orchestrator import contract_hash
@@ -177,9 +179,7 @@ def _write_artifact_index(bundle_root: Path, output_dir: Path) -> Path:
         "schema_version": "value.artifact-index/v1",
         "artifacts": _artifact_index(bundle_root, output_dir),
     }
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(path, payload, indent=2, ensure_ascii=True)
     return path
 
 
@@ -284,9 +284,7 @@ def write_failed_run_provenance(
         "artifacts": _artifact_index(bundle_root, output_dir),
     }
     path = bundle_root / "provenance.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(path, record, indent=2, ensure_ascii=False)
     return path
 
 
@@ -437,7 +435,5 @@ def write_run_provenance(
     if runtime_overlay is not None:
         record["runtime_overlay"] = dict(runtime_overlay)
     path = bundle_root / "provenance.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(path, record, indent=2, ensure_ascii=False)
     return path

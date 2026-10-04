@@ -118,6 +118,7 @@
     "backend/lifecycle/__init__.py",
     "backend/lifecycle/atomic_io.py",
     "backend/lifecycle/file_locks.py",
+    "backend/lifecycle/run_status.py",
     "backend/lifecycle/states.py",
     "backend/model_runner.py",
     "backend/module_authoring.py",
@@ -1390,6 +1391,7 @@
     "tests/test_run_lifecycle.py",
     "tests/test_run_policy.py",
     "tests/test_run_reproduction.py",
+    "tests/test_run_status.py",
     "tests/test_runtime_capabilities.py",
     "tests/test_runtime_overlay_seal.py",
     "tests/test_runtime_paths_and_upgrade.py",
@@ -3378,6 +3380,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "backend/lifecycle/run_status.py",
+      "sha256": "0dcae7d1c6d298eea64c19de273626ef2c189da073a7ce9c0213b5a2ce5ba77f",
+      "bytes": 16820,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "backend/lifecycle/states.py",
       "sha256": "c0c263b13332ebd582a48cacfcc3882aac69de658b3190bc13b23891972b3887",
       "bytes": 3264,
@@ -3385,9 +3393,9 @@
     },
     {
       "path": "backend/model_runner.py",
-      "sha256": "428fd316432c7da74862c09d92f7192d18884eff610ff274a9f8ab8caf585db1",
-      "bytes": 29066,
-      "transform": "byte copy"
+      "sha256": "77e0ced2e23b5ad492f2e90043429c5124afabb02e42bc6e711957d6545d266b",
+      "bytes": 31889,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/module_authoring.py",
@@ -3403,9 +3411,9 @@
     },
     {
       "path": "backend/run_execution.py",
-      "sha256": "29d027124d17a0f843ecf824950f9a3c7b7e32ee2de4622f40b3df8033371e72",
-      "bytes": 2744,
-      "transform": "byte copy"
+      "sha256": "f3a590aa278fd08c27957af52e40c32df77c810e4f0a34d7912fa08f94827b7e",
+      "bytes": 2685,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/run_reproduction.py",
@@ -3415,8 +3423,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "8b091465ca58e6173f6ebc3ac4fd723c7951ed79a004d1f4fbdb6f1f56712a42",
-      "bytes": 156927,
+      "sha256": "7c5207c6f216209bc95008e7ae103031dacaaf88c71e6c8d19fa933bd1103dea",
+      "bytes": 160766,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6247,8 +6255,8 @@
     },
     {
       "path": "gridform_core/application.py",
-      "sha256": "336319e66e07c015a351fd21a5a8e1da63e31f1c5a23620372009b7ae0220932",
-      "bytes": 111451,
+      "sha256": "c05071593c748a3b55a58e7761c0d99ade2180d565c77497c4f07ecd471c0ff9",
+      "bytes": 111475,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7684,8 +7692,8 @@
     },
     {
       "path": "gridform_core/provenance.py",
-      "sha256": "ca93398ba5eb81b1e40e5b7870f51f49e4e7c656972a0dc315801deee425bccc",
-      "bytes": 17948,
+      "sha256": "e44d57621e63fa9a0c1fd1f4018bf7927edf92e06e9f7399e3ae2b58a91e8f57",
+      "bytes": 17719,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7732,8 +7740,8 @@
     },
     {
       "path": "gridform_core/run_lifecycle.py",
-      "sha256": "f58a696854cfdb3dd9c7ebce05f5faeef4220adcb7639cc45113deb76d01de06",
-      "bytes": 2241,
+      "sha256": "98c5d905a4c7d0c63b6ee3219e7d43465d6c105f94d594a695095a464326cd10",
+      "bytes": 1396,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10694,9 +10702,9 @@
     },
     {
       "path": "tests/test_prompt121_failure_and_recovery.py",
-      "sha256": "63d3927215dc3d4fd10016baff6cf6a253c23afa19a1075ca8762efe8bf0a17a",
-      "bytes": 65515,
-      "transform": "byte copy"
+      "sha256": "90c82cbe0c6e7aec122f340d6e30783abeaf049214217f41dc90483dbf17f53b",
+      "bytes": 65923,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt122_preflight_resource_gate.py",
@@ -10991,6 +10999,12 @@
       "sha256": "15dea4dd1ac45a7db9cfbb6a4f708af69957396285ad310ac82cbd78f3d86377",
       "bytes": 1897,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_run_status.py",
+      "sha256": "e7b50e0dae96d58ea2d4ba466583c27f52a1ee058bf1164b6e6cc057cbedd12e",
+      "bytes": 14547,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_runtime_capabilities.py",

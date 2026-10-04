@@ -44,6 +44,8 @@ from .scientific_validation import (
 from .run_policy import resolve_run_policy, validate_pack_run_mode
 from .terminal_state import write_terminal_artifacts
 from .run_lifecycle import cancellation_requested
+from backend.lifecycle.atomic_io import atomic_write_json
+from backend.lifecycle.run_status import WRITER_WORKER, update_status
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .v2.contracts import ModuleSelection, OperatingState, PSMInput, ResolvedRun, YearResult
 from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph, workspace_registry
@@ -116,13 +118,8 @@ FINAL_ZONAL_DISPATCH_CONTRACT = "network.zonal-redispatch-result/v1"
 
 def _atomic_json_artifact(path: Path, payload: Mapping[str, object]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
-        encoding="utf-8",
-    )
-    temporary.replace(path)
-    return path
+    # Unique temporary per write (F5-03): never a shared fixed ``.tmp`` name.
+    return atomic_write_json(path, payload, indent=2, ensure_ascii=False, sort_keys=True)
 
 
 def _configure_subannual_checkpoint_sink(
@@ -385,15 +382,17 @@ def _recover_explicit_subannual_checkpoint(
     consumed = claim_subannual_recovery_authorization(
         store=store, authorization=presented
     )
-    status_path = output_dir.parent / "status.json"
-    status: dict[str, object] = {}
-    if status_path.is_file():
-        loaded_status = json.loads(status_path.read_text(encoding="utf-8"))
-        if not isinstance(loaded_status, Mapping):
-            raise ValueError("Run status must contain an object")
-        status = dict(loaded_status)
-    status["subannual_recovery_authorization"] = dict(consumed)
-    _atomic_json_artifact(status_path, status)
+    run_root = output_dir.parent
+    # Field-level merge under the run's status lock (P0-3 S2, P7-08): the
+    # worker's later completion write keeps this evidence.
+    update_status(
+        run_root,
+        mutate=lambda status: status.__setitem__(
+            "subannual_recovery_authorization", dict(consumed)
+        ),
+        writer=WRITER_WORKER,
+        merge_unknown=True,
+    )
 
     database = output_dir / "market" / "market.sqlite"
     if not database.is_file():
@@ -417,8 +416,12 @@ def _recover_explicit_subannual_checkpoint(
             "cleaned_database_sha256": recovery["cleaned_database_sha256"],
         },
     }
-    status["subannual_recovery"] = evidence
-    _atomic_json_artifact(status_path, status)
+    update_status(
+        run_root,
+        mutate=lambda status: status.__setitem__("subannual_recovery", evidence),
+        writer=WRITER_WORKER,
+        merge_unknown=True,
+    )
     return evidence
 
 
@@ -536,9 +539,12 @@ def _load_authorized_incomplete_year_context(
     )
     consumed = dict(authorization)
     consumed["state"] = "consumed"
-    updated_status = dict(status)
-    updated_status["recovery_authorization"] = consumed
-    _atomic_json_artifact(status_path, updated_status)
+    update_status(
+        status_path.parent,
+        mutate=lambda current: current.__setitem__("recovery_authorization", consumed),
+        writer=WRITER_WORKER,
+        merge_unknown=True,
+    )
     return context
 
 
@@ -1473,14 +1479,12 @@ def _run_native_project(
     def write_partial(result: YearResult) -> None:
         partial_dir.mkdir(parents=True, exist_ok=True)
         destination = partial_dir / f"year-{result.year}.json"
-        temporary = destination.with_suffix(".json.tmp")
-        temporary.write_text(json.dumps({
+        atomic_write_json(destination, {
             "schema_version": "value.partial-year-result/v1",
             "identity": checkpoint_identity(resolved),
             "result_sha256": contract_hash(result),
             "result": result.to_dict(),
-        }, indent=2, ensure_ascii=False), encoding="utf-8")
-        temporary.replace(destination)
+        }, indent=2, ensure_ascii=False)
 
     recovery_consumed = False
 

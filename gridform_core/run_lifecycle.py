@@ -8,12 +8,10 @@ under its historical names.
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Mapping
 
-from backend.lifecycle.atomic_io import atomic_write_json
-from backend.lifecycle.file_locks import hold_lock
+from backend.lifecycle.run_status import update_status
 from backend.lifecycle.states import (  # noqa: F401 - public re-exports
     ACTIVE_STATES,
     LifecycleError,
@@ -24,10 +22,6 @@ from backend.lifecycle.states import (  # noqa: F401 - public re-exports
 )
 
 
-def _now() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
-
-
 def atomic_status_transition(
     status_path: Path,
     target: str,
@@ -35,24 +29,11 @@ def atomic_status_transition(
     reason_code: str,
     details: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
-    status_path = Path(status_path)
-    with hold_lock(status_path.with_name("status.lock"), timeout=10.0):
-        status = json.loads(status_path.read_text(encoding="utf-8"))
-        if not isinstance(status, dict):
-            raise LifecycleError("Run status is not a JSON object")
-        source = str(status.get("status") or "")
-        check_transition(source, target)
-        history = list(status.get("lifecycle_history") or [])
-        history.append({
-            "sequence": len(history) + 1, "from": source, "to": target,
-            "reason_code": reason_code, "at": _now(), "details": dict(details or {}),
-        })
-        status.update({
-            "status": target, "updated_at": _now(), "lifecycle_reason_code": reason_code,
-            "lifecycle_history": history,
-        })
-        atomic_write_json(status_path, status)
-    return status
+    """Historical name for one locked, merged state transition (see run_status)."""
+
+    return update_status(
+        Path(status_path).parent, transition=target, reason_code=reason_code, details=details,
+    )
 
 
 def cancellation_requested(run_root: Path) -> bool:

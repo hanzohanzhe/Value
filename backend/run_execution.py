@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from backend.lifecycle.atomic_io import atomic_write_json
 from backend.frozen_run_recovery import json_hash, read_object, verify_recovered_configuration
 from gridform_core.execution_archive import capture_execution_bundle, verify_execution_bundle
 
@@ -21,10 +22,7 @@ def bind_run_execution(project: dict, run_root: Path, record: dict) -> dict:
         "identity_sha256": record["identity_sha256"], "source_sha256": record["source_sha256"],
         "environment_sha256": record["environment_sha256"], "record_sha256": json_hash(record),
     }
-    path = run_root / "execution-bundle.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(run_root / "execution-bundle.json", record, ensure_ascii=False, indent=2)
     return value
 
 

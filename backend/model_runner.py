@@ -12,6 +12,13 @@ from datetime import datetime
 from pathlib import Path
 
 from backend.frozen_run_recovery import verify_recovered_configuration, verify_recovered_inputs
+from backend.lifecycle.atomic_io import atomic_write_json
+from backend.lifecycle.run_status import (
+    WRITER_WORKER,
+    LateWriteRejected,
+    guard_worker_write,
+    update_status,
+)
 from backend.run_execution import verify_run_execution
 from gridform_core.application import run_project_application
 from gridform_core.errors import public_failure, warning_event
@@ -52,10 +59,9 @@ def now() -> str:
 
 
 def write_json(path: Path, payload: dict) -> None:
+    """Write a worker-owned artifact (never ``status.json``; see run_status)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temp.replace(path)
+    atomic_write_json(path, payload)
 
 
 def _load_declared_run_status(
@@ -152,31 +158,35 @@ def record_run_failure(
     project_id: str,
     mode: str,
     error: BaseException,
+    error_code: str | None = None,
 ) -> dict:
+    """Record a worker failure in two phases (P0-3 S2).
+
+    Phase one refuses a late write (the run already left the active states)
+    before any diagnostic or provenance artifact is touched; phase two writes
+    the diagnostic and seals the failed provenance outside the status lock; the
+    final status change merges into the current file under its lock.
+    """
     public = public_failure(error)
-    existing: dict = {}
+    code = error_code or public.code
+    run_dir = status_path.parent
+    observed = guard_worker_write(run_dir, attempted_transition="failed", reason_code=code)
     warnings: list[dict[str, str]] = []
-    if status_path.exists():
-        try:
-            loaded = json.loads(status_path.read_text(encoding="utf-8"))
-            if not isinstance(loaded, dict):
-                raise ValueError("The previous public status is not a JSON object")
-            existing = loaded
-        except (OSError, json.JSONDecodeError):
-            warnings.append(warning_event(
-                "GF_STATUS_READ_WARNING", "artifact",
-                "The previous public status could not be read; a new failure status was created.",
-            ))
-        except ValueError:
-            warnings.append(warning_event(
-                "GF_STATUS_READ_WARNING", "artifact",
-                "The previous public status was structurally invalid; a new failure status was created.",
-            ))
-    diagnostic = status_path.parent / "diagnostics" / "error.json"
+    if observed == "invalid":
+        warnings.append(warning_event(
+            "GF_STATUS_READ_WARNING", "artifact",
+            "The previous public status could not be read; a new failure status was created.",
+        ))
+    elif observed == "not_object":
+        warnings.append(warning_event(
+            "GF_STATUS_READ_WARNING", "artifact",
+            "The previous public status was structurally invalid; a new failure status was created.",
+        ))
+    diagnostic = run_dir / "diagnostics" / "error.json"
     write_json(diagnostic, {
         "schema_version": "value.run-diagnostic/v1",
         "run_id": run_id,
-        "error_code": public.code,
+        "error_code": code,
         "category": public.category,
         "exception_type": type(error).__name__,
         "exception_message": str(error),
@@ -186,10 +196,10 @@ def record_run_failure(
     provenance = None
     try:
         provenance = write_failed_run_provenance(
-            status_path.parent,
+            run_dir,
             run_id=run_id,
             project_id=project_id,
-            error_code=public.code,
+            error_code=code,
         )
     except Exception:
         warnings.append(warning_event(
@@ -197,40 +207,46 @@ def record_run_failure(
             "The failed run could not be sealed while transient artifacts remained; "
             "the failure status and local diagnostic were retained.",
         ))
-    previous_warnings = existing.get("warnings")
-    if not isinstance(previous_warnings, list):
-        previous_warnings = []
-    existing.update({
-        "id": run_id,
-        "project_id": project_id,
-        "mode": mode,
-        "status": "failed",
-        "execution_status": "failed",
-        "current_stage": "Run failed",
-        "error": public.message,
-        "error_code": public.code,
-        "error_category": public.category,
-        "diagnostic_artifact": "diagnostics/error.json",
-        "warnings": [*previous_warnings, *warnings],
-        "updated_at": now(),
-        "finished_at": now(),
-    })
-    if provenance is not None:
-        existing["provenance_artifact"] = provenance.name
-    else:
-        existing.pop("provenance_artifact", None)
-    existing.pop("traceback", None)
-    for key in (
-        "recovery_authorization", "cancellation_boundary",
-        "current_model_year_complete", "resume_boundary", "resume_mode",
-    ):
-        existing.pop(key, None)
-    write_json(status_path, existing)
-    return existing
+
+    def apply(existing: dict) -> None:
+        previous_warnings = existing.get("warnings")
+        if not isinstance(previous_warnings, list):
+            previous_warnings = []
+        existing.update({
+            "id": run_id,
+            "project_id": project_id,
+            "mode": mode,
+            "execution_status": "failed",
+            "current_stage": "Run failed",
+            "error": public.message,
+            "error_code": code,
+            "error_category": public.category,
+            "diagnostic_artifact": "diagnostics/error.json",
+            "warnings": [*previous_warnings, *warnings],
+            "finished_at": now(),
+        })
+        if provenance is not None:
+            existing["provenance_artifact"] = provenance.name
+        else:
+            existing.pop("provenance_artifact", None)
+        existing.pop("traceback", None)
+        for key in (
+            "recovery_authorization", "cancellation_boundary",
+            "current_model_year_complete", "resume_boundary", "resume_mode",
+        ):
+            existing.pop(key, None)
+
+    return update_status(
+        run_dir, mutate=apply, transition="failed", reason_code=code,
+        writer=WRITER_WORKER, legacy_replace=True,
+    )
 
 
 def record_run_cancelled(status_path: Path, *, run_id: str, project_id: str, mode: str, message: str) -> dict:
-    existing = json.loads(status_path.read_text(encoding="utf-8")) if status_path.is_file() else {}
+    run_dir = status_path.parent
+    guard_worker_write(
+        run_dir, attempted_transition="cancelled", reason_code="GF_RUN_CANCELLED_SAFE_BOUNDARY",
+    )
     cancellation = {
         "cancellation_boundary": "before_worker_execution",
         "current_model_year_complete": None,
@@ -257,19 +273,23 @@ def record_run_cancelled(status_path: Path, *, run_id: str, project_id: str, mod
             "resume_boundary": "latest_annual_checkpoint",
             "resume_mode": "continue_next_model_year",
         }
-    existing.update({
-        "id": run_id, "project_id": project_id, "mode": mode,
-        "status": "cancelled", "execution_status": "cancelled",
-        "current_stage": "Cancelled at a model-safe boundary",
-        **cancellation,
-        "lifecycle_reason_code": "GF_RUN_CANCELLED_SAFE_BOUNDARY",
-        "cancellation_message": message, "updated_at": now(), "finished_at": now(),
-    })
-    existing.pop("recovery_authorization", None)
-    if authorization is not None:
-        existing["recovery_authorization"] = authorization
-    write_json(status_path, existing)
-    return existing
+
+    def apply(existing: dict) -> None:
+        existing.update({
+            "id": run_id, "project_id": project_id, "mode": mode,
+            "execution_status": "cancelled",
+            "current_stage": "Cancelled at a model-safe boundary",
+            **cancellation,
+            "cancellation_message": message, "finished_at": now(),
+        })
+        existing.pop("recovery_authorization", None)
+        if authorization is not None:
+            existing["recovery_authorization"] = authorization
+
+    return update_status(
+        run_dir, mutate=apply, transition="cancelled",
+        reason_code="GF_RUN_CANCELLED_SAFE_BOUNDARY", writer=WRITER_WORKER, legacy_replace=True,
+    )
 
 
 def _frontend_results(
@@ -516,21 +536,13 @@ def run(project_id: str, run_id: str, mode: str) -> None:
     write_json(run_dir / "data-pack-snapshot.json", pack_manifest)
     declared_status = _load_declared_run_status(status_path, run_id, project_id)
     presented_authorization = _present_recovery_authorization(declared_status)
-    for key in (
-        "recovery_authorization", "cancellation_boundary",
-        "current_model_year_complete", "resume_boundary", "resume_mode",
-    ):
-        declared_status.pop(key, None)
-    status = {
-        **declared_status,
+    running_fields = {
         "id": run_id,
         "execution_engine": "value-annual-orchestrator/v2",
         "project_id": project_id,
         "project_name": project["name"],
         "mode": mode,
-        "status": "running",
         "started_at": now(),
-        "updated_at": now(),
         "current_stage": (
             "Running the two-period modular PSM and CEM-chain verification"
             if mode == "smoke"
@@ -555,9 +567,22 @@ def run(project_id: str, run_id: str, mode: str) -> None:
         "input_snapshot_id": input_snapshot.get("snapshot_id"),
         "input_tree_sha256": input_snapshot.get("input_tree_sha256"),
     }
-    if presented_authorization is not None:
-        status["recovery_authorization"] = presented_authorization
-    write_json(status_path, status)
+
+    def mark_running(current: dict) -> None:
+        for key in (
+            "recovery_authorization", "cancellation_boundary",
+            "current_model_year_complete", "resume_boundary", "resume_mode",
+        ):
+            current.pop(key, None)
+        current.update(running_fields)
+        if presented_authorization is not None:
+            current["recovery_authorization"] = presented_authorization
+
+    update_status(
+        run_dir, mutate=mark_running,
+        transition=None if declared_status.get("status") == "running" else "running",
+        reason_code="GF_WORKER_STARTED", writer=WRITER_WORKER,
+    )
     exact = run_project_application(
         project,
         run_id=run_id,
@@ -571,10 +596,11 @@ def run(project_id: str, run_id: str, mode: str) -> None:
         or "validation/scientific-validation.json"
     )
     scientific_validation = json.loads(validation_path.read_text(encoding="utf-8"))
-    status["execution_status"] = scientific_validation["execution_status"]
-    status["contract_validation_status"] = scientific_validation["contract_validation_status"]
-    status["scientific_validation_status"] = scientific_validation["scientific_validation_status"]
-    status["scientific_validation_artifact"] = str(
+    final: dict = {}
+    final["execution_status"] = scientific_validation["execution_status"]
+    final["contract_validation_status"] = scientific_validation["contract_validation_status"]
+    final["scientific_validation_status"] = scientific_validation["scientific_validation_status"]
+    final["scientific_validation_artifact"] = str(
         exact.get("scientific_validation_artifact")
         or "validation/scientific-validation.json"
     )
@@ -582,8 +608,8 @@ def run(project_id: str, run_id: str, mode: str) -> None:
         # Two half-hour periods exercise wiring only. Annual capital and policy
         # terms inside VALUE make any system-cost or GBP/MWh value from this
         # run economically meaningless, so they are deliberately not published.
-        status["results"] = []
-        status["diagnostic"] = {
+        final["results"] = []
+        final["diagnostic"] = {
             "periods_per_year": periods,
             "total_periods": periods * (end_year - start_year + 1),
             "years": list(range(start_year, end_year + 1)),
@@ -598,14 +624,14 @@ def run(project_id: str, run_id: str, mode: str) -> None:
                 "are diagnostic only and must not be used as scientific results."
             ),
         }
-        status["completed_years"] = end_year - start_year + 1
+        final["completed_years"] = end_year - start_year + 1
     elif scientific_validation["annual_economics_eligible"]:
         attribution_path = run_dir / "model-output" / "network" / "vre-curtailment-attribution.json"
         try:
             attribution_payload = json.loads(attribution_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             attribution_payload = None
-        status["results"] = _frontend_results(
+        final["results"] = _frontend_results(
             exact,
             modules,
             attribution_payload if isinstance(attribution_payload, dict) else None,
@@ -613,21 +639,28 @@ def run(project_id: str, run_id: str, mode: str) -> None:
             periods_per_year=periods,
             expected_years=tuple(range(start_year, end_year + 1)),
         )
-        status["completed_years"] = len(status["results"])
+        final["completed_years"] = len(final["results"])
     else:
-        status["results"] = []
-        status["completed_years"] = end_year - start_year + 1
-        status["publication_blocked"] = {
+        final["results"] = []
+        final["completed_years"] = end_year - start_year + 1
+        final["publication_blocked"] = {
             "reason": "Required contract or analytical invariant validation failed.",
-            "scientific_validation_artifact": status["scientific_validation_artifact"],
+            "scientific_validation_artifact": final["scientific_validation_artifact"],
         }
-    status["status"] = "completed"
-    status["current_stage"] = "Run completed"
-    status["finished_at"] = now()
-    status["updated_at"] = now()
-    status["provenance_artifact"] = str(exact.get("provenance_artifact") or "provenance.json")
-    status.pop("recovery_authorization", None)
-    write_json(status_path, status)
+    final["current_stage"] = "Run completed"
+    final["finished_at"] = now()
+    final["provenance_artifact"] = str(exact.get("provenance_artifact") or "provenance.json")
+
+    def complete(current: dict) -> None:
+        # Merge only the worker's own completion fields into the latest file:
+        # application evidence (subannual_recovery*) and server fields survive.
+        current.update(final)
+        current.pop("recovery_authorization", None)
+
+    update_status(
+        run_dir, mutate=complete, transition="completed",
+        reason_code="GF_RUN_COMPLETED", writer=WRITER_WORKER,
+    )
 
 
 def main() -> None:
@@ -645,22 +678,69 @@ def main() -> None:
     )
     args = parser.parse_args()
     status_path = STATE_ROOT / "runs" / args.run / "status.json"
+    raise SystemExit(execute(args.project, args.run, args.mode, status_path=status_path))
+
+
+class WorkerTerminated(BaseException):
+    """A termination signal reached the worker (SIGTERM/SIGHUP/SIGBREAK)."""
+
+    def __init__(self, signum: int) -> None:
+        super().__init__(f"The model worker received signal {signum}")
+        self.signum = signum
+
+
+def execute(project_id: str, run_id: str, mode: str, *, status_path: Path) -> int:
+    """Run one worker and record every outcome; return the process exit code.
+
+    0 completed, cancelled or late (nothing recorded); 1 failed;
+    128+signal after a termination signal; 130 after KeyboardInterrupt.
+    """
     try:
-        run(args.project, args.run, args.mode)
+        run(project_id, run_id, mode)
+        return 0
+    except LateWriteRejected:
+        return 0
     except CancellationRequested as exc:
-        record_run_cancelled(
-            status_path, run_id=args.run, project_id=args.project, mode=args.mode,
-            message=str(exc),
-        )
+        try:
+            record_run_cancelled(
+                status_path, run_id=run_id, project_id=project_id, mode=mode,
+                message=str(exc),
+            )
+        except LateWriteRejected:
+            pass
+        return 0
+    except WorkerTerminated as exc:
+        _record_termination(status_path, project_id, run_id, mode, exc)
+        return 128 + exc.signum
+    except KeyboardInterrupt as exc:
+        _record_termination(status_path, project_id, run_id, mode, exc)
+        return 130
     except Exception as exc:
+        traceback.print_exc()
+        try:
+            record_run_failure(
+                status_path,
+                run_id=run_id,
+                project_id=project_id,
+                mode=mode,
+                error=exc,
+            )
+        except LateWriteRejected:
+            return 0
+        return 1
+
+
+def _record_termination(
+    status_path: Path, project_id: str, run_id: str, mode: str, error: BaseException
+) -> None:
+    try:
         record_run_failure(
-            status_path,
-            run_id=args.run,
-            project_id=args.project,
-            mode=args.mode,
-            error=exc,
+            status_path, run_id=run_id, project_id=project_id, mode=mode,
+            error=RuntimeError(str(error) or "The model worker was interrupted"),
+            error_code="GF_WORKER_TERMINATED",
         )
-        raise
+    except LateWriteRejected:
+        pass
 
 
 if __name__ == "__main__":

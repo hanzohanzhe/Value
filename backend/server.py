@@ -162,6 +162,15 @@ from gridform_core.domain_results import (
     query_network_summary,
 )
 from gridform_core.run_lifecycle import LifecycleError, atomic_status_transition
+from backend.lifecycle.atomic_io import atomic_write_json
+from backend.lifecycle.file_locks import LockTimeout
+from backend.lifecycle.run_status import (
+    WRITER_SERVER,
+    LeaseHeldError,
+    create_status,
+    update_status,
+)
+from backend.lifecycle.states import ACTIVE_STATES
 from gridform_core.run_lineage import copperplate_rerun_project
 from gridform_core.run_quota import (
     RunQuotaPolicy,
@@ -196,6 +205,20 @@ STUDY_LIFECYCLE_LOCK = threading.RLock()
 # label; both labels denote the v2 annual application service (R2-08).
 ORCHESTRATOR_ENGINES = LEGACY_ORCHESTRATOR_ENGINES
 REPLAY_EXPORT_JOBS_LOCK = threading.RLock()
+# Global lock order (P0_CONVENTIONS section 5): .backend.lock ->
+# STUDY_LIFECYCLE_LOCK -> RUN_ACTION_LOCKS[run_id] -> MODULE_LIFECYCLE_LOCK ->
+# <runs>/.reservation.lock -> <run>/status.lock.  Every server-side status
+# change of one run is serialised under its RUN_ACTION_LOCKS entry.
+RUN_ACTION_LOCKS: dict[str, threading.RLock] = {}
+_RUN_ACTION_LOCKS_GUARD = threading.Lock()
+
+
+def run_action_lock(run_id: str) -> threading.RLock:
+    with _RUN_ACTION_LOCKS_GUARD:
+        lock = RUN_ACTION_LOCKS.get(run_id)
+        if lock is None:
+            lock = RUN_ACTION_LOCKS[run_id] = threading.RLock()
+        return lock
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_SPACE_BYTES = 1024 * 1024 * 1024
 ALLOWED_ORIGINS = {
@@ -278,10 +301,35 @@ def bounded_run_id(project_id: str, *, timestamp: str, nonce: str) -> str:
 
 
 def atomic_json(path: Path, payload: Any) -> None:
+    """Write a server-owned artifact (never a run's status.json; see run_status)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temp.replace(path)
+    atomic_write_json(path, payload)
+
+
+def _record_start_failure(run_dir: Path, fields: Mapping[str, Any], reason_code: str) -> dict[str, Any]:
+    """Move a run that never reached its worker from snapshotting to failed."""
+
+    return update_status(
+        run_dir,
+        mutate=lambda status: status.update({**fields, "execution_status": "failed"}),
+        transition="failed",
+        reason_code=reason_code,
+        writer=WRITER_SERVER,
+    )
+
+def _mark_unfinished_start_failed(run_dir: Path) -> None:
+    """After an unexpected error, never leave a start in snapshotting/queued."""
+
+    try:
+        status = read_json(run_dir / "status.json", {})
+        if isinstance(status, Mapping) and status.get("status") in {"snapshotting", "queued"}:
+            _record_start_failure(run_dir, {
+                "current_stage": "Run start failed",
+                "error_code": "GF_RUN_START_FAILED",
+            }, "GF_RUN_START_FAILED")
+    except (LifecycleError, OSError) as exc:  # the original error is re-raised
+        print(f"VALUE: could not record the failed start of {run_dir.name}: {exc}", file=sys.stderr)
+
 
 
 def read_json(path: Path, fallback: Any = None) -> Any:
@@ -903,6 +951,14 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
         if "initial_pipeline" not in result and "pipeline_next_year" in result:
             result["initial_pipeline"] = result["pipeline_next_year"]
     run_root = RUNS_ROOT / str(run.get("id") or "")
+    cancel_request = read_json(run_root / "cancel-request.json") if run.get("id") else None
+    if isinstance(cancel_request, Mapping) and cancel_request.get("schema_version") == "value.cancel-request/v1":
+        run["cancel_requested_at"] = cancel_request.get("requested_at")
+        if run.get("status") in {"queued", "snapshotting", "running"}:
+            # Cancellation is a request file read by the worker (P0-3 S2);
+            # the persisted status stays with the worker until it stops.
+            run["persisted_status"] = run.get("status")
+            run["status"] = "cancel_requested"
     selected_modules = (run.get("modules") or {}).values()
     run["recovery"] = {
         **recovery_capability(selected_modules),
@@ -2149,7 +2205,48 @@ class Handler(BaseHTTPRequestHandler):
         if not preflight["accepted"]:
             first = preflight["errors"][0]
             self._json({"error": first["message"], "preflight": preflight}, 400); return
-        run_dir = RUNS_ROOT / run_id; run_dir.mkdir(parents=True, exist_ok=True)
+        run_dir = RUNS_ROOT / run_id
+        run_dir.mkdir(parents=True, exist_ok=False)
+        # The run is visible from the moment its directory exists (R1-13): a
+        # start that fails later leaves a failed status, never an orphan.
+        create_status(run_dir, {
+            "id": run_id, "project_id": project_id,
+            "project_name": project.get("name"), "mode": mode,
+            "status": "snapshotting", "execution_status": "queued",
+            "execution_engine": "value-annual-orchestrator/v2",
+            "current_stage": "Freezing immutable run inputs",
+            "created_at": now(), "results": [],
+            "extensions": teaching_run_extensions,
+        })
+        with run_action_lock(run_id):
+            try:
+                self._freeze_and_queue_run(
+                    run_id=run_id, run_dir=run_dir, project=project, project_id=project_id,
+                    mode=mode, policy=policy, run_start=run_start, run_end=run_end,
+                    preflight=preflight, pack_root=pack_root, pack_selection=pack_selection,
+                    teaching_run_extensions=teaching_run_extensions, lineage=lineage,
+                )
+            except BaseException:
+                _mark_unfinished_start_failed(run_dir)
+                raise
+
+    def _freeze_and_queue_run(
+        self,
+        *,
+        run_id: str,
+        run_dir: Path,
+        project: dict[str, Any],
+        project_id: str,
+        mode: str,
+        policy: Any,
+        run_start: int,
+        run_end: int,
+        preflight: dict[str, Any],
+        pack_root: Path,
+        pack_selection: Any,
+        teaching_run_extensions: dict[str, object],
+        lineage: dict[str, object] | None,
+    ) -> None:
         selected = dict(project.get("modules") or {})
         selected.setdefault("transition", "value-annual-state-transition")
         psm_manifest = MODULE_REGISTRY.manifest(str(selected["psm"]), expected_slot="psm")
@@ -2228,19 +2325,12 @@ class Handler(BaseHTTPRequestHandler):
                     "resource_readiness": readiness,
                 }
                 if not snapshot_decision["accepted"]:
-                    failed = {
-                        "id": run_id, "project_id": project_id,
-                        "project_name": project.get("name"), "mode": mode,
-                        "status": "failed", "execution_status": "failed",
-                        "execution_engine": "value-annual-orchestrator/v2",
+                    atomic_json(run_dir / "preflight.json", preflight)
+                    failed = _record_start_failure(run_dir, {
                         "current_stage": "Snapshot resource gate refused",
                         "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
-                        "quota": snapshot_decision, "created_at": now(),
-                        "updated_at": now(), "results": [],
-                        "extensions": teaching_run_extensions,
-                    }
-                    atomic_json(run_dir / "preflight.json", preflight)
-                    atomic_json(run_dir / "status.json", failed)
+                        "quota": snapshot_decision,
+                    }, "VALUE_PREFLIGHT_DISK_SPACE")
                     self._json({
                         "error": "Snapshot-normalized output does not fit quota",
                         "run": failed,
@@ -2251,34 +2341,22 @@ class Handler(BaseHTTPRequestHandler):
             )
             reservation = reserve_run_space(RUNS_ROOT, run_id, estimate)
             if not reservation["accepted"]:
-                failed = {
-                    "id": run_id, "project_id": project_id,
-                    "project_name": project.get("name"), "mode": mode,
-                    "status": "failed", "execution_status": "failed",
-                    "execution_engine": "value-annual-orchestrator/v2",
+                failed = _record_start_failure(run_dir, {
                     "current_stage": "Disk reservation refused",
                     "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
-                    "quota": reservation, "created_at": now(),
-                    "updated_at": now(), "results": [],
-                    "extensions": teaching_run_extensions,
-                }
-                atomic_json(run_dir / "status.json", failed)
+                    "quota": reservation,
+                }, "VALUE_PREFLIGHT_DISK_SPACE")
                 self._json({
                     "error": "Run disk quota or free-space floor was not satisfied",
                     "run": failed,
                 }, 507)
                 return
             atomic_json(run_dir / "preflight.json", preflight)
-            atomic_json(run_dir / "status.json", {
-                "id": run_id, "project_id": project_id,
-                "project_name": project.get("name"), "mode": mode,
-                "status": "snapshotting", "execution_status": "queued",
-                "execution_engine": "value-annual-orchestrator/v2",
-                "current_stage": "Freezing immutable run inputs",
-                "created_at": now(), "updated_at": now(),
-                "quota": reservation, "results": [],
-                "extensions": teaching_run_extensions,
-            })
+            update_status(
+                run_dir,
+                mutate=lambda status: status.update({"quota": reservation}),
+                writer=WRITER_SERVER,
+            )
             if isinstance(readiness, Mapping):
                 frozen_readiness = {
                     **dict(readiness),
@@ -2290,30 +2368,24 @@ class Handler(BaseHTTPRequestHandler):
                 snapshot = read_json(
                     run_dir / "input-snapshot" / "snapshot.json", {}
                 )
+        except LockTimeout:
+            _record_start_failure(run_dir, {
+                "current_stage": "Disk reservation lock busy",
+                "error_code": "GF_RUN_RESERVATION_LOCK_TIMEOUT",
+            }, "GF_RUN_RESERVATION_LOCK_TIMEOUT")
+            raise
         except (OSError, ValueError, SnapshotError, ResourceSnapshotMismatch) as exc:
-            failed = {
-                "id": run_id,
-                "project_id": project_id,
-                "project_name": project.get("name"),
-                "mode": mode,
-                "status": "failed",
-                "execution_status": "failed",
-                "execution_engine": "value-annual-orchestrator/v2",
+            failed = _record_start_failure(run_dir, {
                 "current_stage": "Input snapshot failed",
                 "error_code": "GF_INPUT_SNAPSHOT_FAILED",
                 "error": str(exc),
-                "created_at": now(),
-                "updated_at": now(),
-                "results": [],
-                "extensions": teaching_run_extensions,
-            }
-            atomic_json(run_dir / "status.json", failed)
+            }, "GF_INPUT_SNAPSHOT_FAILED")
             self._json({"error": str(exc), "run": failed}, 409)
             return
         initial = {"id": run_id, "project_id": project_id, "project_name": project["name"],
-                   "mode": mode, "status": "queued", "current_stage": "Waiting for the model process to start",
+                   "mode": mode, "current_stage": "Waiting for the model process to start",
                    "execution_engine": "value-annual-orchestrator/v2",
-                   "created_at": now(), "updated_at": now(), "completed_years": 0,
+                   "completed_years": 0,
                    "total_years": run_end - run_start + 1,
                    "run_policy": policy.to_dict(project),
                    "execution_status": "queued",
@@ -2332,7 +2404,13 @@ class Handler(BaseHTTPRequestHandler):
             initial["comparison_parent_run_id"] = lineage["comparison_parent_run_id"]
             initial["run_lineage_artifact"] = "run-lineage.json"
             atomic_json(run_dir / "run-lineage.json", lineage)
-        atomic_json(run_dir / "status.json", initial)
+        initial = update_status(
+            run_dir,
+            mutate=lambda status: status.update(initial),
+            transition="queued",
+            reason_code="GF_RUN_QUEUED",
+            writer=WRITER_SERVER,
+        )
         with (run_dir / "model.log").open("w", encoding="utf-8") as log:
             process = subprocess.Popen(
                 [sys.executable, "-B", "-X", f"pycache_prefix={run_dir / 'unused-bytecode-cache'}", "-m", "backend.model_runner", "--project", project_id,
@@ -2381,7 +2459,7 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def _resume_run(self, run_id: str) -> None:
-        with STUDY_LIFECYCLE_LOCK:
+        with STUDY_LIFECYCLE_LOCK, run_action_lock(run_id):
             self._resume_run_locked(run_id)
 
     def _resume_run_locked(self, run_id: str) -> None:
@@ -2461,17 +2539,21 @@ class Handler(BaseHTTPRequestHandler):
             history.mkdir(exist_ok=True)
             destination = history / f"cancel-request-resume-{int(status.get('resume_attempt') or 0) + 1}.json"
             shutil.move(str(cancel_request), str(destination))
-        status.update({
-            "status": "queued",
+        resumed_fields = {
             "execution_status": "queued",
             "current_stage": "Waiting to resume from the last verified annual checkpoint",
-            "updated_at": now(),
             "resume_attempt": int(status.get("resume_attempt") or 0) + 1,
             "input_snapshot_id": snapshot.get("snapshot_id"),
             "resumed_from_status": status.get("status"),
             "parent_run_id": run_id,
-        })
-        atomic_json(root / "status.json", status)
+        }
+        status = update_status(
+            root,
+            mutate=lambda current: current.update(resumed_fields),
+            transition="queued",
+            reason_code="GF_RUN_RESUME_QUEUED",
+            writer=WRITER_SERVER,
+        )
         with (root / "model.log").open("a", encoding="utf-8") as log:
             process = subprocess.Popen(
                 [sys.executable, "-B", "-X", f"pycache_prefix={root / 'unused-bytecode-cache'}", "-m", "backend.model_runner", "--project", str(project["id"]),
@@ -2486,6 +2568,10 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"ok": True, "run": status}, 202)
 
     def _run_lifecycle_action(self, run_id: str, action: str, body: dict[str, Any]) -> None:
+        with run_action_lock(run_id):
+            self._run_lifecycle_action_locked(run_id, action, body)
+
+    def _run_lifecycle_action_locked(self, run_id: str, action: str, body: dict[str, Any]) -> None:
         root = _run_root(run_id)
         if root is None:
             self._json({"error": "run not found"}, 404); return
@@ -2493,15 +2579,19 @@ class Handler(BaseHTTPRequestHandler):
         status = read_json(status_path, {})
         try:
             if action == "cancel":
-                if status.get("status") not in {"queued", "running"}:
+                if status.get("status") not in ACTIVE_STATES:
                     self._json({"error": "Only queued or running runs can be cancelled"}, 409); return
-                atomic_json(root / "cancel-request.json", {
-                    "schema_version": "value.cancel-request/v1", "run_id": run_id,
-                    "requested_at": now(),
-                    "guaranteed_boundary": "native: after annual checkpoint; VALUE compatibility: after copied-kernel return",
-                })
-                updated = atomic_status_transition(status_path, "cancel_requested", reason_code="GF_CANCEL_REQUESTED")
-                self._json({"ok": True, "run": present_run(updated)}, 202); return
+                request = root / "cancel-request.json"
+                # The worker owns status.json while it runs: cancellation is
+                # only this request file, written once (a repeated cancel
+                # leaves it byte-identical and answers 202 again).
+                if not request.is_file():
+                    atomic_json(request, {
+                        "schema_version": "value.cancel-request/v1", "run_id": run_id,
+                        "requested_at": now(),
+                        "guaranteed_boundary": "native: after annual checkpoint; VALUE compatibility: after copied-kernel return",
+                    })
+                self._json({"ok": True, "run": present_run(read_json(status_path, {}))}, 202); return
             if action == "export":
                 profile = str(body.get("profile") or "compact_results")
                 destination = root / "exports" / f"{run_id}-{profile}.zip"
@@ -2520,9 +2610,12 @@ class Handler(BaseHTTPRequestHandler):
                 if not validate_bundle_archive(destination)["valid"]:
                     self._json({"error": "Archive verification failed"}, 500); return
                 original = str(status["status"])
-                status["archived_from_status"] = original
-                atomic_json(status_path, status)
-                updated = atomic_status_transition(status_path, "archived", reason_code="GF_RUN_ARCHIVED", details={"archive": destination.name})
+                updated = update_status(
+                    root,
+                    mutate=lambda current: current.__setitem__("archived_from_status", original),
+                    transition="archived", reason_code="GF_RUN_ARCHIVED",
+                    details={"archive": destination.name}, writer=WRITER_SERVER,
+                )
                 self._json({"ok": True, "run": updated, "archive": manifest}); return
             if action == "restore":
                 if status.get("status") != "archived":
@@ -2532,7 +2625,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not validation["valid"]:
                     self._json({"error": "Archive is missing or invalid"}, 409); return
                 target = str(status.get("archived_from_status") or "completed")
-                updated = atomic_status_transition(status_path, target, reason_code="GF_RUN_ARCHIVE_RESTORED")
+                updated = update_status(
+                    root, transition=target, reason_code="GF_RUN_ARCHIVE_RESTORED",
+                    writer=WRITER_SERVER,
+                )
                 self._json({"ok": True, "run": updated}); return
             if action == "delete":
                 if str(body.get("confirm_run_id") or "") != run_id:
@@ -2548,6 +2644,8 @@ class Handler(BaseHTTPRequestHandler):
                 shutil.move(str(root), str(target))
                 self._json({"ok": True, "run_id": run_id, "moved_to": str(target), "bytes": size, "recoverable": True}); return
             self._json({"error": "unknown lifecycle action"}, 404)
+        except LockTimeout:
+            raise
         except (LifecycleError, OSError, ValueError) as exc:
             self._json({"error": str(exc)}, 409)
 
@@ -3089,6 +3187,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "not found"}, 404)
         except (DataMappingError, DataPackCloneError) as exc:
             self._json({"error": str(exc), "error_code": exc.code}, exc.status)
+        except LockTimeout as exc:
+            self._json({"error": str(exc), "error_code": "GF_LOCK_TIMEOUT"}, 503)
         except (ValueError, json.JSONDecodeError) as exc:
             self._json({"error": str(exc)}, 400)
         except Exception as exc:  # pragma: no cover
