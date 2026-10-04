@@ -102,6 +102,8 @@ class Handler(BaseHTTPRequestHandler):
 
 `end_headers` 的覆盖（安全头）由 P0-1 放在同一个类里。新路由一律在 `_route_*` 中分派，不得自己 try/except 后写 500。
 
+**P0-3 S7 实现说明（163a9f9）**：映射表实现为模块级函数 `backend.server.map_request_exception(exc) -> (status, body, headers)`，P0-1/P0-2 的条目按表中顺序插入该函数（`UnsupportedMediaType` 在 `QueryParameterError` 之后，带 code 的 `ContractError`/`ModuleQuarantinedError` 在 `LockTimeout` 之前）。另加一条：`UnicodeError`（`ValueError` 子类）映射为 500，因为它表示存储的记录损坏，不是请求错误。`QueryParameterError` 定义在 `backend.server`。`send_response` 被覆盖以设置 `response_started`。
+
 ## 5 全局锁顺序（C6；P0-2、P0-3 实现，附断言测试）
 
 获取顺序（只能从左往右拿，释放顺序相反）：
@@ -133,6 +135,7 @@ with start_local_api(data_home=tmp) as (httpd, origin, token):
 
 - 端口一律 bind 0；不得使用 8766/8800（棘轮的网络守卫强制执行，见第 2 节）；`VALUE_DATA_HOME` 必须是测试自己的临时目录，不触碰默认用户目录。
 - 新写的 HTTP 测试不得直接 `ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)`；`p0_gate quick` 的 `http_harness` 步骤对自分支点以来新增的测试文件做静态检查。
+- **P0-3 S7 已提交最小实现**（`tests/local_api_harness.py`）：patch `backend.server` 的全部 state 根目录与 `SUPERVISOR`，构造 data workbench，bind 0，安装只补 `Origin` 头（以及传入的 `token`）的 opener，返回 `(httpd, origin, token)`；P0-1 S2 在此文件上加入会话令牌，不另起一套。
 
 ## 7 status.json 写入 API（C5；P0-3 S1–S2 实现）
 
@@ -146,6 +149,7 @@ record_run_cancelled(...)  # 签名保持不变
 - `update_status` 在 `status.lock` 内读—改—原子写（tmp + replace），`mutate` 原地修改字典；不得整体覆盖 status.json。
 - 写入方（`model_runner.py`、`application.py`、`server.py`）全部迁到这两个函数；其他包新增的字段（P0-4 验证、P0-2 降级原因、P0-9 证据、X0 口径、P0-6 stress 汇总）通过 `mutate` 或 final patch 透传。
 - GET 请求只读，不写 status。
+- **P0-3 S1–S2 实现说明**（`backend/lifecycle/run_status.py`）：`update_status(run_dir, *, mutate=None, transition=None, reason_code=None, details=None, writer=None, legacy_replace=False, merge_unknown=False, repair=False)`。状态迁移只经 `transition`（必须带 `reason_code`，追加连续 `lifecycle_history`）；`mutate` 改 `status`/`lifecycle_history` 一律抛 `LifecycleError`。`writer="worker"` 在 Run 已非活动态时只写根目录 `late-worker-*.json` 并抛 `LateWriteRejected`；`writer="server"` 在活动态且 `worker.lock` 被持有时抛 `LeaseHeldError`。遗留态 `unknown` 只能由 `record_*`（`legacy_replace=True`）替换；application 的恢复证据用 `merge_unknown=True`。取消只写 `cancel-request.json`，呈现层显示 `cancel_requested`（`persisted_status` 保留磁盘状态）。
 
 ## 8 worker 解释器参数（C4/C31；P0-3 S9 实现）
 
@@ -162,6 +166,7 @@ def worker_python_argv(python: str, prefix: Path) -> list[str]:
 - P0-3 的 `_spawn_worker`、P0-2 的子进程探针、`desktop_value.py` / `local_value.py` 启动器都从这里取参数；P0-1 的 `--api-origin` 追加在 helper 输出末尾。
 - `clean_environment` 设置 `PYTHONPYCACHEPREFIX`；会话令牌不进入 worker 环境变量。
 - 不使用 `-I`（linux-local 依赖 PYTHONPATH）。
+- **P0-3 实现说明**：`worker_python_argv(python, prefix, *, match_parent_user_site=False)`。`no_user_site` 属于执行身份（`execution_archive.SEMANTIC_FLAGS`），worker 必须与后端一致，因此 `_spawn_worker`（`run_supervisor.spawn_worker`）传 `match_parent_user_site=True`：后端本身没有 `-s` 时 worker 也不加（受管启动器总是带 `-s` 启动后端）。模块入口为 `-m backend.worker_entry`（`backend/worker_entry.py` 是 `backend/lifecycle/worker_entry.py` 的薄壳）。desktop/linux-local 启动器在 app/ 可导入之前运行，各自内置同契约的 `isolated_python_argv`，由 `tests/test_desktop_bytecode_policy.py` 断言三者一致。
 
 ## 9 版本台账
 
