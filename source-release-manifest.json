@@ -8991,8 +8991,8 @@
     },
     {
       "path": "scripts/value_test_netguard.py",
-      "sha256": "3a27fe38d867cc9d0dd75fa5e4c0566e60a58b7a7cf7bcbec1c5d7be361467fe",
-      "bytes": 6915,
+      "sha256": "0f9a14cdec7704138f01bcd65da72aee2051859d456e7ba06d43bc4e892981d3",
+      "bytes": 6950,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9501,8 +9501,8 @@
     },
     {
       "path": "tests/test_backend_test_runner.py",
-      "sha256": "d2caca571009b5346f8cbd4a8748f8c167888697896cb00b3f0950c6cd257527",
-      "bytes": 18556,
+      "sha256": "0439a29096a3b8398d7fdc2956e2757377f072e027c4062e8f69ef85022e88b7",
+      "bytes": 19538,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9849,8 +9849,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "a52a02c679dbeafbb976f36660ceb85f41b87b9085f698d7b01bfd2e2d88a4cf",
-      "bytes": 38152,
+      "sha256": "cad441241fd3d0741fc95dc938263aa2fee91924270a27790c7da1cf243b028d",
+      "bytes": 38591,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -290,8 +290,21 @@ LIVE_PORT_MODULE = """
             self.assertIn("value_test_netguard", str(raised.exception))
 
         def test_child_process_and_bind(self):
-            code = "import socket, sys; sys.exit(socket.socket().connect_ex(('localhost', 8800)))"
+            # Sentinel first, in this process and in the child: if the guard
+            # were not loaded the sentinel connect succeeds and nothing goes
+            # near the live ports (unittest runs this method first).
+            sentinel = int(os.environ["TOY_SENTINEL_PORT"])
+            with self.assertRaises(ConnectionRefusedError):
+                socket.create_connection(("127.0.0.1", sentinel), timeout=2)
+            code = (
+                "import errno, os, socket, sys\\n"
+                "probe = socket.socket()\\n"
+                "if probe.connect_ex(('127.0.0.1', int(os.environ['TOY_SENTINEL_PORT']))) != errno.ECONNREFUSED:\\n"
+                "    sys.exit(97)  # guard not active in the child: never try the live port\\n"
+                "sys.exit(socket.socket().connect_ex(('localhost', 8800)))\\n"
+            )
             child = subprocess.run([sys.executable, "-B", "-c", code])
+            self.assertNotEqual(child.returncode, 97, "network guard not loaded in the child process")
             self.assertNotEqual(child.returncode, 0)
             with socket.socket() as listener:
                 with self.assertRaises(OSError):
@@ -339,6 +352,8 @@ class NetworkGuardTests(unittest.TestCase):
             {
                 ("test_reach_live_api", "connect", port),
                 ("test_reach_live_api", "connect", 8766),
+                ("test_child_process_and_bind", "connect", port),
+                ("test_child_process_and_bind", "connect_ex", port),
                 ("test_child_process_and_bind", "connect_ex", 8800),
                 ("test_child_process_and_bind", "bind", 8766),
             },

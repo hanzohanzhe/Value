@@ -381,7 +381,15 @@ class GoldenDigestTests(unittest.TestCase):
         self.assertEqual(set(allowlist["findings"]), {"P6-24", "P6-02", "P6-03", "P6-04", "P4-01-thermal"})
         for finding, decision in (("P6-24", "A3"), ("P6-02", "A5"), ("P6-03", "A5"), ("P6-04", "A5"), ("P4-01-thermal", "A4")):
             self.assertIn(decision, allowlist["findings"][finding])
-        decisions = (ROOT / "docs" / "dev" / "P0_DECISIONS.md").read_text(encoding="utf-8")
+
+    def test_cited_decisions_exist_in_the_construction_record(self) -> None:
+        # docs/dev/ is excluded from the public source release
+        # (tests/baselines/release-exclusions.txt); the cross-check runs only
+        # in a construction checkout.
+        decisions_path = ROOT / "docs" / "dev" / "P0_DECISIONS.md"
+        if not decisions_path.is_file():
+            self.skipTest("docs/dev/P0_DECISIONS.md is not part of this tree (public source release)")
+        decisions = decisions_path.read_text(encoding="utf-8")
         for decision in ("| Q9 |", "| A3 |", "| A4 |", "| A5 |"):
             self.assertIn(decision, decisions)
 
