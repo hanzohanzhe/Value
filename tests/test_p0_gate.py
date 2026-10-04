@@ -171,6 +171,18 @@ class P0GateTests(unittest.TestCase):
         self.assertEqual(runner.call_args.kwargs["environment"]["VALUE_E2E_UI_ONLY"], "1")
         self.assertIn("e2e_offline", [step.name for step in GATE.FULL_STEPS])
 
+    def test_quick_node_tests_include_the_browserless_frontend_groups(self) -> None:
+        self.assertEqual(GATE.NODE_TEST_GROUP_DIRECTORIES, ("tests/frontend/unit", "tests/frontend/render"))
+        with mock.patch.object(GATE, "node_executable", return_value="node-for-test"), \
+                mock.patch.object(GATE, "run", return_value=SimpleNamespace(returncode=0, stdout="# pass 3\n# fail 0\n", stderr="")) as runner:
+            outcome = GATE.step_node_tests(_gate())
+        files = outcome["detail"]["files"]
+        self.assertTrue(any(name.startswith("tests/frontend/unit/") for name in files))
+        self.assertTrue(any(name.startswith("tests/frontend/render/") for name in files))
+        self.assertFalse(any(name.startswith("tests/frontend/") and "/" not in name[len("tests/frontend/"):] for name in files),
+                         "browser-backed harnesses are not part of the quick tier")
+        self.assertIn("--test", runner.call_args.args[0])
+
     def test_every_tier_extends_the_previous_one(self) -> None:
         quick = [step.name for step in GATE.QUICK_STEPS]
         full = [step.name for step in GATE.FULL_STEPS]

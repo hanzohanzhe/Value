@@ -89,6 +89,7 @@ MANDATORY_STEPS = (
 )
 SKIPPED_BY_FLAG = "skipped by --skip"
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
+NODE_TEST_GROUP_DIRECTORIES = ("tests/frontend/unit", "tests/frontend/render")
 OFFLINE_E2E_COMMAND = "node e2e/run-tests.mjs --offline"  # P0-9 S0: UI-only subset plus ratchet in e2e/offline-subset.json
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
@@ -432,6 +433,10 @@ def step_node_tests(gate: Gate) -> dict[str, Any]:
     if node is None:
         return _status(False, "node executable not found (set VALUE_NODE)")
     files = sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / "tests").glob("*.test.mjs") if path.name not in NODE_TEST_EXCLUDE)
+    # Pure view logic and offline SSR tests (P0-9 S0) need no browser; the
+    # browser-backed tests/frontend/*.test.mjs harnesses are not part of quick.
+    for group in NODE_TEST_GROUP_DIRECTORIES:
+        files += sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / group).glob("*.test.mjs"))
     completed = run([node, "--test", *files], timeout=900)
     counts = dict(re.findall(r"^# (pass|fail) (\d+)", completed.stdout, flags=re.MULTILINE))
     return _status(completed.returncode == 0, {"files": files, "counts": counts, "tail": "" if completed.returncode == 0 else _tail(completed.stdout)})

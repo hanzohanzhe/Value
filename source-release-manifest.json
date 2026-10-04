@@ -1047,6 +1047,7 @@
     "scripts/render_prompt52_final_report.py",
     "scripts/replay_route_scan.py",
     "scripts/reseal_external_launcher_logs.py",
+    "scripts/run-ui-tests.mjs",
     "scripts/run_backend_tests.py",
     "scripts/run_dependency_audit.py",
     "scripts/run_profiled_workload.py",
@@ -1119,7 +1120,11 @@
     "tests/frontend/csv-mapping-editor.test.mjs",
     "tests/frontend/frozen-input-recovery.test.mjs",
     "tests/frontend/helpers/chromium.mjs",
+    "tests/frontend/helpers/render-tsx.mjs",
+    "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
+    "tests/frontend/unit/ts-import-convention.test.mjs",
+    "tests/frontend/unit/ui-test-groups.test.mjs",
     "tests/golden/cases.json",
     "tests/golden/corrected/C1.json",
     "tests/golden/corrected/C2.json",
@@ -7953,8 +7958,8 @@
     },
     {
       "path": "package.json",
-      "sha256": "9d95d5fc2eee6a3e7c6a1acc6424abf78ad79733f0e969cc5bdd7cc0967b160d",
-      "bytes": 2252,
+      "sha256": "a02f61a07dae96cefe323095d8928a6bfb7c4a22f77db08c7fbf8334e2d89a6d",
+      "bytes": 2519,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8773,8 +8778,8 @@
     },
     {
       "path": "scripts/p0_gate.py",
-      "sha256": "8f9b6baf64f9544b181776033552c114f07b9b3402959a2a25c24c19386c903a",
-      "bytes": 43314,
+      "sha256": "ae381c25a443d49369b1fa6ad396fd1eaf4efb65b68c8a19444e4a32399087a0",
+      "bytes": 43699,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8872,6 +8877,12 @@
       "sha256": "7aad9038f83383861574ec3d65d4699b10d5e3ba2a38fbb3111734f4ac9be880",
       "bytes": 4766,
       "transform": "byte copy"
+    },
+    {
+      "path": "scripts/run-ui-tests.mjs",
+      "sha256": "2569ee395e0ff94d9e262fbdc7fc08ea8345938178535163a111b7a27f30ad95",
+      "bytes": 2444,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/run_backend_tests.py",
@@ -9300,9 +9311,33 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/helpers/render-tsx.mjs",
+      "sha256": "135e1e4bfa09a82d798b6f48453a77df82510eeff4087bb7347a5c2eb08216a6",
+      "bytes": 3363,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/render/render-harness.test.mjs",
+      "sha256": "e20d5da77f6261348f7c2eadec4884363fc9122a1703987f37d58beaa5671b3a",
+      "bytes": 1124,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/unit/offline-ratchet.test.mjs",
       "sha256": "f995c8dc1220f164fbc729a874b5c5fbdb686f799b1b1bde40bcda66a68dc049",
       "bytes": 5812,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/ts-import-convention.test.mjs",
+      "sha256": "afbcce26e15d3469374e88dc47dc0f1251c97f3c70393ab92c7a02fa19713bbf",
+      "bytes": 1120,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/ui-test-groups.test.mjs",
+      "sha256": "4017dd5bf08754c0d2b274ac5eaf63def4f818b92a4e636784321d8cbbef6288",
+      "bytes": 1868,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10045,8 +10080,8 @@
     },
     {
       "path": "tests/test_p0_gate.py",
-      "sha256": "e980a0de04b679e2957f31baa1046db2fdfbd43caf5bb9b88fca564ce46a01ed",
-      "bytes": 30135,
+      "sha256": "bb35623d15524e6972f36a591f7971d8d4bbd8e62b7f194d2e84c8d5514db0e4",
+      "bytes": 31107,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10729,9 +10764,9 @@
     },
     {
       "path": "tsconfig.json",
-      "sha256": "fbff01604d6cb54694be707f26e7a0eb21a6ef796b888c6a1dab1839fa7c6ccc",
-      "bytes": 700,
-      "transform": "byte copy"
+      "sha256": "47ed2de8bea6969b9842a540aa314dad866d6420508d69aeec5c21fc131358ae",
+      "bytes": 741,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "uninstall-value.cmd",
