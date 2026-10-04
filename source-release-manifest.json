@@ -115,6 +115,10 @@
     "backend/extension_results.py",
     "backend/frozen_input_recovery.py",
     "backend/frozen_run_recovery.py",
+    "backend/lifecycle/__init__.py",
+    "backend/lifecycle/atomic_io.py",
+    "backend/lifecycle/file_locks.py",
+    "backend/lifecycle/states.py",
     "backend/model_runner.py",
     "backend/module_authoring.py",
     "backend/result_queries.py",
@@ -1274,6 +1278,7 @@
     "tests/test_install_script_policy.py",
     "tests/test_legacy_identity_compat.py",
     "tests/test_legacy_result_adapter.py",
+    "tests/test_lifecycle_primitives.py",
     "tests/test_local_backend.py",
     "tests/test_local_uk_source_inventory.py",
     "tests/test_market_ledger.py",
@@ -3353,6 +3358,30 @@
       "sha256": "b597411abf20953d956514882d8b0219650c6a13ef627a1e76bdab68ad31b744",
       "bytes": 19700,
       "transform": "byte copy"
+    },
+    {
+      "path": "backend/lifecycle/__init__.py",
+      "sha256": "5c492a22b2781d2e64c2fd7238b5802872965101b0e0a346d298d46c8f2b4a16",
+      "bytes": 958,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "backend/lifecycle/atomic_io.py",
+      "sha256": "b2f69c167fcee0179ca629ec62dc62273577baee3b1f9498fe3b1978b363008a",
+      "bytes": 3819,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "backend/lifecycle/file_locks.py",
+      "sha256": "bb7ea9909effe352bfaf7bb6db45a5ab0f711cf2b44de598d0caa98ecc3561de",
+      "bytes": 6767,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "backend/lifecycle/states.py",
+      "sha256": "c0c263b13332ebd582a48cacfcc3882aac69de658b3190bc13b23891972b3887",
+      "bytes": 3264,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/model_runner.py",
@@ -7703,9 +7732,9 @@
     },
     {
       "path": "gridform_core/run_lifecycle.py",
-      "sha256": "7f5716769f61b8722c0be601d617f5d00d6ce03448dd9c395b5a39f27b07785f",
-      "bytes": 2571,
-      "transform": "byte copy"
+      "sha256": "f58a696854cfdb3dd9c7ebce05f5faeef4220adcb7639cc45113deb76d01de06",
+      "bytes": 2241,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/run_lineage.py",
@@ -7793,9 +7822,9 @@
     },
     {
       "path": "gridform_core/study_lifecycle.py",
-      "sha256": "c6b393645949156e70b6a6ce8f91ab88bd53f260053271828ce9c861376eb9ac",
-      "bytes": 24791,
-      "transform": "byte copy"
+      "sha256": "13efb2c99339d22a2e2c8bbfd50d73ba813414823f7b912f9241a8027ddda482",
+      "bytes": 24786,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/study_market_config.py",
@@ -10290,6 +10319,12 @@
       "sha256": "2c09a944b2ed82c30a872bf82c69fbceb844ef1f455f0f0e52cd4cf62f3cdf6e",
       "bytes": 3957,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_lifecycle_primitives.py",
+      "sha256": "a5f9130aaae24099f54c0a2c9484054cae9ddea028c673084c9c521bc60c0180",
+      "bytes": 16686,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_local_backend.py",

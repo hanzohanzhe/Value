@@ -13,8 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from backend.lifecycle.states import ACTIVE_STATES as ACTIVE_RUN_STATUSES
 
-ACTIVE_RUN_STATUSES = {"queued", "snapshotting", "running", "cancel_requested"}
+
 SAFE_ID = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
 
 
