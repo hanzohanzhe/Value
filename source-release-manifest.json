@@ -1037,6 +1037,7 @@
     "scripts/render_prompt52_final_report.py",
     "scripts/replay_route_scan.py",
     "scripts/reseal_external_launcher_logs.py",
+    "scripts/run_backend_tests.py",
     "scripts/run_dependency_audit.py",
     "scripts/run_profiled_workload.py",
     "scripts/run_prompt107_production_gate.py",
@@ -1070,6 +1071,9 @@
     "start-value.cmd",
     "stop-value.cmd",
     "task-2-report.md",
+    "tests/baselines/known-failures-linux-py310.txt",
+    "tests/baselines/milestone.txt",
+    "tests/baselines/quarantine.txt",
     "tests/baselines/release-exclusions.txt",
     "tests/data-workbench-frontend.test.mjs",
     "tests/data_workbench/fixtures/discovery/neso-catalogue.json",
@@ -1109,6 +1113,7 @@
     "tests/test_application_service.py",
     "tests/test_archived_workspace_launcher.py",
     "tests/test_asset_economics_and_coupling.py",
+    "tests/test_backend_test_runner.py",
     "tests/test_build_value_uk_research_suite.py",
     "tests/test_carbon_factor_database.py",
     "tests/test_carbon_ledger.py",
@@ -2601,9 +2606,9 @@
     },
     {
       "path": "CONTRIBUTING.md",
-      "sha256": "3fe65872365539341b54376d78cf42e4bdb1cc445c09ca4956daafc2fa00bb97",
-      "bytes": 1232,
-      "transform": "Apache-2.0 restoration and VALUE-only publication scope update"
+      "sha256": "d3ffde0685cce1f850234c28cbf6c956a87253a1c6f8a3455adfe7053e1274f0",
+      "bytes": 2809,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "DATA-LICENSING.json",
@@ -8757,6 +8762,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "scripts/run_backend_tests.py",
+      "sha256": "7cf04b951bdbe8b8525cb637a9afbcdaebd9e800cc69a70169ae90f7db317374",
+      "bytes": 29855,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/run_dependency_audit.py",
       "sha256": "36067570400c13035e2be559fd227a760008c165b02158b7f52b507bf75b2587",
       "bytes": 6985,
@@ -8947,6 +8958,24 @@
       "sha256": "bb937291e6309d78dcaf07ecf9cf9f2bc487f24c95bb5d234a82055f8ef207cc",
       "bytes": 3705,
       "transform": "documentation personal path redaction"
+    },
+    {
+      "path": "tests/baselines/known-failures-linux-py310.txt",
+      "sha256": "6ebc31519d9115be88f4dcd36fc78b14963b0175f6b4c8242be9c5adc740aa3a",
+      "bytes": 24805,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/baselines/milestone.txt",
+      "sha256": "9382dde02ddecba08ab98ac123cbe7c749765365fdfcfb9085d9d909f9448b6e",
+      "bytes": 3,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/baselines/quarantine.txt",
+      "sha256": "ea5ab3dd6b853947e1c1ad5acb00222b2fea8bdc352cdb00414d8e198009d891",
+      "bytes": 11450,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/baselines/release-exclusions.txt",
@@ -9181,6 +9210,12 @@
       "sha256": "b74fb0bc6455ed1c2f002ae1b2e9abe1a5e89290179207643930d193c59c962b",
       "bytes": 14195,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_backend_test_runner.py",
+      "sha256": "35c5ecf7f7943dedb058641550ddfba0a103cd4e4f7b0e3ffdc55ed76b64f830",
+      "bytes": 10249,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_build_value_uk_research_suite.py",
@@ -9706,9 +9741,9 @@
     },
     {
       "path": "tests/test_preflight.py",
-      "sha256": "3143ea70774d8a800e5fb8fd12f67d9c7f9d1a923eabf5ed95815d045bf061b2",
-      "bytes": 8034,
-      "transform": "byte copy"
+      "sha256": "70a913d84a75ec6fec85c6ebe07cda02ead0c868dca6161271a99b0c02bcc03c",
+      "bytes": 8459,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_preflight_documentation.py",

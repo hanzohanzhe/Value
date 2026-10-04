@@ -24,6 +24,12 @@ MODULES = {
 }
 
 
+# These tests exercise revision and resource warnings, not the host volume.
+# Pin the disk probe so the outcome does not depend on the free space of the
+# machine running the suite (X0 S1; preflight requires free >= 2x estimate).
+PINNED_DISK_USAGE = SimpleNamespace(total=4 * 1024**4, used=1024**4, free=3 * 1024**4)
+
+
 class ResolvedFixture:
     warnings = ()
 
@@ -62,7 +68,8 @@ class PreflightTests(unittest.TestCase):
                  "errors": [], "warnings": [], "bindings": [],
                  "summary": {"passed": 0, "failed": 0, "total": 0},
              }), \
-             patch("gridform_core.preflight.resolve_scheme_c_parameters", return_value=resolved or ResolvedFixture()):
+             patch("gridform_core.preflight.resolve_scheme_c_parameters", return_value=resolved or ResolvedFixture()), \
+             patch("gridform_core.preflight.shutil.disk_usage", return_value=PINNED_DISK_USAGE):
             return run_preflight(
                 project or self.project,
                 mode="full",
