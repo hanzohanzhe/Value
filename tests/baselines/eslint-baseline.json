@@ -1,13 +1,13 @@
 {
- "schema_version": "value.eslint-ratchet/v1",
+ "schema_version": "value.eslint-ratchet/v2",
  "command": "eslint . --ignore-pattern dist --ignore-pattern .next",
- "key": "[file, ruleId, message] -> count",
+ "key": "[relative file, ruleId, first message line without absolute paths or :line:col] -> count",
  "counts": {
   "[\"app/features/learn/Value101Learn.tsx\", \"@typescript-eslint/no-unused-expressions\", \"Expected an assignment or function call and instead saw an expression.\"]": 3,
   "[\"app/features/runs/RunWorkspace.tsx\", \"@typescript-eslint/no-unused-vars\", \"'canRunMode' is defined but never used.\"]": 1,
   "[\"app/features/runs/RunWorkspace.tsx\", \"@typescript-eslint/no-unused-vars\", \"'teachingProject' is defined but never used.\"]": 1,
   "[\"app/page.tsx\", \"@typescript-eslint/no-unused-vars\", \"'DataPack' is defined but never used.\"]": 1,
-  "[\"app/page.tsx\", \"react-hooks/set-state-in-effect\", \"Error: Calling setState synchronously within an effect can trigger cascading renders\\n\\nEffects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:\\n* Update external systems with the latest state from React.\\n* Subscribe for updates from some external system, calling setState in a callback function when external state changes.\\n\\nCalling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).\\n\\n/home/deepseek/Documents/Codex/2026-10-01/new-chat-3/work/publication-execution-2026-10-04/value-fix-review-2026-10-04/app/page.tsx:606:5\\n  604 |   useEffect(() => {\\n  605 |     if (!selectedPackId || !online) return;\\n> 606 |     setDraftResolution(null); setDraftResolving(true);\\n      |     ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect\\n  607 |     let active = true;\\n  608 |     const timer = window.setTimeout(() => {\\n  609 |       setDraftResolving(true); setDraftResolutionError(\\\"\\\");\"]": 1,
+  "[\"app/page.tsx\", \"react-hooks/set-state-in-effect\", \"Error: Calling setState synchronously within an effect can trigger cascading renders\"]": 1,
   "[\"e2e/module-authoring.spec.ts\", \"@next/next/no-assign-module-variable\", \"Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable\"]": 1,
   "[\"scripts/methodology/render_math.cjs\", \"@typescript-eslint/no-require-imports\", \"A `require()` style import is forbidden.\"]": 9,
   "[\"scripts/methodology/render_math.cjs\", \"@typescript-eslint/no-unused-vars\", \"'view' is assigned a value but never used.\"]": 1

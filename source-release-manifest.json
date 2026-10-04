@@ -8743,8 +8743,8 @@
     },
     {
       "path": "scripts/p0_gate.py",
-      "sha256": "d693a29f220ef54d010fe9d818544fab2c5eede508014e1165731ebe36934d01",
-      "bytes": 22039,
+      "sha256": "f84cb7ccad2c7bf1c3f86f2c4a33faccab09789ca2c552510211852d19b346ad",
+      "bytes": 24918,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9049,8 +9049,8 @@
     },
     {
       "path": "tests/baselines/eslint-baseline.json",
-      "sha256": "36d04c8b9a54b4749b0e5eeff9a29cdf7549852b63bbae3da36aef2b8c6b4969",
-      "bytes": 2511,
+      "sha256": "944b7cb0efeaab3f55559c465760998846f7f105cca4a195f4e815294c3564fd",
+      "bytes": 1411,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9919,8 +9919,8 @@
     },
     {
       "path": "tests/test_p0_gate.py",
-      "sha256": "a4a4c341536d3b61d0595c0316ed03b9f7f915c6037e057f0d47623c07eedf0a",
-      "bytes": 5665,
+      "sha256": "cfbd2ca5f17c8d357f8a8861ee38030a0df2e0721b169582a2e23fed40c7ae6a",
+      "bytes": 8715,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

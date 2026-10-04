@@ -37,6 +37,7 @@ TIERS = ("quick", "full", "nightly")
 DISK_MINIMUM_BYTES = {"quick": 1 * 1024**3, "full": int(1.5 * 1024**3), "nightly": 2 * 1024**3}
 FORBIDDEN_PORTS = ("8766", "8800")
 ESLINT_BASELINE = ROOT / "tests" / "baselines" / "eslint-baseline.json"
+ESLINT_SCHEMA = "value.eslint-ratchet/v2"
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
@@ -181,6 +182,35 @@ def step_release_manifest(gate: Gate) -> dict[str, Any]:
     return _status(completed.returncode == 0, _tail(completed.stdout))
 
 
+def local_path_needles(root: Path = ROOT) -> list[bytes]:
+    needles = [str(root.resolve())]
+    home = Path.home()
+    if len(home.parts) >= 3:  # never a bare "/" or "/home"
+        needles.append(str(home))
+    return [needle.encode("utf-8") for needle in dict.fromkeys(needles)]
+
+
+def local_path_leaks(relative_paths: Iterable[str], root: Path = ROOT) -> list[str]:
+    """Release members whose bytes contain this checkout's or the user's home path."""
+
+    needles = local_path_needles(root)
+    leaks = []
+    for relative in relative_paths:
+        path = root / relative
+        if not path.is_file():
+            continue
+        data = path.read_bytes()
+        if any(needle in data for needle in needles):
+            leaks.append(relative)
+    return leaks
+
+
+def step_release_path_hygiene(gate: Gate) -> dict[str, Any]:
+    manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+    leaks = local_path_leaks(manifest.get("include", []))
+    return _status(not leaks, {"leaks": leaks, "rule": "no public release file may contain a local absolute path"})
+
+
 def step_methodology_catalog(gate: Gate) -> dict[str, Any]:
     script = ROOT / "scripts" / "check_methodology_catalog.py"
     if not script.is_file():
@@ -301,10 +331,36 @@ def step_typecheck(gate: Gate) -> dict[str, Any]:
     return _status(completed.returncode == 0, _tail(completed.stdout + completed.stderr))
 
 
-def eslint_counts(messages: Iterable[dict[str, Any]]) -> dict[str, int]:
+_ABSOLUTE_PATH = re.compile(r"(?<![\w:/.\\])(?:[A-Za-z]:[\\/]|/)(?:[^\s:'\"`()]+[\\/])+([^\s:'\"`()]+)")
+_LINE_COLUMN = re.compile(r":\d+(?::\d+)?\b")
+
+
+def eslint_message_key(message: str, root: Path | str = ROOT) -> str:
+    """Location-independent ratchet text for one ESLint message.
+
+    Only the first line is kept (rules such as react-hooks/set-state-in-effect
+    append a code frame), the checkout root and any other absolute path are
+    reduced to their last component, and ``:line[:col]`` suffixes are dropped,
+    so the key is the same in every worktree and survives edits that only move
+    the offending line.
+    """
+
+    text = str(message).splitlines()[0] if str(message) else ""
+    root_text = str(root).rstrip("/\\")
+    if root_text:
+        text = text.replace(root_text + "/", "").replace(root_text + "\\", "").replace(root_text, "")
+    text = _ABSOLUTE_PATH.sub(lambda match: match.group(1), text)
+    text = _LINE_COLUMN.sub("", text)
+    return " ".join(text.split())
+
+
+def eslint_counts(messages: Iterable[dict[str, Any]], root: Path | str = ROOT) -> dict[str, int]:
+    """Count findings per ``[relative file, ruleId, normalised first line]``."""
+
     counts: collections.Counter[str] = collections.Counter()
     for row in messages:
-        counts[json.dumps([row["file"], row.get("ruleId"), row["message"]], ensure_ascii=False)] += 1
+        key = [row["file"], row.get("ruleId"), eslint_message_key(row["message"], root)]
+        counts[json.dumps(key, ensure_ascii=False)] += 1
     return dict(sorted(counts.items()))
 
 
@@ -343,7 +399,7 @@ def step_eslint(gate: Gate) -> dict[str, Any]:
         return _status(False, "node executable not found")
     current = eslint_counts(run_eslint(node))
     if gate.arguments.update_eslint_baseline:
-        baseline = json.loads(ESLINT_BASELINE.read_text(encoding="utf-8"))["counts"] if ESLINT_BASELINE.is_file() else {}
+        baseline = load_eslint_baseline() if ESLINT_BASELINE.is_file() else {}
         difference = compare_eslint(baseline, current)
         if difference["increased"] and ESLINT_BASELINE.is_file():
             return _status(False, {"refused": "the ESLint baseline may only shrink", **difference})
@@ -351,18 +407,29 @@ def step_eslint(gate: Gate) -> dict[str, Any]:
         return _status(True, {"updated": True, **difference})
     if not ESLINT_BASELINE.is_file():
         return _status(False, "tests/baselines/eslint-baseline.json is missing")
-    baseline = json.loads(ESLINT_BASELINE.read_text(encoding="utf-8"))["counts"]
+    baseline = load_eslint_baseline()
     difference = compare_eslint(baseline, current)
     ok = not difference["increased"] and not difference["decreased"]
     return _status(ok, {**difference, "hint": None if ok else "fix new findings; after fixing old ones run --update-eslint-baseline"})
 
 
+def load_eslint_baseline(path: Path = ESLINT_BASELINE, root: Path | str = ROOT) -> dict[str, int]:
+    """Baseline counts re-keyed with :func:`eslint_message_key` (reads v1 and v2)."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    counts: collections.Counter[str] = collections.Counter()
+    for key, count in payload["counts"].items():
+        file_name, rule, message = json.loads(key)
+        counts[json.dumps([file_name, rule, eslint_message_key(message, root)], ensure_ascii=False)] += int(count)
+    return dict(sorted(counts.items()))
+
+
 def write_eslint_baseline(counts: dict[str, int]) -> None:
     ESLINT_BASELINE.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema_version": "value.eslint-ratchet/v1",
+        "schema_version": ESLINT_SCHEMA,
         "command": "eslint . --ignore-pattern dist --ignore-pattern .next",
-        "key": "[file, ruleId, message] -> count",
+        "key": "[relative file, ruleId, first message line without absolute paths or :line:col] -> count",
         "counts": counts,
     }
     ESLINT_BASELINE.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
@@ -421,6 +488,7 @@ def step_golden_sensitivity(gate: Gate) -> dict[str, Any]:
 QUICK_STEPS = [
     Step("guard", step_guard),
     Step("release_manifest", step_release_manifest),
+    Step("release_path_hygiene", step_release_path_hygiene),
     Step("methodology_catalog", step_methodology_catalog),
     Step("runtime_overlay", step_runtime_overlay),
     Step("version_ledger", step_version_ledger),
