@@ -1,0 +1,460 @@
+{
+ "schema_version": "value.golden-zones/v1",
+ "notes": [
+  "Zones per decision Q12. trajectory: dispatch, flows, prices, SoC, capacity, investment proposals (frozen in the doctoral family). accounting: residuals, adjustments, audit tables, cost and income ledgers, validation and attribution reports (revisable under a universal correction id). identity: code, module and context identity hashes and versions, which change with any code edit and are governed by method identity and docs/release/VERSION_LEDGER.json; reported but never gated.",
+  "Rules are fnmatch patterns on '<artifact>::<column>'; the first match wins; unmatched columns are trajectory."
+ ],
+ "default": "trajectory",
+ "rules": [
+  {
+   "pattern": "*::*schema_version*",
+   "zone": "identity",
+   "why": "interface/schema labels"
+  },
+  {
+   "pattern": "*::*module_version*",
+   "zone": "identity",
+   "why": "module versions (VERSION_LEDGER governs)"
+  },
+  {
+   "pattern": "*::*scientific_version*",
+   "zone": "identity",
+   "why": "module versions"
+  },
+  {
+   "pattern": "*::*contract_version*",
+   "zone": "identity",
+   "why": "contract versions"
+  },
+  {
+   "pattern": "*::*.version",
+   "zone": "identity",
+   "why": "versions"
+  },
+  {
+   "pattern": "*::version",
+   "zone": "identity",
+   "why": "versions"
+  },
+  {
+   "pattern": "*::*source_sha256",
+   "zone": "identity",
+   "why": "module/code source hashes"
+  },
+  {
+   "pattern": "*::*source_sha256.*",
+   "zone": "identity",
+   "why": "code source hashes"
+  },
+  {
+   "pattern": "*::*module_identities*",
+   "zone": "identity",
+   "why": "module identity records"
+  },
+  {
+   "pattern": "*::*module_graph*",
+   "zone": "identity",
+   "why": "module graph identity"
+  },
+  {
+   "pattern": "*::*graph_sha256*",
+   "zone": "identity",
+   "why": "module graph identity"
+  },
+  {
+   "pattern": "*::*run_context_sha256*",
+   "zone": "identity",
+   "why": "context hashes derived from code identity"
+  },
+  {
+   "pattern": "*::*year_context_sha256*",
+   "zone": "identity",
+   "why": "context hashes"
+  },
+  {
+   "pattern": "*::*context_hashes*",
+   "zone": "identity",
+   "why": "context hashes"
+  },
+  {
+   "pattern": "*::*evidence_root*",
+   "zone": "identity",
+   "why": "ledger evidence chain (includes context identity)"
+  },
+  {
+   "pattern": "*::*science_root*",
+   "zone": "identity",
+   "why": "ledger science chain (includes context identity)"
+  },
+  {
+   "pattern": "*::*source_artifact_sha256*",
+   "zone": "identity",
+   "why": "whole-file hash of the market ledger (embeds identity metadata)"
+  },
+  {
+   "pattern": "*::*checksum_sha256*",
+   "zone": "identity",
+   "why": "artifact file checksums"
+  },
+  {
+   "pattern": "*::*result_sha256_by_period*",
+   "zone": "identity",
+   "why": "staged result hashes (embed context identity)"
+  },
+  {
+   "pattern": "*::*declared_input_sha256*",
+   "zone": "identity",
+   "why": "solver declaration hashes (embed context identity)"
+  },
+  {
+   "pattern": "*::*cem_model_identity*",
+   "zone": "identity",
+   "why": "CEM model identity labels"
+  },
+  {
+   "pattern": "*::*highs_identity*",
+   "zone": "identity",
+   "why": "solver binary identity"
+  },
+  {
+   "pattern": "*::*highs_binary_sha256*",
+   "zone": "identity",
+   "why": "solver binary identity"
+  },
+  {
+   "pattern": "*::*scipy_version*",
+   "zone": "identity",
+   "why": "library version"
+  },
+  {
+   "pattern": "*::*annual_input_state_sha256*",
+   "zone": "identity",
+   "why": "state hashes"
+  },
+  {
+   "pattern": "*::*planning_advance_sha256*",
+   "zone": "identity",
+   "why": "state hashes"
+  },
+  {
+   "pattern": "*::*study_revision_sha256*",
+   "zone": "identity",
+   "why": "study revision identity"
+  },
+  {
+   "pattern": "*::*market_income_identity*",
+   "zone": "identity",
+   "why": "label"
+  },
+  {
+   "pattern": "*::*module_id",
+   "zone": "identity",
+   "why": "selected module ids (configuration)"
+  },
+  {
+   "pattern": "*::*module_ids",
+   "zone": "identity",
+   "why": "selected module ids"
+  },
+  {
+   "pattern": "*::*market_ledger.bytes",
+   "zone": "identity",
+   "why": "file size"
+  },
+  {
+   "pattern": "market/metadata.json::bytes",
+   "zone": "identity",
+   "why": "file size"
+  },
+  {
+   "pattern": "*::*.artifacts*",
+   "zone": "identity",
+   "why": "artifact references"
+  },
+  {
+   "pattern": "*::artifacts",
+   "zone": "identity",
+   "why": "artifact references"
+  },
+  {
+   "pattern": "*::*market_ledger.semantic_metadata*",
+   "zone": "identity",
+   "why": "truncated column mixing module identity with semantics; the same semantics are digested column-by-column in market/metadata.json"
+  },
+  {
+   "pattern": "*::*semantic_metadata.module_*",
+   "zone": "identity",
+   "why": "module identity inside ledger semantics"
+  },
+  {
+   "pattern": "*::*semantic_metadata.psm_module_*",
+   "zone": "identity",
+   "why": "module identity inside ledger semantics"
+  },
+  {
+   "pattern": "*::*semantic_metadata.run_*",
+   "zone": "identity",
+   "why": "run identity inside ledger semantics"
+  },
+  {
+   "pattern": "*::*semantic_metadata.year_context*",
+   "zone": "identity",
+   "why": "context identity"
+  },
+  {
+   "pattern": "market/context/run-context.json::*",
+   "zone": "identity",
+   "why": "run configuration and code identity (inputs, not results)"
+  },
+  {
+   "pattern": "market/market.sqlite::metadata.*",
+   "zone": "identity",
+   "why": "ledger metadata key/value (versions, identity)"
+  },
+  {
+   "pattern": "market/market.sqlite::context_registry.*",
+   "zone": "identity",
+   "why": "context registry hashes"
+  },
+  {
+   "pattern": "market/market.sqlite::period_integrity.*",
+   "zone": "identity",
+   "why": "integrity hash chain"
+  },
+  {
+   "pattern": "market/market.sqlite::year_integrity.*",
+   "zone": "identity",
+   "why": "integrity hash chain"
+  },
+  {
+   "pattern": "ledgers/annual-carbon-ledger.sqlite::metadata.*",
+   "zone": "identity",
+   "why": "ledger metadata"
+  },
+  {
+   "pattern": "planning/project-index.sqlite::metadata.*",
+   "zone": "identity",
+   "why": "index metadata"
+  },
+  {
+   "pattern": "ledgers/*",
+   "zone": "accounting",
+   "why": "cost and carbon ledgers"
+  },
+  {
+   "pattern": "validation/*",
+   "zone": "accounting",
+   "why": "validation reports"
+  },
+  {
+   "pattern": "parity/*",
+   "zone": "accounting",
+   "why": "parity reports"
+  },
+  {
+   "pattern": "network/*",
+   "zone": "accounting",
+   "why": "VRE curtailment attribution report"
+  },
+  {
+   "pattern": "market/metadata.json::*",
+   "zone": "accounting",
+   "why": "ledger summary metadata (residual maxima, row counts, semantics)"
+  },
+  {
+   "pattern": "*::*market_ledger.*",
+   "zone": "accounting",
+   "why": "ledger summary inside year results"
+  },
+  {
+   "pattern": "*::*semantic_metadata*",
+   "zone": "accounting",
+   "why": "ledger semantics declarations (C20)"
+  },
+  {
+   "pattern": "market/market.sqlite::period_summary.physical_resource_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "market/market.sqlite::period_summary.market_payment_gbp",
+   "zone": "accounting",
+   "why": "settlement"
+  },
+  {
+   "pattern": "market/market.sqlite::period_summary.policy_transfer_gbp",
+   "zone": "accounting",
+   "why": "settlement"
+  },
+  {
+   "pattern": "market/market.sqlite::period_summary.energy_balance_residual_mwh",
+   "zone": "accounting",
+   "why": "residual"
+  },
+  {
+   "pattern": "market/market.sqlite::period_summary.compatibility_adjustment_mwh",
+   "zone": "accounting",
+   "why": "adjustment"
+  },
+  {
+   "pattern": "market/market.sqlite::period_summary.raw_energy_balance_residual_mwh",
+   "zone": "accounting",
+   "why": "residual"
+  },
+  {
+   "pattern": "market/market.sqlite::orders.physical_resource_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "market/market.sqlite::orders.market_payment_gbp",
+   "zone": "accounting",
+   "why": "settlement"
+  },
+  {
+   "pattern": "market/market.sqlite::physical_dispatch.balance_component_mwh",
+   "zone": "accounting",
+   "why": "energy-balance boundary component (Q7)"
+  },
+  {
+   "pattern": "market/market.sqlite::vre_curtailment_*",
+   "zone": "accounting",
+   "why": "curtailment attribution audit"
+  },
+  {
+   "pattern": "market/market.sqlite::zonal_period_accounting.*",
+   "zone": "accounting",
+   "why": "zonal accounting"
+  },
+  {
+   "pattern": "market/market.sqlite::zonal_period_summary.*",
+   "zone": "accounting",
+   "why": "zonal cost and curtailment accounting"
+  },
+  {
+   "pattern": "market/market.sqlite::reliability_event.*",
+   "zone": "accounting",
+   "why": "unserved-energy / stress event accounting"
+  },
+  {
+   "pattern": "market/market.sqlite::redispatch_settlement.cashflow_to_agent_gbp",
+   "zone": "accounting",
+   "why": "settlement"
+  },
+  {
+   "pattern": "market/market.sqlite::redispatch_summary.resource_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "market/market.sqlite::zonal_resource_dispatch.physical_resource_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "market/market.sqlite::zonal_demand_alignment.conservation_residual_mwh",
+   "zone": "accounting",
+   "why": "residual"
+  },
+  {
+   "pattern": "market/market.sqlite::network_solver_diagnostics.*",
+   "zone": "accounting",
+   "why": "solver diagnostics"
+  },
+  {
+   "pattern": "market/market.sqlite::solver_declaration_link.*",
+   "zone": "accounting",
+   "why": "solver audit links"
+  },
+  {
+   "pattern": "*::*period_summaries.physical_resource_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "*::*period_summaries.market_payment_gbp",
+   "zone": "accounting",
+   "why": "settlement"
+  },
+  {
+   "pattern": "*::*period_summaries.policy_transfer_gbp",
+   "zone": "accounting",
+   "why": "settlement"
+  },
+  {
+   "pattern": "*::*period_summaries.energy_balance_residual_mwh",
+   "zone": "accounting",
+   "why": "residual"
+  },
+  {
+   "pattern": "*::*period_summaries.compatibility_adjustment_mwh",
+   "zone": "accounting",
+   "why": "adjustment"
+  },
+  {
+   "pattern": "*::*period_summaries.raw_energy_balance_residual_mwh",
+   "zone": "accounting",
+   "why": "residual"
+  },
+  {
+   "pattern": "*::*total_system_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "*::*total_operational_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "*::*total_levelized_capital_cost_gbp",
+   "zone": "accounting",
+   "why": "cost"
+  },
+  {
+   "pattern": "*::*market_income_gbp_by_agent*",
+   "zone": "accounting",
+   "why": "income accounting"
+  },
+  {
+   "pattern": "*::*runtime_market_income_gbp_by_agent*",
+   "zone": "accounting",
+   "why": "income accounting"
+  },
+  {
+   "pattern": "*::*fleet_economics*",
+   "zone": "accounting",
+   "why": "fleet economics summary"
+  },
+  {
+   "pattern": "*::*physical_operating_cost*",
+   "zone": "accounting",
+   "why": "operating cost accounting"
+  },
+  {
+   "pattern": "terminal/fleet-vintage.json::*value*",
+   "zone": "accounting",
+   "why": "terminal valuation"
+  },
+  {
+   "pattern": "terminal/fleet-vintage.json::*capital_charge*",
+   "zone": "accounting",
+   "why": "terminal valuation"
+  },
+  {
+   "pattern": "terminal/fleet-vintage.json::*policy*",
+   "zone": "accounting",
+   "why": "terminal valuation policy"
+  },
+  {
+   "pattern": "terminal/fleet-vintage.json::discount_rate",
+   "zone": "accounting",
+   "why": "terminal valuation"
+  },
+  {
+   "pattern": "terminal/fleet-vintage.json::gbp_base_year",
+   "zone": "accounting",
+   "why": "terminal valuation"
+  }
+ ]
+}

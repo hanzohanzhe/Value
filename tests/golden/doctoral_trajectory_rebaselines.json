@@ -1,0 +1,14 @@
+{
+ "schema_version": "value.golden-trajectory-allowlist/v1",
+ "notes": [
+  "The doctoral family's trajectory zone is frozen (decision Q1/Q12). The only exceptions are the universal corrections the author approved in docs/dev/P0_DECISIONS.md; each may re-baseline a doctoral case's trajectory once, in the commit that introduces it, with a diff report.",
+  "Accounting-zone revisions do not need an entry here but must name a universal correction id."
+ ],
+ "findings": {
+  "P6-24": "Q9/A3: interconnector series aligned period by period to the 17520 clock (no 2x stretch)",
+  "P6-02": "A5: Belgium hourly EUR price read as half-hourly GBP (documented FX)",
+  "P6-03": "A5: BE/NL flow files swapped",
+  "P6-04": "A5: demand DST shift after 2022-10-30",
+  "P4-01-thermal": "A4: thermal net revenue = income - energy x gen_cost (fuel, carbon, unit time cost) restored for gas/biomass; VRE and storage unchanged"
+ }
+}

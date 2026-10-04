@@ -34,3 +34,6 @@ gridform_core/data/carbon/scenarios/*.json text eol=lf
 
 # NetCDF contains binary CR/LF byte sequences; preserve manifest-hashed bytes.
 *.nc binary
+
+# Golden digests and their case definitions hash exact text; keep LF everywhere.
+tests/golden/** text eol=lf
