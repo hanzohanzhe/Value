@@ -1,0 +1,45 @@
+{
+ "schema_version": "value.project/v1",
+ "id": "golden-study",
+ "name": "VALUE 101 · network control (copperplate)",
+ "data_pack_id": "value-101-network-v1",
+ "start_year": 2025,
+ "end_year": 2026,
+ "modules": {
+  "psm": "value-staged-bid-at-cost-psm",
+  "storage_cost": "dynamic-annual-storage-cost",
+  "investment": "agent-investment",
+  "pipeline": "planning-pipeline",
+  "vre_cap": "vre-expansion-cap",
+  "storage_cap": "value-storage-expansion-policy",
+  "transition": "value-annual-state-transition",
+  "weather_spatializer": "value-representative-point-weather",
+  "balancing": "value-copperplate-balancing"
+ },
+ "purpose": "VALUE 101 synthetic annual teaching model",
+ "selected_extensions": [],
+ "extension_parameters": {},
+ "maturity_acknowledgements": {
+  "module:value-representative-point-weather@1.0.0": "value.experimental-ack/v1"
+ },
+ "parameters": {
+  "planning.defer_spread_years": 0
+ },
+ "runtime_options": {
+  "runtime.market_trace_level": "full",
+  "runtime.checkpoint_enabled": true
+ },
+ "extensions": {
+  "value_101": {
+   "origin": "guided-course",
+   "course_revision": "value-101/v1",
+   "variant_kind": "network",
+   "parent_project_id": "value-101-baseline",
+   "changed_dimensions": [
+    "network.delivery_method"
+   ],
+   "network_role": "copperplate_control"
+  }
+ },
+ "market_configuration": {}
+}

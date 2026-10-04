@@ -55,6 +55,8 @@
   - 第 0 号修订只写一次：`capture.py init` 遇到已存在的文件一律拒绝，没有覆盖开关。
 - corrected 族任何 trajectory/accounting 变化都必须在同一提交中 `capture.py revise`，写明 correction id、原因；`capture.py validate`（quick 档）检查修订簿记与 delta 的一致性。
 - 每个 golden case 在独立子进程中直接调用 `run_project_application`（避开 P7-02 的进程级天气缓存与 R2-05 的磁盘预检）。
+- golden case 的输入是冻结的 `tests/golden/projects/<case>.json`（35aadb3 课程模板 + 网络变体 + case 覆盖项一次性解析，已用 35aadb3 代码复核逐字节相同），不再读取可变的 `value_101_study()` 模板；cases.json 中的覆盖项在其上合并。已有快照不可修改，新 case 用 `capture.py freeze-projects` 冻结。
+- **X0 S8 的硬性要求**：引入口径参数的同一提交必须给每个 D case 的 parameters 加上 `"methodology.profile": "doctoral-lineage-0.6.0a2"`，否则 D1–D4 会在默认的 value-corrected 口径下运行。
 
 ## 3 运行时内核（runtime_compat）
 

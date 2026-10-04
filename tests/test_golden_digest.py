@@ -271,5 +271,53 @@ class GoldenInitTests(unittest.TestCase):
             self.assertIn("immutable", str(raised.exception.code))
 
 
+class GoldenProjectSnapshotTests(unittest.TestCase):
+    def setUp(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("golden_run_case_test", ROOT / "scripts" / "golden" / "run_case.py")
+        self.run_case = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(self.run_case)
+        self.cases = self.run_case.load_cases()
+
+    def test_cases_run_from_frozen_projects_not_the_live_template(self) -> None:
+        from unittest import mock
+
+        import gridform_core.value_101 as template
+        import gridform_core.value_101_lifecycle as lifecycle
+
+        with mock.patch.object(template, "value_101_study", side_effect=AssertionError("live template used")), \
+                mock.patch.object(lifecycle, "build_value_101_network_pair", side_effect=AssertionError("live template used")):
+            for case_id, case in self.cases.items():
+                with self.subTest(case=case_id):
+                    project = self.run_case.build_project(dict(case, id=case_id))
+                    frozen = json.loads(self.run_case.project_path(dict(case, id=case_id)).read_text(encoding="utf-8"))
+                    self.assertEqual(project, frozen, "overrides in cases.json must be no-ops on the frozen project")
+                    self.assertEqual(project["id"], "golden-study")
+
+    def test_frozen_projects_carry_the_case_configuration(self) -> None:
+        for case_id, case in self.cases.items():
+            with self.subTest(case=case_id):
+                project = self.run_case.build_project(dict(case, id=case_id))
+                for section in ("modules", "parameters", "runtime_options"):
+                    for key, value in (case.get(section) or {}).items():
+                        self.assertEqual(project[section][key], value)
+                if case["family"] == "doctoral":
+                    self.assertEqual(project["modules"]["storage_cost"], "value-legacy-storage-tariff")
+                    self.assertEqual(project["parameters"]["carbon.factor_scenario"], "doctoral_reproduction_2026_07_18")
+
+    def test_freeze_projects_never_overwrites(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("golden_capture_freeze", ROOT / "scripts" / "golden" / "capture.py")
+        capture = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(capture)
+        with self.assertRaises(SystemExit) as raised:
+            capture.main(["freeze-projects", "--cases", "D1"])
+        self.assertIn("immutable", str(raised.exception.code))
+
+
 if __name__ == "__main__":
     unittest.main()

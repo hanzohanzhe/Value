@@ -7,6 +7,7 @@ Commands::
     capture.py revise   --cases ... --reason TEXT [--correction-id ID ...] [--finding ID ...]
     capture.py validate                                  # bookkeeping only, no model runs
     capture.py dump     --cases ... --out-dir DIR        # raw digests for inspection
+    capture.py freeze-projects --cases ...               # write tests/golden/projects/<case>.json for NEW cases
 
 Each case runs in its own hermetic subprocess (scripts/golden/run_case.py).
 ``check`` exits 1 when any case differs from its latest revision in a
@@ -218,6 +219,10 @@ def validate_all() -> list[str]:
         if golden.get("case") != case_id or golden.get("family") != case["family"]:
             errors.append(f"{path.relative_to(ROOT)}: case/family header mismatch")
         errors.extend(golden_lib.validate_golden_file(golden, allowlist))
+    run_case = _run_case_module()
+    for case_id, case in cases.items():
+        if not run_case.project_path(dict(case, id=case_id)).is_file():
+            errors.append(f"{case['family']}/{case_id}: frozen project missing (capture.py freeze-projects)")
     for family in ("doctoral", "corrected"):
         for path in sorted((GOLDEN_DIR / family).glob("*.json")):
             if path.stem not in cases:
@@ -229,6 +234,35 @@ def command_validate(arguments: argparse.Namespace) -> int:
     errors = validate_all()
     _emit({"schema_version": "value.golden-validate/v1", "errors": errors, "passed": not errors}, arguments.json_output)
     return 0 if not errors else 1
+
+
+def _run_case_module():
+    spec = importlib.util.spec_from_file_location("golden_run_case", ROOT / "scripts" / "golden" / "run_case.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def command_freeze_projects(arguments: argparse.Namespace) -> int:
+    """Freeze the resolved input project of new cases; existing snapshots are immutable."""
+
+    run_case = _run_case_module()
+    cases = load_cases()
+    selected = select_cases(cases, arguments.tier, arguments.cases)
+    existing = [case_id for case_id in selected if run_case.project_path(dict(cases[case_id], id=case_id)).exists()]
+    if existing:
+        raise SystemExit(f"frozen project(s) already exist and are immutable: {', '.join(existing)}")
+    written = {}
+    for case_id in selected:
+        case = dict(cases[case_id], id=case_id)
+        path = run_case.project_path(case)
+        project = run_case.resolve_from_template(case)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(project, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
+        written[case_id] = str(path.relative_to(ROOT))
+    print(json.dumps(written, indent=2))
+    return 0
 
 
 def command_dump(arguments: argparse.Namespace) -> int:
@@ -251,7 +285,7 @@ def _emit(report: dict[str, Any], destination: Path | None) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("check", "init", "revise", "validate", "dump"):
+    for name in ("check", "init", "revise", "validate", "dump", "freeze-projects"):
         command = sub.add_parser(name)
         command.add_argument("--json-output", type=Path)
         if name == "validate":
@@ -277,6 +311,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "revise": command_revise,
         "validate": command_validate,
         "dump": command_dump,
+        "freeze-projects": command_freeze_projects,
     }[arguments.command]
     return handler(arguments)
 

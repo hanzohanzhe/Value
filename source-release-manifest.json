@@ -1128,6 +1128,18 @@
     "tests/golden/doctoral/D3.json",
     "tests/golden/doctoral/D4.json",
     "tests/golden/doctoral_trajectory_rebaselines.json",
+    "tests/golden/projects/C1.json",
+    "tests/golden/projects/C2.json",
+    "tests/golden/projects/C3.json",
+    "tests/golden/projects/C4.json",
+    "tests/golden/projects/C5.json",
+    "tests/golden/projects/C6.json",
+    "tests/golden/projects/C7.json",
+    "tests/golden/projects/C8.json",
+    "tests/golden/projects/D1.json",
+    "tests/golden/projects/D2.json",
+    "tests/golden/projects/D3.json",
+    "tests/golden/projects/D4.json",
     "tests/golden/zones.json",
     "tests/preflight-identity.test.mjs",
     "tests/prompt124-ui-contract.test.mjs",
@@ -8647,14 +8659,14 @@
     },
     {
       "path": "scripts/golden/capture.py",
-      "sha256": "3e67c23fbf4456f520c426c35b042aed0bad8d37a5560d6aa18355015f7424e3",
-      "bytes": 12246,
+      "sha256": "dc61a93abf90cc18d736ee7a8d92aab5917741fd490521761827f2f29763d906",
+      "bytes": 13961,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/golden/run_case.py",
-      "sha256": "9e2777c0c266d158c585797b17f6f5d74d5c4ab53b8a5c88634c09ad5182c8d2",
-      "bytes": 3990,
+      "sha256": "efa14b28539c324606940fc7adcc498fc82fb132a0fbfc501fa5f0d073c4f1ac",
+      "bytes": 5432,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9253,8 +9265,8 @@
     },
     {
       "path": "tests/golden/cases.json",
-      "sha256": "cf40834c75f496c5d6fc06a213ea63c39f8c90822e4d6cb9cf5f4133e395d021",
-      "bytes": 4195,
+      "sha256": "6db13971afb1305067697e64bf001a15a9088975941f104580a2d2d842040546",
+      "bytes": 4884,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9333,6 +9345,78 @@
       "path": "tests/golden/doctoral_trajectory_rebaselines.json",
       "sha256": "789e85774b2cda8de4e215ff8cf4724e0eabf24deadabc74d2d5b84a83cc999e",
       "bytes": 913,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C1.json",
+      "sha256": "b5b61dad4610af1a8fe55beb887a769e8054907e2ea3cdf0146f36ed80193fad",
+      "bytes": 989,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C2.json",
+      "sha256": "b5b61dad4610af1a8fe55beb887a769e8054907e2ea3cdf0146f36ed80193fad",
+      "bytes": 989,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C3.json",
+      "sha256": "b5b61dad4610af1a8fe55beb887a769e8054907e2ea3cdf0146f36ed80193fad",
+      "bytes": 989,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C4.json",
+      "sha256": "e2afd713420f1e227c53f6b81182569e2c572ef20266f10bcdadd9370b0afa83",
+      "bytes": 989,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C5.json",
+      "sha256": "1b22b9ae132964a811b7dcfc7e9ccffb006c591a4ab0e6c71351b38c4fbe8b9d",
+      "bytes": 992,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C6.json",
+      "sha256": "4d187673732af28eeb0d1fab40b0a686339fac2ea3300ed030d396c1f5218685",
+      "bytes": 992,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C7.json",
+      "sha256": "2500ff65dafb2ada9923f57d8419fcae5fccf9ad9acc7c7820e628a64440708f",
+      "bytes": 1331,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C8.json",
+      "sha256": "65d2b80b2912a8f5e392a20118aec1ee0218fc77f19a56c3a2fed33f28413f91",
+      "bytes": 2355,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/D1.json",
+      "sha256": "def2911c6ac6337a501bf5751d2a1186d74c545f42a402d934c0dbe40a6d5c1c",
+      "bytes": 1053,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/D2.json",
+      "sha256": "def2911c6ac6337a501bf5751d2a1186d74c545f42a402d934c0dbe40a6d5c1c",
+      "bytes": 1053,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/D3.json",
+      "sha256": "def2911c6ac6337a501bf5751d2a1186d74c545f42a402d934c0dbe40a6d5c1c",
+      "bytes": 1053,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/D4.json",
+      "sha256": "6bcbe9e69264822c328311460574e4459880839ffb344bb48a74d8fa4f63ac95",
+      "bytes": 1056,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9751,8 +9835,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "cd50219d2e117883cd2374c90e3498ddecf9212a7bda569ee48fbcd9f24cafe0",
-      "bytes": 16255,
+      "sha256": "e12bcf8390bdb75b51fe877c2e2b9119fa49b451344441adcba29b341a444d02",
+      "bytes": 18925,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

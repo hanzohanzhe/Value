@@ -2,7 +2,8 @@
 
 Usage: python -B scripts/golden/run_case.py CASE_ID [--keep-output DIR]
 
-The case is defined in tests/golden/cases.json.  run_project_application is
+The case is defined in tests/golden/cases.json and its input is the frozen
+project tests/golden/projects/<case>.json.  run_project_application is
 called directly (no preflight, so the host disk reserve R2-05 does not apply);
 callers run each case in its own subprocess because the legacy kernel keeps an
 unkeyed process-global weather cache (P7-02).  The run output is written to a
@@ -41,7 +42,40 @@ def _merge(target: dict[str, Any], key: str, values: Mapping[str, Any] | None) -
         target[key] = merged
 
 
+PROJECTS = ROOT / "tests" / "golden" / "projects"
+
+
+def project_path(case: Mapping[str, Any]) -> Path:
+    if case.get("project"):
+        return ROOT / str(case["project"])
+    return PROJECTS / f"{case['id']}.json"
+
+
 def build_project(case: Mapping[str, Any]) -> dict[str, Any]:
+    """The frozen project of a golden case plus its overrides.
+
+    The input is ``tests/golden/projects/<case>.json`` (the 35aadb3 course
+    template with the case overrides already applied), never the live
+    ``value_101_study()`` template, so later template edits cannot change the
+    doctoral inputs.  ``modules``/``parameters``/``runtime_options`` from
+    cases.json are merged on top (a no-op for the values already frozen); this
+    is how X0 S8 pins ``methodology.profile`` for the D cases.
+    """
+
+    path = project_path(case)
+    if not path.is_file():
+        raise SystemExit(f"golden case {case['id']}: frozen project {path.relative_to(ROOT)} is missing (capture.py freeze-projects)")
+    project = json.loads(path.read_text(encoding="utf-8"))
+    _merge(project, "modules", case.get("modules"))
+    _merge(project, "parameters", case.get("parameters"))
+    _merge(project, "runtime_options", case.get("runtime_options"))
+    project["id"] = "golden-study"
+    return project
+
+
+def resolve_from_template(case: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve a *new* case from the live course template (freeze-projects only)."""
+
     from gridform_core.value_101 import value_101_study
     from gridform_core.value_101_lifecycle import build_value_101_network_pair
 

@@ -3,7 +3,9 @@
   "notes": [
     "Two golden families (plan X0 3.3, decision Q12). Doctoral (D*) cases use the doctoral reference configuration (Q3): legacy storage tariff and the doctoral carbon-factor scenario; their trajectory zone is frozen. Corrected (C*) cases are snapshots that must be revised, with correction ids, in the commit that changes them.",
     "Revision 0 of both families was captured on code equivalent to 35aadb3, so at M0 the families describe HEAD behaviour.",
-    "tier: fast = p0_gate quick, full = p0_gate full, nightly = p0_gate nightly."
+    "tier: fast = p0_gate quick, full = p0_gate full, nightly = p0_gate nightly.",
+    "Inputs are frozen: each case runs tests/golden/projects/<case>.json (the 35aadb3 value_101_study() template, network variant and overrides resolved once; verified identical when resolved with the 35aadb3 code), never the live course template. modules/parameters/runtime_options below are merged on top (no-ops for the frozen values). New cases are frozen with capture.py freeze-projects; existing snapshots are immutable.",
+    "X0 S8 (methodology profiles) MUST add \"methodology.profile\": \"doctoral-lineage-0.6.0a2\" to the parameters of every D case in the same commit that introduces the profile parameter, so the doctoral family never runs under the value-corrected default."
   ],
   "cases": {
     "D1": {"family": "doctoral", "tier": "fast", "title": "legacy storage smoke", "pack": "data-packs/value-101-baseline-v1", "mode": "smoke",
