@@ -178,7 +178,7 @@ from backend.lifecycle.run_status import STATUS_LOCK, STATUS_LOCK_TIMEOUT_SECOND
 from backend.lifecycle.file_locks import hold_lock
 from backend.lifecycle.file_locks import FileLock, LOCK_HELD
 from backend.lifecycle.worker_lease import lease_state
-from backend.run_supervisor import RunSupervisor, WorkerSpawnError, worker_liveness
+from backend.run_supervisor import SHUTDOWN_SEAL_SECONDS, RunSupervisor, WorkerSpawnError, worker_liveness
 from gridform_core.run_lineage import copperplate_rerun_project
 from gridform_core.run_quota import (
     QUOTA_CORRECTIVE_ACTIONS,
@@ -3571,7 +3571,9 @@ def main() -> None:
         finally:
             server.server_close()
     finally:
-        supervisor.stop()
+        # Queued failed-provenance seals get a bounded time; whatever is left
+        # is re-queued by the next start's reconciliation.
+        supervisor.stop(seal_timeout=SHUTDOWN_SEAL_SECONDS)
         background = supervisor.background_runs()
         if background:
             print(

@@ -27,7 +27,11 @@ Lifecycle of a worker:
    binds: the same judgement for every active run, repair of runs a pre-P0-3
    delete left in ``deleting``, and nothing slow (no hashing, no tree walks).
    Failed-provenance sealing for runs it settles is queued for the background
-   sealer thread.
+   sealer thread, and so is sealing for failed runs a previous backend settled
+   but could not seal before it stopped (``worker_outcome`` without
+   ``provenance.json`` and without a recorded sealing warning).
+5. ``stop(seal_timeout=...)`` at shutdown lets the sealer finish the queued
+   seals for a bounded time.
 
 Pre-lease (v1) workers have no lock.  On Linux their ``/proc`` argv decides;
 elsewhere they are ``unverifiable`` and only a confirmed manual mark-lost after
@@ -83,6 +87,8 @@ TICK_SECONDS = 5.0
 SPAWN_GRACE_SECONDS = 30.0
 WINDOWS_CONFIRM_SECONDS = 5.0
 MARK_LOST_QUIET_SECONDS = 15 * 60
+SHUTDOWN_SEAL_SECONDS = 10.0
+SEAL_WARNING_CODE = "GF_FAILED_PROVENANCE_WARNING"
 RECONCILER_ENV = "VALUE_RUN_RECONCILER"
 
 LIVENESS_ALIVE = "alive"
@@ -480,11 +486,26 @@ class RunSupervisor:
                         self.repair_interrupted_delete(run_dir, report)
                     elif state in ACTIVE_STATES:
                         self.judge(run_dir, startup=True, report=report)
+                    elif state == "failed":
+                        self.requeue_unsealed(run_dir, report)
                 except (LifecycleError, OSError) as exc:
                     _log(f"could not reconcile {run_dir.name}: {exc}")
         for step in extra_steps or []:
             step(report)
         return report
+
+    def requeue_unsealed(self, run_dir: Path, report: ReconcileReport) -> None:
+        """Queue the seal of a run settled by a backend that stopped first."""
+
+        status = read_status(run_dir) or {}
+        if not isinstance(status.get("worker_outcome"), Mapping) or (run_dir / "provenance.json").exists():
+            return
+        warnings = status.get("warnings") if isinstance(status.get("warnings"), list) else []
+        if any(isinstance(item, Mapping) and item.get("code") == SEAL_WARNING_CODE for item in warnings):
+            return  # sealing was tried and failed; not retried at every start
+        report.extra.setdefault("requeued_seals", []).append(run_dir.name)
+        if not self.observe_only:
+            self._seal_queue.put((run_dir, dict(status)))
 
     # -- manual mark-lost -------------------------------------------------------
     def mark_lost(self, run_dir: Path, *, confirm_run_id: str, quiet_seconds: float = MARK_LOST_QUIET_SECONDS) -> tuple[int, dict[str, Any]]:
@@ -542,14 +563,31 @@ class RunSupervisor:
             thread.start()
             self._threads.append(thread)
 
-    def stop(self) -> None:
+    def stop(self, *, seal_timeout: float = 0.0) -> None:
+        """Stop ticking; give queued seals up to ``seal_timeout`` seconds.
+
+        The sealer thread finishes the queue before the stop marker; when it
+        was never started the queue is drained here, within the same bound.
+        """
+
         self._stop.set()
         self._seal_queue.put(None)
+        if seal_timeout <= 0:
+            return
+        sealers = [thread for thread in self._threads if thread.name == "value-run-sealer" and thread.is_alive()]
+        if sealers:
+            sealers[0].join(seal_timeout)
+            if sealers[0].is_alive():
+                _log(f"failed-provenance sealing still running after {seal_timeout:g} s; "
+                     "the next start re-queues what is left")
+        else:
+            self.drain_seals(timeout=seal_timeout)
 
-    def drain_seals(self) -> None:
+    def drain_seals(self, *, timeout: float | None = None) -> None:
         """Seal queued runs synchronously (tests and shutdown)."""
 
-        while True:
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while deadline is None or time.monotonic() < deadline:
             try:
                 item = self._seal_queue.get_nowait()
             except queue.Empty:

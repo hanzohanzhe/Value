@@ -3454,14 +3454,14 @@
     },
     {
       "path": "backend/run_supervisor.py",
-      "sha256": "0e1c30c53b92a9e08655fee42b9abcdb7860f4448dbb4ee470aeb8c60a393b48",
-      "bytes": 24924,
+      "sha256": "df75c555125210fc370a1f90bdfc9cff19f4855a25cf3ed651fab525d1fc1e2e",
+      "bytes": 27091,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/server.py",
-      "sha256": "8d4c2ad6217f7f19deb972419c03a1633c32779b804e1e886f4870bf7048008c",
-      "bytes": 174527,
+      "sha256": "420bce6a4240f081a53f432e959e816b463d058cbe44e3e5953110398fdc18b8",
+      "bytes": 174723,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11087,8 +11087,8 @@
     },
     {
       "path": "tests/test_run_supervisor.py",
-      "sha256": "a753dedd4d53002453cca24d59887ecc32019ba9abd1d6c1efe56ad37984cbe8",
-      "bytes": 24272,
+      "sha256": "a6724a882f1d7996745cb24ed6d55341f6d2627cd8aca0246c327cdb0bf1f36e",
+      "bytes": 26380,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

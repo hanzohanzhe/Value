@@ -472,6 +472,47 @@ class FailedRunSealerTests(unittest.TestCase):
         self.assertFalse((run_dir / "model-output").exists())
         self.assertEqual(read_status(run_dir), queued)
 
+    def test_shutdown_lets_the_sealer_finish_queued_seals(self) -> None:
+        """Review M1-P0-3 #6: stop(seal_timeout) waits for the sealer thread."""
+
+        self.supervisor.interval = 3600.0
+        self.supervisor.start()
+        release = threading.Event()
+        real_sealer = self.supervisor._sealer
+
+        def slow_sealer(run_dir, status):
+            release.wait(5)
+            real_sealer(run_dir, status)
+
+        self.supervisor._sealer = slow_sealer
+        run_dir = self._settled("r-shutdown")
+        threading.Timer(0.3, release.set).start()
+        self.supervisor.stop(seal_timeout=10)
+        self.assertTrue((run_dir / "provenance.json").is_file())
+
+    def test_shutdown_without_a_sealer_thread_drains_within_the_bound(self) -> None:
+        run_dir = self._settled("r-unstarted")
+        self.supervisor.stop(seal_timeout=10)
+        self.assertTrue((run_dir / "provenance.json").is_file())
+
+    def test_reconcile_requeues_a_settled_run_left_unsealed(self) -> None:
+        run_dir = self._settled("r-left")
+        fresh = RunSupervisor(self.runs, run_lock=self.server.run_action_lock,
+                              sealer=self.server._seal_failed_run, reconciler_mode="apply", windows=False)
+        report = fresh.reconcile_all()
+        self.assertEqual(report.to_dict()["requeued_seals"], ["r-left"])
+        fresh.drain_seals()
+        self.assertTrue((run_dir / "provenance.json").is_file())
+        again = RunSupervisor(self.runs, run_lock=self.server.run_action_lock, reconciler_mode="apply", windows=False)
+        self.assertNotIn("requeued_seals", again.reconcile_all().to_dict())
+
+    def test_reconcile_does_not_retry_a_seal_that_recorded_a_warning(self) -> None:
+        run_dir = self._settled("r-warned")
+        update_status(run_dir, writer="server", mutate=lambda current: current.update({
+            "warnings": [{"code": "GF_FAILED_PROVENANCE_WARNING"}]}))
+        fresh = RunSupervisor(self.runs, run_lock=self.server.run_action_lock, reconciler_mode="apply", windows=False)
+        self.assertNotIn("requeued_seals", fresh.reconcile_all().to_dict())
+
     def test_failed_provenance_refuses_a_missing_run_directory(self) -> None:
         from gridform_core.provenance import write_failed_run_provenance
 
