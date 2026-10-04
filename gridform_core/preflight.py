@@ -24,7 +24,14 @@ from .preflight_resources import (
     evaluate_resource_gate,
 )
 from .project_revision import project_fingerprint
-from .run_quota import RunQuotaPolicy
+from .run_quota import (
+    QUOTA_CORRECTIVE_ACTIONS,
+    QuotaUsage,
+    RunQuotaPolicy,
+    global_quota_reasons,
+    output_reservation_bytes,
+    quota_usage,
+)
 from .run_policy import resolve_run_policy, validate_pack_run_mode
 from .frontend_contract import validate_maturity_acknowledgements
 from .v2.module_manifest import ModuleRegistryV2, workspace_registry
@@ -73,6 +80,12 @@ def resource_gate_report(
         existing_run_bytes=existing_run_bytes,
         already_reserved_bytes=already_reserved_bytes,
     )
+
+
+def _quota_usage(runs_root: Path | None, run_id: str | None) -> QuotaUsage:
+    if runs_root is None:
+        return QuotaUsage(0, 0, ())
+    return quota_usage(Path(runs_root), exclude_run=run_id)
 
 
 def _runtime_observations(runs_root: Path | None, *, mode: str) -> list[float]:
@@ -530,11 +543,14 @@ def run_preflight(
                     calibration_runner=resource_calibration_runner,
                     headroom_bounds=headroom_bounds,
                 )
+                usage = _quota_usage(runs_root, preflight_run_id)
                 decision = resource_gate_report(
                     project=project,
                     estimate=estimate,
                     free_bytes=free,
                     quota_policy=resource_quota_policy,
+                    existing_run_bytes=usage.existing_run_bytes,
+                    already_reserved_bytes=usage.outstanding_reserved_bytes,
                 )
                 estimates = {
                     "label": "estimate_not_guarantee",
@@ -593,6 +609,23 @@ def run_preflight(
             checks["disk"] = {"passed": free >= required * 2, "free_bytes": free, "estimated_output_bytes": required, "safety_factor": 2}
             if free < required * 2:
                 issues.append(_issue("GF_PREFLIGHT_DISK_SPACE", "error", "output", "Free disk space is below twice the estimated run output size.", "Free disk space or reduce market tracing before launch."))
+            # The same quota rule the reservation applies (F5-04): no preflight
+            # pass followed by a 507 at launch.
+            usage = _quota_usage(runs_root, preflight_run_id)
+            reserved = output_reservation_bytes(estimates)
+            quota_reasons = global_quota_reasons(usage, reserved, resource_quota_policy)
+            checks["quota"] = {
+                "passed": not quota_reasons, "required_bytes": reserved,
+                "reason_codes": quota_reasons, **usage.to_dict(),
+                "global_quota_bytes": resource_quota_policy.global_quota_bytes,
+                "per_run_quota_bytes": resource_quota_policy.per_run_quota_bytes,
+            }
+            if quota_reasons:
+                issues.append(_issue(
+                    "GF_PREFLIGHT_RUN_QUOTA", "error", "output",
+                    "The run would exceed the local run-output quota (" + ", ".join(quota_reasons) + ").",
+                    " ".join(QUOTA_CORRECTIVE_ACTIONS),
+                ))
         export_format = str(resolved.runtime.values.get("runtime.market_export_format", "sqlite"))
         parquet_ok = export_format != "parquet" or importlib.util.find_spec("pyarrow") is not None
         checks["optional_parquet"] = {"requested": export_format == "parquet", "passed": parquet_ok}

@@ -1399,6 +1399,7 @@
     "tests/test_run_input_snapshot.py",
     "tests/test_run_lifecycle.py",
     "tests/test_run_policy.py",
+    "tests/test_run_quota_accounting.py",
     "tests/test_run_reproduction.py",
     "tests/test_run_status.py",
     "tests/test_run_supervisor.py",
@@ -3458,8 +3459,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "ec430285321c7eb5a9dfeee19ffe4e5f51de2b2b658bd6e1fbe3ac99a2006712",
-      "bytes": 170649,
+      "sha256": "31519572fd70296189e737a7171e3ff0c68add63556cd4895dc4fc29b8afb187",
+      "bytes": 172505,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7715,15 +7716,15 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "f4e2858f1bd73a02409513607047defbec599ea354777cd8e5c04902d28dc0b9",
-      "bytes": 30647,
-      "transform": "byte copy"
+      "sha256": "ba58ccf97f522072f566ee2c7c5b3e9375b4149fd1c6c6451ebd5027affd555f",
+      "bytes": 32183,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/preflight_resources.py",
-      "sha256": "fdf1b73694856b3e26275348ff8041020029e3332f74c3e7699c611d516ed024",
-      "bytes": 52467,
-      "transform": "byte copy"
+      "sha256": "d689e757f06adb91e63c481917e8d0331c5438966ed30ecabe3d9b96f324d925",
+      "bytes": 52683,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/project_revision.py",
@@ -7799,9 +7800,9 @@
     },
     {
       "path": "gridform_core/run_quota.py",
-      "sha256": "7e7f859f2421058bfa6f03f5406d9788df22b69c93d97656fec9968ec94c4a5a",
-      "bytes": 5499,
-      "transform": "byte copy"
+      "sha256": "f14a3a028413265bf48a7fd9028919cdbdbb8c0a8714823e679bc1cd3c27e14b",
+      "bytes": 11640,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/run_snapshot.py",
@@ -11057,6 +11058,12 @@
       "path": "tests/test_run_policy.py",
       "sha256": "c29f6d9d1a1597b4575f492be61cb2b443688356e56c009b14257fbebb85bcd7",
       "bytes": 2763,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_run_quota_accounting.py",
+      "sha256": "76f298b427d56b17f05fcbf2c75dcafdfbf36cd4f02f4e1568e43341c9d62401",
+      "bytes": 17863,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

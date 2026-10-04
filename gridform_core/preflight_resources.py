@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from .module_context import RunStaticContext, YearContext, canonical_context_sha256
-from .run_quota import RunQuotaPolicy
+from .run_quota import QuotaUsage, RunQuotaPolicy, global_quota_reasons
 
 
 GIB = 1024**3
@@ -1179,8 +1179,12 @@ def resource_readiness_from_snapshot(
     quota_policy: RunQuotaPolicy,
     target_volume_bytes: int | None = None,
     calibration_runner: Callable[[dict[str, object]], Mapping[str, object]] | None = None,
+    usage: QuotaUsage | None = None,
 ) -> tuple[ResourceEstimate, dict[str, object], dict[str, object]]:
-    """Build authoritative readiness from the promoted immutable snapshot."""
+    """Build authoritative readiness from the promoted immutable snapshot.
+
+    ``usage`` (run_quota.quota_usage) applies the shared global quota rule.
+    """
 
     from .run_snapshot import verify_run_input_snapshot
 
@@ -1218,6 +1222,8 @@ def resource_readiness_from_snapshot(
         estimate,
         free_bytes=free_bytes,
         quota_policy=quota_policy,
+        existing_run_bytes=usage.existing_run_bytes if usage is not None else 0,
+        already_reserved_bytes=usage.outstanding_reserved_bytes if usage is not None else 0,
     )
     evidence = {
         "trace_profile": estimate.trace_profile,
@@ -1248,11 +1254,11 @@ def evaluate_resource_gate(
 
     estimated_output = estimate.persisted_bytes + estimate.temporary_bytes
     required_free = estimated_output + estimate.reserve_bytes
-    reasons: list[str] = []
-    if estimated_output > quota_policy.per_run_quota_bytes:
-        reasons.append("per_run_quota_exceeded")
-    if existing_run_bytes + already_reserved_bytes + estimated_output > quota_policy.global_quota_bytes:
-        reasons.append("global_quota_exceeded")
+    reasons: list[str] = global_quota_reasons(
+        QuotaUsage(int(existing_run_bytes), int(already_reserved_bytes), ()),
+        estimated_output,
+        quota_policy,
+    )
     if int(free_bytes) < required_free or int(free_bytes) - required_free < quota_policy.minimum_free_bytes:
         reasons.append("free_space_reserve_not_satisfied")
     errors = []

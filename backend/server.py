@@ -180,9 +180,15 @@ from backend.lifecycle.worker_lease import lease_state
 from backend.run_supervisor import RunSupervisor, WorkerSpawnError, worker_liveness
 from gridform_core.run_lineage import copperplate_rerun_project
 from gridform_core.run_quota import (
+    QUOTA_CORRECTIVE_ACTIONS,
     RunQuotaPolicy,
+    global_quota_reasons,
     output_reservation_bytes,
+    quarantine_orphan_run_directories,
+    quota_usage,
+    remove_legacy_reservation_lock,
     reserve_run_space,
+    run_outstanding_bytes,
 )
 from gridform_core.run_bundle import export_run_bundle, validate_bundle_archive
 from gridform_core.zonal_pack_selection import resolve_zonal_pack_selection
@@ -2484,6 +2490,7 @@ class Handler(BaseHTTPRequestHandler):
                             network_pack_root=snapshot_root / "network-pack",
                             registry=MODULE_REGISTRY,
                         ),
+                        usage=quota_usage(RUNS_ROOT, exclude_run=run_id),
                     )
                 )
                 preflight = {
@@ -2741,6 +2748,23 @@ class Handler(BaseHTTPRequestHandler):
         if not preflight["accepted"]:
             first = preflight["errors"][0]
             self._json({"error": first["message"], "preflight": preflight}, 400); return
+        # Resume needs only this run's own unwritten reservation (F5-04).
+        reserved, written, own_outstanding = run_outstanding_bytes(root)
+        usage = quota_usage(RUNS_ROOT, exclude_run=run_id)
+        policy_quota = RunQuotaPolicy()
+        quota_reasons = global_quota_reasons(usage, own_outstanding, policy_quota)
+        if shutil.disk_usage(RUNS_ROOT).free - own_outstanding < policy_quota.minimum_free_bytes:
+            quota_reasons.append("minimum_free_space_floor")
+        if quota_reasons:
+            self._json({
+                "error": "Run disk quota or free-space floor was not satisfied",
+                "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
+                "quota": {
+                    "reason_codes": quota_reasons, "required_bytes": own_outstanding,
+                    "reserved_bytes": reserved, "written_bytes": written, **usage.to_dict(),
+                    "corrective_actions": list(QUOTA_CORRECTIVE_ACTIONS),
+                },
+            }, 507); return
         atomic_json(root / "preflight.json", preflight)
         cancel_request = root / "cancel-request.json"
         if cancel_request.is_file():
@@ -3443,6 +3467,22 @@ def acquire_backend_singleton(state_root: Path) -> FileLock | None:
         return None
 
 
+def _startup_quota_repairs(report: Any) -> None:
+    """Start-up (singleton held): legacy reservation lock and orphan run dirs."""
+
+    if supervisor_observe_only():
+        return
+    if remove_legacy_reservation_lock(RUNS_ROOT):
+        report.extra["removed_legacy_reservation_lock"] = True
+    moved = quarantine_orphan_run_directories(RUNS_ROOT, TRASH_ROOT)
+    if moved:
+        report.extra["orphan_run_directories_moved_to_trash"] = moved
+
+
+def supervisor_observe_only() -> bool:
+    return run_supervisor().observe_only
+
+
 def _raise_keyboard_interrupt(signum: int, _frame: object) -> None:
     raise KeyboardInterrupt(f"signal {signum}")
 
@@ -3467,7 +3507,7 @@ def main() -> None:
     supervisor = run_supervisor()
     try:
         ensure_default_pack()
-        report = supervisor.reconcile_all()
+        report = supervisor.reconcile_all(extra_steps=[_startup_quota_repairs])
         if report.settled or report.repaired or report.unverifiable:
             print("VALUE run reconciliation: " + json.dumps(report.to_dict(), ensure_ascii=False), flush=True)
         server = ThreadingHTTPServer((args.host, args.port), Handler)
