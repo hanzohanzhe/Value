@@ -5950,14 +5950,14 @@
     },
     {
       "path": "e2e/run-tests.mjs",
-      "sha256": "30650639cca274e61a4e97cc8a209195e49bda541eee693ba00c8a38c4c8b864",
-      "bytes": 3427,
+      "sha256": "10bac4458b89b245fc355bbe1d588ca25dfa3f4395737d92f77069997aaf6d60",
+      "bytes": 4144,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/start-e2e-services.mjs",
-      "sha256": "6a8aa727bff5d2658f6c0c1c9753bfc62e7c196d5ae93f113601e260c5a21af4",
-      "bytes": 5069,
+      "sha256": "ecca10598957de62f41de9174abb906db1018c67ad66e23c07430479f4e6ef38",
+      "bytes": 5340,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8251,8 +8251,8 @@
     },
     {
       "path": "playwright.config.ts",
-      "sha256": "8985e2b2ed415f42ff8de2039c348e27cd6c6d1c11291e29c8384b371d3a2479",
-      "bytes": 1784,
+      "sha256": "00201016021afd004020bff6faf58af48c22a01accf57a2d58b47ea789d2d87e",
+      "bytes": 1997,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -5,7 +5,11 @@ import path from "node:path";
 import process from "node:process";
 
 const root = path.resolve(import.meta.dirname, "..");
-const state = fs.mkdtempSync(path.join(os.tmpdir(), "force-browser-e2e-"));
+// e2e/run-tests.mjs passes VALUE_E2E_STATE_ROOT and removes it afterwards, so
+// the state cannot leak even when this process is stopped without a signal.
+const stateRoot = process.env.VALUE_E2E_STATE_ROOT || os.tmpdir();
+fs.mkdirSync(stateRoot, { recursive: true });
+const state = fs.mkdtempSync(path.join(stateRoot, "force-browser-e2e-"));
 const packs = path.join(state, "data-packs");
 const modules = path.join(state, "modules");
 fs.mkdirSync(packs, { recursive: true });

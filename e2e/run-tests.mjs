@@ -20,6 +20,8 @@ import { describeEvaluation, evaluateOffline } from "./offline-ratchet.mjs";
 //   VALUE_E2E_SKIP_BUILD=1    reuse an existing dist/ (build first with `vinext build`)
 //   VALUE_E2E_JSON=<file>     also write Playwright's JSON report there
 //   VALUE_E2E_OUTPUT_DIR=<d>  artefact directory (default test-results)
+//   VALUE_E2E_STATE_ROOT=<d>  parent of the services' temporary state; by default this
+//                             runner creates one and removes it after Playwright exits
 const root = path.resolve(import.meta.dirname, "..");
 const offline = process.argv.includes("--offline");
 const passthrough = process.argv.slice(2).filter((argument) => argument !== "--offline");
@@ -29,6 +31,19 @@ const environment = {
 };
 const subset = offline ? JSON.parse(fs.readFileSync(path.join(root, "e2e", "offline-subset.json"), "utf8")) : null;
 let reportFolder = null;
+// start-e2e-services.mjs creates its state directory inside this root. Playwright
+// stops the web server with SIGTERM (gracefulShutdown in playwright.config.ts),
+// but if the services die without cleaning up, the runner still removes it.
+let stateRoot = null;
+if (!environment.VALUE_E2E_STATE_ROOT) {
+  stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "value-e2e-state-"));
+  environment.VALUE_E2E_STATE_ROOT = stateRoot;
+}
+function finish(code) {
+  if (stateRoot) fs.rmSync(stateRoot, { recursive: true, force: true });
+  if (reportFolder) fs.rmSync(reportFolder, { recursive: true, force: true });
+  process.exit(code);
+}
 if (offline) {
   environment.VALUE_E2E_UI_ONLY = "1";
   if (!environment.VALUE_E2E_JSON) {
@@ -41,7 +56,7 @@ if (offline) {
 const vinext = path.join(root, "node_modules", "vinext", "dist", "cli.js");
 if (process.env.VALUE_E2E_SKIP_BUILD !== "1") {
   const built = spawnSync(process.execPath, [vinext, "build"], { cwd: root, env: environment, stdio: "inherit" });
-  if (built.status !== 0) process.exit(built.status ?? 1);
+  if (built.status !== 0) finish(built.status ?? 1);
 }
 const playwrightArguments = offline
   ? [...subset.specs, `--project=${subset.project ?? "desktop-chromium"}`, `--timeout=${subset.timeout_ms ?? 30000}`, ...passthrough]
@@ -51,7 +66,7 @@ const result = spawnSync(
   [path.join(root, "node_modules", "@playwright", "test", "cli.js"), "test", ...playwrightArguments],
   { cwd: root, env: environment, stdio: "inherit" },
 );
-if (!offline) process.exit(result.status ?? 1);
+if (!offline) finish(result.status ?? 1);
 
 // Offline mode: Playwright's own exit code is ignored on purpose (registered
 // failures make it non-zero); the ratchet decides.
@@ -60,9 +75,8 @@ try {
   report = JSON.parse(fs.readFileSync(environment.VALUE_E2E_JSON, "utf8"));
 } catch (error) {
   console.error(`offline e2e: no usable Playwright report at ${environment.VALUE_E2E_JSON} (${error.message})`);
-  process.exit(1);
+  finish(1);
 }
 const evaluation = evaluateOffline(report, subset);
 console.log(`\n${describeEvaluation(evaluation)}`);
-if (reportFolder) fs.rmSync(reportFolder, { recursive: true, force: true });
-process.exit(evaluation.ok ? 0 : 1);
+finish(evaluation.ok ? 0 : 1);

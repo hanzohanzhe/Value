@@ -34,6 +34,9 @@ export default defineConfig({
     url: "http://127.0.0.1:18800",
     timeout: 120_000,
     reuseExistingServer: false,
+    // SIGTERM to the process group lets start-e2e-services.mjs stop its
+    // children and delete its temporary state (otherwise it leaks per run).
+    gracefulShutdown: { signal: "SIGTERM", timeout: 5000 },
   },
   projects: [
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
