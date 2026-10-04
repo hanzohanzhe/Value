@@ -82,8 +82,15 @@ class RequireAgentCashflowTest(unittest.TestCase):
 class SchemeCNetRevenueTest(unittest.TestCase):
     """Decision A4: thermal nets energy x gen_cost; VRE and storage keep gross."""
 
-    CCGT = dict(technology="CCGT", generated_mwh=182_500.0, fuel_cost_gbp_per_mwh=35.0,
+    # Every income and cost component is required; zeros are always explicit.
+    COMPONENTS = ("hydrogen_income_gbp", "generation_cost_gbp_per_mwh", "fuel_cost_gbp_per_mwh",
+                  "carbon_cost_gbp_per_mwh", "unit_time_cost_gbp_per_mwh")
+    ZERO = {name: 0.0 for name in COMPONENTS}
+    CCGT = dict(ZERO, technology="CCGT", generated_mwh=182_500.0, fuel_cost_gbp_per_mwh=35.0,
                 carbon_cost_gbp_per_mwh=22.0, unit_time_cost_gbp_per_mwh=3.0)
+
+    def net(self, **kwargs):
+        return ia.scheme_c_investment_net_revenue(**{**self.ZERO, **kwargs})
 
     def test_ccgt_at_price_equal_to_gen_cost_has_zero_net(self):
         row = ia.scheme_c_investment_net_revenue(electricity_income_gbp=10_950_000.0, **self.CCGT)
@@ -97,23 +104,22 @@ class SchemeCNetRevenueTest(unittest.TestCase):
         self.assertEqual(row["net_revenue_gbp"], -1_825_000.0)
 
     def test_fuel_only_and_carbon_only_assets_deduct(self):
-        biomass = ia.scheme_c_investment_net_revenue(
+        biomass = self.net(
             technology="bio_and_waste", electricity_income_gbp=24e6, generated_mwh=3e5, fuel_cost_gbp_per_mwh=30.0,
             unit_time_cost_gbp_per_mwh=5.0)
         self.assertEqual((biomass["operating_cost_gbp"], biomass["net_revenue_gbp"]), (10.5e6, 13.5e6))
-        carbon_only = ia.scheme_c_investment_net_revenue(
+        carbon_only = self.net(
             technology="OCGT", electricity_income_gbp=1.6e6, generated_mwh=1e4, generation_cost_gbp_per_mwh=1.0,
             carbon_cost_gbp_per_mwh=90.0, unit_time_cost_gbp_per_mwh=9.0)
         self.assertEqual(carbon_only["gen_cost_gbp_per_mwh"], 100.0)
         self.assertEqual(carbon_only["net_revenue_gbp"], 6e5)
 
     def test_vre_and_storage_gross_is_profit(self):
-        vre = ia.scheme_c_investment_net_revenue(
+        vre = self.net(
             technology="solar", electricity_income_gbp=6e6, generated_mwh=1e5,
             generation_cost_gbp_per_mwh=0.0001, unit_time_cost_gbp_per_mwh=0.0)
-        storage = ia.scheme_c_investment_net_revenue(
-            technology="1c_battery", electricity_income_gbp=-3.0, generated_mwh=4e4)
-        offshore = ia.scheme_c_investment_net_revenue(
+        storage = self.net(technology="1c_battery", electricity_income_gbp=-3.0, generated_mwh=4e4)
+        offshore = self.net(
             technology="offshore", electricity_income_gbp=5.0, generated_mwh=1.0,
             generation_cost_gbp_per_mwh=7.0, unit_time_cost_gbp_per_mwh=2.0)
         for row, gross in ((vre, 6e6), (storage, -3.0), (offshore, 5.0)):
@@ -123,24 +129,48 @@ class SchemeCNetRevenueTest(unittest.TestCase):
             self.assertEqual(row["net_revenue_gbp"], gross)
 
     def test_hydrogen_income_joins_total_income(self):
-        row = ia.scheme_c_investment_net_revenue(
+        row = self.net(
             technology="gas", electricity_income_gbp=100.0, hydrogen_income_gbp=50.0, generated_mwh=1.0,
             fuel_cost_gbp_per_mwh=10.0)
         self.assertEqual((row["total_income_gbp"], row["net_revenue_gbp"]), (150.0, 140.0))
 
     def test_invalid_inputs_fail_closed(self):
         for kwargs in ({"generated_mwh": -1.0}, {"fuel_cost_gbp_per_mwh": math.nan},
-                       {"carbon_cost_gbp_per_mwh": -1.0}, {"electricity_income_gbp": math.inf}):
+                       {"carbon_cost_gbp_per_mwh": -1.0}, {"electricity_income_gbp": math.inf},
+                       {"hydrogen_income_gbp": None}, {"unit_time_cost_gbp_per_mwh": True}):
             payload = {"technology": "CCGT", "electricity_income_gbp": 1.0, "generated_mwh": 1.0, **kwargs}
             with self.subTest(kwargs), self.assertRaises(ValueError):
-                ia.scheme_c_investment_net_revenue(**payload)
+                self.net(**payload)
 
+    def test_left_out_income_or_cost_component_is_an_error_not_a_zero(self):
+        """Review M0-P0-7-S1 round 2 (major): no component defaults to zero."""
+        with self.assertRaises(TypeError):  # the reviewer's call: a CCGT with no cost arguments
+            ia.scheme_c_investment_net_revenue(  # type: ignore[call-arg]
+                technology="CCGT", electricity_income_gbp=10.95e6, generated_mwh=182500.0)
+        required = ("technology", "electricity_income_gbp", "generated_mwh") + self.COMPONENTS
+        for technology in sorted(ia.THERMAL_TECHNOLOGIES | ia.GROSS_PROFIT_TECHNOLOGIES | {"coal"}):
+            full = dict(self.ZERO, technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0)
+            if technology == "coal":
+                full["fuel_cost_gbp_per_mwh"] = 1.0
+            ia.scheme_c_investment_net_revenue(**full)  # the complete call works
+            for name in required:
+                payload = {key: value for key, value in full.items() if key != name}
+                with self.subTest(technology=technology, missing=name), self.assertRaises(TypeError):
+                    ia.scheme_c_investment_net_revenue(**payload)
+
+    def test_signature_has_no_defaults(self):
+        import inspect
+
+        parameters = inspect.signature(ia.scheme_c_investment_net_revenue).parameters
+        self.assertEqual({name for name, p in parameters.items() if p.default is not inspect.Parameter.empty}, set())
+        self.assertTrue(all(p.kind is inspect.Parameter.KEYWORD_ONLY for p in parameters.values()))
+        self.assertEqual(set(parameters), {"technology", "electricity_income_gbp", "generated_mwh", *self.COMPONENTS})
 
     def test_thermal_is_decided_by_technology_not_by_cost(self):
         """Review M0-P0-7-S1 #1: zero fuel and carbon cost does not make gas gross."""
         for technology in sorted(ia.THERMAL_TECHNOLOGIES):
             with self.subTest(technology):
-                row = ia.scheme_c_investment_net_revenue(
+                row = self.net(
                     technology=technology, electricity_income_gbp=1e6, generated_mwh=1e4,
                     generation_cost_gbp_per_mwh=5.0, unit_time_cost_gbp_per_mwh=3.0)
                 self.assertEqual(row["basis"], ia.NET_REVENUE_BASIS_THERMAL)
@@ -153,24 +183,21 @@ class SchemeCNetRevenueTest(unittest.TestCase):
         for technology in sorted(ia.GROSS_PROFIT_TECHNOLOGIES):
             for cost in ({"carbon_cost_gbp_per_mwh": 1.0}, {"fuel_cost_gbp_per_mwh": 0.5}):
                 with self.subTest(technology=technology, cost=cost), self.assertRaises(ValueError):
-                    ia.scheme_c_investment_net_revenue(
-                        technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0, **cost)
+                    self.net(technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0, **cost)
 
     def test_other_technologies_deduct_only_with_a_fuel_or_carbon_cost(self):
-        coal = ia.scheme_c_investment_net_revenue(
-            technology="coal", electricity_income_gbp=100.0, generated_mwh=2.0, fuel_cost_gbp_per_mwh=10.0)
+        coal = self.net(technology="coal", electricity_income_gbp=100.0, generated_mwh=2.0, fuel_cost_gbp_per_mwh=10.0)
         self.assertEqual((coal["basis"], coal["net_revenue_gbp"]), (ia.NET_REVENUE_BASIS_THERMAL, 80.0))
         for technology in ("Nuclear", "Hydro_natural_flow", "pumped_hydro", "unknown"):
             with self.subTest(technology), self.assertRaises(ValueError):
-                ia.scheme_c_investment_net_revenue(
-                    technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0)
+                self.net(technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0)
         for technology in ("", None, 5):
             with self.subTest(technology=technology), self.assertRaises(ValueError):
-                ia.scheme_c_investment_net_revenue(
-                    technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0,
-                    fuel_cost_gbp_per_mwh=1.0)
+                self.net(technology=technology, electricity_income_gbp=1.0, generated_mwh=1.0,
+                         fuel_cost_gbp_per_mwh=1.0)
         with self.assertRaises(TypeError):
-            ia.scheme_c_investment_net_revenue(electricity_income_gbp=1.0, generated_mwh=1.0)  # type: ignore[call-arg]
+            ia.scheme_c_investment_net_revenue(electricity_income_gbp=1.0, generated_mwh=1.0,  # type: ignore[call-arg]
+                                               **self.ZERO)
 
 
 class TechnologyClassTest(unittest.TestCase):

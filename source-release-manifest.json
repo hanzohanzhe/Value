@@ -7295,8 +7295,8 @@
     },
     {
       "path": "gridform_core/investment_accounts.py",
-      "sha256": "756913b58f9e6990a519551a3e51def7ff9c1da2df64c0d96e36f74216890d69",
-      "bytes": 24027,
+      "sha256": "556da578d4d5edabecda1dcd0368b62d8eb4935b888bc8bafd14a70db52e7c80",
+      "bytes": 24438,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8769,8 +8769,8 @@
     },
     {
       "path": "scripts/p07_record_head_decide.py",
-      "sha256": "d10e2ad9e50eb505783a4ab8478be6d9b2ffeee400879e2c39602990279e93ef",
-      "bytes": 25407,
+      "sha256": "7954fd9db460ae2aca7a4c4214fbd5f709474560a6053db1fee3de55b886f7da",
+      "bytes": 25625,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9261,8 +9261,8 @@
     },
     {
       "path": "tests/fixtures/p07/head_decide_record.json",
-      "sha256": "7793f1727b67e4527862d96011b01c2766b2066b119cb0b8689d8c1fe92bc58c",
-      "bytes": 83680,
+      "sha256": "8db2709169acd7b488f0f3931d462637547100c6494a75e9ce94ed467e8ff2f1",
+      "bytes": 84142,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10053,8 +10053,8 @@
     },
     {
       "path": "tests/test_p07_investment_accounts.py",
-      "sha256": "264203f7b67848f5b1e4f998e52f4a9f75d9443a7647a3725616f781f816e139",
-      "bytes": 23835,
+      "sha256": "4671cce05d8423cccdf119f254c9b867982fff649772d4e696d4a078d32ddbb4",
+      "bytes": 25668,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

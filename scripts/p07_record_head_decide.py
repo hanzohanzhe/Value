@@ -18,7 +18,8 @@ expectations of the restored Scheme C thermal net revenue (decision A4): the
 thermal technologies (``investment_accounts.THERMAL_TECHNOLOGIES``: CCGT, OCGT,
 gas, bio_and_waste) net ``energy x (generation + fuel + carbon + unit-time
 cost)`` even with zero fuel and carbon cost; VRE and storage keep gross revenue
-as profit. Each cashflow row names its technology, copied from the asset.
+as profit. Each cashflow row names its technology, copied from the asset, and
+writes every A4 income and cost component out, zeros included.
 P0-7 S4 consumes them.
 """
 from __future__ import annotations
@@ -102,8 +103,10 @@ def _asset(asset_id, technology, capacity, *, region="GB", status="operating", e
     return AssetStateV2(asset_id, technology, capacity, energy, region, status=status, extensions=extensions)
 
 
-def _thermal(energy_mwh, *, generation=0.0, fuel=0.0, carbon=0.0, unit_time=0.0):
-    return {"generated_mwh": energy_mwh, "generation_cost_gbp_per_mwh": generation,
+def _thermal(energy_mwh, *, generation=0.0, fuel=0.0, carbon=0.0, unit_time=0.0, hydrogen=0.0):
+    """Every A4 component written out (zeros explicit): the A4 function has no defaults."""
+    return {"generated_mwh": energy_mwh, "hydrogen_income_gbp": hydrogen,
+            "generation_cost_gbp_per_mwh": generation,
             "fuel_cost_gbp_per_mwh": fuel, "carbon_cost_gbp_per_mwh": carbon,
             "unit_time_cost_gbp_per_mwh": unit_time}
 

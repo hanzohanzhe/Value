@@ -14,7 +14,8 @@ parts:
    Thermal is decided by technology first (``THERMAL_TECHNOLOGIES``: gas and
    biomass), then by a fuel or carbon cost for any other technology. VRE and
    storage keep gross revenue as profit (thesis assumption: CAPEX and
-   depreciation only, no OPEX).
+   depreciation only, no OPEX). Every income and cost component is a
+   required argument: a left-out component is an error, never a zero.
 3. The ``head_*`` functions: the investment rule of the v2
    ``SchemeCAgentInvestmentDefinition.decide`` at 35aadb3, decomposed without
    any change of arithmetic or evaluation order. ``head_decide_accounts``
@@ -160,14 +161,20 @@ def scheme_c_investment_net_revenue(
     *,
     technology: str,
     electricity_income_gbp: float,
+    hydrogen_income_gbp: float,
     generated_mwh: float,
-    hydrogen_income_gbp: float = 0.0,
-    generation_cost_gbp_per_mwh: float = 0.0,
-    fuel_cost_gbp_per_mwh: float = 0.0,
-    carbon_cost_gbp_per_mwh: float = 0.0,
-    unit_time_cost_gbp_per_mwh: float = 0.0,
+    generation_cost_gbp_per_mwh: float,
+    fuel_cost_gbp_per_mwh: float,
+    carbon_cost_gbp_per_mwh: float,
+    unit_time_cost_gbp_per_mwh: float,
 ) -> dict[str, object]:
     """Annual investment net revenue under the restored Scheme C rule.
+
+    Every argument is required and has no default, for every technology: a
+    left-out income or cost component is a ``TypeError``, never a zero
+    (review M0-P0-7-S1 round 2). A zero must be passed explicitly, e.g. the
+    zero fuel and carbon cost of a VRE asset or the zero hydrogen income of an
+    asset without electrolysis.
 
     Source (runtime_compat/modular_investment_support.py): line 2151 books
     ``energy x PHYSICAL_PERIOD_HOURS x gen_cost`` per generator, where energy is

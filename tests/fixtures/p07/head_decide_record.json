@@ -39,6 +39,7 @@
      "fuel_cost_gbp_per_mwh": 35.0,
      "generated_mwh": 182500.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "CCGT",
      "unit_time_cost_gbp_per_mwh": 3.0
     }
@@ -232,6 +233,7 @@
      "fuel_cost_gbp_per_mwh": 35.0,
      "generated_mwh": 182500.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "CCGT",
      "unit_time_cost_gbp_per_mwh": 3.0
     }
@@ -447,6 +449,7 @@
      "fuel_cost_gbp_per_mwh": 30.0,
      "generated_mwh": 300000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "bio_and_waste",
      "unit_time_cost_gbp_per_mwh": 5.0
     },
@@ -456,6 +459,7 @@
      "fuel_cost_gbp_per_mwh": 40.0,
      "generated_mwh": 400000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "gas",
      "unit_time_cost_gbp_per_mwh": 2.0
     },
@@ -465,6 +469,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 10000.0,
      "generation_cost_gbp_per_mwh": 1.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "OCGT",
      "unit_time_cost_gbp_per_mwh": 9.0
     }
@@ -790,6 +795,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 500000.0,
      "generation_cost_gbp_per_mwh": 12.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "gas",
      "unit_time_cost_gbp_per_mwh": 8.0
     }
@@ -985,6 +991,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 90000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
      "technology": "onshore",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
@@ -994,6 +1001,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 100000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
      "technology": "solar",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
@@ -1003,6 +1011,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 100000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
      "technology": "solar",
      "unit_time_cost_gbp_per_mwh": 0.0
     }
@@ -1364,6 +1373,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 30000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "0.25c_battery",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
@@ -1373,6 +1383,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 40000.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "1c_battery",
      "unit_time_cost_gbp_per_mwh": 0.0
     }
@@ -1634,6 +1645,7 @@
      "fuel_cost_gbp_per_mwh": 35.0,
      "generated_mwh": 182500.0,
      "generation_cost_gbp_per_mwh": 0.0,
+     "hydrogen_income_gbp": 0.0,
      "technology": "CCGT",
      "unit_time_cost_gbp_per_mwh": 3.0
     },
@@ -1643,6 +1655,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 30000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
      "technology": "onshore",
      "unit_time_cost_gbp_per_mwh": 0.0
     },
@@ -1652,6 +1665,7 @@
      "fuel_cost_gbp_per_mwh": 0.0,
      "generated_mwh": 20000.0,
      "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
      "technology": "solar",
      "unit_time_cost_gbp_per_mwh": 0.0
     }
