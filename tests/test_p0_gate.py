@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import tempfile
@@ -167,6 +169,72 @@ class P0GateTests(unittest.TestCase):
         gate = _gate(skip=["release_manifest"])
         gate.execute([GATE.Step("release_manifest", lambda _: {"status": "passed"})])
         self.assertEqual(gate.results[0]["status"], "skipped")
+
+    def test_skipped_or_omitted_mandatory_steps_are_waivers_not_a_pass(self) -> None:
+        passed = [{"step": name, "status": "passed"} for name in GATE.MANDATORY_STEPS]
+        self.assertEqual(GATE.waivers("quick", passed, GATE.APPEND_ONLY_BASE), [])
+        for name in GATE.MANDATORY_STEPS:
+            with self.subTest(step=name):
+                skipped = [dict(row, status="skipped") if row["step"] == name else row for row in passed]
+                self.assertTrue(any(name in row for row in GATE.waivers("quick", skipped, GATE.APPEND_ONLY_BASE)))
+                omitted = [row for row in passed if row["step"] != name]
+                self.assertTrue(any(name in row for row in GATE.waivers("quick", omitted, GATE.APPEND_ONLY_BASE)))
+        self.assertTrue(any("--append-base" in row for row in GATE.waivers("quick", passed, "HEAD")))
+        for tier in GATE.TIERS:
+            self.assertTrue(set(GATE.MANDATORY_STEPS) <= {step.name for step in GATE.STEPS[tier]})
+
+    def test_waived_run_reports_passed_false_and_exit_two(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            report = Path(folder) / "gate.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = GATE.main(["quick", "--only", "no-such-step", "--report", str(report), "--quiet"])
+            payload = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(code, 2)
+        self.assertEqual(payload["status"], "passed_with_waivers")
+        self.assertFalse(payload["passed"])
+        self.assertEqual(len(payload["waivers"]), len(GATE.MANDATORY_STEPS))
+        self.assertEqual(GATE.NETGUARD, {})
+
+    def test_gate_subprocesses_cannot_reach_the_live_ports(self) -> None:
+        import socket
+        import sys
+
+        node = GATE.node_executable()
+        with socket.socket() as sentinel, tempfile.TemporaryDirectory() as folder:
+            sentinel.bind(("127.0.0.1", 0))
+            sentinel.listen(8)
+            port = sentinel.getsockname()[1]
+            script = Path(folder) / "toy.mjs"
+            script.write_text(
+                "import net from 'node:net';\n"
+                f"const s = net.connect({port}, '127.0.0.1');\n"
+                "s.on('error', (e) => { console.log(e.code); });\n"
+                "s.on('connect', () => { console.log('connected'); s.end(); });\n",
+                encoding="utf-8",
+            )
+            seen = {}
+
+            def toy(gate):
+                code = f"import socket, sys; sys.exit(socket.socket().connect_ex(('127.0.0.1', {port})))"
+                seen["python"] = GATE.run([sys.executable, "-B", "-c", code]).returncode
+                if node:
+                    seen["node"] = GATE.run([node, str(script)]).stdout.strip()
+                return {"status": "passed"}
+
+            report = Path(folder) / "gate.json"
+            with mock.patch.dict(os.environ, {"VALUE_TEST_FORBIDDEN_PORTS": str(port)}), \
+                    mock.patch.dict(GATE.STEPS, {"quick": [GATE.Step("toy", toy)]}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = GATE.main(["quick", "--report", str(report), "--quiet"])
+            payload = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(code, 1)
+        self.assertIn("network_guard", payload["failed"])
+        self.assertNotEqual(seen["python"], 0)
+        attempts = next(row for row in payload["steps"] if row["step"] == "network_guard")["detail"]["forbidden_port_attempts"]
+        self.assertIn(("connect_ex", port), {(row["op"], row["port"]) for row in attempts})
+        if node:
+            self.assertEqual(seen["node"], "ECONNREFUSED")
+            self.assertTrue(any(str(row["test"]).startswith("node:") for row in attempts), attempts)
 
     def test_quick_tier_enforces_append_only(self) -> None:
         self.assertIn("append_only", [step.name for step in GATE.QUICK_STEPS])

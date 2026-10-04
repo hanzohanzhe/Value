@@ -8757,8 +8757,8 @@
     },
     {
       "path": "scripts/p0_gate.py",
-      "sha256": "28f3af79181edc3e391b4a17503be5a05477d4ff2cc91d44833d82d8d100d0de",
-      "bytes": 32702,
+      "sha256": "98a5cbdb853293406d308f35f7c0b355d455d6bba5a1b8a041fbe3e6690a0519",
+      "bytes": 36623,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,8 +10017,8 @@
     },
     {
       "path": "tests/test_p0_gate.py",
-      "sha256": "39634ae4d97a972d4d8a7c1cdd3cdc276fe7724a5fe5de1273ddb1dfbd831f85",
-      "bytes": 14626,
+      "sha256": "4d3ec6af437068da8527f95b1387f4664601fc9a15d6f5b8856573c3f20b3323",
+      "bytes": 18431,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

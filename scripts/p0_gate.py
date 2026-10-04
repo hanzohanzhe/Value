@@ -14,6 +14,16 @@ until their entry point exists, so the gate grows without being rewritten.
 Guard rails: refuses to run when VALUE_DATA_HOME, TMPDIR or the report path
 lies inside the managed install, never starts services on ports 8766/8800,
 and every Python subprocess runs with -B and PYTHONDONTWRITEBYTECODE=1.
+Every Python and node subprocess runs under the network guard
+(scripts/value_test_netguard.py through a generated sitecustomize,
+scripts/value-test-netguard.mjs through NODE_OPTIONS=--import): connections to
+and listeners on the live install's ports are refused, logged, and fail the
+gate (``network_guard``); the backend ratchet carries its own guard per module.
+
+Waivers: a mandatory step (MANDATORY_STEPS) that is skipped or left out by
+--skip/--only, or an --append-base other than APPEND_ONLY_BASE, turns the
+result into ``passed_with_waivers`` with ``passed: false`` and exit code 2.
+Only ``status: passed`` (exit 0) counts as "p0_gate passed".
 """
 
 from __future__ import annotations
@@ -51,6 +61,8 @@ RATCHET_BASELINE_FILES = (
 QUARANTINE_FILE = "tests/baselines/quarantine.txt"
 ESLINT_BASELINE_FILE = "tests/baselines/eslint-baseline.json"
 UNQUARANTINABLE_MODULE_PREFIX = "test_golden"
+# Anti-tamper steps: skipping any of them can never yield "passed".
+MANDATORY_STEPS = ("guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet")
 NODE_TEST_EXCLUDE = {"rendered-html.test.mjs"}  # needs a production build; F1-11
 HTTP_HARNESS_PATTERN = re.compile(r"ThreadingHTTPServer\(\s*\(\s*[\"']127\.0\.0\.1[\"']\s*,\s*0\s*\)\s*,\s*server\.Handler\s*\)")
 FRONTEND_PREFIXES = ("app/", "e2e/", "tsconfig", "eslint.config", "package.json")
@@ -71,11 +83,39 @@ RATCHET = _load_script("run_backend_tests", "scripts/run_backend_tests.py")
 # helpers
 
 
+# Set by main(): {"dir": guard sitecustomize directory, "log": refused-attempt log,
+# "node": file URL of the node preload}.  Empty when the module is imported by tests.
+NETGUARD: dict[str, str] = {}
+NODE_NETGUARD = ROOT / "scripts" / "value-test-netguard.mjs"
+
+
+def enable_netguard(scratch: Path) -> dict[str, str]:
+    guard_dir = RATCHET.install_netguard(scratch)
+    NETGUARD.update({
+        "scratch": str(scratch),
+        "dir": str(guard_dir),
+        "log": str(scratch / RATCHET.NETGUARD_LOG),
+        "node": NODE_NETGUARD.resolve().as_uri(),
+    })
+    return dict(NETGUARD)
+
+
+def netguard_attempts() -> list[dict[str, Any]]:
+    if not NETGUARD:
+        return []
+    return RATCHET.forbidden_port_attempts(Path(NETGUARD["scratch"]))
+
+
 def python_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
     environment = dict(os.environ)
     environment.setdefault("PYTHONPYCACHEPREFIX", str(Path(tempfile.gettempdir()) / "value-gate-pycache"))
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
-    environment["PYTHONPATH"] = str(ROOT)
+    environment["PYTHONPATH"] = os.pathsep.join([*([NETGUARD["dir"]] if NETGUARD else []), str(ROOT)])
+    if NETGUARD:
+        environment["VALUE_TEST_NETGUARD_LOG"] = NETGUARD["log"]
+        options = environment.get("NODE_OPTIONS", "")
+        if f"--import={NETGUARD['node']}" not in options.split():
+            environment["NODE_OPTIONS"] = f"{options} --import={NETGUARD['node']}".strip()
     if extra:
         environment.update(extra)
     return environment
@@ -256,8 +296,11 @@ def step_backend_ratchet(gate: Gate) -> dict[str, Any]:
             command += ["--jobs", str(gate.arguments.jobs)]
         completed = run(command, timeout=3600)
         payload = json.loads(report.read_text(encoding="utf-8")) if report.is_file() else {}
-    summary = {key: payload.get(key) for key in ("ids", "failing", "baseline_size", "new_failures", "fixed_but_listed", "flaky", "expired_quarantine", "fingerprint_differences", "wall_seconds")}
-    return _status(completed.returncode == 0 and payload.get("passed", False), summary or _tail(completed.stderr))
+    summary = {key: payload.get(key) for key in ("ids", "failing", "baseline_size", "new_failures", "fixed_but_listed", "flaky", "expired_quarantine", "forbidden_port_attempts", "milestone", "milestone_source", "fingerprint_differences", "wall_seconds")}
+    milestone_ok = payload.get("milestone_source") == RATCHET.MILESTONE_FILE.relative_to(ROOT).as_posix()
+    if payload and not milestone_ok:
+        summary["milestone_error"] = "the ratchet milestone must come from tests/baselines/milestone.txt"
+    return _status(completed.returncode == 0 and payload.get("passed", False) and milestone_ok, summary or _tail(completed.stderr))
 
 
 def step_pytest_ratchet(gate: Gate) -> dict[str, Any]:
@@ -693,13 +736,47 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--update-eslint-baseline", action="store_true", help="shrink the ESLint baseline after fixes")
     parser.add_argument("--quiet", action="store_true")
     arguments = parser.parse_args(argv)
+    scratch = Path(tempfile.mkdtemp(prefix="value-gate-netguard-"))
+    try:
+        enable_netguard(scratch)
+        return _main(arguments)
+    finally:
+        NETGUARD.clear()
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def waivers(tier: str, results: Sequence[dict[str, Any]], append_base: str) -> list[str]:
+    """Reasons this gate run cannot count as passed although nothing failed."""
+
+    statuses = {row["step"]: row["status"] for row in results}
+    tier_steps = {step.name for step in STEPS[tier]}
+    rows = []
+    for name in MANDATORY_STEPS:
+        if name not in tier_steps:
+            continue
+        if name not in statuses:
+            rows.append(f"mandatory step {name} was not run (--only)")
+        elif statuses[name] == "skipped":
+            detail = next((row.get("detail") for row in results if row["step"] == name), None)
+            rows.append(f"mandatory step {name} was skipped ({detail})")
+    if append_base != APPEND_ONLY_BASE:
+        rows.append(f"--append-base {append_base} differs from APPEND_ONLY_BASE {APPEND_ONLY_BASE}")
+    return rows
+
+
+def _main(arguments: argparse.Namespace) -> int:
     gate = Gate(arguments.tier, arguments)
     steps = STEPS[arguments.tier]
     if arguments.only:
         steps = [step for step in steps if step.name in arguments.only]
     started = time.monotonic()
     gate.execute(steps)
+    attempts = netguard_attempts()
+    gate.results.append({"step": "network_guard", "status": "failed" if attempts else "passed",
+                         "detail": {"forbidden_port_attempts": attempts}, "seconds": 0})
     failed = [row["step"] for row in gate.results if row["status"] == "failed"]
+    waived = waivers(arguments.tier, gate.results, arguments.append_base)
+    status = "failed" if failed else ("passed_with_waivers" if waived else "passed")
     report = {
         "schema_version": "value.p0-gate/v1",
         "tier": arguments.tier,
@@ -708,13 +785,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "seconds": round(time.monotonic() - started, 2),
         "steps": gate.results,
         "failed": failed,
-        "passed": not failed,
+        "waivers": waived,
+        "status": status,
+        "passed": status == "passed",
     }
     Path(arguments.report).write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
-    summary = {"tier": report["tier"], "seconds": report["seconds"], "failed": failed, "passed": report["passed"],
+    summary = {"tier": report["tier"], "seconds": report["seconds"], "status": status, "failed": failed,
+               "waivers": waived, "passed": report["passed"],
                "steps": {row["step"]: row["status"] for row in gate.results}, "report": arguments.report}
     print(json.dumps(summary, indent=2))
-    return 0 if report["passed"] else 1
+    return {"passed": 0, "failed": 1, "passed_with_waivers": 2}[status]
 
 
 if __name__ == "__main__":
