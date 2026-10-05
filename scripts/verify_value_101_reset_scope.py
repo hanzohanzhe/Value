@@ -10,11 +10,11 @@ import tempfile
 import threading
 import urllib.request
 from contextlib import contextmanager
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import Iterator
 
 from backend import server
+from backend.api_session import SESSION_HEADER, new_token
 
 
 def _sha256(path: Path) -> str:
@@ -32,7 +32,7 @@ def _tree_sha256(root: Path, paths: list[Path]) -> str:
 
 
 @contextmanager
-def _isolated_server(state: Path) -> Iterator[str]:
+def _isolated_server(state: Path) -> Iterator[tuple[str, str]]:
     names = {
         "STATE_ROOT": state,
         "PACKS_ROOT": state / "data-packs",
@@ -46,11 +46,12 @@ def _isolated_server(state: Path) -> Iterator[str]:
         for name, value in names.items():
             setattr(server, name, value)
         os.environ["VALUE_DATA_HOME"] = str(state)
-        httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        token = new_token()
+        httpd = server.make_api_server("127.0.0.1", 0, session_token=token)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
         try:
-            yield f"http://127.0.0.1:{httpd.server_address[1]}"
+            yield f"http://127.0.0.1:{httpd.server_address[1]}", token
         finally:
             httpd.shutdown()
             httpd.server_close()
@@ -100,12 +101,12 @@ def verify_reset_scope() -> dict[str, object]:
         }
         before_tree = _tree_sha256(state, sentinels)
 
-        with _isolated_server(state) as origin:
+        with _isolated_server(state) as (origin, token):
             request = urllib.request.Request(
                 origin + "/api/tutorials/value-101/reset",
                 method="POST",
                 data=json.dumps({"confirm": True}).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", SESSION_HEADER: token},
             )
             with urllib.request.urlopen(request, timeout=15) as response:
                 api_status = response.status

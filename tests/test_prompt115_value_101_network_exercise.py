@@ -5,15 +5,14 @@ import hashlib
 import json
 import os
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
 from backend import server
+from tests.local_api_harness import start_local_api
 from gridform_core.application import _network_period_ids_for_year
 from gridform_core.value_101 import value_101_study
 from gridform_core.value_101_lifecycle import build_value_101_network_pair
@@ -383,10 +382,8 @@ class Value101NetworkPackTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 status, baseline = self._request(
                     origin + "/api/tutorials/value-101/studies", {}
@@ -421,9 +418,7 @@ class Value101NetworkPackTests(unittest.TestCase):
                             preflight["checks"]["project_revision"],
                         )
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

@@ -3,10 +3,8 @@ from __future__ import annotations
 import json
 import sqlite3
 import tempfile
-import threading
 import unittest
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -14,6 +12,7 @@ from unittest.mock import patch
 from backend import model_runner, server
 from gridform_core.value_101 import value_101_study
 from gridform_core.value_101_results import build_value_101_comparison
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -306,9 +305,8 @@ class Value101ResultTests(unittest.TestCase):
             write_fixture(runs / "data", run_id="data", kind="data", changed=["data_pack_id"], scale=1.2)
             write_fixture(runs / "storage", run_id="storage", kind="storage", changed=["modules.storage_cost"], scale=0.8)
             with patch.object(server, "RUNS_ROOT", runs):
-                httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-                thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-                thread.start()
+                api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+                httpd, _origin, _session = api.start()
                 try:
                     request = urllib.request.Request(
                         f"http://127.0.0.1:{httpd.server_address[1]}/api/tutorials/value-101/comparison",
@@ -324,7 +322,7 @@ class Value101ResultTests(unittest.TestCase):
                     with urllib.request.urlopen(request, timeout=10) as response:
                         payload = json.loads(response.read())
                 finally:
-                    httpd.shutdown(); httpd.server_close(); thread.join(timeout=10)
+                    api.stop()
         self.assertEqual(payload["rows"][0]["teaching_window_system_resource_cost_gbp"], 100.0)
 
     def test_frontend_renders_server_rows_and_local_evidence_controls(self) -> None:

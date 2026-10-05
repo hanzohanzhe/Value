@@ -4,11 +4,9 @@ import json
 import os
 import shutil
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +14,7 @@ from backend import server
 from gridform_core.data_bundle import build_data_bundle
 from gridform_core.research_suite import build_research_suite
 from gridform_core.value_uk import value_uk_study_templates
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,10 +98,8 @@ class ResearchSuiteApiTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(folder), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 request = urllib.request.Request(
                     origin + "/api/research-suites/install",
@@ -150,9 +147,7 @@ class ResearchSuiteApiTests(unittest.TestCase):
                 )
                 self.assertFalse((state / "runs").exists())
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

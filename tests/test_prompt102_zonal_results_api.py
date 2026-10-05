@@ -4,18 +4,17 @@ import hashlib
 import json
 import sqlite3
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
 from contextlib import closing
 from dataclasses import replace
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from backend import server
+from tests.local_api_harness import start_local_api
 import gridform_core.zonal_results as zonal_results_module
 
 from gridform_core.market_ledger import (
@@ -1245,10 +1244,8 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                 root / "model-output" / "market" / "market.sqlite", "summary"
             )
             with patch.object(server, "RUNS_ROOT", runs):
-                httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-                thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-                thread.start()
-                origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+                api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+                httpd, origin, _session = api.start()
                 try:
                     period = json.loads(urllib.request.urlopen(
                         origin
@@ -1283,9 +1280,7 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                             timeout=10,
                         )
                 finally:
-                    httpd.shutdown()
-                    httpd.server_close()
-                    thread.join(timeout=10)
+                    api.stop()
 
         self.assertEqual(period["view"], "curtailment")
         self.assertEqual(period["count"], 1)
@@ -1310,10 +1305,8 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                 root / "model-output" / "market" / "market.sqlite", "summary"
             )
             with patch.object(server, "RUNS_ROOT", runs):
-                httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-                thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-                thread.start()
-                origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+                api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+                httpd, origin, _session = api.start()
 
                 def request(path: str) -> tuple[int, bytes]:
                     try:
@@ -1348,9 +1341,7 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                         )
                     ]
                 finally:
-                    httpd.shutdown()
-                    httpd.server_close()
-                    thread.join(timeout=10)
+                    api.stop()
 
         self.assertEqual(status, 200)
         direct = json.loads(direct_bytes)
