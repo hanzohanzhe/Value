@@ -133,6 +133,61 @@ class BidLockTests(unittest.TestCase):
         self.assertAlmostEqual(first["gas"], 10.0, places=6)
         self.assertAlmostEqual(first["dsr"], 20.0, places=6)
 
+    def _availability_shortfall_case(self, *, wind_class: str = "vre"):
+        # One zone; wind scheduled 100 but only 50 available (forced 50 down);
+        # gas scheduled 100.  Both down bids are offered at the same price
+        # (staged PSM down price is -curtailment_cost, i.e. 0), peak up at 300.
+        bids = (
+            zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
+                      baseline_mwh=100.0, resource_class=wind_class),
+            zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
+                      baseline_mwh=100.0, resource_class="thermal"),
+            zonal_bid("peak-up", "peak", "gb", "up", 100.0, 300.0, resource_class="thermal"),
+        )
+        return zonal_declaration(
+            {"gb": 200.0},
+            {"wind": 100.0, "gas": 100.0, "peak": 0.0},
+            {"wind": "gb", "gas": "gb", "peak": "gb"},
+            bids,
+            availability_mwh={"wind": 50.0, "gas": 1_000.0, "peak": 1_000.0},
+            classes={"wind": wind_class, "gas": "thermal", "peak": "thermal"},
+        )
+
+    def test_forced_availability_curtailment_is_outside_the_pro_rata_group(self) -> None:
+        """Review M2-P0-8a: the forced part must not drag equal-price assets down."""
+
+        for wind_class in ("vre", "thermal"):
+            with self.subTest(wind_class=wind_class):
+                declaration = self._availability_shortfall_case(wind_class=wind_class)
+                result = clear(declaration)
+                dispatch = result.final_dispatch_mwh_by_asset
+                self.assertAlmostEqual(dispatch["wind"], 50.0, places=6)
+                self.assertAlmostEqual(dispatch["gas"], 100.0, places=6)
+                self.assertAlmostEqual(dispatch["peak"], 50.0, places=6)
+                self.assertEqual(result.blackout_mwh, 0.0)
+
+    def test_free_down_volume_still_shares_pro_rata_after_a_forced_part(self) -> None:
+        # Wind forced 20 down (100 -> 80 available) and both units must also
+        # release a further 60 MWh at the same price: the free 60 is shared
+        # pro rata to free capacity (wind 80, gas 100 -> 26.67 / 33.33).
+        bids = (
+            zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
+                      baseline_mwh=100.0, resource_class="vre"),
+            zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
+                      baseline_mwh=100.0, resource_class="thermal"),
+        )
+        declaration = zonal_declaration(
+            {"gb": 120.0},
+            {"wind": 100.0, "gas": 100.0},
+            {"wind": "gb", "gas": "gb"},
+            bids,
+            availability_mwh={"wind": 80.0, "gas": 1_000.0},
+            classes={"wind": "vre", "gas": "thermal"},
+        )
+        dispatch = clear(declaration).final_dispatch_mwh_by_asset
+        self.assertAlmostEqual(dispatch["wind"], 80.0 - 60.0 * 80.0 / 180.0, places=6)
+        self.assertAlmostEqual(dispatch["gas"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
+
     def test_lock_uses_bid_terms_only_and_the_declared_solver_tolerance(self) -> None:
         declaration = gb_chain_declaration(0, scarce=True)
         model_input, module = bind_production_input(declaration)

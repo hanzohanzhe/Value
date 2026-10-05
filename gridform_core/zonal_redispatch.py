@@ -179,6 +179,47 @@ def _as_matrix(rows: Sequence[np.ndarray], size: int) -> np.ndarray:
     return np.vstack(rows) if rows else np.empty((0, size), dtype=float)
 
 
+def _forced_down_by_bid(
+    model_input: BalancingInput,
+    ahead: AheadMarketResult,
+    bids: Sequence[FlexibilityBid],
+    bid_capacity: Mapping[str, float],
+    storage: Mapping[str, object],
+    classes: Mapping[str, str],
+    raw_envelopes: Mapping[str, object],
+) -> dict[str, float]:
+    """Forced down volume per down bid from realised availability shortfalls.
+
+    Only assets bound by the realised-availability row are considered (the
+    same set as that row: no storage, exports or interconnectors).  The
+    asset's shortfall max(schedule - available, 0) is split over its down
+    bids pro rata to their capacity (one down bid per asset takes it all),
+    and capped at each bid's capacity.
+    """
+
+    down_by_asset: defaultdict[str, list[FlexibilityBid]] = defaultdict(list)
+    for bid in bids:
+        if bid.direction == "down":
+            down_by_asset[bid.asset_id].append(bid)
+    forced: dict[str, float] = {}
+    for asset, available_mw in model_input.realised_availability_mw_by_asset.items():
+        if asset in storage or classes.get(asset, "other") == "export" or asset in raw_envelopes:
+            continue
+        rows = down_by_asset.get(asset)
+        if not rows:
+            continue
+        shortfall = float(ahead.schedule_mwh_by_asset.get(asset, 0.0)) - float(available_mw) * model_input.period_hours
+        if shortfall <= 0.0:
+            continue
+        total = math.fsum(bid_capacity[bid.bid_id] for bid in rows)
+        if total <= 0.0:
+            continue
+        for bid in rows:
+            share = shortfall * bid_capacity[bid.bid_id] / total
+            forced[bid.bid_id] = min(bid_capacity[bid.bid_id], share)
+    return forced
+
+
 def build_single_period_problem(
     model_input: BalancingInput,
     *,
@@ -478,13 +519,23 @@ def build_single_period_problem(
         equality_rhs.append(float(ahead.schedule_mwh_by_asset.get(asset, 0.0)))
 
     # Equal-price bids with the same direction and network effect share
-    # their acceptance pro rata to available energy.  Since v4 the resource
-    # class is not part of the key: two technologies offering the same price
-    # at the same place are economically identical (P2-01 asset-ID shift).
+    # their *free* acceptance pro rata to their free available energy.  Since
+    # v4 the resource class is not part of the key: two technologies offering
+    # the same price at the same place are economically identical (P2-01
+    # asset-ID shift).  A down bid's forced part -- the curtailment its asset
+    # must take because realised availability is below the ahead schedule,
+    # max(schedule - available, 0) -- is not a choice and stays outside the
+    # group; otherwise an availability shortfall of one asset would drag
+    # every equal-price asset in the zone down with it (M2-P0-8a review).
+    forced_down = _forced_down_by_bid(
+        model_input, ahead, bids, bid_capacity, storage, classes, raw_envelopes
+    )
     groups: defaultdict[tuple[object, ...], list[FlexibilityBid]] = defaultdict(list)
     for bid in bids:
         resource_class = str(bid.provenance.get("resource_class") or classes.get(bid.asset_id, "other"))
         if resource_class == "storage":
+            continue
+        if bid_capacity[bid.bid_id] - forced_down.get(bid.bid_id, 0.0) <= TOLERANCE:
             continue
         groups[(
             bid.direction,
@@ -496,13 +547,17 @@ def build_single_period_problem(
         if len(rows) < 2:
             continue
         first = rows[0]
-        first_capacity = bid_capacity[first.bid_id]
+        first_forced = forced_down.get(first.bid_id, 0.0)
+        first_free = bid_capacity[first.bid_id] - first_forced
         for bid in rows[1:]:
+            forced = forced_down.get(bid.bid_id, 0.0)
+            free = bid_capacity[bid.bid_id] - forced
+            # (x_bid - forced) * first_free == (x_first - first_forced) * free
             row = _row(size)
-            row[bid_index[bid.bid_id]] = first_capacity
-            row[bid_index[first.bid_id]] = -bid_capacity[bid.bid_id]
+            row[bid_index[bid.bid_id]] = first_free
+            row[bid_index[first.bid_id]] = -free
             equality_rows.append(row)
-            equality_rhs.append(0.0)
+            equality_rhs.append(forced * first_free - first_forced * free)
 
     inequality_rows: list[np.ndarray] = []
     inequality_rhs: list[float] = []
