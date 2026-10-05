@@ -210,5 +210,16 @@ class DCShareExpansionTests(unittest.TestCase):
                 self.assertEqual(payload["periods"], want["periods"])
                 self.assertEqual(payload["extensions"]["storage"], want["storage"])
 
+class DCVersionLedgerTests(unittest.TestCase):
+    def test_dc_1_1_0_upgrade_needs_user_confirmation(self) -> None:
+        # Q13: split-mapping Studies change numerically under 1.1.0, so the
+        # bump is a method upgrade the user confirms (M2-P0-8a review).
+        ledger = json.loads((ROOT / "docs" / "release" / "VERSION_LEDGER.json").read_text(encoding="utf-8"))
+        bump = next(
+            row for row in ledger["modules"]["value-reference-dc-network"]["bumps"] if row["to"] == "1.1.0"
+        )
+        self.assertTrue(bump["requires_user_opt_in"])
+
+
 if __name__ == "__main__":
     unittest.main()

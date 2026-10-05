@@ -90,8 +90,8 @@
           "correction_ids": [
             "p08.network-share-expansion"
           ],
-          "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs solve bit-identically.",
-          "requires_user_opt_in": false
+          "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs give numerically equal results (only signed zeros and an integer curtailment zero differ in serialization). Studies with split mappings change numerically, so per Q13 the upgrade needs explicit user confirmation (pending author ruling; M2-P0-8a review).",
+          "requires_user_opt_in": true
         }
       ]
     },

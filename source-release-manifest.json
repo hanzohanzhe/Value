@@ -4603,8 +4603,8 @@
     },
     {
       "path": "docs/release/VERSION_LEDGER.json",
-      "sha256": "4b3ef01abafa6a45339a6d606e2bb36070c7527f9cc13e0cb366e1cc991c7351",
-      "bytes": 6646,
+      "sha256": "3a46debbd83c16d63b0b51f2ab675b82703155539e3d7692c93770d0dac2178c",
+      "bytes": 6876,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10742,8 +10742,8 @@
     },
     {
       "path": "tests/test_p08_network_shares.py",
-      "sha256": "d4ce4f9184dbae079290a7c8fdf22474b65c4246cca8241580a21cd3bbb530ee",
-      "bytes": 10677,
+      "sha256": "00e43c316cc293cc5829c8cd8f5b5ce449076d1ec38e0ec64db276940b20b783",
+      "bytes": 11245,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
