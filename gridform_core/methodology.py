@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 from . import pack_source_identity
+from .errors import PublicFailure, VALUEError
 
 PROFILE_PARAMETER = "methodology.profile"
 # The frozen thesis-lineage profile.  Only the reference routes (modular_run,
@@ -80,18 +81,31 @@ class MethodologyCatalogError(ValueError):
     """The packaged methodology catalogue is malformed (a build error)."""
 
 
-class UnknownProfileError(ValueError):
+# The methodology errors are VALUEErrors so a Run that fails on them (the
+# run-entry backstop in the worker) carries their own code, category and
+# public message instead of a generic contract/runtime failure (plan X0 3.4).
+METHODOLOGY_ERROR_CATEGORY = "methodology"
+
+
+class UnknownProfileError(VALUEError, ValueError):
     code = "VALUE_PROFILE_UNKNOWN"
+    category = METHODOLOGY_ERROR_CATEGORY
+    public_message = "The Study selects a methodology profile this VALUE does not know."
 
 
 class UnknownCorrectionError(KeyError):
     """A rule set asked for a correction id that is not in the catalogue."""
 
 
-class ProfileCombinationError(ValueError):
+class ProfileCombinationError(VALUEError, ValueError):
     """The selected profile does not support this module/data/code combination."""
 
     code = COMBINATION_ERROR_CODE
+    category = METHODOLOGY_ERROR_CATEGORY
+    public_message = (
+        "The selected methodology profile does not support this combination of modules, "
+        "extensions, data packs or enabled external code."
+    )
 
     def __init__(self, profile_id: str, violations: Sequence[Mapping[str, object]]):
         self.profile_id = profile_id
@@ -101,6 +115,15 @@ class ProfileCombinationError(ValueError):
         super().__init__(
             f"Methodology profile {profile_id} does not support this combination "
             f"({', '.join(self.sub_reasons)}): {detail}"
+        )
+
+    def public_failure(self) -> PublicFailure:
+        """The public message names the sub-reasons (never paths or digests)."""
+
+        return PublicFailure(
+            self.code, self.category,
+            f"{self.public_message} Sub-reason: {', '.join(self.sub_reasons) or 'unspecified'}. "
+            "Open the diagnostic artifact for details.",
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -818,10 +841,12 @@ class MethodologyNotActiveError(RuntimeError):
     code = "VALUE_METHODOLOGY_NOT_ACTIVE"
 
 
-class MethodologyMismatchError(RuntimeError):
+class MethodologyMismatchError(VALUEError, RuntimeError):
     """A nested call asked for a different methodology than the active one."""
 
     code = "VALUE_PROFILE_MISMATCH"
+    category = METHODOLOGY_ERROR_CATEGORY
+    public_message = "The run's methodology profile differs from the profile its inputs declare."
 
 
 def active_methodology() -> ResolvedMethodology | None:

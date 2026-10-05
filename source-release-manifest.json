@@ -7698,8 +7698,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "37c45e9e65b803624ceec20b3d91b3a5e964d70191c05081c7d71f8e45360938",
-      "bytes": 41477,
+      "sha256": "43a17e289ae5d439b12c82cec1af2a9cc941b02920ca551d15c14b75b0ab5e58",
+      "bytes": 42683,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10420,8 +10420,8 @@
     },
     {
       "path": "tests/test_doctoral_run_worker_path.py",
-      "sha256": "b393c0a197a74bc48803a154b48eeb81c56ccdd988c7589ce2f988deec3c4404",
-      "bytes": 4776,
+      "sha256": "b80bb418cb26f45c252d2bd7ce26527a5b3e1962621b4cd59033810c302a3865",
+      "bytes": 5766,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10690,8 +10690,8 @@
     },
     {
       "path": "tests/test_methodology_profiles.py",
-      "sha256": "a310207333d491330c2ff5c97880e564ce17e060c1c3b225366d97955935ba94",
-      "bytes": 22310,
+      "sha256": "33ae340c87f76226e8a8f6a48dc84533217e2195f4e3a9744a1c17382fb194cc",
+      "bytes": 23864,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -21,7 +21,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from gridform_core import methodology
-from gridform_core.methodology import REFERENCE_PROFILE_ID
+from gridform_core.methodology import COMBINATION_ERROR_CODE, REFERENCE_PROFILE_ID
 from gridform_core.project_revision import save_project_revision
 from gridform_core.v2.module_manifest import workspace_registry
 
@@ -88,6 +88,24 @@ class DoctoralWorkerPathTests(unittest.TestCase):
                             .read_text(encoding="utf-8"))
         self.assertTrue(frozen["snapshot_frozen"])
         self.assertEqual(methodology.combination_violations(REFERENCE_PROFILE_ID, data_packs=[(frozen, None)]), [])
+
+    def test_a_refused_combination_in_the_worker_carries_the_profile_code(self):
+        """External code enabled between admission and the worker (TOCTOU): the run-entry backstop fires."""
+
+        self._save_study("doctoral-toctou", REFERENCE_PROFILE_ID)
+
+        def enable_external_code(_run_dir):
+            self._external = patch.object(methodology, "external_code_entries",
+                                          return_value=["module:late-local-module"])
+            self._external.start()
+            self.addCleanup(self._external.stop)
+
+        status = self._start_and_work("doctoral-toctou", before_worker=enable_external_code)
+        self.assertEqual(status["_exit_code"], 1)
+        self.assertEqual(status["execution_status"], "failed")
+        self.assertEqual(status["error_code"], COMBINATION_ERROR_CODE)
+        self.assertEqual(status["error_category"], "methodology")
+        self.assertIn("methodology profile", status["error"].lower())
 
 
 if __name__ == "__main__":

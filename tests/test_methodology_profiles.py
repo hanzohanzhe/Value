@@ -286,6 +286,31 @@ class WhitelistTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "VALUE_PROFILE_COMBINATION_UNSUPPORTED")
         self.assertEqual(caught.exception.to_dict()["sub_reasons"], ["module"])
 
+    def test_methodology_errors_keep_their_codes_in_a_failed_run(self):
+        """A worker failure records public_failure(error): each methodology error keeps its own code (plan 3.4)."""
+
+        from gridform_core.errors import public_failure
+
+        combination = methodology.ProfileCombinationError(DOCTORAL, [
+            {"sub_reason": "data_pack", "message": "data pack x is not a thesis-era pack"},
+            {"sub_reason": "external_code", "message": "module:y is enabled"},
+        ])
+        unknown = methodology.UnknownProfileError("Unknown methodology profile 'z'")
+        mismatch = methodology.MethodologyMismatchError("a inside b")
+        rows = {type(error).__name__: public_failure(error) for error in (combination, unknown, mismatch)}
+        self.assertEqual({name: row.code for name, row in rows.items()}, {
+            "ProfileCombinationError": "VALUE_PROFILE_COMBINATION_UNSUPPORTED",
+            "UnknownProfileError": "VALUE_PROFILE_UNKNOWN",
+            "MethodologyMismatchError": "VALUE_PROFILE_MISMATCH",
+        })
+        self.assertEqual({row.category for row in rows.values()}, {"methodology"})
+        self.assertIn("Sub-reason: data_pack, external_code.", rows["ProfileCombinationError"].message)
+        self.assertNotIn("thesis-era", rows["ProfileCombinationError"].message)
+        # The classes stay ValueError/RuntimeError for existing handlers.
+        self.assertIsInstance(combination, ValueError)
+        self.assertIsInstance(unknown, ValueError)
+        self.assertIsInstance(mismatch, RuntimeError)
+
 
 class EntryPointTests(unittest.TestCase):
     """Study resolution and preflight run the same whitelist (C16)."""
