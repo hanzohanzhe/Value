@@ -29,6 +29,14 @@ Boundaries (``BOUNDARIES``):
   with per-source surplus conservation (doctoral default PSM, decision Q7).
   U_out and W_in come from the optional ``surplus_routing`` ledger table that
   P0-4 S5 adds; without it the boundary cannot be evaluated exactly.
+* ``native_corrected_full_node_v1`` (P0-6 S3, corrected default PSM rule
+  set, C19): r = S + B - D - C - E - X - XS, where under that rule set's
+  column semantics S is the gross output of every non-storage,
+  non-interconnector source (VRE including the surplus that storage, export
+  or flexible load consumed) plus imports plus storage discharge, and XS is
+  the non-VRE spill (must-run output generated but not used).  Per VRE source
+  the companion identity is: available = accepted + consumed surplus +
+  curtailed (:func:`vre_source_residual`).
 * ``retained_demand_serving_v1``: r = S + B - D - min(C, max(F - D, 0)); the
   boundary the HEAD kernel uses for ``raw_energy_balance_residual_mwh``.  It is
   a diagnostic decomposition only and never a verdict basis.
@@ -64,6 +72,9 @@ CONTRACT_VERSION = "value.energy-balance-contract/v1"
 
 FULL_NODE_V1 = "full_node_v1"
 DEFAULT_PSM_SURPLUS_NODE_V1 = "default_psm_surplus_node_v1"
+NATIVE_CORRECTED_FULL_NODE_V1 = "native_corrected_full_node_v1"
+# Rule set id the corrected default PSM declares (P0-6 native_market_rules).
+NATIVE_CORRECTED_RULE_SET = "native-corrected-v1"
 RETAINED_DEMAND_SERVING_V1 = "retained_demand_serving_v1"
 UNKNOWN_BOUNDARY = "unknown"
 
@@ -118,6 +129,11 @@ BOUNDARIES: dict[str, Boundary] = {
         DEFAULT_PSM_SURPLUS_NODE_V1, "S + B + U_out - W_in - D - C - E - X", True, True,
         "source-classified node of the default PSM (decision Q7)",
     ),
+    NATIVE_CORRECTED_FULL_NODE_V1: Boundary(
+        NATIVE_CORRECTED_FULL_NODE_V1, "S + B - D - C - E - X - XS", False, True,
+        "corrected default PSM: gross source output (VRE incl. consumed surplus) + imports + "
+        "discharge + shortfall = demand + charge + export + flexible load + non-VRE spill",
+    ),
     RETAINED_DEMAND_SERVING_V1: Boundary(
         RETAINED_DEMAND_SERVING_V1, "S + B - D - min(C, max(F - D, 0))", False, False,
         "HEAD kernel raw residual boundary; diagnostic decomposition only",
@@ -148,6 +164,11 @@ BOUNDARY_REGISTRY: tuple[RegistryEntry, ...] = (
         DEFAULT_PSM_SURPLUS_NODE_V1, EXACT_ARITHMETIC,
         "retained Scheme C kernel; pre-balancing surplus is routed outside S",
         RETAINED_DEMAND_SERVING_V1,
+    ),
+    RegistryEntry(
+        "value-bid-at-cost-psm", "6.0.0", None, (NATIVE_CORRECTED_RULE_SET,),
+        NATIVE_CORRECTED_FULL_NODE_V1, EXACT_ARITHMETIC,
+        "corrected native market rule set (P0-6); ledger columns use the corrected semantics",
     ),
     RegistryEntry(
         "value-perfect-foresight-lp", "0", None, (None,),
@@ -267,6 +288,59 @@ def surplus_node_residual(flows: PeriodFlows) -> float:
     return full_node_residual(flows) + flows.u_out_mwh - flows.w_in_mwh
 
 
+def native_node_flows(
+    year: int,
+    period: int,
+    *,
+    gross_generation_mwh: float,
+    import_mwh: float,
+    storage_discharge_mwh: float,
+    shortfall_mwh: float,
+    demand_mwh: float,
+    storage_charge_mwh: float,
+    export_mwh: float,
+    flexible_demand_mwh: float,
+    non_vre_spill_mwh: float,
+    stage: str = "final_dispatch",
+) -> PeriodFlows:
+    """PeriodFlows of the corrected default PSM node from its source terms.
+
+    ``gross_generation_mwh`` is the gross output of every non-storage,
+    non-interconnector source, VRE counted with the surplus that storage,
+    export or flexible load consumed.
+    """
+
+    return PeriodFlows(
+        year, period,
+        supply_mwh=gross_generation_mwh + import_mwh + storage_discharge_mwh,
+        blackout_mwh=shortfall_mwh,
+        demand_mwh=demand_mwh,
+        storage_charge_mwh=storage_charge_mwh,
+        export_mwh=export_mwh,
+        flexible_demand_mwh=flexible_demand_mwh,
+        excess_mwh=non_vre_spill_mwh,
+        stage=stage,
+    )
+
+
+def native_corrected_residual(flows: PeriodFlows) -> float:
+    """native_corrected_full_node_v1: S + B - D - C - E - X - XS (XS = non-VRE spill)."""
+
+    return full_node_residual(flows) - flows.excess_mwh
+
+
+def vre_source_residual(
+    available_mwh: float, accepted_mwh: float, consumed_surplus_mwh: float, curtailed_mwh: float,
+) -> float:
+    """Per-VRE companion identity of native_corrected_full_node_v1.
+
+    available = accepted + consumed surplus + curtailed; returns available
+    minus the right-hand side (0 when the source's availability is closed).
+    """
+
+    return available_mwh - accepted_mwh - consumed_surplus_mwh - curtailed_mwh
+
+
 def retained_residual(flows: PeriodFlows) -> float:
     if flows.forecast_demand_mwh is None:
         raise ValueError("retained_demand_serving_v1 needs the forecast demand")
@@ -282,6 +356,8 @@ def boundary_residual(boundary_id: str, flows: PeriodFlows) -> float:
         return full_node_residual(flows)
     if boundary_id == DEFAULT_PSM_SURPLUS_NODE_V1:
         return surplus_node_residual(flows)
+    if boundary_id == NATIVE_CORRECTED_FULL_NODE_V1:
+        return native_corrected_residual(flows)
     if boundary_id == RETAINED_DEMAND_SERVING_V1:
         return retained_residual(flows)
     raise KeyError(f"unknown energy-balance boundary {boundary_id!r}")
@@ -297,6 +373,9 @@ def envelope_bounds(boundary_id: str, flows: PeriodFlows) -> tuple[float, float]
 
     if boundary_id == FULL_NODE_V1:
         return (0.0, 0.0)
+    if boundary_id == NATIVE_CORRECTED_FULL_NODE_V1:
+        # Every load is inside the node; only the non-VRE spill leaves S unused.
+        return (flows.excess_mwh, flows.excess_mwh)
     return (-flows.loads_mwh, flows.spill_capacity_mwh)
 
 

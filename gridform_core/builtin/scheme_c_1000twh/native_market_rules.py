@@ -35,11 +35,14 @@ import json
 from dataclasses import dataclass, fields, replace
 from typing import Any, Mapping
 
+from ...energy_balance_contract import NATIVE_CORRECTED_RULE_SET
+
 SCHEMA_VERSION = "value.native-market-rules/v1"
 RECORD_SCHEMA_VERSION = "value.native-market-rule-set-record/v1"
 
 DOCTORAL_RULE_SET_ID = "native-doctoral-thesis-v1"
-CORRECTED_RULE_SET_ID = "native-corrected-v1"
+# The energy-balance boundary registry keys the corrected boundary by this id (C19).
+CORRECTED_RULE_SET_ID = NATIVE_CORRECTED_RULE_SET
 PARTIAL_RULE_SET_PREFIX = "native-partial-"
 
 # Field -> profile-gated correction id that selects the corrected value.

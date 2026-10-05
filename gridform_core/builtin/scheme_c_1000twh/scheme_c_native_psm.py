@@ -23,6 +23,7 @@ from ...market_replay import canonical_technology
 from ...v2.contracts import MarketYearResult, PSMInput, PeriodSummary
 from .legacy_result_adapter import SchemeCLegacyResultAdapter
 from .native_market_rules import NativeMarketRules, rules_for_methodology, storage_bid_basis_source
+from .native_realisation import RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
 
 
@@ -383,7 +384,10 @@ class SchemeCNativePSM:
         parameters = dict(model_input.parameters)
         market_rules = rules_for_methodology(current_methodology())
         storage_runtime = _StorageRuntime(self._storage_cost, parameters, market_rules)
-        runtime = SimpleNamespace(storage_cost=storage_runtime, market_rules=market_rules)
+        realisation_log = RealisationLog()
+        runtime = SimpleNamespace(
+            storage_cost=storage_runtime, market_rules=market_rules, realisation_log=realisation_log,
+        )
         periods = len(model_input.chronology.period_ids)
         period_hours = float(model_input.period_hours)
         market_path = self._context.output_dir / "market" / "market.sqlite"

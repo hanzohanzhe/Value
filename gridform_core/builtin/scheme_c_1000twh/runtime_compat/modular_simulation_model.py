@@ -2256,11 +2256,80 @@ def _active_rules(market_rules=None):
     return active_rules(market_rules, getattr(module_context, "_runtime", None))
 
 
+def _active_realisation_log(periods):
+    """RealisationLog of this kernel run (VALUE P0-6 S3): the module runtime's or a private one."""
+    from ..native_realisation import active_realisation_log
+    from . import module_context
+    return active_realisation_log(getattr(module_context, "_runtime", None), periods)
+
+
+def realise_period(period, real_demand, forecast_demand, generators, batterys, connections, electrolyzer,
+                   accepted_bids, last_gen_energy, excess_energy, gen_list, gen_list_name, bids,
+                   excess_energy_list, balance_renewables, balance_other, balance_traditional,
+                   balance_nuclear, bidding_factor, total_storage_fee_balance, market_rules):
+    """Real-time stage of one period (VALUE P0-6 S3, pure refactor of the HEAD loop body).
+
+    Runs the curtailment market when the real demand is below the forecast and
+    the balancing market otherwise, exactly as run_simulation did inline at
+    35aadb3, and returns a PeriodRealisation with the values the loop appends.
+    ``market_rules`` is accepted for the later P0-6 steps; nothing reads it yet.
+    """
+    from ..native_realisation import BALANCING_BRANCH, CURTAILMENT_BRANCH, PeriodRealisation
+    income_dict_balance = {}
+    energy_deficit = 0
+    if real_demand < forecast_demand:
+        # return to curtailment fee and charged amount
+        curtailed_fee, store_energy, real_list, storage_pool_composition_after, gen_list, curtailed_energy, \
+        excess_energy, sold_fee, green_hy, energy_cell_period,curtailed_energy_list = \
+            curtailment_market_bidding(period, real_demand, forecast_demand, accepted_bids,
+                                       last_gen_energy, excess_energy, gen_list, connections, electrolyzer, batterys)
+        # curtailment fee is a list, add them up
+        total_fee = sum(curtailed_fee)
+        gen=[]
+        for item in gen_list:
+            if item[1] != 0:
+                gen.append(item[0])
+        for item in generators:
+            if item not in gen:
+                item.set_real_gen_energy(0)
+        # no balancing fee and no purchase; no blackout in curtailment market
+        return PeriodRealisation(
+            CURTAILMENT_BRANCH, real_list, store_energy, storage_pool_composition_after, gen_list,
+            excess_energy, energy_cell_period, income_dict_balance, energy_deficit,
+            total_storage_fee_balance, balance_renewables, balance_other, balance_traditional,
+            balance_nuclear, total_fee, 0, curtailed_energy, curtailed_energy_list,
+            sum(sold_fee), 0, green_hy,
+        )
+    # ruturn to continue bidding
+    balancing_fee, total_storage_fee_balance, real_list, store_energy, storage_pool_composition_after, \
+    balance_renewables, balance_other, balance_traditional, gen_list, balance_nuclear, excess_energy, sold_fee, \
+    bought_fee, green_hy, energy_cell_period, income_dict_balance, energy_deficit = balancing_market_bidding(generators, period, real_demand, forecast_demand,
+                                          accepted_bids, excess_energy, balance_renewables, balance_other,
+                                          balance_traditional, gen_list, balance_nuclear, connections,
+                                          gen_list_name, bids, electrolyzer,excess_energy_list, batterys, bidding_factor)
+    gen = []
+    for item in gen_list:
+        if item[1] != 0:
+            gen.append(item[0])
+    for item in generators:
+        if item not in gen:
+            item.set_real_gen_energy(0)
+    # no curtailment in a balancing period
+    return PeriodRealisation(
+        BALANCING_BRANCH, real_list, store_energy, storage_pool_composition_after, gen_list,
+        excess_energy, energy_cell_period, income_dict_balance, energy_deficit,
+        total_storage_fee_balance, balance_renewables, balance_other, balance_traditional,
+        balance_nuclear, 0, sum(balancing_fee), 0, 0, sum(sold_fee), sum(bought_fee), green_hy,
+    )
+
+
 def run_simulation(periods, generators, batterys, forecast_demands, real_demands, connections, electrolyzer,
                    market_rules=None):
     # VALUE P0-6 S2: resolve the market rule set once per run (fail-closed for
     # configured runtimes without rules).  No clearing step reads it yet.
     market_rules = _active_rules(market_rules)
+    # VALUE P0-6 S3: per-period realised flows (numpy, no object references).
+    realisation_log = _active_realisation_log(periods)
     # plot average generation price
     avg_electricity_prices = []
     avg_gen_fees = []
@@ -2742,75 +2811,48 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             excess_energy_dict[period] = excess_energy_list
         else:
             excess_energy_dict[period] = 0
-        if real_demand < forecast_demands[period]:
-            # return to curtailment fee and charged amount
-            curtailed_fee, store_energy, real_list, storage_pool_composition_after, gen_list, curtailed_energy, \
-            excess_energy, sold_fee, green_hy, energy_cell_period,curtailed_energy_list = \
-                curtailment_market_bidding(period, real_demand, forecast_demands[period], accepted_bids,
-                                           last_gen_energy, excess_energy, gen_list, connections, electrolyzer, batterys)
-            #print(sold_fee)
-            # curtailment fee is a list, add them upu
-            total_fee = sum(curtailed_fee)
-            curtailed_energy_dict[period] = curtailed_energy_list
-            # add curtailment fee in this period to total
-            curtailment_fees.append(total_fee)
-            curtailed_electricity.append(curtailed_energy)
-            excess_electricity.append(excess_energy)
-            # no balancing fee, add 0
-            balancing_fees.append(0)
-            # add storage to overall storage
-            store_electricity.append(store_energy)
-            sold_fees.append(sum(sold_fee))
-            purchase_fees.append(0)
-            total_green_hy.append(green_hy)
-            gen=[]
-            for item in gen_list:
-                if item[1] != 0:
-                    gen.append(item[0])
-            #print('gen', gen)
-            #print('generators',generators)
-            for item in generators:
-                if item not in gen:
-                    item.set_real_gen_energy(0)
-            excess_energy_final_dict[period] = excess_energy
-            blackout_periods.append(0)  # No blackout in curtailment market
-        else:
-            # ruturn to continue bidding
-            balancing_fee, total_storage_fee_balance, real_list, store_energy, storage_pool_composition_after, \
-            balance_renewables, balance_other, balance_traditional, gen_list, balance_nuclear, excess_energy, sold_fee, \
-            bought_fee, green_hy, energy_cell_period, income_dict_balance, energy_deficit = balancing_market_bidding(generators, period, real_demand, forecast_demands[period],
-                                                  accepted_bids, excess_energy, balance_renewables, balance_other,
-                                                  balance_traditional, gen_list, balance_nuclear, connections,
-                                                  gen_list_name, bids, electrolyzer,excess_energy_list, batterys, bidding_factor)
-            blackout_periods.append(energy_deficit)  # Track energy deficit for this period
-            for key, value in income_dict_balance.items():
-                if key in total_income_dict:
-                    total_income_dict[key] += value
-                else:
-                    total_income_dict[key] = value
-            # add continue bidding in this period to total balancing fee list
-            balancing_fees.append(sum(balancing_fee))
-            curtailed_energy_dict[period] = 0
-        #    print(sold_fee)
-            # no curtailment, curtailment is 0
-            curtailment_fees.append(0)
-            curtailed_electricity.append(0)
-            excess_electricity.append(excess_energy)
-            # no storage, storage is 0
-            store_electricity.append(store_energy)
-            sold_fees.append(sum(sold_fee))
-            purchase_fees.append(sum(bought_fee))
-            total_green_hy.append(green_hy)
-            gen = []
-            for item in gen_list:
-                if item[1] != 0:
-                    gen.append(item[0])
-            #print('gen',gen)
-            #print('generators', generators)
-            for item in generators:
-                if item not in gen:
-                    item.set_real_gen_energy(0)
-            excess_energy_final_dict[period] = excess_energy
+        # VALUE P0-6 S3: the real-time stage of the period (thesis forecast rule
+        # in both profiles, decision A2) is realise_period; the loop appends
+        # exactly what the inline HEAD block appended.
+        realisation = realise_period(
+            period, real_demand, forecast_demands[period], generators, batterys, connections,
+            electrolyzer, accepted_bids, last_gen_energy, excess_energy, gen_list, gen_list_name,
+            bids, excess_energy_list, balance_renewables, balance_other, balance_traditional,
+            balance_nuclear, bidding_factor, total_storage_fee_balance, market_rules)
+        real_list = realisation.real_list
+        store_energy = realisation.store_energy
+        storage_pool_composition_after = realisation.storage_pool_composition_after
+        gen_list = realisation.gen_list
+        excess_energy = realisation.excess_energy
+        energy_cell_period = realisation.energy_cell_period
+        income_dict_balance = realisation.income_dict_balance
+        energy_deficit = realisation.energy_deficit
+        total_storage_fee_balance = realisation.total_storage_fee_balance
+        balance_renewables = realisation.balance_renewables
+        balance_other = realisation.balance_other
+        balance_traditional = realisation.balance_traditional
+        balance_nuclear = realisation.balance_nuclear
+        curtailed_energy_dict[period] = realisation.curtailed_energy_record
+        blackout_periods.append(energy_deficit)
+        for key, value in income_dict_balance.items():
+            if key in total_income_dict:
+                total_income_dict[key] += value
+            else:
+                total_income_dict[key] = value
+        curtailment_fees.append(realisation.curtailment_fee)
+        balancing_fees.append(realisation.balancing_fee)
+        curtailed_electricity.append(realisation.curtailed_energy)
+        excess_electricity.append(excess_energy)
+        store_electricity.append(store_energy)
+        sold_fees.append(realisation.sold_fee)
+        purchase_fees.append(realisation.purchase_fee)
+        total_green_hy.append(realisation.green_hy)
+        excess_energy_final_dict[period] = excess_energy
+        realisation_log.record(
+            period, realisation, forecast_demand=forecast_demands[period], real_demand=real_demand,
+            flexible_demand=getattr(electrolyzer, "real_energy", 0.0),
+            export=sum(float(getattr(connection, "sold_energy", 0.0) or 0.0) for connection in connections),
+        )
         filtered_list = [sublist for sublist in gen_list if sublist[1] != 0]
         result_dict = {}
         for item in filtered_list:

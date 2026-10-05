@@ -684,6 +684,7 @@
     "gridform_core/builtin/scheme_c_1000twh/legacy_result_adapter.py",
     "gridform_core/builtin/scheme_c_1000twh/modular_run.py",
     "gridform_core/builtin/scheme_c_1000twh/native_market_rules.py",
+    "gridform_core/builtin/scheme_c_1000twh/native_realisation.py",
     "gridform_core/builtin/scheme_c_1000twh/planning_pipeline.py",
     "gridform_core/builtin/scheme_c_1000twh/psm.py",
     "gridform_core/builtin/scheme_c_1000twh/psm_runtime_state.py",
@@ -1403,6 +1404,7 @@
     "tests/test_native_checkpoint_resume.py",
     "tests/test_native_market_rules.py",
     "tests/test_native_mechanism_scope.py",
+    "tests/test_native_realise_period.py",
     "tests/test_native_reproduction_golden.py",
     "tests/test_netcdf_preflight.py",
     "tests/test_network_toys.py",
@@ -6647,8 +6649,8 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/RUNTIME_OVERLAY.json",
-      "sha256": "48537851d7ed6108552b16168b6bfd6280bcfb97ba3087094ec1ca9d34b78128",
-      "bytes": 7245,
+      "sha256": "c1eb90525d83d63dc0b213c2a0559ede2b66f819f9277184d64c514c921905c5",
+      "bytes": 7296,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6899,8 +6901,14 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/native_market_rules.py",
-      "sha256": "15c6cf6b785e90a6e0e8a62e0aec2a4c0c63cd229b03483aa04bb41501181006",
-      "bytes": 9506,
+      "sha256": "78daf4e5ab9f15c2d0035d909170f0260a8cf9f3e75df2c4b3381854ed247d94",
+      "bytes": 9661,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "gridform_core/builtin/scheme_c_1000twh/native_realisation.py",
+      "sha256": "9ae7a11e85b1d7ccb0704cc16dd71cd3beda638f1694abfcb58b5ad2d0d47064",
+      "bytes": 4164,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7007,8 +7015,8 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_simulation_model.py",
-      "sha256": "18e57e2fa831eae9bb8e7ede47caef798e06d274cb9bd0a2574d0fc70f0813bc",
-      "bytes": 164530,
+      "sha256": "f1d6071cb00bdfea39c8a0e5cf9cb99f2f15ead79418e6416a3be2aba9f6b55f",
+      "bytes": 167299,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7079,8 +7087,8 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/scheme_c_native_psm.py",
-      "sha256": "34a524bfc1f09074990aad4a5bdac8c890f5fb8338c0901c78f6393956f7dc64",
-      "bytes": 28070,
+      "sha256": "ba68feeff1e23b9d17580418a7ac99b30f02f8f5ca86e028d776b01bef1bc7e4",
+      "bytes": 28220,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7682,8 +7690,8 @@
     },
     {
       "path": "gridform_core/energy_balance_contract.py",
-      "sha256": "2ce5532cc17d4a6cb736ed943073d42a3fc27f492eeee731a384a4e7342cb968",
-      "bytes": 18268,
+      "sha256": "923211803028d84334581dfccd42c35b208b87f27a0fc99fd4fd9c73216d2fc2",
+      "bytes": 21554,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11198,6 +11206,12 @@
       "path": "tests/test_native_mechanism_scope.py",
       "sha256": "117a6006c9c90ddf68144eee042dbdf5da771326eac072f924e9416a7f31387c",
       "bytes": 8553,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_native_realise_period.py",
+      "sha256": "ec16db03dd8a21615985a282e511ce3098f56aaecc82270dc09f0d6c3f935807",
+      "bytes": 7861,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
