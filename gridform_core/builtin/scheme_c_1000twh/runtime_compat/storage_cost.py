@@ -104,6 +104,13 @@ class DynamicAnnualStorageCost:
         self.pricing_basis_sold_mwh = 0.0
         self.pricing_basis_average_dwell_periods = 0.0
         self.pricing_basis = "unprepared"
+        # VALUE P0-6 S10 (P5-04, decision Q8): the default PSM's market rule set
+        # owns the dispatch bid of this exact class.  "thesis_dwell_linear" is
+        # cycle wear plus the linear dwell holding term (doctoral, and the
+        # default for ROI and conformance callers); "cycle_only" bids the cycle
+        # wear alone (zero for pumped hydro and hydrogen) and leaves holding
+        # recovery to investment adequacy.
+        self.bid_basis = "thesis_dwell_linear"
 
     def _reference_observation(
         self,
@@ -207,6 +214,8 @@ class DynamicAnnualStorageCost:
         self.current.dwell_weighted_sold_mwh_periods += delivered * dwell
 
     def bid_price_gbp_per_mwh(self, dwell_periods: float) -> float:
+        if self.bid_basis == "cycle_only":
+            return self.cycle_depreciation_gbp_per_mwh
         return self.cycle_depreciation_gbp_per_mwh + (
             max(float(dwell_periods), 0.0)
             * self.holding_recovery_gbp_per_mwh_period
@@ -223,6 +232,9 @@ class DynamicAnnualStorageCost:
         order. ``current_period`` is accepted for the common policy contract.
         """
         del current_period
+        if self.bid_basis == "cycle_only":
+            # Equal bids for every tranche: oldest first (stable insertion order).
+            return iter(stored_energy)
         if self.holding_recovery_gbp_per_mwh_period > 0:
             return reversed(stored_energy)
         return iter(stored_energy)

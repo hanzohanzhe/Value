@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "8be07f8cbebf286b49414db78dbc7809bc9373e3508ed81d9c575547de3a83e5",
+  "runtime_tree_sha256": "bd8f0efa93779dde8ef72b1253fb7ce3d168b8c17e51f81081b0b663e45de2d7",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -127,7 +127,7 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "46c9f094bb7e091b4e1b7c3d6ba36dd80c509e6802678726382b8e38fce46d83",
+      "sha256": "0446e356c6bc1abeb61e1c88ff2c1fc86d1486c2cacb087c9c1a1c534a9fe632",
       "kind": "declared_runtime_edit",
       "correction_ids": [
         "p04.storage-energy-audit",
@@ -135,9 +135,10 @@
         "p04.surplus-routing",
         "p05.interconnector-clock",
         "p06.native-market-rules",
+        "p06.physical-operating-cost",
         "p06.realise-period"
       ],
-      "note": "P0-5a: kernel boundary from the shared reader, period by period, own-country Connections (P6-24, P6-03)",
+      "note": "P0-6 S4-S10: P5-06 operating-cost terms and rule diagnostics (universal); corrected rule-set clearing paths (D1-surplus, merit key, avoided-cost stack, storage netting, cycle-only bid basis) gated by NativeMarketRules fields",
       "previous_kind": "value_instrumentation"
     },
     {
@@ -185,10 +186,13 @@
     },
     {
       "path": "storage_cost.py",
-      "sha256": "846162f71ccec3ad67688de88a770b5f36745b60fc910b4f11626f770b642796",
-      "kind": "value_instrumentation",
-      "correction_ids": [],
-      "note": "VALUE storage-cost function boundary present at 35aadb3"
+      "sha256": "94f599a808bceff174d3202dd2dd6211e736c9aca5cff74dc24a5910d81df8ef",
+      "kind": "declared_runtime_edit",
+      "correction_ids": [
+        "p06.physical-operating-cost"
+      ],
+      "note": "P0-6 S4-S10: P5-06 operating-cost terms and rule diagnostics (universal); corrected rule-set clearing paths (D1-surplus, merit key, avoided-cost stack, storage netting, cycle-only bid basis) gated by NativeMarketRules fields",
+      "previous_kind": "value_instrumentation"
     }
   ]
 }

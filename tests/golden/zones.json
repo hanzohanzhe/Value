@@ -8,6 +8,11 @@
  "default": "trajectory",
  "rules": [
   {
+   "pattern": "*::*market_rule_set*",
+   "zone": "identity",
+   "why": "P0-6 S2/S11: market rule-set identity record (rule-set sha, fields, kernel tree sha, storage bid-basis owners); method identity, governed by the methodology catalogue"
+  },
+  {
    "pattern": "*::*schema_version*",
    "zone": "identity",
    "why": "interface/schema labels"
@@ -476,6 +481,16 @@
    "pattern": "*::*fleet_economics*",
    "zone": "accounting",
    "why": "fleet economics summary"
+  },
+  {
+   "pattern": "*::*market_rule_diagnostics*",
+   "zone": "accounting",
+   "why": "P0-6: diagnostics of the known thesis-rule deviations (unrecorded VRE, storage fee carry, skim leak), validation/attribution reports (Q12)"
+  },
+  {
+   "pattern": "*::*market_settlement_components*",
+   "zone": "accounting",
+   "why": "P0-6 S4 (P5-06, plan 4.6 point 6): market settlement transfers at their actual period values (cost ledger, Q12)"
   },
   {
    "pattern": "*::*physical_operating_cost*",

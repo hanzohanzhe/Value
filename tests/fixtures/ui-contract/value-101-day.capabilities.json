@@ -43,7 +43,8 @@
    "excess_scope": "inflexible_mixed",
    "excess_relationship": "separate_prebalancing",
    "curtailment_semantics": "balancing_stage_down_regulation_after_storage_export_and_flexible_demand",
-   "stage_order": ["ahead","curtailment_or_balancing","final_dispatch"]
+   "stage_order": ["ahead","curtailment_or_balancing","final_dispatch"],
+   "market_rule_set": {"rule_set_id":"native-doctoral-thesis-v1","rule_set_sha256":"1419a1769e492e0862f559676c8b8623aac8adc1c112c9fc90ba3b59ad0602d5"}
   },
   "missing_reason": null,
   "legacy_staged_market_jsonl": false,

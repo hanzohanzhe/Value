@@ -198,6 +198,65 @@ def active_rules(explicit: NativeMarketRules | None, runtime: object | None) -> 
     )
 
 
+THESIS_VOLL_GBP_PER_MWH = 8000.0
+DEFAULT_VOLL_GBP_PER_MWH = 10000.0
+
+
+def voll_gbp_per_mwh(rules: NativeMarketRules, parameters: Mapping[str, Any] | None) -> float:
+    """VoLL of the physical operating cost (plan appendix P0-6 Q7).
+
+    The doctoral rule set uses the thesis constant 8000 GBP/MWh; the corrected
+    one reads ``market.voll_gbp_per_mwh`` (default 10000 GBP/MWh).
+    """
+
+    if rules.reliability_voll == "thesis_constant_8000":
+        return THESIS_VOLL_GBP_PER_MWH
+    value = (parameters or {}).get("market.voll_gbp_per_mwh", DEFAULT_VOLL_GBP_PER_MWH)
+    return float(DEFAULT_VOLL_GBP_PER_MWH if value is None else value)
+
+
+def column_semantics(rules: NativeMarketRules) -> dict[str, str]:
+    """Ledger column semantics of a rule set (C20; read by P0-7 and P0-9).
+
+    The doctoral values are the retained 35aadb3 declarations.  Under the
+    corrected rule set ``vre_accepted`` is gross VRE output (including surplus
+    consumed by storage, export or flexible demand), ``curtailed`` is VRE
+    availability minus that gross output and ``excess`` is the non-VRE spill;
+    the two unused quantities are disjoint, so leftover = excess + curtailed.
+    """
+
+    if rules.surplus_accounting == "rebuilt_available_minus_accepted":
+        return {
+            "excess_scope": "non_vre_spill",
+            "excess_relationship": "separate_prebalancing",
+            "curtailment_semantics": "vre_available_minus_gross_output",
+            "vre_accepted_semantics": "gross_vre_output_including_consumed_surplus",
+            "leftover_relationship": "excess_plus_curtailed_disjoint",
+        }
+    return {
+        "excess_scope": "inflexible_mixed",
+        "excess_relationship": "separate_prebalancing",
+        "curtailment_semantics": "balancing_stage_down_regulation_after_storage_export_and_flexible_demand",
+    }
+
+
+def require_supported_rules(rules: NativeMarketRules) -> NativeMarketRules:
+    """Only the two tested rule sets run in the kernel (plan 4.6 point 1).
+
+    A partial rule set mixes column semantics (and declares no energy-balance
+    boundary), so the kernel refuses it instead of clearing a combination no
+    test covers.
+    """
+
+    for supported in (DOCTORAL, CORRECTED):
+        if rules == supported:
+            return rules
+    raise RuntimeError(
+        f"GF_MARKET_RULES_UNSUPPORTED: market rule set {rules.rule_set_id} is neither "
+        f"{DOCTORAL.rule_set_id} nor {CORRECTED.rule_set_id}; the default PSM runs only these two"
+    )
+
+
 def storage_bid_basis_source(cost_object: object) -> str:
     """``rule_set`` when the kernel's rule set owns the object's bid basis.
 

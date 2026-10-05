@@ -47,12 +47,13 @@ class RuntimeOverlaySealTests(unittest.TestCase):
         kinds = {row["path"]: row["kind"] for row in manifest["runtime_files"]}
         # The kernel was value_instrumentation at 35aadb3; P0-4/P0-5/P0-6 edits
         # re-register it as a declared runtime edit carrying correction ids.
-        self.assertIn(kinds["modular_simulation_model.py"], {"value_instrumentation", "declared_runtime_edit"})
-        kernel_row = next(row for row in manifest["runtime_files"] if row["path"] == "modular_simulation_model.py")
-        if kernel_row["kind"] == "declared_runtime_edit":
-            self.assertEqual(kernel_row["previous_kind"], "value_instrumentation")
-            self.assertTrue(kernel_row["correction_ids"])
-        self.assertEqual(kinds["storage_cost.py"], "value_instrumentation")
+        # P0-6 S10 (P5-04 bid basis) does the same for storage_cost.py.
+        for path in ("modular_simulation_model.py", "storage_cost.py"):
+            self.assertIn(kinds[path], {"value_instrumentation", "declared_runtime_edit"})
+            row = next(row for row in manifest["runtime_files"] if row["path"] == path)
+            if row["kind"] == "declared_runtime_edit":
+                self.assertEqual(row["previous_kind"], "value_instrumentation")
+                self.assertTrue(row["correction_ids"])
         self.assertEqual(kinds["config.py"], "mechanical_substitution")
         self.assertEqual(kinds["scenarios_v2/decarbonization_cost_scenarios_v2.csv"], "data")
         self.assertEqual(kinds["case3.py"], "source_identical")

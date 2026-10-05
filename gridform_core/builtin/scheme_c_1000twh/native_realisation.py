@@ -29,6 +29,20 @@ LOG_COLUMNS = (
     "curtailed_mw", "blackout_mw", "flexible_demand_mw", "export_mw",
 )
 
+# P0-6 S4 physical-cost and settlement terms per period (GBP) and the doctoral
+# market-rule diagnostics (kernel units: MW, or GBP per hour for the storage
+# fee carry); kept outside LOG_COLUMNS like the surplus terms.
+COST_COLUMNS = (
+    "generation_variable_gbp", "import_variable_gbp", "startup_adder_gbp",
+    "storage_offer_payment_gbp", "retained_period_cost_gbp", "generation_offer_payment_gbp",
+    "storage_fee_retained_gbp", "curtailment_payment_gbp", "balancing_payment_gbp",
+    "export_revenue_gbp", "import_payment_gbp",
+)
+DIAGNOSTIC_COLUMNS = (
+    "unrecorded_vre_mw", "storage_fee_carry_gbp_per_h", "vre_skim_leak_mw",
+    "vre_skim_to_electrolysis_mw", "phantom_surplus_mw",
+)
+
 # P0-4 S5 surplus-node terms per period (MWh; not part of the P0-6 log view).
 SURPLUS_COLUMNS = (
     "u_out_mwh", "non_vre_spill_mwh", "non_vre_double_counted_mwh",
@@ -85,6 +99,7 @@ class RealisationLog:
         for column in LOG_COLUMNS:
             setattr(self, column, np.zeros(self.periods, dtype=np.float64))
         self._start_surplus()
+        self._start_costs()
 
     def record(self, period: int, realisation: PeriodRealisation, *, forecast_demand: float,
                real_demand: float, flexible_demand: float, export: float) -> None:
@@ -116,6 +131,20 @@ class RealisationLog:
         self.u_out_to_storage_mwh[period] = out["to_storage"] * hours
         self.u_out_to_export_mwh[period] = out["to_export"] * hours
         self.u_out_to_flexible_mwh[period] = out["to_flexible"] * hours
+
+    def record_costs(self, period: int, terms: Any, diagnostics: Any) -> None:
+        """P0-6 S4: physical cost and settlement terms (GBP) and rule diagnostics."""
+
+        if not hasattr(self, "generation_variable_gbp") or len(self.generation_variable_gbp) != self.periods:
+            self._start_costs()
+        for column in COST_COLUMNS:
+            getattr(self, column)[period] = float(terms.get(column, 0.0))
+        for column in DIAGNOSTIC_COLUMNS:
+            getattr(self, column)[period] = float(diagnostics.get(column, 0.0))
+
+    def _start_costs(self) -> None:
+        for column in COST_COLUMNS + DIAGNOSTIC_COLUMNS:
+            setattr(self, column, np.zeros(self.periods, dtype=np.float64))
 
     def _start_surplus(self) -> None:
         for column in SURPLUS_COLUMNS:

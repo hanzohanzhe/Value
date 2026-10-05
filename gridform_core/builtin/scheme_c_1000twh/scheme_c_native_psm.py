@@ -20,12 +20,20 @@ from ...market_ledger import (
     create_market_ledger,
     set_active_market_ledger,
 )
+from ...energy_balance_contract import NATIVE_CORRECTED_FULL_NODE_V1
 from ...market_replay import canonical_technology
 from ...v2.contracts import MarketYearResult, PSMInput, PeriodSummary
 from .legacy_result_adapter import SchemeCLegacyResultAdapter
 from .native_balance_audit import stored_total
-from .native_market_rules import NativeMarketRules, rules_for_methodology, storage_bid_basis_source
-from .native_realisation import RealisationLog
+from .native_market_rules import (
+    NativeMarketRules,
+    column_semantics,
+    market_rule_set_record,
+    rules_for_methodology,
+    storage_bid_basis_source,
+    voll_gbp_per_mwh,
+)
+from .native_realisation import COST_COLUMNS, DIAGNOSTIC_COLUMNS, RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
 
 
@@ -46,8 +54,9 @@ class _StorageRuntime:
     ``bid_basis_sources`` records, per battery type, whether the market rule
     set owns the created cost object's bid basis (exact
     ``DynamicAnnualStorageCost``) or the module defines its own bid
-    (``module_defined``).  P0-6 S2 only records this; the rule set's
-    ``storage_bid_basis`` is applied to ``rule_set`` objects from S10 on.
+    (``module_defined``).  The rule set's ``storage_bid_basis`` is applied to
+    ``rule_set`` objects (P0-6 S10, P5-04: cycle-only bids in the corrected
+    rule set); module-defined bids are left to their module.
     """
 
     def __init__(
@@ -66,7 +75,10 @@ class _StorageRuntime:
     def create(self, **kwargs):
         created = self.implementation.create(**kwargs)
         battery_type = str(kwargs.get("battery_type", ""))
-        self.bid_basis_sources[battery_type] = storage_bid_basis_source(created)
+        source = storage_bid_basis_source(created)
+        self.bid_basis_sources[battery_type] = source
+        if source == "rule_set" and self.market_rules is not None:
+            created.bid_basis = self.market_rules.storage_bid_basis
         return created
 
 
@@ -310,6 +322,10 @@ class SchemeCNativePSM:
             and realisation_log is not None
             and hasattr(realisation_log, "u_out_to_storage_mwh")
         )
+        # P0-6 S5: on native_corrected_full_node_v1 every load is a full
+        # component, the non-VRE spill (excess) leaves the node and the VRE
+        # curtailment was never in S, so components minus demand = raw.
+        corrected_node = boundary_id == NATIVE_CORRECTED_FULL_NODE_V1
 
         for period, raw_dispatch in enumerate(named.dispatch_by_period):
             combined: defaultdict[tuple[str, str, str, str], float] = defaultdict(float)
@@ -344,7 +360,11 @@ class SchemeCNativePSM:
             charge_mwh = float(named.storage_charge_by_period[period] or 0.0) * period_hours
             flexible_mwh = float(named.flexible_demand_mwh_by_period[period] or 0.0) * period_hours
             export_mwh = float(named.interconnector_exports_mwh_by_period[period] or 0.0) * period_hours
-            if surplus_node:
+            if corrected_node:
+                charge_component, flexible_component, export_component = -charge_mwh, -flexible_mwh, -export_mwh
+                excess_component = -float(named.excess_electricity_mwh_by_period[period] or 0.0) * period_hours
+                curtailment_component = 0.0
+            elif surplus_node:
                 charge_component = -charge_mwh + float(realisation_log.u_out_to_storage_mwh[period])
                 flexible_component = -flexible_mwh + float(realisation_log.u_out_to_flexible_mwh[period])
                 export_component = -export_mwh + float(realisation_log.u_out_to_export_mwh[period])
@@ -426,6 +446,90 @@ class SchemeCNativePSM:
                                dtype=float),
         }
 
+    @staticmethod
+    def _operating_cost_accounts(
+        realisation_log: RealisationLog,
+        summaries: tuple,
+        market_rules: NativeMarketRules,
+        parameters: Mapping[str, object],
+        cycle_wear: float,
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        """P5-06 physical operating cost and the settlement transfers (P0-6 S4)."""
+
+        totals = {column: float(np.sum(getattr(realisation_log, column))) for column in COST_COLUMNS}
+        voll = voll_gbp_per_mwh(market_rules, parameters)
+        blackout_mwh = float(sum(row.blackout_mwh for row in summaries))
+        reliability = blackout_mwh * voll
+        total = (
+            totals["generation_variable_gbp"] + totals["import_variable_gbp"]
+            + totals["startup_adder_gbp"] + reliability + float(cycle_wear)
+        )
+        detail = {
+            "schema_version": "value.native-operating-cost/v1",
+            "basis": market_rules.operating_cost_basis,
+            "generation_variable": totals["generation_variable_gbp"],
+            "import_variable": totals["import_variable_gbp"],
+            "startup_adder_resource": totals["startup_adder_gbp"],
+            "blackout_reliability": reliability,
+            "blackout_mwh": blackout_mwh,
+            "voll_gbp_per_mwh": voll,
+            "voll_basis": market_rules.reliability_voll,
+            "storage_cycle_wear": float(cycle_wear),
+            "total_gbp": total,
+        }
+        retained = totals["retained_period_cost_gbp"]
+        parts = (
+            totals["generation_offer_payment_gbp"] + totals["storage_fee_retained_gbp"]
+            + totals["curtailment_payment_gbp"] + totals["balancing_payment_gbp"]
+        )
+        settlement = {
+            "schema_version": "value.native-market-settlement/v1",
+            "generation_offer_payment": totals["generation_offer_payment_gbp"],
+            "storage_offer_payment": totals["storage_offer_payment_gbp"],
+            "storage_fee_carry_residual": totals["storage_fee_retained_gbp"] - totals["storage_offer_payment_gbp"],
+            "curtailment_payment": totals["curtailment_payment_gbp"],
+            "balancing_payment": totals["balancing_payment_gbp"],
+            "export_revenue": totals["export_revenue_gbp"],
+            "import_payment": totals["import_payment_gbp"],
+            "retained_period_cost": retained,
+            "reconciliation": (
+                "reconciled" if abs(retained - parts) <= 1e-6 * max(1.0, abs(retained)) else "unreconciled"
+            ),
+        }
+        return detail, settlement
+
+    @staticmethod
+    def _rule_diagnostics(
+        realisation_log: RealisationLog, market_rules: NativeMarketRules, period_hours: float,
+    ) -> dict[str, object]:
+        """Known thesis-rule deviations of this run (zero in the corrected rule set)."""
+
+        sums = {column: float(np.sum(getattr(realisation_log, column))) * float(period_hours)
+                for column in DIAGNOSTIC_COLUMNS}
+        return {
+            "schema_version": "value.native-market-rule-diagnostics/v1",
+            "rule_set_id": market_rules.rule_set_id,
+            "unrecorded_vre_mwh": sums["unrecorded_vre_mw"],
+            "storage_fee_carry_gbp": sums["storage_fee_carry_gbp_per_h"],
+            "vre_skim_leak_mwh": sums["vre_skim_leak_mw"],
+            "vre_skim_to_electrolysis_mwh": sums["vre_skim_to_electrolysis_mw"],
+            "phantom_surplus_mwh": sums["phantom_surplus_mw"],
+            "non_vre_double_counted_mwh": float(np.sum(getattr(
+                realisation_log, "non_vre_double_counted_mwh", np.zeros(0)))),
+        }
+
+    @staticmethod
+    def _kernel_tree_sha256() -> str | None:
+        from ...errors import CompatibilityError
+        from .runtime_overlay import ensure_runtime_overlay_sealed
+
+        try:
+            return str(ensure_runtime_overlay_sealed().get("runtime_tree_sha256") or "") or None
+        except CompatibilityError:
+            # Identity record only: an unsealed kernel is refused at the run
+            # entry; a unit-level call records the hash as unknown.
+            return None
+
     @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         if self._context is None or self._storage_cost is None:
@@ -472,10 +576,12 @@ class SchemeCNativePSM:
                 "dispatch_formulation": "bid_at_cost_continuous_no_commitment",
                 "pricing_rule": "retained_bid_at_cost_pay_as_clear_agent_income",
                 "period_price_semantics": "demand_normalised_total_period_cost; not a stage clearing-price proof",
-                "excess_scope": "inflexible_mixed",
-                "excess_relationship": "separate_prebalancing",
-                "curtailment_semantics": "balancing_stage_down_regulation_after_storage_export_and_flexible_demand",
+                **column_semantics(market_rules),
                 "stage_order": ["ahead", "curtailment_or_balancing", "final_dispatch"],
+                "market_rule_set": {
+                    "rule_set_id": market_rules.rule_set_id,
+                    "rule_set_sha256": market_rules.sha256,
+                },
             },
         )
         set_active_market_ledger(ledger)
@@ -616,7 +722,15 @@ class SchemeCNativePSM:
             float(report.get("current_cycle_depreciation_gbp", 0.0) or 0.0)
             for report in storage_reports.values()
         )
-        operating = sum(row.physical_resource_cost_gbp for row in summaries) + cycle_wear
+        # P0-6 S4 (P5-06, universal): physical operating cost = generation at
+        # running cost + imports + start-up adder + unserved x VoLL + cycle
+        # wear.  The bid payments (including storage offers, which already
+        # contain the cycle wear) are settlement transfers, reported apart.
+        operating_detail, settlement = self._operating_cost_accounts(
+            realisation_log, summaries, market_rules, parameters, cycle_wear,
+        )
+        operating = operating_detail["total_gbp"]
+        voll = operating_detail["voll_gbp_per_mwh"]
         allocated_market_income = self._allocate_runtime_income(
             named.market_income_gbp_by_agent,
             state_coupling,
@@ -660,6 +774,16 @@ class SchemeCNativePSM:
                 },
                 "vre_expansion_headroom_mw_by_technology": dict(
                     model_input.chronology.extensions.get("vre_expansion_headroom_mw_by_technology") or {}
+                ),
+                "physical_operating_cost_detail_gbp": operating_detail,
+                "market_settlement_components_gbp": settlement,
+                "market_rule_diagnostics": self._rule_diagnostics(realisation_log, market_rules, period_hours),
+                "market_rule_set": market_rule_set_record(
+                    market_rules,
+                    storage_cost_module_id=storage_runtime.id,
+                    storage_bid_basis_sources=storage_runtime.bid_basis_sources,
+                    runtime_kernel_tree_sha256=self._kernel_tree_sha256(),
+                    voll_gbp_per_mwh=voll,
                 ),
                 "physical_operating_cost_components_gbp": {
                     "generation_import_and_reliability": operating - cycle_wear,
