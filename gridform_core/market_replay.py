@@ -696,9 +696,9 @@ def query_dispatch_timeline(
                         ELSE AVG(clearing_price_gbp_per_mwh) END AS price_gbp_per_mwh,
                    SUM(blackout_mwh) AS blackout_mwh,
                    SUM(excess_mwh) AS excess_mwh,
-                   SUM(energy_balance_residual_mwh) AS energy_balance_residual_mwh,
-                   SUM(compatibility_adjustment_mwh) AS compatibility_adjustment_mwh,
-                   SUM(raw_energy_balance_residual_mwh) AS raw_energy_balance_residual_mwh
+                   SUM(ABS(energy_balance_residual_mwh)) AS energy_balance_residual_mwh,
+                   SUM(ABS(compatibility_adjustment_mwh)) AS compatibility_adjustment_mwh,
+                   SUM(ABS(raw_energy_balance_residual_mwh)) AS raw_energy_balance_residual_mwh
             FROM period_summary
             WHERE year=? AND period BETWEEN ? AND ?
               AND CAST((period-?)/? AS INTEGER) IN ({bucket_placeholders})
@@ -709,6 +709,11 @@ def query_dispatch_timeline(
                 start_period, bucket_periods, *selected_buckets,
             ),
         ).fetchall()
+        stress_by_bucket = _bucket_stress(
+            connection, tables,
+            year=int(year), start_period=start_period, end_period=end,
+            bucket_periods=bucket_periods, buckets=selected_buckets,
+        )
         flows_by_bucket: defaultdict[int, list[dict[str, object]]] = defaultdict(list)
         dispatch_summary_rows = 0
         if dispatch_source == "dispatch_summary" and "dispatch_summary" in tables:
@@ -794,6 +799,8 @@ def query_dispatch_timeline(
             "timestamp_end": _model_timestamp(int(year), int(row["period_end"]) + 1, period_hours),
             "flows": flows_by_bucket.get(bucket, []),
         })
+        if stress_by_bucket is not None:
+            value.update(stress_by_bucket.get(bucket, _empty_stress(stress_basis(stress_by_bucket))))
         items.append(value)
     return {
         "schema_version": DISPATCH_TIMELINE_SCHEMA,
@@ -813,8 +820,119 @@ def query_dispatch_timeline(
         "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
         "price_basis": price_basis,
         "price_basis_source": price_basis_source,
+        # P0-4 S3: residuals and adjustments are summed as absolute values, so
+        # a +2 and a -2 in one window show 4, not a cancelled 0.
+        "residual_aggregation": "sum_of_absolute_period_values",
+        "stress_recorded": stress_by_bucket is not None,
         "units": {"energy": "MWh", "price": "GBP/MWh"},
     }
+
+
+STRESS_COLUMNS = (
+    "period", "stage", "forecast_demand_mwh", "real_demand_mwh", "accepted_supply_mwh",
+    "storage_charge_mwh", "flexible_demand_mwh", "export_mwh", "blackout_mwh",
+    "excess_mwh", "curtailed_mwh",
+)
+
+
+def _empty_stress(basis: str) -> dict[str, object]:
+    return {
+        "shortfall_mwh": 0.0, "shortfall_upper_mwh": 0.0, "shortfall_basis": basis,
+        "stress_periods": 0, "possible_stress_periods": 0,
+    }
+
+
+def stress_basis(stress_by_bucket: Mapping[int, Mapping[str, object]]) -> str:
+    return next((str(row["shortfall_basis"]) for row in stress_by_bucket.values()), "lower_bound")
+
+
+def _bucket_stress(
+    connection: sqlite3.Connection,
+    tables: set[str],
+    *,
+    year: int,
+    start_period: int,
+    end_period: int,
+    bucket_periods: int,
+    buckets: list[int],
+) -> dict[int, dict[str, object]] | None:
+    """A2 stress events per window bucket, from the same contract as the oracle.
+
+    ``shortfall_mwh`` is the certain shortfall summed over stress periods:
+    exact when the ledger records the surplus routing, otherwise the demand
+    that accepted supply did not meet (``shortfall_basis='lower_bound'``;
+    ``shortfall_upper_mwh`` bounds it).  Only the final dispatch row of a
+    period counts when a period has several stages.  None when the ledger
+    lacks the period columns (the UI then shows "not recorded").
+    """
+
+    from . import energy_balance_contract as balance
+    from .energy_balance_oracle import _metadata, _read_routing, resolve_boundary
+
+    if "period_summary" not in tables:
+        return None
+    columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(period_summary)")}
+    if any(column not in columns for column in STRESS_COLUMNS):
+        return None
+    tier = resolve_boundary(_metadata(connection))["tolerance_tier"]
+    routing, _missing = _read_routing(connection)
+    placeholders = ",".join("?" for _ in buckets)
+    rows_by_period: dict[int, list[sqlite3.Row]] = defaultdict(list)
+    previous_factory = connection.row_factory
+    connection.row_factory = sqlite3.Row
+    try:
+        for row in connection.execute(
+            "SELECT " + ", ".join(STRESS_COLUMNS) + " FROM period_summary "
+            "WHERE year=? AND period BETWEEN ? AND ? "
+            f"AND CAST((period-?)/? AS INTEGER) IN ({placeholders})",
+            (year, start_period, end_period, start_period, bucket_periods, *buckets),
+        ):
+            rows_by_period[int(row["period"])].append(row)
+    finally:
+        connection.row_factory = previous_factory
+    result: dict[int, dict[str, object]] = {}
+    exact_all = True
+    for period, rows in sorted(rows_by_period.items()):
+        if len(rows) > 1:
+            rows = [row for row in rows if str(row["stage"]) == "final_dispatch"]
+        if len(rows) != 1:
+            continue
+        row = rows[0]
+        u_out = w_in = None
+        if routing is not None:
+            u_out, w_in = balance.surplus_terms(routing.get((year, period), []))
+        flows = balance.PeriodFlows(
+            year=year, period=period, stage=str(row["stage"]),
+            supply_mwh=float(row["accepted_supply_mwh"]), blackout_mwh=float(row["blackout_mwh"]),
+            demand_mwh=float(row["real_demand_mwh"]), storage_charge_mwh=float(row["storage_charge_mwh"]),
+            export_mwh=float(row["export_mwh"]), flexible_demand_mwh=float(row["flexible_demand_mwh"]),
+            excess_mwh=float(row["excess_mwh"]), curtailed_mwh=float(row["curtailed_mwh"]),
+            forecast_demand_mwh=float(row["forecast_demand_mwh"]), u_out_mwh=u_out, w_in_mwh=w_in,
+        )
+        if not flows.is_finite():
+            continue
+        estimate = balance.period_shortfall(flows)
+        exact_all = exact_all and estimate.exact
+        tol = balance.tolerance(tier, flows.demand_mwh, flows.supply_mwh)
+        bucket = (period - start_period) // bucket_periods
+        stats = result.setdefault(bucket, {
+            "shortfall_mwh": 0.0, "shortfall_upper_mwh": 0.0,
+            "stress_periods": 0, "possible_stress_periods": 0,
+        })
+        if estimate.lower_mwh > tol:
+            stats["stress_periods"] = int(stats["stress_periods"]) + 1
+            stats["shortfall_mwh"] = float(stats["shortfall_mwh"]) + estimate.lower_mwh
+        if estimate.upper_mwh > tol:
+            stats["possible_stress_periods"] = int(stats["possible_stress_periods"]) + 1
+            stats["shortfall_upper_mwh"] = float(stats["shortfall_upper_mwh"]) + estimate.upper_mwh
+    basis = "exact" if exact_all and rows_by_period else "lower_bound"
+    for stats in result.values():
+        stats["shortfall_basis"] = basis
+        stats["shortfall_mwh"] = float(f"{float(stats['shortfall_mwh']):.12g}")
+        stats["shortfall_upper_mwh"] = float(f"{float(stats['shortfall_upper_mwh']):.12g}")
+    for bucket in buckets:
+        result.setdefault(bucket, _empty_stress(basis))
+    return result
 
 
 def _event_statistics(

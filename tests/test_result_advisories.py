@@ -37,6 +37,30 @@ def _validation(**fields):
     }
 
 
+def _v2_validation(**fields):
+    """A recomputed (P0-4 S2) report; its evidence fields are authoritative."""
+
+    return {
+        "schema_version": "value.scientific-validation/v2",
+        "execution_status": "passed",
+        "contract_validation_status": "passed",
+        "analytical_mechanism_status": "passed",
+        "retained_numerical_comparison_role": "informational_scenario_difference",
+        "retained_numerical_comparison_status": "expected_difference",
+        "scientific_validation_status": "passed",
+        "run_invariant_status": "not_evaluated",
+        "energy_balance_status": "not_evaluated",
+        **fields,
+    }
+
+
+def _run_with_report(folder: Path, report: dict) -> Path:
+    path = folder / "model-output" / "validation" / "scientific-validation.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report), encoding="utf-8")
+    return folder
+
+
 def _snapshot(root: Path) -> dict[str, tuple[str, int]]:
     """sha256 and mtime_ns of every file under ``root``."""
 
@@ -60,10 +84,14 @@ class PresentScientificStatusTests(unittest.TestCase):
 
     def test_moved_rules_are_unchanged_for_a_recorded_run(self):
         dynamic = self._present("dynamic-annual-storage-cost")
+        # P0-4 S3: the scenario reading of a v1 report is computed as before,
+        # but a passed claim resting on it is superseded even when the run
+        # recorded its methodology (P7-01: v1 contract "passed" was a literal).
         self.assertEqual(
             (dynamic["scientific_scenario_status"], dynamic["retained_numerical_comparison_status"], dynamic["retained_comparison_role"]),
-            ("passed", "expected_difference", "informational_scenario_difference"),
+            ("superseded_pre_fix", "expected_difference", "informational_scenario_difference"),
         )
+        self.assertEqual(dynamic["recorded_validation_statuses"], {"scientific_scenario_status": "passed"})
         legacy = self._present("value-legacy-storage-tariff")
         self.assertEqual(
             (legacy["scientific_scenario_status"], legacy["retained_numerical_comparison_status"], legacy["retained_comparison_role"]),
@@ -74,6 +102,37 @@ class PresentScientificStatusTests(unittest.TestCase):
         missing = self._present("dynamic-annual-storage-cost", validation=[])
         self.assertEqual(missing["scientific_scenario_status"], "not_evaluated")
         self.assertEqual(missing["retained_numerical_comparison_status"], "not_evaluated")
+
+    def test_v2_report_is_presented_as_recomputed_without_a_forced_pass(self):
+        # A v2 report decides the scenario status itself; the alternative
+        # storage policy no longer turns it into "passed" (P0-4 S3).
+        not_evaluated = self._present("dynamic-annual-storage-cost", validation=_v2_validation(
+            scientific_validation_status="not_evaluated"))
+        self.assertEqual(not_evaluated["scientific_scenario_status"], "not_evaluated")
+        self.assertNotIn("recorded_validation_statuses", not_evaluated)
+        passed = self._present("dynamic-annual-storage-cost", validation=_v2_validation(
+            run_invariant_status="passed", energy_balance_status="failed",
+            stress={"stress_periods": 4, "shortfall_mwh": 47.35, "shortfall_basis": "lower_bound"},
+            validation_warnings=[{"code": "GF_ENERGY_BALANCE_FAILED"}]))
+        self.assertEqual(passed["scientific_scenario_status"], "passed")
+        self.assertEqual((passed["run_invariant_status"], passed["energy_balance_status"]), ("passed", "failed"))
+        self.assertEqual(passed["stress"]["stress_periods"], 4)
+        self.assertEqual(passed["validation_evidence"]["source"], "scientific_validation_v2")
+        self.assertNotIn("GF_VALIDATION_LEGACY_REPORT", {row["id"] for row in passed["advisories"]})
+
+    def test_copied_status_evidence_without_a_v2_report_is_not_trusted(self):
+        with tempfile.TemporaryDirectory() as folder:
+            run_root = _run_with_report(Path(folder), _validation())
+            run = {"id": "run", "mode": "full", "status": "completed", "modules": {}, "results": [],
+                   "methodology": resolve_methodology(REFERENCE_PROFILE_ID).to_dict(),
+                   "raw_invariants": {"status": "passed"}, "energy_balance_status": "passed",
+                   "run_invariant_status": "passed"}
+            presented = present_scientific_status(run, run_root)
+        self.assertEqual(presented["energy_balance_status"], "not_evaluated")
+        self.assertEqual(presented["run_invariant_status"], "not_evaluated")
+        self.assertEqual(presented["raw_invariants"]["status"], "not_evaluated")
+        self.assertEqual(presented["result_publication"]["status"], "withheld")
+        self.assertIn("GF_VALIDATION_LEGACY_REPORT", {row["code"] for row in presented["validation_warnings"]})
 
     def test_pre_profile_positive_claims_are_superseded_and_kept(self):
         run = self._present("dynamic-annual-storage-cost", recorded=False)
@@ -147,7 +206,9 @@ class FixtureRunTests(unittest.TestCase):
     def test_doctoral_run_without_raw_invariants_is_withheld(self):
         run = self._present_run("doctoral-no-invariants")
         self.assertEqual(run["methodology"]["profile_id"], REFERENCE_PROFILE_ID)
-        self.assertEqual(run["scientific_scenario_status"], "passed")
+        # Its passed claim rests on a v1 report: superseded (P0-4 S3).
+        self.assertEqual(run["scientific_scenario_status"], "superseded_pre_fix")
+        self.assertEqual(run["recorded_validation_statuses"]["scientific_scenario_status"], "passed")
         self.assertNotIn("VALUE-ADV-2026-10-04-REVIEW", {row["id"] for row in run["advisories"]})
         publication = run["result_publication"]
         self.assertEqual(publication["status"], "withheld")
@@ -262,9 +323,8 @@ class WithheldAnnualResourceTests(unittest.TestCase):
                 (output / relative).parent.mkdir(parents=True, exist_ok=True)
                 (output / relative).write_text(json.dumps(payload), encoding="utf-8")
             withheld = build_run_summary(run)
-            status = json.loads((run / "status.json").read_text(encoding="utf-8"))
-            status["raw_invariants"] = {"status": "passed"}
-            (run / "status.json").write_text(json.dumps(status), encoding="utf-8")
+            # Passing raw invariants come from a recomputed (v2) report.
+            _run_with_report(run, _v2_validation(raw_invariants={"status": "passed"}))
             published = build_run_summary(run)
         self.assertEqual(withheld["result_publication"]["status"], "withheld")
         self.assertEqual(withheld["result_publication"]["withheld_fields"],
@@ -286,8 +346,14 @@ class WithheldAnnualResourceTests(unittest.TestCase):
 
     def test_published_runs_are_not_gated(self):
         status = json.loads((FIXTURES / "doctoral-no-invariants" / "status.json").read_text(encoding="utf-8"))
-        status["raw_invariants"] = {"status": "passed"}
-        self.assertIsNone(result_advisories.withheld_annual_result(FIXTURES / "doctoral-no-invariants", "x", status))
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder) / "doctoral-no-invariants"
+            shutil.copytree(FIXTURES / "doctoral-no-invariants", run)
+            _run_with_report(run, _v2_validation(raw_invariants={"status": "passed"}))
+            self.assertIsNone(result_advisories.withheld_annual_result(run, "x", status))
+        # A copied status claim alone does not publish (P0-4 S3).
+        claimed = dict(status, raw_invariants={"status": "passed"})
+        self.assertIsNotNone(result_advisories.withheld_annual_result(FIXTURES / "doctoral-no-invariants", "x", claimed))
         self.assertIsNone(result_advisories.withheld_annual_result(FIXTURES / "pre-fix-dynamic-full", "x"))
         self.assertIsNotNone(result_advisories.withheld_annual_result(FIXTURES / "doctoral-no-invariants", "x"))
 
@@ -318,6 +384,8 @@ class PublicationTests(unittest.TestCase):
         root = Path("/nonexistent-run")
         self.assertEqual(result_publication({"methodology": corrected}, root)["status"], "published")
         self.assertEqual(result_publication({}, root)["status"], "published")
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
         cases = [
             ({}, "withheld", "not_evaluated"),
             ({"raw_invariants": {"status": "passed"}}, "published", "passed"),
@@ -326,9 +394,16 @@ class PublicationTests(unittest.TestCase):
             ({"run_invariant_status": "passed", "energy_balance_status": "reproduction_with_declared_deviations"}, "withheld", "failed"),
             ({"run_invariant_status": "passed"}, "withheld", "not_evaluated"),
         ]
-        for evidence, status, verdict in cases:
+        for index, (evidence, status, verdict) in enumerate(cases):
             with self.subTest(evidence=evidence):
-                publication = result_publication({"methodology": doctoral, **evidence}, root)
+                # The evidence is the run's v2 report (P0-4 S2), not status.json.
+                run_root = _run_with_report(Path(folder) / f"run-{index}", _v2_validation(**evidence))
+                if "energy_balance_status" not in evidence:
+                    report = json.loads((run_root / "model-output" / "validation" / "scientific-validation.json").read_text())
+                    report.pop("energy_balance_status")
+                    report.pop("run_invariant_status", None) if "run_invariant_status" not in evidence else None
+                    _run_with_report(run_root, report)
+                publication = result_publication({"methodology": doctoral, "status": "completed"}, run_root)
                 self.assertEqual((publication["status"], publication["raw_invariants_status"]), (status, verdict))
         withheld = withhold_annual_results({"result_publication": {"status": "withheld"}, "results": [{"year": 2025}]})
         self.assertEqual((withheld["results"], withheld["withheld_result_year_count"]), ([], 1))

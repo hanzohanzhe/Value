@@ -40,11 +40,14 @@ class RunPresentationTests(unittest.TestCase):
         self.assertEqual(result["scientific_validation_status"], "failed")
         # A run without a methodology record predates the 2026-10 fixes: its
         # positive scenario claim is superseded, the recorded value is kept
-        # (X0 S10b).  A run that records its methodology keeps "passed".
+        # (X0 S10b).  The server no longer forces "passed" (P0-4 S3, P7-01):
+        # a run that records its methodology but only a v1 report (whose
+        # contract "passed" was a literal) is superseded as well.
         self.assertEqual(result["scientific_scenario_status"], "superseded_pre_fix")
         self.assertEqual(result["recorded_validation_statuses"]["scientific_scenario_status"], "passed")
         recorded = self._present("dynamic-annual-storage-cost", methodology=resolve_methodology().to_dict())
-        self.assertEqual(recorded["scientific_scenario_status"], "passed")
+        self.assertEqual(recorded["scientific_scenario_status"], "superseded_pre_fix")
+        self.assertEqual(recorded["recorded_validation_statuses"]["scientific_scenario_status"], "passed")
         self.assertEqual(
             result["retained_numerical_comparison_status"], "expected_difference"
         )

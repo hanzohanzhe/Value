@@ -323,6 +323,13 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
             "mode": status.get("mode"), "status": status.get("status"),
             "scientific_status": presented["scientific_scenario_status"],
             "recorded_scientific_status": status.get("scientific_scenario_status", status.get("scientific_validation_status")),
+            # P0-4 S3: recomputed validation evidence (v2 report or read-time oracle).
+            "run_invariant_status": presented.get("run_invariant_status"),
+            "energy_balance_status": presented.get("energy_balance_status"),
+            "stress": {
+                key: (presented.get("stress") or {}).get(key)
+                for key in ("shortfall_basis", "stress_periods", "event_count", "shortfall_mwh", "shortfall_upper_mwh")
+            } if isinstance(presented.get("stress"), Mapping) else None,
             "periods_per_year": (status.get("run_policy") or {}).get("periods_per_year") if isinstance(status.get("run_policy"), Mapping) else None,
             "start_year": (status.get("run_policy") or {}).get("start_year") if isinstance(status.get("run_policy"), Mapping) else None,
             "end_year": (status.get("run_policy") or {}).get("end_year") if isinstance(status.get("run_policy"), Mapping) else None,
@@ -397,7 +404,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         values = [row.get("definitions", {}).get(key) for row in summaries]  # type: ignore[union-attr]
         if len(set(json.dumps(value, sort_keys=True) for value in values)) > 1:
             dimensions[f"definition.{key}"] = values
-    for key in ("periods_per_year", "scientific_status", "mode"):
+    for key in ("periods_per_year", "scientific_status", "mode", "energy_balance_status", "run_invariant_status"):
         values = [row.get("run", {}).get(key) for row in summaries]  # type: ignore[union-attr]
         if len(set(json.dumps(value, sort_keys=True) for value in values)) > 1:
             dimensions[f"run.{key}"] = values
@@ -574,6 +581,11 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
                 review_reasons.append({"run_id": run_id, "reason": "advisory", "advisory_id": advisory.get("id"), "severity": advisory.get("severity")})
         if summary.get("run", {}).get("scientific_status") == "failed":  # type: ignore[union-attr]
             review_reasons.append({"run_id": run_id, "reason": "validation_failed"})
+        # P0-4 S3: a failed independent check rules out causal conclusions
+        # even while it is reported rather than gated.
+        for field, reason in (("energy_balance_status", "energy_balance_failed"), ("run_invariant_status", "run_invariants_failed")):
+            if summary.get("run", {}).get(field) == "failed":  # type: ignore[union-attr]
+                review_reasons.append({"run_id": run_id, "reason": reason})
     # The whole method identity, not only the profile id: the same profile at
     # another version, definition or applied-correction set is another method.
     identity_keys = ("profile_id", "profile_version", "profile_definition_sha256", "applied_corrections_sha256")

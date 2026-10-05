@@ -80,7 +80,7 @@ from gridform_core.frontend_contract import (
     resolve_study_draft,
 )
 from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
-from gridform_core.result_advisories import present_scientific_status, withhold_annual_results, withheld_annual_result
+from gridform_core.result_advisories import compact_validation_fields, present_scientific_status, withhold_annual_results, withheld_annual_result
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -1350,6 +1350,7 @@ def list_runs(*, compact: bool = True) -> list[dict[str, Any]]:
         # The listing stays bounded: advisory text, the full methodology
         # record and the publication message are served by /api/runs/<id>.
         row.pop("advisories", None)
+        compact_validation_fields(row)
         methodology = row.get("methodology")
         if isinstance(methodology, dict):
             row["methodology"] = {

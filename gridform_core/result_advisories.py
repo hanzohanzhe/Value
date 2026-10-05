@@ -19,16 +19,27 @@ annotated when read.
   ``raw_invariants_must_pass`` (the frozen doctoral reproduction) publishes
   annual results on result pages only when the run's raw invariants all
   passed; otherwise they are ``withheld`` (Inspect and exports stay
-  available).  The raw-invariant evidence is written by P0-4 (status fields
-  ``raw_invariants`` or ``run_invariant_status`` + ``energy_balance_status``);
-  until a run carries it the verdict is ``not_evaluated`` and the results are
-  withheld.
+  available).  The raw-invariant evidence is the run's v2
+  scientific-validation report (P0-4 S2: ``raw_invariants``, or
+  ``run_invariant_status`` + ``energy_balance_status``), never a copied
+  status field alone; a run without that report gets at most ``failed`` from
+  the read-time oracle, otherwise ``not_evaluated``, and is withheld.
+* **Validation evidence** (P0-4 S3): a run whose scientific-validation report
+  is v2 shows the report's recomputed run-invariant, energy-balance and A2
+  stress fields (the report is authoritative over copies in status.json).  A
+  run without a v2 report (every run before P0-4 S2) has its positive
+  validation claims superseded (``superseded_pre_fix``, recorded values kept)
+  and its market ledger checked at read time by the read-only oracle
+  (``mode=ro&immutable=1``, cached per file identity, nothing written), so a
+  ledger that violates the energy-balance envelope is flagged wherever the
+  run is shown.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+from collections import OrderedDict
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, Sequence
@@ -40,6 +51,18 @@ ADVISORY_SCHEMA = "value.result-advisory/v1"
 ADVISORIES_FILE_SCHEMA = "value.methodology-advisories/v1"
 GENERIC_PREDICATES = ("pre_profile_run", "legacy_validation_report")
 LEGACY_VALIDATION_SCHEMA = "value.scientific-validation/v1"
+VALIDATION_SCHEMA = "value.scientific-validation/v2"
+# Evidence fields a v2 report carries (and model_runner copies onto status).
+VALIDATION_EVIDENCE_FIELDS = (
+    "run_invariant_status", "run_invariants", "energy_balance_status",
+    "energy_balance", "stress", "raw_invariants", "validation_warnings",
+)
+ACTIVE_STATUSES = {"queued", "snapshotting", "running", "cancel_requested"}
+# Ledgers above this size are not re-read on every listing; the CLI
+# (python -B -m gridform_core.energy_balance_oracle <run>) checks them.
+READ_TIME_ORACLE_MAX_BYTES = 256 * 1024 * 1024
+READ_TIME_ORACLE_CACHE_SIZE = 256
+R_READ_TIME_SKIPPED = "GF_ENERGY_BALANCE_READ_TIME_SKIPPED_SIZE"
 STATUS_VOCABULARY = (
     "passed", "failed", "not_evaluated", "superseded_pre_fix",
     "reproduction_with_declared_deviations", "reproduction_conformant",
@@ -163,6 +186,111 @@ def methodology_unresolved(run: Mapping[str, Any]) -> bool:
     return isinstance(record, Mapping) and record.get("status") == "unresolved"
 
 
+def legacy_validation_report(report: Mapping[str, Any]) -> bool:
+    """A recorded validation report that is not the recomputed v2 report."""
+
+    return bool(report) and report.get("schema_version") != VALIDATION_SCHEMA
+
+
+_ORACLE_CACHE: "OrderedDict[tuple, dict[str, Any]]" = OrderedDict()
+
+
+def read_time_energy_balance(run_root: Path) -> dict[str, Any] | None:
+    """Oracle report of a run's ledger, evaluated read-only and cached; None without a ledger."""
+
+    from .energy_balance_oracle import REPORT_SCHEMA_VERSION, evaluate_run_ledger
+
+    database = Path(run_root) / "model-output" / "market" / "market.sqlite"
+    try:
+        stat = database.stat()
+    except OSError:
+        return None
+    if stat.st_size > READ_TIME_ORACLE_MAX_BYTES:
+        return {
+            "schema_version": REPORT_SCHEMA_VERSION, "status": "not_evaluated",
+            "reasons": [R_READ_TIME_SKIPPED], "checks": [], "metrics": {}, "stress": None,
+            "ledger_bytes": stat.st_size,
+        }
+    key = (str(database.resolve()), stat.st_size, stat.st_mtime_ns, stat.st_ino)
+    cached = _ORACLE_CACHE.get(key)
+    if cached is None:
+        cached = evaluate_run_ledger(Path(run_root) / "model-output")
+        _ORACLE_CACHE[key] = cached
+        while len(_ORACLE_CACHE) > READ_TIME_ORACLE_CACHE_SIZE:
+            _ORACLE_CACHE.popitem(last=False)
+    else:
+        _ORACLE_CACHE.move_to_end(key)
+    return copy.deepcopy(cached)
+
+
+def validation_evidence(run: Mapping[str, Any], run_root: Path, report: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """The run-invariant, energy-balance and stress evidence of a run (P0-4 S3).
+
+    The only sources are the run's v2 scientific-validation report (recomputed
+    when the run finished) or, for a run without one, the read-only oracle on
+    its ledger now.  Copies of these fields in status.json are never trusted
+    on their own: a legacy run cannot claim passed raw invariants.
+    """
+
+    from .scientific_validation import energy_balance_summary
+
+    if report is None:
+        report = _validation_report(run, run_root)
+    if report.get("schema_version") == VALIDATION_SCHEMA:
+        evidence = {field: copy.deepcopy(report[field]) for field in VALIDATION_EVIDENCE_FIELDS if field in report}
+        evidence["validation_evidence"] = {
+            "source": "scientific_validation_v2",
+            "artifact": str(run.get("scientific_validation_artifact") or "validation/scientific-validation.json"),
+        }
+        return evidence
+    if str(run.get("status") or "") in ACTIVE_STATUSES:
+        return {
+            "run_invariant_status": "not_evaluated",
+            "energy_balance_status": "not_evaluated",
+            "validation_evidence": {"source": "not_yet_available"},
+        }
+    oracle = read_time_energy_balance(run_root)
+    balance, stress = energy_balance_summary(oracle)
+    balance["source"] = "read_time_oracle"
+    balance["artifact"] = None
+    if stress is not None:
+        stress["artifact"] = None
+    warnings = [{
+        "code": "GF_VALIDATION_LEGACY_REPORT", "severity": "warning",
+        "message": "This run has no recomputed (v2) validation report; its ledger was checked when it was read.",
+        "source": "read_time",
+    }]
+    if balance["status"] == "failed":
+        warnings.append({
+            "code": "GF_ENERGY_BALANCE_FAILED", "severity": "error",
+            "message": "The independent ledger check found periods where supply and use do not reconcile.",
+            "source": "read_time_oracle",
+        })
+    if stress and isinstance(stress.get("stress_periods"), int) and stress["stress_periods"] > 0:
+        warnings.append({
+            "code": "GF_STRESS_EVENTS_RECORDED", "severity": "warning",
+            "message": f"Accepted supply fell short of demand in {stress['stress_periods']} periods.",
+            "source": "read_time_oracle",
+        })
+    evidence: dict[str, Any] = {
+        "run_invariant_status": "not_evaluated",
+        "energy_balance_status": balance["status"],
+        "energy_balance": balance,
+        "validation_warnings": warnings,
+        "raw_invariants": {
+            "status": "failed" if balance["status"] == "failed" else "not_evaluated",
+            "run_invariant_status": "not_evaluated",
+            "energy_balance_status": balance["status"],
+            "decision": "Q14",
+            "source": "read_time_oracle",
+        },
+        "validation_evidence": {"source": "read_time_oracle" if oracle is not None else "not_recorded"},
+    }
+    if stress is not None:
+        evidence["stress"] = stress
+    return evidence
+
+
 def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str, Any]]:
     """Advisories that apply to one run, most severe first.  Read-only."""
 
@@ -191,7 +319,7 @@ def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str
     report = _validation_report(run, run_root)
     predicates = {
         "pre_profile_run": methodology is None and not methodology_unresolved(run),
-        "legacy_validation_report": report.get("schema_version") == LEGACY_VALIDATION_SCHEMA,
+        "legacy_validation_report": legacy_validation_report(report),
     }
     for advisory in generic_advisories():
         if predicates.get(str(advisory["applies_to"])):
@@ -221,24 +349,29 @@ def advisory_summary(advisories: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
-def raw_invariants_status(run: Mapping[str, Any], run_root: Path) -> str:
-    """passed | failed | not_evaluated, from the P0-4 raw-invariant evidence."""
+def raw_invariants_status(run: Mapping[str, Any], run_root: Path, evidence: Mapping[str, Any] | None = None) -> str:
+    """passed | failed | not_evaluated, from the P0-4 raw-invariant evidence.
 
-    report = _validation_report(run, run_root)
-    for source in (run, report):
-        record = source.get("raw_invariants")
-        if isinstance(record, Mapping) and record.get("status") in {"passed", "failed", "not_evaluated"}:
-            return str(record["status"])
-    for source in (run, report):
-        statuses = [source.get("run_invariant_status"), source.get("energy_balance_status")]
-        if any(value in RAW_INVARIANT_FAIL for value in statuses):
-            return "failed"
-        if all(value in RAW_INVARIANT_PASS for value in statuses):
-            return "passed"
+    The evidence is the run's v2 report (``raw_invariants``, or
+    ``run_invariant_status`` and ``energy_balance_status``) or the read-time
+    oracle for a run without one (:func:`validation_evidence`).
+    """
+
+    if evidence is None:
+        evidence = validation_evidence(run, run_root)
+    record = evidence.get("raw_invariants")
+    if isinstance(record, Mapping) and record.get("status") in {"passed", "failed", "not_evaluated"}:
+        return str(record["status"])
+    statuses = [evidence.get("run_invariant_status"), evidence.get("energy_balance_status")]
+    if any(value in RAW_INVARIANT_FAIL for value in statuses):
+        return "failed"
+    if all(value in RAW_INVARIANT_PASS for value in statuses):
+        return "passed"
     return "not_evaluated"
 
 
-def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapping[str, Any] | None = None,
+                       evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Whether annual results may appear on result pages (Q14)."""
 
     if methodology is None:
@@ -246,7 +379,7 @@ def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapp
     rule = str(dict((methodology or {}).get("result_publication") or {}).get("rule") or "standard")
     if rule != "raw_invariants_must_pass":
         return {"status": "published", "rule": rule}
-    verdict = raw_invariants_status(run, run_root)
+    verdict = raw_invariants_status(run, run_root, evidence)
     if verdict == "passed":
         return {"status": "published", "rule": rule, "raw_invariants_status": verdict}
     return {
@@ -339,6 +472,7 @@ def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> 
     """
 
     validation = _validation_report(run, run_root)
+    legacy_report = legacy_validation_report(validation)
     storage_policy = str((run.get("modules") or {}).get("storage_cost") or "")
     alternative_policy = storage_policy in {
         "dynamic-annual-storage-cost", "user-formula-storage-cost"
@@ -353,28 +487,40 @@ def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> 
     retained_status = validation.get("retained_numerical_comparison_status")
     if alternative_policy and retained_status == "failed":
         retained_status = "expected_difference"
-    evidence_passed = all(
-        validation.get(field) == "passed"
-        for field in (
-            "execution_status",
-            "contract_validation_status",
-            "analytical_mechanism_status",
-        )
-    )
     scenario_status = validation.get("scientific_validation_status")
-    if alternative_policy and evidence_passed and run.get("mode") in {"full", "two_year"}:
-        scenario_status = "passed"
+    if legacy_report:
+        # The scenario reading of a v1 report, kept only as the recorded value
+        # of a claim that is superseded below; a v2 report already classifies
+        # the retained comparison itself, so nothing is forced to "passed".
+        evidence_passed = all(
+            validation.get(field) == "passed"
+            for field in (
+                "execution_status",
+                "contract_validation_status",
+                "analytical_mechanism_status",
+            )
+        )
+        if alternative_policy and evidence_passed and run.get("mode") in {"full", "two_year"}:
+            scenario_status = "passed"
     run["scientific_scenario_status"] = scenario_status or "not_evaluated"
     run["retained_comparison_role"] = role
     run["retained_numerical_comparison_status"] = retained_status or "not_evaluated"
 
     # X0 S10b: methodology, superseded positive claims, advisories, Q14.
     methodology = recorded_methodology(run, run_root)
+    supersede = False
     if methodology is None and methodology_unresolved(run):
         unresolved = dict(run["methodology"])
         run["methodology"] = {"status": "unresolved", "profile_id": None, "error": unresolved.get("error")}
     elif methodology is None:
         run["methodology"] = {"status": "not_recorded", "profile_id": None}
+        supersede = True
+    else:
+        run["methodology"] = {**methodology, "status": "recorded"}
+    # P0-4 S3: a passed claim resting on a legacy (v1) report was never
+    # recomputed (P7-01), whatever methodology the run recorded.
+    supersede = supersede or legacy_report
+    if supersede:
         recorded = {field: run.get(field) for field in SUPERSEDED_FIELDS if run.get(field) == "passed"}
         if recorded:
             run["recorded_validation_statuses"] = recorded
@@ -382,13 +528,29 @@ def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> 
                 run["recorded_scientific_validation_status"] = recorded["scientific_validation_status"]
             for field in recorded:
                 run[field] = "superseded_pre_fix"
-    else:
-        run["methodology"] = {**methodology, "status": "recorded"}
+    # P0-4 S3: recomputed evidence replaces any copied claim on the record.
+    evidence = validation_evidence(run, run_root, validation)
+    for field in VALIDATION_EVIDENCE_FIELDS:
+        run.pop(field, None)
+    run.update(evidence)
     advisories = evaluate_advisories(run, run_root)
     run["advisories"] = advisories
     run["advisory_summary"] = advisory_summary(advisories)
-    run["result_publication"] = result_publication(run, run_root, methodology)
+    run["result_publication"] = result_publication(run, run_root, methodology, evidence)
     return run
+
+
+def compact_validation_fields(row: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
+    """Bound a listed run's validation evidence to its badges (/api/runs/<id> has the rest)."""
+
+    # The listing carries the energy-balance badge and the stress count only.
+    for field in ("energy_balance", "run_invariants", "run_invariant_status", "raw_invariants",
+                  "validation_evidence", "validation_warnings"):
+        row.pop(field, None)
+    stress = row.get("stress")
+    if isinstance(stress, Mapping):
+        row["stress"] = {key: stress.get(key) for key in ("stress_periods", "shortfall_mwh", "shortfall_basis")}
+    return row
 
 
 def withhold_annual_results(run: MutableMapping[str, Any]) -> MutableMapping[str, Any]:

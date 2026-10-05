@@ -694,6 +694,11 @@ def run(project_id: str, run_id: str, mode: str) -> None:
     final["execution_status"] = scientific_validation["execution_status"]
     final["contract_validation_status"] = scientific_validation["contract_validation_status"]
     final["scientific_validation_status"] = scientific_validation["scientific_validation_status"]
+    # P0-4 S3: the recomputed validation evidence is public on the run status
+    # (run invariants, energy balance, A2 stress events, Q14 raw invariants).
+    for field in VALIDATION_STATUS_FIELDS:
+        if field in scientific_validation:
+            final[field] = scientific_validation[field]
     final["scientific_validation_artifact"] = str(
         exact.get("scientific_validation_artifact")
         or "validation/scientific-validation.json"
@@ -755,6 +760,19 @@ def run(project_id: str, run_id: str, mode: str) -> None:
         run_dir, mutate=complete, transition="completed",
         reason_code="GF_RUN_COMPLETED", writer=WRITER_WORKER,
     )
+
+
+# Fields of the v2 scientific-validation report copied onto the run status.
+VALIDATION_STATUS_FIELDS = (
+    "analytical_mechanism_status",
+    "run_invariant_status",
+    "run_invariants",
+    "energy_balance_status",
+    "energy_balance",
+    "stress",
+    "raw_invariants",
+    "validation_warnings",
+)
 
 
 def main() -> None:
