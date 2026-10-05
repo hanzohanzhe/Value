@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import sqlite3
 import json
+from gridform_core import agent_cashflow
 from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
@@ -825,9 +826,17 @@ class Prompt101LiveIntegrationTests(unittest.TestCase):
             (ExpansionHeadroom("h", 2025, "cap", {"CCGT": 100.0, "1c_battery": 100.0, "onshore": 100.0}),),
         )
         self.assertEqual(decision.extensions["grouped_investment_owners"], 3)
+        # P0-7 S4 (A4, p07.thermal-net-revenue): the thermal owner's income and
+        # running cost are each read once (4 MWh at 100 GBP/MWh, not twice for
+        # the physical zone children); the CCGT is paid exactly its marginal
+        # cost, so its net revenue is 0 and it proposes nothing (HEAD: one
+        # proposal on gross revenue).
+        thermal_cost = decision.extensions["a4_net_revenue"]["thermal_operating_cost_gbp_by_group"]
+        self.assertEqual(list(thermal_cost), ["thermal-owner|CCGT|south"])
+        self.assertAlmostEqual(thermal_cost["thermal-owner|CCGT|south"], 400.0, places=4)
         self.assertEqual(
             sum(1 for proposal in decision.proposals if proposal.agent_id == "thermal-owner"),
-            1,
+            0,
         )
 
     def test_unvalidated_solver_year_continues_cem_and_is_inherited_without_relaxing_balance(self) -> None:
@@ -922,7 +931,17 @@ class Prompt101LiveIntegrationTests(unittest.TestCase):
         annual = MarketYearResult(
             "market", 2025, "fixture", "1", {}, {"one-owner": 1_000_000.0},
             0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-            extensions={"market_income_identity": "economic_owner"},
+            extensions={
+                "market_income_identity": "economic_owner",
+                # P0-7 S4 (A4): the CEM needs the thermal running cost; none here.
+                agent_cashflow.EXTENSION_KEY: agent_cashflow.extension({
+                    asset_id: agent_cashflow.cashflow_row("CCGT", 0.0, {
+                        "generation_cost_gbp_per_mwh": 50.0, "fuel_cost_gbp_per_mwh": 0.0,
+                        "carbon_cost_gbp_per_mwh": 0.0, "unit_time_cost_gbp_per_mwh": 0.0,
+                    }, cost_basis="fixture")
+                    for asset_id in ("owner-north", "owner-south")
+                }, psm_module_id="fixture", cost_basis="fixture"),
+            },
         )
         state = OperatingState(2025, (first, second), ())
         decision = SchemeCAgentInvestmentDefinition().decide(

@@ -18,7 +18,14 @@ from ...asset_economics import (
     resize_asset_economics,
     validate_asset_economics,
 )
+from ...agent_cashflow import EXTENSION_KEY as AGENT_CASHFLOW_KEY, cost_rows_for_a4
 from ...cem_identity import cem_identity_summary
+from ...investment_accounts import (
+    A4_NET_NOISE_RTOL,
+    GROSS_PROFIT_TECHNOLOGIES,
+    MONEY_BASIS,
+    a4_net_revenue_for_decidable_groups,
+)
 from ...cem_investment_policy import (
     investment_mode,
     missing_site_evidence,
@@ -46,6 +53,31 @@ class _NativeDefinition:
     """Marker base for direct typed execution; it has no replay binding API."""
 
     execution_kind = "live_module"
+
+
+def run_methodology(run: ResolvedRun):
+    """The methodology of ``run``: the active one inside a run, else the run's declared profile.
+
+    Mirrors ``methodology.methodology_scoped`` for module calls made outside
+    ``run_project_application`` (unit tests, tools): an absent profile is the
+    default (corrected) profile.
+    """
+    from ...methodology import (
+        PROFILE_PARAMETER,
+        MethodologyMismatchError,
+        active_methodology,
+        resolve_methodology,
+    )
+
+    declared = run.scientific_parameters.get(PROFILE_PARAMETER)
+    declared = str(declared) if declared else None
+    current = active_methodology()
+    if current is not None:
+        if declared is not None and declared != current.profile_id:
+            raise MethodologyMismatchError(
+                f"run {run.run_id} declares methodology {declared} inside an active {current.profile_id} run")
+        return current
+    return resolve_methodology(declared)
 
 
 class _ExpansionDefinition(_NativeDefinition):
@@ -108,7 +140,7 @@ class SchemeCStorageExpansionPolicyDefinition(_ExpansionDefinition):
 
 
 class SchemeCAgentInvestmentDefinition(_NativeDefinition):
-    id, version = "agent-investment", "2.2.0"
+    id, version = "agent-investment", "3.0.0"
 
     def decide(self, run: ResolvedRun, state: OperatingState, market: MarketYearResult, headroom: Sequence[ExpansionHeadroom]) -> InvestmentDecision:
         caps: dict[str, float] = {}
@@ -117,6 +149,11 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 value = max(0.0, float(value))
                 caps[technology] = min(caps.get(technology, value), value)
         remaining_caps = dict(caps)
+        # P0-7 S4, decision A4 (universal p07.thermal-net-revenue, both
+        # profiles): thermal net revenue = income - generated MWh x gen_cost
+        # from the PSM's agent cashflow; VRE and storage keep gross = profit.
+        a4_costs = cost_rows_for_a4(market.extensions)
+        a4_operating: dict[str, float] = {}
         proposals: list[InvestmentProposal] = []
         retirements: dict[str, float] = {}
         grouped: dict[tuple[str, str, str], list[AssetStateV2]] = defaultdict(list)
@@ -150,11 +187,32 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 float(market.market_income_gbp_by_agent.get(asset.asset_id, 0.0) or 0.0)
                 for asset in members
             )
-            operational = sum(
-                float(asset.extensions.get("annual_operational_cost_gbp", 0.0) or 0.0)
-                for asset in members
+            if a4_costs is None and technology not in GROSS_PROFIT_TECHNOLOGIES:
+                raise ValueError(
+                    f"PSM {market.module_id} publishes no {AGENT_CASHFLOW_KEY}; the A4 thermal net revenue of "
+                    f"{technology} (owner {owner}) needs its generated MWh and running cost"
+                )
+            a4 = a4_net_revenue_for_decidable_groups(
+                [{"technology": technology, "members": [
+                    {
+                        "asset_id": asset.asset_id,
+                        "income_gbp": float(market.market_income_gbp_by_agent.get(asset.asset_id, 0.0) or 0.0),
+                        "extensions": asset.extensions,
+                    }
+                    for asset in members
+                ]}],
+                investment_mode,
+                a4_costs or {},
             )
+            operational = sum(float(a4[asset.asset_id]["operating_cost_gbp"]) for asset in members)
             net = income - operational
+            if technology not in GROSS_PROFIT_TECHNOLOGIES:
+                a4_operating[f"{owner}|{technology}|{region}"] = operational
+                # A bid-at-cost thermal unit is paid its running cost: the
+                # difference of two sums of the same flows is rounding, not a
+                # loss (it would retire ~1e-12 MW). Snap it to zero.
+                if abs(net) <= A4_NET_NOISE_RTOL * max(abs(income), operational):
+                    net = 0.0
             replacement = sum(
                 float(asset.extensions.get("total_capex_gbp", 0.0) or 0.0)
                 for asset in members
@@ -273,6 +331,12 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 "ineligible_groups": ineligible_groups,
                 "initial_headroom_mw_by_technology": caps,
                 "remaining_headroom_mw_by_technology": remaining_caps,
+                "a4_net_revenue": {
+                    "rule": "thermal: income - generated MWh x (generation + fuel + carbon + unit_time); "
+                            "VRE and storage: gross income (DECISIONS A4, A7)",
+                    "money_basis": MONEY_BASIS,
+                    "thermal_operating_cost_gbp_by_group": a4_operating,
+                },
             },
         )
 

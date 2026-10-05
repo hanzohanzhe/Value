@@ -15,6 +15,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from . import agent_cashflow
 from .methodology import methodology_scoped
 from .v2.contracts import (
     ArtifactReference,
@@ -383,6 +384,16 @@ class PerfectForesightPSM:
             ))
             for period in range(periods)
         ])
+        # P0-7 (A4): running cost by resource, as the MWh-weighted unit cost.
+        running_cost_by_asset = {
+            resource.asset_id: (
+                float(np.dot(resource_period[index], resource_marginal_costs[index]))
+                / float(resource_period[index].sum())
+                if float(resource_period[index].sum()) > 0
+                else float(np.mean(resource_marginal_costs[index]))
+            )
+            for index, resource in enumerate(data.resources)
+        }
         degradation_costs = np.asarray([
             float(sum(
                 discharge_period[index, period]
@@ -629,5 +640,14 @@ class PerfectForesightPSM:
                     data.extensions.get("vre_expansion_headroom_mw_by_technology") or {}
                 ),
                 "market_ledger": market_ledger_metadata,
+                agent_cashflow.EXTENSION_KEY: agent_cashflow.extension(
+                    agent_cashflow.unit_cost_cashflow(
+                        dispatch_by_asset, running_cost_by_asset,
+                        {asset.asset_id: asset.technology for asset in model_input.operating_state.assets},
+                        cost_basis="perfect_foresight_mwh_weighted_marginal_cost",
+                    ),
+                    psm_module_id=self.id,
+                    cost_basis="perfect_foresight_mwh_weighted_marginal_cost",
+                ),
             },
         )

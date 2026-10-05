@@ -1219,7 +1219,7 @@ class ApplicationServiceTests(unittest.TestCase):
         versions = {row["module_id"]: row["module_version"] for row in stages}
         self.assertEqual(versions["value-bid-at-cost-psm"], "5.2.0")
         self.assertEqual(versions["value-storage-expansion-policy"], "4.0.0")
-        self.assertEqual(versions["agent-investment"], "2.2.0")
+        self.assertEqual(versions["agent-investment"], "3.0.0")
         self.assertEqual(versions["planning-pipeline"], "2.2.0")
         self.assertEqual(versions["vre-expansion-cap"], "2.0.0")
         self.assertEqual(versions["value-annual-state-transition"], "2.1.0")

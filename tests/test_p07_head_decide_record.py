@@ -52,6 +52,23 @@ def cost_rows(cashflow):
             for asset_id, row in cashflow.items()}
 
 
+def with_agent_cashflow(market, entry):
+    """The recorded market plus a ``value.agent-cashflow/v1`` extension built from the fixture cost rows."""
+    from dataclasses import replace
+
+    from gridform_core import agent_cashflow
+
+    if not entry["cashflow_inputs"]:
+        return market
+    rows = {asset_id: agent_cashflow.cashflow_row(row["technology"], row["generated_mwh"], row,
+                                                  cost_basis="p07-fixture")
+            for asset_id, row in cost_rows(entry["cashflow_inputs"]).items()}
+    return replace(market, extensions={
+        **dict(market.extensions),
+        agent_cashflow.EXTENSION_KEY: agent_cashflow.extension(rows, psm_module_id="p07-fixture",
+                                                               cost_basis="p07-fixture")})
+
+
 def _json_text(value) -> str:
     return json.dumps(value, sort_keys=True, allow_nan=False)
 
@@ -109,11 +126,51 @@ class HeadDecideRecordTest(unittest.TestCase):
         self.assertGreaterEqual(len(ids), 10)
 
     def test_live_decide_reproduces_the_head_record(self):
+        """P0-7 S4 (A4, correction p07.thermal-net-revenue, both profiles): declared deltas only.
+
+        * ``unchanged_from_head`` (VRE/storage only): the live decide() equals the
+          HEAD record bit for bit, apart from the added ``a4_net_revenue``
+          audit record in the decision extensions;
+        * thermal scenarios: the live decision equals ``a4_expected_decision``;
+        * ``fails_closed``: the recorded operational cost beside A4 is refused;
+        * a market without ``agent_cashflow`` and a decidable thermal group fails closed.
+        """
         for entry in self.record["scenarios"]:
+            expected = entry["a4_expected_decision"]
             with self.subTest(entry["id"]):
                 run, state, market, headroom = REC.inputs_from_record(entry)
+                market = with_agent_cashflow(market, entry)
+                if expected == "not_applicable":
+                    with self.assertRaisesRegex(ValueError, "agent_cashflow"):
+                        SchemeCAgentInvestmentDefinition().decide(run, state, market, headroom)
+                    continue
+                if isinstance(expected, dict) and "fails_closed" in expected:
+                    with self.assertRaisesRegex(ValueError, "annual_operational_cost_gbp"):
+                        SchemeCAgentInvestmentDefinition().decide(run, state, market, headroom)
+                    continue
                 decision = SchemeCAgentInvestmentDefinition().decide(run, state, market, headroom)
-                self.assertEqual(_json_text(REC.decision_record(decision)), _json_text(entry["head_decision"]))
+                live = REC.decision_record(decision)
+                audit = live["extensions"].pop("a4_net_revenue")
+                self.assertEqual(audit["money_basis"], ia.MONEY_BASIS)
+                if expected == "unchanged_from_head":
+                    self.assertEqual(audit["thermal_operating_cost_gbp_by_group"], {})
+                    self.assertEqual(_json_text(live), _json_text(entry["head_decision"]))
+                    continue
+                proposals = {f"{row['agent_id']}|{row['technology']}|{row['region']}": row
+                             for row in live["proposals"]}
+                for key, target in expected["groups"].items():
+                    added = proposals[key]["capacity_mw"] if key in proposals else 0.0
+                    self.assertTrue(math.isclose(added, target["accepted_addition_mw"], rel_tol=1e-12, abs_tol=1e-12))
+                    if key in proposals:
+                        self.assertEqual(proposals[key]["extensions"]["investment_recommendation"],
+                                         target["recommendation"])
+                    owner, technology, region = key.split("|")
+                    members = [row["asset_id"] for row in REC.decanonical(entry["inputs"])["assets"]
+                               if row["technology"] == technology and (row["region"] or "GB") == region]
+                    retired = sum(live["retirements_mw"].get(asset_id, 0.0) for asset_id in members)
+                    self.assertTrue(math.isclose(retired, target["retirement_mw"], rel_tol=1e-12, abs_tol=1e-12))
+                for asset_id, value in expected.get("retirements_mw", {}).items():
+                    self.assertTrue(math.isclose(live["retirements_mw"][asset_id], value, rel_tol=1e-12))
 
     def test_pure_recomposition_matches_the_head_record_bit_for_bit(self):
         for entry in self.record["scenarios"]:

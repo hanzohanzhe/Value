@@ -81,6 +81,10 @@ A4_OPERATING_COST_RULE = (
     "neither added to nor silently dropped from the A4 net."
 )
 RECORDED_OPERATIONAL_COST_KEY = "annual_operational_cost_gbp"
+# P0-7 S4: relative tolerance under which a thermal A4 net revenue is rounding
+# of income and running cost summed over the same dispatch (a bid-at-cost unit
+# is paid exactly its cost), snapped to 0.0 by agent-investment.
+A4_NET_NOISE_RTOL = 1e-9
 
 
 # ---------------------------------------------------------------------------

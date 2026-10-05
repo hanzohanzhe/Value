@@ -521,6 +521,16 @@
    "pattern": "terminal/fleet-vintage.json::gbp_base_year",
    "zone": "accounting",
    "why": "terminal valuation"
+  },
+  {
+   "pattern": "*::*agent_cashflow*",
+   "zone": "accounting",
+   "why": "P0-7 S4 (decision A4, Q12): per-asset generated MWh and running-cost parts the PSM publishes for the restored thermal net revenue (value.agent-cashflow/v1); a cost ledger input, the investment proposals it moves stay trajectory"
+  },
+  {
+   "pattern": "*::*a4_net_revenue*",
+   "zone": "accounting",
+   "why": "P0-7 S4 (decision A4, Q12): audit record of the thermal operating cost netted by agent-investment; the proposals and retirements stay trajectory"
   }
  ]
 }

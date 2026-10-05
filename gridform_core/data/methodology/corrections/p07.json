@@ -1,0 +1,30 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "p07",
+  "notes": [
+    "P0-7 investment corrections (plan 4.7 adjusted by decisions A4, A6, A7, A8 and the lead ruling of 2026-10-05).",
+    "Decision A4 restores the original Scheme C thermal net revenue in both profiles (a universal exception to the Q1 freeze): VRE and storage keep gross revenue as profit. Decision A6: P4-02 (ROI/payback vs NPV) is not a defect; every amount is in constant base-year money and investment decisions are undiscounted by design, so no NPV, IRR or annuity hurdle is introduced.",
+    "Universal accounting corrections (cost ledger v2 memo lines, decision A7) are not listed here, so that they do not change the applied-corrections hash of either profile (P0-4/P0-6 precedent)."
+  ],
+  "corrections": [
+    {
+      "id": "p07.thermal-net-revenue",
+      "package": "p07",
+      "findings": ["P4-01"],
+      "track": "universal",
+      "scope": "investment_decision",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"modules_any": ["agent-investment"]},
+      "advisory": {
+        "severity": "critical",
+        "title": "Thermal investment decided on gross revenue",
+        "summary": "Before P0-7 the v2 investment module netted no running cost, so gas and biomass plants paid exactly their marginal cost looked profitable and were expanded (a CCGT priced at its marginal cost built 10.95 MW per 100 MW). The original Scheme C rule nets generated MWh x gen_cost (fuel, carbon, unit-time cost).",
+        "affected_metrics": ["investment", "capacity", "retirements", "costs"]
+      },
+      "trigger_fixture": {"test": "tests.test_p07_investment_corrections.ThermalNetRevenueTests"},
+      "introduced_in": "P0-7 S4 (decision A4)",
+      "deviation_signature": null,
+      "description": "agent-investment 3.0.0 nets, for gas and biomass (and any asset with a fuel or carbon cost), generated MWh x (generation + fuel + carbon + unit_time cost) from the market income; the running cost comes from the PSM's value.agent-cashflow/v1 extension and a decidable thermal group without it fails closed. VRE and storage keep gross revenue = profit, bit-identical to 35aadb3 (decisions A4, A7)."
+    }
+  ]
+}
