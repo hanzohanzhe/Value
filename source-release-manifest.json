@@ -3205,9 +3205,9 @@
     },
     {
       "path": "app/features/studies/StudyComposer.tsx",
-      "sha256": "0d4dbcf4c788e3030189d6898e8f275bc28f10f5cddb1997491317fc18b6f053",
-      "bytes": 22223,
-      "transform": "byte copy"
+      "sha256": "3fb6a0f66eff1902d1782ffd457a5c756a9a93f6342aa931097574a98b7b757d",
+      "bytes": 21915,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/studies/network-overlay-selector.css",
@@ -3217,8 +3217,8 @@
     },
     {
       "path": "app/features/studies/solverContract.ts",
-      "sha256": "4d904794c38084260cadff45ccee0831187894ca17079fc8516de33fce610976",
-      "bytes": 4042,
+      "sha256": "b2aa15644f46e0eef4842cb810ea17f806373532c5e401a9a3aa3a7ea4a319d1",
+      "bytes": 4293,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10052,8 +10052,8 @@
     },
     {
       "path": "tests/prompt124-ui-contract.test.mjs",
-      "sha256": "cf646aed50c47cefc4bf6e50380426bdadb3346e87b4afd90e5958d988b4412a",
-      "bytes": 10247,
+      "sha256": "c255bbd4f9b45b6d8443f34079d4e20a71e9c874ea878b367b83fb481e146ebc",
+      "bytes": 11100,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

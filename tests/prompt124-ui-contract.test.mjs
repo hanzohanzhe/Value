@@ -144,7 +144,7 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.equal(backToDefault.is_builtin_default,true);
   assert.equal(backToDefault.requires_acknowledgement,false);
   assert.equal(network.isZonalSolverContract(backToDefault),true);
-  const draft = { solver_contract:legacy, maturity_acknowledgements:{[policy.LEGACY_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,other:"retained"}, modules:{balancing:"value-zonal-redispatch-balancing"} };
+  const draft = { solver_contract:legacy, maturity_acknowledgements:{[policy.LEGACY_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,[policy.GBP1_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,other:"retained"}, modules:{balancing:"value-zonal-redispatch-balancing"} };
   const original = structuredClone(draft);
   assert.deepEqual(policy.alignZonalSolverContract(draft,draft.modules).solver_contract,legacy);
   assert.match(policy.validateZonalSolverContract(legacy),/historical v2/);
@@ -153,7 +153,16 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.equal(upgraded.solver_contract.schema_version,"value.network-solver-contract/v4");
   assert.equal(upgraded.maturity_acknowledgements[policy.LEGACY_ZONAL_SOLVER_ACK_KEY],undefined);
   assert.equal(upgraded.maturity_acknowledgements[policy.ZONAL_SOLVER_ACK_KEY],undefined);
+  assert.equal(upgraded.maturity_acknowledgements[policy.GBP1_ZONAL_SOLVER_ACK_KEY],undefined);
   assert.equal(upgraded.maturity_acknowledgements.other,"retained");
+  assert.deepEqual(policy.withoutZonalSolverAcknowledgements(draft.maturity_acknowledgements),{other:"retained"});
+  const copperplate = policy.alignZonalSolverContract(draft,{balancing:"none"});
+  assert.deepEqual(copperplate.maturity_acknowledgements,{other:"retained"});
+  // Review M2-P0-8a: the composer's custom-settings toggles used to drop only
+  // the @4.0.0 and @2.0.0 keys and left the @3.0.0 (GBP1) key behind.
+  const composer = await source("../app/features/studies/StudyComposer.tsx");
+  assert.equal((composer.match(/withoutZonalSolverAcknowledgements\(current\.maturity_acknowledgements\)/g) ?? []).length,2);
+  assert.doesNotMatch(composer,/delete maturity_acknowledgements\[/);
   assert.equal(policy.validateZonalSolverContract(upgraded.solver_contract),"");
   const editor = await source("../app/features/studies/SolverSettingsEditor.tsx");
   assert.match(editor,/onClick=\{onUpgrade\}/);

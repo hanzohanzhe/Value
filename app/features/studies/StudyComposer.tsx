@@ -6,7 +6,7 @@ import type { StudyForm, DraftResolution, Project, StudyTrashEntry, DomainPreset
 import type { TraceProfile } from "../market/TraceCoverageNotice";
 import { copyDefaultZonalSolverContract, isBuiltinZonalSolverContract, withZonalSolverContractFlags, type ZonalSolverContract } from "../network/networkRedispatch";
 import { Badge, labelFor } from "../shared/presentation";
-import { ZONAL_SOLVER_ACK_KEY, LEGACY_ZONAL_SOLVER_ACK_KEY, ZONAL_SOLVER_ACK, validateZonalSolverContract, upgradeZonalSolverContract } from "./solverContract";
+import { ZONAL_SOLVER_ACK_KEY, ZONAL_SOLVER_ACK, validateZonalSolverContract, upgradeZonalSolverContract, withoutZonalSolverAcknowledgements } from "./solverContract";
 import SolverSettingsEditor from "./SolverSettingsEditor";
 import NetworkOverlaySelector from "./NetworkOverlaySelector";
 
@@ -65,27 +65,21 @@ export default function StudyComposer({
   const toggleCustomSolverSettings = (enabled: boolean) => {
     setCustomSolverEditorContract(enabled ? solverContract : null);
     if (!enabled) {
-      onForm((current) => {
-        const maturity_acknowledgements = { ...current.maturity_acknowledgements };
-        delete maturity_acknowledgements[ZONAL_SOLVER_ACK_KEY];
-        delete maturity_acknowledgements[LEGACY_ZONAL_SOLVER_ACK_KEY];
-        return {
-          ...current,
-          solver_contract: copyDefaultZonalSolverContract(),
-          maturity_acknowledgements,
-        };
-      });
+      onForm((current) => ({
+        ...current,
+        solver_contract: copyDefaultZonalSolverContract(),
+        maturity_acknowledgements: withoutZonalSolverAcknowledgements(current.maturity_acknowledgements),
+      }));
     }
   };
   const changeSolverContract = (candidate: ZonalSolverContract) => {
     const solver_contract = withZonalSolverContractFlags(candidate);
     setCustomSolverEditorContract(solver_contract);
-    onForm((current) => {
-    const maturity_acknowledgements = { ...current.maturity_acknowledgements };
-    delete maturity_acknowledgements[ZONAL_SOLVER_ACK_KEY];
-        delete maturity_acknowledgements[LEGACY_ZONAL_SOLVER_ACK_KEY];
-    return { ...current, solver_contract, maturity_acknowledgements };
-    });
+    onForm((current) => ({
+      ...current,
+      solver_contract,
+      maturity_acknowledgements: withoutZonalSolverAcknowledgements(current.maturity_acknowledgements),
+    }));
   };
   const steps = ["Identity", "System domain", "Optional domains", "Model chain", "Review"];
   return <div className="project-grid expanded-composer">

@@ -55,22 +55,29 @@ export function alignZonalSolverContract(form: StudyForm, modules: Record<string
       solver_contract: form.solver_contract ?? copyDefaultZonalSolverContract(),
     };
   }
-  delete maturity_acknowledgements[ZONAL_SOLVER_ACK_KEY];
-  delete maturity_acknowledgements[LEGACY_ZONAL_SOLVER_ACK_KEY];
-  delete maturity_acknowledgements[GBP1_ZONAL_SOLVER_ACK_KEY];
   return {
     ...form,
     modules,
-    maturity_acknowledgements,
+    maturity_acknowledgements: withoutZonalSolverAcknowledgements(maturity_acknowledgements),
     solver_contract: undefined,
   };
 }
 
 
+/** Every zonal solver-contract acknowledgement key, current and historical. */
+export const ZONAL_SOLVER_ACK_KEYS = [ZONAL_SOLVER_ACK_KEY, GBP1_ZONAL_SOLVER_ACK_KEY, LEGACY_ZONAL_SOLVER_ACK_KEY] as const;
+
+/** A copy of the acknowledgements without any zonal solver-contract key (v2, v3 or v4). */
+export function withoutZonalSolverAcknowledgements(acknowledgements: Record<string, string>): Record<string, string> {
+  const remaining = { ...acknowledgements };
+  for (const key of ZONAL_SOLVER_ACK_KEYS) delete remaining[key];
+  return remaining;
+}
+
 export function upgradeZonalSolverContract(form: StudyForm): StudyForm {
-  const maturity_acknowledgements = { ...form.maturity_acknowledgements };
-  delete maturity_acknowledgements[ZONAL_SOLVER_ACK_KEY];
-  delete maturity_acknowledgements[LEGACY_ZONAL_SOLVER_ACK_KEY];
-  delete maturity_acknowledgements[GBP1_ZONAL_SOLVER_ACK_KEY];
-  return { ...form, solver_contract: copyDefaultZonalSolverContract(), maturity_acknowledgements };
+  return {
+    ...form,
+    solver_contract: copyDefaultZonalSolverContract(),
+    maturity_acknowledgements: withoutZonalSolverAcknowledgements(form.maturity_acknowledgements),
+  };
 }
