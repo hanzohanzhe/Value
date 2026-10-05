@@ -138,6 +138,9 @@ type MockNetworkOptions = {
   solverDiagnosticsResponse?: (url: URL) => DetailResponse | Promise<DetailResponse>;
   solverSummary?: Record<string, unknown>;
   solverContract?: Record<string, unknown>;
+  annualCoverage?: Record<string, unknown>;
+  reliabilityEvents?: Record<string, unknown>[];
+  onReliabilityRequest?: (url: URL) => void;
 };
 
 function detailRow(index: number, technology = "Onshore wind") {
@@ -223,7 +226,7 @@ async function mockNetwork(
       vre_curtailment: curtailment,
       unserved_energy_mwh: 1, congested_boundary_periods: 1, maximum_boundary_utilisation_fraction: 1,
       observed_loss_of_load_hours: .5, observed_loss_of_load_events: 1, affected_load_shedding_zones: 1,
-      }], solver_validation_summary: solverSummary, reliability_semantics: "observed_chronology_not_statistical_lole", security_scope: "not_a_security_analysis" };
+      }], solver_validation_summary: solverSummary, reliability_semantics: "observed_chronology_not_statistical_lole", security_scope: "not_a_security_analysis", ...(options.annualCoverage ? { coverage: options.annualCoverage } : {}) };
     }
     else if (url.includes("/network-redispatch/curtailment-detail")) {
       const response = options.detailResponse?.(new URL(url)) ?? detailPage();
@@ -241,7 +244,13 @@ async function mockNetwork(
     else if (url.includes("/network-redispatch/boundaries")) body = { view: "boundary", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, boundary_id: "B1", transfer_mwh: 2, forward_capacity_mwh: 2, reverse_capacity_mwh: 3, utilisation_fraction: 1, boundary_shadow_value_gbp_per_mwh: 4 }] };
     else if (url.includes("/network-redispatch/resources")) body = { view: "resource", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, asset_id: "battery", agent_id: "storage-owner", zone_id: "south", technology: "battery", ahead_dispatch_mwh: 0, signed_adjustment_mwh: 1, final_dispatch_mwh: 1, final_soc_mwh: 3, charge_mwh: 0, discharge_mwh: 1, physical_resource_cost_gbp: 20 }] };
     else if (url.includes("/network-redispatch/settlements")) body = { view: "agent", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, agent_id: "storage-owner", zone_id: "south", direction: "up", accepted_delta_mwh: 1, bid_price_gbp_per_mwh: 20, cashflow_to_agent_gbp: 20 }] };
-    else if (url.includes("/network-redispatch/reliability")) body = { view: "reliability", total: 1, limit: 250, offset: 0, items: [{ event_id: "observed-1", year: 2025, start_period: 1, end_period: 1, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" }] };
+    else if (url.includes("/network-redispatch/reliability")) {
+      options.onReliabilityRequest?.(new URL(url));
+      const items = options.reliabilityEvents ?? [{ event_id: "observed-1", year: 2025, start_period: 1, end_period: 1, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" }];
+      body = { view: "reliability", total: items.length, count: items.length, limit: 50, offset: 0, has_more: false, items };
+    }
+    else if (url.includes("/market/capabilities")) body = { years: [2025], trace_level: "summary", period_summary: true, physical_dispatch: true, auction_replay: false, storage_state: false, auction_stages: [], price_basis: "national_ahead_clearing_price" };
+    else if (url.includes("/market/dispatch")) body = { year: 2025, resolution: "daily", total: 0, limit: 96, offset: 0, items: [] };
     else if (url.includes("/network-redispatch/solver-diagnostics")) {
       options.onSolverDiagnosticsRequest?.();
       const response = options.solverDiagnosticsResponse
@@ -739,4 +748,33 @@ test("copperplate run shows a truthful empty network workspace", async ({ page }
   await expect.poll(() => capabilitiesRequested).toBe(true);
   await expect(page.getByText("This run used copperplate balancing.", { exact: false })).toBeVisible();
   await expect(page.getByText("Copperplate run", { exact: true })).toBeVisible();
+});
+
+// P0-9 S5/S6 (F3-02, F3-07): a cancelled full-year Run at 16.6 % is not an
+// annual result; its reliability list covers the whole year and each event
+// opens Market replay at its own window.
+test("partial-year coverage withholds annual totals and full-year events replay at their window", async ({ page }) => {
+  const reliabilityQueries: URL[] = [];
+  await mockNetwork(page, baseRun, "full", reconciledCurtailment, {
+    annualCoverage: {
+      schema_version: "value.result-coverage/v1", annual_status: "partial", reason_code: "run_cancelled_before_full_coverage",
+      coverage_fraction: 2908 / 17520, coverage_percent: 16.6, expected_years: [2025], observed_years: [2025],
+      years: [{ year: 2025, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false }],
+    },
+    reliabilityEvents: [{ event_id: "observed-2025-5000-5001", year: 2025, start_period: 5000, end_period: 5001, observed_half_hours: 2, event_duration_hours: 1, unserved_mwh: 7, affected_zones_json: "[\"north\"]" }],
+    onReliabilityRequest: (url) => reliabilityQueries.push(url),
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Partial year · 16.6%");
+  await expect(page.getByText("Compact annual read model")).toHaveCount(0);
+  await expect(page.getByRole("alert").filter({ hasText: "Annual totals not shown" })).toBeVisible();
+  await page.getByRole("tab", { name: "Reliability" }).click();
+  const list = page.getByRole("region", { name: "Stress events and lost load" });
+  await expect(list.getByRole("heading", { name: "Stress events and lost load — full year 2025" })).toBeVisible();
+  await expect(list.getByText("period 5000")).toBeVisible();
+  expect(reliabilityQueries.at(-1)?.searchParams.get("period_from")).toBeNull();
+  await list.getByRole("button", { name: "Replay the event starting at period 5000" }).click();
+  await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  await expect(page.getByLabel("First period")).toHaveValue("4996");
 });

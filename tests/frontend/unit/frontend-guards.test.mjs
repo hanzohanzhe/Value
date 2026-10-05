@@ -61,6 +61,8 @@ test("the frontend never derives a shortfall by subtracting supply from demand",
 // Stylesheets added in this round (spec 1.3): no text below 12px, no new colours.
 export const NEW_STYLESHEETS = [
   "app/features/shared/callout.css",
+  "app/features/market/market-replay.css",
+  "app/features/network/network-coverage.css",
 ];
 
 test("new stylesheets use no font size below 12px and only existing colour tokens", async () => {

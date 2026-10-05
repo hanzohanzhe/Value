@@ -64,7 +64,9 @@
     "app/features/network/CurtailmentWaterfall.tsx",
     "app/features/network/NetworkRedispatchView.tsx",
     "app/features/network/NetworkZoneMap.tsx",
+    "app/features/network/network-coverage.css",
     "app/features/network/networkRedispatch.ts",
+    "app/features/network/reliabilityView.ts",
     "app/features/results/ComparisonWorkspace.tsx",
     "app/features/results/ResultQueryPanel.tsx",
     "app/features/results/comparison-workspace.css",
@@ -79,6 +81,7 @@
     "app/features/shared/Pager.tsx",
     "app/features/shared/api.ts",
     "app/features/shared/callout.css",
+    "app/features/shared/coverageView.ts",
     "app/features/shared/domainConstants.ts",
     "app/features/shared/format.ts",
     "app/features/shared/navigation.ts",
@@ -1197,6 +1200,7 @@
     "tests/frontend/unit/e2e-runner.test.mjs",
     "tests/frontend/unit/format.test.mjs",
     "tests/frontend/unit/frontend-guards.test.mjs",
+    "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-contract-keys.test.mjs",
@@ -3096,8 +3100,8 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "0795ecbbc14d0522c355e45e4418f29b3fa6244115d2cdf4eb75514aa90598c4",
-      "bytes": 44542,
+      "sha256": "881ffbe397bfbf0aab8997cf94193e439ce456da6e7affee40551c9ee8932fec",
+      "bytes": 49220,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3107,9 +3111,21 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/network/network-coverage.css",
+      "sha256": "c7803c295688553866a38f5b0d01aa8f05de95aa222b8b6b611b9cdba5346d70",
+      "bytes": 609,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/network/networkRedispatch.ts",
-      "sha256": "f9ce189687da5a580a95e09b166d1784c681a4b74117567b356c6feeadc98e04",
-      "bytes": 16985,
+      "sha256": "55e10c42fd08dfe7ccc57e1280ef8ac2373cf5edb48fef60002675b90746a9fd",
+      "bytes": 17168,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/network/reliabilityView.ts",
+      "sha256": "314b8bbe6d0ec3ac1a13cc27ffc98376b03e51a8efa8ca5a8bd47e31da17cb13",
+      "bytes": 2153,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3194,6 +3210,12 @@
       "path": "app/features/shared/callout.css",
       "sha256": "40a0afbd50b926454278561526ecf55b8b9375a11ccf1f76db709443f3cb8818",
       "bytes": 3391,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/shared/coverageView.ts",
+      "sha256": "794b42ed46de18529c9c3e3cf070bf2cba600d86781f5c63af767da07d8bffac",
+      "bytes": 5275,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3414,8 +3436,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "93c64b5e7ff69e3d8714c1aa16b2434d0c211bda1a0ad2adcf8b74a76944226a",
-      "bytes": 150133,
+      "sha256": "be67cc2de8a522116861a0c35996528d94891d63a737e1ad9fc9d7238564cc65",
+      "bytes": 151016,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6132,8 +6154,8 @@
     },
     {
       "path": "e2e/network-redispatch.spec.ts",
-      "sha256": "b448805dfe3ca297ddc970a9a58fe31e84ef82f152853ec5b5aa9ba96df04c26",
-      "bytes": 39580,
+      "sha256": "b139aefadb0ff603d3612433d3fa38255cb8f87c7163bb0c3df8db32d7aa3534",
+      "bytes": 42580,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6144,7 +6166,7 @@
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "5b40079b0ccb1cf2546338017105a67443ae6e67cc95b510fb4faa6bafbc3f20",
+      "sha256": "5f01652e4058962b9a1a99c2617d505e87b9102e8930de2c7a360aab00683431",
       "bytes": 2928,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -8145,8 +8167,8 @@
     },
     {
       "path": "gridform_core/zonal_results.py",
-      "sha256": "1d2ed54a9436a62037ae32e5aa47bd28701bd5aa44c57139995047f748bc4b4d",
-      "bytes": 54468,
+      "sha256": "a0ca8673e82d4ad5d605b1272b2843b3e43c1bc04eeee1bd523ed44d0f16b0c0",
+      "bytes": 54644,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9883,8 +9905,14 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "8aef2702bd8e277db7d04eb7da2db18f88892b4ba149e67e35703a2b29d42c8d",
-      "bytes": 3529,
+      "sha256": "a6a202f6fca184941a69ad31090dd09273ace7e9bec1bc9de8eb58d628e41b58",
+      "bytes": 3619,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/network-coverage.test.mjs",
+      "sha256": "502e23eefc32891b8615bdbccffdb0d25da34ad73590baf30ab46132e40ebb82",
+      "bytes": 3781,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10897,8 +10925,8 @@
     },
     {
       "path": "tests/test_prompt102_zonal_results_api.py",
-      "sha256": "bfee30710d8c9e7bf5cfcaa06d839e0a4f4161c867701ea99338079b6cb7f4be",
-      "bytes": 56683,
+      "sha256": "a55683b11d1635aeaa5f2cfb2aa7128e46513f45c1dfa8dc8355fc19205b53e4",
+      "bytes": 58186,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

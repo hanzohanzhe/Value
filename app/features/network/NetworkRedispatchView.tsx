@@ -27,6 +27,10 @@ import {
   scaled,
   toNumber,
 } from "./networkRedispatch";
+import { RELIABILITY_PAGE_SIZE, reliabilityQuery, reliabilityRow, replayWindowStart, type ReliabilityEvent } from "./reliabilityView.ts";
+import { Callout, StatusPill } from "../shared/Callout";
+import { annualTotalsPublishable, coveragePill, coverageReasonText, isResultCoverage, reliabilityEmptyText } from "../shared/coverageView.ts";
+import "./network-coverage.css";
 
 type Row = Record<string, unknown>;
 type Tab = "overview" | "period" | "reliability" | "evidence";
@@ -179,9 +183,14 @@ export default function NetworkRedispatchView({
   onOpenRun,
   onRerun,
   sourceStudyMutable,
+  onReplay,
+  onOpenInspect,
 }: {
   run?: ZonalRun;
   apiOrigin: string;
+  /** Open Market replay at a stress / lost-load event (spec 4.4). */
+  onReplay?: (year: number, periodFrom: number) => void;
+  onOpenInspect?: () => void;
   onOpenMarket: () => void;
   onCreateFullReplayRevision: () => void;
   onOpenRun: () => void;
@@ -205,7 +214,8 @@ export default function NetworkRedispatchView({
   const [boundaries, setBoundaries] = useState<Row[]>([]);
   const [resources, setResources] = useState<Row[]>([]);
   const [settlements, setSettlements] = useState<Row[]>([]);
-  const [reliability, setReliability] = useState<Row[]>([]);
+  const [reliabilityOffset, setReliabilityOffset] = useState(0);
+  const [reliabilityPage, setReliabilityPage] = useState<{ selection: string; status: "success" | "error"; items: ReliabilityEvent[]; total: number; hasMore: boolean; error: string }>({ selection: "", status: "success", items: [], total: 0, hasMore: false, error: "" });
   const [solver, setSolver] = useState<Row[]>([]);
   const [solverDiagnosticOffset, setSolverDiagnosticOffset] = useState(0);
   const [solverDiagnostics, setSolverDiagnostics] = useState<{
@@ -272,16 +282,31 @@ export default function NetworkRedispatchView({
     if (!base || year == null || !capabilities) return;
     const periodTo = periodFrom + periodWindow - 1;
     const periodQuery = boundedPeriodQuery({ year, periodFrom, periodTo, limit: 48, offset: periodOffset });
-    const reliabilityQuery = boundedPeriodQuery({ year, periodFrom, periodTo, limit: 250, offset: 0 });
     Promise.all([
       fetchNetworkJson<ResultPage>(`${base}/periods?${periodQuery}`),
-      fetchNetworkJson<ResultPage>(`${base}/reliability?${reliabilityQuery}`),
-    ]).then(([periodPage, reliabilityPage]) => {
-      setPeriods(periodPage.items); setReliability(reliabilityPage.items);
+    ]).then(([periodPage]) => {
+      setPeriods(periodPage.items);
       setPeriodPage({ total: periodPage.total, hasMore: periodPage.has_more });
       setPeriod(Number(periodPage.items[0]?.period ?? periodFrom));
     }).catch((reason: Error) => setError(reason.message));
   }, [base, year, capabilities, periodFrom, periodOffset, periodWindow]);
+
+  // F3-07: the reliability list covers the whole year (no period window), one
+  // page at a time; a newer request aborts the older one.
+  useEffect(() => {
+    if (tab !== "reliability" || !base || year == null || !capabilities) return;
+    const selection = `${base}:${year}:${reliabilityOffset}`;
+    const controller = new AbortController();
+    void fetch(`${base}/reliability?${reliabilityQuery(year, reliabilityOffset)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Reliability events unavailable");
+        return payload as ResultPage<ReliabilityEvent>;
+      })
+      .then((page) => { if (!controller.signal.aborted) setReliabilityPage({ selection, status: "success", items: page.items, total: page.total, hasMore: page.has_more, error: "" }); })
+      .catch((reason: Error) => { if (!controller.signal.aborted) setReliabilityPage({ selection, status: "error", items: [], total: 0, hasMore: false, error: reason.message }); });
+    return () => controller.abort();
+  }, [base, capabilities, reliabilityOffset, tab, year]);
 
   useEffect(() => {
     if (!base || year == null || period == null || !capabilities) return;
@@ -367,6 +392,13 @@ export default function NetworkRedispatchView({
   }, [annual, base, curtailmentDetailOffset, technology, year]);
 
   const annualRow = annual?.years.find((item) => item.year === year);
+  const coverage = isResultCoverage(annual?.coverage) ? annual?.coverage : null;
+  const coverageBadge = coveragePill(coverage);
+  const annualPublished = annualTotalsPublishable(coverage);
+  const reliabilitySelection = year == null ? "" : `${base}:${year}:${reliabilityOffset}`;
+  const reliabilityState = reliabilityPage.selection === reliabilitySelection
+    ? reliabilityPage
+    : { status: "loading" as const, items: [] as ReliabilityEvent[], total: 0, hasMore: false, error: "" };
   const attribution = annualRow?.vre_curtailment;
   const selectedAttribution: VRECurtailmentValues | undefined = technology
     ? attribution?.by_technology.find((item) => item.technology === technology)
@@ -422,6 +454,7 @@ export default function NetworkRedispatchView({
   return <div className="page network-workspace">
     <div className="page-title"><div><span>Physical delivery after the GB market</span><h2>Network &amp; redispatch</h2><p>Follow the national ahead schedule into final zonal dispatch, congestion, curtailment, storage movement and observed supply shortfalls.</p></div><div className="network-run-id"><small>Run</small><code>{run.id}</code><span>{capabilities?.network_pack_id || "network evidence pending"}</span></div></div>
 
+    {capabilities && <section className="network-coverage-banner value-new-control" aria-label="Annual coverage"><StatusPill tone={coverageBadge.tone} title={coverageBadge.title}>{coverageBadge.text}</StatusPill><span>{coverageReasonText(coverage)}</span></section>}
     {error && <div className="error-box"><b>Network evidence unavailable: </b>{error}</div>}
     {run.status === "failed" && <section className="panel network-failure"><div><span>Immutable failed run</span><h3>{run.error_code ?? "Solver evidence retained"}</h3><p>{run.error ?? "The declared input and failure artefacts remain attached to this run."}</p><small>{sourceStudyMutable ? "A copperplate fallback is a new run, never a continuation under different physics." : "Restore the source Study before creating a copperplate fallback Run."}</small></div><div><button className="secondary" onClick={onOpenRun}>Open evidence &amp; audit export</button><button className="secondary" disabled={!sourceStudyMutable} onClick={() => void onRerun()}>Rerun as copperplate<br /><small>重新以铜板模式运行</small></button></div></section>}
 
@@ -447,11 +480,12 @@ export default function NetworkRedispatchView({
         {capabilities.available_views.includes("solver-diagnostics") && <a className="secondary solver-diagnostic-export" href={`${base}/export?view=solver-diagnostics&format=jsonl&limit=1000&offset=0`}>Export solver diagnostics</a>}
       </section>
 
-      <div className="network-controls"><label><span>Model year</span><select value={year ?? ""} onChange={(event) => { setYear(Number(event.target.value)); setPeriodFrom(0); setPeriodOffset(0); setCurtailmentDetailOffset(0); setSolverDiagnosticOffset(0); }}>{capabilities.years.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Period window</span><select value={periodWindow} onChange={(event) => { setPeriodWindow(Number(event.target.value) as 48 | 336); setPeriodOffset(0); }}><option value={48}>24 hours</option><option value={336}>168 hours</option></select></label><label><span>First period</span><input type="number" min={0} value={periodFrom} onChange={(event) => { setPeriodFrom(Math.max(0, Number(event.target.value))); setPeriodOffset(0); }} /></label><div className="network-tabs" role="tablist">{(["overview", "period", "reliability", "evidence"] as Tab[]).map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item === "period" ? "Period replay" : item === "evidence" ? "Inspect" : item[0].toUpperCase() + item.slice(1)}</button>)}</div></div>
+      <div className="network-controls"><label><span>Model year</span><select value={year ?? ""} onChange={(event) => { setYear(Number(event.target.value)); setPeriodFrom(0); setPeriodOffset(0); setCurtailmentDetailOffset(0); setSolverDiagnosticOffset(0); setReliabilityOffset(0); }}>{capabilities.years.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Period window</span><select value={periodWindow} onChange={(event) => { setPeriodWindow(Number(event.target.value) as 48 | 336); setPeriodOffset(0); }}><option value={48}>24 hours</option><option value={336}>168 hours</option></select></label><label><span>First period</span><input type="number" min={0} value={periodFrom} onChange={(event) => { setPeriodFrom(Math.max(0, Number(event.target.value))); setPeriodOffset(0); }} /></label><div className="network-tabs" role="tablist">{(["overview", "period", "reliability", "evidence"] as Tab[]).map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item === "period" ? "Period replay" : item === "evidence" ? "Inspect" : item[0].toUpperCase() + item.slice(1)}</button>)}</div></div>
       <TraceCoverageNotice traceLevel={capabilities.trace_level} bidReplayAvailable={capabilities.bid_replay_available} onCreateFullReplayRevision={onCreateFullReplayRevision} />
       <ReplayExportPanel key={`${run.id}-${year}-${period}`} apiOrigin={apiOrigin} runId={run.id} years={capabilities.years} selectedYear={year} selectedPeriod={period} />
 
-      {tab === "overview" && annualRow && <div className="network-overview">
+      {tab === "overview" && annualRow && !annualPublished && <Callout tone="caution" title={`Annual totals not shown · ${coverageBadge.text}`} actions={<><button type="button" className="value-action-primary" onClick={() => onOpenInspect?.()}>Open in Inspect</button><button type="button" className="value-action-link" onClick={() => setTab("period")}>Show selected-period totals</button></>}><p>{coverageReasonText(coverage)} Totals over part of a year are not annual values, so they are not shown here.</p></Callout>}
+      {tab === "overview" && annualRow && annualPublished && <div className="network-overview">
         <section className="network-kpis"><Metric label="Final physical resource cost" value={formatNetworkMoney(annualRow.system_resource_cost_gbp)} note="Settlement transfers excluded" /><Metric label="Constraint resource cost" value={formatNetworkMoney(annualRow.network_constraint_cost_gbp)} note="Zonal minus matched copperplate" /><Metric label="Congested boundary-periods" value={formatNetworkNumber(annualRow.congested_boundary_periods, 0)} /><Metric label="Observed unserved energy" value={`${formatNetworkNumber(annualRow.unserved_energy_mwh)} MWh`} note="Observed chronology, not statistical LOLE" /></section>
         <div className="network-two-column"><section className="panel"><div className="panel-head"><div><span>Resource-cost counterfactuals</span><h3>What changed the physical cost</h3></div></div><dl className="network-ledger"><div><dt>Final zonal resource cost</dt><dd>{formatNetworkMoney(annualRow.system_resource_cost_gbp)}</dd></div><div><dt>Forecast error component</dt><dd>{formatNetworkMoney(annualRow.forecast_error_cost_gbp)}</dd></div><div><dt>Network constraint component</dt><dd>{formatNetworkMoney(annualRow.network_constraint_cost_gbp)}</dd></div><div><dt>Total deviation from perfect forecast</dt><dd>{formatNetworkMoney(annualRow.total_deviation_cost_gbp)}</dd></div></dl></section><section className="panel"><div className="panel-head"><div><span>Payments kept separate</span><h3>Market and policy transfers</h3></div></div><dl className="network-ledger"><div><dt>National settlement</dt><dd>{formatNetworkMoney(annualRow.national_settlement_gbp)}</dd></div><div><dt>Redispatch settlement</dt><dd>{formatNetworkMoney(annualRow.redispatch_settlement_gbp)}</dd></div><div><dt>Policy transfers</dt><dd>{formatNetworkMoney(annualRow.policy_transfer_gbp)}</dd></div></dl></section></div>
         <section className="panel curtailment-attribution" aria-label="VRE curtailment attribution"><div className="panel-head"><div><span>Matched VRE counterfactuals</span><h3>VRE curtailment attribution</h3></div><label className="inline-select"><span>Technology</span><select aria-label="Technology" value={technology} onChange={(event) => { setTechnology(event.target.value as (typeof technologyOptions)[number]); setCurtailmentDetailOffset(0); }}>{technologyOptions.map((item) => <option value={item} key={item || "total"}>{item || "Total VRE"}</option>)}</select></label></div>
@@ -476,12 +510,18 @@ export default function NetworkRedispatchView({
 
       {tab === "period" && <div className="network-period-workspace">
         <section className="panel"><div className="panel-head"><div><span>Bounded period query</span><h3>Select a half-hour</h3></div><small>{periods.length} of {periodPage.total} rows in periods {periodFrom}–{periodFrom + periodWindow - 1}</small></div><div className="period-chip-list">{periods.map((row) => <button className={Number(row.period) === period ? "selected" : ""} key={String(row.period_id)} onClick={() => setPeriod(Number(row.period))}>{String(row.period_id)}</button>)}</div><div className="bounded-page-controls"><button className="secondary" aria-label="Previous period page" disabled={periodOffset === 0} onClick={() => setPeriodOffset(Math.max(0, periodOffset - 48))}>Previous period page</button><span>Offset {periodOffset}</span><button className="secondary" aria-label="Next period page" disabled={!periodPage.hasMore} onClick={() => setPeriodOffset(periodOffset + 48)}>Next period page</button></div>{selectedPeriod && <div className="network-kpis compact"><Metric label="System resource cost" value={formatNetworkMoney(numberValue(selectedPeriod, "system_resource_cost_gbp"))} /><Metric label="Network constraint cost" value={formatNetworkMoney(numberValue(selectedPeriod, "network_constraint_cost_gbp"))} /><Metric label="Redispatch settlement" value={formatNetworkMoney(numberValue(selectedPeriod, "redispatch_settlement_gbp"))} /><Metric label="Unserved energy" value={`${formatNetworkNumber(numberValue(selectedPeriod, "blackout_mwh"))} MWh`} /></div>}</section>
-        <div className="network-two-column"><NetworkZoneMap zones={zones} boundaries={boundaries} /><section className="panel"><div className="panel-head"><div><span>Boundary use</span><h3>Computational corridors</h3></div></div><DataTable rows={boundaries} columns={[["boundary_id", "Boundary", (value) => String(value)], ["transfer_mwh", "Transfer", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["forward_capacity_mwh", "Forward limit", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["reverse_capacity_mwh", "Reverse limit", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["utilisation_fraction", "Use", (value) => `${formatNetworkNumber(scaled(toNumber(value), 100), 1)}%`], ["boundary_shadow_value_gbp_per_mwh", "Diagnostic marginal value", (value) => `£${formatNetworkNumber(toNumber(value))}/MWh`]]} /></section></div>
+        <div className="network-two-column"><NetworkZoneMap zones={zones} boundaries={boundaries} /><section className="panel"><div className="panel-head"><div><span>Boundary use</span><h3>Computational corridors</h3></div></div><DataTable rows={boundaries} columns={[["boundary_id", "Boundary", (value) => String(value)], ["transfer_mwh", "Transfer", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["forward_capacity_mwh", "Forward limit", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["reverse_capacity_mwh", "Reverse limit", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["utilisation_fraction", "Use", (value) => `${formatNetworkNumber(scaled(toNumber(value), 100), 1)}%`], ["boundary_shadow_value_gbp_per_mwh", "Diagnostic marginal value", (value) => toNumber(value) == null ? "Not computed" : `£${formatNetworkNumber(toNumber(value))}/MWh`]]} /></section></div>
         <section className="panel"><div className="panel-head"><div><span>Final resources</span><h3>Ahead schedule and redispatch by asset</h3></div><button className="text-button" onClick={onOpenMarket}>Open full market replay</button></div><DataTable rows={resources} columns={[["asset_id", "Asset", (value) => String(value)], ["zone_id", "Zone", (value) => String(value)], ["technology", "Technology", (value) => String(value)], ["ahead_dispatch_mwh", "Ahead", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["signed_adjustment_mwh", "Adjustment", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["final_dispatch_mwh", "Final", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["physical_resource_cost_gbp", "Physical cost", (value) => formatNetworkMoney(toNumber(value))]]} />{storageRows.length > 0 && <><h4>Storage state after redispatch</h4><DataTable rows={storageRows} columns={[["asset_id", "Storage asset", (value) => String(value)], ["final_soc_mwh", "Final SOC", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["charge_mwh", "Charge", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["discharge_mwh", "Discharge", (value) => `${formatNetworkNumber(toNumber(value))} MWh`]]} /></>}</section>
         <section className="panel"><div className="panel-head"><div><span>Pay-as-bid adjustments</span><h3>Accepted redispatch bids</h3></div><span>{capabilities.bid_replay_available ? `${settlements.length} loaded` : "Summary trace"}</span></div>{capabilities.bid_replay_available ? <DataTable rows={settlements} columns={[["agent_id", "Agent", (value) => String(value)], ["zone_id", "Zone", (value) => String(value)], ["direction", "Direction", (value) => String(value)], ["accepted_delta_mwh", "Accepted delta", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["bid_price_gbp_per_mwh", "Bid", (value) => `£${formatNetworkNumber(toNumber(value))}/MWh`], ["cashflow_to_agent_gbp", "Cashflow", (value) => formatNetworkMoney(toNumber(value))]]} /> : <Empty><b>Bid rows were not retained</b><p>Annual scientific totals remain available. Create a new Study revision with Full market replay to enable detailed bid replay.</p></Empty>}</section>
       </div>}
 
-      {tab === "reliability" && <section className="panel"><div className="panel-head"><div><span>Observed physical shortfalls</span><h3>Loss-of-load chronology</h3></div><strong>{annualRow ? `${formatNetworkNumber(annualRow.observed_loss_of_load_hours)} h` : "—"}</strong></div><div className="info-box"><b>Observed chronology, not statistical LOLE.</b> These hours are counted in the simulated chronology and are not a probabilistic adequacy estimate.</div>{reliability.length ? <DataTable rows={reliability} columns={[["event_id", "Event", (value) => String(value)], ["start_period", "Start", (value) => String(value)], ["end_period", "End", (value) => String(value)], ["event_duration_hours", "Duration", (value) => `${formatNetworkNumber(toNumber(value))} h`], ["unserved_mwh", "Unserved", (value) => `${formatNetworkNumber(toNumber(value))} MWh`], ["affected_zones_json", "Affected zones", (value) => String(value)]]} /> : <Empty><b>No observed loss-of-load events</b><p>No load shedding was recorded for the selected year.</p></Empty>}</section>}
+      {tab === "reliability" && year != null && <section className="panel reliability-list value-new-control" aria-label="Stress events and lost load"><div className="panel-head"><div><span>Observed physical shortfalls</span><h3>Stress events and lost load — full year {year}</h3></div><strong>{reliabilityState.status === "success" ? `${reliabilityState.total} ${reliabilityState.total === 1 ? "event" : "events"}` : "—"}{annualRow && annualPublished ? ` · ${formatNetworkNumber(annualRow.observed_loss_of_load_hours)} h` : ""}</strong></div><div className="info-box"><b>Observed chronology, not statistical LOLE.</b> These hours are counted in the simulated chronology and are not a probabilistic adequacy estimate.</div>
+        {reliabilityState.status === "loading" ? <p className="audit-note" role="status">Loading the year&apos;s events…</p>
+          : reliabilityState.status === "error" ? <div className="error-box" role="alert"><b>Reliability events unavailable: </b>{reliabilityState.error}</div>
+            : reliabilityState.items.length ? <div className="table-scroll network-table"><table><thead><tr><th>Start (model date &amp; time)</th><th>Periods</th><th>Shortfall</th><th>Type</th><th>Zones</th><th><span className="visually-hidden">Replay</span></th></tr></thead><tbody>{reliabilityState.items.map((event) => { const row = reliabilityRow(event); return <tr key={row.key}><td><b>{row.start}</b><small>period {row.startPeriod}</small></td><td>{row.periods}</td><td>{row.shortfall ?? "Not recorded"}</td><td>{row.type}</td><td>{row.zones}</td><td><button type="button" className="text-button" onClick={() => onReplay?.(event.year, replayWindowStart(event.start_period))} aria-label={`Replay the event starting at period ${event.start_period}`}>Replay →</button></td></tr>; })}</tbody></table></div>
+              : <Empty><b>{reliabilityEmptyText(coverage, year)}</b></Empty>}
+        {reliabilityState.status === "success" && reliabilityState.total > RELIABILITY_PAGE_SIZE && <div className="bounded-page-controls"><button type="button" className="secondary" disabled={reliabilityOffset === 0} onClick={() => setReliabilityOffset(Math.max(0, reliabilityOffset - RELIABILITY_PAGE_SIZE))}>Previous events</button><span>Events {reliabilityOffset + 1}–{reliabilityOffset + reliabilityState.items.length} of {reliabilityState.total}</span><button type="button" className="secondary" disabled={!reliabilityState.hasMore} onClick={() => setReliabilityOffset(reliabilityOffset + RELIABILITY_PAGE_SIZE)}>Next events</button></div>}
+      </section>}
 
       {tab === "evidence" && <div className="network-inspect">
         <div className="network-two-column"><section className="panel"><div className="panel-head"><div><span>Method and limits</span><h3>Interpret this workspace correctly</h3></div></div><dl className="network-ledger"><div><dt>Network pack</dt><dd>{capabilities.network_pack_id}</dd></div><div><dt>Ledger trace</dt><dd>{capabilities.trace_level}</dd></div><div><dt>Network representation</dt><dd>{capabilities.network_semantics.replaceAll("_", " ")}</dd></div><div><dt>Security scope</dt><dd>Not a security analysis</dd></div></dl>{capabilities.demand_alignment && <><h4>Demand authority</h4><dl className="network-ledger"><div><dt>Mode</dt><dd>{capabilities.demand_alignment.mode === "scenario_scaled_zonal_shares" ? "Scenario national demand × signed zonal shares" : capabilities.demand_alignment.mode === "network_pack_absolute_demand" ? "Independent network-pack demand" : "Mixed mode — invalid evidence"}</dd></div><div><dt>Periods audited</dt><dd>{formatNetworkNumber(capabilities.demand_alignment.period_count, 0)}</dd></div><div><dt>Scale range</dt><dd>{formatNetworkNumber(capabilities.demand_alignment.scale_factor_min, 5)}–{formatNetworkNumber(capabilities.demand_alignment.scale_factor_max, 5)}</dd></div><div><dt>Maximum conservation residual</dt><dd>{formatNetworkNumber(capabilities.demand_alignment.maximum_absolute_conservation_residual_mwh, 9)} MWh</dd></div></dl><p className="audit-note">Detailed period evidence remains in {capabilities.demand_alignment.detail_location}; it is not expanded into the main run screen.</p>{capabilities.demand_alignment.mode === "network_pack_absolute_demand" && <div className="info-box">Independent zonal-demand study. National demand is supplied by the network pack. Network-cost attribution against a scenario-demand copperplate run is disabled.</div>}</>}<details><summary>中文方法说明</summary><p>全国日前市场先形成统一的竞价结果；随后分区再调度在固定边界容量下调整火电、可再生能源、储能、进口和必要时的负荷损失。这里的边界是计算走廊，不是逐条输电线路，也不开展 N-1 或电压安全分析。</p></details></section><section className="panel"><div className="panel-head"><div><span>Solver linkage</span><h3>Declared input and diagnostics</h3></div></div>{solver.length ? <DataTable rows={solver} columns={[["declared_input_sha256", "Declared input SHA-256", (value) => String(value)], ["solver_status", "Status", (value) => String(value)], ["declaration_artifact_id", "Declaration", (value) => String(value)], ["solver_artifact_id", "Solver evidence", (value) => String(value ?? "not written")], ["failure_artifact_id", "Failure evidence", (value) => String(value ?? "none")]]} /> : <Empty><b>No selected-period solver link</b></Empty>}<p className="audit-note">A diagnostic boundary marginal value is not a local market price or a cash payment.</p></section></div>

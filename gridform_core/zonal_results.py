@@ -1145,8 +1145,10 @@ def query_zonal_results(
                 )
             values.append(period_to)
         where = " WHERE " + " AND ".join(filters) if filters else ""
+        # F3-07: reliability events page in chronological order (start_period
+        # is numeric; the TEXT event_id sorted "observed-2025-10" before "-2").
         order_columns = [name for name in (
-            "run_id", "year", "period", "phase_id", "zone_id", "technology", "boundary_id",
+            "run_id", "year", "start_period", "period", "phase_id", "zone_id", "technology", "boundary_id",
             "agent_id", "asset_id", "bid_tranche_id", "bid_id", "event_id",
         ) if name in columns]
         order = ", ".join(order_columns) or "rowid"

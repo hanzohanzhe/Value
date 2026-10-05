@@ -178,7 +178,10 @@ function WindowSummary({ bucket, timeline }: { bucket: DispatchTimeline["items"]
   </div>;
 }
 
-function MarketReplayView({ run, onCreateFullReplayRevision }: { run?: ModelRun; onCreateFullReplayRevision: () => void }) {
+/** A window to open Market replay at (a Replay jump from the network reliability list, spec 4.4). */
+type ReplayTarget = { runId: string; year: number; periodFrom: number; nonce: number };
+
+function MarketReplayView({ run, onCreateFullReplayRevision, initialWindow }: { run?: ModelRun; onCreateFullReplayRevision: () => void; initialWindow?: ReplayTarget | null }) {
   const [capabilities, setCapabilities] = useState<MarketCapability | null>(null);
   const [timeline, setTimeline] = useState<DispatchTimeline | null>(null);
   const [auction, setAuction] = useState<AuctionView | null>(null);
@@ -186,13 +189,14 @@ function MarketReplayView({ run, onCreateFullReplayRevision }: { run?: ModelRun;
   const [year, setYear] = useState(0); const [period, setPeriod] = useState(0);
   const [stage, setStage] = useState("ahead"); const [resolution, setResolution] = useState("daily");
   const [windowKind, setWindowKind] = useState<"24_hours" | "168_hours">("24_hours");
-  const [periodFrom, setPeriodFrom] = useState(0);
+  const target = initialWindow && run && initialWindow.runId === run.id ? initialWindow : null;
+  const [periodFrom, setPeriodFrom] = useState(target?.periodFrom ?? 0);
   const [timelineOffset, setTimelineOffset] = useState(0);
   const [error, setError] = useState(""); const [loading, setLoading] = useState(Boolean(run));
   const windowPeriods = windowKind === "24_hours" ? 48 : 336;
   const periodTo = periodFrom + windowPeriods - 1;
   const bidReplayAvailable = capabilities?.bid_replay_available ?? capabilities?.auction_replay ?? false;
-  useEffect(() => { if (!run) return; let active = true; void getJson<MarketCapability>(`${API}/runs/${run.id}/market/capabilities`).then((payload) => { if (!active) return; setCapabilities(payload); setYear(payload.years[0] ?? 0); setStage(payload.auction_stages[0]?.stage ?? "ahead"); setPeriodFrom(0); setTimelineOffset(0); setError(""); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [run]);
+  useEffect(() => { if (!run) return; let active = true; void getJson<MarketCapability>(`${API}/runs/${run.id}/market/capabilities`).then((payload) => { if (!active) return; setCapabilities(payload); setYear(target && payload.years.includes(target.year) ? target.year : payload.years[0] ?? 0); setStage(payload.auction_stages?.[0]?.stage ?? "ahead"); setPeriodFrom(target && payload.years.includes(target.year) ? target.periodFrom : 0); setTimelineOffset(0); setError(""); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [run, target]);
   useEffect(() => { if (!run || !year) return; let active = true; const query = new URLSearchParams({ year: String(year), resolution, period_from: String(periodFrom), period_to: String(periodTo), limit: "96", offset: String(timelineOffset) }); void getJson<DispatchTimeline>(`${API}/runs/${run.id}/market/dispatch?${query}`).then((payload) => { if (!active) return; setTimeline(payload); setPeriod(payload.items[0]?.period_start ?? periodFrom); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [periodFrom, periodTo, resolution, run, timelineOffset, year]);
   useEffect(() => { if (!run || !year || !bidReplayAvailable || !stage) return; let active = true; void getJson<AuctionView>(`${API}/runs/${run.id}/market/auction?year=${year}&period=${period}&stage=${stage}`).then((payload) => { if (active) setAuction(payload); }).catch(() => { if (active) setAuction(null); }); return () => { active = false; }; }, [bidReplayAvailable, period, run, stage, year]);
   useEffect(() => { if (!run || !year || !capabilities?.storage_state) return; let active = true; void getJson<PageResult<StoragePeriodRow>>(`${API}/runs/${run.id}/market/storage?year=${year}&period=${period}&limit=100`).then((payload) => { if (active) setStorageRows(payload.items); }).catch(() => { if (active) setStorageRows([]); }); return () => { active = false; }; }, [capabilities?.storage_state, period, run, year]);
@@ -392,6 +396,7 @@ export default function Home() {
   const [extensionInstalling, setExtensionInstalling] = useState(false);
   const [extensionLifecycle, setExtensionLifecycle] = useState("");
   const [launching, setLaunching] = useState("");
+  const [replayTarget, setReplayTarget] = useState<ReplayTarget | null>(null);
   const [preflightMode, setPreflightMode] = useState<RunMode>("smoke");
   const [storedPreflight, setPreflight] = useState<PreflightReport | null>(null);
   const [pendingPreflightKey, setPendingPreflightKey] = useState<string | null>(null);
@@ -1394,11 +1399,11 @@ export default function Home() {
 
     {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated }} />}
 
-    {view === "marketReplay" && <MarketReplayView run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} />}
+    {view === "marketReplay" && <MarketReplayView key={`${selectedRun?.id ?? "no-run"}:${replayTarget?.nonce ?? 0}`} run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} initialWindow={replayTarget} />}
 
     {view === "curtailment" && <><ResultQueryPanel key={`query-${selectedRun?.id ?? "no-run"}`} run={selectedRun} apiOrigin={API_ORIGIN} /><CurtailmentView key={`physical-${selectedRun?.id ?? "no-run"}`} run={selectedRun} /></>}
 
-    {view === "networkRedispatch" && <NetworkRedispatchView key={selectedRun?.id ?? "no-run"} run={selectedRun} apiOrigin={API_ORIGIN} sourceStudyMutable={selectedRunSourceMutable} onOpenMarket={() => setView("marketReplay")} onCreateFullReplayRevision={createFullReplayRevision} onOpenRun={() => setView("run")} onRerun={() => selectedRun ? rerunAsCopperplate(selectedRun) : Promise.resolve()} />}
+    {view === "networkRedispatch" && <NetworkRedispatchView key={selectedRun?.id ?? "no-run"} run={selectedRun} apiOrigin={API_ORIGIN} sourceStudyMutable={selectedRunSourceMutable} onReplay={(year, periodFrom) => { if (selectedRun) { setReplayTarget({ runId: selectedRun.id, year, periodFrom, nonce: Date.now() }); setView("marketReplay"); } }} onOpenInspect={() => setView("audit")} onOpenMarket={() => setView("marketReplay")} onCreateFullReplayRevision={createFullReplayRevision} onOpenRun={() => setView("run")} onRerun={() => selectedRun ? rerunAsCopperplate(selectedRun) : Promise.resolve()} />}
 
     {view === "systems" && <SystemResultsView run={selectedRun} onOpenMarket={() => setView("marketReplay")} />}
 

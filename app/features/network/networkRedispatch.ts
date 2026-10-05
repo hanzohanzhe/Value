@@ -1,5 +1,6 @@
 import { formatMoney, formatNumber } from "../shared/format.ts";
 import { VALUE_STATES } from "../shared/valueStates.ts";
+import type { ResultCoverage } from "../shared/coverageView.ts";
 
 export type ZonalRun = {
   id: string;
@@ -364,6 +365,8 @@ export type AnnualBrief = {
   reliability_semantics: string;
   security_scope: string;
   solver_validation_summary?: SolverValidationSummary | null;
+  /** Shared annual-coverage verdict (P0-9 S5); absent from older backends. */
+  coverage?: ResultCoverage | null;
 };
 
 export type ResultPage<T = Record<string, unknown>> = {
