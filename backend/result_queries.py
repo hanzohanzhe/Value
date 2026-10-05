@@ -119,7 +119,7 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
         result["source"]["trace_level"] = evidence.get("ledger_trace_level")
         policy = status.get("run_policy") or {}
         expected = expected_years
-        validation = validate_vre_curtailment_attribution(evidence, mode=status.get("mode"), periods_per_year=policy.get("periods_per_year"), expected_years=tuple(expected))
+        validation = validate_vre_curtailment_attribution(evidence, mode=status.get("mode"), periods_per_year=policy.get("periods_per_year"), expected_years=tuple(expected), run_status=status)
         if validation["status"] != "reconciled":
             missing_reasons = {"vre_curtailment_attribution_artifact_missing", "vre_curtailment_annual_evidence_missing", "vre_curtailment_attribution_not_reconciled", "module_does_not_provide_counterfactual_snapshot"}
             normalized_status = "withheld" if validation["status"] == "withheld" else "unavailable" if validation["reason_code"] in missing_reasons or evidence.get("capability_status") == "unavailable" else "invalid"
@@ -219,7 +219,8 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
             coverage = result_coverage(status, year_bounds_from_rows(bounds))
             result["coverage"] = coverage
             if coverage["annual_status"] != "complete":
-                result.update(status="invalid" if coverage["annual_status"] == "invalid" else "withheld", reason_code=legacy_reason(coverage))
+                # Review response: the precise coverage code, with the older wording kept beside it.
+                result.update(status="invalid" if coverage["annual_status"] == "invalid" else "withheld", reason_code=coverage["reason_code"], legacy_reason_code=legacy_reason(coverage))
                 return result
             rows = []
             for item in brief_years:

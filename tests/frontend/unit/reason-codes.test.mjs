@@ -16,3 +16,11 @@ test("reason codes read as sentences; unknown codes stay visible", () => {
   assert.equal(reasonMessage("some_new_code"), "some new code");
   assert.equal(reasonMessage(null), "No reason was recorded.");
 });
+
+test("a stopped Run reads its precise coverage reason, not 'non-annual'", () => {
+  const view = resultStatusView("withheld", "run_cancelled_before_full_coverage");
+  assert.equal(view.label, "Withheld");
+  assert.match(view.message, /cancelled before it covered its years/);
+  assert.doesNotMatch(view.message, /non-annual/);
+  assert.match(reasonMessage("annual_period_boundary_incomplete"), /17,519/);
+});

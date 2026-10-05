@@ -21,7 +21,8 @@ export type ResultCoverage = {
 
 export type CoveragePill = { tone: PillTone; text: string; title: string };
 
-const REASON_TEXT: Record<string, string> = {
+/** Sentences of the annual-coverage reason codes (also used by reasonCodes.ts for result queries). */
+export const COVERAGE_REASON_TEXT: Readonly<Record<string, string>> = {
   annual_evidence_withheld_for_nonannual_run: "This Run's scope clears fewer than 17,520 periods a year, so its totals are not annual results.",
   run_in_progress: "The Run has not finished; totals cover only the periods computed so far.",
   run_cancelled_before_full_coverage: "The Run was cancelled before it covered its years; totals cover only the computed periods.",
@@ -38,7 +39,7 @@ export function isResultCoverage(value: unknown): value is ResultCoverage {
 
 export function coverageReasonText(coverage: ResultCoverage | null | undefined): string {
   if (!coverage) return "This Run does not record its annual coverage.";
-  return REASON_TEXT[coverage.reason_code] ?? coverage.reason_code.replaceAll("_", " ");
+  return COVERAGE_REASON_TEXT[coverage.reason_code] ?? coverage.reason_code.replaceAll("_", " ");
 }
 
 /** The coverage pill of a whole Run (or of a result view). */
@@ -60,7 +61,7 @@ export function yearCoveragePill(coverage: ResultCoverage | null | undefined, ye
   if (!coverage) return coveragePill(coverage);
   if (coverage.annual_status === "non_annual" || coverage.annual_status === "invalid") return coveragePill(coverage);
   const row = coverage.years?.find((item) => item.year === year);
-  if (row?.complete) return { tone: "ok", text: "Complete year", title: REASON_TEXT.annual_coverage_complete };
+  if (row?.complete) return { tone: "ok", text: "Complete year", title: COVERAGE_REASON_TEXT.annual_coverage_complete };
   return { tone: "caution", text: valueStateText("partial_year", row ? row.coverage_fraction * 100 : null), title: coverageReasonText(coverage) };
 }
 

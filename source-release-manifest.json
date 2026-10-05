@@ -3196,9 +3196,9 @@
     },
     {
       "path": "app/features/results/result-query.types.ts",
-      "sha256": "a7f3b6cb1c935b2409289e31a896a8ce904035efba1a75671863aabd90665e57",
-      "bytes": 4725,
-      "transform": "byte copy"
+      "sha256": "f8f42ee9def78afb280fe4f8b5cfd811b9ca10fe57b082dfe5597fecd91d3d0c",
+      "bytes": 4856,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/DomainReadinessPanel.tsx",
@@ -3274,8 +3274,8 @@
     },
     {
       "path": "app/features/shared/coverageView.ts",
-      "sha256": "794b42ed46de18529c9c3e3cf070bf2cba600d86781f5c63af767da07d8bffac",
-      "bytes": 5275,
+      "sha256": "ff1a61a6d23b9d747770b30d2f5b5f3472d164faed49cd60951bf2f7bc71452a",
+      "bytes": 5422,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3310,8 +3310,8 @@
     },
     {
       "path": "app/features/shared/reasonCodes.ts",
-      "sha256": "c4c573b011169cfa3e51506baf582315283194870df957b518d8cdd047151e43",
-      "bytes": 3146,
+      "sha256": "4fe32ea0dd01343006a33ae7ea5bc1e2e15d01dcfbf9a26ffd5b162fee7e5338",
+      "bytes": 3472,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3634,8 +3634,8 @@
     },
     {
       "path": "backend/result_queries.py",
-      "sha256": "3b3f4e4d620f2e5d302a79dc125c5d8cbf299a9813071f2b3d1845addf297884",
-      "bytes": 19980,
+      "sha256": "bb74ba7b550f05469ae8240f6c612c882f3d6e1bef04b190ba08c0b5509978a1",
+      "bytes": 20144,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3658,8 +3658,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "4b92a79de351db7dd29a9a621564694d1716c911e04dc925466ddb4e90187ca5",
-      "bytes": 192757,
+      "sha256": "2864f6f74dbc10e78c4fa09ca684a85de81b10e271816702d5c2f1b312d7b2b7",
+      "bytes": 193331,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7813,8 +7813,8 @@
     },
     {
       "path": "gridform_core/market_replay.py",
-      "sha256": "a29020feb69b0fd15fd0e34faab5fa65953db9de0060e04e2e554c016153eee8",
-      "bytes": 45524,
+      "sha256": "eb1166c3aa15243bafd0b79e0569ba67ec980930914edac410d795abf106e2c1",
+      "bytes": 44315,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7993,14 +7993,14 @@
     },
     {
       "path": "gridform_core/result_coverage.py",
-      "sha256": "7a2ddbb0fe459e13862479848855ee319b71b6dd60287eb07ccfa4924b5ea185",
-      "bytes": 6719,
+      "sha256": "9dcbf36c2655dc06cf71b227b173a49a18db73668365778ab87e847ca99b8c7f",
+      "bytes": 7204,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/results_summary.py",
-      "sha256": "830e390205770af488032ec433c64dcdee135e1dc701861bcabba3e776c1206f",
-      "bytes": 28992,
+      "sha256": "f0d61cc67dd588ed378b8972a7c591a977aedbc4914da47e31a0d7da18ad2812",
+      "bytes": 29885,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10025,8 +10025,8 @@
     },
     {
       "path": "tests/frontend/unit/reason-codes.test.mjs",
-      "sha256": "cc8504b71ec7e6e2703e43e8f12a4b562dd793f780b561d376bfd1f0efa01a17",
-      "bytes": 1137,
+      "sha256": "92bf64bc4e94e77ec0b2b7e67fc095ae8a05de06997029ec0df7cf1c7342b83a",
+      "bytes": 1547,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11411,21 +11411,21 @@
     },
     {
       "path": "tests/test_result_coverage.py",
-      "sha256": "6c0773ed81ad1a422519359c294d4d92b3824473ac53ca33039525e589bff585",
-      "bytes": 10124,
+      "sha256": "0bb4881eddea5d54995228ef712c2b09acfb079b9bf0a61b77052e6eae2e42a0",
+      "bytes": 11460,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_result_queries.py",
-      "sha256": "fbe89fe5f6d978dd7997b1d2ae2109506ffedbe48c46c58823cfe4b0e72cdd06",
-      "bytes": 10876,
+      "sha256": "7bb79ac38dd884669786f802e513faa7129493c191f6e69c1345c57aa63b07b0",
+      "bytes": 11823,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_results_summary.py",
-      "sha256": "b98ce38e083b22f7a3bec3fbeb5ba6006877c5017e1349b814081c08751470cf",
-      "bytes": 22967,
-      "transform": "byte copy"
+      "sha256": "10d9267ce79cb738caff717cef83a118a98560aa86cd9b755e552a156165ce26",
+      "bytes": 24487,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_retained_source_manifest.py",

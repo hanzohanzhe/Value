@@ -14,9 +14,9 @@ priority order:
 5. ``partial``      some year does not cover periods 0..17519 exactly once;
 6. ``complete``     every declared year is fully covered.
 
-The reason codes are stable API values; ``ANNUAL_REASON_ALIASES`` maps them to
-the older result-query wording (``annual_evidence_withheld_for_nonannual_run``)
-so existing clients and tests keep working.
+The reason codes are stable API values.  Result queries return the precise
+code in ``reason_code`` and the older wording (``ANNUAL_REASON_ALIASES``, e.g.
+``annual_evidence_withheld_for_nonannual_run``) in ``legacy_reason_code``.
 """
 
 from __future__ import annotations
@@ -89,6 +89,17 @@ def _year_complete(bounds: tuple[int, int, int]) -> bool:
     return first == 0 and last == ANNUAL_PERIODS - 1 and count == ANNUAL_PERIODS
 
 
+def stopped_reason(status: Mapping[str, object]) -> str | None:
+    """``run_cancelled_before_full_coverage`` / ``run_failed_before_full_coverage``
+    for a stopped Run (an archived Run is judged by the status it was archived
+    from), else None."""
+
+    run_status = str(status.get("status") or "")
+    if run_status == "archived":
+        run_status = str(status.get("archived_from_status") or "completed")
+    return {"cancelled": REASON_CANCELLED, "failed": REASON_FAILED}.get(run_status)
+
+
 def result_coverage(status: Mapping[str, object], year_bounds: YearBounds) -> dict[str, object]:
     """The annual-coverage verdict of one Run (see the module docstring)."""
 
@@ -130,9 +141,10 @@ def result_coverage(status: Mapping[str, object], year_bounds: YearBounds) -> di
     if run_status in ACTIVE_RUN_STATES:
         return verdict("in_progress", REASON_IN_PROGRESS)
     all_complete = bool(years) and all(item["complete"] for item in years)
-    if run_status in {"cancelled", "failed"}:
+    stopped = stopped_reason(status)
+    if stopped is not None:
         # A stopped Run is never published as annual, even if its years look whole.
-        return verdict("partial", REASON_CANCELLED if run_status == "cancelled" else REASON_FAILED)
+        return verdict("partial", stopped)
     if declared and set(observed) != set(declared):
         return verdict("invalid", REASON_YEAR_SET)
     if not all_complete:

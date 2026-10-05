@@ -105,6 +105,18 @@ class ResultQueriesTests(unittest.TestCase):
         result = query_vre_curtailment_results(self.root, {'source':'sqlite'})
         self.assertEqual(result['reason_code'], 'attribution_period_value_invalid')
 
+    def test_stopped_run_gets_the_precise_coverage_code(self):
+        # Review response (P0-9 S5): a cancelled full-year Run is not told it is non-annual.
+        self.compact()
+        self.status.update(status='archived', archived_from_status='cancelled')
+        self.write_status()
+        sqlite_result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        self.assertEqual((sqlite_result['status'], sqlite_result['reason_code']), ('withheld', 'run_cancelled_before_full_coverage'))
+        self.assertEqual(sqlite_result['legacy_reason_code'], 'annual_evidence_withheld_for_nonannual_run')
+        self.assertEqual(sqlite_result['coverage']['reason_code'], 'run_cancelled_before_full_coverage')
+        compact_result = query_vre_curtailment_results(self.root, {'source': 'compact'})
+        self.assertEqual((compact_result['status'], compact_result['reason_code']), ('withheld', 'run_cancelled_before_full_coverage'))
+
     def test_missing_metadata_run_not_filled_from_container(self):
         database = self.root / 'model-output' / 'market' / 'market.sqlite'
         with sqlite3.connect(database) as conn:

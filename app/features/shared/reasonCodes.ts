@@ -2,16 +2,21 @@
 // Only "invalid" is an error (red frame). "unavailable" means no evidence of this
 // kind was recorded; "withheld" means values exist but are not published here.
 import { valueStateText, type ValueStateKey } from "./valueStates.ts";
+import { COVERAGE_REASON_TEXT } from "./coverageView.ts";
 
 export type ResultStatusView = { state: ValueStateKey | "reconciled"; tone: "danger" | "caution" | "muted" | "ok"; label: string; message: string; isError: boolean };
 
 const REASON_MESSAGES: Record<string, string> = {
+  // Precise annual-coverage codes (gridform_core/result_coverage.py); result
+  // queries return these in reason_code and the older wording in legacy_reason_code.
+  ...COVERAGE_REASON_TEXT,
   result_artifact_missing: "This Run did not write the result artifact for this query.",
   attribution_evidence_not_recorded: "This Run did not record VRE curtailment attribution (for example, copperplate balancing records none).",
   legacy_contract_did_not_measure_avoided_curtailment: "This older ledger did not measure avoided curtailment.",
   module_does_not_provide_counterfactual_snapshot: "The selected PSM does not provide matched VRE counterfactual snapshots.",
   selected_balancing_does_not_provide_final_zonal_dispatch: "The selected balancing module does not provide final zonal dispatch evidence.",
   vre_curtailment_attribution_artifact_missing: "The compact attribution artifact is missing.",
+  // Older wording, still recorded by Runs written before the precise codes.
   annual_evidence_withheld_for_nonannual_run: "Annual values are not published for a non-annual Run or a partial year.",
   immutable_completed_run_required: "Results are published once the Run has completed.",
   source_has_active_transaction_files: "The ledger is still being written; try again when the Run has finished.",

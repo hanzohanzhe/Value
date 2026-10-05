@@ -878,35 +878,15 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
             excess = sum(float(row["excess_mwh"]) for row in rows)
             split_excess: float | None = None
             split_curtailment: float | None = None
-            if relationship == "alias_of_unused_vre":
-                event_values = [max(
-                    float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
-                ) for row in rows]
-            elif relationship == "separate_prebalancing":
-                event_values = [
-                    float(row["curtailed_mwh"]) + float(row["excess_mwh"])
-                    for row in rows
-                ]
+            if relationship == "separate_prebalancing":
                 split_excess = excess
                 split_curtailment = balancing_curtailment
-            else:
-                event_values = [max(
-                    float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
-                ) for row in rows]
-            longest = 0
-            current = 0
-            for value in event_values:
-                if value > 1e-9:
-                    current += 1
-                    longest = max(longest, current)
-                else:
-                    current = 0
-            peak_index = max(range(len(event_values)), key=event_values.__getitem__) if rows else None
-            peak_period = int(rows[peak_index]["period"]) if peak_index is not None else None
             reconciliation = available - accepted - neutral_unused
-            # G1-08 (P0-9 S8): the legacy event fields above keep their values;
-            # the two event bases are also reported separately so the UI never
-            # mixes unused VRE with pre-balancing excess plus curtailment.
+            # G1-08 (P0-9 S8): the two event bases are reported separately so the
+            # UI never mixes unused VRE with pre-balancing excess plus
+            # curtailment; the legacy top-level event fields are the statistics
+            # of the run's event basis (excess + curtailment when the ledger
+            # separates them, unused VRE otherwise).
             periods = [int(row["period"]) for row in rows]
             unused_values = [max(
                 float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
@@ -919,6 +899,11 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                 )
                 if relationship == "separate_prebalancing" else None
             )
+            legacy_events = {
+                key: value
+                for key, value in (excess_curtailment_events or unused_vre_events).items()
+                if key != "basis"
+            }
             results.append({
                 "year": year,
                 "period_count": len(rows),
@@ -941,15 +926,7 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                 "reported_balancing_curtailment_mwh": balancing_curtailment if relationship != "unknown" else None,
                 "vre_utilisation_fraction": accepted / available if available > 0 else None,
                 "average_unused_vre_fraction": neutral_unused / available if available > 0 else None,
-                "affected_periods": sum(value > 1e-9 for value in event_values),
-                "longest_event_periods": longest,
-                "longest_event_hours": longest * period_hours,
-                "peak_event_mwh": event_values[peak_index] if peak_index is not None else None,
-                "peak_event_period": peak_period,
-                "peak_event_timestamp": (
-                    _model_timestamp(year, peak_period, period_hours)
-                    if peak_period is not None else None
-                ),
+                **legacy_events,
                 "storage_charge_mwh": sum(float(row["storage_charge_mwh"]) for row in rows),
                 "export_mwh": sum(float(row["export_mwh"]) for row in rows),
                 "flexible_demand_mwh": sum(float(row["flexible_demand_mwh"]) for row in rows),

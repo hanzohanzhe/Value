@@ -111,7 +111,7 @@ from gridform_core.planning_index import (
 )
 from gridform_core.errors import public_failure
 from gridform_core.run_policy import resolve_run_policy
-from gridform_core.result_coverage import ACTIVE_RUN_STATES, is_non_annual, result_coverage
+from gridform_core.result_coverage import ACTIVE_RUN_STATES, expected_years, is_non_annual, result_coverage
 from gridform_core.value_101 import (
     VALUE_101_NETWORK_PACK_ID,
     VALUE_101_PACK_IDS,
@@ -1156,6 +1156,19 @@ def run_result_coverage(root: Path, run: Mapping[str, Any]) -> dict[str, Any]:
     coverage["coverage_source"] = source
     return coverage
 
+def running_stage_text(run: Mapping[str, Any], completed_years: set[int]) -> str:
+    """Spec 5 stage text of a running Run: the next declared year it computes,
+    or, once every declared year is finished, that it is finishing outputs
+    (never a year after the Run's end year; P0-3 S8 review response)."""
+
+    declared = expected_years(run)
+    remaining = [year for year in declared if year not in completed_years]
+    if declared and not remaining:
+        return f"Finishing outputs after {declared[-1]}"
+    next_year = remaining[0] if remaining else max(completed_years) + 1
+    return f"Computing year {next_year} (period-level progress not reported by this model)"
+
+
 def present_run(run: dict[str, Any]) -> dict[str, Any]:
     """Add UI-compatible aliases without rewriting persisted research results."""
     if run.get("id"):
@@ -1200,10 +1213,7 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                     run["completed_years"] = len(completed_years)
                     # Spec 5: say what is being computed and that this model
                     # reports no period-level progress (P0-3 S8).
-                    run["current_stage"] = (
-                        f"Computing year {max(completed_years) + 1} "
-                        "(period-level progress not reported by this model)"
-                    )
+                    run["current_stage"] = running_stage_text(run, completed_years)
             except (OSError, ValueError, json.JSONDecodeError):
                 run.setdefault("warnings", []).append({
                     "schema_version": "value.warning/v1",

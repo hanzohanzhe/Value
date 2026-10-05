@@ -169,5 +169,27 @@ class LedgerCopyTests(unittest.TestCase):
             finally:
                 writer.close()
 
+
+class RunningStageTests(unittest.TestCase):
+    """Review response (P0-3 S8): the stage text never names a year after the end year."""
+
+    def _present(self, completed: list[int]) -> str:
+        with tempfile.TemporaryDirectory() as temporary:
+            runs = Path(temporary)
+            output = runs / "stage-run" / "model-output"
+            output.mkdir(parents=True)
+            (output / "module-events.jsonl").write_text("".join(
+                json.dumps({"module_id": "value-annual-state-transition", "year": year, "action": "pipeline.complete_year"}) + "\n"
+                for year in completed
+            ), encoding="utf-8")
+            with patch.object(server, "RUNS_ROOT", runs):
+                return server.present_run(dict(status("running"), id="stage-run"))["current_stage"]
+
+    def test_stage_names_the_next_declared_year_then_finishing(self) -> None:
+        self.assertEqual(self._present([2025]), "Computing year 2026 (period-level progress not reported by this model)")
+        self.assertEqual(self._present([2025, 2026]), "Finishing outputs after 2026")
+        # without a declared policy the next year after the last finished one is named
+        self.assertEqual(server.running_stage_text({"status": "running"}, {2030}), "Computing year 2031 (period-level progress not reported by this model)")
+
 if __name__ == "__main__":
     unittest.main()
