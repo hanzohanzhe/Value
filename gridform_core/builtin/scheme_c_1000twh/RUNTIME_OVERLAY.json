@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "bd8f0efa93779dde8ef72b1253fb7ce3d168b8c17e51f81081b0b663e45de2d7",
+  "runtime_tree_sha256": "89b6c822df7d800fdca1f00da520cb833194ae952c320436db7f0bfac6f4e7f9",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -186,12 +186,13 @@
     },
     {
       "path": "storage_cost.py",
-      "sha256": "94f599a808bceff174d3202dd2dd6211e736c9aca5cff74dc24a5910d81df8ef",
+      "sha256": "0731460537df6643436389324d8e03f376f0e135d2847375a9f6b2d7ce63df8b",
       "kind": "declared_runtime_edit",
       "correction_ids": [
-        "p06.physical-operating-cost"
+        "p06.physical-operating-cost",
+        "p06.storage-bid-cycle-only"
       ],
-      "note": "P0-6 S4-S10: P5-06 operating-cost terms and rule diagnostics (universal); corrected rule-set clearing paths (D1-surplus, merit key, avoided-cost stack, storage netting, cycle-only bid basis) gated by NativeMarketRules fields",
+      "note": "P0-6 S10: bid_basis reported when not the thesis default",
       "previous_kind": "value_instrumentation"
     }
   ]

@@ -58,9 +58,10 @@ FIELD_CORRECTIONS: dict[str, str] = {
     "reliability_voll": "p06.voll-chronology-parameter",
 }
 
-# Correction ids whose behaviour has not landed yet (removed one by one by the
-# P0-6 step that implements the switch and registers it in corrections/p06.json).
-PENDING_CORRECTION_IDS: frozenset[str] = frozenset(FIELD_CORRECTIONS.values())
+# Correction ids whose behaviour has not landed yet.  P0-6 S5-S10 registered
+# every switch in corrections/p06.json together (the kernel runs only the
+# complete doctoral or corrected rule set), so none is pending.
+PENDING_CORRECTION_IDS: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -131,11 +132,33 @@ RULE_SETS: dict[str, NativeMarketRules] = {
 }
 
 
+def _literal_consultations(methodology: Any) -> dict[str, Any]:
+    """Each switch asked by its literal correction id.
+
+    The methodology catalogue scan (scripts/check_methodology_catalog.py)
+    requires every profile-gated correction to be consulted as
+    ``enabled`` with the literal id somewhere in the code (C15).
+    """
+
+    return {
+        "p06.d1-surplus-accounting": lambda: methodology.enabled("p06.d1-surplus-accounting"),
+        "p06.storage-after-generation-merit-key": lambda: methodology.enabled("p06.storage-after-generation-merit-key"),
+        "p06.avoided-cost-downward-order": lambda: methodology.enabled("p06.avoided-cost-downward-order"),
+        "p06.storage-net-per-period": lambda: methodology.enabled("p06.storage-net-per-period"),
+        "p06.storage-fee-per-period": lambda: methodology.enabled("p06.storage-fee-per-period"),
+        "p06.no-vre-pre-clearing-skim": lambda: methodology.enabled("p06.no-vre-pre-clearing-skim"),
+        "p06.storage-bid-cycle-only": lambda: methodology.enabled("p06.storage-bid-cycle-only"),
+        "p06.storage-uniform-price-settlement": lambda: methodology.enabled("p06.storage-uniform-price-settlement"),
+        "p06.voll-chronology-parameter": lambda: methodology.enabled("p06.voll-chronology-parameter"),
+    }
+
+
 def _switch_enabled(methodology: Any, correction_id: str) -> bool:
     from ...methodology import UnknownCorrectionError
 
+    ask = _literal_consultations(methodology).get(correction_id, lambda: methodology.enabled(correction_id))
     try:
-        return bool(methodology.enabled(correction_id))
+        return bool(ask())
     except UnknownCorrectionError:
         if correction_id in PENDING_CORRECTION_IDS:
             return False

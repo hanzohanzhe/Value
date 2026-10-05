@@ -86,7 +86,7 @@ class SchemeCNativePSM:
     """Execute the Scheme C market once for the current typed operating year."""
 
     id = "scheme-c-psm"
-    version = "5.2.0"
+    version = "6.0.0"
     execution_kind = "live_module"
 
     def __init__(self) -> None:

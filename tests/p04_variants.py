@@ -29,11 +29,17 @@ Variants (what each one exercises in the HEAD default PSM kernel):
   by +3.000 MWh (plan 4.4, P7-10 test matrix).
 * ``multi_battery``      – a second battery (``0.5c_battery``, pool limit 5).
 
+Market rule set (P0-6): the fixtures were built to exercise the 0.6.0-alpha.2
+default-PSM kernel, so by default a variant runs the doctoral market rule set
+(``native-doctoral-thesis-v1``, boundary ``default_psm_surplus_node_v1``)
+whatever the Study's profile; ``rule_set="profile"`` runs the rule set of the
+Study's methodology profile (the corrected rule set for the C3 Study).
+
 CLI (one variant per process; the legacy kernel keeps a process-global weather
 cache, P7-02)::
 
     python -B tests/p04_variants.py build NAME DEST
-    python -B tests/p04_variants.py run NAME OUTPUT_DIR [--mode value_101_day]
+    python -B tests/p04_variants.py run NAME OUTPUT_DIR [--mode value_101_day] [--rule-set doctoral|profile]
 """
 
 from __future__ import annotations
@@ -54,6 +60,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_PACK = ROOT / "data-packs" / "value-101-baseline-v1"
 BASE_PROJECT = ROOT / "tests" / "golden" / "projects" / "C3.json"
 DEFAULT_MODE = "value_101_day"
+RULE_SETS = ("doctoral", "profile")
 
 
 def _read_lines(path: Path) -> list[str]:
@@ -243,7 +250,26 @@ def variant_project() -> dict:
     return project
 
 
-def run_variant_in_process(name: str, output_dir: Path, *, mode: str = DEFAULT_MODE) -> Path:
+@contextlib.contextmanager
+def _market_rule_set(rule_set: str):
+    """Pin the doctoral market rule set (default) or keep the profile's (P0-6)."""
+
+    if rule_set not in RULE_SETS:
+        raise ValueError(f"rule_set must be one of {RULE_SETS}, not {rule_set!r}")
+    if rule_set == "profile":
+        yield
+        return
+    from unittest import mock
+
+    from gridform_core.builtin.scheme_c_1000twh import scheme_c_native_psm
+    from gridform_core.builtin.scheme_c_1000twh.native_market_rules import DOCTORAL
+
+    with mock.patch.object(scheme_c_native_psm, "rules_for_methodology", lambda _methodology: DOCTORAL):
+        yield
+
+
+def run_variant_in_process(name: str, output_dir: Path, *, mode: str = DEFAULT_MODE,
+                           rule_set: str = "doctoral") -> Path:
     """Build the variant pack in a temporary directory and run it here.
 
     Callers should use :func:`run_variant` (separate process) unless they own
@@ -253,7 +279,7 @@ def run_variant_in_process(name: str, output_dir: Path, *, mode: str = DEFAULT_M
     from gridform_core.application import run_project_application
 
     output_dir = Path(output_dir).resolve()
-    with tempfile.TemporaryDirectory(prefix=f"value-p04-{name}-") as scratch:
+    with tempfile.TemporaryDirectory(prefix=f"value-p04-{name}-") as scratch, _market_rule_set(rule_set):
         pack = build_variant_pack(name, Path(scratch) / "pack")
         log = Path(scratch) / "run.log"
         try:
@@ -271,10 +297,12 @@ def run_variant_in_process(name: str, output_dir: Path, *, mode: str = DEFAULT_M
     return output_dir
 
 
-def run_variant(name: str, output_dir: Path, *, mode: str = DEFAULT_MODE, python: str | None = None, timeout: float = 900.0) -> Path:
+def run_variant(name: str, output_dir: Path, *, mode: str = DEFAULT_MODE, python: str | None = None,
+                timeout: float = 900.0, rule_set: str = "doctoral") -> Path:
     """Run variant ``name`` in a fresh interpreter (P7-02) and return the output dir."""
 
-    command = [python or sys.executable, "-B", str(Path(__file__).resolve()), "run", name, str(output_dir), "--mode", mode]
+    command = [python or sys.executable, "-B", str(Path(__file__).resolve()), "run", name, str(output_dir),
+               "--mode", mode, "--rule-set", rule_set]
     completed = subprocess.run(command, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout)
     if completed.returncode != 0:
         raise RuntimeError(
@@ -341,13 +369,15 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("name", choices=sorted(VARIANTS))
     run.add_argument("output", type=Path)
     run.add_argument("--mode", default=DEFAULT_MODE)
+    run.add_argument("--rule-set", default="doctoral", choices=RULE_SETS)
     arguments = parser.parse_args(argv)
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     if arguments.command == "build":
         print(build_variant_pack(arguments.name, arguments.destination))
     else:
-        print(run_variant_in_process(arguments.name, arguments.output, mode=arguments.mode))
+        print(run_variant_in_process(arguments.name, arguments.output, mode=arguments.mode,
+                                     rule_set=arguments.rule_set))
     return 0
 
 

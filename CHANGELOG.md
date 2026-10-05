@@ -122,6 +122,37 @@
 - API additions: `worker_liveness`, `worker`, `cancel_requested_at`,
   `persisted_status`; `worker.json` v2.
 
+### Default PSM clearing and storage dispatch (P0-6)
+
+- `value-bid-at-cost-psm` 6.0.0 runs one of two market rule sets derived from
+  the methodology catalogue (`corrections/p06.json`).  The doctoral
+  reproduction profile keeps the 0.6.0-alpha.2 dispatch bit for bit and
+  reports its known deviations in `market_rule_diagnostics`.  The default
+  (corrected) profile clears with: D1-surplus (VRE surplus rebuilt per source
+  and kept on the books; must-run surplus never generated twice), storage
+  after generation in the same 0.01 GBP/MWh band, an avoided-cost
+  down-regulation stack, one net storage position per period (shared rated
+  power, buy-back before charging), per-period storage fees, no pre-clearing
+  VRE electrolysis, cycle-only dynamic storage bids (pumped hydro and
+  hydrogen bid 0) and uniform-price settlement.  Saved Studies on the
+  corrected profile need method confirmation (Q13).
+- Realisation is unchanged in both profiles (decision A2): a period whose
+  ahead stage cannot meet the forecast keeps its shortfall, booked as a
+  stress event.
+- Operating cost of the default PSM (both profiles) is physical: generation
+  at running cost, imports, start-up adder, unserved energy x VoLL (8000
+  doctoral, `market.voll_gbp_per_mwh` corrected) and storage cycle wear,
+  which was previously counted twice.  New extensions
+  `physical_operating_cost_detail_gbp`, `market_settlement_components_gbp`,
+  `market_rule_diagnostics`, `market_rule_set`.
+- Corrected ledgers declare `native_corrected_full_node_v1`: `vre_accepted`
+  is gross VRE output, `curtailed` is VRE availability minus that output,
+  `excess` is the non-VRE spill (declared in the ledger semantic metadata).
+- `dynamic-annual-storage-cost` 2.0.0 (bid basis owned by the PSM rule set);
+  `user-formula-storage-cost` stays 1.0.0; storage recovery adequacy v2.
+- Per-period source flows (RealisationLog) stay in memory only; persisting
+  them is deferred to ledger v9 (P1).
+
 ## 0.6.0-alpha.2 — VALUE Network Extensions identity (2026-08-20)
 
 - Adopted the scientific name **VALUE**: Variable renewable electricity

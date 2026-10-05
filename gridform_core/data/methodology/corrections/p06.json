@@ -1,0 +1,297 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "p06",
+  "notes": [
+    "P0-6 default PSM clearing and storage dispatch (plan 4.6 S5-S10). Each profile_gated correction is one field of NativeMarketRules (gridform_core/builtin/scheme_c_1000twh/native_market_rules.py FIELD_CORRECTIONS); the kernel runs only the complete doctoral or complete corrected rule set (require_supported_rules), so these switches are registered together.",
+    "Decision A2: P3-01 (forecast realisation rule, hidden shortfall) is not a switch; both profiles keep the thesis branch and book shortfalls as stress events (P0-4 S6). Decision A6: P4-02 is out of scope.",
+    "P5-06 (physical operating cost) is a universal accounting correction (p06.physical-operating-cost, golden accounting zone only) and, like the P0-4 accounting corrections, is not listed here so that it does not change the applied-corrections hash of either profile; only its VoLL value is profile gated (p06.voll-chronology-parameter)."
+  ],
+  "corrections": [
+    {
+      "id": "p06.d1-surplus-accounting",
+      "package": "p06",
+      "findings": [
+        "P5-04",
+        "DEV-BAL-04"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "VRE surplus not recorded by the default PSM",
+        "summary": "Before P0-6 the default PSM recorded VRE surplus only when a VRE offer was partially accepted: VRE crowded out by zero-priced storage or must-run nuclear vanished from the ledger, and must-run nuclear surplus used for balancing was counted a second time (DEV-BAL-04).",
+        "affected_metrics": [
+          "curtailment",
+          "excess",
+          "storage_charge",
+          "energy_balance"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.MeritKeyAndSurplusTests"
+      },
+      "introduced_in": "P0-6 S5",
+      "deviation_signature": {
+        "diagnostic": "market_rule_diagnostics.unrecorded_vre_mwh",
+        "relation": "> 0 in the doctoral rule set"
+      },
+      "description": "D1-surplus (doctoral_market_kernel.py:898-910): the ahead surplus is rebuilt per source as availability minus acceptance; consumed VRE surplus is gross VRE output, must-run surplus is used before VRE and never generated twice; ledger columns follow the corrected semantics (vre_accepted gross, curtailed = available - gross, excess = non-VRE spill) on native_corrected_full_node_v1."
+    },
+    {
+      "id": "p06.storage-after-generation-merit-key",
+      "package": "p06",
+      "findings": [
+        "P5-04"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": null,
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.MeritKeyAndSurplusTests"
+      },
+      "introduced_in": "P0-6 S5",
+      "deviation_signature": null,
+      "description": "Merit key (round(price, 2), is_storage, price, input order) in the ahead and balancing stages: storage clears after generation in the same 0.01 GBP/MWh band (decision Q8), so zero-priced storage cannot crowd out VRE at 0.0001."
+    },
+    {
+      "id": "p06.avoided-cost-downward-order",
+      "package": "p06",
+      "findings": [
+        "P3-03"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Down regulation in curtail-cost order",
+        "summary": "Before P0-6 the default PSM reduced output in ascending curtail_cost (VRE first), matched ramp history by list position, kept stale requirements after a break and returned budget only to hydro.",
+        "affected_metrics": [
+          "curtailment",
+          "generation_mix",
+          "costs",
+          "emissions"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.DownwardOrderTests"
+      },
+      "introduced_in": "P0-6 S7",
+      "deviation_signature": null,
+      "description": "Avoided-cost down-regulation stack: descending rounded avoided cost (nuclear carries a 100 GBP/MWh dec premium), ties thermal, hydro/biomass, VRE, nuclear, then name; previous output by object identity, ramp floor max(previous - alter_limit, 0); hydro and biomass get the reduced energy back into their budget; requirement left after the stack is in-dispatch spill."
+    },
+    {
+      "id": "p06.storage-net-per-period",
+      "package": "p06",
+      "findings": [
+        "P5-03"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Storage above rated power or charging and discharging in one period",
+        "summary": "Before P0-6 each stage reset a store's power limit (up to twice the rating in one period) and the curtailment branch could discharge and charge the same store in the same period.",
+        "affected_metrics": [
+          "storage_dispatch",
+          "storage_revenue",
+          "prices"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.NettingTests"
+      },
+      "introduced_in": "P0-6 S8",
+      "deviation_signature": null,
+      "description": "One storage position per period: stages share the rated power, a store that discharged buys back (need before surplus) before it can charge, a store that charged offers no discharge; sales are recorded at the period's net position and close_period asserts discharge <= P, no charge with discharge, 0 <= SoC <= E."
+    },
+    {
+      "id": "p06.storage-fee-per-period",
+      "package": "p06",
+      "findings": [
+        "P5-06"
+      ],
+      "track": "profile_gated",
+      "scope": "market_settlement",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": null,
+      "trigger_fixture": {
+        "test": "tests.test_native_operating_cost.SyntheticAccountTests"
+      },
+      "introduced_in": "P0-6 S5",
+      "deviation_signature": {
+        "diagnostic": "market_rule_diagnostics.storage_fee_carry_gbp",
+        "relation": "> 0 in the doctoral rule set"
+      },
+      "description": "The storage offer payment is settled in its own period; the thesis carried the last balancing period's storage fee into later curtailment periods (and into the period cost column)."
+    },
+    {
+      "id": "p06.no-vre-pre-clearing-skim",
+      "package": "p06",
+      "findings": [
+        "P3-08"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "medium",
+        "title": "VRE skimmed to electrolysis before clearing",
+        "summary": "Before P0-6 each VRE diverted up to its electrolyser ramp before clearing, outside the energy ledger, and lost its whole availability when that ramp exceeded it.",
+        "affected_metrics": [
+          "vre_output",
+          "hydrogen",
+          "energy_balance"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.SkimTests"
+      },
+      "introduced_in": "P0-6 S9",
+      "deviation_signature": {
+        "diagnostic": "market_rule_diagnostics.vre_skim_leak_mwh",
+        "relation": ">= 0 in the doctoral rule set"
+      },
+      "description": "No pre-clearing VRE-direct electrolysis; electrolysis only consumes surplus through the flexible-demand step of the clearing."
+    },
+    {
+      "id": "p06.storage-bid-cycle-only",
+      "package": "p06",
+      "findings": [
+        "P5-04"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Linear dwell storage bids",
+        "summary": "Before P0-6 the dynamic storage bid added a linear holding term per period of dwell (LIFO), so stored energy queued up and long-duration storage bid far above its marginal cost.",
+        "affected_metrics": [
+          "storage_dispatch",
+          "storage_revenue",
+          "prices"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.BidBasisTests"
+      },
+      "introduced_in": "P0-6 S10",
+      "deviation_signature": null,
+      "description": "Decision Q8: the built-in dynamic-annual-storage-cost object bids its cycle wear only (pumped hydro and hydrogen bid 0, oldest tranche first); holding recovery is left to investment adequacy. Module-defined bids (legacy tariff, user formula, external modules) are unchanged."
+    },
+    {
+      "id": "p06.storage-uniform-price-settlement",
+      "package": "p06",
+      "findings": [
+        "P5-05"
+      ],
+      "track": "profile_gated",
+      "scope": "market_settlement",
+      "affects": [
+        "accounting",
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "medium",
+        "title": "Storage paid its own maximum bid",
+        "summary": "Before P0-6 storage discharge was paid the highest accepted storage bid instead of the stage's uniform clearing price.",
+        "affected_metrics": [
+          "storage_revenue",
+          "investment"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_native_corrected_rules.UniformSettlementTests"
+      },
+      "introduced_in": "P0-6 S10",
+      "deviation_signature": null,
+      "description": "Decision A8 (2): in each stage every accepted supplier, storage included, is paid the stage's uniform marginal price (the highest accepted generation, storage or import offer). Charging cost and the storage investment test stay with P0-7."
+    },
+    {
+      "id": "p06.voll-chronology-parameter",
+      "package": "p06",
+      "findings": [
+        "P5-06"
+      ],
+      "track": "profile_gated",
+      "scope": "accounting",
+      "affects": [
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": null,
+      "trigger_fixture": {
+        "test": "tests.test_native_operating_cost.VollTests"
+      },
+      "introduced_in": "P0-6 S4",
+      "deviation_signature": null,
+      "description": "Unserved energy in the physical operating cost is valued at market.voll_gbp_per_mwh (default 10000 GBP/MWh); the doctoral rule set keeps the thesis constant 8000 GBP/MWh (plan appendix P0-6 Q7)."
+    }
+  ]
+}

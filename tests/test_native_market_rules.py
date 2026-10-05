@@ -106,14 +106,20 @@ class RuleSetDefinitionTests(unittest.TestCase):
 
 
 class ResolutionTests(unittest.TestCase):
-    def test_both_profiles_resolve_to_the_doctoral_rules_while_every_switch_is_pending(self):
+    def test_profiles_resolve_to_their_complete_rule_sets(self):
+        # P0-6 S5-S10 registered every switch in corrections/p06.json: the
+        # corrected profile (gated "*") resolves to CORRECTED, the frozen
+        # doctoral profile (gated []) to DOCTORAL; nothing is pending.
+        self.assertEqual(PENDING_CORRECTION_IDS, frozenset())
         for profile_id in methodology.profile_ids():
             resolved = methodology.resolve_methodology(profile_id)
             rules = rules_for_methodology(resolved)
-            self.assertIs(rules, DOCTORAL, profile_id)
-        self.assertEqual(
-            rules_module.pending_switches(DOCTORAL), sorted(PENDING_CORRECTION_IDS)
-        )
+            expected = DOCTORAL if profile_id == methodology.REFERENCE_PROFILE_ID else CORRECTED
+            self.assertIs(rules, expected, profile_id)
+            self.assertEqual(rules_module.pending_switches(rules), [])
+        catalogue = methodology.load_catalogue()
+        for correction_id in FIELD_CORRECTIONS.values():
+            self.assertTrue(catalogue.corrections[correction_id].gated, correction_id)
 
     def test_registered_switches_select_the_corrected_rules_only_where_enabled(self):
         temporary, catalogue = _catalogue_with(FIELD_CORRECTIONS.values())
@@ -129,7 +135,7 @@ class ResolutionTests(unittest.TestCase):
     def test_a_partly_registered_catalogue_gives_a_named_partial_rule_set(self):
         temporary, catalogue = _catalogue_with(["p06.storage-bid-cycle-only"])
         self.addCleanup(shutil.rmtree, temporary, True)
-        pending = PENDING_CORRECTION_IDS - {"p06.storage-bid-cycle-only"}
+        pending = frozenset(FIELD_CORRECTIONS.values()) - {"p06.storage-bid-cycle-only"}
         with mock.patch.object(rules_module, "PENDING_CORRECTION_IDS", pending):
             rules = rules_for_methodology(methodology.resolve_methodology(None, catalogue=catalogue))
             pending_in_record = rules_module.pending_switches(rules)

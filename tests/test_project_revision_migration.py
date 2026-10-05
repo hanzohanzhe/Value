@@ -48,11 +48,21 @@ class VersionedRegistry:
         return getattr(self.base, name)
 
 
+def _shipped_and_upgraded() -> tuple[str, str]:
+    from gridform_core.builtin.scheme_c_1000twh.scheme_c_native_psm import SchemeCNativePSM
+
+    major, minor, _patch = (int(part) for part in SchemeCNativePSM.version.split("."))
+    return SchemeCNativePSM.version, f"{major}.{minor + 1}.0"
+
+
+# A hypothetical upgrade one minor version beyond the shipped PSM, derived from
+# the shipped version (which the P0 packages bump).
+SHIPPED, UPGRADED = _shipped_and_upgraded()
+
+
 def _ledger(opt_in: bool):
-    # A hypothetical upgrade one minor version beyond the shipped PSM (P0-4
-    # shipped 5.2.0, so the toy upgrade is 5.2.0 -> 5.3.0).
-    return {PSM: {"baseline_version": "5.2.0", "current_version": "5.3.0", "bumps": [{
-        "from": "5.2.0", "to": "5.3.0", "package": "P0-x", "correction_ids": ["p0x.toy"],
+    return {PSM: {"baseline_version": SHIPPED, "current_version": UPGRADED, "bumps": [{
+        "from": SHIPPED, "to": UPGRADED, "package": "P0-x", "correction_ids": ["p0x.toy"],
         "reason": "test", "requires_user_opt_in": opt_in,
     }]}}
 
@@ -89,7 +99,7 @@ class MigrationTests(unittest.TestCase):
             save_project_revision(self.study, self.saved, self.registry, self.manifest, revision_reason="because")
 
     def test_code_only_module_upgrade_is_appended_automatically(self):
-        upgraded = VersionedRegistry(self.registry, {PSM: "5.3.0"})
+        upgraded = VersionedRegistry(self.registry, {PSM: UPGRADED})
         with patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=False)):
             result = self.classify(upgraded)
             self.assertEqual(result["classification"], "code_identity_upgrade")
@@ -109,7 +119,7 @@ class MigrationTests(unittest.TestCase):
         self.assertNotIn(PROFILE_PARAMETER, saved["parameters"])
 
     def test_opt_in_module_upgrade_needs_the_confirmed_diff(self):
-        upgraded = VersionedRegistry(self.registry, {PSM: "5.3.0"})
+        upgraded = VersionedRegistry(self.registry, {PSM: UPGRADED})
         with patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=True)):
             result = self.classify(upgraded)
             self.assertEqual(result["classification"], "method_upgrade_required")
@@ -347,7 +357,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual((folder / "project.json").read_bytes(), before)
 
     def test_missing_version_ledger_is_reported_not_silently_assumed(self):
-        upgraded = VersionedRegistry(self.registry, {PSM: "5.3.0"})
+        upgraded = VersionedRegistry(self.registry, {PSM: UPGRADED})
         with patch.object(revision_migration, "_ledger", return_value=None):
             result = self.classify(upgraded)
             self.assertEqual(result["ledger_status"], "unavailable")
@@ -364,7 +374,7 @@ class MigrationTests(unittest.TestCase):
     def test_cli_preflight_accepts_a_code_only_change(self):
         """The CLI (application.main) runs the same preflight; a code-only change only warns."""
 
-        upgraded = VersionedRegistry(self.registry, {PSM: "5.3.0"})
+        upgraded = VersionedRegistry(self.registry, {PSM: UPGRADED})
         with patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=False)):
             report = self.preflight(upgraded)
         self.assertNotIn("GF_PREFLIGHT_PROJECT_REVISION", {row["code"] for row in report["errors"]})
@@ -655,7 +665,7 @@ class MigrationApiTests(unittest.TestCase):
             project["parameters"].pop(PROFILE_PARAMETER, None)
             study = home / "projects" / "coded"
             saved = save_project_revision(study, project, registry, manifest)
-            upgraded = VersionedRegistry(server.MODULE_REGISTRY, {PSM: "5.3.0"})
+            upgraded = VersionedRegistry(server.MODULE_REGISTRY, {PSM: UPGRADED})
             spawned, preflighted = [], []
             # The classification and migration are real; the collaborators after
             # admission (preflight, source archive, input snapshot, worker) are stubbed.

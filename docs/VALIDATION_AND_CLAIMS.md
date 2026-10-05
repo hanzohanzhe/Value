@@ -51,3 +51,12 @@ commitment. The reference DC validation remains bounded to its declared convex
 scope. Dynamic storage pricing remains a selectable research policy, and
 each redistributed UK data object remains governed by its recorded upstream
 terms. See `publication/prompt52-final-test-report.md` and the companion JSON.
+
+Default PSM (P0-6): corrected runs close the per-period energy identity
+`native_corrected_full_node_v1` (raw residual <= 1e-6, no compatibility
+adjustment, storage discharge <= rated power and no same-period charge and
+discharge, checked on the VALUE 101 value_101_day and two_year_smoke
+variants) except where the ahead stage could not meet the forecast; those
+shortfalls are reported as stress events (decision A2). Doctoral runs
+reproduce 0.6.0-alpha.2 dispatch and carry declared deviations; they do not
+establish closure of the energy identity.

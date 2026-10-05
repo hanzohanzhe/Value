@@ -21,8 +21,19 @@
     "dynamic-annual-storage-cost": {
       "baseline_version": "1.0.0",
       "baseline_scientific_version": "dynamic-storage-recovery-2026.08.04",
-      "current_version": "1.0.0",
-      "bumps": []
+      "current_version": "2.0.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "2.0.0",
+          "package": "P0-6",
+          "correction_ids": [
+            "p06.storage-bid-cycle-only"
+          ],
+          "reason": "Interface change (plan 4.6 S10, decision Q8): the created DynamicAnnualStorageCost exposes bid_basis, which the default PSM's market rule set owns (cycle_only in the corrected profile). The module's own default (thesis_dwell_linear) and its numbers are unchanged for every other caller; the user-formula module declares 1.0.0 explicitly.",
+          "requires_user_opt_in": false
+        }
+      ]
     },
     "planning-pipeline": {
       "baseline_version": "2.2.0",
@@ -51,7 +62,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "5.2.0",
+      "current_version": "6.0.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -64,6 +75,25 @@
           ],
           "reason": "Energy-balance observation of the default PSM (plan 4.4 S4-S6, decisions Q7, A2, Q12): per-asset storage energy audit, source-classified surplus routing, the market rule set's declared balance boundary with a compatibility adjustment capped at numerical noise, and A2 stress events recorded in the ledger. Dispatch, prices, state of charge, costs and investment paths are unchanged (doctoral trajectory bit-identical); only accounting-zone ledger tables and columns change, so this is a code-identity upgrade without user opt-in (Q13).",
           "requires_user_opt_in": false
+        },
+        {
+          "from": "5.2.0",
+          "to": "6.0.0",
+          "package": "P0-6",
+          "correction_ids": [
+            "p06.physical-operating-cost",
+            "p06.d1-surplus-accounting",
+            "p06.storage-after-generation-merit-key",
+            "p06.avoided-cost-downward-order",
+            "p06.storage-net-per-period",
+            "p06.storage-fee-per-period",
+            "p06.no-vre-pre-clearing-skim",
+            "p06.storage-bid-cycle-only",
+            "p06.storage-uniform-price-settlement",
+            "p06.voll-chronology-parameter"
+          ],
+          "reason": "Default PSM clearing and storage dispatch corrections (plan 4.6 S4-S10, decisions Q8, A2, A8): the kernel runs one of two market rule sets derived from the methodology catalogue. The corrected profile clears with D1-surplus, the storage-after-generation merit key, the avoided-cost down-regulation stack, per-period storage netting, per-period storage fees, no VRE skim, cycle-only dynamic storage bids and uniform-price settlement, so its dispatch, prices, storage state and investment paths change (method upgrade). The doctoral profile keeps the 0.6.0-alpha.2 dispatch bit for bit; both profiles report the P5-06 physical operating cost.",
+          "requires_user_opt_in": true
         }
       ]
     },

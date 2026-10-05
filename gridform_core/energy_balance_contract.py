@@ -174,6 +174,12 @@ BOUNDARY_REGISTRY: tuple[RegistryEntry, ...] = (
         RETAINED_DEMAND_SERVING_V1,
     ),
     RegistryEntry(
+        "value-bid-at-cost-psm", "6.0.0", None, ("doctoral-lineage-0.6.0a2", NATIVE_DOCTORAL_RULE_SET),
+        DEFAULT_PSM_SURPLUS_NODE_V1, EXACT_ARITHMETIC,
+        "doctoral market rule set from P0-6 on (thesis column semantics, surplus routed outside S)",
+        RETAINED_DEMAND_SERVING_V1,
+    ),
+    RegistryEntry(
         "value-bid-at-cost-psm", "6.0.0", None, (NATIVE_CORRECTED_RULE_SET,),
         NATIVE_CORRECTED_FULL_NODE_V1, EXACT_ARITHMETIC,
         "corrected native market rule set (P0-6); ledger columns use the corrected semantics",

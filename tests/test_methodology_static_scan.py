@@ -26,6 +26,11 @@ class StaticScanTests(unittest.TestCase):
         # The repository's consumers of the shipped profile-gated corrections
         # (P0-5a: data_method asks for the p05 gates).
         shutil.copy2(ROOT / "gridform_core" / "data_method.py", folder / "gridform_core" / "data_method.py")
+        # P0-6: the default PSM's market rule set asks for the p06 gates.
+        rules = folder / "gridform_core" / "builtin" / "scheme_c_1000twh"
+        rules.mkdir(parents=True)
+        shutil.copy2(ROOT / "gridform_core" / "builtin" / "scheme_c_1000twh" / "native_market_rules.py",
+                     rules / "native_market_rules.py")
         return folder
 
     def test_unknown_correction_id_in_code_is_reported(self):

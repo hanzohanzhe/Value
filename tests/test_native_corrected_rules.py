@@ -280,6 +280,25 @@ class BidBasisTests(unittest.TestCase):
         self.assertEqual(self._cost("pumped_hydro", "cycle_only").bid_price_gbp_per_mwh(500), 0.0)
         self.assertEqual(list(fixed.ordered_charge_periods({1: 1.0, 5: 1.0}, 9)), [1, 5])
 
+    def test_reports_and_recovery_adequacy_follow_the_basis(self):
+        from gridform_core.storage_recovery import recovery_adequacy
+
+        thesis = self._cost("0.5c", "thesis_dwell_linear")
+        self.assertNotIn("bid_basis", thesis.report())  # thesis reports stay byte-identical
+        fixed = self._cost("0.5c", "cycle_only")
+        for cost in (thesis, fixed):
+            cost.record_sale(10.0, 4)
+        fixed_report = fixed.report()
+        self.assertEqual(fixed_report["bid_basis"], "cycle_only")
+        adequacy = recovery_adequacy(fixed_report)
+        self.assertEqual(adequacy["schema_version"], "value.storage-recovery-adequacy/v2")
+        self.assertAlmostEqual(adequacy["bid_recovered_revenue_gbp"], 10.0 * fixed.cycle_depreciation_gbp_per_mwh)
+        thesis_adequacy = recovery_adequacy(thesis.report())
+        self.assertAlmostEqual(
+            thesis_adequacy["bid_recovered_revenue_gbp"],
+            10.0 * thesis.cycle_depreciation_gbp_per_mwh + 10.0 * 4 * thesis.holding_recovery_gbp_per_mwh_period,
+        )
+
 
 class UniformSettlementTests(unittest.TestCase):
     """p06.storage-uniform-price-settlement (A8, P5-05)."""

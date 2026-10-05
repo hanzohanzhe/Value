@@ -240,6 +240,14 @@ class DynamicAnnualStorageCost:
         return iter(stored_energy)
 
     def report(self) -> dict[str, float | int | str | None | dict]:
+        report = self._report()
+        if self.bid_basis != "thesis_dwell_linear":
+            # VALUE P0-6 S10: only a non-default basis is reported, so thesis
+            # reports stay byte-identical.
+            report["bid_basis"] = self.bid_basis
+        return report
+
+    def _report(self) -> dict[str, float | int | str | None | dict]:
         return {
             "method": "dynamic_annual_average_depreciation_recovery",
             "technology": self.battery_type,
@@ -605,7 +613,9 @@ def restore_storage_cost_runtime(
 
 class DynamicStorageCostDefinition:
     id = "dynamic-annual-storage-cost"
-    version = "1.0.0"
+    # 2.0.0 (VALUE P0-6 S10): the default PSM's market rule set owns the bid
+    # basis of the created DynamicAnnualStorageCost (bid_basis attribute).
+    version = "2.0.0"
     scientific_version = "dynamic-storage-recovery-2026.08.04"
 
     def __init__(self, evidence=None, scientific_parameters: Mapping[str, object] | None = None):
@@ -655,6 +665,9 @@ class SchemeCLegacyStorageCostDefinition:
 
 class UserFormulaStorageCostDefinition(DynamicStorageCostDefinition):
     id = "user-formula-storage-cost"
+    # Declared explicitly (VALUE P0-6 S10): the user formula defines its own
+    # bid and does not follow the dynamic module's 2.0.0 bid-basis interface.
+    version = "1.0.0"
     scientific_version = "user-formula-storage-cost/v1"
 
     def create(self, *, battery_type: str, period_hours: float, **_legacy):
