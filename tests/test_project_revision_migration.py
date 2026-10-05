@@ -359,6 +359,59 @@ class MigrationTests(unittest.TestCase):
             )
 
 
+# project.json files written by save_project_revision of the 35aadb3 code
+# (git archive 35aadb3, tests/golden/projects/<case>.json, the registry of
+# workspace_registry(Path("missing-modules-directory")) and the case's pack
+# manifest), frozen byte for byte.  The revision sha256 are the 35aadb3 values,
+# confirmed independently by the X0 S8-S11 review; they are not produced by
+# this branch's code, so a change that breaks the reconstruction of real
+# pre-S11 Studies fails here.
+STUDIES_35AADB3 = ROOT / "tests" / "fixtures" / "studies-35aadb3"
+REVISIONS_35AADB3 = {
+    "D1": ("value-101-baseline-v1", "8a45ed0fe336b53db5b285b5996dbb5e1ab61e5cd0dc9a98654ca0d327b84c95"),
+    "C1": ("value-101-baseline-v1", "32e3551c1767020493e60ff8668508cb4b1afc3a6ac38417842b62769dbb9cd9"),
+    "C7": ("value-101-network-v1", "2ec91a476a5fa236177c7246b1b8714a1cd0a3f0d61117fc3c92765d976e6724"),
+}
+
+
+class Studies35aadb3Tests(unittest.TestCase):
+    """Real 35aadb3-saved Studies are reconstructed, never unverifiable (S11 against an external oracle)."""
+
+    def test_35aadb3_studies_are_reconstructed_with_only_the_first_methodology_write(self):
+        registry = workspace_registry(Path("missing-modules-directory"))
+        for case, (pack_id, revision) in REVISIONS_35AADB3.items():
+            with self.subTest(case):
+                project = json.loads((STUDIES_35AADB3 / f"{case}.project.json").read_text(encoding="utf-8"))
+                self.assertEqual(project["revision_sha256"], revision)
+                self.assertNotIn("fingerprint_basis", project)
+                manifest = json.loads((ROOT / "data-packs" / pack_id / "manifest.json").read_text(encoding="utf-8"))
+                result = classify_revision_mismatch(project, registry, manifest)
+                # Assert the reconstruction, not the exact classification: a later
+                # data-pack or opt-in module change may add rows (data_changed,
+                # method_upgrade_required) without making the Study unverifiable.
+                self.assertNotEqual(result["basis_source"], "none", result)
+                self.assertTrue(str(result["basis_source"]).startswith("reconstructed_35aadb3"), result["basis_source"])
+                self.assertNotIn(result["classification"], {"unverifiable", "content_changed", "none"})
+                self.assertNotIn("unverifiable", {row.get("classification") for row in result["differences"]})
+                first_write = [row for row in result["differences"] if row.get("dimension") == "methodology"]
+                self.assertTrue(first_write, result["differences"])
+                self.assertTrue(all(row["old"] is None for row in first_write), first_write)
+                self.assertTrue(result["confirmable"])
+
+    def test_confirmed_migration_of_a_35aadb3_study_settles_it(self):
+        registry = workspace_registry(Path("missing-modules-directory"))
+        manifest = json.loads((PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as folder:
+            study = Path(folder) / "projects" / "golden-study"
+            study.mkdir(parents=True)
+            shutil.copyfile(STUDIES_35AADB3 / "D1.project.json", study / "project.json")
+            project = json.loads((study / "project.json").read_text(encoding="utf-8"))
+            result = classify_revision_mismatch(project, registry, manifest)
+            saved, _ = migrate_project_revision(study, registry, manifest, confirm_diff_sha256=result["diff_sha256"])
+            self.assertEqual(saved["parent_revision_sha256"], REVISIONS_35AADB3["D1"][1])
+            self.assertEqual(classify_revision_mismatch(saved, registry, manifest)["classification"], "none")
+
+
 class MigrationApiTests(unittest.TestCase):
     """GET classifies without writing; POST migrates; a run start refuses an unconfirmed method change."""
 

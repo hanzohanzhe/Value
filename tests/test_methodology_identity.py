@@ -137,5 +137,49 @@ class RunRecordTests(unittest.TestCase):
             self.assertEqual(provenance["methodology"]["profile_id"], REFERENCE_PROFILE_ID)
 
 
+class RealRunPairTests(unittest.TestCase):
+    """M2 acceptance on real runs: golden D1 under both profiles differs only in the method dimension."""
+
+    def test_d1_under_both_profiles_changes_only_the_method(self):
+        from gridform_core.application import run_project_application
+        from gridform_core.run_snapshot import create_run_input_snapshot
+        from gridform_core.v2.module_manifest import workspace_registry
+
+        pack_root = ROOT / "data-packs" / "value-101-baseline-v1"
+        registry = workspace_registry(Path("missing-modules-directory"))
+        base = json.loads((ROOT / "tests" / "golden" / "projects" / "D1.json").read_text(encoding="utf-8"))
+        summaries = []
+        with tempfile.TemporaryDirectory() as folder:
+            for name, profile in (("corrected", CORRECTED), ("doctoral", REFERENCE_PROFILE_ID)):
+                project = methodology.with_profile(dict(base, id="d1-pair"), profile)
+                run = Path(folder) / "runs" / name
+                run.mkdir(parents=True)
+                snapshot = create_run_input_snapshot(
+                    run_dir=run, project=project, pack_root=pack_root, registry=registry,
+                    selected=project["modules"], object_root=Path(folder) / "objects",
+                )
+                (run / "model-output").mkdir()
+                run_project_application(project, run_id=name, pack_root=pack_root,
+                                        output_dir=run / "model-output", mode="smoke")
+                status = {"id": name, "project_id": project["id"], "mode": "smoke", "status": "completed",
+                          "input_snapshot_id": snapshot.get("snapshot_id"),
+                          "run_policy": {"start_year": base["start_year"], "end_year": base["start_year"],
+                                         "periods_per_year": 48}}
+                (run / "status.json").write_text(json.dumps(status), encoding="utf-8")
+                summaries.append(build_run_summary(run))
+        identities = [summary["comparison_identity"] for summary in summaries]
+        for identity in identities:
+            self.assertEqual(identity["unknown_reasons"], {})
+        self.assertEqual([identity["dimensions"]["method"]["methodology"]["profile_id"] for identity in identities],
+                         [CORRECTED, REFERENCE_PROFILE_ID])
+        review = compare_run_summaries(summaries)["comparison_review"]
+        self.assertEqual(review["changed_dimensions"], ["method"])
+        self.assertEqual(review["unknown_dimensions"], [])
+        self.assertTrue(review["isolated_change_allowed"])
+        method = [identity["dimensions"]["method"] for identity in identities]
+        self.assertEqual(method[0]["modules"], method[1]["modules"])
+        self.assertEqual(method[0]["extensions"], method[1]["extensions"])
+
+
 if __name__ == "__main__":
     unittest.main()

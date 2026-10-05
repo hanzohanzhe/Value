@@ -1159,6 +1159,9 @@
     "tests/fixtures/runs/pre-fix-legacy-failed/model-output/validation/scientific-validation.json",
     "tests/fixtures/runs/pre-fix-legacy-failed/status.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
+    "tests/fixtures/studies-35aadb3/C1.project.json",
+    "tests/fixtures/studies-35aadb3/C7.project.json",
+    "tests/fixtures/studies-35aadb3/D1.project.json",
     "tests/fixtures/ui-contract/index.json",
     "tests/fixtures/ui-contract/toy-v7.auction-ahead.json",
     "tests/fixtures/ui-contract/toy-v7.auction-curtailment.json",
@@ -9663,6 +9666,24 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/fixtures/studies-35aadb3/C1.project.json",
+      "sha256": "187727c7c3cc05c387ffe72ffbb1c62c3efed1ccc51ee724aeacd68d85294eb8",
+      "bytes": 1526,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/studies-35aadb3/C7.project.json",
+      "sha256": "13072ccfe8233e7b2f5869bcf1e70a4c65bfb08a286096015f916565c4cd022d",
+      "bytes": 1914,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/studies-35aadb3/D1.project.json",
+      "sha256": "b9a913e868c1484832f925b9bd170e5890a081815bbc23f9a5568e9aaaf6d539",
+      "bytes": 1592,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/fixtures/ui-contract/index.json",
       "sha256": "0de81fba5d54d77adc0f3d217180737efbc80635fee7f2642d878a7bbc25fdb7",
       "bytes": 4667,
@@ -10648,8 +10669,8 @@
     },
     {
       "path": "tests/test_methodology_identity.py",
-      "sha256": "8a126ad51213a59509e50f1742f8e989f51f4799e424700d531311eaeccb36fa",
-      "bytes": 8159,
+      "sha256": "373632e2edb3ffad241f1c76974f4638ce4486dad5b3f0b380e4c13e09bed8ba",
+      "bytes": 10991,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10900,8 +10921,8 @@
     },
     {
       "path": "tests/test_project_revision_migration.py",
-      "sha256": "31adf6b461e4e8bbb6c15227958c7479c48ffb8d75fc13a2e72a8d8dbfb8d024",
-      "bytes": 28425,
+      "sha256": "25e4fc65df36ebb28d4991faf4dfb71d1ec8f4fc3f47add98ece9ecdfcbaf575",
+      "bytes": 32126,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
