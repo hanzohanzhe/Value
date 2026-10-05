@@ -818,6 +818,34 @@ def query_dispatch_timeline(
     }
 
 
+def _event_statistics(
+    values: list[float], periods: list[int], year: int, period_hours: float, basis: str,
+) -> dict[str, object]:
+    """Affected periods, longest run and peak of one per-period event series."""
+
+    longest = 0
+    current = 0
+    for value in values:
+        if value > 1e-9:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    peak_index = max(range(len(values)), key=values.__getitem__) if values else None
+    peak_period = periods[peak_index] if peak_index is not None else None
+    return {
+        "basis": basis,
+        "affected_periods": sum(value > 1e-9 for value in values),
+        "longest_event_periods": longest,
+        "longest_event_hours": longest * period_hours,
+        "peak_event_mwh": values[peak_index] if peak_index is not None else None,
+        "peak_event_period": peak_period,
+        "peak_event_timestamp": (
+            _model_timestamp(year, peak_period, period_hours) if peak_period is not None else None
+        ),
+    }
+
+
 def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
     semantic = _semantic_metadata(database)
     period_hours = _period_hours(semantic)
@@ -877,6 +905,21 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
             peak_index = max(range(len(event_values)), key=event_values.__getitem__) if rows else None
             peak_period = int(rows[peak_index]["period"]) if peak_index is not None else None
             reconciliation = available - accepted - neutral_unused
+            # G1-08 (P0-9 S8): the legacy event fields above keep their values;
+            # the two event bases are also reported separately so the UI never
+            # mixes unused VRE with pre-balancing excess plus curtailment.
+            periods = [int(row["period"]) for row in rows]
+            unused_values = [max(
+                float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
+            ) for row in rows]
+            unused_vre_events = _event_statistics(unused_values, periods, year, period_hours, "unused_vre")
+            excess_curtailment_events = (
+                _event_statistics(
+                    [float(row["curtailed_mwh"]) + float(row["excess_mwh"]) for row in rows],
+                    periods, year, period_hours, "excess_plus_balancing_curtailment",
+                )
+                if relationship == "separate_prebalancing" else None
+            )
             results.append({
                 "year": year,
                 "period_count": len(rows),
@@ -919,6 +962,12 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                     if relationship == "alias_of_unused_vre"
                     else "partial_semantic_attribution"
                 ),
+                "event_basis": (
+                    "excess_plus_balancing_curtailment"
+                    if relationship == "separate_prebalancing" else "unused_vre"
+                ),
+                "unused_vre_events": unused_vre_events,
+                "excess_curtailment_events": excess_curtailment_events,
                 "marginal_curtailment_status": "not_evaluated",
                 "marginal_curtailment_reason": "No versioned marginal-capacity experiment artifact is attached to this run.",
             })

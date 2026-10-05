@@ -14,3 +14,8 @@
 .evidence-chart .stress-key { display: inline-flex; align-items: center; gap: 6px; margin-left: 14px; font-size: 12px; color: var(--muted); }
 .evidence-chart .stress-key i { display: inline-block; width: 18px; height: 4px; background: var(--amber); }
 .dispatch-empty code { font-size: 12px; }
+/* Spec 4.1 / 4.5: VRE KPI coverage line and the two event groups. */
+.kpi-coverage { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+.vre-event-group { margin-top: 14px; }
+.vre-event-group h4 { margin: 0 0 4px; font-size: 14px; color: var(--ink); }
+.vre-event-basis { margin: 0 0 8px; font-size: 13px; color: var(--muted); }

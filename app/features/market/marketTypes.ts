@@ -2,6 +2,7 @@
 // tests/frontend/unit/ui-contract-keys.test.mjs checks them against the generated
 // contract fixtures in tests/fixtures/ui-contract (P0-9 S2).
 import type { PriceBasis } from "../shared/format.ts";
+import type { ResultCoverage } from "../shared/coverageView.ts";
 
 export type PriceBasisSource = "declared" | "semantics" | "inferred_from_writer" | "not_declared";
 
@@ -66,6 +67,17 @@ export type VreYear = {
   affected_periods: number; longest_event_hours: number; peak_event_mwh: number | null; peak_event_timestamp: string | null;
   storage_charge_mwh: number; export_mwh: number; flexible_demand_mwh: number; vre_identity_residual_mwh: number;
   coverage_status: string; marginal_curtailment_status: string; marginal_curtailment_reason: string;
+  first_period?: number | null; last_period?: number | null;
+  /** G1-08: the basis of the legacy event fields above. */
+  event_basis?: "unused_vre" | "excess_plus_balancing_curtailment";
+  unused_vre_events?: VreEventStatistics;
+  /** null when the ledger does not separate pre-balancing excess (alias semantics). */
+  excess_curtailment_events?: VreEventStatistics | null;
 };
 
-export type VreSummary = { years: VreYear[]; excess_relationship: string; excess_scope: string; source_artifact_sha256?: string | null };
+export type VreEventStatistics = {
+  basis: string; affected_periods: number; longest_event_periods: number; longest_event_hours: number;
+  peak_event_mwh: number | null; peak_event_period: number | null; peak_event_timestamp: string | null;
+};
+
+export type VreSummary = { years: VreYear[]; excess_relationship: string; excess_scope: string; source_artifact_sha256?: string | null; coverage?: ResultCoverage | null };

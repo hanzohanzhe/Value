@@ -355,6 +355,30 @@ class MarketReplayTests(unittest.TestCase):
         self.assertEqual(sorted(found - set(FLOW_ROLE_BY_TYPE)), [])
         self.assertLessEqual(set(FLOW_ROLE_BY_TYPE.values()), set(FLOW_ROLES))
 
+    def test_event_bases_are_separated(self):
+        # P0-9 S8 (G1-08): three periods; curtailment in period 0, excess in
+        # period 1, nothing in period 2.  Unused VRE (available - accepted) is
+        # positive only in period 0.  The legacy event fields count the
+        # excess+curtailment basis (2 periods) and keep their values.
+        with tempfile.TemporaryDirectory() as folder:
+            database = Path(folder) / "market.sqlite"
+            ledger = create_market_ledger(database, "summary", semantic_metadata={
+                "period_hours": 0.5, "excess_scope": "inflexible_mixed", "excess_relationship": "separate_prebalancing",
+            })
+            ledger.record_period(_period(0, curtailment=1.0))
+            ledger.record_period(_period(1, excess=3.0))
+            ledger.record_period(_period(2))
+            ledger.close()
+            year = query_vre_curtailment_summary(database)["years"][0]
+        self.assertEqual(year["affected_periods"], 2)
+        self.assertEqual(year["event_basis"], "excess_plus_balancing_curtailment")
+        self.assertEqual(year["excess_curtailment_events"]["affected_periods"], 2)
+        self.assertEqual(year["excess_curtailment_events"]["peak_event_period"], 1)
+        self.assertEqual(year["unused_vre_events"]["affected_periods"], 1)
+        self.assertEqual(year["unused_vre_events"]["peak_event_period"], 0)
+        self.assertEqual(year["unused_vre_events"]["peak_event_mwh"], 1.0)
+        self.assertEqual(year["peak_event_mwh"], 3.0, "legacy field unchanged")
+
 
 if __name__ == "__main__":
     unittest.main()

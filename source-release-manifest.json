@@ -58,6 +58,7 @@
     "app/features/market/dispatchView.ts",
     "app/features/market/market-replay.css",
     "app/features/market/marketTypes.ts",
+    "app/features/market/vreView.ts",
     "app/features/modules/ModuleAuthorWorkbench.css",
     "app/features/modules/ModuleAuthorWorkbench.tsx",
     "app/features/modules/module-authoring.types.ts",
@@ -1207,6 +1208,7 @@
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-contract-keys.test.mjs",
     "tests/frontend/unit/ui-test-groups.test.mjs",
+    "tests/frontend/unit/vre-view.test.mjs",
     "tests/golden/cases.json",
     "tests/golden/corrected/C1.json",
     "tests/golden/corrected/C2.json",
@@ -3066,14 +3068,20 @@
     },
     {
       "path": "app/features/market/market-replay.css",
-      "sha256": "2247f7ed065745ad9ea361c5b6f918fdd3b5652fb261bf08cf54b86a8f3dd8c8",
-      "bytes": 1245,
+      "sha256": "fec31380f79a787dfcf4053eb6d4f32f551c04871dac6a4ce58d26a6a2631d7e",
+      "bytes": 1599,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/market/marketTypes.ts",
-      "sha256": "bd1f4017b35cbe8aeb6aa21f2d0e83cd249a3360671e1271064878909aa0b983",
-      "bytes": 4487,
+      "sha256": "736329dbf72ff128b15763a57016af2f14d0fe09e6719e68d91d213fa27556cf",
+      "bytes": 5208,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/market/vreView.ts",
+      "sha256": "3a52a6a83bc7e3ba69892d274264097c2cbdab4afdb03d22eb889d572c77b7fb",
+      "bytes": 3276,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3444,8 +3452,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "be67cc2de8a522116861a0c35996528d94891d63a737e1ad9fc9d7238564cc65",
-      "bytes": 151016,
+      "sha256": "777c14b7900f19926f5b1a50ea6e9ca61f770e5c14df5e0a1b567bc87e80df91",
+      "bytes": 151237,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6150,8 +6158,8 @@
     },
     {
       "path": "e2e/market-visibility.spec.ts",
-      "sha256": "3da42c3be016317a923d05eb4dd6d89e439c00b0df37391292e7db3d70af39e9",
-      "bytes": 10245,
+      "sha256": "090a0362c54b0c5d3c1e6838e422284c87eed0717d9c0a3d4425d900ee0365ad",
+      "bytes": 10484,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7743,8 +7751,8 @@
     },
     {
       "path": "gridform_core/market_replay.py",
-      "sha256": "cc79327a81892ebb35d24f3aed5d97ae17ccce61b077f5ce57f98c8bd5137955",
-      "bytes": 43175,
+      "sha256": "8d6dda7f8dc0d35186f38ead94ef3891f53aafbf24e2a0abeabbc790d2a3696c",
+      "bytes": 45494,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9721,8 +9729,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v7.vre-summary.json",
-      "sha256": "cf4d4df4dd9014105271987f0a028854e2f675559054000ba46a89b1e8c9dab7",
-      "bytes": 1994,
+      "sha256": "e1cc22991a80744f69c12c728962bb947ca49de1a9335eed10cda5e6681e1de2",
+      "bytes": 2483,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9763,8 +9771,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v8.vre-summary.json",
-      "sha256": "dbfcbc3ff86f2555ba64298552811ee336185e26e1911ae00e8713f9baaaaf84",
-      "bytes": 1961,
+      "sha256": "d6470cace7980ee3458e557a0df5e5c0cfa45cd4bb9f22311640e3c6f301366e",
+      "bytes": 2450,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9829,8 +9837,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.vre-summary.json",
-      "sha256": "7f00325357aef4f61602940ce3ee270fb62c7b59beb57fbed31989517a24a028",
-      "bytes": 2164,
+      "sha256": "0b6352d798a3646b1a7045e45496c12578ba6963d004d8735bd81658c5b3c4c7",
+      "bytes": 2683,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9951,6 +9959,12 @@
       "path": "tests/frontend/unit/ui-test-groups.test.mjs",
       "sha256": "4017dd5bf08754c0d2b274ac5eaf63def4f818b92a4e636784321d8cbbef6288",
       "bytes": 1868,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/vre-view.test.mjs",
+      "sha256": "b7341b0e2fb6252c26c833cef29535ac9f16ccab72ff5c624a5dcf122a256e2d",
+      "bytes": 2323,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10687,8 +10701,8 @@
     },
     {
       "path": "tests/test_market_replay.py",
-      "sha256": "af58affa440fae8f86ebedfa2fe85b6301d8a539bcb0695b1aba09a10d69781d",
-      "bytes": 17923,
+      "sha256": "011e06bdc6096b6297cc3d210dc9bee5fb3db302b1de5841b912d4fccf09355f",
+      "bytes": 19491,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -93,6 +93,9 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await page.getByRole("button", { name: /VRE & curtailment/ }).click();
   await expect(page.getByRole("heading", { name: "See how much VRE was available, used and left unused" })).toBeVisible();
   await expect(page.getByText("5% unused")).toBeVisible();
+  // P0-9 S8 (R3-21): a 20 MWh year is shown in MWh, never as 0 TWh.
+  await expect(page.locator(".curtailment-kpis").getByText("20 MWh", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("0 TWh");
   await expect(page.getByText("inflexible mixed", { exact: true })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
