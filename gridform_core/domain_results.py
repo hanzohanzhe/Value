@@ -123,6 +123,27 @@ def _dc_paths(run_root: Path, year: int) -> tuple[Path, Path, Path]:
     return paths
 
 
+def _declared_asset_bus_shares(payload: Mapping[str, object]) -> dict[str, list[list[object]]]:
+    """Every asset's [bus_id, share] rows from the declared DC clearing input.
+
+    Since DC 1.1.0 (P1-01) an asset split over several buses appears only in
+    ``asset_bus_shares``; ``asset_to_bus`` keeps the single-bus assets.  Rows
+    written before 1.1.0 have no share list, so their one-bus map is read as
+    share 1.0.
+    """
+
+    shares = payload.get("asset_bus_shares")
+    if isinstance(shares, Mapping):
+        return {
+            str(asset): [[str(bus), float(share)] for bus, share in rows]
+            for asset, rows in sorted(shares.items())
+        }
+    return {
+        str(asset): [[str(bus), 1.0]]
+        for asset, bus in sorted(dict(payload.get("asset_to_bus") or {}).items())
+    }
+
+
 def _declared_topology(path: Path) -> dict[str, object]:
     first = next((line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()), "")
     if not first:
@@ -141,6 +162,7 @@ def _declared_topology(path: Path) -> dict[str, object]:
         "buses": list(payload.get("buses", ())),
         "branches": branches,
         "asset_to_bus": dict(payload.get("asset_to_bus") or {}),
+        "asset_bus_shares": _declared_asset_bus_shares(payload),
         "reference_buses": list(payload.get("reference_buses", ())),
         "period_hours": float(payload.get("period_hours") or 0.0),
         "source_artifact_sha256": _sha256(path),
@@ -269,6 +291,7 @@ def query_network_summary(run_root: Path, *, year: int) -> dict[str, object]:
             "buses": topology["buses"],
             "branches": list(branches.values()),
             "reference_buses": topology["reference_buses"],
+            "asset_bus_shares": topology["asset_bus_shares"],
             "placement": "schematic_not_geographic",
         },
         "branch_summary": branch_rows,

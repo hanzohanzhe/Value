@@ -12,7 +12,11 @@ from .frontend_contract import validate_project_solver_contract
 from .legacy_module_ids import LEGACY_MODULE_IDS
 from .doctoral_weather import uses_doctoral_weather, weather_execution_identity
 from .v2.module_manifest import ModuleRegistryV2
-from .zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
+from .zonal_solver_contract import (
+    DEFAULT_ZONAL_SOLVER_SETTINGS,
+    solver_contract_generation,
+    validate_recorded_solver_settings,
+)
 
 
 def _canonical_bytes(value: object) -> bytes:
@@ -45,15 +49,19 @@ def canonical_project_payload(
     module_version_overrides: Mapping[str, tuple[str, str]] | None = None,
     include_methodology: bool = True,
     module_resolution_graph: Mapping[str, object] | None = None,
+    recorded_solver_contract: bool = False,
 ) -> dict[str, object]:
     """The canonical identity payload of a Study revision.
 
     ``module_version_overrides`` (module id -> (version, contract version))
-    ``include_methodology=False`` and ``module_resolution_graph`` (the graph
-    stored in project.json, used instead of resolving the current one) exist
+    ``include_methodology=False``, ``module_resolution_graph`` (the graph
+    stored in project.json, used instead of resolving the current one) and
+    ``recorded_solver_contract=True`` (a historical v2/v3 zonal solver
+    contract is read as recorded instead of being refused, P0-8 S5) exist
     only to reconstruct the payload of a revision saved before X0 S11
     (pre-profile, 35aadb3 module versions and module source hashes); see
-    :mod:`gridform_core.revision_migration`.
+    :mod:`gridform_core.revision_migration`.  A payload built that way is an
+    identity record only: it is never saved or executed.
     """
 
     modules = dict(project.get("modules") or {})  # type: ignore[arg-type]
@@ -104,12 +112,23 @@ def canonical_project_payload(
             extension_parameters=dict(project.get("extension_parameters") or {}),
         )
         result["module_resolution_graph"] = graph.to_dict()
-    solver_contract = validate_project_solver_contract(
-        project,
-        registry,
-        modules={str(slot): str(module_id) for slot, module_id in modules.items()},
-        require_acknowledgement=False,
-    )
+    stored_contract = project.get("solver_contract")
+    if (
+        recorded_solver_contract
+        and isinstance(stored_contract, Mapping)
+        and solver_contract_generation(stored_contract) in {"v2", "v3"}
+    ):
+        # The hash a v2/v3 revision was saved with (X0 S11 reconstruction
+        # after the P0-8 v4 contract): the historical contract as recorded,
+        # which its own generation canonicalised to the same values.
+        solver_contract = validate_recorded_solver_settings(stored_contract)
+    else:
+        solver_contract = validate_project_solver_contract(
+            project,
+            registry,
+            modules={str(slot): str(module_id) for slot, module_id in modules.items()},
+            require_acknowledgement=False,
+        )
     if solver_contract is not None:
         result["solver_contract"] = solver_contract
     acknowledgements = dict(project.get("maturity_acknowledgements") or {})
@@ -212,8 +231,12 @@ def derive_zonal_execution_project(
     if module_id != "value-zonal-redispatch-balancing":
         raise ValueError("Zonal source study does not select the zonal balancing module")
     manifest = registry.manifest(module_id, expected_slot="balancing")
-    if manifest.version != "3.0.0" or not manifest.solver_contract:
-        raise ValueError("Zonal balancing module v3.0.0 solver contract is unavailable")
+    # The derivation always targets the registered module and its current
+    # solver contract (v4 since P0-8); historical contracts are never minted.
+    if not manifest.solver_contract:
+        raise ValueError(
+            f"Zonal balancing module v{manifest.version} solver contract is unavailable"
+        )
     if "solver_contract" in candidate:
         raise ValueError("Zonal source study already declares a solver contract")
 

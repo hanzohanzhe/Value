@@ -22,6 +22,7 @@ from .market_ledger import (
     network_solver_evidence_errors,
 )
 from .zonal_solver_contract import (
+    V3_SOLVER_CONTRACT_VERSION,
     RECORDED_REFERENCE_THRESHOLDS,
     DEFAULT_VALIDATED_CEILINGS,
     ObjectiveLockDiagnostic,
@@ -41,6 +42,85 @@ LEGACY_ATTRIBUTION_REASON = (
 SHADOW_VALUE_SEMANTICS = (
     "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost"
 )
+# One declared reporting threshold for load shedding (P0-8 S6).  Shedding at
+# or below it is numerical residue, never a reliability event or an affected
+# zone; it is reported separately as numerical_residual_unserved_mwh.
+LOAD_SHEDDING_REPORTING_THRESHOLD_MWH = 1e-6
+# Known method defects of historical ledgers, derived when reading; stored
+# values are never rewritten (P0-8 S6).
+V3_LOCK_DEFECT = {
+    "defect_id": "p08.zonal-v3-gbp1-lock",
+    "finding_ids": ["P2-01", "F3-01", "P3-09", "R2-02", "P2-07"],
+    "severity": "critical",
+    "summary": (
+        "Recorded under zonal solver contract v3: later lexicographic phases "
+        "could spend the GBP 1 primary allowance, creating about "
+        "1/(VOLL - price) MWh of spurious load shedding per redispatch period, "
+        "spurious reliability events and asset-ID dependent dispatch shifts."
+    ),
+    "affected_outputs": [
+        "reliability_event", "zone_period_summary.load_shedding_mwh",
+        "physical_dispatch", "network_solver_diagnostics.validation_class",
+    ],
+    "remedy": "Re-run with solver contract v4 (migration recovery).",
+}
+
+
+def query_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
+    """Read the per-year run-time fallback audits written beside the ledger.
+
+    ``None`` when the Run wrote none (copperplate, or a ledger from before
+    P0-8 S12; status ``not_recorded`` is for the caller to show).
+    """
+
+    paths = sorted(Path(market_dir).glob("runtime-fallback-audit-*.json"))
+    if not paths:
+        return None
+    years = []
+    for path in paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, Mapping) or payload.get("schema_version") != "value.zonal-runtime-fallback-audit/v1":
+            raise ValueError(f"Invalid runtime fallback audit: {path.name}")
+        years.append(dict(payload))
+    indicative = [
+        {
+            "year": int(year["year"]),
+            "technology": str(row["technology"]),
+            "fallback_fraction": float(row["fallback_fraction"]),
+            "fallback_mw": float(row["fallback_mw"]),
+            "fallback_zone_ids": list(year.get("fallback_zone_ids") or []),
+        }
+        for year in years
+        for row in year.get("by_technology", ())
+        if row.get("spatially_indicative")
+    ]
+    return {
+        "schema_version": "value.zonal-runtime-fallback-summary/v1",
+        "years": years,
+        "spatially_indicative": bool(indicative),
+        "spatially_indicative_technologies": indicative,
+    }
+
+
+def is_reportable_shedding(value: object) -> bool:
+    """True when a load-shedding quantity is above the reporting threshold."""
+
+    return float(value) > LOAD_SHEDDING_REPORTING_THRESHOLD_MWH
+
+
+def ledger_known_defects(connection: sqlite3.Connection, tables: set[str]) -> list[dict[str, object]]:
+    """Known method defects of one ledger, from its recorded solver evidence."""
+
+    defects: list[dict[str, object]] = []
+    if "network_solver_diagnostics" in tables:
+        row = connection.execute(
+            "SELECT COUNT(*) FROM network_solver_diagnostics "
+            "WHERE solver_contract_version=?",
+            (V3_SOLVER_CONTRACT_VERSION,),
+        ).fetchone()
+        if row and int(row[0] or 0):
+            defects.append({**V3_LOCK_DEFECT, "evidence_rows": int(row[0])})
+    return defects
 
 
 def _decoded_metadata(connection: sqlite3.Connection) -> dict[str, object]:
@@ -468,6 +548,7 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
                     ),
                     "detail_location": "market.sqlite:zonal_demand_alignment",
                 }
+        known_defects = ledger_known_defects(connection, tables)
     trace_level = str(metadata.get("trace_level") or "off")
     return {
         "schema_version": "value.zonal-workspace-capabilities/v1",
@@ -507,6 +588,9 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
         ),
         "boundary_value_semantics": SHADOW_VALUE_SEMANTICS,
         "reliability_semantics": "observed_chronology_not_statistical_lole",
+        "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
+        "known_defects": known_defects,
+        "runtime_fallback_audit": query_runtime_fallback_audit(Path(database).parent),
         "security_scope": "not_a_security_analysis",
         "unsupported_scope": [
             "AC_power_flow", "voltage_security", "contingency_security", "dynamic_stability"
@@ -663,9 +747,19 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
             for row in connection.execute("""
                 SELECT year, COUNT(DISTINCT zone_id) AS zones
                 FROM zone_period_summary
-                WHERE load_shedding_mwh > 0 GROUP BY year
-            """).fetchall()
+                WHERE load_shedding_mwh > ? GROUP BY year
+            """, (LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,)).fetchall()
         } if "zone_period_summary" in tables else {}
+        residual_shedding = {
+            int(row["year"]): float(row["residual"] or 0.0)
+            for row in connection.execute("""
+                SELECT year, SUM(load_shedding_mwh) AS residual
+                FROM zone_period_summary
+                WHERE load_shedding_mwh > 0 AND load_shedding_mwh <= ?
+                GROUP BY year
+            """, (LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,)).fetchall()
+        } if "zone_period_summary" in tables else {}
+        known_defects = ledger_known_defects(connection, tables)
     if is_v6:
         recorded_years = {int(row["year"]) for row in base}
         evidence_years = {
@@ -700,6 +794,7 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
             "observed_loss_of_load_events": 0,
         }))
         row["affected_load_shedding_zones"] = affected.get(year, 0)
+        row["numerical_residual_unserved_mwh"] = residual_shedding.get(year, 0.0)
         year_solver_summary = query_solver_validation_summary(
             database,
             year=year,
@@ -786,6 +881,8 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
             "boundary_shadow_value": SHADOW_VALUE_SEMANTICS,
         },
         "reliability_semantics": "observed_chronology_not_statistical_lole",
+        "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
+        "known_defects": known_defects,
         "security_scope": "not_a_security_analysis",
     }
 
@@ -939,10 +1036,16 @@ def build_reliability_events(
             raw = row.get("load_shedding_mwh_by_zone") or {}
             if not isinstance(raw, Mapping):
                 raise ValueError("load_shedding_mwh_by_zone must be an object")
-            deficits = {
+            # Validate every recorded value before the reporting threshold
+            # filter, so negative or non-finite shedding still fails closed.
+            checked = {
                 str(zone): _nonnegative(value, f"load shedding in {zone}")
                 for zone, value in raw.items()
-                if float(value) > 0
+            }
+            deficits = {
+                zone: value
+                for zone, value in checked.items()
+                if is_reportable_shedding(value)
             }
             affected.update(deficits)
             period_deficits.append(sum(deficits.values()))
@@ -968,7 +1071,8 @@ def build_reliability_events(
         raw = row.get("load_shedding_mwh_by_zone") or {}
         if not isinstance(raw, Mapping):
             raise ValueError("load_shedding_mwh_by_zone must be an object")
-        total = sum(_nonnegative(value, "load shedding") for value in raw.values())
+        checked = [_nonnegative(value, "load shedding") for value in raw.values()]
+        total = sum(value for value in checked if is_reportable_shedding(value))
         consecutive = previous is not None and previous == (year, period - 1)
         if total > 0:
             if active and not consecutive:

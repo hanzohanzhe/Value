@@ -1315,7 +1315,7 @@ def _run_native_project(
                 (network_pack_root / "manifest.json").read_text(encoding="utf-8")
             )
             network_pack = load_zonal_network_pack(
-                network_pack_root, network_manifest
+                network_pack_root, network_manifest, topology_policy="enforce"
             )
             declared_pack_id = str(configured.get("network_pack_id") or "")
             if declared_pack_id and declared_pack_id != network_pack.network_pack_id:

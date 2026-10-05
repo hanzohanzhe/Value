@@ -93,6 +93,35 @@ def derived_maturity_acknowledgements(project: Mapping[str, Any], registry: Any 
     return derived
 
 
+def derived_solver_contract(project: Mapping[str, Any]) -> Any:
+    """The current built-in solver contract for a frozen built-in default.
+
+    Frozen projects record the solver contract of their time (C8:
+    ``value.network-solver-contract/v3``).  Executing a historical contract
+    is refused (P0-8 S4/S5, ``GF_SOLVER_CONTRACT_UPGRADE_REQUIRED``); a user
+    upgrades a Study explicitly, a golden fixture has no user, so a frozen
+    contract that was its generation's *built-in default* is replaced by the
+    current built-in default at run time, exactly like the maturity keys
+    above.  The golden revision that follows records the method change under
+    its correction id.  A frozen non-default (custom) contract is never
+    rewritten and fails as it would for a user.
+    """
+
+    from gridform_core.zonal_solver_contract import (
+        DEFAULT_ZONAL_SOLVER_SETTINGS,
+        solver_contract_generation,
+    )
+
+    contract = project.get("solver_contract")
+    if not isinstance(contract, Mapping):
+        return contract
+    if solver_contract_generation(contract) in {"v4", "unknown"}:
+        return contract
+    if contract.get("is_builtin_default") is not True:
+        return contract
+    return DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
+
+
 def build_project(case: Mapping[str, Any], registry: Any = None) -> dict[str, Any]:
     """The frozen project of a golden case plus its overrides.
 
@@ -114,6 +143,8 @@ def build_project(case: Mapping[str, Any], registry: Any = None) -> dict[str, An
     _merge(project, "parameters", case.get("parameters"))
     _merge(project, "runtime_options", case.get("runtime_options"))
     project["maturity_acknowledgements"] = derived_maturity_acknowledgements(project, registry)
+    if "solver_contract" in project:
+        project["solver_contract"] = derived_solver_contract(project)
     project["id"] = "golden-study"
     return project
 

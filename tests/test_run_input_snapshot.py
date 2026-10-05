@@ -15,6 +15,7 @@ from gridform_core.run_snapshot import (
 from gridform_core.project_revision import attach_revision_identity
 from gridform_core.v2.module_manifest import workspace_registry
 from gridform_core.zonal_pack_selection import resolve_zonal_pack_selection
+from gridform_core.frontend_contract import builtin_maturity_acknowledgement_key
 from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 
 
@@ -103,7 +104,7 @@ class RunInputSnapshotTests(unittest.TestCase):
                 "selected_extensions": ["value-zonal-redispatch-extension"],
                 "market_configuration": {"network_pack_id": "signed-network-v1"},
                 "maturity_acknowledgements": {
-                    "module:value-zonal-redispatch-balancing@3.0.0": "value.experimental-ack/v1",
+                    builtin_maturity_acknowledgement_key("module", "value-zonal-redispatch-balancing"): "value.experimental-ack/v1",
                     "module:value-representative-point-weather@1.0.0": "value.experimental-ack/v1",
                     "extension:value-zonal-redispatch-extension@1.0.0": "value.experimental-ack/v1",
                 },

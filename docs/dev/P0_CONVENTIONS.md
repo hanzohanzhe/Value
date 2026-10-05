@@ -62,6 +62,7 @@
 - 每个 golden case 在独立子进程中直接调用 `run_project_application`（避开 P7-02 的进程级天气缓存与 R2-05 的磁盘预检）。
 - golden case 的输入是冻结的 `tests/golden/projects/<case>.json`（35aadb3 课程模板 + 网络变体 + case 覆盖项一次性解析，已用 35aadb3 代码复核逐字节相同），不再读取可变的 `value_101_study()` 模板；cases.json 中的覆盖项在其上合并。已有快照不可修改，新 case 用 `capture.py freeze-projects` 冻结。
 - 快照中的 `maturity_acknowledgements`（如 `module:value-zonal-redispatch-balancing@3.0.0`）不约束 golden：`run_case.build_project` 在运行时按注册表中的当前版本重新推导实验性模块/扩展的确认键（用户同意的语义不适用于 golden 夹具），仍有效的键保持原顺序与取值，过期的键丢弃。因此按 `VERSION_LEDGER` 升级模块版本（如 P0-8 把 zonal 升到 4.0.0）不需要、也不允许修改快照；版本号变化本身只出现在 identity 区。
+- 快照中的 `solver_contract` 同理（P0-8 S4 起）：历史求解合同（v2、v3）只能读取，执行时一律报 `GF_SOLVER_CONTRACT_UPGRADE_REQUIRED`。`run_case.derived_solver_contract` 只在快照记录的是**当代内置默认值**（`is_builtin_default=true`）时，于运行时换成当前内置默认合同（v4）；自定义合同不改写，照常失败。由此带来的数值变化必须在同一提交中以 correction id 追加 golden 修订（C8 的 `p08.zonal-solver-v4`）。
 - **X0 S8 的硬性要求**：引入口径参数的同一提交必须给每个 D case 的 parameters 加上 `"methodology.profile": "doctoral-lineage-0.6.0a2"`，否则 D1–D4 会在默认的 value-corrected 口径下运行。
 
 ## 3 运行时内核（runtime_compat）

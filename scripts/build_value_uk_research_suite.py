@@ -313,7 +313,7 @@ def _reseal_network_pack(source: Path, target: Path) -> tuple[dict[str, object],
         "Licence v3.0. Northern Ireland is excluded.\n",
         encoding="utf-8",
     )
-    load_zonal_network_pack(target, manifest)
+    load_zonal_network_pack(target, manifest, topology_policy="enforce")
     return manifest, network_pack_id
 
 

@@ -2,8 +2,8 @@
   "schema_version": "value.module/v2",
   "id": "value-zonal-redispatch-balancing",
   "name": "VALUE lossless zonal redispatch balancing",
-  "version": "3.0.0",
-  "scientific_version": "value-lossless-zonal-redispatch-gbp1-candidate-2026.10.01",
+  "version": "4.0.0",
+  "scientific_version": "value-lossless-zonal-redispatch-shed-lock-candidate-2026.10.05",
   "slot": "balancing",
   "implementation": "gridform_core.zonal_redispatch:ZonalRedispatchBalancing",
   "contract_version": "value.balancing-module/v1",
@@ -52,11 +52,11 @@
     "network.zonal-redispatch-result/v1": "MW, MWh, GBP"
   },
   "solver_contract": {
-    "schema_path": "gridform_core/data/contracts/network-solver-contract-v3.schema.json",
-    "semantics": "four_phase_lexicographic_primary_total_bid_cost_gbp1_hard_cap_mwh_coefficient_aware",
+    "schema_path": "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
+    "semantics": "four_phase_lexicographic_primary_shed_lock_then_numerical_bid_cost_cap_gbp1_acceptance_ceiling_mwh_coefficient_aware",
     "defaults": {
-      "schema_version": "value.network-solver-contract/v3",
-      "contract_version": "value.zonal-lexicographic-gbp1/v3",
+      "schema_version": "value.network-solver-contract/v4",
+      "contract_version": "value.zonal-lexicographic-shed-lock/v4",
       "method": "highs-ds",
       "presolve": true,
       "primal_feasibility_tolerance": 1e-09,

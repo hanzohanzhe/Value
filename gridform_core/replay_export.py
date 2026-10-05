@@ -20,7 +20,7 @@ from .run_policy import resolve_run_policy
 from .run_snapshot import SnapshotError, verify_run_input_snapshot
 from .v2.module_manifest import workspace_registry
 from .zonal_contracts import load_zonal_network_pack
-from .zonal_solver_contract import validate_solver_settings
+from .zonal_solver_contract import validate_recorded_solver_settings
 
 
 REPLAY_EXPORT_SCHEMA = "value.replay-export/v1"
@@ -387,14 +387,32 @@ def _validated_context(
     return raw, context
 
 
+class ReplayExportError(ValueError):
+    """A replay export refusal; ``code`` is set when the cause has a stable code.
+
+    A Run whose frozen method was superseded (for example a v3 zonal solver
+    contract after the v4 upgrade) is refused here with
+    ``GF_RUN_METHOD_SUPERSEDED``: its results stay readable, but the full
+    replay ZIP re-verifies the frozen snapshot against the current registry.
+    """
+
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 def _verified_snapshot(run_root: Path) -> tuple[dict[str, object], object]:
     registry = workspace_registry()
     try:
         snapshot = verify_run_input_snapshot(
             run_root / "input-snapshot", registry
         )
-    except (OSError, ValueError, SnapshotError) as exc:
-        raise ValueError(f"frozen snapshot identity validation failed: {exc}") from exc
+    except SnapshotError as exc:
+        raise ReplayExportError(
+            f"frozen snapshot identity validation failed: {exc}", exc.code
+        ) from exc
+    except (OSError, ValueError) as exc:
+        raise ReplayExportError(f"frozen snapshot identity validation failed: {exc}") from exc
     status = _read_object(run_root / "status.json", "Official Run status")
     if (
         str(status.get("input_snapshot_id") or "")
@@ -455,9 +473,11 @@ def _validate_snapshot_context_identity(
         registry.manifest(
             str(balancing.get("module_id")), expected_slot="balancing"
         )
-        expected_solver = validate_solver_settings(
+        # Reading a frozen Run: its recorded contract (v2, v3 or v4) is
+        # validated for identity only and never executed (P0-8 S4/S5).
+        expected_solver = validate_recorded_solver_settings(
             project.get("solver_contract")
-        ).to_dict()
+        )
     if _json_bytes(run_context.solver_contract) != _json_bytes(expected_solver):
         raise ValueError("Frozen snapshot identity does not match Run context solver")
     network_hash = snapshot.get("network_pack_manifest_sha256")
@@ -472,6 +492,7 @@ def _validate_snapshot_context_identity(
     try:
         frozen_network = load_zonal_network_pack(
             run_root / "input-snapshot" / "network-pack", network,
+            topology_policy="audit",  # reading a historical Run (P0-8 S11)
         )
     except (OSError, TypeError, ValueError) as exc:
         raise ValueError(f"Frozen network-pack identity validation failed: {exc}") from exc

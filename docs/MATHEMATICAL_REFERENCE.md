@@ -165,7 +165,12 @@ load shedding enter one pay-as-bid LP. Storage retains explicit MW, MWh, SOC and
 efficiency constraints; non-convex bids capable of self-cycling are rejected.
 The hierarchical solution first minimizes signed accepted bid value, then
 absolute deviation from the ahead schedule, physical throughput and a stable
-tie key. Equal bids with the same network effect are accepted pro rata.
+tie key. Equal-price bids in the same direction, zone and network effect are
+accepted pro rata whatever their resource class (solver contract v4); storage
+keeps its own convex identity. A down bid's forced part, the curtailment its
+asset must take because realised availability is below the ahead schedule, is
+carved out first and only the remaining free volume is shared:
+\((x_i-f_i)\,\mathrm{free}_1=(x_1-f_1)\,\mathrm{free}_i\).
 
 This method is a zonal transport abstraction, not DC or AC power flow, security
 analysis, N-1 analysis or transmission expansion. Its Prompt 99 analytical

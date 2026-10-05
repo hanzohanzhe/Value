@@ -11,7 +11,13 @@ from tests import test_frozen_input_integrity as integrity_fixtures
 from tests import test_frozen_input_recovery as recovery_fixtures
 
 
-class FrozenRunRecoveryTests(unittest.TestCase):
+class FrozenRunRecoveryFixture:
+    """Frozen-run recovery fixture and helpers, without test cases.
+
+    Mixed into a ``unittest.TestCase`` by this module and by
+    tests/test_p08_solver_contract_upgrade.py.
+    """
+
     def setUp(self):
         self.fixture = integrity_fixtures.FrozenInputIntegrityTests()
         self.fixture.setUp()
@@ -78,6 +84,8 @@ class FrozenRunRecoveryTests(unittest.TestCase):
             root = self.root / name
             self.assertFalse(root.exists() and any(root.iterdir()), name)
 
+
+class FrozenRunRecoveryTests(FrozenRunRecoveryFixture, unittest.TestCase):
     def test_missing_archive_strict_rejects_migration_reports_changed_method(self):
         strict, _ = self.review(mode="strict")
         self.assertFalse(strict["allowed"])

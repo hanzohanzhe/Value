@@ -1,0 +1,195 @@
+{
+ "cases": {
+  "storage_explicit": {
+   "generation_mwh_by_asset": {
+    "battery-a": 0.0,
+    "battery-b": 5.0,
+    "gas": 50.0,
+    "peaker": 30.0
+   },
+   "objective_gbp": 15500.0,
+   "periods": [
+    {
+     "blackout_mwh_by_bus": {
+      "A": 0.0,
+      "B": 0.0
+     },
+     "branch_flow_mw": {
+      "AB": 5.0
+     },
+     "curtailment_mwh_by_bus": {
+      "A": 0,
+      "B": 0
+     },
+     "network_losses_mwh": null,
+     "nodal_injection_mwh": {
+      "A": 5.0,
+      "B": 0.0
+     },
+     "nodal_price_gbp_per_mwh": {
+      "A": 10.0,
+      "B": 500.0
+     },
+     "nodal_withdrawal_mwh": {
+      "A": 0.0,
+      "B": 5.0
+     },
+     "period_id": "p0",
+     "reactive_injection_mvarh": null,
+     "residuals": {
+      "maximum_nodal_balance_mwh": 0.0,
+      "maximum_solver_equality": 0.0
+     },
+     "schema_version": "value.network-period-result/v1",
+     "unsupported": {
+      "network_losses_mwh": "Linear DC approximation is lossless",
+      "reactive_injection_mvarh": "Linear DC approximation does not model reactive power",
+      "voltage_magnitude_pu": "Linear DC approximation does not model voltage magnitude"
+     },
+     "voltage_angle_radians": {
+      "A": 0.0,
+      "B": -0.005
+     },
+     "voltage_magnitude_pu": null
+    },
+    {
+     "blackout_mwh_by_bus": {
+      "A": 0.0,
+      "B": 0.0
+     },
+     "branch_flow_mw": {
+      "AB": 5.0
+     },
+     "curtailment_mwh_by_bus": {
+      "A": 0,
+      "B": 0
+     },
+     "network_losses_mwh": null,
+     "nodal_injection_mwh": {
+      "A": 45.0,
+      "B": 35.0
+     },
+     "nodal_price_gbp_per_mwh": {
+      "A": 10.0,
+      "B": 500.0
+     },
+     "nodal_withdrawal_mwh": {
+      "A": 40.0,
+      "B": 40.0
+     },
+     "period_id": "p1",
+     "reactive_injection_mvarh": null,
+     "residuals": {
+      "maximum_nodal_balance_mwh": 0.0,
+      "maximum_solver_equality": 0.0
+     },
+     "schema_version": "value.network-period-result/v1",
+     "unsupported": {
+      "network_losses_mwh": "Linear DC approximation is lossless",
+      "reactive_injection_mvarh": "Linear DC approximation does not model reactive power",
+      "voltage_magnitude_pu": "Linear DC approximation does not model voltage magnitude"
+     },
+     "voltage_angle_radians": {
+      "A": 0.0,
+      "B": -0.005
+     },
+     "voltage_magnitude_pu": null
+    }
+   ],
+   "storage": {
+    "battery-a": {
+     "charge": [
+      0.0,
+      -0.0
+     ],
+     "discharge": [
+      -0.0,
+      0.0
+     ],
+     "soc": [
+      0.0,
+      0.0
+     ]
+    },
+    "battery-b": {
+     "charge": [
+      5.0,
+      0.0
+     ],
+     "discharge": [
+      0.0,
+      5.0
+     ],
+     "soc": [
+      5.0,
+      0.0
+     ]
+    }
+   },
+   "total_operational_cost_gbp": 15500.0
+  },
+  "three_bus_explicit": {
+   "generation_mwh_by_asset": {
+    "gas": 0.0,
+    "wind-a": 100.0,
+    "wind-b": 100.0
+   },
+   "objective_gbp": 0.0,
+   "periods": [
+    {
+     "blackout_mwh_by_bus": {
+      "A": 0.0,
+      "B": 0.0,
+      "C": 0.0
+     },
+     "branch_flow_mw": {
+      "AB": -0.0,
+      "BC": -0.0
+     },
+     "curtailment_mwh_by_bus": {
+      "A": 0.0,
+      "B": 0.0,
+      "C": 0
+     },
+     "network_losses_mwh": null,
+     "nodal_injection_mwh": {
+      "A": 100.0,
+      "B": 100.0,
+      "C": 0.0
+     },
+     "nodal_price_gbp_per_mwh": {
+      "A": -0.0,
+      "B": -0.0,
+      "C": -0.0
+     },
+     "nodal_withdrawal_mwh": {
+      "A": 100.0,
+      "B": 100.0,
+      "C": 0.0
+     },
+     "period_id": "p0",
+     "reactive_injection_mvarh": null,
+     "residuals": {
+      "maximum_nodal_balance_mwh": 0.0,
+      "maximum_solver_equality": 0.0
+     },
+     "schema_version": "value.network-period-result/v1",
+     "unsupported": {
+      "network_losses_mwh": "Linear DC approximation is lossless",
+      "reactive_injection_mvarh": "Linear DC approximation does not model reactive power",
+      "voltage_magnitude_pu": "Linear DC approximation does not model voltage magnitude"
+     },
+     "voltage_angle_radians": {
+      "A": 0.0,
+      "B": -0.0,
+      "C": -0.0
+     },
+     "voltage_magnitude_pu": null
+    }
+   ],
+   "storage": {},
+   "total_operational_cost_gbp": 0.0
+  }
+ },
+ "generated_from": "gridform_core/network_dc.py at c664330^ (value-reference-dc-network 1.0.0)"
+}

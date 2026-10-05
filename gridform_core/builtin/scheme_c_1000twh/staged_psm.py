@@ -271,6 +271,79 @@ def _resource_class(resource: DispatchResource) -> str:
     return "thermal"
 
 
+RUNTIME_FALLBACK_AUDIT_SCHEMA = "value.zonal-runtime-fallback-audit/v1"
+# P0-8 OQ-7: above this share of a technology's capacity sitting in an
+# unconstrained fallback zone, the zonal result is only spatially indicative.
+SPATIALLY_INDICATIVE_FALLBACK_FRACTION = 0.10
+
+
+def runtime_fallback_audit(
+    *,
+    year: int,
+    fallback_zone_ids: Sequence[str],
+    allocations: Sequence[Mapping[str, object]],
+    threshold_fraction: float = SPATIALLY_INDICATIVE_FALLBACK_FRACTION,
+) -> dict[str, object]:
+    """Pure annual audit of capacity placed in unconstrained fallback zones.
+
+    ``allocations`` holds one row per spatialised asset: ``asset_id``,
+    ``technology``, ``capacity_mw``, ``shares`` ({zone: share}) and
+    ``allocation_source`` (``frozen_zone_shares``, ``pack_mapping``,
+    ``interconnector_landing`` or ``runtime_fallback`` - the last is an asset
+    with no allocation at all that was placed in the single fallback zone).
+    Totals are per technology; a technology whose fallback share exceeds
+    ``threshold_fraction`` is flagged ``spatially_indicative`` (P2-13 / P1-14).
+    The same inputs always give the same audit, so a resumed year reproduces it.
+    """
+
+    fallback = set(str(zone) for zone in fallback_zone_ids)
+    by_technology: dict[str, dict[str, float]] = {}
+    assets: list[dict[str, object]] = []
+    for row in sorted(allocations, key=lambda item: str(item["asset_id"])):
+        technology = str(row.get("technology") or "other")
+        capacity = float(row.get("capacity_mw") or 0.0)
+        shares = {str(zone): float(share) for zone, share in dict(row.get("shares") or {}).items()}
+        fallback_share = math.fsum(share for zone, share in shares.items() if zone in fallback)
+        totals = by_technology.setdefault(
+            technology, {"capacity_mw": 0.0, "fallback_mw": 0.0, "runtime_unallocated_mw": 0.0}
+        )
+        totals["capacity_mw"] += capacity
+        totals["fallback_mw"] += capacity * fallback_share
+        if row.get("allocation_source") == "runtime_fallback":
+            totals["runtime_unallocated_mw"] += capacity
+        if fallback_share > 0:
+            assets.append({
+                "asset_id": str(row["asset_id"]),
+                "technology": technology,
+                "capacity_mw": capacity,
+                "fallback_mw": capacity * fallback_share,
+                "allocation_source": str(row.get("allocation_source") or ""),
+            })
+    technologies = []
+    for technology in sorted(by_technology):
+        totals = by_technology[technology]
+        fraction = (
+            totals["fallback_mw"] / totals["capacity_mw"] if totals["capacity_mw"] > 0 else 0.0
+        )
+        technologies.append({
+            "technology": technology,
+            "capacity_mw": totals["capacity_mw"],
+            "fallback_mw": totals["fallback_mw"],
+            "fallback_fraction": fraction,
+            "runtime_unallocated_mw": totals["runtime_unallocated_mw"],
+            "spatially_indicative": fraction > threshold_fraction,
+        })
+    return {
+        "schema_version": RUNTIME_FALLBACK_AUDIT_SCHEMA,
+        "year": int(year),
+        "fallback_zone_ids": sorted(fallback),
+        "threshold_fraction": float(threshold_fraction),
+        "by_technology": technologies,
+        "assets": assets,
+        "spatially_indicative": any(row["spatially_indicative"] for row in technologies),
+    }
+
+
 def _owner_id(resource: object) -> str:
     extensions = dict(getattr(resource, "extensions", {}) or {})
     return str(
@@ -517,6 +590,7 @@ class StagedBidAtCostPSM:
         self._weather_spatializer_identity: tuple[str, str] | None = None
         self._ledger_detail = "summary"
         self._invocations: list[int] = []
+        self._runtime_fallback_audits: dict[int, dict[str, object]] = {}
         self._run_context: RunStaticContext | None = None
         self._resolver: ImmutableContextResolver | None = None
         self._run_context_ref: RunContextRef | None = None
@@ -793,12 +867,19 @@ class StagedBidAtCostPSM:
         )
 
     def _zone_shares(self, asset_id: str, extensions: Mapping[str, object]) -> dict[str, float]:
+        return self._zone_shares_with_source(asset_id, extensions)[0]
+
+    def _zone_shares_with_source(
+        self, asset_id: str, extensions: Mapping[str, object]
+    ) -> tuple[dict[str, float], str]:
         if self._network_pack is None:
-            return {"GB": 1.0}
+            return {"GB": 1.0}, "copperplate"
         raw = extensions.get("frozen_zone_shares")
+        source = "frozen_zone_shares"
         if isinstance(raw, Mapping):
             shares = {str(key): float(value) for key, value in raw.items()}
         else:
+            source = "pack_mapping"
             shares = {
                 row.zone_id: float(row.share)
                 for row in self._network_pack.asset_mappings
@@ -814,20 +895,24 @@ class StagedBidAtCostPSM:
             )
             if landing is not None:
                 shares = {landing.zone_id: 1.0}
+                source = "interconnector_landing"
         if not shares:
             fallback = [
                 zone.zone_id for zone in self._network_pack.zones
                 if zone.is_unconstrained_fallback
             ]
             if len(fallback) == 1:
+                # Still placed in the fallback zone (behaviour unchanged), but
+                # no longer silently: runtime_fallback_audit reports it.
                 shares = {fallback[0]: 1.0}
+                source = "runtime_fallback"
         total = sum(shares.values())
         if total <= 0 or abs(total - 1.0) > 1e-8:
             raise ValueError(f"Asset {asset_id} lacks one reconciled frozen zonal allocation")
         known = {zone.zone_id for zone in self._network_pack.zones}
         if not set(shares).issubset(known):
             raise ValueError(f"Asset {asset_id} has an allocation outside the network pack")
-        return dict(sorted(shares.items()))
+        return dict(sorted(shares.items())), source
 
     def _spatialized_input(
         self, model_input: PSMInput
@@ -852,8 +937,14 @@ class StagedBidAtCostPSM:
         zones: dict[str, str] = {}
         resources: list[DispatchResource] = []
         storage: list[StorageDispatchResource] = []
+        allocations: list[dict[str, object]] = []
         for resource in chronology.resources:
-            shares = self._zone_shares(resource.asset_id, resource.extensions)
+            shares, source = self._zone_shares_with_source(resource.asset_id, resource.extensions)
+            allocations.append({
+                "asset_id": resource.asset_id, "technology": resource.technology,
+                "capacity_mw": resource.capacity_mw, "shares": shares,
+                "allocation_source": source,
+            })
             for zone_id, share in shares.items():
                 tranche_id = (
                     resource.asset_id
@@ -879,7 +970,12 @@ class StagedBidAtCostPSM:
                 ))
                 bases[tranche_id], owners[tranche_id], zones[tranche_id] = base, owner, zone_id
         for resource in chronology.storage:
-            shares = self._zone_shares(resource.asset_id, resource.extensions)
+            shares, source = self._zone_shares_with_source(resource.asset_id, resource.extensions)
+            allocations.append({
+                "asset_id": resource.asset_id, "technology": resource.technology,
+                "capacity_mw": resource.discharge_power_mw, "shares": shares,
+                "allocation_source": source,
+            })
             for zone_id, share in shares.items():
                 tranche_id = (
                     resource.asset_id
@@ -907,6 +1003,14 @@ class StagedBidAtCostPSM:
                     extensions=extensions,
                 ))
                 bases[tranche_id], owners[tranche_id], zones[tranche_id] = base, owner, zone_id
+        self._runtime_fallback_audits[int(model_input.year)] = runtime_fallback_audit(
+            year=int(model_input.year),
+            fallback_zone_ids=[
+                zone.zone_id for zone in self._network_pack.zones
+                if zone.is_unconstrained_fallback
+            ],
+            allocations=allocations,
+        )
         zonal_chronology = replace(
             chronology,
             resources=tuple(resources),
@@ -1369,13 +1473,17 @@ class StagedBidAtCostPSM:
             configured_defaults = self._run_context.solver_contract.get("defaults")
             if isinstance(configured_defaults, Mapping):
                 solver_contract_defaults = configured_defaults
+        # C22: the maintained balancing identity comes from the module class,
+        # so a version bump cannot silently disable subannual restore.
+        from ...zonal_redispatch import ZonalRedispatchBalancing
+
         maintained_zonal_runtime = (
             self._network_pack is not None
             and (
                 str(getattr(self._balancing, "id", "")),
                 str(getattr(self._balancing, "version", "")),
             )
-            == ("value-zonal-redispatch-balancing", "3.0.0")
+            == (ZonalRedispatchBalancing.id, ZonalRedispatchBalancing.version)
             and self._run_context is not None
             and str(
                 self._run_context.solver_contract.get("contract_version")
@@ -2779,6 +2887,21 @@ class StagedBidAtCostPSM:
                 checksum_sha256=_sha256_file(year_path),
                 size_bytes=year_path.stat().st_size,
             ))
+            fallback_audit = self._runtime_fallback_audits.get(int(model_input.year))
+            if self._network_pack is not None and fallback_audit is not None:
+                audit_path = market_dir / f"runtime-fallback-audit-{model_input.year}.json"
+                audit_path.write_text(
+                    json.dumps(fallback_audit, indent=2, ensure_ascii=False, sort_keys=True),
+                    encoding="utf-8",
+                )
+                artifact_rows.append(ArtifactReference(
+                    f"market/runtime-fallback-audit-{model_input.year}.json",
+                    "zonal-runtime-fallback-audit",
+                    str(audit_path),
+                    "application/json",
+                    checksum_sha256=_sha256_file(audit_path),
+                    size_bytes=audit_path.stat().st_size,
+                ))
             ledger_path = market_dir / "market.sqlite"
             if ledger_path.is_file():
                 artifact_rows.append(ArtifactReference(

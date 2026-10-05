@@ -456,8 +456,41 @@ def _binding_path(pack_root: Path, binding: Mapping[str, object]) -> Path:
     return path
 
 
-def load_zonal_network_pack(pack_root: Path, manifest: Mapping[str, object] | None = None) -> ZonalNetworkPack:
-    """Load and validate the eight required zonal roles without runtime downloads."""
+def load_zonal_network_pack(
+    pack_root: Path,
+    manifest: Mapping[str, object] | None = None,
+    *,
+    topology_policy: str,
+) -> ZonalNetworkPack:
+    """Load and validate the eight required zonal roles without runtime downloads.
+
+    ``topology_policy`` is required (P0-8 S11): ``"enforce"`` rejects a pack
+    whose boundaries are not the cuts they claim to be
+    (:func:`classify_cutsets`); ``"audit"`` only reads (historical Runs,
+    recovery and import review), and callers obtain the classification from
+    :func:`audit_zonal_network_topology`.
+    """
+
+    pack, _report = _load_zonal_network_pack(pack_root, manifest, topology_policy=topology_policy)
+    return pack
+
+
+def audit_zonal_network_topology(
+    pack_root: Path, manifest: Mapping[str, object] | None = None
+) -> tuple[ZonalNetworkPack, dict[str, object]]:
+    """Load a pack read-only and return its derived cut-set classification."""
+
+    return _load_zonal_network_pack(pack_root, manifest, topology_policy="audit")
+
+
+def _load_zonal_network_pack(
+    pack_root: Path,
+    manifest: Mapping[str, object] | None,
+    *,
+    topology_policy: str,
+) -> tuple[ZonalNetworkPack, dict[str, object]]:
+    if topology_policy not in TOPOLOGY_POLICIES:
+        raise ValueError(f"topology_policy must be one of {TOPOLOGY_POLICIES}")
     pack_root = Path(pack_root).resolve()
     if manifest is None:
         manifest = json.loads((pack_root / "manifest.json").read_text(encoding="utf-8"))
@@ -497,4 +530,200 @@ def load_zonal_network_pack(pack_root: Path, manifest: Mapping[str, object] | No
         provenance=identity.get("provenance", {}),  # type: ignore[arg-type]
     )
     pack.validate()
-    return pack
+    report = classify_cutsets(
+        pack, tuple(payloads["value.zonal.cutsets"].get("cutsets", ()))  # type: ignore[arg-type]
+    )
+    report["topology_policy"] = topology_policy
+    if topology_policy == "enforce" and report["error_count"]:
+        raise ZonalTopologyError(report)
+    return pack, report
+
+
+def pack_fallback_assets(pack: ZonalNetworkPack) -> dict[str, object]:
+    """Assets the pack itself places in an unconstrained fallback zone (P2-13).
+
+    Read-only preflight evidence; the run-time audit
+    (``staged_psm.runtime_fallback_audit``) must report the same assets with
+    allocation source ``pack_mapping``.
+    """
+
+    fallback = sorted(zone.zone_id for zone in pack.zones if zone.is_unconstrained_fallback)
+    rows = sorted(
+        (
+            {
+                "asset_id": mapping.asset_id,
+                "technology": mapping.technology,
+                "zone_id": mapping.zone_id,
+                "share": float(mapping.share),
+                "mapping_method": mapping.mapping_method,
+            }
+            for mapping in pack.asset_mappings
+            if mapping.zone_id in fallback and mapping.asset_class != "demand"
+        ),
+        key=lambda row: (str(row["technology"]), str(row["asset_id"])),
+    )
+    return {"fallback_zone_ids": fallback, "assets": rows}
+
+
+# --------------------------------------------------------------------------
+# Cut-set classification (P0-8 S11, findings P1-05 / P2-15)
+# --------------------------------------------------------------------------
+
+TOPOLOGY_POLICIES = ("enforce", "audit")
+CUTSET_CLASSIFICATION_SCHEMA = "value.zonal-cutset-classification/v1"
+
+
+class ZonalTopologyError(ValueError):
+    """A declared boundary is not the graph cut it claims to be."""
+
+    def __init__(self, report: Mapping[str, object]) -> None:
+        self.report = dict(report)
+        errors = [
+            f"{row['boundary_id']}: {', '.join(row['errors'])}"
+            for row in report.get("boundaries", ())  # type: ignore[union-attr]
+            if row.get("errors")
+        ]
+        super().__init__("Zonal cut sets are invalid: " + "; ".join(errors))
+
+
+def _components(zone_ids: Sequence[str], edges: Sequence[tuple[str, str]]) -> dict[str, int]:
+    adjacency: dict[str, set[str]] = {zone: set() for zone in zone_ids}
+    for left, right in edges:
+        adjacency[left].add(right)
+        adjacency[right].add(left)
+    label: dict[str, int] = {}
+    for start in zone_ids:
+        if start in label:
+            continue
+        index = len(set(label.values()))
+        stack = [start]
+        while stack:
+            zone = stack.pop()
+            if zone in label:
+                continue
+            label[zone] = index
+            stack.extend(adjacency[zone].difference(label))
+    return label
+
+
+def classify_cutsets(
+    pack: ZonalNetworkPack,
+    raw_cutsets: Sequence[Mapping[str, object]] | None = None,
+) -> dict[str, object]:
+    """Classify every boundary as a declared-partition cut, a cut or a corridor limit.
+
+    * A boundary that declares ``positive_side_zone_ids`` /
+      ``negative_side_zone_ids`` (raw cut-set rows; the contract does not
+      carry them, so the pack hash is unchanged) must be exactly the set of
+      corridors crossing that partition, every member oriented from the
+      positive to the negative side: otherwise ``partition_mismatch``,
+      ``bypass`` (a non-member corridor crosses, including through an
+      unconstrained fallback zone) or ``orientation_conflict``.
+    * An undeclared multi-member boundary must be a graph cut: removing its
+      members separates the positive side S (from-zone of a +1 member, or
+      to-zone of a -1 member) from every member's other end, with consistent
+      signs; otherwise ``not_a_cut`` / ``orientation_conflict``.
+    * An undeclared single-member boundary that is not a cut is a
+      ``corridor_limit`` (a rating on one corridor, e.g. Western Link or a
+      thermal AC limit): accepted and labelled, never treated as an ETYS
+      boundary.
+
+    The result is derived data; it never changes the pack or its hash.
+    """
+
+    zone_ids = [zone.zone_id for zone in pack.zones]
+    corridors = {corridor.corridor_id: corridor for corridor in pack.corridors}
+    raw_by_id = {
+        str(row.get("boundary_id")): row for row in (raw_cutsets or ()) if isinstance(row, Mapping)
+    }
+    rows: list[dict[str, object]] = []
+    for boundary in pack.cutsets:
+        members = {member.corridor_id: int(member.coefficient) for member in boundary.members}
+        raw = raw_by_id.get(boundary.boundary_id, {})
+        positive = raw.get("positive_side_zone_ids")
+        negative = raw.get("negative_side_zone_ids")
+        errors: list[str] = []
+        declared = isinstance(positive, (list, tuple)) and isinstance(negative, (list, tuple))
+        side: set[str]
+        if declared:
+            side = {str(zone) for zone in positive}  # type: ignore[union-attr]
+            other = {str(zone) for zone in negative}  # type: ignore[union-attr]
+            if side & other or (side | other) != set(zone_ids):
+                errors.append("partition_mismatch")
+        else:
+            # Remove the members; each remaining component must lie wholly on
+            # one side.  A +1 member runs from the positive side S to the
+            # other side, a -1 member the reverse; the sides of the touched
+            # components follow from the members (a component may be a single
+            # zone that only the members connected).
+            remaining = [
+                (corridor.from_zone_id, corridor.to_zone_id)
+                for corridor_id, corridor in corridors.items()
+                if corridor_id not in members
+            ]
+            label = _components(zone_ids, remaining)
+            component_side: dict[int, bool] = {}
+            separable = True
+            for corridor_id, coefficient in members.items():
+                corridor = corridors[corridor_id]
+                origin, target = label[corridor.from_zone_id], label[corridor.to_zone_id]
+                if origin == target:
+                    separable = False
+                    continue
+                for component, value in ((origin, coefficient > 0), (target, coefficient < 0)):
+                    if component_side.setdefault(component, value) != value:
+                        errors.append("orientation_conflict")
+            side = {zone for zone in zone_ids if component_side.get(label[zone]) is True}
+            if not separable:
+                errors.append("not_a_cut")
+        crossing = {
+            corridor_id
+            for corridor_id, corridor in corridors.items()
+            if (corridor.from_zone_id in side) != (corridor.to_zone_id in side)
+        }
+        member_ids = set(members)
+        oriented = all(
+            (corridors[corridor_id].from_zone_id in side) == (coefficient > 0)
+            for corridor_id, coefficient in members.items()
+            if corridor_id in crossing
+        )
+        if declared:
+            if member_ids - crossing:
+                errors.append("partition_mismatch")
+            if crossing - member_ids:
+                errors.append("bypass")
+            if not oriented:
+                errors.append("orientation_conflict")
+            kind = "declared_partition_cut"
+        else:
+            if "not_a_cut" not in errors and (member_ids - crossing or crossing - member_ids):
+                errors.append("not_a_cut")
+            if not errors:
+                kind = "cut"
+            elif len(members) == 1 and errors == ["not_a_cut"]:
+                kind = "corridor_limit"
+                errors = []
+            elif "not_a_cut" in errors:
+                kind = "not_a_cut"
+            else:
+                kind = "cut"
+        rows.append({
+            "boundary_id": boundary.boundary_id,
+            "classification": kind,
+            "member_count": len(members),
+            "partition_declared": declared,
+            "positive_side_zone_ids": sorted(side) if kind != "corridor_limit" else [],
+            "bypass_corridor_ids": sorted(crossing - member_ids) if kind != "corridor_limit" else [],
+            "errors": sorted(set(errors)),
+        })
+    return {
+        "schema_version": CUTSET_CLASSIFICATION_SCHEMA,
+        "network_pack_id": pack.network_pack_id,
+        "scientific_sha256": pack.scientific_sha256,
+        "boundaries": rows,
+        "error_count": sum(len(row["errors"]) for row in rows),  # type: ignore[arg-type]
+        "counts": {
+            kind: sum(1 for row in rows if row["classification"] == kind)
+            for kind in ("declared_partition_cut", "cut", "corridor_limit", "not_a_cut")
+        },
+    }

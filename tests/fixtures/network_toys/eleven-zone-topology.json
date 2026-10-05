@@ -1,0 +1,636 @@
+{
+ "corridors": [
+  {
+   "corridor_id": "AC:T1--T2",
+   "from_zone_id": "T1",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T2"
+  },
+  {
+   "corridor_id": "AC:T2--T3",
+   "from_zone_id": "T2",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T3"
+  },
+  {
+   "corridor_id": "AC:T3--T4",
+   "from_zone_id": "T3",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T4"
+  },
+  {
+   "corridor_id": "AC:T4--T5",
+   "from_zone_id": "T4",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T5"
+  },
+  {
+   "corridor_id": "AC:T5--T6",
+   "from_zone_id": "T5",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T6"
+  },
+  {
+   "corridor_id": "AC:T5--T8",
+   "from_zone_id": "T5",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T8"
+  },
+  {
+   "corridor_id": "AC:T6--T7",
+   "from_zone_id": "T6",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T7"
+  },
+  {
+   "corridor_id": "AC:T6--T8",
+   "from_zone_id": "T6",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T8"
+  },
+  {
+   "corridor_id": "AC:T6--T11",
+   "from_zone_id": "T6",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T11"
+  },
+  {
+   "corridor_id": "AC:T8--T9",
+   "from_zone_id": "T8",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T9"
+  },
+  {
+   "corridor_id": "AC:T8--T10",
+   "from_zone_id": "T8",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T10"
+  },
+  {
+   "corridor_id": "AC:T9--T10",
+   "from_zone_id": "T9",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T10"
+  },
+  {
+   "corridor_id": "AC:T10--T11",
+   "from_zone_id": "T10",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T11"
+  },
+  {
+   "corridor_id": "HVDC:Western_Link",
+   "from_zone_id": "T2",
+   "positive_direction": "from_to_positive",
+   "purpose": "computational_routing",
+   "schema_version": "value.transport-corridor/v1",
+   "to_zone_id": "T4"
+  }
+ ],
+ "cutsets": [
+  {
+   "boundary_id": "B4",
+   "display_name": "ETYS B4",
+   "forward_limit_mw": 4002.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T1--T2",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T9",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "north_to_south",
+   "positive_side_zone_ids": [
+    "T1"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 4002.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "B6",
+   "display_name": "ETYS B6",
+   "forward_limit_mw": 6700.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T2--T3",
+     "schema_version": "value.etys-cutset-member/v1"
+    },
+    {
+     "coefficient": 1,
+     "corridor_id": "HVDC:Western_Link",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T9",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "north_to_south",
+   "positive_side_zone_ids": [
+    "T1",
+    "T2"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 6700.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "B7a",
+   "display_name": "ETYS B7a",
+   "forward_limit_mw": 9400.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T3--T4",
+     "schema_version": "value.etys-cutset-member/v1"
+    },
+    {
+     "coefficient": 1,
+     "corridor_id": "HVDC:Western_Link",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T4",
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T9",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "north_to_south",
+   "positive_side_zone_ids": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 9400.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "B8",
+   "display_name": "ETYS B8",
+   "forward_limit_mw": 11000.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T4--T5",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T9",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "north_to_south",
+   "positive_side_zone_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 11000.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "B9",
+   "display_name": "ETYS B9",
+   "forward_limit_mw": 11500.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T5--T6",
+     "schema_version": "value.etys-cutset-member/v1"
+    },
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T5--T8",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T6",
+    "T7",
+    "T8",
+    "T9",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "north_to_south",
+   "positive_side_zone_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 11500.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "EC5",
+   "display_name": "ETYS EC5",
+   "forward_limit_mw": 3300.0,
+   "members": [
+    {
+     "coefficient": -1,
+     "corridor_id": "AC:T6--T7",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T8",
+    "T9",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "east_anglia_export",
+   "positive_side_zone_ids": [
+    "T7"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 3300.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "LE1",
+   "display_name": "ETYS LE1",
+   "forward_limit_mw": 11223.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T6--T11",
+     "schema_version": "value.etys-cutset-member/v1"
+    },
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T10--T11",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T11"
+   ],
+   "positive_direction": "south_east_import",
+   "positive_side_zone_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T9",
+    "T10"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 11223.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "B13",
+   "display_name": "ETYS B13",
+   "forward_limit_mw": 3500.0,
+   "members": [
+    {
+     "coefficient": -1,
+     "corridor_id": "AC:T8--T9",
+     "schema_version": "value.etys-cutset-member/v1"
+    },
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T9--T10",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "negative_side_zone_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T7",
+    "T8",
+    "T10",
+    "T11"
+   ],
+   "positive_direction": "south_west_export",
+   "positive_side_zone_ids": [
+    "T9"
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 3500.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "Western_Link",
+   "display_name": "Western Link active-power rating",
+   "forward_limit_mw": 2200.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "HVDC:Western_Link",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "positive_direction": "T2_to_T4",
+   "rating_profile_id": null,
+   "reverse_limit_method": "source_declared_symmetric",
+   "reverse_limit_mw": 2200.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T5--T6",
+   "display_name": "T5\u2013T6 summer thermal proxy",
+   "forward_limit_mw": 19086.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T5--T6",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 19086.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T5--T8",
+   "display_name": "T5\u2013T8 summer thermal proxy",
+   "forward_limit_mw": 3424.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T5--T8",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 3424.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T6--T8",
+   "display_name": "T6\u2013T8 summer thermal proxy",
+   "forward_limit_mw": 4436.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T6--T8",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 4436.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T6--T11",
+   "display_name": "T6\u2013T11 summer thermal proxy",
+   "forward_limit_mw": 16684.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T6--T11",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 16684.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T8--T9",
+   "display_name": "T8\u2013T9 summer thermal proxy",
+   "forward_limit_mw": 8088.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T8--T9",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 8088.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T8--T10",
+   "display_name": "T8\u2013T10 summer thermal proxy",
+   "forward_limit_mw": 6470.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T8--T10",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 6470.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T9--T10",
+   "display_name": "T9\u2013T10 summer thermal proxy",
+   "forward_limit_mw": 4434.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T9--T10",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 4434.0,
+   "schema_version": "value.etys-cutset/v1"
+  },
+  {
+   "boundary_id": "THERMAL_AC:T10--T11",
+   "display_name": "T10\u2013T11 summer thermal proxy",
+   "forward_limit_mw": 6587.0,
+   "members": [
+    {
+     "coefficient": 1,
+     "corridor_id": "AC:T10--T11",
+     "schema_version": "value.etys-cutset-member/v1"
+    }
+   ],
+   "rating_profile_id": null,
+   "reverse_limit_method": "assumed_symmetric_from_forward",
+   "reverse_limit_mw": 6587.0,
+   "schema_version": "value.etys-cutset/v1"
+  }
+ ],
+ "description": "Topology-only copy of the public 11-zone CP30 overlay (current_baseline zones and corridors; current_baseline__thermal_summer cut sets, i.e. the 9 ETYS/Western Link boundaries plus the 8 single-member THERMAL_AC limits). Copied for P0-8a cut-set classification tests; demand, asset maps and source URLs omitted.",
+ "source": "data-audit/staging/11zone-overlays-public1 (2026-10-04 public1 build)",
+ "zones": [
+  {
+   "display_name": "N. Scotland",
+   "dso_owner": "SHETL",
+   "is_unconstrained_fallback": false,
+   "nation": "Scotland",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T1"
+  },
+  {
+   "display_name": "S. Scotland",
+   "dso_owner": "SPTL",
+   "is_unconstrained_fallback": false,
+   "nation": "Scotland",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T2"
+  },
+  {
+   "display_name": "N. England",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T3"
+  },
+  {
+   "display_name": "N. Wales, the Mersey & the Humber",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T4"
+  },
+  {
+   "display_name": "Midlands",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T5"
+  },
+  {
+   "display_name": "Central England",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T6"
+  },
+  {
+   "display_name": "E. Anglia",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T7"
+  },
+  {
+   "display_name": "S. Wales & the Severn",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T8"
+  },
+  {
+   "display_name": "S.W. England",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T9"
+  },
+  {
+   "display_name": "S. England",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T10"
+  },
+  {
+   "display_name": "South-East England",
+   "dso_owner": "NGET",
+   "is_unconstrained_fallback": false,
+   "nation": "England and Wales",
+   "schema_version": "value.network-zone/v1",
+   "zone_id": "T11"
+  }
+ ]
+}

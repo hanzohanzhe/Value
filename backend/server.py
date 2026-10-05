@@ -616,6 +616,9 @@ def create_replay_export_job(
                 "completed_at": now(),
                 "error": str(exc),
             })
+            code = getattr(exc, "code", None)
+            if isinstance(code, str) and code:
+                current["error_code"] = code
         with REPLAY_EXPORT_JOBS_LOCK:
             atomic_json(job_path, current)
 
@@ -2627,6 +2630,16 @@ class Handler(BaseHTTPRequestHandler):
         teaching_run_extensions = _value_101_origin_extensions(project)
         validation = validate_project(project)
         if not validation["valid"]:
+            upgrade_event = next((
+                row for row in validation.get("error_events", ())
+                if row.get("code") == "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED"
+            ), None)
+            if upgrade_event is not None:
+                self._json({
+                    "error": upgrade_event.get("message", validation["errors"][0]),
+                    "error_code": "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED",
+                    "validation": validation,
+                }, status_for_code("GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")); return
             self._json({"error": validation["errors"][0], "validation": validation}, 400); return
         mode = str(body.get("mode", "smoke"))
         try:
@@ -2893,7 +2906,10 @@ class Handler(BaseHTTPRequestHandler):
             }, "GF_RUN_RESERVATION_LOCK_TIMEOUT")
             raise
         except (OSError, ValueError, SnapshotError, ResourceSnapshotMismatch) as exc:
-            code = getattr(exc, "code", None) if isinstance(exc, ExecutionArchiveError) else None
+            code = (
+                getattr(exc, "code", None)
+                if isinstance(exc, (ExecutionArchiveError, SnapshotError)) else None
+            )
             failed = _record_start_failure(run_dir, {
                 "current_stage": "Input snapshot failed",
                 "error_code": code or "GF_INPUT_SNAPSHOT_FAILED",
@@ -2980,7 +2996,10 @@ class Handler(BaseHTTPRequestHandler):
             source = read_json(snapshot_root / "project.json", {})
             project, lineage = copperplate_rerun_project(source, parent_run_id=run_id)
         except (OSError, ValueError, SnapshotError) as exc:
-            self._json({"error": f"Cannot create copperplate rerun: {exc}"}, 409); return
+            body = {"error": f"Cannot create copperplate rerun: {exc}"}
+            if isinstance(exc, SnapshotError) and exc.code:
+                body["error_code"] = exc.code
+            self._json(body, 409); return
         self._start_run(
             str(status.get("project_id") or project.get("id") or "project"),
             {"mode": str(status.get("mode") or "smoke")},
@@ -3023,7 +3042,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             snapshot = verify_run_input_snapshot(snapshot_root, registry)
         except (OSError, ValueError, SnapshotError) as exc:
-            self._json({"error": f"Input snapshot verification failed: {exc}"}, 409); return
+            body = {"error": f"Input snapshot verification failed: {exc}"}
+            if isinstance(exc, SnapshotError) and exc.code:
+                body["error_code"] = exc.code
+            self._json(body, 409); return
         project = read_json(snapshot_root / "project.json", {})
         try:
             verify_run_execution(root, project, source_root=PROJECT_ROOT, data_home=STATE_ROOT, require_record=True)
@@ -3485,11 +3507,22 @@ class Handler(BaseHTTPRequestHandler):
                     row for row in validation["error_events"]
                     if row.get("code") == "GF_SOLVER_CONTRACT_ACK_REQUIRED"
                 ), None)
-                first = solver_ack_event or (
+                # A historical (v2/v3) solver contract is a method change the
+                # user must confirm explicitly: 409 with the coded event (P0-8 S5).
+                upgrade_event = next((
+                    row for row in validation["error_events"]
+                    if row.get("code") == "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED"
+                ), None)
+                first = solver_ack_event or upgrade_event or (
                     validation["error_events"][0]
                     if validation["error_events"] else {}
                 )
-                status = 422 if solver_ack_event is not None else 400
+                if solver_ack_event is not None:
+                    status = 422
+                elif upgrade_event is not None:
+                    status = status_for_code("GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")
+                else:
+                    status = 400
                 self._json({
                     "error": first.get("message", validation["errors"][0]),
                     "error_code": first.get("code", "GF_STUDY_INVALID"),

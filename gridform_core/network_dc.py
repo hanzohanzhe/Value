@@ -47,7 +47,9 @@ class _Layout:
     size: int
 
 
-def _layout(model: NetworkPSMInput) -> _Layout:
+def _layout(
+    model: NetworkPSMInput, generation_units: int, storage_units: int
+) -> _Layout:
     periods = len(model.chronology.period_ids)
     cursor = 0
 
@@ -60,10 +62,10 @@ def _layout(model: NetworkPSMInput) -> _Layout:
                 cursor += 1
         return result
 
-    generation = block(len(model.chronology.resources))
-    charge = block(len(model.chronology.storage))
-    discharge = block(len(model.chronology.storage))
-    soc = block(len(model.chronology.storage))
+    generation = block(generation_units)
+    charge = block(storage_units)
+    discharge = block(storage_units)
+    soc = block(storage_units)
     blackout = block(len(model.topology.buses))
     angle = block(len(model.topology.buses))
     flow = block(len(model.topology.branches))
@@ -155,9 +157,46 @@ def _artifacts(
     return tuple(result)
 
 
+@dataclass(frozen=True)
+class _ShareUnit:
+    """One (asset, bus, share) sub-resource of the expand-solve-aggregate rule."""
+
+    asset_index: int
+    asset_id: str
+    bus_id: str
+    share: float
+
+    @property
+    def sub_resource_id(self) -> str:
+        return f"{self.asset_id}::bus::{self.bus_id}"
+
+
+def expand_share_mappings(
+    model: NetworkPSMInput,
+) -> tuple[tuple[_ShareUnit, ...], tuple[_ShareUnit, ...]]:
+    """Expand every resource and store into one sub-resource per bus share.
+
+    Capacity, power, energy and SOC of each sub-resource are the asset value
+    times its share; each sub-resource is dispatched independently at its own
+    bus (P1-01).  Row order of the asset map does not matter: units are
+    ordered by asset then bus id.
+    """
+
+    shares = model.topology.mappings_by_asset()
+
+    def units(assets) -> tuple[_ShareUnit, ...]:
+        result: list[_ShareUnit] = []
+        for index, asset in enumerate(assets):
+            for row in sorted(shares[asset.asset_id], key=lambda item: item.bus_id):
+                result.append(_ShareUnit(index, asset.asset_id, row.bus_id, float(row.share)))
+        return tuple(result)
+
+    return units(model.chronology.resources), units(model.chronology.storage)
+
+
 class ReferenceDCNetworkPSM:
     id = "value-reference-dc-network"
-    version = "1.0.0"
+    version = "1.1.0"
 
     @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
@@ -181,8 +220,8 @@ class ReferenceDCNetworkPSM:
         buses = tuple(model.topology.buses)
         branches = tuple(model.topology.branches)
         bus_index = {item.bus_id: index for index, item in enumerate(buses)}
-        mapping = model.topology.mapping_by_asset()
-        layout = _layout(model)
+        generation_units, storage_units = expand_share_mappings(model)
+        layout = _layout(model, len(generation_units), len(storage_units))
         objective = np.zeros(layout.size)
         bounds: list[tuple[float | None, float | None]] = [(None, None)] * layout.size
         availability = []
@@ -199,26 +238,35 @@ class ReferenceDCNetworkPSM:
                 raise DCNetworkInputError("Negative bids require a separately declared formulation")
             availability.append(available)
             marginal_costs.append(costs)
+        for unit_index, unit in enumerate(generation_units):
+            resource = chronology.resources[unit.asset_index]
+            available = availability[unit.asset_index]
+            costs = marginal_costs[unit.asset_index]
             for period in range(periods):
-                index = layout.generation[resource_index, period]
+                index = layout.generation[unit_index, period]
                 bounds[index] = (
-                    0.0, resource.capacity_mw * model.period_hours * available[period]
+                    0.0,
+                    resource.capacity_mw * unit.share * model.period_hours * available[period],
                 )
                 objective[index] = costs[period]
-        for storage_index, storage in enumerate(chronology.storage):
+        for storage in chronology.storage:
             if not 0 < storage.charge_efficiency <= 1 or not 0 < storage.discharge_efficiency <= 1:
                 raise DCNetworkInputError(f"Storage {storage.asset_id} has invalid efficiency")
             if storage.initial_soc_mwh > storage.energy_capacity_mwh:
                 raise DCNetworkInputError(f"Storage {storage.asset_id} initial SOC exceeds capacity")
+        for unit_index, unit in enumerate(storage_units):
+            storage = chronology.storage[unit.asset_index]
             for period in range(periods):
-                bounds[layout.charge[storage_index, period]] = (
-                    0.0, storage.charge_power_mw * model.period_hours
+                bounds[layout.charge[unit_index, period]] = (
+                    0.0, storage.charge_power_mw * unit.share * model.period_hours
                 )
-                bounds[layout.discharge[storage_index, period]] = (
-                    0.0, storage.discharge_power_mw * model.period_hours
+                bounds[layout.discharge[unit_index, period]] = (
+                    0.0, storage.discharge_power_mw * unit.share * model.period_hours
                 )
-                bounds[layout.soc[storage_index, period]] = (0.0, storage.energy_capacity_mwh)
-                objective[layout.discharge[storage_index, period]] = (
+                bounds[layout.soc[unit_index, period]] = (
+                    0.0, storage.energy_capacity_mwh * unit.share
+                )
+                objective[layout.discharge[unit_index, period]] = (
                     storage.variable_degradation_gbp_per_mwh_discharged
                 )
             if chronology.terminal_soc_rule != "free":
@@ -226,8 +274,8 @@ class ReferenceDCNetworkPSM:
                     storage.initial_soc_mwh
                     if chronology.terminal_soc_rule == "cyclic"
                     else float(chronology.terminal_soc_mwh_by_asset[storage.asset_id])
-                )
-                bounds[layout.soc[storage_index, periods - 1]] = (target, target)
+                ) * unit.share
+                bounds[layout.soc[unit_index, periods - 1]] = (target, target)
         for bus_number, bus in enumerate(buses):
             for period in range(periods):
                 demand = float(model.demand_mwh_by_bus[bus.bus_id][period])
@@ -244,7 +292,7 @@ class ReferenceDCNetworkPSM:
                 bounds[layout.flow[branch_number, period]] = (-capacity, capacity)
 
         nodal_rows = periods * len(buses)
-        storage_rows = periods * len(chronology.storage)
+        storage_rows = periods * len(storage_units)
         angle_branches = [
             index for index, item in enumerate(branches)
             if item.in_service and item.branch_type in {"ac_line", "transformer"}
@@ -255,13 +303,13 @@ class ReferenceDCNetworkPSM:
         row = 0
         for period in range(periods):
             for bus_number, bus in enumerate(buses):
-                for resource_index, resource in enumerate(chronology.resources):
-                    if mapping[resource.asset_id].bus_id == bus.bus_id:
-                        equality[row, layout.generation[resource_index, period]] = 1
-                for storage_index, storage in enumerate(chronology.storage):
-                    if mapping[storage.asset_id].bus_id == bus.bus_id:
-                        equality[row, layout.discharge[storage_index, period]] = 1
-                        equality[row, layout.charge[storage_index, period]] = -1
+                for unit_index, unit in enumerate(generation_units):
+                    if unit.bus_id == bus.bus_id:
+                        equality[row, layout.generation[unit_index, period]] = 1
+                for unit_index, unit in enumerate(storage_units):
+                    if unit.bus_id == bus.bus_id:
+                        equality[row, layout.discharge[unit_index, period]] = 1
+                        equality[row, layout.charge[unit_index, period]] = -1
                 equality[row, layout.blackout[bus_number, period]] = 1
                 for branch_index, branch in enumerate(branches):
                     if branch.from_bus == bus.bus_id:
@@ -270,15 +318,16 @@ class ReferenceDCNetworkPSM:
                         equality[row, layout.flow[branch_index, period]] += model.period_hours
                 rhs[row] = float(model.demand_mwh_by_bus[bus.bus_id][period])
                 row += 1
-        for storage_index, storage in enumerate(chronology.storage):
+        for unit_index, unit in enumerate(storage_units):
+            storage = chronology.storage[unit.asset_index]
             for period in range(periods):
-                equality[row, layout.soc[storage_index, period]] = 1
-                equality[row, layout.charge[storage_index, period]] = -storage.charge_efficiency
-                equality[row, layout.discharge[storage_index, period]] = 1 / storage.discharge_efficiency
+                equality[row, layout.soc[unit_index, period]] = 1
+                equality[row, layout.charge[unit_index, period]] = -storage.charge_efficiency
+                equality[row, layout.discharge[unit_index, period]] = 1 / storage.discharge_efficiency
                 if period:
-                    equality[row, layout.soc[storage_index, period - 1]] = -1
+                    equality[row, layout.soc[unit_index, period - 1]] = -1
                 else:
-                    rhs[row] = storage.initial_soc_mwh
+                    rhs[row] = storage.initial_soc_mwh * unit.share
                 row += 1
         for period in range(periods):
             for branch_index in angle_branches:
@@ -306,13 +355,21 @@ class ReferenceDCNetworkPSM:
             raise DCNetworkSolveError("DC equality residual exceeds publication tolerance")
 
         generation = {
-            resource.asset_id: float(sum(solution[layout.generation[index, p]] for p in range(periods)))
-            for index, resource in enumerate(chronology.resources)
+            resource.asset_id: float(sum(
+                solution[layout.generation[unit_index, p]]
+                for unit_index, unit in enumerate(generation_units)
+                if unit.asset_id == resource.asset_id
+                for p in range(periods)
+            ))
+            for resource in chronology.resources
         }
-        for index, storage in enumerate(chronology.storage):
-            generation[storage.asset_id] = float(
-                sum(solution[layout.discharge[index, p]] for p in range(periods))
-            )
+        for storage in chronology.storage:
+            generation[storage.asset_id] = float(sum(
+                solution[layout.discharge[unit_index, p]]
+                for unit_index, unit in enumerate(storage_units)
+                if unit.asset_id == storage.asset_id
+                for p in range(periods)
+            ))
         incomes = {asset_id: 0.0 for asset_id in generation}
         network_periods = []
         summaries = []
@@ -320,6 +377,17 @@ class ReferenceDCNetworkPSM:
         total_blackout = total_charge = total_discharge = 0.0
         storage_details = {storage.asset_id: {"charge": [], "discharge": [], "soc": []}
                            for storage in chronology.storage}
+        split_storage = {
+            unit.asset_id for unit in storage_units
+            if sum(1 for other in storage_units if other.asset_id == unit.asset_id) > 1
+        }
+        storage_sub_resources = {
+            unit.sub_resource_id: {
+                "asset_id": unit.asset_id, "bus_id": unit.bus_id, "share": unit.share,
+                "charge": [], "discharge": [], "soc": [],
+            }
+            for unit in storage_units if unit.asset_id in split_storage
+        }
         nodal_duals = np.asarray(solved.eqlin.marginals[:nodal_rows]).reshape(periods, len(buses))
         for period in range(periods):
             injection = {bus.bus_id: 0.0 for bus in buses}
@@ -334,25 +402,35 @@ class ReferenceDCNetworkPSM:
             for bus in buses:
                 withdrawal[bus.bus_id] -= blackout[bus.bus_id]
             vre_available = vre_accepted = imports = physical_cost = 0.0
-            for index, resource in enumerate(chronology.resources):
-                value = float(solution[layout.generation[index, period]])
-                bus = mapping[resource.asset_id].bus_id
+            curtailment_by_bus = {bus.bus_id: 0.0 for bus in buses}
+            for unit_index, unit in enumerate(generation_units):
+                resource = chronology.resources[unit.asset_index]
+                value = float(solution[layout.generation[unit_index, period]])
+                bus = unit.bus_id
                 injection[bus] += value
                 price = float(nodal_duals[period, bus_index[bus]])
                 incomes[resource.asset_id] += value * price
-                physical_cost += value * marginal_costs[index][period]
+                physical_cost += value * marginal_costs[unit.asset_index][period]
                 if resource.resource_type == "vre":
-                    available = resource.capacity_mw * model.period_hours * availability[index][period]
+                    available = (
+                        resource.capacity_mw * unit.share * model.period_hours
+                        * availability[unit.asset_index][period]
+                    )
                     vre_available += available
                     vre_accepted += value
+                    curtailment_by_bus[bus] += max(available - value, 0.0)
                 if resource.resource_type == "import":
                     imports += value
             charge_total = discharge_total = 0.0
-            for index, storage in enumerate(chronology.storage):
-                charge = float(solution[layout.charge[index, period]])
-                discharge = float(solution[layout.discharge[index, period]])
-                soc = float(solution[layout.soc[index, period]])
-                bus = mapping[storage.asset_id].bus_id
+            by_asset = {
+                storage.asset_id: [0.0, 0.0, 0.0] for storage in chronology.storage
+            }
+            for unit_index, unit in enumerate(storage_units):
+                storage = chronology.storage[unit.asset_index]
+                charge = float(solution[layout.charge[unit_index, period]])
+                discharge = float(solution[layout.discharge[unit_index, period]])
+                soc = float(solution[layout.soc[unit_index, period]])
+                bus = unit.bus_id
                 injection[bus] += discharge
                 withdrawal[bus] += charge
                 price = float(nodal_duals[period, bus_index[bus]])
@@ -360,6 +438,17 @@ class ReferenceDCNetworkPSM:
                 physical_cost += discharge * storage.variable_degradation_gbp_per_mwh_discharged
                 charge_total += charge
                 discharge_total += discharge
+                totals = by_asset[storage.asset_id]
+                totals[0] += charge
+                totals[1] += discharge
+                totals[2] += soc
+                if unit.sub_resource_id in storage_sub_resources:
+                    detail = storage_sub_resources[unit.sub_resource_id]
+                    detail["charge"].append(charge)
+                    detail["discharge"].append(discharge)
+                    detail["soc"].append(soc)
+            for storage in chronology.storage:
+                charge, discharge, soc = by_asset[storage.asset_id]
                 storage_details[storage.asset_id]["charge"].append(charge)
                 storage_details[storage.asset_id]["discharge"].append(discharge)
                 storage_details[storage.asset_id]["soc"].append(soc)
@@ -390,18 +479,7 @@ class ReferenceDCNetworkPSM:
             network_periods.append(
                 NetworkPeriodResult(
                     chronology.period_ids[period], injection, withdrawal, flows, blackout,
-                    {
-                        bus.bus_id: sum(
-                            max(
-                                resource.capacity_mw * model.period_hours * availability[index][period]
-                                - solution[layout.generation[index, period]], 0.0,
-                            )
-                            for index, resource in enumerate(chronology.resources)
-                            if resource.resource_type == "vre"
-                            and mapping[resource.asset_id].bus_id == bus.bus_id
-                        )
-                        for bus in buses
-                    },
+                    curtailment_by_bus,
                     voltage_angle_radians=angles, nodal_price_gbp_per_mwh=prices,
                     unsupported={
                         "network_losses_mwh": "Linear DC approximation is lossless",
@@ -445,6 +523,11 @@ class ReferenceDCNetworkPSM:
                 "formulation_id": FORMULATION_ID,
                 "solver": "scipy.optimize.linprog/HiGHS",
                 "storage": storage_details,
+                "share_mapping_rule": "expand_solve_aggregate/v1",
+                **(
+                    {"storage_sub_resources": storage_sub_resources}
+                    if storage_sub_resources else {}
+                ),
             },
         )
         validate_dc_solution(model, network_output)

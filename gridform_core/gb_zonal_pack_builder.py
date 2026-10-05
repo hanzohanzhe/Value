@@ -370,8 +370,11 @@ def _demand(
 def _fleet(
     rows: Sequence[Mapping[str, str]], landing_rows: Sequence[Mapping[str, str]],
     zones: Sequence[NetworkZone], zone_aliases: Mapping[str, str],
+    *, allow_unknown_zone_fallback: bool = False,
 ) -> tuple[list[ZonalAssetMapping], SpatialAudit, list[InterconnectorLanding], dict[str, object]]:
     zone_ids = {zone.zone_id for zone in zones}
+    unknown_zone_rows: list[str] = []
+    allowed_unknown_zone_rows: list[dict[str, str]] = []
     mappings: list[ZonalAssetMapping] = []
     source_capacity: dict[str, float] = defaultdict(float)
     mapped_capacity: dict[str, float] = defaultdict(float)
@@ -403,7 +406,17 @@ def _fleet(
         zone_id = zone_aliases.get(raw_zone_id, raw_zone_id)
         method = str(row.get("mapping_method") or "unlocated_england_fallback")
         if zone_id not in zone_ids:
-            zone_id, method = FALLBACK_ZONE, "unlocated_england_fallback"
+            # An explicit zone that does not exist is a data error (P2-13),
+            # not an unlocated asset: list it unless the caller opts in.
+            if str(row.get("zone_id") or "") and not allow_unknown_zone_fallback:
+                unknown_zone_rows.append(f"{asset_id}={raw_zone_id}")
+                continue
+            if str(row.get("zone_id") or ""):
+                method = "unknown_zone_fallback_allowed"
+                allowed_unknown_zone_rows.append({"asset_id": asset_id, "zone_id": raw_zone_id})
+            else:
+                method = "unlocated_england_fallback"
+            zone_id = FALLBACK_ZONE
         if asset_id not in seen_asset_capacity:
             seen_asset_capacity[asset_id] = capacity
             source_capacity[technology] += capacity
@@ -429,6 +442,12 @@ def _fleet(
             "longitude": (_float(row.get("longitude"), f"longitude for {asset_id}") if row.get("longitude") not in (None, "") else None),
         })
 
+    if unknown_zone_rows:
+        raise ValueError(
+            "Fleet rows name zones that do not exist (set "
+            "allow_unknown_zone_fallback to place them in "
+            f"{FALLBACK_ZONE} explicitly): " + ", ".join(unknown_zone_rows)
+        )
     landings: list[InterconnectorLanding] = []
     for row in landing_rows:
         asset_id = str(row.get("asset_id") or "")
@@ -474,6 +493,12 @@ def _fleet(
         ],
         "fallback_asset_count": len(set(fallback_ids)),
         "excluded_northern_ireland_asset_count": len(set(excluded_ni)),
+        # P2-13: explicit zone ids that do not exist, placed in the fallback
+        # zone only because allow_unknown_zone_fallback was set.
+        "explicit_unknown_zone_ids": sorted({row["zone_id"] for row in allowed_unknown_zone_rows}),
+        "explicit_unknown_zone_assets": sorted(
+            allowed_unknown_zone_rows, key=lambda row: (row["asset_id"], row["zone_id"])
+        ),
     }
 
 
@@ -759,7 +784,12 @@ def _role_payloads(
     }
 
 
-def _build_candidate_compatibility_impl(source_inventory: Path, output_root: Path) -> dict[str, object]:
+def _build_candidate_compatibility_impl(
+    source_inventory: Path,
+    output_root: Path,
+    *,
+    allow_unknown_zone_fallback: bool = False,
+) -> dict[str, object]:
     """Build, validate and audit an unsigned candidate without installing it."""
 
     source_inventory = Path(source_inventory).resolve()
@@ -783,6 +813,7 @@ def _build_candidate_compatibility_impl(source_inventory: Path, output_root: Pat
     mappings, audit, landings, mapping_audit = _fleet(
         _read_csv(paths["model_fleet"]), _read_csv(paths["interconnector_landings"]),
         zones, merged_zone_aliases,
+        allow_unknown_zone_fallback=allow_unknown_zone_fallback,
     )
     repd_comparison = _repd_comparison(
         _read_csv(paths["repd"]), audit.capacity_mw_by_technology,
@@ -880,6 +911,8 @@ def _build_candidate_compatibility_impl(source_inventory: Path, output_root: Pat
         "capacity_mw_by_technology_and_status": mapping_audit["capacity_mw_by_technology_and_status"],
         "region_to_zone_weights": _region_to_zone_weights(mapping_audit["asset_mappings"]),  # type: ignore[arg-type]
         "fallback_asset_ids": list(audit.fallback_asset_ids),
+        "explicit_unknown_zone_ids": mapping_audit["explicit_unknown_zone_ids"],
+        "explicit_unknown_zone_assets": mapping_audit["explicit_unknown_zone_assets"],
         "excluded_northern_ireland_asset_ids": list(audit.excluded_northern_ireland_asset_ids),
         "offshore_connection_audit": {
             "records": offshore,
@@ -932,15 +965,32 @@ def _build_candidate_compatibility_impl(source_inventory: Path, output_root: Pat
     }
 
 
-def build_candidate(source_inventory: Path, output_root: Path) -> dict[str, object]:
-    """Compatibility facade over the Data Workbench candidate compiler."""
+def build_candidate(
+    source_inventory: Path,
+    output_root: Path,
+    *,
+    allow_unknown_zone_fallback: bool = False,
+) -> dict[str, object]:
+    """Compatibility facade over the Data Workbench candidate compiler.
+
+    A fleet row with an explicit but unknown ``zone_id`` (for example a
+    misspelt ``SCOTLND``) stops the build and is listed (P2-13); only
+    ``allow_unknown_zone_fallback=True`` places such rows in the fallback
+    zone, recorded with mapping method ``unknown_zone_fallback_allowed``.
+    Rows without a zone remain ``unlocated_england_fallback``.
+    """
+
+    from functools import partial
 
     from .data_workbench.compilers.network_candidate import build_prompt98_candidate
 
     return build_prompt98_candidate(
         source_inventory,
         output_root,
-        implementation=_build_candidate_compatibility_impl,
+        implementation=partial(
+            _build_candidate_compatibility_impl,
+            allow_unknown_zone_fallback=allow_unknown_zone_fallback,
+        ),
     )
 
 

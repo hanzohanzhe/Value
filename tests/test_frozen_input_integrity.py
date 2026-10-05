@@ -10,6 +10,7 @@ from gridform_core.frozen_input_integrity import verify_frozen_input_integrity, 
 from gridform_core.run_snapshot import create_run_input_snapshot
 from gridform_core.run_input_snapshot import freeze_resource_readiness
 from gridform_core.v2.module_manifest import workspace_registry
+from gridform_core.frontend_contract import builtin_maturity_acknowledgement_key
 from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 from tests.test_run_input_snapshot import SELECTION, pack, network_pack
 
@@ -38,7 +39,7 @@ class FrozenInputIntegrityTests(unittest.TestCase):
             project.update(modules=dict(selected), selected_extensions=["value-zonal-redispatch-extension"],
                 market_configuration={"network_pack_id": "signed-network-v1"},
                 maturity_acknowledgements={
-                    "module:value-zonal-redispatch-balancing@3.0.0": "value.experimental-ack/v1",
+                    builtin_maturity_acknowledgement_key("module", "value-zonal-redispatch-balancing"): "value.experimental-ack/v1",
                     "module:value-representative-point-weather@1.0.0": "value.experimental-ack/v1",
                     "extension:value-zonal-redispatch-extension@1.0.0": "value.experimental-ack/v1"},
                 solver_contract=DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())

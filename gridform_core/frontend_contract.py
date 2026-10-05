@@ -27,6 +27,8 @@ from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph
 from .study_market_config import resolve_market_configuration
 from .zonal_solver_contract import (
     DEFAULT_ZONAL_SOLVER_SETTINGS,
+    ZonalSolverContractError,
+    solver_contract_generation,
     validate_solver_settings,
 )
 
@@ -125,10 +127,46 @@ def _canonical_solver_settings(payload: object) -> dict[str, object]:
     candidate["requires_acknowledgement"] = not is_builtin_default
     try:
         return validate_solver_settings(candidate).to_dict()
+    except ZonalSolverContractError as exc:
+        # A v2/v3 Study is never silently rewritten (P0-8 S5, Q13): the user
+        # upgrades it explicitly, which saves a new revision.
+        raise ProjectSolverContractError(exc.code, str(exc)) from exc
     except ValueError as exc:
         raise ProjectSolverContractError(
             "GF_SOLVER_CONTRACT_INVALID", str(exc)
         ) from exc
+
+
+def solver_contract_upgrade_preview(project: Mapping[str, object]) -> dict[str, object] | None:
+    """Describe the explicit v2/v3 -> current upgrade without applying it.
+
+    Returns ``None`` when the Study already declares the current contract or
+    declares none.  The preview lists every changed field with its recorded
+    and current value so the UI can show the method difference before the
+    user saves a new revision (Q13 ``method_upgrade_required``).
+    """
+
+    recorded = project.get("solver_contract")
+    generation = solver_contract_generation(recorded if isinstance(recorded, Mapping) else None)
+    if generation in {"v4", "unknown"}:
+        return None
+    assert isinstance(recorded, Mapping)
+    current = DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
+    changes = [
+        {"field": key, "recorded": recorded.get(key), "current": current.get(key)}
+        for key in sorted(set(recorded) | set(current))
+        if recorded.get(key) != current.get(key)
+    ]
+    return {
+        "schema_version": "value.solver-contract-upgrade-preview/v1",
+        "error_code": "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED",
+        "classification": "method_upgrade_required",
+        "recorded_generation": generation,
+        "current_generation": "v4",
+        "recorded_was_builtin_default": recorded.get("is_builtin_default") is True,
+        "changes": changes,
+        "proposed_solver_contract": current,
+    }
 
 
 def validate_project_solver_contract(

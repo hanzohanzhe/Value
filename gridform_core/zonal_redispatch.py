@@ -52,9 +52,12 @@ from .zonal_solver_contract import (
 )
 
 
-FORMULATION_ID = "value.lossless-zonal-redispatch/v1"
+FORMULATION_ID = "value.lossless-zonal-redispatch/v2"
 DOMAIN_SCHEMA = "value.zonal-redispatch-domain/v2"
 TOLERANCE = 1e-8
+# A lock repair reserves at most this fraction of the lock's own computed
+# tolerance as its solver guard (see ``_tighten_violated_objective_cap``).
+LOCK_REPAIR_GUARD_FRACTION = 0.25
 
 
 class ZonalRedispatchInputError(ValueError):
@@ -174,6 +177,47 @@ def _row(size: int) -> np.ndarray:
 
 def _as_matrix(rows: Sequence[np.ndarray], size: int) -> np.ndarray:
     return np.vstack(rows) if rows else np.empty((0, size), dtype=float)
+
+
+def _forced_down_by_bid(
+    model_input: BalancingInput,
+    ahead: AheadMarketResult,
+    bids: Sequence[FlexibilityBid],
+    bid_capacity: Mapping[str, float],
+    storage: Mapping[str, object],
+    classes: Mapping[str, str],
+    raw_envelopes: Mapping[str, object],
+) -> dict[str, float]:
+    """Forced down volume per down bid from realised availability shortfalls.
+
+    Only assets bound by the realised-availability row are considered (the
+    same set as that row: no storage, exports or interconnectors).  The
+    asset's shortfall max(schedule - available, 0) is split over its down
+    bids pro rata to their capacity (one down bid per asset takes it all),
+    and capped at each bid's capacity.
+    """
+
+    down_by_asset: defaultdict[str, list[FlexibilityBid]] = defaultdict(list)
+    for bid in bids:
+        if bid.direction == "down":
+            down_by_asset[bid.asset_id].append(bid)
+    forced: dict[str, float] = {}
+    for asset, available_mw in model_input.realised_availability_mw_by_asset.items():
+        if asset in storage or classes.get(asset, "other") == "export" or asset in raw_envelopes:
+            continue
+        rows = down_by_asset.get(asset)
+        if not rows:
+            continue
+        shortfall = float(ahead.schedule_mwh_by_asset.get(asset, 0.0)) - float(available_mw) * model_input.period_hours
+        if shortfall <= 0.0:
+            continue
+        total = math.fsum(bid_capacity[bid.bid_id] for bid in rows)
+        if total <= 0.0:
+            continue
+        for bid in rows:
+            share = shortfall * bid_capacity[bid.bid_id] / total
+            forced[bid.bid_id] = min(bid_capacity[bid.bid_id], share)
+    return forced
 
 
 def build_single_period_problem(
@@ -474,29 +518,46 @@ def build_single_period_problem(
         equality_rows.append(row)
         equality_rhs.append(float(ahead.schedule_mwh_by_asset.get(asset, 0.0)))
 
+    # Equal-price bids with the same direction and network effect share
+    # their *free* acceptance pro rata to their free available energy.  Since
+    # v4 the resource class is not part of the key: two technologies offering
+    # the same price at the same place are economically identical (P2-01
+    # asset-ID shift).  A down bid's forced part -- the curtailment its asset
+    # must take because realised availability is below the ahead schedule,
+    # max(schedule - available, 0) -- is not a choice and stays outside the
+    # group; otherwise an availability shortfall of one asset would drag
+    # every equal-price asset in the zone down with it (M2-P0-8a review).
+    forced_down = _forced_down_by_bid(
+        model_input, ahead, bids, bid_capacity, storage, classes, raw_envelopes
+    )
     groups: defaultdict[tuple[object, ...], list[FlexibilityBid]] = defaultdict(list)
     for bid in bids:
         resource_class = str(bid.provenance.get("resource_class") or classes.get(bid.asset_id, "other"))
         if resource_class == "storage":
+            continue
+        if bid_capacity[bid.bid_id] - forced_down.get(bid.bid_id, 0.0) <= TOLERANCE:
             continue
         groups[(
             bid.direction,
             bid.zone_id,
             bid.network_effect_id,
             bid.price_gbp_per_mwh,
-            resource_class,
         )].append(bid)
     for rows in groups.values():
         if len(rows) < 2:
             continue
         first = rows[0]
-        first_capacity = bid_capacity[first.bid_id]
+        first_forced = forced_down.get(first.bid_id, 0.0)
+        first_free = bid_capacity[first.bid_id] - first_forced
         for bid in rows[1:]:
+            forced = forced_down.get(bid.bid_id, 0.0)
+            free = bid_capacity[bid.bid_id] - forced
+            # (x_bid - forced) * first_free == (x_first - first_forced) * free
             row = _row(size)
-            row[bid_index[bid.bid_id]] = first_capacity
-            row[bid_index[first.bid_id]] = -bid_capacity[bid.bid_id]
+            row[bid_index[bid.bid_id]] = first_free
+            row[bid_index[first.bid_id]] = -free
             equality_rows.append(row)
-            equality_rhs.append(0.0)
+            equality_rhs.append(forced * first_free - first_forced * free)
 
     inequality_rows: list[np.ndarray] = []
     inequality_rhs: list[float] = []
@@ -763,12 +824,10 @@ _OBJECTIVE_CONTRACT = {
     "physical_throughput_mwh": ("physical_throughput", "MWh", 1e-9),
 }
 
-# Explicit study acceptance policy.  The GBP value applies once to the full
-# bid-cost objective for each solved period.  MWh objectives deliberately stay
-# on the coefficient-aware numerical formula below.
-_FIXED_OBJECTIVE_ACCEPTANCE = {
-    "primary_bid_cost_gbp": 1.0,
-}
+# Solver contract v4 (Q5): every lock right-hand side uses the
+# coefficient-aware numerical tolerance.  The GBP 1 study policy is only the
+# validated/absolute ceiling used by ``classify_lock``; v3 used it as the lock
+# allowance and later phases spent it on spurious shedding (P2-01).
 
 
 def _active_solver_tolerance(settings: ZonalSolverSettings) -> float:
@@ -779,6 +838,22 @@ def _active_solver_tolerance(settings: ZonalSolverSettings) -> float:
     if settings.method in {"highs", "highs-ipm"}:
         values.append(settings.ipm_optimality_tolerance)
     return max(values)
+
+
+def _lock_solver_tolerance(settings: ZonalSolverSettings, objective_key: str) -> float:
+    """Solver scale used by one lock's coefficient-aware tolerance.
+
+    v4 bid-cost lock: the declared solver feasibility tolerance itself, so the
+    allowance later phases may spend is a numerical one (about 1e-9 of the
+    bid-cost scale) and the exact-lock CBC oracle agrees within 1e-6 MWh.
+    MWh locks keep the module's 1e-8 floor, which HiGHS needs to certify the
+    stacked lock rows in the unscaled model.
+    """
+
+    active = _active_solver_tolerance(settings)
+    if objective_key == "primary_bid_cost_gbp":
+        return active
+    return max(active, TOLERANCE)
 
 
 def _objective_cap(
@@ -812,11 +887,9 @@ def _objective_cap(
             coefficient_array,
             optimum_array,
             unit_floor,
-            max(_active_solver_tolerance(settings), TOLERANCE),
+            _lock_solver_tolerance(settings, objective_key),
         )
-        computed_tolerance = _FIXED_OBJECTIVE_ACCEPTANCE.get(
-            objective_key, tolerance.tolerance
-        )
+        computed_tolerance = tolerance.tolerance
         nonzero_terms = tolerance.nonzero_terms
         absolute_term_scale = tolerance.absolute_term_scale
     optimum = float(np.dot(coefficients, optimum_values))
@@ -1006,12 +1079,16 @@ def _tighten_violated_objective_cap(
         matched = True
         # HiGHS may return a successful solution with a lock-row residual at
         # its primal feasibility scale.  Reserve several declared tolerance
-        # units at the magnitude of this row's RHS; the retry remains much
-        # tighter than the unchanged public objective tolerance.
-        solver_guard = (
+        # units at the magnitude of this row's RHS, but never more than a
+        # quarter of the lock's own computed tolerance: the v4 bid-cost lock
+        # uses the declared 1e-9 solver scale, so its whole headroom is about
+        # 1e-9 x |rhs| and an |rhs|-scaled guard (8e-9 x |rhs|) would make
+        # every GB-scale primary repair impossible (M2-P0-8a review).
+        solver_guard = min(
             8.0
             * settings.primal_feasibility_tolerance
-            * max(1.0, abs(lock.rhs))
+            * max(1.0, abs(lock.rhs)),
+            LOCK_REPAIR_GUARD_FRACTION * lock.computed_tolerance,
         )
         guard = max(
             solver_guard,
@@ -1037,6 +1114,75 @@ def _tighten_violated_objective_cap(
             f"objective lock repair target is unknown: {objective_key}",
         )
     return tuple(repaired)
+
+
+_LEXICOGRAPHIC_LOCK_ORDER = (
+    "primary_bid_cost_gbp",
+    "secondary_schedule_deviation_mwh",
+    "physical_throughput_mwh",
+)
+
+
+def _resolve_downstream_locks(
+    problem: SinglePeriodProblem,
+    locks: tuple[_ObjectiveCap, ...],
+    repaired_key: str,
+    settings: ZonalSolverSettings,
+    phases: dict[str, object],
+    *,
+    attempt: int,
+) -> tuple[tuple[_ObjectiveCap, ...], tuple[_ObjectiveCap, ...]]:
+    """Re-solve every phase after a tightened lock and recompute its cap.
+
+    A later phase's optimum was reached while spending the earlier lock's
+    allowance (the secondary phase typically uses the whole bid-cost
+    tolerance).  Tightening only the earlier cap would leave the later caps
+    unreachable and the stable re-solve infeasible, so each later phase is
+    solved again under the tightened caps and its own coefficient-aware cap is
+    rebuilt from the new optimum.  Tolerances are never widened: each cap is
+    recomputed by the same formula as in ``solve_lexicographic``.
+    """
+
+    order = [lock.objective_key for lock in locks]
+    if order != list(_LEXICOGRAPHIC_LOCK_ORDER[: len(order)]):
+        # Hand-built lock sets (tests, partial solves) keep the old
+        # single-cap behaviour.
+        return locks, ()
+    position = order.index(repaired_key)
+    kept = list(locks[: position + 1])
+    rebuilt: list[_ObjectiveCap] = []
+    for lock in locks[position + 1:]:
+        if lock.objective_key == "secondary_schedule_deviation_mwh":
+            objective, allow_constant = problem.secondary_objective, False
+        else:
+            objective, allow_constant = problem.physical_tie_objective, True
+        phase = f"{lock.phase_id}_lock_repair_{attempt}"
+        values, phases[phase] = _run_highs(
+            problem,
+            objective,
+            phase=phase,
+            settings=settings,
+            locks=tuple(kept),
+        )
+        try:
+            cap = _objective_cap(
+                objective,
+                values,
+                settings,
+                lock.objective_key,
+                allow_constant=allow_constant,
+            )
+        except ZonalSolverContractError as exc:
+            raise _contract_solve_error(
+                exc,
+                phase=f"{lock.phase_id}_lock_repair_{attempt}",
+                settings=settings,
+                locks=kept,
+                completed_phases=phases,
+            ) from exc
+        kept.append(cap)
+        rebuilt.append(cap)
+    return tuple(kept), tuple(rebuilt)
 
 
 def _finalise_with_lock_repair(
@@ -1098,8 +1244,19 @@ def _finalise_with_lock_repair(
                 "available_headroom": before.rhs - before.optimum,
             })
             active_locks = tightened
-            phases["stable_lock_repairs"] = tuple(repairs)
             try:
+                active_locks, downstream = _resolve_downstream_locks(
+                    problem,
+                    active_locks,
+                    before.objective_key,
+                    settings,
+                    phases,
+                    attempt=attempt + 1,
+                )
+                repairs[-1]["recomputed_downstream_locks"] = tuple(
+                    _cap_payload(lock) for lock in downstream
+                )
+                phases["stable_lock_repairs"] = tuple(repairs)
                 values, retry_diagnostics = _run_highs(
                     problem,
                     problem.stable_tie_objective,
@@ -1126,11 +1283,61 @@ def _finalise_with_lock_repair(
     raise AssertionError("unreachable objective lock repair state")
 
 
+def bid_cost_coefficients(problem: SinglePeriodProblem) -> np.ndarray:
+    """The primary objective without its VOLL x shedding terms."""
+
+    coefficients = np.asarray(problem.primary_objective, dtype=float).copy()
+    for index in problem.shedding_index.values():
+        coefficients[index] = 0.0
+    return coefficients
+
+
+def lock_primary_shedding(
+    problem: SinglePeriodProblem,
+    primary_values: np.ndarray,
+) -> tuple[SinglePeriodProblem, dict[str, object]]:
+    """Lock total load shedding at its primary optimum before any later phase.
+
+    No primary shedding fixes every shedding variable to exactly zero, so no
+    later phase can trade VOLL against flow or tie-break terms (P2-01: v3
+    created 1/(VOLL-p) MWh of shedding in the physical phase).  Positive
+    primary shedding adds one row ``sum(shed) <= shed*``; the primary point
+    satisfies it, so it is always feasible, and how the shed total is spread
+    across zones (degenerate in the primary) is left to the later phases.
+    """
+
+    indices = sorted(problem.shedding_index.values())
+    shed_total = math.fsum(float(primary_values[index]) for index in indices)
+    if shed_total <= TOLERANCE:
+        bounds = list(problem.bounds)
+        for index in indices:
+            bounds[index] = (0.0, 0.0)
+        return replace(problem, bounds=tuple(bounds)), {
+            "mode": "fixed_zero",
+            "primary_shed_total_mwh": shed_total,
+            "rhs_mwh": 0.0,
+        }
+    row = np.zeros(len(problem.variable_names), dtype=float)
+    row[indices] = 1.0
+    rhs = max(shed_total, 0.0)
+    return replace(
+        problem,
+        inequality_matrix=np.vstack([problem.inequality_matrix, row])
+        if len(problem.inequality_matrix)
+        else row.reshape(1, -1),
+        inequality_rhs=np.append(problem.inequality_rhs, rhs),
+    ), {
+        "mode": "total_cap",
+        "primary_shed_total_mwh": shed_total,
+        "rhs_mwh": rhs,
+    }
+
+
 def solve_lexicographic(
     problem: SinglePeriodProblem,
     settings: ZonalSolverSettings,
 ) -> SinglePeriodSolution:
-    """Run the four fixed HiGHS phases with one-sided numerical objective caps."""
+    """Run the four fixed HiGHS phases: shed lock, then numerical caps."""
 
     settings = validate_solver_settings(settings.to_dict())
     locks: list[_ObjectiveCap] = []
@@ -1141,12 +1348,16 @@ def solve_lexicographic(
         phase="primary_bid_cost",
         settings=settings,
     )
+    problem, phases["primary_shed_lock"] = lock_primary_shedding(
+        problem, primary_values
+    )
     try:
         locks.append(_objective_cap(
-            problem.primary_objective,
+            bid_cost_coefficients(problem),
             primary_values,
             settings,
             "primary_bid_cost_gbp",
+            allow_constant=True,
         ))
     except ZonalSolverContractError as exc:
         raise _contract_solve_error(
@@ -1227,16 +1438,19 @@ def solve_secondary(
     problem: SinglePeriodProblem, primary: SinglePeriodSolution
 ) -> SinglePeriodSolution:
     settings = validate_solver_settings(DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
+    problem, shed_lock = lock_primary_shedding(problem, primary.values)
     locks = [
         _objective_cap(
-            problem.primary_objective,
+            bid_cost_coefficients(problem),
             primary.values,
             settings,
             "primary_bid_cost_gbp",
+            allow_constant=True,
         )
     ]
     phases: dict[str, object] = {
-        "primary": dict(primary.diagnostics.get("primary") or {})
+        "primary": dict(primary.diagnostics.get("primary") or {}),
+        "primary_shed_lock": shed_lock,
     }
     secondary_values, secondary_diagnostics = _run_highs(
         problem,
@@ -1515,7 +1729,7 @@ def normalized_zonal_scientific_result_sha256(result: BalancingResult) -> str:
 
 class ZonalRedispatchBalancing:
     id = "value-zonal-redispatch-balancing"
-    version = "3.0.0"
+    version = "4.0.0"
 
     def __init__(
         self,
@@ -1912,8 +2126,11 @@ class ZonalRedispatchBalancing:
             asset: final_dispatch[asset] for asset in sorted(final_dispatch)
         }
 
+        # |shed| <= TOLERANCE is LP noise, mapped to exactly zero like the
+        # SOC above (P0-8 S6); v4 already fixes it at zero when the primary
+        # sheds nothing.
         load_shedding = {
-            zone: float(values[index])
+            zone: (0.0 if abs(float(values[index])) <= TOLERANCE else float(values[index]))
             for zone, index in sorted(problem.shedding_index.items())
         }
         blackout = math.fsum(

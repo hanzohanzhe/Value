@@ -18,7 +18,9 @@ from backend.frozen_input_recovery import stage_recovered_inputs
 from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.frontend_contract import (
     EXPERIMENTAL_ACK, maturity_acknowledgement_requirements, resolve_study_draft,
+    solver_contract_upgrade_preview,
 )
+from gridform_core.run_snapshot import METHOD_SUPERSEDED
 from gridform_core.project_revision import save_project_revision
 from gridform_core.run_policy import resolve_run_policy
 from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
@@ -213,8 +215,20 @@ def review_frozen_recovery(source_run_root: Path, recovery_mode: str, *, registr
             for field in ("source_sha256", "environment_sha256"):
                 if recorded[field] != current[field]:
                     changes.append({"field": field, "recorded": recorded[field], "current": current[field]})
+        upgrade = solver_contract_upgrade_preview(integrity["project"])
+        if upgrade is not None:
+            # P0-8 S5: a Run recorded under a historical zonal solver
+            # contract is never re-executed silently under v4.
+            report["solver_contract_upgrade"] = upgrade
         report["blocking_reasons"].extend(str(row["message"]) for row in draft["errors"])
         if recovery_mode == "strict":
+            if upgrade is not None:
+                report["blocking_reasons"].append(
+                    f"{METHOD_SUPERSEDED}: this Run used the historical "
+                    f"{upgrade['recorded_generation']} zonal solver contract, which "
+                    "the current VALUE does not execute. Use migration recovery to "
+                    "review the change to the current contract."
+                )
             report["blocking_reasons"].extend(report["missing_evidence"])
             if changes:
                 report["blocking_reasons"].append("Recorded method or environment differs from the current execution. Use explicit migration or restore the recorded environment.")

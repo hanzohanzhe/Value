@@ -114,6 +114,7 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   const summary = {schema_version:"value.solver-validation-summary/v1",annual_status:"GO",study_status:"GO",solver_validated:true,solver_stack_validation_status:"builtin_validated_baseline",inherited_unvalidated:false,first_causal_period:null,row_count:1,warning_periods:0,unvalidated_periods:0,maximum_validated_ceiling_use:0,phases:{},evidence_status:"valid",evidence_errors:[],method:"highs-ds",scipy_version:"1.15",highs_identity:"recorded-highs",detail_view:"solver-diagnostics"};
   assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"value.zonal-lexicographic/v2"}),true);
   assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"value.zonal-lexicographic-gbp1/v3"}),true);
+  assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"value.zonal-lexicographic-shed-lock/v4"}),true);
   assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"unknown"}),false);
   const current = network.copyDefaultZonalSolverContract();
   const legacy = structuredClone(network.LEGACY_ZONAL_SOLVER_CONTRACT);
@@ -121,6 +122,19 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.equal(current.absolute_ceilings.primary_bid_cost_gbp,1);
   assert.equal(network.isZonalSolverContract(current),true);
   assert.equal(network.isZonalSolverContract(legacy),true);
+  // Three-state round trip (P0-8 S4): v2 and v3 stay readable, v4 is current.
+  const gbp1 = structuredClone(network.HISTORICAL_GBP1_ZONAL_SOLVER_CONTRACT);
+  assert.equal(current.schema_version,"value.network-solver-contract/v4");
+  assert.equal(current.contract_version,"value.zonal-lexicographic-shed-lock/v4");
+  for (const [contract, generation] of [[legacy,"v2"],[gbp1,"v3"],[current,"v4"]]) {
+    const roundTripped = JSON.parse(JSON.stringify(contract));
+    assert.equal(network.isZonalSolverContract(roundTripped),true);
+    assert.equal(network.isBuiltinZonalSolverContract(roundTripped),true);
+    assert.equal(network.zonalSolverContractGeneration(roundTripped),generation);
+    assert.equal(network.isLegacyZonalSolverContract(roundTripped),generation!=="v4");
+  }
+  assert.match(policy.validateZonalSolverContract(gbp1),/historical v3 GBP 1 lock/);
+  assert.equal(network.isZonalSolverContract({...gbp1,contract_version:current.contract_version}),false);
   assert.equal(network.isZonalSolverContract({...current,contract_version:legacy.contract_version}),false);
   assert.equal(network.isZonalSolverContract({...current,validated_ceilings:{...current.validated_ceilings,primary_bid_cost_gbp:0.5}}),false);
   const custom = network.withZonalSolverContractFlags({...current, method:"highs-ipm"});
@@ -130,19 +144,31 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.equal(backToDefault.is_builtin_default,true);
   assert.equal(backToDefault.requires_acknowledgement,false);
   assert.equal(network.isZonalSolverContract(backToDefault),true);
-  const draft = { solver_contract:legacy, maturity_acknowledgements:{[policy.LEGACY_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,other:"retained"}, modules:{balancing:"value-zonal-redispatch-balancing"} };
+  const draft = { solver_contract:legacy, maturity_acknowledgements:{[policy.LEGACY_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,[policy.GBP1_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,other:"retained"}, modules:{balancing:"value-zonal-redispatch-balancing"} };
   const original = structuredClone(draft);
   assert.deepEqual(policy.alignZonalSolverContract(draft,draft.modules).solver_contract,legacy);
   assert.match(policy.validateZonalSolverContract(legacy),/historical v2/);
   const upgraded = policy.upgradeZonalSolverContract(draft);
   assert.deepEqual(draft,original);
-  assert.equal(upgraded.solver_contract.schema_version,"value.network-solver-contract/v3");
+  assert.equal(upgraded.solver_contract.schema_version,"value.network-solver-contract/v4");
   assert.equal(upgraded.maturity_acknowledgements[policy.LEGACY_ZONAL_SOLVER_ACK_KEY],undefined);
   assert.equal(upgraded.maturity_acknowledgements[policy.ZONAL_SOLVER_ACK_KEY],undefined);
+  assert.equal(upgraded.maturity_acknowledgements[policy.GBP1_ZONAL_SOLVER_ACK_KEY],undefined);
   assert.equal(upgraded.maturity_acknowledgements.other,"retained");
+  assert.deepEqual(policy.withoutZonalSolverAcknowledgements(draft.maturity_acknowledgements),{other:"retained"});
+  const copperplate = policy.alignZonalSolverContract(draft,{balancing:"none"});
+  assert.deepEqual(copperplate.maturity_acknowledgements,{other:"retained"});
+  // Review M2-P0-8a: the composer's custom-settings toggles used to drop only
+  // the @4.0.0 and @2.0.0 keys and left the @3.0.0 (GBP1) key behind.
+  const composer = await source("../app/features/studies/StudyComposer.tsx");
+  assert.equal((composer.match(/withoutZonalSolverAcknowledgements\(current\.maturity_acknowledgements\)/g) ?? []).length,2);
+  assert.doesNotMatch(composer,/delete maturity_acknowledgements\[/);
   assert.equal(policy.validateZonalSolverContract(upgraded.solver_contract),"");
   const editor = await source("../app/features/studies/SolverSettingsEditor.tsx");
   assert.match(editor,/onClick=\{onUpgrade\}/);
   assert.match(editor,/disabled=\{!useCustom \|\| legacy\}/);
   assert.match(editor,/Fixed at GBP 1 total bid cost/);
+  // Review M2-P0-8a: the upgrade preview follows the .table-scroll wrapper
+  // convention (global tables have min-width: 800px).
+  assert.match(editor,/<div className="table-scroll"><table className="solver-upgrade-preview"[^]*?<\/table><\/div>/);
 });

@@ -233,7 +233,7 @@ class Prompt98GbZonalPackBuilderTests(unittest.TestCase):
             self.assertEqual(receipt["approved_by"], "Hanzhe Xing")
             self.assertEqual(receipt["validation"], {"passed": 8, "failed": 0, "total": 9})
             installed = root / "state" / "installed-packs" / expected_id
-            loaded = load_zonal_network_pack(installed)
+            loaded = load_zonal_network_pack(installed, topology_policy="enforce")
             self.assertEqual(loaded.network_pack_id, expected_id)
             self.assertEqual(loaded.scientific_sha256, receipt["installed_scientific_sha256"])
             self.assertNotEqual(

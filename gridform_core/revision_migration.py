@@ -182,7 +182,10 @@ def _reconstructed_basis(project: Mapping[str, Any], registry: ModuleRegistryV2,
     # A Study with extensions hashed its module resolution graph, which records
     # every module's source sha256: any code change moves it, so the graph is
     # never reproducible from the current sources.  project.json stores the
-    # graph the revision was saved with; it is tried as recorded.
+    # graph the revision was saved with; it is tried as recorded.  A zonal
+    # Study saved under the v2/v3 solver contract hashed that contract, which
+    # the installed code no longer canonicalises (P0-8 S5); it is read as
+    # recorded too, and the upgrade is still reported as its own row.
     stored_graph = project.get("module_resolution_graph")
     graphs: list[tuple[str, Mapping[str, Any] | None]] = [("", None)]
     if isinstance(stored_graph, Mapping) and project.get("selected_extensions"):
@@ -192,7 +195,7 @@ def _reconstructed_basis(project: Mapping[str, Any], registry: ModuleRegistryV2,
             try:
                 payload = canonical_project_payload(
                     project, registry, manifest, module_version_overrides=overrides, include_methodology=False,
-                    module_resolution_graph=graph,
+                    module_resolution_graph=graph, recorded_solver_contract=True,
                 )
             except (KeyError, ValueError):
                 continue

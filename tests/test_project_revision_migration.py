@@ -251,14 +251,23 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(start["new"], project["start_year"])
 
     def test_pre_profile_extension_study_is_reconstructed_from_its_stored_graph(self):
-        """A 35aadb3-era Study with extensions hashed module source sha256s that any code change moves."""
+        """A 35aadb3-era Study with extensions hashed module source sha256s that any code change moves.
+
+        It also hashed the v3 zonal solver contract of its time, which the
+        installed code refuses to canonicalise since P0-8 (v4): the basis is
+        still rebuilt, and the contract upgrade is its own row.
+        """
+
+        from gridform_core.zonal_solver_contract import SOLVER_CONTRACT_VERSION, V3_SOLVER_CONTRACT_VERSION
 
         manifest = json.loads((NETWORK_PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
         project = json.loads((ROOT / "tests" / "golden" / "projects" / "C8.json").read_text(encoding="utf-8"))
         self.assertIn("value-zonal-redispatch-extension", project["selected_extensions"])
+        self.assertEqual(project["solver_contract"]["contract_version"], V3_SOLVER_CONTRACT_VERSION)
         overrides = revision_migration._baseline_overrides(self.registry, project["modules"])
         legacy = canonical_project_payload(project, self.registry, manifest,
-                                           module_version_overrides=overrides, include_methodology=False)
+                                           module_version_overrides=overrides, include_methodology=False,
+                                           recorded_solver_contract=True)
         graph = json.loads(json.dumps(legacy["module_resolution_graph"]))
         graph["modules"]["psm"]["source_sha256"] = "e" * 64  # the 35aadb3 source of the PSM entry point
         graph["graph_sha256"] = "f" * 64
@@ -273,17 +282,29 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(rows["module_resolution_graph"]["classification"], "code_identity_upgrade")
         self.assertEqual(rows["profile_id"]["dimension"], "methodology")
         self.assertIsNone(rows["profile_id"]["old"])
+        self.assertEqual(rows["contract_version"]["dimension"], "solver_contract")
+        self.assertEqual((rows["contract_version"]["old"], rows["contract_version"]["new"]),
+                         (V3_SOLVER_CONTRACT_VERSION, SOLVER_CONTRACT_VERSION))
+        self.assertEqual(rows["contract_version"]["classification"], "method_upgrade_required")
         self.assertNotIn("unverifiable", {row["classification"] for row in result["differences"]})
 
     def zonal_study_with_superseded_contract(self):
-        """A saved zonal Study whose revision (and basis) carry the superseded v2 solver contract."""
+        """A saved zonal Study whose revision (and basis) carry the superseded v3 solver contract.
+
+        The installed code only saves the current (v4) contract, so the Study
+        is saved with it and its record is then rewritten to the v3 identity
+        it would carry from before P0-8.
+        """
+
+        from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS, V3_SOLVER_CONTRACT_VERSION
 
         manifest = json.loads((NETWORK_PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
         project = json.loads((ROOT / "tests" / "golden" / "projects" / "C8.json").read_text(encoding="utf-8"))
         project["id"] = "zonal"
+        project["solver_contract"] = DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
         folder = Path(self.folder.name) / "projects" / "zonal"
         saved = save_project_revision(folder, project, self.registry, manifest)
-        old = "value.zonal-lexicographic-gbp1/v2"
+        old = V3_SOLVER_CONTRACT_VERSION
         payload = json.loads(json.dumps(saved["fingerprint_basis"]["payload"]))
         payload["solver_contract"]["contract_version"] = old
         declared = hashlib.sha256(_canonical_bytes(payload)).hexdigest()

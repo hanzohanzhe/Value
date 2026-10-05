@@ -105,7 +105,7 @@ def state_with_candidates(*candidates, year=2025, assets=(), projects=()):
 def resolved_run(end_year=2026, *, budget=1000.0):
     selected = {
         "pipeline": ("pipeline-spy", "1.0", "value.planning/v2"),
-        "psm": ("value-reference-dc-network", "1.0.0", "value.psm/v2"),
+        "psm": ("value-reference-dc-network", ReferenceDCNetworkPSM.version, "value.psm/v2"),
         "vre_cap": ("vre-spy", "1.0", "value.expansion-policy/v2"),
         "storage_cap": ("storage-spy", "1.0", "value.expansion-policy/v2"),
         "investment": ("investment-spy", "1.0", "value.investment/v2"),

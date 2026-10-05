@@ -28,7 +28,19 @@ SCHEMA_VERSION = "value.run-input-snapshot/v1"
 
 
 class SnapshotError(RuntimeError):
-    pass
+    """Frozen-input verification failure; ``code`` is set when it is stable."""
+
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+METHOD_SUPERSEDED = "GF_RUN_METHOD_SUPERSEDED"
+_SUPERSEDED_ACTION = (
+    "The Run's results stay readable; to compute it again with the current "
+    "method use frozen-run recovery in migration mode, which shows every "
+    "changed setting before a new Study revision is saved."
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -237,7 +249,7 @@ def create_run_input_snapshot(
                 require_acknowledgement=True,
             )
         except ProjectSolverContractError as exc:
-            raise SnapshotError(f"{exc.code}: {exc}") from exc
+            raise SnapshotError(f"{exc.code}: {exc}", exc.code) from exc
         if canonical_solver_contract is not None and canonical_solver_contract != project.get(
             "solver_contract"
         ):
@@ -370,9 +382,18 @@ def verify_run_input_snapshot(
     for row in manifest.get("modules", []):
         current = registry.manifest(str(row["module_id"]), expected_slot=str(row["slot"]))
         if current.version != row["module_version"] or current.contract_version != row["contract_version"]:
-            raise SnapshotError(f"Module identity changed after enqueue: {row['module_id']}")
+            raise SnapshotError(
+                f"{METHOD_SUPERSEDED}: Module identity changed after enqueue: "
+                f"{row['module_id']} {row['module_version']} -> {current.version}. "
+                + _SUPERSEDED_ACTION,
+                METHOD_SUPERSEDED,
+            )
         if sha256_file(_source_path(current.implementation)) != row["source_sha256"]:
-            raise SnapshotError(f"Module source changed after enqueue: {row['module_id']}")
+            raise SnapshotError(
+                f"{METHOD_SUPERSEDED}: Module source changed after enqueue: "
+                f"{row['module_id']}. " + _SUPERSEDED_ACTION,
+                METHOD_SUPERSEDED,
+            )
     selected = {
         str(row["slot"]): str(row["module_id"]) for row in manifest.get("modules", [])
     }
@@ -393,7 +414,12 @@ def verify_run_input_snapshot(
             require_acknowledgement=True,
         )
     except ProjectSolverContractError as exc:
-        raise SnapshotError(f"{exc.code}: {exc}") from exc
+        if exc.code == "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED":
+            raise SnapshotError(
+                f"{METHOD_SUPERSEDED}: {exc}. " + _SUPERSEDED_ACTION,
+                METHOD_SUPERSEDED,
+            ) from exc
+        raise SnapshotError(f"{exc.code}: {exc}", exc.code) from exc
     if canonical_solver_contract is not None and canonical_solver_contract != project.get(
         "solver_contract"
     ):
@@ -409,5 +435,9 @@ def verify_run_input_snapshot(
     )
     frozen_graph = dict(manifest.get("module_resolution_graph") or {})
     if current_graph.graph_sha256 != frozen_graph.get("graph_sha256"):
-        raise SnapshotError("Module resolution graph changed after enqueue")
+        raise SnapshotError(
+            f"{METHOD_SUPERSEDED}: Module resolution graph changed after enqueue. "
+            + _SUPERSEDED_ACTION,
+            METHOD_SUPERSEDED,
+        )
     return manifest

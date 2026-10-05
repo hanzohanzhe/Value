@@ -110,7 +110,8 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
             raise FrozenInputRecoveryError("Recovery requires new IDs; original products cannot be replaced")
         # Validate mechanical network content before changing its declared ID.
         if original_network:
-            load_zonal_network_pack(source / "network-pack", original_network)
+            # Recovering a historical Run reads its frozen pack (P0-8 S11).
+            load_zonal_network_pack(source / "network-pack", original_network, topology_policy="audit")
         staging_root.mkdir(parents=True, exist_ok=True)
         candidate = staging_root / uuid.uuid4().hex
         candidate.mkdir()
@@ -170,7 +171,7 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
             network_manifest["zonal_network_pack"] = identity
             network = reconstruct(network_root, network_manifest)
             identity["scientific_sha256"] = network.compute_scientific_sha256()
-            load_zonal_network_pack(network_root, network_manifest)
+            load_zonal_network_pack(network_root, network_manifest, topology_policy="audit")
         _write(base_root / "manifest.json", base_manifest)
         if network_manifest:
             _write(network_root / "manifest.json", network_manifest)
