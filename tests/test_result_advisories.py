@@ -248,6 +248,42 @@ class WithheldAnnualResourceTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertEqual(payload["result_publication"]["status"], "withheld")
 
+    def test_summary_of_a_withheld_run_carries_no_annual_result_artifact(self):
+        planning = {"schema_version": "value.planning-ledger/v1", "years": [{"year": 2025, "commissioned_mw": 1200.0}]}
+        attribution = {"schema_version": "value.vre-curtailment-attribution/v2", "annual": [{"year": 2025, "total_mwh": 5.0}]}
+        terminal = {"terminal_policy": "x", "outstanding_project_count": 3, "outstanding_capacity_mw": 900.0}
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder) / "doctoral-no-invariants"
+            shutil.copytree(FIXTURES / "doctoral-no-invariants", run)
+            output = run / "model-output"
+            for relative, payload in (("planning/summary.json", planning),
+                                      ("network/vre-curtailment-attribution.json", attribution),
+                                      ("terminal/terminal-state.json", terminal)):
+                (output / relative).parent.mkdir(parents=True, exist_ok=True)
+                (output / relative).write_text(json.dumps(payload), encoding="utf-8")
+            withheld = build_run_summary(run)
+            status = json.loads((run / "status.json").read_text(encoding="utf-8"))
+            status["raw_invariants"] = {"status": "passed"}
+            (run / "status.json").write_text(json.dumps(status), encoding="utf-8")
+            published = build_run_summary(run)
+        self.assertEqual(withheld["result_publication"]["status"], "withheld")
+        self.assertEqual(withheld["result_publication"]["withheld_fields"],
+                         ["annual", "planning", "vre_curtailment_attribution", "terminal"])
+        for field in ("planning", "vre_curtailment_attribution", "terminal"):
+            with self.subTest(field):
+                self.assertIsNone(withheld[field])
+        self.assertEqual(withheld["annual"], [])
+        self.assertNotIn("1200.0", json.dumps(withheld))
+        self.assertNotIn("900.0", json.dumps(withheld))
+        self.assertIn("comparison_identity", withheld)
+        self.assertIn("comparison_eligibility", withheld)
+        # The same run with passing raw invariants serves all three.
+        self.assertEqual(published["result_publication"]["status"], "published")
+        self.assertEqual(published["result_publication"]["withheld_fields"], [])
+        self.assertEqual(published["planning"], planning)
+        self.assertEqual(published["vre_curtailment_attribution"], attribution)
+        self.assertEqual(published["terminal"]["outstanding_capacity_mw"], 900.0)
+
     def test_published_runs_are_not_gated(self):
         status = json.loads((FIXTURES / "doctoral-no-invariants" / "status.json").read_text(encoding="utf-8"))
         status["raw_invariants"] = {"status": "passed"}

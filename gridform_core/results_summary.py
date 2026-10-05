@@ -280,9 +280,20 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
     # vocabulary, advisories, methodology and the Q14 publication rule.
     presented = present_scientific_status(json.loads(json.dumps(status)), run_root)
     publication = presented["result_publication"]
-    withheld_annual_rows = len(annual) if publication.get("status") == "withheld" else 0
-    if withheld_annual_rows:
+    publication_withheld = publication.get("status") == "withheld"
+    withheld_annual_rows = len(annual) if publication_withheld else 0
+    withheld_fields: list[str] = []
+    if publication_withheld:
+        # Q14: the summary serves no annual result of a withheld run - neither
+        # the annual rows nor the planning summary, the curtailment attribution
+        # or the terminal capacity they are derived from (the same planning
+        # data /planning/summary refuses with 409).  Identity and eligibility
+        # stay, so the run can still be listed and refused in comparisons.
         annual = []
+        withheld_fields = ["annual", "planning", "vre_curtailment_attribution", "terminal"]
+        planning = None
+        curtailment_attribution = None
+        terminal = None
     return {
         "schema_version": "value.run-results-summary/v1",
         "comparison_identity": build_comparison_identity(run_root, status, resolved),
@@ -307,7 +318,11 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         "methodology": presented["methodology"],
         "advisories": presented["advisories"],
         "advisory_summary": presented["advisory_summary"],
-        "result_publication": {**publication, "withheld_annual_rows": withheld_annual_rows},
+        "result_publication": {
+            **publication,
+            "withheld_annual_rows": withheld_annual_rows,
+            "withheld_fields": withheld_fields,
+        },
         "annual": annual,
         "planning": planning,
         "comparison_eligibility": (
@@ -325,7 +340,7 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
                 "terminal_policy", "outstanding_project_count", "outstanding_capacity_mw",
                 "post_horizon_project_count", "post_horizon_capacity_mw", "warning",
             )
-        } if isinstance(terminal, Mapping) else {},
+        } if isinstance(terminal, Mapping) else (None if publication_withheld else {}),
         "audit_links": {
             "provenance": f"/api/runs/{run_root.name}/provenance",
             "artifacts": f"/api/runs/{run_root.name}/artifacts",

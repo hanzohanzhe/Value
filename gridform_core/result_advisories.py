@@ -267,7 +267,7 @@ def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapp
 # replay, Inspect, provenance and exports stay available.
 WITHHELD_ANNUAL_RESOURCES = (
     "runs/<id> results[] (present_run)",
-    "runs/<id>/summary annual[]",
+    "runs/<id>/summary annual[], planning, vre_curtailment_attribution, terminal",
     "runs/<id>/results/vre-curtailment?resolution=annual",
     "runs/<id>/market/vre-summary",
     "runs/<id>/planning/summary",
@@ -276,6 +276,25 @@ WITHHELD_ANNUAL_RESOURCES = (
     "runs/<id>/network-redispatch/annual",
     "comparison annual deltas",
     "VALUE 101 comparison totals",
+)
+
+# Row-level ledgers that stay available for a withheld run on purpose: they
+# are the Inspect view of individual projects, events and periods, not
+# annual results (Q14 keeps Inspect and export available).  A page that
+# aggregates them into annual totals must use a gated resource above.
+INSPECT_LEVEL_UNGATED_RESOURCES = (
+    "runs/<id>/planning/projects",
+    "runs/<id>/planning/events",
+    "runs/<id>/domains/expansion/events",
+    "runs/<id>/domains/network/periods",
+    "runs/<id>/domains/network/branches",
+    "runs/<id>/market/periods",
+    "runs/<id>/market/dispatch",
+    "runs/<id>/market/vre-timeline",
+    "runs/<id>/results/vre-curtailment?resolution=half_hour",
+    "runs/<id>/market/orders|storage|physical",
+    "runs/<id>/provenance",
+    "runs/<id>/artifacts",
 )
 
 
