@@ -8791,8 +8791,8 @@
     },
     {
       "path": "scripts/build_linux_frontend_release.py",
-      "sha256": "05b58646c80093f60db674317d2c4a655577a5c7ad2ee82384bf2c4e63cde858",
-      "bytes": 9642,
+      "sha256": "990dc1d6ae3cd3ada06b649631a54a267106eb9d085a09ef877cf72c5b6d19ab",
+      "bytes": 10164,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11431,8 +11431,8 @@
     },
     {
       "path": "tests/test_source_release_tree.py",
-      "sha256": "9a5366c996e83b0c256ed274fd5285f55229f137b6388184fd1cfc082c76fee0",
-      "bytes": 12222,
+      "sha256": "f6220ee8b91e28410667369e5ba73f1dac74f0ffd3dc22688c43d47442fca2e3",
+      "bytes": 14088,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
