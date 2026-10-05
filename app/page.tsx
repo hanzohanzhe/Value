@@ -8,7 +8,8 @@ import { alignZonalSolverContract } from "./features/studies/solverContract";
 import RunWorkspace from "./features/runs/RunWorkspace";
 import AuditView from "./features/evidence/AuditView";
 import { Badge, formatBytes, formatNumber, modelDisplayName } from "./features/shared/presentation";
-import { getJson } from "./features/shared/api";
+import { API_BASE, LauncherAccessError, getJson } from "./features/shared/api";
+import OpenFromLauncher from "./features/shared/OpenFromLauncher";
 import { PUBLIC_CAPABILITY_DOMAINS } from "./features/shared/domainConstants";
 import type { PageResult } from "./features/shared/pagination";
 import type { View } from "./features/shared/navigation";
@@ -49,8 +50,11 @@ import {
   sourceStudyAllowsDerivedRun,
 } from "./features/learn/studyLifecycle";
 
-const API_ORIGIN = process.env.NEXT_PUBLIC_VALUE_API_ORIGIN || "http://127.0.0.1:8766";
-const API = `${API_ORIGIN}/api`;
+// Same-origin API (P0-1): the UI gateway forwards /api/* with the session it
+// holds.  API_ORIGIN stays an empty string until the apiOrigin prop chain is
+// removed (P0-1 S9), so every `${apiOrigin}/api/...` is a relative path.
+const API_ORIGIN = "";
+const API = API_BASE;
 const VALUE_NAME = "Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution";
 
 type DataPreview = { schema_version: string; role: string; status: string; format?: string; bytes?: number; source_sha256?: string; filename?: string; unit?: string; definition?: string; capability?: string; time_semantics?: string; columns?: string[]; sampled_rows?: number; duplicate_sample_identities?: number; timestamp_sample?: { first?: string | null; last?: string | null }; numeric_ranges?: Record<string, { minimum: number; maximum: number }>; top_level_keys?: string[]; array_counts?: Record<string, number>; sample?: unknown; reason?: string };
@@ -366,6 +370,7 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<Workspace>(emptyWorkspace);
   const [definitions, setDefinitions] = useState<ParameterDefinition[]>([]);
   const [online, setOnline] = useState(false);
+  const [launcherRequired, setLauncherRequired] = useState(false);
   const [connectionState, setConnectionState] = useState<"loading" | "online" | "offline">("loading");
   const [selectedPackId, setSelectedPackId] = useState("value-uk-1000twh-reproduction");
   const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -470,7 +475,10 @@ export default function Home() {
       setSelectedProjectId((current) => current || requestedRun?.project_id || next.projects[0]?.id || "");
       pendingLocation.current = null;
       return next;
-    } catch { setOnline(false); setConnectionState("offline"); return null; }
+    } catch (error) {
+      if (error instanceof LauncherAccessError) setLauncherRequired(true);
+      setOnline(false); setConnectionState("offline"); return null;
+    }
   }, []);
   const refreshValue101Tutorial = useCallback(async () => {
     setValue101Loading(true);
@@ -1201,6 +1209,7 @@ export default function Home() {
     finally { setLaunching(""); }
   }
 
+  if (launcherRequired) return <OpenFromLauncher />;
   return <main className="workbench"><aside className="rail"><div className="logo"><span>VA</span><div><b>VALUE</b><small>Power-system evolution</small></div></div>
     <nav aria-label="Workspace">{[
       { label: "Start", ids: ["overview", "journey", "learn"] },

@@ -9,6 +9,9 @@ test("VALUE-UK research suites target the local atomic installation route", asyn
     researchSuiteApiUrl("http://127.0.0.1:9901/"),
     "http://127.0.0.1:9901/api/research-suites/install",
   );
+  // P0-1: same-origin by default.
+  assert.equal(researchSuiteApiUrl(), "/api/research-suites/install");
+  assert.equal(researchSuiteApiUrl(""), "/api/research-suites/install");
 });
 
 test("the installed-suite summary keeps component hashes and unrun Study identities", async () => {

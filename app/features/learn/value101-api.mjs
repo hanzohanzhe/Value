@@ -1,11 +1,7 @@
-const DEFAULT_API_ORIGIN = "http://127.0.0.1:8766";
-
-export function value101ApiUrl(path, explicitOrigin) {
-  const origin = (
-    explicitOrigin
-    || process.env.NEXT_PUBLIC_VALUE_API_ORIGIN
-    || DEFAULT_API_ORIGIN
-  ).replace(/\/+$/, "");
+// Same-origin API path (P0-1): the UI gateway forwards /api/* to the local
+// engine.  An explicit origin is accepted only for tests and tooling.
+export function value101ApiUrl(path, explicitOrigin = "") {
+  const origin = String(explicitOrigin || "").replace(/\/+$/, "");
   const route = String(path).replace(/^\/+/, "");
   return `${origin}/api/${route}`;
 }

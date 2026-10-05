@@ -47,18 +47,33 @@ def members(directory: Path):
             yield path
 
 
+def absolute_api_origin_files(dist: Path) -> list[str]:
+    """Built files that still embed http://127.0.0.1:8766 or localhost:8766."""
+
+    markers = (b"127.0.0.1:8766", b"localhost:8766")
+    found = []
+    for path in sorted(dist.rglob("*")):
+        if path.is_file() and path.suffix in {".js", ".mjs", ".html", ".json", ".css"}:
+            raw = path.read_bytes()
+            if any(marker in raw for marker in markers):
+                found.append(path.relative_to(dist).as_posix())
+    return found
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--include-teaching", action="store_true")
     parser.add_argument("--maximum-mib", type=int, default=512)
     parser.add_argument("--build-log", type=Path, help="Existing production-build evidence; not a claim of byte equivalence.")
-    parser.add_argument("--api-origin", default="http://127.0.0.1:8766")
     args = parser.parse_args()
-    if args.api_origin != "http://127.0.0.1:8766":
-        raise ValueError("This local candidate requires a UI built with http://127.0.0.1:8766")
     if not (ROOT / "dist/server/index.js").is_file() or not (ROOT / "dist/client").is_dir():
         raise ValueError("Build the final production UI before packaging.")
+    # P0-1: the UI calls only its own origin (/api through the UI gateway); a
+    # build that still names an API port predates the gateway.
+    stale = absolute_api_origin_files(ROOT / "dist")
+    if stale:
+        raise ValueError(f"The production UI still names an absolute API origin; rebuild it: {stale[:3]}")
     selected = {f"app/{name}": ROOT / name for name in FILES}
     for name in DIRECTORIES:
         for path in members(ROOT / name):

@@ -70,6 +70,7 @@
     "app/features/runs/RunResults.tsx",
     "app/features/runs/RunWorkspace.tsx",
     "app/features/runs/types.ts",
+    "app/features/shared/OpenFromLauncher.tsx",
     "app/features/shared/Pager.tsx",
     "app/features/shared/api.ts",
     "app/features/shared/domainConstants.ts",
@@ -2908,9 +2909,9 @@
     },
     {
       "path": "app/features/data/research-suite-api.mjs",
-      "sha256": "62211ec74c0fa44f490815dca36f9dbb68a79dec56fd6457b52b4c1e7eba67f9",
-      "bytes": 939,
-      "transform": "byte copy"
+      "sha256": "0b65067af88fc163eb2806bec6b62360b9e7b47f0c82f1bd0065e4209111a583",
+      "bytes": 952,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
@@ -2992,9 +2993,9 @@
     },
     {
       "path": "app/features/learn/value101-api.mjs",
-      "sha256": "7c6a604c9889bd244eb2b5120794c764efc25f1845e05440c739101fe0694bde",
-      "bytes": 332,
-      "transform": "byte copy"
+      "sha256": "d90da626b84d1e7aca1691ec96dbcd67b0d1a85a9a7cf6028d0199c5bfed8c7e",
+      "bytes": 361,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/learn/value101.ts",
@@ -3004,9 +3005,9 @@
     },
     {
       "path": "app/features/market/ReplayExportPanel.tsx",
-      "sha256": "0d5d19622bfbc92bbac202b55807a69531d5c82bf963dd42fe6acbb41d74dac9",
-      "bytes": 6093,
-      "transform": "byte copy"
+      "sha256": "67f81a71a7c4637341275ef59b0c7aba924e65d6b3c7c12122c4d9760af92084",
+      "bytes": 6195,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/market/TraceCoverageNotice.tsx",
@@ -3111,6 +3112,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "app/features/shared/OpenFromLauncher.tsx",
+      "sha256": "234c1268aa7700fb959fc75deed211c6237d8c6e3375248f1a29923599f8c68d",
+      "bytes": 699,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/shared/Pager.tsx",
       "sha256": "ddab9d83610d731611223c6e994feebd924c9fafddfb0d7482d9cbc0e8bf4856",
       "bytes": 552,
@@ -3118,9 +3125,9 @@
     },
     {
       "path": "app/features/shared/api.ts",
-      "sha256": "1ccbeb16134c265ec80bdcf4b70616ff2f894856f1445eea10fc31e1a5c2cc0e",
-      "bytes": 289,
-      "transform": "byte copy"
+      "sha256": "8bb88417e69475b87d28452197f54ae729f68b2dd109163d965e1d63f5f9817a",
+      "bytes": 1734,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/shared/domainConstants.ts",
@@ -3316,21 +3323,21 @@
     },
     {
       "path": "app/globals.css",
-      "sha256": "80650a94f5c4c73360b3a2bea6edd849e3b4e6b774b6f77ce9e151904278372a",
-      "bytes": 106609,
-      "transform": "byte copy"
+      "sha256": "a7163192fb36725b0d00f6b9ec8e9564b5b264e5863139b660b9f074045f115f",
+      "bytes": 107220,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/layout.tsx",
-      "sha256": "410f572795c1ba5cef0186822ee21a61b8d26944a3f2c105b3385ee26ffcf410",
-      "bytes": 829,
-      "transform": "byte copy"
+      "sha256": "0637fc61c163a8f5879e4965b47d413f4de35a18d543b90b9db30c92446607e8",
+      "bytes": 1014,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/page.tsx",
-      "sha256": "07e2325e8c5cdfa258880f35340bc387050727e3e909e0f17714e8dad78adb2c",
-      "bytes": 149887,
-      "transform": "byte copy"
+      "sha256": "37576fdb1e034abebfbea597cfcd0924f0dd994829faf34b227a838387a271b1",
+      "bytes": 150359,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/__init__.py",
@@ -6070,8 +6077,8 @@
     },
     {
       "path": "e2e/run-tests.mjs",
-      "sha256": "98e878871a870fe1938827134ee03a7984709a2dc78af4c1e747a070dc6a6dbb",
-      "bytes": 5857,
+      "sha256": "d290068777a5af3baf3b618ffd87944865ffcd815899e3511b8fae136243b4d4",
+      "bytes": 5990,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8681,9 +8688,9 @@
     },
     {
       "path": "scripts/build_linux_frontend_release.py",
-      "sha256": "d9089f781ebec26a70a4778402d09d40c66ff32ba9cfa717b281ff14eea81bcc",
-      "bytes": 9037,
-      "transform": "byte copy"
+      "sha256": "05b58646c80093f60db674317d2c4a655577a5c7ad2ee82384bf2c4e63cde858",
+      "bytes": 9642,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/build_module_bundle.py",
@@ -9209,8 +9216,8 @@
     },
     {
       "path": "scripts/value-ui-gateway.mjs",
-      "sha256": "fdf430cf384ce7639af8a7d09c0575124bd40c7a41da371eefd488da1471ca34",
-      "bytes": 16397,
+      "sha256": "e89d6dcc25d56d2b38bc45e7bc3090a69fc9d446e788fe24922d64eb49ee89c2",
+      "bytes": 17118,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11309,8 +11316,8 @@
     },
     {
       "path": "tests/ui-gateway.test.mjs",
-      "sha256": "17e312bb3b9343970a4b8ecc4922c57f7c477dbe59c0f680766fb4a8f6c62614",
-      "bytes": 21033,
+      "sha256": "714852e862c7eda6e47983f97a3a823cc0f7c9e2f9efb5d3501a61d1091ea5bc",
+      "bytes": 21418,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11321,15 +11328,15 @@
     },
     {
       "path": "tests/value-uk-research-suite-ui.test.mjs",
-      "sha256": "89a1785388300ab3582626a86fa83ae841f2f89bd7255f961f5a75d388369338",
-      "bytes": 1791,
-      "transform": "byte copy"
+      "sha256": "df23168a22d8fa3a5ef9f10dced7f357065aef431cd9555c8726cde29f6d5e31",
+      "bytes": 1970,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/value101-api.test.mjs",
-      "sha256": "299a87254689996149a0c7315bb7d2852609bc872e6637719540229efd19a29b",
-      "bytes": 895,
-      "transform": "byte copy"
+      "sha256": "c6d235abbf515d69ca343f27392aec15bc166f8fcee7d247fee5348021680d71",
+      "bytes": 2329,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/workspace-location.test.mjs",
@@ -11357,9 +11364,9 @@
     },
     {
       "path": "vite.config.ts",
-      "sha256": "aef1467f53355cedf4ed7f2f7f194d9668ec3babdef44d110620c6412a3f0dc0",
-      "bytes": 2462,
-      "transform": "byte copy"
+      "sha256": "705e7f2b8008127af5622fbdcc8d7c119374b4c41589f86865fc2d732660740c",
+      "bytes": 3515,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/.gitignore",

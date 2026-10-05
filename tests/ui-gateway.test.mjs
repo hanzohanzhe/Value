@@ -119,7 +119,14 @@ test("foreign Host headers are refused with 421 before anything is forwarded", a
     for (const target of ["/", "/api/workspace"]) {
       const response = await send({ port: uiPort, path: target, host });
       assert.equal(response.status, 421, `${host} ${target}`);
-      assert.equal(response.json.error_code, "GF_HOST_REJECTED");
+      assert.equal(response.headers["x-value-error-code"], "GF_HOST_REJECTED");
+      if (target === "/") {
+        // A page request gets the launcher explanation (frontend spec section 8).
+        assert.match(response.text, /Open VALUE from its launcher/);
+        assert.match(response.headers["content-security-policy"], /default-src 'none'/);
+      } else {
+        assert.equal(response.json.error_code, "GF_HOST_REJECTED");
+      }
       assertSecurityHeaders(response.headers);
     }
   }
@@ -144,7 +151,7 @@ test("pages carry security headers and a fresh CSP nonce that vinext sees", asyn
     assert.match(policy, /base-uri 'none'/);
     assert.match(policy, /object-src 'none'/);
     assert.match(policy, /connect-src 'self'/);
-    assert.doesNotMatch(policy, /unsafe-eval/);
+    assert.doesNotMatch(policy, /unsafe-eval|8766|18766/);
     const nonce = /'nonce-([^']+)'/.exec(policy)[1];
     assert.ok(nonce.length >= 22);
     const inline = [...response.text.matchAll(/<script nonce="([^"]*)"/g)].map((match) => match[1]);

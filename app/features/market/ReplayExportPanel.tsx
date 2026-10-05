@@ -21,7 +21,8 @@ type ExportJobPayload = {
 type ExportJob = ExportJobPayload & { request: ExportRequest };
 
 function absoluteJobUrl(apiOrigin: string, statusUrl: string): string {
-  return new URL(statusUrl, apiOrigin).toString();
+  // Same-origin API (P0-1): an empty origin keeps the server's relative URL.
+  return apiOrigin ? new URL(statusUrl, apiOrigin).toString() : statusUrl;
 }
 
 export default function ReplayExportPanel({

@@ -1,6 +1,23 @@
 import { existsSync, readFileSync } from "node:fs";
 import vinext from "vinext";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+import { createGateway } from "./scripts/value-ui-gateway.mjs";
+
+// Local development uses the same gateway as production (P0-1): the browser
+// calls /api on the dev origin; the gateway checks Host (the dev port is read
+// per request, so Vite moving from 3000 to 3001 still works), strips browser
+// context and injects the API session read from VALUE_DATA_HOME.  CSP nonces
+// are production-only (the dev client injects un-nonced scripts).
+// VALUE_API_ORIGIN selects another local API (default http://127.0.0.1:8766).
+function valueGateway(): Plugin {
+  return {
+    name: "value-ui-gateway",
+    configureServer(server) {
+      const gateway = createGateway({ apiOrigin: process.env.VALUE_API_ORIGIN || "http://127.0.0.1:8766", csp: false });
+      server.middlewares.use((req, res, next) => gateway.handle(req, res, () => next()));
+    },
+  };
+}
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
@@ -18,8 +35,11 @@ export default defineConfig(async () => {
   // Vinext's Node build works with the same production launcher and needs no
   // Cloudflare bindings. Never create deployment metadata just to build locally.
   if (!existsSync(hostingConfigPath)) {
-    return { server, plugins: [vinext()] };
+    return { server, plugins: [valueGateway(), vinext()] };
   }
+
+  // The Sites deployment below has no local engine and does not mount the
+  // VALUE gateway; the hosted page is not the research workbench's API path.
 
   // A configured Sites checkout retains its existing deployment plugin path.
   // Malformed configuration remains an error rather than silently changing target.

@@ -51,17 +51,16 @@ const HOP_BY_HOP = new Set([
 // Sec-Fetch-Site other than none, because only the gateway may vouch for a page.
 const BROWSER_CONTEXT = new Set(["origin", "referer", "cookie", "host", "content-security-policy", "content-security-policy-report-only"]);
 
-/** Content-Security-Policy for one page response.  ``extraConnect`` exists only
- * for the transition while the frontend still calls the API origin directly
- * (removed together with the absolute API origin in P0-1 S5). */
-export function contentSecurityPolicy(nonce, extraConnect = []) {
+/** Content-Security-Policy for one page response (the frontend calls only
+ * its own origin, so connect-src is 'self'). */
+export function contentSecurityPolicy(nonce) {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    ["connect-src 'self'", ...extraConnect].join(" "),
+    "connect-src 'self'",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'none'",
@@ -156,13 +155,21 @@ function requestBodyLength(req) {
 
 /** Answer without forwarding; a small body is read first so the client sees
  * the answer instead of a connection reset. */
-function reject(req, res, status, code, message, extra = {}) {
-  const body = Buffer.from(JSON.stringify({ error: message, error_code: code, ...extra }));
+const LAUNCHER_PAGE = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Open VALUE from its launcher</title></head>
+<body style="font-family:system-ui,sans-serif;margin:0;padding:24px 16px;background:#f6f7fa;color:#172033"><main role="alert" style="max-width:560px;margin:10vh auto;background:#fff;border:1px solid #d9dee8;border-radius:8px;padding:28px 24px">
+<h1 style="margin:0 0 12px;font-size:22px">Open VALUE from its launcher</h1>
+<p style="margin:0;font-size:15px;line-height:1.55;color:#596273">This page was not opened through the VALUE launcher, so it cannot talk to the local engine. Close it and start VALUE again with start-value (or the desktop shortcut).</p>
+</main></body></html>
+`;
+
+function reject(req, res, status, code, message, extra = {}, { html = false } = {}) {
+  const body = Buffer.from(html ? LAUNCHER_PAGE : JSON.stringify({ error: message, error_code: code, ...extra }));
   const send = () => {
     if (res.headersSent) return;
     applySecurityHeaders(res);
+    if (html) res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'");
     res.writeHead(status, {
-      "Content-Type": "application/json; charset=utf-8",
+      "Content-Type": html ? "text/html; charset=utf-8" : "application/json; charset=utf-8",
       "Content-Length": body.length,
       "Cache-Control": "no-store",
       "X-VALUE-Error-Code": code,
@@ -253,8 +260,6 @@ export function createGateway({
   const sessionFile = sessionFilePath(home, upstream.port);
   const cspHeader = cspReportOnly ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy";
   const counters = { forwarded: 0, rejected: 0 };
-  // Transitional (until P0-1 S5): the built frontend still calls the API origin.
-  const transitionalConnect = [upstream.origin, `http://${upstream.hostname === "localhost" ? "127.0.0.1" : "localhost"}:${upstream.port}`];
 
   async function proxy(req, res) {
     const session = await readSession(sessionFile);
@@ -311,7 +316,8 @@ export function createGateway({
     const host = String(req.headers.host ?? "").toLowerCase();
     if (!allowedHosts(port).has(host)) {
       counters.rejected += 1;
-      reject(req, res, 421, "GF_HOST_REJECTED", "VALUE only answers requests addressed to 127.0.0.1 or localhost.");
+      const page = !String(req.url ?? "").split("?")[0].startsWith("/api");
+      reject(req, res, 421, "GF_HOST_REJECTED", "VALUE only answers requests addressed to 127.0.0.1 or localhost.", {}, { html: page });
       return;
     }
     const target = String(req.url ?? "");
@@ -325,7 +331,7 @@ export function createGateway({
       applySecurityHeaders(res);
       if (csp) {
         const nonce = crypto.randomBytes(16).toString("base64");
-        const policy = contentSecurityPolicy(nonce, transitionalConnect);
+        const policy = contentSecurityPolicy(nonce);
         res.setHeader(cspHeader, policy);
         // vinext reads the nonce of its inline scripts from this request header.
         delete req.headers["content-security-policy-report-only"];

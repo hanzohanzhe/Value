@@ -25,18 +25,18 @@ import { describeEvaluation, evaluateOffline } from "./offline-ratchet.mjs";
 //   VALUE_E2E_STATE_ROOT=<d>  parent of the services' temporary state; by default this
 //                             runner creates one and removes it after Playwright exits
 //
-// The services listen on the fixed ports 18800 (UI) and 18766 (API): the API's
-// CORS list and several specs name them. Two e2e runs on one host therefore
+// The services listen on the fixed ports 18800 (UI) and 18766 (API): the UI
+// gateway is started with --api-origin http://127.0.0.1:18766 and several specs
+// name 18800. The page itself only calls its own origin (/api, P0-1), so the
+// build needs no API address. Two e2e runs on one host therefore
 // cannot overlap (P0_CONVENTIONS section 11: e2e and `p0_gate full` runs are
 // serialised across lanes); an occupied port stops this runner before the build.
 const E2E_PORTS = { ui: 18800, api: 18766 };
 const root = path.resolve(import.meta.dirname, "..");
 const offline = process.argv.includes("--offline");
 const passthrough = process.argv.slice(2).filter((argument) => argument !== "--offline");
-const environment = {
-  ...process.env,
-  NEXT_PUBLIC_VALUE_API_ORIGIN: "http://127.0.0.1:18766",
-};
+const environment = { ...process.env };
+delete environment.NEXT_PUBLIC_VALUE_API_ORIGIN;
 const subset = offline ? JSON.parse(fs.readFileSync(path.join(root, "e2e", "offline-subset.json"), "utf8")) : null;
 let reportFolder = null;
 // start-e2e-services.mjs creates its state directory inside this root. Playwright
