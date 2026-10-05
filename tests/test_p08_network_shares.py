@@ -211,14 +211,17 @@ class DCShareExpansionTests(unittest.TestCase):
                 self.assertEqual(payload["extensions"]["storage"], want["storage"])
 
 class DCVersionLedgerTests(unittest.TestCase):
-    def test_dc_1_1_0_upgrade_needs_user_confirmation(self) -> None:
+    def test_dc_1_1_0_upgrade_is_marked_for_user_confirmation(self) -> None:
         # Q13: split-mapping Studies change numerically under 1.1.0, so the
-        # bump is a method upgrade the user confirms (M2-P0-8a review).
+        # bump is marked as a method upgrade the user confirms (M2-P0-8a
+        # review).  Nothing enforces the flag before X0 S11; the ledger says so
+        # rather than claiming a confirmation step that does not exist yet.
         ledger = json.loads((ROOT / "docs" / "release" / "VERSION_LEDGER.json").read_text(encoding="utf-8"))
         bump = next(
             row for row in ledger["modules"]["value-reference-dc-network"]["bumps"] if row["to"] == "1.1.0"
         )
         self.assertTrue(bump["requires_user_opt_in"])
+        self.assertIn("declarative until X0 S11", bump["reason"])
 
 
 if __name__ == "__main__":

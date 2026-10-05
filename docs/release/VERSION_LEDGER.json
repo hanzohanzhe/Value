@@ -90,7 +90,7 @@
           "correction_ids": [
             "p08.network-share-expansion"
           ],
-          "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs give numerically equal results (only signed zeros and an integer curtailment zero differ in serialization). Studies with split mappings change numerically, so per Q13 the upgrade needs explicit user confirmation (pending author ruling; M2-P0-8a review).",
+          "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs give numerically equal results (only signed zeros and an integer curtailment zero differ in serialization). Studies with split mappings change numerically, so per Q13 the upgrade is marked as needing explicit user confirmation (pending author ruling; M2-P0-8a review). The flag is declarative until X0 S11 classifies saved Studies method_upgrade_required: until then nothing reads it, and a saved Study with split bus mappings runs under 1.1.0 without a confirmation prompt (open item for X0 S11).",
           "requires_user_opt_in": true
         }
       ]
