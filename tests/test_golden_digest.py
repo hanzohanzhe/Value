@@ -308,7 +308,10 @@ class GoldenDigestTests(unittest.TestCase):
         with mock.patch.object(capture, "REPORT_DIR", reports):
             self.assertTrue(any("D1-r1.json" in error for error in capture.validate_all()))
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            capture.main(["numeric-report", "--case", "D1"])  # D1 has only revision 0
+            # Revision 0 has no parent to report against.  (D1 now carries
+            # accounting revisions, so the default "latest revision" would run
+            # the case and write a report into the repository.)
+            capture.main(["numeric-report", "--case", "D1", "--revision", "0"])
 
     def test_tampered_delta_is_detected(self) -> None:
         record = self._golden("corrected")

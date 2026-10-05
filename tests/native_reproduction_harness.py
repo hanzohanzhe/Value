@@ -717,6 +717,7 @@ class RecordingLedger:
         self.orders: list[list[dict[str, Any]]] = []
         self.storage: list[dict[str, Any]] = []
         self.declared: list[dict[str, Any]] = []
+        self.storage_audit: list[dict[str, Any]] = []
 
     def record_period(self, row) -> None:
         self.periods.append(dataclasses.asdict(row))
@@ -726,6 +727,10 @@ class RecordingLedger:
 
     def record_storage(self, rows) -> None:
         self.storage.extend(dataclasses.asdict(row) for row in rows)
+
+    def record_storage_audit(self, rows) -> None:
+        # P0-4 S4: per-asset storage energy audit (accounting, zones.json).
+        self.storage_audit.extend(dataclasses.asdict(row) for row in rows)
 
     def record_clearing_input(self, row) -> None:
         self.declared.append({
@@ -1042,6 +1047,16 @@ def columns_from_run(result: Mapping[str, Any], periods: int = PERIODS) -> dict[
         for field in ("state_of_charge_mwh", "charge_mwh", "discharge_mwh", "power_capacity_mw", "energy_capacity_mwh"):
             columns[f"market/market.sqlite::storage_state.{asset}.{field}"] = _per_period(
                 [canonical(row[field]) for row in rows], periods, f"storage {asset}")
+    # P0-4 S4 storage energy audit (accounting via tests/golden/zones.json).
+    audit_by_asset: dict[str, list[dict[str, Any]]] = {}
+    for row in ledger.storage_audit:
+        audit_by_asset.setdefault(str(row["asset_id"]), []).append(row)
+    for asset, rows in audit_by_asset.items():
+        for field in rows[0]:
+            if field in ("year", "period", "asset_id"):
+                continue
+            columns[f"market/market.sqlite::storage_energy_audit.{asset}.{field}"] = _per_period(
+                [canonical(row[field]) for row in rows], periods, f"storage audit {asset}")
     if len(ledger.orders) != periods:
         raise AssertionError(f"ledger recorded orders for {len(ledger.orders)} periods")
     columns["market/market.sqlite::orders.#rows"] = [len(rows) for rows in ledger.orders]

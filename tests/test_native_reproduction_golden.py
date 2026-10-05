@@ -184,7 +184,8 @@ class SyntheticGoldenTests(unittest.TestCase):
 
     def test_frozen_loop_accounting_is_gated_only_until_an_accounting_revision(self):
         self.assertEqual(harness.gated_zones(self.golden, "live"), ("trajectory", "accounting"))
-        revised = copy.deepcopy(self.golden)
+        # Revision 0 alone (P0-4 S4 and later append accounting revisions).
+        revised = _revision_zero(self.golden)
         self.assertEqual(len(revised["revisions"]), 1)
         self.assertEqual(harness.gated_zones(revised, "frozen"), ("trajectory", "accounting"))
         revised["revisions"].append({"index": 1, "correction_ids": ["p04.storage-charge-audit"], "patch": {}})
@@ -282,7 +283,8 @@ class SyntheticGoldenTests(unittest.TestCase):
 
     def test_revision_patches_are_dumped_one_column_per_line(self):
         observed = copy.deepcopy(self.observed)
-        accounting = [key for key, zone in harness.pinned_zones(self.golden).items()
+        golden = _revision_zero(self.golden)
+        accounting = [key for key, zone in harness.pinned_zones(golden).items()
                       if zone == "accounting" and isinstance(observed["dynamic"][key], list)]
         self.assertGreater(len(accounting), 10)
         for variant in harness.VARIANTS:
@@ -290,7 +292,7 @@ class SyntheticGoldenTests(unittest.TestCase):
                 values = observed[variant][key]
                 observed[variant][key] = [value + 1.0 if isinstance(value, float) else value for value in values]
         revised = harness.append_revision(
-            copy.deepcopy(self.golden), observed, reason="every accounting column", correction_ids=["p04.toy"],
+            golden, observed, reason="every accounting column", correction_ids=["p04.toy"],
             base_commit="t",
         )
         revision = revised["revisions"][1]
@@ -388,7 +390,7 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(harness.zone_of("kernel/declared::ahead.unserved_target_mw"), "accounting")
 
     def test_revision_accepts_accounting_and_refuses_trajectory_changes(self):
-        golden = copy.deepcopy(self.golden)
+        golden = _revision_zero(self.golden)
         observed = copy.deepcopy(self.observed)
         residual = "market/market.sqlite::period_summary.raw_energy_balance_residual_mwh"
         observed["dynamic"][residual][0] = 123.0
@@ -420,9 +422,18 @@ class SyntheticGoldenTests(unittest.TestCase):
             columns["market/market.sqlite::orders.accounting_row_sha"][3] = "000000000000"
             columns["kernel/storage_cost_report"]["li_battery"]["recovery_adequacy"] = {"version": 2}
         revised = harness.append_revision(
-            copy.deepcopy(self.golden), observed, reason="toy", correction_ids=["p04.storage-charge-audit"], base_commit="t",
+            _revision_zero(self.golden), observed, reason="toy", correction_ids=["p04.storage-charge-audit"], base_commit="t",
         )
         self.assertEqual(len(revised["revisions"][1]["delta"]), 6)
+
+
+def _revision_zero(golden):
+    """The golden with revision 0 only: the frozen-loop observation reproduces
+    it, whatever accounting revisions (P0-4 S4 and later) were appended."""
+
+    copied = copy.deepcopy(golden)
+    copied["revisions"] = copied["revisions"][:1]
+    return copied
 
 
 class GoldenSensitivityTests(unittest.TestCase):
@@ -439,7 +450,7 @@ class GoldenSensitivityTests(unittest.TestCase):
 
         with mock.patch.object(kernel, "ahead_market_bidding", perturbed):
             observed = harness.observe(["dynamic"])
-        golden = harness.load_golden()
+        golden = _revision_zero(harness.load_golden())
         golden["cases"] = {"dynamic": golden["cases"]["dynamic"]}
         differences = harness.compare_with_golden(golden, observed)
         self.assertTrue(any(item.zone == "trajectory" for item in differences))

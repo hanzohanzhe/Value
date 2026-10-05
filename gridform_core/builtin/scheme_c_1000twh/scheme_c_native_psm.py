@@ -16,12 +16,14 @@ from ...methodology import current_methodology, methodology_scoped
 from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
 from ...market_ledger import (
     PhysicalDispatchRow,
+    StorageYearBoundaryRow,
     create_market_ledger,
     set_active_market_ledger,
 )
 from ...market_replay import canonical_technology
 from ...v2.contracts import MarketYearResult, PSMInput, PeriodSummary
 from .legacy_result_adapter import SchemeCLegacyResultAdapter
+from .native_balance_audit import stored_total
 from .native_market_rules import NativeMarketRules, rules_for_methodology, storage_bid_basis_source
 from .native_realisation import RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
@@ -447,6 +449,10 @@ class SchemeCNativePSM:
                 self._restore_previous_observations(batteries, model_input)
                 for battery in batteries.values():
                     battery.prepare_operating_year(model_input.year)
+                # P0-4 S4 (P3-14): the year's batteries are new objects, so the
+                # opening state is whatever they start with and the closing
+                # state is discarded at the year end (frozen behaviour, booked).
+                opening_soc = {asset_id: stored_total(battery) for asset_id, battery in batteries.items()}
                 forecast = np.asarray(pd.read_csv(config.file_paths["forecast_demand"]), dtype=float).reshape(-1)[:periods]
                 real = np.asarray(pd.read_csv(config.file_paths["real_demand"]), dtype=float).reshape(-1)[:periods]
                 raw_result = run_simulation(
@@ -457,6 +463,14 @@ class SchemeCNativePSM:
                     real,
                     [Connection(**raw) for raw in config.connections.values()],
                     Electrolyzer(**config.electrolyzer),
+                )
+                ledger.record_storage_year_boundary(
+                    StorageYearBoundaryRow(
+                        int(model_input.year), str(getattr(battery, "name", asset_id)),
+                        opening_soc[asset_id], stored_total(battery), 0.0, stored_total(battery),
+                        "new_battery_each_year",
+                    )
+                    for asset_id, battery in batteries.items()
                 )
                 named = SchemeCLegacyResultAdapter.validate_and_convert(
                     raw_result, year=model_input.year, periods=periods,

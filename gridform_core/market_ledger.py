@@ -631,6 +631,48 @@ class StorageStateRow:
 
 
 @dataclass(frozen=True)
+class StorageEnergyAuditRow:
+    """Per-asset storage energy audit of one period (P0-4 S4, P3-14, P5-11).
+
+    ``charge_input_mwh``/``discharge_output_mwh`` are grid side; the other
+    quantities are stored-side MWh.  ``identity_residual_mwh`` is
+    ``soc_start + charge_stored - discharge_withdrawn - self_discharge -
+    tail_writeoff - soc_end`` (rounding only).
+    """
+
+    year: int
+    period: int
+    asset_id: str
+    soc_start_mwh: float
+    charge_input_mwh: float
+    charge_stored_mwh: float
+    discharge_output_mwh: float
+    discharge_withdrawn_mwh: float
+    self_discharge_mwh: float
+    tail_writeoff_mwh: float
+    soc_end_mwh: float
+    identity_residual_mwh: float
+
+
+@dataclass(frozen=True)
+class StorageYearBoundaryRow:
+    """Storage state at an operating-year boundary (P0-4 S4, P3-14).
+
+    ``carry_policy`` names what the PSM does with the closing state: the
+    default PSM builds new batteries every year, so its closing state of
+    charge is ``discarded`` (doctoral frozen behaviour, booked not changed).
+    """
+
+    year: int
+    asset_id: str
+    opening_soc_mwh: float
+    closing_soc_mwh: float
+    carried_forward_mwh: float
+    discarded_mwh: float
+    carry_policy: str
+
+
+@dataclass(frozen=True)
 class PhysicalDispatchRow:
     """One final, non-duplicated physical flow after all market stages.
 
@@ -1286,6 +1328,19 @@ class NetworkSolverDiagnosticRow:
             _required_text(self.error_code, "error_code")
 
 
+# Optional v7 tables of the default PSM energy audit (P0-4 S4-S6).  They are
+# created on first write only, so ledgers of other PSMs keep their table set.
+# table -> (schema file, number of columns)
+OPTIONAL_ENERGY_AUDIT_TABLES: dict[str, tuple[str, int]] = {
+    "storage_energy_audit": ("market-ledger-storage-audit-v1.schema.sql", 12),
+    "storage_year_boundary": ("market-ledger-storage-audit-v1.schema.sql", 7),
+}
+
+
+def _optional_table_ddl(schema_file: str) -> str:
+    return (Path(__file__).resolve().parent / "data" / "contracts" / schema_file).read_text(encoding="utf-8")
+
+
 class MarketLedger(Protocol):
     trace_level: str
 
@@ -1310,6 +1365,8 @@ class MarketLedger(Protocol):
     def record_network_solver_diagnostics(
         self, rows: Iterable[NetworkSolverDiagnosticRow]
     ) -> None: ...
+    def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: ...
+    def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: ...
     def close(self) -> dict[str, object]: ...
 
 
@@ -1350,6 +1407,8 @@ class NullMarketLedger:
     def record_network_solver_diagnostics(
         self, rows: Iterable[NetworkSolverDiagnosticRow]
     ) -> None: pass
+    def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: pass
+    def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: pass
     def close(self) -> dict[str, object]:
         return {"schema_version": self.schema_version, "trace_level": "off", "rows": 0, "bytes": 0, "writer_seconds": 0.0}
 
@@ -1545,6 +1604,11 @@ class SQLiteMarketLedger:
             self._reliability_events: list[tuple] = []
             self._solver_links: list[tuple] = []
             self._network_solver_diagnostics: list[tuple] = []
+            # P0-4 S4-S6 optional energy-audit tables: table -> buffered rows.
+            self._optional_rows: dict[str, list[tuple]] = {
+                table: [] for table in OPTIONAL_ENERGY_AUDIT_TABLES
+            }
+            self._optional_created: set[str] = set()
             self._closed = False
         except Exception:
             self._ownership_lease.close()
@@ -2161,10 +2225,40 @@ class SQLiteMarketLedger:
             return
         self._extend(self._network_solver_diagnostics, materialized)
 
+    def _record_optional(self, table: str, rows: Iterable[object]) -> None:
+        buffer = self._optional_rows[table]
+        buffer.extend(tuple(asdict(row).values()) for row in rows)
+        if len(buffer) >= self.batch_size:
+            self.flush()
+
+    def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None:
+        """Per-asset storage energy audit (P0-4 S4); every trace level."""
+
+        self._record_optional("storage_energy_audit", rows)
+
+    def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None:
+        self._record_optional("storage_year_boundary", rows)
+
+    def _flush_optional(self) -> None:
+        for table, buffer in self._optional_rows.items():
+            if not buffer:
+                continue
+            if table not in self._optional_created:
+                schema_file, _ = OPTIONAL_ENERGY_AUDIT_TABLES[table]
+                self.connection.executescript(_optional_table_ddl(schema_file))
+                self._optional_created.add(table)
+            columns = OPTIONAL_ENERGY_AUDIT_TABLES[table][1]
+            self.connection.executemany(
+                f"INSERT OR REPLACE INTO {table} VALUES({','.join('?' for _ in range(columns))})",
+                buffer,
+            )
+            buffer.clear()
+
     def flush(self) -> None:
         if self._closed:
             return
         started = time.perf_counter()
+        self._flush_optional()
         if self._periods:
             self.connection.executemany("INSERT OR REPLACE INTO period_summary VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", self._periods)
             self._periods.clear()
@@ -2416,6 +2510,17 @@ class SQLiteMarketLedger:
             )
             for table in tables
         }
+        present = {
+            row[0] for row in self.connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        for table in OPTIONAL_ENERGY_AUDIT_TABLES:
+            if table in present:
+                counts[table] = int(
+                    self.connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                )
+        energy_audit = self._energy_audit_summary(present)
         balance = self.connection.execute(
             "SELECT COALESCE(MAX(ABS(energy_balance_residual_mwh)), 0), "
             "COALESCE(MAX(ABS(raw_energy_balance_residual_mwh)), 0), "
@@ -2463,6 +2568,8 @@ class SQLiteMarketLedger:
             "source_artifact_sha256": source_artifact_sha256,
             "semantic_metadata": self.semantic_metadata,
         }
+        if energy_audit:
+            result["energy_audit"] = energy_audit
         (self.path.parent / "metadata.json").write_text(
             json.dumps(result, indent=2), encoding="utf-8"
         )
@@ -2494,6 +2601,59 @@ class SQLiteMarketLedger:
             ledger_schema_version=self.schema_version,
         )
         return result
+
+    def _energy_audit_summary(self, present: set[str]) -> dict[str, object]:
+        """Per-year SQL summaries of the optional P0-4 tables.
+
+        The default PSM opens a new ledger instance on the same file every
+        year, so the summary is computed over the file (all years so far),
+        not from this instance's buffers.
+        """
+
+        summary: dict[str, object] = {}
+        if "storage_energy_audit" in present:
+            summary["storage_by_year"] = [
+                {
+                    "year": int(row[0]),
+                    "charge_input_mwh": float(row[1]),
+                    "discharge_output_mwh": float(row[2]),
+                    "self_discharge_mwh": float(row[3]),
+                    "tail_writeoff_mwh": float(row[4]),
+                    "maximum_absolute_identity_residual_mwh": float(row[5]),
+                }
+                for row in self.connection.execute(
+                    "SELECT year, SUM(charge_input_mwh), SUM(discharge_output_mwh), "
+                    "SUM(self_discharge_mwh), SUM(tail_writeoff_mwh), "
+                    "MAX(ABS(identity_residual_mwh)) FROM storage_energy_audit "
+                    "GROUP BY year ORDER BY year"
+                )
+            ]
+            if "storage_state" in present:
+                # Report-only throughput bound (P0-4 S4): grid-side charge or
+                # discharge above rated power x period length.
+                try:
+                    hours = float(self.semantic_metadata.get("period_hours", 0.5))
+                except (TypeError, ValueError):
+                    hours = 0.5
+                row = self.connection.execute(
+                    "SELECT COUNT(*) FROM storage_energy_audit a JOIN storage_state s "
+                    "ON a.year=s.year AND a.period=s.period AND a.asset_id=s.asset_id "
+                    "WHERE a.charge_input_mwh > s.power_capacity_mw * ? + 1e-9 "
+                    "OR a.discharge_output_mwh > s.power_capacity_mw * ? + 1e-9",
+                    (hours, hours),
+                ).fetchone()
+                summary["storage_throughput_exceedances"] = {
+                    "periods": int(row[0]), "enforcement": "report_only",
+                }
+        if "storage_year_boundary" in present:
+            summary["storage_year_boundary"] = [
+                {"year": int(row[0]), "discarded_mwh": float(row[1]), "carried_forward_mwh": float(row[2])}
+                for row in self.connection.execute(
+                    "SELECT year, SUM(discarded_mwh), SUM(carried_forward_mwh) "
+                    "FROM storage_year_boundary GROUP BY year ORDER BY year"
+                )
+            ]
+        return summary
 
     def metadata(self) -> dict[str, object]:
         metadata_path = self.path.parent / "metadata.json"

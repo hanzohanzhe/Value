@@ -40,6 +40,12 @@ EXPECTED = {
 }
 
 
+# P0-4 S4-S6: tables that later steps add (accounting zone, never trajectory)
+# and existing accounting columns they revise.
+P04_ADDED_TABLES = {"storage_energy_audit", "storage_year_boundary"}
+P04_REVISED_COLUMNS: set[str] = set()
+
+
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -61,7 +67,9 @@ class P04VariantFixtures(unittest.TestCase):
         self.assertEqual(set(p04_variants.VARIANTS), set(EXPECTED))
 
     def test_per_table_golden_at_head(self):
-        # Exact hashes on the reference platform, %.9g hashes elsewhere.
+        # Exact hashes on the reference platform, %.9g hashes elsewhere.  The
+        # fixture is the M0 HEAD capture; P0-4 S4-S6 may only add or revise
+        # accounting-zone columns of the tables they own (no trajectory change).
         fixture = json.loads(golden.FIXTURE.read_text(encoding="utf-8"))
         self.assertEqual(fixture["schema_version"], golden.SCHEMA_VERSION)
         self.assertEqual(set(fixture["variants"]), set(EXPECTED))
@@ -71,7 +79,59 @@ class P04VariantFixtures(unittest.TestCase):
                 tables = {key.split("::", 1)[1].split(".", 1)[0] for key in expected["columns"]}
                 self.assertIn("period_summary", tables)
                 self.assertIn("storage_state", tables)
-                self.assertEqual(golden.compare(expected, golden.digest_output(output)), [])
+                differences = golden.compare(expected, golden.digest_output(output))
+                self.assertEqual([item for item in differences if item["zone"] == "trajectory"], [])
+                outside = [
+                    item for item in differences
+                    if item["key"].split("::", 1)[1] not in P04_REVISED_COLUMNS
+                    and item["key"].split("::", 1)[1].split(".", 1)[0] not in P04_ADDED_TABLES
+                ]
+                self.assertEqual(outside, [])
+                for item in differences:
+                    if item["key"].split("::", 1)[1].split(".", 1)[0] in P04_ADDED_TABLES:
+                        self.assertEqual(item["kind"], "added", item)
+                        self.assertEqual(item["zone"], "accounting", item)
+
+    def test_storage_energy_audit(self):
+        # P0-4 S4 (P3-14, P5-11): the audited grid-side charge is the charge
+        # the period summary records, per asset the SoC identity closes, and
+        # the closing state the default PSM discards is booked per year.
+        for name, path in sorted(self.ledgers.items()):
+            uri = path.resolve().as_uri() + "?mode=ro&immutable=1"
+            with self.subTest(variant=name), closing(sqlite3.connect(uri, uri=True)) as connection:
+                audited, residual, rows = connection.execute(
+                    "SELECT SUM(charge_input_mwh), MAX(ABS(identity_residual_mwh)), COUNT(*) FROM storage_energy_audit"
+                ).fetchone()
+                summary_charge, periods = connection.execute(
+                    "SELECT SUM(storage_charge_mwh), COUNT(*) FROM period_summary"
+                ).fetchone()
+                assets = connection.execute("SELECT COUNT(DISTINCT asset_id) FROM storage_state").fetchone()[0]
+                self.assertEqual(rows, periods * assets)
+                self.assertLessEqual(abs(audited - summary_charge), 1e-9)
+                self.assertLessEqual(residual, 1e-12)
+                discharge = connection.execute(
+                    "SELECT ABS((SELECT SUM(discharge_output_mwh) FROM storage_energy_audit) - "
+                    "(SELECT SUM(discharge_mwh) FROM storage_state))"
+                ).fetchone()[0]
+                self.assertLessEqual(discharge, 1e-9)
+                closing_soc = dict(connection.execute(
+                    "SELECT asset_id, soc_end_mwh FROM storage_energy_audit WHERE period=(SELECT MAX(period) FROM storage_energy_audit)"
+                ).fetchall())
+                boundary = {row[0]: row[1:] for row in connection.execute(
+                    "SELECT asset_id, closing_soc_mwh, discarded_mwh, carry_policy FROM storage_year_boundary"
+                )}
+                self.assertEqual(set(boundary), set(closing_soc))
+                for asset, (closing_value, discarded, policy) in boundary.items():
+                    self.assertEqual(closing_value, closing_soc[asset])
+                    self.assertEqual(discarded, closing_value)
+                    self.assertEqual(policy, "new_battery_each_year")
+        baseline = self.ledgers["baseline"].resolve().as_uri() + "?mode=ro&immutable=1"
+        with closing(sqlite3.connect(baseline, uri=True)) as connection:
+            charged = connection.execute("SELECT SUM(charge_input_mwh) FROM storage_energy_audit").fetchone()[0]
+        self.assertAlmostEqual(charged, 11.113, places=3)
+        multi = self.ledgers["multi_battery"].resolve().as_uri() + "?mode=ro&immutable=1"
+        with closing(sqlite3.connect(multi, uri=True)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(DISTINCT asset_id) FROM storage_energy_audit").fetchone()[0], 2)
 
     def test_oracle_verdicts(self):
         statuses = {name: report["status"] for name, report in self.reports.items()}

@@ -50,6 +50,13 @@ from ....market_ledger import (
     active_market_ledger,
 )
 from ....clearing_inputs import ClearingInputRow, ClearingOutcomeRow
+# VALUE P0-4 S4-S5: observation-only energy audit (no effect on clearing).
+from ..native_balance_audit import (
+    battery_audit as _battery_audit,
+    open_storage_period as _open_storage_period,
+    storage_audit_rows as _storage_audit_rows,
+    stored_total as _stored_total,
+)
 
 _WEATHER_LIMIT_CACHE = None
 DEBUG_MARKET_STDOUT = os.getenv("SIM_DEBUG_MARKET", "0") == "1"
@@ -403,6 +410,10 @@ class Battery:
             period_power_headroom,
         )
         self.set_stored_energy_var(period, input_power * self.n_1 * period_hours)
+        # VALUE P0-4 S4: book the grid-side input and its stored share (P3-14).
+        audit = _battery_audit(self)
+        audit.charge_input_mwh += input_power * period_hours
+        audit.charge_stored_mwh += input_power * self.n_1 * period_hours
         return input_power
 
     def available_discharge_power(self, charge_period):
@@ -421,6 +432,10 @@ class Battery:
             self.available_discharge_power(charge_period),
         )
         self.clr_stored_energy_var(charge_period, output_power * period_hours / self.n_2)
+        # VALUE P0-4 S4: book the grid-side output and the stored energy it withdrew.
+        audit = _battery_audit(self)
+        audit.discharge_output_mwh += output_power * period_hours
+        audit.discharge_withdrawn_mwh += output_power * period_hours / self.n_2
         self.cost_recovery.record_sale(
             output_power * period_hours,
             max(current_period - charge_period, 0),
@@ -452,11 +467,21 @@ class Battery:
             if previous_last is not None and key < previous_last:
                 self.stored_energy = dict(sorted(self.stored_energy.items()))
 
-    def clr_stored_energy_var(self, key, value):
+    def clr_stored_energy_var(self, key, value, audit_period=None):
+        # ``audit_period`` (VALUE P0-4 S4) is accepted for callers that name
+        # the period; the write-off is booked on the battery's open period.
         if key in self.stored_energy:
             self.stored_energy[key] -= value
             if self.stored_energy[key] < 0.001:
+                # VALUE P0-4 S4: the deleted tail is a write-off, not a flow.
+                _battery_audit(self).tail_writeoff_mwh += self.stored_energy[key]
                 del self.stored_energy[key]
+
+    def apply_self_discharge(self, period):
+        """VALUE P0-4 S4: decay_func on this battery, booking the energy it removes."""
+        before = _stored_total(self)
+        decay_func(self.stored_energy, self.battery_type)
+        _battery_audit(self).self_discharge_mwh += before - _stored_total(self)
 
     def set_run_time(self):
         self.run_time += physical_period_hours()
@@ -464,6 +489,7 @@ class Battery:
     def cleanup_negligible_energy(self, threshold=0.001):
         keys_to_remove = [key for key, value in self.stored_energy.items() if value < threshold]
         for key in keys_to_remove:
+            _battery_audit(self).tail_writeoff_mwh += self.stored_energy[key]
             del self.stored_energy[key]
         return len(keys_to_remove)
 
@@ -1206,7 +1232,12 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
     new_bids = [[bat, bat.pool_limit] for bat in batterys]
     # selectable discharge
     for item in new_bids:
-        decay_func(item[0].stored_energy, item[0].battery_type)
+        # VALUE P0-4 S4: same decay_func, booked per battery when it can audit.
+        self_discharge = getattr(item[0], "apply_self_discharge", None)
+        if callable(self_discharge):
+            self_discharge(period)
+        else:
+            decay_func(item[0].stored_energy, item[0].battery_type)
     # storage composition
     storage_pool_composition = []
     for item in new_bids:
@@ -2676,6 +2707,9 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
                                  storage_pool_composition)
             # Periodic GC only; datasets already closed after limits computed
             pass
+        # VALUE P0-4 S4: open the per-battery energy audit at the period's
+        # starting state of charge (observation only).
+        _open_storage_period(batterys, period)
         
         solar_Nottingham.capacity_limit = (piecewise_limit(next(LIMIT1))) * solar_Nottingham.capacity_multiplier / 3600000
         solar_Ipswich.capacity_limit = (piecewise_limit(next(LIMIT2))) * solar_Ipswich.capacity_multiplier / 3600000
@@ -3055,6 +3089,9 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             )
             for battery in batterys
         )
+        # VALUE P0-4 S4: per-asset storage energy audit (accounting zone;
+        # charge, self-discharge, tail write-off; P3-14, P5-11).
+        market_ledger.record_storage_audit(_storage_audit_rows(int(trace_year), period, batterys))
 
         if trace_enabled:
             for accepted_asset, accepted_price, accepted_energy, accepted_cost in accepted_bids:
