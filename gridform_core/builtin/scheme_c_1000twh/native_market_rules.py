@@ -23,9 +23,9 @@ the catalogue raises (``UnknownCorrectionError``): typos fail closed.
 Decision A2 cancelled the planned P3-01 dispatch change: ``realisation_basis``
 is ``forecast_thesis`` in both rule sets and has no switch.  Decision A8 adds
 ``storage_settlement_basis`` (corrected storage is paid the period's uniform
-clearing price instead of its own maximum bid).  ``operating_cost_basis`` is a
-universal accounting rule (P5-06, plan S4): it changes for both profiles at
-once and therefore has no profile switch either.
+clearing price instead of its own maximum bid).  ``operating_cost_basis``
+(``dispatch_unit_cost/v1``) is a universal accounting rule (P5-06, plan S4):
+it is the same in both profiles and therefore has no profile switch either.
 """
 
 from __future__ import annotations
@@ -106,7 +106,7 @@ DOCTORAL = NativeMarketRules(
     vre_direct_electrolysis="thesis_pre_clearing_skim",
     storage_bid_basis="thesis_dwell_linear",
     storage_settlement_basis="thesis_max_bat_price",
-    operating_cost_basis="scheme_c_retained_v0",
+    operating_cost_basis="dispatch_unit_cost/v1",
     reliability_voll="thesis_constant_8000",
 )
 
@@ -122,7 +122,7 @@ CORRECTED = NativeMarketRules(
     vre_direct_electrolysis="disabled",
     storage_bid_basis="cycle_only",
     storage_settlement_basis="uniform_clearing_price",
-    operating_cost_basis="scheme_c_retained_v0",
+    operating_cost_basis="dispatch_unit_cost/v1",
     reliability_voll="chronology_parameter",
 )
 
