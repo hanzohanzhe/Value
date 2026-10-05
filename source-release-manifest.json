@@ -108,6 +108,7 @@
     "app/layout.tsx",
     "app/page.tsx",
     "backend/__init__.py",
+    "backend/api_session.py",
     "backend/data_mapping.py",
     "backend/data_pack_clone.py",
     "backend/data_workbench_api.py",
@@ -1216,6 +1217,7 @@
     "tests/run-context.test.mjs",
     "tests/run-scope.test.mjs",
     "tests/study-lifecycle-ui.test.mjs",
+    "tests/test_api_session.py",
     "tests/test_application_cli.py",
     "tests/test_application_service.py",
     "tests/test_archived_workspace_launcher.py",
@@ -3333,6 +3335,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "backend/api_session.py",
+      "sha256": "85a23f346d16f02a04a0915e0ce02082be49db698a46aa7290abe1fdf3908595",
+      "bytes": 7295,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "backend/data_mapping.py",
       "sha256": "22805170e35d71d768e90d6f109bc5447131f55f4095a5722a77f21e9908115e",
       "bytes": 21419,
@@ -3460,8 +3468,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "8abd0b5007b8f7e5c69e28d31e8824da8204056d80824984bd9027b8db126a27",
-      "bytes": 174616,
+      "sha256": "8e02dd46b7cd218f2683d74cc2fc3e2feb7b3abda33790bbc727b4f50cf61767",
+      "bytes": 176137,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9964,6 +9972,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/test_api_session.py",
+      "sha256": "89adc973cd801c113e47a9b4348a2ce316eab2ede6a32b8e2cc8f139054a25b1",
+      "bytes": 11641,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_application_cli.py",
       "sha256": "436a4133abd5826aa481a6fafa5c710fd66dde7462fdfea08eb6b75f1566e848",
       "bytes": 3163,
@@ -11141,8 +11155,8 @@
     },
     {
       "path": "tests/test_source_release_tree.py",
-      "sha256": "5084b53e30033d8a21f3fb1a8898ae16dc69ec93b2531d5d5e9e4baac7ab3c05",
-      "bytes": 9957,
+      "sha256": "2e954848a9d081d168a6d35e65fa54b742ee61952c52c64553dd7f4d4ffa545a",
+      "bytes": 10907,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

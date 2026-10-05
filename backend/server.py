@@ -179,6 +179,7 @@ from backend.lifecycle.run_status import (
 from backend.lifecycle.states import ACTIVE_STATES, DELETABLE_STATES, classify
 from backend.lifecycle.worker_lease import lease_state
 from backend.run_supervisor import SHUTDOWN_SEAL_SECONDS, RunSupervisor, WorkerSpawnError, worker_liveness
+from backend.api_session import new_token, publish_session, withdraw_session
 from gridform_core.run_lineage import copperplate_rerun_project
 from gridform_core.run_quota import (
     QUOTA_CORRECTIVE_ACTIONS,
@@ -3531,14 +3532,42 @@ def _raise_keyboard_interrupt(signum: int, _frame: object) -> None:
     raise KeyboardInterrupt(f"signal {signum}")
 
 
+LOOPBACK_BIND_HOSTS = frozenset({"127.0.0.1", "localhost"})
+
+
+def make_api_server(
+    host: str,
+    port: int,
+    *,
+    session_token: str | None,
+    data_workbench_api: DataWorkbenchApi | None = None,
+) -> ThreadingHTTPServer:
+    """Bind the local API (loopback only) without touching any state root.
+
+    ``session_token`` is this process's API session (P0-1); the request guard
+    compares ``X-VALUE-Session`` against it.  ``data_workbench_api`` is
+    mounted only when given, so tests and embedded servers decide whether the
+    data workbench routes exist.
+    """
+
+    if host not in LOOPBACK_BIND_HOSTS:
+        raise ValueError("VALUE local API only permits loopback binding")
+    server = ThreadingHTTPServer((host, int(port)), Handler)
+    server.session_token = session_token  # type: ignore[attr-defined]
+    if data_workbench_api is not None:
+        server.data_workbench_api = data_workbench_api  # type: ignore[attr-defined]
+    return server
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="VALUE modular local API")
     parser.add_argument("--host", default="127.0.0.1"); parser.add_argument("--port", default=8766, type=int)
     args = parser.parse_args()
-    if args.host not in {"127.0.0.1", "localhost"}:
+    if args.host not in LOOPBACK_BIND_HOSTS:
         raise SystemExit("VALUE local API only permits loopback binding")
     # Start-up order (P0 C2): state layout -> .backend.lock -> default pack ->
-    # reconcile_all -> workbench -> bind -> supervisor threads -> serve.
+    # reconcile_all -> workbench -> bind -> publish session -> supervisor
+    # threads -> serve -> (finally) withdraw session.
     ensure_state_layout(STATE_ROOT)
     singleton = acquire_backend_singleton(STATE_ROOT)
     if singleton is None:
@@ -3554,23 +3583,29 @@ def main() -> None:
         report = supervisor.reconcile_all(extra_steps=[_startup_quota_repairs])
         if report.settled or report.repaired or report.unverifiable:
             print("VALUE run reconciliation: " + json.dumps(report.to_dict(), ensure_ascii=False), flush=True)
-        server = ThreadingHTTPServer((args.host, args.port), Handler)
         workbench_root = resolve_data_workbench_root(STATE_ROOT)
-        server.data_workbench_api = DataWorkbenchApi(  # type: ignore[attr-defined]
+        workbench = DataWorkbenchApi(
             LocalDataWorkbenchService(workbench_root),
             SQLiteJobStore(workbench_root / "jobs.sqlite"),
         )
+        session_token = new_token()
+        server = make_api_server(args.host, args.port, session_token=session_token, data_workbench_api=workbench)
+        bound_port = int(server.server_address[1])
+        # The token goes only to the 0600 session file (never to stdout, the
+        # command line or a worker environment); the UI gateway reads it there.
+        session_file = publish_session(STATE_ROOT, bound_port, session_token)
         supervisor.start()
         for name in ("SIGTERM", "SIGHUP", "SIGBREAK"):
             number = getattr(signal, name, None)
             if number is not None:
                 signal.signal(number, _raise_keyboard_interrupt)
-        print(f"VALUE modular API: http://{args.host}:{args.port}", flush=True)
+        print(f"VALUE modular API: http://{args.host}:{bound_port} (session file {session_file})", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:
             pass
         finally:
+            withdraw_session(STATE_ROOT, bound_port, session_token)
             server.server_close()
     finally:
         # Queued failed-provenance seals get a bounded time; whatever is left

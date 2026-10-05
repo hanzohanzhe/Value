@@ -13,6 +13,12 @@ MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(MODULE)
 
+# P0-1 local API security boundary files (grows with S3/S4/S7).
+P0_1_RELEASE_FILES = (
+    "backend/api_session.py",
+    "tests/test_api_session.py",
+)
+
 
 class SourceReleaseTreeTests(unittest.TestCase):
     def test_zonal_solver_contract_sources_are_release_members(self):
@@ -47,6 +53,20 @@ class SourceReleaseTreeTests(unittest.TestCase):
         }
         required = lifecycle | {"backend/run_supervisor.py", "backend/worker_entry.py"}
         self.assertGreaterEqual(len(lifecycle), 8)
+        self.assertTrue(required.issubset(members), required.difference(members))
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        listed = set(json.dumps(manifest).split('"'))
+        self.assertTrue(required.issubset(listed), required.difference(listed))
+
+    def test_local_api_security_sources_are_release_members(self):
+        """P0-1: the session module (and, from S3 on, the UI gateway) ship
+        with every release; the pilot builder copies only allowlisted files,
+        so a missing entry would silently drop it from installers."""
+        members = {
+            path.relative_to(ROOT).as_posix()
+            for path in MODULE.release_members(ROOT)
+        }
+        required = set(P0_1_RELEASE_FILES)
         self.assertTrue(required.issubset(members), required.difference(members))
         manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
         listed = set(json.dumps(manifest).split('"'))
