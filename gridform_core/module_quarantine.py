@@ -11,18 +11,25 @@ disable and catalogue refresh in the process.  Global lock order
 RUN_ACTION_LOCKS[run] -> MODULE_LIFECYCLE_LOCK -> .reservation.lock ->
 status.lock``; while it is held no STUDY_LIFECYCLE_LOCK may be requested.
 
-This module only depends on the standard library and ``errors`` so the
-registry, the extension framework and the worker can import it cheaply.
+At import time this module depends only on the standard library and
+``errors`` so the registry, the extension framework and the worker can import
+it cheaply; the registry and the probe helpers are imported lazily.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import shutil
+import signal
+import subprocess
 import sys
+import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from .errors import ContractError
 
@@ -321,3 +328,144 @@ def quarantine_report(registry: object) -> dict[str, object]:
         "entries": [entry.to_dict() for entry in entries],
         "reasons": degraded_reasons(registry),
     }
+
+
+# -- post-write verification (P0-2 S4) ---------------------------------------------
+# After a lifecycle write the registry is rebuilt twice: in this process, and
+# in a fresh interpreter started exactly like a worker (same isolated argv,
+# cwd and inherited environment).  Either one refusing the change makes the
+# caller roll the write back byte for byte.  Disabling never needs this.
+PROBE_TIMEOUT_SECONDS = 120.0
+PROBE_SCHEMA = "value.module-registry-probe/v1"
+
+
+def quarantine_keys(registry: object) -> frozenset[tuple[str, str]]:
+    return frozenset(entry.key() for entry in registry_quarantine(registry))
+
+
+def _conflict_code(kind: str) -> str:
+    return "GF_EXTENSION_REGISTRY_CONFLICT" if kind == "extension" else "GF_MODULE_REGISTRY_CONFLICT"
+
+
+def _judge(
+    *, kind: str, entry_id: str, registered: Iterable[str], quarantined: Iterable[Mapping[str, object]],
+    before_keys: frozenset, code: str, layer: str,
+) -> None:
+    introduced = [row for row in quarantined
+                  if (str(row.get("kind")), str(row.get("id") or "file:" + str(row.get("manifest_file"))))
+                  not in before_keys]
+    if introduced or entry_id not in set(registered):
+        detail = "; ".join(
+            f"{row.get('kind')} {row.get('id') or row.get('manifest_file')}: {row.get('error_code')} {row.get('message')}"
+            for row in introduced
+        ) or f"{kind} {entry_id} did not register"
+        raise ModuleQuarantinedError(code, f"The {layer} registry check refused the change: {detail}")
+
+
+def verify_registry_in_process(
+    modules_root: Path, *, before_keys: frozenset, kind: str, entry_id: str,
+) -> None:
+    """First layer: rebuild the registry from disk in this process."""
+
+    from .v2.module_manifest import workspace_registry
+
+    try:
+        registry = workspace_registry(modules_root)
+    except (Exception, SystemExit) as exc:
+        raise ModuleQuarantinedError(_conflict_code(kind), f"The registry could not be rebuilt: {exc}") from exc
+    registered = registry.extension_manifests() if kind == "extension" else registry.manifests()
+    _judge(kind=kind, entry_id=entry_id, registered=registered,
+           quarantined=[entry.to_dict() for entry in registry.quarantined], before_keys=before_keys,
+           code=_conflict_code(kind), layer="in-process")
+
+
+def probe_argv(python: str, prefix: Path, report: Path, modules_root: Path) -> list[str]:
+    """The probe starts like a worker (C4): same isolated interpreter flags."""
+
+    from backend.lifecycle.python_argv import isolated_python_argv
+
+    argv = isolated_python_argv(python, prefix)
+    if not sys.flags.no_user_site:
+        argv.remove("-s")
+    return [*argv, "-m", "gridform_core.module_recovery", "verify",
+            "--modules-root", str(modules_root), "--report", str(report)]
+
+
+def _stop_probe(process: subprocess.Popen) -> None:
+    """Stop the probe this function started (its own process group) and reap it."""
+
+    try:
+        if os.name == "nt":  # pragma: no cover - Windows only
+            process.kill()
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:  # pragma: no cover - defensive
+        process.kill()
+        process.wait(timeout=5)
+
+
+def run_registry_probe(modules_root: Path, *, timeout: float | None = None) -> dict[str, object]:
+    """Build the registry in a fresh interpreter; return its report."""
+
+    from backend.lifecycle.python_argv import isolated_environment, new_pycache_prefix
+    from .runtime_paths import SOURCE_ROOT
+
+    root = Path(modules_root).resolve()
+    work = Path(tempfile.mkdtemp(prefix="value-module-probe-"))
+    prefix = new_pycache_prefix(work)
+    report = work / "report.json"
+    environment = isolated_environment(dict(os.environ), prefix)
+    environment["VALUE_DATA_HOME"] = str(root.parent)
+    options: dict[str, object] = (
+        {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)} if os.name == "nt"
+        else {"start_new_session": True}
+    )
+    try:
+        process = subprocess.Popen(
+            probe_argv(sys.executable, prefix, report, root), cwd=SOURCE_ROOT, env=environment,
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            close_fds=True, **options,
+        )
+        try:
+            output, _ = process.communicate(timeout=PROBE_TIMEOUT_SECONDS if timeout is None else timeout)
+        except subprocess.TimeoutExpired:
+            _stop_probe(process)
+            raise ModuleQuarantinedError(
+                "GF_MODULE_PROBE_TIMEOUT",
+                "The out-of-process registry check did not finish in time; the change was rolled back.",
+            ) from None
+        try:
+            payload = json.loads(report.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            payload = None
+        if process.returncode != 0 or not isinstance(payload, dict) or payload.get("schema_version") != PROBE_SCHEMA:
+            tail = sanitize_message((output or b"").decode("utf-8", "replace")[-600:], root)
+            raise ModuleQuarantinedError(
+                "GF_MODULE_PROBE_FAILED",
+                f"The out-of-process registry check failed (exit {process.returncode}): {tail}",
+            )
+        return payload
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def verify_registry_out_of_process(
+    modules_root: Path, *, before_keys: frozenset, kind: str, entry_id: str, timeout: float | None = None,
+) -> dict[str, object]:
+    """Second layer: the registry as a newly started worker would build it."""
+
+    payload = run_registry_probe(modules_root, timeout=timeout)
+    registered = payload.get("extensions" if kind == "extension" else "modules") or ()
+    _judge(kind=kind, entry_id=entry_id, registered=[str(item) for item in registered],  # type: ignore[union-attr]
+           quarantined=[row for row in payload.get("quarantined") or () if isinstance(row, Mapping)],  # type: ignore[union-attr]
+           before_keys=before_keys, code="GF_MODULE_PROBE_FAILED", layer="out-of-process")
+    return payload
+
+
+def verify_after_write(modules_root: Path, *, before_keys: frozenset, kind: str, entry_id: str) -> None:
+    verify_registry_in_process(modules_root, before_keys=before_keys, kind=kind, entry_id=entry_id)
+    verify_registry_out_of_process(modules_root, before_keys=before_keys, kind=kind, entry_id=entry_id)

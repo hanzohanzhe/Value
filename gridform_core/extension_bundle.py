@@ -22,7 +22,7 @@ from .extension_framework import (
     load_extension_manifests,
 )
 from .module_bundle import MAX_BUNDLE_BYTES, MAX_MEMBERS, MAX_UNCOMPRESSED_BYTES, validate_module_bundle
-from .module_quarantine import MODULE_LIFECYCLE_LOCK
+from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys, verify_after_write
 from .v2.module_manifest import workspace_registry
 from .runtime_paths import PACKAGE_ROOT, activate_external_module_sources
 
@@ -135,6 +135,15 @@ def _namespace_owner(modules_root: Path, extension_id: str, namespace: str) -> s
 
 def _public_record(row: Mapping[str, object]) -> dict[str, object]:
     return {key: value for key, value in row.items() if key not in {"record_path", "raw_manifest"}}
+
+
+def _verify_written(root: Path, before_keys: frozenset, extension_id: str) -> None:
+    """Post-write check in this process and in a fresh worker-like process (P0-2 S4)."""
+
+    try:
+        verify_after_write(root, before_keys=before_keys, kind="extension", entry_id=extension_id)
+    except ModuleQuarantinedError as exc:
+        raise ExtensionBundleError(exc.code, str(exc)) from exc
 
 
 class ExtensionBundleError(ValueError):
@@ -314,6 +323,7 @@ def _install_extension_bundle(
     root = modules_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     current = workspace_registry(root)
+    before_keys = quarantine_keys(current)
     if any(item.id == validated.manifest.id for item in _builtin_extensions()):
         raise ExtensionBundleError(
             "GF_EXTENSION_BUILTIN_COLLISION",
@@ -392,6 +402,7 @@ def _install_extension_bundle(
     previous = Path(existing_installation["record_path"]) if existing_installation else None
     retained = {item: item.read_bytes() if item.exists() else None for item in (active, *((previous,) if previous else ()))}
     promoted = False
+    created_parent = False
     try:
         with zipfile.ZipFile(path) as archive:
             for name in validated.members:
@@ -412,6 +423,7 @@ def _install_extension_bundle(
             "state_migration_executed": False,
         }
         (stage / "installation.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        created_parent = not target.parent.exists()
         target.parent.mkdir(parents=True, exist_ok=True)
         stage.replace(target)
         promoted = True
@@ -424,10 +436,16 @@ def _install_extension_bundle(
             previous_record.update(enabled=False, superseded_by=validated.manifest.version)
             previous.write_text(json.dumps(previous_record, indent=2) + "\n", encoding="utf-8")
         activate_external_module_sources(root)
+        _verify_written(root, before_keys, validated.manifest.id)
         return record
     except Exception:
         if promoted and target.exists():
             shutil.rmtree(target)
+        if promoted and created_parent:
+            try:
+                target.parent.rmdir()  # only the empty <id>/ folder this install created
+            except OSError:
+                pass
         if stage.exists():
             shutil.rmtree(stage)
         active.with_suffix(".json.tmp").unlink(missing_ok=True)
@@ -492,6 +510,7 @@ def _set_extension_enabled(
                 f"Extension namespace {manifest.namespace} is owned by enabled extension {owner}; "
                 f"disable {owner} before enabling {extension_id}",
             )
+    before_keys = quarantine_keys(workspace_registry(root)) if enabled else frozenset()
     if enabled and stored.get("source_root") == "src":
         observed = _check_hooks(manifest, record_path.parent / "src")
         if observed != stored.get("hook_source_identities"):
@@ -510,6 +529,8 @@ def _set_extension_enabled(
         temporary.replace(destination)
         (inactive if enabled else active).unlink(missing_ok=True)
         activate_external_module_sources(root)
+        if enabled:
+            _verify_written(root, before_keys, extension_id)
         return {**record, **stored}
     except Exception:
         for item, contents in retained.items():

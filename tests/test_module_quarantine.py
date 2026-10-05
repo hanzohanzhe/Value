@@ -391,6 +391,122 @@ class RegistryQuarantineTests(_TemporaryModules):
                 trust_acknowledged=True, modules_root=self.modules)
         self.assertEqual(caught.exception.code, "GF_EXTENSION_MIGRATION_REQUIRED")
 
+class PostWriteVerificationTests(_TemporaryModules):
+    """P0-2 S4: in-process check plus a worker-like out-of-process probe."""
+
+    packages = ("value_example_flat_offer", "p02_c_broken")
+
+    def _g401_state(self) -> str:
+        install_extension_bundle(build_extension_bundle(self.root / "a.zip", "g4-ns-a", "local.g4-shared"),
+                                 trust_acknowledged=True, modules_root=self.modules)
+        set_extension_enabled("g4-ns-a", False, modules_root=self.modules)
+        install_extension_bundle(build_extension_bundle(self.root / "b.zip", "g4-ns-b", "local.g4-shared"),
+                                 trust_acknowledged=True, modules_root=self.modules)
+        return tree_digest(self.modules)
+
+    def _example_bundle(self) -> Path:
+        bundle = self.root / "example.zip"
+        build_module_bundle(manifest_path=EXAMPLE / "value-module.json", source_root=EXAMPLE / "src",
+                            license_path=ROOT / "LICENSE", readme_path=EXAMPLE / "README.md", destination=bundle)
+        return bundle
+
+    def test_in_process_check_is_a_second_line_of_defence(self) -> None:
+        import gridform_core.extension_bundle as bundle_module
+        import gridform_core.module_quarantine as quarantine
+
+        before = self._g401_state()
+        with patch.object(bundle_module, "_namespace_owner", return_value=None), \
+                patch.object(quarantine, "run_registry_probe", side_effect=AssertionError("probe not reached")):
+            with self.assertRaises(ExtensionBundleError) as caught:
+                set_extension_enabled("g4-ns-a", True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_EXTENSION_REGISTRY_CONFLICT")
+        self.assertEqual(tree_digest(self.modules), before)
+
+    def test_probe_alone_still_refuses_and_rolls_back(self) -> None:
+        import gridform_core.extension_bundle as bundle_module
+        import gridform_core.module_quarantine as quarantine
+
+        before = self._g401_state()
+        with patch.object(bundle_module, "_namespace_owner", return_value=None), \
+                patch.object(quarantine, "verify_registry_in_process", return_value=None):
+            with self.assertRaises(ExtensionBundleError) as caught:
+                set_extension_enabled("g4-ns-a", True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_PROBE_FAILED")
+        self.assertIn("out-of-process", str(caught.exception))
+        self.assertIn("g4-ns-b", str(caught.exception))
+        self.assertEqual(tree_digest(self.modules), before)
+
+    def test_a_failing_probe_rolls_an_install_back(self) -> None:
+        import gridform_core.module_quarantine as quarantine
+
+        with patch.object(quarantine, "probe_argv",
+                          lambda python, prefix, report, root: [sys.executable, "-B", "-c", "raise SystemExit(5)"]):
+            with self.assertRaises(ValueError) as caught:
+                install_module_bundle(self._example_bundle(), trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_PROBE_FAILED")
+        self.assertIn("exit 5", str(caught.exception))
+        self.assertFalse((self.modules / "example-flat-storage-offer.json").exists())
+        self.assertFalse((self.modules / "installed" / "example-flat-storage-offer").exists())
+
+    def test_probe_timeout_is_reported_and_the_probe_is_reaped(self) -> None:
+        import os
+        import time
+        import gridform_core.module_quarantine as quarantine
+
+        pid_file = self.root / "probe.pid"
+        script = f"import os, time; open({str(pid_file)!r}, 'w').write(str(os.getpid())); time.sleep(60)"
+        started = time.monotonic()
+        with patch.object(quarantine, "PROBE_TIMEOUT_SECONDS", 3.0), \
+                patch.object(quarantine, "probe_argv", lambda *a: [sys.executable, "-B", "-c", script]):
+            with self.assertRaises(ValueError) as caught:
+                install_module_bundle(self._example_bundle(), trust_acknowledged=True, modules_root=self.modules)
+        elapsed = time.monotonic() - started
+        self.assertEqual(caught.exception.code, "GF_MODULE_PROBE_TIMEOUT")
+        self.assertLess(elapsed, 8.0)
+        pid = int(pid_file.read_text())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(pid, 0)
+        self.assertFalse((self.modules / "example-flat-storage-offer.json").exists())
+
+    def test_an_existing_broken_module_does_not_block_another_install(self) -> None:
+        write_external_module(self.modules, "p02-c-broken", "p02_c_broken", prefix="raise RuntimeError('C')\n")
+        record = install_module_bundle(self._example_bundle(), trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(record["module_id"], "example-flat-storage-offer")
+        registry = workspace_registry(self.modules)
+        self.assertIn("example-flat-storage-offer", registry.manifests())
+        self.assertEqual([entry.entry_id for entry in registry.quarantined], ["p02-c-broken"])
+
+    def test_disable_never_runs_a_post_write_check(self) -> None:
+        import gridform_core.module_quarantine as quarantine
+
+        install_module_bundle(self._example_bundle(), trust_acknowledged=True, modules_root=self.modules)
+        with patch.object(quarantine, "verify_after_write", side_effect=AssertionError("no check on disable")):
+            record = set_module_enabled("example-flat-storage-offer", False, modules_root=self.modules)
+        self.assertFalse(record["enabled"])
+
+    def test_a_refused_extension_install_leaves_no_folder_behind(self) -> None:
+        import gridform_core.module_quarantine as quarantine
+
+        self.modules.mkdir(parents=True)
+        before = tree_digest(self.modules, files_only=True)
+        with patch.object(quarantine, "probe_argv",
+                          lambda python, prefix, report, root: [sys.executable, "-B", "-c", "raise SystemExit(4)"]):
+            with self.assertRaises(ExtensionBundleError) as caught:
+                install_extension_bundle(build_extension_bundle(self.root / "x.zip", "p02-x", "local.p02-x"),
+                                         trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_PROBE_FAILED")
+        self.assertEqual(tree_digest(self.modules, files_only=True), before)
+        self.assertFalse((self.modules / "installed-extensions" / "p02-x").exists())
+
+    def test_probe_starts_like_a_worker(self) -> None:
+        from backend.lifecycle.python_argv import worker_python_argv
+        from gridform_core.module_quarantine import probe_argv
+
+        probe = probe_argv("python3", Path("/prefix"), Path("/r.json"), Path("/m"))
+        worker = worker_python_argv("python3", Path("/prefix"), match_parent_user_site=True)
+        self.assertEqual(probe[:len(worker) - 2], worker[:-2])
+        self.assertEqual(probe[len(worker) - 2:len(worker)], ["-m", "gridform_core.module_recovery"])
+
 
 if __name__ == "__main__":
     unittest.main()

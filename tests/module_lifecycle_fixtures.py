@@ -164,8 +164,11 @@ def write_external_extension(
     return target
 
 
-def tree_digest(root: Path) -> str:
-    """sha256 over every path (files, directories, link targets) and file bytes below ``root``."""
+def tree_digest(root: Path, *, files_only: bool = False) -> str:
+    """sha256 over every path (files, directories, link targets) and file bytes below ``root``.
+
+    ``files_only`` ignores directories (an install may leave empty folders).
+    """
 
     digest = hashlib.sha256()
     if not root.exists():
@@ -175,6 +178,8 @@ def tree_digest(root: Path) -> str:
         if path.is_symlink():
             digest.update(b"L" + relative.encode() + b"\0" + str(path.readlink()).encode() + b"\0")
         elif path.is_dir():
+            if files_only:
+                continue
             digest.update(b"D" + relative.encode() + b"\0")
         else:
             digest.update(b"F" + relative.encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())

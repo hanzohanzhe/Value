@@ -830,6 +830,7 @@
     "gridform_core/module_context.py",
     "gridform_core/module_installation.py",
     "gridform_core/module_quarantine.py",
+    "gridform_core/module_recovery.py",
     "gridform_core/module_registry.py",
     "gridform_core/network_ac.py",
     "gridform_core/network_contracts.py",
@@ -7409,8 +7410,8 @@
     },
     {
       "path": "gridform_core/extension_bundle.py",
-      "sha256": "072e64357af4ab66c74677f151c3cb9247fdfba80395b3116ec93b94f3c7b5aa",
-      "bytes": 27045,
+      "sha256": "2c2a3ef70241959c37c1aab23401d2abba1d00daee7fbd692f0a202781042b81",
+      "bytes": 28070,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7661,14 +7662,20 @@
     },
     {
       "path": "gridform_core/module_installation.py",
-      "sha256": "df0fe372956aa777f94344b534a88fb3cebe24b6532267930510416fd19896bb",
-      "bytes": 14480,
+      "sha256": "6ac5dbe12bc443736072ca4de483a67f864738edabd19ece22704db3314ea679",
+      "bytes": 15485,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/module_quarantine.py",
-      "sha256": "d0ae142ddd59249280cc7b483983b1b19c05b7b50a84b6df8fb3d76495aea545",
-      "bytes": 12278,
+      "sha256": "1cdac69e0ce85f118dc8016e7acaf1def90733f4a0cf3ce1ee648932027eb4f7",
+      "bytes": 18983,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "gridform_core/module_recovery.py",
+      "sha256": "726a295eb1d76176ae30957f8a59552d5100169e3a2f388a9a7192700a519d89",
+      "bytes": 2711,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9969,8 +9976,8 @@
     },
     {
       "path": "tests/module_lifecycle_fixtures.py",
-      "sha256": "a554da4fedcdb1cb65efdeb979574e0b97b918d43ff934d41c4a9529ddc9a8aa",
-      "bytes": 9500,
+      "sha256": "b40f09a34d22ff3cbd345b53e3368d54cbc24509f5629dcdb350d58d872bf245",
+      "bytes": 9664,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10557,8 +10564,8 @@
     },
     {
       "path": "tests/test_module_quarantine.py",
-      "sha256": "ff701f8d904895debb10f7ef23e6bc1e97cb7a179570a91d68dda58b08e1e050",
-      "bytes": 21848,
+      "sha256": "72dac20ccf9c954d19f82c84663a9eccb633347f9302946d8394dc72d3fea13b",
+      "bytes": 28840,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

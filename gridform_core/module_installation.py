@@ -20,7 +20,7 @@ from .module_bundle import (
     validate_module_bundle,
 )
 from .module_conformance import check_manifest
-from .module_quarantine import MODULE_LIFECYCLE_LOCK
+from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys, verify_after_write
 from .runtime_paths import activate_external_module_sources, external_modules_root, purge_source_root
 from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, builtin_registry, workspace_registry
 
@@ -178,6 +178,7 @@ def _install_module_bundle(
     payload = stage / "package"
     promoted: Path | None = None
     active_manifest: Path | None = None
+    created_parent = False
     try:
         extract_validated_bundle(bundle_path, payload, validated)
         source_root = payload / "src"
@@ -213,12 +214,15 @@ def _install_module_bundle(
         }
         shutil.copy2(bundle_path, payload / "original-bundle.zip")
         _atomic_json(payload / "installation.json", record)
+        before_keys = quarantine_keys(workspace_registry(root))
+        created_parent = not target.parent.exists()
         target.parent.mkdir(parents=True, exist_ok=True)
         payload.replace(target)
         promoted = target
         active_manifest = root / f"{manifest.id}.json"
         _atomic_json(active_manifest, manifest.to_dict())
         activate_external_module_sources(root)
+        _verify_written(root, before_keys, manifest.id)
         registry = workspace_registry(root)
         registry.resolve(manifest.id, expected_slot=manifest.slot)
         record["source_sha256"] = hashlib.sha256(
@@ -238,10 +242,24 @@ def _install_module_bundle(
         if promoted is not None and promoted.exists():
             _inside(promoted, root / "installed")
             shutil.rmtree(promoted)
+        if promoted is not None and created_parent:
+            try:
+                promoted.parent.rmdir()  # only the empty <id>/ folder this install created
+            except OSError:
+                pass
         raise
     finally:
         if stage.exists():
             shutil.rmtree(stage)
+
+
+def _verify_written(root: Path, before_keys: frozenset, module_id: str) -> None:
+    """Post-write check in this process and in a fresh worker-like process (P0-2 S4)."""
+
+    try:
+        verify_after_write(root, before_keys=before_keys, kind="module", entry_id=module_id)
+    except ModuleQuarantinedError as exc:
+        raise ModuleInstallationError(exc.code, str(exc)) from exc
 
 
 def set_module_enabled(
@@ -284,6 +302,7 @@ def _set_module_enabled(
                 json.loads((record_path.parent / str(record["manifest_path"])).read_text(encoding="utf-8"))
             )
             existing = workspace_registry(root)
+            before_keys = quarantine_keys(existing)
             # workspace_registry re-activates only enabled sources; the source
             # being enabled goes on sys.path after it, for the candidate check.
             if source_text not in sys.path:
@@ -305,6 +324,8 @@ def _set_module_enabled(
         record["enabled"] = enabled
         record["updated_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
         _atomic_json(record_path, record)
+        if enabled:
+            _verify_written(root, before_keys, module_id)
     except Exception:
         for temporary in (record_path, active_manifest):
             temporary.with_suffix(temporary.suffix + ".tmp").unlink(missing_ok=True)
