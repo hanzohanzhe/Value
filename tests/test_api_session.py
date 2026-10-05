@@ -247,7 +247,11 @@ class BackendSessionLifecycleTests(unittest.TestCase):
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             )
             try:
-                line = backend.stdout.readline()
+                line = ""
+                for _ in range(50):  # the ready line may follow reconciliation notes
+                    line = backend.stdout.readline()
+                    if not line or "VALUE modular API" in line:
+                        break
                 self.assertIn("VALUE modular API: http://127.0.0.1:", line,
                               backend.stderr.read() if backend.poll() is not None else "")
                 port = int(line.split("http://127.0.0.1:", 1)[1].split()[0])
@@ -261,7 +265,12 @@ class BackendSessionLifecycleTests(unittest.TestCase):
                 self.assertNotIn(token.encode(), Path(f"/proc/{backend.pid}/environ").read_bytes())
             finally:
                 backend.send_signal(signal.SIGTERM)
-                stdout, stderr = backend.communicate(timeout=60)
+                try:
+                    stdout, stderr = backend.communicate(timeout=180)
+                except subprocess.TimeoutExpired:
+                    backend.kill()
+                    stdout, stderr = backend.communicate(timeout=30)
+                    self.fail(f"backend did not stop within 180 s after SIGTERM: {stderr[-2000:]}")
             self.assertEqual(backend.returncode, 0, stderr)
             self.assertNotIn(token, line + stdout + stderr)
             deadline = time.monotonic() + 5

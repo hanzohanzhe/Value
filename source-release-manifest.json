@@ -3472,8 +3472,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "8e02dd46b7cd218f2683d74cc2fc3e2feb7b3abda33790bbc727b4f50cf61767",
-      "bytes": 176137,
+      "sha256": "3ede525d251bdd2d65641842dcf29e7cc7b8f134c35bf4331367c02f0d21aae5",
+      "bytes": 176309,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9983,8 +9983,8 @@
     },
     {
       "path": "tests/test_api_session.py",
-      "sha256": "871b815973c4c72aa3d020a879e2e0a14ed316212017d06dca33fa796f8ba6f0",
-      "bytes": 13084,
+      "sha256": "ece38a7e7eeae5d7220d97030b4075c09d5269a78d355e3101882e0b20465392",
+      "bytes": 13574,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

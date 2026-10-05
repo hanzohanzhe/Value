@@ -3594,15 +3594,17 @@ def main() -> None:
         # The token goes only to the 0600 session file (never to stdout, the
         # command line or a worker environment); the UI gateway reads it there.
         session_file = publish_session(STATE_ROOT, bound_port, session_token)
-        supervisor.start()
-        for name in ("SIGTERM", "SIGHUP", "SIGBREAK"):
-            number = getattr(signal, name, None)
-            if number is not None:
-                signal.signal(number, _raise_keyboard_interrupt)
-        print(f"VALUE modular API: http://{args.host}:{bound_port} (session file {session_file})", flush=True)
         try:
+            supervisor.start()
+            for name in ("SIGTERM", "SIGHUP", "SIGBREAK"):
+                number = getattr(signal, name, None)
+                if number is not None:
+                    signal.signal(number, _raise_keyboard_interrupt)
+            print(f"VALUE modular API: http://{args.host}:{bound_port} (session file {session_file})", flush=True)
             server.serve_forever()
         except KeyboardInterrupt:
+            # A stop signal may arrive at any point once the handlers are in
+            # place (also between the ready line and serve_forever).
             pass
         finally:
             withdraw_session(STATE_ROOT, bound_port, session_token)
