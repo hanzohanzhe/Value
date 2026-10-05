@@ -15,8 +15,23 @@ from typing import Iterable, Mapping
 import numpy as np
 
 
-SOLVER_SCHEMA_VERSION = "value.network-solver-contract/v3"
-SOLVER_CONTRACT_VERSION = "value.zonal-lexicographic-gbp1/v3"
+# Solver contract v4 (P0-8 S4, Q5): after the primary solve the total load
+# shedding is locked first (sum(shed) <= shed*), then only the bid-cost terms
+# carry a coefficient-aware numerical lock.  GBP 1 per period remains the
+# acceptance ceiling of that lock, never its right-hand side.
+SOLVER_SCHEMA_VERSION = "value.network-solver-contract/v4"
+SOLVER_CONTRACT_VERSION = "value.zonal-lexicographic-shed-lock/v4"
+# Historical contracts stay readable (recorded evidence, frozen Studies) but
+# are never executed again.
+V3_SOLVER_SCHEMA_VERSION = "value.network-solver-contract/v3"
+V3_SOLVER_CONTRACT_VERSION = "value.zonal-lexicographic-gbp1/v3"
+V2_SOLVER_SCHEMA_VERSION = "value.network-solver-contract/v2"
+V2_SOLVER_CONTRACT_VERSION = "value.zonal-lexicographic/v2"
+RECORDED_SOLVER_CONTRACTS = MappingProxyType({
+    V2_SOLVER_SCHEMA_VERSION: V2_SOLVER_CONTRACT_VERSION,
+    V3_SOLVER_SCHEMA_VERSION: V3_SOLVER_CONTRACT_VERSION,
+    SOLVER_SCHEMA_VERSION: SOLVER_CONTRACT_VERSION,
+})
 SOLVER_VALIDATION_REGISTRY_SCHEMA_VERSION = (
     "value.solver-validation-registry/v1"
 )
@@ -34,8 +49,9 @@ _CEILING_KEYS = (
 )
 
 DEFAULT_VALIDATED_CEILINGS = MappingProxyType({
-    # Study policy: maximum accepted degradation of the complete period bid
-    # cost objective.  This is GBP per solved period, not GBP/MWh or per asset.
+    # Study acceptance ceiling: maximum accepted degradation of the period
+    # bid-cost objective.  GBP per solved period, not GBP/MWh or per asset.
+    # Since v4 it classifies the numerical lock and is never spent by it.
     "primary_bid_cost_gbp": 1.0,
     "secondary_schedule_deviation_mwh": 0.001,
     "physical_throughput_mwh": 0.001,
@@ -132,6 +148,13 @@ def validate_solver_settings(payload: Mapping[str, object]) -> ZonalSolverSettin
             details.append("missing fields: " + ", ".join(sorted(missing)))
         raise ValueError("Solver settings have " + "; ".join(details))
     if payload["schema_version"] != SOLVER_SCHEMA_VERSION:
+        if payload["schema_version"] in RECORDED_SOLVER_CONTRACTS:
+            raise ZonalSolverContractError(
+                "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED",
+                f"{payload['schema_version']} is a historical zonal solver "
+                f"contract; executing requires an explicit upgrade to "
+                f"{SOLVER_SCHEMA_VERSION}",
+            )
         raise ValueError("Unsupported solver settings schema_version")
     if payload["contract_version"] != SOLVER_CONTRACT_VERSION:
         raise ValueError("Unsupported solver settings contract_version")
@@ -165,7 +188,7 @@ def validate_solver_settings(payload: Mapping[str, object]) -> ZonalSolverSettin
         ):
             raise ValueError(
                 "primary_bid_cost_gbp validated ceiling is fixed at GBP 1 "
-                "per period by the v3 study policy"
+                "per period by the study acceptance policy"
             )
         within_reference = (
             0.0 < validated_ceilings[key] <= absolute_ceilings[key]
@@ -208,6 +231,54 @@ class ZonalSolverContractError(ValueError):
     def __init__(self, code: str, message: str) -> None:
         self.code = code
         super().__init__(f"{code}: {message}")
+
+
+def validate_recorded_solver_settings(
+    payload: Mapping[str, object],
+) -> dict[str, object]:
+    """Validate a recorded v2, v3 or v4 contract for reading history only.
+
+    The returned mapping is the recorded payload, unchanged.  It must never be
+    passed to a solver: execution accepts only ``validate_solver_settings``
+    (v4).  Historical rows keep their own field layout; only the declared
+    identity pair, method and numerical ranges are checked.
+    """
+
+    if not isinstance(payload, Mapping):
+        raise ValueError("Recorded solver settings must be an object")
+    schema = payload.get("schema_version")
+    if schema == SOLVER_SCHEMA_VERSION:
+        return validate_solver_settings(payload).to_dict()
+    if schema not in RECORDED_SOLVER_CONTRACTS:
+        raise ValueError("Unsupported recorded solver settings schema_version")
+    if payload.get("contract_version") != RECORDED_SOLVER_CONTRACTS[schema]:
+        raise ValueError("Recorded solver settings contract_version does not match its schema")
+    if payload.get("method") not in ALLOWED_METHODS:
+        raise ValueError("Recorded solver method is invalid")
+    for key in (
+        "primal_feasibility_tolerance",
+        "dual_feasibility_tolerance",
+        "ipm_optimality_tolerance",
+        "warning_fraction",
+    ):
+        value = _finite_number(payload.get(key), key)
+        if value <= 0:
+            raise ValueError(f"{key} must be positive")
+    for key in ("validated_ceilings", "absolute_ceilings"):
+        _validated_mapping(payload.get(key), key)
+    return dict(payload)
+
+
+def solver_contract_generation(payload: Mapping[str, object] | None) -> str:
+    """Return "v4", "v3", "v2" or "unknown" for a recorded contract."""
+
+    if not isinstance(payload, Mapping):
+        return "unknown"
+    return {
+        SOLVER_SCHEMA_VERSION: "v4",
+        V3_SOLVER_SCHEMA_VERSION: "v3",
+        V2_SOLVER_SCHEMA_VERSION: "v2",
+    }.get(str(payload.get("schema_version") or ""), "unknown")
 
 
 def degradation_identity_matches(
@@ -563,21 +634,38 @@ class StoredLockEvidenceValidation:
 
 
 def gbp1_stored_policy_matches(row: Mapping[str, object]) -> bool:
-    """Enforce the v3 primary evidence tuple without changing v2 history."""
+    """Enforce the recorded primary evidence policy of each contract.
 
-    if str(row.get("solver_contract_version") or "") != SOLVER_CONTRACT_VERSION:
-        return True
+    * v3 (GBP 1 lock): computed_tolerance, validated_ceiling and
+      absolute_ceiling all equal GBP 1.  The check names the v3 contract
+      explicitly; before P0-8 it compared with the *current* constant and
+      would have stopped checking v3 rows once the constant moved to v4.
+    * v4 (shed lock + numerical bid lock): GBP 1 is only the validated and
+      absolute ceiling; the computed tolerance is the numerical one and must
+      not reach the GBP 1 ceiling silently, so it is checked by
+      ``classify_lock`` rather than here.
+    * v2 and anything else: history is not re-judged.
+    """
+
+    contract = str(row.get("solver_contract_version") or "")
     if str(row.get("phase_id") or "") != "primary_bid_cost":
         return True
     try:
-        return all(
-            float(row[field]) == 1.0
-            for field in (
-                "computed_tolerance", "validated_ceiling", "absolute_ceiling"
+        if contract == V3_SOLVER_CONTRACT_VERSION:
+            return all(
+                float(row[field]) == 1.0
+                for field in (
+                    "computed_tolerance", "validated_ceiling", "absolute_ceiling"
+                )
             )
-        )
+        if contract == SOLVER_CONTRACT_VERSION:
+            return (
+                float(row["validated_ceiling"]) == 1.0
+                and float(row["absolute_ceiling"]) == 1.0
+            )
     except (KeyError, TypeError, ValueError):
         return False
+    return True
 
 
 def validate_stored_lock_evidence(

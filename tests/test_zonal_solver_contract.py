@@ -62,8 +62,8 @@ class ZonalSolverSettingsTests(unittest.TestCase):
     def test_default_contract_is_the_validated_baseline(self):
         settings = DEFAULT_ZONAL_SOLVER_SETTINGS
 
-        self.assertEqual(settings.schema_version, "value.network-solver-contract/v3")
-        self.assertEqual(settings.contract_version, "value.zonal-lexicographic-gbp1/v3")
+        self.assertEqual(settings.schema_version, "value.network-solver-contract/v4")
+        self.assertEqual(settings.contract_version, "value.zonal-lexicographic-shed-lock/v4")
         self.assertEqual(settings.validated_ceilings["primary_bid_cost_gbp"], 1.0)
         self.assertEqual(settings.absolute_ceilings["primary_bid_cost_gbp"], 1.0)
         self.assertEqual(settings.method, "highs-ds")
@@ -130,7 +130,7 @@ class ZonalSolverSettingsTests(unittest.TestCase):
             settings.validated_ceilings["primary_bid_cost_gbp"] = 0.02
 
     def test_schema_requires_all_public_fields_and_recorded_reference_thresholds(self):
-        schema_path = Path(__file__).parents[1] / "gridform_core" / "data" / "contracts" / "network-solver-contract-v3.schema.json"
+        schema_path = Path(__file__).parents[1] / "gridform_core" / "data" / "contracts" / "network-solver-contract-v4.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
         self.assertFalse(schema["additionalProperties"])
@@ -349,7 +349,16 @@ class SolverValidationRegistryTests(unittest.TestCase):
 
         entries = loader()
 
-        self.assertEqual(len(entries), 2)
+        # v2, v3 (GBP1) and v4 (shed lock) dispositions; all candidates.
+        self.assertEqual(len(entries), 3)
+        self.assertEqual(
+            [entry.solver_contract_version for entry in entries],
+            [
+                "value.zonal-lexicographic/v2",
+                "value.zonal-lexicographic-gbp1/v3",
+                "value.zonal-lexicographic-shed-lock/v4",
+            ],
+        )
         self.assertEqual(entries[0].highs_binary_sha256, _CANDIDATE_SHA)
         self.assertEqual(
             entries[0].highs_identity,

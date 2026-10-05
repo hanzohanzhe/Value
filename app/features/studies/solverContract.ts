@@ -1,12 +1,16 @@
 import { DEFAULT_ZONAL_SOLVER_CONTRACT, copyDefaultZonalSolverContract, isLegacyZonalSolverContract, type ZonalSolverContract } from "../network/networkRedispatch";
 import type { StudyForm } from "./types";
 
-export const ZONAL_SOLVER_ACK_KEY = "solver-contract:value-zonal-redispatch-balancing@3.0.0";
+export const ZONAL_SOLVER_ACK_KEY = "solver-contract:value-zonal-redispatch-balancing@4.0.0";
 export const LEGACY_ZONAL_SOLVER_ACK_KEY = "solver-contract:value-zonal-redispatch-balancing@2.0.0";
+export const GBP1_ZONAL_SOLVER_ACK_KEY = "solver-contract:value-zonal-redispatch-balancing@3.0.0";
 export const ZONAL_SOLVER_ACK = "value.solver-contract-ack/v1";
 export function validateZonalSolverContract(contract: ZonalSolverContract | undefined): string {
   if (!contract) return "The selected zonal module requires a solver contract.";
-  if (isLegacyZonalSolverContract(contract)) return "This draft retains the historical v2 policy. Explicitly choose the current £1 policy and review its changed method before saving a new revision.";
+  if (isLegacyZonalSolverContract(contract)) {
+    const generation = contract.schema_version === "value.network-solver-contract/v2" ? "v2" : "v3 GBP 1 lock";
+    return `This draft retains the historical ${generation} policy. Explicitly choose the current v4 policy (shed lock, numerical bid-cost lock, GBP 1 acceptance ceiling) and review its changed method before saving a new revision.`;
+  }
   const bounded = (
     label: string,
     value: number,
@@ -53,6 +57,7 @@ export function alignZonalSolverContract(form: StudyForm, modules: Record<string
   }
   delete maturity_acknowledgements[ZONAL_SOLVER_ACK_KEY];
   delete maturity_acknowledgements[LEGACY_ZONAL_SOLVER_ACK_KEY];
+  delete maturity_acknowledgements[GBP1_ZONAL_SOLVER_ACK_KEY];
   return {
     ...form,
     modules,
@@ -66,5 +71,6 @@ export function upgradeZonalSolverContract(form: StudyForm): StudyForm {
   const maturity_acknowledgements = { ...form.maturity_acknowledgements };
   delete maturity_acknowledgements[ZONAL_SOLVER_ACK_KEY];
   delete maturity_acknowledgements[LEGACY_ZONAL_SOLVER_ACK_KEY];
+  delete maturity_acknowledgements[GBP1_ZONAL_SOLVER_ACK_KEY];
   return { ...form, solver_contract: copyDefaultZonalSolverContract(), maturity_acknowledgements };
 }

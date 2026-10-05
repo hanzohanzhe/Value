@@ -122,8 +122,19 @@
     "value-zonal-redispatch-balancing": {
       "baseline_version": "3.0.0",
       "baseline_scientific_version": "value-lossless-zonal-redispatch-gbp1-candidate-2026.10.01",
-      "current_version": "3.0.0",
-      "bumps": []
+      "current_version": "4.0.0",
+      "bumps": [
+        {
+          "from": "3.0.0",
+          "to": "4.0.0",
+          "package": "P0-8a",
+          "correction_ids": [
+            "p08.zonal-solver-v4"
+          ],
+          "reason": "Solver contract v4 (Q5): after the primary solve total load shedding is locked (fixed at zero when the primary sheds nothing), then only the bid-cost terms carry a coefficient-aware numerical lock; GBP 1 is only the acceptance ceiling. v3 used GBP 1 as the lock allowance, which later phases spent on spurious shedding and asset-ID shifts (P2-01). Equal-price pro-rata grouping no longer splits by resource class. Formulation value.lossless-zonal-redispatch/v2.",
+          "requires_user_opt_in": true
+        }
+      ]
     },
     "vre-expansion-cap": {
       "baseline_version": "2.0.0",

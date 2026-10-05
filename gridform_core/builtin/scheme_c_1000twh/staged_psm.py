@@ -1373,7 +1373,7 @@ class StagedBidAtCostPSM:
                 str(getattr(self._balancing, "id", "")),
                 str(getattr(self._balancing, "version", "")),
             )
-            == ("value-zonal-redispatch-balancing", "3.0.0")
+            == ("value-zonal-redispatch-balancing", "4.0.0")
             and self._run_context is not None
             and str(
                 self._run_context.solver_contract.get("contract_version")

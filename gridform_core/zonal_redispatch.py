@@ -52,7 +52,7 @@ from .zonal_solver_contract import (
 )
 
 
-FORMULATION_ID = "value.lossless-zonal-redispatch/v1"
+FORMULATION_ID = "value.lossless-zonal-redispatch/v2"
 DOMAIN_SCHEMA = "value.zonal-redispatch-domain/v2"
 TOLERANCE = 1e-8
 
@@ -474,6 +474,10 @@ def build_single_period_problem(
         equality_rows.append(row)
         equality_rhs.append(float(ahead.schedule_mwh_by_asset.get(asset, 0.0)))
 
+    # Equal-price bids with the same direction and network effect share
+    # their acceptance pro rata to available energy.  Since v4 the resource
+    # class is not part of the key: two technologies offering the same price
+    # at the same place are economically identical (P2-01 asset-ID shift).
     groups: defaultdict[tuple[object, ...], list[FlexibilityBid]] = defaultdict(list)
     for bid in bids:
         resource_class = str(bid.provenance.get("resource_class") or classes.get(bid.asset_id, "other"))
@@ -484,7 +488,6 @@ def build_single_period_problem(
             bid.zone_id,
             bid.network_effect_id,
             bid.price_gbp_per_mwh,
-            resource_class,
         )].append(bid)
     for rows in groups.values():
         if len(rows) < 2:
@@ -763,12 +766,10 @@ _OBJECTIVE_CONTRACT = {
     "physical_throughput_mwh": ("physical_throughput", "MWh", 1e-9),
 }
 
-# Explicit study acceptance policy.  The GBP value applies once to the full
-# bid-cost objective for each solved period.  MWh objectives deliberately stay
-# on the coefficient-aware numerical formula below.
-_FIXED_OBJECTIVE_ACCEPTANCE = {
-    "primary_bid_cost_gbp": 1.0,
-}
+# Solver contract v4 (Q5): every lock right-hand side uses the
+# coefficient-aware numerical tolerance.  The GBP 1 study policy is only the
+# validated/absolute ceiling used by ``classify_lock``; v3 used it as the lock
+# allowance and later phases spent it on spurious shedding (P2-01).
 
 
 def _active_solver_tolerance(settings: ZonalSolverSettings) -> float:
@@ -779,6 +780,22 @@ def _active_solver_tolerance(settings: ZonalSolverSettings) -> float:
     if settings.method in {"highs", "highs-ipm"}:
         values.append(settings.ipm_optimality_tolerance)
     return max(values)
+
+
+def _lock_solver_tolerance(settings: ZonalSolverSettings, objective_key: str) -> float:
+    """Solver scale used by one lock's coefficient-aware tolerance.
+
+    v4 bid-cost lock: the declared solver feasibility tolerance itself, so the
+    allowance later phases may spend is a numerical one (about 1e-9 of the
+    bid-cost scale) and the exact-lock CBC oracle agrees within 1e-6 MWh.
+    MWh locks keep the module's 1e-8 floor, which HiGHS needs to certify the
+    stacked lock rows in the unscaled model.
+    """
+
+    active = _active_solver_tolerance(settings)
+    if objective_key == "primary_bid_cost_gbp":
+        return active
+    return max(active, TOLERANCE)
 
 
 def _objective_cap(
@@ -812,11 +829,9 @@ def _objective_cap(
             coefficient_array,
             optimum_array,
             unit_floor,
-            max(_active_solver_tolerance(settings), TOLERANCE),
+            _lock_solver_tolerance(settings, objective_key),
         )
-        computed_tolerance = _FIXED_OBJECTIVE_ACCEPTANCE.get(
-            objective_key, tolerance.tolerance
-        )
+        computed_tolerance = tolerance.tolerance
         nonzero_terms = tolerance.nonzero_terms
         absolute_term_scale = tolerance.absolute_term_scale
     optimum = float(np.dot(coefficients, optimum_values))
@@ -1126,11 +1141,61 @@ def _finalise_with_lock_repair(
     raise AssertionError("unreachable objective lock repair state")
 
 
+def bid_cost_coefficients(problem: SinglePeriodProblem) -> np.ndarray:
+    """The primary objective without its VOLL x shedding terms."""
+
+    coefficients = np.asarray(problem.primary_objective, dtype=float).copy()
+    for index in problem.shedding_index.values():
+        coefficients[index] = 0.0
+    return coefficients
+
+
+def lock_primary_shedding(
+    problem: SinglePeriodProblem,
+    primary_values: np.ndarray,
+) -> tuple[SinglePeriodProblem, dict[str, object]]:
+    """Lock total load shedding at its primary optimum before any later phase.
+
+    No primary shedding fixes every shedding variable to exactly zero, so no
+    later phase can trade VOLL against flow or tie-break terms (P2-01: v3
+    created 1/(VOLL-p) MWh of shedding in the physical phase).  Positive
+    primary shedding adds one row ``sum(shed) <= shed*``; the primary point
+    satisfies it, so it is always feasible, and how the shed total is spread
+    across zones (degenerate in the primary) is left to the later phases.
+    """
+
+    indices = sorted(problem.shedding_index.values())
+    shed_total = math.fsum(float(primary_values[index]) for index in indices)
+    if shed_total <= TOLERANCE:
+        bounds = list(problem.bounds)
+        for index in indices:
+            bounds[index] = (0.0, 0.0)
+        return replace(problem, bounds=tuple(bounds)), {
+            "mode": "fixed_zero",
+            "primary_shed_total_mwh": shed_total,
+            "rhs_mwh": 0.0,
+        }
+    row = np.zeros(len(problem.variable_names), dtype=float)
+    row[indices] = 1.0
+    rhs = max(shed_total, 0.0)
+    return replace(
+        problem,
+        inequality_matrix=np.vstack([problem.inequality_matrix, row])
+        if len(problem.inequality_matrix)
+        else row.reshape(1, -1),
+        inequality_rhs=np.append(problem.inequality_rhs, rhs),
+    ), {
+        "mode": "total_cap",
+        "primary_shed_total_mwh": shed_total,
+        "rhs_mwh": rhs,
+    }
+
+
 def solve_lexicographic(
     problem: SinglePeriodProblem,
     settings: ZonalSolverSettings,
 ) -> SinglePeriodSolution:
-    """Run the four fixed HiGHS phases with one-sided numerical objective caps."""
+    """Run the four fixed HiGHS phases: shed lock, then numerical caps."""
 
     settings = validate_solver_settings(settings.to_dict())
     locks: list[_ObjectiveCap] = []
@@ -1141,12 +1206,16 @@ def solve_lexicographic(
         phase="primary_bid_cost",
         settings=settings,
     )
+    problem, phases["primary_shed_lock"] = lock_primary_shedding(
+        problem, primary_values
+    )
     try:
         locks.append(_objective_cap(
-            problem.primary_objective,
+            bid_cost_coefficients(problem),
             primary_values,
             settings,
             "primary_bid_cost_gbp",
+            allow_constant=True,
         ))
     except ZonalSolverContractError as exc:
         raise _contract_solve_error(
@@ -1227,16 +1296,19 @@ def solve_secondary(
     problem: SinglePeriodProblem, primary: SinglePeriodSolution
 ) -> SinglePeriodSolution:
     settings = validate_solver_settings(DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
+    problem, shed_lock = lock_primary_shedding(problem, primary.values)
     locks = [
         _objective_cap(
-            problem.primary_objective,
+            bid_cost_coefficients(problem),
             primary.values,
             settings,
             "primary_bid_cost_gbp",
+            allow_constant=True,
         )
     ]
     phases: dict[str, object] = {
-        "primary": dict(primary.diagnostics.get("primary") or {})
+        "primary": dict(primary.diagnostics.get("primary") or {}),
+        "primary_shed_lock": shed_lock,
     }
     secondary_values, secondary_diagnostics = _run_highs(
         problem,
@@ -1515,7 +1587,7 @@ def normalized_zonal_scientific_result_sha256(result: BalancingResult) -> str:
 
 class ZonalRedispatchBalancing:
     id = "value-zonal-redispatch-balancing"
-    version = "3.0.0"
+    version = "4.0.0"
 
     def __init__(
         self,

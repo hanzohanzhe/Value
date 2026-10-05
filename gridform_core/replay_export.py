@@ -20,7 +20,7 @@ from .run_policy import resolve_run_policy
 from .run_snapshot import SnapshotError, verify_run_input_snapshot
 from .v2.module_manifest import workspace_registry
 from .zonal_contracts import load_zonal_network_pack
-from .zonal_solver_contract import validate_solver_settings
+from .zonal_solver_contract import validate_recorded_solver_settings
 
 
 REPLAY_EXPORT_SCHEMA = "value.replay-export/v1"
@@ -455,9 +455,11 @@ def _validate_snapshot_context_identity(
         registry.manifest(
             str(balancing.get("module_id")), expected_slot="balancing"
         )
-        expected_solver = validate_solver_settings(
+        # Reading a frozen Run: its recorded contract (v2, v3 or v4) is
+        # validated for identity only and never executed (P0-8 S4/S5).
+        expected_solver = validate_recorded_solver_settings(
             project.get("solver_contract")
-        ).to_dict()
+        )
     if _json_bytes(run_context.solver_contract) != _json_bytes(expected_solver):
         raise ValueError("Frozen snapshot identity does not match Run context solver")
     network_hash = snapshot.get("network_pack_manifest_sha256")

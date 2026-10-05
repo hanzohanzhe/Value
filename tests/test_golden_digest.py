@@ -569,7 +569,15 @@ class GoldenProjectSnapshotTests(unittest.TestCase):
                 with self.subTest(case=case_id):
                     project = self.run_case.build_project(dict(case, id=case_id))
                     frozen = json.loads(self.run_case.project_path(dict(case, id=case_id)).read_text(encoding="utf-8"))
-                    self.assertEqual(project, frozen, "overrides in cases.json must be no-ops on the frozen project")
+                    # The two documented run-time re-derivations (registered
+                    # maturity keys; current built-in solver contract) are
+                    # covered by their own tests below.
+                    rederived = ("maturity_acknowledgements", "solver_contract")
+                    self.assertEqual(
+                        {key: value for key, value in project.items() if key not in rederived},
+                        {key: value for key, value in frozen.items() if key not in rederived},
+                        "overrides in cases.json must be no-ops on the frozen project",
+                    )
                     self.assertEqual(project["id"], "golden-study")
 
     def test_frozen_projects_carry_the_case_configuration(self) -> None:
@@ -584,8 +592,9 @@ class GoldenProjectSnapshotTests(unittest.TestCase):
                     self.assertEqual(project["parameters"]["carbon.factor_scenario"], "doctoral_reproduction_2026_07_18")
 
     def test_golden_projects_survive_a_module_version_bump(self) -> None:
-        """P0-8 bumps value-zonal-redispatch-balancing 3.0.0 -> 4.0.0 (VERSION_LEDGER);
-        C8's immutable snapshot acknowledges @3.0.0 and must still validate."""
+        """P0-8 bumped value-zonal-redispatch-balancing 3.0.0 -> 4.0.0 (VERSION_LEDGER);
+        C8's immutable snapshot acknowledges @3.0.0 and must still validate.
+        A further simulated bump (5.0.0) must also be absorbed."""
 
         import dataclasses
 
@@ -595,16 +604,21 @@ class GoldenProjectSnapshotTests(unittest.TestCase):
         registry = builtin_registry()
         module_id = "value-zonal-redispatch-balancing"
         current = registry.manifest(module_id)
-        registry._manifests[module_id] = dataclasses.replace(current, version="4.0.0")
+        self.assertEqual(current.version, "4.0.0")
         case = dict(self.cases["C8"], id="C8")
         frozen = json.loads(self.run_case.project_path(case).read_text(encoding="utf-8"))
-        self.assertIn(f"module:{module_id}@{current.version}", frozen["maturity_acknowledgements"])
+        self.assertIn(f"module:{module_id}@3.0.0", frozen["maturity_acknowledgements"])
         with self.assertRaisesRegex(ValueError, "Experimental acknowledgement required"):
             validate_maturity_acknowledgements(registry, frozen["modules"], frozen["selected_extensions"],
                                                frozen["maturity_acknowledgements"])
         project = self.run_case.build_project(case, registry)
         self.assertIn(f"module:{module_id}@4.0.0", project["maturity_acknowledgements"])
-        self.assertNotIn(f"module:{module_id}@{current.version}", project["maturity_acknowledgements"])
+        self.assertNotIn(f"module:{module_id}@3.0.0", project["maturity_acknowledgements"])
+        validate_maturity_acknowledgements(registry, project["modules"], project["selected_extensions"],
+                                           project["maturity_acknowledgements"])
+        registry._manifests[module_id] = dataclasses.replace(current, version="5.0.0")
+        project = self.run_case.build_project(case, registry)
+        self.assertIn(f"module:{module_id}@5.0.0", project["maturity_acknowledgements"])
         validate_maturity_acknowledgements(registry, project["modules"], project["selected_extensions"],
                                            project["maturity_acknowledgements"])
         for case_id, definition in self.cases.items():
@@ -612,6 +626,20 @@ class GoldenProjectSnapshotTests(unittest.TestCase):
                 built = self.run_case.build_project(dict(definition, id=case_id), registry)
                 validate_maturity_acknowledgements(registry, built["modules"], built.get("selected_extensions") or [],
                                                    built["maturity_acknowledgements"])
+
+    def test_frozen_builtin_solver_contract_runs_as_the_current_default(self) -> None:
+        """C8 froze the v3 built-in default; it runs as the v4 built-in default.
+        A custom (non-default) historical contract is never rewritten."""
+
+        from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
+
+        case = dict(self.cases["C8"], id="C8")
+        frozen = json.loads(self.run_case.project_path(case).read_text(encoding="utf-8"))
+        self.assertEqual(frozen["solver_contract"]["schema_version"], "value.network-solver-contract/v3")
+        project = self.run_case.build_project(case)
+        self.assertEqual(project["solver_contract"], DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
+        custom = dict(frozen["solver_contract"], is_builtin_default=False, requires_acknowledgement=True)
+        self.assertEqual(self.run_case.derived_solver_contract({"solver_contract": custom}), custom)
 
     def test_freeze_projects_never_overwrites(self) -> None:
         import importlib.util

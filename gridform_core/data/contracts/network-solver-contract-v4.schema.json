@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VALUE network solver contract v4 shed lock",
+  "description": "After the primary solve the total load shedding is locked (sum(shed) <= shed*, fixed at zero when shed* is zero); the bid-cost objective then carries a coefficient-aware numerical lock. GBP 1 per period is only the acceptance ceiling of that lock; MWh locks keep coefficient-aware numerical tolerances.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "method",
+    "presolve",
+    "primal_feasibility_tolerance",
+    "dual_feasibility_tolerance",
+    "ipm_optimality_tolerance",
+    "warning_fraction",
+    "validated_ceilings",
+    "absolute_ceilings",
+    "is_builtin_default",
+    "requires_acknowledgement"
+  ],
+  "properties": {
+    "schema_version": {"const": "value.network-solver-contract/v3"},
+    "contract_version": {"const": "value.zonal-lexicographic-shed-lock/v4"},
+    "method": {"enum": ["highs-ds", "highs-ipm", "highs"]},
+    "presolve": {"const": true},
+    "primal_feasibility_tolerance": {"type": "number", "minimum": 1e-10, "maximum": 1e-7},
+    "dual_feasibility_tolerance": {"type": "number", "minimum": 1e-10, "maximum": 1e-7},
+    "ipm_optimality_tolerance": {"type": "number", "minimum": 1e-12, "maximum": 1e-7},
+    "warning_fraction": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+    "validated_ceilings": {"$ref": "#/$defs/ceilings"},
+    "absolute_ceilings": {"$ref": "#/$defs/absolute_ceilings"},
+    "is_builtin_default": {"type": "boolean"},
+    "requires_acknowledgement": {"type": "boolean"}
+  },
+  "$defs": {
+    "ceilings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_bid_cost_gbp",
+        "secondary_schedule_deviation_mwh",
+        "physical_throughput_mwh"
+      ],
+      "properties": {
+        "primary_bid_cost_gbp": {"const": 1.0},
+        "secondary_schedule_deviation_mwh": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 0.01},
+        "physical_throughput_mwh": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 0.01}
+      }
+    },
+    "absolute_ceilings": {
+      "description": "Immutable study acceptance boundaries. The GBP boundary classifies the observed bid-cost degradation; it is never a lock allowance.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_bid_cost_gbp",
+        "secondary_schedule_deviation_mwh",
+        "physical_throughput_mwh"
+      ],
+      "properties": {
+        "primary_bid_cost_gbp": {"const": 1.0},
+        "secondary_schedule_deviation_mwh": {"const": 0.01},
+        "physical_throughput_mwh": {"const": 0.01}
+      }
+    }
+  }
+}

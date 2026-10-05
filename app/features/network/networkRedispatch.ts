@@ -9,8 +9,8 @@ export type ZonalRun = {
 };
 
 export type ZonalSolverContract = {
-  schema_version: "value.network-solver-contract/v2" | "value.network-solver-contract/v3";
-  contract_version: "value.zonal-lexicographic/v2" | "value.zonal-lexicographic-gbp1/v3";
+  schema_version: "value.network-solver-contract/v2" | "value.network-solver-contract/v3" | "value.network-solver-contract/v4";
+  contract_version: "value.zonal-lexicographic/v2" | "value.zonal-lexicographic-gbp1/v3" | "value.zonal-lexicographic-shed-lock/v4";
   method: "highs-ds" | "highs-ipm" | "highs";
   presolve: true;
   primal_feasibility_tolerance: number;
@@ -23,9 +23,11 @@ export type ZonalSolverContract = {
   requires_acknowledgement: boolean;
 };
 
+// Solver contract v4 (P0-8): shed lock first, then a numerical bid-cost lock;
+// GBP 1 per period is only its acceptance ceiling.
 export const DEFAULT_ZONAL_SOLVER_CONTRACT: ZonalSolverContract = {
-  schema_version: "value.network-solver-contract/v3",
-  contract_version: "value.zonal-lexicographic-gbp1/v3",
+  schema_version: "value.network-solver-contract/v4",
+  contract_version: "value.zonal-lexicographic-shed-lock/v4",
   method: "highs-ds",
   presolve: true,
   primal_feasibility_tolerance: 1e-9,
@@ -54,9 +56,32 @@ export const LEGACY_ZONAL_SOLVER_CONTRACT: ZonalSolverContract = {
   absolute_ceilings: { ...DEFAULT_ZONAL_SOLVER_CONTRACT.absolute_ceilings, primary_bid_cost_gbp: 0.1 },
 };
 
+// v3 used GBP 1 as the primary lock allowance (P2-01); its built-in values are
+// the same as v4's, only the identity differs.  Readable, never executable.
+export const HISTORICAL_GBP1_ZONAL_SOLVER_CONTRACT: ZonalSolverContract = {
+  ...DEFAULT_ZONAL_SOLVER_CONTRACT,
+  schema_version: "value.network-solver-contract/v3",
+  contract_version: "value.zonal-lexicographic-gbp1/v3",
+};
+
+export type ZonalSolverContractGeneration = "v2" | "v3" | "v4";
+
+export function zonalSolverContractGeneration(contract: ZonalSolverContract): ZonalSolverContractGeneration {
+  if (contract.schema_version === "value.network-solver-contract/v2") return "v2";
+  if (contract.schema_version === "value.network-solver-contract/v3") return "v3";
+  return "v4";
+}
+
+/** A historical (v2 or v3) contract: readable, but a run needs an explicit upgrade. */
 export function isLegacyZonalSolverContract(contract: ZonalSolverContract): boolean {
-  return contract.schema_version === "value.network-solver-contract/v2"
-    && contract.contract_version === "value.zonal-lexicographic/v2";
+  return zonalSolverContractGeneration(contract) !== "v4";
+}
+
+function generationDefaults(contract: ZonalSolverContract): ZonalSolverContract {
+  const generation = zonalSolverContractGeneration(contract);
+  if (generation === "v2") return LEGACY_ZONAL_SOLVER_CONTRACT;
+  if (generation === "v3") return HISTORICAL_GBP1_ZONAL_SOLVER_CONTRACT;
+  return DEFAULT_ZONAL_SOLVER_CONTRACT;
 }
 
 export function copyDefaultZonalSolverContract(): ZonalSolverContract {
@@ -98,7 +123,7 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
 }
 
 function hasBuiltinZonalSolverValues(contract: ZonalSolverContract): boolean {
-  const defaults = isLegacyZonalSolverContract(contract) ? LEGACY_ZONAL_SOLVER_CONTRACT : DEFAULT_ZONAL_SOLVER_CONTRACT;
+  const defaults = generationDefaults(contract);
   return contract.schema_version === defaults.schema_version
     && contract.contract_version === defaults.contract_version
     && contract.method === defaults.method
@@ -124,7 +149,8 @@ export function isZonalSolverContract(value: unknown): value is ZonalSolverContr
   if (!isRecord(value)
     || !hasExactKeys(value, solverContractKeys)
     || !((value.schema_version === "value.network-solver-contract/v2" && value.contract_version === "value.zonal-lexicographic/v2")
-      || (value.schema_version === "value.network-solver-contract/v3" && value.contract_version === "value.zonal-lexicographic-gbp1/v3"))
+      || (value.schema_version === "value.network-solver-contract/v3" && value.contract_version === "value.zonal-lexicographic-gbp1/v3")
+      || (value.schema_version === "value.network-solver-contract/v4" && value.contract_version === "value.zonal-lexicographic-shed-lock/v4"))
     || !solverMethods.includes(value.method as (typeof solverMethods)[number])
     || value.presolve !== true
     || typeof value.is_builtin_default !== "boolean"
@@ -240,7 +266,7 @@ export function isSolverValidationSummary(value: unknown): value is SolverValida
     || !(value.detail_view === undefined || value.detail_view === "solver-diagnostics")) return false;
   if (value.row_count > 0) {
     return solverMethods.includes(value.method as (typeof solverMethods)[number])
-      && ["value.zonal-lexicographic/v2", "value.zonal-lexicographic-gbp1/v3"].includes(value.solver_contract_version as string)
+      && ["value.zonal-lexicographic/v2", "value.zonal-lexicographic-gbp1/v3", "value.zonal-lexicographic-shed-lock/v4"].includes(value.solver_contract_version as string)
       && typeof value.scipy_version === "string"
       && value.scipy_version.length > 0
       && typeof value.highs_identity === "string"

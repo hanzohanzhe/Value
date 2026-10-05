@@ -148,8 +148,12 @@ def derive_zonal_execution_project(
     if module_id != "value-zonal-redispatch-balancing":
         raise ValueError("Zonal source study does not select the zonal balancing module")
     manifest = registry.manifest(module_id, expected_slot="balancing")
-    if manifest.version != "3.0.0" or not manifest.solver_contract:
-        raise ValueError("Zonal balancing module v3.0.0 solver contract is unavailable")
+    # The derivation always targets the registered module and its current
+    # solver contract (v4 since P0-8); historical contracts are never minted.
+    if not manifest.solver_contract:
+        raise ValueError(
+            f"Zonal balancing module v{manifest.version} solver contract is unavailable"
+        )
     if "solver_contract" in candidate:
         raise ValueError("Zonal source study already declares a solver contract")
 
