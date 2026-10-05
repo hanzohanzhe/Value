@@ -22,7 +22,8 @@ from .extension_framework import (
     load_extension_manifests,
 )
 from .module_bundle import MAX_BUNDLE_BYTES, MAX_MEMBERS, MAX_UNCOMPRESSED_BYTES, validate_module_bundle
-from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys, verify_after_write
+from . import module_quarantine
+from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys
 from .v2.module_manifest import workspace_registry
 from .runtime_paths import PACKAGE_ROOT, activate_external_module_sources
 
@@ -141,7 +142,7 @@ def _verify_written(root: Path, before_keys: frozenset, extension_id: str) -> No
     """Post-write check in this process and in a fresh worker-like process (P0-2 S4)."""
 
     try:
-        verify_after_write(root, before_keys=before_keys, kind="extension", entry_id=extension_id)
+        module_quarantine.verify_after_write(root, before_keys=before_keys, kind="extension", entry_id=extension_id)
     except ModuleQuarantinedError as exc:
         raise ExtensionBundleError(exc.code, str(exc)) from exc
 

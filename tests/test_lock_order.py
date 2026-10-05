@@ -224,6 +224,70 @@ class LockOrderTests(unittest.TestCase):
         self.assertEqual(status["status"], "queued")
         self.assertNotIn("GF_RUN_START_FAILED", json.dumps(status))
 
+    def test_module_lifecycle_and_run_starts_interleave_in_order(self) -> None:
+        """C6 (P0-2): 50 module enable/disable requests and 50 run starts from
+        two threads finish without deadlock and keep the global lock order."""
+
+        import os
+        import gridform_core.catalog as catalog
+        import gridform_core.extension_bundle as extension_bundle
+        import gridform_core.module_installation as module_installation
+        import gridform_core.module_quarantine as module_quarantine
+        from tests.module_lifecycle_fixtures import forget_external_code, write_external_module
+
+        modules = self.home / "modules"
+        write_external_module(modules, "p02-lock-module", "p02_lock_module")
+        self.addCleanup(forget_external_code, modules, ("p02_lock_module",))
+        module_lock = _RecordingRLock(self.recorder, "module")
+        snapshot = {}
+
+        def cheap_snapshot():
+            # The real build runs once; later refreshes reuse it so the stress
+            # test measures locking, not registry construction.
+            if not snapshot:
+                snapshot.update(real_snapshot())
+            return snapshot
+
+        real_snapshot = catalog.module_catalog_snapshot
+        patches = [
+            patch.dict(os.environ, {"VALUE_DATA_HOME": str(self.home)}),
+            patch.object(catalog, "_SNAPSHOT", None),
+            patch.object(catalog, "module_catalog_snapshot", cheap_snapshot),
+            patch.object(module_quarantine, "verify_after_write", lambda *a, **k: None),
+            patch.object(module_installation, "check_manifest", lambda registry, manifest: {
+                "module_id": manifest.id, "slot": manifest.slot, "version": manifest.version,
+                "status": "passed", "errors": [], "warnings": []}),
+        ]
+        patches += [patch.object(target, "MODULE_LIFECYCLE_LOCK", module_lock)
+                    for target in (server, catalog, module_installation, extension_bundle)]
+        patches += [patch.object(server, name, getattr(server, name))
+                    for name in ("MODULES", "MODULE_SLOT_BY_ID", "REQUIRED_MODULE_SLOTS", "CATALOG_STALE")]
+        for item in patches:
+            item.start()
+            self.addCleanup(item.stop)
+        outcomes: dict[str, list[int]] = {"module": [], "run": []}
+
+        def toggle() -> None:
+            for index in range(50):
+                action = "disable" if index % 2 == 0 else "enable"
+                outcomes["module"].append(self._post(
+                    f"/api/modules/p02-lock-module/{action}", {"confirm_pending_runs": True}))
+
+        def start() -> None:
+            for _ in range(50):
+                outcomes["run"].append(self._post("/api/projects/study/runs", {"mode": "value_101_day"}))
+
+        threads = [threading.Thread(target=toggle), threading.Thread(target=start)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+            self.assertFalse(thread.is_alive(), "module lifecycle and run starts deadlocked")
+        self.assertEqual(outcomes["module"], [200] * 50)
+        self.assertEqual(outcomes["run"], [202] * 50)
+        self.assertEqual(self.recorder.violations, [])
+        self.assertIn("module", self.recorder.events)
+
 
 class RecorderSelfTest(unittest.TestCase):
     def test_recorder_flags_an_inverted_acquisition(self) -> None:

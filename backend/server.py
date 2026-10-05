@@ -40,13 +40,18 @@ from backend.run_execution import current_execution, bind_run_execution, verify_
 from gridform_core.execution_archive import verify_execution_bundle
 from gridform_core.legacy_module_ids import ORCHESTRATOR_ENGINES as LEGACY_ORCHESTRATOR_ENGINES
 
-from gridform_core.catalog import (
-    DATASET_SLOTS,
-    MODULES,
-    MODULE_REGISTRY,
-    MODULE_SLOT_BY_ID,
-    REQUIRED_MODULE_SLOTS,
-    module_catalog_snapshot,
+from gridform_core.catalog import get_catalog_snapshot
+from gridform_core.dataset_slots import DATASET_SLOTS
+from gridform_core.errors import ContractError
+from gridform_core.execution_archive import ExecutionArchiveError
+from gridform_core.module_quarantine import (
+    MODULE_LIFECYCLE_LOCK,
+    ModuleQuarantinedError,
+    all_quarantine_entries,
+    clear_negative_caches,
+    degraded_reasons,
+    quarantine_report,
+    status_for_code,
 )
 from gridform_core.module_bundle import MAX_BUNDLE_BYTES
 from gridform_core.extension_bundle import (
@@ -316,15 +321,73 @@ MIN_FREE_SPACE_BYTES = 1024 * 1024 * 1024
 ROLE_INDEX = {slot["role"]: slot for slot in DATASET_SLOTS}
 
 
-def refresh_module_catalog() -> None:
-    """Refresh the single registry after a reviewed local lifecycle change."""
+# Set when a catalogue refresh failed after a lifecycle change: the previous
+# catalogue stays in use, new runs are refused (503) until a rescan succeeds.
+CATALOG_STALE: dict[str, str] | None = None
 
-    global MODULE_REGISTRY, MODULES, MODULE_SLOT_BY_ID, REQUIRED_MODULE_SLOTS
-    snapshot = module_catalog_snapshot()
-    MODULE_REGISTRY = snapshot["registry"]
-    MODULES = snapshot["modules"]
-    MODULE_SLOT_BY_ID = snapshot["slot_by_id"]
-    REQUIRED_MODULE_SLOTS = snapshot["required_slots"]
+
+def refresh_module_catalog(*, refresh: bool = True) -> None:
+    """Refresh the single registry after a reviewed local lifecycle change.
+
+    External faults never raise here (they are quarantined); anything that
+    still fails marks the catalogue stale and raises a coded error.
+    """
+
+    global MODULE_REGISTRY, MODULES, MODULE_SLOT_BY_ID, REQUIRED_MODULE_SLOTS, CATALOG_STALE
+    with MODULE_LIFECYCLE_LOCK:
+        try:
+            snapshot = get_catalog_snapshot(refresh=refresh)
+        except (Exception, SystemExit) as exc:
+            CATALOG_STALE = {"code": "GF_MODULE_CATALOG_STALE", "error_type": type(exc).__name__}
+            raise ModuleQuarantinedError(
+                "GF_MODULE_CATALOG_REFRESH",
+                "The module catalogue could not be refreshed; the previous catalogue stays in use "
+                "and new runs are paused. Fix or disable the change, then rescan modules.",
+            ) from exc
+        MODULE_REGISTRY = snapshot["registry"]
+        MODULES = snapshot["modules"]
+        MODULE_SLOT_BY_ID = snapshot["slot_by_id"]
+        REQUIRED_MODULE_SLOTS = snapshot["required_slots"]
+        CATALOG_STALE = None
+
+
+# Built once at import (fault-isolated: a broken external entry is
+# quarantined, never fatal); main() re-reads the same cached snapshot.
+refresh_module_catalog(refresh=False)
+
+
+def module_quarantine_payload() -> dict[str, Any]:
+    report = quarantine_report(MODULE_REGISTRY)
+    if CATALOG_STALE:
+        report = {**report, "status": "degraded", "catalog_stale": True}
+    return report
+
+
+def pending_runs() -> list[str]:
+    """Runs whose worker has not finished: a lifecycle change alters their
+    execution identity, so it needs explicit confirmation (P0-2 Q9)."""
+
+    found = []
+    for path in sorted(RUNS_ROOT.glob("*/status.json")):
+        status = read_object(path)
+        if str(status.get("status") or "") in ACTIVE_STATES:
+            found.append(str(status.get("id") or path.parent.name))
+    return found
+
+
+def require_no_pending_runs(confirmed: bool) -> None:
+    runs = pending_runs()
+    if runs and not confirmed:
+        raise ModuleQuarantinedError(
+            "GF_MODULE_LIFECYCLE_RUNS_PENDING",
+            f"{len(runs)} run(s) have not finished: " + ", ".join(runs[:10])
+            + ". Changing installed modules now changes the code they start with; confirm to continue.",
+        )
+
+
+def _quarantined_ids(kind: str) -> set[str]:
+    return {str(entry.entry_id) for entry in all_quarantine_entries(MODULE_REGISTRY)
+            if entry.kind == kind and entry.entry_id}
 
 
 def extension_installation_records() -> dict[str, dict[str, Any]]:
@@ -1246,6 +1309,15 @@ def map_request_exception(exc: BaseException) -> tuple[int, dict[str, Any], dict
         return 415, _error_body(str(exc), UnsupportedMediaType.code), {}
     if isinstance(exc, (DataMappingError, DataPackCloneError)):
         return int(exc.status), _error_body(str(exc), str(exc.code)), {}
+    code = getattr(exc, "code", None)
+    if isinstance(exc, (ModuleQuarantinedError, ContractError, ExtensionBundleError,
+                        ModuleInstallationError, ExecutionArchiveError)) and isinstance(code, str) and code:
+        # P0-2 error-code table (gridform_core.module_quarantine.ERROR_CODE_STATUS).
+        extra: dict[str, Any] = {}
+        entries = getattr(exc, "entries", ())
+        if entries:
+            extra["quarantine"] = [entry.to_dict() for entry in entries]
+        return status_for_code(code), _error_body(str(exc), code, **extra), {}
     if isinstance(exc, LockTimeout):
         return 503, _error_body(
             "VALUE is busy with another change to the same records; retry shortly.",
@@ -1261,9 +1333,11 @@ def map_request_exception(exc: BaseException) -> tuple[int, dict[str, Any], dict
 
 
 def health_degradation() -> tuple[str, list[dict[str, Any]]]:
-    """Backend status and grouped degraded reasons (P0-2 fills the reasons)."""
+    """Backend status and grouped degraded reasons: quarantined local module
+    entries and a stale catalogue (codes and counts only; no IDs or paths)."""
 
-    return "ok", []
+    reasons = degraded_reasons(MODULE_REGISTRY, extra=[CATALOG_STALE["code"]] if CATALOG_STALE else [])
+    return ("degraded" if reasons else "ok"), reasons
 
 
 def health_payload(*, full: bool) -> dict[str, Any]:
@@ -1290,6 +1364,10 @@ def health_payload(*, full: bool) -> dict[str, Any]:
         "runtime_capability": VALUE_NATIVE,
         "runtime_capabilities": runtime,
         "degraded_details": degraded,
+        "module_quarantine": [
+            {key: row[key] for key in ("kind", "id", "manifest_file", "error_code", "error_type")}
+            for row in module_quarantine_payload()["entries"]
+        ],
     }
 
 
@@ -1507,6 +1585,7 @@ class Handler(BaseHTTPRequestHandler):
                         ),
                         "extension_installations": list_extension_installations(external_modules_root()),
                         "module_installations": list_module_installations(),
+                        "module_quarantine": module_quarantine_payload(),
                         "data_packs": list_packs(), "projects": list_projects(),
                         "study_trash": list_study_trash(PROJECTS_ROOT, RUNS_ROOT, TRASH_ROOT),
                         "runs": list_runs(), "architecture_version": "value.contracts/v2",
@@ -1619,6 +1698,7 @@ class Handler(BaseHTTPRequestHandler):
                 "schema_version": "value.module-catalog/v2",
                 "modules": MODULES,
                 "required_slots": list(REQUIRED_MODULE_SLOTS),
+                "module_quarantine": module_quarantine_payload(),
             })
         elif route.startswith("/api/modules/") and route.endswith(("/authoring", "/template")):
             parts = route.strip("/").split("/")
@@ -1654,6 +1734,7 @@ class Handler(BaseHTTPRequestHandler):
                     installation_records=extension_installation_records(),
                 ),
                 "installations": list_extension_installations(external_modules_root()),
+                "module_quarantine": module_quarantine_payload(),
             })
         elif route == "/api/parameters":
             self._json(parameter_schema())
@@ -2329,14 +2410,16 @@ class Handler(BaseHTTPRequestHandler):
                 handle.write(chunk)
                 remaining -= len(chunk)
         try:
-            installation = install_module_bundle(staged, trust_acknowledged=True)
-            refresh_module_catalog()
-        except ModuleInstallationError as exc:
+            require_no_pending_runs(self._pending_runs_confirmed())
+            with MODULE_LIFECYCLE_LOCK:
+                installation = install_module_bundle(staged, trust_acknowledged=True)
+                stale = self._refresh_after_lifecycle_change()
+        except (ModuleInstallationError, ModuleQuarantinedError) as exc:
             self._json({
                 "error": str(exc),
                 "error_code": exc.code,
                 "rollback": "No built-in or previously enabled module was changed.",
-            }, 400)
+            }, status_for_code(exc.code))
             return
         finally:
             staged.unlink(missing_ok=True)
@@ -2344,6 +2427,7 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "installation": installation,
             "message": "The module passed structural conformance and is ready for a wiring test.",
+            **stale,
         }, 201)
 
     def _upload_extension_bundle(self) -> None:
@@ -2379,17 +2463,19 @@ class Handler(BaseHTTPRequestHandler):
                 handle.write(chunk)
                 remaining -= len(chunk)
         try:
-            installation = install_extension_bundle(
-                staged,
-                trust_acknowledged=True,
-                modules_root=external_modules_root(),
-            )
-            refresh_module_catalog()
-        except ExtensionBundleError as exc:
+            require_no_pending_runs(self._pending_runs_confirmed())
+            with MODULE_LIFECYCLE_LOCK:
+                installation = install_extension_bundle(
+                    staged,
+                    trust_acknowledged=True,
+                    modules_root=external_modules_root(),
+                )
+                stale = self._refresh_after_lifecycle_change()
+        except (ExtensionBundleError, ModuleQuarantinedError) as exc:
             self._json({
                 "error": str(exc), "error_code": exc.code,
                 "rollback": "No built-in or previously enabled extension was changed.",
-            }, 400)
+            }, status_for_code(exc.code))
             return
         finally:
             staged.unlink(missing_ok=True)
@@ -2397,7 +2483,27 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "installation": installation,
             "message": "The extension passed structural contract validation; scientific maturity is unchanged.",
+            **stale,
         }, 201)
+
+    def _pending_runs_confirmed(self, body: Mapping[str, Any] | None = None) -> bool:
+        """Explicit confirmation to change modules while runs are pending:
+        ``{"confirm_pending_runs": true}`` in a JSON body, or the header
+        ``X-VALUE-Confirm-Pending-Runs: acknowledged`` for ZIP uploads."""
+
+        if body is not None and body.get("confirm_pending_runs") is True:
+            return True
+        return self.headers.get("X-VALUE-Confirm-Pending-Runs", "").lower() == "acknowledged"
+
+    def _refresh_after_lifecycle_change(self) -> dict[str, Any]:
+        """The change on disk is already verified; a failed catalogue refresh
+        is reported (catalogue stale, runs paused) instead of undoing it."""
+
+        try:
+            refresh_module_catalog()
+        except ModuleQuarantinedError as exc:
+            return {"catalog_stale": True, "warning": {"error_code": exc.code, "message": str(exc)}}
+        return {}
 
     def _module_dependents(self, module_id: str) -> dict[str, list[str]]:
         projects = []
@@ -2443,6 +2549,11 @@ class Handler(BaseHTTPRequestHandler):
         )
         if not project:
             self._json({"error": "project not found"}, 404); return
+        if CATALOG_STALE:
+            raise ModuleQuarantinedError(
+                "GF_MODULE_CATALOG_STALE",
+                "The module catalogue is stale after a failed refresh; rescan modules before starting runs.",
+            )
         teaching_run_extensions = _value_101_origin_extensions(project)
         validation = validate_project(project)
         if not validation["valid"]:
@@ -2453,7 +2564,7 @@ class Handler(BaseHTTPRequestHandler):
             policy = resolve_run_policy(mode)
             run_start, run_end = policy.years(project)
         except ValueError as exc:
-            self._json({"error": str(exc)}, 400); return
+            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_RUN_REQUEST_INVALID"}, 400); return
         pack_root = PACKS_ROOT / str(project["data_pack_id"])
         pack_manifest = read_json(pack_root / "manifest.json", {})
         try:
@@ -2461,7 +2572,7 @@ class Handler(BaseHTTPRequestHandler):
                 project, base_pack_root=pack_root, data_home=STATE_ROOT
             )
         except ValueError as exc:
-            self._json({"error": str(exc)}, 400); return
+            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_ZONAL_PACK_SELECTION"}, 400); return
         run_id = bounded_run_id(
             project_id,
             timestamp=datetime.now().strftime("%Y%m%d-%H%M%S"),
@@ -2472,7 +2583,7 @@ class Handler(BaseHTTPRequestHandler):
                 project, MODULE_REGISTRY, pack_selection.revision_manifest
             )
         except ValueError as exc:
-            self._json({"error": str(exc)}, 409); return
+            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_PROJECT_REVISION"}, 409); return
         preflight = run_preflight(
             project,
             mode=mode,
@@ -2502,7 +2613,7 @@ class Handler(BaseHTTPRequestHandler):
         )
         if not preflight["accepted"]:
             first = preflight["errors"][0]
-            self._json({"error": first["message"], "preflight": preflight}, 400); return
+            self._json({"error": first["message"], "error_code": first.get("code") or "GF_PREFLIGHT_REFUSED", "preflight": preflight}, 400); return
         run_dir = RUNS_ROOT / run_id
         # Every server-side status change of the run happens under its action
         # lock from the first write on, so a supervisor tick never judges a run
@@ -2688,12 +2799,13 @@ class Handler(BaseHTTPRequestHandler):
             }, "GF_RUN_RESERVATION_LOCK_TIMEOUT")
             raise
         except (OSError, ValueError, SnapshotError, ResourceSnapshotMismatch) as exc:
+            code = getattr(exc, "code", None) if isinstance(exc, ExecutionArchiveError) else None
             failed = _record_start_failure(run_dir, {
                 "current_stage": "Input snapshot failed",
-                "error_code": "GF_INPUT_SNAPSHOT_FAILED",
+                "error_code": code or "GF_INPUT_SNAPSHOT_FAILED",
                 "error": str(exc),
-            }, "GF_INPUT_SNAPSHOT_FAILED")
-            self._json({"error": str(exc), "run": failed}, 409)
+            }, code or "GF_INPUT_SNAPSHOT_FAILED")
+            self._json({"error": str(exc), "error_code": code or "GF_INPUT_SNAPSHOT_FAILED", "run": failed}, 409)
             return
         initial = {"id": run_id, "project_id": project_id, "project_name": project["name"],
                    "mode": mode, "current_stage": "Waiting for the model process to start",
@@ -2857,7 +2969,7 @@ class Handler(BaseHTTPRequestHandler):
         )
         if not preflight["accepted"]:
             first = preflight["errors"][0]
-            self._json({"error": first["message"], "preflight": preflight}, 400); return
+            self._json({"error": first["message"], "error_code": first.get("code") or "GF_PREFLIGHT_REFUSED", "preflight": preflight}, 400); return
         # Resume needs only this run's own unwritten reservation (F5-04).
         reserved, written, own_outstanding = run_outstanding_bytes(root)
         usage = quota_usage(RUNS_ROOT, exclude_run=run_id)
@@ -3411,19 +3523,21 @@ class Handler(BaseHTTPRequestHandler):
             module_id = slug(parts[2], "module")
             enabling = parts[3] == "enable"
             dependents = self._module_dependents(module_id)
-            if not enabling and (dependents["projects"] or dependents["active_runs"]):
+            # A quarantined module may be disabled even when saved Studies
+            # still name it; only runs that are still active block it (Q3).
+            quarantined = module_id in _quarantined_ids("module")
+            if not enabling and (dependents["active_runs"] or (dependents["projects"] and not quarantined)):
                 self._json({
                     "error": "This module is referenced by saved Studies or active runs and cannot be disabled",
                     "error_code": "GF_MODULE_IN_USE",
                     "dependents": dependents,
                 }, 409)
                 return
-            try:
+            require_no_pending_runs(self._pending_runs_confirmed(body))
+            with MODULE_LIFECYCLE_LOCK:
                 installation = set_module_enabled(module_id, enabling)
-                refresh_module_catalog()
-            except ModuleInstallationError as exc:
-                self._json({"error": str(exc), "error_code": exc.code}, 400); return
-            self._json({"ok": True, "installation": installation, "dependents": dependents})
+                stale = self._refresh_after_lifecycle_change()
+            self._json({"ok": True, "installation": installation, "dependents": dependents, **stale})
         elif route.startswith("/api/extensions/") and route.endswith(("/enable", "/disable")):
             parts = route.strip("/").split("/")
             if len(parts) != 4:
@@ -3431,20 +3545,34 @@ class Handler(BaseHTTPRequestHandler):
             extension_id = slug(parts[2], "extension")
             enabling = parts[3] == "enable"
             dependents = extension_dependents(extension_id)
-            if not enabling and any(dependents.values()):
+            blocking = any(dependents.values())
+            if extension_id in _quarantined_ids("extension"):
+                # Quarantined: only runs that are still active block a disable (Q3).
+                blocking = any(
+                    str(read_object(RUNS_ROOT / run / "status.json").get("status") or "") in ACTIVE_STATES
+                    for run in dependents["runs_and_retained_history"]
+                )
+            if not enabling and blocking:
                 self._json({
                     "error": "This extension is referenced by saved Studies, snapshots or retained run history",
                     "error_code": "GF_EXTENSION_IN_USE",
                     "dependents": dependents,
                 }, 409); return
-            try:
+            require_no_pending_runs(self._pending_runs_confirmed(body))
+            with MODULE_LIFECYCLE_LOCK:
                 installation = set_extension_enabled(
                     extension_id, enabling, modules_root=external_modules_root()
                 )
+                stale = self._refresh_after_lifecycle_change()
+            self._json({"ok": True, "installation": installation, "dependents": dependents, **stale})
+        elif route == "/api/modules/rescan":
+            # Retry everything the negative caches remember and rebuild the
+            # catalogue; clears a stale catalogue when it succeeds.
+            with MODULE_LIFECYCLE_LOCK:
+                cleared = clear_negative_caches()
                 refresh_module_catalog()
-            except ExtensionBundleError as exc:
-                self._json({"error": str(exc), "error_code": exc.code}, 400); return
-            self._json({"ok": True, "installation": installation, "dependents": dependents})
+            report = module_quarantine_payload()
+            self._json({"ok": True, "cleared": cleared, "status": report["status"], "module_quarantine": report})
         elif route.startswith("/api/projects/") and route.endswith("/clone-storage-policy"):
             base_id = slug(route.strip("/").split("/")[2], "project")
             with STUDY_LIFECYCLE_LOCK:
@@ -3655,6 +3783,15 @@ def main() -> None:
     supervisor = run_supervisor()
     try:
         ensure_default_pack()
+        # C2: the catalogue (built once at import, fault-isolated) is in place
+        # before reconciliation; quarantined local entries are announced
+        # here by code only, never with a path.
+        refresh_module_catalog(refresh=False)
+        status, reasons = health_degradation()
+        if reasons:
+            print("VALUE started degraded: " + ", ".join(
+                f"{item['code']} x{item['count']}" for item in reasons
+            ) + " (see Modules, or python -m gridform_core.module_recovery list)", flush=True)
         report = supervisor.reconcile_all(extra_steps=[_startup_quota_repairs])
         if report.settled or report.repaired or report.unverifiable:
             print("VALUE run reconciliation: " + json.dumps(report.to_dict(), ensure_ascii=False), flush=True)

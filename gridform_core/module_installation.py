@@ -20,7 +20,8 @@ from .module_bundle import (
     validate_module_bundle,
 )
 from .module_conformance import check_manifest
-from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys, verify_after_write
+from . import module_quarantine
+from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys
 from .runtime_paths import activate_external_module_sources, external_modules_root, purge_source_root
 from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, builtin_registry, workspace_registry
 
@@ -257,7 +258,7 @@ def _verify_written(root: Path, before_keys: frozenset, module_id: str) -> None:
     """Post-write check in this process and in a fresh worker-like process (P0-2 S4)."""
 
     try:
-        verify_after_write(root, before_keys=before_keys, kind="module", entry_id=module_id)
+        module_quarantine.verify_after_write(root, before_keys=before_keys, kind="module", entry_id=module_id)
     except ModuleQuarantinedError as exc:
         raise ModuleInstallationError(exc.code, str(exc)) from exc
 
