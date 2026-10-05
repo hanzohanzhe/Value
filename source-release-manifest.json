@@ -1142,6 +1142,7 @@
     "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
     "tests/fixtures/native_psm/head_run_simulation_35aadb3.py",
     "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
+    "tests/fixtures/network_toys/eleven-zone-topology.json",
     "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/p07/head_decide_record.json",
     "tests/fixtures/prompt08_audit_project.json",
@@ -1218,6 +1219,7 @@
     "tests/local_api_harness.py",
     "tests/module_lifecycle_fixtures.py",
     "tests/native_reproduction_harness.py",
+    "tests/network_toys.py",
     "tests/p04_variants.py",
     "tests/p0_5_fixtures.py",
     "tests/preflight-identity.test.mjs",
@@ -1325,6 +1327,7 @@
     "tests/test_native_checkpoint_resume.py",
     "tests/test_native_reproduction_golden.py",
     "tests/test_netcdf_preflight.py",
+    "tests/test_network_toys.py",
     "tests/test_no_positional_scheme_c_results.py",
     "tests/test_nuclear_policy.py",
     "tests/test_orchestrator.py",
@@ -8135,9 +8138,9 @@
     },
     {
       "path": "gridform_validation/zonal_case_generator.py",
-      "sha256": "8db9472576837f17082973592f7768a4cf7ebd172697a910d259c8daf24aaac5",
-      "bytes": 21464,
-      "transform": "byte copy"
+      "sha256": "319704ca37fd7eee6c1328d89103a974de229cce854cc588e46a2a1d57685f2d",
+      "bytes": 27590,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_validation/zonal_oracle.py",
@@ -9363,8 +9366,8 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "2dc0ef8757712930a2caf26b59b265e2025844fd084995cf5a22ecc65789e54f",
-      "bytes": 21583,
+      "sha256": "b62e814b0ef684161f8a0b9d6ab9defb90ad7ea195e2c7eddf80625c9859ec45",
+      "bytes": 21005,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9539,6 +9542,12 @@
       "path": "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
       "sha256": "8ec797671da2cf3c79b0765fc64233dfa4eed7e998f859bf53cce52ff4c7ea4c",
       "bytes": 110000,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/network_toys/eleven-zone-topology.json",
+      "sha256": "5e6130be61eed6243257e7aa3a42ff8069d0c4d8699b2a1262a4786d484b4df8",
+      "bytes": 15614,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9995,6 +10004,12 @@
       "path": "tests/native_reproduction_harness.py",
       "sha256": "92016e3fde7289d10ad5ef5c4d60b9d83f1aca7477dbf396246f71070c42ecc6",
       "bytes": 79628,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/network_toys.py",
+      "sha256": "85b6afd6c33e81e2432ccb890ef12289b1bebf8efa329c664f2c344c8c67ec7a",
+      "bytes": 19632,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10640,6 +10655,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/test_network_toys.py",
+      "sha256": "400fffbd512078c8ae486973e96fb093fee714e7eb34202724ccaa8029ffdb8f",
+      "bytes": 3753,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_no_positional_scheme_c_results.py",
       "sha256": "6eefd52902994b806ffb74d7e2da460e477306f70ea677e5250c2c2053cf4658",
       "bytes": 1229,
@@ -10797,8 +10818,8 @@
     },
     {
       "path": "tests/test_prompt103_zonal_validation.py",
-      "sha256": "60955130b209f7a2dd23d954bc061e92456574b6e79b8067a23312e0504b5cbe",
-      "bytes": 29092,
+      "sha256": "b49467a4910beaeffb9523794b221ce06b84d47b54fc17bd4318f220dce82ce5",
+      "bytes": 29652,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
