@@ -412,6 +412,81 @@ class Studies35aadb3Tests(unittest.TestCase):
             self.assertEqual(classify_revision_mismatch(saved, registry, manifest)["classification"], "none")
 
 
+class ProfileChoiceTests(unittest.TestCase):
+    """A pre-profile Study chooses the methodology it is migrated to (review of X0 S11)."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.registry = workspace_registry(Path("missing-modules-directory"))
+        self.manifest = json.loads((PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
+
+    def study(self, case):
+        study = Path(self.folder.name) / "projects" / case
+        study.mkdir(parents=True)
+        shutil.copyfile(STUDIES_35AADB3 / f"{case}.project.json", study / "project.json")
+        return study, json.loads((study / "project.json").read_text(encoding="utf-8"))
+
+    def test_doctoral_preset_study_is_offered_the_frozen_profile(self):
+        study, project = self.study("D1")
+        result = classify_revision_mismatch(project, self.registry, self.manifest)
+        choices = {row["profile_id"]: row for row in result["profile_choices"]}
+        self.assertEqual(set(choices), set(methodology.profile_ids()))
+        doctoral = choices[methodology.REFERENCE_PROFILE_ID]
+        self.assertTrue(doctoral["supported"])
+        self.assertTrue(doctoral["matches_reference_preset"])
+        self.assertTrue(choices[default_profile_id()]["default"])
+        self.assertFalse(choices[default_profile_id()]["matches_reference_preset"])
+        first_write = next(row for row in result["differences"] if row["dimension"] == "methodology")
+        self.assertEqual(first_write["hint"], "matches_reference_preset")
+        self.assertEqual(first_write["matches_reference_preset"], [methodology.REFERENCE_PROFILE_ID])
+        self.assertEqual(first_write["new"], default_profile_id())
+        chosen = classify_revision_mismatch(project, self.registry, self.manifest,
+                                            profile_id=methodology.REFERENCE_PROFILE_ID)
+        self.assertEqual(chosen["selected_profile_id"], methodology.REFERENCE_PROFILE_ID)
+        self.assertNotEqual(chosen["diff_sha256"], result["diff_sha256"])
+        with self.assertRaises(RevisionMigrationError) as caught:
+            migrate_project_revision(study, self.registry, self.manifest, confirm_diff_sha256=result["diff_sha256"],
+                                     profile_id=methodology.REFERENCE_PROFILE_ID)
+        self.assertEqual(caught.exception.code, "GF_REVISION_MIGRATION_STALE")
+        saved, _ = migrate_project_revision(study, self.registry, self.manifest, confirm_diff_sha256=chosen["diff_sha256"],
+                                            profile_id=methodology.REFERENCE_PROFILE_ID)
+        self.assertEqual(saved["parameters"][PROFILE_PARAMETER], methodology.REFERENCE_PROFILE_ID)
+        self.assertEqual(classify_revision_mismatch(saved, self.registry, self.manifest)["classification"], "none")
+        with self.assertRaises(RevisionMigrationError) as caught:
+            classify_revision_mismatch(saved, self.registry, self.manifest, profile_id=default_profile_id())
+        self.assertEqual(caught.exception.code, "GF_REVISION_MIGRATION_PROFILE_NOT_APPLICABLE")
+
+    def test_default_confirmation_still_writes_the_default_profile(self):
+        study, project = self.study("D1")
+        result = classify_revision_mismatch(project, self.registry, self.manifest)
+        saved, _ = migrate_project_revision(study, self.registry, self.manifest, confirm_diff_sha256=result["diff_sha256"])
+        self.assertEqual(saved["parameters"][PROFILE_PARAMETER], default_profile_id())
+
+    def test_unsupported_or_unknown_choice_is_refused(self):
+        _, project = self.study("C1")
+        result = classify_revision_mismatch(project, self.registry, self.manifest)
+        doctoral = next(row for row in result["profile_choices"] if row["profile_id"] == methodology.REFERENCE_PROFILE_ID)
+        if doctoral["supported"]:
+            self.skipTest("C1 is admissible under the frozen profile")
+        self.assertFalse(doctoral["matches_reference_preset"])
+        self.assertNotIn("hint", next(row for row in result["differences"] if row["dimension"] == "methodology"))
+        for profile_id, code in ((methodology.REFERENCE_PROFILE_ID, "VALUE_PROFILE_COMBINATION_UNSUPPORTED"),
+                                 ("no-such-profile", "VALUE_PROFILE_UNKNOWN")):
+            with self.subTest(profile_id), self.assertRaises(RevisionMigrationError) as caught:
+                classify_revision_mismatch(project, self.registry, self.manifest, profile_id=profile_id)
+            self.assertEqual(caught.exception.code, code)
+
+    def test_unverifiable_pre_profile_study_can_choose_too(self):
+        _, project = self.study("D1")
+        project["revision_sha256"] = "0" * 64
+        result = classify_revision_mismatch(project, self.registry, self.manifest,
+                                            profile_id=methodology.REFERENCE_PROFILE_ID)
+        self.assertEqual(result["classification"], "unverifiable")
+        row = next(row for row in result["differences"] if row["key"] == "methodology")
+        self.assertEqual(row["new"]["profile_id"], methodology.REFERENCE_PROFILE_ID)
+
+
 class MigrationApiTests(unittest.TestCase):
     """GET classifies without writing; POST migrates; a run start refuses an unconfirmed method change."""
 
@@ -422,21 +497,12 @@ class MigrationApiTests(unittest.TestCase):
             home = Path(folder)
             pack = home / "data-packs" / "value-101-baseline-v1"
             shutil.copytree(PACK_ROOT, pack)
-            registry = workspace_registry(Path("missing-modules-directory"))
-            manifest = json.loads((pack / "manifest.json").read_text(encoding="utf-8"))
-            project = json.loads((ROOT / "tests" / "golden" / "projects" / "D1.json").read_text(encoding="utf-8"))
-            project["id"] = "legacy"
-            project["parameters"].pop(PROFILE_PARAMETER, None)
-            legacy = canonical_project_payload(
-                project, registry, manifest,
-                module_version_overrides=revision_migration._baseline_overrides(registry, project["modules"]),
-                include_methodology=False,
-            )
-            project["revision_sha256"] = hashlib.sha256(_canonical_bytes(legacy)).hexdigest()
-            study = home / "projects" / "legacy"
+            # The Study as 35aadb3 saved it (not rebuilt with this branch's code).
+            study = home / "projects" / "golden-study"
             study.mkdir(parents=True)
-            (study / "project.json").write_text(json.dumps(project), encoding="utf-8")
+            shutil.copyfile(STUDIES_35AADB3 / "D1.project.json", study / "project.json")
             before = (study / "project.json").read_bytes()
+            route = "/api/projects/golden-study/"
 
             def call(method, path, body=None):
                 request = urllib.request.Request(
@@ -451,23 +517,43 @@ class MigrationApiTests(unittest.TestCase):
                     return error.code, json.loads(error.read())
 
             with start_local_api(data_home=home) as (_httpd, origin, _token):
-                status, payload = call("GET", "/api/projects/legacy/revision-migration")
+                status, payload = call("GET", route + "revision-migration")
                 self.assertEqual(status, 200)
                 classification = payload["revision_migration"]
                 self.assertEqual(classification["classification"], "method_upgrade_required")
+                self.assertEqual(classification["selected_profile_id"], default_profile_id())
                 self.assertEqual((study / "project.json").read_bytes(), before)
-                status, payload = call("POST", "/api/projects/legacy/runs", {"mode": "smoke"})
+                status, payload = call("GET", route + f"revision-migration?profile_id={methodology.REFERENCE_PROFILE_ID}")
+                self.assertEqual(status, 200)
+                doctoral = payload["revision_migration"]
+                self.assertEqual(doctoral["selected_profile_id"], methodology.REFERENCE_PROFILE_ID)
+                self.assertNotEqual(doctoral["diff_sha256"], classification["diff_sha256"])
+                status, payload = call("GET", route + "revision-migration?profile_id=no-such-profile")
+                self.assertEqual((status, payload["error_code"]), (409, "VALUE_PROFILE_UNKNOWN"))
+                self.assertEqual((study / "project.json").read_bytes(), before)
+                status, payload = call("POST", route + "runs", {"mode": "smoke"})
                 self.assertEqual(status, 409, payload)
                 self.assertEqual(payload["error_code"], "GF_PREFLIGHT_METHOD_UPGRADE_REQUIRED")
                 self.assertFalse((home / "runs").exists() and any((home / "runs").iterdir()))
-                status, payload = call("POST", "/api/projects/legacy/revision-migration", {})
+                status, payload = call("POST", route + "revision-migration", {})
                 self.assertEqual((status, payload["error_code"]), (409, "GF_REVISION_MIGRATION_CONFIRMATION_REQUIRED"))
-                status, payload = call("POST", "/api/projects/legacy/revision-migration",
-                                       {"diff_sha256": classification["diff_sha256"]})
+                # The default-profile confirmation does not confirm the doctoral choice.
+                status, payload = call("POST", route + "revision-migration",
+                                       {"diff_sha256": classification["diff_sha256"],
+                                        "profile_id": methodology.REFERENCE_PROFILE_ID})
+                self.assertEqual((status, payload["error_code"]), (409, "GF_REVISION_MIGRATION_STALE"))
+                self.assertEqual((study / "project.json").read_bytes(), before)
+                status, payload = call("POST", route + "revision-migration",
+                                       {"diff_sha256": doctoral["diff_sha256"],
+                                        "profile_id": methodology.REFERENCE_PROFILE_ID})
                 self.assertEqual(status, 200)
                 self.assertEqual(payload["project"]["revision_reason"], "method-upgrade-confirmed")
-                status, payload = call("GET", "/api/projects/legacy/revision-migration")
+                self.assertEqual(payload["project"]["parameters"][PROFILE_PARAMETER], methodology.REFERENCE_PROFILE_ID)
+                status, payload = call("GET", route + "revision-migration")
                 self.assertEqual(payload["revision_migration"]["classification"], "none")
+                status, payload = call("POST", route + "revision-migration",
+                                       {"profile_id": methodology.REFERENCE_PROFILE_ID})
+                self.assertEqual((status, payload["error_code"]), (409, "GF_REVISION_MIGRATION_PROFILE_NOT_APPLICABLE"))
 
     def test_run_start_appends_a_code_only_revision_and_is_accepted(self):
         """POST /runs on a Study whose module moved by a code-only bump: revision appended, run admitted."""

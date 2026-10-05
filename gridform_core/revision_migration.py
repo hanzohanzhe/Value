@@ -25,8 +25,13 @@ A revision saved before X0 S11 has no basis.  It is reconstructed from the
 35aadb3 module versions (VERSION_LEDGER ``baseline_version``) without a
 methodology record; when that reproduces the declared hash, the revision is
 classified like any other, and the first explicit methodology is a method
-change that needs confirmation (Q13).  GET requests only classify; nothing is
-written unless :func:`migrate_project_revision` is called.
+change that needs confirmation (Q13).  For that first write the
+classification lists ``profile_choices`` (every catalogue profile, whether the
+Study's selection is supported by it and whether it matches a frozen
+profile's reference preset) and the confirmation may name one of them
+(``profile_id``, part of ``diff_sha256``); without a choice the default
+profile is written.  GET requests only classify; nothing is written unless
+:func:`migrate_project_revision` is called.
 """
 
 from __future__ import annotations
@@ -37,7 +42,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 
-from .methodology import PROFILE_PARAMETER, default_profile_id, load_catalogue, resolve_project_methodology
+from .methodology import (
+    PROFILE_PARAMETER,
+    default_profile_id,
+    load_catalogue,
+    reference_deviations,
+    resolve_methodology,
+    resolve_project_methodology,
+    selection_combination_violations,
+)
 from .project_revision import (
     FINGERPRINT_BASIS_SCHEMA,
     _canonical_bytes,
@@ -387,6 +400,73 @@ def _differences(old_basis: Mapping[str, Any], current: Mapping[str, Any], proje
     return rows
 
 
+def _profile_choices(project: Mapping[str, Any], registry: ModuleRegistryV2,
+                     data_pack_manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The profiles a pre-profile Study can be migrated to (catalogue order)."""
+
+    catalogue = load_catalogue()
+    modules = {str(slot): str(module_id) for slot, module_id in dict(project.get("modules") or {}).items()}
+    parameters = dict(project.get("parameters") or project.get("parameter_overrides") or {})
+    rows = []
+    for profile in catalogue.profiles.values():
+        violations = selection_combination_violations(
+            profile.id, registry=registry, modules=modules,
+            extensions=tuple(str(item) for item in project.get("selected_extensions") or ()),
+            data_packs=[(data_pack_manifest, None)],
+        )
+        deviations = reference_deviations(resolve_methodology(profile.id), modules=modules,
+                                          scientific_parameters=parameters)
+        rows.append({
+            "profile_id": profile.id, "label": profile.label, "default": profile.id == catalogue.default_profile_id,
+            "frozen": profile.frozen, "supported": not violations,
+            "unsupported_reasons": sorted({str(row["sub_reason"]) for row in violations}),
+            "matches_reference_preset": bool(profile.frozen and not violations and not deviations),
+        })
+    return rows
+
+
+def _apply_profile_choice(record: dict[str, Any], project: Mapping[str, Any], registry: ModuleRegistryV2,
+                          data_pack_manifest: Mapping[str, Any], profile_id: str | None) -> None:
+    """Offer the profile choice on a methodology first write and apply ``profile_id`` to it."""
+
+    explicit = PROFILE_PARAMETER in dict(project.get("parameters") or project.get("parameter_overrides") or {})
+    # Pre-profile Study: the reconstructed basis has no methodology (row
+    # profile_id, old None), or the basis is unverifiable and the Study selects
+    # no profile (row methodology, the default written on confirmation).
+    first_write = next((row for row in record["differences"]
+                        if row.get("dimension") == "methodology" and row.get("key") in {"profile_id", "methodology"}
+                        and row.get("old") is None), None)
+    if first_write is None or explicit:
+        if profile_id is not None:
+            raise RevisionMigrationError(
+                "GF_REVISION_MIGRATION_PROFILE_NOT_APPLICABLE",
+                "A methodology can be chosen only when a Study saved before methodology profiles is migrated; "
+                "change the methodology of this Study in the Study editor.",
+                _finish(record),
+            )
+        return
+    choices = _profile_choices(project, registry, data_pack_manifest)
+    record["profile_choices"] = choices
+    chosen = profile_id if profile_id is not None else default_profile_id()
+    row = next((choice for choice in choices if choice["profile_id"] == chosen), None)
+    if row is None:
+        raise RevisionMigrationError("VALUE_PROFILE_UNKNOWN", f"Unknown methodology profile: {chosen}", _finish(record))
+    if not row["supported"]:
+        raise RevisionMigrationError(
+            "VALUE_PROFILE_COMBINATION_UNSUPPORTED",
+            f"{row['label']} does not support this Study ({', '.join(row['unsupported_reasons'])}).",
+            _finish(record),
+        )
+    record["selected_profile_id"] = chosen
+    first_write["new"] = (resolve_methodology(chosen).identity() if first_write["key"] == "methodology" else chosen)
+    matches = [choice["profile_id"] for choice in choices if choice["matches_reference_preset"]]
+    if matches:
+        first_write["hint"] = "matches_reference_preset"
+        first_write["matches_reference_preset"] = matches
+        first_write["effect"] += (" The Study matches the reference preset of " + ", ".join(matches)
+                                  + "; choose the methodology to record.")
+
+
 def _finish(record: dict[str, Any]) -> dict[str, Any]:
     classification = record["classification"]
     record["error_code"] = next(
@@ -398,13 +478,24 @@ def _finish(record: dict[str, Any]) -> dict[str, Any]:
     record["confirmable"] = classification in CONFIRMABLE
     record["revision_reason"] = AUTOMATIC.get(classification) or CONFIRMABLE.get(classification)
     record["diff_sha256"] = hashlib.sha256(_canonical_bytes({
-        key: record.get(key) for key in ("classification", "declared_sha256", "calculated_sha256", "differences")
+        key: record.get(key) for key in ("classification", "declared_sha256", "calculated_sha256", "differences",
+                                         "selected_profile_id")
     })).hexdigest()
     return record
 
 
-def classify_revision_mismatch(project: Mapping[str, Any], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, Any]) -> dict[str, Any]:
-    """Why the installed code computes another revision hash for this Study.  Read-only."""
+def classify_revision_mismatch(
+    project: Mapping[str, Any],
+    registry: ModuleRegistryV2,
+    data_pack_manifest: Mapping[str, Any],
+    *,
+    profile_id: str | None = None,
+) -> dict[str, Any]:
+    """Why the installed code computes another revision hash for this Study.  Read-only.
+
+    ``profile_id`` chooses the methodology a pre-profile Study is migrated to
+    (default profile when None); it is refused for any other classification.
+    """
 
     declared = project.get("revision_sha256")
     record: dict[str, Any] = {"schema_version": CLASSIFICATION_SCHEMA, "declared_sha256": declared,
@@ -422,9 +513,11 @@ def classify_revision_mismatch(project: Mapping[str, Any], registry: ModuleRegis
     record["calculated_sha256"] = calculated
     if not declared:
         record["classification"] = "unsaved"
+        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
         return _finish(record)
     if declared == calculated and solver is None:
         record["classification"] = "none"
+        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
         return _finish(record)
     basis = _recorded_basis(project, str(declared)) or _reconstructed_basis(project, registry, data_pack_manifest, str(declared))
     if basis is None:
@@ -433,6 +526,7 @@ def classify_revision_mismatch(project: Mapping[str, Any], registry: ModuleRegis
             rows[0]["effect"] += " VERSION_LEDGER is unavailable in this installation, so the 35aadb3 basis could not be rebuilt."
         record.update(classification="unverifiable", basis_source="none",
                       differences=rows + ([solver] if solver is not None else []))
+        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
         return _finish(record)
     record["basis_source"] = basis["source"]
     differences = _differences(basis, current, project)
@@ -441,10 +535,12 @@ def classify_revision_mismatch(project: Mapping[str, Any], registry: ModuleRegis
     record["differences"] = differences
     kinds = {row["classification"] for row in differences}
     record["classification"] = next((kind for kind in PRECEDENCE if kind in kinds), "code_identity_upgrade")
+    _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
     return _finish(record)
 
 
-def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2, *, write_methodology: bool = True) -> dict[str, Any]:
+def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2, *, write_methodology: bool = True,
+                        profile_id: str | None = None) -> dict[str, Any]:
     """The Study content a confirmed migration saves.
 
     The methodology is written explicitly when absent (first write, Q13) and a
@@ -457,7 +553,7 @@ def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2, 
     if write_methodology:
         key = "parameters" if "parameters" in candidate or "parameter_overrides" not in candidate else "parameter_overrides"
         parameters = dict(candidate.get(key) or {})
-        parameters.setdefault(PROFILE_PARAMETER, default_profile_id())
+        parameters.setdefault(PROFILE_PARAMETER, profile_id or default_profile_id())
         candidate[key] = parameters
     if _solver_contract_upgrade(candidate, registry) is not None:
         candidate["solver_contract"] = DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
@@ -470,17 +566,20 @@ def migrate_project_revision(
     data_pack_manifest: Mapping[str, Any],
     *,
     confirm_diff_sha256: str | None = None,
+    profile_id: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Append the revision a classification calls for; returns (project, classification).
 
     Code-only classifications are appended without confirmation.  Method,
     data and unverifiable classifications need ``confirm_diff_sha256`` equal
     to the classification the user reviewed (stale confirmations are
-    refused).  A content change is never migrated here.
+    refused).  A content change is never migrated here.  ``profile_id``
+    chooses the methodology recorded for a pre-profile Study (it must be the
+    choice the confirmed ``diff_sha256`` was computed for).
     """
 
     project = json.loads((project_dir / "project.json").read_text(encoding="utf-8"))
-    classification = classify_revision_mismatch(project, registry, data_pack_manifest)
+    classification = classify_revision_mismatch(project, registry, data_pack_manifest, profile_id=profile_id)
     kind = classification["classification"]
     if kind in {"none", "unsaved"}:
         return project, classification
@@ -503,7 +602,7 @@ def migrate_project_revision(
                 "The changes you confirmed are no longer current; review them again.",
                 classification,
             )
-        candidate = migration_candidate(project, registry)
+        candidate = migration_candidate(project, registry, profile_id=classification.get("selected_profile_id"))
     else:
         candidate = json.loads(json.dumps(project))
     saved = save_project_revision(

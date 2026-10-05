@@ -1703,7 +1703,15 @@ class Handler(BaseHTTPRequestHandler):
             if context is None:
                 self._json({"error": "project not found"}, 404); return
             project, manifest = context
-            self._json({"revision_migration": classify_revision_mismatch(project, MODULE_REGISTRY, manifest)})
+            # ?profile_id= previews the migration of a pre-profile Study to a
+            # chosen methodology (its diff_sha256 is what POST confirms).
+            chosen_profile = query.get("profile_id", [None])[0] or None
+            try:
+                self._json({"revision_migration": classify_revision_mismatch(
+                    project, MODULE_REGISTRY, manifest, profile_id=chosen_profile)})
+            except RevisionMigrationError as exc:
+                self._json({"error": str(exc), "error_code": exc.code,
+                            "revision_migration": exc.classification}, 409); return
         elif route == "/api/study-trash":
             self._json({
                 "schema_version": "value.study-trash-list/v1",
@@ -3726,6 +3734,7 @@ class Handler(BaseHTTPRequestHandler):
                     saved, classification = migrate_project_revision(
                         PROJECTS_ROOT / project_id, MODULE_REGISTRY, manifest,
                         confirm_diff_sha256=(str(body["diff_sha256"]) if body.get("diff_sha256") else None),
+                        profile_id=(str(body["profile_id"]) if body.get("profile_id") else None),
                     )
                 except RevisionMigrationError as exc:
                     self._json({"error": str(exc), "error_code": exc.code,
