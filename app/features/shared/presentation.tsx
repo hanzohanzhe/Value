@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { formatMoney as formatSharedMoney, formatNumber as formatSharedNumber } from "./format.ts";
+export { withUnit } from "./format.ts";
 import { VALUE_STATES } from "./valueStates.ts";
 
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "good" | "warn" | "blue" }) {

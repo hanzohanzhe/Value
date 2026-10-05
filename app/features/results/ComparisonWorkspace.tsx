@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatNumber } from "../shared/presentation";
+import { formatNumber, withUnit } from "../shared/presentation";
 import "./comparison-workspace.css";
 
 type ComparisonRun = { id: string; project_name: string; mode: string; status: string; updated_at?: string };
@@ -93,7 +93,7 @@ export default function ComparisonWorkspace({ runs, apiOrigin }: { runs: Compari
       <div className="module-differences"><b>Changed dimensions</b>{Object.keys(comparison.changed_dimensions).length ? Object.entries(comparison.changed_dimensions).map(([key, values]) => <span key={key}><code>{key}</code><small>{values.map((value) => typeof value === "object" && value !== null ? JSON.stringify(value) : String(value ?? "not recorded")).join(" → ")}</small></span>) : <small>No differences found in available records; check unknown dimensions above.</small>}</div>
       {comparison.annual_metrics_withheld && <div className="info-box"><b>Teaching boundary</b><br />Annual cost and carbon deltas are withheld because these runs contain one 48-period market day. The export contains identities and changed dimensions, not annual metrics.</div>}
       {!comparison.metric_deltas_allowed && !comparison.annual_metrics_withheld && <div className="error-box">所需的定义、范围或归因证据不完整。VALUE 暂不展示未获支持的差值。</div>}
-      {!comparison.annual_metrics_withheld && <div className="comparison-years">{comparison.annual_comparison.map((year) => <details key={year.year}><summary>{year.year}</summary><div className="comparison-metrics">{Object.entries(year.metrics).map(([metricId, values]) => <article key={metricId}><header><b>{labelFor(metricId)}</b><code>{values[0]?.definition_id ?? "definition not evaluated"}</code></header>{values.map((value) => <span key={value.run_id}><small>{value.run_id}</small><b>{value.value == null ? "Not evaluated" : `${formatNumber(value.value)} ${value.unit ?? ""}`}</b>{comparison.metric_deltas_allowed && value.delta_from_base != null && <em>{value.delta_from_base >= 0 ? "+" : ""}{formatNumber(value.delta_from_base)} · {value.percentage_delta_from_base == null ? "n/a" : `${formatNumber(value.percentage_delta_from_base)}%`}</em>}</span>)}</article>)}</div></details>)}</div>}
+      {!comparison.annual_metrics_withheld && <div className="comparison-years">{comparison.annual_comparison.map((year) => <details key={year.year}><summary>{year.year}</summary><div className="comparison-metrics">{Object.entries(year.metrics).map(([metricId, values]) => <article key={metricId}><header><b>{labelFor(metricId)}</b><code>{values[0]?.definition_id ?? "definition not evaluated"}</code></header>{values.map((value) => <span key={value.run_id}><small>{value.run_id}</small><b>{value.value == null ? "Not evaluated" : `${formatNumber(value.value)} ${value.unit ?? ""}`}</b>{comparison.metric_deltas_allowed && value.delta_from_base != null && <em>{value.delta_from_base >= 0 ? "+" : ""}{formatNumber(value.delta_from_base)} · {value.percentage_delta_from_base == null ? "n/a" : `${withUnit(formatNumber(value.percentage_delta_from_base), "%", "")}`}</em>}</span>)}</article>)}</div></details>)}</div>}
     </>}
   </section>;
 }

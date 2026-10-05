@@ -91,3 +91,10 @@ test("new stylesheets use no font size below 12px and only existing colour token
     assert.deepEqual(literal, [], `${relative}: colours must come from :root tokens`);
   }
 });
+
+test("no formatted number has a unit appended outside withUnit (never '— MWh' or '£—/MWh')", async () => {
+  // Review response (spec principle 1): {formatNumber(x)} MWh, `${formatNetworkNumber(x)}%`, £{formatNumber(x)}/MWh.
+  const appended = /\b(?:formatNumber|formatNetworkNumber)\((?:[^()]|\([^()]*\))*\)\}(?: (?:MWh|MW|GWh|TWh|h|hours|periods|tCO₂e)\b|%|\/MWh)/;
+  const hits = (await lines()).filter(({ text }) => appended.test(text));
+  assert.deepEqual(hits, [], where(hits));
+});

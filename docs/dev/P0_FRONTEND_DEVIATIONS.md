@@ -24,7 +24,7 @@
 | F-P09-8 | 4.6：运行期 fallback 审计 Callout | 未实现 | 依赖 P0-8 S12 的后端字段，接口未定 | 是（P0-8 交付后补） |
 | F-P09-9 | 4.6：P0-8b 后表头改为 `Boundary marginal value (£/MWh)` | 仍为 `Diagnostic marginal value`；值为 null 时显示 `Not computed` | P0-8b 尚未合入 | 否 |
 | F-P09-10 | 1.2 / 计划 S1：`RunContextBar.tsx:27`、`Value101Learn.tsx:124` 改用共享格式化 | 未改，列入 `toLocaleString` 白名单 | 两处都是整数周期数，不存在缺失变 0；`RunContextBar` 属 X0 S12（并行 lane 在改），避免冲突 | 否 |
-| F-P09-11 | 5：`Mark as lost` 二次确认 | 浏览器确认框 + 前端自动带上精确 run ID（API 的确认门） | 规格只要求二次确认；API 的安静期门仍由后端执行，拒绝时显示错误码 | 否 |
+| F-P09-11 | 5：`Mark as lost` 二次确认 | 浏览器 `prompt`，用户须输入精确 run ID（与 Delete 相同），前端只把用户输入的 ID 作为 `confirm_run_id` 发给 API 的确认门；输入不符时不发请求（评审后修改，原实现是确认框 + 自动带上 ID） | 规格只要求二次确认；P0-3 S4 的精确 ID 门不能由前端代填；API 的安静期门仍由后端执行，拒绝时显示错误码 | 否 |
 | F-P09-12 | 5：`Backend offline` 在连续失败 3 次后 | 实现如此；第一次失败即显示 `Backend degraded` 与 Retry，轮询 2 s 起翻倍至 30 s。`e2e/happy-path.spec.ts` 的离线断言改为匹配 `Backend (degraded|offline)`（该 spec 需真实服务，本次未运行） | 规格 | 否 |
 | F-P09-13 | 9.8：375 px 不引起页面级横向滚动 | 只断言新组件自身不横向溢出（窗口卡、隔离面板）；旧布局（252 px 侧栏网格）在 375 px 的页面级溢出不在本轮 | 做法一不改旧元素样式 | 是 |
 | F-P09-14 | 6：Disable 确认 | 使用浏览器确认框（文案与规格逐字一致），未用 `<dialog>` | 规格第 6 节未指定对话框形式（`<dialog>` 是第 7 节迁移确认的要求） | 否 |

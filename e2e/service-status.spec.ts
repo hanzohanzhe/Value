@@ -98,3 +98,32 @@ test("the quarantine panel disables a module after confirming pending Runs", asy
   const overflow = await panel.evaluate((element) => element.scrollWidth - element.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+// Review response (P0-3 S4, spec 5): Mark as lost asks for the exact run ID, as
+// Delete does, and sends only what the user typed to the API's confirmation gate.
+test("Mark as lost sends nothing until the exact run ID is typed", async ({ page }) => {
+  const markLostBodies: string[] = [];
+  await page.route("**/api/**", async (route) => {
+    const url = route.request().url();
+    if (url.endsWith(`/api/runs/${run.id}/mark-lost`)) {
+      markLostBodies.push(route.request().postData() ?? "");
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+      return;
+    }
+    const body = url.endsWith("/api/workspace") ? workspace : url.endsWith("/api/health") ? { ok: true, status: "ok", degraded_reasons: [] } : url.endsWith(`/api/runs/${run.id}`) ? run : { error: "unmocked" };
+    await route.fulfill({ status: url.endsWith("/api/workspace") || url.endsWith("/api/health") || url.endsWith(`/api/runs/${run.id}`) ? 200 : 404, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  const answers = ["bg-ru", run.id];
+  const prompts: string[] = [];
+  page.on("dialog", (dialog) => { prompts.push(`${dialog.type()}: ${dialog.message()}`); void dialog.accept(answers.shift() ?? ""); });
+  await page.goto("/?view=run&study=demo&run=bg-run");
+  const markLost = page.getByRole("button", { name: "Mark as lost" });
+  await markLost.click();
+  await expect(page.getByText("The Run was not marked lost because the exact ID was not entered.")).toBeVisible();
+  expect(markLostBodies).toEqual([]);
+  await markLost.click();
+  await expect(page.getByText("The Run was marked lost and recorded as failed.", { exact: false })).toBeVisible();
+  expect(markLostBodies.map((body) => JSON.parse(body))).toEqual([{ confirm_run_id: "bg-run" }]);
+  expect(prompts[0]).toMatch(/^prompt: Mark Run bg-run as lost\?/);
+  expect(prompts[0]).toContain("Type the exact run ID to confirm");
+});

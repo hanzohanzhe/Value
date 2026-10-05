@@ -1,5 +1,8 @@
 // Pure view logic of the VRE & curtailment page (P0-9 S8; spec 4.1, 4.5; R3-21, G1-08).
-import { formatEnergyGroup, formatNumber } from "../shared/format.ts";
+import { formatEnergyGroup, formatNumber, withUnit } from "../shared/format.ts";
+import { yearCoveragePill, type ResultCoverage } from "../shared/coverageView.ts";
+import { valueStateText } from "../shared/valueStates.ts";
+import type { PillTone } from "../shared/Callout.tsx";
 import type { DispatchBucket, VreEventStatistics, VreYear } from "./marketTypes.ts";
 
 export type VreKpi = { key: string; label: string; value: string | null; exactMwh: number | null; note?: string };
@@ -23,9 +26,43 @@ export function vreKpis(year: VreYear): { unit: string; kpis: VreKpi[] } {
   };
 }
 
-/** Spec 4.1: the coverage line under each KPI: the year, or "{n} periods · non-annual". */
-export function kpiCoverageLine(year: Pick<VreYear, "year" | "period_count" | "full_chronology">): string {
-  return year.full_chronology ? String(year.year) : `${formatNumber(year.period_count, 0)} periods · non-annual`;
+type CoverageYear = Pick<VreYear, "year" | "period_count" | "full_chronology">;
+
+export type VreYearCoverage = {
+  /** Spec 4.1: the line under each KPI. */
+  line: string;
+  /** The page badge and its tone. */
+  badge: string;
+  tone: "good" | "warn" | "blue" | "neutral";
+  /** The heading of the year panel. */
+  heading: string;
+};
+
+const BADGE_TONE: Record<PillTone, VreYearCoverage["tone"]> = { ok: "good", caution: "warn", danger: "warn", info: "blue", muted: "neutral" };
+
+/**
+ * Coverage of one VRE year (spec 4.1, 4.2). With the backend's coverage verdict
+ * (vre-summary `coverage`), a partial year of an annual Run is "Partial year · n%",
+ * and "non-annual" is said only of a non-annual Run; without it (older backend)
+ * the label falls back to the year's own full_chronology flag.
+ */
+export function vreYearCoverage(year: CoverageYear, coverage?: ResultCoverage | null): VreYearCoverage {
+  const periods = withUnit(formatNumber(year.period_count, 0), "periods");
+  const nonAnnual: VreYearCoverage = { line: `${periods} · non-annual`, badge: valueStateText("non_annual"), tone: "warn", heading: `${year.period_count}-period diagnostic — not an annual result` };
+  if (!coverage) {
+    return year.full_chronology
+      ? { line: String(year.year), badge: "Full chronology", tone: "good", heading: "Annual accounting" }
+      : { ...nonAnnual, badge: "Diagnostic chronology" };
+  }
+  if (coverage.annual_status === "non_annual") return nonAnnual;
+  const pill = yearCoveragePill(coverage, year.year);
+  if (pill.tone === "ok") return { line: String(year.year), badge: pill.text, tone: "good", heading: "Annual accounting" };
+  return { line: `${year.year} · ${pill.text}`, badge: pill.text, tone: BADGE_TONE[pill.tone], heading: `${pill.text} — not an annual result` };
+}
+
+/** Spec 4.1: the coverage line under each KPI: the year, "{year} · Partial year · n%", or "{n} periods · non-annual". */
+export function kpiCoverageLine(year: CoverageYear, coverage?: ResultCoverage | null): string {
+  return vreYearCoverage(year, coverage).line;
 }
 
 export type VreEventGroup = { key: "unused_vre" | "excess_curtailment"; title: string; basisNote: string; events: VreEventStatistics | null };

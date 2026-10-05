@@ -1,7 +1,7 @@
 // Annual-coverage presentation (spec 4.2 / 4.4 / 4.6; P0-9 S5/S6).
 // The verdict comes from the backend (gridform_core/result_coverage.py); this
 // module only turns it into a pill, a sentence and the publish/withhold rule.
-import { formatNumber } from "./format.ts";
+import { formatNumber, withUnit } from "./format.ts";
 import { valueStateText } from "./valueStates.ts";
 import type { PillTone } from "./Callout.tsx";
 
@@ -82,5 +82,5 @@ export function reliabilityEmptyText(coverage: ResultCoverage | null | undefined
   if (row?.complete && coverage?.annual_status !== "non_annual") return `No stress events recorded in ${year}.`;
   const percent = row ? row.coverage_fraction * 100 : coverage?.coverage_percent ?? null;
   if (percent == null) return `No stress events recorded in the computed periods of ${year}; this Run does not record its coverage.`;
-  return `No stress events in the ${formatNumber(percent, 1)}% of ${year} that has been computed.`;
+  return `No stress events in the ${withUnit(formatNumber(percent, 1), "%", "")} of ${year} that has been computed.`;
 }

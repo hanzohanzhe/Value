@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  energyUnitFor, formatEnergy, formatEnergyGroup, formatMoney, formatNumber, formatPower, formatPrice, formatQuantity,
+  energyUnitFor, formatEnergy, formatEnergyGroup, formatMoney, formatNumber, formatPower, formatPrice, formatQuantity, withUnit,
 } from "../../../app/features/shared/format.ts";
 import { VALUE_STATES, valueStateText } from "../../../app/features/shared/valueStates.ts";
 
@@ -101,4 +101,15 @@ test("the legacy presentation helpers delegate and render missing values as —"
   // presentation.tsx is TSX; its two number helpers are re-checked through the shared layer here
   // and rendered in tests/frontend/render/shared-components.test.mjs.
   assert.equal(formatNumber(undefined) ?? VALUE_STATES.missing.text, "—");
+});
+
+test("withUnit appends the unit only to a value; a missing value is the state word alone", () => {
+  assert.equal(withUnit(formatNumber(12.5), "MWh"), "12.5 MWh");
+  assert.equal(withUnit(formatNumber(null), "MWh"), "—");
+  assert.equal(withUnit("—", "MWh"), "—");
+  assert.equal(withUnit(formatNumber(55), "/MWh", "", "£"), "£55/MWh");
+  assert.equal(withUnit(undefined, "/MWh", "", "£"), "—");
+  assert.equal(withUnit(formatNumber(16.6, 1), "%", ""), "16.6%");
+  assert.equal(withUnit(formatNumber(3), "", "", "+"), "+3");
+  assert.equal(withUnit(formatNumber(0), "MWh"), "0 MWh");
 });

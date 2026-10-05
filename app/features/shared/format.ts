@@ -37,6 +37,16 @@ export type NumberOptions = {
   minimumDigits?: number;
 };
 
+/**
+ * Spec principle 1: a slot shows a value with its unit, or the state word on
+ * its own. Takes an already formatted number (null or "—" when missing) and
+ * appends the unit only to a value: never "— MWh" or "£—/MWh".
+ */
+export function withUnit(formatted: string | null | undefined, unit: string, separator = " ", prefix = ""): string {
+  if (formatted == null || formatted === "—") return "—";
+  return `${prefix}${formatted}${unit ? `${separator}${unit}` : ""}`;
+}
+
 /** A plain number, or null when the value is missing. */
 export function formatNumber(value: number | null | undefined, options: NumberOptions | number = {}): string | null {
   if (!finite(value)) return null;

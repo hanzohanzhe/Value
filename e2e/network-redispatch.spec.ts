@@ -140,6 +140,8 @@ type MockNetworkOptions = {
   solverContract?: Record<string, unknown>;
   annualCoverage?: Record<string, unknown>;
   reliabilityEvents?: Record<string, unknown>[];
+  /** Generate this many reliability events and page them by the request's offset. */
+  reliabilityTotal?: number;
   onReliabilityRequest?: (url: URL) => void;
 };
 
@@ -245,9 +247,20 @@ async function mockNetwork(
     else if (url.includes("/network-redispatch/resources")) body = { view: "resource", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, asset_id: "battery", agent_id: "storage-owner", zone_id: "south", technology: "battery", ahead_dispatch_mwh: 0, signed_adjustment_mwh: 1, final_dispatch_mwh: 1, final_soc_mwh: 3, charge_mwh: 0, discharge_mwh: 1, physical_resource_cost_gbp: 20 }] };
     else if (url.includes("/network-redispatch/settlements")) body = { view: "agent", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, agent_id: "storage-owner", zone_id: "south", direction: "up", accepted_delta_mwh: 1, bid_price_gbp_per_mwh: 20, cashflow_to_agent_gbp: 20 }] };
     else if (url.includes("/network-redispatch/reliability")) {
-      options.onReliabilityRequest?.(new URL(url));
-      const items = options.reliabilityEvents ?? [{ event_id: "observed-1", year: 2025, start_period: 1, end_period: 1, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" }];
-      body = { view: "reliability", total: items.length, count: items.length, limit: 50, offset: 0, has_more: false, items };
+      const requested = new URL(url);
+      options.onReliabilityRequest?.(requested);
+      if (options.reliabilityTotal != null) {
+        const total = options.reliabilityTotal;
+        const offset = Number(requested.searchParams.get("offset") ?? 0);
+        const items = Array.from({ length: Math.max(0, Math.min(50, total - offset)) }, (_, index) => {
+          const start = (offset + index) * 10;
+          return { event_id: `observed-2025-${start}`, year: 2025, start_period: start, end_period: start, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" };
+        });
+        body = { view: "reliability", total, count: items.length, limit: 50, offset, has_more: offset + items.length < total, items };
+      } else {
+        const items = options.reliabilityEvents ?? [{ event_id: "observed-1", year: 2025, start_period: 1, end_period: 1, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" }];
+        body = { view: "reliability", total: items.length, count: items.length, limit: 50, offset: 0, has_more: false, items };
+      }
     }
     else if (url.includes("/market/capabilities")) body = { years: [2025], trace_level: "summary", period_summary: true, physical_dispatch: true, auction_replay: false, storage_state: false, auction_stages: [], price_basis: "national_ahead_clearing_price" };
     else if (url.includes("/market/dispatch")) body = { year: 2025, resolution: "daily", total: 0, limit: 96, offset: 0, items: [] };
@@ -777,4 +790,43 @@ test("partial-year coverage withholds annual totals and full-year events replay 
   await list.getByRole("button", { name: "Replay the event starting at period 5000" }).click();
   await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
   await expect(page.getByLabel("First period")).toHaveValue("4996");
+});
+
+// Review response (plan 6.9, S6): paging the year's reliability list makes one
+// request per page change and never repeats a request on its own.
+test("paging the reliability list requests each page once", async ({ page }) => {
+  const reliabilityQueries: URL[] = [];
+  await mockNetwork(page, baseRun, "full", reconciledCurtailment, { reliabilityTotal: 120, onReliabilityRequest: (url) => reliabilityQueries.push(url) });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await page.getByRole("tab", { name: "Reliability" }).click();
+  const list = page.getByRole("region", { name: "Stress events and lost load" });
+  await expect(list.getByText("period 490", { exact: true })).toBeVisible();
+  await list.getByRole("button", { name: "Next events" }).click();
+  await expect(list.getByText("period 500", { exact: true })).toBeVisible();
+  await list.getByRole("button", { name: "Previous events" }).click();
+  await expect(list.getByText("period 0", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1_000);
+  expect(reliabilityQueries.map((url) => url.searchParams.get("offset"))).toEqual(["0", "50", "0"]);
+});
+
+// Review response (S6): the network page publishes the selected year by the
+// same per-year rule as the Runs page; a complete year inside a cancelled Run
+// keeps its annual totals.
+test("a complete year of a cancelled Run shows its annual totals on the network page", async ({ page }) => {
+  await mockNetwork(page, baseRun, "full", reconciledCurtailment, {
+    annualCoverage: {
+      schema_version: "value.result-coverage/v1", annual_status: "partial", reason_code: "run_cancelled_before_full_coverage",
+      coverage_fraction: 0.583, coverage_percent: 58.3, expected_years: [2025, 2026], observed_years: [2025, 2026],
+      years: [
+        { year: 2025, first_period: 0, last_period: 17519, period_count: 17520, coverage_fraction: 1, complete: true },
+        { year: 2026, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false },
+      ],
+    },
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Partial year · 58.3%");
+  await expect(page.getByText("Final physical resource cost").first()).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Annual totals not shown" })).toHaveCount(0);
 });

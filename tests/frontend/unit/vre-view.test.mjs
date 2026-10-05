@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { kpiCoverageLine, seriesSegments, vreEventGroups, vreKpis } from "../../../app/features/market/vreView.ts";
+import { kpiCoverageLine, seriesSegments, vreEventGroups, vreKpis, vreYearCoverage } from "../../../app/features/market/vreView.ts";
 import { payload } from "../helpers/fixtures.mjs";
 
 // P0-9 S8 (R3-21, G1-08; spec 4.1, 4.5).
@@ -38,4 +38,22 @@ test("a missing value breaks the line instead of dropping it to 0", () => {
   const items = [{ vre_available_mwh: 1 }, { vre_available_mwh: null }, { vre_available_mwh: 3 }, { vre_available_mwh: 4 }];
   const segments = seriesSegments(items, "vre_available_mwh", (index) => index * 10, (value) => value);
   assert.deepEqual(segments, ["0,1", "20,3 30,4"]);
+});
+
+test("a partial year of a cancelled annual Run is a partial year, not non-annual (review response, S8)", () => {
+  const year = { year: 2025, period_count: 2908, full_chronology: false };
+  const cancelled = { annual_status: "partial", reason_code: "run_cancelled_before_full_coverage", coverage_fraction: 2908 / 17520, coverage_percent: 16.6, years: [{ year: 2025, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false }] };
+  const coverage = vreYearCoverage(year, cancelled);
+  assert.equal(coverage.line, "2025 · Partial year · 16.6%");
+  assert.equal(coverage.badge, "Partial year · 16.6%");
+  assert.equal(coverage.tone, "warn");
+  assert.match(coverage.heading, /^Partial year · 16\.6% — not an annual result$/);
+  assert.doesNotMatch(kpiCoverageLine(year, cancelled), /non-annual/);
+  // a complete year inside a stopped Run keeps its year label, as on the Runs page
+  const twoYears = { ...cancelled, years: [{ year: 2025, first_period: 0, last_period: 17519, period_count: 17520, coverage_fraction: 1, complete: true }] };
+  assert.deepEqual(vreYearCoverage({ year: 2025, period_count: 17520, full_chronology: true }, twoYears), { line: "2025", badge: "Complete year", tone: "good", heading: "Annual accounting" });
+  // only a non-annual Run is called non-annual
+  const smoke = { annual_status: "non_annual", reason_code: "annual_evidence_withheld_for_nonannual_run", coverage_fraction: 0, coverage_percent: 0, years: [] };
+  assert.equal(kpiCoverageLine({ year: 2025, period_count: 48, full_chronology: false }, smoke), "48 periods · non-annual");
+  assert.equal(vreYearCoverage({ year: 2025, period_count: 48, full_chronology: false }, smoke).badge, "Non-annual run");
 });
