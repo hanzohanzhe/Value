@@ -422,7 +422,7 @@ class SchemeCNativePSM:
             )
             ledger.record_physical_dispatch(rows)
 
-    def _kernel_inputs(self, periods: int) -> dict[str, object] | None:
+    def _kernel_inputs(self, periods: int, model_input: PSMInput | None = None) -> dict[str, object] | None:
         """Demand and boundary series of the frozen pack through the shared reader (P0-5a).
 
         ``None`` when the run context has no pack manifest (the kernel then
@@ -439,12 +439,59 @@ class SchemeCNativePSM:
         policy = current_policy(manifest)
         pack_root = Path(self._context.pack_root)
         return {
+            "site_inputs": (self._kernel_site_inputs(pack_root, manifest, policy, model_input, periods)
+                            if model_input is not None else None),
             "boundary": from_pack(pack_root, manifest, policy, periods),
             "forecast": np.asarray(read_role(pack_root, manifest, "demand.forecast", policy, periods=periods).values,
                                    dtype=float),
             "real": np.asarray(read_role(pack_root, manifest, "demand.real", policy, periods=periods).values,
                                dtype=float),
         }
+
+    @staticmethod
+    def _kernel_site_inputs(pack_root: Path, manifest: Mapping[str, object], policy: object,
+                            model_input: PSMInput, periods: int):
+        """Corrected profile (P0-5b): the canonical site CF and firm availability arrays for the kernel.
+
+        ``None`` under the doctoral profile (frozen weather clock, no loss
+        factors, constant firm availability): the kernel keeps its own path.
+        """
+
+        from ...doctoral_weather import uses_doctoral_weather
+        from ...doctoral_weather_mapping import representative_sites
+        from ... import firm_availability
+        from ...site_weather import method_for_profile, site_cf_by_source
+        from .kernel_injection import METHOD_ID, KernelSiteInputs
+
+        profile_id = getattr(policy, "profile_id", None)
+        method = method_for_profile(profile_id)
+        firm = firm_availability.enabled_for_profile(profile_id)
+        vre_cf: dict[str, np.ndarray] = {}
+        evidence: dict[str, object] = {"method_id": METHOD_ID}
+        bindings = dict(manifest.get("bindings") or {})
+        if not method.frozen and uses_doctoral_weather(manifest):
+            fleet = json.loads((pack_root / str(dict(bindings["fleet.generators"])["uri"])).read_text(encoding="utf-8"))
+            sites = representative_sites(fleet)
+            roles = ("weather.solar", "weather.wind")
+            profiles = site_cf_by_source(
+                paths={role: pack_root / str(dict(bindings[role])["uri"]) for role in roles},
+                hashes={role: str(dict(bindings[role]).get("sha256") or "") for role in roles},
+                bindings={role: dict(bindings[role]) for role in roles},
+                sites=sites, sources=list(sites), periods=periods, method=method,
+            )
+            vre_cf = {name: values for name, (values, _) in profiles.items()}
+            evidence["site_weather"] = method.to_dict()
+            evidence["site_availability_sha256"] = {
+                name: str(item["availability_sha256"]) for name, (_, item) in sorted(profiles.items())}
+        firm_cf: dict[str, np.ndarray] = {}
+        if firm:
+            firm_cf = firm_availability.kernel_availability(
+                model_input.operating_state.assets, year=int(model_input.year), periods=periods)
+            evidence["firm_availability"] = {"method_id": firm_availability.METHOD_ID,
+                                             "table_sha256": firm_availability.table_sha256()}
+        if not vre_cf and not firm_cf:
+            return None
+        return KernelSiteInputs(vre_cf, firm_cf, evidence)
 
     @staticmethod
     def _operating_cost_accounts(
@@ -549,10 +596,11 @@ class SchemeCNativePSM:
         storage_runtime = _StorageRuntime(self._storage_cost, parameters, market_rules)
         realisation_log = RealisationLog()
         periods = len(model_input.chronology.period_ids)
-        kernel_inputs = self._kernel_inputs(periods)
+        kernel_inputs = self._kernel_inputs(periods, model_input)
         runtime = SimpleNamespace(
             storage_cost=storage_runtime, market_rules=market_rules, realisation_log=realisation_log,
             kernel_boundary=kernel_inputs["boundary"] if kernel_inputs else None,
+            kernel_site_inputs=kernel_inputs["site_inputs"] if kernel_inputs else None,
         )
         period_hours = float(model_input.period_hours)
         market_path = self._context.output_dir / "market" / "market.sqlite"

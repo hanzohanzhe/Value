@@ -1,0 +1,42 @@
+{
+  "schema_version": "value.firm-availability/v1",
+  "table_id": "value-uk-firm-availability-v1",
+  "status": "PENDING AUTHOR REVIEW",
+  "acceptance": "Deferred to the author (DECISIONS: nuclear and run-of-river hydro reference values are compiled by Claude from public statistics; the calibration is not accepted until the author has reviewed them). Acceptance targets of plan 4.5 S8: nuclear within +-10 % of Energy Trends 5.1 (supplied basis), hydro within +-15 % of DUKES.",
+  "applies_to": "value-corrected profile only (correction p05.firm-availability; findings P5-09, P5-10, P6-10). The doctoral profile keeps the 35aadb3 constant availability 1.0.",
+  "compiled_from": "docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md sections 1 and 2",
+  "access_date": "2026-10-06",
+  "calendar": "fixed 365-day year of 48 half-hour periods per day starting 1 January 00:00 UTC; periods beyond 17520 wrap",
+  "nuclear": {
+    "basis": "Station load factor = PRIS 2019-2024 mean of station supplied energy / (PRIS reference power x hours) [D], applied as a constant derate of every period (no outage calendar in P0; planned-outage calendars are a P1 item). The model capacity is the EDF station capacity of value_uk_nuclear_policy_v1.json, so the energy-preserving model load factor is pris_load_factor x pris_reference_mw / model capacity.",
+    "retirement": "In the year of announced_generation_end 'YYYY-MM' (value_uk_nuclear_policy_v1.json), availability is zero from the first period of the following month (2030-03 -> period 4320).",
+    "stations": {
+      "heysham-1": {"reactor_type": "AGR", "pris_load_factor": 0.668, "pris_reference_mw": 1060.0, "grade": "[D] from N1 [V]"},
+      "hartlepool": {"reactor_type": "AGR", "pris_load_factor": 0.689, "pris_reference_mw": 1185.0, "grade": "[D] from N1 [V]"},
+      "heysham-2": {"reactor_type": "AGR", "pris_load_factor": 0.752, "pris_reference_mw": 1240.0, "grade": "[D] from N1 [V]"},
+      "torness": {"reactor_type": "AGR", "pris_load_factor": 0.792, "pris_reference_mw": 1200.0, "grade": "[D] from N1 [V]"},
+      "sizewell-b": {"reactor_type": "PWR", "pris_load_factor": 0.801, "pris_reference_mw": 1198.0, "grade": "[D] from N1 [V]"}
+    },
+    "reactor_type_defaults": {
+      "AGR": {"load_factor": 0.727, "grade": "[D] 2019-2024 mean of the four operating AGR stations"},
+      "PWR": {"load_factor": 0.801, "grade": "[D] Sizewell B 2019-2024 mean; used for planned PWR/EPR projects (Hinkley Point C, Sizewell C)"}
+    },
+    "planned_project_reactor_type": "PWR",
+    "national_aggregate": {"load_factor": 0.723, "grade": "[V2]/[E] DESNZ nuclear load factor 2023 72.4 %, 2024 72.3 % (N13, N15); used for an undifferentiated 'Nuclear' asset"}
+  },
+  "hydro_natural_flow": {
+    "basis": "Annual load factor x monthly shape (mean 1 over the 12 months) applied to the dispatch capacity of run-of-river hydro.",
+    "load_factor": 0.334,
+    "load_factor_grade": "[V2] 2023 only (Statista H4, citing DESNZ); DUKES 6.3 2019-2024 values are [NV] - the author must read DUKES 6.3 (xlsx) and decide mean or yearly values",
+    "monthly_shape": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    "monthly_shape_grade": "[NV] flat placeholder: no monthly or quarterly hydro statistic was readable (Energy Trends 6.1 is xlsx only)",
+    "capacity_note": "DUKES implied capacity about 1.89 GW (5538 GWh / (0.334 x 8760 h)) [D]; the GBP1 fleet carries 2000 MW, so the modelled annual energy is about 5.85 TWh (+6 % against 5.5 TWh)."
+  },
+  "sources": {
+    "N1": "World Nuclear Association Reactor Database (IAEA PRIS operating details), accessed 2026-10-06",
+    "N13": "DESNZ DUKES 2025 chapter 5 (excerpt [E])",
+    "N15": "Secondary page citing DESNZ load factors [V2]",
+    "H4": "Statista, Load factor of electricity from hydropower in the UK 2010-2023 (2025-01-14) [V2]",
+    "H5": "DESNZ DUKES chapter 6 page, tables 6.2 and 6.3 (existence verified, cells not read)"
+  }
+}
