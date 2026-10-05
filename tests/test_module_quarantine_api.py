@@ -103,6 +103,7 @@ class ModuleQuarantineApiTests(unittest.TestCase):
         entry = workspace["module_quarantine"]["entries"][0]
         self.assertEqual((entry["id"], entry["error_code"], entry["error_type"]),
                          ("p02-api-broken", "GF_MODULE_IMPORT_FAILED", "RuntimeError"))
+        self.assertEqual(entry["version"], "1.0.0")  # from the raw manifest, for the S9 panel
         self.assertNotIn(str(self.modules), entry["message"])
         self.assertIn("module_recovery disable module p02-api-broken", entry["corrective_action"])
 
@@ -179,12 +180,17 @@ class ModuleQuarantineApiTests(unittest.TestCase):
         run = self.home / "runs" / "queued-run"
         run.mkdir(parents=True)
         (run / "status.json").write_text(json.dumps({"id": "queued-run", "status": "queued"}), "utf-8")
+        running = self.home / "runs" / "running-run"
+        running.mkdir(parents=True)
+        (running / "status.json").write_text(json.dumps({"id": "running-run", "status": "running"}), "utf-8")
         before = tree_digest(self.modules)
         with patch("gridform_core.module_quarantine.verify_after_write", lambda *a, **k: None):
             status, body = self._request("POST", "/api/modules/p02-api-ok/enable", {})
             self.assertEqual(status, 409)
             self.assertEqual(body["error_code"], "GF_MODULE_LIFECYCLE_RUNS_PENDING")
-            self.assertIn("queued-run", body["error"])
+            self.assertIn("1 run(s) not started yet (queued-run) would start with the changed code", body["error"])
+            self.assertIn("1 run(s) already running (running-run) keep their code but could not be resumed",
+                          body["error"])
             self.assertEqual(tree_digest(self.modules), before)
             status, body = self._request("POST", "/api/modules/p02-api-ok/enable", {"confirm_pending_runs": True})
         self.assertEqual(status, 200, body)

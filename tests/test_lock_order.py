@@ -224,6 +224,30 @@ class LockOrderTests(unittest.TestCase):
         self.assertEqual(status["status"], "queued")
         self.assertNotIn("GF_RUN_START_FAILED", json.dumps(status))
 
+    def test_one_run_admission_uses_one_registry(self) -> None:
+        """P0-2 review (C6): a lifecycle change that finishes during an
+        admission must not swap the registry between preflight and snapshot."""
+
+        admitted = server.MODULE_REGISTRY
+        swapped = SimpleNamespace(manifest=lambda *a, **k: SimpleNamespace(requires_capabilities=()))
+        seen: list[object] = []
+
+        def preflight(*args, **kwargs):
+            seen.append(kwargs["registry"])
+            server.MODULE_REGISTRY = swapped  # restored by the stub patch at cleanup
+            return {"accepted": True, "estimates": {"disk_bytes": 100}, "warnings": []}
+
+        def snapshot(**kwargs):
+            seen.append(kwargs["registry"])
+            return {"snapshot_id": "s", "input_tree_sha256": "t"}
+
+        with patch.object(server, "run_preflight", preflight), \
+                patch.object(server, "create_run_input_snapshot", snapshot):
+            self.assertEqual(self._post("/api/projects/study/runs", {"mode": "value_101_day"}), 202)
+        self.assertEqual(len(seen), 2)
+        self.assertIs(seen[0], admitted)
+        self.assertIs(seen[1], admitted)
+
     def test_module_lifecycle_and_run_starts_interleave_in_order(self) -> None:
         """C6 (P0-2): 50 module enable/disable requests and 50 run starts from
         two threads finish without deadlock and keep the global lock order."""

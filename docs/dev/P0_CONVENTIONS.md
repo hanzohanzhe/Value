@@ -125,7 +125,7 @@ class Handler(BaseHTTPRequestHandler):
 - start-run 在拿预留锁之前取好缓存的模块注册表，不在持锁期间扫描磁盘上的模块。
 - `REPLAY_EXPORT_JOBS_LOCK` 是叶子锁：持有它时不得申请上表任何锁。
 - 断言测试（由先落地的 P0-2/P0-3 提交新增，放在 `tests/test_lock_order.py`）：两个线程交叉执行“启停模块”和“启动 Run”各 50 次，`join(timeout=30)` 不超时；并对 `acquire` 打桩记录顺序，断言符合上表。
-- **P0-2 实现说明**：`MODULE_LIFECYCLE_LOCK` 定义在 `gridform_core/module_quarantine.py`（进程内唯一的 RLock）。模块/扩展的安装、启停库函数自己持有它；server 的生命周期端点在锁内执行“库函数 + 目录刷新”；`gridform_core.catalog.get_catalog_snapshot` 也用这把锁（不另设目录锁，避免 ABBA）。启动 Run 只读取 server 的缓存全局 `MODULE_REGISTRY`，不申请这把锁。`test_lock_order.test_module_lifecycle_and_run_starts_interleave_in_order` 覆盖 50×50 交错。
+- **P0-2 实现说明**：`MODULE_LIFECYCLE_LOCK` 定义在 `gridform_core/module_quarantine.py`（进程内唯一的 RLock）。模块/扩展的安装、启停库函数自己持有它；server 的生命周期端点在锁内执行“库函数 + 目录刷新”；`gridform_core.catalog.get_catalog_snapshot` 也用这把锁（不另设目录锁，避免 ABBA）。启动 Run 只读取 server 的缓存全局 `MODULE_REGISTRY`，不申请这把锁；start-run 与 resume 在入口处把它一次绑定为局部变量 `registry` 并全程使用（评审后补，`test_lock_order.test_one_run_admission_uses_one_registry`），一次准入中途完成的生命周期变更不会换掉注册表。`test_lock_order.test_module_lifecycle_and_run_starts_interleave_in_order` 覆盖 50×50 交错。
 
 ## 6 后端 HTTP 测试夹具（C14；P0-1 S2 实现）
 

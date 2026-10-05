@@ -3500,8 +3500,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "9eecde3b34ae339705de41ebfe336aafb0e6fd1c61a64c8b49a627f7ec591e97",
-      "bytes": 187226,
+      "sha256": "2894b1c7cd3b6d60f6e9ae599f7387cec7413c00bd80c476d0d2c19320bfb83a",
+      "bytes": 188273,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10515,8 +10515,8 @@
     },
     {
       "path": "tests/test_lock_order.py",
-      "sha256": "171f7a9d0c929148afb32ed384577f79aaa9a2263a5ce3868fdedbba539d70d8",
-      "bytes": 13700,
+      "sha256": "cb9383dcaeac316813956b2e25c0f85ea4d8df602f86c36a7d485d407629c137",
+      "bytes": 14861,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10587,8 +10587,8 @@
     },
     {
       "path": "tests/test_module_quarantine_api.py",
-      "sha256": "3d9deb171e05840f32f90ec074858b0856f1fa9178353d83f05342d9ebdf571a",
-      "bytes": 17815,
+      "sha256": "bd44cf34b9afe238e99c623ae50ec6b01fbdbfb26e4685036f4e849f774df5a1",
+      "bytes": 18320,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

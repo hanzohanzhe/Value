@@ -373,26 +373,43 @@ def module_quarantine_payload() -> dict[str, Any]:
     return report
 
 
-def pending_runs() -> list[str]:
-    """Runs whose worker has not finished: a lifecycle change alters their
-    execution identity, so it needs explicit confirmation (P0-2 Q9)."""
+def pending_run_statuses() -> dict[str, str]:
+    """Runs whose worker has not finished, with their status: a lifecycle
+    change alters their execution identity, so it needs explicit
+    confirmation (P0-2 Q9)."""
 
-    found = []
+    found: dict[str, str] = {}
     for path in sorted(RUNS_ROOT.glob("*/status.json")):
         status = read_object(path)
-        if str(status.get("status") or "") in ACTIVE_STATES:
-            found.append(str(status.get("id") or path.parent.name))
+        state = str(status.get("status") or "")
+        if state in ACTIVE_STATES:
+            found[str(status.get("id") or path.parent.name)] = state
     return found
 
 
+def pending_runs() -> list[str]:
+    return list(pending_run_statuses())
+
+
 def require_no_pending_runs(confirmed: bool) -> None:
-    runs = pending_runs()
-    if runs and not confirmed:
-        raise ModuleQuarantinedError(
-            "GF_MODULE_LIFECYCLE_RUNS_PENDING",
-            f"{len(runs)} run(s) have not finished: " + ", ".join(runs[:10])
-            + ". Changing installed modules now changes the code they start with; confirm to continue.",
-        )
+    statuses = pending_run_statuses()
+    if not statuses or confirmed:
+        return
+    # Queued/snapshotting runs import the installed code when their worker
+    # starts; running ones keep theirs but their resume checks the identity.
+    waiting = [run for run, state in statuses.items() if state in {"queued", "snapshotting"}]
+    started = [run for run in statuses if run not in waiting]
+    parts = []
+    if waiting:
+        parts.append(f"{len(waiting)} run(s) not started yet (" + ", ".join(waiting[:10])
+                     + ") would start with the changed code")
+    if started:
+        parts.append(f"{len(started)} run(s) already running (" + ", ".join(started[:10])
+                     + ") keep their code but could not be resumed after the change")
+    raise ModuleQuarantinedError(
+        "GF_MODULE_LIFECYCLE_RUNS_PENDING",
+        "Runs have not finished: " + "; ".join(parts) + ". Confirm to change installed modules anyway.",
+    )
 
 
 def _quarantined_ids(kind: str) -> set[str]:
@@ -2555,6 +2572,9 @@ class Handler(BaseHTTPRequestHandler):
         project_override: dict[str, object] | None = None,
         lineage: dict[str, object] | None = None,
     ) -> None:
+        # One registry for the whole admission: a module lifecycle change that
+        # finishes meanwhile must not swap it halfway (C6; P0-2 review).
+        registry = MODULE_REGISTRY
         project = (
             json.loads(json.dumps(project_override))
             if project_override is not None
@@ -2593,7 +2613,7 @@ class Handler(BaseHTTPRequestHandler):
         )
         try:
             project = attach_revision_identity(
-                project, MODULE_REGISTRY, pack_selection.revision_manifest
+                project, registry, pack_selection.revision_manifest
             )
         except ValueError as exc:
             self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_PROJECT_REVISION"}, 409); return
@@ -2603,7 +2623,7 @@ class Handler(BaseHTTPRequestHandler):
             pack_root=pack_root,
             pack_manifest=pack_manifest,
             dataset_slots=DATASET_SLOTS,
-            registry=MODULE_REGISTRY,
+            registry=registry,
             output_root=RUNS_ROOT,
             runs_root=RUNS_ROOT,
             network_pack_root=pack_selection.network_pack_root,
@@ -2614,7 +2634,7 @@ class Handler(BaseHTTPRequestHandler):
                     project=project,
                     pack_root=pack_root,
                     network_pack_root=pack_selection.network_pack_root,
-                    registry=MODULE_REGISTRY,
+                    registry=registry,
                 )
                 if pack_selection.network_pack_root is not None
                 and dict(project.get("modules") or {}).get("psm")
@@ -2650,6 +2670,7 @@ class Handler(BaseHTTPRequestHandler):
                     mode=mode, policy=policy, run_start=run_start, run_end=run_end,
                     preflight=preflight, pack_root=pack_root, pack_selection=pack_selection,
                     teaching_run_extensions=teaching_run_extensions, lineage=lineage,
+                    registry=registry,
                 )
             except BaseException:
                 _mark_unfinished_start_failed(run_dir)
@@ -2676,6 +2697,7 @@ class Handler(BaseHTTPRequestHandler):
         pack_selection: Any,
         teaching_run_extensions: dict[str, object],
         lineage: dict[str, object] | None,
+        registry: Any,
     ) -> dict[str, Any] | None:
         """Freeze inputs, queue the run and spawn its worker.
 
@@ -2685,7 +2707,7 @@ class Handler(BaseHTTPRequestHandler):
 
         selected = dict(project.get("modules") or {})
         selected.setdefault("transition", "value-annual-state-transition")
-        psm_manifest = MODULE_REGISTRY.manifest(str(selected["psm"]), expected_slot="psm")
+        psm_manifest = registry.manifest(str(selected["psm"]), expected_slot="psm")
         if "storage.bid-cost-function" in psm_manifest.requires_capabilities:
             selected.setdefault("storage_cost", "dynamic-annual-storage-cost")
         try:
@@ -2696,7 +2718,7 @@ class Handler(BaseHTTPRequestHandler):
                 run_dir=run_dir,
                 project=project,
                 pack_root=pack_root,
-                registry=MODULE_REGISTRY,
+                registry=registry,
                 selected=selected,
                 object_root=OBJECTS_ROOT,
                 network_pack_root=pack_selection.network_pack_root,
@@ -2712,7 +2734,7 @@ class Handler(BaseHTTPRequestHandler):
                         policy=policy.to_dict(project),
                         run_id=run_id,
                         snapshot_root=snapshot_root,
-                        registry=MODULE_REGISTRY,
+                        registry=registry,
                         calibration_root=STATE_ROOT / "resource-calibration",
                         selected_output_root=RUNS_ROOT,
                         free_bytes=volume.free,
@@ -2722,7 +2744,7 @@ class Handler(BaseHTTPRequestHandler):
                             project=project,
                             pack_root=snapshot_root / "pack",
                             network_pack_root=snapshot_root / "network-pack",
-                            registry=MODULE_REGISTRY,
+                            registry=registry,
                         ),
                         usage=quota_usage(RUNS_ROOT, exclude_run=run_id),
                     )
@@ -2912,6 +2934,7 @@ class Handler(BaseHTTPRequestHandler):
             self._resume_run_locked(run_id)
 
     def _resume_run_locked(self, run_id: str) -> None:
+        registry = MODULE_REGISTRY  # one registry for the whole resume (C6)
         root = _run_root(run_id)
         if root is None:
             self._json({"error": "run not found"}, 404); return
@@ -2939,7 +2962,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "No identity-verified annual VALUE checkpoint is available"}, 409); return
         snapshot_root = root / "input-snapshot"
         try:
-            snapshot = verify_run_input_snapshot(snapshot_root, MODULE_REGISTRY)
+            snapshot = verify_run_input_snapshot(snapshot_root, registry)
         except (OSError, ValueError, SnapshotError) as exc:
             self._json({"error": f"Input snapshot verification failed: {exc}"}, 409); return
         project = read_json(snapshot_root / "project.json", {})
@@ -2960,7 +2983,7 @@ class Handler(BaseHTTPRequestHandler):
         )
         preflight = run_preflight(
             project, mode=mode, pack_root=pack_root, pack_manifest=manifest,
-            dataset_slots=DATASET_SLOTS, registry=MODULE_REGISTRY,
+            dataset_slots=DATASET_SLOTS, registry=registry,
             output_root=RUNS_ROOT, runs_root=RUNS_ROOT,
             network_pack_root=network_pack_root,
             resource_calibration_root=STATE_ROOT / "resource-calibration",
@@ -2970,7 +2993,7 @@ class Handler(BaseHTTPRequestHandler):
                     project=project,
                     pack_root=pack_root,
                     network_pack_root=network_pack_root,
-                    registry=MODULE_REGISTRY,
+                    registry=registry,
                 )
                 if network_pack_root is not None
                 and dict(project.get("modules") or {}).get("psm")
