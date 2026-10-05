@@ -2834,7 +2834,10 @@ class Handler(BaseHTTPRequestHandler):
             }, "GF_RUN_RESERVATION_LOCK_TIMEOUT")
             raise
         except (OSError, ValueError, SnapshotError, ResourceSnapshotMismatch) as exc:
-            code = getattr(exc, "code", None) if isinstance(exc, ExecutionArchiveError) else None
+            code = (
+                getattr(exc, "code", None)
+                if isinstance(exc, (ExecutionArchiveError, SnapshotError)) else None
+            )
             failed = _record_start_failure(run_dir, {
                 "current_stage": "Input snapshot failed",
                 "error_code": code or "GF_INPUT_SNAPSHOT_FAILED",
@@ -2921,7 +2924,10 @@ class Handler(BaseHTTPRequestHandler):
             source = read_json(snapshot_root / "project.json", {})
             project, lineage = copperplate_rerun_project(source, parent_run_id=run_id)
         except (OSError, ValueError, SnapshotError) as exc:
-            self._json({"error": f"Cannot create copperplate rerun: {exc}"}, 409); return
+            body = {"error": f"Cannot create copperplate rerun: {exc}"}
+            if isinstance(exc, SnapshotError) and exc.code:
+                body["error_code"] = exc.code
+            self._json(body, 409); return
         self._start_run(
             str(status.get("project_id") or project.get("id") or "project"),
             {"mode": str(status.get("mode") or "smoke")},
@@ -2964,7 +2970,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             snapshot = verify_run_input_snapshot(snapshot_root, registry)
         except (OSError, ValueError, SnapshotError) as exc:
-            self._json({"error": f"Input snapshot verification failed: {exc}"}, 409); return
+            body = {"error": f"Input snapshot verification failed: {exc}"}
+            if isinstance(exc, SnapshotError) and exc.code:
+                body["error_code"] = exc.code
+            self._json(body, 409); return
         project = read_json(snapshot_root / "project.json", {})
         try:
             verify_run_execution(root, project, source_root=PROJECT_ROOT, data_home=STATE_ROOT, require_record=True)

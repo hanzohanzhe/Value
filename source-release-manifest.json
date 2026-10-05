@@ -1339,6 +1339,7 @@
     "tests/test_p07_head_decide_record.py",
     "tests/test_p07_investment_accounts.py",
     "tests/test_p08_network_shares.py",
+    "tests/test_p08_solver_contract_upgrade.py",
     "tests/test_p08_zonal_solver_v4.py",
     "tests/test_p0_5_baseline.py",
     "tests/test_p0_gate.py",
@@ -3074,8 +3075,8 @@
     },
     {
       "path": "app/features/network/networkRedispatch.ts",
-      "sha256": "aa4732e8a4705c61e8ddabc7ee7aba1219da540800da7f170f45d4db89ba6fd4",
-      "bytes": 17959,
+      "sha256": "b93ffa19d4f3ebc7830e7b689593c8676330ed6a556f7df049dccc20fc3e9ba1",
+      "bytes": 18870,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3194,8 +3195,8 @@
     },
     {
       "path": "app/features/studies/SolverSettingsEditor.tsx",
-      "sha256": "5a765d031f061125a0bb734dd458b0fb16c111a44ce7c2dbcf1e1fcce03a517f",
-      "bytes": 6229,
+      "sha256": "519acbb7213a8d1dda0d6518597a84f46d8a47e8f946b76c36dfaf334f9b6fb2",
+      "bytes": 6609,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3416,9 +3417,9 @@
     },
     {
       "path": "backend/frozen_run_recovery.py",
-      "sha256": "b597411abf20953d956514882d8b0219650c6a13ef627a1e76bdab68ad31b744",
-      "bytes": 19700,
-      "transform": "byte copy"
+      "sha256": "7fecce1acb69dbed241962416cb07e5a0f4f5f23fc521628b99308bc1f435259",
+      "bytes": 20502,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/lifecycle/__init__.py",
@@ -3506,8 +3507,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "2894b1c7cd3b6d60f6e9ae599f7387cec7413c00bd80c476d0d2c19320bfb83a",
-      "bytes": 188273,
+      "sha256": "4f4df7ecdaaa7368658ec9d28c89758a768e6363f61c6e6b6f5fe7a2245827fd",
+      "bytes": 188604,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7481,8 +7482,8 @@
     },
     {
       "path": "gridform_core/frontend_contract.py",
-      "sha256": "7f0092964a3de2b183c40af9be3d5ac79bdff63213a203def9f24e772a95dac8",
-      "bytes": 32010,
+      "sha256": "4e5763ac6cd89a0c86a9926b8473e712022336618f2e473c48a74a6581178384",
+      "bytes": 33785,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7691,8 +7692,8 @@
     },
     {
       "path": "gridform_core/module_quarantine.py",
-      "sha256": "4f5c7c0f5179436e197d93533285f2056fadda1824b1cbd30613ec82720f9e19",
-      "bytes": 28073,
+      "sha256": "ddbcf16a258b43a249beef1ddd79ca0d43a7e311ea84688e6497f703f6a657fe",
+      "bytes": 28235,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7883,9 +7884,9 @@
     },
     {
       "path": "gridform_core/run_snapshot.py",
-      "sha256": "c51286e19ed58fc9b37d039b077bb9887121b02b324953354f3e9c31e4dce5ce",
-      "bytes": 17891,
-      "transform": "byte copy"
+      "sha256": "5ecbbf3b2936ae35463315e6826e4ee6fe5adbfa3556ece5836d735cef9efcf0",
+      "bytes": 19084,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/runtime_capabilities.py",
@@ -10727,6 +10728,12 @@
       "path": "tests/test_p08_network_shares.py",
       "sha256": "15f73d376062b463aa35aae39abef020663400091c6dac45b3a2bd92e619bd60",
       "bytes": 8650,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p08_solver_contract_upgrade.py",
+      "sha256": "fcc908ca1c3f840814aa378e01f29dd27e573a9aa226e827adb097550f54bd5d",
+      "bytes": 7597,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

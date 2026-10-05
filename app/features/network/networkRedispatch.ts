@@ -72,6 +72,24 @@ export function zonalSolverContractGeneration(contract: ZonalSolverContract): Zo
   return "v4";
 }
 
+/** Every field an explicit upgrade to the current contract would change (P0-8 S5 preview). */
+export function zonalSolverContractUpgradeChanges(contract: ZonalSolverContract): { field: string; recorded: string; current: string }[] {
+  const current = DEFAULT_ZONAL_SOLVER_CONTRACT;
+  const rows: { field: string; recorded: string; current: string }[] = [];
+  for (const key of solverContractKeys) {
+    if (key === "validated_ceilings" || key === "absolute_ceilings") {
+      for (const ceiling of solverCeilingKeys) {
+        if (contract[key][ceiling] !== current[key][ceiling]) {
+          rows.push({ field: `${key}.${ceiling}`, recorded: String(contract[key][ceiling]), current: String(current[key][ceiling]) });
+        }
+      }
+    } else if (contract[key] !== current[key]) {
+      rows.push({ field: key, recorded: String(contract[key]), current: String(current[key]) });
+    }
+  }
+  return rows;
+}
+
 /** A historical (v2 or v3) contract: readable, but a run needs an explicit upgrade. */
 export function isLegacyZonalSolverContract(contract: ZonalSolverContract): boolean {
   return zonalSolverContractGeneration(contract) !== "v4";
