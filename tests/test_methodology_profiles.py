@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import shutil
 import tempfile
@@ -27,7 +28,7 @@ CORRECTED = "value-corrected"
 # constant only in a commit that says why (e.g. a package appending the new
 # scientific_version of a lineage module that keeps the doctoral behaviour
 # behind a gated correction).
-DOCTORAL_DEFINITION_SHA256 = "a91a06e0fb2a8d8c6cd7c55c0f2b6a92fad5e83000b2bbcf51827427a395f287"
+DOCTORAL_DEFINITION_SHA256 = "8504a24b3ac039fce5d92a3cfd6b66ef90a00dee08e21343b6cbb87dca5ea5d5"
 
 LINEAGE_MODULES = {
     "psm": "value-bid-at-cost-psm",
@@ -118,6 +119,8 @@ class CatalogueSchemaTests(unittest.TestCase):
             "frozen with every correction": ("profiles.json", lambda p: p["profiles"][1].update(gated_corrections="*")),
             "unknown gated id": ("profiles.json", lambda p: p["profiles"][1].update(gated_corrections=["x0.missing"])),
             "bad publication rule": ("profiles.json", lambda p: p["profiles"][1].update(result_publication={"rule": "always"})),
+            "frozen wildcard pack": ("profiles.json", lambda p: p["profiles"][1]["supported_data_packs"].append(
+                {"id": "*", "pack_class": "synthetic", "manifest_sha256": "*"})),
             "bad correction id": ("corrections/x0.json", lambda p: p["corrections"].append({**_gated("x0.ok"), "id": "X0_Bad"})),
             "foreign package id": ("corrections/x0.json", lambda p: p["corrections"].append({**_gated("p04.other"), "package": "x0"})),
             "gated without trigger fixture": ("corrections/x0.json", lambda p: p["corrections"].append(_gated("x0.no-fixture", fixture=None))),
@@ -133,6 +136,36 @@ class CatalogueSchemaTests(unittest.TestCase):
                         copy_.load()
                 finally:
                     copy_.close()
+
+    def test_pack_entry_label_and_pin_note_are_not_part_of_the_definition(self):
+        """Editing presentation text of a whitelist entry is not a method change (Q13)."""
+
+        def edit_text(payload):
+            for entry in payload["profiles"][1]["supported_data_packs"]:
+                entry["label"] = entry["label"] + " (renamed)"
+                entry["pin_note"] = "Reviewed by the author."
+            payload["profiles"][1]["supported_data_packs"].reverse()
+            for entry in payload["profiles"][1]["supported_data_packs"]:
+                if isinstance(entry["manifest_sha256"], list):
+                    entry["manifest_sha256"].reverse()
+
+        def edit_pin(payload):
+            for entry in payload["profiles"][1]["supported_data_packs"]:
+                if entry["id"] == "value-101-baseline-v1":
+                    entry["manifest_sha256"] = entry["manifest_sha256"][:1]
+
+        shas = {}
+        for name, mutate in (("text", edit_text), ("pin", edit_pin)):
+            copy_ = CatalogueCopy()
+            try:
+                copy_.edit("profiles.json", mutate)
+                shas[name] = methodology.resolve_methodology(DOCTORAL, catalogue=copy_.load()).profile_definition_sha256
+            finally:
+                copy_.close()
+        self.assertEqual(shas["text"], DOCTORAL_DEFINITION_SHA256)
+        self.assertNotEqual(shas["pin"], DOCTORAL_DEFINITION_SHA256)
+        public = methodology.load_catalogue().profile(DOCTORAL).public_dict()
+        self.assertTrue(all("label" in entry for entry in public["supported_data_packs"]))
 
     def test_gated_corrections_follow_the_profile_and_universal_ones_apply_everywhere(self):
         copy_ = CatalogueCopy()
@@ -248,10 +281,12 @@ class WhitelistTests(unittest.TestCase):
         claimed = {"id": "my-gb-copy", "country": "GB", "pack_class": "synthetic"}
         self.assertEqual(methodology.classify_data_pack(claimed), "user_workspace")
         self.assertEqual(self._violations(DOCTORAL, packs=[(claimed, None)])[0]["sub_reason"], "data_pack")
+        # country SYNTHETIC is self-declared: an unknown pack declaring it is a user pack.
         synthetic = {"id": "contract-pack", "country": "SYNTHETIC"}
-        self.assertEqual(methodology.classify_data_pack(synthetic), "synthetic")
-        self.assertEqual(methodology.classify_data_pack(dict(synthetic, pack_class="synthetic")), "synthetic")
-        self.assertEqual(self._violations(DOCTORAL, packs=[(synthetic, None)]), [])
+        self.assertEqual(methodology.classify_data_pack(synthetic), "user_workspace")
+        self.assertEqual(methodology.classify_data_pack(dict(synthetic, pack_class="synthetic")), "user_workspace")
+        self.assertEqual(self._violations(DOCTORAL, packs=[(synthetic, None)])[0]["sub_reason"], "data_pack")
+        self.assertEqual(methodology.classify_data_pack(_pack("value-synthetic-contract-pack-v1")), "synthetic")
         self.assertEqual(methodology.classify_data_pack(dict(user_copy, pack_class="synthetic")), "user_workspace")
 
     def test_value_101_baseline_is_pinned_by_manifest_sha(self):
@@ -271,6 +306,34 @@ class WhitelistTests(unittest.TestCase):
         # The locally imported 1000 TWh pack cannot be pinned; the catalogue says why.
         self.assertEqual(entries["value-uk-1000twh-reproduction"]["manifest_sha256"], "*")
         self.assertIn("timestamps", entries["value-uk-1000twh-reproduction"]["pin_note"])
+
+    def test_synthetic_contract_pack_is_pinned_and_a_copy_is_refused(self):
+        """Q3 means the thesis-era contract pack, not any pack that says country SYNTHETIC."""
+
+        from backend.data_pack_clone import clone_data_pack
+
+        source = ROOT / "data-packs" / "value-synthetic-contract-pack-v1"
+        manifest, raw = methodology.read_pack_manifest(source)
+        self.assertEqual(self._violations(DOCTORAL, packs=[(manifest, raw)]), [])
+        with tempfile.TemporaryDirectory() as folder:
+            packs = Path(folder) / "data-packs"
+            shutil.copytree(source, packs / "value-synthetic-contract-pack-v1")
+            result = clone_data_pack("value-synthetic-contract-pack-v1", {
+                "schema_version": "value.data-pack-clone-request/v1", "name": "my copy",
+                "source_manifest_sha256": hashlib.sha256(raw).hexdigest(),
+            }, packs_root=packs, minimum_free_space_bytes=0)
+            copy_root = packs / str(result["data_pack"]["id"])
+            cloned, cloned_raw = methodology.read_pack_manifest(copy_root)
+        self.assertEqual(cloned["country"], "SYNTHETIC")
+        self.assertEqual(methodology.classify_data_pack(cloned), "user_workspace")
+        rows = self._violations(DOCTORAL, packs=[(cloned, cloned_raw)])
+        self.assertEqual([row["sub_reason"] for row in rows], ["data_pack"])
+        self.assertEqual(self._violations(CORRECTED, packs=[(cloned, cloned_raw)]), [])
+        # The same id edited in place is not the pinned pack either.
+        edited = json.loads(raw.decode("utf-8"))
+        edited["bindings"][sorted(edited["bindings"])[0]]["sha256"] = "0" * 64
+        rows = self._violations(DOCTORAL, packs=[(edited, json.dumps(edited).encode("utf-8"))])
+        self.assertEqual([row["sub_reason"] for row in rows], ["data_pack"])
 
     def test_enabled_external_code_refuses_the_frozen_profile_only(self):
         with patch("gridform_core.methodology.external_code_entries", return_value=["module:my-storage-module"]):

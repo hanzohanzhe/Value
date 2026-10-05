@@ -62,14 +62,21 @@ SUB_REASONS = ("module", "extension", "data_pack", "external_code", "reference_p
 
 # Packs whose class is known without a manifest field (P0-5 "truth registry";
 # P0-5 S3 owns the full data-method policy and extends this table).
+# ``synthetic`` is never inferred from a manifest field (``country:
+# SYNTHETIC`` is self-declared and survives a Data Pack copy): only the shipped
+# contract packs listed here are synthetic.
 KNOWN_PACK_CLASSES: Mapping[str, str] = {
     "value-uk-open-data-pack-v1": "scientific_reference",      # GBP1
     "value-uk-calendar-vx-trade001": "scientific_reference",   # R029
     "value-uk-1000twh-reproduction": "scientific_reference",
+    "value-synthetic-contract-pack-v1": "synthetic",           # thesis-era contract pack
 }
 
 # Fields of a profile covered by its definition hash (the frozen-profile
-# tripwire, tests/test_methodology_profiles.py).
+# tripwire, tests/test_methodology_profiles.py).  supported_data_packs entries
+# enter it through their semantic fields only (_PACK_ENTRY_SEMANTIC_FIELDS);
+# label and pin_note are presentation.
+_PACK_ENTRY_SEMANTIC_FIELDS = ("id", "pack_class", "manifest_sha256")
 _DEFINITION_FIELDS = (
     "id", "version", "frozen", "gated_corrections", "supported_modules",
     "supported_extensions", "supported_data_packs", "external_code_policy",
@@ -191,7 +198,25 @@ class Profile:
     record: Mapping[str, object] = field(repr=False, compare=False, default_factory=dict)
 
     def definition(self) -> dict[str, object]:
-        return {key: copy.deepcopy(self.record[key]) for key in _DEFINITION_FIELDS}
+        """The method-defining fields (what ``profile_definition_sha256`` covers).
+
+        Data-pack entries are reduced to id, pack_class and the (sorted) pins
+        and sorted, so editing an entry's label or pin_note, or reordering
+        entries or pins, does not change the definition (and so does not turn
+        every saved Study of the profile into a method change, Q13).
+        """
+
+        value = {key: copy.deepcopy(self.record[key]) for key in _DEFINITION_FIELDS}
+        packs = value["supported_data_packs"]
+        if packs != "*":
+            entries = []
+            for entry in packs:  # type: ignore[union-attr]
+                semantic = {key: copy.deepcopy(entry[key]) for key in _PACK_ENTRY_SEMANTIC_FIELDS}
+                if semantic["manifest_sha256"] != "*":
+                    semantic["manifest_sha256"] = sorted(semantic["manifest_sha256"])
+                entries.append(semantic)
+            value["supported_data_packs"] = sorted(entries, key=_sha256_json)
+        return value
 
     @property
     def definition_sha256(self) -> str:
@@ -329,6 +354,8 @@ def _parse_profile(row: object, corrections: Mapping[str, Correction], where: st
             sha = entry.get("manifest_sha256")
             _require(sha == "*" or (isinstance(sha, list) and all(isinstance(item, str) and len(item) == 64 for item in sha)),
                      f"{where}.supported_data_packs[{index}].manifest_sha256 must be \"*\" or a list of sha256")
+            _require(not (row.get("frozen") is True and entry["id"] == "*"),
+                     f"{where}.supported_data_packs[{index}]: a frozen profile names each data pack (no \"*\" id)")
             parsed.append(copy.deepcopy(dict(entry)))
         packs = tuple(parsed)
     _require(row["external_code_policy"] in EXTERNAL_CODE_POLICIES, f"{where}: external_code_policy must be one of {EXTERNAL_CODE_POLICIES}")
@@ -578,13 +605,11 @@ def _inferred_pack_class(manifest: Mapping[str, object]) -> str:
         return known
     if manifest.get("teaching_only") is True:
         return "teaching"
-    if str(manifest.get("country") or "").upper() == "SYNTHETIC":
-        return "synthetic"
     return "user_workspace"
 
 
 def classify_data_pack(manifest: Mapping[str, object]) -> str:
-    """pack_class from verifiable facts: known registry -> teaching_only -> SYNTHETIC -> user_workspace.
+    """pack_class from verifiable facts: known registry -> teaching_only -> user_workspace.
 
     A self-declared ``pack_class`` is never trusted on its own (otherwise a
     real GB pack could whitelist itself as synthetic for the frozen profile):
