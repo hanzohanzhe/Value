@@ -131,7 +131,8 @@ class StudyDerivationTests(unittest.TestCase):
         self.assertEqual(result["data_pack_id"], "new-pack")
         self.assertNotEqual(result["revision_sha256"], self.source["revision_sha256"])
         for key in self.source:
-            if key not in {"id", "name", "data_pack_id", "revision_sha256", "updated_at", "change_summary"}:
+            # fingerprint_basis is revision bookkeeping, like revision_sha256 (X0 S11).
+            if key not in {"id", "name", "data_pack_id", "revision_sha256", "fingerprint_basis", "updated_at", "change_summary"}:
                 self.assertEqual(result[key], self.source[key], key)
         self.assertEqual((self.projects / "baseline" / "project.json").read_bytes(), self.before)
         for intent, pack in (("data", "baseline-pack"), ("reproduce", "new-pack")):

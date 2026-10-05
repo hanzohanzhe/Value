@@ -33,6 +33,7 @@ from .preflight_resources import (
     evaluate_resource_gate,
 )
 from .project_revision import project_fingerprint
+from .revision_migration import classify_revision_mismatch
 from .run_quota import (
     QUOTA_CORRECTIVE_ACTIONS,
     QuotaUsage,
@@ -454,13 +455,23 @@ def run_preflight(
             pack_selection.revision_manifest
             if pack_selection is not None else dict(pack_manifest)
         )
-        calculated_revision = project_fingerprint(project, registry, revision_manifest)
         declared_revision = project.get("revision_sha256")
-        revision_ok = declared_revision in {None, calculated_revision}
+        # A mismatch is classified, never silently re-identified (X0 S11, Q13).
+        classification = (
+            classify_revision_mismatch(project, registry, revision_manifest)
+            if declared_revision is not None else None
+        )
+        calculated_revision = (
+            classification["calculated_sha256"] if classification is not None
+            else project_fingerprint(project, registry, revision_manifest)
+        )
+        kind = classification["classification"] if classification is not None else "unsaved"
+        revision_ok = kind in {"unsaved", "none"} or bool(classification and classification["automatic"])
         checks["project_revision"] = {
             "passed": revision_ok,
             "declared_sha256": declared_revision,
             "calculated_sha256": calculated_revision,
+            "classification": classification,
         }
         if declared_revision is None:
             issues.append(_issue(
@@ -468,11 +479,25 @@ def run_preflight(
                 "This legacy project has no saved immutable revision identity.",
                 "Save the project once before using its output as a published scientific result.",
             ))
-        elif not revision_ok:
+        elif classification is not None and classification["automatic"]:
+            issues.append(_issue(
+                str(classification["error_code"]), "warning", "project",
+                "Only the code identity of this Study changed (no change to methods or results expected); "
+                "a new revision is appended when the run starts.",
+                "No action needed.",
+            ))
+        elif kind == "content_changed":
             issues.append(_issue(
                 "GF_PREFLIGHT_PROJECT_REVISION", "error", "project",
                 "The project content no longer matches its saved revision hash.",
                 "Reload or save a new project revision; do not run an edited stale snapshot.",
+            ))
+        elif classification is not None and kind != "none":
+            issues.append(_issue(
+                str(classification["error_code"]), "error", "project",
+                "The installed VALUE computes this Study differently from its saved revision ("
+                + kind.replace("_", " ") + "); review the changes and confirm them as a new revision.",
+                "Open the Study and confirm the listed changes (POST /api/projects/<id>/revision-migration).",
             ))
     except (ValueError, KeyError) as exc:
         checks["project_revision"] = {"passed": False, "error": str(exc)}

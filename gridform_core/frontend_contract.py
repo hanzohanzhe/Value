@@ -54,6 +54,7 @@ ALLOWED_DRAFT_FIELDS = {
     "extension_parameters", "maturity_acknowledgements", "updated_at",
     "base_revision_sha256", "revision_sha256", "revision_number",
     "parent_revision_sha256", "change_summary", "module_resolution_graph",
+    "fingerprint_basis", "revision_reason",  # revision bookkeeping (X0 S11)
     "market_configuration", "extensions",
     "solver_contract",
 }

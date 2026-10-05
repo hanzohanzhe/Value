@@ -26,7 +26,7 @@ REVISION = re.compile(r"^[0-9a-f]{64}$")
 DERIVED_FIELDS = {
     "revision_sha256", "revision_number", "parent_revision_sha256",
     "base_revision_sha256", "change_summary", "module_resolution_graph",
-    "linked_run_count", "derivation",
+    "linked_run_count", "derivation", "fingerprint_basis", "revision_reason",
 }
 
 

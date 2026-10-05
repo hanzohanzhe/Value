@@ -126,6 +126,7 @@ from gridform_core.value_101_lifecycle import (
     value_101_origin,
 )
 from gridform_core.project_revision import attach_revision_identity, save_project_revision
+from gridform_core.revision_migration import RevisionMigrationError, classify_revision_mismatch, migrate_project_revision
 from gridform_core.study_lifecycle import (
     StudyLifecycleError,
     list_study_trash,
@@ -1003,6 +1004,16 @@ def _revision_manifest(
     return selection.revision_manifest
 
 
+def _study_revision_context(project_id: str) -> tuple[dict[str, Any], dict[str, object]] | None:
+    """A saved Study and the manifest its revision identity is computed against."""
+
+    project = read_object(PROJECTS_ROOT / project_id / "project.json")
+    if not project:
+        return None
+    pack = read_object(PACKS_ROOT / str(project.get("data_pack_id") or "") / "manifest.json")
+    return project, _revision_manifest(project, pack)
+
+
 def _value_101_origin_extensions(record: dict[str, Any]) -> dict[str, object]:
     if not is_value_101_record(record):
         return {}
@@ -1678,6 +1689,14 @@ class Handler(BaseHTTPRequestHandler):
             self._json(checklist)
         elif route == "/api/projects":
             self._json({"projects": list_projects()})
+        elif route.startswith("/api/projects/") and route.endswith("/revision-migration"):
+            # Read-only classification of a saved Study against the installed
+            # code (X0 S11, Q13); nothing is written on GET.
+            context = _study_revision_context(slug(route.strip("/").split("/")[2], "project"))
+            if context is None:
+                self._json({"error": "project not found"}, 404); return
+            project, manifest = context
+            self._json({"revision_migration": classify_revision_mismatch(project, MODULE_REGISTRY, manifest)})
         elif route == "/api/study-trash":
             self._json({
                 "schema_version": "value.study-trash-list/v1",
@@ -2598,9 +2617,30 @@ class Handler(BaseHTTPRequestHandler):
             nonce=uuid.uuid4().hex[:8],
         )
         try:
-            project = attach_revision_identity(
-                project, registry, pack_selection.revision_manifest
-            )
+            if project_override is None and project.get("revision_sha256"):
+                # A saved Study is never re-identified silently (X0 S11, Q13):
+                # a code-only change appends a revision that exists in
+                # revisions/; a method, data or content change is refused
+                # until the user confirms or saves it.
+                classification = classify_revision_mismatch(
+                    project, registry, pack_selection.revision_manifest
+                )
+                if classification["automatic"]:
+                    project, classification = migrate_project_revision(
+                        PROJECTS_ROOT / project_id, registry, pack_selection.revision_manifest
+                    )
+                elif classification["classification"] != "none":
+                    self._json({
+                        "error": "This Study needs review before it runs: the installed VALUE computes it differently from its saved revision.",
+                        "error_code": classification["error_code"],
+                        "revision_migration": classification,
+                    }, 409); return
+            else:
+                project = attach_revision_identity(
+                    project, registry, pack_selection.revision_manifest
+                )
+        except RevisionMigrationError as exc:
+            self._json({"error": str(exc), "error_code": exc.code, "revision_migration": exc.classification}, 409); return
         except ValueError as exc:
             self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_PROJECT_REVISION"}, 409); return
         preflight = run_preflight(
@@ -3646,6 +3686,25 @@ class Handler(BaseHTTPRequestHandler):
                 periods_per_year=int(body.get("periods_per_year", 17_520)),
             )
             self._json(resolved.to_dict())
+        elif route.startswith("/api/projects/") and route.endswith("/revision-migration"):
+            # Append the revision the classification calls for (X0 S11, Q13):
+            # code-only changes need no confirmation; method, data and
+            # unverifiable changes need the diff_sha256 the user reviewed.
+            project_id = slug(route.strip("/").split("/")[2], "project")
+            with STUDY_LIFECYCLE_LOCK:
+                context = _study_revision_context(project_id)
+                if context is None:
+                    self._json({"error": "project not found"}, 404); return
+                _, manifest = context
+                try:
+                    saved, classification = migrate_project_revision(
+                        PROJECTS_ROOT / project_id, MODULE_REGISTRY, manifest,
+                        confirm_diff_sha256=(str(body["diff_sha256"]) if body.get("diff_sha256") else None),
+                    )
+                except RevisionMigrationError as exc:
+                    self._json({"error": str(exc), "error_code": exc.code,
+                                "revision_migration": exc.classification}, 409); return
+            self._json({"ok": True, "project": saved, "revision_migration": classification})
         elif route.startswith("/api/projects/") and route.endswith("/runs"):
             self._start_run(slug(route.strip("/").split("/")[2], "project"), body)
         elif route.startswith("/api/projects/") and route.endswith("/preflight"):
