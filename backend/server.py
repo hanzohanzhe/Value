@@ -1028,6 +1028,31 @@ def _study_revision_context(project_id: str) -> tuple[dict[str, Any], dict[str, 
     return project, _revision_manifest(project, pack)
 
 
+def _study_whitelist_packs(project: dict[str, Any]) -> list[tuple[Any, bytes | None] | None]:
+    """The methodology whitelist input of a Study, as Study resolution builds it (C16).
+
+    The base pack and, for a zonal Study, its Network Pack, each with its
+    manifest file bytes, so the revision-migration profile choice accepts the
+    same pins as Study resolution, preflight and the worker.
+    """
+
+    pack_id = str(project.get("data_pack_id") or "")
+    pack = read_json(PACKS_ROOT / pack_id / "manifest.json") if pack_id else None
+    if not pack:
+        return []
+    network_pack_root = None
+    try:
+        network_pack_root = resolve_zonal_pack_selection(
+            project, base_pack_root=PACKS_ROOT / pack_id, base_manifest=pack, data_home=STATE_ROOT,
+        ).network_pack_root
+    except ValueError:
+        pass
+    return [
+        pack_entry(PACKS_ROOT / pack_id, pack),
+        pack_entry(network_pack_root) if network_pack_root is not None else None,
+    ]
+
+
 def _value_101_origin_extensions(record: dict[str, Any]) -> dict[str, object]:
     if not is_value_101_record(record):
         return {}
@@ -1798,7 +1823,8 @@ class Handler(BaseHTTPRequestHandler):
             chosen_profile = query.get("profile_id", [None])[0] or None
             try:
                 self._json({"revision_migration": classify_revision_mismatch(
-                    project, MODULE_REGISTRY, manifest, profile_id=chosen_profile)})
+                    project, MODULE_REGISTRY, manifest, profile_id=chosen_profile,
+                    whitelist_packs=_study_whitelist_packs(project))})
             except RevisionMigrationError as exc:
                 self._json({"error": str(exc), "error_code": exc.code,
                             "revision_migration": exc.classification}, 409); return
@@ -2769,12 +2795,18 @@ class Handler(BaseHTTPRequestHandler):
                 # a code-only change appends a revision that exists in
                 # revisions/; a method, data or content change is refused
                 # until the user confirms or saves it.
+                whitelist_packs = [
+                    pack_entry(pack_root, pack_manifest),
+                    pack_entry(pack_selection.network_pack_root)
+                    if pack_selection.network_pack_root is not None else None,
+                ]
                 classification = classify_revision_mismatch(
-                    project, registry, pack_selection.revision_manifest
+                    project, registry, pack_selection.revision_manifest, whitelist_packs=whitelist_packs
                 )
                 if classification["automatic"]:
                     project, classification = migrate_project_revision(
-                        PROJECTS_ROOT / project_id, registry, pack_selection.revision_manifest
+                        PROJECTS_ROOT / project_id, registry, pack_selection.revision_manifest,
+                        whitelist_packs=whitelist_packs,
                     )
                 elif classification["classification"] != "none":
                     self._json({
@@ -3864,12 +3896,13 @@ class Handler(BaseHTTPRequestHandler):
                 context = _study_revision_context(project_id)
                 if context is None:
                     self._json({"error": "project not found"}, 404); return
-                _, manifest = context
+                project, manifest = context
                 try:
                     saved, classification = migrate_project_revision(
                         PROJECTS_ROOT / project_id, MODULE_REGISTRY, manifest,
                         confirm_diff_sha256=(str(body["diff_sha256"]) if body.get("diff_sha256") else None),
                         profile_id=(str(body["profile_id"]) if body.get("profile_id") else None),
+                        whitelist_packs=_study_whitelist_packs(project),
                     )
                 except RevisionMigrationError as exc:
                     self._json({"error": str(exc), "error_code": exc.code,

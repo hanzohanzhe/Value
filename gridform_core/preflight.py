@@ -418,6 +418,11 @@ def run_preflight(
 
     # Methodology profile and its combination whitelist (X0 S8, Q3, C16): the
     # same check as Study resolution and the run entry.
+    whitelist_packs = [
+        pack_entry(pack_root, pack_manifest),
+        pack_entry(pack_selection.network_pack_root)
+        if pack_selection is not None and pack_selection.network_pack_root is not None else None,
+    ]
     try:
         methodology = resolve_project_methodology(project)
         violations = selection_combination_violations(
@@ -425,11 +430,7 @@ def run_preflight(
             registry=registry,
             modules=selected,
             extensions=selected_extensions,
-            data_packs=[
-                pack_entry(pack_root, pack_manifest),
-                pack_entry(pack_selection.network_pack_root)
-                if pack_selection is not None and pack_selection.network_pack_root is not None else None,
-            ],
+            data_packs=whitelist_packs,
         )
         checks["methodology"] = {
             "passed": not violations,
@@ -458,7 +459,7 @@ def run_preflight(
         declared_revision = project.get("revision_sha256")
         # A mismatch is classified, never silently re-identified (X0 S11, Q13).
         classification = (
-            classify_revision_mismatch(project, registry, revision_manifest)
+            classify_revision_mismatch(project, registry, revision_manifest, whitelist_packs=whitelist_packs)
             if declared_revision is not None else None
         )
         calculated_revision = (

@@ -40,7 +40,7 @@ import hashlib
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from .methodology import (
     PROFILE_PARAMETER,
@@ -59,6 +59,8 @@ from .project_revision import (
 )
 from .v2.module_manifest import ModuleRegistryV2
 
+# (manifest, manifest file bytes or None) rows, None for an absent overlay (methodology.pack_entry).
+WhitelistPacks = Sequence["tuple[Mapping[str, object], bytes | None] | None"]
 CLASSIFICATION_SCHEMA = "value.revision-classification/v1"
 LEDGER_PATH = Path(__file__).resolve().parents[1] / "docs" / "release" / "VERSION_LEDGER.json"
 AUTOMATIC = {"code_identity_upgrade": "code-identity-upgrade", "environment_reidentify": "environment-reidentify"}
@@ -404,10 +406,18 @@ def _differences(old_basis: Mapping[str, Any], current: Mapping[str, Any], proje
 
 
 def _profile_choices(project: Mapping[str, Any], registry: ModuleRegistryV2,
-                     data_pack_manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """The profiles a pre-profile Study can be migrated to (catalogue order)."""
+                     data_pack_manifest: Mapping[str, Any],
+                     whitelist_packs: WhitelistPacks | None = None) -> list[dict[str, Any]]:
+    """The profiles a pre-profile Study can be migrated to (catalogue order).
+
+    ``whitelist_packs`` is the whitelist input Study resolution and preflight
+    use (``methodology.pack_entry`` rows with the manifest file bytes, base
+    pack and zonal Network Pack), so a pin by the file sha alone is honoured
+    here too.  Without it the revision manifest stands in (canonical sha only).
+    """
 
     catalogue = load_catalogue()
+    packs = list(whitelist_packs) if whitelist_packs else [(data_pack_manifest, None)]
     modules = {str(slot): str(module_id) for slot, module_id in dict(project.get("modules") or {}).items()}
     parameters = dict(project.get("parameters") or project.get("parameter_overrides") or {})
     rows = []
@@ -415,7 +425,7 @@ def _profile_choices(project: Mapping[str, Any], registry: ModuleRegistryV2,
         violations = selection_combination_violations(
             profile.id, registry=registry, modules=modules,
             extensions=tuple(str(item) for item in project.get("selected_extensions") or ()),
-            data_packs=[(data_pack_manifest, None)],
+            data_packs=packs,
         )
         deviations = reference_deviations(resolve_methodology(profile.id), modules=modules,
                                           scientific_parameters=parameters)
@@ -429,7 +439,8 @@ def _profile_choices(project: Mapping[str, Any], registry: ModuleRegistryV2,
 
 
 def _apply_profile_choice(record: dict[str, Any], project: Mapping[str, Any], registry: ModuleRegistryV2,
-                          data_pack_manifest: Mapping[str, Any], profile_id: str | None) -> None:
+                          data_pack_manifest: Mapping[str, Any], profile_id: str | None,
+                          whitelist_packs: WhitelistPacks | None = None) -> None:
     """Offer the profile choice on a methodology first write and apply ``profile_id`` to it."""
 
     explicit = PROFILE_PARAMETER in dict(project.get("parameters") or project.get("parameter_overrides") or {})
@@ -448,7 +459,7 @@ def _apply_profile_choice(record: dict[str, Any], project: Mapping[str, Any], re
                 _finish(record),
             )
         return
-    choices = _profile_choices(project, registry, data_pack_manifest)
+    choices = _profile_choices(project, registry, data_pack_manifest, whitelist_packs)
     record["profile_choices"] = choices
     chosen = profile_id if profile_id is not None else default_profile_id()
     row = next((choice for choice in choices if choice["profile_id"] == chosen), None)
@@ -493,11 +504,14 @@ def classify_revision_mismatch(
     data_pack_manifest: Mapping[str, Any],
     *,
     profile_id: str | None = None,
+    whitelist_packs: WhitelistPacks | None = None,
 ) -> dict[str, Any]:
     """Why the installed code computes another revision hash for this Study.  Read-only.
 
     ``profile_id`` chooses the methodology a pre-profile Study is migrated to
     (default profile when None); it is refused for any other classification.
+    ``whitelist_packs`` (see ``_profile_choices``) decides which profiles
+    support the Study; callers that resolve the Study's packs pass it.
     """
 
     declared = project.get("revision_sha256")
@@ -516,11 +530,11 @@ def classify_revision_mismatch(
     record["calculated_sha256"] = calculated
     if not declared:
         record["classification"] = "unsaved"
-        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
+        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id, whitelist_packs)
         return _finish(record)
     if declared == calculated and solver is None:
         record["classification"] = "none"
-        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
+        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id, whitelist_packs)
         return _finish(record)
     basis = _recorded_basis(project, str(declared)) or _reconstructed_basis(project, registry, data_pack_manifest, str(declared))
     if basis is None:
@@ -529,7 +543,7 @@ def classify_revision_mismatch(
             rows[0]["effect"] += " VERSION_LEDGER is unavailable in this installation, so the 35aadb3 basis could not be rebuilt."
         record.update(classification="unverifiable", basis_source="none",
                       differences=rows + ([solver] if solver is not None else []))
-        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
+        _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id, whitelist_packs)
         return _finish(record)
     record["basis_source"] = basis["source"]
     differences = _differences(basis, current, project)
@@ -538,7 +552,7 @@ def classify_revision_mismatch(
     record["differences"] = differences
     kinds = {row["classification"] for row in differences}
     record["classification"] = next((kind for kind in PRECEDENCE if kind in kinds), "code_identity_upgrade")
-    _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id)
+    _apply_profile_choice(record, project, registry, data_pack_manifest, profile_id, whitelist_packs)
     return _finish(record)
 
 
@@ -570,6 +584,7 @@ def migrate_project_revision(
     *,
     confirm_diff_sha256: str | None = None,
     profile_id: str | None = None,
+    whitelist_packs: WhitelistPacks | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Append the revision a classification calls for; returns (project, classification).
 
@@ -582,7 +597,8 @@ def migrate_project_revision(
     """
 
     project = json.loads((project_dir / "project.json").read_text(encoding="utf-8"))
-    classification = classify_revision_mismatch(project, registry, data_pack_manifest, profile_id=profile_id)
+    classification = classify_revision_mismatch(project, registry, data_pack_manifest, profile_id=profile_id,
+                                                whitelist_packs=whitelist_packs)
     kind = classification["classification"]
     if kind in {"none", "unsaved"}:
         return project, classification

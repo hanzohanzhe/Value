@@ -478,6 +478,29 @@ class ProfileChoiceTests(unittest.TestCase):
             classify_revision_mismatch(saved, self.registry, self.manifest, profile_id=default_profile_id())
         self.assertEqual(caught.exception.code, "GF_REVISION_MIGRATION_PROFILE_NOT_APPLICABLE")
 
+    def test_a_pin_by_the_manifest_file_sha_alone_is_honoured_by_the_profile_choice(self):
+        """Review round 5 (minor): the profile choice uses the same whitelist input as preflight and the worker."""
+
+        from tests.test_pack_source_identity import VALUE_101_FILE_SHA, value_101_pinned_by
+
+        study, project = self.study("D1")
+        packs = [methodology.pack_entry(PACK_ROOT)]
+        with value_101_pinned_by([VALUE_101_FILE_SHA]):
+            self.assertEqual(methodology.combination_violations(methodology.REFERENCE_PROFILE_ID, data_packs=packs), [])
+            # Without the file bytes only the canonical sha is known (the fallback the callers no longer use).
+            fallback = classify_revision_mismatch(project, self.registry, self.manifest)
+            row = next(row for row in fallback["profile_choices"] if row["profile_id"] == methodology.REFERENCE_PROFILE_ID)
+            self.assertEqual((row["supported"], row["unsupported_reasons"]), (False, ["data_pack"]))
+            result = classify_revision_mismatch(project, self.registry, self.manifest, whitelist_packs=packs)
+            row = next(row for row in result["profile_choices"] if row["profile_id"] == methodology.REFERENCE_PROFILE_ID)
+            self.assertEqual((row["supported"], row["matches_reference_preset"]), (True, True))
+            chosen = classify_revision_mismatch(project, self.registry, self.manifest, whitelist_packs=packs,
+                                                profile_id=methodology.REFERENCE_PROFILE_ID)
+            saved, _ = migrate_project_revision(study, self.registry, self.manifest, whitelist_packs=packs,
+                                                confirm_diff_sha256=chosen["diff_sha256"],
+                                                profile_id=methodology.REFERENCE_PROFILE_ID)
+        self.assertEqual(saved["parameters"][PROFILE_PARAMETER], methodology.REFERENCE_PROFILE_ID)
+
     def test_default_confirmation_still_writes_the_default_profile(self):
         study, project = self.study("D1")
         result = classify_revision_mismatch(project, self.registry, self.manifest)
@@ -575,6 +598,44 @@ class MigrationApiTests(unittest.TestCase):
                 status, payload = call("POST", route + "revision-migration",
                                        {"profile_id": methodology.REFERENCE_PROFILE_ID})
                 self.assertEqual((status, payload["error_code"]), (409, "GF_REVISION_MIGRATION_PROFILE_NOT_APPLICABLE"))
+
+    def test_a_file_sha_pin_is_honoured_by_the_migration_api(self):
+        """Review round 5 (minor): GET and POST revision-migration pass the pack file bytes to the whitelist."""
+
+        from tests.local_api_harness import start_local_api
+        from tests.test_pack_source_identity import VALUE_101_FILE_SHA, value_101_pinned_by
+
+        with tempfile.TemporaryDirectory() as folder, value_101_pinned_by([VALUE_101_FILE_SHA]):
+            home = Path(folder)
+            shutil.copytree(PACK_ROOT, home / "data-packs" / "value-101-baseline-v1")
+            study = home / "projects" / "golden-study"
+            study.mkdir(parents=True)
+            shutil.copyfile(STUDIES_35AADB3 / "D1.project.json", study / "project.json")
+            route = "/api/projects/golden-study/revision-migration"
+
+            def call(method, path, body=None):
+                request = urllib.request.Request(
+                    origin + path, method=method,
+                    data=None if body is None else json.dumps(body).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                )
+                try:
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        return response.status, json.loads(response.read())
+                except urllib.error.HTTPError as error:
+                    return error.code, json.loads(error.read())
+
+            with start_local_api(data_home=home) as (_httpd, origin, _token):
+                status, payload = call("GET", route + f"?profile_id={methodology.REFERENCE_PROFILE_ID}")
+                self.assertEqual(status, 200, payload)
+                doctoral = payload["revision_migration"]
+                row = next(row for row in doctoral["profile_choices"]
+                           if row["profile_id"] == methodology.REFERENCE_PROFILE_ID)
+                self.assertTrue(row["supported"], row)
+                status, payload = call("POST", route, {"diff_sha256": doctoral["diff_sha256"],
+                                                       "profile_id": methodology.REFERENCE_PROFILE_ID})
+                self.assertEqual(status, 200, payload)
+                self.assertEqual(payload["project"]["parameters"][PROFILE_PARAMETER], methodology.REFERENCE_PROFILE_ID)
 
     def test_run_start_appends_a_code_only_revision_and_is_accepted(self):
         """POST /runs on a Study whose module moved by a code-only bump: revision appended, run admitted."""
