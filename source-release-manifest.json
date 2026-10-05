@@ -1050,6 +1050,7 @@
     "requirements/value-validation-py310.lock",
     "run-two-year-parity.cmd",
     "scripts/assemble_public_uk_pack.py",
+    "scripts/audit_boundary_flow_sign.py",
     "scripts/audit_data_freshness.py",
     "scripts/audit_data_workbench_release.py",
     "scripts/audit_local_uk_data_pack.py",
@@ -1083,6 +1084,7 @@
     "scripts/build_value_101_release_evidence.py",
     "scripts/build_value_101_to_value_uk_pdf.py",
     "scripts/build_value_methodology_pdf.py",
+    "scripts/build_value_uk_pack_revision.py",
     "scripts/build_value_uk_research_suite.py",
     "scripts/build_windows_pilot_installer.py",
     "scripts/capture_native_reproduction_golden.py",
@@ -1445,6 +1447,7 @@
     "tests/test_p04_validation_presentation.py",
     "tests/test_p04_variant_fixtures.py",
     "tests/test_p05b_corrected_data.py",
+    "tests/test_p05b_pack_revision.py",
     "tests/test_p06_corrected_acceptance.py",
     "tests/test_p07_doctoral_source_oracle.py",
     "tests/test_p07_head_decide_record.py",
@@ -9124,6 +9127,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "scripts/audit_boundary_flow_sign.py",
+      "sha256": "6916db3997bff3283eb8505e6fa9e078a8943318e2b078f1e0a3d4b5ed6a07d9",
+      "bytes": 5271,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/audit_data_freshness.py",
       "sha256": "0bef8f2c5abf40ff1f641580dfb4b1fc854a82ddfc94b461d85a9840f609133e",
       "bytes": 2101,
@@ -9320,6 +9329,12 @@
       "sha256": "b74a1d64ab849b5d36baa60a0b75e75ce16d0da643d17b7ed6e47722734169e9",
       "bytes": 4510,
       "transform": "byte copy"
+    },
+    {
+      "path": "scripts/build_value_uk_pack_revision.py",
+      "sha256": "89e536da9fad5f1a846a957038edf3a4be191274d4d617b717eddfaec0f795fc",
+      "bytes": 9509,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/build_value_uk_research_suite.py",
@@ -11485,6 +11500,12 @@
       "path": "tests/test_p05b_corrected_data.py",
       "sha256": "2f6a945317a76b632d8ee9cb92fefa667268335c8d206ee67fca9bdc93efd864",
       "bytes": 16967,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p05b_pack_revision.py",
+      "sha256": "a8ad5f2c931c79bf165ef927131d6f3618772832c787d450b1673136023d6a02",
+      "bytes": 6075,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
