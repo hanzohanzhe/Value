@@ -12,7 +12,7 @@ import json
 import math
 import platform
 from collections import defaultdict
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -104,6 +104,8 @@ class SinglePeriodProblem:
     # counterfactual) and whether the problem is that collapsed counterfactual.
     cutsets: tuple[object, ...] = ()
     collapsed: bool = False
+    # P0-8 S10: inequality row of each boundary's (forward, reverse) limit.
+    boundary_row_index: Mapping[str, tuple[int, int]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,8 @@ class SinglePeriodSolution:
     stable_tie_objective: float
     diagnostics: Mapping[str, object]
     network_solver_diagnostics: tuple[ObjectiveLockDiagnostic, ...] = ()
+    # P0-8 S10: primary-stage boundary marginal values and their status.
+    boundary_marginal_values: Mapping[str, Mapping[str, object]] = field(default_factory=dict)
 
 
 def _finite(value: object, label: str) -> float:
@@ -738,10 +742,14 @@ def _assemble_problem(
         raise ZonalRedispatchInputError(
             "Current-period boundary capacities must name every declared cutset"
         )
+    boundary_row_index: dict[str, tuple[int, int]] = {}
     for boundary in cutsets:
         transfer = _row(size)
         for member in boundary.members:
             transfer[flow_index[member.corridor_id]] += member.coefficient
+        boundary_row_index[boundary.boundary_id] = (
+            len(inequality_rows), len(inequality_rows) + 1
+        )
         inequality_rows.extend((transfer, -transfer))
         inequality_rhs.extend((
             _nonnegative(
@@ -794,6 +802,7 @@ def _assemble_problem(
         input_sha256=contract_sha256(model_input),
         cutsets=tuple(cutsets),
         collapsed=collapsed,
+        boundary_row_index=boundary_row_index,
     )
 
 
@@ -806,6 +815,7 @@ def _run_highs(
     phase: str,
     settings: ZonalSolverSettings = DEFAULT_ZONAL_SOLVER_SETTINGS,
     locks: Sequence["_ObjectiveCap"] = (),
+    capture_duals: bool = False,
 ) -> tuple[np.ndarray, dict[str, object]]:
     try:
         import scipy
@@ -887,6 +897,13 @@ def _run_highs(
             diagnostics,
         )
     diagnostics["objective_value"] = objective_value
+    if capture_duals:
+        # Only the caller's primary phase asks for this (P0-8 S10); it is
+        # popped before the diagnostics are published.
+        marginals = getattr(getattr(result, "ineqlin", None), "marginals", None)
+        diagnostics["_ineqlin_marginals"] = (
+            None if marginals is None else np.asarray(marginals, dtype=float)
+        )
     return values, diagnostics
 
 
@@ -1397,6 +1414,74 @@ def _finalise_with_lock_repair(
     raise AssertionError("unreachable objective lock repair state")
 
 
+BOUNDARY_BINDING_FRACTION = 1.0 - 1e-6
+
+
+def boundary_marginal_values(
+    problem: SinglePeriodProblem,
+    primary_values: np.ndarray,
+    marginals: np.ndarray | None,
+) -> dict[str, dict[str, object]]:
+    """Primary-stage boundary marginal values (P0-8 S10, P2-06/F3-05).
+
+    Only the primary LP (accepted bids plus VOLL x shed, before any lock row)
+    has a dual with an economic meaning; later phases optimise tie-breaks.
+    HiGHS reports d(objective)/d(rhs) <= 0 for a <= row, so one more MWh of
+    forward capacity is worth -m_fwd and of reverse capacity -m_rev.  The
+    reported value is signed in the forward direction, m_rev - m_fwd: positive
+    when the forward limit binds, negative when the reverse limit binds, in
+    GBP per MWh of boundary transfer.  Status: ``computed``;
+    ``degenerate_dual`` when the boundary is at its limit but the dual is zero;
+    ``shared_member`` when another boundary sharing a corridor is also at its
+    limit (the split of the dual between the two rows is not unique).
+    """
+
+    if not problem.boundary_row_index:
+        return {}
+    transfers: dict[str, float] = {}
+    utilisation: dict[str, float] = {}
+    upper = problem.inequality_rhs
+    for boundary in problem.cutsets:
+        forward_row, reverse_row = problem.boundary_row_index[boundary.boundary_id]
+        transfer = float(problem.inequality_matrix[forward_row] @ primary_values)
+        limit = float(upper[forward_row] if transfer >= 0 else upper[reverse_row])
+        transfers[boundary.boundary_id] = transfer
+        utilisation[boundary.boundary_id] = abs(transfer) / limit if limit > 0 else (
+            1.0 if abs(transfer) > TOLERANCE else 0.0
+        )
+    members = {
+        boundary.boundary_id: {member.corridor_id for member in boundary.members}
+        for boundary in problem.cutsets
+    }
+    result: dict[str, dict[str, object]] = {}
+    for boundary in sorted(problem.cutsets, key=lambda item: item.boundary_id):
+        boundary_id = boundary.boundary_id
+        forward_row, reverse_row = problem.boundary_row_index[boundary_id]
+        if marginals is None or len(marginals) <= max(forward_row, reverse_row):
+            result[boundary_id] = {"value_gbp_per_mwh": None, "status": "not_computed"}
+            continue
+        value = float(marginals[reverse_row]) - float(marginals[forward_row])
+        if abs(value) <= 1e-9:
+            value = 0.0
+        binding = utilisation[boundary_id] >= BOUNDARY_BINDING_FRACTION
+        status = "computed"
+        if binding and any(
+            other != boundary_id
+            and members[other] & members[boundary_id]
+            and utilisation[other] >= BOUNDARY_BINDING_FRACTION
+            for other in members
+        ):
+            status = "shared_member"
+        elif binding and value == 0.0:
+            status = "degenerate_dual"
+        result[boundary_id] = {
+            "value_gbp_per_mwh": value,
+            "status": status,
+            "primary_transfer_mwh": transfers[boundary_id],
+        }
+    return result
+
+
 def bid_cost_coefficients(problem: SinglePeriodProblem) -> np.ndarray:
     """The primary objective without its VOLL x shedding terms."""
 
@@ -1467,6 +1552,10 @@ def solve_lexicographic(
         problem.primary_objective,
         phase="primary_bid_cost",
         settings=settings,
+        capture_duals=True,
+    )
+    boundary_values = boundary_marginal_values(
+        problem, primary_values, phases["primary"].pop("_ineqlin_marginals", None)
     )
     problem, phases["primary_shed_lock"] = lock_primary_shedding(
         problem, primary_values
@@ -1539,9 +1628,10 @@ def solve_lexicographic(
         settings=settings,
         locks=tuple(locks),
     )
-    return _finalise_with_lock_repair(
+    solution = _finalise_with_lock_repair(
         problem, final_values, phases, tuple(locks), settings
     )
+    return replace(solution, boundary_marginal_values=boundary_values)
 
 
 def solve_primary(problem: SinglePeriodProblem) -> SinglePeriodSolution:
@@ -1696,6 +1786,8 @@ def _canonicalize_solution_bounds(
                 "corrections": corrections,
             },
         },
+        solution.network_solver_diagnostics,
+        solution.boundary_marginal_values,
     )
 
 
@@ -2012,6 +2104,14 @@ def _assemble_balancing_result(
             "network_pack_scientific_sha256": problem.network_pack.scientific_sha256,
             "corridor_flow_mwh_by_id": corridor_flow,
             "boundary_transfer_mwh_by_id": boundary_transfer,
+            "boundary_marginal_value_gbp_per_mwh_by_id": {
+                boundary_id: row.get("value_gbp_per_mwh")
+                for boundary_id, row in sorted(solution.boundary_marginal_values.items())
+            },
+            "boundary_marginal_value_status_by_id": {
+                boundary_id: str(row.get("status"))
+                for boundary_id, row in sorted(solution.boundary_marginal_values.items())
+            },
             "load_shedding_mwh_by_zone": load_shedding,
             "storage_dispatch_mwh_by_asset": storage_dispatch,
             "primary_objective_gbp": solution.primary_objective_gbp,

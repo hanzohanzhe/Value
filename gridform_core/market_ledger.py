@@ -1149,6 +1149,54 @@ class ZonePeriodLedgerRow:
             _finite(getattr(self, name), name)
 
 
+# Boundary marginal value semantics (P0-8 S10).  v1 rows (before P0-8b) hold
+# a hard-coded 0.0 that was never computed; readers show them as not_computed.
+BOUNDARY_SHADOW_SEMANTICS_V1 = (
+    "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost"
+)
+BOUNDARY_SHADOW_SEMANTICS_V2 = (
+    "value.boundary-marginal-value/v2:primary_stage_dual_signed_forward_"
+    "gbp_per_mwh_not_zonal_price_or_cash_cost"
+)
+BOUNDARY_SHADOW_STATUSES = ("computed", "degenerate_dual", "shared_member", "not_computed")
+
+
+def boundary_shadow_semantics(status: str) -> str:
+    """The stored semantics text of a v2 row: the v2 label plus its status."""
+
+    if status not in BOUNDARY_SHADOW_STATUSES:
+        raise ValueError(f"Unknown boundary marginal value status {status}")
+    return f"{BOUNDARY_SHADOW_SEMANTICS_V2}|status={status}"
+
+
+def boundary_shadow_status(semantics: object) -> str:
+    """Status of a stored row; every pre-P0-8b row is not_computed."""
+
+    text = str(semantics or "")
+    if text.startswith(BOUNDARY_SHADOW_SEMANTICS_V2 + "|status="):
+        status = text.rsplit("|status=", 1)[1]
+        if status in BOUNDARY_SHADOW_STATUSES:
+            return status
+    return "not_computed"
+
+
+def public_boundary_row(row: Mapping[str, object]) -> dict[str, object]:
+    """A boundary_period_summary row as the read models show it.
+
+    The stored value of a not_computed row (every v1 row) becomes None, never
+    a 0.0 that looks like an uncongested boundary (F3-05).
+    """
+
+    result = dict(row)
+    if "shadow_value_semantics" not in result:
+        return result
+    status = boundary_shadow_status(result.get("shadow_value_semantics"))
+    result["shadow_value_status"] = status
+    if status == "not_computed":
+        result["boundary_shadow_value_gbp_per_mwh"] = None
+    return result
+
+
 @dataclass(frozen=True)
 class BoundaryPeriodLedgerRow:
     year: int
@@ -3095,11 +3143,11 @@ def _write_field_dictionary(
         "attribution_method_id": "Versioned deterministic reference-allocation method identity.",
         "evidence_level": "Evidence scope for detail rows; regional and technology values are deterministic reference allocations, not direct national counterfactual quantities.",
         "system_resource_cost_gbp": "Final physical resource cost; settlement transfers are excluded.",
-        "network_constraint_cost_gbp": "Zonal realised resource cost minus the matched realised copperplate resource cost.",
+        "network_constraint_cost_gbp": "Zonal realised resource cost minus the network-free LP counterfactual cost (same bids, unit-cost table and VOLL; zonal accounting v2). Earlier ledgers: minus the realised copperplate cost.",
         "national_settlement_gbp": "Ahead schedule volume paid at the GB national clearing price.",
         "redispatch_settlement_gbp": "Signed pay-as-bid cashflow for accepted redispatch adjustments.",
         "policy_transfer_gbp": "Declared policy/support transfer, kept outside physical resource cost.",
-        "boundary_shadow_value_gbp_per_mwh": "Diagnostic marginal value in the accepted-bid objective; not a zonal price or observed cash cost.",
+        "boundary_shadow_value_gbp_per_mwh": "Primary-stage dual of the boundary limit, GBP per MWh of transfer, signed in the forward direction (v2 semantics with a status); not a zonal price or observed cash cost. Rows before P0-8b were never computed and read as null.",
         "forecast_error_cost_gbp": "Forecast-schedule realised copperplate cost minus perfect-forecast copperplate realised cost.",
         "network_constraint_cost_identity_gbp": "Forecast-schedule realised zonal cost minus matched realised copperplate cost.",
         "total_deviation_cost_gbp": "Forecast-schedule realised zonal cost minus perfect-forecast copperplate realised cost.",

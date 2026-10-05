@@ -296,10 +296,10 @@ def build_cem_cost_ledger(
                 "Policy transfer is kept separate from physical resource cost.",
             ),
             (
-                "boundary_shadow_value_gbp",
-                "boundary_shadow_diagnostic",
+                "boundary_congestion_rent_diagnostic_gbp",
+                "boundary_congestion_rent_diagnostic",
                 "diagnostic_not_cash_cost",
-                "Diagnostic marginal value in the accepted-bid objective; not a zonal price or observed cash cost.",
+                "Sum of |primary-stage boundary dual x transfer| (P0-8 S10); not a zonal price or observed cash cost.",
             ),
         ):
             if zonal_accounting.get(key) is None:
@@ -312,6 +312,18 @@ def build_cem_cost_ledger(
                 source=f"MarketYearResult.extensions.zonal_accounting_gbp.{key}",
                 included_in_cem_system_cost=False,
                 reason=reason,
+            ))
+        if "boundary_shadow_value_gbp" in zonal_accounting:
+            # Pre-P0-8b results carry a hard-coded 0.0 under the retired key:
+            # shown as not computed, never as a value (F3-05).
+            lines.append(CostLine(
+                id="zonal.boundary_shadow_value_gbp",
+                view="boundary_shadow_diagnostic",
+                amount_gbp=None,
+                classification="not_computed",
+                source="MarketYearResult.extensions.zonal_accounting_gbp.boundary_shadow_value_gbp",
+                included_in_cem_system_cost=False,
+                reason="Recorded before P0-8b as a hard-coded 0.0; the boundary value was never computed.",
             ))
 
     included = sum(

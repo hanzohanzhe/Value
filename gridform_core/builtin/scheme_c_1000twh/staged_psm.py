@@ -20,6 +20,8 @@ from ...asset_economics import (
 )
 from ...comparison_eligibility import build_psm_comparison_input_evidence
 from ...market_ledger import (
+    BOUNDARY_SHADOW_SEMANTICS_V2,
+    boundary_shadow_semantics,
     BoundaryPeriodLedgerRow,
     DispatchSummaryRow,
     MarketLedger,
@@ -1739,6 +1741,10 @@ class StagedBidAtCostPSM:
                         ZONAL_ACCOUNTING_SCHEMA_V2
                         if self._network_pack is not None else "not_applicable"
                     ),
+                    "boundary_shadow_semantics": (
+                        BOUNDARY_SHADOW_SEMANTICS_V2
+                        if self._network_pack is not None else "not_applicable"
+                    ),
                     "counterfactual_engine": (
                         COUNTERFACTUAL_ENGINE
                         if self._network_pack is not None else "not_applicable"
@@ -2287,10 +2293,24 @@ class StagedBidAtCostPSM:
                         )
                     raise
 
-                boundary_shadow = {
-                    boundary.boundary_id: 0.0
-                    for boundary in self._network_pack.cutsets
-                }
+                # P0-8 S10: primary-stage duals from the zonal solve; a value
+                # the module did not compute is stored as 0.0 with status
+                # not_computed, which every reader shows as null.
+                marginal_values = dict(
+                    balancing.extensions.get("boundary_marginal_value_gbp_per_mwh_by_id") or {}
+                )
+                marginal_statuses = dict(
+                    balancing.extensions.get("boundary_marginal_value_status_by_id") or {}
+                )
+                boundary_shadow = {}
+                boundary_status = {}
+                for boundary in self._network_pack.cutsets:
+                    value = marginal_values.get(boundary.boundary_id)
+                    status = str(marginal_statuses.get(boundary.boundary_id) or "not_computed")
+                    if value is None:
+                        value, status = 0.0, "not_computed"
+                    boundary_shadow[boundary.boundary_id] = float(value)
+                    boundary_status[boundary.boundary_id] = status
                 accounting = build_zonal_period_accounting(
                     year=model_input.year,
                     period=period,
@@ -2387,8 +2407,12 @@ class StagedBidAtCostPSM:
                         reverse,
                         utilisation,
                         boundary_shadow[boundary.boundary_id],
-                        "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost",
+                        boundary_shadow_semantics(boundary_status[boundary.boundary_id]),
                     ))
+                    if boundary_status[boundary.boundary_id] != "not_computed":
+                        zonal_account_totals["boundary_congestion_rent_diagnostic_gbp"] += abs(
+                            boundary_shadow[boundary.boundary_id] * transfer
+                        )
 
                 technology_by_asset = {
                     resource.asset_id: resource.technology
@@ -3174,7 +3198,11 @@ class StagedBidAtCostPSM:
                         "network_constraint_bid_objective_gbp": zonal_account_totals[
                             "network_constraint_bid_objective_gbp"
                         ],
-                        "boundary_shadow_value_gbp": 0.0,
+                        # P0-8 S10: sum of |primary dual x transfer|, a
+                        # diagnostic; the old hard-coded key is retired.
+                        "boundary_congestion_rent_diagnostic_gbp": zonal_account_totals[
+                            "boundary_congestion_rent_diagnostic_gbp"
+                        ],
                     }
                     if self._network_pack is not None else None
                 ),

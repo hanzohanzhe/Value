@@ -17,6 +17,9 @@ from typing import Iterable, Mapping, Sequence
 
 from .market_ledger import (
     ATTRIBUTION_SCHEMA_VERSIONS,
+    BOUNDARY_SHADOW_SEMANTICS_V1,
+    BOUNDARY_SHADOW_SEMANTICS_V2,
+    public_boundary_row,
     _read_only_connection,
     market_ledger_capabilities,
     network_solver_evidence_errors,
@@ -39,9 +42,32 @@ ANNUAL_BRIEF_SCHEMA = "value.zonal-annual-brief/v2"
 LEGACY_ATTRIBUTION_REASON = (
     "legacy_contract_did_not_measure_avoided_curtailment"
 )
-SHADOW_VALUE_SEMANTICS = (
-    "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost"
-)
+# P0-8 S10: v2 boundary values are primary-stage duals; v1 (pre-P0-8b)
+# ledgers recorded a hard-coded 0.0 and are read as not_computed.
+SHADOW_VALUE_SEMANTICS = BOUNDARY_SHADOW_SEMANTICS_V2
+LEGACY_SHADOW_VALUE_SEMANTICS = BOUNDARY_SHADOW_SEMANTICS_V1
+BOUNDARY_SHADOW_DEFECT = {
+    "defect_id": "p08.boundary-shadow-not-computed",
+    "finding_ids": ["P2-06", "F3-05"],
+    "severity": "high",
+    "summary": (
+        "Recorded before P0-8b: the boundary marginal value was written as a "
+        "hard-coded 0.0 and never computed, also on boundaries at their limit."
+    ),
+    "affected_outputs": [
+        "boundary_period_summary.boundary_shadow_value_gbp_per_mwh",
+        "zonal_accounting_gbp.boundary_shadow_value_gbp",
+    ],
+    "remedy": "Shown as not computed; re-run with staged PSM 1.3.0 for primary-stage duals.",
+}
+
+
+def _boundary_semantics(metadata: Mapping[str, object]) -> str:
+    return (
+        SHADOW_VALUE_SEMANTICS
+        if metadata.get("boundary_shadow_semantics") == SHADOW_VALUE_SEMANTICS
+        else LEGACY_SHADOW_VALUE_SEMANTICS
+    )
 # One declared reporting threshold for load shedding (P0-8 S6).  Shedding at
 # or below it is numerical residue, never a reliability event or an affected
 # zone; it is reported separately as numerical_residual_unserved_mwh.
@@ -182,6 +208,11 @@ def ledger_known_defects(connection: sqlite3.Connection, tables: set[str]) -> li
             defects.append(dict(DEC_PRICING_DEFECT))
         if metadata.get("zonal_accounting_schema") != ZONAL_ACCOUNTING_SCHEMA_V2:
             defects.append(dict(COUNTERFACTUAL_DEFECT))
+        if (
+            "boundary_period_summary" in tables
+            and _boundary_semantics(metadata) != SHADOW_VALUE_SEMANTICS
+        ):
+            defects.append(dict(BOUNDARY_SHADOW_DEFECT))
     return defects
 
 
@@ -648,7 +679,10 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
             metadata.get("network_semantics")
             or "lossless_computational_transport_with_etys_cutsets"
         ),
-        "boundary_value_semantics": SHADOW_VALUE_SEMANTICS,
+        "boundary_value_semantics": _boundary_semantics(metadata),
+        "boundary_shadow_value_available": (
+            _boundary_semantics(metadata) == SHADOW_VALUE_SEMANTICS
+        ),
         "reliability_semantics": "observed_chronology_not_statistical_lole",
         "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
         "known_defects": known_defects,
@@ -802,15 +836,26 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
                     item = dict(row)
                     technology_by_year.setdefault(int(item["year"]), []).append(item)
 
+        boundary_semantics = _boundary_semantics(
+            _decoded_metadata(connection) if "metadata" in tables else {}
+        )
         congestion = {
             int(row["year"]): dict(row) for row in connection.execute("""
                 SELECT year,
                     SUM(CASE WHEN utilisation_fraction >= 0.999999 THEN 1 ELSE 0 END)
                         AS congested_boundary_periods,
-                    MAX(utilisation_fraction) AS maximum_boundary_utilisation_fraction
+                    MAX(utilisation_fraction) AS maximum_boundary_utilisation_fraction,
+                    SUM(CASE WHEN shadow_value_semantics LIKE ? AND
+                             shadow_value_semantics NOT LIKE '%|status=not_computed'
+                        THEN ABS(boundary_shadow_value_gbp_per_mwh * transfer_mwh)
+                        ELSE 0 END) AS boundary_congestion_rent_diagnostic_gbp
                 FROM boundary_period_summary GROUP BY year
-            """).fetchall()
+            """, (SHADOW_VALUE_SEMANTICS + "|status=%",)).fetchall()
         } if "boundary_period_summary" in tables else {}
+        if boundary_semantics != SHADOW_VALUE_SEMANTICS:
+            # P0-8 S10 (F3-05): never show the old hard-coded 0.0 as a value.
+            for item in congestion.values():
+                item["boundary_congestion_rent_diagnostic_gbp"] = None
         reliability = {
             int(row["year"]): dict(row) for row in connection.execute("""
                 SELECT year,
@@ -865,7 +910,13 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
         row.update(congestion.get(year, {
             "congested_boundary_periods": 0,
             "maximum_boundary_utilisation_fraction": 0.0,
+            "boundary_congestion_rent_diagnostic_gbp": (
+                0.0 if boundary_semantics == SHADOW_VALUE_SEMANTICS else None
+            ),
         }))
+        row["boundary_value_status"] = (
+            "computed" if boundary_semantics == SHADOW_VALUE_SEMANTICS else "not_computed"
+        )
         row.update(reliability.get(year, {
             "observed_loss_of_load_hours": 0.0,
             "observed_loss_of_load_events": 0,
@@ -955,7 +1006,7 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
             "system_resource_cost": "final physical resource cost",
             "settlements": "payments kept outside system resource cost",
             "constraint_resource_cost": "matched zonal minus realised copperplate physical cost",
-            "boundary_shadow_value": SHADOW_VALUE_SEMANTICS,
+            "boundary_shadow_value": boundary_semantics,
         },
         "reliability_semantics": "observed_chronology_not_statistical_lole",
         "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
@@ -1333,7 +1384,10 @@ def query_zonal_results(
         "offset": offset,
         "count": len(rows),
         "has_more": offset + len(rows) < total,
-        "items": [dict(row) for row in rows],
+        "items": [
+            public_boundary_row(dict(row)) if view == "boundary" else dict(row)
+            for row in rows
+        ],
     }
 
 

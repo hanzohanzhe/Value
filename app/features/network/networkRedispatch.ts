@@ -334,6 +334,7 @@ export type ZonalCapabilities = {
   bid_replay_available: boolean;
   network_semantics: string;
   boundary_value_semantics: string;
+  boundary_shadow_value_available?: boolean;
   reliability_semantics: string;
   load_shedding_reporting_threshold_mwh?: number;
   known_defects?: ZonalKnownDefect[];

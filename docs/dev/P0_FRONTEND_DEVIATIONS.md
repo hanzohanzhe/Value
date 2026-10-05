@@ -47,7 +47,7 @@
 | F-P09-6 | 4.2：`Withheld` pill（复现口径未通过不变量，Q14） | `coveragePill(…, { withheld: true })` 已就绪，但当前没有后端字段可读，界面不会出现 Withheld | 复现口径的发布判定由 X0/M4 提供字段；不臆造字段名 | 是（需约定字段） |
 | F-P09-7 | 4.3：修正口径径流水电兼容资本的 memo 行 | 当 Run 指标中有 `ror_hydro_compatibility_capital_gbp` 时在构成表末尾列出（不计入头条、不画进条形）；当前后端没有该字段 | 该数值属于修正口径（P0-7/X0），字段名先按此约定，需对方实现时采用 | 是（字段名） |
 | F-P09-8 | 4.6：运行期 fallback 审计 Callout | 未实现 | 依赖 P0-8 S12 的后端字段，接口未定 | 是（P0-8 交付后补） |
-| F-P09-9 | 4.6：P0-8b 后表头改为 `Boundary marginal value (£/MWh)` | 仍为 `Diagnostic marginal value`；值为 null 时显示 `Not computed` | P0-8b 尚未合入 | 否 |
+| F-P09-9 | 4.6：P0-8b 后表头改为 `Boundary marginal value (£/MWh)` | 〔M6-P0-8b 已消解〕表头已按规格改为 `Boundary marginal value (£/MWh)`；后端对 P0-8b 之前的账本行给 `null` + `shadow_value_status=not_computed`，界面显示 `Not computed` | — | 否 |
 | F-P09-10 | 1.2 / 计划 S1：`RunContextBar.tsx:27`、`Value101Learn.tsx:124` 改用共享格式化 | 未改，列入 `toLocaleString` 白名单 | 两处都是整数周期数，不存在缺失变 0；`RunContextBar` 属 X0 S12（并行 lane 在改），避免冲突 | 否 |
 | F-P09-11 | 5：`Mark as lost` 二次确认 | 浏览器 `prompt`，用户须输入精确 run ID（与 Delete 相同），前端只把用户输入的 ID 作为 `confirm_run_id` 发给 API 的确认门；输入不符时不发请求（评审后修改，原实现是确认框 + 自动带上 ID） | 规格只要求二次确认；P0-3 S4 的精确 ID 门不能由前端代填；API 的安静期门仍由后端执行，拒绝时显示错误码 | 否 |
 | F-P09-12 | 5：`Backend offline` 在连续失败 3 次后 | 实现如此；第一次失败即显示 `Backend degraded` 与 Retry，轮询 2 s 起翻倍至 30 s。`e2e/happy-path.spec.ts` 的离线断言改为匹配 `Backend (degraded|offline)`（该 spec 需真实服务，本次未运行） | 规格 | 否 |

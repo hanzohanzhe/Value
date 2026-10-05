@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Mapping
 
-from .market_ledger import _read_only_connection, validate_market_ledger_file
+from .market_ledger import _read_only_connection, public_boundary_row, validate_market_ledger_file
 from .module_context import RunStaticContext, YearContext, canonical_context_sha256
 from .run_policy import resolve_run_policy
 from .run_snapshot import SnapshotError, verify_run_input_snapshot
@@ -330,7 +330,14 @@ def _period_outcome(
         "schema_version": "value.replay-period-outcome/v1",
         "year": year,
         "period": period,
-        "tables": {table: _rows(connection, table, year, period) for table in common if table in tables},
+        "tables": {
+            table: (
+                [public_boundary_row(row) for row in _rows(connection, table, year, period)]
+                if table == "boundary_period_summary"
+                else _rows(connection, table, year, period)
+            )
+            for table in common if table in tables
+        },
     }
 
 
