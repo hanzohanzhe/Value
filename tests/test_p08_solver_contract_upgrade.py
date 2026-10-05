@@ -222,3 +222,53 @@ class SolverContractUpgradeHttpTests(unittest.TestCase):
         self.assertEqual(status, 409, body)
         self.assertEqual(body["error_code"], "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")
         self.assertFalse(any((self.home / "runs").glob("*/status.json")))
+
+
+class ReplayExportSupersededTests(unittest.TestCase):
+    """A superseded Run's replay export is refused with a structured code.
+
+    Review M2-P0-8a: for a v3 Run the snapshot check fails at the module
+    identity step (GF_RUN_METHOD_SUPERSEDED) before any historical contract
+    is read, and the code was only embedded in a ValueError message.
+    """
+
+    def test_snapshot_code_reaches_the_export_error(self) -> None:
+        from unittest.mock import patch
+
+        import gridform_core.replay_export as replay_export
+
+        refusal = SnapshotError("module identity superseded", METHOD_SUPERSEDED)
+        with tempfile.TemporaryDirectory() as folder, patch.object(
+            replay_export, "verify_run_input_snapshot", side_effect=refusal
+        ):
+            with self.assertRaises(replay_export.ReplayExportError) as caught:
+                replay_export._verified_snapshot(Path(folder))
+        self.assertIsInstance(caught.exception, ValueError)
+        self.assertEqual(caught.exception.code, METHOD_SUPERSEDED)
+
+    def test_export_job_records_the_error_code(self) -> None:
+        import time
+        from unittest.mock import patch
+
+        import backend.server as server
+        from gridform_core.replay_export import ReplayExportError, ReplayExportRequest
+
+        with tempfile.TemporaryDirectory() as folder:
+            run_root = Path(folder) / "run"
+            market = run_root / "model-output" / "market"
+            market.mkdir(parents=True)
+            (market / "market.sqlite").write_bytes(b"")
+            refusal = ReplayExportError("frozen snapshot identity validation failed", METHOD_SUPERSEDED)
+            with patch.object(server, "create_replay_export", side_effect=refusal):
+                job = server.create_replay_export_job(
+                    run_root, ReplayExportRequest("year", 2025, None, None, "zip")
+                )
+                deadline = time.monotonic() + 30
+                record = job
+                while time.monotonic() < deadline:
+                    record = server.read_replay_export_job(run_root, str(job["job_id"]))
+                    if record.get("status") == "failed":
+                        break
+                    time.sleep(0.05)
+        self.assertEqual(record["status"], "failed")
+        self.assertEqual(record["error_code"], METHOD_SUPERSEDED)

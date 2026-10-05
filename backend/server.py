@@ -613,6 +613,9 @@ def create_replay_export_job(
                 "completed_at": now(),
                 "error": str(exc),
             })
+            code = getattr(exc, "code", None)
+            if isinstance(code, str) and code:
+                current["error_code"] = code
         with REPLAY_EXPORT_JOBS_LOCK:
             atomic_json(job_path, current)
 

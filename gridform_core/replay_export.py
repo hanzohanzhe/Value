@@ -387,14 +387,32 @@ def _validated_context(
     return raw, context
 
 
+class ReplayExportError(ValueError):
+    """A replay export refusal; ``code`` is set when the cause has a stable code.
+
+    A Run whose frozen method was superseded (for example a v3 zonal solver
+    contract after the v4 upgrade) is refused here with
+    ``GF_RUN_METHOD_SUPERSEDED``: its results stay readable, but the full
+    replay ZIP re-verifies the frozen snapshot against the current registry.
+    """
+
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 def _verified_snapshot(run_root: Path) -> tuple[dict[str, object], object]:
     registry = workspace_registry()
     try:
         snapshot = verify_run_input_snapshot(
             run_root / "input-snapshot", registry
         )
-    except (OSError, ValueError, SnapshotError) as exc:
-        raise ValueError(f"frozen snapshot identity validation failed: {exc}") from exc
+    except SnapshotError as exc:
+        raise ReplayExportError(
+            f"frozen snapshot identity validation failed: {exc}", exc.code
+        ) from exc
+    except (OSError, ValueError) as exc:
+        raise ReplayExportError(f"frozen snapshot identity validation failed: {exc}") from exc
     status = _read_object(run_root / "status.json", "Official Run status")
     if (
         str(status.get("input_snapshot_id") or "")

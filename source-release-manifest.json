@@ -3511,8 +3511,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "8ed997cc97fc9edd31eac5ab7925858d5029f42c25820f6702fab3dce09ab0fd",
-      "bytes": 189753,
+      "sha256": "e86bc0e4f1461486c0919ed89cc324c48ac3fc31419610fa522f1f42f35b5a89",
+      "bytes": 189891,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7834,8 +7834,8 @@
     },
     {
       "path": "gridform_core/replay_export.py",
-      "sha256": "35dbb98e3f134c7f80ee9c12b1297fd6a0a63eb520f146e4159148b107685f3b",
-      "bytes": 38682,
+      "sha256": "775f7b0b43c4a7cb2cf265542f11b7f8d5fd088780a47082450db40390217b81",
+      "bytes": 39378,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10760,8 +10760,8 @@
     },
     {
       "path": "tests/test_p08_solver_contract_upgrade.py",
-      "sha256": "bd06a57843138eebe71a599d9ed56ca2d9121b7fbd9000918223c3f4e0dbcd53",
-      "bytes": 10236,
+      "sha256": "b4970ae50d8383ac15cd0974177f3eb1ee89bdb037a070d21813d7d43d179f0e",
+      "bytes": 12578,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
