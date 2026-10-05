@@ -1122,6 +1122,7 @@
     "scripts/methodology/requirements.txt",
     "scripts/p04_capture_trajectory_golden.py",
     "scripts/p07_record_head_decide.py",
+    "scripts/p07_s10_acceptance.py",
     "scripts/p08_zonal_lock_repair_scan.py",
     "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
@@ -1215,6 +1216,7 @@
     "tests/fixtures/network_toys/eleven-zone-topology.json",
     "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/p07/head_decide_record.json",
+    "tests/fixtures/p07/s10_acceptance.json",
     "tests/fixtures/prompt08_audit_project.json",
     "tests/fixtures/runs/doctoral-no-invariants/model-output/validation/scientific-validation.json",
     "tests/fixtures/runs/doctoral-no-invariants/status.json",
@@ -1458,6 +1460,7 @@
     "tests/test_p07_head_decide_record.py",
     "tests/test_p07_investment_accounts.py",
     "tests/test_p07_investment_corrections.py",
+    "tests/test_p07_s10_acceptance.py",
     "tests/test_p08_cutset_classification.py",
     "tests/test_p08_network_shares.py",
     "tests/test_p08_reliability_reporting.py",
@@ -9565,6 +9568,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "scripts/p07_s10_acceptance.py",
+      "sha256": "b7a68e3eead3dad2581257eb60a57c8aea127bd306f8d23db4de13caf2c2d5a0",
+      "bytes": 18161,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/p08_zonal_lock_repair_scan.py",
       "sha256": "579ea813a089ef875e3e5555ac2532055ca231fb68bde46e439ac07d49ffa331",
       "bytes": 4648,
@@ -10114,6 +10123,12 @@
       "path": "tests/fixtures/p07/head_decide_record.json",
       "sha256": "fa3f261fe3f9548626f8c91c38145689e46f257734db11032211c5093d95f678",
       "bytes": 123049,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/p07/s10_acceptance.json",
+      "sha256": "623279b04ee8ac1eb62aebec810dda666674c02d1621bccfadc5280e610893b6",
+      "bytes": 36485,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11572,6 +11587,12 @@
       "path": "tests/test_p07_investment_corrections.py",
       "sha256": "33511bb7d6caf455b4cc40aaf87068787f4172c919dafd3060d58fdf54af8f9d",
       "bytes": 14653,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p07_s10_acceptance.py",
+      "sha256": "12437a9cd67e8a79558875eb1acf02cd321df2a86f0d5508ebf72e1d98bd2419",
+      "bytes": 10734,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
