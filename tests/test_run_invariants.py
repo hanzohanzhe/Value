@@ -360,7 +360,7 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         self.assertEqual(validation["scientific_validation_status"], "not_evaluated")
         self.assertFalse(validation["cem_stages_executed"])
         self.assertEqual(validation["stress"]["stress_periods"], 48)
-        self.assertAlmostEqual(validation["stress"]["shortfall_mwh"], 570.546171074, places=6)
+        self.assertAlmostEqual(validation["stress"]["shortfall_mwh"], 810.546171074, places=6)
         self.assertEqual(validation["energy_balance"]["compatibility_adjustment_periods"], 48)
         invariants = _read(output / "validation" / "run-invariants.json")
         self.assertEqual(invariants["status"], "passed")

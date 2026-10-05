@@ -55,6 +55,9 @@ def _legacy_run(runs: Path, run_id: str, output: Path) -> Path:
 
     run = runs / run_id
     shutil.copytree(output, run / "model-output")
+    # The ledger as a pre-P0-4 S4 run wrote it (no audit/routing tables, no
+    # declared boundary, HEAD compatibility adjustments).
+    p04_variants.downgrade_to_pre_p04_ledger(run / "model-output" / "market" / "market.sqlite")
     for name in ("validation", "parity"):
         shutil.rmtree(run / "model-output" / name, ignore_errors=True)
     report = run / "model-output" / "validation" / "scientific-validation.json"

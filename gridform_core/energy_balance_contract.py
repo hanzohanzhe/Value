@@ -102,6 +102,12 @@ SURPLUS_ROUTING_COLUMNS = (
     "year", "period", "source_class", "available_mwh", "to_storage_mwh",
     "to_export_mwh", "to_flexible_mwh", "spilled_mwh",
 )
+# Written by the default PSM from P0-4 S5 on; read as 0 when absent.
+# to_dispatch: surplus re-dispatched to the balancing requirement (for the
+# in-dispatch class this is the DEV-BAL-04 double count); curtailed:
+# down-regulation taken out of S; unrealised: in-dispatch surplus the kernel
+# routed or spilled that S never contained (P3-01).
+SURPLUS_ROUTING_OPTIONAL_COLUMNS = ("to_dispatch_mwh", "curtailed_mwh", "unrealised_mwh")
 
 PERIOD_COLUMNS = (
     "year", "period", "stage", "forecast_demand_mwh", "real_demand_mwh",
@@ -418,13 +424,19 @@ class SurplusRoutingRow:
     to_export_mwh: float
     to_flexible_mwh: float
     spilled_mwh: float
+    to_dispatch_mwh: float = 0.0
+    curtailed_mwh: float = 0.0
+    unrealised_mwh: float = 0.0
 
     @property
     def routed_mwh(self) -> float:
         return self.to_storage_mwh + self.to_export_mwh + self.to_flexible_mwh
 
     def conservation_gap_mwh(self) -> float:
-        return self.available_mwh - self.routed_mwh - self.spilled_mwh
+        return (
+            self.available_mwh - self.routed_mwh - self.spilled_mwh
+            - self.to_dispatch_mwh - self.curtailed_mwh - self.unrealised_mwh
+        )
 
 
 def surplus_terms(rows: Iterable[SurplusRoutingRow]) -> tuple[float, float]:

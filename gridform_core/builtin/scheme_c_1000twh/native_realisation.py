@@ -29,6 +29,12 @@ LOG_COLUMNS = (
     "curtailed_mw", "blackout_mw", "flexible_demand_mw", "export_mw",
 )
 
+# P0-4 S5 surplus-node terms per period (MWh; not part of the P0-6 log view).
+SURPLUS_COLUMNS = (
+    "u_out_mwh", "non_vre_spill_mwh", "non_vre_double_counted_mwh",
+    "u_out_to_storage_mwh", "u_out_to_export_mwh", "u_out_to_flexible_mwh",
+)
+
 
 @dataclass
 class PeriodRealisation:
@@ -78,6 +84,7 @@ class RealisationLog:
         self.branch = np.full(self.periods, -1, dtype=np.int8)
         for column in LOG_COLUMNS:
             setattr(self, column, np.zeros(self.periods, dtype=np.float64))
+        self._start_surplus()
 
     def record(self, period: int, realisation: PeriodRealisation, *, forecast_demand: float,
                real_demand: float, flexible_demand: float, export: float) -> None:
@@ -91,6 +98,28 @@ class RealisationLog:
         self.blackout_mw[period] = float(realisation.energy_deficit or 0.0)
         self.flexible_demand_mw[period] = float(flexible_demand or 0.0)
         self.export_mw[period] = float(export or 0.0)
+
+    def record_surplus(self, period: int, trace: Any, terms: Any) -> None:
+        """P0-4 S5: node terms of the period (MWh), kept outside LOG_COLUMNS.
+
+        ``trace`` is the kernel's SurplusTrace and ``terms`` its
+        PeriodSurplusTerms; only numbers are kept.
+        """
+
+        if not hasattr(self, "u_out_mwh") or len(self.u_out_mwh) != self.periods:
+            self._start_surplus()
+        self.u_out_mwh[period] = float(terms.u_out_mwh)
+        self.non_vre_spill_mwh[period] = float(terms.w_in_mwh)
+        self.non_vre_double_counted_mwh[period] = float(terms.non_vre_double_counted_mwh)
+        out = trace.routing["out_of_dispatch"]
+        hours = float(terms.period_hours)
+        self.u_out_to_storage_mwh[period] = out["to_storage"] * hours
+        self.u_out_to_export_mwh[period] = out["to_export"] * hours
+        self.u_out_to_flexible_mwh[period] = out["to_flexible"] * hours
+
+    def _start_surplus(self) -> None:
+        for column in SURPLUS_COLUMNS:
+            setattr(self, column, np.zeros(self.periods, dtype=np.float64))
 
     def as_dict(self) -> dict[str, list]:
         payload: dict[str, list] = {"branch": self.branch.tolist()}

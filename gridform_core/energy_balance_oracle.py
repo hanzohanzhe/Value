@@ -188,8 +188,12 @@ def _read_routing(connection: sqlite3.Connection) -> tuple[dict[tuple[int, int],
     if missing:
         return None, missing
     rows: dict[tuple[int, int], list[contract.SurplusRoutingRow]] = defaultdict(list)
+    optional = [
+        name if name in columns else "0.0"
+        for name in contract.SURPLUS_ROUTING_OPTIONAL_COLUMNS
+    ]
     query = "SELECT {} FROM {}".format(
-        ", ".join(contract.SURPLUS_ROUTING_COLUMNS), contract.SURPLUS_ROUTING_TABLE
+        ", ".join((*contract.SURPLUS_ROUTING_COLUMNS, *optional)), contract.SURPLUS_ROUTING_TABLE
     )
     for raw in connection.execute(query):
         row = contract.SurplusRoutingRow(

@@ -505,7 +505,9 @@ class HarnessIsolationTests(unittest.TestCase):
 
     def test_unknown_ledger_writers_fail_closed_with_a_named_error(self):
         ledger = harness.RecordingLedger()
-        for name in ("record_storage_energy_audit", "record_surplus_routing", "declare_balance_boundary"):
+        # (record_storage_audit and record_surplus_routing are recorded since
+        # P0-4 S4/S5; any other writer still fails closed.)
+        for name in ("record_storage_energy_audit", "record_unknown_writer", "declare_unknown_boundary"):
             with self.assertRaisesRegex(NotImplementedError, name):
                 getattr(ledger, name)
             with self.assertRaises(NotImplementedError):

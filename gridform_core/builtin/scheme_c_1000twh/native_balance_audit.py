@@ -190,6 +190,7 @@ class PeriodSurplusTerms:
 
     u_out_mwh: float
     w_in_mwh: float
+    period_hours: float
     in_dispatch_claimed_spill_mwh: float
     in_dispatch_unrealised_mwh: float
     non_vre_double_counted_mwh: float
@@ -246,6 +247,7 @@ def node_terms(
     terms = PeriodSurplusTerms(
         u_out_mwh=u_out,
         w_in_mwh=w_in,
+        period_hours=hours,
         in_dispatch_claimed_spill_mwh=claimed,
         in_dispatch_unrealised_mwh=claimed - w_in,
         non_vre_double_counted_mwh=in_row["to_dispatch"] * hours,
@@ -277,3 +279,19 @@ def storage_audit_rows(year: int, period: int, batteries) -> list:
             **audit.row_values(stored_total(battery)),
         ))
     return rows
+
+
+def surplus_routing_rows(year: int, period: int, rows) -> list:
+    """SurplusRoutingLedgerRow per source class with any routing this period."""
+
+    from ...market_ledger import SurplusRoutingLedgerRow
+
+    return [
+        SurplusRoutingLedgerRow(
+            int(year), int(period), str(row["source_class"]),
+            float(row["available_mwh"]), float(row["to_storage_mwh"]), float(row["to_export_mwh"]),
+            float(row["to_flexible_mwh"]), float(row["spilled_mwh"]), float(row["to_dispatch_mwh"]),
+            float(row["curtailed_mwh"]), float(row["unrealised_mwh"]),
+        )
+        for row in rows
+    ]

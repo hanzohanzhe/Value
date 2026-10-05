@@ -283,6 +283,54 @@ def run_variant(name: str, output_dir: Path, *, mode: str = DEFAULT_MODE, python
     return Path(output_dir)
 
 
+P04_LEDGER_TABLES = (
+    "storage_energy_audit", "storage_year_boundary", "surplus_routing",
+    "balance_boundary_period", "stress_event",
+)
+
+
+def downgrade_to_pre_p04_ledger(database: Path) -> None:
+    """Rewrite a fresh default-PSM ledger into the pre-P0-4 S4 form.
+
+    For tests that need a legacy (release-r2 type) ledger from a current run:
+    drop the P0-4 S4-S6 tables and boundary metadata, and restore the HEAD
+    self-report (raw on retained_demand_serving_v1, adjustment -raw whenever
+    |raw| > 1e-9, adjusted residual 0).  Dispatch columns are untouched.
+    """
+
+    import sqlite3
+
+    from gridform_core import energy_balance_contract as contract
+
+    connection = sqlite3.connect(database)
+    try:
+        for table in P04_LEDGER_TABLES:
+            connection.execute(f"DROP TABLE IF EXISTS {table}")
+        connection.execute(
+            "DELETE FROM metadata WHERE key IN (?, ?)",
+            (contract.METADATA_BOUNDARY_KEY, contract.METADATA_RULE_SET_KEY),
+        )
+        rows = connection.execute(
+            "SELECT year, period, stage, accepted_supply_mwh, blackout_mwh, real_demand_mwh, "
+            "storage_charge_mwh, forecast_demand_mwh FROM period_summary"
+        ).fetchall()
+        for year, period, stage, supply, blackout, demand, charge, forecast in rows:
+            flows = contract.PeriodFlows(
+                year, period, supply, blackout, demand, charge, 0.0, 0.0, forecast_demand_mwh=forecast,
+            )
+            raw = contract.retained_residual(flows)
+            adjustment = -raw if abs(raw) > 1e-9 else 0.0
+            connection.execute(
+                "UPDATE period_summary SET raw_energy_balance_residual_mwh=?, compatibility_adjustment_mwh=?, "
+                "energy_balance_residual_mwh=? WHERE year=? AND period=? AND stage=?",
+                (raw, adjustment, raw + adjustment, year, period, stage),
+            )
+        connection.commit()
+        connection.execute("VACUUM")
+    finally:
+        connection.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)

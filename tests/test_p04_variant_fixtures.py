@@ -42,7 +42,7 @@ EXPECTED = {
 
 # P0-4 S4-S6: tables that later steps add (accounting zone, never trajectory)
 # and existing accounting columns they revise.
-P04_ADDED_TABLES = {"storage_energy_audit", "storage_year_boundary"}
+P04_ADDED_TABLES = {"storage_energy_audit", "storage_year_boundary", "surplus_routing"}
 P04_REVISED_COLUMNS: set[str] = set()
 
 
@@ -173,9 +173,11 @@ class P04VariantFixtures(unittest.TestCase):
         self.assertAlmostEqual(result.full_node_residual_mwh, -18.829, places=3)
         self.assertAlmostEqual(result.lower_violation_mwh, 13.829, places=3)
         self.assertEqual(result.upper_violation_mwh, 0.0)
-        # A2 shortfall bounds for period 0: [D - S, D + C + min(XS + K, S) - S] = [13.829, 18.829]
+        # A2 shortfall for period 0: exact since P0-4 S5 records the surplus
+        # routing (U_out = W_in = 0): D + C - S = 18.829 (HEAD bounds were
+        # [13.829, 18.829]).
         self.assertEqual(report["stress"]["periods"][0]["period"], 0)
-        self.assertAlmostEqual(report["stress"]["periods"][0]["shortfall_lower_mwh"], 13.829, places=3)
+        self.assertAlmostEqual(report["stress"]["periods"][0]["shortfall_lower_mwh"], 18.829, places=3)
         self.assertAlmostEqual(report["stress"]["periods"][0]["shortfall_upper_mwh"], 18.829, places=3)
         reported = report["metrics"]["reported"]
         self.assertEqual(reported["adjusted_periods"], 48)
@@ -188,13 +190,10 @@ class P04VariantFixtures(unittest.TestCase):
         self.assertEqual(stress["events"][0]["first_period"], 0)
         self.assertEqual(stress["events"][0]["last_period"], 47)
         self.assertEqual(stress["recorded_unserved_mwh"], 0.0)
-        # Lower bound: sum(D - S) = 775.491 - 204.945.  Upper bound: S <= K in every period,
-        # so D + C + min(K, S) - S = D + C and the day sums to sum(D) + sum(C).
-        self.assertAlmostEqual(stress["shortfall_lower_mwh"], 570.546, places=3)
-        self.assertAlmostEqual(
-            stress["shortfall_upper_mwh"],
-            report["metrics"]["sum_demand_mwh"] + report["metrics"]["sum_storage_charge_mwh"], places=6,
-        )
+        # Exact (routing recorded): the whole hidden shortage of the day.
+        self.assertEqual(stress["basis"], "exact")
+        self.assertAlmostEqual(stress["shortfall_lower_mwh"], 810.546, places=3)
+        self.assertAlmostEqual(stress["shortfall_upper_mwh"], stress["shortfall_lower_mwh"], places=9)
 
     def test_nuclear_balancing_double_count_breaks_the_upper_envelope(self):
         report = self.reports["nuclear_balancing"]
@@ -243,6 +242,66 @@ class P04VariantFixtures(unittest.TestCase):
                 self.assertEqual(metrics[name]["envelope"]["lower_violations"], 0)
                 self.assertEqual(metrics[name]["envelope"]["upper_violations"], 0)
                 self.assertEqual(self.reports[name]["stress"]["stress_periods"], 0)
+
+    def _surplus_node(self, name):
+        """Per-period default_psm_surplus_node_v1 residuals from the ledger rows."""
+
+        uri = self.ledgers[name].resolve().as_uri() + "?mode=ro&immutable=1"
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            routing, missing = oracle._read_routing(connection)
+            self.assertEqual(missing, [])
+            self.assertIsNotNone(routing)
+            residuals, gaps, shortfalls = [], [], []
+            for row in connection.execute(
+                "SELECT year, period, accepted_supply_mwh, blackout_mwh, real_demand_mwh, storage_charge_mwh, "
+                "export_mwh, flexible_demand_mwh, excess_mwh, curtailed_mwh FROM period_summary ORDER BY period"
+            ):
+                rows = routing.get((row[0], row[1]), [])
+                u_out, w_in = contract.surplus_terms(rows)
+                flows = contract.PeriodFlows(*row, u_out_mwh=u_out, w_in_mwh=w_in)
+                residuals.append(contract.surplus_node_residual(flows))
+                gaps.extend(abs(item.conservation_gap_mwh()) for item in rows)
+                shortfalls.append(contract.period_shortfall(flows))
+        return residuals, gaps, shortfalls
+
+    def test_surplus_node_boundary(self):
+        # M3 gate (2): physically closing fixtures <= 1e-9, overshoot -18.829,
+        # nuclear_balancing +3.000; per-source surplus conservation <= 1e-9.
+        for name in ("baseline", "export", "export_electrolyser", "nuclear_curtail", "multi_battery"):
+            with self.subTest(variant=name):
+                residuals, gaps, shortfalls = self._surplus_node(name)
+                self.assertLessEqual(max(abs(value) for value in residuals), 1e-9)
+                self.assertLessEqual(max(gaps, default=0.0), 1e-9)
+                self.assertTrue(all(item.exact and item.lower_mwh <= 1e-9 for item in shortfalls))
+        residuals, gaps, shortfalls = self._surplus_node("overshoot")
+        self.assertAlmostEqual(residuals[0], -18.829, places=3)
+        self.assertTrue(all(value < -1.0 for value in residuals))
+        self.assertLessEqual(max(gaps), 1e-9)
+        # A2 exact shortfall: the whole hidden shortage of the day (it equals
+        # the compatibility adjustment HEAD used to hide it).
+        self.assertAlmostEqual(sum(item.lower_mwh for item in shortfalls), 810.546, places=3)
+        residuals, gaps, shortfalls = self._surplus_node("nuclear_balancing")
+        self.assertAlmostEqual(residuals[0], 3.0, places=9)
+        self.assertAlmostEqual(max(residuals), 3.0, places=9)
+        self.assertEqual(sum(1 for value in residuals if value > 1e-9), 35)
+        self.assertLessEqual(max(gaps), 1e-9)
+        self.assertEqual(sum(1 for item in shortfalls if item.lower_mwh > 1e-9), 0)
+        # The in-dispatch (nuclear) surplus re-dispatched in the balancing
+        # branch is the DEV-BAL-04 double count.
+        uri = self.ledgers["nuclear_balancing"].resolve().as_uri() + "?mode=ro&immutable=1"
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            double = connection.execute(
+                "SELECT to_dispatch_mwh FROM surplus_routing WHERE period=0 AND source_class='in_dispatch'"
+            ).fetchone()[0]
+        self.assertAlmostEqual(double, 3.0, places=9)
+        # nuclear_curtail: the booked down-regulation that nuclear could not
+        # take out of S is the in-dispatch spill W_in (non_vre_spill).
+        uri = self.ledgers["nuclear_curtail"].resolve().as_uri() + "?mode=ro&immutable=1"
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            spilled = connection.execute(
+                "SELECT SUM(spilled_mwh) FROM surplus_routing WHERE source_class='in_dispatch'"
+            ).fetchone()[0]
+        self.assertGreater(spilled, 0.0)
 
     def test_cli_exit_code_on_a_real_ledger(self):
         completed = subprocess.run(

@@ -673,6 +673,32 @@ class StorageYearBoundaryRow:
 
 
 @dataclass(frozen=True)
+class SurplusRoutingLedgerRow:
+    """Pre-balancing surplus routing of one period and source class (P0-4 S5, Q7).
+
+    ``in_dispatch`` surplus is already inside the accepted supply (must-run
+    excess, scheduled output above real demand); ``out_of_dispatch`` surplus
+    is VRE availability the ahead market did not accept.  ``spilled_mwh`` of
+    the in-dispatch row is W_in (non_vre_spill); ``unrealised_mwh`` is the
+    in-dispatch surplus the kernel routed or spilled that the accepted supply
+    never contained.  available = storage + export + flexible + dispatch +
+    curtailed + spilled + unrealised.
+    """
+
+    year: int
+    period: int
+    source_class: str
+    available_mwh: float
+    to_storage_mwh: float
+    to_export_mwh: float
+    to_flexible_mwh: float
+    spilled_mwh: float
+    to_dispatch_mwh: float
+    curtailed_mwh: float
+    unrealised_mwh: float
+
+
+@dataclass(frozen=True)
 class PhysicalDispatchRow:
     """One final, non-duplicated physical flow after all market stages.
 
@@ -1334,6 +1360,7 @@ class NetworkSolverDiagnosticRow:
 OPTIONAL_ENERGY_AUDIT_TABLES: dict[str, tuple[str, int]] = {
     "storage_energy_audit": ("market-ledger-storage-audit-v1.schema.sql", 12),
     "storage_year_boundary": ("market-ledger-storage-audit-v1.schema.sql", 7),
+    "surplus_routing": ("market-ledger-surplus-routing-v1.schema.sql", 11),
 }
 
 
@@ -1367,6 +1394,7 @@ class MarketLedger(Protocol):
     ) -> None: ...
     def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: ...
     def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: ...
+    def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None: ...
     def close(self) -> dict[str, object]: ...
 
 
@@ -1409,6 +1437,7 @@ class NullMarketLedger:
     ) -> None: pass
     def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: pass
     def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: pass
+    def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None: pass
     def close(self) -> dict[str, object]:
         return {"schema_version": self.schema_version, "trace_level": "off", "rows": 0, "bytes": 0, "writer_seconds": 0.0}
 
@@ -2239,6 +2268,11 @@ class SQLiteMarketLedger:
     def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None:
         self._record_optional("storage_year_boundary", rows)
 
+    def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None:
+        """Source-classified surplus routing (P0-4 S5); every trace level."""
+
+        self._record_optional("surplus_routing", rows)
+
     def _flush_optional(self) -> None:
         for table, buffer in self._optional_rows.items():
             if not buffer:
@@ -2645,6 +2679,22 @@ class SQLiteMarketLedger:
                 summary["storage_throughput_exceedances"] = {
                     "periods": int(row[0]), "enforcement": "report_only",
                 }
+        if "surplus_routing" in present:
+            summary["surplus_routing_by_year"] = [
+                {
+                    "year": int(row[0]), "source_class": str(row[1]),
+                    "available_mwh": float(row[2]), "to_storage_mwh": float(row[3]),
+                    "to_export_mwh": float(row[4]), "to_flexible_mwh": float(row[5]),
+                    "to_dispatch_mwh": float(row[6]), "curtailed_mwh": float(row[7]),
+                    "spilled_mwh": float(row[8]), "unrealised_mwh": float(row[9]),
+                }
+                for row in self.connection.execute(
+                    "SELECT year, source_class, SUM(available_mwh), SUM(to_storage_mwh), "
+                    "SUM(to_export_mwh), SUM(to_flexible_mwh), SUM(to_dispatch_mwh), "
+                    "SUM(curtailed_mwh), SUM(spilled_mwh), SUM(unrealised_mwh) "
+                    "FROM surplus_routing GROUP BY year, source_class ORDER BY year, source_class"
+                )
+            ]
         if "storage_year_boundary" in present:
             summary["storage_year_boundary"] = [
                 {"year": int(row[0]), "discarded_mwh": float(row[1]), "carried_forward_mwh": float(row[2])}

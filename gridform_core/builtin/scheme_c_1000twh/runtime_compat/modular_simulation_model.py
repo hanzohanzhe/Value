@@ -52,13 +52,21 @@ from ....market_ledger import (
 from ....clearing_inputs import ClearingInputRow, ClearingOutcomeRow
 # VALUE P0-4 S4-S5: observation-only energy audit (no effect on clearing).
 from ..native_balance_audit import (
+    IN_DISPATCH as _IN_DISPATCH,
+    SurplusTrace as _SurplusTrace,
     battery_audit as _battery_audit,
+    excess_source_class as _excess_source_class,
+    node_terms as _node_terms,
     open_storage_period as _open_storage_period,
     storage_audit_rows as _storage_audit_rows,
     stored_total as _stored_total,
+    surplus_routing_rows as _surplus_routing_rows,
 )
 
 _WEATHER_LIMIT_CACHE = None
+# VALUE P0-4 S5: per-period surplus routing by source class (read-only trace of
+# the kernel's excess_energy / need_curtailed_energy at each take point).
+_SURPLUS_TRACE = _SurplusTrace()
 DEBUG_MARKET_STDOUT = os.getenv("SIM_DEBUG_MARKET", "0") == "1"
 
 
@@ -964,6 +972,9 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
     curtailed_fee = []
     curtailed_energy_list = []
     soldable = []
+    # VALUE P0-4 S5: the forecast-minus-real surplus is scheduled output (in S).
+    _trace = _SURPLUS_TRACE
+    _trace.add(_IN_DISPATCH, "available", need_curtailed_energy)
     #print(need_curtailed_energy)
     for pool in new_bids:
         if need_curtailed_energy != 0:
@@ -971,12 +982,14 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             store_energy += charged_power
             need_curtailed_energy -= charged_power
             curtailed_fee.append(0.0)
+            _trace.add(_IN_DISPATCH, "to_storage", charged_power)
     if excess_energy != 0:
         for pool in new_bids:
             if excess_energy != 0:
                 charged_power = pool[0].charge(period, excess_energy)
                 store_energy += charged_power
                 excess_energy -= charged_power
+                _trace.add(_trace.excess_class, "to_storage", charged_power)
     # sell to interconnector before there is curtailment
     sold_fee = []
     for item in connections:
@@ -988,6 +1001,7 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
         for item in connections:
             item.sold_energy = 0
         energy_cell = min((electrolyzer.real_energy + electrolyzer.rampup_rate), electrolyzer.capacity_limit)
+        _excess_before, _need_before = excess_energy, need_curtailed_energy
         if excess_energy + need_curtailed_energy > 0:
             min_value = min((excess_energy + need_curtailed_energy), energy_cell)
             energy_cell_period = min_value
@@ -1004,7 +1018,11 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             green_hy = 0
             electrolyzer.set_real_energy(0)
             energy_cell_period = 0
+        _trace.excess("to_flexible", _excess_before, excess_energy)
+        _trace.need("to_flexible", _need_before, need_curtailed_energy)
         curtailed_energy = need_curtailed_energy
+        # VALUE P0-4 S5: down-regulation actually taken out of S vs booked.
+        _supply_before_curtailment = sum(float(gen[1]) for gen in gen_list)
         for item in accepted_bids:
             if need_curtailed_energy != 0:
                 if type(item[0]) == ExpensiverenewableGenerator:
@@ -1078,6 +1096,7 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
                 break
     else:
         soldable.sort(key=lambda x: x[2], reverse=True)
+        _excess_before, _need_before = excess_energy, need_curtailed_energy
         # to see whether the price is positive
         for item in soldable:
             if item[2] > 0:
@@ -1094,7 +1113,10 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             else:
                 sold_fee.append(0)
                 item[0].sold_energy = 0
+        _trace.excess("to_export", _excess_before, excess_energy)
+        _trace.need("to_export", _need_before, need_curtailed_energy)
         energy_cell = min((electrolyzer.real_energy + electrolyzer.rampup_rate), electrolyzer.capacity_limit)
+        _excess_before, _need_before = excess_energy, need_curtailed_energy
         if excess_energy + need_curtailed_energy > 0:
             min_value = min((excess_energy + need_curtailed_energy), energy_cell)
             energy_cell_period = min_value
@@ -1111,7 +1133,11 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             green_hy = 0
             electrolyzer.set_real_energy(0)
             energy_cell_period = 0
+        _trace.excess("to_flexible", _excess_before, excess_energy)
+        _trace.need("to_flexible", _need_before, need_curtailed_energy)
         curtailed_energy = need_curtailed_energy
+        # VALUE P0-4 S5: down-regulation actually taken out of S vs booked.
+        _supply_before_curtailment = sum(float(gen[1]) for gen in gen_list)
         if need_curtailed_energy > 0:
             for item in accepted_bids:
                 if need_curtailed_energy != 0:
@@ -1181,6 +1207,12 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
                                 pass
         else:
             sold_fee.append(0)
+    # VALUE P0-4 S5: booked down-regulation minus what left S is in-dispatch
+    # surplus the kernel claims as spilled; unused excess stays with its source.
+    _removed = _supply_before_curtailment - sum(float(gen[1]) for gen in gen_list)
+    _trace.add(_IN_DISPATCH, "curtailed", _removed)
+    _trace.add(_IN_DISPATCH, "claimed_spill", curtailed_energy - _removed)
+    _trace.add(_trace.excess_class, "claimed_spill", excess_energy)
     #print(store_energy)
     return (curtailed_fee, store_energy, gen_list, curtailed_energy, excess_energy, sold_fee,green_hy,
             energy_cell_period,curtailed_energy_list)
@@ -1714,6 +1746,9 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
         test_gen = bids[0]
     #print(test_gen)
     new_bids = [[bat, bat.pool_limit] for bat in batterys]
+    # VALUE P0-4 S5: excess re-dispatched to the balancing requirement.
+    _trace = _SURPLUS_TRACE
+    _excess_before = excess_energy
     if excess_energy_list:
         # 如果需要补充发电的电量小于所有子列表的和，按比例分配
         if energy_provided <= excess_energy:
@@ -1748,6 +1783,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                         else:
                             pass
                 item[1] = 0
+    _trace.excess("to_dispatch", _excess_before, excess_energy)
     '''
     if excess_energy != 0:
         if excess_energy > energy_provided:
@@ -1780,6 +1816,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 charged_power = pool[0].charge(period, excess_energy)
                 store_energy += charged_power
                 excess_energy -= charged_power
+                _trace.add(_trace.excess_class, "to_storage", charged_power)
 
     # calculate storage price
     add_price_balance = [0]
@@ -1844,6 +1881,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
         new_list.extend(buable)
         if soldable and excess_energy > 0:
             soldable.sort(key=lambda x: x[2])
+            _excess_before = excess_energy
             # positive price can sell
             for item in soldable:
                 if item[2] > 0:
@@ -1854,6 +1892,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 else:
                     sold_fee.append(0)
                     item[0].sold_energy = 0
+            _trace.excess("to_export", _excess_before, excess_energy)
         if not buable:
             pass
         else:
@@ -1865,6 +1904,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             excess_energy -= min_value
             green_hy = min_value * electrolyzer.energy_efficiency
             electrolyzer.set_real_energy(min_value)
+            _trace.add(_trace.excess_class, "to_flexible", min_value)
         else:
             green_hy = 0
             electrolyzer.set_real_energy(0)
@@ -2155,6 +2195,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             excess_energy -= min_value
             green_hy = min_value * electrolyzer.energy_efficiency
             electrolyzer.set_real_energy(min_value)
+            _trace.add(_trace.excess_class, "to_flexible", min_value)
         else:
             green_hy = 0
             electrolyzer.set_real_energy(0)
@@ -2164,6 +2205,8 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
     balance_list_name = []
     for item in balance_list:
         balance_list_name.append([item[0].name, item[1]])
+    # VALUE P0-4 S5: excess left unused at the end of the balancing stage.
+    _trace.add(_trace.excess_class, "claimed_spill", excess_energy)
     if energy_provided != 0:
         if DEBUG_MARKET_STDOUT:
             print('insufficient energy', period)
@@ -2845,6 +2888,11 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             excess_energy_dict[period] = excess_energy_list
         else:
             excess_energy_dict[period] = 0
+        # VALUE P0-4 S5: the ahead excess has one source (Q7): must-run nuclear
+        # inside S or VRE availability outside S.
+        _excess_class, _excess_kinds = _excess_source_class(
+            excess_energy_list, NuclearGenerator, ExpensiverenewableGenerator)
+        _SURPLUS_TRACE.begin(period, excess_energy, _excess_class, _excess_kinds)
         # VALUE P0-6 S3: the real-time stage of the period (thesis forecast rule
         # in both profiles, decision A2) is realise_period; the loop appends
         # exactly what the inline HEAD block appended.
@@ -2966,6 +3014,14 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             if isinstance(asset, Connection)
         ) * period_hours
         curtailed_mwh = float(curtailed_electricity[period] or 0.0) * period_hours
+        # VALUE P0-4 S5: source-classified surplus routing of this period.
+        surplus_terms, surplus_rows = _node_terms(
+            _SURPLUS_TRACE, period_hours,
+            supply_mwh=accepted_supply_mwh, blackout_mwh=blackout_mwh,
+            demand_mwh=real_demand_mwh, loads_mwh=storage_charge_mwh + export_mwh + flexible_demand_mwh,
+        )
+        market_ledger.record_surplus_routing(_surplus_routing_rows(int(trace_year), period, surplus_rows))
+        realisation_log.record_surplus(period, _SURPLUS_TRACE, surplus_terms)
         # `result_list` follows the retained market's two accounting branches.
         # In the curtailment branch it retains forecast generation diverted into
         # storage, while the balancing branch charges from VRE excess that is not

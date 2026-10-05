@@ -718,6 +718,7 @@ class RecordingLedger:
         self.storage: list[dict[str, Any]] = []
         self.declared: list[dict[str, Any]] = []
         self.storage_audit: list[dict[str, Any]] = []
+        self.surplus_routing: list[dict[str, Any]] = []
 
     def record_period(self, row) -> None:
         self.periods.append(dataclasses.asdict(row))
@@ -731,6 +732,10 @@ class RecordingLedger:
     def record_storage_audit(self, rows) -> None:
         # P0-4 S4: per-asset storage energy audit (accounting, zones.json).
         self.storage_audit.extend(dataclasses.asdict(row) for row in rows)
+
+    def record_surplus_routing(self, rows) -> None:
+        # P0-4 S5: source-classified surplus routing (accounting, zones.json).
+        self.surplus_routing.extend(dataclasses.asdict(row) for row in rows)
 
     def record_clearing_input(self, row) -> None:
         self.declared.append({
@@ -1057,6 +1062,16 @@ def columns_from_run(result: Mapping[str, Any], periods: int = PERIODS) -> dict[
                 continue
             columns[f"market/market.sqlite::storage_energy_audit.{asset}.{field}"] = _per_period(
                 [canonical(row[field]) for row in rows], periods, f"storage audit {asset}")
+    # P0-4 S5 surplus routing: per source class, one value per period (0 when
+    # the class had no surplus in that period).
+    routing_fields = [field for field in (ledger.surplus_routing[0] if ledger.surplus_routing else {})
+                      if field not in ("year", "period", "source_class")]
+    for source_class in ("in_dispatch", "out_of_dispatch"):
+        by_period = {int(row["period"]): row for row in ledger.surplus_routing if row["source_class"] == source_class}
+        for field in routing_fields:
+            columns[f"market/market.sqlite::surplus_routing.{source_class}.{field}"] = [
+                canonical(by_period[period][field]) if period in by_period else 0.0 for period in range(periods)
+            ]
     if len(ledger.orders) != periods:
         raise AssertionError(f"ledger recorded orders for {len(ledger.orders)} periods")
     columns["market/market.sqlite::orders.#rows"] = [len(rows) for rows in ledger.orders]
