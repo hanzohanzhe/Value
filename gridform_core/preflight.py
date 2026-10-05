@@ -391,10 +391,20 @@ def run_preflight(
                 "Open Model modules, correct the listed manifest or callable contract, and run preflight again.",
             ))
     except (ValueError, KeyError) as exc:
-        issues.append(_issue(
-            "GF_PREFLIGHT_MODULE_SELECTION", "error", "modules", str(exc),
-            "Select one compatible registered module for every required model slot.",
-        ))
+        if getattr(exc, "code", None) == "GF_EXTENSION_HOOK_IMPORT":
+            # A selected extension's hook failed to import during this
+            # resolution: it is runtime-quarantined now, so the code is the
+            # same as on every later preflight (P0-2 review).
+            checks["module_quarantine"] = quarantine_check(registry, selected.values(), selected_extensions)
+            issues.append(_issue(
+                "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules", str(exc),
+                "Open Modules: disable or repair the quarantined entry, then select a working module.",
+            ))
+        else:
+            issues.append(_issue(
+                "GF_PREFLIGHT_MODULE_SELECTION", "error", "modules", str(exc),
+                "Select one compatible registered module for every required model slot.",
+            ))
     checks["modules"] = {"passed": bool(selected_reports) and all(row["status"] == "passed" for row in selected_reports), "selected": selected_reports}
 
     try:

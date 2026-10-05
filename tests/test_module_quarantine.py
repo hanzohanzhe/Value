@@ -143,7 +143,7 @@ class ReviewedFailureReproductions(_TemporaryModules):
 class LifecycleHygieneTests(_TemporaryModules):
     """P0-2 S2: coded conflicts, raw-record lifecycle, byte rollback, one lock."""
 
-    packages = ("p02_hygiene_plugin",)
+    packages = ("p02_hygiene_plugin", "p02_enable_bad")
 
     def test_install_into_a_taken_namespace_names_the_real_owner(self) -> None:
         install_extension_bundle(build_extension_bundle(self.root / "a.zip", "p02-owner", "local.p02-shared"),
@@ -201,6 +201,22 @@ class LifecycleHygieneTests(_TemporaryModules):
             with self.assertRaises(RuntimeError):
                 set_extension_enabled("p02-toggle", True, modules_root=self.modules)
         self.assertEqual(tree_digest(self.modules), before)
+
+    def test_enabling_a_module_whose_import_fails_is_coded_and_restored(self) -> None:
+        from backend import server
+        from gridform_core.module_installation import ModuleInstallationError
+
+        target = write_external_module(self.modules, "p02-enable-bad", "p02_enable_bad", enabled=False,
+                                       prefix="raise RuntimeError('cannot import')\n")
+        before = tree_digest(self.modules)
+        with self.assertRaises(ModuleInstallationError) as caught:
+            set_module_enabled("p02-enable-bad", True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_IMPORT_FAILED")
+        self.assertIn("RuntimeError: cannot import", str(caught.exception))
+        self.assertEqual(tree_digest(self.modules), before)
+        self.assertFalse([item for item in sys.path if str(item).startswith(str(target))])
+        status, body, _ = server.map_request_exception(caught.exception)
+        self.assertEqual((status, body["error_code"]), (409, "GF_MODULE_IMPORT_FAILED"))
 
     def test_lifecycle_entry_points_hold_the_module_lifecycle_lock(self) -> None:
         import gridform_core.module_installation as installation

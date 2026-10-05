@@ -21,7 +21,7 @@ from .module_bundle import (
 )
 from .module_conformance import check_manifest
 from . import module_quarantine
-from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys
+from .module_quarantine import MODULE_LIFECYCLE_LOCK, ExternalImportError, ModuleQuarantinedError, quarantine_keys
 from .runtime_paths import activate_external_module_sources, external_modules_root, purge_source_root
 from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, builtin_registry, workspace_registry
 
@@ -315,7 +315,18 @@ def _set_module_enabled(
             if source_text not in sys.path:
                 sys.path.insert(0, source_text)
             importlib.invalidate_caches()
-            candidate = ModuleRegistryV2(tuple(existing.manifests().values()) + (manifest,))
+            try:
+                candidate = ModuleRegistryV2(tuple(existing.manifests().values()) + (manifest,))
+            except ExternalImportError as exc:
+                raise ModuleInstallationError("GF_MODULE_IMPORT_FAILED", str(exc)) from exc
+            except ValueError as exc:
+                if getattr(exc, "code", None):
+                    raise
+                if "Duplicate module ID" in str(exc):
+                    raise ModuleInstallationError("GF_MODULE_ID_COLLISION", str(exc)) from exc
+                raise ModuleInstallationError(
+                    "GF_MODULE_RESOLUTION", f"Module implementation could not be loaded: {exc}"
+                ) from exc
             conformance = check_manifest(candidate, manifest)
             if conformance["status"] != "passed":
                 raise ModuleInstallationError("GF_MODULE_CONFORMANCE", "Module no longer passes conformance")

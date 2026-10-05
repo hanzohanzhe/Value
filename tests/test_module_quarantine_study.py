@@ -113,6 +113,21 @@ class PreflightQuarantineTests(_QuarantineHome):
                          "GF_EXTENSION_NAMESPACE_COLLISION")
 
 
+    def test_a_broken_hook_selected_on_the_first_preflight_has_the_quarantine_code(self) -> None:
+        self.broken_hook()
+        self.assertEqual(hook_quarantine_entries(), ())  # no earlier resolution in this process
+        project = {**self.project, "selected_extensions": ["p02-study-hook"]}
+        first = self._run(workspace_registry(self.modules), project)
+        second = self._run(workspace_registry(self.modules), project)
+        for report in (first, second):
+            self.assertFalse(report["accepted"])
+            codes = {row["code"] for row in report["errors"]}
+            self.assertIn("GF_PREFLIGHT_MODULE_QUARANTINED", codes)
+            self.assertNotIn("GF_PREFLIGHT_MODULE_SELECTION", codes)
+            self.assertEqual([row["id"] for row in report["checks"]["module_quarantine"]["blockers"]],
+                             ["p02-study-hook"])
+        self.assertEqual(first["errors"][0]["code"], second["errors"][0]["code"])
+
 class DraftQuarantineTests(_QuarantineHome):
     def setUp(self) -> None:
         super().setUp()

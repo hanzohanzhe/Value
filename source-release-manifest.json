@@ -7673,14 +7673,14 @@
     },
     {
       "path": "gridform_core/module_installation.py",
-      "sha256": "9ad096f009db36fd5bee7babdb4180c6a2c557965d2edcdb8c3c1cbd3648916a",
-      "bytes": 15892,
+      "sha256": "917c890fad333e41af6612f193fd484a435669ca088a4686e84ad155216757bc",
+      "bytes": 16514,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/module_quarantine.py",
-      "sha256": "28c5df4a3b23e24361db7809acbaf33abfc13aa97bd2ab9fd28c752bc5c236b6",
-      "bytes": 28037,
+      "sha256": "4f5c7c0f5179436e197d93533285f2056fadda1824b1cbd30613ec82720f9e19",
+      "bytes": 28073,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7781,8 +7781,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "74ad4a395d254dfb4686412010da172b411b13b3768b8c5768b9685b2023c610",
-      "bytes": 33642,
+      "sha256": "5a088ba414b596bc0de079c991a92db82010d509d600611de8538e1a10e359fd",
+      "bytes": 34303,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10581,8 +10581,8 @@
     },
     {
       "path": "tests/test_module_quarantine.py",
-      "sha256": "ecb456b3e57da3876bfe0ba24cb1b1036d6d58a2a9b67872fc9c092dfdd4bde1",
-      "bytes": 33205,
+      "sha256": "603423059073ace185cd33e45c0922fd19a6f821d401e534d193d4cc1249ae9d",
+      "bytes": 34271,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10593,8 +10593,8 @@
     },
     {
       "path": "tests/test_module_quarantine_study.py",
-      "sha256": "c4a1ae1b453a34ea3465141b9808b2634f2a7ea7b3cc97386f607cb26a354233",
-      "bytes": 11769,
+      "sha256": "47472c3a6a6b9fc02a2d3af4aa36a019d6602c2fc824c90de881ae0fbcbad6bc",
+      "bytes": 12730,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
