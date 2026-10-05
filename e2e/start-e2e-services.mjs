@@ -75,7 +75,8 @@ const children = [
   ...(uiOnly ? [] : [
     spawn(pythonCommand, pythonArgs, { cwd: root, env: environment, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }),
   ]),
-  spawn(process.execPath, [path.join(root, "scripts", "serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", "18800"], { cwd: root, env: environment, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }),
+  // --api-origin follows --port so process-matching patterns keep working (P0-1 S4).
+  spawn(process.execPath, [path.join(root, "scripts", "serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", "18800", "--api-origin", "http://127.0.0.1:18766"], { cwd: root, env: environment, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }),
 ];
 let stopping = false;
 for (const child of children) {

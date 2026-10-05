@@ -122,7 +122,8 @@ def verify_inventory(root, *, installed=False, stray=None):
             stray.extend(found)
     if actual != names:
         raise ValueError(f"Inventory differs: missing={sorted(names-actual)[:5]}, unknown={sorted(actual-names)[:5]}")
-    entries = {"app/backend/server.py", "app/dist/server/index.js", "app/gridform_core/application.py", "app/scripts/serve-value-ui.mjs"}
+    entries = {"app/backend/server.py", "app/dist/server/index.js", "app/gridform_core/application.py", "app/scripts/serve-value-ui.mjs",
+               "app/scripts/value-ui-gateway.mjs"}
     if not entries.issubset(names):
         raise ValueError(f"Application entry points missing: {sorted(entries - names)}")
     bundled = manifest.get("bundled_runtimes")

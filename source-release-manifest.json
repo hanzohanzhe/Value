@@ -1088,6 +1088,7 @@
     "scripts/validate_gb_zonal_pack.py",
     "scripts/validate_local_uk_pack.py",
     "scripts/value-test-netguard.mjs",
+    "scripts/value-ui-gateway.mjs",
     "scripts/value_test_netguard.py",
     "scripts/verify_doctoral_project_weather.py",
     "scripts/verify_doctoral_weather.py",
@@ -1427,6 +1428,7 @@
     "tests/test_thesis96_policy_and_pipeline.py",
     "tests/test_two_period_scheme_c.py",
     "tests/test_ui_contract_fixtures.py",
+    "tests/test_ui_gateway_session_path.py",
     "tests/test_value_101_day_configuration.py",
     "tests/test_value_methodology.py",
     "tests/test_version_ledger.py",
@@ -1437,6 +1439,7 @@
     "tests/test_zonal_solver_contract.py",
     "tests/test_zonal_solver_project_contract.py",
     "tests/test_zonal_subannual_resume.py",
+    "tests/ui-gateway.test.mjs",
     "tests/ui_contract_fixtures.py",
     "tests/value-uk-research-suite-ui.test.mjs",
     "tests/value101-api.test.mjs",
@@ -6073,8 +6076,8 @@
     },
     {
       "path": "e2e/start-e2e-services.mjs",
-      "sha256": "ecca10598957de62f41de9174abb906db1018c67ad66e23c07430479f4e6ef38",
-      "bytes": 5340,
+      "sha256": "4fedde62674248aa8452e31fc82635d9ff65b0b5256b8e5ce59d8500eb7b609d",
+      "bytes": 5468,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8128,8 +8131,8 @@
     },
     {
       "path": "packaging/desktop-local/desktop_value.py",
-      "sha256": "812d71a920450671404ac7b7f07499f07785486a7802c9df006be5fa8b95300b",
-      "bytes": 22532,
+      "sha256": "26cf15411643092463d42af8a0420aeb38781b906f0f64de22052645e3f03be5",
+      "bytes": 22583,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8654,8 +8657,8 @@
     },
     {
       "path": "scripts/build_desktop_installers.py",
-      "sha256": "5c1922e304eb982c47f2fcf476677ff5f2fe64dacbd69ac11cef8dd34838203e",
-      "bytes": 9201,
+      "sha256": "dbbae49a4ede4c01f74c43f99f12f944522e5cb288d1ca30e6c9d6b13463737a",
+      "bytes": 9402,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8984,9 +8987,9 @@
     },
     {
       "path": "scripts/prepare_archived_workspace.py",
-      "sha256": "865ef0a52e65df89f0006fa05c12baa1d4c8b52bc57375af8da0d6cea06782e9",
-      "bytes": 16490,
-      "transform": "byte copy"
+      "sha256": "1c36b719c5a9f8c358b6f8432be32e255cbc7573b730208ccd30588b16e77f82",
+      "bytes": 16534,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/prepare_private_runtimes.py",
@@ -9134,9 +9137,9 @@
     },
     {
       "path": "scripts/serve-value-ui.mjs",
-      "sha256": "059fe88a857dacdbe79fdba041dcb0f94bd56b5ff6835f0b03aac4d542f7fa7c",
-      "bytes": 1517,
-      "transform": "byte copy"
+      "sha256": "cf36c2965442c8d3f0bd74dd469957d08c3972aed5d67177614ac535a8f6e174",
+      "bytes": 2784,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/sign_install_gb_zonal_pack.py",
@@ -9202,6 +9205,12 @@
       "path": "scripts/value-test-netguard.mjs",
       "sha256": "e55b8ee80089d1762a96af3aa10c40a442ad0440c8780acd8e072d8d5b7c4f8a",
       "bytes": 3336,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "scripts/value-ui-gateway.mjs",
+      "sha256": "fdf430cf384ce7639af8a7d09c0575124bd40c7a41da371eefd488da1471ca34",
+      "bytes": 16397,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10100,8 +10109,8 @@
     },
     {
       "path": "tests/test_desktop_bytecode_policy.py",
-      "sha256": "691070054d500f87ef1d8bca800455c9a64337bd7fd09fe27d75861047d2a79d",
-      "bytes": 16021,
+      "sha256": "bc3a746d05cf533d07f8ad0e3f1670176bda2c4900f6834d645abcccfa470dab",
+      "bytes": 16057,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10346,9 +10355,9 @@
     },
     {
       "path": "tests/test_full_desktop_installer.py",
-      "sha256": "dbe2cc82515e76125dce3e23095c8b697755f83abd9e1ab56a2b0a3bad60eb59",
-      "bytes": 4522,
-      "transform": "byte copy"
+      "sha256": "9d830e83e9931faa9814d6a77a5241208c5bc057a4cb20ee8bb09e86641a9412",
+      "bytes": 4558,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_get_error_boundary.py",
@@ -11162,8 +11171,8 @@
     },
     {
       "path": "tests/test_source_release_tree.py",
-      "sha256": "2e954848a9d081d168a6d35e65fa54b742ee61952c52c64553dd7f4d4ffa545a",
-      "bytes": 10907,
+      "sha256": "11d264ac003a2f2ff3532b1b69b142c634d5eb876ef78770ad812d7cf98385dc",
+      "bytes": 11099,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11233,6 +11242,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/test_ui_gateway_session_path.py",
+      "sha256": "97fa364f6e87feb26101dab9fb8e1439da76518426685f1d3c70d4efe6ba2610",
+      "bytes": 5139,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_value_101_day_configuration.py",
       "sha256": "4a75ae2623a6202353078c1ed506c5e2408d3bc3056a002ccfe51689adc3adc7",
       "bytes": 3104,
@@ -11291,6 +11306,12 @@
       "sha256": "f8a38cc718c995ff7a320ae8f8806de6481f1e27eecfe2f89028cfc37a4cf78a",
       "bytes": 34119,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/ui-gateway.test.mjs",
+      "sha256": "17e312bb3b9343970a4b8ecc4922c57f7c477dbe59c0f680766fb4a8f6c62614",
+      "bytes": 21033,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/ui_contract_fixtures.py",

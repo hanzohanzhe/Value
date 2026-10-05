@@ -51,7 +51,7 @@ def _pyc_for(source_text: str, *, mtime: int, size: int) -> bytes:
 
 def _make_bundle(root: Path) -> dict:
     paths = ["app/backend/server.py", "app/dist/server/index.js", "app/gridform_core/application.py",
-             "app/scripts/serve-value-ui.mjs", "app/scripts/install_synthetic_pack.py"]
+             "app/scripts/serve-value-ui.mjs", "app/scripts/value-ui-gateway.mjs", "app/scripts/install_synthetic_pack.py"]
     runtimes = ({"python": "runtime/python/python.exe", "node": "runtime/node/node.exe"} if sys.platform == "win32"
                 else {"python": "runtime/python/bin/python3.10", "node": "runtime/node/bin/node"})
     paths += list(runtimes.values())

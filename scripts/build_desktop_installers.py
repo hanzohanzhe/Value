@@ -74,7 +74,9 @@ def load_application(archive: Path, expected: str):
                 "app/public/README.md", "app/gridform_core/application.py",
                 # P0-3: an installed backend cannot start a Run without these.
                 "app/backend/worker_entry.py", "app/backend/run_supervisor.py",
-                "app/backend/lifecycle/worker_entry.py", "app/backend/lifecycle/run_status.py"}
+                "app/backend/lifecycle/worker_entry.py", "app/backend/lifecycle/run_status.py",
+                # P0-1: the UI cannot reach the API without its gateway and session.
+                "app/scripts/serve-value-ui.mjs", "app/scripts/value-ui-gateway.mjs", "app/backend/api_session.py"}
     if not required <= app.keys():
         raise ValueError("Accepted four-role application is incomplete.")
     if any(Path(name).suffix.lower() in {".so", ".node", ".dll", ".dylib", ".exe"} for name in app):

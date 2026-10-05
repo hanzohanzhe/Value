@@ -17,6 +17,11 @@ SPEC.loader.exec_module(MODULE)
 P0_1_RELEASE_FILES = (
     "backend/api_session.py",
     "tests/test_api_session.py",
+    "tests/test_local_api_harness.py",
+    "scripts/value-ui-gateway.mjs",
+    "scripts/serve-value-ui.mjs",
+    "tests/ui-gateway.test.mjs",
+    "tests/test_ui_gateway_session_path.py",
 )
 
 
