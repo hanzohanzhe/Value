@@ -142,6 +142,81 @@ class ZonalSolverSettingsTests(unittest.TestCase):
         self.assertEqual(absolute["secondary_schedule_deviation_mwh"].get("const"), 0.01)
         self.assertEqual(absolute["physical_throughput_mwh"].get("const"), 0.01)
 
+    def test_module_declared_schema_accepts_the_current_default_contract(self):
+        root = Path(__file__).parents[1]
+        manifest = json.loads(
+            (root / "gridform_core" / "manifests" / "value-zonal-redispatch-balancing.json").read_text(encoding="utf-8")
+        )
+        schema = json.loads((root / manifest["solver_contract"]["schema_path"]).read_text(encoding="utf-8"))
+        default = DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
+        properties = schema["properties"]
+        self.assertEqual(properties["schema_version"]["const"], default["schema_version"])
+        self.assertEqual(properties["contract_version"]["const"], default["contract_version"])
+        self.assertEqual(manifest["solver_contract"]["defaults"], default)
+        try:
+            import jsonschema  # type: ignore[import-not-found]
+        except ImportError:
+            jsonschema = None
+        if jsonschema is not None:
+            jsonschema.validate(default, schema)
+        self.assertEqual(_schema_violations(default, schema, schema), [])
+
+    def test_every_historical_schema_declares_its_own_version_constants(self):
+        directory = Path(__file__).parents[1] / "gridform_core" / "data" / "contracts"
+        for version in (1, 2, 3, 4):
+            with self.subTest(version=version):
+                schema = json.loads(
+                    (directory / f"network-solver-contract-v{version}.schema.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(
+                    schema["properties"]["schema_version"]["const"],
+                    f"value.network-solver-contract/v{version}",
+                )
+
+
+def _schema_violations(value, schema, root, path="$"):
+    """Small JSON-Schema subset checker (const/enum/type/bounds/required/additionalProperties/$ref).
+
+    jsonschema is not part of the runtime; this keeps the default-contract check fail-closed without it.
+    """
+    if "$ref" in schema:
+        target = root
+        for part in schema["$ref"].lstrip("#/").split("/"):
+            target = target[part]
+        return _schema_violations(value, target, root, path)
+    errors = []
+    if "const" in schema and value != schema["const"]:
+        errors.append(f"{path}: {value!r} != const {schema['const']!r}")
+    if "enum" in schema and value not in schema["enum"]:
+        errors.append(f"{path}: {value!r} not in enum")
+    expected = schema.get("type")
+    if expected == "object" and not isinstance(value, dict):
+        return errors + [f"{path}: not an object"]
+    if expected == "number" and (isinstance(value, bool) or not isinstance(value, (int, float))):
+        return errors + [f"{path}: not a number"]
+    if expected == "boolean" and not isinstance(value, bool):
+        errors.append(f"{path}: not a boolean")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            errors.append(f"{path}: below minimum")
+        if "maximum" in schema and value > schema["maximum"]:
+            errors.append(f"{path}: above maximum")
+        if "exclusiveMinimum" in schema and value <= schema["exclusiveMinimum"]:
+            errors.append(f"{path}: not above exclusiveMinimum")
+        if "exclusiveMaximum" in schema and value >= schema["exclusiveMaximum"]:
+            errors.append(f"{path}: not below exclusiveMaximum")
+    if isinstance(value, dict):
+        for key in schema.get("required", ()):
+            if key not in value:
+                errors.append(f"{path}.{key}: missing")
+        properties = schema.get("properties", {})
+        for key, item in value.items():
+            if key in properties:
+                errors.extend(_schema_violations(item, properties[key], root, f"{path}.{key}"))
+            elif schema.get("additionalProperties") is False:
+                errors.append(f"{path}.{key}: additional property")
+    return errors
+
 
 class LockFormulaTests(unittest.TestCase):
     def test_lock_tolerance_uses_largest_declared_term(self):

@@ -7074,7 +7074,7 @@
     },
     {
       "path": "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
-      "sha256": "879f88c30948fedd9ada122ee3e1d67ab955ed62b8fd886b9a89e0ab3edbe7dd",
+      "sha256": "0beef8b7745d91885900417c9beb91d3e11a92a23c3761ccf9e97e3ad0599d25",
       "bytes": 2773,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -11473,8 +11473,8 @@
     },
     {
       "path": "tests/test_zonal_solver_contract.py",
-      "sha256": "66d29c3c34404abfeb59a73d0a27b369f6416d4ceb5fcc78128cfa6144128c7f",
-      "bytes": 19021,
+      "sha256": "5ca625baa9a9ecad7fbd8444eccbe66efc5a640253f33ecff39a495a1d39bccf",
+      "bytes": 23011,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

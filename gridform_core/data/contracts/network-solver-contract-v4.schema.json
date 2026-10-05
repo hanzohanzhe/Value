@@ -19,7 +19,7 @@
     "requires_acknowledgement"
   ],
   "properties": {
-    "schema_version": {"const": "value.network-solver-contract/v3"},
+    "schema_version": {"const": "value.network-solver-contract/v4"},
     "contract_version": {"const": "value.zonal-lexicographic-shed-lock/v4"},
     "method": {"enum": ["highs-ds", "highs-ipm", "highs"]},
     "presolve": {"const": true},
