@@ -55,6 +55,9 @@ from .zonal_solver_contract import (
 FORMULATION_ID = "value.lossless-zonal-redispatch/v2"
 DOMAIN_SCHEMA = "value.zonal-redispatch-domain/v2"
 TOLERANCE = 1e-8
+# A lock repair reserves at most this fraction of the lock's own computed
+# tolerance as its solver guard (see ``_tighten_violated_objective_cap``).
+LOCK_REPAIR_GUARD_FRACTION = 0.25
 
 
 class ZonalRedispatchInputError(ValueError):
@@ -1021,12 +1024,16 @@ def _tighten_violated_objective_cap(
         matched = True
         # HiGHS may return a successful solution with a lock-row residual at
         # its primal feasibility scale.  Reserve several declared tolerance
-        # units at the magnitude of this row's RHS; the retry remains much
-        # tighter than the unchanged public objective tolerance.
-        solver_guard = (
+        # units at the magnitude of this row's RHS, but never more than a
+        # quarter of the lock's own computed tolerance: the v4 bid-cost lock
+        # uses the declared 1e-9 solver scale, so its whole headroom is about
+        # 1e-9 x |rhs| and an |rhs|-scaled guard (8e-9 x |rhs|) would make
+        # every GB-scale primary repair impossible (M2-P0-8a review).
+        solver_guard = min(
             8.0
             * settings.primal_feasibility_tolerance
-            * max(1.0, abs(lock.rhs))
+            * max(1.0, abs(lock.rhs)),
+            LOCK_REPAIR_GUARD_FRACTION * lock.computed_tolerance,
         )
         guard = max(
             solver_guard,
@@ -1052,6 +1059,75 @@ def _tighten_violated_objective_cap(
             f"objective lock repair target is unknown: {objective_key}",
         )
     return tuple(repaired)
+
+
+_LEXICOGRAPHIC_LOCK_ORDER = (
+    "primary_bid_cost_gbp",
+    "secondary_schedule_deviation_mwh",
+    "physical_throughput_mwh",
+)
+
+
+def _resolve_downstream_locks(
+    problem: SinglePeriodProblem,
+    locks: tuple[_ObjectiveCap, ...],
+    repaired_key: str,
+    settings: ZonalSolverSettings,
+    phases: dict[str, object],
+    *,
+    attempt: int,
+) -> tuple[tuple[_ObjectiveCap, ...], tuple[_ObjectiveCap, ...]]:
+    """Re-solve every phase after a tightened lock and recompute its cap.
+
+    A later phase's optimum was reached while spending the earlier lock's
+    allowance (the secondary phase typically uses the whole bid-cost
+    tolerance).  Tightening only the earlier cap would leave the later caps
+    unreachable and the stable re-solve infeasible, so each later phase is
+    solved again under the tightened caps and its own coefficient-aware cap is
+    rebuilt from the new optimum.  Tolerances are never widened: each cap is
+    recomputed by the same formula as in ``solve_lexicographic``.
+    """
+
+    order = [lock.objective_key for lock in locks]
+    if order != list(_LEXICOGRAPHIC_LOCK_ORDER[: len(order)]):
+        # Hand-built lock sets (tests, partial solves) keep the old
+        # single-cap behaviour.
+        return locks, ()
+    position = order.index(repaired_key)
+    kept = list(locks[: position + 1])
+    rebuilt: list[_ObjectiveCap] = []
+    for lock in locks[position + 1:]:
+        if lock.objective_key == "secondary_schedule_deviation_mwh":
+            objective, allow_constant = problem.secondary_objective, False
+        else:
+            objective, allow_constant = problem.physical_tie_objective, True
+        phase = f"{lock.phase_id}_lock_repair_{attempt}"
+        values, phases[phase] = _run_highs(
+            problem,
+            objective,
+            phase=phase,
+            settings=settings,
+            locks=tuple(kept),
+        )
+        try:
+            cap = _objective_cap(
+                objective,
+                values,
+                settings,
+                lock.objective_key,
+                allow_constant=allow_constant,
+            )
+        except ZonalSolverContractError as exc:
+            raise _contract_solve_error(
+                exc,
+                phase=f"{lock.phase_id}_lock_repair_{attempt}",
+                settings=settings,
+                locks=kept,
+                completed_phases=phases,
+            ) from exc
+        kept.append(cap)
+        rebuilt.append(cap)
+    return tuple(kept), tuple(rebuilt)
 
 
 def _finalise_with_lock_repair(
@@ -1113,8 +1189,19 @@ def _finalise_with_lock_repair(
                 "available_headroom": before.rhs - before.optimum,
             })
             active_locks = tightened
-            phases["stable_lock_repairs"] = tuple(repairs)
             try:
+                active_locks, downstream = _resolve_downstream_locks(
+                    problem,
+                    active_locks,
+                    before.objective_key,
+                    settings,
+                    phases,
+                    attempt=attempt + 1,
+                )
+                repairs[-1]["recomputed_downstream_locks"] = tuple(
+                    _cap_payload(lock) for lock in downstream
+                )
+                phases["stable_lock_repairs"] = tuple(repairs)
                 values, retry_diagnostics = _run_highs(
                     problem,
                     problem.stable_tie_objective,

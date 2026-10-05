@@ -4404,7 +4404,7 @@
     },
     {
       "path": "docs/generated/MODULES.md",
-      "sha256": "ea7643ed1cbb171d1bac9e52349977dd8adc57797e2c1c66301b32cc8263885d",
+      "sha256": "567427f3f9adcf3142d9c5e27e9241b7d6619ae7747dcefc0bf20453f6e795e2",
       "bytes": 4128,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -8085,8 +8085,8 @@
     },
     {
       "path": "gridform_core/zonal_redispatch.py",
-      "sha256": "9f117f57f97100cc1a2203050840a84f04e4b8cedc36f95549c331a8e64b821e",
-      "bytes": 86706,
+      "sha256": "63129a6c285c0cc582abaffcd538af3df14b70c648bc7962dde65620f7ff397c",
+      "bytes": 90144,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10759,8 +10759,8 @@
     },
     {
       "path": "tests/test_p08_zonal_solver_v4.py",
-      "sha256": "d2ec8387fecc6cd43e42d6b999d6e607549cde6d61fb2152612e5c80b7351721",
-      "bytes": 10987,
+      "sha256": "57e6a4e435f264b74d4070a5d6025f83792b47ba41f4bbf499f7259d34acc3df",
+      "bytes": 15691,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

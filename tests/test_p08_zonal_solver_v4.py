@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import copy
 import unittest
+from unittest.mock import patch
+
+import numpy as np
+
+import gridform_core.zonal_redispatch as zonal_redispatch
 
 from gridform_core.zonal_redispatch import (
     ZonalRedispatchBalancing,
@@ -168,6 +173,96 @@ class ZonalLockScaleTests(unittest.TestCase):
                     else:
                         self.assertEqual(set(shedding.values()), {0.0})
                         self.assertEqual(result.blackout_mwh, 0.0)
+
+
+class GbScaleLockRepairTests(unittest.TestCase):
+    """Review M2-P0-8a: a primary-lock violation at GB scale must be repairable.
+
+    The v4 bid-cost lock uses the declared 1e-9 solver scale, so its headroom
+    is about 1e-9 x |rhs|.  The former |rhs|-scaled guard (8e-9 x |rhs|) made
+    every repair of that lock impossible; the guard is now capped at a
+    quarter of the lock's own computed tolerance.
+    """
+
+    def _clear_with_induced_primary_violation(self, declaration, excess_fraction):
+        model_input, module = bind_production_input(declaration)
+        real = zonal_redispatch._finalise_lexicographic_solution
+        calls = {"count": 0}
+
+        def finalise(problem, values, phases, locks, settings):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                lock = next(row for row in locks if row.objective_key == "primary_bid_cost_gbp")
+                excess = excess_fraction * (lock.rhs - lock.optimum)
+                degradation = lock.computed_tolerance + excess
+                raise zonal_redispatch.ZonalRedispatchSolveError("induced primary lock violation", {
+                    "error_code": "GF_ZONAL_OBJECTIVE_LOCK_VIOLATION",
+                    "objective_key": lock.objective_key,
+                    "phase_id": lock.phase_id,
+                    "achieved_final_value": lock.optimum + degradation,
+                    "degradation": degradation,
+                    "computed_tolerance": lock.computed_tolerance,
+                    "excess_degradation": excess,
+                })
+            return real(problem, values, phases, locks, settings)
+
+        real_highs = zonal_redispatch._run_highs
+        repair_phases = []
+
+        def run_highs(problem, objective, *, phase, **kwargs):
+            if "lock_repair" in phase:
+                repair_phases.append(phase)
+            return real_highs(problem, objective, phase=phase, **kwargs)
+
+        with patch.object(zonal_redispatch, "_finalise_lexicographic_solution", finalise), \
+                patch.object(zonal_redispatch, "_run_highs", run_highs):
+            return module.clear(model_input), calls["count"], repair_phases
+
+    def test_induced_primary_violation_is_repaired_at_gb_scale(self) -> None:
+        for scarce in (True, False):
+            with self.subTest(scarce=scarce):
+                result, calls, repairs = self._clear_with_induced_primary_violation(
+                    gb_chain_declaration(0, scarce=scarce), 0.5
+                )
+                # One induced violation; the later phases are re-solved under
+                # the tightened bid-cost cap (their optima were reached by
+                # spending its allowance), then one stable re-solve and a
+                # clean final validation of all three locks.
+                self.assertEqual(calls, 2)
+                self.assertEqual(repairs, [
+                    "secondary_schedule_deviation_lock_repair_1",
+                    "physical_throughput_lock_repair_1",
+                    "stable_key_lock_repair_1",
+                ])
+                row = primary(result)
+                self.assertEqual(row["validation_class"], "GO")
+                self.assertLessEqual(row["degradation"], row["computed_tolerance"])
+
+    def test_repair_guard_is_capped_by_the_lock_tolerance(self) -> None:
+        # GB-scale primary lock (gb_chain seed 0 scarce): |rhs| 1.14e6 GBP,
+        # computed tolerance 1.14e-3 GBP; the |rhs|-scaled guard was 9.2e-3.
+        lock = zonal_redispatch._ObjectiveCap(
+            np.array([60.0, -40.0]), "primary_bid_cost_gbp", "primary_bid_cost", "GBP",
+            1_144_000.0, 1_144_000.0 + 1.144e-3 - 1e-9, 1.144e-3, 2, 1_144_000.0,
+        )
+        headroom = lock.rhs - lock.optimum
+        repaired = zonal_redispatch._tighten_violated_objective_cap(
+            (lock,),
+            {"objective_key": "primary_bid_cost_gbp", "excess_degradation": 0.5 * headroom},
+            DEFAULT_ZONAL_SOLVER_SETTINGS,
+        )[0]
+        self.assertGreaterEqual(repaired.rhs, lock.optimum)
+        self.assertLessEqual(
+            repaired.rhs,
+            lock.rhs - 0.5 * headroom - zonal_redispatch.LOCK_REPAIR_GUARD_FRACTION * lock.computed_tolerance,
+        )
+        # An excess that leaves no room for the guard stays a hard failure.
+        with self.assertRaises(ZonalSolverContractError):
+            zonal_redispatch._tighten_violated_objective_cap(
+                (lock,),
+                {"objective_key": "primary_bid_cost_gbp", "excess_degradation": 0.9 * headroom},
+                DEFAULT_ZONAL_SOLVER_SETTINGS,
+            )
 
 
 class OracleAgreementTests(unittest.TestCase):

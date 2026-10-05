@@ -5,7 +5,7 @@ Generated from `gridform_core/manifests/*.json` by `scripts/generate_reference_t
 | ID | Slot | Version | Contract | Solver contract | Status | Required selection | Implementation source | Source SHA-256 |
 |---|---|---|---|---|---|---:|---|---|
 | value-copperplate-balancing | balancing | 1.0.0 | value.balancing-module/v1 | — | ready | false | gridform_core/builtin/value_modules.py | 20ca4cf9d2e7f33d316859c8e3131275f38f0fc0324818a09124c7ee30684bd4 |
-| value-zonal-redispatch-balancing | balancing | 4.0.0 | value.balancing-module/v1 | value.zonal-lexicographic-shed-lock/v4 | experimental | false | gridform_core/zonal_redispatch.py | b04a640f91829ce6bfe2f091a63310537549f1bf3698987abdd515cee8895f76 |
+| value-zonal-redispatch-balancing | balancing | 4.0.0 | value.balancing-module/v1 | value.zonal-lexicographic-shed-lock/v4 | experimental | false | gridform_core/zonal_redispatch.py | c14329837a60824e71f103ae4a0281fa43f5bb07a22ed349c24e508926912cbe |
 | agent-investment | investment | 2.2.0 | value.investment/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 20ca4cf9d2e7f33d316859c8e3131275f38f0fc0324818a09124c7ee30684bd4 |
 | reference-transmission-expansion | network_expansion | 1.0.0 | value.network-expansion/v1 | — | experimental | false | gridform_core/network_expansion.py | 38a808faca5d35436a03680dab8696f1ff3c3673b29733bce291addc7a006ffb |
 | planning-pipeline | pipeline | 2.2.0 | value.planning/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 20ca4cf9d2e7f33d316859c8e3131275f38f0fc0324818a09124c7ee30684bd4 |
