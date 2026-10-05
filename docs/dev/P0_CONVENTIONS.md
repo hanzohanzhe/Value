@@ -178,9 +178,16 @@ def worker_python_argv(python: str, prefix: Path) -> list[str]:
 
 `docs/release/VERSION_LEDGER.json` 记录每个模块版本的每一次升级：`{module_id, from, to, package, correction_ids, reason, requires_user_opt_in}`。合并时以当时的现行版本递增；`requires_user_opt_in=true` 的升级在 Study 迁移中归为 `method_upgrade_required`（需要界面确认，Q13）。`scripts/check_version_ledger.py`（quick 档）检查：台账的最新版本与模块清单一致、版本单调递增。
 
-## 10 口径（methodology profile）约定预告
+## 10 口径（methodology profile）约定（X0 S8–S11 已实现）
 
-口径机制由 X0 S8–S9 建立。各包规则集只能通过 `ResolvedMethodology.enabled(correction_id)` 判断开关，不得对口径 id（`doctoral-lineage-0.6.0a2`、`value-corrected`）做字符串比较（C15）。编码 35aadb3 数值的测试统一用 `with_profile("doctoral-lineage-0.6.0a2")` 固定口径。
+- **目录**：`gridform_core/data/methodology/profiles.json`（两个口径：默认 `value-corrected`、冻结 `doctoral-lineage-0.6.0a2`）与 `corrections/<pkg>.json`（每包只改自己的文件，文件名即包名）。加载与校验在 `gridform_core/methodology.py`；`scripts/check_methodology_catalog.py`（门禁 quick 档 `methodology_catalog`）检查目录 schema、参数默认值与允许值是否等于目录、代码中 `.enabled(<id>)` 的 id 是否存在、每条 profile_gated 修正是否至少被代码查询一次、Python 代码中是否出现口径 id 字面量（白名单见脚本）。
+- **修正条目字段**：`id`（`^[a-z0-9]+(\.[a-z0-9-]+)+$`，首段为包名）、`package`、`findings`、`track`（universal | profile_gated）、`scope`、`affects`（trajectory/accounting/identity/presentation）、`applies_when`（`modules_any`/`modes_any`/`data_packs_any`/`engines_any`，全部命中才算命中；`{}` 命中所有 Run）、`advisory`（null 或 `{severity, title, summary, affected_metrics}`）、`trigger_fixture`（profile_gated 必填 `{test: ...}`）、`introduced_in`、可选 `deviation_signature`、`description`。
+- **开关**：规则集只通过 `ResolvedMethodology.enabled(correction_id)` 判断（未知 id 抛 `UnknownCorrectionError`），不得比较口径 id（C15）。参考路线与测试使用 `methodology.REFERENCE_PROFILE_ID`。运行中（`run_project_application` 与各 PSM.run 内）用 `methodology.current_methodology()` 取当前口径；尚未激活时抛 `MethodologyNotActiveError`。
+- **冻结绊线**：`tests/test_methodology_profiles.py` 的 `DOCTORAL_DEFINITION_SHA256` 覆盖 doctoral 的 id、version、gated 集合、白名单、参考预设、发布规则。某包若升级谱系模块的 scientific_version 而 doctoral 行为由 gated 修正保持不变，须在同一提交中把新 scientific_version 追加进 doctoral 的 `supported_modules` 并更新该常量，提交正文说明原因。
+- **组合白名单**（C16）：`supported_modules`（模块 id → 允许的 scientific_version）、`supported_extensions`、`supported_data_packs`（id、pack_class、manifest_sha256）、`external_code_policy`。在 Study 解析（`resolve_study_draft`）、预检（`checks.methodology`）、运行入口三处调用同一个 `methodology.selection_combination_violations`；错误码统一为 `VALUE_PROFILE_COMBINATION_UNSUPPORTED`，`sub_reason` 取 module/extension/data_pack/external_code/reference_path。`pack_class` 的判定暂由 `methodology.classify_data_pack` 提供（P0-5 S3 接管并扩展 `KNOWN_PACK_CLASSES`）。
+- **参考预设**（Q3）：`methodology.apply_reference_preset(project, profile_id)` 显式写入 `reference_configuration`；偏离允许运行，记录在 `methodology.reference_deviations`。
+- **测试**：编码 35aadb3 数值的测试用 `methodology.with_profile(project, REFERENCE_PROFILE_ID)` 固定口径；直接调用 PSM 的测试用 `methodology.profile_scope(REFERENCE_PROFILE_ID)` 激活。
+- **API**：`GET /api/methodology/profiles` 返回目录；`resolve-draft` 的响应带 `methodology` 块与各模块选项的 `methodology_supported`/`methodology_reason`。
 
 ## 11 前端测试：UI 契约夹具与离线 e2e（P0-9 S0/S2）
 

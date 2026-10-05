@@ -76,6 +76,8 @@ gridform_core = [
   "data/storage/*.json",
   "data/contracts/*.json",
   "data/contracts/*.sql",
+  "data/methodology/*.json",
+  "data/methodology/corrections/*.json",
   "data_workbench/sources/**/*.json",
   "manifests/*.json",
   "builtin/scheme_c_1000twh/RUNTIME_OVERLAY.json",

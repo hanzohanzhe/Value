@@ -569,6 +569,20 @@ class GoldenProjectSnapshotTests(unittest.TestCase):
                 with self.subTest(case=case_id):
                     project = self.run_case.build_project(dict(case, id=case_id))
                     frozen = json.loads(self.run_case.project_path(dict(case, id=case_id)).read_text(encoding="utf-8"))
+                    # The one intended override (P0_CONVENTIONS section 2, X0
+                    # S8): every doctoral case is pinned to the frozen profile,
+                    # which the 35aadb3 snapshots predate.  Nothing else may
+                    # differ, and corrected cases run under the default.
+                    pinned = dict(project.get("parameters") or {}).pop("methodology.profile", None)
+                    if case["family"] == "doctoral":
+                        from gridform_core.methodology import REFERENCE_PROFILE_ID
+
+                        self.assertEqual(pinned, REFERENCE_PROFILE_ID)
+                        project = dict(project, parameters={
+                            key: value for key, value in project["parameters"].items() if key != "methodology.profile"
+                        })
+                    else:
+                        self.assertIsNone(pinned)
                     self.assertEqual(project, frozen, "overrides in cases.json must be no-ops on the frozen project")
                     self.assertEqual(project["id"], "golden-study")
 

@@ -17,6 +17,14 @@ from .domain_readiness import build_domain_readiness
 from .module_conformance import conformance_report
 from .module_quarantine import external_code_evidence, quarantine_check
 from .parameters import ParameterValidationError, resolve_scheme_c_parameters
+from .methodology import (
+    COMBINATION_ERROR_CODE,
+    ProfileCombinationError,
+    UnknownProfileError,
+    pack_entry,
+    resolve_project_methodology,
+    selection_combination_violations,
+)
 from .module_context import canonical_context_sha256
 from .preflight_resources import (
     ResourceEstimate,
@@ -406,6 +414,40 @@ def run_preflight(
                 "Select one compatible registered module for every required model slot.",
             ))
     checks["modules"] = {"passed": bool(selected_reports) and all(row["status"] == "passed" for row in selected_reports), "selected": selected_reports}
+
+    # Methodology profile and its combination whitelist (X0 S8, Q3, C16): the
+    # same check as Study resolution and the run entry.
+    try:
+        methodology = resolve_project_methodology(project)
+        violations = selection_combination_violations(
+            methodology,
+            registry=registry,
+            modules=selected,
+            extensions=selected_extensions,
+            data_packs=[
+                pack_entry(pack_root, pack_manifest),
+                pack_entry(pack_selection.network_pack_root)
+                if pack_selection is not None and pack_selection.network_pack_root is not None else None,
+            ],
+        )
+        checks["methodology"] = {
+            "passed": not violations,
+            **methodology.to_dict(),
+            "violations": violations,
+        }
+        if violations:
+            issues.append(_issue(
+                COMBINATION_ERROR_CODE, "error", "methodology",
+                str(ProfileCombinationError(methodology.profile_id, violations)),
+                "Select the corrected methodology, or keep to the thesis-lineage modules and data packs "
+                "and disable external code for the doctoral reproduction.",
+            ))
+    except UnknownProfileError as exc:
+        checks["methodology"] = {"passed": False, "error": str(exc)}
+        issues.append(_issue(
+            UnknownProfileError.code, "error", "methodology", str(exc),
+            "Choose one of the installed methodology profiles.",
+        ))
 
     try:
         revision_manifest = (

@@ -79,6 +79,7 @@ from gridform_core.frontend_contract import (
     module_slot_catalog,
     resolve_study_draft,
 )
+from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, pack_entry
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -896,6 +897,7 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
         module_catalog=MODULES,
         base_dataset_slots=DATASET_SLOTS,
         available_data_roles=tuple(sorted(available_roles)),
+        data_packs=[pack_entry(PACKS_ROOT / pack_id, pack)] if pack else [],
     )
 
 
@@ -1768,6 +1770,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif route == "/api/parameters":
             self._json(parameter_schema())
+        elif route == "/api/methodology/profiles":
+            self._json(methodology_catalogue_payload())
         elif route.startswith("/api/runs/") and route.endswith("/extensions/artifacts"):
             parts = route.strip("/").split("/")
             root = _run_root(unquote(parts[2])) if len(parts) == 5 else None

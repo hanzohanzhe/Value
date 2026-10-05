@@ -1,0 +1,40 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "x0",
+  "notes": [
+    "One file per package; each package edits only its own file (plan X0 3.4).",
+    "track: universal (every profile) | profile_gated (only profiles that list it, or \"*\"). Every profile_gated correction needs a trigger_fixture: a hand-checkable toy whose old value appears under the frozen profile and new value under the corrected one.",
+    "applies_when selects the historical Runs a correction is relevant to (read-time advisories, X0 S10b): every listed key must match; an empty object matches every Run. Keys: modules_any, modes_any, data_packs_any, engines_any.",
+    "advisory: null, or {severity: info|low|medium|high|critical, title, summary, affected_metrics}. A Run that did not apply the correction and matches applies_when gets the advisory."
+  ],
+  "corrections": [
+    {
+      "id": "x0.methodology-identity",
+      "package": "x0",
+      "findings": [],
+      "track": "universal",
+      "scope": "identity",
+      "affects": ["identity"],
+      "applies_when": {},
+      "advisory": null,
+      "trigger_fixture": null,
+      "introduced_in": "X0 S8-S9",
+      "deviation_signature": null,
+      "description": "Runs record their methodology profile (id, version, definition and applied-correction hashes) in resolved-run.json, provenance and status; comparisons treat it as part of the method dimension."
+    },
+    {
+      "id": "x0.study-revision-migration",
+      "package": "x0",
+      "findings": [],
+      "track": "universal",
+      "scope": "study_lifecycle",
+      "affects": ["identity"],
+      "applies_when": {},
+      "advisory": null,
+      "trigger_fixture": null,
+      "introduced_in": "X0 S11",
+      "deviation_signature": null,
+      "description": "A saved Study whose revision no longer matches the installed code is classified (code identity, method upgrade, content change, unverifiable) instead of being re-identified silently at run start."
+    }
+  ]
+}

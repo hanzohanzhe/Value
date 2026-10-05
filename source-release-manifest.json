@@ -735,6 +735,8 @@
     "gridform_core/data/contracts/zonal-network-pack-v1.schema.json",
     "gridform_core/data/doctoral_alignment/pumped_hydro_schedule.json",
     "gridform_core/data/doctoral_alignment/thesis_final96_contract.json",
+    "gridform_core/data/methodology/corrections/x0.json",
+    "gridform_core/data/methodology/profiles.json",
     "gridform_core/data/nuclear/value_uk_nuclear_policy_v1.json",
     "gridform_core/data/storage/storage_technology_catalogue.json",
     "gridform_core/data_adapters.py",
@@ -826,6 +828,7 @@
     "gridform_core/market_ledger.py",
     "gridform_core/market_ownership.py",
     "gridform_core/market_replay.py",
+    "gridform_core/methodology.py",
     "gridform_core/module_bundle.py",
     "gridform_core/module_conformance.py",
     "gridform_core/module_context.py",
@@ -1026,6 +1029,7 @@
     "scripts/capture_native_reproduction_golden.py",
     "scripts/capture_p0_5_baseline.py",
     "scripts/check-value-101.ps1",
+    "scripts/check_methodology_catalog.py",
     "scripts/check_publication_scope.py",
     "scripts/check_version_ledger.py",
     "scripts/cloud_transfer_data_hook.py",
@@ -1309,6 +1313,8 @@
     "tests/test_market_ledger_benchmark.py",
     "tests/test_market_ledger_v6.py",
     "tests/test_market_replay.py",
+    "tests/test_methodology_profiles.py",
+    "tests/test_methodology_static_scan.py",
     "tests/test_module_authoring.py",
     "tests/test_module_conformance.py",
     "tests/test_module_developer_examples.py",
@@ -3500,8 +3506,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "2894b1c7cd3b6d60f6e9ae599f7387cec7413c00bd80c476d0d2c19320bfb83a",
-      "bytes": 188273,
+      "sha256": "89d20f20147780f3b25f5fbeb32975508fcccfddb038c5892c8328ef4e256afe",
+      "bytes": 188561,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4400,9 +4406,9 @@
     },
     {
       "path": "docs/generated/PARAMETERS.md",
-      "sha256": "7ef7fe7411d595c359d216daa883a23b6f5365349c4f372162c68f1d840d4511",
-      "bytes": 6532,
-      "transform": "byte copy"
+      "sha256": "878086779fe45aa523d64096060aa0fc9f71da97c616bfb9a613d1351fa78f8e",
+      "bytes": 6645,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/generated/SPATIAL_FLEET_AND_WEATHER.md",
@@ -7109,6 +7115,18 @@
       "sha256": "28daae8b2dfa8d053fccf8b150e57c208c59fca1c9eaafeacb6236676aa509d1"
     },
     {
+      "path": "gridform_core/data/methodology/corrections/x0.json",
+      "sha256": "251986c7cc01baa22f67b6b4c7e423d67e427763da88d8c48a4a115fa88d3b79",
+      "bytes": 1991,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "gridform_core/data/methodology/profiles.json",
+      "sha256": "9578f3f048fb5b29caba1f1260a119927ae901b220577df53fcb46e3cbbcb084",
+      "bytes": 4320,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/data/nuclear/value_uk_nuclear_policy_v1.json",
       "sha256": "0d060d749861aa93b8c0551a854318d3cad2b53f874a8c11ab134a9ae5da7ecc",
       "bytes": 4873,
@@ -7469,8 +7487,8 @@
     },
     {
       "path": "gridform_core/frontend_contract.py",
-      "sha256": "7f0092964a3de2b183c40af9be3d5ac79bdff63213a203def9f24e772a95dac8",
-      "bytes": 32010,
+      "sha256": "4bf19ac91ddc6c2ed9a0986392bf3d8a614f20a73196fe75e49a20243879e98d",
+      "bytes": 34728,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7654,6 +7672,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_core/methodology.py",
+      "sha256": "62b450b88d2f3ad899bc570a3a1b7a3871ad2a2d73bf8d42065db9644c0c0d11",
+      "bytes": 34549,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/module_bundle.py",
       "sha256": "458492aa01ac2a1d37e11b462728af42981747293fdde0013518cdffcbc6a71a",
       "bytes": 10677,
@@ -7733,9 +7757,9 @@
     },
     {
       "path": "gridform_core/parameters.py",
-      "sha256": "e229c6ab903ec07b30d19158501aed0dbf8cce3a86c9e4d3eee44d348fe3fd77",
-      "bytes": 27734,
-      "transform": "byte copy"
+      "sha256": "ba8ba6a9a9175635da62801e53eb45b8188c18588f8f1cd928bde1cad8c04bbf",
+      "bytes": 28335,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/parity.py",
@@ -7781,8 +7805,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "5a088ba414b596bc0de079c991a92db82010d509d600611de8538e1a10e359fd",
-      "bytes": 34303,
+      "sha256": "601738ce02837eecf111c86b5cfdd8c0b79696ca5cc91326046f713078638866",
+      "bytes": 36037,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8553,9 +8577,9 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "0d22c9a2e8b2addd712b8dc31d1e0479497758b609de96dab0d8b70c65cd8a6b",
-      "bytes": 2010,
-      "transform": "Apache-2.0 restoration and VALUE-only publication scope update"
+      "sha256": "666f023ad5da55820caae32feb5e6c18cc957f0f3fc7c378b4cc66097ad96f3c",
+      "bytes": 2080,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "requirements/value-all-py310.lock",
@@ -8850,6 +8874,12 @@
       "sha256": "d279e097a01a7bb2a19e801b4a813b529bcc33e1f96f360f164d664bc76f04d2",
       "bytes": 4056,
       "transform": "byte copy"
+    },
+    {
+      "path": "scripts/check_methodology_catalog.py",
+      "sha256": "dea73a02f30b6ea4ec0459adcfd5d5a26e1e57f8a808fbfda7b2d6e11f86d97e",
+      "bytes": 5599,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/check_publication_scope.py",
@@ -9807,8 +9837,8 @@
     },
     {
       "path": "tests/golden/cases.json",
-      "sha256": "6db13971afb1305067697e64bf001a15a9088975941f104580a2d2d842040546",
-      "bytes": 4884,
+      "sha256": "66cb33d3fbdf892636217e51d73c32dd61c81ddf25f1cb29babaebeb8a0ec889",
+      "bytes": 5208,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10449,8 +10479,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "cad441241fd3d0741fc95dc938263aa2fee91924270a27790c7da1cf243b028d",
-      "bytes": 38591,
+      "sha256": "f4b156d8fb6efa0a5235c73d4adb1a907da731fd724d0dbbd589a3a5e20d3220",
+      "bytes": 39490,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10542,6 +10572,18 @@
       "sha256": "aeaf782b0cc1dff2fd6296823fc3c4f4e076e603719d00cece5b631878e7c712",
       "bytes": 11591,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_methodology_profiles.py",
+      "sha256": "825623fbc144fd56980dcbae13c0722c2823b744fcd9cc198064b015fdbcf88a",
+      "bytes": 18463,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_methodology_static_scan.py",
+      "sha256": "d0725144f0e78766284a8f0b8dc2d35ac1d297528b4b444143db1ed9a04f5df4",
+      "bytes": 2773,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_module_authoring.py",
