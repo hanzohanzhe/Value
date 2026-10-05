@@ -3276,6 +3276,338 @@
     "year": 2030
    },
    "purpose": "Review M0-P0-7-S1 round 3: exact tier boundaries and the region default. onshore: ROI 1e6 / 8e6 = 0.125 == preferred 0.125 -> not Invest_High (strict), payback 8 <= 10 -> Invest_Profit 1.25 MW. offshore: payback 4e7 / 5e6 = 8 == target 8 (ROI 0.125 < 0.2) -> Invest_Profit 2.5 MW (inclusive). solar net exactly 0 -> Do_Nothing, no retirement. solar with region None joins the 'GB' asset of its owner (one group, proposal region GB); a lone region-None solar of another owner proposes in region GB."
+  },
+  {
+   "a4_expected": {
+    "onshore-nohead": {
+     "basis": "gross_revenue_is_profit",
+     "gen_cost_gbp_per_mwh": null,
+     "net_revenue_gbp": 3000000.0,
+     "operating_cost_gbp": 0.0
+    },
+    "solar-io": {
+     "basis": "gross_revenue_is_profit",
+     "gen_cost_gbp_per_mwh": null,
+     "net_revenue_gbp": 400000.0,
+     "operating_cost_gbp": 0.0
+    },
+    "solar-src": {
+     "basis": "gross_revenue_is_profit",
+     "gen_cost_gbp_per_mwh": null,
+     "net_revenue_gbp": 600000.0,
+     "operating_cost_gbp": 0.0
+    }
+   },
+   "a4_expected_decision": "unchanged_from_head",
+   "cashflow_inputs": {
+    "onshore-nohead": {
+     "carbon_cost_gbp_per_mwh": 0.0,
+     "electricity_income_gbp": 3000000.0,
+     "fuel_cost_gbp_per_mwh": 0.0,
+     "generated_mwh": 25000.0,
+     "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
+     "technology": "onshore",
+     "unit_time_cost_gbp_per_mwh": 0.0
+    },
+    "solar-io": {
+     "carbon_cost_gbp_per_mwh": 0.0,
+     "electricity_income_gbp": 400000.0,
+     "fuel_cost_gbp_per_mwh": 0.0,
+     "generated_mwh": 10000.0,
+     "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
+     "technology": "solar",
+     "unit_time_cost_gbp_per_mwh": 0.0
+    },
+    "solar-src": {
+     "carbon_cost_gbp_per_mwh": 0.0,
+     "electricity_income_gbp": 600000.0,
+     "fuel_cost_gbp_per_mwh": 0.0,
+     "generated_mwh": 10000.0,
+     "generation_cost_gbp_per_mwh": 0.0001,
+     "hydrogen_income_gbp": 0.0,
+     "technology": "solar",
+     "unit_time_cost_gbp_per_mwh": 0.0
+    }
+   },
+   "head_decision": {
+    "artifacts": [],
+    "decision_id": "p07-head:ownership_and_falsy_defaults:investment:2030",
+    "extensions": {
+     "grouped_investment_owners": 3,
+     "ineligible_assets": [],
+     "ineligible_groups": [],
+     "initial_headroom_mw_by_technology": {
+      "solar": 100.0
+     },
+     "investment_policy": {
+      "default_mode": "denied",
+      "policy_id": "value-cem-v1-expansion-eligibility",
+      "schema_version": "value.cem-investment-eligibility/v1",
+      "version": "2026.08.31"
+     },
+     "native_typed_execution": true,
+     "remaining_headroom_mw_by_technology": {
+      "solar": 98.33333333333333
+     }
+    },
+    "module_id": "agent-investment",
+    "proposals": [
+     {
+      "agent_id": "agent-s",
+      "capacity_mw": 1.0,
+      "evidence": {
+       "payback_years": 10.0,
+       "preferred_rate": 0.08,
+       "recommendation_code": 3.0,
+       "roi": 0.1,
+       "target_payback_years": 25.0
+      },
+      "expected_completion_year": 2031,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 42571.47437953776,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 600000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "development_years": 1.0,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh": null,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "explicit_override",
+       "investment_eligibility_mode": "headroom_required",
+       "investment_owner_id": "agent-s",
+       "investment_recommendation": "Invest_High",
+       "preferred_rate": 0.08,
+       "source_agent_id": "agent-s",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-head:ownership_and_falsy_defaults:2030:agent-s:0",
+       "success_probability": 1.0,
+       "target_payback_years": 25.0,
+       "total_capex_gbp": 600000.0
+      },
+      "proposal_id": "p07-head:ownership_and_falsy_defaults:2030:agent-s:0",
+      "region": "GB",
+      "schema_version": "value.investment-proposal/v2",
+      "technology": "solar",
+      "year": 2030
+     },
+     {
+      "agent_id": "owner-io",
+      "capacity_mw": 0.6666666666666666,
+      "evidence": {
+       "payback_years": 15.0,
+       "preferred_rate": 0.08,
+       "recommendation_code": 2.0,
+       "roi": 0.06666666666666667,
+       "target_payback_years": 25.0
+      },
+      "expected_completion_year": 2031,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 28380.98291969184,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 600000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "development_years": 1.0,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh": null,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "explicit_override",
+       "investment_eligibility_mode": "headroom_required",
+       "investment_owner_id": "owner-io",
+       "investment_recommendation": "Invest_Profit",
+       "preferred_rate": 0.08,
+       "source_agent_id": "owner-io",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-head:ownership_and_falsy_defaults:2030:owner-io:1",
+       "success_probability": 1.0,
+       "target_payback_years": 25.0,
+       "total_capex_gbp": 400000.0
+      },
+      "proposal_id": "p07-head:ownership_and_falsy_defaults:2030:owner-io:1",
+      "region": "GB",
+      "schema_version": "value.investment-proposal/v2",
+      "technology": "solar",
+      "year": 2030
+     }
+    ],
+    "retirements_mw": {},
+    "schema_version": "value.investment-decision/v2",
+    "year": 2030
+   },
+   "id": "ownership_and_falsy_defaults",
+   "inputs": {
+    "assets": [
+     {
+      "asset_id": "solar-src",
+      "capacity_mw": 10.0,
+      "energy_capacity_mwh": null,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 425714.74379537755,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 600000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "no_separate_non_storage_fom_term",
+       "source_agent_id": "agent-s",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-fixture:solar",
+       "total_capex_gbp": 6000000.0
+      },
+      "region": "GB",
+      "schema_version": "value.asset-state/v2",
+      "status": "operating",
+      "technology": "solar"
+     },
+     {
+      "asset_id": "solar-io",
+      "capacity_mw": 10.0,
+      "energy_capacity_mwh": null,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 425714.74379537755,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 600000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "no_separate_non_storage_fom_term",
+       "investment_owner_id": "owner-io",
+       "preferred_rate": 0.0,
+       "source_agent_id": "agent-ignored",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-fixture:solar",
+       "target_payback_years": 0.0,
+       "total_capex_gbp": 6000000.0
+      },
+      "region": "GB",
+      "schema_version": "value.asset-state/v2",
+      "status": "operating",
+      "technology": "solar"
+     },
+     {
+      "asset_id": "onshore-nohead",
+      "capacity_mw": 10.0,
+      "energy_capacity_mwh": null,
+      "extensions": {
+       "annual_fixed_opex_gbp": 0.0,
+       "annualized_capital_cost_gbp": 851429.4875907551,
+       "asset_economics_schema_version": "value.asset-economics/v1",
+       "capital_cost_per_mw": 1200000.0,
+       "capital_cost_per_mwh": 0.0,
+       "capital_discount_rate": 0.05,
+       "capital_recovery_factor": 0.0709524572992296,
+       "economic_lifetime_years": 25.0,
+       "energy_capacity_mwh_basis": null,
+       "fixed_om_basis": "no_separate_non_storage_fom_term",
+       "investment_owner_id": "owner-on",
+       "source_catalogue_id": "value-uk-1000twh-reproduction:costs.capital",
+       "source_record_id": "p07-fixture:onshore",
+       "total_capex_gbp": 12000000.0
+      },
+      "region": "GB",
+      "schema_version": "value.asset-state/v2",
+      "status": "operating",
+      "technology": "onshore"
+     }
+    ],
+    "headroom": [
+     {
+      "allowed_additions_mw": {
+       "solar": 100.0
+      },
+      "evidence": {},
+      "extensions": {},
+      "headroom_id": "p07-headroom:ownership_and_falsy_defaults:0",
+      "method": "declared_expansion_policy",
+      "module_id": "vre-expansion-cap",
+      "schema_version": "value.expansion-headroom/v2",
+      "units": {
+       "capacity": "MW"
+      },
+      "year": 2030
+     }
+    ],
+    "market": {
+     "artifacts": [],
+     "extensions": {},
+     "generation_mwh_by_asset": {},
+     "market_income_gbp_by_agent": {
+      "onshore-nohead": 3000000.0,
+      "solar-io": 400000.0,
+      "solar-src": 600000.0
+     },
+     "module_id": "value-bid-at-cost-psm",
+     "module_version": "5.1.0",
+     "period_summaries": [],
+     "result_id": "p07-market:ownership_and_falsy_defaults",
+     "schema_version": "value.market-year-result/v2",
+     "total_blackout_mwh": 0.0,
+     "total_demand_mwh": 1.0,
+     "total_excess_mwh": 0.0,
+     "total_generation_mwh": 1.0,
+     "total_levelized_capital_cost_gbp": 1.0,
+     "total_operational_cost_gbp": 1.0,
+     "total_system_cost_gbp": 1.0,
+     "units": {
+      "capacity": "MW",
+      "cost": "GBP",
+      "energy": "MWh"
+     },
+     "year": 2030
+    },
+    "run": {
+     "data_pack_id": "p07-pack",
+     "end_year": 2031,
+     "extensions": {},
+     "modules": {
+      "investment": {
+       "contract_version": "value.investment/v2",
+       "module_id": "agent-investment",
+       "module_version": "test",
+       "schema_version": "value.module-selection/v2",
+       "slot": "investment"
+      },
+      "pipeline": {
+       "contract_version": "value.pipeline/v2",
+       "module_id": "planning-pipeline",
+       "module_version": "test",
+       "schema_version": "value.module-selection/v2",
+       "slot": "pipeline"
+      },
+      "psm": {
+       "contract_version": "value.psm/v2",
+       "module_id": "value-bid-at-cost-psm",
+       "module_version": "test",
+       "schema_version": "value.module-selection/v2",
+       "slot": "psm"
+      }
+     },
+     "project_id": "p07-project",
+     "run_id": "p07-head:ownership_and_falsy_defaults",
+     "runtime_controls": {},
+     "scenario_id": "p07-scenario",
+     "schema_version": "value.resolved-run/v2",
+     "scientific_parameters": {
+      "clock.period_hours": 0.5
+     },
+     "start_year": 2030
+    },
+    "year": 2030
+   },
+   "purpose": "Lead ruling 2026-10-05 (review round 4 minor): owner from source_agent_id when investment_owner_id is absent; investment_owner_id wins over source_agent_id; a headroom_required technology (onshore) without any headroom row gets no addition and no remaining-cap entry; a falsy preferred_rate (0.0) falls back to 0.08 and a falsy target_payback_years (0.0) falls back to the economic life. solar-src: ROI 0.1 > 0.08 -> Invest_High 1 MW. solar-io: ROI 0.0667 <= 0.08 (not > 0.0), payback 15 <= life 25 (not <= 0) -> Invest_Profit 0.6667 MW. onshore-nohead: Invest_High requested 2.5 MW, cap 0."
   }
  ],
  "schema_version": "value.p07-head-decide-record/v1"

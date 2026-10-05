@@ -46,6 +46,12 @@ def _recorder():
 REC = _recorder()
 
 
+def cost_rows(cashflow):
+    """Fixture cashflow rows without their income fields: A4 takes income from the HEAD map (lead ruling)."""
+    return {asset_id: {key: value for key, value in row.items() if key not in ia.A4_INCOME_FIELDS}
+            for asset_id, row in cashflow.items()}
+
+
 def _json_text(value) -> str:
     return json.dumps(value, sort_keys=True, allow_nan=False)
 
@@ -182,6 +188,31 @@ class HeadDecideRecordTest(unittest.TestCase):
                          [(900_000.0 + 450_000.0) / 600_000.0])
 
 
+class OwnershipAndFalsyDefaultsRecordTest(unittest.TestCase):
+    """Lead ruling 2026-10-05 item 2: the scenario added to the HEAD record (sources still 35aadb3)."""
+
+    def test_scenario_covers_ownership_headroom_and_falsy_defaults(self):
+        record = json.loads(RECORD.read_text(encoding="utf-8"))
+        entry = {row["id"]: row for row in record["scenarios"]}["ownership_and_falsy_defaults"]
+        inputs = REC.decanonical(entry["inputs"])
+        ext = {row["asset_id"]: row["extensions"] for row in inputs["assets"]}
+        self.assertNotIn("investment_owner_id", ext["solar-src"])
+        self.assertEqual(ext["solar-src"]["source_agent_id"], "agent-s")
+        self.assertEqual((ext["solar-io"]["investment_owner_id"], ext["solar-io"]["source_agent_id"]),
+                         ("owner-io", "agent-ignored"))
+        self.assertEqual((ext["solar-io"]["preferred_rate"], ext["solar-io"]["target_payback_years"]), (0.0, 0.0))
+        self.assertTrue(all("onshore" not in row["allowed_additions_mw"] for row in inputs["headroom"]))
+        head = entry["head_decision"]
+        by_owner = {row["agent_id"]: row for row in head["proposals"]}
+        self.assertEqual(set(by_owner), {"agent-s", "owner-io"})
+        self.assertEqual(by_owner["owner-io"]["evidence"]["preferred_rate"], 0.08)
+        self.assertEqual(by_owner["owner-io"]["evidence"]["target_payback_years"], 25.0)
+        self.assertEqual(by_owner["owner-io"]["extensions"]["investment_recommendation"], "Invest_Profit")
+        self.assertEqual(by_owner["agent-s"]["extensions"]["investment_recommendation"], "Invest_High")
+        self.assertNotIn("onshore", head["extensions"]["remaining_headroom_mw_by_technology"])
+        self.assertEqual(head["retirements_mw"], {})
+
+
 class DecisionA4FixtureTest(unittest.TestCase):
     """Thermal net revenue restored in both profiles; VRE and storage gross = profit."""
 
@@ -263,7 +294,7 @@ class DecisionA4FixtureTest(unittest.TestCase):
         """A4 rows through the S4 path: mode filter first, then the A4 net revenue per member."""
         inputs = REC.decanonical(entry["inputs"])
         groups, _ = ia.head_group_assets(inputs["assets"], inputs["market"]["market_income_gbp_by_agent"])
-        return ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, entry["cashflow_inputs"])
+        return ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, cost_rows(entry["cashflow_inputs"]))
 
     def test_s4_path_reproduces_the_hand_computed_a4_rows(self):
         checked = 0
@@ -328,7 +359,38 @@ class DecisionA4FixtureTest(unittest.TestCase):
                 assert_recomposition_matches_head(self, entry, net)
                 checked.append(entry["id"])
         self.assertEqual(checked, ["vre_gross_shared_headroom", "storage_gross_headroom",
-                                   "tier_boundaries_and_region_default"])
+                                   "tier_boundaries_and_region_default", "ownership_and_falsy_defaults"])
+
+    def test_vre_and_storage_net_is_the_head_income_bit_for_bit(self):
+        """Lead ruling 2026-10-05: A4 changes only the operating-cost term; VRE/storage net == HEAD income."""
+        checked = 0
+        for entry in self.record["scenarios"]:
+            expected = entry["a4_expected_decision"]
+            if not entry["cashflow_inputs"] or (isinstance(expected, dict) and "fails_closed" in expected):
+                continue
+            inputs = REC.decanonical(entry["inputs"])
+            income = inputs["market"]["market_income_gbp_by_agent"]
+            groups, _ = ia.head_group_assets(inputs["assets"], income)
+            # VRE and storage need no cost row at all: the result is the same.
+            no_rows = {} if any(g["technology"] in ia.THERMAL_TECHNOLOGIES for g in groups) else \
+                ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, {})
+            for rows in (self._a4_net(entry), no_rows):
+                for asset_id, row in rows.items():
+                    checked += 1
+                    if row["basis"] != ia.NET_REVENUE_BASIS_GROSS:
+                        continue
+                    with self.subTest(scenario=entry["id"], asset=asset_id):
+                        self.assertEqual(row["operating_cost_gbp"], 0.0)
+                        self.assertEqual(row["net_revenue_gbp"].hex(),
+                                         float(income.get(asset_id, 0.0) or 0.0).hex())
+        self.assertGreater(checked, 20)
+
+    def test_income_fields_in_a4_rows_are_refused(self):
+        entry = {row["id"]: row for row in self.record["scenarios"]}["ccgt_price_equals_mc"]
+        inputs = REC.decanonical(entry["inputs"])
+        groups, _ = ia.head_group_assets(inputs["assets"], inputs["market"]["market_income_gbp_by_agent"])
+        with self.assertRaisesRegex(ValueError, "income"):
+            ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, entry["cashflow_inputs"])
 
     def test_a4_path_skips_denied_and_site_data_groups_before_any_a4_call(self):
         """Review M0-P0-7-S1 round 2: Nuclear and hydro beside thermal must not reach deducts_energy_cost."""
@@ -353,7 +415,8 @@ class DecisionA4FixtureTest(unittest.TestCase):
                 ia.scheme_c_investment_net_revenue(**row)
         groups, _ = ia.head_group_assets(inputs["assets"], income)
         self.assertTrue({"Nuclear", "Hydro_natural_flow", "coal"} <= {group["technology"] for group in groups})
-        rows = ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, cashflow)
+        cashflow_costs = cost_rows(cashflow)
+        rows = ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, cashflow_costs)
         self.assertEqual(set(rows), {"ccgt-north", "ccgt-south", "solar-x1", "commissioned:model:solar-x2",
                                      "bio-silent"})
         self.assertEqual({asset_id: row["basis"] for asset_id, row in rows.items()},
@@ -371,16 +434,52 @@ class DecisionA4FixtureTest(unittest.TestCase):
              for row in result["outcomes"] if "skipped" in row],
             head["ineligible_groups"])
         # Fail closed on the decidable side: a missing row or a row of another technology.
-        for broken in ({k: v for k, v in cashflow.items() if k != "bio-silent"},
-                       {**cashflow, "solar-x1": {**cashflow["solar-x1"], "technology": "onshore"}},
-                       {**cashflow, "ccgt-south": {k: v for k, v in cashflow["ccgt-south"].items()
-                                                   if k != "unit_time_cost_gbp_per_mwh"}}):
-            with self.subTest(broken=sorted(set(cashflow) ^ set(broken)) or "row"), \
+        for broken in ({k: v for k, v in cashflow_costs.items() if k != "bio-silent"},
+                       {**cashflow_costs, "solar-x1": {**cashflow_costs["solar-x1"], "technology": "onshore"}},
+                       {**cashflow_costs, "ccgt-south": {k: v for k, v in cashflow_costs["ccgt-south"].items()
+                                                         if k != "unit_time_cost_gbp_per_mwh"}}):
+            with self.subTest(broken=sorted(set(cashflow_costs) ^ set(broken)) or "row"), \
                     self.assertRaises((ValueError, TypeError)):
                 ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, broken)
         # Skipped groups need no row at all.
-        decidable_only = {asset_id: cashflow[asset_id] for asset_id in rows}
+        decidable_only = {asset_id: cashflow_costs[asset_id] for asset_id in rows}
         self.assertEqual(ia.a4_net_revenue_for_decidable_groups(groups, investment_mode, decidable_only), rows)
+
+
+class DecisionA7NoVreStorageFomInDecideTest(unittest.TestCase):
+    """DECISIONS A7 (lead ruling item 3): no VRE or storage FOM term enters decide().
+
+    The fixed OPEX of VRE and storage is folded into levelised CAPEX; a
+    separate FOM on those assets must not move any recommendation, size or
+    retirement. (The headline-cost half of the rule is tested with the cost
+    ledger in tests/test_p07_cost_ledger_v2.py.)
+    """
+
+    def test_vre_and_storage_fom_does_not_move_the_decision(self):
+        from dataclasses import replace
+
+        record = json.loads(RECORD.read_text(encoding="utf-8"))
+        checked = 0
+        for entry in record["scenarios"]:
+            run, state, market, headroom = REC.inputs_from_record(entry)
+            technologies = {asset.technology for asset in state.assets if asset.capacity_mw > 0}
+            if not technologies or not technologies <= ia.GROSS_PROFIT_TECHNOLOGIES:
+                continue
+            baseline = SchemeCAgentInvestmentDefinition().decide(run, state, market, headroom)
+            heavy = replace(state, assets=tuple(
+                replace(asset, extensions={**dict(asset.extensions), "annual_fixed_opex_gbp": 9.9e9,
+                                           "fixed_om_basis": "test:A7"})
+                for asset in state.assets))
+            decision = SchemeCAgentInvestmentDefinition().decide(run, heavy, market, headroom)
+            with self.subTest(entry["id"]):
+                self.assertEqual(
+                    [(p.agent_id, p.technology, p.capacity_mw.hex(), p.extensions["investment_recommendation"])
+                     for p in decision.proposals],
+                    [(p.agent_id, p.technology, p.capacity_mw.hex(), p.extensions["investment_recommendation"])
+                     for p in baseline.proposals])
+                self.assertEqual(_json_text(decision.retirements_mw), _json_text(baseline.retirements_mw))
+                checked += 1
+        self.assertGreaterEqual(checked, 4)
 
 
 if __name__ == "__main__":

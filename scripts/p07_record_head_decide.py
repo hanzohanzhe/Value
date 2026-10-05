@@ -403,6 +403,38 @@ def scenarios():
             },
             "a4_expected_decision": "unchanged_from_head",
         },
+        {
+            "id": "ownership_and_falsy_defaults",
+            "purpose": "Lead ruling 2026-10-05 (review round 4 minor): owner from source_agent_id when "
+                       "investment_owner_id is absent; investment_owner_id wins over source_agent_id; a "
+                       "headroom_required technology (onshore) without any headroom row gets no addition and "
+                       "no remaining-cap entry; a falsy preferred_rate (0.0) falls back to 0.08 and a falsy "
+                       "target_payback_years (0.0) falls back to the economic life. solar-src: ROI 0.1 > 0.08 -> "
+                       "Invest_High 1 MW. solar-io: ROI 0.0667 <= 0.08 (not > 0.0), payback 15 <= life 25 (not "
+                       "<= 0) -> Invest_Profit 0.6667 MW. onshore-nohead: Invest_High requested 2.5 MW, cap 0.",
+            "assets": [
+                _asset("solar-src", "solar", 10.0, capex_per_mw=600_000.0, source_agent_id="agent-s"),
+                _asset("solar-io", "solar", 10.0, capex_per_mw=600_000.0, preferred_rate=0.0,
+                       target_payback_years=0.0, investment_owner_id="owner-io", source_agent_id="agent-ignored"),
+                _asset("onshore-nohead", "onshore", 10.0, capex_per_mw=1_200_000.0,
+                       investment_owner_id="owner-on"),
+            ],
+            "income": {"solar-src": 600_000.0, "solar-io": 400_000.0, "onshore-nohead": 3_000_000.0},
+            "headroom": [{"module_id": "vre-expansion-cap", "allowed": {"solar": 100.0}}],
+            "cashflow_inputs": {
+                asset_id: {"electricity_income_gbp": income, **_thermal(energy, generation=0.0001)}
+                for asset_id, income, energy in (
+                    ("solar-src", 600_000.0, 10_000.0), ("solar-io", 400_000.0, 10_000.0),
+                    ("onshore-nohead", 3_000_000.0, 25_000.0))
+            },
+            "a4_expected": {
+                key: {"basis": "gross_revenue_is_profit", "gen_cost_gbp_per_mwh": None,
+                      "operating_cost_gbp": 0.0, "net_revenue_gbp": income}
+                for key, income in (("solar-src", 600_000.0), ("solar-io", 400_000.0),
+                                    ("onshore-nohead", 3_000_000.0))
+            },
+            "a4_expected_decision": "unchanged_from_head",
+        },
     ]
 
 
