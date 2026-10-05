@@ -531,6 +531,11 @@
    "pattern": "*::*a4_net_revenue*",
    "zone": "accounting",
    "why": "P0-7 S4 (decision A4, Q12): audit record of the thermal operating cost netted by agent-investment; the proposals and retirements stay trajectory"
+  },
+  {
+   "pattern": "*::*storage_headroom_inputs*",
+   "zone": "accounting",
+   "why": "P0-7 S6 (P5-01, C20, Q12): the PSM's per-period post-charge surplus trace read by the corrected storage policy (a ledger-derived input); the headroom and investment it moves stay trajectory"
   }
  ]
 }

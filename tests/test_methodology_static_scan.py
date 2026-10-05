@@ -31,6 +31,9 @@ class StaticScanTests(unittest.TestCase):
         rules.mkdir(parents=True)
         shutil.copy2(ROOT / "gridform_core" / "builtin" / "scheme_c_1000twh" / "native_market_rules.py",
                      rules / "native_market_rules.py")
+        # P0-7: the storage headroom and power-pool switches are consulted here.
+        shutil.copy2(ROOT / "gridform_core" / "builtin" / "scheme_c_1000twh" / "v2_module_definitions.py",
+                     rules / "v2_module_definitions.py")
         return folder
 
     def test_unknown_correction_id_in_code_is_reported(self):

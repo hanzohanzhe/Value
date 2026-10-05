@@ -36,6 +36,7 @@ from .native_market_rules import (
 )
 from .native_realisation import COST_COLUMNS, DIAGNOSTIC_COLUMNS, RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
+from .storage_headroom import HEADROOM_INPUTS_KEY, headroom_inputs
 
 
 class _NativeParameterAdapter:
@@ -782,6 +783,21 @@ class SchemeCNativePSM:
         cashflow = self._agent_cashflow(
             generation, generator_cost_components, state_coupling, model_input,
         )
+        # P0-7 S6 (P5-01, C20): the surplus left after the existing fleet
+        # charged, read through the rule set's declared column semantics. Only
+        # the corrected rule set declares it (excess and curtailment are
+        # disjoint there); the doctoral rule set publishes nothing (Q1).
+        semantics = column_semantics(market_rules)
+        headroom_extension = {}
+        if semantics.get("leftover_relationship") == "excess_plus_curtailed_disjoint":
+            headroom_extension[HEADROOM_INPUTS_KEY] = headroom_inputs(
+                [
+                    float(excess) * period_hours + float(row.curtailed_mwh)
+                    for excess, row in zip(named.excess_electricity_mwh_by_period, summaries)
+                ],
+                basis="excess_plus_curtailed_disjoint",
+                psm_module_id=self.id,
+            )
         self._invocations.append(model_input.year)
         return MarketYearResult(
             result_id=f"{model_input.run_id}:market:{model_input.year}",
@@ -824,6 +840,7 @@ class SchemeCNativePSM:
                 ),
                 "physical_operating_cost_detail_gbp": operating_detail,
                 agent_cashflow.EXTENSION_KEY: cashflow,
+                **headroom_extension,
                 "market_settlement_components_gbp": settlement,
                 "market_rule_diagnostics": self._rule_diagnostics(realisation_log, market_rules, period_hours),
                 "market_rule_set": market_rule_set_record(

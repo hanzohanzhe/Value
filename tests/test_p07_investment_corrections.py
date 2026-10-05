@@ -4,6 +4,13 @@
   a CCGT paid exactly its marginal cost proposes nothing; paid 10 GBP/MWh
   below it, it retires per the HEAD rule (45.625 MW); VRE keeps gross = profit;
   a market without ``agent_cashflow`` fails closed for a thermal group.
+* StorageHeadroomTests - P5-01 (p07.storage-leftover-headroom, corrected only):
+  a 17520-period square wave gives a 400 MW power pool (HEAD/doctoral: 0);
+  a 96-period chronology gives zero with reason partial_year_chronology;
+  no kernel global is rebound.
+* PowerBatteryPoolTests - P5-02 (p07.power-battery-pool, corrected only):
+  pool 400 with requests 300/200/100 accepts 200/133.33/66.67; doctoral keeps
+  per-technology copies (600 in total) and refuses a pooled row.
 """
 from __future__ import annotations
 
@@ -16,7 +23,10 @@ from pathlib import Path
 from gridform_core import agent_cashflow
 from gridform_core.builtin.scheme_c_1000twh.v2_module_definitions import SchemeCAgentInvestmentDefinition
 from gridform_core.methodology import PROFILE_PARAMETER, REFERENCE_PROFILE_ID, default_profile_id
-from gridform_core.v2.contracts import MarketYearResult, OperatingState
+from gridform_core.builtin.scheme_c_1000twh import storage_headroom as sh
+from gridform_core.builtin.scheme_c_1000twh.storage import storage_expansion_cap as kernel
+from gridform_core.builtin.scheme_c_1000twh.v2_module_definitions import SchemeCStorageExpansionPolicyDefinition
+from gridform_core.v2.contracts import ExpansionHeadroom, MarketYearResult, OperatingState, PeriodSummary
 
 ROOT = Path(__file__).resolve().parents[1]
 YEAR = 2030
@@ -118,6 +128,135 @@ class ThermalNetRevenueTests(unittest.TestCase):
                     _run(profile_id), state, _market({"solar-toy": 600_000.0}, None), headroom)
                 self.assertEqual([(p.capacity_mw, p.extensions["investment_recommendation"])
                                   for p in decision.proposals], [(1.0, "Invest_High")])
+
+
+def _square_wave(periods: int) -> tuple[tuple[PeriodSummary, ...], list[float]]:
+    """Half a day of 1000 MWh/period surplus (curtailed after the fleet charged), half a day of 1000 MWh gap."""
+    rows, leftover = [], []
+    for period in range(periods):
+        surplus = (period % 48) < 24
+        rows.append(PeriodSummary(f"p{period}", YEAR, period, "final_dispatch", 1000.0, 1000.0,
+                                  1000.0 if surplus else 0.0, 0.0, 0.0, 2000.0 if surplus else 0.0,
+                                  1000.0 if surplus else 0.0, 1000.0 if surplus else 0.0, 0.0, 50.0,
+                                  0.0, 0.0, 0.0, 0.0))
+        leftover.append(1000.0 if surplus else 0.0)
+    return tuple(rows), leftover
+
+
+def _storage_market(periods: int, *, with_trace: bool = True) -> MarketYearResult:
+    rows, leftover = _square_wave(periods)
+    extensions = {sh.HEADROOM_INPUTS_KEY: sh.headroom_inputs(leftover, basis="excess_plus_curtailed_disjoint",
+                                                             psm_module_id="toy")} if with_trace else {}
+    return MarketYearResult("toy", YEAR, "toy", "1", {}, {}, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+                            period_summaries=rows, extensions=extensions)
+
+
+class _Policy(SchemeCStorageExpansionPolicyDefinition):
+    id = "value-storage-expansion-policy"
+
+
+class StorageHeadroomTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.full_year = _storage_market(17520)
+
+    def _evaluate(self, profile_id, market, fraction=None):
+        run = _run(profile_id)
+        if fraction is not None:
+            run = replace(run, scientific_parameters={**dict(run.scientific_parameters),
+                                                      "expansion.storage_cap_fraction": fraction})
+        return _Policy().evaluate(run, OperatingState(YEAR, (), ()), market)
+
+    def test_square_wave_gives_a_400_mw_power_pool_in_the_corrected_profile(self):
+        before = kernel.CAP_FRACTION
+        row = self._evaluate(default_profile_id(), self.full_year)
+        self.assertEqual(kernel.CAP_FRACTION, before)
+        self.assertIsNone(row.extensions["reason"])
+        for tech in sh.POWER_BATTERIES:
+            self.assertAlmostEqual(row.allowed_additions_mw[tech], 400.0, delta=1e-6)
+        self.assertAlmostEqual(row.extensions["pools"][sh.POWER_BATTERY_POOL]["cap_mw"], 400.0, delta=1e-6)
+        self.assertAlmostEqual(row.evidence["power_room_mw"], 2000.0, delta=1e-6)
+        self.assertAlmostEqual(row.allowed_additions_mw[sh.HYDROGEN_BATTERY], 0.0, delta=1e-6)
+        self.assertEqual(row.extensions["headroom_semantics"], sh.HEADROOM_SEMANTICS)
+
+    def test_doctoral_profile_keeps_the_head_zero_headroom(self):
+        row = self._evaluate(REFERENCE_PROFILE_ID, self.full_year)
+        self.assertTrue(all(value == 0.0 for value in row.allowed_additions_mw.values()))
+        self.assertNotIn("pools", row.extensions)
+
+    def test_cap_fraction_scales_without_rebinding_the_kernel_global(self):
+        before = kernel.CAP_FRACTION
+        row = self._evaluate(default_profile_id(), self.full_year, fraction=0.3)
+        self.assertEqual(kernel.CAP_FRACTION, before)
+        self.assertAlmostEqual(row.allowed_additions_mw["1c_battery"], 600.0, delta=1e-6)
+
+    def test_partial_year_gives_zero_with_a_reason(self):
+        row = self._evaluate(default_profile_id(), _storage_market(96))
+        self.assertEqual(row.extensions["reason"], "partial_year_chronology")
+        self.assertEqual(set(row.allowed_additions_mw.values()), {0.0})
+        self.assertEqual(row.extensions["pools"][sh.POWER_BATTERY_POOL]["cap_mw"], 0.0)
+
+    def test_missing_trace_gives_zero_with_a_reason(self):
+        row = self._evaluate(default_profile_id(), _storage_market(17520, with_trace=False))
+        self.assertEqual(row.extensions["reason"], "leftover_trace_unavailable")
+        self.assertEqual(set(row.allowed_additions_mw.values()), {0.0})
+
+    def test_trace_of_the_wrong_length_or_sign_is_refused(self):
+        rows, leftover = _square_wave(17520)
+        for bad in (leftover[:-1], [-1.0] + leftover[1:]):
+            market = MarketYearResult("toy", YEAR, "toy", "1", {}, {}, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+                                      period_summaries=rows, extensions={sh.HEADROOM_INPUTS_KEY: sh.headroom_inputs(
+                                          bad, basis="x", psm_module_id="toy")})
+            with self.subTest(length=len(bad)), self.assertRaises(ValueError):
+                self._evaluate(default_profile_id(), market)
+
+
+class PowerBatteryPoolTests(unittest.TestCase):
+    REQUESTS = {"1c_battery": 300.0, "0.5c_battery": 200.0, "0.25c_battery": 100.0}
+
+    def _fleet(self):
+        assets, income = [], {}
+        for tech, requested in self.REQUESTS.items():
+            asset = REC._asset(f"{tech}-a", tech, 10.0, energy=10.0, investment_owner_id=f"owner-{tech}")
+            per_mw = float(asset.extensions["total_capex_gbp"]) / 10.0
+            assets.append(asset)
+            income[asset.asset_id] = requested * per_mw
+        return OperatingState(YEAR, tuple(assets), ()), income
+
+    def _row(self, *, pooled: bool):
+        extensions = {"headroom_semantics": sh.HEADROOM_SEMANTICS}
+        if pooled:
+            extensions["pools"] = {sh.POWER_BATTERY_POOL: {"cap_mw": 400.0, "technologies": list(sh.POWER_BATTERIES)}}
+        return ExpansionHeadroom("h", YEAR, "value-storage-expansion-policy",
+                                 {tech: 400.0 for tech in sh.POWER_BATTERIES}, extensions=extensions)
+
+    def test_corrected_pool_scales_requests_proportionally(self):
+        state, income = self._fleet()
+        decision = SchemeCAgentInvestmentDefinition().decide(
+            _run(default_profile_id()), state, _market(income, {}), (self._row(pooled=True),))
+        accepted = {p.technology: p.capacity_mw for p in decision.proposals}
+        self.assertAlmostEqual(accepted["1c_battery"], 200.0, delta=1e-9)
+        self.assertAlmostEqual(accepted["0.5c_battery"], 400.0 / 3.0, delta=1e-9)
+        self.assertAlmostEqual(accepted["0.25c_battery"], 200.0 / 3.0, delta=1e-9)
+        self.assertLessEqual(math.fsum(accepted.values()), 400.0)
+        record = decision.extensions["power_battery_pool"]
+        self.assertAlmostEqual(record["pool_scale"][sh.POWER_BATTERY_POOL], 400.0 / 600.0)
+        self.assertEqual([p.proposal_id for p in decision.proposals],
+                         sorted((p.proposal_id for p in decision.proposals),
+                                key=lambda item: int(item.rsplit(":", 1)[1])))
+
+    def test_doctoral_keeps_per_technology_copies(self):
+        state, income = self._fleet()
+        decision = SchemeCAgentInvestmentDefinition().decide(
+            _run(REFERENCE_PROFILE_ID), state, _market(income, {}), (self._row(pooled=False),))
+        self.assertAlmostEqual(math.fsum(p.capacity_mw for p in decision.proposals), 600.0, delta=1e-9)
+        self.assertNotIn("power_battery_pool", decision.extensions)
+
+    def test_doctoral_refuses_a_pooled_row(self):
+        state, income = self._fleet()
+        with self.assertRaisesRegex(ValueError, "shared pools"):
+            SchemeCAgentInvestmentDefinition().decide(
+                _run(REFERENCE_PROFILE_ID), state, _market(income, {}), (self._row(pooled=True),))
 
 
 if __name__ == "__main__":

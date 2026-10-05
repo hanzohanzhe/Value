@@ -181,8 +181,20 @@
     "value-storage-expansion-policy": {
       "baseline_version": "4.0.0",
       "baseline_scientific_version": "storage-cost-policy-injected-2026.08.04",
-      "current_version": "4.0.0",
-      "bumps": []
+      "current_version": "5.0.0",
+      "bumps": [
+        {
+          "from": "4.0.0",
+          "to": "5.0.0",
+          "package": "P0-7",
+          "correction_ids": [
+            "p07.storage-leftover-headroom",
+            "p07.power-battery-pool"
+          ],
+          "reason": "value-corrected only (doctoral unchanged, Q1): storage headroom from the post-charge leftover surplus the PSM publishes (P5-01), zero with a recorded reason for a partial-year chronology or a PSM without the trace, one shared power-battery pool instead of three copies of the cap (P5-02), no kernel global rebound. Storage investment opens in corrected Studies, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        }
+      ]
     },
     "value-zonal-redispatch-balancing": {
       "baseline_version": "3.0.0",

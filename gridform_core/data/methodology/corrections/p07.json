@@ -10,21 +10,105 @@
     {
       "id": "p07.thermal-net-revenue",
       "package": "p07",
-      "findings": ["P4-01"],
+      "findings": [
+        "P4-01"
+      ],
       "track": "universal",
       "scope": "investment_decision",
-      "affects": ["trajectory", "accounting"],
-      "applies_when": {"modules_any": ["agent-investment"]},
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "agent-investment"
+        ]
+      },
       "advisory": {
         "severity": "critical",
         "title": "Thermal investment decided on gross revenue",
         "summary": "Before P0-7 the v2 investment module netted no running cost, so gas and biomass plants paid exactly their marginal cost looked profitable and were expanded (a CCGT priced at its marginal cost built 10.95 MW per 100 MW). The original Scheme C rule nets generated MWh x gen_cost (fuel, carbon, unit-time cost).",
-        "affected_metrics": ["investment", "capacity", "retirements", "costs"]
+        "affected_metrics": [
+          "investment",
+          "capacity",
+          "retirements",
+          "costs"
+        ]
       },
-      "trigger_fixture": {"test": "tests.test_p07_investment_corrections.ThermalNetRevenueTests"},
+      "trigger_fixture": {
+        "test": "tests.test_p07_investment_corrections.ThermalNetRevenueTests"
+      },
       "introduced_in": "P0-7 S4 (decision A4)",
       "deviation_signature": null,
       "description": "agent-investment 3.0.0 nets, for gas and biomass (and any asset with a fuel or carbon cost), generated MWh x (generation + fuel + carbon + unit_time cost) from the market income; the running cost comes from the PSM's value.agent-cashflow/v1 extension and a decidable thermal group without it fails closed. VRE and storage keep gross revenue = profit, bit-identical to 35aadb3 (decisions A4, A7)."
+    },
+    {
+      "id": "p07.storage-leftover-headroom",
+      "package": "p07",
+      "findings": [
+        "P5-01"
+      ],
+      "track": "profile_gated",
+      "scope": "expansion_headroom",
+      "affects": [
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-storage-expansion-policy",
+          "storage-expansion-scheme-c"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Storage expansion headroom was always zero",
+        "summary": "Before P0-7 the typed storage policy computed the surplus as accepted VRE minus demand, which is never positive, so no storage could be built; it also rebound a kernel global during the call.",
+        "affected_metrics": [
+          "investment",
+          "capacity",
+          "storage"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_p07_investment_corrections.StorageHeadroomTests"
+      },
+      "introduced_in": "P0-7 S6",
+      "deviation_signature": null,
+      "description": "value-corrected: new storage charges only from the surplus left after the existing fleet charged, published by the PSM per period (storage_headroom_inputs, from the rule set's declared column semantics: excess + curtailed for the corrected default PSM). A chronology other than one full year of 17520 half-hour periods gives zero headroom with reason partial_year_chronology; a PSM without the trace gives zero with reason leftover_trace_unavailable. No kernel global is written. The doctoral profile keeps the 35aadb3 path (zero headroom, decision Q1)."
+    },
+    {
+      "id": "p07.power-battery-pool",
+      "package": "p07",
+      "findings": [
+        "P5-02"
+      ],
+      "track": "profile_gated",
+      "scope": "expansion_headroom",
+      "affects": [
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-storage-expansion-policy",
+          "storage-expansion-scheme-c"
+        ]
+      },
+      "advisory": {
+        "severity": "medium",
+        "title": "Power-battery cap counted three times",
+        "summary": "Before P0-7 the same power cap was given to each of the 1C, 0.5C and 0.25C batteries, so together they could take three times the aligned-utilisation room.",
+        "affected_metrics": [
+          "investment",
+          "capacity",
+          "storage"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_p07_investment_corrections.PowerBatteryPoolTests"
+      },
+      "introduced_in": "P0-7 S7",
+      "deviation_signature": null,
+      "description": "value-corrected: the three power batteries share one pool of cap_fraction x power_room; agent-investment collects their requests first and scales them to each technology cap, then to the pool (allocate_capped_requests). A doctoral run that receives a pooled headroom row is refused. The doctoral profile keeps the per-technology copies (decision Q1)."
     }
   ]
 }
