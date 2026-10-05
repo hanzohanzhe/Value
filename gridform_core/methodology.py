@@ -36,6 +36,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
+from . import pack_source_identity
+
 PROFILE_PARAMETER = "methodology.profile"
 # The frozen thesis-lineage profile.  Only the reference routes (modular_run,
 # reference_comparison) and tests name it; rule sets never compare profile ids
@@ -575,9 +577,36 @@ def classify_data_pack(manifest: Mapping[str, object]) -> str:
     return "user_workspace"
 
 
-def manifest_sha256_candidates(manifest: Mapping[str, object], manifest_bytes: bytes | None = None) -> set[str]:
-    """File-byte and canonical-JSON sha256 of a pack manifest (either may be whitelisted)."""
+def whitelist_manifest(manifest: Mapping[str, object]) -> Mapping[str, object]:
+    """The manifest the whitelist identifies: the verified source of a frozen copy.
 
+    A Run executes on its input snapshot, whose pack manifest
+    ``run_snapshot`` rewrote (bindings, ``snapshot_frozen``).  The whitelist
+    identifies that copy by its source manifest when the snapshot's source
+    record is consistent with the frozen bindings
+    (:func:`pack_source_identity.source_manifest`); otherwise by the frozen
+    manifest itself, which no profile pins.
+    """
+
+    if manifest.get("snapshot_frozen") is True:
+        source = pack_source_identity.source_manifest(manifest)
+        if source is not None:
+            return source
+    return manifest
+
+
+def manifest_sha256_candidates(manifest: Mapping[str, object], manifest_bytes: bytes | None = None) -> set[str]:
+    """File-byte and canonical-JSON sha256 of a pack manifest (either may be whitelisted).
+
+    For a snapshot-frozen manifest with a verified source record the candidate
+    is the source manifest's canonical sha (the frozen file bytes are not the
+    pinned bytes).
+    """
+
+    if manifest.get("snapshot_frozen") is True:
+        source = pack_source_identity.source_manifest(manifest)
+        if source is not None:
+            return {_sha256_json(source)}
     values = {_sha256_json(dict(manifest))}
     if manifest_bytes is not None:
         values.add(hashlib.sha256(manifest_bytes).hexdigest())
@@ -595,6 +624,7 @@ def read_pack_manifest(pack_root: Path) -> tuple[dict[str, object], bytes]:
 def _pack_supported(profile: Profile, manifest: Mapping[str, object], shas: set[str]) -> bool:
     if profile.supported_data_packs == "*":
         return True
+    manifest = whitelist_manifest(manifest)
     pack_id = str(manifest.get("id") or "")
     pack_class = classify_data_pack(manifest)
     for entry in profile.supported_data_packs:  # type: ignore[union-attr]
@@ -682,10 +712,13 @@ def combination_violations(
     for manifest, raw in data_packs:
         shas = manifest_sha256_candidates(manifest, raw)
         if not _pack_supported(profile, manifest, shas):
+            identified = whitelist_manifest(manifest)
+            unverified = manifest.get("snapshot_frozen") is True and identified is manifest
             rows.append(_violation(
                 "data_pack",
-                f"data pack {manifest.get('id')} ({classify_data_pack(manifest)}) is not a thesis-era pack of {profile.label}",
-                data_pack_id=manifest.get("id"), pack_class=classify_data_pack(manifest),
+                f"data pack {manifest.get('id')} ({classify_data_pack(identified)}) is not a thesis-era pack of {profile.label}"
+                + (" (its run-input snapshot carries no verifiable source manifest identity)" if unverified else ""),
+                data_pack_id=manifest.get("id"), pack_class=classify_data_pack(identified),
                 manifest_sha256=sorted(shas),
             ))
     if profile.external_code_policy == "refuse_when_enabled" and external_code:

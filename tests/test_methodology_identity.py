@@ -159,7 +159,9 @@ class RealRunPairTests(unittest.TestCase):
                     selected=project["modules"], object_root=Path(folder) / "objects",
                 )
                 (run / "model-output").mkdir()
-                run_project_application(project, run_id=name, pack_root=pack_root,
+                # The worker runs on the frozen copy of the pack, never on the
+                # source pack: the doctoral whitelist must identify that copy.
+                run_project_application(project, run_id=name, pack_root=run / "input-snapshot" / "pack",
                                         output_dir=run / "model-output", mode="smoke")
                 status = {"id": name, "project_id": project["id"], "mode": "smoke", "status": "completed",
                           "input_snapshot_id": snapshot.get("snapshot_id"),

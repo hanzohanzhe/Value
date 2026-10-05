@@ -28,7 +28,7 @@ SHA = re.compile(r"^[0-9a-fA-F]{64}$")
 QUALIFICATION_FIELDS = {
     "installation", "validation", "validation_status", "contract_validation_status",
     "scientific_validation_status", "scientific_baseline_eligible", "scientific_baseline_status",
-    "owner_approval", "pack_revision_sha256", "manifest_sha256", "snapshot_frozen",
+    "owner_approval", "pack_revision_sha256", "manifest_sha256", "snapshot_frozen", "snapshot_source_manifest",
     "copy_origin", "overlay_editor_provenance", "frozen_recovery_origin",
 }
 BINDING_HISTORY_FIELDS = {

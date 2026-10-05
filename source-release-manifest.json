@@ -843,6 +843,7 @@
     "gridform_core/network_expansion.py",
     "gridform_core/nuclear_policy.py",
     "gridform_core/orchestrator.py",
+    "gridform_core/pack_source_identity.py",
     "gridform_core/parameters.py",
     "gridform_core/parity.py",
     "gridform_core/path_hygiene.py",
@@ -1283,6 +1284,7 @@
     "tests/test_doctoral_project_weather.py",
     "tests/test_doctoral_reference_harness.py",
     "tests/test_doctoral_release_gates.py",
+    "tests/test_doctoral_run_worker_path.py",
     "tests/test_doctoral_settlement_details.py",
     "tests/test_doctoral_state_alignment.py",
     "tests/test_doctoral_thesis96_alignment.py",
@@ -1356,6 +1358,7 @@
     "tests/test_p07_investment_accounts.py",
     "tests/test_p0_5_baseline.py",
     "tests/test_p0_gate.py",
+    "tests/test_pack_source_identity.py",
     "tests/test_parameter_registry.py",
     "tests/test_path_hygiene.py",
     "tests/test_perfect_foresight_psm.py",
@@ -3426,9 +3429,9 @@
     },
     {
       "path": "backend/frozen_input_recovery.py",
-      "sha256": "a1bdd1b6af01386cf4bf65133c80952090074460dea67fd23daff9927cd051fa",
-      "bytes": 12155,
-      "transform": "byte copy"
+      "sha256": "e1c9e901b0e131cdcd85345e8147987aa2e7dd4e50763305a2b7fa7daa5ee3f8",
+      "bytes": 12183,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/frozen_run_recovery.py",
@@ -7695,8 +7698,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "7c566f231b62f435b22ba7d991261faf35c48df5a997a1dd2214f4b24da2a2d8",
-      "bytes": 40014,
+      "sha256": "37c45e9e65b803624ceec20b3d91b3a5e964d70191c05081c7d71f8e45360938",
+      "bytes": 41477,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7776,6 +7779,12 @@
       "sha256": "889b81d0c78b2ada0862e070029ebca74a8cc9665e56756f08d56870d25276d4",
       "bytes": 2687,
       "transform": "byte copy"
+    },
+    {
+      "path": "gridform_core/pack_source_identity.py",
+      "sha256": "6f3f710d84dcc6fe03cce822092dab812964c841521bd2261e797a62ff91acc1",
+      "bytes": 4801,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/parameters.py",
@@ -7929,9 +7938,9 @@
     },
     {
       "path": "gridform_core/run_snapshot.py",
-      "sha256": "c51286e19ed58fc9b37d039b077bb9887121b02b324953354f3e9c31e4dce5ce",
-      "bytes": 17891,
-      "transform": "byte copy"
+      "sha256": "6432faf8f6ca9c84c49985394401d9a54d2b2918e750cd9868e8b88477ff1230",
+      "bytes": 18562,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/runtime_capabilities.py",
@@ -10410,6 +10419,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/test_doctoral_run_worker_path.py",
+      "sha256": "b393c0a197a74bc48803a154b48eeb81c56ccdd988c7589ce2f988deec3c4404",
+      "bytes": 4776,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_doctoral_settlement_details.py",
       "sha256": "b521f1b6b9aeecc3f48e17c968d397f9674fa9ba6bee21ec7e10cbc56c93408c",
       "bytes": 8947,
@@ -10669,8 +10684,8 @@
     },
     {
       "path": "tests/test_methodology_identity.py",
-      "sha256": "373632e2edb3ffad241f1c76974f4638ce4486dad5b3f0b380e4c13e09bed8ba",
-      "bytes": 10991,
+      "sha256": "8ed54f6d528383d12a875fcd2d33211379f84997f9c6aa756f5627cb431a23ce",
+      "bytes": 11171,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10845,6 +10860,12 @@
       "path": "tests/test_p0_gate.py",
       "sha256": "1526452d3e5811426c3c5399c02b81865040f932157b4604dba3dd27118a4c44",
       "bytes": 34534,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_pack_source_identity.py",
+      "sha256": "5eed58c5438026330199453a653b4beb8992d3a72c46dc362182947c5245373d",
+      "bytes": 5669,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
