@@ -10,11 +10,12 @@ import tempfile
 import unittest
 import urllib.error
 import urllib.request
+from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from gridform_core import revision_migration
+from gridform_core import methodology, revision_migration
 from gridform_core.methodology import PROFILE_PARAMETER, default_profile_id
 from gridform_core.preflight import run_preflight
 from gridform_core.project_revision import _canonical_bytes, canonical_project_payload, save_project_revision
@@ -126,6 +127,62 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(saved["revision_reason"], "method-upgrade-confirmed")
             self.assertEqual(saved["parameters"][PROFILE_PARAMETER], default_profile_id())
             self.assertEqual(self.classify(upgraded)["classification"], "none")
+
+    def catalogue_with(self, mutate):
+        from tests.test_methodology_profiles import CatalogueCopy
+
+        copy_ = CatalogueCopy()
+        self.addCleanup(copy_.close)
+        copy_.edit("corrections/x0.json", mutate)
+        return copy_.load()
+
+    def under(self, catalogue):
+        stack = ExitStack()
+        stack.enter_context(patch.object(methodology, "load_catalogue", return_value=catalogue))
+        stack.enter_context(patch.object(revision_migration, "load_catalogue", return_value=catalogue))
+        return stack
+
+    def test_correction_wording_is_not_a_method_change(self):
+        """Description, advisory text and applies_when are presentation, not method identity."""
+
+        identity = methodology.resolve_methodology(None).identity()
+
+        def reword(payload):
+            row = payload["corrections"][0]
+            row["description"] += " Reworded."
+            row["applies_when"] = {"modes_any": ["full"]}
+            row["advisory"] = {"severity": "info", "title": "t", "summary": "s", "affected_metrics": []}
+
+        with self.under(self.catalogue_with(reword)):
+            self.assertEqual(methodology.resolve_methodology(None).identity(), identity)
+            result = self.classify()
+        self.assertEqual(result["classification"], "none")
+
+    def test_added_or_redefined_corrections_are_classified_by_their_numeric_effect(self):
+        def correction(correction_id, affects):
+            return {"id": correction_id, "package": "x0", "findings": [], "track": "universal", "scope": "test",
+                    "affects": affects, "applies_when": {}, "advisory": None, "trigger_fixture": None,
+                    "introduced_in": "test"}
+
+        def redefine(payload):
+            payload["corrections"][0]["affects"] = ["identity", "accounting"]
+
+        cases = (
+            ("identity correction added", lambda p: p["corrections"].append(correction("x0.toy-identity", ["identity"])),
+             "code_identity_upgrade", ["x0.toy-identity"], []),
+            ("numeric correction added", lambda p: p["corrections"].append(correction("x0.toy-numbers", ["trajectory"])),
+             "method_upgrade_required", ["x0.toy-numbers"], ["x0.toy-numbers"]),
+            ("correction redefined as numeric", redefine,
+             "method_upgrade_required", [], ["x0.methodology-identity"]),
+        )
+        for label, mutate, expected, changed, numeric in cases:
+            with self.subTest(label), self.under(self.catalogue_with(mutate)):
+                result = self.classify()
+                row = next(row for row in result["differences"] if row["key"] == "applied_corrections")
+                self.assertEqual(result["classification"], expected)
+                self.assertEqual(row["classification"], expected)
+                self.assertEqual(row["changed_correction_ids"], changed)
+                self.assertEqual(row["numeric_correction_ids"], numeric)
 
     def test_weather_identity_only_is_an_environment_reidentification(self):
         project = self.project()

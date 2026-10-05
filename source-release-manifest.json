@@ -7692,8 +7692,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "47301a417984480c654e86e82650545858ad16f8791f7fe7e32814df081446cb",
-      "bytes": 38629,
+      "sha256": "a0cbb400526c812b716e8da50d1152d788a543edb633550163daf967eaff551e",
+      "bytes": 39531,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7836,8 +7836,8 @@
     },
     {
       "path": "gridform_core/project_revision.py",
-      "sha256": "04fa0823df1183240a10925e942b9c68ceceb1a6bc390e8a3fa3278491d393ea",
-      "bytes": 13697,
+      "sha256": "295e91565c997118c12fc7112243684567da4bd5354ae5a7678c939e8ac77fe3",
+      "bytes": 13947,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7884,8 +7884,8 @@
     },
     {
       "path": "gridform_core/revision_migration.py",
-      "sha256": "60cec5d605b4a4d10f45aae055758c273bceefd942c6e298a7e796be0144c0bc",
-      "bytes": 24745,
+      "sha256": "b70d226227ebee9d636fd09e474e1cbd051d41cb2ed50b3eabec252e150a6bbf",
+      "bytes": 27201,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10900,8 +10900,8 @@
     },
     {
       "path": "tests/test_project_revision_migration.py",
-      "sha256": "37c4e6fd13c204e6e4402f6215d0e75957bfe9ef172581bac7c9ce4c2915cefe",
-      "bytes": 18373,
+      "sha256": "06359de0f5806add4369faf2f44b2bab8cdccb5d76e9921cb8762db1036aae24",
+      "bytes": 21337,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

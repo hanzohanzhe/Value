@@ -136,6 +136,16 @@ class Correction:
     def gated(self) -> bool:
         return self.track == "profile_gated"
 
+    def semantic_identity(self) -> dict[str, object]:
+        """The fields of a correction that belong to the method identity.
+
+        Description, advisory text, applies_when and deviation_signature are
+        presentation: editing them must not turn every saved Study or Run into
+        a method change (applied_corrections_sha256 covers only these fields).
+        """
+
+        return {"id": self.id, "track": self.track, "scope": self.scope, "affects": list(self.affects)}
+
 
 @dataclass(frozen=True)
 class Profile:
@@ -392,6 +402,12 @@ class ResolvedMethodology:
     result_publication: Mapping[str, object]
     golden_family: str
     _known_correction_ids: frozenset[str] = field(repr=False, default=frozenset())
+    _applied_records: tuple[Mapping[str, object], ...] = field(repr=False, default=())
+
+    def applied_correction_records(self) -> list[dict[str, object]]:
+        """Semantic records of the applied corrections (what applied_corrections_sha256 covers)."""
+
+        return [copy.deepcopy(dict(item)) for item in self._applied_records]
 
     def enabled(self, correction_id: str) -> bool:
         """Is this correction in force for the run?  Unknown ids raise (typos fail closed)."""
@@ -452,13 +468,14 @@ def resolve_methodology(profile_id: str | None = None, *, catalogue: Catalogue |
         frozen=profile.frozen,
         profile_definition_sha256=profile.definition_sha256,
         applied_correction_ids=tuple(item.id for item in applied),
-        applied_corrections_sha256=_sha256_json([dict(item.record) for item in applied]),
+        applied_corrections_sha256=_sha256_json([item.semantic_identity() for item in applied]),
         catalogue_sha256=catalogue.catalogue_sha256,
         external_code_policy=profile.external_code_policy,
         reference_configuration=copy.deepcopy(dict(profile.reference_configuration)),
         result_publication=copy.deepcopy(dict(profile.result_publication)),
         golden_family=profile.golden_family,
         _known_correction_ids=frozenset(catalogue.corrections),
+        _applied_records=tuple(item.semantic_identity() for item in applied),
     )
 
 

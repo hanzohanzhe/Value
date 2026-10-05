@@ -141,8 +141,11 @@ def _recorded_basis(project: Mapping[str, Any], declared: str) -> dict[str, Any]
     payload = basis.get("payload")
     if not isinstance(payload, Mapping) or hashlib.sha256(_canonical_bytes(payload)).hexdigest() != declared:
         return None
+    records = basis.get("applied_corrections")
     return {"source": "recorded", "payload": dict(payload),
-            "applied_correction_ids": list(basis.get("applied_correction_ids") or [])}
+            "applied_correction_ids": list(basis.get("applied_correction_ids") or []),
+            "applied_corrections": [dict(item) for item in records if isinstance(item, Mapping)]
+            if isinstance(records, list) else None}
 
 
 def _reconstructed_basis(project: Mapping[str, Any], registry: ModuleRegistryV2, manifest: Mapping[str, Any], declared: str) -> dict[str, Any] | None:
@@ -246,27 +249,64 @@ def _methodology_differences(old_basis: Mapping[str, Any], current: Mapping[str,
                          "classification": "method_upgrade_required",
                          "effect": "The methodology profile or its definition changed."})
     if old.get("applied_corrections_sha256") != (new or {}).get("applied_corrections_sha256"):
-        catalogue = load_catalogue()
-        before = old_basis.get("applied_correction_ids")
-        after = list(resolve_project_methodology(project).applied_correction_ids)
-        if not isinstance(before, list):
-            changed = None
-        else:
-            changed = sorted(set(before).symmetric_difference(after))
-        numeric = (
-            changed is None
-            or not changed
-            or any(item not in catalogue.corrections or NUMERIC_AFFECTS.intersection(catalogue.corrections[item].affects)
-                   for item in changed)
-        )
-        rows.append({
-            "dimension": "methodology", "key": "applied_corrections",
-            "old": before, "new": after, "changed_correction_ids": changed,
-            "classification": "method_upgrade_required" if numeric else "code_identity_upgrade",
-            "effect": ("Corrections that change computed numbers were added or removed."
-                       if numeric else "Only identity or presentation corrections changed."),
-        })
+        rows.append(_applied_corrections_row(old_basis, project))
     return rows
+
+
+def _applied_corrections_row(old_basis: Mapping[str, Any], project: Mapping[str, Any]) -> dict[str, Any]:
+    """Classify a change of the applied-correction identity.
+
+    Only corrections that change computed numbers (affects trajectory or
+    accounting) make a method upgrade: added, removed, or redefined with a
+    numeric ``affects`` before or after.  Identity/presentation corrections
+    and redefinitions that stay non-numeric are code-only.
+    """
+
+    catalogue = load_catalogue()
+    resolved = resolve_project_methodology(project)
+    before = old_basis.get("applied_correction_ids")
+    after = list(resolved.applied_correction_ids)
+    row: dict[str, Any] = {"dimension": "methodology", "key": "applied_corrections", "old": before, "new": after}
+    if not isinstance(before, list):
+        row.update(changed_correction_ids=None, classification="method_upgrade_required",
+                   effect="The applied corrections changed and the saved revision does not record which; review them.")
+        return row
+    before_records = {
+        str(item.get("id")): dict(item) for item in old_basis.get("applied_corrections") or [] if isinstance(item, Mapping)
+    } if isinstance(old_basis.get("applied_corrections"), list) else None
+    after_records = {str(item["id"]): item for item in resolved.applied_correction_records()}
+
+    def affects(correction_id: str) -> set[str]:
+        values: set[str] = set()
+        if correction_id in after_records:
+            values.update(after_records[correction_id]["affects"])  # type: ignore[arg-type]
+        if before_records is not None and correction_id in before_records:
+            values.update(str(item) for item in before_records[correction_id].get("affects") or [])
+        if not values and correction_id in catalogue.corrections:
+            values.update(catalogue.corrections[correction_id].affects)
+        # A removed correction whose record is unknown may have changed numbers.
+        return values or set(NUMERIC_AFFECTS)
+
+    added_removed = sorted(set(before).symmetric_difference(after))
+    redefined = sorted(
+        item for item in set(before).intersection(after)
+        if before_records is not None and item in before_records and before_records[item] != after_records.get(item)
+    )
+    numeric = sorted(item for item in [*added_removed, *redefined] if NUMERIC_AFFECTS.intersection(affects(item)))
+    row["changed_correction_ids"] = added_removed
+    row["redefined_correction_ids"] = redefined
+    row["numeric_correction_ids"] = numeric
+    if numeric:
+        row.update(classification="method_upgrade_required",
+                   effect="Corrections that change computed numbers were added, removed or redefined: " + ", ".join(numeric) + ".")
+    elif added_removed or redefined:
+        row.update(classification="code_identity_upgrade",
+                   effect="Only identity or presentation corrections were added, removed or redefined: "
+                   + ", ".join([*added_removed, *redefined]) + ".")
+    else:
+        row.update(classification="code_identity_upgrade",
+                   effect="The applied correction set is unchanged; only correction records outside the computed numbers changed.")
+    return row
 
 
 def _differences(old_basis: Mapping[str, Any], current: Mapping[str, Any], project: Mapping[str, Any]) -> list[dict[str, Any]]:

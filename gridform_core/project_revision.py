@@ -137,6 +137,9 @@ def fingerprint_basis(project: Mapping[str, object], registry: ModuleRegistryV2,
         "revision_sha256": hashlib.sha256(_canonical_bytes(payload)).hexdigest(),
         "payload": payload,
         "applied_correction_ids": list(resolve_project_methodology(project).applied_correction_ids),
+        # Semantic records (id, track, scope, affects) so a later catalogue can
+        # tell a redefined correction from a presentation-only edit.
+        "applied_corrections": resolve_project_methodology(project).applied_correction_records(),
     }
 
 
