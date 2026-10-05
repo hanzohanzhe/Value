@@ -60,3 +60,12 @@ storage dispatch myopically (no water value), a buy-back does not refund the
 ahead storage payment, and the realisation branch still follows the forecast
 (decision A2), so ahead shortfalls are reported as stress events.
 
+Corrected-profile inputs (P0-5b). The corrected profile reads ERA5 weather
+with its time conventions (weather v2), multiplies wind and solar by cited
+literature loss factors (no calibration to statistical load factors), and
+derates nuclear (station load factors, month-exact generation end) and
+natural-flow hydro (annual load factor x monthly shape); the reference values
+are PENDING AUTHOR REVIEW. The kernel receives the same arrays as the
+canonical adapter. The doctoral reproduction profile keeps the 0.6.0-alpha.2
+inputs.
+
