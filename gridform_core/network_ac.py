@@ -18,6 +18,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from .methodology import methodology_scoped
 from .network_contracts import NetworkPSMInput
 from .v2.contracts import ArtifactReference, JsonContract, MarketYearResult, PSMInput, PeriodSummary
 
@@ -365,6 +366,7 @@ class ReferenceACFeasibilityPSM:
     id = "value-reference-ac-feasibility"
     version = "0.1.0"
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         # AC feasibility is optional and must not make the default
         # single-node runtime depend on SciPy merely because its manifest is

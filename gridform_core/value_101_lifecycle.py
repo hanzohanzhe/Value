@@ -18,6 +18,8 @@ REVISION_BOOKKEEPING_KEYS = {
     "parent_revision_sha256",
     "change_summary",
     "updated_at",
+    "fingerprint_basis",
+    "revision_reason",
 }
 SCIENTIFIC_ROOT_KEYS = (
     "data_pack_id",

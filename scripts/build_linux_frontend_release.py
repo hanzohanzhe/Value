@@ -23,6 +23,11 @@ FILES = ("package.json", "package-lock.json", "pyproject.toml", "LICENSE", "NOTI
          "tsconfig.json", "tsconfig.frontend.json", "vite.config.ts", "next.config.ts", "next-env.d.ts", "postcss.config.mjs")
 NODE_PACKAGES = ("vinext", "react", "react-dom", "react-server-dom-webpack", "scheduler")
 TEACHING_PACKS = ("value-101-baseline-v1", "value-101-network-v1")
+# Runtime data read from outside a package directory: without it the
+# installed app cannot classify saved Study revisions (Q13: every module
+# version bump would need confirmation).  gridform_core.revision_migration
+# reads docs/release/VERSION_LEDGER.json relative to the app root.
+REQUIRED_MEMBERS = ("app/docs/release/VERSION_LEDGER.json",)
 EXCLUDE = {".git", "__pycache__", "node_modules", "outputs", "output", "state", "value-state", "model-output", "test-results", ".cache", ".next", ".bin"}
 
 
@@ -78,6 +83,9 @@ def main():
     for name in DIRECTORIES:
         for path in members(ROOT / name):
             selected[f"app/{path.relative_to(ROOT).as_posix()}"] = path
+    missing = [name for name in REQUIRED_MEMBERS if name not in selected]
+    if missing:
+        raise ValueError(f"Required runtime data missing from the release: {missing}")
     for name in ("dist/server", "dist/client", "dist/.openai"):
         if (ROOT / name).is_dir():
             for path in members(ROOT / name):

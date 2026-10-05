@@ -30,6 +30,17 @@ from .comparison_eligibility import (
     build_comparison_eligibility,
     write_comparison_eligibility,
 )
+from .methodology import (
+    PROFILE_PARAMETER,
+    MethodologyMismatchError,
+    ProfileCombinationError,
+    activate as activate_methodology,
+    current_methodology,
+    pack_entry,
+    reference_deviations,
+    resolve_project_methodology,
+    selection_combination_violations,
+)
 from .parameters import resolve_scheme_c_parameters
 from .parity import write_stage_parity_report
 from .provenance import snapshot_module_manifests, write_run_provenance
@@ -1832,6 +1843,7 @@ def _run_native_project(
                 "year": resolved.start_year,
                 "result_artifact": day_path.relative_to(output_dir).as_posix(),
                 "runtime_overlay": ensure_runtime_overlay_sealed(),
+                "methodology": resolved.extensions.get("methodology"),
             },
         )
         # Publish the executed effective configuration for frozen Run comparison,
@@ -2095,6 +2107,9 @@ def _run_native_project(
                     dict(resolved.scientific_parameters)
                 ),
                 "modules": fixed_modules,
+                # Runs under different methodologies are never a controlled
+                # network comparison (X0 S9).
+                "methodology": current_methodology().identity(),
             },
             annual_input_evidence=annual_comparison_evidence,
             network_treatment={
@@ -2313,13 +2328,48 @@ def run_project_application(
     network_pack_root: Path | None = None,
     resume_checkpoint_id: str | None = None,
 ) -> dict[str, object]:
-    """Run the selected project without fallback to any other module set."""
+    """Run the selected project under its methodology profile (X0 S9).
 
-    preparation_started = time.perf_counter()
+    Entry order: resolve the profile; verify the sealed runtime kernel; then
+    the whole run - the annual loop and the ledgers, parity, validation and
+    cost reports after it - executes inside ``activate(methodology)``.  The
+    combination whitelist is checked inside, before the first output is
+    written, once the data and network packs are resolved.
+    """
+
+    methodology = resolve_project_methodology(project)
     # The sealed runtime kernel is verified once per process before any run
     # (RUNTIME_OVERLAY v2, X0 S5); a changed or unregistered kernel file fails
     # closed here instead of silently producing numbers.
     ensure_runtime_overlay_sealed()
+    with activate_methodology(methodology):
+        return _run_project_application_impl(
+            project,
+            run_id=run_id,
+            pack_root=pack_root,
+            output_dir=output_dir,
+            mode=mode,
+            registry=registry,
+            network_pack_root=network_pack_root,
+            resume_checkpoint_id=resume_checkpoint_id,
+        )
+
+
+def _run_project_application_impl(
+    project: Mapping[str, object],
+    *,
+    run_id: str,
+    pack_root: Path,
+    output_dir: Path,
+    mode: str,
+    registry: ModuleRegistryV2 | None = None,
+    network_pack_root: Path | None = None,
+    resume_checkpoint_id: str | None = None,
+) -> dict[str, object]:
+    """Run the selected project without fallback to any other module set."""
+
+    preparation_started = time.perf_counter()
+    methodology = current_methodology()
     pack_root = pack_root.resolve()
     output_dir = output_dir.resolve()
     registry = registry or workspace_registry()
@@ -2380,6 +2430,25 @@ def run_project_application(
     selected_extensions = tuple(
         str(item) for item in project.get("selected_extensions", ())
     )
+    # Fail closed on an unsupported profile combination before any output is
+    # written (C16; the same check as Study resolution and preflight).
+    if resolved_parameters.scientific.values.get(PROFILE_PARAMETER) != methodology.profile_id:
+        raise MethodologyMismatchError(
+            "The resolved methodology.profile parameter differs from the active methodology"
+        )
+    combination_violations = selection_combination_violations(
+        methodology,
+        registry=registry,
+        modules=selected,
+        extensions=selected_extensions,
+        data_packs=[
+            pack_entry(pack_root, pack_manifest),
+            pack_entry(pack_selection.network_pack_root)
+            if pack_selection.network_pack_root is not None else None,
+        ],
+    )
+    if combination_violations:
+        raise ProfileCombinationError(methodology.profile_id, combination_violations)
     validate_maturity_acknowledgements(
         registry,
         selected,
@@ -2411,6 +2480,21 @@ def run_project_application(
         resolved_sources,
         start, end,
     )
+    # The methodology is part of the run's method identity (plan X0 3.5):
+    # resolved-run.json, provenance, status and comparison eligibility carry
+    # the same record.  Deviations from the frozen profile's reference preset
+    # are allowed and recorded (Q3).
+    resolved = replace(resolved, extensions={
+        **resolved.extensions,
+        "methodology": {
+            **methodology.to_dict(),
+            "reference_deviations": reference_deviations(
+                methodology,
+                modules={slot: selection.module_id for slot, selection in resolved.modules.items()},
+                scientific_parameters=resolved.scientific_parameters,
+            ),
+        },
+    })
     if uses_doctoral_weather(pack_manifest):
         # Do not rely on a stored project revision: CLI callers can reuse it.
         # Annual and subannual recovery must see the currently loaded method.

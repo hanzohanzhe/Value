@@ -15,6 +15,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from .methodology import methodology_scoped
 from .v2.contracts import (
     ArtifactReference,
     ChronologicalPSMData,
@@ -221,6 +222,7 @@ class PerfectForesightPSM:
     id = "value-perfect-foresight-lp"
     version = "1.0.0"
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         data = model_input.chronology
         if data is None:

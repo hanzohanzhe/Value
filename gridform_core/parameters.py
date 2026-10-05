@@ -11,6 +11,7 @@ from .errors import ParameterError
 from .errors import warning_event
 from .builtin.scheme_c_1000twh.runtime_compat.storage_cost import compile_storage_formula
 from .cost_ledger import CEM_SYSTEM_COST_DEFINITION
+from .methodology import PROFILE_PARAMETER, default_profile_id, profile_ids
 
 
 class ParameterValidationError(ParameterError, ValueError):
@@ -67,6 +68,10 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("fleet.repd_initial_snapshot", "Model card", "boolean", True, "fixed", "fixed", "Refreshes initial VRE and battery stock from the REPD operating snapshot.", "value-canonical-planning-input-v1"),
     ParameterDefinition("planning.uncertain_as_model_decision", "Model card", "boolean", False, "fixed", "fixed", "Uncertain REPD projects remain external projects in retained VALUE.", "value-canonical-planning-input-v1"),
     ParameterDefinition("expansion.storage_cap_method", "Model card", "enum", "value_simulation_trace", "fixed", "fixed", "VALUE storage-headroom calculation.", "value-storage-expansion-policy", allowed_values=("value_simulation_trace",)),
+
+    # The methodology profile (X0 S8). Default and allowed values come only
+    # from gridform_core/data/methodology/profiles.json (one source of truth).
+    ParameterDefinition(PROFILE_PARAMETER, "Methodology", "enum", default_profile_id(), "scientific", "basic", "Methodology profile: the corrected default, or the frozen doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2, with declared deviations). Part of the run's method identity, not of its configuration.", "application", allowed_values=profile_ids()),
 
     # Editable scientific settings. Current production defaults are preserved.
     ParameterDefinition("planning.success_mode", "Planning", "enum", "expected", "scientific", "advanced", "Expected-capacity or seeded stochastic planning success. Legacy expected/stochastic values remain accepted aliases.", "planning-pipeline", allowed_values=("expected", "stochastic", "expected_capacity", "seeded_stochastic")),

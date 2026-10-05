@@ -51,6 +51,35 @@ class SourceReleaseTreeTests(unittest.TestCase):
         }
         self.assertTrue(required.issubset(members), required.difference(members))
 
+    def test_version_ledger_ships_with_every_release_tree(self):
+        """Q13's automatic code-only path reads docs/release/VERSION_LEDGER.json at runtime."""
+        from gridform_core import revision_migration
+
+        ledger = "docs/release/VERSION_LEDGER.json"
+        self.assertEqual(revision_migration.LEDGER_PATH, ROOT / ledger)
+        self.assertTrue((ROOT / ledger).is_file())
+        members = {path.relative_to(ROOT).as_posix() for path in MODULE.release_members(ROOT)}
+        self.assertIn(ledger, members)
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        self.assertIn(ledger, set(json.dumps(manifest).split('"')))
+        # Linux local release (and the desktop installers that wrap it).
+        spec = importlib.util.spec_from_file_location(
+            "build_linux_frontend_release", ROOT / "scripts" / "build_linux_frontend_release.py")
+        linux = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(linux)
+        self.assertIn(f"app/{ledger}", linux.REQUIRED_MEMBERS)
+        self.assertTrue(any(ledger.startswith(directory + "/") for directory in linux.DIRECTORIES))
+        self.assertFalse(set(Path(ledger).parts) & linux.EXCLUDE)
+        # Windows pilot installer: allowlisted by the source-release manifest.
+        spec = importlib.util.spec_from_file_location(
+            "build_windows_pilot_installer", ROOT / "scripts" / "build_windows_pilot_installer.py")
+        windows = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(windows)
+        self.assertTrue(windows.is_allowlisted_release_member(ledger, windows.source_release_includes(ROOT)))
+        self.assertNotIn(ledger, windows.repository_local_only_members(ROOT))
+
     def test_run_lifecycle_sources_are_release_members(self):
         """P0-3: the worker entry, lease, status API and supervisor ship with
         the backend; without them an installed VALUE cannot start a Run."""

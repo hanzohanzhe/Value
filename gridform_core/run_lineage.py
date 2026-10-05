@@ -35,6 +35,7 @@ def copperplate_rerun_project(
     for key in (
         "revision_sha256", "revision_number", "parent_revision_sha256",
         "change_summary", "module_resolution_graph",
+        "fingerprint_basis", "revision_reason",
     ):
         project.pop(key, None)
     lineage = {

@@ -13,6 +13,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from .methodology import methodology_scoped
 from .network_contracts import (
     NetworkPSMInput,
     NetworkPSMOutput,
@@ -158,6 +159,7 @@ class ReferenceDCNetworkPSM:
     id = "value-reference-dc-network"
     version = "1.0.0"
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         # SciPy is an optional solver capability.  Keep this import at the
         # execution boundary so the base VALUE registry and single-node model

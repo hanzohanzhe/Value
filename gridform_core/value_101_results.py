@@ -166,6 +166,25 @@ def _row(
     changed = [str(value) for value in origin.get("changed_dimensions", [])]
     resolved_identity = _resolved_input_identity(resolved)
     summary = build_run_summary(run_root)
+    publication = summary.get("result_publication")
+    if isinstance(publication, Mapping) and publication.get("status") == "withheld":
+        # Q14: no totals for a run whose results are withheld from result
+        # pages; identities stay so the comparison can say why it is refused.
+        run_id = str(status.get("id") or run_root.name)
+        return ({
+            "run_id": run_id,
+            "project_id": status.get("project_id"),
+            "project_revision_sha256": summary.get("run", {}).get("project_revision"),  # type: ignore[union-attr]
+            "variant_kind": variant_kind,
+            "changed_dimension": changed[0] if len(changed) == 1 else None,
+            "declared_changed_dimensions": changed,
+            "resolved_input_identity_sha256": _identity_sha256(resolved_identity),
+            "data_pack_id": resolved.get("data_pack_id") or status.get("data_pack_id"),
+            "storage_cost_module_id": dict(summary.get("modules") or {}).get("storage_cost"),  # type: ignore[arg-type]
+            "annual_economics_eligible": False,
+            "totals_withheld": True,
+            "result_publication": dict(publication),
+        }, changed, resolved_identity)
     cost = _read(output / "ledgers" / "annual-cost-ledger.json")
     carbon = _read(output / "ledgers" / "annual-carbon-ledger.json")
     cost_years = cost.get("years")
@@ -260,6 +279,10 @@ def build_value_101_comparison(
     ):
         row, changed, resolved_identity = _row(Path(run_root), expected_kind=kind)
         rows.append(row)
+        if row.get("totals_withheld"):
+            violations.append(
+                f"{kind} Run results are withheld ({dict(row.get('result_publication') or {}).get('reason_code')}, Q14)"
+            )
         declarations.append(changed)
         resolved_identities.append(resolved_identity)
         if changed != EXPECTED_DIMENSIONS[kind]:

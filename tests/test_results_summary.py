@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from gridform_core.comparison_identity import build_comparison_identity
+from gridform_core.methodology import resolve_methodology
 
 from gridform_core.results_summary import (
     build_run_summary,
@@ -78,7 +79,8 @@ class ResultsSummaryTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(json.dumps(payload))
             status = {"mode": mode, "run_policy": {"start_year": 2025, "end_year": 2025, "periods_per_year": periods}}
-            resolved = {"scientific_parameters": {}, "runtime_controls": {}}
+            # Runs recorded after X0 S9 carry their methodology in the method dimension.
+            resolved = {"scientific_parameters": {}, "runtime_controls": {}, "extensions": {"methodology": resolve_methodology().to_dict()}}
             result["comparison_identity"] = build_comparison_identity(root, status, resolved)
         if eligibility is not None:
             result["comparison_eligibility"] = eligibility

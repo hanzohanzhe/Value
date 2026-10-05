@@ -20,3 +20,10 @@
   502 `GF_GATEWAY_SESSION_UNAVAILABLE` 和 `GF_GATEWAY_UPSTREAM_UNAVAILABLE` 不触发整页，沿用侧栏的 offline/Retry，这与规格第 5 节「降级不整页」的原则一致。
 - **F-P01-2 批准**（文案一致，静态 HTML 合理）。
 - **F-P01-3 批准。** 只在 workspace 的 `refresh()` 中切换到整页；单个请求失败按各视图的错误状态处理，不替换整个工作台。
+
+## X0 S10b（Q14 年度结果门控；交给 m2-ui 线）
+
+| # | 规格 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-X0-1 | 4.2 只给年度卡片加 `Withheld` pill；4.5 VRE 页、4.6 网络页没有 Q14 门控 | 门控在服务端：withheld 的 Run 请求 `market/vre-summary`、`planning/summary`、`domains/network/summary`、`domains/expansion/summary`、`network-redispatch/annual` 得到 409 `{status:'withheld', reason_code, error, available_in}`；`results/vre-curtailment?resolution=annual` 得到 200 `status:'withheld'`、`items:[]`。现有页面因此显示错误框（文案为 `error`），不显示年度数 | 只按规格在卡片上门控，VRE 页与网络页仍会显示 doctoral 年度数，违反 Q14（复审意见）。m2-ui 线应在这些页面识别 `status==='withheld'`（或 409 体中的 `status`），改用 4.2 的 `Withheld` Callout（文案与 4.2 相同，附 Inspect/导出入口），而不是错误框 | 是（4.5/4.6 的 Withheld 展示需设计方补充） |
+| F-X0-2 | 7 迁移对话框只列 diff 并保存为新修订；修订前的 Study 首次写入口径时没有选择，一律写入默认口径 | 后端为“修订前 Study 首次写入口径”的分类返回 `profile_choices`（每个口径的 `label`、`default`、`supported`、`unsupported_reasons`、`matches_reference_preset`），方法行带 `hint:'matches_reference_preset'` 与 `matches_reference_preset:[口径 id]`；`GET /api/projects/<id>/revision-migration?profile_id=<id>` 返回该选择下的分类与 `diff_sha256`（含 `selected_profile_id`），`POST` 同一路径带 `{diff_sha256, profile_id}` 确认。不带 `profile_id` 时行为不变（写入默认口径） | 复审意见：golden D1 这类按 doctoral 参考预设配置的论文复现 Study，一次确认就会静默改用 corrected 口径；P0-4..P0-7 的 gated 修正落地后数值会变。m2-ui 线应在方法行带 `hint` 时，在对话框中加一个与 StudyComposer 相同文案的 `Methodology` 单选组（只列 `supported` 的口径，默认选中 `matches_reference_preset` 的口径），切换时重新 GET 取 `diff_sha256` 后再确认 | 是（对话框中的口径选择需设计方补充） |

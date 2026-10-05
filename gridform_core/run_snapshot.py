@@ -21,6 +21,7 @@ from .frontend_contract import (
     validate_project_solver_contract,
 )
 from .data_adapters import AdapterSpec, execute_adapter
+from .pack_source_identity import SOURCE_FIELD, source_record
 
 
 SCHEMA_VERSION = "value.run-input-snapshot/v1"
@@ -98,8 +99,14 @@ def _freeze_pack(
     destination_name: str,
     pack_kind: str,
     object_root: Path,
+    manifest_bytes: bytes | None = None,
 ) -> tuple[dict[str, object], list[dict[str, object]]]:
-    """Freeze one data product without merging its namespace or provenance."""
+    """Freeze one data product without merging its namespace or provenance.
+
+    The frozen manifest records its source manifest's identity (canonical sha
+    and original bindings, ``pack_source_identity``) so a methodology pin on
+    the source manifest still identifies the frozen copy (decision Q3).
+    """
 
     frozen_manifest = dict(pack_manifest)
     frozen_bindings: dict[str, dict[str, object]] = {}
@@ -170,6 +177,7 @@ def _freeze_pack(
         })
     frozen_manifest["bindings"] = frozen_bindings
     frozen_manifest["snapshot_frozen"] = True
+    frozen_manifest[SOURCE_FIELD] = source_record(pack_manifest, manifest_bytes)
     return frozen_manifest, objects
 
 
@@ -195,12 +203,13 @@ def create_run_input_snapshot(
     staging = run_dir / f".snapshot-{uuid.uuid4().hex[:12]}.tmp"
     staging.mkdir(parents=True, exist_ok=False)
     try:
-        pack_manifest = json.loads((pack_root / "manifest.json").read_text(encoding="utf-8"))
+        pack_manifest_bytes = (pack_root / "manifest.json").read_bytes()
+        pack_manifest = json.loads(pack_manifest_bytes.decode("utf-8"))
         network_pack_manifest = None
+        network_pack_manifest_bytes = None
         if network_pack_root is not None:
-            network_pack_manifest = json.loads(
-                (network_pack_root / "manifest.json").read_text(encoding="utf-8")
-            )
+            network_pack_manifest_bytes = (network_pack_root / "manifest.json").read_bytes()
+            network_pack_manifest = json.loads(network_pack_manifest_bytes.decode("utf-8"))
             declared_network_id = str(
                 dict(project.get("market_configuration") or {}).get("network_pack_id") or ""
             )
@@ -249,6 +258,7 @@ def create_run_input_snapshot(
             destination_name="pack",
             pack_kind="base",
             object_root=object_root,
+            manifest_bytes=pack_manifest_bytes,
         )
         frozen_network_manifest = None
         if network_pack_manifest is not None and network_pack_root is not None:
@@ -259,6 +269,7 @@ def create_run_input_snapshot(
                 destination_name="network-pack",
                 pack_kind="network_overlay",
                 object_root=object_root,
+                manifest_bytes=network_pack_manifest_bytes,
             )
             objects.extend(network_objects)
         project_payload = dict(project)

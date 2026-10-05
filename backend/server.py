@@ -79,6 +79,8 @@ from gridform_core.frontend_contract import (
     module_slot_catalog,
     resolve_study_draft,
 )
+from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
+from gridform_core.result_advisories import present_scientific_status, withhold_annual_results, withheld_annual_result
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -124,6 +126,7 @@ from gridform_core.value_101_lifecycle import (
     value_101_origin,
 )
 from gridform_core.project_revision import attach_revision_identity, save_project_revision
+from gridform_core.revision_migration import RevisionMigrationError, classify_revision_mismatch, migrate_project_revision
 from gridform_core.study_lifecycle import (
     StudyLifecycleError,
     list_study_trash,
@@ -873,6 +876,7 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
     pack_id = str(project.get("data_pack_id") or "")
     pack = read_json(PACKS_ROOT / pack_id / "manifest.json") if pack_id else None
     available_roles = set(valid_available_roles(project, pack_id, pack))
+    network_pack_root = None
     if pack:
         try:
             selection = resolve_zonal_pack_selection(
@@ -886,6 +890,7 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
                     str(role)
                     for role in dict(selection.network_manifest.get("bindings") or {})
                 )
+            network_pack_root = selection.network_pack_root
         except ValueError:
             # Draft resolution keeps the stable missing-role diagnostics. The
             # readiness endpoint reports the exact missing Network Pack.
@@ -896,6 +901,12 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
         module_catalog=MODULES,
         base_dataset_slots=DATASET_SLOTS,
         available_data_roles=tuple(sorted(available_roles)),
+        # The same whitelist input as preflight and the run entry (C16): the
+        # base pack and, for a zonal Study, its Network Pack.
+        data_packs=[
+            pack_entry(PACKS_ROOT / pack_id, pack),
+            pack_entry(network_pack_root) if network_pack_root is not None else None,
+        ] if pack else [],
     )
 
 
@@ -998,6 +1009,16 @@ def _revision_manifest(
         data_home=STATE_ROOT,
     )
     return selection.revision_manifest
+
+
+def _study_revision_context(project_id: str) -> tuple[dict[str, Any], dict[str, object]] | None:
+    """A saved Study and the manifest its revision identity is computed against."""
+
+    project = read_object(PROJECTS_ROOT / project_id / "project.json")
+    if not project:
+        return None
+    pack = read_object(PACKS_ROOT / str(project.get("data_pack_id") or "") / "manifest.json")
+    return project, _revision_manifest(project, pack)
 
 
 def _value_101_origin_extensions(record: dict[str, Any]) -> dict[str, object]:
@@ -1135,44 +1156,10 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                     "severity": "warning",
                     "message": "Module progress evidence is incomplete or unreadable.",
                 })
-        # Historical completed bundles are immutable.  Some dynamic-policy runs
-        # were packaged before retained comparison was correctly classified as
-        # informational.  Present the scenario gate separately from the raw
-        # embedded report, based only on its preserved execution, contract and
-        # analytical evidence; never rewrite that report on disk.
-        validation_path = run_root / "model-output" / str(
-            run.get("scientific_validation_artifact")
-            or "validation/scientific-validation.json"
-        )
-        validation = read_object(validation_path)
-        storage_policy = str((run.get("modules") or {}).get("storage_cost") or "")
-        alternative_policy = storage_policy in {
-            "dynamic-annual-storage-cost", "user-formula-storage-cost"
-        }
-        role = validation.get("retained_numerical_comparison_role")
-        if not role:
-            role = (
-                "informational_scenario_difference"
-                if alternative_policy
-                else "required_reproduction_gate"
-            )
-        retained_status = validation.get("retained_numerical_comparison_status")
-        if alternative_policy and retained_status == "failed":
-            retained_status = "expected_difference"
-        evidence_passed = all(
-            validation.get(field) == "passed"
-            for field in (
-                "execution_status",
-                "contract_validation_status",
-                "analytical_mechanism_status",
-            )
-        )
-        scenario_status = validation.get("scientific_validation_status")
-        if alternative_policy and evidence_passed and run.get("mode") in {"full", "two_year"}:
-            scenario_status = "passed"
-        run["scientific_scenario_status"] = scenario_status or "not_evaluated"
-        run["retained_comparison_role"] = role
-        run["retained_numerical_comparison_status"] = retained_status or "not_evaluated"
+        # Scientific status presentation lives in one function (X0 S10a, C7):
+        # status vocabulary, advisories and the Q14 publication rule (S10b).
+        present_scientific_status(run, run_root)
+        withhold_annual_results(run)
     for result in run.get("results", []):
         if "initial_pipeline" not in result and "pipeline_next_year" in result:
             result["initial_pipeline"] = result["pipeline_next_year"]
@@ -1245,6 +1232,21 @@ def list_runs(*, compact: bool = True) -> list[dict[str, Any]]:
         results = list(row.get("results") or [])
         row["result_year_count"] = len(results)
         row["results"] = []
+        # The listing stays bounded: advisory text, the full methodology
+        # record and the publication message are served by /api/runs/<id>.
+        row.pop("advisories", None)
+        methodology = row.get("methodology")
+        if isinstance(methodology, dict):
+            row["methodology"] = {
+                key: methodology.get(key)
+                for key in ("status", "profile_id", "profile_version", "label")
+                if key in methodology
+            }
+        publication = row.get("result_publication")
+        if isinstance(publication, dict):
+            row["result_publication"] = {
+                key: publication[key] for key in ("status", "reason_code") if key in publication
+            }
     return rows
 
 
@@ -1694,6 +1696,22 @@ class Handler(BaseHTTPRequestHandler):
             self._json(checklist)
         elif route == "/api/projects":
             self._json({"projects": list_projects()})
+        elif route.startswith("/api/projects/") and route.endswith("/revision-migration"):
+            # Read-only classification of a saved Study against the installed
+            # code (X0 S11, Q13); nothing is written on GET.
+            context = _study_revision_context(slug(route.strip("/").split("/")[2], "project"))
+            if context is None:
+                self._json({"error": "project not found"}, 404); return
+            project, manifest = context
+            # ?profile_id= previews the migration of a pre-profile Study to a
+            # chosen methodology (its diff_sha256 is what POST confirms).
+            chosen_profile = query.get("profile_id", [None])[0] or None
+            try:
+                self._json({"revision_migration": classify_revision_mismatch(
+                    project, MODULE_REGISTRY, manifest, profile_id=chosen_profile)})
+            except RevisionMigrationError as exc:
+                self._json({"error": str(exc), "error_code": exc.code,
+                            "revision_migration": exc.classification}, 409); return
         elif route == "/api/study-trash":
             self._json({
                 "schema_version": "value.study-trash-list/v1",
@@ -1768,6 +1786,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif route == "/api/parameters":
             self._json(parameter_schema())
+        elif route == "/api/methodology/profiles":
+            self._json(methodology_catalogue_payload())
         elif route.startswith("/api/runs/") and route.endswith("/extensions/artifacts"):
             parts = route.strip("/").split("/")
             root = _run_root(unquote(parts[2])) if len(parts) == 5 else None
@@ -1823,6 +1843,10 @@ class Handler(BaseHTTPRequestHandler):
                     year = _optional_integer_query(query, "year")
                     if domain in {"network", "ac"} and year is None:
                         self._json({"error": "year is required"}, 400); return
+                    if query_name == "summary" and domain in {"network", "expansion"}:
+                        withheld = withheld_annual_result(root, f"domains/{domain}/summary")
+                        if withheld is not None:
+                            self._json(withheld, 409); return
                     if domain == "network" and query_name == "summary":
                         self._json(query_network_summary(root, year=year)); return
                     if domain == "network" and query_name == "periods":
@@ -1872,6 +1896,9 @@ class Handler(BaseHTTPRequestHandler):
                 planning_dir = root / "model-output" / "planning"
                 native_database = planning_dir / "project-index.sqlite"
                 if parts[4] == "summary":
+                    withheld = withheld_annual_result(root, "planning/summary")
+                    if withheld is not None:
+                        self._json(withheld, 409); return
                     summary = read_json(planning_dir / "summary.json")
                     if not summary and native_database.is_file():
                         summary = query_index_summary(native_database)
@@ -1974,6 +2001,9 @@ class Handler(BaseHTTPRequestHandler):
                             database, year=year, period=period, stage=stage,
                         )); return
                     if market_resource == "vre-summary":
+                        withheld = withheld_annual_result(root, "market/vre-summary")
+                        if withheld is not None:
+                            self._json(withheld, 409); return
                         self._json(query_vre_curtailment_summary(database)); return
                     if market_resource == "vre-timeline":
                         year = _optional_integer_query(query, "year")
@@ -2026,6 +2056,10 @@ class Handler(BaseHTTPRequestHandler):
                         "error_code": "GF_ZONAL_RESULTS_UNAVAILABLE",
                     }, 404); return
                 zonal_resource = parts[4] if len(parts) >= 5 else "capabilities"
+                if zonal_resource == "annual":
+                    withheld = withheld_annual_result(root, "network-redispatch/annual")
+                    if withheld is not None:
+                        self._json(withheld, 409); return
                 try:
                     capabilities = zonal_workspace_capabilities(database)
                     if not capabilities["available_views"]:
@@ -2393,11 +2427,14 @@ class Handler(BaseHTTPRequestHandler):
                 minimum_free_space_bytes=MIN_FREE_SPACE_BYTES,
             )
         except (ResearchSuiteError, OSError, ValueError) as exc:
-            self._json({
+            payload = {
                 "error": str(exc),
                 "error_code": getattr(exc, "code", "VALUE_RESEARCH_SUITE_INSTALL"),
                 "rollback": "No existing data pack or Study was changed.",
-            }, 400)
+            }
+            if getattr(exc, "revision_migration", None) is not None:
+                payload["revision_migration"] = exc.revision_migration  # type: ignore[attr-defined]
+            self._json(payload, 400)
             return
         finally:
             staged.unlink(missing_ok=True)
@@ -2612,9 +2649,30 @@ class Handler(BaseHTTPRequestHandler):
             nonce=uuid.uuid4().hex[:8],
         )
         try:
-            project = attach_revision_identity(
-                project, registry, pack_selection.revision_manifest
-            )
+            if project_override is None and project.get("revision_sha256"):
+                # A saved Study is never re-identified silently (X0 S11, Q13):
+                # a code-only change appends a revision that exists in
+                # revisions/; a method, data or content change is refused
+                # until the user confirms or saves it.
+                classification = classify_revision_mismatch(
+                    project, registry, pack_selection.revision_manifest
+                )
+                if classification["automatic"]:
+                    project, classification = migrate_project_revision(
+                        PROJECTS_ROOT / project_id, registry, pack_selection.revision_manifest
+                    )
+                elif classification["classification"] != "none":
+                    self._json({
+                        "error": "This Study needs review before it runs: the installed VALUE computes it differently from its saved revision.",
+                        "error_code": classification["error_code"],
+                        "revision_migration": classification,
+                    }, 409); return
+            else:
+                project = attach_revision_identity(
+                    project, registry, pack_selection.revision_manifest
+                )
+        except RevisionMigrationError as exc:
+            self._json({"error": str(exc), "error_code": exc.code, "revision_migration": exc.classification}, 409); return
         except ValueError as exc:
             self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_PROJECT_REVISION"}, 409); return
         preflight = run_preflight(
@@ -2663,6 +2721,7 @@ class Handler(BaseHTTPRequestHandler):
                 "current_stage": "Freezing immutable run inputs",
                 "created_at": now(), "results": [],
                 "extensions": teaching_run_extensions,
+                "methodology": methodology_record(project),
             })
             try:
                 queued = self._freeze_and_queue_run(
@@ -3396,6 +3455,8 @@ class Handler(BaseHTTPRequestHandler):
                 payload = {"error": str(exc), "error_code": exc.code}
                 if exc.validation is not None:
                     payload["validation"] = exc.validation
+                if exc.revision_migration is not None:
+                    payload["revision_migration"] = exc.revision_migration
                 self._json(payload, exc.status); return
             self._json(result, 201)
         elif route == "/api/projects":
@@ -3659,6 +3720,26 @@ class Handler(BaseHTTPRequestHandler):
                 periods_per_year=int(body.get("periods_per_year", 17_520)),
             )
             self._json(resolved.to_dict())
+        elif route.startswith("/api/projects/") and route.endswith("/revision-migration"):
+            # Append the revision the classification calls for (X0 S11, Q13):
+            # code-only changes need no confirmation; method, data and
+            # unverifiable changes need the diff_sha256 the user reviewed.
+            project_id = slug(route.strip("/").split("/")[2], "project")
+            with STUDY_LIFECYCLE_LOCK:
+                context = _study_revision_context(project_id)
+                if context is None:
+                    self._json({"error": "project not found"}, 404); return
+                _, manifest = context
+                try:
+                    saved, classification = migrate_project_revision(
+                        PROJECTS_ROOT / project_id, MODULE_REGISTRY, manifest,
+                        confirm_diff_sha256=(str(body["diff_sha256"]) if body.get("diff_sha256") else None),
+                        profile_id=(str(body["profile_id"]) if body.get("profile_id") else None),
+                    )
+                except RevisionMigrationError as exc:
+                    self._json({"error": str(exc), "error_code": exc.code,
+                                "revision_migration": exc.classification}, 409); return
+            self._json({"ok": True, "project": saved, "revision_migration": classification})
         elif route.startswith("/api/projects/") and route.endswith("/runs"):
             self._start_run(slug(route.strip("/").split("/")[2], "project"), body)
         elif route.startswith("/api/projects/") and route.endswith("/preflight"):

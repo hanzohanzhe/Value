@@ -5,10 +5,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend import server
+from gridform_core.methodology import resolve_methodology
 
 
 class RunPresentationTests(unittest.TestCase):
-    def _present(self, policy: str):
+    def _present(self, policy: str, methodology=None):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             run_root = root / "run"
@@ -29,13 +30,21 @@ class RunPresentationTests(unittest.TestCase):
                 "scientific_validation_status": "failed",
                 "results": [],
             }
+            if methodology is not None:
+                run["methodology"] = methodology
             with patch.object(server, "RUNS_ROOT", root):
                 return server.present_run(run)
 
     def test_dynamic_difference_is_an_informational_scenario_comparison(self):
         result = self._present("dynamic-annual-storage-cost")
         self.assertEqual(result["scientific_validation_status"], "failed")
-        self.assertEqual(result["scientific_scenario_status"], "passed")
+        # A run without a methodology record predates the 2026-10 fixes: its
+        # positive scenario claim is superseded, the recorded value is kept
+        # (X0 S10b).  A run that records its methodology keeps "passed".
+        self.assertEqual(result["scientific_scenario_status"], "superseded_pre_fix")
+        self.assertEqual(result["recorded_validation_statuses"]["scientific_scenario_status"], "passed")
+        recorded = self._present("dynamic-annual-storage-cost", methodology=resolve_methodology().to_dict())
+        self.assertEqual(recorded["scientific_scenario_status"], "passed")
         self.assertEqual(
             result["retained_numerical_comparison_status"], "expected_difference"
         )

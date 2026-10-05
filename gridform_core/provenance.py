@@ -183,6 +183,26 @@ def _write_artifact_index(bundle_root: Path, output_dir: Path) -> Path:
     return path
 
 
+def _failed_run_methodology(resolved_path: Path, project: Mapping[str, object]) -> object:
+    """The methodology a failed run executed (or would have executed) under (X0 S9)."""
+
+    try:
+        resolved = json.loads(resolved_path.read_text(encoding="utf-8"))
+        recorded = dict(resolved.get("extensions") or {}).get("methodology")
+        if isinstance(recorded, Mapping):
+            return dict(recorded)
+    except (OSError, ValueError, AttributeError):
+        pass
+    if not project:
+        return None
+    try:
+        from .methodology import resolve_project_methodology
+
+        return {**resolve_project_methodology(project).to_dict(), "source": "project_snapshot"}
+    except ValueError as exc:
+        return {"status": "unresolved", "error": str(exc)}
+
+
 def write_failed_run_provenance(
     bundle_root: Path,
     *,
@@ -281,6 +301,7 @@ def write_failed_run_provenance(
         },
         "data_bindings": bindings,
         "resolved_configuration": resolved_reference,
+        "methodology": _failed_run_methodology(resolved_path, project),
         "randomness": {
             "planning_seed": (project.get("parameters") or {}).get("planning.random_seed", 0),
             "planning_draw_algorithm": "md5-prefix-mod-1000000/v1",
@@ -440,6 +461,7 @@ def write_run_provenance(
     }
     if runtime_overlay is not None:
         record["runtime_overlay"] = dict(runtime_overlay)
+    record["methodology"] = resolved_run.extensions.get("methodology")
     path = bundle_root / "provenance.json"
     atomic_write_json(path, record, indent=2, ensure_ascii=False)
     return path

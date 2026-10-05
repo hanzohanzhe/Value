@@ -10,6 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+from ...methodology import methodology_scoped
 from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
 from ...comparison_eligibility import build_psm_comparison_input_evidence
 from ...market_ledger import (
@@ -1242,6 +1243,7 @@ class StagedBidAtCostPSM:
             ))
         return tuple(bids)
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         if self._storage_cost is None or self._balancing is None:
             raise RuntimeError("Staged PSM was not configured from the resolved module graph")

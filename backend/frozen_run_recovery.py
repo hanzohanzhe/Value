@@ -120,7 +120,8 @@ def _candidate(integrity: dict, scope: dict, recovery_mode: str, *, registry, mo
     source = integrity["project"]
     candidate = copy.deepcopy(source)
     for key in ("revision_sha256", "revision_number", "parent_revision_sha256", "base_revision_sha256",
-                "change_summary", "module_resolution_graph", "linked_run_count", "derivation"):
+                "change_summary", "module_resolution_graph", "linked_run_count", "derivation",
+                "fingerprint_basis", "revision_reason"):
         candidate.pop(key, None)
     extensions = dict(candidate.get("extensions") or {})
     extensions.pop("frozen_recovery", None)

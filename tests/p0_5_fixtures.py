@@ -188,15 +188,30 @@ class KernelBoundaryRecorder:
 def run_value_101_day(pack_root: Path, recorder: KernelBoundaryRecorder) -> None:
     """Run the frozen golden D3 project (value_101_day, retained kernel) on ``pack_root``."""
 
+    from unittest.mock import patch
+
+    from gridform_core import methodology
     from gridform_core.application import run_project_application
 
     run_case = _load("p0_5_run_case", RUN_CASE_SCRIPT)
     cases = run_case.load_cases()
     project = run_case.build_project(dict(cases["D3"], id="D3"))
     output = Path(tempfile.mkdtemp(prefix="value-p0-5-kernel-"))
+    # D3 runs under the frozen doctoral profile, whose whitelist pins the
+    # VALUE 101 manifest sha; an edited copy (nonconstant_boundary_pack) is
+    # therefore refused at the run entry.  This instrumented test is about the
+    # kernel boundary, not the whitelist, so only this pack directory is
+    # admitted (the whitelist itself is tested in test_methodology_profiles).
+    real_pack_supported = methodology._pack_supported
+    edited_manifest = methodology.read_pack_manifest(pack_root)[0]
+
+    def pack_supported(profile, manifest, shas):
+        return manifest == edited_manifest or real_pack_supported(profile, manifest, shas)
+
     try:
         with open(os.devnull, "w", encoding="utf-8") as sink, contextlib.redirect_stdout(sink), \
-                contextlib.redirect_stderr(sink), recorder.patched():
+                contextlib.redirect_stderr(sink), recorder.patched(), \
+                patch.object(methodology, "_pack_supported", pack_supported):
             run_project_application(
                 project,
                 run_id="p0-5-kernel-boundary",

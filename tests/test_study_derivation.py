@@ -131,7 +131,8 @@ class StudyDerivationTests(unittest.TestCase):
         self.assertEqual(result["data_pack_id"], "new-pack")
         self.assertNotEqual(result["revision_sha256"], self.source["revision_sha256"])
         for key in self.source:
-            if key not in {"id", "name", "data_pack_id", "revision_sha256", "updated_at", "change_summary"}:
+            # fingerprint_basis is revision bookkeeping, like revision_sha256 (X0 S11).
+            if key not in {"id", "name", "data_pack_id", "revision_sha256", "fingerprint_basis", "updated_at", "change_summary"}:
                 self.assertEqual(result[key], self.source[key], key)
         self.assertEqual((self.projects / "baseline" / "project.json").read_bytes(), self.before)
         for intent, pack in (("data", "baseline-pack"), ("reproduce", "new-pack")):
@@ -143,17 +144,31 @@ class StudyDerivationTests(unittest.TestCase):
         with self.assertRaises(StudyDerivationError) as error:
             self.derive(request={"source_revision_sha256": "0" * 64})
         self.assertEqual(error.exception.code, "GF_STUDY_DERIVATION_STALE_REVISION")
+        # Module sources or the installed pack changed since the save: a revision
+        # migration (X0 S11), classified, not a content drift.
         self.registry.source_sha = "b" * 64
         with self.assertRaises(StudyDerivationError) as error:
             self.derive()
-        self.assertEqual(error.exception.code, "GF_STUDY_DERIVATION_SOURCE_DRIFT")
+        self.assertEqual(error.exception.code, "GF_STUDY_REVISION_MIGRATION_REQUIRED")
+        self.assertEqual(error.exception.revision_migration["classification"], "code_identity_upgrade")
+        self.assertIn("/api/projects/baseline/revision-migration", str(error.exception))
         self.registry.source_sha = "a" * 64
         manifest_path = self.packs / "baseline-pack" / "manifest.json"
         manifest = self.pack("baseline-pack")
         manifest_path.write_text(json.dumps({**manifest, "updated_at": "drifted"}))
         with self.assertRaises(StudyDerivationError) as error:
             self.derive("data", "new-pack")
+        self.assertEqual(error.exception.code, "GF_STUDY_REVISION_MIGRATION_REQUIRED")
+        self.assertEqual(error.exception.revision_migration["classification"], "data_changed")
+        manifest_path.write_text(json.dumps(manifest))
+        # An unsaved edit of the source Study itself stays a drift.
+        source_path = self.projects / "baseline" / "project.json"
+        edited = json.loads(source_path.read_text())
+        source_path.write_text(json.dumps({**edited, "start_year": 2030}))
+        with self.assertRaises(StudyDerivationError) as error:
+            self.derive()
         self.assertEqual(error.exception.code, "GF_STUDY_DERIVATION_SOURCE_DRIFT")
+        source_path.write_bytes(self.before)
         manifest_path.write_text(json.dumps(manifest))
         (self.packs / "baseline-pack" / "input.csv").write_text("mutated")
         with self.assertRaises(StudyDerivationError) as error:

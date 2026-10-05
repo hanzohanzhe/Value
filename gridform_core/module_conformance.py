@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import contextvars
 import json
 import tempfile
 from pathlib import Path
 from typing import Mapping
 
+from .methodology import profile_ids, profile_scope
 from .parameters import REGISTRY
 from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, workspace_registry
 from .runtime_paths import external_modules_root
@@ -82,6 +84,19 @@ def check_storage_lifecycle(model) -> None:
     finite_nonnegative(battery.storage_bid_price(0, -1))
 
 
+def _storage_cost_fixture(instance: object, profile_id: str) -> None:
+    from .builtin.scheme_c_1000twh.runtime_compat.modular_simulation_model import physical_period_hours
+
+    with profile_scope(profile_id):
+        model = instance.create(  # type: ignore[attr-defined]
+            battery_type="1c",
+            period_hours=physical_period_hours(),
+            legacy_storage_fee=2.0,
+            legacy_holding_fee=0.1,
+        )
+        check_storage_lifecycle(model)
+
+
 def check_manifest(registry: ModuleRegistryV2, manifest: ModuleManifest) -> dict[str, object]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -101,17 +116,13 @@ def check_manifest(registry: ModuleRegistryV2, manifest: ModuleManifest) -> dict
             if not callable(getattr(instance, method, None)):
                 errors.append(f"implementation does not provide callable {method}")
         if manifest.slot == "storage_cost" and not errors:
-            try:
-                from .builtin.scheme_c_1000twh.runtime_compat.modular_simulation_model import physical_period_hours
-                model = instance.create(
-                    battery_type="1c",
-                    period_hours=physical_period_hours(),
-                    legacy_storage_fee=2.0,
-                    legacy_holding_fee=0.1,
-                )
-                check_storage_lifecycle(model)
-            except (Exception, SystemExit) as exc:
-                errors.append(f"minimal storage-cost fixture failed: {exc}")
+            # The fixture runs once under every methodology profile (X0 S9),
+            # each in a fresh context so an active run's profile never leaks in.
+            for profile_id in profile_ids():
+                try:
+                    contextvars.Context().run(_storage_cost_fixture, instance, profile_id)
+                except (Exception, SystemExit) as exc:
+                    errors.append(f"minimal storage-cost fixture failed under {profile_id}: {exc}")
     return {
         "module_id": manifest.id,
         "slot": manifest.slot,

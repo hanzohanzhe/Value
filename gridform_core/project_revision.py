@@ -19,18 +19,55 @@ def _canonical_bytes(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def canonical_project_payload(project: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object]) -> dict[str, object]:
+FINGERPRINT_BASIS_SCHEMA = "value.project-fingerprint-basis/v1"
+# Why a revision was appended (X0 S11, Q13).  Code-only changes are appended
+# automatically; method or data changes only after the user confirmed the diff.
+REVISION_REASONS = (
+    "user-save",
+    "code-identity-upgrade",
+    "environment-reidentify",
+    "method-upgrade-confirmed",
+    "data-change-confirmed",
+    "basis-reestablished-confirmed",
+)
+# Bookkeeping fields of a saved revision; never part of the Study content.
+REVISION_BOOKKEEPING_FIELDS = (
+    "revision_sha256", "revision_number", "parent_revision_sha256", "change_summary",
+    "fingerprint_basis", "revision_reason",
+)
+
+
+def canonical_project_payload(
+    project: Mapping[str, object],
+    registry: ModuleRegistryV2,
+    data_pack_manifest: Mapping[str, object],
+    *,
+    module_version_overrides: Mapping[str, tuple[str, str]] | None = None,
+    include_methodology: bool = True,
+    module_resolution_graph: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """The canonical identity payload of a Study revision.
+
+    ``module_version_overrides`` (module id -> (version, contract version))
+    ``include_methodology=False`` and ``module_resolution_graph`` (the graph
+    stored in project.json, used instead of resolving the current one) exist
+    only to reconstruct the payload of a revision saved before X0 S11
+    (pre-profile, 35aadb3 module versions and module source hashes); see
+    :mod:`gridform_core.revision_migration`.
+    """
+
     modules = dict(project.get("modules") or {})  # type: ignore[arg-type]
     psm_id = str(modules.get("psm") or "")
     if psm_id:
         psm = registry.manifest(psm_id, expected_slot="psm")
         if "storage.bid-cost-function" in psm.requires_capabilities:
             modules.setdefault("storage_cost", "dynamic-annual-storage-cost")
+    overrides = dict(module_version_overrides or {})
     module_versions = {
         slot: {
             "module_id": module_id,
-            "version": registry.manifest(module_id, expected_slot=slot).version,
-            "contract_version": registry.manifest(module_id, expected_slot=slot).contract_version,
+            "version": overrides[module_id][0] if module_id in overrides else registry.manifest(module_id, expected_slot=slot).version,
+            "contract_version": overrides[module_id][1] if module_id in overrides else registry.manifest(module_id, expected_slot=slot).contract_version,
         }
         for slot, module_id in sorted(modules.items())
     }
@@ -52,7 +89,9 @@ def canonical_project_payload(project: Mapping[str, object], registry: ModuleReg
     if "market_configuration" in project:
         result["market_configuration"] = dict(project.get("market_configuration") or {})
     selected_extensions = tuple(str(item) for item in project.get("selected_extensions", ()))
-    if selected_extensions:
+    if selected_extensions and module_resolution_graph is not None:
+        result["module_resolution_graph"] = json.loads(json.dumps(dict(module_resolution_graph)))
+    elif selected_extensions:
         graph = registry.resolve_selection(
             modules,
             selected_extensions=selected_extensions,
@@ -76,7 +115,32 @@ def canonical_project_payload(project: Mapping[str, object], registry: ModuleReg
     acknowledgements = dict(project.get("maturity_acknowledgements") or {})
     if acknowledgements:
         result["maturity_acknowledgements"] = acknowledgements
+    if include_methodology:
+        # The methodology profile decides how the Study is computed, so it is
+        # part of the revision identity (X0 S11, Q13): a Study saved before
+        # profiles existed, or under another catalogue, no longer matches and
+        # is classified by revision_migration instead of re-identified.
+        from .methodology import resolve_project_methodology
+
+        result["methodology"] = resolve_project_methodology(project).identity()
     return result
+
+
+def fingerprint_basis(project: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object]) -> dict[str, object]:
+    """What a revision hash was computed from, stored with the revision (X0 S11)."""
+
+    from .methodology import resolve_project_methodology
+
+    payload = canonical_project_payload(project, registry, data_pack_manifest)
+    return {
+        "schema_version": FINGERPRINT_BASIS_SCHEMA,
+        "revision_sha256": hashlib.sha256(_canonical_bytes(payload)).hexdigest(),
+        "payload": payload,
+        "applied_correction_ids": list(resolve_project_methodology(project).applied_correction_ids),
+        # Semantic records (id, track, scope, affects) so a later catalogue can
+        # tell a redefined correction from a presentation-only edit.
+        "applied_corrections": resolve_project_methodology(project).applied_correction_records(),
+    }
 
 
 def project_fingerprint(project: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object]) -> str:
@@ -176,11 +240,13 @@ def derive_zonal_execution_project(
 
 
 def _change_summary(previous: Mapping[str, object], current: Mapping[str, object]) -> list[str]:
-    ignored = {"name", "updated_at", "revision_sha256", "revision_number", "parent_revision_sha256", "change_summary"}
+    ignored = {"name", "updated_at", *REVISION_BOOKKEEPING_FIELDS}
     return sorted(key for key in set(previous) | set(current) if key not in ignored and previous.get(key) != current.get(key))
 
 
-def save_project_revision(project_dir: Path, candidate: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object], *, expected_base_revision: str | None = None) -> dict[str, object]:
+def save_project_revision(project_dir: Path, candidate: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object], *, expected_base_revision: str | None = None, revision_reason: str = "user-save") -> dict[str, object]:
+    if revision_reason not in REVISION_REASONS:
+        raise ValueError(f"Unknown revision reason {revision_reason!r}")
     current_path = project_dir / "project.json"
     previous: dict[str, object] = {}
     if current_path.is_file():
@@ -191,6 +257,11 @@ def save_project_revision(project_dir: Path, candidate: Mapping[str, object], re
     result = attach_revision_identity(candidate, registry, data_pack_manifest)
     if result["revision_sha256"] == previous_revision:
         return previous
+    # Every revision written from now on records what its hash was computed
+    # from and why it was appended (X0 S11), so a later code or method change
+    # can be classified instead of guessed.
+    result["fingerprint_basis"] = fingerprint_basis(candidate, registry, data_pack_manifest)
+    result["revision_reason"] = revision_reason
     result["parent_revision_sha256"] = previous_revision
     result["revision_number"] = int(previous.get("revision_number", 0)) + 1
     result["change_summary"] = _change_summary(previous, result)

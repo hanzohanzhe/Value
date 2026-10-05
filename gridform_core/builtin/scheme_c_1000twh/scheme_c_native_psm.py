@@ -12,6 +12,7 @@ from typing import Mapping
 import numpy as np
 import pandas as pd
 
+from ...methodology import methodology_scoped
 from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
 from ...market_ledger import (
     PhysicalDispatchRow,
@@ -345,6 +346,7 @@ class SchemeCNativePSM:
             )
             ledger.record_physical_dispatch(rows)
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         if self._context is None or self._storage_cost is None:
             raise RuntimeError("SchemeCNativePSM was not configured from the frozen run context")
