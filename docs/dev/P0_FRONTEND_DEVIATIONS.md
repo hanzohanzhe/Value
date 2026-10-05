@@ -54,3 +54,20 @@
 | F-P09-13 | 9.8：375 px 不引起页面级横向滚动 | 只断言新组件自身不横向溢出（窗口卡、隔离面板）；旧布局（252 px 侧栏网格）在 375 px 的页面级溢出不在本轮 | 做法一不改旧元素样式 | 是 |
 | F-P09-14 | 6：Disable 确认 | 使用浏览器确认框（文案与规格逐字一致），未用 `<dialog>` | 规格第 6 节未指定对话框形式（`<dialog>` 是第 7 节迁移确认的要求） | 否 |
 | F-P09-15 | 10：截图用 PNG | 用 JPEG（质量 55，整页），共 14 张约 2.7 MB，放在 `docs/dev/p0-ui-screens/` | 控制仓库体积；来源是 scratch 实例（端口 18966/18967）上真实的 VALUE 101 day Run | 否 |
+
+### 设计方裁决：M2 界面审查遗留的小问题（2026-10-05，Claude）——在 M7「P0-9 收口」中实现
+
+1. **单位成本标签**：按 `system_cost_definition_id` 选择标签。
+   - CEM 账本口径：`£X/MWh served`；
+   - 遗留口径（`total_system_cost / total_energy_generated`）：`£X/MWh generated`；
+   - 口径未知：`£X/MWh (basis not recorded)`。
+2. **「Withheld」只用于 Q14**（论文复现口径未通过验证而按规则不发布）。其余情形各用各的词：
+   - 部分年份：`Partial year · {coverage}%`（琥珀色）；
+   - 进行中：`Running`（蓝色）；
+   - 已取消或已停止：`Stopped · {coverage}%`（琥珀色）。
+
+   规格 1.1 的词表据此新增 `stopped`。
+3. **已归档、原状态为 cancelled、缺少声明年份的 Run**：判为 `unavailable`（灰色），reason code 为 `cancelled_before_year_complete`，不判 `invalid`。红框只留给真正自相矛盾的结果。
+4. **折线中的孤立数据点**（两侧都缺失，或只有一个桶）：渲染为半径 2.5px 的实心圆点，颜色与该序列一致；不画成零长度折线。只有一个桶的视图，例如 VALUE 101 的日视图，要能看到这个点。
+5. **没有事件的事件组**（`affected_periods == 0`）：显示 `No events recorded`。不显示「Peak event 0 MWh」和时间戳。
+6. **窗口摘要网格**：1280px 下末行不留空白填充格，可用 `grid-auto-flow: dense`，或让最后一项占满整行。`server.py` 的空行按 PEP 8 修正。
