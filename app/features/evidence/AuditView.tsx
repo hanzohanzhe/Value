@@ -43,7 +43,7 @@ function RunAudit({ run, apiOrigin, onCreateFullReplayRevision }: AuditProps & {
   const artifacts = payload?.artifacts ?? [];
   const provenance = payload?.provenance ?? null;
   const selectedPeriod = periodSelection?.key === mainKey ? periodSelection.value : null;
-  // Q6: the period price is labelled by the ledger's declared basis, never "Clearing price" by default.
+  // Q6: the period price is labelled by the ledger's declared basis, never as a clearing price by default.
   const selectedPrice = selectedPeriod ? formatPrice(selectedPeriod.clearing_price_gbp_per_mwh, periods.price_basis) : null;
   const orderKey = JSON.stringify([mainKey, selectedPeriod?.year, selectedPeriod?.period, selectedPeriod?.stage, orderOffset]);
   const orders = orderRequest?.key === orderKey ? orderRequest.page ?? emptyPage<MarketOrder>(50) : emptyPage<MarketOrder>(50);

@@ -198,6 +198,29 @@ class Prompt83DomainResultTests(unittest.TestCase):
             self.assertEqual(capabilities["capabilities"]["hydrology"]["status"], "not_evaluated")
             self.assertIsNotNone(capabilities["capabilities"]["hydrology"]["reason"])
 
+    def test_zonal_ledger_is_a_supported_domain_found_without_count(self):
+        # P0-9 S10 (R3-16): a v6+ zonal ledger keeps its periods in
+        # zonal_period_accounting; both capability views must see it.
+        import inspect
+        import gridform_core.domain_results as domain_results
+        from gridform_core.market_replay import market_replay_capabilities
+        from tests.test_prompt102_zonal_results_api import _write_fixture
+
+        with tempfile.TemporaryDirectory(prefix="value-p83-zonal-") as temporary:
+            root = completed_root(Path(temporary) / "run-zonal")
+            database = root / "model-output" / "market" / "market.sqlite"
+            _write_fixture(database, "summary")
+            zonal = domain_result_capabilities(root)["capabilities"]["zonal_redispatch"]
+            market = market_replay_capabilities(database)
+            empty_root = completed_root(Path(temporary) / "run-single-node")
+            single = domain_result_capabilities(empty_root)["capabilities"]["zonal_redispatch"]
+        self.assertEqual(zonal["status"], "supported")
+        self.assertEqual(zonal["years"], [2025])
+        self.assertTrue(market["zonal_redispatch"])
+        self.assertEqual(single["status"], "unsupported")
+        self.assertNotIn("valid", str(single["reason"]).lower())
+        self.assertNotIn("COUNT(", inspect.getsource(domain_results._zonal_redispatch_capability))
+
 
 if __name__ == "__main__":
     unittest.main()

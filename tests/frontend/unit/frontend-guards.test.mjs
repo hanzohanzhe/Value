@@ -58,6 +58,19 @@ test("the frontend never derives a shortfall by subtracting supply from demand",
   assert.deepEqual(hits, [], where(hits));
 });
 
+test("spec 9.1 phrases are gone from the result views", async () => {
+  // "valid single-node" (R3-16), a bare "Clearing price" label (R3-01/Q6), "Result invalid" for missing evidence (G1-07).
+  const forbidden = /valid single-node|["'>]Clearing price|Result invalid|Compact annual read model/;
+  const hits = (await lines()).filter(({ text }) => forbidden.test(text));
+  assert.deepEqual(hits, [], where(hits));
+});
+
+test("FORBIDDEN_PUBLIC_AC: no public AC domain label", async () => {
+  const { DOMAIN_LABELS, PUBLIC_CAPABILITY_DOMAINS } = await import("../../../app/features/shared/domainConstants.ts");
+  assert.equal(Object.keys(DOMAIN_LABELS).some((key) => /(^|_)ac(_|$)/.test(key)), false);
+  assert.equal(PUBLIC_CAPABILITY_DOMAINS.some((key) => /(^|_)ac(_|$)/.test(key)), false);
+});
+
 // Stylesheets added in this round (spec 1.3): no text below 12px, no new colours.
 export const NEW_STYLESHEETS = [
   "app/features/shared/callout.css",

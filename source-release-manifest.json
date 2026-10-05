@@ -2959,8 +2959,8 @@
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
-      "sha256": "45f303a33a42be65efaaf23e9e2342ff0f499f8d515276e5c9180e6fe682c877",
-      "bytes": 14685,
+      "sha256": "8c19cb507280415c1b185aabf07a6be7e4b05e07147d8a1513a8f8d9c4019e5d",
+      "bytes": 14688,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3115,8 +3115,8 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "383863a133210876668db01952eaf327984eaf35dd04608b38e9eff78ca240bb",
-      "bytes": 49577,
+      "sha256": "95053752ccabc59711d8a1852fa268ca7c5530c05646450f1b998e775b80c71c",
+      "bytes": 49569,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3175,9 +3175,9 @@
     },
     {
       "path": "app/features/runs/DomainReadinessPanel.tsx",
-      "sha256": "f53c5b6b79d51a3d7db7b870c18d6e9b8d02e980f805ef1d3a89e575928e0fa5",
-      "bytes": 2383,
-      "transform": "byte copy"
+      "sha256": "947d87944178e00949205b56585fa79015430e3f2b59078365568aa1937dc0dd",
+      "bytes": 2388,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunResults.tsx",
@@ -3247,9 +3247,9 @@
     },
     {
       "path": "app/features/shared/domainConstants.ts",
-      "sha256": "a6e4596aeb7897351a7e268a1d452b62b5d1a43b1a51ec3f44cbe2c0609c34f6",
-      "bytes": 91,
-      "transform": "byte copy"
+      "sha256": "88e57a5d2d1d982ea6521b555f6a65fba92165eebbaf0e588d826b060ea6a4c2",
+      "bytes": 565,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/shared/format.ts",
@@ -3469,8 +3469,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "777c14b7900f19926f5b1a50ea6e9ca61f770e5c14df5e0a1b567bc87e80df91",
-      "bytes": 151237,
+      "sha256": "16cbbb6ae142efd9c4ea78afbb1e4df97d7834ab5ce2afbbdd941285f0562c38",
+      "bytes": 152190,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7498,9 +7498,9 @@
     },
     {
       "path": "gridform_core/domain_results.py",
-      "sha256": "4a8be4a9d81a2232486693c0ab8e2941aaca3d66cb0f12afcc5513dc4dc7d430",
-      "bytes": 24589,
-      "transform": "byte copy"
+      "sha256": "92695e685e9ec0bfed2e05a73f9b4833d3edd4ce68a101739848da47490138eb",
+      "bytes": 26329,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/energy_balance_contract.py",
@@ -7768,8 +7768,8 @@
     },
     {
       "path": "gridform_core/market_replay.py",
-      "sha256": "8d6dda7f8dc0d35186f38ead94ef3891f53aafbf24e2a0abeabbc790d2a3696c",
-      "bytes": 45494,
+      "sha256": "a29020feb69b0fd15fd0e34faab5fa65953db9de0060e04e2e554c016153eee8",
+      "bytes": 45524,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9944,8 +9944,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "ce014e78b2bd820870d1fd25eeeea32b7f76c267bc1e65a2423b080580e62d8c",
-      "bytes": 3658,
+      "sha256": "b10518dc88592152232ead6a673dbe46bf152c6f694dc8ab6056599645dbd057",
+      "bytes": 4451,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11192,9 +11192,9 @@
     },
     {
       "path": "tests/test_prompt83_domain_results.py",
-      "sha256": "119f28de06118dc3f6bbf236cd200f51d26f361968616585acff3ffad12d6773",
-      "bytes": 9189,
-      "transform": "byte copy"
+      "sha256": "b8fcf5a8cd515fd69b9e7b0226abca370673bd02fbae680c3c06221d08b495ec",
+      "bytes": 10628,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt86_value_101.py",

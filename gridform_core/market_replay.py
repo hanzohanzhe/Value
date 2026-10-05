@@ -19,10 +19,6 @@ REPLAY_CAPABILITIES_SCHEMA = "value.market-replay-capabilities/v1"
 VRE_SUMMARY_SCHEMA = "value.vre-curtailment-summary/v1"
 VRE_TIMELINE_SCHEMA = "value.vre-curtailment-timeline/v1"
 ZONAL_REPLAY_CAPABILITY = "value.zonal-results-page/v1"
-ZONAL_REPLAY_TABLES = {
-    "zonal_period_summary", "zone_period_summary", "boundary_period_summary",
-    "zonal_resource_dispatch", "reliability_event",
-}
 
 
 def canonical_technology(
@@ -381,10 +377,13 @@ def market_replay_capabilities(database: Path) -> dict[str, object]:
             int(connection.execute("SELECT COUNT(*) FROM period_summary").fetchone()[0])
             if "period_summary" in tables else 0
         )
-        zonal_rows = (
-            int(connection.execute("SELECT COUNT(*) FROM zonal_period_summary").fetchone()[0])
-            if ZONAL_REPLAY_TABLES.issubset(tables) else 0
-        )
+        # R3-16: v6+ ledgers keep zonal periods in zonal_period_accounting;
+        # an EXISTS-style probe, not a COUNT over the year.
+        zonal_rows = int(any(
+            table in tables
+            and connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone() is not None
+            for table in ("zonal_period_accounting", "zonal_period_summary")
+        ))
         order_rows = (
             int(connection.execute("SELECT COUNT(*) FROM orders").fetchone()[0])
             if "orders" in tables else 0

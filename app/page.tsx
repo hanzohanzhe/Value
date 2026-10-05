@@ -16,7 +16,7 @@ import { EMPTY_DISPATCH_MESSAGES, bucketPrice, emptyDispatchReason, stackSupply,
 import { StatusPill, ValueState } from "./features/shared/Callout";
 import "./features/market/market-replay.css";
 import OpenFromLauncher from "./features/shared/OpenFromLauncher";
-import { PUBLIC_CAPABILITY_DOMAINS } from "./features/shared/domainConstants";
+import { PUBLIC_CAPABILITY_DOMAINS, domainLabel } from "./features/shared/domainConstants";
 import type { PageResult } from "./features/shared/pagination";
 import type { View } from "./features/shared/navigation";
 import type { Workspace } from "./features/shared/workspaceTypes";
@@ -285,7 +285,7 @@ function TopologySchematic({ summary }: { summary: NetworkSummaryPayload }) {
   </svg><p>Electrical schematic only — node positions do not represent geography. A ring layout is used because no coordinate claim is made by this result artifact.</p></div>;
 }
 
-function SystemResultsView({ run, onOpenMarket }: { run?: ModelRun; onOpenMarket: () => void }) {
+function SystemResultsView({ run, onOpenMarket, onOpenNetwork }: { run?: ModelRun; onOpenMarket: () => void; onOpenNetwork: () => void }) {
   const [capabilities, setCapabilities] = useState<DomainCapabilitiesPayload | null>(null);
   const [domain, setDomain] = useState<OptionalResultDomain | null>(null);
   const [year, setYear] = useState(0); const [selectedPeriod, setSelectedPeriod] = useState("");
@@ -346,8 +346,10 @@ function SystemResultsView({ run, onOpenMarket }: { run?: ModelRun; onOpenMarket
   const selectedBusPeriod = periods?.items.find((item) => item.period_id === selectedPeriod);
   return <div className="page evidence-page"><div className="page-title"><div><span>Optional-domain evidence</span><h2>Network, water and expansion results</h2><p>Tabs are indexed from this completed run&apos;s frozen graph and artifacts. VALUE does not infer missing domains or turn “not evaluated” into zero.</p></div><Badge tone={run.status === "completed" || run.status === "archived" ? "good" : "warn"}>{run.status}</Badge></div>
     {error && <div className="error-box">{error}</div>}
-    {capabilities && <section className="domain-capability-strip" aria-label="Optional-domain capability status">{PUBLIC_CAPABILITY_DOMAINS.map((key) => [key, capabilities.capabilities[key]] as const).filter((entry): entry is readonly [string, DomainCapability] => Boolean(entry[1])).map(([key, item]) => <article key={key}><span>{key.replaceAll("_", " ")}</span><Badge tone={item.status === "supported" ? "good" : item.status === "experimental" ? "warn" : "neutral"}>{item.status.replaceAll("_", " ")}</Badge><small>{item.claim ?? item.reason ?? "Artifact-backed result available."}</small></article>)}</section>}
-    {capabilities && !availableDomains.length && <div className="empty-run"><b>No optional-domain result artifact is available</b><p>This is a valid single-node or diagnostic run. No network, hydrology or expansion quantities are reconstructed.</p></div>}
+    {capabilities && <section className="domain-capability-strip" aria-label="Optional-domain capability status">{PUBLIC_CAPABILITY_DOMAINS.map((key) => [key, capabilities.capabilities[key]] as const).filter((entry): entry is readonly [string, DomainCapability] => Boolean(entry[1])).map(([key, item]) => <article key={key}><span>{domainLabel(key)}</span><Badge tone={item.status === "supported" ? "good" : item.status === "experimental" ? "warn" : "neutral"}>{item.status.replaceAll("_", " ")}</Badge><small>{item.claim ?? item.reason ?? "Artifact-backed result available."}</small></article>)}</section>}
+    {capabilities && !availableDomains.length && (["supported", "experimental"].includes(capabilities.capabilities.zonal_redispatch?.status ?? "")
+      ? <div className="empty-run"><b>Zonal network results are on their own page</b><p>This Run uses the zonal network model. Its congestion, redispatch and lost-load results are under Network &amp; redispatch; no DC network, hydrology or expansion artifact is attached.</p><button type="button" className="secondary" onClick={onOpenNetwork}>Open Network &amp; redispatch →</button></div>
+      : <div className="empty-run"><b>No optional-domain result artifact is attached to this Run</b><p>{run.modules?.balancing === "value-copperplate-balancing" || !run.modules?.balancing ? "This Run uses the national market without internal network constraints (copperplate)." : "The selected modules recorded no network, hydrology or expansion artifact."} No network, hydrology or expansion quantities are reconstructed. Market results are in Market replay.</p><button type="button" className="secondary" onClick={onOpenMarket}>Open Market replay →</button></div>)}
     {!!availableDomains.length && <><div className="audit-tabs domain-result-tabs" role="tablist" aria-label="Optional-domain result tabs">{availableDomains.map((item) => <button key={item} role="tab" aria-selected={domain === item} className={domain === item ? "active" : ""} onClick={() => { setDomain(item); setYear(capabilities?.capabilities[item].years?.[0] ?? 0); }}>{labels[item]}</button>)}</div>
       {selectedCapability?.years?.length ? <label className="inline-select domain-year"><span>Model year</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{selectedCapability.years.map((item) => <option key={item}>{item}</option>)}</select></label> : null}
     </>}
@@ -1408,7 +1410,7 @@ export default function Home() {
 
     {view === "networkRedispatch" && <NetworkRedispatchView key={selectedRun?.id ?? "no-run"} run={selectedRun} apiOrigin={API_ORIGIN} sourceStudyMutable={selectedRunSourceMutable} onReplay={(year, periodFrom) => { if (selectedRun) { setReplayTarget({ runId: selectedRun.id, year, periodFrom, nonce: Date.now() }); setView("marketReplay"); } }} onOpenInspect={() => setView("audit")} onOpenMarket={() => setView("marketReplay")} onCreateFullReplayRevision={createFullReplayRevision} onOpenRun={() => setView("run")} onRerun={() => selectedRun ? rerunAsCopperplate(selectedRun) : Promise.resolve()} />}
 
-    {view === "systems" && <SystemResultsView run={selectedRun} onOpenMarket={() => setView("marketReplay")} />}
+    {view === "systems" && <SystemResultsView run={selectedRun} onOpenMarket={() => setView("marketReplay")} onOpenNetwork={() => setView("networkRedispatch")} />}
 
     {view === "audit" && <AuditView run={selectedRun} apiOrigin={API_ORIGIN} onCreateFullReplayRevision={createFullReplayRevision} />}
 
