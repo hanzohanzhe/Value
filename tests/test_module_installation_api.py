@@ -63,7 +63,7 @@ class ModuleInstallationApiTests(unittest.TestCase):
                     headers={
                         "Content-Type": "application/zip",
                         "X-Filename": "example.zip",
-                        "X-Force-Executable-Trust": "acknowledged",
+                        "X-VALUE-Executable-Trust": "acknowledged",
                     },
                 )
                 payload = json.loads(urllib.request.urlopen(trusted, timeout=10).read())

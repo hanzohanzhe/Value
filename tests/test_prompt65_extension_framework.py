@@ -229,8 +229,9 @@ class Prompt65ExtensionFrameworkTests(unittest.TestCase):
             executable = self._extension_zip(
                 root / "executable.zip", extra={"examples/payload.py": b"print('no')\n"}
             )
-            with self.assertRaisesRegex(ExtensionBundleError, "Executable code"):
+            with self.assertRaisesRegex(ExtensionBundleError, "Python hooks must be inside the declared src package") as rejected:
                 validate_extension_bundle(executable)
+            self.assertEqual(rejected.exception.code, "GF_EXTENSION_EXECUTABLE")
             traversal = root / "traversal.zip"
             with zipfile.ZipFile(traversal, "w") as archive:
                 archive.writestr("../escape.json", "{}")

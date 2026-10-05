@@ -40,7 +40,7 @@ def extension_bundle(
         "hooks": [],
         "state_schema_version": f"vendor.lifecycle-state/v{version.split('.')[0]}",
         "state_migrations": {"1.0.0": "vendor.lifecycle-state/v2"} if migration else {},
-        "required_force_version": ">=0.5.0",
+        "required_value_version": ">=0.5.0",
         "required_contract_versions": {},
         "member_inventory": [],
         "maturity": "experimental",

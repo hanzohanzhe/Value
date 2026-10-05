@@ -1213,6 +1213,7 @@
     "tests/golden/projects/D4.json",
     "tests/golden/zones.json",
     "tests/local_api_harness.py",
+    "tests/module_lifecycle_fixtures.py",
     "tests/native_reproduction_harness.py",
     "tests/p04_variants.py",
     "tests/p0_5_fixtures.py",
@@ -1310,6 +1311,7 @@
     "tests/test_module_installation.py",
     "tests/test_module_installation_api.py",
     "tests/test_module_manifests_v2.py",
+    "tests/test_module_quarantine.py",
     "tests/test_module_resolution_graph.py",
     "tests/test_module_runtime.py",
     "tests/test_native_application_path.py",
@@ -9336,8 +9338,8 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "9a370e88b963f19c211af0e392e7af8dc7397b03ac63977715b3e3d7a1355c49",
-      "bytes": 22158,
+      "sha256": "2dc0ef8757712930a2caf26b59b265e2025844fd084995cf5a22ecc65789e54f",
+      "bytes": 21583,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9959,6 +9961,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/module_lifecycle_fixtures.py",
+      "sha256": "a554da4fedcdb1cb65efdeb979574e0b97b918d43ff934d41c4a9529ddc9a8aa",
+      "bytes": 9500,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/native_reproduction_harness.py",
       "sha256": "92016e3fde7289d10ad5ef5c4d60b9d83f1aca7477dbf396246f71070c42ecc6",
       "bytes": 79628,
@@ -10530,7 +10538,7 @@
     },
     {
       "path": "tests/test_module_installation_api.py",
-      "sha256": "df2318d8c556d7cc7ba30d4451c14adb81a600e40048f63b13797d9af4c75e95",
+      "sha256": "ac75569a40af9f9b8cf69bf703b1dc84ab8fcb353fe2e18ddfbd3de92f63e41a",
       "bytes": 4507,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -10539,6 +10547,12 @@
       "sha256": "771f32f6611c8da4b4a8a65b5d3b32838d11a4f0c1f64f3e578231746d253937",
       "bytes": 2873,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_module_quarantine.py",
+      "sha256": "eacc96534cf3766f698b1e07cea6a6e0e0d8929b0c2c596eedc47074477ea9ac",
+      "bytes": 6982,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_module_resolution_graph.py",
@@ -10872,9 +10886,9 @@
     },
     {
       "path": "tests/test_prompt65_extension_framework.py",
-      "sha256": "5bdf5a63595ae2e539dbd7685aa7e3cb399101ab0b68a651c76b0387da2aee06",
-      "bytes": 11165,
-      "transform": "byte copy"
+      "sha256": "fcc30eaeaa99a4a1b1e95e1b4d958e070385a6af2183957a60798e3bd012063e",
+      "bytes": 11296,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt66_hydrology.py",
@@ -10920,9 +10934,9 @@
     },
     {
       "path": "tests/test_prompt81_extension_lifecycle.py",
-      "sha256": "f3421850d510b348ebcf2cd3a06453951c7529bddc8e7860cba6b4cbc00c9b3e",
+      "sha256": "6d53db6ef33737eb5a1549b2c02697a70b612593c90a2f7789d1eacb768e9694",
       "bytes": 5430,
-      "transform": "byte copy"
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt82_domain_readiness.py",
