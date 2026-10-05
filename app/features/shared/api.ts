@@ -37,10 +37,54 @@ export function isLauncherAccessFailure(status: number, code: unknown): boolean 
   return (status === 403 || status === 502) && typeof code === "string" && LAUNCHER_ERROR_CODES.has(code);
 }
 
+/** A refused or failed API request with its HTTP status and VALUE error code (P0-3 S8). */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { cache: "no-store", signal });
-  const payload = await response.json();
+  let payload: { error?: string; error_code?: string } | null = null;
+  try { payload = await response.json(); } catch { /* a non-JSON body: the status decides */ }
   if (isLauncherAccessFailure(response.status, payload?.error_code)) throw new LauncherAccessError(String(payload?.error_code ?? response.status));
-  if (!response.ok) throw new Error(payload.error || "Request failed");
+  if (!response.ok) throw new ApiError(payload?.error || `Request failed (HTTP ${response.status})`, response.status, payload?.error_code ?? null);
+  if (payload === null) throw new ApiError("The service returned an unreadable response", response.status, "GF_RESPONSE_UNREADABLE");
   return payload as T;
+}
+
+export type RefreshFailure = "launcher" | "service_error" | "unreachable";
+
+/** How a failed workspace refresh should be shown: a launcher problem is the
+ * whole-page notice; an answer with an error status is a degraded service;
+ * no answer at all (network error) counts towards "offline". */
+export function classifyRefreshFailure(error: unknown): RefreshFailure {
+  if (error instanceof LauncherAccessError) return "launcher";
+  if (error instanceof ApiError && error.status > 0) return "service_error";
+  return "unreachable";
+}
+
+export type ServiceState = "loading" | "online" | "degraded" | "offline";
+
+/** Consecutive failures before the rail says "Backend offline" (spec 5). */
+export const OFFLINE_AFTER_FAILURES = 3;
+export const POLL_BASE_MS = 2_000;
+export const POLL_MAX_MS = 30_000;
+
+/** Polling interval after `failures` consecutive failures: 2 s doubling to at most 30 s. */
+export function pollDelay(failures: number): number {
+  return Math.min(POLL_MAX_MS, POLL_BASE_MS * 2 ** Math.max(0, failures));
+}
+
+/** Service state from the last health status and the consecutive refresh failures. */
+export function serviceState(failures: number, healthStatus: string | null | undefined, loaded: boolean): ServiceState {
+  if (failures >= OFFLINE_AFTER_FAILURES) return "offline";
+  if (failures > 0 || healthStatus === "degraded") return "degraded";
+  return loaded ? "online" : "loading";
 }

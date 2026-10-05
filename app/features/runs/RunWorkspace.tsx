@@ -16,6 +16,8 @@ import ReadinessEvidence from "../evidence/ReadinessEvidence";
 import DomainReadinessPanel from "./DomainReadinessPanel";
 import { AnnualResults, SmokeDiagnostics } from "./RunResults";
 import { isResultCoverage } from "../shared/coverageView.ts";
+import { Callout } from "../shared/Callout";
+import { lifecycleNotice } from "./lifecycleView.ts";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -29,6 +31,7 @@ export type RunWorkspaceActions = {
   resumeRun: (run: ModelRun) => Promise<void>;
   rerunAsCopperplate: (run: ModelRun) => Promise<void>;
   lifecycleAction: (run: ModelRun, action: "cancel" | "archive" | "restore" | "export" | "delete") => Promise<void>;
+  markLost?: (run: ModelRun) => Promise<void>;
 };
 
 type RunWorkspaceProps = {
@@ -52,7 +55,8 @@ type RunWorkspaceProps = {
 };
 
 export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, selectedProject, selectedProjectPack, selectedRun, projectRuns, preflight, effectivePreflightMode, checkingPreflight, zonalPreflight, teachingProject, launching, selectedRunSourceMutable, canRunMode, frozen, actions }: RunWorkspaceProps) {
-  const { selectRunProject, onSelectRun, onMode, onNavigate, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated } = actions;
+  const { selectRunProject, onSelectRun, onMode, onNavigate, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost } = actions;
+  const notice = selectedRun ? lifecycleNotice(selectedRun) : null;
   const recovery = selectedProject?.extensions?.frozen_recovery;
   const selectedRunContext = { kind: frozen.contextKind };
   const frozenRunSelectionId = frozen.runId;
@@ -98,6 +102,8 @@ export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, 
             {selectedRun.retained_numerical_comparison_status === "expected_difference" && <div className="info-box">This project selected a different storage-cost policy. Its retained VALUE numerical difference is expected and reported; it is not a failed scientific scenario.</div>}
             <div className="progress"><i style={{ width: `${selectedRun.total_years ? selectedRun.completed_years / selectedRun.total_years * 100 : 0}%` }} /></div>
             {selectedRun.recovery && <div className="info-box"><b>Recovery: annual boundaries</b><br />{selectedRun.recovery.latest_safe_point?.available ? `Latest verified opening state: ${selectedRun.recovery.latest_safe_point.meaning ?? `model year ${selectedRun.recovery.latest_safe_point.year}`}.` : "No verified annual checkpoint is available yet."} An interrupted model year is recomputed; subannual resume is not currently supported. If historical execution evidence is unavailable, review frozen inputs and explicitly migrate to a fresh Study using the current method.</div>}
+            {notice?.kind === "worker_exited" && <Callout tone="caution" className="run-lifecycle-callout" title={notice.title} actions={notice.canResume ? <button type="button" className="value-action-primary" disabled={Boolean(launching) || !selectedRunSourceMutable} onClick={() => void resumeRun(selectedRun)}>{launching === "resume" ? "Checking checkpoint…" : "Resume"}</button> : undefined}><p>{notice.body}</p>{notice.resumeBlockedReason && <p>{notice.resumeBlockedReason}</p>}<code>{selectedRun.error_code}</code></Callout>}
+            {notice?.kind === "worker_lost" && <Callout tone="caution" className="run-lifecycle-callout" title={notice.title} actions={markLost ? <button type="button" className="value-action-primary" disabled={Boolean(launching)} onClick={() => void markLost(selectedRun)}>{launching === "mark-lost" ? "Marking…" : "Mark as lost"}</button> : undefined}><p>{notice.body} Marking it lost records the Run as failed so that it can be resumed; VALUE asks you to confirm first.</p></Callout>}
             {selectedRun.error && <div className="error-box">{selectedRun.error_code && <b>{selectedRun.error_code}: </b>}{selectedRun.error}</div>}
             {["failed", "cancelled"].includes(selectedRun.status) && <button className="secondary full" disabled={Boolean(launching) || !selectedRunSourceMutable} onClick={() => void resumeRun(selectedRun)}>{launching === "resume" ? "Checking checkpoint..." : "Resume from verified annual checkpoint with the same physics"}</button>}
             {selectedRun.status === "failed" && selectedRun.modules?.balancing === "value-zonal-redispatch-balancing" && <button className="secondary full" disabled={Boolean(launching) || !selectedRunSourceMutable} onClick={() => void rerunAsCopperplate(selectedRun)}>{launching === "rerun-copperplate" ? "Creating a new run…" : "Create a new copperplate fallback run"}</button>}

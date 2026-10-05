@@ -11,7 +11,7 @@ test("non-programmer synthetic study executes the selected external module", asy
   });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
-  await expect(page.getByText("Model service offline")).toHaveCount(0);
+  await expect(page.getByText(/Backend (degraded|offline)/)).toHaveCount(0);
   await expect(page.getByText(/Python 3\.10/).first(), browserErrors.join("\n")).toBeVisible();
 
   await page.getByRole("button", { name: /Studies/ }).click();
@@ -61,7 +61,8 @@ test("incompatible study and offline recovery are visible failures", async ({ pa
 
   await page.route("**/api/workspace", (route) => route.abort("failed"));
   await page.reload();
-  await expect(page.getByText("Model service offline")).toBeVisible();
+  // P0-3 S8: a failed load shows the service as degraded (offline after three failures); the page stays readable.
+  await expect(page.locator(".service")).toContainText(/Backend (degraded|offline)/);
   await page.unroute("**/api/workspace");
   await page.locator(".service").getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText(/Python 3\.10/).first()).toBeVisible();

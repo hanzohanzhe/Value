@@ -29,6 +29,8 @@ export type ModelRun = {
   source_study_status?: SourceStudyStatus;
   /** Shared annual-coverage verdict of the Run detail (P0-9 S5). */
   result_coverage?: ResultCoverage | null;
+  /** P0-3: presentation of the worker lease ("alive", "starting", "lost", "unverifiable", "not_started", "not_active"). */
+  worker_liveness?: string;
 };
 export type PreflightIssue = { code: string; severity: "error" | "warning"; scope: string; message: string; corrective_action: string };
 export type DomainMetric = { value: unknown; unit: string; definition_id: string; source_sha256?: unknown; status: string };

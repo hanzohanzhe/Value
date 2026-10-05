@@ -1151,8 +1151,11 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                 }
                 if completed_years and run.get("status") == "running":
                     run["completed_years"] = len(completed_years)
+                    # Spec 5: say what is being computed and that this model
+                    # reports no period-level progress (P0-3 S8).
                     run["current_stage"] = (
-                        f"Completed {max(completed_years)}; preparing the next annual state"
+                        f"Computing year {max(completed_years) + 1} "
+                        "(period-level progress not reported by this model)"
                     )
             except (OSError, ValueError, json.JSONDecodeError):
                 run.setdefault("warnings", []).append({

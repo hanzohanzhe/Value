@@ -1,0 +1,8 @@
+/* P0 frontend spec 5: service state and background Runs (>= 12px, tokens only). */
+.service.degraded > i { background: var(--amber); box-shadow: none; }
+.service.offline > i { background: var(--red); box-shadow: none; }
+.service.degraded b, .service.offline b { font-size: 13px; }
+.service.degraded small, .service.offline small { font-size: 12px; }
+.service.degraded button, .service.offline button { font-size: 12px; }
+.background-runs { border: 1px solid var(--amber); border-radius: 11px; padding: 2px 10px; min-height: 26px; background: var(--amber-soft); color: var(--amber); font-size: 12px; font-weight: 600; }
+.run-lifecycle-callout code { font-size: 12px; }

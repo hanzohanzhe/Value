@@ -8,7 +8,8 @@ import { alignZonalSolverContract } from "./features/studies/solverContract";
 import RunWorkspace from "./features/runs/RunWorkspace";
 import AuditView from "./features/evidence/AuditView";
 import { Badge, formatBytes, formatNumber, modelDisplayName } from "./features/shared/presentation";
-import { API_BASE, LauncherAccessError, getJson } from "./features/shared/api";
+import { API_BASE, OFFLINE_AFTER_FAILURES, classifyRefreshFailure, getJson, pollDelay, serviceState } from "./features/shared/api";
+import "./features/shared/service-status.css";
 import { formatEnergy, formatEnergyGroup, formatQuantity } from "./features/shared/format.ts";
 import { kpiCoverageLine, seriesSegments, vreEventGroups, vreKpis } from "./features/market/vreView.ts";
 import type { AuctionView, DispatchTimeline, MarketCapability, StoragePeriodRow, VreSummary } from "./features/market/marketTypes.ts";
@@ -373,7 +374,13 @@ export default function Home() {
   const [definitions, setDefinitions] = useState<ParameterDefinition[]>([]);
   const [online, setOnline] = useState(false);
   const [launcherRequired, setLauncherRequired] = useState(false);
-  const [connectionState, setConnectionState] = useState<"loading" | "online" | "offline">("loading");
+  // P0-3 S8: the rail shows degraded after a failure or a degraded health
+  // status, and offline only after OFFLINE_AFTER_FAILURES consecutive failures.
+  const [refreshFailures, setRefreshFailures] = useState(0);
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [health, setHealth] = useState<{ status: string; degraded_reasons?: { code: string; count: number }[] } | null>(null);
+  const [pollTick, setPollTick] = useState(0);
+  const connectionState = serviceState(refreshFailures, health?.status, workspaceLoaded);
   const [selectedPackId, setSelectedPackId] = useState("value-uk-1000twh-reproduction");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
@@ -470,7 +477,9 @@ export default function Home() {
         runs: next.runs.map((run) => ({ ...run, project_name: modelDisplayName(run.project_name) })),
       });
       setOnline(true);
-      setConnectionState("online");
+      setWorkspaceLoaded(true);
+      setRefreshFailures(0);
+      void getJson<{ status: string; degraded_reasons?: { code: string; count: number }[] }>(`${API}/health`).then(setHealth).catch(() => setHealth(null));
       setSelectedPackId((current) => next.data_packs.some((item) => item.id === current) ? current : (next.data_packs.find((item) => item.complete)?.id ?? next.data_packs[0]?.id ?? ""));
       const requestedRunId = pendingLocation.current?.runId;
       const requestedRun = next.runs.find((run) => run.id === requestedRunId);
@@ -479,8 +488,10 @@ export default function Home() {
       pendingLocation.current = null;
       return next;
     } catch (error) {
-      if (error instanceof LauncherAccessError) setLauncherRequired(true);
-      setOnline(false); setConnectionState("offline"); return null;
+      if (classifyRefreshFailure(error) === "launcher") { setLauncherRequired(true); return null; }
+      // The last workspace stays on screen (readable); actions that need the
+      // service are disabled while it is not online.
+      setOnline(false); setRefreshFailures((current) => current + 1); return null;
     }
   }, []);
   const refreshValue101Tutorial = useCallback(async () => {
@@ -532,7 +543,14 @@ export default function Home() {
     return () => { active = false; };
   }, [selectedRunSummary]);
   const hasActiveRun = workspace.runs.some((run) => ["queued", "snapshotting", "running", "cancel_requested"].includes(run.status));
-  useEffect(() => { if (!hasActiveRun) return; const timer = window.setInterval(() => void refresh(), 2000); return () => window.clearInterval(timer); }, [hasActiveRun, refresh]);
+  const activeRunCount = workspace.runs.filter((run) => ["queued", "snapshotting", "running", "cancel_requested"].includes(run.status)).length;
+  // Poll while a Run is active or the service is failing: every 2 s, doubling
+  // after each consecutive failure up to 30 s (P0-3 S8).
+  useEffect(() => {
+    if (!hasActiveRun && refreshFailures === 0) return;
+    const timer = window.setTimeout(() => { void refresh().finally(() => setPollTick((tick) => tick + 1)); }, pollDelay(refreshFailures));
+    return () => window.clearTimeout(timer);
+  }, [hasActiveRun, pollTick, refresh, refreshFailures]);
 
   const selectedPack = useMemo(() => workspace.data_packs.find((pack) => pack.id === selectedPackId) ?? workspace.data_packs[0], [selectedPackId, workspace.data_packs]);
   const selectedProject = workspace.projects.find((project) => project.id === selectedProjectId);
@@ -1164,6 +1182,18 @@ export default function Home() {
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Resume failed"); }
     finally { setLaunching(""); }
   }
+  async function markRunLost(run: ModelRun) {
+    // Spec 5 / P0-3: a second, explicit confirmation; the API also requires the exact run ID.
+    if (!window.confirm(`Mark Run ${run.id} as lost?\n\nVALUE cannot reach its worker. The Run will be recorded as failed and can then be resumed from its last annual checkpoint. A worker that is still running somewhere would be ignored.`)) { setNotice("The Run was not marked lost."); return; }
+    setLaunching("mark-lost"); setNotice("");
+    try {
+      const response = await fetch(`${API}/runs/${encodeURIComponent(run.id)}/mark-lost`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm_run_id: run.id }) });
+      const payload = await response.json() as { error?: string; error_code?: string };
+      if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "The Run could not be marked lost"}`);
+      setNotice("The Run was marked lost and recorded as failed. Resume it from its last annual checkpoint when ready."); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Mark as lost failed"); }
+    finally { setLaunching(""); }
+  }
   async function rerunAsCopperplate(run: ModelRun) {
     setLaunching("rerun-copperplate"); setNotice("");
     try {
@@ -1220,9 +1250,10 @@ export default function Home() {
       { label: "Results", ids: ["marketReplay", "curtailment", "networkRedispatch", "systems", "audit"] },
       { label: "Guides", ids: ["extend"] },
     ].map((group) => <div className="workspace-nav-group" key={group.label}><p>{group.label}</p>{group.ids.map((id) => views.find((item) => item.id === id)!).map((item) => <button type="button" aria-label={`${item.label}: ${item.note}`} aria-current={view === item.id ? "page" : undefined} key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><i>{item.index}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}</div>)}</nav>
-    <div className="rail-foot"><div className={`service ${connectionState === "online" && workspace.runtime.compatible ? "online" : ""}`}><i /><span><b>{connectionState === "loading" ? "Connecting to model service…" : connectionState === "online" ? `Python ${workspace.runtime.python}` : "Model service offline"}</b><small>{connectionState === "loading" ? "Checking the local API" : connectionState === "online" ? (workspace.runtime.compatible ? `${workspace.runtime.selected_capability ?? "value-native"} ready` : "VALUE native runtime unavailable") : "Start VALUE locally, then retry"}</small></span>{connectionState === "offline" && <button onClick={() => void refresh()}>Retry</button>}</div><small>Contract {workspace.architecture_version.replace("value.contracts/", "")}</small></div></aside>
+    <div className="rail-foot"><div className={`service ${connectionState === "online" && workspace.runtime.compatible ? "online" : connectionState === "degraded" ? "degraded" : connectionState === "offline" ? "offline" : ""}`} role="status"><i /><span><b>{connectionState === "loading" ? "Connecting to model service…" : connectionState === "online" ? `Python ${workspace.runtime.python}` : connectionState === "degraded" ? "● Backend degraded" : "● Backend offline"}</b><small>{connectionState === "loading" ? "Checking the local API" : connectionState === "online" ? (workspace.runtime.compatible ? `${workspace.runtime.selected_capability ?? "value-native"} ready` : "VALUE native runtime unavailable") : connectionState === "degraded" ? (refreshFailures ? `The last ${refreshFailures === 1 ? "request" : `${refreshFailures} requests`} failed; retrying in ${Math.round(pollDelay(refreshFailures) / 1000)} s` : `Running with reduced capability: ${(health?.degraded_reasons ?? []).map((reason) => reason.code).join(", ") || "see Modules"}`) : `No answer after ${OFFLINE_AFTER_FAILURES} attempts. Start VALUE from its launcher, then retry`}</small></span>{(connectionState === "offline" || (connectionState === "degraded" && refreshFailures > 0)) && <button onClick={() => void refresh()}>Retry</button>}</div><small>Contract {workspace.architecture_version.replace("value.contracts/", "")}</small></div></aside>
     <section className="surface"><header className="topbar"><div><small>VALUE / {views.find((item) => item.id === view)?.index}</small><h1>{views.find((item) => item.id === view)?.label}</h1></div><div className="top-meta">
       {!isRunView && view !== "journey" && !(view === "data" && isJourneyData) && <><label><span>Draft data pack</span><select aria-label="Selected data pack" value={selectedPack?.id ?? ""} onChange={(event) => setSelectedPackId(event.target.value)} disabled={!online}>{workspace.data_packs.map((pack) => <option value={pack.id} key={pack.id}>{modelDisplayName(pack.name)}</option>)}</select></label><Badge tone={online && selectedPack?.complete ? "good" : "warn"}>{connectionState !== "online" ? "Inputs not loaded" : selectedPack ? `${selectedPack.valid_required_count} of ${selectedPack.required_count} inputs ready` : "No data pack"}</Badge></>}
+      {activeRunCount > 0 && <button type="button" className="background-runs value-new-control" onClick={() => setView("run")}>● {activeRunCount} {activeRunCount === 1 ? "Run" : "Runs"} running in background</button>}
       <button type="button" className="secondary workspace-readme-trigger" onClick={() => setReadMeOpen(true)} aria-haspopup="dialog">Read me</button>
     </div></header>
     <ReadMePanel open={readMeOpen} onClose={() => setReadMeOpen(false)} />
@@ -1402,7 +1433,7 @@ export default function Home() {
 
     {view === "projects" && <div className="page project-page"><div className="page-title"><div><span>Study setup</span><h2>Define the scientific question, then resolve the model</h2><p>The composer connects one data pack, physical domain, optional extensions, model chain and assumptions. Saving creates an immutable revision of exactly the graph shown in Review.</p></div><Badge tone={draftResolution?.valid ? "good" : "warn"}>{draftResolving ? "Resolving" : draftResolution?.valid ? "Draft ready" : "Draft incomplete"}</Badge></div><StudyComposer initialStep={composerInitialStep} apiOrigin={API_ORIGIN} workspace={workspace} form={projectForm} selectedPackId={selectedPack?.id ?? selectedPackId} resolution={draftResolution} resolving={draftResolving} resolutionError={draftResolutionError} savedProjects={workspace.projects} studyTrash={workspace.study_trash} selectedProjectId={selectedProjectId} assumptions={<><AdvancedSettings definitions={definitions} values={{ ...parameterValues, ...runtimeValues }} resolvedSources={resolvedSources} onChange={(id, value, runtime) => runtime ? setRuntimeValues((current) => ({ ...current, [id]: value })) : setParameterValues((current) => ({ ...current, [id]: value }))} /><button className="text-button full" onClick={() => void previewParameters()}>Check effective base values</button></>} onForm={(update) => setProjectForm(update)} onPack={setSelectedPackId} onDomain={chooseDomain} onExtension={toggleExtension} onModule={selectStudyModule} onExtensionParameter={(name, value) => setProjectForm((current) => ({ ...current, extension_parameters: { ...current.extension_parameters, [name]: value } }))} onAcknowledgement={(key, value, checked) => setProjectForm((current) => { const maturity_acknowledgements = { ...current.maturity_acknowledgements }; if (checked) maturity_acknowledgements[key] = value; else delete maturity_acknowledgements[key]; return { ...current, maturity_acknowledgements }; })} onSave={() => void saveProject()} onLoad={loadProjectRevision} onOpenRun={(project) => { selectRunProject(project.id); setView("run"); }} onTrash={(project, linkedRunCount) => void moveStudyToTrash(project, linkedRunCount)} onRestore={(entry) => void restoreStudyEntry(entry)} onOpenTrashRuns={(entry) => { const run = workspace.runs.find((item) => item.project_id === entry.study_id); setSelectedProjectId(entry.study_id); setSelectedRunId(run?.id ?? ""); setSelectedRunDetail(null); setView("run"); if (!run) setNotice("No indexed Run is available for this trashed Study; restore it to inspect non-indexed legacy evidence."); }} onOpenData={() => { setDataContextId("draft"); setView("data"); }} traceLevel={(runtimeValues["runtime.market_trace_level"] as TraceProfile | undefined) ?? "summary"} onTraceLevel={(trace) => setRuntimeValues((current) => ({ ...current, "runtime.market_trace_level": trace }))} /></div>}
 
-    {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated }} />}
+    {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost }} />}
 
     {view === "marketReplay" && <MarketReplayView key={`${selectedRun?.id ?? "no-run"}:${replayTarget?.nonce ?? 0}`} run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} initialWindow={replayTarget} />}
 
