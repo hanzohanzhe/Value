@@ -100,6 +100,10 @@ class SinglePeriodProblem:
     storage_charge_index: Mapping[str, int]
     flow_absolute_index: Mapping[str, int]
     input_sha256: str
+    # P0-8 S8: the cutsets actually enforced (none in the network-free
+    # counterfactual) and whether the problem is that collapsed counterfactual.
+    cutsets: tuple[object, ...] = ()
+    collapsed: bool = False
 
 
 @dataclass(frozen=True)
@@ -354,9 +358,58 @@ def build_single_period_problem(
         if abs(bid.baseline_mw - expected_baseline) > TOLERANCE:
             raise ZonalRedispatchInputError(f"Bid {bid.bid_id} baseline does not match the frozen ahead schedule")
 
+    classes, costs = _declared_classes_and_costs(
+        annual_metadata, bids, period_slice.resource_cost_gbp_per_mwh_by_asset, assets
+    )
+    storage = _declared_storage(annual_metadata, model_input, bids)
+    return _assemble_problem(
+        model_input,
+        ahead=ahead,
+        network=network,
+        zone_ids=zone_ids,
+        corridors=tuple(network.corridors),
+        cutsets=tuple(network.cutsets),
+        demand=demand,
+        asset_zones=asset_zones,
+        bids=bids,
+        classes=classes,
+        costs=costs,
+        storage=storage,
+        raw_envelopes=raw_envelopes,
+        assets=assets,
+        forward_capacity=dict(period_slice.forward_boundary_capacity_mwh),
+        reverse_capacity=dict(period_slice.reverse_boundary_capacity_mwh),
+    )
+
+
+def _declared_classes_and_costs(
+    annual_metadata: Mapping[str, object],
+    bids: Sequence[FlexibilityBid],
+    unit_cost_table: Mapping[str, float] | None,
+    assets: set[str],
+) -> tuple[dict[str, str], dict[str, float]]:
+    """Resource classes and unit costs of one period.
+
+    With a declared unit-cost table (P0-8 S9) that table is the only cost
+    source and must cover every asset of the period.  Without one, the 3.x/4.0
+    rule stands: annual costs, overridden by a bid's period physical cost when
+    all bids of the asset agree.
+    """
+
     raw_classes = annual_metadata.get("resource_class_by_asset")
-    raw_costs = annual_metadata.get("resource_cost_gbp_per_mwh_by_asset")
     classes = {str(key): str(value) for key, value in dict(raw_classes or {}).items()}
+    if unit_cost_table is not None:
+        costs = {
+            str(key): _finite(value, f"unit cost {key}")
+            for key, value in unit_cost_table.items()
+        }
+        missing = sorted(asset for asset in assets if asset not in costs)
+        if missing:
+            raise ZonalRedispatchInputError(
+                "The declared unit-cost table lacks assets: " + ", ".join(missing)
+            )
+        return classes, costs
+    raw_costs = annual_metadata.get("resource_cost_gbp_per_mwh_by_asset")
     costs = {str(key): _finite(value, f"resource cost {key}") for key, value in dict(raw_costs or {}).items()}
     period_costs: dict[str, list[float]] = {}
     for bid in bids:
@@ -370,6 +423,16 @@ def build_single_period_problem(
         for asset_id, values in period_costs.items()
         if all(abs(value - values[0]) <= TOLERANCE for value in values[1:])
     })
+    return classes, costs
+
+
+def _declared_storage(
+    annual_metadata: Mapping[str, object],
+    model_input: BalancingInput,
+    bids: Sequence[FlexibilityBid],
+) -> dict[str, Mapping[str, object]]:
+    """Validated convex storage declarations of one period."""
+
     raw_storage = annual_metadata.get("storage")
     if not isinstance(raw_storage, Mapping):
         raise ZonalRedispatchInputError("Zonal domain storage declaration must be an object")
@@ -418,6 +481,36 @@ def build_single_period_problem(
     if undeclared_storage:
         raise ZonalRedispatchInputError("Storage bids lack physical declarations: " + ", ".join(undeclared_storage))
 
+    return storage
+
+
+def _assemble_problem(
+    model_input: BalancingInput,
+    *,
+    ahead: AheadMarketResult,
+    network: ZonalNetworkPack,
+    zone_ids: tuple[str, ...],
+    corridors: tuple[object, ...],
+    cutsets: tuple[object, ...],
+    demand: Mapping[str, float],
+    asset_zones: Mapping[str, str],
+    bids: tuple[FlexibilityBid, ...],
+    classes: Mapping[str, str],
+    costs: Mapping[str, float],
+    storage: Mapping[str, Mapping[str, object]],
+    raw_envelopes: Mapping[str, object],
+    assets: set[str],
+    forward_capacity: Mapping[str, float],
+    reverse_capacity: Mapping[str, float],
+    collapsed: bool = False,
+) -> SinglePeriodProblem:
+    """Assemble the single-period LP matrices from validated declarations.
+
+    ``collapsed`` (P0-8 S9) builds the network-free counterfactual: one node,
+    no corridors or cutsets, and equal-price groups keyed by direction, effect
+    kind (injection/withdrawal) and price only.
+    """
+
     bid_index: dict[str, int] = {}
     flow_index: dict[str, int] = {}
     shedding_index: dict[str, int] = {}
@@ -439,10 +532,8 @@ def build_single_period_problem(
         bid_capacity[bid.bid_id] = capacity
         bid_index[bid.bid_id] = variable(f"bid:{bid.bid_id}", (0.0, capacity))
 
-    forward_capacity = dict(period_slice.forward_boundary_capacity_mwh)
-    reverse_capacity = dict(period_slice.reverse_boundary_capacity_mwh)
-    corridor_ids = {corridor.corridor_id for corridor in network.corridors}
-    for corridor in sorted(network.corridors, key=lambda item: item.corridor_id):
+    corridor_ids = {corridor.corridor_id for corridor in corridors}
+    for corridor in sorted(corridors, key=lambda item: item.corridor_id):
         if corridor.corridor_id in forward_capacity:
             bound = (
                 -_nonnegative(
@@ -471,7 +562,7 @@ def build_single_period_problem(
             f"storage-charge:{asset}",
             (0.0, float(specification["charge_power_mw"]) * model_input.period_hours),
         )
-    for corridor in sorted(network.corridors, key=lambda item: item.corridor_id):
+    for corridor in sorted(corridors, key=lambda item: item.corridor_id):
         flow_absolute_index[corridor.corridor_id] = variable(
             f"absolute-flow:{corridor.corridor_id}", (0.0, None)
         )
@@ -506,14 +597,13 @@ def build_single_period_problem(
         zone: math.fsum(base_terms_by_zone[zone])
         for zone in sorted(base_terms_by_zone)
     }
-    corridor_by_id = {corridor.corridor_id: corridor for corridor in network.corridors}
     for zone in zone_ids:
         row = _row(size)
         for bid in bids:
-            if bid.zone_id == zone:
+            if asset_zones[bid.asset_id] == zone:
                 row[bid_index[bid.bid_id]] += 1.0 if bid.direction == "up" else -1.0
         row[shedding_index[zone]] += 1.0
-        for corridor in network.corridors:
+        for corridor in corridors:
             if corridor.from_zone_id == zone:
                 row[flow_index[corridor.corridor_id]] -= 1.0
             if corridor.to_zone_id == zone:
@@ -550,12 +640,21 @@ def build_single_period_problem(
             continue
         if bid_capacity[bid.bid_id] - forced_down.get(bid.bid_id, 0.0) <= TOLERANCE:
             continue
-        groups[(
-            bid.direction,
-            bid.zone_id,
-            bid.network_effect_id,
-            bid.price_gbp_per_mwh,
-        )].append(bid)
+        if collapsed:
+            key: tuple[object, ...] = (
+                bid.direction,
+                asset_zones[bid.asset_id],
+                str(bid.network_effect_id).rsplit(":", 1)[-1],
+                bid.price_gbp_per_mwh,
+            )
+        else:
+            key = (
+                bid.direction,
+                bid.zone_id,
+                bid.network_effect_id,
+                bid.price_gbp_per_mwh,
+            )
+        groups[key].append(bid)
     for rows in groups.values():
         if len(rows) < 2:
             continue
@@ -628,7 +727,7 @@ def build_single_period_problem(
         inequality_rows.append(lower)
         inequality_rhs.append(capacity - opening)
 
-    boundary_ids = {boundary.boundary_id for boundary in network.cutsets}
+    boundary_ids = {boundary.boundary_id for boundary in cutsets}
     permitted_capacity_ids = boundary_ids | corridor_ids
     if (
         not boundary_ids.issubset(forward_capacity)
@@ -639,7 +738,7 @@ def build_single_period_problem(
         raise ZonalRedispatchInputError(
             "Current-period boundary capacities must name every declared cutset"
         )
-    for boundary in network.cutsets:
+    for boundary in cutsets:
         transfer = _row(size)
         for member in boundary.members:
             transfer[flow_index[member.corridor_id]] += member.coefficient
@@ -693,6 +792,8 @@ def build_single_period_problem(
         storage_charge_index=storage_charge_index,
         flow_absolute_index=flow_absolute_index,
         input_sha256=contract_sha256(model_input),
+        cutsets=tuple(cutsets),
+        collapsed=collapsed,
     )
 
 
@@ -1746,6 +1847,189 @@ def normalized_zonal_scientific_result_sha256(result: BalancingResult) -> str:
     return contract_sha256(normalized_zonal_scientific_result_payload(result))
 
 
+def _assemble_balancing_result(
+    problem: SinglePeriodProblem,
+    solution: SinglePeriodSolution,
+    validation: Mapping[str, object],
+    model_input: BalancingInput,
+    input_sha256: str,
+) -> BalancingResult:
+    """Public balancing result of one solved period (P0-8 S8, no behaviour change)."""
+
+    values = solution.values
+    accepted: list[AcceptedAdjustment] = []
+    cashflow_terms: defaultdict[str, list[float]] = defaultdict(list)
+    curtailment_terms: defaultdict[str, list[float]] = defaultdict(list)
+    dispatch_adjustment_terms: defaultdict[str, list[float]] = defaultdict(list)
+    bid_by_id = {bid.bid_id: bid for bid in problem.bids}
+    for bid_id in sorted(problem.bid_index):
+        magnitude = float(values[problem.bid_index[bid_id]])
+        if magnitude <= TOLERANCE:
+            continue
+        bid = bid_by_id[bid_id]
+        delta = magnitude if bid.direction == "up" else -magnitude
+        dispatch_adjustment_terms[bid.asset_id].append(delta)
+        cashflow = delta * bid.price_gbp_per_mwh
+        accepted.append(AcceptedAdjustment(
+            bid.bid_id,
+            bid.agent_id,
+            bid.asset_id,
+            bid.zone_id,
+            delta,
+            bid.price_gbp_per_mwh,
+            cashflow,
+            f"zonal_redispatch_{bid.direction}",
+            extensions={
+                "network_effect_id": bid.network_effect_id,
+                "resource_class": str(bid.provenance.get("resource_class") or "other"),
+            },
+        ))
+        cashflow_terms[bid.agent_id].append(cashflow)
+        if bid.direction == "down":
+            curtailment_class = str(bid.provenance.get("curtailment_class") or "")
+            if curtailment_class:
+                curtailment_terms[curtailment_class].append(magnitude)
+
+    dispatch_assets = set(problem.ahead.schedule_mwh_by_asset) | set(
+        dispatch_adjustment_terms
+    )
+    final_dispatch = {
+        asset: math.fsum((
+            float(problem.ahead.schedule_mwh_by_asset.get(asset, 0.0)),
+            *dispatch_adjustment_terms.get(asset, ()),
+        ))
+        for asset in sorted(dispatch_assets)
+    }
+    cashflows = {
+        agent: math.fsum(cashflow_terms[agent])
+        for agent in sorted(cashflow_terms)
+    }
+    curtailment = {
+        resource_class: math.fsum(curtailment_terms[resource_class])
+        for resource_class in sorted(curtailment_terms)
+    }
+
+    final_soc: dict[str, float] = {}
+    storage_dispatch: dict[str, dict[str, float]] = {}
+    for asset, specification in sorted(problem.storage.items()):
+        discharge = float(values[problem.storage_discharge_index[asset]])
+        charge = float(values[problem.storage_charge_index[asset]])
+        net_injection = math.fsum((discharge, -charge))
+        final_dispatch[asset] = net_injection
+        final_soc[asset] = math.fsum((
+            float(model_input.initial_soc_mwh_by_asset[asset]),
+            -discharge / float(specification["discharge_efficiency"]),
+            charge * float(specification["charge_efficiency"]),
+        ))
+        if abs(final_soc[asset]) <= TOLERANCE:
+            final_soc[asset] = 0.0
+        storage_dispatch[asset] = {
+            "charge_mwh": charge,
+            "discharge_mwh": discharge,
+            "net_injection_mwh": net_injection,
+        }
+    final_dispatch = {
+        asset: final_dispatch[asset] for asset in sorted(final_dispatch)
+    }
+
+    # |shed| <= TOLERANCE is LP noise, mapped to exactly zero like the
+    # SOC above (P0-8 S6); v4 already fixes it at zero when the primary
+    # sheds nothing.
+    load_shedding = {
+        zone: (0.0 if abs(float(values[index])) <= TOLERANCE else float(values[index]))
+        for zone, index in sorted(problem.shedding_index.items())
+    }
+    blackout = math.fsum(
+        load_shedding[zone] for zone in sorted(load_shedding)
+    )
+    corridor_flow = {
+        corridor: float(values[index])
+        for corridor, index in sorted(problem.flow_index.items())
+    }
+    boundary_transfer = {
+        boundary.boundary_id: math.fsum(
+            member.coefficient * corridor_flow[member.corridor_id]
+            for member in sorted(
+                boundary.members,
+                key=lambda item: (item.corridor_id, item.coefficient),
+            )
+        )
+        for boundary in sorted(
+            problem.cutsets, key=lambda item: item.boundary_id
+        )
+    }
+
+    resource_cost_terms: defaultdict[str, list[float]] = defaultdict(list)
+    fallback_cost = {
+        bid.asset_id: bid.physical_cost_gbp_per_mwh for bid in problem.bids
+    }
+    for asset in sorted(final_dispatch):
+        dispatch = final_dispatch[asset]
+        if dispatch <= 0:
+            continue
+        resource_class = problem.resource_class_by_asset.get(asset, "other")
+        unit_cost = problem.resource_cost_gbp_per_mwh_by_asset.get(
+            asset, fallback_cost.get(asset, 0.0)
+        )
+        resource_cost_terms[resource_class].append(dispatch * unit_cost)
+    if blackout > 0:
+        resource_cost_terms["load_shedding"].append(
+            blackout * model_input.voll_gbp_per_mwh
+        )
+    resource_costs = {
+        resource_class: math.fsum(resource_cost_terms[resource_class])
+        for resource_class in sorted(resource_cost_terms)
+    }
+    global_residual = math.fsum((
+        *(final_dispatch[asset] for asset in sorted(final_dispatch)),
+        blackout,
+        -model_input.real_demand_mwh,
+    ))
+    if abs(global_residual) > 1e-7:
+        raise ZonalRedispatchSolveError(
+            f"Zonal redispatch global energy residual is {global_residual} MWh"
+        )
+    result = BalancingResult(
+        run_id=model_input.run_id,
+        year=model_input.year,
+        period=model_input.period,
+        period_id=model_input.period_id,
+        ahead_result_sha256=model_input.ahead_result_sha256,
+        source_input_sha256=input_sha256,
+        accepted_adjustments=tuple(accepted),
+        final_dispatch_mwh_by_asset=final_dispatch,
+        final_soc_mwh_by_asset=final_soc,
+        curtailment_mwh_by_class=curtailment,
+        blackout_mwh=blackout,
+        settlement_cashflow_gbp_by_agent=cashflows,
+        resource_cost_gbp_by_class=resource_costs,
+        energy_balance_residual_mwh=global_residual,
+        artifacts=(),
+        extensions={
+            "method": FORMULATION_ID,
+            "network_semantics": "lossless_computational_transport_with_etys_cutsets",
+            "network_pack_id": problem.network_pack.network_pack_id,
+            "network_pack_scientific_sha256": problem.network_pack.scientific_sha256,
+            "corridor_flow_mwh_by_id": corridor_flow,
+            "boundary_transfer_mwh_by_id": boundary_transfer,
+            "load_shedding_mwh_by_zone": load_shedding,
+            "storage_dispatch_mwh_by_asset": storage_dispatch,
+            "primary_objective_gbp": solution.primary_objective_gbp,
+            "secondary_objective_mwh": solution.secondary_objective_mwh,
+            "physical_tie_objective": solution.physical_tie_objective,
+            "stable_tie_objective": solution.stable_tie_objective,
+            "solver": dict(solution.diagnostics),
+            "network_solver_diagnostics": [
+                _objective_diagnostic_payload(row)
+                for row in solution.network_solver_diagnostics
+            ],
+            "validation": dict(validation),
+            "automatic_copperplate_fallback": False,
+        },
+    )
+    return result
+
+
 class ZonalRedispatchBalancing:
     id = "value-zonal-redispatch-balancing"
     version = "4.0.0"
@@ -2069,179 +2353,13 @@ class ZonalRedispatchBalancing:
             self._failure(model_input, wrapped, stage=stage)
             raise wrapped from exc
 
-        values = solution.values
-        accepted: list[AcceptedAdjustment] = []
-        cashflow_terms: defaultdict[str, list[float]] = defaultdict(list)
-        curtailment_terms: defaultdict[str, list[float]] = defaultdict(list)
-        dispatch_adjustment_terms: defaultdict[str, list[float]] = defaultdict(list)
-        bid_by_id = {bid.bid_id: bid for bid in problem.bids}
-        for bid_id in sorted(problem.bid_index):
-            magnitude = float(values[problem.bid_index[bid_id]])
-            if magnitude <= TOLERANCE:
-                continue
-            bid = bid_by_id[bid_id]
-            delta = magnitude if bid.direction == "up" else -magnitude
-            dispatch_adjustment_terms[bid.asset_id].append(delta)
-            cashflow = delta * bid.price_gbp_per_mwh
-            accepted.append(AcceptedAdjustment(
-                bid.bid_id,
-                bid.agent_id,
-                bid.asset_id,
-                bid.zone_id,
-                delta,
-                bid.price_gbp_per_mwh,
-                cashflow,
-                f"zonal_redispatch_{bid.direction}",
-                extensions={
-                    "network_effect_id": bid.network_effect_id,
-                    "resource_class": str(bid.provenance.get("resource_class") or "other"),
-                },
-            ))
-            cashflow_terms[bid.agent_id].append(cashflow)
-            if bid.direction == "down":
-                curtailment_class = str(bid.provenance.get("curtailment_class") or "")
-                if curtailment_class:
-                    curtailment_terms[curtailment_class].append(magnitude)
-
-        dispatch_assets = set(problem.ahead.schedule_mwh_by_asset) | set(
-            dispatch_adjustment_terms
-        )
-        final_dispatch = {
-            asset: math.fsum((
-                float(problem.ahead.schedule_mwh_by_asset.get(asset, 0.0)),
-                *dispatch_adjustment_terms.get(asset, ()),
-            ))
-            for asset in sorted(dispatch_assets)
-        }
-        cashflows = {
-            agent: math.fsum(cashflow_terms[agent])
-            for agent in sorted(cashflow_terms)
-        }
-        curtailment = {
-            resource_class: math.fsum(curtailment_terms[resource_class])
-            for resource_class in sorted(curtailment_terms)
-        }
-
-        final_soc: dict[str, float] = {}
-        storage_dispatch: dict[str, dict[str, float]] = {}
-        for asset, specification in sorted(problem.storage.items()):
-            discharge = float(values[problem.storage_discharge_index[asset]])
-            charge = float(values[problem.storage_charge_index[asset]])
-            net_injection = math.fsum((discharge, -charge))
-            final_dispatch[asset] = net_injection
-            final_soc[asset] = math.fsum((
-                float(model_input.initial_soc_mwh_by_asset[asset]),
-                -discharge / float(specification["discharge_efficiency"]),
-                charge * float(specification["charge_efficiency"]),
-            ))
-            if abs(final_soc[asset]) <= TOLERANCE:
-                final_soc[asset] = 0.0
-            storage_dispatch[asset] = {
-                "charge_mwh": charge,
-                "discharge_mwh": discharge,
-                "net_injection_mwh": net_injection,
-            }
-        final_dispatch = {
-            asset: final_dispatch[asset] for asset in sorted(final_dispatch)
-        }
-
-        # |shed| <= TOLERANCE is LP noise, mapped to exactly zero like the
-        # SOC above (P0-8 S6); v4 already fixes it at zero when the primary
-        # sheds nothing.
-        load_shedding = {
-            zone: (0.0 if abs(float(values[index])) <= TOLERANCE else float(values[index]))
-            for zone, index in sorted(problem.shedding_index.items())
-        }
-        blackout = math.fsum(
-            load_shedding[zone] for zone in sorted(load_shedding)
-        )
-        corridor_flow = {
-            corridor: float(values[index])
-            for corridor, index in sorted(problem.flow_index.items())
-        }
-        boundary_transfer = {
-            boundary.boundary_id: math.fsum(
-                member.coefficient * corridor_flow[member.corridor_id]
-                for member in sorted(
-                    boundary.members,
-                    key=lambda item: (item.corridor_id, item.coefficient),
-                )
+        try:
+            result = _assemble_balancing_result(
+                problem, solution, validation, model_input, input_sha256
             )
-            for boundary in sorted(
-                problem.network_pack.cutsets, key=lambda item: item.boundary_id
-            )
-        }
-
-        resource_cost_terms: defaultdict[str, list[float]] = defaultdict(list)
-        fallback_cost = {
-            bid.asset_id: bid.physical_cost_gbp_per_mwh for bid in problem.bids
-        }
-        for asset in sorted(final_dispatch):
-            dispatch = final_dispatch[asset]
-            if dispatch <= 0:
-                continue
-            resource_class = problem.resource_class_by_asset.get(asset, "other")
-            unit_cost = problem.resource_cost_gbp_per_mwh_by_asset.get(
-                asset, fallback_cost.get(asset, 0.0)
-            )
-            resource_cost_terms[resource_class].append(dispatch * unit_cost)
-        if blackout > 0:
-            resource_cost_terms["load_shedding"].append(
-                blackout * model_input.voll_gbp_per_mwh
-            )
-        resource_costs = {
-            resource_class: math.fsum(resource_cost_terms[resource_class])
-            for resource_class in sorted(resource_cost_terms)
-        }
-        global_residual = math.fsum((
-            *(final_dispatch[asset] for asset in sorted(final_dispatch)),
-            blackout,
-            -model_input.real_demand_mwh,
-        ))
-        if abs(global_residual) > 1e-7:
-            error = ZonalRedispatchSolveError(
-                f"Zonal redispatch global energy residual is {global_residual} MWh"
-            )
+        except ZonalRedispatchSolveError as error:
             self._failure(model_input, error, stage="result_assembly")
-            raise error
-        result = BalancingResult(
-            run_id=model_input.run_id,
-            year=model_input.year,
-            period=model_input.period,
-            period_id=model_input.period_id,
-            ahead_result_sha256=model_input.ahead_result_sha256,
-            source_input_sha256=input_sha256,
-            accepted_adjustments=tuple(accepted),
-            final_dispatch_mwh_by_asset=final_dispatch,
-            final_soc_mwh_by_asset=final_soc,
-            curtailment_mwh_by_class=curtailment,
-            blackout_mwh=blackout,
-            settlement_cashflow_gbp_by_agent=cashflows,
-            resource_cost_gbp_by_class=resource_costs,
-            energy_balance_residual_mwh=global_residual,
-            artifacts=(),
-            extensions={
-                "method": FORMULATION_ID,
-                "network_semantics": "lossless_computational_transport_with_etys_cutsets",
-                "network_pack_id": problem.network_pack.network_pack_id,
-                "network_pack_scientific_sha256": problem.network_pack.scientific_sha256,
-                "corridor_flow_mwh_by_id": corridor_flow,
-                "boundary_transfer_mwh_by_id": boundary_transfer,
-                "load_shedding_mwh_by_zone": load_shedding,
-                "storage_dispatch_mwh_by_asset": storage_dispatch,
-                "primary_objective_gbp": solution.primary_objective_gbp,
-                "secondary_objective_mwh": solution.secondary_objective_mwh,
-                "physical_tie_objective": solution.physical_tie_objective,
-                "stable_tie_objective": solution.stable_tie_objective,
-                "solver": dict(solution.diagnostics),
-                "network_solver_diagnostics": [
-                    _objective_diagnostic_payload(row)
-                    for row in solution.network_solver_diagnostics
-                ],
-                "validation": dict(validation),
-                "automatic_copperplate_fallback": False,
-            },
-        )
+            raise
         self._consumed_input_sha256.add(input_sha256)
         self._consumed_input_sha256_sequence.append(
             # Runtime checkpoints use the PSM year-local period, while the

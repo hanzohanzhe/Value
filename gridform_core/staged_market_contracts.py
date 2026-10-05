@@ -197,10 +197,29 @@ class ZonalRedispatchPeriodSlice(JsonContract):
     reverse_boundary_capacity_mwh: Mapping[str, float]
     interconnector_envelopes: Mapping[str, Mapping[str, float]]
     schema_version: str = "value.zonal-redispatch-period-slice/v2"
+    # P0-8 S8/S9: the period's unit-cost table (GBP/MWh by asset).  When it is
+    # declared, every case of the network counterfactual prices dispatch with
+    # it; when it is absent (older callers) the field is not serialised, so
+    # their contract hashes are unchanged.
+    resource_cost_gbp_per_mwh_by_asset: Mapping[str, float] | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        payload = super().to_dict()
+        if payload.get("resource_cost_gbp_per_mwh_by_asset") is None:
+            payload.pop("resource_cost_gbp_per_mwh_by_asset", None)
+        return payload
 
     def __post_init__(self) -> None:
         if not isinstance(self.ahead_result, AheadMarketResult):
             raise ValueError("ZonalRedispatchPeriodSlice requires an AheadMarketResult")
+        if self.resource_cost_gbp_per_mwh_by_asset is not None:
+            _freeze_fields(self, "resource_cost_gbp_per_mwh_by_asset")
+            _reject_annual_series(
+                self.resource_cost_gbp_per_mwh_by_asset, "resource_cost_gbp_per_mwh_by_asset"
+            )
+            _validate_numeric_mapping(
+                "resource_cost_gbp_per_mwh_by_asset", self.resource_cost_gbp_per_mwh_by_asset
+            )
         _freeze_fields(
             self,
             "zonal_real_demand_mwh",
@@ -237,6 +256,11 @@ class ZonalRedispatchDomainV2(JsonContract):
     year_context_ref: YearContextRef
     period_slice: ZonalRedispatchPeriodSlice
     schema_version: str = "value.zonal-redispatch-domain/v2"
+
+    def to_dict(self) -> dict[str, object]:
+        payload = super().to_dict()
+        payload["period_slice"] = self.period_slice.to_dict()
+        return payload
 
     def __post_init__(self) -> None:
         if not isinstance(self.run_context_ref, RunContextRef):
