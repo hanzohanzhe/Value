@@ -2,6 +2,45 @@
 
 ## Unreleased — P0 fixes on fix/review-2026-10-04
 
+### Local API security boundary (P0-1)
+
+- The browser talks only to the UI origin. `scripts/value-ui-gateway.mjs`
+  (mounted by `serve-value-ui.mjs` and, for development, by `vite.config.ts`)
+  answers only `127.0.0.1:<port>`/`localhost:<port>` (421 otherwise), refuses
+  cross-site `/api` requests and writes without the page Origin (403), needs
+  a Content-Length on POST (411), sends a per-response CSP nonce,
+  `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff`,
+  `Referrer-Policy: no-referrer`, COOP/CORP, and forwards `/api` with the
+  API session.  A foreign Host on a page gets the "Open VALUE from its
+  launcher" explanation.
+- The API generates a session token per process and writes it only to
+  `<VALUE_DATA_HOME>/runtime/api-session-<port>.json` (0700/0600, atomic;
+  removed on exit only by its owner).  Every request passes
+  `backend/api_security.evaluate`: Host 421, any Origin 403
+  `GF_BROWSER_ORIGIN_REJECTED`, cross-site Sec-Fetch-Site 403, invalid
+  Content-Length 400, chunked POST 411, missing/wrong session 403
+  `GF_SESSION_REQUIRED`/`GF_SESSION_INVALID`, form-style or missing POST
+  Content-Type 415 `GF_CONTENT_TYPE_REJECTED`.
+- Launchers pass `--api-origin` after `--port` (process patterns unchanged),
+  never the token, and wait until the gateway reaches the API.
+- Frontend calls same-origin `/api`; `NEXT_PUBLIC_VALUE_API_ORIGIN` is gone;
+  pages are rendered per request (`force-dynamic`).
+- `scripts/verify_local_security_boundary.py` probes an installation.
+- **API contract changes (breaking for direct clients):** no CORS at all;
+  new request header `X-VALUE-Session` (scripts:
+  `backend.api_session.authorized_headers`); new response header
+  `X-VALUE-Error-Code`; new statuses 421, 403, 415, 411, 400 and, at the
+  gateway, 502 `GF_GATEWAY_SESSION_UNAVAILABLE`/`GF_GATEWAY_SESSION_MISMATCH`/
+  `GF_GATEWAY_UPSTREAM_UNAVAILABLE`; `GET /api/health` without a session
+  returns only `ok, service, version, python,
+  authoritative_runtime_compatible, session_required, status,
+  degraded_reasons`; the comparison CSV is an attachment.  The backend source
+  hash is part of the execution identity, so Runs left unfinished by an
+  earlier version cannot be resumed after the upgrade.
+- `SECURITY.md` names VALUE, points to the VALUE advisory form and states the
+  single-user host assumption; `X-VALUE-Executable-Trust` is documented as
+  informed consent, not a security control.
+
 ### Run lifecycle (P0-3)
 
 - `status.json` has a single writer API (`backend/lifecycle/run_status.py`):

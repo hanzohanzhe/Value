@@ -971,7 +971,7 @@ Review so the effective values and sources are frozen in the revision.
 - A two-period wiring check and two-year hand-off smoke test are diagnostics; neither is eligible for annual economics.
 - **Two full model years** executes 35,040 half-hour periods and tests next-year asset injection. **Complete study** executes every configured full year.
 - Closing the browser does not stop the background run. Use safe cancellation and verified checkpoint resume.
-- Use port **8800**, not 3000. The API on 8766 is not the user interface.
+- Use port **8800**, not 3000. The API on 8766 is not the user interface; it refuses browser pages and requests without the session that only the UI gateway holds (see SECURITY.md). VALUE assumes one user per computer.
 - A 0/25 research pack is an empty import workspace. Select the verified 25/25 pack for the UK demonstration.
 - If Storage Cost disappears, the Study uses centrally co-optimized perfect foresight; this is correct.
 - Individual orders require `runtime.market_trace_level = full`; summary-only evidence does not mean that no bids were processed.

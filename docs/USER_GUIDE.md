@@ -35,6 +35,8 @@ http://127.0.0.1:8800
 
 The local API uses `http://127.0.0.1:8766`. Both services bind only to loopback. Port 3000 is a development-server address and is not the packaged application address.
 
+The browser only ever talks to `http://127.0.0.1:8800` (or `http://localhost:8800`). That page forwards `/api` requests to the local API with a session that only the API and the page server know; the API refuses requests from web pages and requests without the session. If the page shows **Open VALUE from its launcher**, it was opened under another address or the page server and the API do not share a data directory: close it and start VALUE again with its launcher. VALUE assumes one person per computer; do not install it on shared lab computers or remote-desktop servers (see [SECURITY.md](../SECURITY.md)).
+
 Stop the managed services with [stop-value.cmd](../stop-value.cmd). If launch fails, run:
 
 ```powershell
@@ -368,9 +370,25 @@ py -3.10 -m gridform_core.application `
 
 Browser and CLI runs use the same orchestrator, registry, parameter resolver and output contracts. For long runs, keep checkpoints enabled. Set `runtime.generation_trace_level=off` or `summary` when a full generation trace is not required. Public period summaries, annual totals, investments and storage observations remain available.
 
+Scripts that call the running local API need its session. Read it from the API's data directory and send it as a header; do not send an `Origin` header:
+
+```python
+import json, urllib.request
+from backend.api_session import authorized_headers  # run from the VALUE source/app directory
+
+headers = authorized_headers(r"C:\Users\me\AppData\Local\VALUE\state", 8766, json_body=True)
+request = urllib.request.Request("http://127.0.0.1:8766/api/projects/validate",
+                                 data=json.dumps({"name": "check"}).encode(), headers=headers, method="POST")
+print(urllib.request.urlopen(request).status)
+```
+
+Without the session only a reduced `GET /api/health` answers. Request bodies need an explicit `Content-Type` such as `application/json` (form and `text/plain` bodies are refused with 415).
+
 ## 17. Troubleshooting
 
 Connection refused usually means the packaged services are not running or the browser is on the development port. Start GridForm and use port 8800. A Python 3.12 warning means an older incompatible backend may still own the API port. Stop the managed services and restart with Python 3.10.
+
+**Open VALUE from its launcher** (or an HTTP 421/403 answer) means the page was not opened through the launcher: another host name, a bookmark from another installation, or a page server that reads a different data directory than the API. Stop VALUE and start it again with its launcher. `python -B scripts/verify_local_security_boundary.py` checks a running installation and prints PASS when every cross-site, rebinding and session-less probe is refused.
 
 Twenty-five bound inputs do not guarantee preflight success. Units, chronology, checksums, capabilities, parameters and disk are checked separately. Follow the corrective action in the reported error.
 

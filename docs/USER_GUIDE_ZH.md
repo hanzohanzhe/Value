@@ -40,6 +40,8 @@ http://127.0.0.1:8800
 
 API 地址是 `http://127.0.0.1:8766`。两个服务都只监听本机回环地址。网页打不开时，不要改用 `127.0.0.1:3000`，除非你正在运行前端开发服务器。
 
+浏览器只与 `http://127.0.0.1:8800`（或 `http://localhost:8800`）通信。网页服务把 `/api` 请求连同只有它和 API 知道的会话一起转发给本地 API；API 拒绝来自网页的直接请求和不带会话的请求。若页面显示 **Open VALUE from its launcher**，说明它是用其他地址打开的，或网页服务与 API 使用了不同的数据目录：关闭页面，用启动器重新启动 VALUE。VALUE 假定一台电脑只有一个使用者；不要安装在共用机房电脑或远程桌面服务器上（见 [SECURITY.md](../SECURITY.md)）。
+
 停止服务时双击 [stop-value.cmd](../stop-value.cmd)。启动脚本只管理本次 VALUE 安装记录的进程，不会停止占用相同端口的其他程序。
 
 如果安装或启动失败，在项目目录运行：
@@ -365,6 +367,20 @@ py -3.10 -m gridform_core.application `
 
 命令行和网页使用同一个 orchestrator、module registry、参数解析和结果契约。长跑建议开启 `runtime.checkpoint_enabled=true`，并使用 `runtime.generation_trace_level=off` 或 `summary` 控制大体量 generation trace。关闭详细 generation trace 不会删掉公开 period summary、年度总量、投资或 storage observation。
 
+脚本直接调用正在运行的本地 API 时需要它的会话：从 API 的数据目录读取，并作为请求头发送；不要发送 `Origin` 头。
+
+```python
+import json, urllib.request
+from backend.api_session import authorized_headers  # 在 VALUE 源码或安装目录的 app 中运行
+
+headers = authorized_headers(r"C:\Users\me\AppData\Local\VALUE\state", 8766, json_body=True)
+request = urllib.request.Request("http://127.0.0.1:8766/api/projects/validate",
+                                 data=json.dumps({"name": "check"}).encode(), headers=headers, method="POST")
+print(urllib.request.urlopen(request).status)
+```
+
+没有会话时只有精简的 `GET /api/health` 会应答。请求体必须带明确的 `Content-Type`（例如 `application/json`）；表单和 `text/plain` 请求体会以 415 拒绝。
+
 ## 18. 可复现研究清单
 
 发布或引用一个结果前，至少保存：
@@ -386,6 +402,10 @@ py -3.10 -m gridform_core.application `
 ### 浏览器显示 connection refused
 
 确认地址是 `http://127.0.0.1:8800`，然后运行 `start-value.cmd`。若仍失败，运行 environment doctor，并检查 `.gridform/frontend-error.log` 或 `%LOCALAPPDATA%\FORCE\frontend-error.log`。
+
+### 页面显示 Open VALUE from its launcher
+
+页面不是经启动器打开的：用了其他主机名、另一份安装的书签，或网页服务读取的数据目录与 API 不同（HTTP 421/403 也是同一原因）。停止 VALUE，再用启动器启动。`python -B scripts/verify_local_security_boundary.py` 可检查正在运行的安装：所有跨站、DNS rebinding 和无会话探测都被拒绝时输出 PASS。
 
 ### 页面显示 Python 3.12 不兼容
 

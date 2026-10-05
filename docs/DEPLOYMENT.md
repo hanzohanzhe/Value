@@ -42,7 +42,7 @@ python -m backend.server
 npm run start
 ```
 
-打开 <http://127.0.0.1:8800>。后台仅绑定本机，默认端口 8766；前端默认端口 8800。教学包安装器保留已有用户修改，源码调试可用 `VALUE_DATA_HOME` 指定独立的绝对状态目录。程序不会因只安装 Python 基础包就自动获得全部科学依赖或研究数据。
+打开 <http://127.0.0.1:8800>。后台仅绑定本机，默认端口 8766；前端默认端口 8800。浏览器只访问前端；前端网关（`scripts/value-ui-gateway.mjs`）把 `/api` 连同后台写在 `<VALUE_DATA_HOME>/runtime/api-session-8766.json` 的会话一起转发给后台，因此两个终端必须使用同一个 `VALUE_DATA_HOME`（都不设也可以）。后台不是 8766 时，用 `node scripts/serve-value-ui.mjs --host 127.0.0.1 --port 8800 --api-origin http://127.0.0.1:<端口>` 启动前端。开发服务器 `npm run dev` 挂载同一个网关（`VALUE_API_ORIGIN` 可指定后台）。脚本直接调用后台时用 `backend.api_session.authorized_headers()` 取会话，见 [SECURITY.md](../SECURITY.md)。教学包安装器保留已有用户修改，源码调试可用 `VALUE_DATA_HOME` 指定独立的绝对状态目录。程序不会因只安装 Python 基础包就自动获得全部科学依赖或研究数据。
 
 公开源码补齐了原字节碳参数、储能技术目录及作者选定的数值契约；其来源见 [runtime parameter notices](../publication/RUNTIME_PARAMETER_NOTICES.md)。源码的干净依赖安装、前端构建、wheel 参数成员与一个短教学任务按本次发布记录验证；未重复旧四角色验收或全年研究。原始论文和第三方源出版物不随软件提供。
 

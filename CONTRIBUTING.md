@@ -46,3 +46,20 @@ python -B scripts/run_backend_tests.py --pytest   # pytest-style modules (separa
 Every commit that adds, removes or edits a file also runs
 `python -B scripts/refresh_source_release_manifest.py`
 (release exclusions: `tests/baselines/release-exclusions.txt`).
+
+## Local API boundary in code and tests
+
+* Start the API in HTTP tests only through
+  `tests.local_api_harness.start_local_api(data_home=...)`; it binds port 0,
+  creates a session token and installs an opener that adds only
+  `X-VALUE-Session`.  Tests that check the boundary itself send raw
+  `http.client` requests (see `tests/test_local_api_boundary.py`).
+* The API has no CORS and refuses any `Origin`, a cross-site
+  `Sec-Fetch-Site`, a foreign `Host`, a missing session and form-style
+  bodies; do not add per-route exceptions.  New routes go into
+  `Handler._route_get`/`_route_post`, behind `_dispatch` and its guard.
+* Frontend code calls same-origin `/api/...` (`app/features/shared/api.ts`)
+  and never embeds an API port or a token.  Every POST sets an explicit
+  non-form `Content-Type`.
+* Scripts that call a running API use
+  `backend.api_session.authorized_headers(<data home>, <port>)`.

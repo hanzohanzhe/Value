@@ -27,6 +27,7 @@ P0_1_RELEASE_FILES = (
     "scripts/verify_local_security_boundary.py",
     "tests/test_verify_local_security_boundary.py",
     "e2e/security-boundary.spec.ts",
+    "tests/test_security_policy_docs.py",
 )
 
 

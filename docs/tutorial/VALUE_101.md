@@ -18,6 +18,8 @@ It does not contain the UK research pack or the doctoral 1000 TWh reproduction d
 3. Wait for the browser to open at [http://127.0.0.1:8800](http://127.0.0.1:8800), or start `VALUE` from the desktop or Start menu.
 4. Check the lower-left status. It should show Python 3.10 and a ready local VALUE service.
 
+Install VALUE on your own computer. VALUE assumes one person per computer: it is not supported on shared lab computers or remote-desktop servers, where other users could reach your local VALUE (see `SECURITY.md`).
+
 No terminal, separate Python, Node, Git, administrator account or internet connection is required after download. Application state is stored at `%LOCALAPPDATA%\VALUE\state`. Closing the browser does not stop VALUE. Use the `Stop VALUE` Start-menu shortcut when finished. The `Uninstall VALUE` shortcut removes this VALUE installation and its application state. The older `%LOCALAPPDATA%\VALUE-101` pilot is a separate optional installation: it is not migrated and may remain installed.
 
 ## The five objects
@@ -181,7 +183,7 @@ The output records corridor loading, upward and downward redispatch, network-add
 
 ## If VALUE does not start
 
-Use `Stop VALUE`, then start `VALUE` once. If a bundled pack is missing, reinstall from the same `VALUE-Setup.exe`. If port 8800 or 8766 is occupied by another application, close that application; VALUE refuses to terminate a process it does not own.
+Use `Stop VALUE`, then start `VALUE` once. If the page says **Open VALUE from its launcher**, it was not opened through VALUE's own shortcut (for example an old bookmark or another address): close it and start `VALUE` from the desktop or Start menu. If a bundled pack is missing, reinstall from the same `VALUE-Setup.exe`. If port 8800 or 8766 is occupied by another application, close that application; VALUE refuses to terminate a process it does not own.
 
 Installer and startup diagnostics are under `%LOCALAPPDATA%\VALUE\diagnostics`. Teaching state and Runs are under `%LOCALAPPDATA%\VALUE\state`.
 

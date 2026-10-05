@@ -48,6 +48,8 @@ Saved Study → declared base Data Pack
 3. 等进度条达到 100%，并让浏览器打开 [http://127.0.0.1:8800](http://127.0.0.1:8800)。如果浏览器仍未打开，双击桌面或开始菜单中的 `VALUE`。
 4. 查看左下角服务状态，应显示 Python 3.10 和本地模型服务 ready。
 
+请把 VALUE 安装在自己的电脑上。VALUE 假定一台电脑只有一个使用者：不支持共用机房电脑或远程桌面服务器，因为同一台机器上的其他用户可能访问到你的本地 VALUE（见 `SECURITY.md`）。
+
 下载包已经包含 Python、Node、锁定依赖、应用程序、两个合成数据包和英文指南。下载完成后，不需要 Git、命令行、外部 Python 或 Node、管理员权限，也不需要联网。
 
 应用状态保存在 `%LOCALAPPDATA%\VALUE\state`。关闭浏览器不会停止本地服务。使用完毕后，在 Windows 开始菜单选择 `Stop VALUE`。`Uninstall VALUE` 会删除此 VALUE 安装及其应用状态。旧的 `%LOCALAPPDATA%\VALUE-101` 试用版是独立的可选安装，不会迁移，且可以继续保留。
@@ -171,6 +173,8 @@ VALUE 101 不提供点击按钮即替换研究数据或科学方法的情景玩�
 ## 无法启动时
 
 先使用 `Stop VALUE`，再启动一次 `VALUE`。不要从另一个文件夹同时启动第二套程序。
+
+如果页面显示 **Open VALUE from its launcher**，说明它不是经 VALUE 自己的快捷方式打开的（例如旧书签或其他地址）：关闭页面，从桌面或开始菜单启动 `VALUE`。
 
 如果显示 missing pack，重新运行 `VALUE-Setup.exe`。重复安装采用事务式替换，并保留 `%LOCALAPPDATA%\VALUE\state` 中的应用状态。
 
