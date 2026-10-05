@@ -4675,7 +4675,7 @@
     },
     {
       "path": "docs/generated/MODULES.md",
-      "sha256": "a48e12f3cb328cea4bcba95acf47e3bd34b80c2f6d3b02fd6c448704d889b782",
+      "sha256": "c3cf743269a9c970ceeaaad64fe30f053ab9da8593c2e3d649149aca0705ba52",
       "bytes": 4102,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -4873,8 +4873,8 @@
     },
     {
       "path": "docs/release/VERSION_LEDGER.json",
-      "sha256": "826a1b5fa4e3632e57f85193f7a92c19822de15cafbe584f35e6b97c89bae676",
-      "bytes": 10143,
+      "sha256": "df106ee87f35e93c7684db57ee0dd651bfc5fb6febe13ace79d8ba6db4973950",
+      "bytes": 10658,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7135,8 +7135,8 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/staged_psm.py",
-      "sha256": "1ef7141d5d9625f4ec690841319982c3092c32a8020826fdad5043a2cbedcd41",
-      "bytes": 138105,
+      "sha256": "0dd26298d4bf6547946300c397f8b42b12fa6270c7e3b10b914f24b66b1d8a26",
+      "bytes": 138543,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7936,8 +7936,8 @@
     },
     {
       "path": "gridform_core/manifests/dynamic-annual-storage-cost.json",
-      "sha256": "2c5f50ddf422f8cfa3be6f4cc087be7d3c9d95c1f12470fabf5838a3986c8524",
-      "bytes": 1089,
+      "sha256": "c093474ef597481c641789635d6c54dd04e99f3561442450c80162f2c73daa0b",
+      "bytes": 1110,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7966,8 +7966,8 @@
     },
     {
       "path": "gridform_core/manifests/value-bid-at-cost-psm.json",
-      "sha256": "cf6964ac8b8dcc5a3557f907741480825514a9bb4018382abecdc5cda9f80dfd",
-      "bytes": 1164,
+      "sha256": "479187efe1af35c75c127a62dbf0eb60f6ad2664c60257833c307a10b9c14d76",
+      "bytes": 1183,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8014,9 +8014,9 @@
     },
     {
       "path": "gridform_core/manifests/value-staged-bid-at-cost-psm.json",
-      "sha256": "64f278cc167de49c971080ec3a5b1dd1a3853d4ded6f8351eaa56d3307c589df",
+      "sha256": "3fcb3fe49378b8286399c959728564b1138e655652ad2c87d4cb598ed254b705",
       "bytes": 1519,
-      "transform": "byte copy"
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/manifests/value-storage-expansion-policy.json",
@@ -8200,8 +8200,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "f758d17f23eec2cb9435bc8f0a3b5a8a18fa6219a59c5988d450a8e30227c3f0",
-      "bytes": 39183,
+      "sha256": "57e8147f62d1d5f7c3facdae4698b94478478b43661697dc685799bd81020188",
+      "bytes": 40009,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8380,8 +8380,8 @@
     },
     {
       "path": "gridform_core/storage_recovery.py",
-      "sha256": "1fd75a90e847ae5b70fcd3c9c8eea460cab1ced0983ca56ec078752b28ee9e82",
-      "bytes": 2781,
+      "sha256": "ee88403929161e1d2c89ebcbdd322d40cb513b05b13173a0761b99a8b2e9b1f4",
+      "bytes": 2841,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10490,14 +10490,14 @@
     },
     {
       "path": "tests/golden/corrected/C7.json",
-      "sha256": "477c85be6e2e0dd94fa33ef5addd4c15664a6ec7d3c898e2752e4f600bbb129c",
-      "bytes": 2840115,
+      "sha256": "10f45be79fdaf82390e4e7c09f1751d95f6c4f9b0d1369ff6c6566eede14c0cd",
+      "bytes": 3412524,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/golden/corrected/C8.json",
-      "sha256": "36f08dd64c09734ec94e59235c583f88d52d088320fcae7343c39b0c90b8e07f",
-      "bytes": 2714459,
+      "sha256": "0416db33802222dd5bc22f19f41e976501b21a998c028b76366c7c34ce08ad2c",
+      "bytes": 3119768,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11546,8 +11546,8 @@
     },
     {
       "path": "tests/test_preflight.py",
-      "sha256": "70a913d84a75ec6fec85c6ebe07cda02ead0c868dca6161271a99b0c02bcc03c",
-      "bytes": 8459,
+      "sha256": "2bb05ee65dec15c81f2fd8c9b5ab1b800bf992a4af05175d1e7ce35c5dcd428c",
+      "bytes": 9266,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11846,8 +11846,8 @@
     },
     {
       "path": "tests/test_prompt95_staged_copperplate.py",
-      "sha256": "0aed023137a9f4784e31e96a971be06e617eed29f168e539a6bb339f021b6e39",
-      "bytes": 25649,
+      "sha256": "ebcb03895a8c560aa8b8e5888196ca9a3ef4281e60383ff708dd48d97c310653",
+      "bytes": 25680,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -54,6 +54,10 @@ from .zonal_solver_contract import validate_solver_settings
 
 
 SCHEMA_VERSION = "value.run-preflight/v1"
+# Storage-cost modules whose bid has a dwell (holding) term (P0-6 S10, P5-15).
+DWELL_STORAGE_COST_MODULES = frozenset({"dynamic-annual-storage-cost", "user-formula-storage-cost"})
+
+
 def _issue(code: str, severity: str, scope: str, message: str, action: str) -> dict[str, str]:
     return {
         "code": code,
@@ -370,6 +374,14 @@ def run_preflight(
             "Install and select the signed network pack named by market_configuration.network_pack_id.",
         ))
     selected.setdefault("transition", "value-annual-state-transition")
+    if selected.get("psm") == "value-staged-bid-at-cost-psm" and selected.get("storage_cost") in DWELL_STORAGE_COST_MODULES:
+        # P0-6 S10 (P5-15): the staged PSM bids storage with d = 0 (one SoC pool).
+        issues.append(_issue(
+            "GF_STAGED_DWELL_NOT_TRACKED", "warning", "modules",
+            "The staged PSM keeps one storage pool and does not track dwell: storage bids use d = 0, so the "
+            "selected storage-cost module's holding (dwell) term is reported but never bid.",
+            "Read storage revenue and dwell-based recovery of this Study as indicative, or use the default PSM.",
+        ))
     runtime_capability = capability_status(
         VALUE_NATIVE, selected_module_ids=selected.values()
     )

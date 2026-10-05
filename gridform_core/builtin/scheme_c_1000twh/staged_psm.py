@@ -574,11 +574,15 @@ def _adapter_failure_payload(
     }
 
 
+# P0-6 S10 (P5-15): how the staged PSM knows a stored MWh's dwell (it does not).
+STAGED_DWELL_SOURCE = "not_tracked_staged_single_pool"
+
+
 class StagedBidAtCostPSM:
     """Sequential forecast-only scheduling followed by realised balancing."""
 
     id = "force-staged-bid-at-cost-psm"
-    version = "1.1.0"
+    version = "1.2.0"
     execution_kind = "live_module"
 
     def __init__(self) -> None:
@@ -2842,6 +2846,10 @@ class StagedBidAtCostPSM:
             )
             if len(reports) > 1:
                 report["physical_tranche_count"] = len(reports)
+            # P0-6 S10 (P5-15): the staged PSM keeps one SoC pool, bids d = 0
+            # and records sales with dwell 0; it does not track dwell, so the
+            # holding coefficient of a dwell-based cost module is not applied.
+            report["dwell_source"] = STAGED_DWELL_SOURCE
             storage_reports[base_id] = report
         if ledger is not None:
             if reliability_period_rows:

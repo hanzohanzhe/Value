@@ -153,8 +153,19 @@
     "value-staged-bid-at-cost-psm": {
       "baseline_version": "1.1.0",
       "baseline_scientific_version": "value-staged-national-market-2026.08.21",
-      "current_version": "1.1.0",
-      "bumps": []
+      "current_version": "1.2.0",
+      "bumps": [
+        {
+          "from": "1.1.0",
+          "to": "1.2.0",
+          "package": "P0-6",
+          "correction_ids": [
+            "p06.staged-dwell-disclosure"
+          ],
+          "reason": "P5-15 disclosure (plan 4.6 S10): storage reports carry dwell_source = not_tracked_staged_single_pool and preflight warns (GF_STAGED_DWELL_NOT_TRACKED) when a dwell-based storage-cost module is selected. Dispatch, prices and costs are unchanged (report-only).",
+          "requires_user_opt_in": false
+        }
+      ]
     },
     "value-storage-expansion-policy": {
       "baseline_version": "4.0.0",

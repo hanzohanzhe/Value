@@ -89,6 +89,17 @@ class PreflightTests(unittest.TestCase):
         self.assertGreater(report["estimates"]["peak_memory_bytes"], 0)
         self.assertEqual(report["estimates"]["data_scale"]["operating_assets"], 0)
 
+    def test_staged_psm_with_a_dwell_cost_module_warns(self):
+        # P0-6 S10 (P5-15): the staged PSM bids storage with d = 0.
+        default = self._run()
+        self.assertNotIn("GF_STAGED_DWELL_NOT_TRACKED", {row["code"] for row in default["warnings"]})
+        staged = {**self.project, "modules": {**MODULES, "psm": "value-staged-bid-at-cost-psm"}}
+        report = self._run(staged)
+        self.assertIn("GF_STAGED_DWELL_NOT_TRACKED", {row["code"] for row in report["warnings"]})
+        legacy = {**self.project, "modules": {**MODULES, "psm": "value-staged-bid-at-cost-psm",
+                                               "storage_cost": "value-legacy-storage-tariff"}}
+        self.assertNotIn("GF_STAGED_DWELL_NOT_TRACKED", {row["code"] for row in self._run(legacy)["warnings"]})
+
     def test_stale_project_revision_is_blocking(self):
         project = {**self.project, "revision_sha256": "0" * 64}
         report = self._run(project)
