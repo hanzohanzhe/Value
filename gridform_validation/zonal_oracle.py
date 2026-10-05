@@ -329,13 +329,13 @@ def _read_case(declaration: Mapping[str, object]) -> dict[str, object]:
 def _forced_down_parts(
     case: Mapping[str, object], bid_capacity: Mapping[str, float]
 ) -> dict[str, float]:
-    """Down volume each bid must release because realised availability is short.
+    """Down volume each bid must release because an upper bound is below the schedule.
 
-    Only assets that carry the realised-availability bound are concerned
-    (storage, exports and interconnector envelopes are bound otherwise).  An
-    asset's shortfall, ahead schedule minus available energy, is spread over
-    its down bids in proportion to their capacity and never exceeds a bid's
-    capacity.
+    The upper bound on an asset's final dispatch is its realised availability
+    (generators; storage and exports are bound otherwise) or the maximum of its
+    interconnector envelope.  The excess of the ahead schedule over that bound
+    is spread over the asset's down bids in proportion to their capacity and
+    never exceeds a bid's capacity.
     """
 
     period_hours = float(case["period_hours"])
@@ -343,11 +343,16 @@ def _forced_down_parts(
     storage = case["storage"]
     envelopes = case["envelopes"]
     classes = case["classes"]
-    result: dict[str, float] = {}
-    for asset, available_mw in sorted(case["availability"].items()):
+    upper: dict[str, float] = {}
+    for asset, available_mw in case["availability"].items():
         if asset in storage or asset in envelopes or classes.get(asset, "other") == "export":
             continue
-        shortfall = float(schedule.get(asset, 0.0)) - float(available_mw) * period_hours
+        upper[str(asset)] = float(available_mw) * period_hours
+    for asset, (_minimum, maximum) in envelopes.items():
+        upper[str(asset)] = float(maximum)
+    result: dict[str, float] = {}
+    for asset in sorted(upper):
+        shortfall = float(schedule.get(asset, 0.0)) - upper[asset]
         if shortfall <= 0.0:
             continue
         down_ids = [

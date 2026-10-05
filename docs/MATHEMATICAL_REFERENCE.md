@@ -168,8 +168,9 @@ absolute deviation from the ahead schedule, physical throughput and a stable
 tie key. Equal-price bids in the same direction, zone and network effect are
 accepted pro rata whatever their resource class (solver contract v4); storage
 keeps its own convex identity. A down bid's forced part, the curtailment its
-asset must take because realised availability is below the ahead schedule, is
-carved out first and only the remaining free volume is shared:
+asset must take because an upper bound on its final dispatch (realised
+availability, or the import side of its interconnector envelope) is below the
+ahead schedule, is carved out first and only the remaining free volume is shared:
 \((x_i-f_i)\,\mathrm{free}_1=(x_1-f_1)\,\mathrm{free}_i\).
 
 This method is a zonal transport abstraction, not DC or AC power flow, security

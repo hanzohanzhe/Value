@@ -219,12 +219,9 @@ def validate_vre_curtailment_attribution(
 
 
 def _runtime_fallback_summary(market_dir: Path) -> dict[str, object] | None:
-    from .zonal_results import query_runtime_fallback_audit
+    from .zonal_results import guarded_runtime_fallback_audit
 
-    try:
-        return query_runtime_fallback_audit(market_dir)
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        return {"schema_version": "value.zonal-runtime-fallback-summary/v1", "status": "invalid", "error": str(exc)}
+    return guarded_runtime_fallback_audit(market_dir)
 
 
 def build_run_summary(run_root: Path) -> dict[str, object]:

@@ -188,27 +188,40 @@ def _forced_down_by_bid(
     classes: Mapping[str, str],
     raw_envelopes: Mapping[str, object],
 ) -> dict[str, float]:
-    """Forced down volume per down bid from realised availability shortfalls.
+    """Forced down volume per down bid from every upper bound on final dispatch.
 
-    Only assets bound by the realised-availability row are considered (the
-    same set as that row: no storage, exports or interconnectors).  The
-    asset's shortfall max(schedule - available, 0) is split over its down
-    bids pro rata to their capacity (one down bid per asset takes it all),
-    and capped at each bid's capacity.
+    An asset's final dispatch is bounded above by its realised availability
+    (generators: the realised-availability row; no storage or exports) or by
+    its interconnector envelope (``import_capacity_mwh``).  When the ahead
+    schedule exceeds that bound, the excess max(schedule - bound, 0) is not a
+    choice: it is split over the asset's down bids pro rata to their capacity
+    (one down bid per asset takes it all) and capped at each bid's capacity.
+    Since the M2-P0-8a review the envelope bound is included as well, so an
+    import whose envelope is below its ahead schedule no longer drags the
+    equal-price down bids of other assets with it.
     """
 
     down_by_asset: defaultdict[str, list[FlexibilityBid]] = defaultdict(list)
     for bid in bids:
         if bid.direction == "down":
             down_by_asset[bid.asset_id].append(bid)
-    forced: dict[str, float] = {}
+    upper_mwh: dict[str, float] = {}
     for asset, available_mw in model_input.realised_availability_mw_by_asset.items():
         if asset in storage or classes.get(asset, "other") == "export" or asset in raw_envelopes:
             continue
+        upper_mwh[str(asset)] = float(available_mw) * model_input.period_hours
+    for asset, raw_envelope in raw_envelopes.items():
+        if not isinstance(raw_envelope, Mapping):
+            continue  # rejected with its own message when the rows are built
+        upper_mwh[str(asset)] = _nonnegative(
+            raw_envelope.get("import_capacity_mwh"), f"{asset} import capacity"
+        )
+    forced: dict[str, float] = {}
+    for asset in sorted(upper_mwh):
         rows = down_by_asset.get(asset)
         if not rows:
             continue
-        shortfall = float(ahead.schedule_mwh_by_asset.get(asset, 0.0)) - float(available_mw) * model_input.period_hours
+        shortfall = float(ahead.schedule_mwh_by_asset.get(asset, 0.0)) - upper_mwh[asset]
         if shortfall <= 0.0:
             continue
         total = math.fsum(bid_capacity[bid.bid_id] for bid in rows)
@@ -1308,7 +1321,13 @@ def lock_primary_shedding(
 
     indices = sorted(problem.shedding_index.values())
     shed_total = math.fsum(float(primary_values[index]) for index in indices)
-    if shed_total <= TOLERANCE:
+    # Only an exactly-zero primary shed fixes the variables at zero (HiGHS
+    # returns exact zeros when nothing is shed).  A tiny positive shed, even
+    # below TOLERANCE, may be a real shortfall above the solver's primal
+    # tolerance; fixing it at zero would make the later phases infeasible, so
+    # it gets the Q5 total-cap row like any other shed (M2-P0-8a review).  The
+    # results layer still maps |shed| <= TOLERANCE to 0.0.
+    if shed_total <= 0.0:
         bounds = list(problem.bounds)
         for index in indices:
             bounds[index] = (0.0, 0.0)

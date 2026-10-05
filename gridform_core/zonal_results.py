@@ -102,6 +102,24 @@ def query_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
     }
 
 
+def guarded_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
+    """``query_runtime_fallback_audit`` that degrades instead of raising.
+
+    A malformed or wrong-schema audit file must not take down the read models
+    that show it (capabilities, run summary): it becomes ``status: invalid``
+    with the error text, and the ledger stays readable (M2-P0-8a review).
+    """
+
+    try:
+        return query_runtime_fallback_audit(market_dir)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return {
+            "schema_version": "value.zonal-runtime-fallback-summary/v1",
+            "status": "invalid",
+            "error": str(exc),
+        }
+
+
 def is_reportable_shedding(value: object) -> bool:
     """True when a load-shedding quantity is above the reporting threshold."""
 
@@ -590,7 +608,7 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
         "reliability_semantics": "observed_chronology_not_statistical_lole",
         "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
         "known_defects": known_defects,
-        "runtime_fallback_audit": query_runtime_fallback_audit(Path(database).parent),
+        "runtime_fallback_audit": guarded_runtime_fallback_audit(Path(database).parent),
         "security_scope": "not_a_security_analysis",
         "unsupported_scope": [
             "AC_power_flow", "voltage_security", "contingency_security", "dynamic_stability"
