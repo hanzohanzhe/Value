@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from gridform_core import methodology
+from gridform_core import methodology, pack_source_identity
 from gridform_core.frontend_contract import resolve_study_draft
 from gridform_core.parameters import REGISTRY, ParameterValidationError, resolve_scheme_c_parameters
 from gridform_core.preflight import run_preflight
@@ -266,7 +266,8 @@ class WhitelistTests(unittest.TestCase):
         gbp1 = {"id": "value-uk-open-data-pack-v1", "country": "GB"}
         self.assertEqual(methodology.classify_data_pack(gbp1), "scientific_reference")
         self.assertEqual(self._violations(DOCTORAL, packs=[(gbp1, b"other bytes")])[0]["sub_reason"], "data_pack")
-        with patch("gridform_core.methodology.manifest_sha256_candidates", return_value={GBP1_SHA}):
+        with patch("gridform_core.pack_source_identity.resolve_pack_identity",
+                   return_value=pack_source_identity.PackIdentity(gbp1, frozenset({GBP1_SHA}), (), None)):
             self.assertEqual(self._violations(DOCTORAL, packs=[(gbp1, b"x")]), [])
         r029 = {"id": "value-uk-calendar-vx-trade001", "country": "GB"}
         self.assertEqual(self._violations(DOCTORAL, packs=[(r029, None)])[0]["data_pack_id"], "value-uk-calendar-vx-trade001")

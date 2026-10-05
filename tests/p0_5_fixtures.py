@@ -205,8 +205,8 @@ def run_value_101_day(pack_root: Path, recorder: KernelBoundaryRecorder) -> None
     real_pack_supported = methodology._pack_supported
     edited_manifest = methodology.read_pack_manifest(pack_root)[0]
 
-    def pack_supported(profile, manifest, shas):
-        return manifest == edited_manifest or real_pack_supported(profile, manifest, shas)
+    def pack_supported(profile, identity):
+        return identity.manifest == edited_manifest or real_pack_supported(profile, identity)
 
     try:
         with open(os.devnull, "w", encoding="utf-8") as sink, contextlib.redirect_stdout(sink), \

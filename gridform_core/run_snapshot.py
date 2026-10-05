@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
@@ -21,7 +22,7 @@ from .frontend_contract import (
     validate_project_solver_contract,
 )
 from .data_adapters import AdapterSpec, execute_adapter
-from .pack_source_identity import SOURCE_FIELD, source_record
+from .pack_source_identity import IDENTITY_TRANSFORMATION, SOURCE_FIELD, frozen_source, source_record
 
 
 SCHEMA_VERSION = "value.run-input-snapshot/v1"
@@ -115,11 +116,19 @@ def _freeze_pack(
 ) -> tuple[dict[str, object], list[dict[str, object]]]:
     """Freeze one data product without merging its namespace or provenance.
 
-    The frozen manifest records its source manifest's identity (canonical sha
-    and original bindings, ``pack_source_identity``) so a methodology pin on
-    the source manifest still identifies the frozen copy (decision Q3).
+    The frozen manifest records its source manifest (the exact file bytes and
+    their shas, ``pack_source_identity``) so a methodology pin on the source
+    manifest still identifies the frozen copy (decision Q3).
+
+    Freezing a verified frozen copy again (a run-input snapshot used as a pack
+    root) keeps that copy's record and its bindings' transformation identity:
+    the data files are already the frozen bytes, so no adapter runs again,
+    and the new copy is identified by the original source exactly as the
+    first copy was (preflight on the first copy and the worker on the second
+    see the same identity).
     """
 
+    inherited = frozen_source(pack_manifest)
     frozen_manifest = dict(pack_manifest)
     frozen_bindings: dict[str, dict[str, object]] = {}
     objects: list[dict[str, object]] = []
@@ -140,8 +149,13 @@ def _freeze_pack(
         expected = source_sha256
         normalized_source = source
         adapter_payload = binding.get("adapter")
-        transformation_id = "identity/v1"
-        if isinstance(adapter_payload, Mapping):
+        transformation_id = IDENTITY_TRANSFORMATION
+        if inherited is not None:
+            # Already frozen bytes: copy them; the chain back to the original
+            # source digest and transformation stays as recorded.
+            source_sha256 = str(raw_binding.get("source_sha256") or "").lower()
+            transformation_id = str(raw_binding.get("transformation_id") or "")
+        elif isinstance(adapter_payload, Mapping):
             specification = AdapterSpec.from_dict(adapter_payload)
             if specification.canonical_role != role:
                 raise SnapshotError(
@@ -189,7 +203,12 @@ def _freeze_pack(
         })
     frozen_manifest["bindings"] = frozen_bindings
     frozen_manifest["snapshot_frozen"] = True
-    frozen_manifest[SOURCE_FIELD] = source_record(pack_manifest, manifest_bytes)
+    if inherited is not None:
+        frozen_manifest[SOURCE_FIELD] = copy.deepcopy(pack_manifest[SOURCE_FIELD])  # type: ignore[index]
+        if frozen_source(frozen_manifest) is None:
+            raise SnapshotError(f"The re-frozen {pack_kind} data pack lost its source manifest identity")
+    else:
+        frozen_manifest[SOURCE_FIELD] = source_record(pack_manifest, manifest_bytes)
     return frozen_manifest, objects
 
 
