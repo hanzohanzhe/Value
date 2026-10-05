@@ -27,6 +27,7 @@ from gridform_core.v2.module_manifest import workspace_registry
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_ROOT = ROOT / "data-packs" / "value-101-baseline-v1"
+NETWORK_PACK_ROOT = ROOT / "data-packs" / "value-101-network-v1"
 PSM = "value-bid-at-cost-psm"
 
 
@@ -185,6 +186,37 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(result["classification"], "unverifiable")
         self.assertEqual(result["error_code"], "GF_PREFLIGHT_PROJECT_REVISION")
         self.assertTrue(result["confirmable"])
+        # The confirmation dialog has the Study's current content to review.
+        keys = {row["key"] for row in result["differences"]}
+        self.assertTrue({"fingerprint_basis", "start_year", "end_year", "scientific_parameters",
+                         "modules", "data_pack", "methodology"} <= keys, keys)
+        start = next(row for row in result["differences"] if row["key"] == "start_year")
+        self.assertEqual(start["new"], project["start_year"])
+
+    def test_pre_profile_extension_study_is_reconstructed_from_its_stored_graph(self):
+        """A 35aadb3-era Study with extensions hashed module source sha256s that any code change moves."""
+
+        manifest = json.loads((NETWORK_PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
+        project = json.loads((ROOT / "tests" / "golden" / "projects" / "C8.json").read_text(encoding="utf-8"))
+        self.assertIn("value-zonal-redispatch-extension", project["selected_extensions"])
+        overrides = revision_migration._baseline_overrides(self.registry, project["modules"])
+        legacy = canonical_project_payload(project, self.registry, manifest,
+                                           module_version_overrides=overrides, include_methodology=False)
+        graph = json.loads(json.dumps(legacy["module_resolution_graph"]))
+        graph["modules"]["psm"]["source_sha256"] = "e" * 64  # the 35aadb3 source of the PSM entry point
+        graph["graph_sha256"] = "f" * 64
+        legacy["module_resolution_graph"] = graph
+        project["module_resolution_graph"] = graph  # what project.json stored with the revision
+        project["revision_sha256"] = hashlib.sha256(_canonical_bytes(legacy)).hexdigest()
+        result = classify_revision_mismatch(project, self.registry, manifest)
+        self.assertNotEqual(result["basis_source"], "none")
+        self.assertEqual(result["basis_source"], "reconstructed_35aadb3_stored_graph")
+        self.assertEqual(result["classification"], "method_upgrade_required")
+        rows = {row["key"]: row for row in result["differences"]}
+        self.assertEqual(rows["module_resolution_graph"]["classification"], "code_identity_upgrade")
+        self.assertEqual(rows["profile_id"]["dimension"], "methodology")
+        self.assertIsNone(rows["profile_id"]["old"])
+        self.assertNotIn("unverifiable", {row["classification"] for row in result["differences"]})
 
     def test_superseded_solver_contract_requires_an_explicit_upgrade(self):
         from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS

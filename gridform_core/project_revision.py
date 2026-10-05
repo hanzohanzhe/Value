@@ -44,12 +44,15 @@ def canonical_project_payload(
     *,
     module_version_overrides: Mapping[str, tuple[str, str]] | None = None,
     include_methodology: bool = True,
+    module_resolution_graph: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """The canonical identity payload of a Study revision.
 
     ``module_version_overrides`` (module id -> (version, contract version))
-    and ``include_methodology=False`` exist only to reconstruct the payload of
-    a revision saved before X0 S11 (pre-profile, 35aadb3 module versions); see
+    ``include_methodology=False`` and ``module_resolution_graph`` (the graph
+    stored in project.json, used instead of resolving the current one) exist
+    only to reconstruct the payload of a revision saved before X0 S11
+    (pre-profile, 35aadb3 module versions and module source hashes); see
     :mod:`gridform_core.revision_migration`.
     """
 
@@ -86,7 +89,9 @@ def canonical_project_payload(
     if "market_configuration" in project:
         result["market_configuration"] = dict(project.get("market_configuration") or {})
     selected_extensions = tuple(str(item) for item in project.get("selected_extensions", ()))
-    if selected_extensions:
+    if selected_extensions and module_resolution_graph is not None:
+        result["module_resolution_graph"] = json.loads(json.dumps(dict(module_resolution_graph)))
+    elif selected_extensions:
         graph = registry.resolve_selection(
             modules,
             selected_extensions=selected_extensions,

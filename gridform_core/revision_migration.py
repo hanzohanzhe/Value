@@ -151,16 +151,56 @@ def _reconstructed_basis(project: Mapping[str, Any], registry: ModuleRegistryV2,
         ("reconstructed_35aadb3", _baseline_overrides(registry, modules)),
         ("reconstructed_current_versions", {}),
     )
+    # A Study with extensions hashed its module resolution graph, which records
+    # every module's source sha256: any code change moves it, so the graph is
+    # never reproducible from the current sources.  project.json stores the
+    # graph the revision was saved with; it is tried as recorded.
+    stored_graph = project.get("module_resolution_graph")
+    graphs: list[tuple[str, Mapping[str, Any] | None]] = [("", None)]
+    if isinstance(stored_graph, Mapping) and project.get("selected_extensions"):
+        graphs.append(("_stored_graph", stored_graph))
     for source, overrides in attempts:
-        try:
-            payload = canonical_project_payload(
-                project, registry, manifest, module_version_overrides=overrides, include_methodology=False,
-            )
-        except (KeyError, ValueError):
-            continue
-        if hashlib.sha256(_canonical_bytes(payload)).hexdigest() == declared:
-            return {"source": source, "payload": payload, "applied_correction_ids": None}
+        for suffix, graph in graphs:
+            try:
+                payload = canonical_project_payload(
+                    project, registry, manifest, module_version_overrides=overrides, include_methodology=False,
+                    module_resolution_graph=graph,
+                )
+            except (KeyError, ValueError):
+                continue
+            if hashlib.sha256(_canonical_bytes(payload)).hexdigest() == declared:
+                return {"source": source + suffix, "payload": payload, "applied_correction_ids": None}
     return None
+
+
+def _unverifiable_rows(current: Mapping[str, Any] | None) -> list[dict[str, Any]]:
+    """What the user reviews when the saved basis cannot be reconstructed: the Study as it stands."""
+
+    rows: list[dict[str, Any]] = [{
+        "dimension": "basis", "key": "fingerprint_basis", "old": None, "new": None,
+        "classification": "unverifiable",
+        "effect": "The saved revision records no basis and cannot be reconstructed; review the Study and confirm to re-establish it.",
+    }]
+    if not current:
+        return rows
+    effect = "Current value (the saved revision cannot be reconstructed for comparison)."
+    for key in CONTENT_KEYS:
+        if key in current:
+            rows.append({"dimension": "study", "key": key, "old": None, "new": current.get(key),
+                         "classification": "unverifiable", "effect": effect})
+    modules = {slot: f"{row.get('module_id')}@{row.get('version')}"
+               for slot, row in dict(current.get("modules") or {}).items() if isinstance(row, Mapping)}
+    rows.append({"dimension": "study", "key": "modules", "old": None, "new": modules,
+                 "classification": "unverifiable", "effect": effect})
+    pack = dict(current.get("data_pack") or {})
+    rows.append({"dimension": "data", "key": "data_pack", "old": None,
+                 "new": {"id": pack.get("id"), "content_sha256": pack.get("content_sha256")},
+                 "classification": "unverifiable", "effect": effect})
+    for key in ("solver_contract", "methodology"):
+        if key in current:
+            rows.append({"dimension": key, "key": key, "old": None, "new": current.get(key),
+                         "classification": "unverifiable", "effect": effect})
+    return rows
 
 
 def _solver_contract_upgrade(project: Mapping[str, Any], registry: ModuleRegistryV2) -> dict[str, Any] | None:
@@ -332,11 +372,7 @@ def classify_revision_mismatch(project: Mapping[str, Any], registry: ModuleRegis
         return _finish(record)
     basis = _recorded_basis(project, str(declared)) or _reconstructed_basis(project, registry, data_pack_manifest, str(declared))
     if basis is None:
-        record.update(classification="unverifiable", basis_source="none", differences=[{
-            "dimension": "basis", "key": "fingerprint_basis", "old": None, "new": None,
-            "classification": "unverifiable",
-            "effect": "The saved revision records no basis and cannot be reconstructed; review the Study and confirm to re-establish it.",
-        }])
+        record.update(classification="unverifiable", basis_source="none", differences=_unverifiable_rows(current))
         return _finish(record)
     record["basis_source"] = basis["source"]
     differences = _differences(basis, current, project)
