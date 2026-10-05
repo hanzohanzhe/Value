@@ -10454,9 +10454,9 @@
     },
     {
       "path": "tests/test_frozen_run_recovery.py",
-      "sha256": "acac53770f6c6ac9beda4f185cae8b6541b6ae7bd2fce72dd1f144c67045c1c4",
-      "bytes": 9999,
-      "transform": "byte copy"
+      "sha256": "9f381dca435f18eb21ea452d8f6c67af1242728ebe3042fdf336484a0821e3d8",
+      "bytes": 10244,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_full_desktop_installer.py",
@@ -10760,8 +10760,8 @@
     },
     {
       "path": "tests/test_p08_solver_contract_upgrade.py",
-      "sha256": "b4970ae50d8383ac15cd0974177f3eb1ee89bdb037a070d21813d7d43d179f0e",
-      "bytes": 12578,
+      "sha256": "faed1163c9218c969558692accc3826680fa712e6795287b1785919467ff1114",
+      "bytes": 12246,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

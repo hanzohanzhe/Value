@@ -23,7 +23,7 @@ from gridform_core.zonal_solver_contract import (
     V3_SOLVER_SCHEMA_VERSION,
 )
 
-from tests.test_frozen_run_recovery import FrozenRunRecoveryTests
+from tests.test_frozen_run_recovery import FrozenRunRecoveryFixture
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -112,7 +112,7 @@ class StudyUpgradeTests(unittest.TestCase):
             self.assertEqual(kept["solver_contract"], V3_DEFAULT)
 
 
-class RunMethodSupersededTests(FrozenRunRecoveryTests):
+class RunMethodSupersededTests(FrozenRunRecoveryFixture, unittest.TestCase):
     """Reuse the real frozen-run fixture with a Run recorded under v3."""
 
     def setUp(self) -> None:
@@ -153,18 +153,6 @@ class RunMethodSupersededTests(FrozenRunRecoveryTests):
         error = SnapshotError("x", METHOD_SUPERSEDED)
         self.assertEqual(error.code, METHOD_SUPERSEDED)
         self.assertIsNone(SnapshotError("y").code)
-
-
-# The inherited FrozenRunRecoveryTests cases run in their own module.
-for _name in [name for name in dir(FrozenRunRecoveryTests) if name.startswith("test_")]:
-    if not hasattr(RunMethodSupersededTests, _name) or _name in RunMethodSupersededTests.__dict__:
-        continue
-    setattr(RunMethodSupersededTests, _name, None)
-del FrozenRunRecoveryTests
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class SolverContractUpgradeHttpTests(unittest.TestCase):
@@ -272,3 +260,7 @@ class ReplayExportSupersededTests(unittest.TestCase):
                     time.sleep(0.05)
         self.assertEqual(record["status"], "failed")
         self.assertEqual(record["error_code"], METHOD_SUPERSEDED)
+
+
+if __name__ == "__main__":
+    unittest.main()
