@@ -269,7 +269,13 @@ def build_cem_cost_ledger(
                 "transmission_constraint_resource_cost_gbp",
                 "constraint_cost_attribution",
                 "already_within_final_physical_resource_cost",
-                "Difference between matched zonal and realised-copperplate physical cost; not added again.",
+                "Zonal minus network-free counterfactual physical cost (same bids, unit-cost table and VOLL); not added again.",
+            ),
+            (
+                "network_constraint_bid_objective_gbp",
+                "constraint_cost_bid_objective_diagnostic",
+                "diagnostic_not_cash_cost",
+                "Zonal minus network-free primary objective (accepted bids plus VOLL x shed); a diagnostic, not added again.",
             ),
             (
                 "national_settlement_gbp",

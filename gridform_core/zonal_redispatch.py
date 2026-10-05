@@ -2030,6 +2030,84 @@ def _assemble_balancing_result(
     return result
 
 
+NETWORK_FREE_NODE = "network-free"
+COUNTERFACTUAL_ENGINE = "value.network-free-lp/v1"
+
+
+def solve_network_free_counterfactual(
+    model_input: BalancingInput,
+    *,
+    network_pack: ZonalNetworkPack,
+    annual_metadata: Mapping[str, object],
+    settings: ZonalSolverSettings = DEFAULT_ZONAL_SOLVER_SETTINGS,
+) -> BalancingResult:
+    """The same period without the network (P0-8 S9, P2-02/P2-03/P2-04).
+
+    One node, no corridors and no cutsets; everything else is the zonal LP:
+    the same bids (exports and their arbitrage included), envelopes,
+    availability, storage physics, VOLL-priced shedding, unit-cost table,
+    lexicographic phases and solver settings.  The difference between the
+    zonal and this result is therefore only the effect of the network.
+    """
+
+    try:
+        domain = ZonalRedispatchDomainV2.from_dict(dict(model_input.domain_payload))
+    except (TypeError, ValueError) as exc:
+        raise ZonalRedispatchInputError(f"Expected {DOMAIN_SCHEMA}: {exc}") from exc
+    ahead = domain.period_slice.ahead_result
+    if contract_sha256(ahead) != model_input.ahead_result_sha256:
+        raise ZonalRedispatchInputError("Declared ahead result hash does not match its payload")
+    period_slice = domain.period_slice
+    raw_envelopes = period_slice.interconnector_envelopes
+    bids = tuple(sorted(model_input.bids, key=lambda bid: bid.bid_id))
+    assets = (
+        set(ahead.schedule_mwh_by_asset)
+        | {bid.asset_id for bid in bids}
+        | {str(asset) for asset in model_input.realised_availability_mw_by_asset}
+        | {str(asset) for asset in raw_envelopes}
+    )
+    for bid in bids:
+        expected_baseline = float(ahead.schedule_mwh_by_asset.get(bid.asset_id, 0.0)) / model_input.period_hours
+        if abs(bid.baseline_mw - expected_baseline) > TOLERANCE:
+            raise ZonalRedispatchInputError(f"Bid {bid.bid_id} baseline does not match the frozen ahead schedule")
+    classes, costs = _declared_classes_and_costs(
+        annual_metadata, bids, period_slice.resource_cost_gbp_per_mwh_by_asset, assets
+    )
+    storage = _declared_storage(annual_metadata, model_input, bids)
+    problem = _assemble_problem(
+        model_input,
+        ahead=ahead,
+        network=network_pack,
+        zone_ids=(NETWORK_FREE_NODE,),
+        corridors=(),
+        cutsets=(),
+        demand={NETWORK_FREE_NODE: float(model_input.real_demand_mwh)},
+        asset_zones={asset: NETWORK_FREE_NODE for asset in assets},
+        bids=bids,
+        classes=classes,
+        costs=costs,
+        storage=storage,
+        raw_envelopes=raw_envelopes,
+        assets=assets,
+        forward_capacity={},
+        reverse_capacity={},
+        collapsed=True,
+    )
+    solution = solve_lexicographic(problem, settings)
+    if "bound_canonicalization" not in solution.diagnostics:
+        solution = _canonicalize_solution_bounds(problem, solution)
+    validation = validate_solution(problem, solution)
+    result = _assemble_balancing_result(
+        problem, solution, validation, model_input, contract_sha256(model_input)
+    )
+    return replace(result, extensions={
+        **dict(result.extensions),
+        "method": COUNTERFACTUAL_ENGINE,
+        "network_semantics": "network_free_single_node_counterfactual",
+        "counterfactual_of": FORMULATION_ID,
+    })
+
+
 class ZonalRedispatchBalancing:
     id = "value-zonal-redispatch-balancing"
     version = "4.0.0"
@@ -2288,6 +2366,22 @@ class ZonalRedispatchBalancing:
                 residuals=residuals,
             ),
             self._evidence_root / "market" / "failures" / "first-failure",
+        )
+
+    def network_free_counterfactual(self, model_input: BalancingInput) -> BalancingResult:
+        """Solve the period without the network with this module's settings.
+
+        A counterfactual does not consume the one-use input history: it never
+        becomes a dispatch result.
+        """
+
+        if self._network_pack is None or self._annual_metadata is None:
+            raise ZonalRedispatchInputError("Zonal redispatch contexts are not bound")
+        return solve_network_free_counterfactual(
+            model_input,
+            network_pack=self._network_pack,
+            annual_metadata=self._annual_metadata,
+            settings=self._solver_settings,
         )
 
     def clear(self, model_input: BalancingInput) -> BalancingResult:

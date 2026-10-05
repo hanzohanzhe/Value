@@ -193,9 +193,10 @@
           "package": "P0-8b",
           "correction_ids": [
             "p08.dec-economic-pricing",
-            "p08.pro-rata-ties"
+            "p08.pro-rata-ties",
+            "p08.network-free-counterfactual"
           ],
-          "reason": "P0-8 S7 (P2-05, P3-04): staged balancing dec bids carry an economic price (network_method_rules ECONOMIC): fuel units SRMC x market.dec_multiplier - support, imports the period price x dec multiplier, VRE and run-of-river hydro -support, nuclear SRMC x m_dec - support - inflexibility premium (shared down-regulation table), storage min(own up x round-trip efficiency, the period's lowest inc price). Before, every dec was GBP 0 and the curtailed asset depended on its id; a dec'd thermal unit kept a windfall. Dispatch, curtailment, settlement and investment income of staged Runs change, so saved Studies need explicit confirmation (Q13). Scientific version value-staged-network-economics-2026.10.06.",
+          "reason": "P0-8 S7 (P2-05, P3-04): staged balancing dec bids carry an economic price (network_method_rules ECONOMIC): fuel units SRMC x market.dec_multiplier - support, imports the period price x dec multiplier, VRE and run-of-river hydro -support, nuclear SRMC x m_dec - support - inflexibility premium (shared down-regulation table), storage min(own up x round-trip efficiency, the period's lowest inc price). Before, every dec was GBP 0 and the curtailed asset depended on its id; a dec'd thermal unit kept a windfall. Dispatch, curtailment, settlement and investment income of staged Runs change, so saved Studies need explicit confirmation (Q13). Scientific version value-staged-network-economics-2026.10.06. P0-8 S9 (P2-02, P2-03, P2-04, C22): the two reference cases of the network cost are the zonal LP without the network (value.network-free-lp/v1: same bids, envelopes, VOLL, solver), every case and the agent running cost are priced with one per-period unit-cost table, and every period checks primary_zonal >= primary_network_free - tol; network_constraint_cost is zero whenever the network does not bind.",
           "requires_user_opt_in": true
         }
       ]

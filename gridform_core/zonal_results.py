@@ -66,6 +66,44 @@ V3_LOCK_DEFECT = {
 }
 
 
+# Known method defects of ledgers written before P0-8b (derived from the
+# absence of the P0-8b ledger metadata; stored values are never rewritten).
+DEC_PRICING_DEFECT = {
+    "defect_id": "p08.staged-dec-zero-pricing",
+    "finding_ids": ["P2-05", "P3-04"],
+    "severity": "high",
+    "summary": (
+        "Recorded before staged PSM 1.3.0: every balancing dec bid was priced at "
+        "GBP 0, so whether a fuel unit or a VRE asset was decremented depended on "
+        "its id, and a decremented thermal unit kept a windfall."
+    ),
+    "affected_outputs": [
+        "redispatch_settlement", "zonal_resource_dispatch", "vre_curtailment_period",
+        "market_income_gbp_by_agent",
+    ],
+    "remedy": "Re-run with staged PSM 1.3.0 (migration recovery).",
+}
+COUNTERFACTUAL_DEFECT = {
+    "defect_id": "p08.copperplate-counterfactual-mismatch",
+    "finding_ids": ["P2-02", "P2-03", "P2-04"],
+    "severity": "high",
+    "summary": (
+        "Recorded before the network-free LP counterfactual: the copperplate "
+        "reference cases left out VOLL, used static unit prices and could not "
+        "export, so network constraint cost and the redispatch curtailment "
+        "attribution also contain non-network effects."
+    ),
+    "affected_outputs": [
+        "zonal_period_accounting.network_constraint_cost_gbp",
+        "zonal_period_accounting.forecast_error_cost_gbp",
+        "vre_curtailment_period.redispatch_added_curtailment_mwh",
+        "vre_curtailment_period.redispatch_avoided_curtailment_mwh",
+    ],
+    "remedy": "Re-run with staged PSM 1.3.0 (migration recovery).",
+}
+ZONAL_ACCOUNTING_SCHEMA_V2 = "value.zonal-period-accounting/v2"
+
+
 def query_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
     """Read the per-year run-time fallback audits written beside the ledger.
 
@@ -138,6 +176,12 @@ def ledger_known_defects(connection: sqlite3.Connection, tables: set[str]) -> li
         ).fetchone()
         if row and int(row[0] or 0):
             defects.append({**V3_LOCK_DEFECT, "evidence_rows": int(row[0])})
+    if tables.intersection({"zonal_period_accounting", "zonal_period_summary"}):
+        metadata = _decoded_metadata(connection) if "metadata" in tables else {}
+        if not metadata.get("network_method_rules"):
+            defects.append(dict(DEC_PRICING_DEFECT))
+        if metadata.get("zonal_accounting_schema") != ZONAL_ACCOUNTING_SCHEMA_V2:
+            defects.append(dict(COUNTERFACTUAL_DEFECT))
     return defects
 
 
@@ -988,15 +1032,17 @@ def build_zonal_period_accounting(
         character not in "0123456789abcdef" for character in realised_input_sha256
     ):
         raise ValueError("realised_input_sha256 must be a lowercase SHA-256")
-    case_1 = _nonnegative(
+    # P0-8 S9: a case cost may be negative (negative import prices); every
+    # case includes VOLL x shed, so national shortfall is never network cost.
+    case_1 = _finite(
         perfect_forecast_resource_cost_gbp,
-        "perfect-forecast copperplate resource cost",
+        "perfect-forecast network-free resource cost",
     )
-    case_2 = _nonnegative(
+    case_2 = _finite(
         realised_copperplate_resource_cost_gbp,
-        "forecast-schedule realised copperplate resource cost",
+        "forecast-schedule realised network-free resource cost",
     )
-    case_3 = _nonnegative(zonal_resource_cost_gbp, "zonal resource cost")
+    case_3 = _finite(zonal_resource_cost_gbp, "zonal resource cost")
     clearing_price = _finite(
         national_clearing_price_gbp_per_mwh, "national clearing price"
     )

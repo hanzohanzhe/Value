@@ -84,6 +84,7 @@ from ...v2.contracts import (
 )
 from ...zonal_contracts import ZonalNetworkPack
 from ...zonal_results import (
+    ZONAL_ACCOUNTING_SCHEMA_V2,
     build_reliability_events,
     build_solver_validation_summary,
     build_zonal_period_accounting,
@@ -351,22 +352,34 @@ def runtime_fallback_audit(
     }
 
 
-def _staged_agent_cashflow(module_id, generation, resources, base_by_asset, assets) -> dict[str, object]:
-    """``value.agent-cashflow/v1`` (P0-7, decision A4) from the staged resource offers.
+AGENT_VARIABLE_COST_PREFIX = "agent_variable_cost_gbp::"
 
-    The staged PSM prices every resource at one total running cost per MWh
-    (generation + fuel + carbon + unit_time, ``marginal_cost_gbp_per_mwh``);
-    a base asset split over zones keeps that cost only when every split
-    agrees, otherwise it gets no row (a thermal asset then fails closed in
-    ``agent-investment``).
+
+
+def _staged_agent_cashflow(
+    module_id, generation, resources, base_by_asset, assets, *, variable_cost_gbp_by_asset=None,
+) -> dict[str, object]:
+    """``value.agent-cashflow/v1`` (P0-7, decision A4) from the staged dispatch.
+
+    Since P0-8 S9 (C22) the running cost is the sum over periods of the
+    dispatched MWh times that period's unit cost (the same table that prices
+    the zonal and counterfactual cases), so an import with an hourly price is
+    charged what it was paid in each period.  The row's unit cost is that sum
+    divided by the generated MWh; an asset that generated nothing keeps its
+    annual marginal cost when every zone split agrees, otherwise it gets no
+    row (a thermal asset then fails closed in ``agent-investment``).
     """
     costs: dict[str, set[float]] = defaultdict(set)
     for resource in resources:
         costs[str(base_by_asset.get(resource.asset_id, resource.asset_id))].add(
             float(resource.marginal_cost_gbp_per_mwh))
     unit_cost = {asset_id: next(iter(values)) for asset_id, values in costs.items() if len(values) == 1}
+    for asset_id, total in dict(variable_cost_gbp_by_asset or {}).items():
+        generated = float(generation.get(asset_id, 0.0) or 0.0)
+        if generated > 0.0:
+            unit_cost[asset_id] = max(float(total) / generated, 0.0)
     technology = {asset.asset_id: asset.technology for asset in assets}
-    basis = "staged_resource_marginal_cost_total"
+    basis = "staged_period_unit_cost_table"
     rows = agent_cashflow.unit_cost_cashflow(generation, unit_cost, technology, cost_basis=basis)
     return agent_cashflow.extension(rows, psm_module_id=module_id, cost_basis=basis)
 
@@ -1552,7 +1565,7 @@ class StagedBidAtCostPSM:
                 solver_contract_defaults = configured_defaults
         # C22: the maintained balancing identity comes from the module class,
         # so a version bump cannot silently disable subannual restore.
-        from ...zonal_redispatch import ZonalRedispatchBalancing
+        from ...zonal_redispatch import COUNTERFACTUAL_ENGINE, ZonalRedispatchBalancing
 
         maintained_zonal_runtime = (
             self._network_pack is not None
@@ -1721,6 +1734,15 @@ class StagedBidAtCostPSM:
                         self._year_context_ref.sha256
                         if self._year_context_ref is not None else "0" * 64
                     ),
+                    "network_method_rules": self._network_rules.record(),
+                    "zonal_accounting_schema": (
+                        ZONAL_ACCOUNTING_SCHEMA_V2
+                        if self._network_pack is not None else "not_applicable"
+                    ),
+                    "counterfactual_engine": (
+                        COUNTERFACTUAL_ENGINE
+                        if self._network_pack is not None else "not_applicable"
+                    ),
                     "run_context_artifact_path": "market/context/run-context.json",
                     "year_context_artifact_path": (
                         f"market/context/year-{model_input.year}.json"
@@ -1807,11 +1829,43 @@ class StagedBidAtCostPSM:
             )
         ]
 
-        def copperplate_payload(ahead_result: AheadMarketResult) -> dict[str, object]:
+        export_asset_ids = tuple(sorted(
+            str(asset_id)
+            for asset_id in dict(
+                chronology.extensions.get("boundary_export_envelope_mwh_by_asset") or {}
+            )
+        ))
+
+        def period_unit_cost(period_index: int) -> dict[str, float]:
+            """P0-8 S9 / C22: one unit-cost table per period for every case.
+
+            Resources use their period cost profile when they have one (an
+            import's hourly price) and their annual marginal cost otherwise;
+            storage its cycle degradation per discharged MWh; exports 0.
+            """
+
+            table: dict[str, float] = {}
+            for resource in chronology.resources:
+                table[resource.asset_id] = float(
+                    _period_value(resource.marginal_cost_profile_gbp_per_mwh, period_index)
+                    if resource.marginal_cost_profile_gbp_per_mwh
+                    else resource.marginal_cost_gbp_per_mwh
+                )
+            for resource in chronology.storage:
+                table[resource.asset_id] = float(
+                    resource.variable_degradation_gbp_per_mwh_discharged
+                )
+            for asset_id in export_asset_ids:
+                table.setdefault(asset_id, 0.0)
+            return table
+
+        def copperplate_payload(
+            ahead_result: AheadMarketResult, unit_cost: Mapping[str, float]
+        ) -> dict[str, object]:
             return {
                 "schema_version": "force.copperplate-balancing-domain/v1",
                 "ahead_result": ahead_result.to_dict(),
-                "resource_cost_gbp_per_mwh_by_asset": resource_cost,
+                "resource_cost_gbp_per_mwh_by_asset": dict(unit_cost),
                 "resource_class_by_asset": resource_class,
                 "storage": {
                     resource.asset_id: {
@@ -1859,6 +1913,7 @@ class StagedBidAtCostPSM:
             redispatch_rows: tuple[RedispatchSettlementRow, ...] = ()
             redispatch_summary_rows: tuple[RedispatchSummaryRow, ...] = ()
             solver_link_rows: tuple[SolverDeclarationLinkRow, ...] = ()
+            unit_cost = period_unit_cost(period)
             offers = self._ahead_offers(model_input, period, soc, storage_models)
             ahead_input = AheadMarketInput(
                 model_input.run_id,
@@ -1915,7 +1970,7 @@ class StagedBidAtCostPSM:
                 base_by_asset[str(asset_id)] = str(asset_id)
                 owner_by_asset[str(asset_id)] = f"interconnector:{str(asset_id).split(':', 1)[-1]}"
             if self._network_pack is None:
-                domain_payload = copperplate_payload(ahead)
+                domain_payload = copperplate_payload(ahead, unit_cost)
             else:
                 try:
                     network_period = self._period_index_by_id[period_id]
@@ -1984,19 +2039,26 @@ class StagedBidAtCostPSM:
                     )
                 assert self._run_context_ref is not None
                 assert self._year_context_ref is not None
-                domain_payload = ZonalRedispatchDomainV2(
-                    self._run_context_ref,
-                    self._year_context_ref,
-                    ZonalRedispatchPeriodSlice(
-                        period_id=period_id,
-                        ahead_result=ahead,
-                        zonal_real_demand_mwh=zonal_demand,
-                        zonal_forecast_demand_mwh=zonal_forecast,
-                        forward_boundary_capacity_mwh=forward_capacity,
-                        reverse_boundary_capacity_mwh=reverse_capacity,
-                        interconnector_envelopes=interconnector_envelopes,
-                    ),
-                ).to_dict()
+
+                def zonal_payload(ahead_result: AheadMarketResult) -> dict[str, object]:
+                    assert self._run_context_ref is not None
+                    assert self._year_context_ref is not None
+                    return ZonalRedispatchDomainV2(
+                        self._run_context_ref,
+                        self._year_context_ref,
+                        ZonalRedispatchPeriodSlice(
+                            period_id=period_id,
+                            ahead_result=ahead_result,
+                            zonal_real_demand_mwh=zonal_demand,
+                            zonal_forecast_demand_mwh=zonal_forecast,
+                            forward_boundary_capacity_mwh=forward_capacity,
+                            reverse_boundary_capacity_mwh=reverse_capacity,
+                            interconnector_envelopes=interconnector_envelopes,
+                            resource_cost_gbp_per_mwh_by_asset=unit_cost,
+                        ),
+                    ).to_dict()
+
+                domain_payload = zonal_payload(ahead)
             period_initial_soc = dict(soc)
             balancing_input = BalancingInput(
                 model_input.run_id,
@@ -2024,13 +2086,16 @@ class StagedBidAtCostPSM:
             balancing_hashes[period_id] = contract_sha256(balancing)
 
             if ledger is not None and self._network_pack is not None:
-                realised_copperplate_input = replace(
-                    balancing_input,
-                    domain_payload=copperplate_payload(ahead),
-                )
-                realised_copperplate = CopperplateBalancing().clear(
-                    realised_copperplate_input
-                )
+                # P0-8 S9 (P2-02/P2-03/P2-04): both reference cases are the
+                # zonal LP without the network, with the same bids, envelopes,
+                # VOLL, unit-cost table and solver; only the network differs.
+                network_free = getattr(self._balancing, "network_free_counterfactual", None)
+                if not callable(network_free):
+                    raise TypeError(
+                        "Zonal balancing must expose network_free_counterfactual"
+                    )
+                realised_copperplate_input = balancing_input
+                realised_copperplate = network_free(realised_copperplate_input)
                 perfect_ahead_input = replace(
                     ahead_input,
                     forecast_demand_mwh=float(chronology.demand_mwh[period]),
@@ -2053,18 +2118,32 @@ class StagedBidAtCostPSM:
                     perfect_bids,
                     model_input.period_hours,
                     chronology.voll_gbp_per_mwh,
-                    domain_payload=copperplate_payload(perfect_ahead),
+                    domain_payload=zonal_payload(perfect_ahead),
                 )
-                perfect_copperplate = CopperplateBalancing().clear(
-                    perfect_copperplate_input
+                perfect_copperplate = network_free(perfect_copperplate_input)
+                primary_zonal = float(balancing.extensions["primary_objective_gbp"])
+                primary_network_free = float(
+                    realised_copperplate.extensions["primary_objective_gbp"]
+                )
+                order_tolerance = 1e-6 + 1e-8 * max(
+                    1.0, abs(primary_zonal), abs(primary_network_free)
+                )
+                if primary_zonal < primary_network_free - order_tolerance:
+                    raise ValueError(
+                        "GF_NETWORK_COUNTERFACTUAL_ORDER: the zonal primary objective "
+                        f"{primary_zonal} is below the network-free one "
+                        f"{primary_network_free} in period {period_id}"
+                    )
+                zonal_account_totals["network_constraint_bid_objective_gbp"] += (
+                    primary_zonal - primary_network_free
                 )
 
-                copperplate_identity = (
-                    f"{CopperplateBalancing.id}@{CopperplateBalancing.version}"
+                counterfactual_identity = (
+                    f"{COUNTERFACTUAL_ENGINE}@{getattr(self._balancing, 'version')}"
                 )
                 module_identities = {
-                    "perfect_forecast_copperplate": copperplate_identity,
-                    "realised_copperplate": copperplate_identity,
+                    "perfect_forecast_copperplate": counterfactual_identity,
+                    "realised_copperplate": counterfactual_identity,
                     "zonal_final": (
                         f"{getattr(self._balancing, 'id')}@"
                         f"{getattr(self._balancing, 'version')}"
@@ -2076,7 +2155,7 @@ class StagedBidAtCostPSM:
                     "zonal_final": balancing_input,
                 }
                 realised_input_sha256_by_case = {
-                    case: _realised_case_input_sha256(case_input, resource_cost)
+                    case: _realised_case_input_sha256(case_input, unit_cost)
                     for case, case_input in sorted(case_inputs.items())
                 }
                 dispatch_by_case = {
@@ -2337,7 +2416,7 @@ class StagedBidAtCostPSM:
                         float(storage_row.get("charge_mwh", 0.0) or 0.0),
                         float(storage_row.get("discharge_mwh", 0.0) or 0.0),
                         max(float(final_dispatch), 0.0)
-                        * float(resource_cost.get(asset_id, 0.0)),
+                        * float(unit_cost.get(asset_id, 0.0)),
                     ))
 
                 accepted_by_bid = {
@@ -2404,7 +2483,15 @@ class StagedBidAtCostPSM:
                         actual_storage_discharge[base_by_asset.get(asset_id, asset_id)] += float(dispatch_mwh)
                     continue
                 if dispatch_mwh > 0:
-                    generation[base_by_asset.get(asset_id, asset_id)] += float(dispatch_mwh)
+                    base = base_by_asset.get(asset_id, asset_id)
+                    generation[base] += float(dispatch_mwh)
+                    # C22: the running cost of the dispatched MWh at this
+                    # period's unit cost.  Kept as prefixed keys of the free
+                    # zonal_account_totals mapping so StagedPSMRuntimeState
+                    # (and its schema) carries it unchanged across restores.
+                    zonal_account_totals[AGENT_VARIABLE_COST_PREFIX + base] += float(
+                        dispatch_mwh
+                    ) * float(unit_cost.get(asset_id, 0.0))
             for asset_id, settled_mwh in ahead.settlement_mwh_by_asset.items():
                 owner = owner_by_asset.get(asset_id, asset_id)
                 cashflow = settled_mwh * ahead.clearing_price_gbp_per_mwh
@@ -3028,6 +3115,11 @@ class StagedBidAtCostPSM:
                 agent_cashflow.EXTENSION_KEY: _staged_agent_cashflow(
                     self.id, generation, chronology.resources, base_by_asset,
                     model_input.operating_state.assets,
+                    variable_cost_gbp_by_asset={
+                        key[len(AGENT_VARIABLE_COST_PREFIX):]: float(value)
+                        for key, value in zonal_account_totals.items()
+                        if key.startswith(AGENT_VARIABLE_COST_PREFIX)
+                    },
                 ),
                 "national_settlement_gbp_by_owner": dict(national_settlement),
                 "redispatch_settlement_gbp_by_owner": dict(redispatch_settlement),
@@ -3077,11 +3169,17 @@ class StagedBidAtCostPSM:
                         "policy_transfer_gbp": zonal_account_totals[
                             "policy_transfer_gbp"
                         ],
+                        # P0-8 S9: the same difference on the accepted-bid
+                        # objective basis (zonal minus network-free primary).
+                        "network_constraint_bid_objective_gbp": zonal_account_totals[
+                            "network_constraint_bid_objective_gbp"
+                        ],
                         "boundary_shadow_value_gbp": 0.0,
                     }
                     if self._network_pack is not None else None
                 ),
                 "market_ledger": ledger_metadata,
+                "network_method_rules": self._network_rules.record(),
                 "solver_validation_summary": solver_validation_summary,
                 "vre_expansion_headroom_mw_by_technology": dict(
                     chronology.extensions.get("vre_expansion_headroom_mw_by_technology") or {}

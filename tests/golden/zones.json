@@ -541,6 +541,21 @@
    "pattern": "*::*capital_cost_components*",
    "zone": "accounting",
    "why": "P0-7 S8 (P4-03, A7, Q12): what the PSM's annualised capital total contains (compatibility capital, VRE/storage FOM); a cost-ledger input"
+  },
+  {
+   "pattern": "*::*network_method_rules*",
+   "zone": "identity",
+   "why": "P0-8 S7 (P2-05/P3-04, C15): network method rule-set identity record (rule-set id and sha, dec pricing and tie rule, shared down-regulation table); method identity governed by VERSION_LEDGER"
+  },
+  {
+   "pattern": "*::*network_constraint_bid_objective_gbp*",
+   "zone": "accounting",
+   "why": "P0-8 S9 (P2-02/P2-03/P2-04, Q12): zonal minus network-free primary objective, a diagnostic of the network cost on the accepted-bid basis; dispatch is unchanged"
+  },
+  {
+   "pattern": "*::*boundary_congestion_rent_diagnostic_gbp*",
+   "zone": "accounting",
+   "why": "P0-8 S10 (P2-06/F3-05, Q12): annual sum of primary-stage boundary dual x transfer, a diagnostic, not a cash cost"
   }
  ]
 }
