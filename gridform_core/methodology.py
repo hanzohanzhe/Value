@@ -547,12 +547,7 @@ def reference_deviations(
 
 # --- data packs -------------------------------------------------------------
 
-def classify_data_pack(manifest: Mapping[str, object]) -> str:
-    """pack_class: manifest field -> known registry -> teaching_only -> SYNTHETIC -> user_workspace."""
-
-    declared = manifest.get("pack_class")
-    if isinstance(declared, str) and declared in PACK_CLASSES:
-        return declared
+def _inferred_pack_class(manifest: Mapping[str, object]) -> str:
     known = KNOWN_PACK_CLASSES.get(str(manifest.get("id") or ""))
     if known:
         return known
@@ -560,6 +555,23 @@ def classify_data_pack(manifest: Mapping[str, object]) -> str:
         return "teaching"
     if str(manifest.get("country") or "").upper() == "SYNTHETIC":
         return "synthetic"
+    return "user_workspace"
+
+
+def classify_data_pack(manifest: Mapping[str, object]) -> str:
+    """pack_class from verifiable facts: known registry -> teaching_only -> SYNTHETIC -> user_workspace.
+
+    A self-declared ``pack_class`` is never trusted on its own (otherwise a
+    real GB pack could whitelist itself as synthetic for the frozen profile):
+    it is accepted only when it equals the inferred class; a conflicting
+    declaration makes the pack ``user_workspace``, the strictest class.
+    P0-5 S3 takes over the data-method policy.
+    """
+
+    inferred = _inferred_pack_class(manifest)
+    declared = manifest.get("pack_class")
+    if declared is None or declared == inferred:
+        return inferred
     return "user_workspace"
 
 

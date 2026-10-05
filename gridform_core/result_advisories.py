@@ -152,6 +152,17 @@ def _validation_report(run: Mapping[str, Any], run_root: Path) -> dict[str, Any]
     ))
 
 
+def methodology_unresolved(run: Mapping[str, Any]) -> bool:
+    """A run created after X0 S9 whose profile could not be resolved (e.g. an unknown id).
+
+    It is not a pre-fix run: it gets no pre-profile advisory and its claims
+    are not rewritten to superseded_pre_fix.
+    """
+
+    record = run.get("methodology")
+    return isinstance(record, Mapping) and record.get("status") == "unresolved"
+
+
 def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str, Any]]:
     """Advisories that apply to one run, most severe first.  Read-only."""
 
@@ -179,7 +190,7 @@ def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str
         })
     report = _validation_report(run, run_root)
     predicates = {
-        "pre_profile_run": methodology is None,
+        "pre_profile_run": methodology is None and not methodology_unresolved(run),
         "legacy_validation_report": report.get("schema_version") == LEGACY_VALIDATION_SCHEMA,
     }
     for advisory in generic_advisories():
@@ -340,7 +351,10 @@ def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> 
 
     # X0 S10b: methodology, superseded positive claims, advisories, Q14.
     methodology = recorded_methodology(run, run_root)
-    if methodology is None:
+    if methodology is None and methodology_unresolved(run):
+        unresolved = dict(run["methodology"])
+        run["methodology"] = {"status": "unresolved", "profile_id": None, "error": unresolved.get("error")}
+    elif methodology is None:
         run["methodology"] = {"status": "not_recorded", "profile_id": None}
         recorded = {field: run.get(field) for field in SUPERSEDED_FIELDS if run.get(field) == "passed"}
         if recorded:

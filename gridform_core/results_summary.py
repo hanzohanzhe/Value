@@ -534,12 +534,24 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
                 review_reasons.append({"run_id": run_id, "reason": "advisory", "advisory_id": advisory.get("id"), "severity": advisory.get("severity")})
         if summary.get("run", {}).get("scientific_status") == "failed":  # type: ignore[union-attr]
             review_reasons.append({"run_id": run_id, "reason": "validation_failed"})
+    # The whole method identity, not only the profile id: the same profile at
+    # another version, definition or applied-correction set is another method.
+    identity_keys = ("profile_id", "profile_version", "profile_definition_sha256", "applied_corrections_sha256")
     profiles = [
         (row.get("methodology") or {}).get("profile_id") if isinstance(row.get("methodology"), Mapping) else None
         for row in summaries
     ]
-    if any(isinstance(row.get("methodology"), Mapping) for row in summaries) and len(set(profiles)) > 1:
-        review_reasons.append({"reason": "methodology_differs", "profile_ids": profiles})
+    identities = [
+        tuple((row.get("methodology") or {}).get(key) for key in identity_keys)  # type: ignore[union-attr]
+        if isinstance(row.get("methodology"), Mapping) else None
+        for row in summaries
+    ]
+    if any(isinstance(row.get("methodology"), Mapping) for row in summaries) and len(set(identities)) > 1:
+        differing = sorted({
+            key for index, key in enumerate(identity_keys)
+            if len({item[index] if item else None for item in identities}) > 1
+        })
+        review_reasons.append({"reason": "methodology_differs", "profile_ids": profiles, "differing_fields": differing})
     for run_id in publication_withheld:
         review_reasons.append({"run_id": run_id, "reason": "annual_results_withheld"})
     attribution_status = "needs_review" if review_reasons else "reviewable"

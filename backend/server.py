@@ -876,6 +876,7 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
     pack_id = str(project.get("data_pack_id") or "")
     pack = read_json(PACKS_ROOT / pack_id / "manifest.json") if pack_id else None
     available_roles = set(valid_available_roles(project, pack_id, pack))
+    network_pack_root = None
     if pack:
         try:
             selection = resolve_zonal_pack_selection(
@@ -889,6 +890,7 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
                     str(role)
                     for role in dict(selection.network_manifest.get("bindings") or {})
                 )
+            network_pack_root = selection.network_pack_root
         except ValueError:
             # Draft resolution keeps the stable missing-role diagnostics. The
             # readiness endpoint reports the exact missing Network Pack.
@@ -899,7 +901,12 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
         module_catalog=MODULES,
         base_dataset_slots=DATASET_SLOTS,
         available_data_roles=tuple(sorted(available_roles)),
-        data_packs=[pack_entry(PACKS_ROOT / pack_id, pack)] if pack else [],
+        # The same whitelist input as preflight and the run entry (C16): the
+        # base pack and, for a zonal Study, its Network Pack.
+        data_packs=[
+            pack_entry(PACKS_ROOT / pack_id, pack),
+            pack_entry(network_pack_root) if network_pack_root is not None else None,
+        ] if pack else [],
     )
 
 

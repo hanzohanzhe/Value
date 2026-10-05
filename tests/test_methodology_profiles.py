@@ -243,7 +243,16 @@ class WhitelistTests(unittest.TestCase):
         workspace = {"id": "my-pack", "country": "GB"}
         self.assertEqual(methodology.classify_data_pack(workspace), "user_workspace")
         self.assertEqual(self._violations(CORRECTED, packs=[(workspace, None), (r029, None)]), [])
-        self.assertEqual(methodology.classify_data_pack({"id": "x", "pack_class": "synthetic"}), "synthetic")
+        # A self-declared class is not trusted: a real GB pack cannot whitelist itself as synthetic.
+        self.assertEqual(methodology.classify_data_pack({"id": "x", "pack_class": "synthetic"}), "user_workspace")
+        claimed = {"id": "my-gb-copy", "country": "GB", "pack_class": "synthetic"}
+        self.assertEqual(methodology.classify_data_pack(claimed), "user_workspace")
+        self.assertEqual(self._violations(DOCTORAL, packs=[(claimed, None)])[0]["sub_reason"], "data_pack")
+        synthetic = {"id": "contract-pack", "country": "SYNTHETIC"}
+        self.assertEqual(methodology.classify_data_pack(synthetic), "synthetic")
+        self.assertEqual(methodology.classify_data_pack(dict(synthetic, pack_class="synthetic")), "synthetic")
+        self.assertEqual(self._violations(DOCTORAL, packs=[(synthetic, None)]), [])
+        self.assertEqual(methodology.classify_data_pack(dict(user_copy, pack_class="synthetic")), "user_workspace")
 
     def test_enabled_external_code_refuses_the_frozen_profile_only(self):
         with patch("gridform_core.methodology.external_code_entries", return_value=["module:my-storage-module"]):
@@ -288,6 +297,31 @@ class EntryPointTests(unittest.TestCase):
         ok = resolve_study_draft(self._project(DOCTORAL), registry=self.registry, module_catalog=[], base_dataset_slots=[])
         self.assertNotIn("VALUE_PROFILE_COMBINATION_UNSUPPORTED", {row["code"] for row in ok["errors"]})
         self.assertEqual(ok["methodology"]["reference_deviations"], [])
+
+    def test_study_resolution_checks_the_network_pack_like_preflight(self):
+        """C16: server.resolve_project_draft passes the base and the Network Pack to the whitelist."""
+
+        from types import SimpleNamespace
+
+        from backend import server
+
+        with tempfile.TemporaryDirectory() as folder:
+            packs = Path(folder) / "data-packs"
+            shutil.copytree(ROOT / "data-packs" / "value-101-baseline-v1", packs / "value-101-baseline-v1")
+            network_root = ROOT / "data-packs" / "value-101-network-v1"
+            network_manifest = _pack("value-101-network-v1")
+            selection = SimpleNamespace(network_manifest=network_manifest, network_pack_root=network_root)
+            project = self._project(DOCTORAL)
+            project["data_pack_id"] = "value-101-baseline-v1"
+            with patch.object(server, "PACKS_ROOT", packs), \
+                    patch.object(server, "resolve_zonal_pack_selection", return_value=selection), \
+                    patch.object(server, "resolve_study_draft", wraps=resolve_study_draft) as spy:
+                draft = server.resolve_project_draft(project)
+        ids = [entry[0].get("id") for entry in spy.call_args.kwargs["data_packs"] if entry is not None]
+        self.assertEqual(ids, ["value-101-baseline-v1", "value-101-network-v1"])
+        violations = [row for issue in draft["errors"] if issue["code"] == "VALUE_PROFILE_COMBINATION_UNSUPPORTED"
+                      for row in issue.get("detail") or []]
+        self.assertIn("value-101-network-v1", {row.get("data_pack_id") for row in violations if row.get("sub_reason") == "data_pack"})
 
     def test_preflight_refuses_unsupported_combinations(self):
         def preflight(project):

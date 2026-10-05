@@ -86,6 +86,19 @@ class PresentScientificStatusTests(unittest.TestCase):
         self.assertEqual(legacy["scientific_scenario_status"], "failed")
         self.assertNotIn("recorded_validation_statuses", legacy)
 
+    def test_unresolved_methodology_is_not_treated_as_a_pre_fix_run(self):
+        with tempfile.TemporaryDirectory() as folder:
+            run = {"id": "run", "mode": "full", "modules": {}, "results": [],
+                   "scientific_validation_status": "passed",
+                   "methodology": {"schema_version": "value.methodology/v1", "status": "unresolved",
+                                   "error": "Unknown methodology profile 'typo'"}}
+            presented = present_scientific_status(run, Path(folder))
+        self.assertEqual(presented["methodology"]["status"], "unresolved")
+        self.assertIn("typo", presented["methodology"]["error"])
+        self.assertEqual(presented["scientific_validation_status"], "passed")
+        self.assertNotIn("recorded_validation_statuses", presented)
+        self.assertNotIn("VALUE-ADV-2026-10-04-REVIEW", {row["id"] for row in presented["advisories"]})
+
     def test_server_present_run_uses_the_shared_function(self):
         from backend import server
 
@@ -176,6 +189,18 @@ class FixtureRunTests(unittest.TestCase):
         self.assertIn("methodology_differs", reasons)
         self.assertIn("annual_results_withheld", reasons)
         self.assertTrue(mixed["annual_metrics_withheld"])
+
+    def test_same_profile_id_with_another_identity_is_a_methodology_difference(self):
+        first = build_run_summary(FIXTURES / "doctoral-no-invariants")
+        second = json.loads(json.dumps(first))
+        second["run"]["run_id"] = "other"
+        self.assertNotIn("methodology_differs",
+                         {row["reason"] for row in compare_run_summaries([first, second])["attribution_review_reasons"]})
+        second["methodology"]["applied_corrections_sha256"] = "0" * 64
+        reasons = compare_run_summaries([first, second])["attribution_review_reasons"]
+        row = next(row for row in reasons if row["reason"] == "methodology_differs")
+        self.assertEqual(row["differing_fields"], ["applied_corrections_sha256"])
+        self.assertEqual(len(set(row["profile_ids"])), 1)
 
 
 class WithheldAnnualResourceTests(unittest.TestCase):
