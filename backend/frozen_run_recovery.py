@@ -14,12 +14,13 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from backend.frozen_input_recovery import stage_recovered_inputs
+from backend.frozen_input_recovery import recovered_manifests, stage_recovered_inputs
 from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.frontend_contract import (
     EXPERIMENTAL_ACK, maturity_acknowledgement_requirements, resolve_study_draft,
     solver_contract_upgrade_preview,
 )
+from gridform_core.methodology import COMBINATION_ERROR_CODE, combination_violations, resolve_project_methodology
 from gridform_core.run_snapshot import METHOD_SUPERSEDED
 from gridform_core.project_revision import save_project_revision
 from gridform_core.run_policy import resolve_run_policy
@@ -154,6 +155,39 @@ def _candidate(integrity: dict, scope: dict, recovery_mode: str, *, registry, mo
     return candidate, draft, changes
 
 
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def recovered_methodology_violations(source_run_root: Path, integrity: dict, candidate: dict) -> list[dict]:
+    """The methodology whitelist verdict on the packs recovery would publish (Q3).
+
+    Recovery keeps the Run's methodology profile (the method is fixed by the
+    review).  A frozen profile admits a recovered base pack only when it holds
+    the verified content of a pinned pack (``pack_source_identity.recovered_source``:
+    the same data bytes and semantic metadata as the source manifest recorded
+    in the Run's input snapshot).  The check runs on the manifests staging
+    would write (placeholder IDs; IDs, names and timestamps are not part of
+    the identity), through the same resolver as Study validation, preflight
+    and the worker, so a refusal is reported at review rather than at publish.
+    """
+    try:
+        resolved = resolve_project_methodology(candidate)
+    except ValueError:
+        return []  # the draft errors already report an unknown or unsupported profile
+    snapshot = source_run_root / "input-snapshot"
+    network = integrity["network_manifest"] is not None
+    projected = recovered_manifests(
+        integrity, source_run_id=source_run_root.name, base_pack_id="recovered-base-review",
+        network_pack_id="recovered-network-review" if network else None, timestamp="review",
+        base_manifest_sha256=_file_sha256(snapshot / "pack" / "manifest.json"),
+        network_manifest_sha256=_file_sha256(snapshot / "network-pack" / "manifest.json") if network else None)
+    packs = [(projected["base_manifest"], None)]
+    if network:
+        packs.append((projected["network_manifest"], None))
+    return combination_violations(resolved, data_packs=packs)
+
+
 def review_frozen_recovery(source_run_root: Path, recovery_mode: str, *, registry, module_catalog,
                            dataset_slots, current_execution: Callable[[], dict],
                            verify_archive: Callable[[dict], None]) -> tuple[dict, dict | None]:
@@ -221,6 +255,13 @@ def review_frozen_recovery(source_run_root: Path, recovery_mode: str, *, registr
             # contract is never re-executed silently under v4.
             report["solver_contract_upgrade"] = upgrade
         report["blocking_reasons"].extend(str(row["message"]) for row in draft["errors"])
+        methodology_rows = recovered_methodology_violations(source_run_root, integrity, candidate)
+        if methodology_rows:
+            report["methodology_violations"] = methodology_rows
+            report["blocking_reasons"].append(
+                f"{COMBINATION_ERROR_CODE}: the recovered inputs cannot be published under this Run's methodology "
+                "profile, which admits a recovered pack only when it holds the verified content of a pinned pack: "
+                + "; ".join(str(row["message"]) for row in methodology_rows))
         if recovery_mode == "strict":
             if upgrade is not None:
                 report["blocking_reasons"].append(

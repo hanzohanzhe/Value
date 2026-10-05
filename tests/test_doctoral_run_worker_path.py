@@ -21,13 +21,25 @@ import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
-from gridform_core import methodology
+from gridform_core import methodology, pack_source_identity
+from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.methodology import COMBINATION_ERROR_CODE, REFERENCE_PROFILE_ID
 from gridform_core.project_revision import save_project_revision
 from gridform_core.v2.module_manifest import workspace_registry
 from tests.test_pack_source_identity import VALUE_101_CANONICAL_SHA, VALUE_101_FILE_SHA, value_101_pinned_by
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def rehash_snapshot(snapshot: Path, manifest_path: Path, manifest: dict) -> None:
+    """Rewrite a frozen pack manifest and re-derive the snapshot identity (an older snapshot format)."""
+
+    from tests.test_frozen_input_integrity import FrozenInputIntegrityTests
+
+    for path in (manifest_path, snapshot / "snapshot.json"):
+        path.chmod(0o644)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    FrozenInputIntegrityTests.rehash(None, snapshot)
 PACK_ID = "value-101-baseline-v1"
 PACK_ROOT = ROOT / "data-packs" / PACK_ID
 
@@ -133,6 +145,72 @@ class DoctoralWorkerPathTests(unittest.TestCase):
         self.assertEqual(methodology.whitelist_manifest(frozen)["id"], PACK_ID)
         self.assertEqual(methodology.manifest_sha256_candidates(frozen),
                          {VALUE_101_FILE_SHA, VALUE_101_CANONICAL_SHA})
+
+    def test_a_doctoral_run_is_recovered_into_a_doctoral_study_that_runs(self):
+        """Review round 4 (minor): frozen-input recovery of a doctoral Run keeps the Q3 whitelist.
+
+        The recovered base pack (new id, scientific_baseline_eligible false) is
+        identified by verified content identity with the pinned VALUE 101 pack;
+        Study validation, preflight and the worker on its own frozen copy all
+        admit it.
+        """
+
+        self._save_study("doctoral-source", REFERENCE_PROFILE_ID)
+        source = self._start_and_work("doctoral-source")
+        self.assertEqual(source["status"], "completed", source)
+        with self._api() as (post, _spawned):
+            status, review = post(f"/api/runs/{source['id']}/frozen-recovery/review", {"recovery_mode": "migration"})
+            self.assertEqual(status, 200, review)
+            self.assertTrue(review["allowed"], review["blocking_reasons"])
+            self.assertNotIn("methodology_violations", review)
+            status, created = post(f"/api/runs/{source['id']}/frozen-recovery", {
+                "name": "Recovered doctoral D1", "acknowledge": True, "recovery_mode": "migration",
+                "review_sha256": review["review_sha256"]})
+            self.assertEqual(status, 201, created)
+        study_id = created["project"]["id"]
+        pack_id = created["project"]["data_pack_id"]
+        self.assertTrue(pack_id.startswith("recovered-base-"))
+        recovered = json.loads((self.home / "data-packs" / pack_id / "manifest.json").read_text(encoding="utf-8"))
+        self.assertIs(recovered["scientific_baseline_eligible"], False)
+        identity = pack_source_identity.resolve_pack_identity(recovered)
+        self.assertEqual((identity.manifest["id"], identity.chain), (PACK_ID, ("recovery",)))
+        self.assertEqual(set(identity.sha256_candidates), {VALUE_101_FILE_SHA, VALUE_101_CANONICAL_SHA})
+        rerun = self._start_and_work(study_id)
+        self.assertEqual(rerun["_exit_code"], 0, rerun.get("error"))
+        self.assertEqual(rerun["status"], "completed", rerun)
+        self.assertEqual(rerun["methodology"]["profile_id"], REFERENCE_PROFILE_ID)
+        frozen = json.loads((self.home / "runs" / rerun["id"] / "input-snapshot" / "pack" / "manifest.json")
+                            .read_text(encoding="utf-8"))
+        self.assertEqual(pack_source_identity.resolve_pack_identity(frozen).chain, ("snapshot", "recovery"))
+
+    def test_recovery_review_blocks_inputs_that_are_not_the_pinned_content(self):
+        """A doctoral Run whose recovered pack would not be a pinned pack is blocked at review, not at publish."""
+
+        self._save_study("doctoral-edited", REFERENCE_PROFILE_ID)
+        source = self._start_and_work("doctoral-edited")
+        self.assertEqual(source["status"], "completed", source)
+        snapshot = self.home / "runs" / source["id"] / "input-snapshot"
+        # A snapshot frozen before the source record carried the source bytes (v1 record): no verifiable identity.
+        manifest_path = snapshot / "pack" / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        record = manifest[pack_source_identity.SOURCE_FIELD]
+        manifest[pack_source_identity.SOURCE_FIELD] = {
+            "schema_version": "value.snapshot-source-manifest/v1",
+            "canonical_sha256": record["canonical_sha256"], "file_sha256": record["file_sha256"],
+            "bindings": json.loads(record["manifest_text"])["bindings"]}
+        rehash_snapshot(snapshot, manifest_path, manifest)
+        status_path = self.home / "runs" / source["id"] / "status.json"
+        run_status = json.loads(status_path.read_text(encoding="utf-8"))
+        integrity = verify_frozen_input_integrity(snapshot)
+        run_status.update(input_snapshot_id=integrity["snapshot_id"], input_tree_sha256=integrity["input_tree_sha256"])
+        status_path.write_text(json.dumps(run_status), encoding="utf-8")
+        with self._api() as (post, _spawned):
+            status, review = post(f"/api/runs/{source['id']}/frozen-recovery/review", {"recovery_mode": "migration"})
+        self.assertEqual(status, 200, review)
+        self.assertFalse(review["allowed"])
+        self.assertEqual([row["sub_reason"] for row in review["methodology_violations"]], ["data_pack"])
+        self.assertTrue(any(reason.startswith(COMBINATION_ERROR_CODE) for reason in review["blocking_reasons"]),
+                        review["blocking_reasons"])
 
     def test_a_refused_combination_in_the_worker_carries_the_profile_code(self):
         """External code enabled between admission and the worker (TOCTOU): the run-entry backstop fires."""

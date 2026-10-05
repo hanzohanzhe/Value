@@ -629,9 +629,9 @@ def whitelist_manifest(manifest: Mapping[str, object]) -> Mapping[str, object]:
     """The manifest the whitelist identifies (``pack_source_identity.resolve_pack_identity``).
 
     A Run executes on its input snapshot, whose pack manifest ``run_snapshot``
-    rewrote.  The whitelist identifies that copy by the verified manifest it
-    was made from; otherwise by the manifest itself (a frozen copy no profile
-    pins).
+    rewrote; a recovered Study runs on a pack recovery rewrote.  The whitelist
+    identifies such a copy by the verified manifest it was made from;
+    otherwise by the manifest itself (a frozen copy no profile pins).
     """
 
     return pack_source_identity.resolve_pack_identity(manifest).manifest
@@ -641,8 +641,8 @@ def manifest_sha256_candidates(manifest: Mapping[str, object], manifest_bytes: b
     """File-byte and canonical-JSON sha256 of the identified manifest (either may be whitelisted).
 
     The same two candidates for a source pack (given its file bytes) and for
-    its frozen copy (whose verified source record carries the source file
-    bytes), so preflight and the worker agree.
+    its frozen copy or recovered pack (whose verified source record carries
+    the source file bytes), so preflight and the worker agree.
     """
 
     return set(pack_source_identity.resolve_pack_identity(manifest, manifest_bytes).sha256_candidates)
@@ -672,6 +672,7 @@ def _pack_supported(profile: Profile, identity: "pack_source_identity.PackIdenti
 
 _UNVERIFIED_PACK_NOTES = {
     "snapshot": " (its run-input snapshot carries no verifiable source manifest identity)",
+    "recovery": " (its recovered inputs carry no verifiable source manifest identity, or differ from that source)",
 }
 
 

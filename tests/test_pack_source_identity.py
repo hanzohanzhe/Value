@@ -217,5 +217,94 @@ class FrozenPackIdentityTests(unittest.TestCase):
         self.assertEqual(self.violations(self.source), [])
 
 
+class RecoveredPackIdentityTests(unittest.TestCase):
+    """A recovered base pack is identified by verified content identity with its source (Q3)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from backend.frozen_input_recovery import recovered_manifests
+        from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
+
+        cls.folder = tempfile.TemporaryDirectory()
+        run_dir = Path(cls.folder.name) / "runs" / "r"
+        freeze(run_dir, PACK_ROOT, Path(cls.folder.name) / "objects")
+        integrity = verify_frozen_input_integrity(run_dir / "input-snapshot")
+        cls.recovered = recovered_manifests(
+            integrity, source_run_id="r", base_pack_id="recovered-base-0123456789abcdef", network_pack_id=None,
+            timestamp="2026-10-05T00:00:00+00:00", base_manifest_sha256="0" * 64,
+            network_manifest_sha256=None)["base_manifest"]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.folder.cleanup()
+
+    def manifest(self):
+        return copy.deepcopy(self.recovered)
+
+    def violations(self, manifest):
+        return methodology.combination_violations(REFERENCE_PROFILE_ID, data_packs=[(manifest, None)])
+
+    def test_the_recovered_pack_is_identified_as_its_source(self):
+        manifest = self.manifest()
+        self.assertEqual(manifest["id"], "recovered-base-0123456789abcdef")
+        self.assertIs(manifest["scientific_baseline_eligible"], False)
+        identity = pack_source_identity.resolve_pack_identity(manifest)
+        self.assertEqual(identity.manifest, json.loads((PACK_ROOT / "manifest.json").read_text(encoding="utf-8")))
+        self.assertEqual((identity.chain, identity.unverified), (("recovery",), None))
+        self.assertEqual(set(identity.sha256_candidates), VALUE_101_SHAS)
+        self.assertEqual(self.violations(manifest), [])
+        # Names, timestamps, qualification and binding bookkeeping are not part of the identity.
+        manifest.update(name="Renamed", updated_at="2027-01-01T00:00:00Z", scientific_validation_status="passed")
+        role = sorted(manifest["bindings"])[0]
+        manifest["bindings"][role]["imported_at"] = "2027-01-01T00:00:00Z"
+        self.assertEqual(self.violations(manifest), [])
+
+    def test_recovered_content_that_differs_from_the_source_is_not_identified(self):
+        role = sorted(self.recovered["bindings"])[0]
+        cases = {}
+        manifest = self.manifest(); manifest["bindings"][role]["unit"] = "GWh"
+        cases["binding metadata"] = manifest
+        manifest = self.manifest(); manifest["bindings"][role]["sha256"] = "0" * 64
+        cases["binding data"] = manifest
+        manifest = self.manifest(); manifest["bindings"][role]["bytes"] += 1
+        cases["binding size"] = manifest
+        manifest = self.manifest(); manifest["bindings"].pop(role)
+        cases["role coverage"] = manifest
+        manifest = self.manifest(); manifest["periods_per_year"] = 8760
+        cases["top-level field"] = manifest
+        manifest = self.manifest(); manifest["description"] = "added"
+        cases["added top-level field"] = manifest
+        manifest = self.manifest(); manifest["data_pack_type"] = "network_overlay"
+        cases["product type"] = manifest
+        manifest = self.manifest(); manifest["frozen_recovery_origin"]["source_pack_id"] = "other-pack"
+        cases["origin pack id"] = manifest
+        manifest = self.manifest()
+        record = manifest["frozen_recovery_origin"]["source_qualification"][pack_source_identity.SOURCE_FIELD]
+        record["manifest_text"] = record["manifest_text"].replace('"periods_per_year": 17520', '"periods_per_year": 8760')
+        cases["record text"] = manifest
+        manifest = self.manifest()
+        manifest["frozen_recovery_origin"]["source_qualification"].pop(pack_source_identity.SOURCE_FIELD)
+        cases["no record"] = manifest
+        for name, manifest in cases.items():
+            with self.subTest(case=name):
+                identity = pack_source_identity.resolve_pack_identity(manifest)
+                self.assertEqual(identity.unverified, "recovery")
+                rows = self.violations(manifest)
+                self.assertEqual([row["sub_reason"] for row in rows], ["data_pack"])
+                self.assertIn("recovered inputs carry no verifiable source manifest identity", rows[0]["message"])
+
+    def test_the_frozen_copy_of_a_recovered_pack_is_identified_through_both_steps(self):
+        folder = Path(self.folder.name) / "recovered-run"
+        pack = folder / "data-packs" / self.recovered["id"]
+        shutil.copytree(PACK_ROOT, pack, ignore=shutil.ignore_patterns("manifest.json"))
+        (pack / "manifest.json").write_text(json.dumps(self.recovered, indent=2, sort_keys=True), encoding="utf-8")
+        frozen_bytes = freeze(folder / "runs" / "r", pack, folder / "objects")
+        frozen = json.loads(frozen_bytes.decode("utf-8"))
+        identity = pack_source_identity.resolve_pack_identity(frozen, frozen_bytes)
+        self.assertEqual(identity.chain, ("snapshot", "recovery"))
+        self.assertEqual(set(identity.sha256_candidates), VALUE_101_SHAS)
+        self.assertEqual(self.violations(frozen), [])
+
+
 if __name__ == "__main__":
     unittest.main()
