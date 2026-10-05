@@ -3597,6 +3597,16 @@ def _raise_keyboard_interrupt(signum: int, _frame: object) -> None:
     raise KeyboardInterrupt(f"signal {signum}")
 
 
+def _ignore_stop_signals() -> None:
+    for name in ("SIGTERM", "SIGHUP", "SIGBREAK"):
+        number = getattr(signal, name, None)
+        if number is not None:
+            try:
+                signal.signal(number, signal.SIG_IGN)
+            except (OSError, ValueError):
+                pass
+
+
 LOOPBACK_BIND_HOSTS = frozenset({"127.0.0.1", "localhost"})
 
 
@@ -3672,6 +3682,9 @@ def main() -> None:
             # place (also between the ready line and serve_forever).
             pass
         finally:
+            # Launchers and process groups often deliver a second SIGTERM;
+            # it must not interrupt the shutdown (stale session file, traceback).
+            _ignore_stop_signals()
             withdraw_session(STATE_ROOT, bound_port, session_token)
             server.server_close()
     finally:

@@ -278,6 +278,42 @@ class BackendSessionLifecycleTests(unittest.TestCase):
                 time.sleep(0.05)
             self.assertFalse(path.exists())
 
+    def test_repeated_stop_signals_still_withdraw_cleanly(self) -> None:
+        """Process groups and launchers often send SIGTERM twice."""
+
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder) / "state"
+            backend = subprocess.Popen(
+                [sys.executable, "-B", "-m", "backend.server", "--port", "0"],
+                cwd=ROOT, env=_environment(VALUE_DATA_HOME=str(state)),
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            try:
+                line = ""
+                for _ in range(50):
+                    line = backend.stdout.readline()
+                    if not line or "VALUE modular API" in line:
+                        break
+                self.assertIn("VALUE modular API", line, backend.stderr.read() if backend.poll() is not None else "")
+                port = int(line.split("http://127.0.0.1:", 1)[1].split()[0])
+                for _ in range(6):
+                    if backend.poll() is not None:
+                        break
+                    backend.send_signal(signal.SIGTERM)
+                    time.sleep(0.02)
+            finally:
+                if backend.poll() is None:
+                    backend.send_signal(signal.SIGTERM)
+                try:
+                    _stdout, stderr = backend.communicate(timeout=180)
+                except subprocess.TimeoutExpired:
+                    backend.kill()
+                    _stdout, stderr = backend.communicate(timeout=30)
+                    self.fail("backend did not stop within 180 s")
+            self.assertEqual(backend.returncode, 0, stderr[-3000:])
+            self.assertNotIn("Traceback", stderr)
+            self.assertFalse(session_path(state, port).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
