@@ -11,7 +11,8 @@ from gridform_core.network_contracts import (
     AssetBusMapping,
     MultiBusMappingError,
 )
-from gridform_core.network_dc import DCNetworkInputError, ReferenceDCNetworkPSM
+from gridform_core.network_contracts import NetworkPSMOutput, network_clearing_input_row
+from gridform_core.network_dc import ReferenceDCNetworkPSM, validate_dc_solution
 
 from tests.network_toys import dc_case, three_bus_dc_case
 
@@ -93,11 +94,82 @@ class ShareStopGapTests(unittest.TestCase):
         with self.assertRaisesRegex(ACNetworkInputError, "exactly one bus mapping"):
             ReferenceACFeasibilityPSM().run(wrapped)
 
-    def test_reference_dc_refuses_a_split_mapping_instead_of_guessing(self) -> None:
-        _network, wrapped = three_bus_dc_case(split=True)
-        with self.assertRaisesRegex(DCNetworkInputError, "multi-bus share"):
-            ReferenceDCNetworkPSM().run(wrapped)
 
+
+class DCShareExpansionTests(unittest.TestCase):
+    """S3: expand-solve-aggregate; HEAD put all 200 MW at the last row's bus."""
+
+    def solve(self, network, wrapped):
+        result = ReferenceDCNetworkPSM().run(wrapped)
+        output = NetworkPSMOutput.from_dict(result.extensions["network"])
+        validate_dc_solution(network, output)
+        return result, output
+
+    def test_split_wind_needs_no_flow_and_no_gas(self) -> None:
+        network, wrapped = three_bus_dc_case(split=True)
+        result, output = self.solve(network, wrapped)
+        period = output.periods[0]
+        self.assertAlmostEqual(period.branch_flow_mw["AB"], 0.0, places=7)
+        self.assertAlmostEqual(result.generation_mwh_by_asset["gas"], 0.0, places=7)
+        self.assertAlmostEqual(result.total_operational_cost_gbp, 0.0, places=6)
+        self.assertAlmostEqual(period.nodal_injection_mwh["A"], 100.0, places=7)
+        self.assertAlmostEqual(period.nodal_injection_mwh["B"], 100.0, places=7)
+
+    def test_split_equals_two_explicit_units_and_row_order_is_irrelevant(self) -> None:
+        split = self.solve(*three_bus_dc_case(split=True))
+        swapped = self.solve(*three_bus_dc_case(split=True, swap_rows=True))
+        explicit = self.solve(*three_bus_dc_case(split=False))
+        for other in (swapped, explicit):
+            self.assertAlmostEqual(split[0].total_operational_cost_gbp, other[0].total_operational_cost_gbp, places=9)
+            self.assertEqual(split[1].periods[0].branch_flow_mw, other[1].periods[0].branch_flow_mw)
+            self.assertEqual(split[1].periods[0].nodal_price_gbp_per_mwh, other[1].periods[0].nodal_price_gbp_per_mwh)
+        self.assertEqual(split[0].total_operational_cost_gbp, swapped[0].total_operational_cost_gbp)
+        self.assertAlmostEqual(
+            split[0].generation_mwh_by_asset["wind"],
+            explicit[0].generation_mwh_by_asset["wind-a"] + explicit[0].generation_mwh_by_asset["wind-b"],
+            places=9,
+        )
+        row = network_clearing_input_row(three_bus_dc_case(split=True)[0], period=0)
+        payload = json.loads(row.payload_json)["payload"]
+        self.assertEqual(payload["asset_bus_shares"]["wind"], [["A", 0.5], ["B", 0.5]])
+        self.assertNotIn("wind", payload["asset_to_bus"])
+        self.assertEqual(payload["asset_to_bus"]["gas"], "C")
+
+    def test_split_storage_keeps_one_soc_curve_per_bus(self) -> None:
+        demand = {"A": [0.0, 40.0], "B": [0.0, 40.0]}
+        resources = [{"asset_id": "gas", "capacity_mw": 200.0, "cost": 10.0, "buses": [("A", 1.0)]},
+                     {"asset_id": "peaker", "capacity_mw": 200.0, "cost": 500.0, "buses": [("B", 1.0)]}]
+        branches = [{"branch_id": "AB", "from_bus": "A", "to_bus": "B", "rating_mw": 5.0}]
+        split = dc_case(demand, resources, branches=branches, terminal_soc_rule="free", storage=[{
+            "asset_id": "battery", "power_mw": 40.0, "energy_mwh": 80.0, "efficiency": 1.0,
+            "buses": [("A", 0.25), ("B", 0.75)],
+        }])
+        explicit = dc_case(demand, resources, branches=branches, terminal_soc_rule="free", storage=[
+            {"asset_id": "battery-a", "power_mw": 10.0, "energy_mwh": 20.0, "efficiency": 1.0, "buses": [("A", 1.0)]},
+            {"asset_id": "battery-b", "power_mw": 30.0, "energy_mwh": 60.0, "efficiency": 1.0, "buses": [("B", 1.0)]},
+        ])
+        split_result, split_output = self.solve(*split)
+        explicit_result, _ = self.solve(*explicit)
+        self.assertAlmostEqual(
+            split_result.total_operational_cost_gbp, explicit_result.total_operational_cost_gbp, places=6
+        )
+        curves = split_output.extensions["storage_sub_resources"]
+        self.assertEqual(set(curves), {"battery::bus::A", "battery::bus::B"})
+        self.assertEqual(curves["battery::bus::A"]["share"], 0.25)
+        for sub in curves.values():
+            self.assertLessEqual(max(sub["soc"]), 80.0 * sub["share"] + 1e-9)
+        aggregate = split_output.extensions["storage"]["battery"]["soc"]
+        for period, value in enumerate(aggregate):
+            self.assertAlmostEqual(
+                value, sum(sub["soc"][period] for sub in curves.values()), places=9
+            )
+
+    def test_single_bus_input_is_bit_identical_to_the_one_bus_solve(self) -> None:
+        network, wrapped = three_bus_dc_case(split=False)
+        result, output = self.solve(network, wrapped)
+        self.assertNotIn("storage_sub_resources", output.extensions)
+        self.assertEqual(output.extensions["share_mapping_rule"], "expand_solve_aggregate/v1")
+        self.assertEqual(ReferenceDCNetworkPSM.version, "1.1.0")
 
 if __name__ == "__main__":
     unittest.main()

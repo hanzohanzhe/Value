@@ -336,7 +336,7 @@ def network_clearing_input_row(
     network_input: NetworkPSMInput, *, period: int, stage: str = "network_dispatch"
 ) -> ClearingInputRow:
     network_input.validate()
-    mappings = network_input.topology.mapping_by_asset()
+    shares = network_input.topology.mappings_by_asset()
     payload = {
         "network_schema_version": network_input.schema_version,
         "capability": network_input.capability,
@@ -344,7 +344,18 @@ def network_clearing_input_row(
         "period_id": network_input.chronology.period_ids[period],
         "buses": [item.to_dict() for item in network_input.topology.buses],
         "branches": [item.to_dict() for item in network_input.topology.branches],
-        "asset_to_bus": {asset: mapping.bus_id for asset, mapping in sorted(mappings.items())},
+        # Single-bus assets keep the historical one-bus form; the complete
+        # share list (P1-01) is recorded for every asset.
+        "asset_to_bus": {
+            asset: rows[0].bus_id for asset, rows in sorted(shares.items()) if len(rows) == 1
+        },
+        "asset_bus_shares": {
+            asset: [
+                [row.bus_id, float(row.share)]
+                for row in sorted(rows, key=lambda item: item.bus_id)
+            ]
+            for asset, rows in sorted(shares.items())
+        },
         "nodal_demand_mwh": {
             bus: values[period] for bus, values in sorted(network_input.demand_mwh_by_bus.items())
         },

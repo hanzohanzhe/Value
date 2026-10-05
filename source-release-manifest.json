@@ -4398,7 +4398,7 @@
     },
     {
       "path": "docs/generated/MODULES.md",
-      "sha256": "dd0ab6d47924251aac1b705c155959d3903648bc5c77bad4a39c78cf48a236a1",
+      "sha256": "6d74635ec9143edf95e87ff8504cb55036c14120dc2526452d0266ed4315c744",
       "bytes": 4123,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -4596,8 +4596,8 @@
     },
     {
       "path": "docs/release/VERSION_LEDGER.json",
-      "sha256": "84dc888424f7359f75d1b07db290376bd1cedfed7cc9b13b1e50d912fb35a5b6",
-      "bytes": 5437,
+      "sha256": "2bf6edf97cb2eb47620b6e95ec51dad119cfc82b3b8486eb1002f0d6f3940e63",
+      "bytes": 5936,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7593,9 +7593,9 @@
     },
     {
       "path": "gridform_core/manifests/value-reference-dc-network.json",
-      "sha256": "fcfec665e197937452ce46361ee8fda54738096c0b6494fca39e777d9c54bc35",
-      "bytes": 1863,
-      "transform": "byte copy"
+      "sha256": "139aa7a94d04945630d62ae9f5d19bbdc35a63f85828d935c440e6d801cad6a9",
+      "bytes": 1881,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/manifests/value-repd-era5-aggregated-weather.json",
@@ -7707,14 +7707,14 @@
     },
     {
       "path": "gridform_core/network_contracts.py",
-      "sha256": "ece18783e4d8c9c02838f8130d1a29841ab99cd24f81158fa2b3467cd7c92f1e",
-      "bytes": 20450,
+      "sha256": "acd53df6b29839efc7da0cde7c08ddaa8186f0c2539891116553fb4c4120cde1",
+      "bytes": 20875,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/network_dc.py",
-      "sha256": "4a18268f6d5f572451ceab4f3d560e5b0b5ff101a154ca2f5fc8bf05fd2ff9bd",
-      "bytes": 28753,
+      "sha256": "9877d1d5c492286559d1233deb63de77007bad2e7ee5ddc4be3bacaf916a50c3",
+      "bytes": 31561,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10717,8 +10717,8 @@
     },
     {
       "path": "tests/test_p08_network_shares.py",
-      "sha256": "f75d7b93cff4b987170c6647ae776ec78ab1bf15c918822329b2105b6af84449",
-      "bytes": 4208,
+      "sha256": "15f73d376062b463aa35aae39abef020663400091c6dac45b3a2bd92e619bd60",
+      "bytes": 8650,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10993,9 +10993,9 @@
     },
     {
       "path": "tests/test_prompt70_network_expansion.py",
-      "sha256": "eccfea912e7387790c9125dd20ac6a7acd88d45d7df1538226969ea6767263dd",
-      "bytes": 15273,
-      "transform": "byte copy"
+      "sha256": "5e53e22c982078d9f4b275a5cb7711b96888dbb2ceb7cf69e8e0fa3fbd7d652c",
+      "bytes": 15295,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt78_expanded_study_contract.py",

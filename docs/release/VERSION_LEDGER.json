@@ -81,8 +81,19 @@
     "value-reference-dc-network": {
       "baseline_version": "1.0.0",
       "baseline_scientific_version": "reference-chronological-dc-opf-v1",
-      "current_version": "1.0.0",
-      "bumps": []
+      "current_version": "1.1.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "1.1.0",
+          "package": "P0-8a",
+          "correction_ids": [
+            "p08.network-share-expansion"
+          ],
+          "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs solve bit-identically.",
+          "requires_user_opt_in": false
+        }
+      ]
     },
     "value-repd-era5-aggregated-weather": {
       "baseline_version": "1.0.0",
