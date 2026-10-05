@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "89b6c822df7d800fdca1f00da520cb833194ae952c320436db7f0bfac6f4e7f9",
+  "runtime_tree_sha256": "872700d12a4c45ca3e924332318c1ed0aad6e569e4493927bd10ead7fb6dc6b7",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -127,18 +127,22 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "0446e356c6bc1abeb61e1c88ff2c1fc86d1486c2cacb087c9c1a1c534a9fe632",
+      "sha256": "debb2eaed45d0844e3ab1e5aa7c084ba3123047e378521ea7287438aa981e206",
       "kind": "declared_runtime_edit",
       "correction_ids": [
         "p04.storage-energy-audit",
         "p04.surplus-node-boundary",
         "p04.surplus-routing",
+        "p05.firm-availability",
         "p05.interconnector-clock",
+        "p05.vre-loss-factors",
+        "p05.weather-cache-key",
+        "p05.weather-time-convention",
         "p06.native-market-rules",
         "p06.physical-operating-cost",
         "p06.realise-period"
       ],
-      "note": "P0-6 S4-S10: P5-06 operating-cost terms and rule diagnostics (universal); corrected rule-set clearing paths (D1-surplus, merit key, avoided-cost stack, storage netting, cycle-only bid basis) gated by NativeMarketRules fields",
+      "note": "P0-5b S5: keyed weather cache; corrected-profile site CF and firm availability injection (kernel_injection.py)",
       "previous_kind": "value_instrumentation"
     },
     {

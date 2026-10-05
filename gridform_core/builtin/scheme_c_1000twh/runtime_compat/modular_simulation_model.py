@@ -2782,6 +2782,13 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     print(f"尝试打开wind文件: {filein}")
     print(f"文件是否存在: {os.path.exists(filein)}")
 
+    # VALUE P0-5b (p05.weather-cache-key): the process cache is keyed by the
+    # files it was built from, so a later run on other weather never reuses it.
+    from .. import kernel_injection as _kernel_injection
+    _weather_key = _kernel_injection.weather_cache_key(filein, solar_file)
+    if _WEATHER_LIMIT_CACHE is not None and (len(_WEATHER_LIMIT_CACHE) != 2
+                                             or _WEATHER_LIMIT_CACHE[0] != _weather_key):
+        _WEATHER_LIMIT_CACHE = None
     if _WEATHER_LIMIT_CACHE is None:
         print("Preparing weather profiles from netCDF files...", flush=True)
         if Dataset is not None:
@@ -2848,7 +2855,7 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         except Exception:
             pass
 
-        _WEATHER_LIMIT_CACHE = (
+        _WEATHER_LIMIT_CACHE = _weather_key, (
             solar_limit_Nottingham, solar_limit_Ipswich, solar_limit_London, solar_limit_Newcastle,
             solar_limit_Manchester, solar_limit_Edinburgh, solar_limit_Portsmouth, solar_limit_Bournemouth,
             solar_limit_Cardiff, solar_limit_Birmingham, solar_limit_Sheffield,
@@ -2875,7 +2882,7 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         offshore_limit7, offshore_limit8, offshore_limit9, offshore_limit10, offshore_limit11, offshore_limit12,
         offshore_limit13, offshore_limit14, offshore_limit15, offshore_limit16, offshore_limit17, offshore_limit18,
         offshore_limit19, offshore_limit20, offshore_limit21,
-    ) = _WEATHER_LIMIT_CACHE
+    ) = _WEATHER_LIMIT_CACHE[1]
 
     LIMIT1 = IterLimit(solar_limit_Nottingham)
     LIMIT2 = IterLimit(solar_limit_Ipswich)
@@ -2986,6 +2993,11 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         getattr(_boundary_context, "_runtime", None), config.file_paths, periods)
     _boundary_connections = {c.name: c for c in (Interconnect_France, Interconnect_Netherland,
                              Interconnect_Ireland, Interconnect_Norway, Interconnect_Beligum) if c is not None}
+    # VALUE P0-5b (corrected profile only): site CF (weather v2, loss factors)
+    # and nuclear / natural-flow hydro availability from the shared arrays of
+    # the canonical adapter; None (doctoral, unit sessions) keeps the frozen path.
+    _site_inputs = _kernel_injection.active_site_inputs(
+        getattr(_boundary_context, "_runtime", None), generators, periods)
 
     for period in range(periods):
         # Memory cleanup every 100 periods to prevent MemoryError
@@ -3079,6 +3091,8 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         offshore20.capacity_limit = offshore20.capacity_multiplier * (piecewise_limit3(offshore_speed20))
         offshore21.capacity_limit = offshore21.capacity_multiplier * (piecewise_limit4(offshore_speed21))
 
+        if _site_inputs is not None:
+            _kernel_injection.assign_period(_site_inputs, period)
         _kernel_boundary.assign_period(_boundary, _boundary_connections, period)
 
         # chosen generation in wholesale，cost from stored energy and two storage pool variable for plotting

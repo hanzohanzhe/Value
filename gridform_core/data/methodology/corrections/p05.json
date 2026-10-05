@@ -3,7 +3,8 @@
   "package": "p05",
   "notes": [
     "P0-5a data reading and validation (plan 4.5 S1-S4, S9, S10). Universal corrections follow decisions A3/Q9 (P6-24) and A5 (P6-02, P6-03, P6-04); P6-01 and the validation/unit contracts are pure software fixes (plan 4.5 dual-track).",
-    "The registry-backed repairs (P6-02/P6-03/P6-04) act only on objects whose sha256 is verified against gridform_core/data/validation/known_data_objects_v1.json; the shipped VALUE 101 packs carry constant, identical boundary series and no registry object, so their trajectories are unchanged."
+    "The registry-backed repairs (P6-02/P6-03/P6-04) act only on objects whose sha256 is verified against gridform_core/data/validation/known_data_objects_v1.json; the shipped VALUE 101 packs carry constant, identical boundary series and no registry object, so their trajectories are unchanged.",
+    "P0-5b corrected-profile data science (plan 4.5 S5-S8, S11, S12; decisions Q15, A1 and the nuclear/hydro row): weather v2 time conventions, literature VRE loss factors (no statistical calibration), nuclear and natural-flow hydro availability (reference values PENDING AUTHOR REVIEW), raw boundary prices, and the kernel receiving the same site/firm arrays as the canonical adapter. The weather cache key is a universal software fix."
   ],
   "corrections": [
     {
@@ -156,6 +157,76 @@
       "introduced_in": "P0-5a S4/S9",
       "deviation_signature": {"doctoral": "chronology and plausibility findings are warnings; registry-identified defects are repaired and recorded"},
       "description": "Registry-identified data defects and chronology findings of non-workspace packs, and plausibility failures of scientific reference packs, make a pack ineligible for the profile (preflight error)."
+    },
+    {
+      "id": "p05.weather-time-convention",
+      "package": "p05",
+      "findings": ["P6-06"],
+      "track": "profile_gated",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1", "value-uk-1000twh-reproduction", "value-uk-calendar-vx-trade001"]},
+      "advisory": {"severity": "medium", "title": "Solar served one hour late", "summary": "Runs made before P0-5b (and doctoral runs) serve the ERA5 accumulated irradiance of the hour ending at h to the hour starting at h, so solar output is about one hour late (London centroid 12.97 instead of 11.97 UTC).", "affected_metrics": ["solar_generation_shape", "prices", "storage_dispatch"]},
+      "trigger_fixture": {"test": "tests.test_p05b_corrected_data.WeatherClockTests"},
+      "introduced_in": "P0-5b S6",
+      "deviation_signature": {"doctoral": "weather v1: period t takes source hour t//2 for accumulations and instants alike"},
+      "description": "Weather v2: an accumulated field (GRIB stepType accum, or a declared time_convention) stamped at the end of its hour gives period t the hour t//2+1; an instantaneous field the timestamp nearest the period midpoint, (t+1)//2. Applied to the canonical adapter and, through the kernel injection, to the retained kernel."
+    },
+    {
+      "id": "p05.vre-loss-factors",
+      "package": "p05",
+      "findings": ["P6-08"],
+      "track": "profile_gated",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1", "value-uk-1000twh-reproduction", "value-uk-calendar-vx-trade001"]},
+      "advisory": {"severity": "high", "title": "Wind and solar without losses", "summary": "Runs made before P0-5b (and doctoral runs) use the free-stream single-turbine power curve and GHI/1 kW m-2 without wake, availability, electrical losses or a PV performance ratio; GBP1 onshore CF is about 0.42-0.45 and offshore about 0.60.", "affected_metrics": ["vre_generation", "curtailment", "prices", "investment"]},
+      "trigger_fixture": {"test": "tests.test_p05b_corrected_data.LossFactorTests"},
+      "introduced_in": "P0-5b S7",
+      "deviation_signature": {"doctoral": "no loss factor: power-curve CF and ssrd/3.6e6 are dispatched as available"},
+      "description": "Literature loss factors after the ERA5 -> power-curve conversion (onshore 0.90307, offshore 0.814968, solar PR 0.83; data/weather/value_uk_vre_loss_factors_v1.json, PENDING AUTHOR REVIEW). No calibration to statistical load factors (Q15)."
+    },
+    {
+      "id": "p05.firm-availability",
+      "package": "p05",
+      "findings": ["P5-09", "P5-10", "P6-10"],
+      "track": "profile_gated",
+      "scope": "kernel_input",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1", "value-uk-1000twh-reproduction", "value-uk-calendar-vx-trade001"]},
+      "advisory": {"severity": "high", "title": "Nuclear and natural-flow hydro always available", "summary": "Runs made before P0-5b (and doctoral runs) dispatch nuclear and natural-flow hydro at availability 1.0 (hydro up to about 17.5 TWh/a against 5-6 TWh actual) and retire a nuclear station for whole years only.", "affected_metrics": ["nuclear_generation", "hydro_generation", "prices", "emissions"]},
+      "trigger_fixture": {"test": "tests.test_p05b_corrected_data.FirmAvailabilityTests"},
+      "introduced_in": "P0-5b S8",
+      "deviation_signature": {"doctoral": "constant availability 1.0; whole-year retirement"},
+      "description": "Nuclear station load factors (PRIS 2019-2024, rescaled to the model capacity) with month-exact generation end, natural-flow hydro annual load factor x monthly shape (data/nuclear/value_uk_firm_availability_v1.json, PENDING AUTHOR REVIEW; acceptance deferred to the author)."
+    },
+    {
+      "id": "p05.raw-boundary-price",
+      "package": "p05",
+      "findings": ["P6-24"],
+      "track": "profile_gated",
+      "scope": "kernel_input",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1", "value-uk-calendar-vx-trade001"]},
+      "advisory": null,
+      "trigger_fixture": {"test": "tests.test_p05b_corrected_data.RawBoundaryPriceTests"},
+      "introduced_in": "P0-5b S5",
+      "deviation_signature": {"doctoral": "the canonical interconnector offer price is truncated at 0 outside the doctoral-national alignment"},
+      "description": "Interconnector import offers and export prices of the canonical adapter keep negative source prices (plan 4.5 point 7)."
+    },
+    {
+      "id": "p05.weather-cache-key",
+      "package": "p05",
+      "findings": ["P7-02"],
+      "track": "universal",
+      "scope": "kernel_input",
+      "affects": ["presentation"],
+      "applies_when": {},
+      "advisory": null,
+      "trigger_fixture": {"test": "tests.test_p05b_corrected_data.WeatherCacheKeyTests"},
+      "introduced_in": "P0-5b S5",
+      "deviation_signature": null,
+      "description": "The retained kernel's process weather cache is keyed by the real paths, sizes and modification times of its weather files, so a later run in the same process on other weather never reuses it."
     }
   ]
 }

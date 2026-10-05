@@ -2,6 +2,28 @@
 
 ## Unreleased — P0 fixes on fix/review-2026-10-04
 
+### Corrected-profile weather, VRE losses and firm availability (P0-5b)
+
+- Corrected profile only (the doctoral reproduction keeps 0.6.0-alpha.2
+  inputs): ERA5 accumulated irradiance is used for the hour it accumulates
+  (weather v2, P6-06; GBP1 London solar centroid 12.97 -> 11.97 UTC); wind
+  and solar are multiplied by cited literature loss factors (onshore 0.903,
+  offshore 0.815, PV performance ratio 0.83; P6-08) without any calibration
+  to statistical load factors; nuclear stations carry load factors and a
+  month-exact generation end, natural-flow hydro an annual load factor
+  (P5-09, P5-10).  All reference values are PENDING AUTHOR REVIEW
+  (`docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`).
+- The retained kernel receives the same per-site and firm availability arrays
+  as the canonical adapter; corrected interconnector offers keep negative
+  prices.  In both profiles the kernel's weather cache is keyed by its files
+  (P7-02).
+- `scripts/build_value_uk_pack_revision.py` builds GBP1 public2 locally
+  (demand and interconnectors re-bound to the approved R029 objects);
+  `scripts/audit_boundary_flow_sign.py` marks `flow_sign` verified only
+  against an author-supplied reference.  Nothing is uploaded.
+- Read-time advisories flag runs on the ERA5 research packs made without
+  these corrections.
+
 ### External modules and extensions cannot stop VALUE (P0-2)
 
 - Built-in modules stay fail-closed; locally installed (external) module and

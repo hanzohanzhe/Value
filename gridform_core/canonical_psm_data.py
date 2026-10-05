@@ -967,6 +967,14 @@ def build_doctoral_psm_input(
                     "state_scope": "national_dispatch_view_not_annual_station_register"})
 
 
+def _raw_boundary_price(profile_id: str | None) -> bool:
+    """Corrected profile: interconnector offers keep negative prices (plan 4.5 point 7)."""
+
+    from .methodology import resolve_methodology
+
+    return bool(resolve_methodology(profile_id).enabled("p05.raw-boundary-price"))
+
+
 def build_chronology(
     pack_root: Path,
     manifest: Mapping[str, object],
@@ -1007,6 +1015,15 @@ def build_chronology(
     )
     doctoral_alignment = state.extensions.get("doctoral_alignment_profile") == DOCTORAL_ALIGNMENT_PROFILE
     doctoral_weather = uses_doctoral_weather(manifest)
+    # P0-5b (profile-gated): weather v2 and VRE loss factors (P6-06, P6-08),
+    # nuclear / natural-flow hydro availability (P5-09, P5-10) and the raw
+    # (negative) boundary price; the doctoral profile keeps every frozen path.
+    from .site_weather import FROZEN as _FROZEN_WEATHER, method_for_profile as _weather_method
+    from . import firm_availability as _firm
+
+    weather_method = _FROZEN_WEATHER if doctoral_alignment else _weather_method(data_policy.profile_id)
+    firm_corrected = not doctoral_alignment and _firm.enabled_for_profile(data_policy.profile_id)
+    raw_boundary_price = doctoral_alignment or _raw_boundary_price(data_policy.profile_id)
     if doctoral_alignment and not doctoral_weather:
         raise ValueError("Doctoral national profile requires bound doctoral site weather; CSV dispatch fallback is not permitted")
     profiles = {
@@ -1025,6 +1042,9 @@ def build_chronology(
             paths={role: _binding_path(pack_root, manifest, role) for role in roles},
             hashes={role: str(manifest["bindings"][role].get("sha256") or "") for role in roles},
             fleet=fleet, assets=state.assets, periods=periods, period_hours=period_hours,
+            **({} if weather_method.frozen else {
+                "method": weather_method,
+                "bindings": {role: dict(manifest["bindings"][role]) for role in roles}}),
         )
     state_by_id = {asset.asset_id: asset for asset in state.assets}
     resources: list[DispatchResource] = []
@@ -1105,13 +1125,19 @@ def build_chronology(
         if doctoral_alignment:
             marginal = _doctoral_marginal_cost(raw, technology, template_id)
         resource_type = "hydro" if technology == "Hydro_natural_flow" else "thermal"
+        firm_profile = (
+            _firm.asset_availability(asset_id=asset.asset_id, technology=technology,
+                                     capacity_mw=float(asset.capacity_mw), year=int(state.year),
+                                     periods=periods, extensions=dict(asset.extensions))
+            if firm_corrected else None
+        )
         resources.append(DispatchResource(
             asset.asset_id,
             technology,
             resource_type,
             asset.capacity_mw,
             marginal,
-            (1.0,),
+            (1.0,) if firm_profile is None else tuple(float(value) for value in firm_profile[0]),
             region=asset.region,
             extensions={
                 **dict(asset.extensions),
@@ -1126,7 +1152,10 @@ def build_chronology(
                                 if doctoral_alignment else "fleet.generators fuel_cost + carbon_price + gen_cost"),
                 "dispatch_template_asset_id": template_id,
                 "source_project_id": asset.extensions.get("source_project_id"),
-                "hydrology": "constant availability compatibility assumption" if resource_type == "hydro" else None,
+                "hydrology": (("constant availability compatibility assumption" if firm_profile is None
+                               else "value.firm-availability/v1 annual load factor x monthly shape")
+                              if resource_type == "hydro" else None),
+                **({"firm_availability": firm_profile[1]} if firm_profile is not None else {}),
             },
         ))
 
@@ -1193,7 +1222,7 @@ def build_chronology(
                 float(value) for value in export_energy
             )
             boundary_export_prices[export_asset_id] = tuple(
-                float(value if doctoral_alignment else max(value, 0.0)) for value in prices
+                float(value if raw_boundary_price else max(value, 0.0)) for value in prices
             )
         import_energy = np.maximum(raw_availability, 0.0)
         maximum = float(np.max(import_energy, initial=0.0))
@@ -1206,7 +1235,7 @@ def build_chronology(
             maximum / period_hours,
             float(np.mean(prices)),
             tuple(float(value / maximum) for value in import_energy),
-            tuple(float(value if doctoral_alignment else max(value, 0.0)) for value in prices),
+            tuple(float(value if raw_boundary_price else max(value, 0.0)) for value in prices),
             extensions={
                 "system_boundary": "signed_external_offer_envelope",
                 "country": country,
@@ -1244,8 +1273,15 @@ def build_chronology(
             "adapter_schema": CHRONOLOGY_SCHEMA_VERSION,
             **({"doctoral_alignment_profile": DOCTORAL_ALIGNMENT_PROFILE,
                 "doctoral_opening_inventory": "empty_batches_or_explicit_engine_checkpoint"} if doctoral_alignment else {}),
-            "dispatch_weather_method": (DOCTORAL_WEATHER_METHOD if doctoral_weather
+            "dispatch_weather_method": ((DOCTORAL_WEATHER_METHOD if weather_method.frozen
+                                         else weather_method.method_id) if doctoral_weather
                                         else "value.declared-technology-csv/v1"),
+            **({} if weather_method.frozen or not doctoral_weather
+               else {"site_weather_method": weather_method.to_dict()}),
+            **({"firm_availability_method": {"method_id": _firm.METHOD_ID, "table_sha256": _firm.table_sha256(),
+                                             "status": "PENDING AUTHOR REVIEW"}} if firm_corrected else {}),
+            **({"boundary_price_basis": "raw (negative prices kept, p05.raw-boundary-price)"}
+               if raw_boundary_price and not doctoral_alignment else {}),
             "vre_expansion_headroom_mw_by_technology": headroom,
             "source_pack_id": manifest.get("id"),
             "data_method": {

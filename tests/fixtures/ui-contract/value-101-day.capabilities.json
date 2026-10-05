@@ -12,7 +12,7 @@
   "years": [2025],
   "period_summary": true,
   "physical_dispatch": true,
-  "physical_dispatch_rows": 128,
+  "physical_dispatch_rows": 121,
   "dispatch_summary_available": false,
   "dispatch_summary_rows": 0,
   "zonal_redispatch": false,

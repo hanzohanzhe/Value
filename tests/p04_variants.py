@@ -252,7 +252,12 @@ def variant_project() -> dict:
 
 @contextlib.contextmanager
 def _market_rule_set(rule_set: str):
-    """Pin the doctoral market rule set (default) or keep the profile's (P0-6)."""
+    """Pin the doctoral market rule set (default) or keep the profile's (P0-6).
+
+    The doctoral pin also keeps the 0.6.0-alpha.2 kernel inputs the fixtures
+    were built on (P0-5b): weather v1 without loss factors and constant firm
+    availability, whatever the Study's profile.
+    """
 
     if rule_set not in RULE_SETS:
         raise ValueError(f"rule_set must be one of {RULE_SETS}, not {rule_set!r}")
@@ -261,10 +266,13 @@ def _market_rule_set(rule_set: str):
         return
     from unittest import mock
 
+    from gridform_core import firm_availability, site_weather
     from gridform_core.builtin.scheme_c_1000twh import scheme_c_native_psm
     from gridform_core.builtin.scheme_c_1000twh.native_market_rules import DOCTORAL
 
-    with mock.patch.object(scheme_c_native_psm, "rules_for_methodology", lambda _methodology: DOCTORAL):
+    with mock.patch.object(scheme_c_native_psm, "rules_for_methodology", lambda _methodology: DOCTORAL), \
+            mock.patch.object(site_weather, "method_for_profile", lambda _profile_id: site_weather.FROZEN), \
+            mock.patch.object(firm_availability, "enabled_for_profile", lambda _profile_id: False):
         yield
 
 

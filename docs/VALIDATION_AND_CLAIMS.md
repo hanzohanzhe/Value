@@ -60,3 +60,12 @@ variants) except where the ahead stage could not meet the forecast; those
 shortfalls are reported as stress events (decision A2). Doctoral runs
 reproduce 0.6.0-alpha.2 dispatch and carry declared deviations; they do not
 establish closure of the energy identity.
+
+Corrected-profile data science (P0-5b): the solar timing correction is
+checked on GBP1 (London centroid 11.97 UTC, 21 December first nonzero
+08:00 UTC). Wind and solar loss factors are literature values, not a fit:
+the resulting annual capacity factors (GBP1 onshore 0.403, offshore 0.491,
+solar 0.100) are reported, not claimed to match DUKES load factors, and
+ERA5's own wind bias is not removed. Nuclear and natural-flow hydro
+availability values are PENDING AUTHOR REVIEW; their acceptance against
+Energy Trends 5.1 and DUKES is deferred to the author.

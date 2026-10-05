@@ -26,6 +26,9 @@ class StaticScanTests(unittest.TestCase):
         # The repository's consumers of the shipped profile-gated corrections
         # (P0-5a: data_method asks for the p05 gates).
         shutil.copy2(ROOT / "gridform_core" / "data_method.py", folder / "gridform_core" / "data_method.py")
+        # P0-5b: weather v2 / loss factors, firm availability, raw boundary price.
+        for name in ("site_weather.py", "firm_availability.py", "canonical_psm_data.py"):
+            shutil.copy2(ROOT / "gridform_core" / name, folder / "gridform_core" / name)
         # P0-6: the default PSM's market rule set asks for the p06 gates.
         rules = folder / "gridform_core" / "builtin" / "scheme_c_1000twh"
         rules.mkdir(parents=True)
