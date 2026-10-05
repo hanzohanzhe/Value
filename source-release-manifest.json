@@ -70,13 +70,17 @@
     "app/features/runs/RunResults.tsx",
     "app/features/runs/RunWorkspace.tsx",
     "app/features/runs/types.ts",
+    "app/features/shared/Callout.tsx",
     "app/features/shared/OpenFromLauncher.tsx",
     "app/features/shared/Pager.tsx",
     "app/features/shared/api.ts",
+    "app/features/shared/callout.css",
     "app/features/shared/domainConstants.ts",
+    "app/features/shared/format.ts",
     "app/features/shared/navigation.ts",
     "app/features/shared/pagination.ts",
     "app/features/shared/presentation.tsx",
+    "app/features/shared/valueStates.ts",
     "app/features/shared/workspaceTypes.ts",
     "app/features/studies/AdvancedSettings.tsx",
     "app/features/studies/NetworkOverlaySelector.tsx",
@@ -1182,7 +1186,10 @@
     "tests/frontend/helpers/chromium.mjs",
     "tests/frontend/helpers/render-tsx.mjs",
     "tests/frontend/render/render-harness.test.mjs",
+    "tests/frontend/render/shared-components.test.mjs",
     "tests/frontend/unit/e2e-runner.test.mjs",
+    "tests/frontend/unit/format.test.mjs",
+    "tests/frontend/unit/frontend-guards.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-test-groups.test.mjs",
@@ -2930,9 +2937,9 @@
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
-      "sha256": "7974b0d78e1a149cd632fcdf639d3185b73f1898e5286cc95490e4838b299663",
-      "bytes": 14295,
-      "transform": "byte copy"
+      "sha256": "ea4fcf0512b0d86eedd0691bff47cb703cabd4d5b76dc43767011efa3dc5e20d",
+      "bytes": 14285,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/evidence/ReadinessEvidence.tsx",
@@ -3056,33 +3063,33 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "0d181e1b7a1ab4b0f7f01670523cdd08e8b8a44b12ed1ae8cc9b5e258df57ac4",
-      "bytes": 44462,
-      "transform": "byte copy"
+      "sha256": "0795ecbbc14d0522c355e45e4418f29b3fa6244115d2cdf4eb75514aa90598c4",
+      "bytes": 44542,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/network/NetworkZoneMap.tsx",
-      "sha256": "b1ce703195065d439625739a5e9c6ae55fc8134e9773690322bf306cb608026e",
-      "bytes": 1741,
-      "transform": "byte copy"
+      "sha256": "40f712434b107371774315bb73790a95584bad67b564530c7d205aa192741932",
+      "bytes": 1756,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/network/networkRedispatch.ts",
-      "sha256": "7e9242286a7fd189b9b6f547f66af4f4f6a3d24d47a5039243f94dfa7c5477ca",
-      "bytes": 16556,
-      "transform": "byte copy"
+      "sha256": "f9ce189687da5a580a95e09b166d1784c681a4b74117567b356c6feeadc98e04",
+      "bytes": 16985,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/results/ComparisonWorkspace.tsx",
-      "sha256": "6b0c1c3831ffe973cd779c550d47631634ed438062051b6bf39677fb7c3a0d98",
-      "bytes": 11152,
-      "transform": "byte copy"
+      "sha256": "96cf19a2524cf23e4bf35ddc334700e060511a354a6032e927f15502c320802b",
+      "bytes": 11066,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/results/ResultQueryPanel.tsx",
-      "sha256": "720e52306402361c937f9afb861039a5266efd5b6b5a3adcedfa2c592ba09b5a",
-      "bytes": 11510,
-      "transform": "byte copy"
+      "sha256": "727cda8ffd08d5d926aee1ab056e7d1bf87d20e217e84cf0fd8d085decb4a7db",
+      "bytes": 11583,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/results/comparison-workspace.css",
@@ -3110,21 +3117,27 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "6ec5d42cab6164726785c7c1f3eb9754a2b4052921fbd54115f9d5e7908dffdf",
-      "bytes": 12281,
-      "transform": "byte copy"
+      "sha256": "44f4ba8fba65010587892790239e75f21a0c8601c9853a0e2a81b466dd20e6c1",
+      "bytes": 12755,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "8f56a8556336b07bbaed062a2c73c65ec05bc92859cc45bb7655ecf17f29c533",
-      "bytes": 18984,
-      "transform": "byte copy"
+      "sha256": "7029402d1d618e94994ec41bb3ae2185db86c2c6faa4b2c949e941f7253d4f8b",
+      "bytes": 19063,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/types.ts",
       "sha256": "a32e5bbe02c361503145c606b68768bfe60ac45b5c1247a9c40964500a24f9d4",
       "bytes": 4994,
       "transform": "byte copy"
+    },
+    {
+      "path": "app/features/shared/Callout.tsx",
+      "sha256": "39af9a6b7aa20954a98180e62b90ed92b453fde02ffb3c00ede71b73034388cb",
+      "bytes": 2253,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/shared/OpenFromLauncher.tsx",
@@ -3145,10 +3158,22 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/shared/callout.css",
+      "sha256": "40a0afbd50b926454278561526ecf55b8b9375a11ccf1f76db709443f3cb8818",
+      "bytes": 3391,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/shared/domainConstants.ts",
       "sha256": "a6e4596aeb7897351a7e268a1d452b62b5d1a43b1a51ec3f44cbe2c0609c34f6",
       "bytes": 91,
       "transform": "byte copy"
+    },
+    {
+      "path": "app/features/shared/format.ts",
+      "sha256": "b7fa962682330460e5b779db6dcc5ebb9d25ccab732804d8834a5dd17363f72f",
+      "bytes": 9551,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/shared/navigation.ts",
@@ -3164,9 +3189,15 @@
     },
     {
       "path": "app/features/shared/presentation.tsx",
-      "sha256": "7eee2acd408c1d40c2060e89a6e9dc67d9a4e63c28a1547aa14191f88c1f1fa2",
-      "bytes": 1457,
-      "transform": "byte copy"
+      "sha256": "e73fd9797271257f41c027cb8a45a1147d3485be7c4909db0c77789c4b4d96ab",
+      "bytes": 1668,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/shared/valueStates.ts",
+      "sha256": "04cf25c4014e85636659f0ce8815c16cb24a4e6f65c17b0828b0d8a5fb4bb21e",
+      "bytes": 2269,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/shared/workspaceTypes.ts",
@@ -3350,8 +3381,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "37576fdb1e034abebfbea597cfcd0924f0dd994829faf34b227a838387a271b1",
-      "bytes": 150359,
+      "sha256": "dcb0e9a3439f05a1c7c3dcf102597fd170384d345866109552a63e9a9fa489cf",
+      "bytes": 151163,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9782,9 +9813,27 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/shared-components.test.mjs",
+      "sha256": "cc9b492dbde1157946bac36c960a0429967802069bb4be92ab214e2030a525cd",
+      "bytes": 2128,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/unit/e2e-runner.test.mjs",
       "sha256": "e731e77a0eb458f7e7e3bd40c7890edf0cdfad3df618f0149d58a4a87c45925e",
       "bytes": 2357,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/format.test.mjs",
+      "sha256": "09211b22cfb099b947a9a106ef85fae74cea6652c928badc054c340b3ec83783",
+      "bytes": 5096,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/frontend-guards.test.mjs",
+      "sha256": "8aef2702bd8e277db7d04eb7da2db18f88892b4ba149e67e35703a2b29d42c8d",
+      "bytes": 3529,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10017,9 +10066,9 @@
     },
     {
       "path": "tests/prompt124-ui-contract.test.mjs",
-      "sha256": "4204001510156db046063cf1329e3c2ac3219adfb0ef5cc1478b72bc15429c82",
-      "bytes": 9141,
-      "transform": "byte copy"
+      "sha256": "9ba53198ed94bcf797cc01905a3494f4948498b929a90d65f91edfcf1cc4c2aa",
+      "bytes": 9543,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/rendered-html.test.mjs",

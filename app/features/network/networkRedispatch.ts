@@ -1,3 +1,6 @@
+import { formatMoney, formatNumber } from "../shared/format.ts";
+import { VALUE_STATES } from "../shared/valueStates.ts";
+
 export type ZonalRun = {
   id: string;
   status: string;
@@ -398,28 +401,34 @@ export async function fetchNetworkJson<T>(url: string): Promise<T> {
   return payload as T;
 }
 
-export function numberValue(row: Record<string, unknown>, key: string): number {
-  const value = Number(row[key] ?? 0);
-  return Number.isFinite(value) ? value : 0;
+/** A recorded number of a result row, or null when the row has none (never 0 for missing). */
+export function toNumber(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const value = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(value) ? value : null;
 }
 
-export function formatNetworkNumber(value: number, digits = 2): string {
-  return new Intl.NumberFormat("en-GB", { maximumFractionDigits: digits }).format(value);
+export function numberValue(row: Record<string, unknown>, key: string): number | null {
+  return toNumber(row[key]);
+}
+
+/** Scale a nullable number (for example a fraction to a percentage) without inventing a value. */
+export function scaled(value: number | null | undefined, factor: number): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value * factor : null;
+}
+
+// Network formatting delegates to the single shared layer (P0-9 S1).
+export function formatNetworkNumber(value: number | null | undefined, digits = 2): string {
+  return formatNumber(value, digits) ?? VALUE_STATES.missing.text;
 }
 
 export function formatOptionalNetworkNumber(
   value: number | null | undefined,
   digits = 2,
 ): string | null {
-  return typeof value === "number" && Number.isFinite(value)
-    ? formatNetworkNumber(value, digits)
-    : null;
+  return formatNumber(value, digits);
 }
 
-export function formatNetworkMoney(value: number): string {
-  const absolute = Math.abs(value);
-  if (absolute >= 1e9) return `£${formatNetworkNumber(value / 1e9, 3)}bn`;
-  if (absolute >= 1e6) return `£${formatNetworkNumber(value / 1e6, 3)}m`;
-  if (absolute >= 1e3) return `£${formatNetworkNumber(value / 1e3, 2)}k`;
-  return `£${formatNetworkNumber(value, 2)}`;
+export function formatNetworkMoney(value: number | null | undefined): string {
+  return formatMoney(value) ?? VALUE_STATES.missing.text;
 }

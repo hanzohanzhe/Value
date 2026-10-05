@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isCurtailmentQueryResponse, isRecord, type CurtailmentQueryResponse, type ResultResolution, type ResultSourceChoice } from "./result-query.types";
+import { formatNumber } from "../shared/format.ts";
+import { VALUE_STATES } from "../shared/valueStates.ts";
 import "./result-query.css";
 
 const LIMIT = 48;
-const format = (value: number | null | undefined) => value == null ? "Unavailable" : value.toLocaleString("en-GB", { maximumFractionDigits: 4 });
+const format = (value: number | null | undefined) => formatNumber(value, 4) ?? VALUE_STATES.unavailable.text;
 const identityText = (value: unknown) => typeof value === "string" && value ? value : "Not recorded";
 
 export default function ResultQueryPanel({ run, apiOrigin }: { run?: { id: string; status: string }; apiOrigin: string }) {

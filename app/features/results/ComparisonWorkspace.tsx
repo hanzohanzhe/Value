@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatNumber } from "../shared/presentation";
 import "./comparison-workspace.css";
 
 type ComparisonRun = { id: string; project_name: string; mode: string; status: string; updated_at?: string };
@@ -19,7 +20,6 @@ type RunComparison = {
   annual_comparison: { year: number; metrics: Record<string, ComparisonMetricValue[]> }[];
 };
 
-function formatNumber(value: number, digits = 2) { return new Intl.NumberFormat("en-GB", { maximumFractionDigits: digits }).format(value); }
 function labelFor(id: string) { return id.split(".").at(-1)?.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase()) ?? id; }
 function ComparisonReview({ review }: { review?: Review }) {
   const labels: Record<string, string> = { data: "基础与网络数据", method: "模块方法", config: "参数与扩展配置", years: "执行年份", scope: "运行范围" };

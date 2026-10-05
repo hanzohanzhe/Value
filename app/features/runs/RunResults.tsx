@@ -6,9 +6,16 @@ import { formatOptionalNetworkNumber } from "../network/networkRedispatch";
 import { Badge, formatNumber, formatMoney } from "../shared/presentation";
 import { getJson } from "../shared/api";
 
-function metricNumber(result: RunResult, key: string): number {
+/** A recorded annual metric, or null when the Run did not record it (never 0 for missing). */
+function metricNumber(result: RunResult, key: string): number | null {
   const value = result.metrics[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+function perMwhServed(value: number | null): string {
+  return value == null ? "Not evaluated" : `£${formatNumber(value)}/MWh served`;
+}
+function energyMwh(value: number | null): string {
+  return value == null ? "Not evaluated" : `${formatNumber(value)} MWh`;
 }
 function optionalRunMetric(result: RunResult, key: string, digits = 2): string | null {
   const value = result.metrics[key];
@@ -67,7 +74,7 @@ function PlanningPipelinePanel({ runId, year, apiOrigin }: { runId: string; year
     <summary>Planning pipeline</summary>
     {!opened ? null : error ? <p className="inline-error">{error}</p> : !summary ? <p className="loading">Loading planning evidence...</p> : <>
       <div className="pipeline-kpis">{["active", "commissioned", "failed", "filtered", "deferred"].map((key) => <span key={key}>
-        <small>{key.replaceAll("_", " ")}</small><b>{kpis[key]?.projects ?? outcome[key]?.projects ?? 0} projects</b><em>{formatNumber(kpis[key]?.capacity_mw ?? outcome[key]?.capacity_mw)} MW</em>
+        <small>{key.replaceAll("_", " ")}</small><b>{kpis[key]?.projects ?? outcome[key]?.projects ?? "—"} projects</b><em>{formatNumber(kpis[key]?.capacity_mw ?? outcome[key]?.capacity_mw)} MW</em>
       </span>)}</div>
       <div className="breakdown-row"><div><b>Next completions</b>{Object.entries(completions).map(([key, value]) => <small key={key}>{key}: {value.projects} projects / {formatNumber(value.capacity_mw)} MW</small>)}</div><div><b>Technology</b>{Object.entries(summary.breakdowns.technology ?? {}).slice(0, 5).map(([key, value]) => <small key={key}>{key}: {value.projects} / {formatNumber(value.capacity_mw)} MW</small>)}</div><div><b>Region</b>{Object.entries(summary.breakdowns.region ?? {}).slice(0, 5).map(([key, value]) => <small key={key}>{key}: {value.projects} / {formatNumber(value.capacity_mw)} MW</small>)}</div></div>
       <div className="breakdown-row"><div><b>Why projects changed</b>{Object.entries(summary.cause_breakdowns?.reason_code ?? {}).slice(0, 8).map(([key, value]) => <small key={key}>{key.replaceAll("_", " ")}: {value.projects} / {formatNumber(value.capacity_mw)} MW</small>)}</div><div><b>Lifecycle events</b>{Object.entries(summary.cause_breakdowns?.event_type ?? {}).slice(0, 8).map(([key, value]) => <small key={key}>{key.replaceAll("_", " ")}: {value.projects} / {formatNumber(value.capacity_mw)} MW</small>)}</div></div>
@@ -79,27 +86,27 @@ export function AnnualResults({ runId, results, apiOrigin }: { runId: string; re
   if (!results.length) return <div className="empty-run"><b>No annual results yet</b><p>Results appear after a full model year completes.</p></div>;
   const sorted = [...results].sort((a, b) => a.year - b.year);
   const latest = sorted.at(-1)!;
-  const maxCost = Math.max(...sorted.map((item) => metricNumber(item, "total_system_cost_gbp")), 1);
+  const maxCost = Math.max(...sorted.map((item) => metricNumber(item, "total_system_cost_gbp") ?? 0), 1);
   return <div className="results-cockpit">
     <section className="latest-result">
       <div><small>Latest completed year</small><strong>{latest.year}</strong><span>{formatMoney(metricNumber(latest, "total_system_cost_gbp"))} total system cost</span></div>
       <div className="metric-grid">
-        <span><small>Average system cost</small><b>£{formatNumber(metricNumber(latest, "cost_per_mwh_gbp"))}/MWh served</b></span>
+        <span><small>Average system cost</small><b>{perMwhServed(metricNumber(latest, "cost_per_mwh_gbp"))}</b></span>
         <span><small>Annualised capital</small><b>{formatMoney(metricNumber(latest, "total_levelized_capital_cost_gbp"))}</b></span>
         <span><small>Operating cost</small><b>{formatMoney(metricNumber(latest, "total_operational_cost_gbp"))}</b></span>
-        <span><small>Unserved demand</small><b>{formatNumber(metricNumber(latest, "blackout_mwh"))} MWh</b></span>
+        <span><small>Unserved demand</small><b>{energyMwh(metricNumber(latest, "blackout_mwh"))}</b></span>
       </div>
     </section>
     {sorted.length > 1 && <section className="cost-trend" aria-label="Annual system cost trend">
       <header><div><small>Across the study</small><h4>Annual system cost</h4></div><span>Relative scale</span></header>
-      <div>{sorted.map((result) => <span key={result.year}><i style={{ height: `${Math.max(8, metricNumber(result, "total_system_cost_gbp") / maxCost * 100)}%` }} /><b>{result.year}</b><small>{formatMoney(metricNumber(result, "total_system_cost_gbp"))}</small></span>)}</div>
+      <div>{sorted.map((result) => <span key={result.year}>{metricNumber(result, "total_system_cost_gbp") == null ? <i className="not-recorded" /> : <i style={{ height: `${Math.max(8, metricNumber(result, "total_system_cost_gbp")! / maxCost * 100)}%` }} />}<b>{result.year}</b><small>{formatMoney(metricNumber(result, "total_system_cost_gbp"))}</small></span>)}</div>
     </section>}
     <div className="year-records">{[...sorted].reverse().map((result, index) => {
       const capital = metricNumber(result, "total_levelized_capital_cost_gbp");
       const operating = metricNumber(result, "total_operational_cost_gbp");
       const capacityMarket = metricNumber(result, "cm_mechanism_cost_gbp");
       const policy = metricNumber(result, "decarbonization_mechanism_cost_gbp");
-      const visibleTotal = Math.max(capital + operating + capacityMarket + policy, 1);
+      const visibleTotal = Math.max((capital ?? 0) + (operating ?? 0) + (capacityMarket ?? 0) + (policy ?? 0), 1);
       const finalCurtailment = optionalRunMetric(result, "vre_curtailment_mwh");
       const curtailmentRate = typeof result.metrics.vre_curtailment_rate === "number" && Number.isFinite(result.metrics.vre_curtailment_rate)
         ? formatOptionalNetworkNumber(result.metrics.vre_curtailment_rate * 100)
@@ -110,10 +117,10 @@ export function AnnualResults({ runId, results, apiOrigin }: { runId: string; re
         : null;
       const missingCurtailmentReason = unavailableCurtailmentReason(result);
       return <details className="year-record" key={result.year} open={index === 0}>
-        <summary><span><b>{result.year}</b><small>{formatMoney(metricNumber(result, "total_system_cost_gbp"))} · £{formatNumber(metricNumber(result, "cost_per_mwh_gbp"))}/MWh served</small></span><em>View year</em></summary>
+        <summary><span><b>{result.year}</b><small>{formatMoney(metricNumber(result, "total_system_cost_gbp"))} · {perMwhServed(metricNumber(result, "cost_per_mwh_gbp"))}</small></span><em>View year</em></summary>
         <div className="metric-grid"><span><small>Annualised capital</small><b>{formatMoney(capital)}</b></span><span><small>Operating cost</small><b>{formatMoney(operating)}</b></span><span><small>Capacity mechanism</small><b>{formatMoney(capacityMarket)}</b></span><span><small>Decarbonisation policy</small><b>{formatMoney(policy)}</b></span></div>
-        <div className="cost-stack" aria-label={`Cost components for ${result.year}`}><i className="capital" style={{ width: `${capital / visibleTotal * 100}%` }} /><i className="operating" style={{ width: `${operating / visibleTotal * 100}%` }} /><i className="capacity-market" style={{ width: `${capacityMarket / visibleTotal * 100}%` }} /><i className="policy" style={{ width: `${policy / visibleTotal * 100}%` }} /></div>
-        <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "imports_mwh"))} MWh`}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${formatNumber(metricNumber(result, "storage_discharge_mwh"))} MWh`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "total_carbon_emissions_tco2e"))} tCO₂e`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
+        <div className="cost-stack" aria-label={`Cost components for ${result.year}`}><i className="capital" style={{ width: `${(capital ?? 0) / visibleTotal * 100}%` }} /><i className="operating" style={{ width: `${(operating ?? 0) / visibleTotal * 100}%` }} /><i className="capacity-market" style={{ width: `${(capacityMarket ?? 0) / visibleTotal * 100}%` }} /><i className="policy" style={{ width: `${(policy ?? 0) / visibleTotal * 100}%` }} /></div>
+        <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "total_carbon_emissions_tco2e"))} tCO₂e`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
         {result.planning && <div className="planning-compact"><b>Planning evolution</b><span>Active: {String(result.planning.active ?? "not evaluated")}</span><span>Commissioned: {String(result.planning.commissioned ?? "not evaluated")}</span><span>Failed: {String(result.planning.failed ?? "not applicable")}</span><span>Deferred: {String(result.planning.deferred ?? "not evaluated")}</span></div>}
         <PlanningPipelinePanel key={`${runId}|${result.year}`} runId={runId} year={result.year} apiOrigin={apiOrigin} />
         {result.capacity_mw && <details className="capacity-panel"><summary>Capacity used by the PSM</summary><div className="capacity-grid">{Object.entries(result.capacity_mw).map(([tech, value]) => <span key={tech}><small>{tech}</small><b>{formatNumber(value)} MW</b></span>)}{result.capacity_mwh?.storage != null && <span><small>Storage energy</small><b>{formatNumber(result.capacity_mwh.storage)} MWh</b></span>}</div></details>}

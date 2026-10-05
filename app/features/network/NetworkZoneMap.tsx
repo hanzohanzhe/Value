@@ -1,4 +1,4 @@
-import { formatNetworkNumber, numberValue } from "./networkRedispatch";
+import { formatNetworkNumber, numberValue, scaled } from "./networkRedispatch";
 
 type Row = Record<string, unknown>;
 
@@ -24,7 +24,7 @@ export default function NetworkZoneMap({ zones, boundaries }: { zones: Row[]; bo
         {boundaries.map((boundary) => <aside key={String(boundary.boundary_id)}>
           <strong>{String(boundary.boundary_id)}</strong>
           <span>{formatNetworkNumber(numberValue(boundary, "transfer_mwh"))} MWh transfer</span>
-          <small>{formatNetworkNumber(numberValue(boundary, "utilisation_fraction") * 100, 1)}% used</small>
+          <small>{formatNetworkNumber(scaled(numberValue(boundary, "utilisation_fraction"), 100), 1)}% used</small>
         </aside>)}
         <small>Topology is defined by the signed network pack; this ledger view does not infer endpoints from table order.</small>
       </div>
