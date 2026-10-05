@@ -87,3 +87,9 @@
 | F-S12-9 | 7：方法变化的对话框在用户点 Run 或 Preflight 时弹出 | Preflight 报告 `checks.project_revision.classification` 需确认、或启动 Run 被 409 拒绝且带 `revision_migration` 时弹出；声明的修订哈希与当前 Study 不一致（Study 已被换掉）时不弹出 | 只对用户正在操作的那个 Study 修订弹窗 | 否 |
 | F-S12-10 | 9.8：375 px 不引起页面级横向滚动 | 新组件（口径徽章、状态字段、Callout、单选组、对话框）自身不横向溢出；截图 `s12-composer-methodology-375.jpg` 中右侧裁切来自旧的 composer 网格布局，与 F-P09-13 相同，不在本轮 | 做法一不改旧元素样式 | 否（同 F-P09-13） |
 | F-S12-11 | P0-9 S11：比较页「警示」 | 比较页的 Run 选择列表在每行写出口径徽章文字；比较结果 `attribution_status=needs_review` 时显示 caution Callout `This comparison needs review`，逐条列出 `attribution_review_reasons`（advisory、验证失败、能量平衡失败、withheld、口径不同） | 规格第 2 节没有比较页的线框；按计划 P0-9 S11「比较页警示」的最小实现 | 是（文案） |
+
+## P0-5a S10（CSV 映射声明 EUR；M3）
+
+| # | 规格 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-P05A-1 | 计划 4.5 S10 列出 `CsvMappingEditor.tsx`（映射界面可声明 EUR、汇率与来源） | 只做了后端：映射目录的价格角色带 `fx_required_for` 与 `requires_fx` 的换算对，预览请求可带 `fx: {eur_per_gbp, fx_basis[, price_year]}`，缺汇率时报 `GF_MAPPING_FX`；界面未改，现有界面选不到 EUR，行为与改动前相同（只能映射 GBP） | 设计规格没有这一处的设计，按约定不即兴实现 | 是（需要设计方补 EUR/汇率输入的界面） |
