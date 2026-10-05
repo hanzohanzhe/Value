@@ -160,6 +160,39 @@ class BuilderUnknownZoneTests(unittest.TestCase):
                 inventory, root / "candidate-allowed", allow_unknown_zone_fallback=True
             )
             self.assertTrue(built)
+            reviews = list((root / "candidate-allowed").rglob("reconciliation-and-rights.json"))
+            self.assertEqual(len(reviews), 1)
+            review = json.loads(reviews[0].read_text(encoding="utf-8"))
+            self.assertEqual(review["explicit_unknown_zone_ids"], ["SCOTLND"])
+            self.assertEqual(
+                review["explicit_unknown_zone_assets"], [{"asset_id": "gas-x", "zone_id": "SCOTLND"}]
+            )
+            self.assertIn("gas-x", review["fallback_asset_ids"])
+            mapping_files = [
+                path for path in (root / "candidate-allowed").rglob("*.json")
+                if '"unknown_zone_fallback_allowed"' in path.read_text(encoding="utf-8")
+            ]
+            self.assertTrue(mapping_files)
+            methods = {
+                row.get("asset_id"): row.get("mapping_method")
+                for path in mapping_files
+                for row in _rows_with_mapping_method(json.loads(path.read_text(encoding="utf-8")))
+            }
+            self.assertEqual(methods["gas-x"], "unknown_zone_fallback_allowed")
+            self.assertNotIn("unknown_zone_fallback_allowed", set(
+                method for asset, method in methods.items() if asset != "gas-x"
+            ))
+
+
+def _rows_with_mapping_method(payload):
+    if isinstance(payload, dict):
+        if "mapping_method" in payload and "asset_id" in payload:
+            yield payload
+        for value in payload.values():
+            yield from _rows_with_mapping_method(value)
+    elif isinstance(payload, list):
+        for value in payload:
+            yield from _rows_with_mapping_method(value)
 
 
 if __name__ == "__main__":

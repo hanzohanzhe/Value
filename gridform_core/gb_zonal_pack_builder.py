@@ -374,6 +374,7 @@ def _fleet(
 ) -> tuple[list[ZonalAssetMapping], SpatialAudit, list[InterconnectorLanding], dict[str, object]]:
     zone_ids = {zone.zone_id for zone in zones}
     unknown_zone_rows: list[str] = []
+    allowed_unknown_zone_rows: list[dict[str, str]] = []
     mappings: list[ZonalAssetMapping] = []
     source_capacity: dict[str, float] = defaultdict(float)
     mapped_capacity: dict[str, float] = defaultdict(float)
@@ -412,6 +413,7 @@ def _fleet(
                 continue
             if str(row.get("zone_id") or ""):
                 method = "unknown_zone_fallback_allowed"
+                allowed_unknown_zone_rows.append({"asset_id": asset_id, "zone_id": raw_zone_id})
             else:
                 method = "unlocated_england_fallback"
             zone_id = FALLBACK_ZONE
@@ -491,6 +493,12 @@ def _fleet(
         ],
         "fallback_asset_count": len(set(fallback_ids)),
         "excluded_northern_ireland_asset_count": len(set(excluded_ni)),
+        # P2-13: explicit zone ids that do not exist, placed in the fallback
+        # zone only because allow_unknown_zone_fallback was set.
+        "explicit_unknown_zone_ids": sorted({row["zone_id"] for row in allowed_unknown_zone_rows}),
+        "explicit_unknown_zone_assets": sorted(
+            allowed_unknown_zone_rows, key=lambda row: (row["asset_id"], row["zone_id"])
+        ),
     }
 
 
@@ -903,6 +911,8 @@ def _build_candidate_compatibility_impl(
         "capacity_mw_by_technology_and_status": mapping_audit["capacity_mw_by_technology_and_status"],
         "region_to_zone_weights": _region_to_zone_weights(mapping_audit["asset_mappings"]),  # type: ignore[arg-type]
         "fallback_asset_ids": list(audit.fallback_asset_ids),
+        "explicit_unknown_zone_ids": mapping_audit["explicit_unknown_zone_ids"],
+        "explicit_unknown_zone_assets": mapping_audit["explicit_unknown_zone_assets"],
         "excluded_northern_ireland_asset_ids": list(audit.excluded_northern_ireland_asset_ids),
         "offshore_connection_audit": {
             "records": offshore,
