@@ -14,7 +14,9 @@ from gridform_core.market_ledger import (
 )
 from gridform_core.market_replay import (
     canonical_technology,
+    market_price_basis,
     market_replay_capabilities,
+    period_price_basis,
     query_auction_view,
     query_dispatch_timeline,
     query_vre_curtailment_summary,
@@ -246,6 +248,40 @@ class MarketReplayTests(unittest.TestCase):
         self.assertIsNone(summary["pre_balancing_excess_mwh"])
         self.assertIsNone(summary["balancing_curtailment_mwh"])
         self.assertEqual(summary["coverage_status"], "partial_semantic_attribution")
+
+    def test_period_price_basis_mapping(self):
+        # P0-9 S3 / Q6: the read model states what the period price is.
+        cases = (
+            ({"period_price_semantics": "demand_normalised_total_period_cost; not a stage clearing-price proof"},
+             "value.market-ledger/v7", ("average_period_cost", "semantics")),
+            ({"pricing_rule": "lp_balance_dual",
+              "period_price_semantics": "objective derivative with respect to the demand-balance right-hand side"},
+             "value.market-ledger/v7", ("balance_shadow_price", "semantics")),
+            ({"period_price_basis": "ahead_generator_settlement_only_not_all_stage_storage_arbitrage"},
+             "value.market-ledger/v7", ("ahead_settlement_price", "semantics")),
+            ({"psm_module_id": "value-staged-bid-at-cost-psm"},
+             "value.market-ledger/v8", ("national_ahead_clearing_price", "inferred_from_writer")),
+            ({}, "value.market-ledger/v7", ("not_declared", "not_declared")),
+        )
+        for semantic, version, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(period_price_basis(semantic, version), expected)
+        self.assertEqual(period_price_basis({"price_basis": "balance_shadow_price"}, "value.market-ledger/v8"),
+                         ("balance_shadow_price", "declared"))
+        self.assertEqual(period_price_basis({"price_basis": "made_up"}, None), ("not_declared", "not_declared"))
+
+    def test_price_basis_travels_with_capabilities_and_timeline(self):
+        with tempfile.TemporaryDirectory() as folder:
+            database = self._ledger(Path(folder))
+            capabilities = market_replay_capabilities(database)
+            timeline = query_dispatch_timeline(database, year=2025, resolution="daily")
+            basis = market_price_basis(database)
+        # The test ledger declares no price semantics: the UI must say so.
+        self.assertEqual(capabilities["price_basis"], "not_declared")
+        self.assertEqual(timeline["price_basis"], "not_declared")
+        self.assertEqual(basis, {"price_basis": "not_declared", "price_basis_source": "not_declared"})
+        self.assertEqual(timeline["items"][0]["price_gbp_per_mwh"], 40.0)
+        self.assertNotIn("clearing_price_gbp_per_mwh", timeline["items"][0])
 
 
 if __name__ == "__main__":

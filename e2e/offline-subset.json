@@ -13,6 +13,7 @@
     "e2e/evidence-isolation.spec.ts"
   ],
   "min_passed": {
+    "e2e/market-visibility.spec.ts": 1,
     "e2e/network-redispatch.spec.ts": 19,
     "e2e/expanded-workflows.spec.ts": 1,
     "e2e/result-queries.spec.ts": 2,
@@ -20,12 +21,6 @@
     "e2e/evidence-isolation.spec.ts": 1
   },
   "known_failures": [
-    {
-      "id": "market-visibility.spec.ts > market replay and VRE evidence render from versioned bounded APIs",
-      "reason": "R3-01: the dispatch API sends price_gbp_per_mwh but app/page.tsx reads clearing_price_gbp_per_mwh, so the selected-period strip shows £0/MWh. Only the soft price assertion may fail, and only by showing £0/MWh (a missing strip or another value is a different breakage).",
-      "owner": "P0-9 S3 (M2)",
-      "error_must_match": "selected-period-strip[\\s\\S]*61\\.25/MWh[\\s\\S]*Received string:[^\\n]*Price£0/MWh"
-    },
     {
       "id": "network-redispatch.spec.ts > validated, custom and numerically warned solver states remain distinct",
       "reason": "Solver-validation summary wording drifted (the spec expects 'Custom contract — not yet solver validated').",

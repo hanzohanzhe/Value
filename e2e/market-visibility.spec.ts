@@ -18,6 +18,8 @@ const flows = [
 const timeline = {
   year: 2025, resolution: "daily", total: 4, limit: 500, offset: 0, source_artifact_sha256: "a".repeat(64),
   period_hours: 0.5, price_aggregation: "demand_weighted_mean_gbp_per_mwh",
+  // P0-9 S3: the read model states what the price is (default PSM: total period cost / demand).
+  price_basis: "average_period_cost", price_basis_source: "semantics",
   items: Array.from({ length: 4 }, (_, period) => ({
     period_start: period, period_end: period, period_count: 1,
     timestamp_start: `2025-01-01T0${period}:00:00`, timestamp_end: `2025-01-01T0${period}:30:00`,
@@ -75,11 +77,15 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
   await expect(page.getByRole("table").getByText("offshore wind")).toBeVisible();
   await expect(page.getByText("£50/MWh").first()).toBeVisible();
-  // R3-01: the selected-period strip must show the recorded bucket price. HEAD
-  // reads a field the API never sends and shows £0/MWh, so this soft assertion
-  // is the one registered failure of this spec (e2e/offline-subset.json) until
-  // P0-9 S3 (M2) fixes the read; the rest of the test still runs and must pass.
-  await expect.soft(page.locator(".selected-period-strip")).toContainText("£61.25/MWh");
+  // R3-01 / Q6: the selected-period strip shows the recorded bucket price under
+  // its basis label; an average period cost is never called a clearing price.
+  const strip = page.locator(".selected-period-strip");
+  await expect(strip).toContainText("£61.25/MWh");
+  await expect(strip).toContainText("Average period cost (£/MWh demand)");
+  await expect(strip).toContainText("Accepted supply");
+  await expect(strip).toContainText("Shortfall");
+  await expect(strip).not.toContainText("Clearing price");
+  await expect(strip).not.toContainText("£0/MWh"); // a zero offer in the merit-order table is legitimate
   await page.screenshot({ path: test.info().outputPath("prompt56-market-replay.png"), fullPage: true });
 
   await page.getByRole("button", { name: /VRE & curtailment/ }).click();

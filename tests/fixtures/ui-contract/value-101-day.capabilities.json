@@ -7,6 +7,8 @@
   "schema_version": "value.market-replay-capabilities/v1",
   "ledger_schema_version": "value.market-ledger/v7",
   "trace_level": "full",
+  "price_basis": "average_period_cost",
+  "price_basis_source": "semantics",
   "years": [2025],
   "period_summary": true,
   "physical_dispatch": true,

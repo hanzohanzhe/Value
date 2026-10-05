@@ -87,6 +87,7 @@ from gridform_core.parameters import (
 from gridform_core.market_ledger import query_market_table
 from gridform_core.market_replay import (
     legacy_staged_market_available,
+    market_price_basis,
     market_replay_capabilities,
     query_auction_view,
     query_dispatch_timeline,
@@ -2017,6 +2018,8 @@ class Handler(BaseHTTPRequestHandler):
                     side=query.get("side", [None])[0],
                 )
                 page["trace_level"] = metadata.get("trace_level", "off")
+                if table == "period_summary":
+                    page.update(market_price_basis(database))
                 self._json(page); return
             if resource == "network-redispatch":
                 database = root / "model-output" / "market" / "market.sqlite"

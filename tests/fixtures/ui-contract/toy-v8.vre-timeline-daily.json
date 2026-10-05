@@ -24,6 +24,8 @@
   ],
   "source_artifact_sha256": "<sqlite-file-sha256>",
   "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
+  "price_basis": "national_ahead_clearing_price",
+  "price_basis_source": "inferred_from_writer",
   "units": {"energy":"MWh","price":"GBP/MWh"},
   "dispatch_timeline_schema_version": "value.dispatch-timeline/v1"
  }

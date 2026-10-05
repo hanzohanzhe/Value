@@ -106,6 +106,67 @@ def _semantic_metadata(database: Path) -> dict[str, object]:
     return result
 
 
+# What a period price in ``period_summary.clearing_price_gbp_per_mwh`` means
+# (P0-9 S3, Q6).  The read model states it; the UI only renders the label.
+PRICE_BASES = (
+    "average_period_cost",
+    "national_ahead_clearing_price",
+    "balance_shadow_price",
+    "ahead_settlement_price",
+    "not_declared",
+)
+
+
+def period_price_basis(
+    semantic: Mapping[str, object], ledger_schema_version: str | None = None,
+) -> tuple[str, str]:
+    """Return ``(price_basis, price_basis_source)`` for one market ledger.
+
+    ``source`` is ``declared`` when the writer named the basis, ``semantics``
+    when it is read from the writer's price semantics text, and
+    ``inferred_from_writer`` for the staged (v8) writer, which records a
+    national pay-as-clear price but no semantics key (the v8 metadata is
+    compared on reopen, so no key is added to it).  Anything else is
+    ``not_declared``: the UI then says "basis not recorded".
+    """
+
+    declared = semantic.get("price_basis")
+    if isinstance(declared, str) and declared in PRICE_BASES:
+        return declared, "declared"
+    semantics = str(semantic.get("period_price_semantics") or "").lower()
+    pricing_rule = str(semantic.get("pricing_rule") or "").lower()
+    legacy_basis = str(semantic.get("period_price_basis") or "").lower()
+    if semantics.startswith("demand_normalised_total_period_cost"):
+        return "average_period_cost", "semantics"
+    if "objective derivative" in semantics or pricing_rule == "lp_balance_dual":
+        return "balance_shadow_price", "semantics"
+    if legacy_basis.startswith("ahead_generator_settlement"):
+        return "ahead_settlement_price", "semantics"
+    if str(ledger_schema_version or "") == "value.market-ledger/v8":
+        return "national_ahead_clearing_price", "inferred_from_writer"
+    return "not_declared", "not_declared"
+
+
+def _ledger_schema_version(database: Path) -> str:
+    metadata_path = database.parent / "metadata.json"
+    if metadata_path.is_file():
+        version = json.loads(metadata_path.read_text(encoding="utf-8")).get("schema_version")
+        if version:
+            return str(version)
+    with _read_only_connection(database) as connection:
+        if "metadata" not in _tables(connection):
+            return "unknown"
+        row = connection.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()
+    return str(row[0]) if row else "unknown"
+
+
+def market_price_basis(database: Path) -> dict[str, str]:
+    """``{"price_basis", "price_basis_source"}`` of the run's market ledger."""
+
+    basis, source = period_price_basis(_semantic_metadata(database), _ledger_schema_version(database))
+    return {"price_basis": basis, "price_basis_source": source}
+
+
 def _artifact_hash(database: Path) -> str | None:
     metadata_path = database.parent / "metadata.json"
     if not metadata_path.is_file():
@@ -288,10 +349,14 @@ def market_replay_capabilities(database: Path) -> dict[str, object]:
         )
     trace_level = str(metadata.get("trace_level", semantic.get("trace_level", "unknown")))
     bid_replay_available = trace_level == "full" and (bool(stages) or order_rows > 0)
+    ledger_schema_version = str(metadata.get("schema_version", semantic.get("schema_version", "unknown")))
+    price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
     return {
         "schema_version": REPLAY_CAPABILITIES_SCHEMA,
-        "ledger_schema_version": metadata.get("schema_version", semantic.get("schema_version", "unknown")),
+        "ledger_schema_version": ledger_schema_version,
         "trace_level": trace_level,
+        "price_basis": price_basis,
+        "price_basis_source": price_basis_source,
         "years": years,
         "period_summary": period_rows > 0,
         "physical_dispatch": physical_rows > 0,
@@ -523,6 +588,7 @@ def query_dispatch_timeline(
             "SELECT value FROM metadata WHERE key='schema_version'"
         ).fetchone() if "metadata" in tables else None
         ledger_schema_version = str(schema_row[0]) if schema_row else "unknown"
+        price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
         if ledger_schema_version == "value.market-ledger/v8":
             dispatch_source = "dispatch_summary"
         elif ledger_schema_version in {
@@ -560,6 +626,7 @@ def query_dispatch_timeline(
                 "total": total_buckets, "limit": limit, "offset": offset,
                 "dispatch_source": dispatch_source,
                 "dispatch_summary_available": False,
+                "price_basis": price_basis, "price_basis_source": price_basis_source,
                 "items": [], "units": {"energy": "MWh", "price": "GBP/MWh"},
             }
         bucket_placeholders = ",".join("?" for _ in selected_buckets)
@@ -690,6 +757,8 @@ def query_dispatch_timeline(
         "items": items,
         "source_artifact_sha256": _artifact_hash(database),
         "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
+        "price_basis": price_basis,
+        "price_basis_source": price_basis_source,
         "units": {"energy": "MWh", "price": "GBP/MWh"},
     }
 

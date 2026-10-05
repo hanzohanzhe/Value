@@ -77,21 +77,11 @@ test("a registered failure that is now skipped did not run and fails the ratchet
   assert.match(describeEvaluation(outcome), /REGISTERED TEST WAS SKIPPED b\.spec\.ts > known bad/);
 });
 
-test("the committed R3-01 registration pins the failure mode (strip present, showing £0/MWh)", async () => {
+test("R3-01 is fixed (P0-9 S3): market-visibility has no registered failure and must pass", async () => {
   const { readFile } = await import("node:fs/promises");
   const committed = JSON.parse(await readFile(new URL("../../../e2e/offline-subset.json", import.meta.url), "utf8"));
-  const entry = committed.known_failures.find((item) => item.id.startsWith("market-visibility.spec.ts > "));
-  const pinned = { specs: ["e2e/market-visibility.spec.ts"], known_failures: [entry] };
-  const head = "Error: expect(locator).toContainText(expected) failed\n\nLocator: locator('.selected-period-strip')\nExpected substring: \"£61.25/MWh\"\n";
-  const run = (message) => evaluateOffline({ suites: [{ title: "market-visibility.spec.ts", file: "market-visibility.spec.ts", specs: [
-    { title: entry.id.split(" > ").at(-1), file: "market-visibility.spec.ts", tests: [{ projectName: "desktop-chromium", status: "unexpected", results: [result("failed", [message])] }] },
-  ] }] }, pinned);
-  const real = `${head}Received string:    "Window2025-01-01 00:00:00 to 2025-01-01 00:30:00Demand10 MWhPhysical supply10 MWhStorage charge0 MWhPrice£0/MWh"\nTimeout: 15000ms`;
-  assert.equal(run(real).ok, true);
-  const vanished = `${head}Received: <element(s) not found>\nTimeout: 15000ms\n\nCall log:\n  - waiting for locator('.selected-period-strip')`;
-  assert.equal(run(vanished).ok, false, "a strip that disappeared is not the registered R3-01 failure");
-  const otherValue = real.replace("Price£0/MWh", "Price£12.5/MWh");
-  assert.equal(run(otherValue).ok, false, "a different wrong price is not the registered R3-01 failure");
+  assert.equal(committed.known_failures.some((item) => item.id.startsWith("market-visibility.spec.ts > ")), false);
+  assert.equal(committed.min_passed["e2e/market-visibility.spec.ts"], 1);
 });
 
 test("the committed offline subset only names specs and registered tests that exist", async () => {

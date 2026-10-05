@@ -333,7 +333,7 @@ def _requests(database: Path) -> list[tuple[str, str, dict[str, Any], Callable[[
 
     from gridform_core.market_ledger import query_market_table
     from gridform_core.market_replay import (
-        market_replay_capabilities, query_auction_view, query_dispatch_timeline,
+        market_price_basis, market_replay_capabilities, query_auction_view, query_dispatch_timeline,
         query_vre_curtailment_summary, query_vre_curtailment_timeline,
     )
 
@@ -350,6 +350,8 @@ def _requests(database: Path) -> list[tuple[str, str, dict[str, Any], Callable[[
             metadata_path = database.parent / "metadata.json"
             metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.is_file() else {}
             page["trace_level"] = metadata.get("trace_level", "off")
+            if name == "period_summary":  # backend/server.py adds the price basis to the periods page
+                page.update(market_price_basis(database))
             return page
         return call
 

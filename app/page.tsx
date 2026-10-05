@@ -10,6 +10,10 @@ import AuditView from "./features/evidence/AuditView";
 import { Badge, formatBytes, formatNumber, modelDisplayName } from "./features/shared/presentation";
 import { API_BASE, LauncherAccessError, getJson } from "./features/shared/api";
 import { formatEnergyGroup, formatQuantity } from "./features/shared/format.ts";
+import type { AuctionView, DispatchTimeline, MarketCapability, StoragePeriodRow, VreSummary } from "./features/market/marketTypes.ts";
+import { bucketPrice } from "./features/market/dispatchView.ts";
+import { StatusPill, ValueState } from "./features/shared/Callout";
+import "./features/market/market-replay.css";
 import OpenFromLauncher from "./features/shared/OpenFromLauncher";
 import { PUBLIC_CAPABILITY_DOMAINS } from "./features/shared/domainConstants";
 import type { PageResult } from "./features/shared/pagination";
@@ -70,43 +74,6 @@ type ResearchSuiteSummary = {
   components: { id: string; sha256: string }[];
   studyIds: string[]; idempotent: boolean; runStarted: false;
 };
-type MarketCapability = {
-  years: number[]; trace_level: string; period_summary: boolean; physical_dispatch: boolean;
-  auction_replay: boolean; storage_state: boolean; storage_cost_module_id?: string; missing_reason?: string | null; source_artifact_sha256?: string | null;
-  bid_replay_available?: boolean; bid_replay_missing_reason?: string | null; missing_detail?: string[];
-  auction_stages: { stage: string; declared_periods: number; outcome_periods: number; order_detail: string }[];
-  semantic_metadata?: Record<string, unknown>;
-};
-type DispatchFlow = { technology: string; flow_type: string; evidence_scope: string; energy_mwh: number; balance_component_mwh: number };
-type DispatchBucket = {
-  period_start: number; period_end: number; period_count: number; timestamp_start: string; timestamp_end: string;
-  real_demand_mwh: number; accepted_supply_mwh: number; clearing_price_gbp_per_mwh: number;
-  storage_charge_mwh: number; storage_discharge_mwh: number; curtailed_mwh: number; excess_mwh: number;
-  vre_available_mwh: number; vre_accepted_mwh: number; neutral_unused_vre_mwh?: number;
-  blackout_mwh: number; compatibility_adjustment_mwh: number; flows: DispatchFlow[];
-};
-type DispatchTimeline = { year: number; resolution: string; total: number; limit: number; offset: number; source_artifact_sha256?: string | null; items: DispatchBucket[] };
-type AuctionOffer = {
-  offer_id?: string; asset_id: string; asset_type?: string; resource_kind?: string; technology: string;
-  offer_price_gbp_per_mwh: number; offered_mwh: number; accepted_mwh: number | null;
-  asset_accepted_mwh: number | null; acceptance_granularity: string; execution_order: number;
-  cumulative_offered_mwh: number;
-};
-type AuctionView = {
-  year: number; period: number; stage: string; information_scope: string; requirement_mwh: number;
-  offers: AuctionOffer[]; marginal_offer_price_gbp_per_mwh: number | null; marginal_offer_status: string;
-  offer_acceptance_coverage: string; pricing_rule: string; input_sha256: string; source_artifact_sha256?: string | null;
-};
-type StoragePeriodRow = { asset_id: string; state_of_charge_mwh: number; charge_mwh: number; discharge_mwh: number; power_capacity_mw: number; energy_capacity_mwh: number };
-type VreYear = {
-  year: number; period_count: number; full_chronology: boolean; available_vre_mwh: number; accepted_vre_mwh: number;
-  neutral_unused_vre_mwh: number; pre_balancing_excess_mwh: number | null; pre_balancing_excess_scope: string;
-  balancing_curtailment_mwh: number | null; vre_utilisation_fraction: number | null; average_unused_vre_fraction: number | null;
-  affected_periods: number; longest_event_hours: number; peak_event_mwh: number | null; peak_event_timestamp: string | null;
-  storage_charge_mwh: number; export_mwh: number; flexible_demand_mwh: number; vre_identity_residual_mwh: number;
-  coverage_status: string; marginal_curtailment_status: string; marginal_curtailment_reason: string;
-};
-type VreSummary = { years: VreYear[]; excess_relationship: string; excess_scope: string; source_artifact_sha256?: string | null };
 type DomainCapability = { status: "supported" | "experimental" | "unsupported" | "not_evaluated"; years?: number[]; claim?: string; reason?: string | null };
 type DomainCapabilitiesPayload = { schema_version: string; identity: Record<string, unknown>; capabilities: Record<string, DomainCapability> };
 type ResultMetric = { value: number | string | null; unit: string; definition_id: string; source_artifact_sha256?: string };
@@ -190,6 +157,23 @@ function MeritOrderChart({ auction }: { auction: AuctionView }) {
   </svg></div>;
 }
 
+/** Spec 3.1: the selected window as recorded. Shortfall comes from the backend (A2); it is never derived here. */
+function WindowSummary({ bucket, timeline }: { bucket: DispatchTimeline["items"][number]; timeline: DispatchTimeline }) {
+  const price = bucketPrice(bucket, timeline);
+  const shortfall = bucket.shortfall_mwh;
+  const stressPeriods = bucket.stress_periods;
+  const mwh = (value: number | null | undefined) => value == null ? <ValueState state="not_recorded" /> : `${formatNumber(value)} MWh`;
+  return <div className="selected-period-strip window-summary">
+    <span className="window-summary-wide"><small>Window</small><b>{bucket.timestamp_start.replace("T", " ")} → {bucket.timestamp_end.replace("T", " ")}{timeline.timezone ? ` (${timeline.timezone} model time)` : ""}</b></span>
+    <span><small>Demand</small><b>{mwh(bucket.real_demand_mwh)}</b></span>
+    <span><small>Accepted supply</small><b>{mwh(bucket.accepted_supply_mwh)}</b></span>
+    <span className={typeof shortfall === "number" && shortfall > 0 ? "shortfall-positive" : ""}><small>Shortfall</small><b>{shortfall == null ? <ValueState state="not_recorded" title="This ledger does not record stress events (supply below demand)." /> : `${formatNumber(shortfall)} MWh`}</b>{typeof stressPeriods === "number" && stressPeriods > 0 && <StatusPill tone="caution">● {stressPeriods} stress {stressPeriods === 1 ? "period" : "periods"}</StatusPill>}</span>
+    <span><small>Storage charge</small><b>{mwh(bucket.storage_charge_mwh)}</b></span>
+    <span><small>Storage discharge</small><b>{mwh(bucket.storage_discharge_mwh)}</b></span>
+    <span className="window-summary-wide"><small title={price.title}>{price.label}</small><b title={price.title}>{price.value ?? <ValueState state="not_recorded" />}</b></span>
+  </div>;
+}
+
 function MarketReplayView({ run, onCreateFullReplayRevision }: { run?: ModelRun; onCreateFullReplayRevision: () => void }) {
   const [capabilities, setCapabilities] = useState<MarketCapability | null>(null);
   const [timeline, setTimeline] = useState<DispatchTimeline | null>(null);
@@ -218,7 +202,7 @@ function MarketReplayView({ run, onCreateFullReplayRevision }: { run?: ModelRun;
       <div className="bounded-window-controls"><button className="secondary" disabled={periodFrom === 0} onClick={() => { setPeriodFrom(Math.max(0, periodFrom - windowPeriods)); setTimelineOffset(0); }}>Previous window</button><span>Periods {periodFrom}–{periodTo} · page offset {timelineOffset}</span><button className="secondary" onClick={() => { setPeriodFrom(periodFrom + windowPeriods); setTimelineOffset(0); }}>Next window</button></div>
       {!capabilities.physical_dispatch && <div className="info-box">This historical run has period summaries but no final technology-level physical dispatch. VALUE will not reconstruct generation by summing staged accepted orders.</div>}
       {timeline && capabilities.physical_dispatch && <><DispatchChart timeline={timeline} selectedPeriod={period} onSelect={setPeriod} /><div className="bounded-page-controls"><button className="text-button" disabled={timelineOffset === 0} onClick={() => setTimelineOffset(Math.max(0, timelineOffset - timeline.limit))}>Previous page</button><span>{timeline.items.length} of {timeline.total} buckets in this selected window</span><button className="text-button" disabled={timelineOffset + timeline.items.length >= timeline.total} onClick={() => setTimelineOffset(timelineOffset + timeline.limit)}>Next page</button></div></>}
-      {selected && <div className="selected-period-strip"><span><small>Window</small><b>{selected.timestamp_start.replace("T", " ")} to {selected.timestamp_end.replace("T", " ")}</b></span><span><small>Demand</small><b>{formatNumber(selected.real_demand_mwh)} MWh</b></span><span><small>Physical supply</small><b>{formatNumber(selected.accepted_supply_mwh)} MWh</b></span><span><small>Storage charge</small><b>{formatNumber(selected.storage_charge_mwh)} MWh</b></span><span><small>Price</small><b>£{formatNumber(selected.clearing_price_gbp_per_mwh)}/MWh</b></span></div>}
+      {selected && timeline && <WindowSummary bucket={selected} timeline={timeline} />}
     </section>
     <section className="panel evidence-panel"><div className="panel-head"><div><span>Declared auction input</span><h3>Selected-period merit order</h3></div>{bidReplayAvailable ? <label className="inline-select"><span>Stage</span><select value={stage} onChange={(event) => setStage(event.target.value)}>{capabilities.auction_stages.map((item) => <option value={item.stage} key={item.stage}>{item.stage} · {item.order_detail.replaceAll("_", " ")}</option>)}</select></label> : <Badge tone="warn">No bid-level replay</Badge>}</div>
       {!bidReplayAvailable ? <div className="info-box">Bid detail is unavailable under the recorded trace profile. The summary above remains scientific evidence; this panel does not render missing bids as zero.</div> : !auction ? <div className="info-box">No exact {stage} auction is recorded for period {period}. If a daily or weekly bucket is selected, enter any half-hour period inside that window.</div> : <><div className="auction-layout"><MeritOrderChart auction={auction} /><div className="auction-facts"><span><small>Requirement</small><b>{formatNumber(auction.requirement_mwh)} MWh</b></span><span><small>Marginal accepted offer</small><b>{auction.marginal_offer_price_gbp_per_mwh == null ? "Not separately defined" : `£${formatNumber(auction.marginal_offer_price_gbp_per_mwh)}/MWh`}</b></span><span><small>Information available</small><b>{auction.information_scope}</b></span><span><small>Acceptance detail</small><b>{auction.offer_acceptance_coverage.replaceAll("_", " ")}</b></span></div></div><div className="table-scroll"><table><thead><tr><th>Order</th><th>Asset</th><th>Technology</th><th>Offer</th><th>Offered</th><th>Accepted</th><th>Evidence</th></tr></thead><tbody>{auction.offers.map((offer) => <tr key={offer.offer_id ?? `${offer.asset_id}-${offer.execution_order}`}><td>{offer.execution_order + 1}</td><td><b>{offer.asset_id}</b><small>{offer.asset_type}</small></td><td>{offer.technology.replaceAll("_", " ")}</td><td>£{formatNumber(offer.offer_price_gbp_per_mwh)}/MWh</td><td>{formatNumber(offer.offered_mwh)} MWh</td><td>{offer.accepted_mwh != null ? `${formatNumber(offer.accepted_mwh)} MWh` : offer.asset_accepted_mwh != null ? `${formatNumber(offer.asset_accepted_mwh)} MWh (asset total)` : "Not separately recorded"}</td><td>{offer.acceptance_granularity.replaceAll("_", " ")}</td></tr>)}</tbody></table></div><p className="provenance-line">Input hash {auction.input_sha256} · source ledger {auction.source_artifact_sha256 ?? "hash unavailable"}</p></>}
