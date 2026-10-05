@@ -180,6 +180,12 @@ from backend.lifecycle.states import ACTIVE_STATES, DELETABLE_STATES, classify
 from backend.lifecycle.worker_lease import lease_state
 from backend.run_supervisor import SHUTDOWN_SEAL_SECONDS, RunSupervisor, WorkerSpawnError, worker_liveness
 from backend.api_session import new_token, publish_session, withdraw_session
+from backend.api_security import (
+    SECURITY_RESPONSE_HEADERS,
+    UnsupportedMediaType,
+    drainable_length,
+    evaluate as evaluate_request,
+)
 from gridform_core.run_lineage import copperplate_rerun_project
 from gridform_core.run_quota import (
     QUOTA_CORRECTIVE_ACTIONS,
@@ -305,11 +311,8 @@ def run_supervisor() -> RunSupervisor:
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_SPACE_BYTES = 1024 * 1024 * 1024
-ALLOWED_ORIGINS = {
-    "http://localhost:8800", "http://127.0.0.1:8800",
-    "http://localhost:3000", "http://127.0.0.1:3000",
-    "http://localhost:18800", "http://127.0.0.1:18800",
-}
+# No CORS: browsers reach the API only through the same-origin UI gateway
+# (P0-1); every request passes backend.api_security.evaluate first.
 ROLE_INDEX = {slot["role"]: slot for slot in DATASET_SLOTS}
 
 
@@ -1230,7 +1233,8 @@ def _error_body(message: str, code: str, **extra: Any) -> dict[str, Any]:
 def map_request_exception(exc: BaseException) -> tuple[int, dict[str, Any], dict[str, str]]:
     """The C1 exception table (ordered); P0-1/P0-2 add their entries here.
 
-    QueryParameterError 400 | DataMappingError/DataPackCloneError own status |
+    QueryParameterError 400 | UnsupportedMediaType 415 |
+    DataMappingError/DataPackCloneError own status |
     LockTimeout 503 + Retry-After | UnicodeError 500 (corrupt stored record) |
     ValueError 400 | anything else 500 through public_failure (never an
     internal path or traceback in the body).
@@ -1238,6 +1242,8 @@ def map_request_exception(exc: BaseException) -> tuple[int, dict[str, Any], dict
 
     if isinstance(exc, QueryParameterError):
         return 400, _error_body(str(exc), "GF_QUERY_INVALID"), {}
+    if isinstance(exc, UnsupportedMediaType):
+        return 415, _error_body(str(exc), UnsupportedMediaType.code), {}
     if isinstance(exc, (DataMappingError, DataPackCloneError)):
         return int(exc.status), _error_body(str(exc), str(exc.code)), {}
     if isinstance(exc, LockTimeout):
@@ -1254,30 +1260,64 @@ def map_request_exception(exc: BaseException) -> tuple[int, dict[str, Any], dict
     return 500, _error_body(failure.message, failure.code, error_category=failure.category), {}
 
 
+def health_degradation() -> tuple[str, list[dict[str, Any]]]:
+    """Backend status and grouped degraded reasons (P0-2 fills the reasons)."""
+
+    return "ok", []
+
+
+def health_payload(*, full: bool) -> dict[str, Any]:
+    """/api/health: the reduced payload without a session (C3), all of it with one."""
+
+    runtime = capability_matrix(selected_module_ids=("value-bid-at-cost-psm",))
+    status, degraded = health_degradation()
+    reduced = {
+        "ok": True,
+        "service": "value-modular-local",
+        "version": APPLICATION_VERSION,
+        "python": sys.version.split()[0],
+        "authoritative_runtime_compatible": runtime["capabilities"][VALUE_NATIVE]["available"],
+        "session_required": True,
+        "status": status,
+        "degraded_reasons": [{"code": str(item.get("code")), "count": int(item.get("count", 1))} for item in degraded],
+    }
+    if not full:
+        return reduced
+    return {
+        **reduced,
+        "time": now(),
+        "python_executable": sys.executable,
+        "runtime_capability": VALUE_NATIVE,
+        "runtime_capabilities": runtime,
+        "degraded_details": degraded,
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "VALUELocal/0.5"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"[{self.log_date_time_string()}] {fmt % args}")
 
-    def _origin(self) -> str:
-        origin = self.headers.get("Origin", "")
-        return origin if origin in ALLOWED_ORIGINS else "http://localhost:8800"
+    session_authenticated = False
 
-    def _headers(self, status: int = 200) -> None:
+    def end_headers(self) -> None:
+        # Every response, including http.server's own send_error pages.
+        for name, value in SECURITY_RESPONSE_HEADERS:
+            self.send_header(name, value)
+        super().end_headers()
+
+    def _headers(self, status: int = 200, *, error_code: str | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", self._origin())
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header(
-            "Access-Control-Allow-Headers",
-            "Content-Type, X-Filename, X-VALUE-Executable-Trust, X-VALUE-Data-Rights, X-Expected-Pack-Revision, X-Expected-Candidate-Id",
-        )
         self.send_header("Cache-Control", "no-store")
+        if error_code:
+            self.send_header("X-VALUE-Error-Code", error_code)
         self.end_headers()
 
     def _json(self, payload: Any, status: int = 200) -> None:
-        self._headers(status)
+        code = payload.get("error_code") if isinstance(payload, dict) and int(status) >= 400 else None
+        self._headers(status, error_code=str(code) if code else None)
         try:
             self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
         except ConnectionError:
@@ -1291,7 +1331,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", media_type)
         self.send_header("Content-Length", str(path.stat().st_size))
         self.send_header("Content-Disposition", f'attachment; filename="{path.name}"')
-        self.send_header("Access-Control-Allow-Origin", self._origin())
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         with path.open("rb") as handle:
@@ -1303,7 +1342,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", media_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
-        self.send_header("Access-Control-Allow-Origin", self._origin())
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
@@ -1351,14 +1389,52 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:  # noqa: N802
         self._dispatch(self._route_options)
 
-    def _guard(self) -> None:
-        """Host/Origin/session checks (P0-1 S6 fills this; it answers 4xx itself)."""
+    def _guard(self) -> bool:
+        """P0-1 request guard (backend.api_security.evaluate); answers 4xx itself.
+
+        Returns True when the request may be routed.  A rejected request's
+        body (up to 2 MiB) is read first so the client sees the answer
+        instead of a connection reset; a larger or unreadable body closes the
+        connection after the answer.
+        """
+
+        self.session_authenticated = False
+        decision = evaluate_request(
+            self.command, urlparse(self.path).path, self.headers,
+            bound_port=int(self.server.server_address[1]),
+            token=getattr(self.server, "session_token", None),
+        )
+        if decision.allowed:
+            self.session_authenticated = decision.authenticated
+            return True
+        drain = drainable_length(self.headers)
+        if drain:
+            try:
+                self.rfile.read(drain)
+            except OSError:
+                drain = None
+        if drain is None:
+            self.close_connection = True
+        payload = json.dumps(_error_body(decision.message, decision.code), ensure_ascii=False).encode("utf-8")
+        self.send_response(int(decision.status or 403))
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-VALUE-Error-Code", decision.code)
+        if self.close_connection:
+            self.send_header("Connection", "close")
+        self.end_headers()
+        try:
+            self.wfile.write(payload)
+        except ConnectionError:
+            self.close_connection = True
+        return False
 
     def _dispatch(self, route: Any) -> None:
         self.response_started = False  # reset for every request on the connection
         try:
-            self._guard()
-            route()
+            if self._guard():
+                route()
         except Exception as exc:  # the single exception exit of every request
             self._send_mapped_error(exc)
 
@@ -1377,8 +1453,9 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", self._origin())
         self.send_header("Cache-Control", "no-store")
+        if payload.get("error_code"):
+            self.send_header("X-VALUE-Error-Code", str(payload["error_code"]))
         for name, value in headers.items():
             self.send_header(name, value)
         self.end_headers()
@@ -1418,18 +1495,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(payload, status)
             return
         if route == "/api/health":
-            runtime = capability_matrix(selected_module_ids=("value-bid-at-cost-psm",))
-            self._json({
-                "ok": True,
-                "service": "value-modular-local",
-                "time": now(),
-                "version": APPLICATION_VERSION,
-                "python": sys.version.split()[0],
-                "python_executable": sys.executable,
-                "runtime_capability": VALUE_NATIVE,
-                "runtime_capabilities": runtime,
-                "authoritative_runtime_compatible": runtime["capabilities"][VALUE_NATIVE]["available"],
-            })
+            self._json(health_payload(full=self.session_authenticated))
         elif route == "/api/workspace":
             runtime_matrix = capability_matrix(selected_module_ids=("value-bid-at-cost-psm",))
             self._json({"modules": MODULES, "dataset_slots": DATASET_SLOTS,
@@ -1534,8 +1600,7 @@ class Handler(BaseHTTPRequestHandler):
             comparison = compare_run_summaries([build_run_summary(root) for root in roots if root])
             if query.get("format", ["json"])[0] == "csv":
                 data = comparison_csv(comparison).encode("utf-8-sig")
-                self.send_response(200); self.send_header("Content-Type", "text/csv; charset=utf-8")
-                self.send_header("Content-Length", str(len(data))); self.send_header("Access-Control-Allow-Origin", self._origin()); self.end_headers(); self.wfile.write(data); return
+                self._bytes(data, "text/csv; charset=utf-8", "value-run-comparison.csv"); return
             self._json(comparison)
         elif route == "/api/retention":
             def directory_bytes(root: Path) -> int:

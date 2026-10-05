@@ -109,6 +109,7 @@
     "app/layout.tsx",
     "app/page.tsx",
     "backend/__init__.py",
+    "backend/api_security.py",
     "backend/api_session.py",
     "backend/data_mapping.py",
     "backend/data_pack_clone.py",
@@ -1292,6 +1293,7 @@
     "tests/test_legacy_identity_compat.py",
     "tests/test_legacy_result_adapter.py",
     "tests/test_lifecycle_primitives.py",
+    "tests/test_local_api_boundary.py",
     "tests/test_local_api_harness.py",
     "tests/test_local_backend.py",
     "tests/test_local_uk_source_inventory.py",
@@ -3346,6 +3348,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "backend/api_security.py",
+      "sha256": "256c4c8c7c1271e5a9c4f09758b25f1ad2b9dd3458600a61ce21d6cd2ec96129",
+      "bytes": 6874,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "backend/api_session.py",
       "sha256": "85a23f346d16f02a04a0915e0ce02082be49db698a46aa7290abe1fdf3908595",
       "bytes": 7295,
@@ -3479,8 +3487,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "3ede525d251bdd2d65641842dcf29e7cc7b8f134c35bf4331367c02f0d21aae5",
-      "bytes": 176309,
+      "sha256": "f305b50bdaeaebf547ac185575e97eb28d9365705da1547c4de4b3d55af5e31c",
+      "bytes": 178535,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10368,8 +10376,8 @@
     },
     {
       "path": "tests/test_get_error_boundary.py",
-      "sha256": "489cfacb1bf402ed46714bcfdc87c656e0f02637949f0989eb95c84b0ba66919",
-      "bytes": 8732,
+      "sha256": "d05ced74af14ccb428f5c1701a2e558c3d230a50d0a2c9d8861044c56966c863",
+      "bytes": 8882,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10427,9 +10435,15 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/test_local_api_boundary.py",
+      "sha256": "bda4a849c028471d47c1389f8b57e27a1062314c67a34b73ba538e75a2d5ccd2",
+      "bytes": 23522,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_local_api_harness.py",
-      "sha256": "845b3909bf4645d00d564635b5dad45b6386937d298e496f5c7422dbfb957502",
-      "bytes": 6266,
+      "sha256": "4feb7613894455872cc5616bc68cdbd26056001127399044f897ca21625c1e95",
+      "bytes": 6500,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11178,8 +11192,8 @@
     },
     {
       "path": "tests/test_source_release_tree.py",
-      "sha256": "11d264ac003a2f2ff3532b1b69b142c634d5eb876ef78770ad812d7cf98385dc",
-      "bytes": 11099,
+      "sha256": "85676f5041d8de95eb1f8364a276fa46dc2b645be6a788f1f0a8dc3b555787e0",
+      "bytes": 11172,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

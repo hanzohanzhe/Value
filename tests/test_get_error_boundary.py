@@ -54,7 +54,7 @@ class GetErrorBoundaryTests(unittest.TestCase):
         self.addCleanup(self.folder.cleanup)
         self.home = Path(self.folder.name) / "state"
         context = start_local_api(data_home=self.home)
-        self.httpd, self.origin, _token = context.__enter__()
+        self.httpd, self.origin, self.token = context.__enter__()
         self.addCleanup(context.__exit__, None, None, None)
         self.runs = self.home / "runs"
 
@@ -141,9 +141,11 @@ class GetErrorBoundaryTests(unittest.TestCase):
         for method in ("GET", "POST"):
             target = "_route_get" if method == "GET" else "_route_post"
             with patch.object(server.Handler, target, half):
+                host = self.origin.removeprefix("http://")
                 raw = _raw_exchange(
                     self.origin,
-                    f"{method} /api/runs HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n",
+                    f"{method} /api/runs HTTP/1.1\r\nHost: {host}\r\nX-VALUE-Session: {self.token}\r\n"
+                    "Content-Type: application/json\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n",
                 )
             self.assertEqual(raw.count(b"HTTP/1."), 1, raw[:300])
             self.assertTrue(raw.endswith(b'{"partial":'))

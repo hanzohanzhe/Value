@@ -22,6 +22,8 @@ P0_1_RELEASE_FILES = (
     "scripts/serve-value-ui.mjs",
     "tests/ui-gateway.test.mjs",
     "tests/test_ui_gateway_session_path.py",
+    "backend/api_security.py",
+    "tests/test_local_api_boundary.py",
 )
 
 

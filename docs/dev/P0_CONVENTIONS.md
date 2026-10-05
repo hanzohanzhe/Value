@@ -102,6 +102,8 @@ class Handler(BaseHTTPRequestHandler):
 
 `end_headers` 的覆盖（安全头）由 P0-1 放在同一个类里。新路由一律在 `_route_*` 中分派，不得自己 try/except 后写 500。
 
+**P0-1 S6 实现说明**：`_guard()` 返回 bool，`_dispatch` 写作 `if self._guard(): route()`；拒绝时 `_guard` 自己读完不超过 2 MiB 的请求体并写出 4xx（带 `X-VALUE-Error-Code`），更大的请求体在应答后关闭连接。判定是纯函数 `backend.api_security.evaluate(method, path, headers, *, bound_port, token)`，顺序为 Host（421）→ Origin（403）→ Sec-Fetch-Site（403）→ Content-Length/Transfer-Encoding（400/411）→ `X-VALUE-Session`（403 `GF_SESSION_REQUIRED`/`GF_SESSION_INVALID`；只有不带该头的 `GET /api/health` 和 `OPTIONS` 免令牌）→ POST 的 Content-Type（415）。`UnsupportedMediaType`（`backend.api_security`）按上表映射为 415。`end_headers` 给每个响应（含 `send_error`）追加 nosniff、`X-Frame-Options: DENY`、`CSP default-src 'none'`、`Referrer-Policy`、CORP；`_json` 对带 `error_code` 的 4xx/5xx 加 `X-VALUE-Error-Code`。全部 CORS 已删除。
+
 **P0-3 S7 实现说明（163a9f9）**：映射表实现为模块级函数 `backend.server.map_request_exception(exc) -> (status, body, headers)`，P0-1/P0-2 的条目按表中顺序插入该函数（`UnsupportedMediaType` 在 `QueryParameterError` 之后，带 code 的 `ContractError`/`ModuleQuarantinedError` 在 `LockTimeout` 之前）。另加一条：`UnicodeError`（`ValueError` 子类）映射为 500，因为它表示存储的记录损坏，不是请求错误。`QueryParameterError` 定义在 `backend.server`。`send_response` 被覆盖以设置 `response_started`。
 
 ## 5 全局锁顺序（C6；P0-2、P0-3 实现，附断言测试）
@@ -136,6 +138,7 @@ with start_local_api(data_home=tmp) as (httpd, origin, token):
 - 端口一律 bind 0；不得使用 8766/8800（棘轮的网络守卫强制执行，见第 2 节）；`VALUE_DATA_HOME` 必须是测试自己的临时目录，不触碰默认用户目录。
 - 新写的 HTTP 测试不得直接 `ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)`；`p0_gate quick` 的 `http_harness` 步骤对自分支点以来新增的测试文件做静态检查。
 - **P0-3 S7 已提交最小实现**（`tests/local_api_harness.py`）：patch `backend.server` 的全部 state 根目录与 `SUPERVISOR`，构造 data workbench，bind 0，安装只补 `Origin` 头（以及传入的 `token`）的 opener，返回 `(httpd, origin, token)`；P0-1 S2 在此文件上加入会话令牌，不另起一套。
+- **P0-1 S2 实现说明**：`start_local_api` 经 `make_api_server` 建服务并生成会话令牌，把会话文件发布到 `data_home/runtime/`（`backend.api_session.authorized_headers(data_home, port)` 可用），opener 只为本服务补 `X-VALUE-Session`，**不再补 `Origin`**（S6 起后端拒绝任何 Origin）。需要自行选择 state 根的旧测试用 `start_local_api(data_home=..., patch_state_roots=False)` 与 `start()`/`stop()`；此时不发布会话文件、不挂 data workbench。直接测守卫的测试用 `http.client` 原样发头（参见 `tests/test_local_api_boundary.py`），不要依赖全局 opener。
 
 ## 7 status.json 写入 API（C5；P0-3 S1–S2 实现）
 

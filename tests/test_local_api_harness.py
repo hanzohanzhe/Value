@@ -58,9 +58,12 @@ class HarnessTests(unittest.TestCase):
             self.assertEqual(seen.get("x-value-session"), token)
             self.assertNotIn("origin", seen)
             self.assertNotIn("sec-fetch-site", seen)
+            # An explicit header is left alone (and, being wrong, refused by the guard).
             explicit = urllib.request.Request(origin + "/api/echo", headers={"X-VALUE-Session": "mine"})
-            seen = json.loads(urllib.request.urlopen(explicit, timeout=10).read())
-            self.assertEqual(seen.get("x-value-session"), "mine")
+            with self.assertRaises(urllib.error.HTTPError) as refused:
+                urllib.request.urlopen(explicit, timeout=10)
+            self.assertEqual(refused.exception.code, 403)
+            self.assertEqual(refused.exception.headers.get("X-VALUE-Error-Code"), "GF_SESSION_INVALID")
             with start_local_api(data_home=Path(self._folder.name) / "other") as (other, other_origin, other_token):
                 other.RequestHandlerClass = _Echo
                 # The innermost opener serves only its own origin (once the
