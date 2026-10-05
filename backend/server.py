@@ -80,6 +80,7 @@ from gridform_core.frontend_contract import (
     resolve_study_draft,
 )
 from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
+from gridform_core.result_advisories import present_scientific_status
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -1137,44 +1138,8 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                     "severity": "warning",
                     "message": "Module progress evidence is incomplete or unreadable.",
                 })
-        # Historical completed bundles are immutable.  Some dynamic-policy runs
-        # were packaged before retained comparison was correctly classified as
-        # informational.  Present the scenario gate separately from the raw
-        # embedded report, based only on its preserved execution, contract and
-        # analytical evidence; never rewrite that report on disk.
-        validation_path = run_root / "model-output" / str(
-            run.get("scientific_validation_artifact")
-            or "validation/scientific-validation.json"
-        )
-        validation = read_object(validation_path)
-        storage_policy = str((run.get("modules") or {}).get("storage_cost") or "")
-        alternative_policy = storage_policy in {
-            "dynamic-annual-storage-cost", "user-formula-storage-cost"
-        }
-        role = validation.get("retained_numerical_comparison_role")
-        if not role:
-            role = (
-                "informational_scenario_difference"
-                if alternative_policy
-                else "required_reproduction_gate"
-            )
-        retained_status = validation.get("retained_numerical_comparison_status")
-        if alternative_policy and retained_status == "failed":
-            retained_status = "expected_difference"
-        evidence_passed = all(
-            validation.get(field) == "passed"
-            for field in (
-                "execution_status",
-                "contract_validation_status",
-                "analytical_mechanism_status",
-            )
-        )
-        scenario_status = validation.get("scientific_validation_status")
-        if alternative_policy and evidence_passed and run.get("mode") in {"full", "two_year"}:
-            scenario_status = "passed"
-        run["scientific_scenario_status"] = scenario_status or "not_evaluated"
-        run["retained_comparison_role"] = role
-        run["retained_numerical_comparison_status"] = retained_status or "not_evaluated"
+        # Scientific status presentation lives in one function (X0 S10a, C7).
+        present_scientific_status(run, run_root)
     for result in run.get("results", []):
         if "initial_pipeline" not in result and "pipeline_next_year" in result:
             result["initial_pipeline"] = result["pipeline_next_year"]

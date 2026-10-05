@@ -858,6 +858,7 @@
     "gridform_core/reference_comparison.py",
     "gridform_core/replay_export.py",
     "gridform_core/research_suite.py",
+    "gridform_core/result_advisories.py",
     "gridform_core/results_summary.py",
     "gridform_core/run_bundle.py",
     "gridform_core/run_input_snapshot.py",
@@ -1418,6 +1419,7 @@
     "tests/test_reproducible_python_release.py",
     "tests/test_research_suite.py",
     "tests/test_research_suite_api.py",
+    "tests/test_result_advisories.py",
     "tests/test_result_queries.py",
     "tests/test_results_summary.py",
     "tests/test_retained_source_manifest.py",
@@ -3508,8 +3510,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "b9f374b4808daa2a03f6b6db135060ad91eb25df1d836c8dd061b20142f2c411",
-      "bytes": 188641,
+      "sha256": "b6a8fc54a084f07348c71ea259af363be1a803bcf723ca248f5fa989b19831be",
+      "bytes": 186843,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7854,6 +7856,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "gridform_core/result_advisories.py",
+      "sha256": "051726d75ad1daaf3742204aaa47f9c4b0cf91daf05dc3bd2855f16db5d10b08",
+      "bytes": 2820,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/results_summary.py",
       "sha256": "471458dedc2f1f073adf4dbd6522e41d3537f37c15750b8641008a18f705983c",
       "bytes": 29124,
@@ -11203,6 +11211,12 @@
       "path": "tests/test_research_suite_api.py",
       "sha256": "51e84efe3bd966f6593347bd24518d3badd25e4f2a30e79b3f8e936cf766e867",
       "bytes": 7050,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_result_advisories.py",
+      "sha256": "93dfbebc3bbadfd03d9390be0b53873d3a6f45666c20246c382304a608e3e122",
+      "bytes": 2810,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
