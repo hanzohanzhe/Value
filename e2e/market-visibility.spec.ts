@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const run = {
   id: "market-demo", project_id: "demo", project_name: "Market evidence fixture", mode: "full",
@@ -95,4 +97,39 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
   await page.screenshot({ path: test.info().outputPath("prompt57-vre-curtailment.png"), fullPage: true });
+});
+
+// P0-9 S4 (R3-02): a staged (v8) summary-trace Run has no physical_dispatch
+// rows but a dispatch summary; the chart stacks its final-dispatch supply.
+// The payloads are the generated contract fixtures (real read models).
+const contract = (name: string) => JSON.parse(readFileSync(path.join(process.cwd(), "tests", "fixtures", "ui-contract", `${name}.json`), "utf8")).payload;
+
+test("a v8 summary-trace Run draws its final-dispatch supply stack", async ({ page }) => {
+  const capabilities = contract("toy-v8.capabilities");
+  const daily = contract("toy-v8.dispatch-daily");
+  await page.route("**/api/**", async (route) => {
+    const url = route.request().url();
+    let body: unknown;
+    if (url.endsWith("/api/workspace")) body = {
+      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [],
+      projects: [{ id: run.project_id, name: run.project_name, data_pack_id: "fixture", start_year: 2025, end_year: 2025, modules: {}, updated_at: run.updated_at }],
+      data_packs: [{ id: "fixture", name: "Fixture", country: "GB", timezone: "Europe/London", bindings: {}, required_count: 0, bound_required_count: 0, valid_required_count: 0, binding_issues: {}, complete: true }],
+      runs: [run], runtime: { python: "3.10.11", compatible: true, selected_capability: "value-native" },
+    };
+    else if (url.endsWith("/api/runs/market-demo")) body = run;
+    else if (url.includes("/market/capabilities")) body = capabilities;
+    else if (url.includes("/market/dispatch")) body = daily;
+    else body = { error: "unmocked API" };
+    await route.fulfill({ status: url.includes("/market/") || url.endsWith("/api/workspace") || url.endsWith("/api/runs/market-demo") ? 200 : 404, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Market replay/ }).click();
+  await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  expect(capabilities.physical_dispatch).toBe(false);
+  await expect(page.locator(".evidence-chart rect.dispatch-segment").first()).toBeVisible();
+  expect(await page.locator(".evidence-chart rect.dispatch-segment").count()).toBeGreaterThanOrEqual(1);
+  await expect(page.locator(".chart-legend")).toContainText("onshore wind");
+  await expect(page.locator(".selected-period-strip")).toContainText("Demand-weighted national ahead clearing price");
+  await expect(page.locator(".selected-period-strip")).toContainText("£55/MWh");
+  await expect(page.getByText("No supply flows recorded for this window")).toHaveCount(0);
 });

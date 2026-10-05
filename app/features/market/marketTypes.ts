@@ -17,7 +17,7 @@ export type MarketCapability = {
 };
 
 /** Role of a dispatch flow in the energy balance (dispatch timeline v2). Only `supply` is stacked. */
-export type FlowRole = "supply" | "demand" | "storage_charge" | "curtailment" | "excess" | "context";
+export type FlowRole = "supply" | "demand" | "storage_charge" | "curtailment" | "excess" | "unserved" | "context";
 
 export type DispatchFlow = {
   technology: string; flow_type: string; evidence_scope: string; energy_mwh: number; balance_component_mwh: number;

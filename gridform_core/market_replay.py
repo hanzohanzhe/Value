@@ -14,7 +14,7 @@ from .market_ledger import _read_only_connection
 
 AUCTION_VIEW_SCHEMA = "value.market-auction-view/v1"
 PHYSICAL_DISPATCH_SCHEMA = "value.physical-dispatch-view/v1"
-DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v1"
+DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v2"
 REPLAY_CAPABILITIES_SCHEMA = "value.market-replay-capabilities/v1"
 VRE_SUMMARY_SCHEMA = "value.vre-curtailment-summary/v1"
 VRE_TIMELINE_SCHEMA = "value.vre-curtailment-timeline/v1"
@@ -69,6 +69,39 @@ def canonical_technology(
     if "electroly" in raw or "flexible" in raw:
         return "flexible_demand"
     return "unmapped"
+
+
+# Role of each physical-dispatch flow type in the period energy balance
+# (dispatch timeline v2, P0-9 S4).  Only ``supply`` flows are stacked as
+# generation; the others are context.  Every flow type the three writers
+# (scheme_c_native_psm, perfect_foresight_psm, staged_psm) record is listed;
+# tests/test_market_replay.py scans their source to keep this complete.  An
+# unknown flow type is ``context``: shown in evidence, never stacked.
+FLOW_ROLE_BY_TYPE = {
+    "generation": "supply",
+    "import": "supply",
+    "storage_discharge": "supply",
+    "storage_charge": "storage_charge",
+    "flexible_demand": "demand",
+    "export": "demand",
+    "balancing_curtailment": "curtailment",
+    "unused_vre": "curtailment",
+    "excess_generation": "excess",
+    "blackout": "unserved",
+}
+FLOW_ROLES = ("supply", "demand", "storage_charge", "curtailment", "excess", "unserved", "context")
+V8_SUPPLY_STAGE = "final_dispatch"
+
+
+def flow_role(flow_type: str) -> str:
+    return FLOW_ROLE_BY_TYPE.get(str(flow_type), "context")
+
+
+def v8_summary_flow_role(stage: str, energy_mwh: float) -> str:
+    """v8 dispatch summaries: only positive final dispatch is supply; earlier
+    stages (ahead schedules) are context for the same period."""
+
+    return "supply" if str(stage) == V8_SUPPLY_STAGE and float(energy_mwh) > 0 else "context"
 
 
 def _tables(connection: sqlite3.Connection) -> set[str]:
@@ -693,9 +726,17 @@ def query_dispatch_timeline(
                     start_period, bucket_periods, *selected_buckets,
                 ),
             ):
+                raw_technology = str(row["technology"])
                 flows_by_bucket[int(row["bucket"])].append({
-                    "technology": str(row["technology"]),
+                    # R3-02: the staged writer records raw technology names
+                    # ("CCGT", "onshore"); the read model sends the canonical
+                    # group and keeps the raw name.
+                    "technology": canonical_technology(raw_technology, declared_technology=raw_technology),
+                    "raw_technology": raw_technology,
                     "flow_type": "accepted_dispatch",
+                    "role": v8_summary_flow_role(str(row["stage"]), float(row["energy_mwh"])),
+                    "stage": str(row["stage"]),
+                    "zone_id": str(row["zone_id"]),
                     "evidence_scope": (
                         f"zone:{row['zone_id']};stage:{row['stage']}"
                     ),
@@ -723,6 +764,7 @@ def query_dispatch_timeline(
                 flows_by_bucket[int(row["bucket"])].append({
                     "technology": str(row["technology"]),
                     "flow_type": str(row["flow_type"]),
+                    "role": flow_role(str(row["flow_type"])),
                     "evidence_scope": str(row["evidence_scope"]),
                     "energy_mwh": float(row["energy_mwh"]),
                     "balance_component_mwh": float(row["balance_component_mwh"]),

@@ -530,6 +530,9 @@ def differences(expected: Any, actual: Any, where: str = "$", limit: int = 20) -
 
 def _supply_flows(payload: Mapping[str, Any], item: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     flows = list(item.get("flows") or [])
+    if any("role" in flow for flow in flows):
+        # Dispatch timeline v2 (P0-9 S4): the backend states each flow's role.
+        return [flow for flow in flows if flow.get("role") == "supply"]
     if payload.get("dispatch_source") == "dispatch_summary":
         return [flow for flow in flows if flow.get("flow_type") == "accepted_dispatch"
                 and f";stage:{V8_SUPPLY_STAGE}" in str(flow.get("evidence_scope", ""))]

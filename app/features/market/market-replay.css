@@ -9,3 +9,8 @@
   .selected-period-strip.window-summary { grid-template-columns: 1fr 1fr; }
   .selected-period-strip.window-summary .window-summary-wide { grid-column: 1 / -1; }
 }
+/* Spec 3.3: a 4px amber band above stress periods; never a "shortfall" bar. */
+.evidence-chart .stress-band { fill: var(--amber); }
+.evidence-chart .stress-key { display: inline-flex; align-items: center; gap: 6px; margin-left: 14px; font-size: 12px; color: var(--muted); }
+.evidence-chart .stress-key i { display: inline-block; width: 18px; height: 4px; background: var(--amber); }
+.dispatch-empty code { font-size: 12px; }

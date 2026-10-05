@@ -3052,20 +3052,20 @@
     },
     {
       "path": "app/features/market/dispatchView.ts",
-      "sha256": "dc3cf2e31515c0a4e11b48c42a5fe4fa21d23b1205664dc358cf8755bf2fdf4a",
-      "bytes": 688,
+      "sha256": "9335e873382cdd0479ef0b268d02fd2668e91527fc738582f03d58886cbefbe8",
+      "bytes": 3591,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/market/market-replay.css",
-      "sha256": "9a4216cecaae7e7a26dfbc274938a778a1d1ce973f1278e2ad0f2f9da32ea36c",
-      "bytes": 819,
+      "sha256": "2247f7ed065745ad9ea361c5b6f918fdd3b5652fb261bf08cf54b86a8f3dd8c8",
+      "bytes": 1245,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/market/marketTypes.ts",
-      "sha256": "7e4021a62f40cdf7efcdb32aa9f00dfda7bf10807b935ea64b4c86fabc2dbc83",
-      "bytes": 4474,
+      "sha256": "bd1f4017b35cbe8aeb6aa21f2d0e83cd249a3360671e1271064878909aa0b983",
+      "bytes": 4487,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3412,8 +3412,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "5111ba6401e8578d72edf1d78e623a0a0bc065c46cf3e82c7cffc02b54ecfbf9",
-      "bytes": 149705,
+      "sha256": "93c64b5e7ff69e3d8714c1aa16b2434d0c211bda1a0ad2adcf8b74a76944226a",
+      "bytes": 150133,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6118,8 +6118,8 @@
     },
     {
       "path": "e2e/market-visibility.spec.ts",
-      "sha256": "e70b62ede45abba94a67c53f960467e888000b151fcacfafee6a3ff82dcf0cb1",
-      "bytes": 7526,
+      "sha256": "3da42c3be016317a923d05eb4dd6d89e439c00b0df37391292e7db3d70af39e9",
+      "bytes": 10245,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6142,7 +6142,7 @@
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "0021bd6015472236124e6be5b76b35733061745289c7735b4563c5e2eb9408fb",
+      "sha256": "5b40079b0ccb1cf2546338017105a67443ae6e67cc95b510fb4faa6bafbc3f20",
       "bytes": 2928,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -7711,8 +7711,8 @@
     },
     {
       "path": "gridform_core/market_replay.py",
-      "sha256": "0ff3d30dec79068763fe403a7f8641459c378dab8e87bbec08bbce1201291d02",
-      "bytes": 40132,
+      "sha256": "12b952558b84faa7d4216069765f81eda7266df6a38ac208a37c69679c6618a3",
+      "bytes": 42119,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9653,14 +9653,14 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v7.dispatch-daily.json",
-      "sha256": "83613018b3a98336f3a7bc0caae953d6a41b2eef0f14f51d9f047fa00a7dfb2b",
-      "bytes": 2624,
+      "sha256": "df6882c946ebae2991757b58e6a9016b21cd6dc0502ed9025b6e22fd8f8fd513",
+      "bytes": 2749,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v7.dispatch-half-hour.json",
-      "sha256": "35bebc2656bc8fb9ff62e7871de70efd8ca8e7f9188177ad46c61f063c126e5f",
-      "bytes": 5175,
+      "sha256": "9e5173ef595ec79f9319e583dc643d56ffdd14e8a327b28c984d0686aa74fea2",
+      "bytes": 5396,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9689,8 +9689,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v7.vre-timeline-daily.json",
-      "sha256": "b53db325a86ed56ddf970d90d1162d274fd5e5c9808822f2575f81bbdb05091e",
-      "bytes": 2692,
+      "sha256": "f247643a0e568dec618c360e40a13b97f022163ee919a4ceaea33d96b5d1c6ca",
+      "bytes": 2817,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9701,14 +9701,14 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v8.dispatch-daily.json",
-      "sha256": "f287a1a202b21080fe4be6a07818a1684873999d309e28c79f0ffc2e3808e6c9",
-      "bytes": 1991,
+      "sha256": "5f1ab186489b91f754104e0ac9d1617facd7c4a2d6bf5d413b728d1658ab351f",
+      "bytes": 2248,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v8.dispatch-half-hour.json",
-      "sha256": "1ca020972f85c1aee4119ca971837098afe3dd9d5eb632a1ddab4fd040b5f3c5",
-      "bytes": 4751,
+      "sha256": "e3ef9faa7d5f1b78765eb1a407d0de68a8d323c876493f949774cf951876b667",
+      "bytes": 5605,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9731,8 +9731,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v8.vre-timeline-daily.json",
-      "sha256": "e9a351e0be303f7c4540b94cb3c6dbcc1448e2872e4ce213e669d942a8d4a830",
-      "bytes": 2059,
+      "sha256": "e2fc54e07e762744d4a2d2472a20b12aece088ba7d3e1ab4b64d75ce973e05f3",
+      "bytes": 2316,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9761,14 +9761,14 @@
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.dispatch-daily.json",
-      "sha256": "76fbd8a32a74896f7db8b32b2e8bb5e61ee1f843a53378e6dd9dff587b02372a",
-      "bytes": 3060,
+      "sha256": "b5e1e4a0ac984db3d48ad81aa4d3b2df0bcd6a9eb24fb550f05543e6a813b0d8",
+      "bytes": 3185,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.dispatch-half-hour.json",
-      "sha256": "8f075b23c01a905be1fbbaf186d5018e17d625e06de4f52e37b5596aeed9ab58",
-      "bytes": 54573,
+      "sha256": "0d2172cc3fc7c2655a9fd4be2ed8e635bfa6222ee489e227a4e2ec2b899d6fdb",
+      "bytes": 56698,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9797,8 +9797,8 @@
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.vre-timeline-daily.json",
-      "sha256": "122491c7810ecff28062fa8aefc8c67dabddd0ef07976a240232e0950677dc8f",
-      "bytes": 3142,
+      "sha256": "5883f0e62e2c801c9b7ac76a94615f951b02b967a3328f97f20127d3bebfdf5c",
+      "bytes": 3267,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9857,8 +9857,8 @@
     },
     {
       "path": "tests/frontend/unit/dispatch-view.test.mjs",
-      "sha256": "a47070dfbb7cc795bd95c5b53614296da1647369c1ecacdd5debe536223950f6",
-      "bytes": 1795,
+      "sha256": "c95b9f9c5e4e681a97e8b2cfdf2ba0b87902c9d16f2f992601cf1b6b8d13d79e",
+      "bytes": 5272,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9881,7 +9881,7 @@
     },
     {
       "path": "tests/frontend/unit/offline-ratchet.test.mjs",
-      "sha256": "c60e2b0cc309a6315dbb3f1d0adaba6cd5664fb331f124cfbb264036580677a8",
+      "sha256": "0d6182eeeeaebb6fadff8b0d00cfe918b7db06a09d7c90727b344723e66dd7fd",
       "bytes": 6812,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -10637,8 +10637,8 @@
     },
     {
       "path": "tests/test_market_replay.py",
-      "sha256": "f342db564efb603885cb3fd3451a59c0b66e6f92e70a202f239a67a016692642",
-      "bytes": 13997,
+      "sha256": "af58affa440fae8f86ebedfa2fe85b6301d8a539bcb0695b1aba09a10d69781d",
+      "bytes": 17923,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11009,9 +11009,9 @@
     },
     {
       "path": "tests/test_prompt123_bounded_replay_export.py",
-      "sha256": "9536455a29539886bca59a450ba19b22957c2c87ffb915f0cbc5b16333635c65",
-      "bytes": 34135,
-      "transform": "byte copy"
+      "sha256": "33122efeb12882396e59f7cfb33b4487be847ee656329194e952b46cef8f8fa6",
+      "bytes": 34287,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt125_output_context_gate.py",
@@ -11441,8 +11441,8 @@
     },
     {
       "path": "tests/test_ui_contract_fixtures.py",
-      "sha256": "c86783682257569152cbd874521f1b9a70b703fdf45be8c9f477d30fbc43d991",
-      "bytes": 15146,
+      "sha256": "d13cbd4e7410fa80fba92a22b62a422b22d904075c02e73758b0eb5b7c183c14",
+      "bytes": 15601,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11525,8 +11525,8 @@
     },
     {
       "path": "tests/ui_contract_fixtures.py",
-      "sha256": "43907beb127bc0461d53a45d94616bba904a598af0069dd5bc5ed0afc330fa60",
-      "bytes": 35553,
+      "sha256": "bbc6a4b5f58acff460f2ef24cf1cf6a7946212c0fb0c3e98edcec564310ca283",
+      "bytes": 35750,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -81,7 +81,7 @@ test("R3-01 is fixed (P0-9 S3): market-visibility has no registered failure and 
   const { readFile } = await import("node:fs/promises");
   const committed = JSON.parse(await readFile(new URL("../../../e2e/offline-subset.json", import.meta.url), "utf8"));
   assert.equal(committed.known_failures.some((item) => item.id.startsWith("market-visibility.spec.ts > ")), false);
-  assert.equal(committed.min_passed["e2e/market-visibility.spec.ts"], 1);
+  assert.equal(committed.min_passed["e2e/market-visibility.spec.ts"], 2);
 });
 
 test("the committed offline subset only names specs and registered tests that exist", async () => {
