@@ -62,7 +62,11 @@ def _modular(path: Path) -> dict[str, object]:
                 "Total_System_Cost_GBP": cost["cem_system_cost_gbp"],
                 "Cost_per_MWh_GBP": cost["cem_system_cost_gbp_per_mwh_served"],
                 "Total_Operational_Cost_GBP": market["total_operational_cost_gbp"],
-                "Total_Levelized_Capital_Cost_GBP": market["total_levelized_capital_cost_gbp"],
+                "Total_Levelized_Capital_Cost_GBP": (
+                    cost["headline_capital_gbp"]
+                    if cost.get("headline_capital_gbp") is not None
+                    else market["total_levelized_capital_cost_gbp"]
+                ),
                 "Total_Energy_Generated_MWh": market["total_generation_mwh"],
             }
             assets = result["planning_advance"]["operating_state"]["assets"]

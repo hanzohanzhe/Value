@@ -109,6 +109,35 @@
       "introduced_in": "P0-7 S7",
       "deviation_signature": null,
       "description": "value-corrected: the three power batteries share one pool of cap_fraction x power_room; agent-investment collects their requests first and scales them to each technology cap, then to the pool (allocate_capped_requests). A doctoral run that receives a pooled headroom row is refused. The doctoral profile keeps the per-technology copies (decision Q1)."
+    },
+    {
+      "id": "p07.compatibility-capital-out-of-headline",
+      "package": "p07",
+      "findings": [
+        "P4-03"
+      ],
+      "track": "profile_gated",
+      "scope": "cost_ledger",
+      "affects": [
+        "accounting",
+        "presentation"
+      ],
+      "applies_when": {},
+      "advisory": {
+        "severity": "high",
+        "title": "Headline cost included run-of-river hydro compatibility capital",
+        "summary": "Before P0-7 the headline system cost counted the existing-stock compatibility capital of natural-flow hydro (about GBP 10.96bn per year on the UK pack), a preserved accounting basis rather than a sourced CAPEX.",
+        "affected_metrics": [
+          "system_cost",
+          "capital_cost"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_p07_cost_ledger_v2.CostLedgerV2Tests"
+      },
+      "introduced_in": "P0-7 S8",
+      "deviation_signature": null,
+      "description": "value-corrected: cost ledger v2 keeps the existing_stock_compatibility annualised capital out of the headline and lists it as the memo line existing_stock_compatibility.annualised_capital (the Runs page shows it as 'Memo: run-of-river hydro compatibility capital (excluded from headline)'). The doctoral headline keeps it, with the same memo line marked as included. VRE and storage fixed OPEX is a memo in both profiles (decision A7, universal accounting)."
     }
   ]
 }

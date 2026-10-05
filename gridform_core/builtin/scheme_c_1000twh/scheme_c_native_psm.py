@@ -14,7 +14,12 @@ import pandas as pd
 
 from ...methodology import current_methodology, methodology_scoped
 from ... import agent_cashflow
-from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
+from ...asset_economics import (
+    CAPITAL_COST_COMPONENTS_KEY,
+    capital_cost_components,
+    primary_annual_asset_costs,
+    validate_asset_economics,
+)
 from ...market_ledger import (
     PhysicalDispatchRow,
     StorageYearBoundaryRow,
@@ -840,6 +845,7 @@ class SchemeCNativePSM:
                 ),
                 "physical_operating_cost_detail_gbp": operating_detail,
                 agent_cashflow.EXTENSION_KEY: cashflow,
+                CAPITAL_COST_COMPONENTS_KEY: capital_cost_components(model_input.operating_state.assets),
                 **headroom_extension,
                 "market_settlement_components_gbp": settlement,
                 "market_rule_diagnostics": self._rule_diagnostics(realisation_log, market_rules, period_hours),

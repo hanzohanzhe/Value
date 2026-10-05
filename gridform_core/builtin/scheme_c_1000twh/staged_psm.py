@@ -12,7 +12,12 @@ from typing import Callable, Mapping, Sequence
 
 from ...methodology import methodology_scoped
 from ... import agent_cashflow
-from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
+from ...asset_economics import (
+    CAPITAL_COST_COMPONENTS_KEY,
+    capital_cost_components,
+    primary_annual_asset_costs,
+    validate_asset_economics,
+)
 from ...comparison_eligibility import build_psm_comparison_input_evidence
 from ...market_ledger import (
     BoundaryPeriodLedgerRow,
@@ -2976,6 +2981,7 @@ class StagedBidAtCostPSM:
                 "storage_cost_observations": storage_reports,
                 "final_storage_soc_mwh_by_asset": last_soc_by_base,
                 "actual_storage_discharge_mwh_by_asset": dict(actual_storage_discharge),
+                CAPITAL_COST_COMPONENTS_KEY: capital_cost_components(model_input.operating_state.assets),
                 agent_cashflow.EXTENSION_KEY: _staged_agent_cashflow(
                     self.id, generation, chronology.resources, base_by_asset,
                     model_input.operating_state.assets,

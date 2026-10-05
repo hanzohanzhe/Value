@@ -11,8 +11,15 @@ from typing import Mapping
 from .v2.contracts import MarketYearResult
 
 
-COST_LEDGER_SCHEMA = "value.annual-cost-ledger/v1"
+COST_LEDGER_SCHEMA = "value.annual-cost-ledger/v2"
 CEM_SYSTEM_COST_DEFINITION = "value.cem-system-resource-cost/v1"
+# Cost ledger v2 (P0-7 S8): the headline capital is the PSM's annualised
+# capital and FOM less (a) VRE and storage fixed OPEX, which decision A7 folds
+# into their levelised CAPEX (both profiles), and (b) under the corrected
+# profile, the existing-stock compatibility capital of run-of-river hydro
+# (P4-03, ~GBP 10.96bn/year on the UK pack), each kept as a memo line.
+COMPATIBILITY_CAPITAL_LINE = "existing_stock_compatibility.annualised_capital"
+VRE_STORAGE_FOM_LINE = "vre_storage.fixed_opex_in_levelised_capex"
 
 
 @dataclass(frozen=True)
@@ -37,6 +44,10 @@ class AnnualCostLedger:
     lines: tuple[CostLine, ...]
     legacy_system_cost_gbp: float | None = None
     legacy_cost_per_mwh_generated: float | None = None
+    headline_capital_gbp: float | None = None
+    compatibility_capital_gbp: float | None = None
+    compatibility_capital_in_headline: bool | None = None
+    vre_storage_fixed_opex_excluded_gbp: float | None = None
     schema_version: str = COST_LEDGER_SCHEMA
     definition_id: str = CEM_SYSTEM_COST_DEFINITION
     status: str = "reconciled"
@@ -66,6 +77,7 @@ def build_cem_cost_ledger(
     legacy_system_cost_gbp: float | None = None,
     legacy_cost_per_mwh_generated: float | None = None,
     tolerance_gbp: float = 1e-4,
+    exclude_compatibility_capital: bool = False,
 ) -> AnnualCostLedger:
     """Build the headline CEM resource-cost view without settlement double counting.
 
@@ -106,13 +118,51 @@ def build_cem_cost_ledger(
     if network_resource_cost > capital + tolerance_gbp:
         raise ValueError("Network CAPEX/FOM exceeds the typed annual capital total")
     non_network_capital = max(capital - network_resource_cost, 0.0)
+    components = market.extensions.get("capital_cost_components_gbp")
+    compatibility = vre_storage_fom = None
+    excluded = 0.0
+    memo_lines: list[CostLine] = []
+    if isinstance(components, Mapping):
+        compatibility = _finite_nonnegative(
+            components.get("existing_stock_compatibility_capital_gbp", 0.0),
+            "existing-stock compatibility capital",
+        )
+        vre_storage_fom = _finite_nonnegative(
+            components.get("vre_storage_fixed_opex_gbp", 0.0), "VRE and storage fixed OPEX",
+        )
+        excluded = vre_storage_fom + (compatibility if exclude_compatibility_capital else 0.0)
+        if excluded > non_network_capital + tolerance_gbp:
+            raise ValueError("Excluded capital memo items exceed the typed annual capital total")
+        memo_lines.append(CostLine(
+            VRE_STORAGE_FOM_LINE,
+            "memo",
+            vre_storage_fom,
+            "memo_folded_into_levelised_capex",
+            "MarketYearResult.extensions.capital_cost_components_gbp.vre_storage_fixed_opex_gbp",
+            False,
+            "Decision A7: VRE and storage fixed OPEX is part of their levelised CAPEX; not added again.",
+        ))
+        memo_lines.append(CostLine(
+            COMPATIBILITY_CAPITAL_LINE,
+            "memo",
+            compatibility,
+            "memo_excluded_from_headline" if exclude_compatibility_capital
+            else "memo_included_in_commissioned_fleet_capital",
+            "MarketYearResult.extensions.capital_cost_components_gbp.existing_stock_compatibility_capital_gbp",
+            False,
+            "Run-of-river hydro existing-stock compatibility capital (P4-03): "
+            + ("excluded from the headline." if exclude_compatibility_capital
+               else "of which, already inside the commissioned-fleet capital line (doctoral headline unchanged)."),
+        ))
+    headline_fleet_capital = max(non_network_capital - excluded, 0.0)
     lines: list[CostLine] = [
         CostLine(
             "commissioned_fleet.annualised_capital",
             "physical_resource_cost",
-            non_network_capital,
+            headline_fleet_capital,
             "commissioned_cem_generation_and_storage_fleet",
-            "MarketYearResult.total_levelized_capital_cost_gbp less declared network resource costs",
+            "MarketYearResult.total_levelized_capital_cost_gbp less declared network resource costs"
+            + (" and the memo items below" if excluded else ""),
             True,
         )
     ]
@@ -201,13 +251,15 @@ def build_cem_cost_ledger(
             False,
         ))
 
-    system_cost = capital + operating_sum
+    lines.extend(memo_lines)
+    headline_capital = capital - (non_network_capital - headline_fleet_capital)
+    system_cost = headline_capital + operating_sum
     if isinstance(zonal_accounting, Mapping):
         declared_system = _finite_nonnegative(
             zonal_accounting.get("system_resource_cost_gbp", system_cost),
             "zonal system resource cost",
         )
-        if not math.isclose(declared_system, system_cost, rel_tol=1e-9, abs_tol=tolerance_gbp):
+        if not math.isclose(declared_system, capital + operating_sum, rel_tol=1e-9, abs_tol=tolerance_gbp):
             raise ValueError(
                 "Zonal system resource cost does not reconcile to commissioned-fleet "
                 "CAPEX/FOM plus final physical operating cost"
@@ -278,6 +330,12 @@ def build_cem_cost_ledger(
             float(legacy_cost_per_mwh_generated)
             if legacy_cost_per_mwh_generated is not None else None
         ),
+        headline_capital_gbp=headline_capital,
+        compatibility_capital_gbp=compatibility,
+        compatibility_capital_in_headline=(
+            None if compatibility is None else not exclude_compatibility_capital
+        ),
+        vre_storage_fixed_opex_excluded_gbp=vre_storage_fom,
         status=status,
         notes=(
             "Storage offers and market payments are recovery/settlement mechanisms, not additional physical cost.",

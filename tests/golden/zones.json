@@ -536,6 +536,11 @@
    "pattern": "*::*storage_headroom_inputs*",
    "zone": "accounting",
    "why": "P0-7 S6 (P5-01, C20, Q12): the PSM's per-period post-charge surplus trace read by the corrected storage policy (a ledger-derived input); the headroom and investment it moves stay trajectory"
+  },
+  {
+   "pattern": "*::*capital_cost_components*",
+   "zone": "accounting",
+   "why": "P0-7 S8 (P4-03, A7, Q12): what the PSM's annualised capital total contains (compatibility capital, VRE/storage FOM); a cost-ledger input"
   }
  ]
 }
