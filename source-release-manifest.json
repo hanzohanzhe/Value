@@ -772,6 +772,7 @@
     "gridform_core/data_workbench/sources/uk-network/ons-postcodes.source.json",
     "gridform_core/data_workbench/state.py",
     "gridform_core/data_workbench/validation.py",
+    "gridform_core/dataset_slots.py",
     "gridform_core/dispatch_benchmark.py",
     "gridform_core/doctoral_checkpoint.py",
     "gridform_core/doctoral_contract.py",
@@ -1234,6 +1235,7 @@
     "tests/test_build_value_uk_research_suite.py",
     "tests/test_carbon_factor_database.py",
     "tests/test_carbon_ledger.py",
+    "tests/test_catalog_lazy.py",
     "tests/test_cbc_locator.py",
     "tests/test_cem_identity.py",
     "tests/test_compare_release_roots.py",
@@ -3459,8 +3461,8 @@
     },
     {
       "path": "backend/model_runner.py",
-      "sha256": "51d4cc9e63960c41d112fa74783fe45ab29c7762edc725aad52a93a817241eaa",
-      "bytes": 31677,
+      "sha256": "59f90f3ba3523bb1696b29eb58cc290d433cd0779e99880e981bf66246b56321",
+      "bytes": 31683,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4089,15 +4091,15 @@
     },
     {
       "path": "docs/BUILD_YOUR_OWN_MODEL_101.md",
-      "sha256": "79407f9b8163f1a6b15829a3eba8a88b0db9c3f100f8a1c08b9662abcf21c794",
-      "bytes": 22759,
-      "transform": "byte copy"
+      "sha256": "13e63ce81b0dfcb2537c16673b739027ac59521ddf4fca128990c96bc907d017",
+      "bytes": 22809,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/BUILD_YOUR_OWN_MODEL_101_ZH.md",
-      "sha256": "25a7bcca628c1bfe0b56a16b6de2558a67c3b5812c47df9463b4417afb131b0d",
-      "bytes": 17870,
-      "transform": "byte copy"
+      "sha256": "47455ca5d2464266d7f0ac4034e759f527ad51454568c6842de07a6cfd8b32c3",
+      "bytes": 17921,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/CARBON_FACTOR_DATABASE.md",
@@ -6885,9 +6887,9 @@
     },
     {
       "path": "gridform_core/catalog.py",
-      "sha256": "1ab96214d69ad09d89cc7463ddbdc86e47ec29941aeba7e7b7d8ad352aaf7ec0",
-      "bytes": 6883,
-      "transform": "byte copy"
+      "sha256": "d6db10297bf09635ed458a7afb55980206a11029025cf8b7b70572bc0ca31925",
+      "bytes": 4402,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/cem_identity.py",
@@ -7212,9 +7214,9 @@
     },
     {
       "path": "gridform_core/data_workbench/local_service.py",
-      "sha256": "f09f123b4d0f283450eab34d16f5f345f1ba86d9c0b7af0c06eee7190a8e0b84",
-      "bytes": 15877,
-      "transform": "byte copy"
+      "sha256": "fea23a30986d5eb6920894215a2c2500f73045b2d82056d0647860ab38c0c943",
+      "bytes": 15883,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/data_workbench/object_store.py",
@@ -7230,9 +7232,9 @@
     },
     {
       "path": "gridform_core/data_workbench/overlay_editor.py",
-      "sha256": "4f6a63cccb87a392ba005d5ff61a7cba83d9c47c694e578139e7c2821e9d6bfe",
-      "bytes": 24191,
-      "transform": "byte copy"
+      "sha256": "20ad73de75ecc92554dc57b1462e5da6b3917a56a2e25dc1d56d718575c743e1",
+      "bytes": 24197,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/data_workbench/ports.py",
@@ -7323,6 +7325,12 @@
       "sha256": "dd77286aa15326efebf40d3422163d13d181886b86453bfc85a3c2ff4dca057e",
       "bytes": 10671,
       "transform": "byte copy"
+    },
+    {
+      "path": "gridform_core/dataset_slots.py",
+      "sha256": "188be7fc13ace71bfd61899bda33e6678e29073cc6300a9bfe2f74be562a8cb5",
+      "bytes": 3829,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/dispatch_benchmark.py",
@@ -7770,8 +7778,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "ba58ccf97f522072f566ee2c7c5b3e9375b4149fd1c6c6451ebd5027affd555f",
-      "bytes": 32183,
+      "sha256": "75276a11456ca2bc2839a23a6412b7702c815385532781a9ca9e1a706b105a35",
+      "bytes": 32189,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10087,6 +10095,12 @@
       "sha256": "b7d11efb32872379d92c98effa60293bdc1ab63f4f105e7fff05cd0b14559921",
       "bytes": 6952,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_catalog_lazy.py",
+      "sha256": "12dfa065db147a6bb87155eb7ec745e58a2781ae916441ba90eb5c2054c71635",
+      "bytes": 6263,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_cbc_locator.py",

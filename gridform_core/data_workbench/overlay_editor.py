@@ -17,7 +17,7 @@ import shutil
 import tempfile
 import uuid
 
-from gridform_core.catalog import DATASET_SLOTS
+from gridform_core.dataset_slots import DATASET_SLOTS
 from gridform_core.data_bundle import build_data_bundle, install_data_bundle
 from gridform_core.data_pack_validation import validate_data_pack
 from gridform_core.zonal_contracts import ZONAL_ROLES, ZonalNetworkPack, load_zonal_network_pack

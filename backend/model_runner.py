@@ -32,7 +32,7 @@ from gridform_core.preflight_resources import (
     build_frozen_resource_contexts,
     selected_staged_zonal_calibration_runner,
 )
-from gridform_core.catalog import DATASET_SLOTS
+from gridform_core.dataset_slots import DATASET_SLOTS
 from gridform_core.v2.module_manifest import workspace_registry
 from gridform_core.run_snapshot import SnapshotError, verify_run_input_snapshot
 from gridform_core.run_input_snapshot import (

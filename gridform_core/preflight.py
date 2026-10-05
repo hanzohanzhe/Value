@@ -655,7 +655,7 @@ def run_preflight(
 
 
 def main() -> None:
-    from .catalog import DATASET_SLOTS
+    from .dataset_slots import DATASET_SLOTS
 
     parser = argparse.ArgumentParser(description="Preflight a VALUE research project")
     parser.add_argument("--project", required=True, type=Path)

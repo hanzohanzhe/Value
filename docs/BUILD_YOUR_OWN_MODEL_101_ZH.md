@@ -78,7 +78,7 @@ role，而不是让模型代码依赖某个人桌面上的绝对路径。当前 
 - CEM：太阳能、陆上风、海上风 profile，标准化和原始 REPD 项目，资本成本、
   policy/support、规划时间、规划成功率和模型参数。
 
-权威角色、允许格式和单位定义在 `gridform_core/catalog.py` 的 `DATASET_SLOTS`，
+权威角色、允许格式和单位定义在 `gridform_core/dataset_slots.py` 的 `DATASET_SLOTS`（`gridform_core/catalog.py` 原样转出），
 前端 **Data** 页面由同一清单生成。不要只根据文件名猜用途。
 
 ### 3.2 每个 binding 至少应声明

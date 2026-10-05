@@ -83,7 +83,7 @@ path. The v2 contract currently has 25 required roles:
   model parameters.
 
 The authoritative roles, allowed formats and units are `DATASET_SLOTS` in
-`gridform_core/catalog.py`. The **Data** page is generated from the same list.
+`gridform_core/dataset_slots.py` (re-exported by `gridform_core/catalog.py`). The **Data** page is generated from the same list.
 Do not infer scientific meaning from a filename alone.
 
 ### 3.2 Every binding should declare

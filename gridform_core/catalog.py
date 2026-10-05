@@ -1,7 +1,9 @@
 """Manifest-derived module catalog and stable data-contract slots."""
 
+from .dataset_slots import DATASET_SLOTS  # noqa: F401  (re-export, C27)
 from .module_conformance import conformance_report
 from .module_installation import list_module_installations
+from .module_quarantine import MODULE_LIFECYCLE_LOCK, quarantine_report
 from .v2.module_manifest import workspace_registry
 
 _LIFECYCLE_ORDER = {
@@ -80,39 +82,36 @@ def module_catalog_snapshot() -> dict[str, object]:
         "modules": modules,
         "slot_by_id": slot_by_id,
         "required_slots": required_slots,
+        "quarantine": quarantine_report(registry),
     }
 
 
-_SNAPSHOT = module_catalog_snapshot()
-MODULE_REGISTRY = _SNAPSHOT["registry"]
-MODULES = _SNAPSHOT["modules"]
-MODULE_SLOT_BY_ID = _SNAPSHOT["slot_by_id"]
-REQUIRED_MODULE_SLOTS = _SNAPSHOT["required_slots"]
+_SNAPSHOT: dict[str, object] | None = None
+_LEGACY_NAMES = {
+    "MODULE_REGISTRY": "registry",
+    "MODULES": "modules",
+    "MODULE_SLOT_BY_ID": "slot_by_id",
+    "REQUIRED_MODULE_SLOTS": "required_slots",
+}
 
-DATASET_SLOTS = [
-    {"role": "fleet.generators", "group": "PSM", "label": "Existing generator fleet", "formats": ["json"], "required": True},
-    {"role": "demand.forecast", "group": "PSM", "label": "Forecast demand profile", "formats": ["csv", "parquet"], "required": True, "unit": "MW", "interval_minutes": 30},
-    {"role": "demand.real", "group": "PSM", "label": "Real demand profile", "formats": ["csv", "parquet"], "required": True, "unit": "MW", "interval_minutes": 30},
-    {"role": "weather.wind", "group": "PSM", "label": "Wind weather field", "formats": ["nc", "zarr"], "required": True},
-    {"role": "weather.solar", "group": "PSM", "label": "Solar weather field", "formats": ["nc", "zarr"], "required": True},
-    {"role": "market.france.profile", "group": "PSM", "label": "France import availability", "formats": ["csv"], "required": True},
-    {"role": "market.france.price", "group": "PSM", "label": "France external price", "formats": ["csv"], "required": True},
-    {"role": "market.belgium.profile", "group": "PSM", "label": "Belgium import availability", "formats": ["csv"], "required": True},
-    {"role": "market.belgium.price", "group": "PSM", "label": "Belgium external price", "formats": ["csv"], "required": True},
-    {"role": "market.netherlands.profile", "group": "PSM", "label": "Netherlands import availability", "formats": ["csv"], "required": True},
-    {"role": "market.netherlands.price", "group": "PSM", "label": "Netherlands external price", "formats": ["csv"], "required": True},
-    {"role": "market.norway.profile", "group": "PSM", "label": "Norway import availability", "formats": ["csv"], "required": True},
-    {"role": "market.norway.price", "group": "PSM", "label": "Norway external price", "formats": ["csv"], "required": True},
-    {"role": "market.ireland.profile", "group": "PSM", "label": "Ireland import availability", "formats": ["csv"], "required": True},
-    {"role": "market.ireland.price", "group": "PSM", "label": "Ireland external price", "formats": ["csv"], "required": True},
-    {"role": "profiles.vre_solar", "group": "CEM", "label": "System-average solar profile", "formats": ["csv"], "required": True},
-    {"role": "profiles.vre_onshore", "group": "CEM", "label": "System-average onshore profile", "formats": ["csv"], "required": True},
-    {"role": "profiles.vre_offshore", "group": "CEM", "label": "System-average offshore profile", "formats": ["csv"], "required": True},
-    {"role": "projects.repd", "group": "CEM", "label": "Normalized planning projects", "formats": ["csv", "parquet"], "required": True},
-    {"role": "source.repd_raw", "group": "CEM", "label": "Raw UK REPD source", "formats": ["csv"], "required": True},
-    {"role": "costs.capital", "group": "CEM", "label": "Technology capital costs", "formats": ["csv", "json"], "required": True, "unit": "GBP/MW"},
-    {"role": "policy.support", "group": "CEM", "label": "Policy and support mechanisms", "formats": ["csv", "json", "xlsx"], "required": True},
-    {"role": "planning.timelines", "group": "CEM", "label": "Planning stage timelines", "formats": ["csv", "json"], "required": True},
-    {"role": "planning.success_rates", "group": "CEM", "label": "Regional technology success rates", "formats": ["csv", "json"], "required": True},
-    {"role": "config.model_parameters", "group": "CEM", "label": "VALUE investment and policy parameters", "formats": ["json"], "required": True},
-]
+
+def get_catalog_snapshot(*, refresh: bool = False) -> dict[str, object]:
+    """The cached catalogue; built on first use, never at import (G4-02).
+
+    Takes MODULE_LIFECYCLE_LOCK (the same lock as every module lifecycle
+    change, so there is no ABBA ordering between them).
+    """
+
+    global _SNAPSHOT
+    with MODULE_LIFECYCLE_LOCK:
+        if refresh or _SNAPSHOT is None:
+            _SNAPSHOT = module_catalog_snapshot()
+        return _SNAPSHOT
+
+
+def __getattr__(name: str) -> object:
+    """PEP 562: the former module constants resolve lazily to the snapshot."""
+
+    if name in _LEGACY_NAMES:
+        return get_catalog_snapshot()[_LEGACY_NAMES[name]]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
