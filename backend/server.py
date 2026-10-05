@@ -2590,6 +2590,16 @@ class Handler(BaseHTTPRequestHandler):
         teaching_run_extensions = _value_101_origin_extensions(project)
         validation = validate_project(project)
         if not validation["valid"]:
+            upgrade_event = next((
+                row for row in validation.get("error_events", ())
+                if row.get("code") == "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED"
+            ), None)
+            if upgrade_event is not None:
+                self._json({
+                    "error": upgrade_event.get("message", validation["errors"][0]),
+                    "error_code": "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED",
+                    "validation": validation,
+                }, status_for_code("GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")); return
             self._json({"error": validation["errors"][0], "validation": validation}, 400); return
         mode = str(body.get("mode", "smoke"))
         try:
@@ -3433,11 +3443,22 @@ class Handler(BaseHTTPRequestHandler):
                     row for row in validation["error_events"]
                     if row.get("code") == "GF_SOLVER_CONTRACT_ACK_REQUIRED"
                 ), None)
-                first = solver_ack_event or (
+                # A historical (v2/v3) solver contract is a method change the
+                # user must confirm explicitly: 409 with the coded event (P0-8 S5).
+                upgrade_event = next((
+                    row for row in validation["error_events"]
+                    if row.get("code") == "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED"
+                ), None)
+                first = solver_ack_event or upgrade_event or (
                     validation["error_events"][0]
                     if validation["error_events"] else {}
                 )
-                status = 422 if solver_ack_event is not None else 400
+                if solver_ack_event is not None:
+                    status = 422
+                elif upgrade_event is not None:
+                    status = status_for_code("GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")
+                else:
+                    status = 400
                 self._json({
                     "error": first.get("message", validation["errors"][0]),
                     "error_code": first.get("code", "GF_STUDY_INVALID"),

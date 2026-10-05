@@ -3511,8 +3511,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "4f4df7ecdaaa7368658ec9d28c89758a768e6363f61c6e6b6f5fe7a2245827fd",
-      "bytes": 188604,
+      "sha256": "8ed997cc97fc9edd31eac5ab7925858d5029f42c25820f6702fab3dce09ab0fd",
+      "bytes": 189753,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10760,8 +10760,8 @@
     },
     {
       "path": "tests/test_p08_solver_contract_upgrade.py",
-      "sha256": "fcc908ca1c3f840814aa378e01f29dd27e573a9aa226e827adb097550f54bd5d",
-      "bytes": 7597,
+      "sha256": "bd06a57843138eebe71a599d9ed56ca2d9121b7fbd9000918223c3f4e0dbcd53",
+      "bytes": 10236,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

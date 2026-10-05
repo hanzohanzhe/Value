@@ -165,3 +165,60 @@ del FrozenRunRecoveryTests
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SolverContractUpgradeHttpTests(unittest.TestCase):
+    """The API answers a v3 Study with 409 GF_SOLVER_CONTRACT_UPGRADE_REQUIRED.
+
+    Review M2-P0-8a: the save path returned 400 because it only mapped the
+    acknowledgement code; the run-start path returned 400 without a code.
+    """
+
+    def setUp(self) -> None:
+        import urllib.error
+        import urllib.request
+
+        from tests.local_api_harness import start_local_api
+
+        self._urllib = (urllib.request, urllib.error)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.home = Path(folder.name)
+        packs = self.home / "data-packs"
+        packs.mkdir(parents=True)
+        pack_id = str(c8_study()["data_pack_id"])
+        (packs / pack_id).symlink_to(ROOT / "data-packs" / pack_id, target_is_directory=True)
+        context = start_local_api(data_home=self.home)
+        _httpd, self.origin, _token = context.__enter__()
+        self.addCleanup(context.__exit__, None, None, None)
+
+    def _post(self, path: str, payload: dict[str, object]) -> tuple[int, dict[str, object]]:
+        request_module, error_module = self._urllib
+        request = request_module.Request(
+            self.origin + path, method="POST", data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with request_module.urlopen(request, timeout=120) as response:
+                return response.status, json.loads(response.read())
+        except error_module.HTTPError as error:
+            return error.code, json.loads(error.read())
+
+    def test_saving_a_v3_study_is_a_409_upgrade_required(self) -> None:
+        project = c8_study()
+        project["id"] = "p08-v3-save"
+        status, body = self._post("/api/projects", project)
+        self.assertEqual(status, 409, body)
+        self.assertEqual(body["error_code"], "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")
+        self.assertFalse((self.home / "projects" / "p08-v3-save").exists())
+
+    def test_starting_a_run_of_a_stored_v3_study_is_a_409_upgrade_required(self) -> None:
+        project = c8_study()
+        project["id"] = "p08-v3-run"
+        folder = self.home / "projects" / "p08-v3-run"
+        folder.mkdir(parents=True)
+        (folder / "project.json").write_text(json.dumps(project), encoding="utf-8")
+        status, body = self._post("/api/projects/p08-v3-run/runs", {"mode": "smoke"})
+        self.assertEqual(status, 409, body)
+        self.assertEqual(body["error_code"], "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")
+        self.assertFalse(any((self.home / "runs").glob("*/status.json")))
