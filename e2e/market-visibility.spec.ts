@@ -88,6 +88,10 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await expect(strip).toContainText("Shortfall");
   await expect(strip).not.toContainText("Clearing price");
   await expect(strip).not.toContainText("£0/MWh"); // a zero offer in the merit-order table is legitimate
+  // Spec 9.8: the window card fits a 375 px screen without its own horizontal scroll.
+  await page.setViewportSize({ width: 375, height: 800 });
+  expect(await strip.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.screenshot({ path: test.info().outputPath("prompt56-market-replay.png"), fullPage: true });
 
   await page.getByRole("button", { name: /VRE & curtailment/ }).click();

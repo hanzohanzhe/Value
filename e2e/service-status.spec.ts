@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 // P0-3 S8 / spec 5: a degraded backend is shown in the rail, the page stays
 // usable, and Runs still running in the background are announced.
@@ -31,6 +32,9 @@ test("a degraded health status and a lost worker are explained without hiding th
   await expect(page.getByRole("button", { name: /1 Run running in background/ })).toBeVisible();
   await expect(page.getByText("VALUE lost contact with this Run's worker", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mark as lost" })).toBeEnabled();
+  // Spec 9.7: the new components pass axe critical/serious checks.
+  const scan = await new AxeBuilder({ page }).include(".run-lifecycle-callout").include(".background-runs").include(".service").analyze();
+  expect(scan.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
   await page.getByRole("button", { name: /Market replay/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Market replay" })).toBeVisible();
 });
@@ -87,4 +91,10 @@ test("the quarantine panel disables a module after confirming pending Runs", asy
   expect(dialogs[1]).toContain("Runs have not finished");
   expect(disableBodies).toHaveLength(2);
   expect(JSON.parse(disableBodies[1]).confirm_pending_runs).toBe(true);
+  const scan = await new AxeBuilder({ page }).include(".module-quarantine-panel").analyze();
+  expect(scan.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
+  // Spec 9.8: at 375 px the new panel fits its own width (no horizontal scroll inside it).
+  await page.setViewportSize({ width: 375, height: 800 });
+  const overflow = await panel.evaluate((element) => element.scrollWidth - element.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });

@@ -6214,8 +6214,8 @@
     },
     {
       "path": "e2e/market-visibility.spec.ts",
-      "sha256": "090a0362c54b0c5d3c1e6838e422284c87eed0717d9c0a3d4425d900ee0365ad",
-      "bytes": 10484,
+      "sha256": "cff6a2c13909529d3a32f203e0c02e0393373e0268afdc45640efe2cd4743f0f",
+      "bytes": 10805,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6268,8 +6268,8 @@
     },
     {
       "path": "e2e/service-status.spec.ts",
-      "sha256": "a1a55530cb4382ff00f77a92e36691222701dcc1f71e03982b1938376f617158",
-      "bytes": 6736,
+      "sha256": "a4734d103a4bfed7b3dffe72d0422e1457401210de234a3fb0b4331b9e469a34",
+      "bytes": 7592,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
