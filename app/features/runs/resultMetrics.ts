@@ -1,0 +1,96 @@
+// Annual cost composition of the Runs page (P0-9 S9; spec 4.3; F3-04).
+// The composition is chosen by the recorded cost definition; the stacked bar
+// always adds up to the headline total (a reconciliation residual makes up any
+// recorded difference) and a mechanism the method does not model is listed as
+// "Not modelled", never drawn as £0.
+
+export type MetricMap = Record<string, number | string | boolean | null | undefined>;
+
+export type CostSegment = { key: string; label: string; amount: number; share: number; colour: string; className?: string };
+export type CostRow = { key: string; label: string; amount: number | null; state?: "not_modelled" | "not_recorded"; note?: string };
+
+export type CostComposition = {
+  definition: "native" | "legacy" | "unknown";
+  headline: number | null;
+  /** Bar segments; their amounts add up to the headline exactly. */
+  segments: CostSegment[];
+  /** Every row of the composition table, including not-modelled and memo rows. */
+  rows: CostRow[];
+  vollNote: "includes VoLL" | "excludes VoLL" | "VoLL basis not recorded";
+  reconciled: boolean;
+};
+
+// Colours already used by the existing charts (globals.css .cost-stack and the
+// technology palette); no new palette.
+const COLOURS = {
+  capital: "var(--blue)", operating: "var(--teal)", lost_value: "#d26d4f",
+  capacity_mechanism: "#7a64c5", decarbonisation: "#df8a34", residual: "#b3bac6",
+};
+const NATIVE_DEFINITION = "value.cem-system-resource-cost/v1";
+const LEGACY_DEFINITION = "legacy_storage_tariff";
+const TOLERANCE_GBP = 0.5;
+
+function number(metrics: MetricMap, key: string): number | null {
+  const value = metrics[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function costComposition(metrics: MetricMap): CostComposition {
+  const definitionId = String(metrics.system_cost_definition_id ?? "");
+  const definition = definitionId === NATIVE_DEFINITION ? "native" : definitionId === LEGACY_DEFINITION ? "legacy" : "unknown";
+  const headline = number(metrics, "total_system_cost_gbp");
+  const capital = number(metrics, "total_levelized_capital_cost_gbp");
+  const operating = number(metrics, "total_operational_cost_gbp");
+  const includesVoll = metrics.system_cost_includes_voll;
+  const vollNote = includesVoll === true ? "includes VoLL" : includesVoll === false ? "excludes VoLL" : definition === "legacy" ? "includes VoLL" : "VoLL basis not recorded";
+
+  const mechanism = (key: string, statusKey: string, label: string): CostRow => {
+    const amount = number(metrics, key);
+    const status = String(metrics[statusKey] ?? "");
+    if (status === "not_modelled" || (definition === "native" && amount == null)) return { key, label, amount: null, state: "not_modelled" };
+    return amount == null ? { key, label, amount: null, state: "not_recorded" } : { key, label, amount };
+  };
+  const capitalRow: CostRow = { key: "capital", label: "Annualised capital", amount: capital, state: capital == null ? "not_recorded" : undefined };
+  const operatingRow: CostRow = { key: "operating", label: "Operating cost", amount: operating, state: operating == null ? "not_recorded" : undefined };
+  const capacityRow = mechanism("cm_mechanism_cost_gbp", "cm_mechanism_cost_status", "Capacity mechanism");
+  const decarbonisationRow = mechanism("decarbonization_mechanism_cost_gbp", "decarbonization_mechanism_cost_status", "Decarbonisation policy");
+
+  // Components that are part of the headline under this definition.
+  const included: { row: CostRow; colour: string; className?: string }[] = [
+    { row: capitalRow, colour: COLOURS.capital, className: "capital" },
+    { row: operatingRow, colour: COLOURS.operating, className: "operating" },
+  ];
+  const rows: CostRow[] = [capitalRow, operatingRow];
+  if (definition === "legacy") {
+    const lostValue = number(metrics, "lost_value_of_electricity_gbp");
+    const lostRow: CostRow = { key: "lost_value", label: "Value of lost load (VoLL)", amount: lostValue, state: lostValue == null ? "not_recorded" : undefined };
+    included.push({ row: lostRow, colour: COLOURS.lost_value });
+    if (capacityRow.amount != null) included.push({ row: capacityRow, colour: COLOURS.capacity_mechanism, className: "capacity-market" });
+    if (decarbonisationRow.amount != null) included.push({ row: decarbonisationRow, colour: COLOURS.decarbonisation, className: "policy" });
+    rows.push(lostRow, capacityRow, decarbonisationRow);
+  } else {
+    // Native: the mechanisms are not part of the CEM resource cost; list them only.
+    rows.push(capacityRow, decarbonisationRow);
+  }
+
+  const known = included.filter((item) => item.row.amount != null);
+  const knownSum = known.reduce((sum, item) => sum + (item.row.amount ?? 0), 0);
+  const residual = headline == null ? null : headline - knownSum;
+  const reconciled = headline != null && residual != null && residual >= -TOLERANCE_GBP;
+  const segments: CostSegment[] = [];
+  if (headline != null && headline > 0 && reconciled) {
+    for (const item of known) segments.push({ key: item.row.key, label: item.row.label, amount: item.row.amount!, share: item.row.amount! / headline, colour: item.colour, className: item.className });
+    if (residual! > TOLERANCE_GBP) segments.push({ key: "residual", label: "Reconciliation residual", amount: residual!, share: residual! / headline, colour: COLOURS.residual });
+  }
+  if (residual != null && Math.abs(residual) > TOLERANCE_GBP) rows.push({ key: "residual", label: "Reconciliation residual", amount: residual, note: "Recorded headline minus its recorded components" });
+
+  const memo = number(metrics, "ror_hydro_compatibility_capital_gbp");
+  if (memo != null) rows.push({ key: "memo_ror_hydro", label: "Memo: run-of-river hydro compatibility capital (excluded from headline)", amount: memo, note: "excluded" });
+
+  return { definition, headline, segments, rows, vollNote, reconciled };
+}
+
+/** Sum of the bar segments (equals the headline for a reconciled composition). */
+export function segmentTotal(composition: Pick<CostComposition, "segments">): number {
+  return composition.segments.reduce((sum, segment) => sum + segment.amount, 0);
+}

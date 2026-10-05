@@ -262,6 +262,29 @@ class ResultsSummaryTests(unittest.TestCase):
             "vre_curtailment_counterfactual_proof_invalid",
         )
 
+    def test_validator_uses_the_shared_coverage_rule_for_stopped_runs(self) -> None:
+        # Review response (P0-9 S5): the non-annual and stopped-Run verdicts come from result_coverage.
+        for run_status, reason in (
+            ("cancelled", "run_cancelled_before_full_coverage"),
+            ({"status": "archived", "archived_from_status": "failed"}, "run_failed_before_full_coverage"),
+        ):
+            with self.subTest(run_status=run_status):
+                result = validate_vre_curtailment_attribution(
+                    self.attribution(), mode="full", periods_per_year=17520,
+                    expected_years=(2025,), run_status=run_status,
+                )
+                self.assertEqual((result["status"], result["reason_code"]), ("withheld", reason))
+        reconciled = validate_vre_curtailment_attribution(
+            self.attribution(), mode="full", periods_per_year=17520, expected_years=(2025,), run_status="completed",
+        )
+        self.assertEqual(reconciled["status"], "reconciled")
+        for mode, periods in (("value_101_day", 17520), ("full", 48), ("full", None)):
+            with self.subTest(mode=mode, periods=periods):
+                result = validate_vre_curtailment_attribution(
+                    self.attribution(), mode=mode, periods_per_year=periods, expected_years=(2025,),
+                )
+                self.assertEqual((result["status"], result["reason_code"]), ("withheld", "annual_evidence_withheld_for_nonannual_run"))
+
     def test_strict_validator_rejects_duplicate_expected_years(self) -> None:
         result = validate_vre_curtailment_attribution(
             self.attribution(),

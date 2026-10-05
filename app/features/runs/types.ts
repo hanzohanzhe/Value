@@ -1,5 +1,6 @@
 import type { SourceStudyStatus } from "../learn/studyLifecycle";
 import type { TraceProfile } from "../market/TraceCoverageNotice";
+import type { ResultCoverage } from "../shared/coverageView.ts";
 
 export type RunMode = "smoke" | "two_year_smoke" | "validation_24h" | "validation_168h" | "value_101_day" | "two_year" | "full";
 export type PlanningBreakdown = Record<string, Record<string, { projects: number; capacity_mw: number }>>;
@@ -26,6 +27,10 @@ export type ModelRun = {
   comparison_parent_run_id?: string;
   extensions?: Record<string, unknown>;
   source_study_status?: SourceStudyStatus;
+  /** Shared annual-coverage verdict of the Run detail (P0-9 S5). */
+  result_coverage?: ResultCoverage | null;
+  /** P0-3: presentation of the worker lease ("alive", "starting", "lost", "unverifiable", "not_started", "not_active"). */
+  worker_liveness?: string;
 };
 export type PreflightIssue = { code: string; severity: "error" | "warning"; scope: string; message: string; corrective_action: string };
 export type DomainMetric = { value: unknown; unit: string; definition_id: string; source_sha256?: unknown; status: string };

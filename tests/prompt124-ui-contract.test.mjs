@@ -107,7 +107,10 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   const ts = await import("typescript");
   const transpile = (code) => ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
   const url = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-  const networkUrl = url(transpile(await source("../app/features/network/networkRedispatch.ts")));
+  // networkRedispatch.ts imports the shared formatting layer (P0-9 S1): point its
+  // relative ".ts" imports at the real files so the data: module can load them.
+  const absoluteImports = (code, from) => code.replace(/from "(\.\.?\/[^"]+\.ts)"/g, (_, specifier) => `from "${new URL(specifier, new URL(from, import.meta.url)).href}"`);
+  const networkUrl = url(absoluteImports(transpile(await source("../app/features/network/networkRedispatch.ts")), "../app/features/network/networkRedispatch.ts"));
   const network = await import(networkUrl);
   const contractCode = transpile(await source("../app/features/studies/solverContract.ts")).replace("../network/networkRedispatch",networkUrl);
   const policy = await import(url(contractCode));

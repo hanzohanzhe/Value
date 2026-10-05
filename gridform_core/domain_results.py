@@ -72,6 +72,39 @@ def _years(root: Path, prefix: str, suffix: str) -> list[int]:
     return sorted(set(result))
 
 
+ZONAL_ACCOUNTING_TABLES = ("zonal_period_accounting", "zonal_period_summary")
+
+
+def _zonal_redispatch_capability(run_root: Path) -> dict[str, object]:
+    """Whether the Run's market ledger holds zonal redispatch results (R3-16).
+
+    An EXISTS-style probe (``LIMIT 1``) on the v6+ accounting table or the
+    older summary table: never a full COUNT over a year of periods."""
+
+    database = run_root / "model-output" / "market" / "market.sqlite"
+    unsupported = {
+        "status": "unsupported", "years": [],
+        "reason": "No zonal redispatch ledger is recorded for this run (national single-node or copperplate balancing).",
+    }
+    if not database.is_file():
+        return unsupported
+    uri = f"file:{database.resolve().as_posix()}?mode=ro"
+    try:
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            for table in ZONAL_ACCOUNTING_TABLES:
+                if table in tables and connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone():
+                    years = [int(row[0]) for row in connection.execute(f"SELECT DISTINCT year FROM {table} ORDER BY year")]
+                    return {
+                        "status": "supported", "years": years,
+                        "claim": "Fixed zonal transport and redispatch results; open Network & redispatch.",
+                        "reason": None,
+                    }
+    except sqlite3.DatabaseError:
+        return {**unsupported, "reason": "The market ledger could not be read."}
+    return unsupported
+
+
 def domain_result_capabilities(run_root: Path) -> dict[str, object]:
     _completed(run_root)
     network_root = run_root / "model-output" / "solver" / "network"
@@ -107,6 +140,7 @@ def domain_result_capabilities(run_root: Path) -> dict[str, object]:
                 "status": "experimental" if expansion else "unsupported",
                 "reason": None if expansion else "No network-expansion history artifact is indexed for this run.",
             },
+            "zonal_redispatch": _zonal_redispatch_capability(run_root),
         },
     }
 

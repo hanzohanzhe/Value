@@ -11,6 +11,7 @@ from typing import Mapping, Sequence
 from .comparison_identity import build_comparison_identity, review_comparison_identities
 from .result_advisories import NEEDS_REVIEW_SEVERITIES, present_scientific_status
 
+from .result_coverage import ANNUAL_PERIODS, NON_ANNUAL_MODES, REASON_NON_ANNUAL, is_non_annual, stopped_reason
 from .comparison_eligibility import (
     evaluate_curtailment_comparison,
     evaluate_network_comparison,
@@ -18,9 +19,8 @@ from .comparison_eligibility import (
 
 
 MAX_ANNUAL_ROWS = 200
-_NONANNUAL_MODES = {
-    "smoke", "two_year_smoke", "validation_24h", "validation_168h", "tutorial", "value_101_day",
-}
+# One shared rule for non-annual modes (P0-9 S5): derived from the run policies.
+_NONANNUAL_MODES = NON_ANNUAL_MODES
 _ATTRIBUTION_SCHEMA = "value.vre-curtailment-run-evidence/v1"
 _ATTRIBUTION_CONTRACT = "value.vre-curtailment-attribution/v2"
 
@@ -73,17 +73,26 @@ def validate_vre_curtailment_attribution(
     mode: object,
     periods_per_year: object,
     expected_years: Sequence[int],
+    run_status: object = None,
 ) -> dict[str, object]:
-    """Strictly admit complete annual attribution evidence, or expose no values."""
+    """Strictly admit complete annual attribution evidence, or expose no values.
 
-    if str(mode) in _NONANNUAL_MODES:
-        return _unavailable_attribution(
-            "annual_evidence_withheld_for_nonannual_run", status="withheld"
+    The non-annual and stopped-Run verdicts come from the shared annual-coverage
+    rule (gridform_core.result_coverage, P0-9 S5).  ``run_status`` is the Run's
+    status record (or its status string) when the caller reads a finished
+    Run; the worker validates while the Run is still running and passes None,
+    so only the per-year period proof below applies there.  A missing
+    ``periods_per_year`` is still withheld (stricter than ``is_non_annual``)."""
+
+    policy_view = {"mode": mode, "run_policy": {"periods_per_year": periods_per_year}}
+    if is_non_annual(policy_view) or periods_per_year != ANNUAL_PERIODS:
+        return _unavailable_attribution(REASON_NON_ANNUAL, status="withheld")
+    if run_status is not None:
+        stopped = stopped_reason(
+            run_status if isinstance(run_status, Mapping) else {"status": run_status}
         )
-    if periods_per_year != 17520:
-        return _unavailable_attribution(
-            "annual_evidence_withheld_for_nonannual_run", status="withheld"
-        )
+        if stopped is not None:
+            return _unavailable_attribution(stopped, status="withheld")
     if not isinstance(artifact, Mapping):
         return _unavailable_attribution("vre_curtailment_attribution_artifact_missing")
     if artifact.get("schema_version") != _ATTRIBUTION_SCHEMA:
@@ -246,6 +255,7 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         mode=status.get("mode"),
         periods_per_year=periods_per_year,
         expected_years=expected_years or (),
+        run_status=status,
     )
     curtailment_by_year = curtailment_validation["annual_by_year"]
     annual = []
@@ -460,6 +470,9 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             if isinstance(summary.get("run"), Mapping)
             else None,
             expected_years=_expected_years_from_summary(summary) or (),
+            run_status=(summary.get("run") or {}).get("status")
+            if isinstance(summary.get("run"), Mapping)
+            else None,
         )
         for summary, artifact in zip(summaries, attribution_artifacts)
     ]

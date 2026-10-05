@@ -7,6 +7,8 @@
   "schema_version": "value.market-replay-capabilities/v1",
   "ledger_schema_version": "value.market-ledger/v8",
   "trace_level": "summary",
+  "price_basis": "national_ahead_clearing_price",
+  "price_basis_source": "inferred_from_writer",
   "years": [2025],
   "period_summary": true,
   "physical_dispatch": false,

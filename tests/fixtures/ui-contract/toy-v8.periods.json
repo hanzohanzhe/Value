@@ -16,6 +16,8 @@
    {"year":2025,"period":2,"stage":"final_dispatch","forecast_demand_mwh":8.0,"real_demand_mwh":8.0,"accepted_supply_mwh":9.0,"storage_charge_mwh":1.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":4.0,"vre_accepted_mwh":4.0,"curtailed_mwh":0.0,"import_mwh":0.0,"clearing_price_gbp_per_mwh":0.0,"physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0,"policy_transfer_gbp":0.0,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0},
    {"year":2025,"period":3,"stage":"final_dispatch","forecast_demand_mwh":10.0,"real_demand_mwh":10.0,"accepted_supply_mwh":10.0,"storage_charge_mwh":0.0,"storage_discharge_mwh":0.0,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":0.0,"vre_accepted_mwh":0.0,"curtailed_mwh":0.0,"import_mwh":0.0,"clearing_price_gbp_per_mwh":77.5,"physical_resource_cost_gbp":0.0,"market_payment_gbp":775.0,"policy_transfer_gbp":0.0,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":0.0,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":0.0}
   ],
-  "trace_level": "summary"
+  "trace_level": "summary",
+  "price_basis": "national_ahead_clearing_price",
+  "price_basis_source": "inferred_from_writer"
  }
 }

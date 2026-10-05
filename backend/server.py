@@ -89,6 +89,8 @@ from gridform_core.parameters import (
 from gridform_core.market_ledger import query_market_table
 from gridform_core.market_replay import (
     legacy_staged_market_available,
+    market_price_basis,
+    market_year_bounds,
     market_replay_capabilities,
     query_auction_view,
     query_dispatch_timeline,
@@ -99,6 +101,7 @@ from gridform_core.market_replay import (
 from gridform_core.zonal_results import (
     export_zonal_results,
     query_zonal_annual_brief,
+    zonal_year_bounds,
     query_zonal_results,
     zonal_workspace_capabilities,
 )
@@ -110,6 +113,7 @@ from gridform_core.planning_index import (
 )
 from gridform_core.errors import public_failure
 from gridform_core.run_policy import resolve_run_policy
+from gridform_core.result_coverage import ACTIVE_RUN_STATES, expected_years, is_non_annual, result_coverage
 from gridform_core.value_101 import (
     VALUE_101_NETWORK_PACK_ID,
     VALUE_101_PACK_IDS,
@@ -1106,6 +1110,89 @@ def _move_value_101_reset_records(
     }
 
 
+_LEDGER_BOUNDS_CACHE: dict[str, tuple[tuple[int, ...], dict[int, tuple[int, int, int]]]] = {}
+
+
+def _status_year_bounds(run: Mapping[str, Any]) -> dict[int, tuple[int, int, int]]:
+    """Per-year bounds of the years the Run's status records as finished.
+
+    A finished year is whole at the Run's own year length (17,520 periods
+    for annual policies, fewer for smoke and validation scopes)."""
+
+    policy = run.get("run_policy")
+    periods = policy.get("periods_per_year") if isinstance(policy, Mapping) else None
+    if not isinstance(periods, int) or isinstance(periods, bool) or periods <= 0:
+        periods = 17_520
+    return {
+        int(item["year"]): (0, periods - 1, periods)
+        for item in run.get("results") or []
+        if isinstance(item, Mapping) and isinstance(item.get("year"), int) and not isinstance(item.get("year"), bool)
+    }
+
+
+def _ledger_signature(database: Path) -> tuple[int, ...] | None:
+    try:
+        stats = [database.stat()]
+        wal = database.with_name(f"{database.name}-wal")
+        if wal.is_file():
+            stats.append(wal.stat())
+    except OSError:
+        return None
+    return tuple(value for stat in stats for value in (stat.st_size, stat.st_mtime_ns))
+
+
+def run_year_bounds(root: Path, run: Mapping[str, Any]) -> tuple[dict[int, tuple[int, int, int]], str]:
+    """``(year bounds, coverage_source)`` of one Run (P0-9 S5).
+
+    The market ledger is opened only for a terminal annual Run: an active Run
+    is judged ``in_progress`` and a non-annual Run ``non_annual`` whatever its
+    bounds, and opening a live WAL ledger copies the whole database on every
+    poll.  Those Runs take the years their status records as finished.  Bounds
+    of a terminal ledger are cached by the ledger's size and mtime."""
+
+    run_status = str(run.get("status") or "")
+    if run_status == "archived":
+        run_status = str(run.get("archived_from_status") or "completed")
+    database = root / "model-output" / "market" / "market.sqlite"
+    if run_status in ACTIVE_RUN_STATES or is_non_annual(run) or not database.is_file():
+        return _status_year_bounds(run), "status_results"
+    signature = _ledger_signature(database)
+    key = str(database)
+    cached = _LEDGER_BOUNDS_CACHE.get(key)
+    if signature is not None and cached is not None and cached[0] == signature:
+        return dict(cached[1]), "market_ledger"
+    try:
+        bounds = market_year_bounds(database)
+    except (OSError, sqlite3.DatabaseError):
+        return _status_year_bounds(run), "status_results"
+    if signature is not None and signature == _ledger_signature(database):
+        _LEDGER_BOUNDS_CACHE[key] = (signature, dict(bounds))
+    return bounds, "market_ledger"
+
+
+def run_result_coverage(root: Path, run: Mapping[str, Any]) -> dict[str, Any]:
+    """Annual coverage of one Run for the Runs page (P0-9 S5): period bounds of
+    its market ledger, or the years its status records as finished
+    (``coverage_source`` says which; see ``run_year_bounds``)."""
+
+    bounds, source = run_year_bounds(root, run)
+    coverage = result_coverage(run, bounds)
+    coverage["coverage_source"] = source
+    return coverage
+
+def running_stage_text(run: Mapping[str, Any], completed_years: set[int]) -> str:
+    """Spec 5 stage text of a running Run: the next declared year it computes,
+    or, once every declared year is finished, that it is finishing outputs
+    (never a year after the Run's end year; P0-3 S8 review response)."""
+
+    declared = expected_years(run)
+    remaining = [year for year in declared if year not in completed_years]
+    if declared and not remaining:
+        return f"Finishing outputs after {declared[-1]}"
+    next_year = remaining[0] if remaining else max(completed_years) + 1
+    return f"Computing year {next_year} (period-level progress not reported by this model)"
+
+
 def present_run(run: dict[str, Any]) -> dict[str, Any]:
     """Add UI-compatible aliases without rewriting persisted research results."""
     if run.get("id"):
@@ -1148,9 +1235,9 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                 }
                 if completed_years and run.get("status") == "running":
                     run["completed_years"] = len(completed_years)
-                    run["current_stage"] = (
-                        f"Completed {max(completed_years)}; preparing the next annual state"
-                    )
+                    # Spec 5: say what is being computed and that this model
+                    # reports no period-level progress (P0-3 S8).
+                    run["current_stage"] = running_stage_text(run, completed_years)
             except (OSError, ValueError, json.JSONDecodeError):
                 run.setdefault("warnings", []).append({
                     "schema_version": "value.warning/v1",
@@ -1809,7 +1896,9 @@ class Handler(BaseHTTPRequestHandler):
             if root is None:
                 self._json({"error": "run not found"}, 404); return
             if len(parts) == 3:
-                self._json(present_run(read_json(root / "status.json", {}))); return
+                detail = present_run(read_json(root / "status.json", {}))
+                detail["result_coverage"] = run_result_coverage(root, detail)
+                self._json(detail); return
             resource = parts[3]
             if resource == "results" and len(parts) == 5 and parts[4] == "vre-curtailment":
                 try:
@@ -2007,7 +2096,12 @@ class Handler(BaseHTTPRequestHandler):
                         withheld = withheld_annual_result(root, "market/vre-summary")
                         if withheld is not None:
                             self._json(withheld, 409); return
-                        self._json(query_vre_curtailment_summary(database)); return
+                        summary = query_vre_curtailment_summary(database)
+                        run_status = read_json(root / "status.json", {})
+                        summary["coverage"] = result_coverage(
+                            run_status, run_year_bounds(root, run_status)[0],
+                        )
+                        self._json(summary); return
                     if market_resource == "vre-timeline":
                         year = _optional_integer_query(query, "year")
                         if year is None:
@@ -2050,6 +2144,8 @@ class Handler(BaseHTTPRequestHandler):
                     side=query.get("side", [None])[0],
                 )
                 page["trace_level"] = metadata.get("trace_level", "off")
+                if table == "period_summary":
+                    page.update(market_price_basis(database))
                 self._json(page); return
             if resource == "network-redispatch":
                 database = root / "model-output" / "market" / "market.sqlite"
@@ -2084,7 +2180,13 @@ class Handler(BaseHTTPRequestHandler):
                                 "Unsupported network redispatch query field: "
                                 + ", ".join(sorted(query))
                             )
-                        self._json(query_zonal_annual_brief(database)); return
+                        brief = query_zonal_annual_brief(database)
+                        # P0-9 S5 (F3-02/G1-10): the same annual-coverage verdict
+                        # as result queries; the brief itself is unchanged.
+                        brief["coverage"] = result_coverage(
+                            read_json(root / "status.json", {}), zonal_year_bounds(database),
+                        )
+                        self._json(brief); return
                     view_aliases = {
                         "periods": "period",
                         "curtailment": "curtailment",

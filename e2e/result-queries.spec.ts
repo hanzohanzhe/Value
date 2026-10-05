@@ -94,7 +94,10 @@ test("late ledger response cannot replace compact selection and missing metrics 
     await route.fulfill({ json: { ...body, status: "unavailable", reason_code: "result_artifact_missing", total: 0, count: 0, items: [] } });
   });
   await panel.getByRole("combobox", { name: "Result source" }).selectOption("auto");
-  await expect(panel).toContainText("Result unavailable: result_artifact_missing");
+  // P0-9 S7 (G1-07): "unavailable" is explained, not shown as an error; red is only for invalid.
+  await expect(panel.getByRole("status").filter({ hasText: "result_artifact_missing" })).toContainText("Unavailable");
+  await expect(panel).toContainText("result_artifact_missing");
+  await expect(panel.locator(".result-query-message.error")).toHaveCount(0);
   await expect(panel.getByRole("table")).toHaveCount(0);
   expect(writes).toEqual([]); expect(errors).toEqual([]);
 });

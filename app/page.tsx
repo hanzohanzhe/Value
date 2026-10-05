@@ -7,10 +7,19 @@ import AdvancedSettings from "./features/studies/AdvancedSettings";
 import { alignZonalSolverContract } from "./features/studies/solverContract";
 import RunWorkspace from "./features/runs/RunWorkspace";
 import AuditView from "./features/evidence/AuditView";
-import { Badge, formatBytes, formatNumber, modelDisplayName } from "./features/shared/presentation";
-import { API_BASE, LauncherAccessError, getJson } from "./features/shared/api";
+import { Badge, formatBytes, formatNumber, modelDisplayName, withUnit } from "./features/shared/presentation";
+import { API_BASE, OFFLINE_AFTER_FAILURES, classifyRefreshFailure, getJson, pollDelay, serviceState } from "./features/shared/api";
+import "./features/shared/service-status.css";
+import ModuleQuarantinePanel, { type QuarantineRow } from "./features/modules/ModuleQuarantinePanel";
+import { isPendingRunsRefusal, pendingRunsQuestion } from "./features/modules/module-quarantine.mjs";
+import { formatEnergy, formatEnergyGroup, formatQuantity } from "./features/shared/format.ts";
+import { seriesSegments, vreEventGroups, vreKpis, vreYearCoverage } from "./features/market/vreView.ts";
+import type { AuctionView, DispatchTimeline, MarketCapability, StoragePeriodRow, VreSummary } from "./features/market/marketTypes.ts";
+import { EMPTY_DISPATCH_MESSAGES, bucketPrice, emptyDispatchReason, stackSupply, stackedTechnologies, stressBuckets } from "./features/market/dispatchView.ts";
+import { StatusPill, ValueState } from "./features/shared/Callout";
+import "./features/market/market-replay.css";
 import OpenFromLauncher from "./features/shared/OpenFromLauncher";
-import { PUBLIC_CAPABILITY_DOMAINS } from "./features/shared/domainConstants";
+import { PUBLIC_CAPABILITY_DOMAINS, domainLabel } from "./features/shared/domainConstants";
 import type { PageResult } from "./features/shared/pagination";
 import type { View } from "./features/shared/navigation";
 import type { Workspace } from "./features/shared/workspaceTypes";
@@ -69,43 +78,6 @@ type ResearchSuiteSummary = {
   components: { id: string; sha256: string }[];
   studyIds: string[]; idempotent: boolean; runStarted: false;
 };
-type MarketCapability = {
-  years: number[]; trace_level: string; period_summary: boolean; physical_dispatch: boolean;
-  auction_replay: boolean; storage_state: boolean; storage_cost_module_id?: string; missing_reason?: string | null; source_artifact_sha256?: string | null;
-  bid_replay_available?: boolean; bid_replay_missing_reason?: string | null; missing_detail?: string[];
-  auction_stages: { stage: string; declared_periods: number; outcome_periods: number; order_detail: string }[];
-  semantic_metadata?: Record<string, unknown>;
-};
-type DispatchFlow = { technology: string; flow_type: string; evidence_scope: string; energy_mwh: number; balance_component_mwh: number };
-type DispatchBucket = {
-  period_start: number; period_end: number; period_count: number; timestamp_start: string; timestamp_end: string;
-  real_demand_mwh: number; accepted_supply_mwh: number; clearing_price_gbp_per_mwh: number;
-  storage_charge_mwh: number; storage_discharge_mwh: number; curtailed_mwh: number; excess_mwh: number;
-  vre_available_mwh: number; vre_accepted_mwh: number; neutral_unused_vre_mwh?: number;
-  blackout_mwh: number; compatibility_adjustment_mwh: number; flows: DispatchFlow[];
-};
-type DispatchTimeline = { year: number; resolution: string; total: number; limit: number; offset: number; source_artifact_sha256?: string | null; items: DispatchBucket[] };
-type AuctionOffer = {
-  offer_id?: string; asset_id: string; asset_type?: string; resource_kind?: string; technology: string;
-  offer_price_gbp_per_mwh: number; offered_mwh: number; accepted_mwh: number | null;
-  asset_accepted_mwh: number | null; acceptance_granularity: string; execution_order: number;
-  cumulative_offered_mwh: number;
-};
-type AuctionView = {
-  year: number; period: number; stage: string; information_scope: string; requirement_mwh: number;
-  offers: AuctionOffer[]; marginal_offer_price_gbp_per_mwh: number | null; marginal_offer_status: string;
-  offer_acceptance_coverage: string; pricing_rule: string; input_sha256: string; source_artifact_sha256?: string | null;
-};
-type StoragePeriodRow = { asset_id: string; state_of_charge_mwh: number; charge_mwh: number; discharge_mwh: number; power_capacity_mw: number; energy_capacity_mwh: number };
-type VreYear = {
-  year: number; period_count: number; full_chronology: boolean; available_vre_mwh: number; accepted_vre_mwh: number;
-  neutral_unused_vre_mwh: number; pre_balancing_excess_mwh: number | null; pre_balancing_excess_scope: string;
-  balancing_curtailment_mwh: number | null; vre_utilisation_fraction: number | null; average_unused_vre_fraction: number | null;
-  affected_periods: number; longest_event_hours: number; peak_event_mwh: number | null; peak_event_timestamp: string | null;
-  storage_charge_mwh: number; export_mwh: number; flexible_demand_mwh: number; vre_identity_residual_mwh: number;
-  coverage_status: string; marginal_curtailment_status: string; marginal_curtailment_reason: string;
-};
-type VreSummary = { years: VreYear[]; excess_relationship: string; excess_scope: string; source_artifact_sha256?: string | null };
 type DomainCapability = { status: "supported" | "experimental" | "unsupported" | "not_evaluated"; years?: number[]; claim?: string; reason?: string | null };
 type DomainCapabilitiesPayload = { schema_version: string; identity: Record<string, unknown>; capabilities: Record<string, DomainCapability> };
 type ResultMetric = { value: number | string | null; unit: string; definition_id: string; source_artifact_sha256?: string };
@@ -149,8 +121,11 @@ function ChartLegend({ technologies }: { technologies: string[] }) {
 function DispatchChart({ timeline, selectedPeriod, onSelect }: { timeline: DispatchTimeline; selectedPeriod: number; onSelect: (period: number) => void }) {
   const width = 920; const height = 300; const left = 56; const right = 18; const top = 18; const bottom = 42;
   const items = timeline.items;
-  const technologies = Array.from(new Set(items.flatMap((item) => item.flows.filter((flow) => ["generation", "import", "storage_discharge"].includes(flow.flow_type)).map((flow) => flow.technology))));
-  const totals = items.map((item) => item.flows.filter((flow) => ["generation", "import", "storage_discharge"].includes(flow.flow_type)).reduce((sum, flow) => sum + flow.energy_mwh, 0));
+  // R3-02: only flows whose role is supply are stacked, summed by technology across zones.
+  const stacks = items.map((item) => stackSupply(item));
+  const technologies = stackedTechnologies(items);
+  const stressed = new Set(stressBuckets(items));
+  const totals = stacks.map((stack) => stack.reduce((sum, segment) => sum + segment.energy_mwh, 0));
   const maximum = Math.max(1, ...totals, ...items.map((item) => item.real_demand_mwh));
   const plotWidth = width - left - right; const plotHeight = height - top - bottom;
   const x = (index: number) => left + index / Math.max(items.length, 1) * plotWidth;
@@ -158,16 +133,17 @@ function DispatchChart({ timeline, selectedPeriod, onSelect }: { timeline: Dispa
   const barWidth = Math.max(.6, plotWidth / Math.max(items.length, 1) - .35);
   const demandPoints = items.map((item, index) => `${x(index) + barWidth / 2},${y(item.real_demand_mwh)}`).join(" ");
   return <div className="evidence-chart"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Chronological generation mix and demand">
-    {[0, .25, .5, .75, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(maximum * fraction)} y2={y(maximum * fraction)} className="grid-line" /><text x={left - 8} y={y(maximum * fraction) + 4} textAnchor="end">{formatNumber(maximum * fraction, 0)}</text></g>)}
+    {[0, .25, .5, .75, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(maximum * fraction)} y2={y(maximum * fraction)} className="grid-line" /><text x={left - 8} y={y(maximum * fraction) + 4} textAnchor="end">{formatQuantity(maximum * fraction, 3)}</text></g>)}
     {items.map((item, index) => { let cumulative = 0; const periodSelected = item.period_start <= selectedPeriod && selectedPeriod <= item.period_end; return <g key={`${item.period_start}-${item.period_end}`} className={periodSelected ? "selected-bucket" : ""} onClick={() => onSelect(item.period_start)}>
       <rect x={x(index)} y={top} width={Math.max(barWidth, 2)} height={plotHeight} fill="transparent" />
-      {item.flows.filter((flow) => ["generation", "import", "storage_discharge"].includes(flow.flow_type)).map((flow) => { const start = cumulative; cumulative += flow.energy_mwh; return <rect key={`${flow.flow_type}-${flow.technology}`} x={x(index)} y={y(cumulative)} width={barWidth} height={Math.max(y(start) - y(cumulative), 0)} fill={technologyColours[flow.technology] ?? technologyColours.unmapped} />; })}
+      {stacks[index].map((segment) => { const start = cumulative; cumulative += segment.energy_mwh; return <rect key={segment.technology} className="dispatch-segment" x={x(index)} y={y(cumulative)} width={barWidth} height={Math.max(y(start) - y(cumulative), 0)} fill={technologyColours[segment.technology] ?? technologyColours.unmapped} />; })}
+      {stressed.has(index) && <rect className="stress-band" x={x(index)} y={top - 6} width={Math.max(barWidth, 2)} height={4}><title>{`Stress event: ${item.stress_periods} period(s), shortfall ${withUnit(formatNumber(item.shortfall_mwh), "MWh")}`}</title></rect>}
       {periodSelected && <line x1={x(index)} x2={x(index)} y1={top} y2={top + plotHeight} className="selection-line" />}
     </g>; })}
     <polyline points={demandPoints} className="demand-line" />
     <text x={left} y={height - 10}>{items[0]?.timestamp_start.slice(0, 10)}</text><text x={width - right} y={height - 10} textAnchor="end">{items.at(-1)?.timestamp_end.slice(0, 10)}</text>
     <text transform={`translate(14 ${top + plotHeight / 2}) rotate(-90)`} textAnchor="middle">Energy (MWh)</text>
-  </svg><ChartLegend technologies={technologies} /><span className="line-key"><i />Demand</span></div>;
+  </svg><ChartLegend technologies={technologies} /><span className="line-key"><i />Demand</span>{stressed.size > 0 && <span className="stress-key"><i />Stress event (shortfall)</span>}</div>;
 }
 
 function MeritOrderChart({ auction }: { auction: AuctionView }) {
@@ -181,15 +157,35 @@ function MeritOrderChart({ auction }: { auction: AuctionView }) {
     start: auction.offers.slice(0, index).reduce((sum, item) => sum + item.offered_mwh, 0),
   }));
   return <div className="merit-chart"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${auction.stage} merit order`}>
-    {[0, .5, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(maximumPrice * fraction)} y2={y(maximumPrice * fraction)} className="grid-line" /><text x={left - 7} y={y(maximumPrice * fraction) + 4} textAnchor="end">{formatNumber(maximumPrice * fraction, 0)}</text></g>)}
+    {[0, .5, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(maximumPrice * fraction)} y2={y(maximumPrice * fraction)} className="grid-line" /><text x={left - 7} y={y(maximumPrice * fraction) + 4} textAnchor="end">{formatQuantity(maximumPrice * fraction, 3)}</text></g>)}
     {positionedOffers.map(({ offer, start }) => <rect key={offer.offer_id ?? `${offer.asset_id}-${offer.execution_order}`} x={x(start)} y={y(offer.offer_price_gbp_per_mwh)} width={Math.max(x(start + offer.offered_mwh) - x(start), 1)} height={top + plotHeight - y(offer.offer_price_gbp_per_mwh)} fill={technologyColours[offer.technology] ?? technologyColours.unmapped} opacity={.84} />)}
     <line x1={x(auction.requirement_mwh)} x2={x(auction.requirement_mwh)} y1={top} y2={top + plotHeight} className="requirement-line" />
     {auction.marginal_offer_price_gbp_per_mwh != null && <line x1={left} x2={width - right} y1={y(auction.marginal_offer_price_gbp_per_mwh)} y2={y(auction.marginal_offer_price_gbp_per_mwh)} className="price-line" />}
-    <text x={left} y={height - 10}>0</text><text x={width - right} y={height - 10} textAnchor="end">{formatNumber(total)} MWh offered</text><text transform={`translate(14 ${top + plotHeight / 2}) rotate(-90)`} textAnchor="middle">Offer price (£/MWh)</text>
+    <text x={left} y={height - 10}>0</text><text x={width - right} y={height - 10} textAnchor="end">{withUnit(formatNumber(total), "MWh")} offered</text><text transform={`translate(14 ${top + plotHeight / 2}) rotate(-90)`} textAnchor="middle">Offer price (£/MWh)</text>
   </svg></div>;
 }
 
-function MarketReplayView({ run, onCreateFullReplayRevision }: { run?: ModelRun; onCreateFullReplayRevision: () => void }) {
+/** Spec 3.1: the selected window as recorded. Shortfall comes from the backend (A2); it is never derived here. */
+function WindowSummary({ bucket, timeline }: { bucket: DispatchTimeline["items"][number]; timeline: DispatchTimeline }) {
+  const price = bucketPrice(bucket, timeline);
+  const shortfall = bucket.shortfall_mwh;
+  const stressPeriods = bucket.stress_periods;
+  const mwh = (value: number | null | undefined) => value == null ? <ValueState state="not_recorded" /> : `${withUnit(formatNumber(value), "MWh")}`;
+  return <div className="selected-period-strip window-summary">
+    <span className="window-summary-wide"><small>Window</small><b>{bucket.timestamp_start.replace("T", " ")} → {bucket.timestamp_end.replace("T", " ")}{timeline.timezone ? ` (${timeline.timezone} model time)` : ""}</b></span>
+    <span><small>Demand</small><b>{mwh(bucket.real_demand_mwh)}</b></span>
+    <span><small>Accepted supply</small><b>{mwh(bucket.accepted_supply_mwh)}</b></span>
+    <span className={typeof shortfall === "number" && shortfall > 0 ? "shortfall-positive" : ""}><small>Shortfall</small><b>{shortfall == null ? <ValueState state="not_recorded" title="This ledger does not record stress events (supply below demand)." /> : `${withUnit(formatNumber(shortfall), "MWh")}`}</b>{typeof stressPeriods === "number" && stressPeriods > 0 && <StatusPill tone="caution">● {stressPeriods} stress {stressPeriods === 1 ? "period" : "periods"}</StatusPill>}</span>
+    <span><small>Storage charge</small><b>{mwh(bucket.storage_charge_mwh)}</b></span>
+    <span><small>Storage discharge</small><b>{mwh(bucket.storage_discharge_mwh)}</b></span>
+    <span className="window-summary-wide"><small title={price.title}>{price.label}</small><b title={price.title}>{price.value ?? <ValueState state="not_recorded" />}</b></span>
+  </div>;
+}
+
+/** A window to open Market replay at (a Replay jump from the network reliability list, spec 4.4). */
+type ReplayTarget = { runId: string; year: number; periodFrom: number; nonce: number };
+
+function MarketReplayView({ run, onCreateFullReplayRevision, initialWindow }: { run?: ModelRun; onCreateFullReplayRevision: () => void; initialWindow?: ReplayTarget | null }) {
   const [capabilities, setCapabilities] = useState<MarketCapability | null>(null);
   const [timeline, setTimeline] = useState<DispatchTimeline | null>(null);
   const [auction, setAuction] = useState<AuctionView | null>(null);
@@ -197,42 +193,44 @@ function MarketReplayView({ run, onCreateFullReplayRevision }: { run?: ModelRun;
   const [year, setYear] = useState(0); const [period, setPeriod] = useState(0);
   const [stage, setStage] = useState("ahead"); const [resolution, setResolution] = useState("daily");
   const [windowKind, setWindowKind] = useState<"24_hours" | "168_hours">("24_hours");
-  const [periodFrom, setPeriodFrom] = useState(0);
+  const target = initialWindow && run && initialWindow.runId === run.id ? initialWindow : null;
+  const [periodFrom, setPeriodFrom] = useState(target?.periodFrom ?? 0);
   const [timelineOffset, setTimelineOffset] = useState(0);
   const [error, setError] = useState(""); const [loading, setLoading] = useState(Boolean(run));
   const windowPeriods = windowKind === "24_hours" ? 48 : 336;
   const periodTo = periodFrom + windowPeriods - 1;
   const bidReplayAvailable = capabilities?.bid_replay_available ?? capabilities?.auction_replay ?? false;
-  useEffect(() => { if (!run) return; let active = true; void getJson<MarketCapability>(`${API}/runs/${run.id}/market/capabilities`).then((payload) => { if (!active) return; setCapabilities(payload); setYear(payload.years[0] ?? 0); setStage(payload.auction_stages[0]?.stage ?? "ahead"); setPeriodFrom(0); setTimelineOffset(0); setError(""); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [run]);
+  useEffect(() => { if (!run) return; let active = true; void getJson<MarketCapability>(`${API}/runs/${run.id}/market/capabilities`).then((payload) => { if (!active) return; setCapabilities(payload); setYear(target && payload.years.includes(target.year) ? target.year : payload.years[0] ?? 0); setStage(payload.auction_stages?.[0]?.stage ?? "ahead"); setPeriodFrom(target && payload.years.includes(target.year) ? target.periodFrom : 0); setTimelineOffset(0); setError(""); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [run, target]);
   useEffect(() => { if (!run || !year) return; let active = true; const query = new URLSearchParams({ year: String(year), resolution, period_from: String(periodFrom), period_to: String(periodTo), limit: "96", offset: String(timelineOffset) }); void getJson<DispatchTimeline>(`${API}/runs/${run.id}/market/dispatch?${query}`).then((payload) => { if (!active) return; setTimeline(payload); setPeriod(payload.items[0]?.period_start ?? periodFrom); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [periodFrom, periodTo, resolution, run, timelineOffset, year]);
   useEffect(() => { if (!run || !year || !bidReplayAvailable || !stage) return; let active = true; void getJson<AuctionView>(`${API}/runs/${run.id}/market/auction?year=${year}&period=${period}&stage=${stage}`).then((payload) => { if (active) setAuction(payload); }).catch(() => { if (active) setAuction(null); }); return () => { active = false; }; }, [bidReplayAvailable, period, run, stage, year]);
   useEffect(() => { if (!run || !year || !capabilities?.storage_state) return; let active = true; void getJson<PageResult<StoragePeriodRow>>(`${API}/runs/${run.id}/market/storage?year=${year}&period=${period}&limit=100`).then((payload) => { if (active) setStorageRows(payload.items); }).catch(() => { if (active) setStorageRows([]); }); return () => { active = false; }; }, [capabilities?.storage_state, period, run, year]);
   if (!run) return <div className="page"><div className="empty-run"><b>No run selected</b><p>Select a run in Runs before opening market replay.</p></div></div>;
   const selected = timeline?.items.find((item) => item.period_start <= period && period <= item.period_end);
+  const dispatchEmpty = timeline ? emptyDispatchReason(timeline, capabilities) : null;
   return <div className="page evidence-page"><div className="page-title"><div><span>Physical market evidence</span><h2>Replay bids, then follow the dispatched system</h2><p>The upper chart is final physical dispatch after all clearing stages. Select a bounded bucket to inspect its recorded evidence. Settlement transfers are never drawn as generation.</p></div><Badge tone={bidReplayAvailable ? "good" : "blue"}>{capabilities?.trace_level ?? "loading"} trace</Badge></div>
     {loading && <p className="loading">Loading the bounded market view…</p>}{error && <div className="error-box">{error}</div>}
     {capabilities && !capabilities.period_summary && <div className="info-box">{capabilities.missing_reason}</div>}
     {capabilities && <TraceCoverageNotice traceLevel={capabilities.trace_level} bidReplayAvailable={bidReplayAvailable} onCreateFullReplayRevision={onCreateFullReplayRevision} />}
     {capabilities?.period_summary && <><section className="panel evidence-panel"><div className="evidence-controls"><label><span>Model year</span><select value={year} onChange={(event) => { setYear(Number(event.target.value)); setPeriodFrom(0); setTimelineOffset(0); }}>{capabilities.years.map((value) => <option key={value}>{value}</option>)}</select></label><label><span>Window</span><select value={windowKind} onChange={(event) => { setWindowKind(event.target.value as "24_hours" | "168_hours"); setTimelineOffset(0); }}><option value="24_hours">24 hours</option><option value="168_hours">168 hours</option></select></label><label><span>First period</span><input type="number" min={0} value={periodFrom} onChange={(event) => { setPeriodFrom(Math.max(0, Number(event.target.value))); setTimelineOffset(0); }} /></label><label><span>Timeline resolution</span><select value={resolution} onChange={(event) => { setResolution(event.target.value); setTimelineOffset(0); }}><option value="daily">Daily overview</option><option value="weekly">Weekly overview</option><option value="half_hour">Half-hour detail</option></select></label><label><span>Selected period</span><input type="number" min={periodFrom} max={periodTo} value={period} onChange={(event) => setPeriod(Number(event.target.value))} /></label></div>
       <div className="bounded-window-controls"><button className="secondary" disabled={periodFrom === 0} onClick={() => { setPeriodFrom(Math.max(0, periodFrom - windowPeriods)); setTimelineOffset(0); }}>Previous window</button><span>Periods {periodFrom}–{periodTo} · page offset {timelineOffset}</span><button className="secondary" onClick={() => { setPeriodFrom(periodFrom + windowPeriods); setTimelineOffset(0); }}>Next window</button></div>
-      {!capabilities.physical_dispatch && <div className="info-box">This historical run has period summaries but no final technology-level physical dispatch. VALUE will not reconstruct generation by summing staged accepted orders.</div>}
-      {timeline && capabilities.physical_dispatch && <><DispatchChart timeline={timeline} selectedPeriod={period} onSelect={setPeriod} /><div className="bounded-page-controls"><button className="text-button" disabled={timelineOffset === 0} onClick={() => setTimelineOffset(Math.max(0, timelineOffset - timeline.limit))}>Previous page</button><span>{timeline.items.length} of {timeline.total} buckets in this selected window</span><button className="text-button" disabled={timelineOffset + timeline.items.length >= timeline.total} onClick={() => setTimelineOffset(timelineOffset + timeline.limit)}>Next page</button></div></>}
-      {selected && <div className="selected-period-strip"><span><small>Window</small><b>{selected.timestamp_start.replace("T", " ")} to {selected.timestamp_end.replace("T", " ")}</b></span><span><small>Demand</small><b>{formatNumber(selected.real_demand_mwh)} MWh</b></span><span><small>Physical supply</small><b>{formatNumber(selected.accepted_supply_mwh)} MWh</b></span><span><small>Storage charge</small><b>{formatNumber(selected.storage_charge_mwh)} MWh</b></span><span><small>Price</small><b>£{formatNumber(selected.clearing_price_gbp_per_mwh)}/MWh</b></span></div>}
+      {timeline && dispatchEmpty && <div className="info-box dispatch-empty" role="status"><b>No supply flows recorded for this window</b><br />{EMPTY_DISPATCH_MESSAGES[dispatchEmpty]} <code>{dispatchEmpty}</code></div>}
+      {timeline && !dispatchEmpty && <><DispatchChart timeline={timeline} selectedPeriod={period} onSelect={setPeriod} /><div className="bounded-page-controls"><button className="text-button" disabled={timelineOffset === 0} onClick={() => setTimelineOffset(Math.max(0, timelineOffset - timeline.limit))}>Previous page</button><span>{timeline.items.length} of {timeline.total} buckets in this selected window</span><button className="text-button" disabled={timelineOffset + timeline.items.length >= timeline.total} onClick={() => setTimelineOffset(timelineOffset + timeline.limit)}>Next page</button></div></>}
+      {selected && timeline && <WindowSummary bucket={selected} timeline={timeline} />}
     </section>
     <section className="panel evidence-panel"><div className="panel-head"><div><span>Declared auction input</span><h3>Selected-period merit order</h3></div>{bidReplayAvailable ? <label className="inline-select"><span>Stage</span><select value={stage} onChange={(event) => setStage(event.target.value)}>{capabilities.auction_stages.map((item) => <option value={item.stage} key={item.stage}>{item.stage} · {item.order_detail.replaceAll("_", " ")}</option>)}</select></label> : <Badge tone="warn">No bid-level replay</Badge>}</div>
-      {!bidReplayAvailable ? <div className="info-box">Bid detail is unavailable under the recorded trace profile. The summary above remains scientific evidence; this panel does not render missing bids as zero.</div> : !auction ? <div className="info-box">No exact {stage} auction is recorded for period {period}. If a daily or weekly bucket is selected, enter any half-hour period inside that window.</div> : <><div className="auction-layout"><MeritOrderChart auction={auction} /><div className="auction-facts"><span><small>Requirement</small><b>{formatNumber(auction.requirement_mwh)} MWh</b></span><span><small>Marginal accepted offer</small><b>{auction.marginal_offer_price_gbp_per_mwh == null ? "Not separately defined" : `£${formatNumber(auction.marginal_offer_price_gbp_per_mwh)}/MWh`}</b></span><span><small>Information available</small><b>{auction.information_scope}</b></span><span><small>Acceptance detail</small><b>{auction.offer_acceptance_coverage.replaceAll("_", " ")}</b></span></div></div><div className="table-scroll"><table><thead><tr><th>Order</th><th>Asset</th><th>Technology</th><th>Offer</th><th>Offered</th><th>Accepted</th><th>Evidence</th></tr></thead><tbody>{auction.offers.map((offer) => <tr key={offer.offer_id ?? `${offer.asset_id}-${offer.execution_order}`}><td>{offer.execution_order + 1}</td><td><b>{offer.asset_id}</b><small>{offer.asset_type}</small></td><td>{offer.technology.replaceAll("_", " ")}</td><td>£{formatNumber(offer.offer_price_gbp_per_mwh)}/MWh</td><td>{formatNumber(offer.offered_mwh)} MWh</td><td>{offer.accepted_mwh != null ? `${formatNumber(offer.accepted_mwh)} MWh` : offer.asset_accepted_mwh != null ? `${formatNumber(offer.asset_accepted_mwh)} MWh (asset total)` : "Not separately recorded"}</td><td>{offer.acceptance_granularity.replaceAll("_", " ")}</td></tr>)}</tbody></table></div><p className="provenance-line">Input hash {auction.input_sha256} · source ledger {auction.source_artifact_sha256 ?? "hash unavailable"}</p></>}
-      {capabilities.storage_state && <div className="storage-period-panel"><header><div><small>Storage state at period {period}</small><b>{capabilities.storage_cost_module_id ?? "Cost policy not recorded"}</b></div><Badge>{storageRows.length} assets</Badge></header>{storageRows.length ? <div>{storageRows.map((row) => <span key={row.asset_id}><b>{row.asset_id}</b><small>SOC {formatNumber(row.state_of_charge_mwh)} / {formatNumber(row.energy_capacity_mwh)} MWh</small><em>charge {formatNumber(row.charge_mwh)} · discharge {formatNumber(row.discharge_mwh)} MWh · {formatNumber(row.power_capacity_mw)} MW</em></span>)}</div> : <p>No storage state is recorded for this selected period.</p>}</div>}
+      {!bidReplayAvailable ? <div className="info-box">Bid detail is unavailable under the recorded trace profile. The summary above remains scientific evidence; this panel does not render missing bids as zero.</div> : !auction ? <div className="info-box">No exact {stage} auction is recorded for period {period}. If a daily or weekly bucket is selected, enter any half-hour period inside that window.</div> : <><div className="auction-layout"><MeritOrderChart auction={auction} /><div className="auction-facts"><span><small>Requirement</small><b>{withUnit(formatNumber(auction.requirement_mwh), "MWh")}</b></span><span><small>Marginal accepted offer</small><b>{auction.marginal_offer_price_gbp_per_mwh == null ? "Not separately defined" : `${withUnit(formatNumber(auction.marginal_offer_price_gbp_per_mwh), "/MWh", "", "£")}`}</b></span><span><small>Information available</small><b>{auction.information_scope}</b></span><span><small>Acceptance detail</small><b>{auction.offer_acceptance_coverage.replaceAll("_", " ")}</b></span></div></div><div className="table-scroll"><table><thead><tr><th>Order</th><th>Asset</th><th>Technology</th><th>Offer</th><th>Offered</th><th>Accepted</th><th>Evidence</th></tr></thead><tbody>{auction.offers.map((offer) => <tr key={offer.offer_id ?? `${offer.asset_id}-${offer.execution_order}`}><td>{offer.execution_order + 1}</td><td><b>{offer.asset_id}</b></td><td title={offer.asset_type ? `Model class: ${offer.asset_type}` : undefined}>{offer.technology.replaceAll("_", " ")}</td><td>{withUnit(formatNumber(offer.offer_price_gbp_per_mwh), "/MWh", "", "£")}</td><td>{withUnit(formatNumber(offer.offered_mwh), "MWh")}</td><td>{offer.accepted_mwh != null ? `${withUnit(formatNumber(offer.accepted_mwh), "MWh")}` : offer.asset_accepted_mwh != null ? `${withUnit(formatNumber(offer.asset_accepted_mwh), "MWh")} (asset total)` : "Not separately recorded"}</td><td>{offer.acceptance_granularity.replaceAll("_", " ")}</td></tr>)}</tbody></table></div><p className="provenance-line">Input hash {auction.input_sha256} · source ledger {auction.source_artifact_sha256 ?? "hash unavailable"}</p></>}
+      {capabilities.storage_state && <div className="storage-period-panel"><header><div><small>Storage state at period {period}</small><b>{capabilities.storage_cost_module_id ?? "Cost policy not recorded"}</b></div><Badge>{storageRows.length} assets</Badge></header>{storageRows.length ? <div>{storageRows.map((row) => <span key={row.asset_id}><b>{row.asset_id}</b><small>SOC {formatNumber(row.state_of_charge_mwh)} / {withUnit(formatNumber(row.energy_capacity_mwh), "MWh")}</small><em>charge {formatNumber(row.charge_mwh)} · discharge {withUnit(formatNumber(row.discharge_mwh), "MWh")} · {withUnit(formatNumber(row.power_capacity_mw), "MW")}</em></span>)}</div> : <p>No storage state is recorded for this selected period.</p>}</div>}
     </section><ReplayExportPanel key={`${run.id}-${year}-${period}`} apiOrigin={API_ORIGIN} runId={run.id} years={capabilities.years} selectedYear={year} selectedPeriod={period} /></>}
   </div>;
 }
 
 function VreTimelineChart({ timeline }: { timeline: DispatchTimeline }) {
   const width = 920; const height = 280; const left = 56; const right = 18; const top = 18; const bottom = 42; const items = timeline.items;
-  const maximum = Math.max(1, ...items.flatMap((item) => [item.vre_available_mwh, item.vre_accepted_mwh, item.excess_mwh]));
+  const maximum = Math.max(1, ...items.flatMap((item) => [item.vre_available_mwh, item.vre_accepted_mwh, item.excess_mwh]).filter((value) => typeof value === "number" && Number.isFinite(value)));
   const plotWidth = width - left - right; const plotHeight = height - top - bottom;
   const x = (index: number) => left + index / Math.max(items.length - 1, 1) * plotWidth; const y = (value: number) => top + plotHeight - value / maximum * plotHeight;
-  const points = (key: "vre_available_mwh" | "vre_accepted_mwh" | "excess_mwh" | "neutral_unused_vre_mwh") => items.map((item, index) => `${x(index)},${y(Number(item[key] ?? 0))}`).join(" ");
-  return <div className="evidence-chart"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Available, accepted and unused renewable energy timeline">{[0, .5, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(maximum * fraction)} y2={y(maximum * fraction)} className="grid-line" /><text x={left - 8} y={y(maximum * fraction) + 4} textAnchor="end">{formatNumber(maximum * fraction, 0)}</text></g>)}<polyline points={points("vre_available_mwh")} className="vre-available-line" /><polyline points={points("vre_accepted_mwh")} className="vre-accepted-line" /><polyline points={points("neutral_unused_vre_mwh")} className="vre-unused-line" /><polyline points={points("excess_mwh")} className="vre-excess-line" /><text x={left} y={height - 10}>{items[0]?.timestamp_start.slice(0, 10)}</text><text x={width - right} y={height - 10} textAnchor="end">{items.at(-1)?.timestamp_end.slice(0, 10)}</text><text transform={`translate(14 ${top + plotHeight / 2}) rotate(-90)`} textAnchor="middle">Energy (MWh)</text></svg><div className="line-legend"><span className="available">Available VRE</span><span className="accepted">Accepted VRE</span><span className="unused">Unused VRE</span><span className="excess">Pre-balancing excess</span></div></div>;
+  const segments = (key: "vre_available_mwh" | "vre_accepted_mwh" | "excess_mwh" | "neutral_unused_vre_mwh", className: string) => seriesSegments(items, key, x, y).map((points, index) => <polyline key={`${key}-${index}`} points={points} className={className} />);
+  return <div className="evidence-chart"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Available, accepted and unused renewable energy timeline">{[0, .5, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(maximum * fraction)} y2={y(maximum * fraction)} className="grid-line" /><text x={left - 8} y={y(maximum * fraction) + 4} textAnchor="end">{formatQuantity(maximum * fraction, 3)}</text></g>)}{segments("vre_available_mwh", "vre-available-line")}{segments("vre_accepted_mwh", "vre-accepted-line")}{segments("neutral_unused_vre_mwh", "vre-unused-line")}{segments("excess_mwh", "vre-excess-line")}<text x={left} y={height - 10}>{items[0]?.timestamp_start.slice(0, 10)}</text><text x={width - right} y={height - 10} textAnchor="end">{items.at(-1)?.timestamp_end.slice(0, 10)}</text><text transform={`translate(14 ${top + plotHeight / 2}) rotate(-90)`} textAnchor="middle">Energy (MWh)</text></svg><div className="line-legend"><span className="available">Available VRE</span><span className="accepted">Accepted VRE</span><span className="unused">Unused VRE</span><span className="excess">Pre-balancing excess</span></div></div>;
 }
 
 function CurtailmentView({ run }: { run?: ModelRun }) {
@@ -243,13 +241,20 @@ function CurtailmentView({ run }: { run?: ModelRun }) {
   if (!run) return <div className="page"><div className="empty-run"><b>No run selected</b><p>Select a run in Runs before reviewing renewable-energy outcomes.</p></div></div>;
   const selected = summary?.years.find((item) => item.year === year);
   const maximum = Math.max(1, ...(summary?.years.map((item) => Math.max(item.available_vre_mwh, item.accepted_vre_mwh + (item.pre_balancing_excess_mwh ?? 0))) ?? [1]));
-  return <div className="page evidence-page"><div className="page-title"><div><span>Renewable-energy evidence</span><h2>See how much VRE was available, used and left unused</h2><p>VALUE keeps the physical VRE identity separate from the retained VALUE market stages. Pre-balancing excess may include other inflexible low-cost generation; it is therefore displayed alongside, not silently renamed as VRE curtailment.</p></div><Badge tone={selected?.full_chronology ? "good" : "warn"}>{selected?.full_chronology ? "Full chronology" : "Diagnostic chronology"}</Badge></div>{error && <div className="error-box">{error}</div>}
-    {summary && <><section className="panel evidence-panel"><div className="panel-head"><div><span>Across model years</span><h3>Annual VRE disposition</h3></div><Badge tone="blue">available = accepted + unused</Badge></div><div className="annual-vre-chart">{summary.years.map((item) => <button key={item.year} className={item.year === year ? "selected" : ""} onClick={() => setYear(item.year)}><span className="annual-bar"><i className="accepted" style={{ height: `${item.accepted_vre_mwh / maximum * 100}%` }} /><i className="unused" style={{ height: `${item.neutral_unused_vre_mwh / maximum * 100}%` }} /></span><b>{item.year}</b><small>{formatNumber((item.average_unused_vre_fraction ?? 0) * 100, 1)}% unused</small>{item.pre_balancing_excess_mwh != null && <em>{formatNumber(item.pre_balancing_excess_mwh / 1e6, 2)} TWh excess</em>}</button>)}</div><div className="chart-legend"><span><i style={{ background: "#087e73" }} />Accepted VRE</span><span><i style={{ background: "#ef9a55" }} />Unused VRE</span></div></section>
-      {selected && <section className="panel evidence-panel"><div className="panel-head"><div><span>{selected.year} evidence</span><h3>{selected.full_chronology ? "Annual accounting" : `${selected.period_count}-period diagnostic — not an annual result`}</h3></div><div className="evidence-controls compact"><label><span>Year</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{summary.years.map((item) => <option key={item.year}>{item.year}</option>)}</select></label><label><span>Timeline</span><select value={resolution} onChange={(event) => setResolution(event.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="half_hour">Half-hour (first 500)</option></select></label></div></div>
-        <div className="curtailment-kpis"><span><small>Available VRE</small><b>{formatNumber(selected.available_vre_mwh / 1e6, 3)} TWh</b></span><span><small>Accepted VRE</small><b>{formatNumber(selected.accepted_vre_mwh / 1e6, 3)} TWh</b></span><span><small>Unused VRE</small><b>{formatNumber(selected.neutral_unused_vre_mwh / 1e6, 3)} TWh</b><em>{formatNumber((selected.average_unused_vre_fraction ?? 0) * 100, 2)}% of available</em></span><span><small>Pre-balancing excess</small><b>{selected.pre_balancing_excess_mwh == null ? "Not separately identified" : `${formatNumber(selected.pre_balancing_excess_mwh / 1e6, 3)} TWh`}</b><em>{selected.pre_balancing_excess_scope.replaceAll("_", " ")}</em></span><span><small>Balancing curtailment</small><b>{selected.balancing_curtailment_mwh == null ? "Not separately identified" : `${formatNumber(selected.balancing_curtailment_mwh / 1e6, 3)} TWh`}</b></span></div>
-        <div className="destination-strip"><div><small>Simultaneous storage charging</small><b>{formatNumber(selected.storage_charge_mwh / 1e6, 3)} TWh</b></div><div><small>Boundary exports</small><b>{formatNumber(selected.export_mwh / 1e6, 3)} TWh</b></div><div><small>Flexible demand</small><b>{formatNumber(selected.flexible_demand_mwh / 1e6, 3)} TWh</b></div><p>These are simultaneous system flows. The ledger does not claim that every charged, exported or flexible-load MWh came from VRE unless a source-linked flow is explicitly recorded.</p></div>
+  // R3-21: one unit per KPI group, chosen from the group's largest magnitude.
+  const annualEnergy = formatEnergyGroup(summary?.years.map((item) => item.pre_balancing_excess_mwh) ?? []);
+  const kpiGroup = selected ? vreKpis(selected) : null;
+  const kpi = (key: string) => kpiGroup?.kpis.find((item) => item.key === key);
+  // Review response (S8): the badge, heading and KPI coverage line follow the backend coverage verdict; "non-annual" only for a non-annual Run.
+  const yearCoverage = selected ? vreYearCoverage(selected, summary?.coverage) : null;
+  const coverageLine = yearCoverage?.line ?? "";
+  return <div className="page evidence-page"><div className="page-title"><div><span>Renewable-energy evidence</span><h2>See how much VRE was available, used and left unused</h2><p>VALUE keeps the physical VRE identity separate from the retained VALUE market stages. Pre-balancing excess may include other inflexible low-cost generation; it is therefore displayed alongside, not silently renamed as VRE curtailment.</p></div><Badge tone={yearCoverage?.tone ?? "warn"}>{yearCoverage?.badge ?? "Diagnostic chronology"}</Badge></div>{error && <div className="error-box">{error}</div>}
+    {summary && <><section className="panel evidence-panel"><div className="panel-head"><div><span>Across model years</span><h3>Annual VRE disposition</h3></div><Badge tone="blue">available = accepted + unused</Badge></div><div className="annual-vre-chart">{summary.years.map((item) => <button key={item.year} className={item.year === year ? "selected" : ""} onClick={() => setYear(item.year)}><span className="annual-bar"><i className="accepted" style={{ height: `${item.accepted_vre_mwh / maximum * 100}%` }} /><i className="unused" style={{ height: `${item.neutral_unused_vre_mwh / maximum * 100}%` }} /></span><b>{item.year}</b><small>{item.average_unused_vre_fraction == null ? "No VRE available" : `${withUnit(formatNumber(item.average_unused_vre_fraction * 100, 1), "%", "")} unused`}</small>{item.pre_balancing_excess_mwh != null && <em>{annualEnergy.format(item.pre_balancing_excess_mwh)} excess</em>}</button>)}</div><div className="chart-legend"><span><i style={{ background: "#087e73" }} />Accepted VRE</span><span><i style={{ background: "#ef9a55" }} />Unused VRE</span></div></section>
+      {selected && <section className="panel evidence-panel"><div className="panel-head"><div><span>{selected.year} evidence</span><h3>{yearCoverage?.heading}</h3></div><div className="evidence-controls compact"><label><span>Year</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{summary.years.map((item) => <option key={item.year}>{item.year}</option>)}</select></label><label><span>Timeline</span><select value={resolution} onChange={(event) => setResolution(event.target.value)}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="half_hour">Half-hour (first 500)</option></select></label></div></div>
+        <div className="curtailment-kpis vre-kpis-grouped">{(["available", "accepted", "unused", "excess", "curtailment"] as const).map((key) => { const item = kpi(key)!; const unseparated = (key === "excess" || key === "curtailment") && item.exactMwh == null; return <span key={key}><small>{item.label}</small><b title={item.exactMwh == null ? undefined : `${item.exactMwh} MWh`}>{unseparated ? "Not separately identified" : item.value ?? "—"}</b>{key === "unused" && <em>{selected.average_unused_vre_fraction == null ? "No VRE available" : `${withUnit(formatNumber(selected.average_unused_vre_fraction * 100, 2), "%", "")} of available`}</em>}{key === "excess" && <em>{selected.pre_balancing_excess_scope.replaceAll("_", " ")}</em>}<i className="kpi-coverage">{coverageLine}</i></span>; })}</div>
+        <div className="destination-strip"><div><small>{kpi("storage")!.label}</small><b>{kpi("storage")!.value ?? "—"}</b><i className="kpi-coverage">{coverageLine}</i></div><div><small>{kpi("export")!.label}</small><b>{kpi("export")!.value ?? "—"}</b><i className="kpi-coverage">{coverageLine}</i></div><div><small>{kpi("flexible")!.label}</small><b>{kpi("flexible")!.value ?? "—"}</b><i className="kpi-coverage">{coverageLine}</i></div><p>These are simultaneous system flows. The ledger does not claim that every charged, exported or flexible-load MWh came from VRE unless a source-linked flow is explicitly recorded.</p></div>
         {timeline && <VreTimelineChart timeline={timeline} />}
-        <div className="event-summary"><span><small>Affected periods</small><b>{selected.affected_periods}</b></span><span><small>Longest continuous event</small><b>{formatNumber(selected.longest_event_hours)} hours</b></span><span><small>Peak event</small><b>{selected.peak_event_mwh == null ? "Not evaluated" : `${formatNumber(selected.peak_event_mwh)} MWh`}</b><em>{selected.peak_event_timestamp?.replace("T", " ")}</em></span><span><small>VRE identity residual</small><b>{formatNumber(selected.vre_identity_residual_mwh, 6)} MWh</b></span></div>
+        {vreEventGroups(selected).map((group) => <section key={group.key} className="vre-event-group value-new-control" aria-label={`${group.title} events`}><h4>{group.title}</h4><p className="vre-event-basis">{group.basisNote}</p>{group.events ? <div className="event-summary"><span><small>Affected periods</small><b>{group.events.affected_periods}</b></span><span><small>Longest continuous event</small><b>{withUnit(formatNumber(group.events.longest_event_hours), "hours")}</b></span><span><small>Peak event</small><b>{group.events.peak_event_mwh == null ? "Not evaluated" : formatEnergy(group.events.peak_event_mwh)}</b><em>{group.events.peak_event_timestamp?.replace("T", " ")}</em></span></div> : <p className="vre-event-basis">Not separately identified in this ledger.</p>}</section>)}<div className="event-summary"><span><small>VRE identity residual</small><b>{withUnit(formatNumber(selected.vre_identity_residual_mwh, 6), "MWh")}</b></span></div>
         <details className="definition-panel"><summary>Definitions and limits</summary><dl><div><dt>Unused VRE</dt><dd>Available renewable energy minus accepted renewable dispatch at the PSM boundary.</dd></div><div><dt>Pre-balancing excess</dt><dd>The retained VALUE ahead-stage surplus. Its scope is {selected.pre_balancing_excess_scope.replaceAll("_", " ")}; it is not assumed to be entirely renewable.</dd></div><div><dt>Balancing curtailment</dt><dd>Energy removed in the real-time balancing waterfall after forecast error, storage, export and flexible demand are considered.</dd></div><div><dt>Marginal curtailment</dt><dd>{selected.marginal_curtailment_reason}</dd></div></dl></details><p className="provenance-line">Coverage {selected.coverage_status.replaceAll("_", " ")} · source ledger {summary.source_artifact_sha256 ?? "hash unavailable"}</p>
       </section>}</>}
   </div>;
@@ -285,7 +290,7 @@ function TopologySchematic({ summary }: { summary: NetworkSummaryPayload }) {
   </svg><p>Electrical schematic only — node positions do not represent geography. A ring layout is used because no coordinate claim is made by this result artifact.</p></div>;
 }
 
-function SystemResultsView({ run, onOpenMarket }: { run?: ModelRun; onOpenMarket: () => void }) {
+function SystemResultsView({ run, onOpenMarket, onOpenNetwork }: { run?: ModelRun; onOpenMarket: () => void; onOpenNetwork: () => void }) {
   const [capabilities, setCapabilities] = useState<DomainCapabilitiesPayload | null>(null);
   const [domain, setDomain] = useState<OptionalResultDomain | null>(null);
   const [year, setYear] = useState(0); const [selectedPeriod, setSelectedPeriod] = useState("");
@@ -346,15 +351,17 @@ function SystemResultsView({ run, onOpenMarket }: { run?: ModelRun; onOpenMarket
   const selectedBusPeriod = periods?.items.find((item) => item.period_id === selectedPeriod);
   return <div className="page evidence-page"><div className="page-title"><div><span>Optional-domain evidence</span><h2>Network, water and expansion results</h2><p>Tabs are indexed from this completed run&apos;s frozen graph and artifacts. VALUE does not infer missing domains or turn “not evaluated” into zero.</p></div><Badge tone={run.status === "completed" || run.status === "archived" ? "good" : "warn"}>{run.status}</Badge></div>
     {error && <div className="error-box">{error}</div>}
-    {capabilities && <section className="domain-capability-strip" aria-label="Optional-domain capability status">{PUBLIC_CAPABILITY_DOMAINS.map((key) => [key, capabilities.capabilities[key]] as const).filter((entry): entry is readonly [string, DomainCapability] => Boolean(entry[1])).map(([key, item]) => <article key={key}><span>{key.replaceAll("_", " ")}</span><Badge tone={item.status === "supported" ? "good" : item.status === "experimental" ? "warn" : "neutral"}>{item.status.replaceAll("_", " ")}</Badge><small>{item.claim ?? item.reason ?? "Artifact-backed result available."}</small></article>)}</section>}
-    {capabilities && !availableDomains.length && <div className="empty-run"><b>No optional-domain result artifact is available</b><p>This is a valid single-node or diagnostic run. No network, hydrology or expansion quantities are reconstructed.</p></div>}
+    {capabilities && <section className="domain-capability-strip" aria-label="Optional-domain capability status">{PUBLIC_CAPABILITY_DOMAINS.map((key) => [key, capabilities.capabilities[key]] as const).filter((entry): entry is readonly [string, DomainCapability] => Boolean(entry[1])).map(([key, item]) => <article key={key}><span>{domainLabel(key)}</span><Badge tone={item.status === "supported" ? "good" : item.status === "experimental" ? "warn" : "neutral"}>{item.status.replaceAll("_", " ")}</Badge><small>{item.claim ?? item.reason ?? "Artifact-backed result available."}</small></article>)}</section>}
+    {capabilities && !availableDomains.length && (["supported", "experimental"].includes(capabilities.capabilities.zonal_redispatch?.status ?? "")
+      ? <div className="empty-run"><b>Zonal network results are on their own page</b><p>This Run uses the zonal network model. Its congestion, redispatch and lost-load results are under Network &amp; redispatch; no DC network, hydrology or expansion artifact is attached.</p><button type="button" className="secondary" onClick={onOpenNetwork}>Open Network &amp; redispatch →</button></div>
+      : <div className="empty-run"><b>No optional-domain result artifact is attached to this Run</b><p>{run.modules?.balancing === "value-copperplate-balancing" || !run.modules?.balancing ? "This Run uses the national market without internal network constraints (copperplate)." : "The selected modules recorded no network, hydrology or expansion artifact."} No network, hydrology or expansion quantities are reconstructed. Market results are in Market replay.</p><button type="button" className="secondary" onClick={onOpenMarket}>Open Market replay →</button></div>)}
     {!!availableDomains.length && <><div className="audit-tabs domain-result-tabs" role="tablist" aria-label="Optional-domain result tabs">{availableDomains.map((item) => <button key={item} role="tab" aria-selected={domain === item} className={domain === item ? "active" : ""} onClick={() => { setDomain(item); setYear(capabilities?.capabilities[item].years?.[0] ?? 0); }}>{labels[item]}</button>)}</div>
       {selectedCapability?.years?.length ? <label className="inline-select domain-year"><span>Model year</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{selectedCapability.years.map((item) => <option key={item}>{item}</option>)}</select></label> : null}
     </>}
-    {domain === "network_dc" && network && <div className="domain-result-stack"><section className="panel"><div className="panel-head"><div><span>DC network · {network.year}</span><h3>Nodal balance and constrained transfers</h3></div><Badge tone="good">integrity checked</Badge></div><DomainMetricCards metrics={network.metrics} /><div className="network-result-layout"><TopologySchematic summary={network} /><div><h4>Annual branch envelope</h4><div className="table-scroll compact-table"><table><thead><tr><th>Branch</th><th>Endpoints</th><th>Rating</th><th>Maximum flow</th><th>Peak utilisation</th></tr></thead><tbody>{network.branch_summary.map((item) => <tr key={item.branch_id}><td>{item.branch_id}</td><td>{item.from_bus} → {item.to_bus}</td><td>{item.rating_mw == null ? "Not evaluated" : `${formatNumber(item.rating_mw)} MW`}</td><td>{formatNumber(item.maximum_absolute_flow_mw)} MW</td><td>{item.maximum_utilisation_fraction == null ? "Not evaluated" : `${formatNumber(item.maximum_utilisation_fraction * 100, 1)}%`}</td></tr>)}</tbody></table></div></div></div><button className="audit-link" onClick={onOpenMarket}>Open storage SOC in the authoritative Market replay ledger</button><p className="provenance-line">Declared input {network.source_artifacts.declared_input_sha256} · period index {network.source_artifacts.period_index_sha256}</p></section>
-      {periods && <section className="panel"><div className="panel-head"><div><span>Bounded period query</span><h3>Angles, nodal LP duals and branch flows</h3></div><Badge tone="blue">{periods.items.length} of {periods.total} periods loaded</Badge></div><div className="period-chip-list" role="list" aria-label="Loaded network periods">{periods.items.map((item) => <button key={item.period_id} className={selectedPeriod === item.period_id ? "selected" : ""} onClick={() => setSelectedPeriod(item.period_id)}>{item.period_id}</button>)}</div>{selectedBusPeriod && <><div className="table-scroll"><table><thead><tr><th>Bus</th><th>Injection</th><th>Withdrawal</th><th>Load shed</th><th>Angle</th><th>Nodal LP dual</th></tr></thead><tbody>{selectedBusPeriod.buses.map((item) => <tr key={item.bus_id}><td>{item.bus_id}</td><td>{formatNumber(item.injection_mwh)} MWh</td><td>{formatNumber(item.withdrawal_mwh)} MWh</td><td>{formatNumber(item.blackout_mwh)} MWh</td><td>{formatNumber(item.angle_rad, 6)} rad</td><td>£{formatNumber(item.price_gbp_per_mwh)}/MWh</td></tr>)}</tbody></table></div>{branches && <div className="table-scroll"><table><thead><tr><th>Branch</th><th>Endpoints</th><th>Flow</th><th>Rating</th><th>Utilisation</th></tr></thead><tbody>{branches.items.map((item) => <tr key={`${item.period_id}-${item.branch_id}`}><td>{item.branch_id}</td><td>{item.from_bus} → {item.to_bus}</td><td>{formatNumber(item.flow_mw)} MW</td><td>{item.rating_mw == null ? "Not evaluated" : `${formatNumber(item.rating_mw)} MW`}</td><td>{item.utilisation_fraction == null ? item.utilisation_status.replaceAll("_", " ") : `${formatNumber(item.utilisation_fraction * 100, 1)}%`}</td></tr>)}</tbody></table></div>}</>}</section>}
+    {domain === "network_dc" && network && <div className="domain-result-stack"><section className="panel"><div className="panel-head"><div><span>DC network · {network.year}</span><h3>Nodal balance and constrained transfers</h3></div><Badge tone="good">integrity checked</Badge></div><DomainMetricCards metrics={network.metrics} /><div className="network-result-layout"><TopologySchematic summary={network} /><div><h4>Annual branch envelope</h4><div className="table-scroll compact-table"><table><thead><tr><th>Branch</th><th>Endpoints</th><th>Rating</th><th>Maximum flow</th><th>Peak utilisation</th></tr></thead><tbody>{network.branch_summary.map((item) => <tr key={item.branch_id}><td>{item.branch_id}</td><td>{item.from_bus} → {item.to_bus}</td><td>{item.rating_mw == null ? "Not evaluated" : `${withUnit(formatNumber(item.rating_mw), "MW")}`}</td><td>{withUnit(formatNumber(item.maximum_absolute_flow_mw), "MW")}</td><td>{item.maximum_utilisation_fraction == null ? "Not evaluated" : `${withUnit(formatNumber(item.maximum_utilisation_fraction * 100, 1), "%", "")}`}</td></tr>)}</tbody></table></div></div></div><button className="audit-link" onClick={onOpenMarket}>Open storage SOC in the authoritative Market replay ledger</button><p className="provenance-line">Declared input {network.source_artifacts.declared_input_sha256} · period index {network.source_artifacts.period_index_sha256}</p></section>
+      {periods && <section className="panel"><div className="panel-head"><div><span>Bounded period query</span><h3>Angles, nodal LP duals and branch flows</h3></div><Badge tone="blue">{periods.items.length} of {periods.total} periods loaded</Badge></div><div className="period-chip-list" role="list" aria-label="Loaded network periods">{periods.items.map((item) => <button key={item.period_id} className={selectedPeriod === item.period_id ? "selected" : ""} onClick={() => setSelectedPeriod(item.period_id)}>{item.period_id}</button>)}</div>{selectedBusPeriod && <><div className="table-scroll"><table><thead><tr><th>Bus</th><th>Injection</th><th>Withdrawal</th><th>Load shed</th><th>Angle</th><th>Nodal LP dual</th></tr></thead><tbody>{selectedBusPeriod.buses.map((item) => <tr key={item.bus_id}><td>{item.bus_id}</td><td>{withUnit(formatNumber(item.injection_mwh), "MWh")}</td><td>{withUnit(formatNumber(item.withdrawal_mwh), "MWh")}</td><td>{withUnit(formatNumber(item.blackout_mwh), "MWh")}</td><td>{formatNumber(item.angle_rad, 6)} rad</td><td>{withUnit(formatNumber(item.price_gbp_per_mwh), "/MWh", "", "£")}</td></tr>)}</tbody></table></div>{branches && <div className="table-scroll"><table><thead><tr><th>Branch</th><th>Endpoints</th><th>Flow</th><th>Rating</th><th>Utilisation</th></tr></thead><tbody>{branches.items.map((item) => <tr key={`${item.period_id}-${item.branch_id}`}><td>{item.branch_id}</td><td>{item.from_bus} → {item.to_bus}</td><td>{withUnit(formatNumber(item.flow_mw), "MW")}</td><td>{item.rating_mw == null ? "Not evaluated" : `${withUnit(formatNumber(item.rating_mw), "MW")}`}</td><td>{item.utilisation_fraction == null ? item.utilisation_status.replaceAll("_", " ") : `${withUnit(formatNumber(item.utilisation_fraction * 100, 1), "%", "")}`}</td></tr>)}</tbody></table></div>}</>}</section>}
     </div>}
-    {domain === "network_expansion" && expansion && <div className="domain-result-stack"><section className="panel"><div className="panel-head"><div><span>Experimental transmission lifecycle</span><h3>{expansion.lineage}</h3></div><Badge tone="warn">{expansion.status}</Badge></div><div className="expansion-year-grid">{expansion.years.map((item) => <article key={item.year}><b>{item.year}</b><span>{item.proposals} proposed</span><span>{item.admitted} admitted</span><span>{item.commissioned} commissioned</span><span>{item.failed} failed · {item.retired} retired</span></article>)}</div><p className="audit-note">Before/after values are temporal descriptions only. Counterfactual effect: {expansion.counterfactual_claim.replaceAll("_", " ")}.</p></section>{events && <section className="panel"><div className="panel-head"><div><span>Candidate lineage events</span><h3>{events.total} indexed events</h3></div><Badge tone="blue">first {events.items.length}</Badge></div><div className="table-scroll"><table><thead><tr><th>Year / event</th><th>Candidate</th><th>Project / asset</th><th>Corridor</th><th>Build</th><th>Reason</th></tr></thead><tbody>{events.items.map((item) => <tr key={item.event_id}><td><b>{item.year}</b><small>{item.event_type}</small></td><td>{item.candidate_id}</td><td><small>{item.project_id ?? "No project yet"}</small><small>{item.asset_id ?? "No commissioned asset"}</small></td><td>{item.corridor_id}<small>{item.from_bus} → {item.to_bus}</small></td><td>{item.circuits} × {formatNumber(item.rating_mw)} MW</td><td>{item.reason_code}</td></tr>)}</tbody></table></div><p className="provenance-line">Source artifact {events.source_artifact_sha256}</p></section>}</div>}
+    {domain === "network_expansion" && expansion && <div className="domain-result-stack"><section className="panel"><div className="panel-head"><div><span>Experimental transmission lifecycle</span><h3>{expansion.lineage}</h3></div><Badge tone="warn">{expansion.status}</Badge></div><div className="expansion-year-grid">{expansion.years.map((item) => <article key={item.year}><b>{item.year}</b><span>{item.proposals} proposed</span><span>{item.admitted} admitted</span><span>{item.commissioned} commissioned</span><span>{item.failed} failed · {item.retired} retired</span></article>)}</div><p className="audit-note">Before/after values are temporal descriptions only. Counterfactual effect: {expansion.counterfactual_claim.replaceAll("_", " ")}.</p></section>{events && <section className="panel"><div className="panel-head"><div><span>Candidate lineage events</span><h3>{events.total} indexed events</h3></div><Badge tone="blue">first {events.items.length}</Badge></div><div className="table-scroll"><table><thead><tr><th>Year / event</th><th>Candidate</th><th>Project / asset</th><th>Corridor</th><th>Build</th><th>Reason</th></tr></thead><tbody>{events.items.map((item) => <tr key={item.event_id}><td><b>{item.year}</b><small>{item.event_type}</small></td><td>{item.candidate_id}</td><td><small>{item.project_id ?? "No project yet"}</small><small>{item.asset_id ?? "No commissioned asset"}</small></td><td>{item.corridor_id}<small>{item.from_bus} → {item.to_bus}</small></td><td>{item.circuits} × {withUnit(formatNumber(item.rating_mw), "MW")}</td><td>{item.reason_code}</td></tr>)}</tbody></table></div><p className="provenance-line">Source artifact {events.source_artifact_sha256}</p></section>}</div>}
     {capabilities?.capabilities.hydrology && <section className="panel unavailable-domain"><div><span>Natural-flow hydrology</span><h3>{capabilities.capabilities.hydrology.status.replaceAll("_", " ")}</h3><p>{capabilities.capabilities.hydrology.reason ?? "A typed hydrology result index is available."}</p></div><Badge tone={capabilities.capabilities.hydrology.status === "experimental" ? "warn" : "neutral"}>{capabilities.capabilities.hydrology.status.replaceAll("_", " ")}</Badge></section>}
     {capabilities && <p className="provenance-line">Run {String(capabilities.identity.run_id ?? run.id)} · project revision {String(capabilities.identity.project_revision_sha256 ?? "not recorded")} · graph {String(capabilities.identity.graph_sha256 ?? "not recorded")}</p>}
   </div>;
@@ -371,7 +378,13 @@ export default function Home() {
   const [definitions, setDefinitions] = useState<ParameterDefinition[]>([]);
   const [online, setOnline] = useState(false);
   const [launcherRequired, setLauncherRequired] = useState(false);
-  const [connectionState, setConnectionState] = useState<"loading" | "online" | "offline">("loading");
+  // P0-3 S8: the rail shows degraded after a failure or a degraded health
+  // status, and offline only after OFFLINE_AFTER_FAILURES consecutive failures.
+  const [refreshFailures, setRefreshFailures] = useState(0);
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [health, setHealth] = useState<{ status: string; degraded_reasons?: { code: string; count: number }[] } | null>(null);
+  const [pollTick, setPollTick] = useState(0);
+  const connectionState = serviceState(refreshFailures, health?.status, workspaceLoaded);
   const [selectedPackId, setSelectedPackId] = useState("value-uk-1000twh-reproduction");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
@@ -399,6 +412,7 @@ export default function Home() {
   const [extensionInstalling, setExtensionInstalling] = useState(false);
   const [extensionLifecycle, setExtensionLifecycle] = useState("");
   const [launching, setLaunching] = useState("");
+  const [replayTarget, setReplayTarget] = useState<ReplayTarget | null>(null);
   const [preflightMode, setPreflightMode] = useState<RunMode>("smoke");
   const [storedPreflight, setPreflight] = useState<PreflightReport | null>(null);
   const [pendingPreflightKey, setPendingPreflightKey] = useState<string | null>(null);
@@ -467,7 +481,9 @@ export default function Home() {
         runs: next.runs.map((run) => ({ ...run, project_name: modelDisplayName(run.project_name) })),
       });
       setOnline(true);
-      setConnectionState("online");
+      setWorkspaceLoaded(true);
+      setRefreshFailures(0);
+      void getJson<{ status: string; degraded_reasons?: { code: string; count: number }[] }>(`${API}/health`).then(setHealth).catch(() => setHealth(null));
       setSelectedPackId((current) => next.data_packs.some((item) => item.id === current) ? current : (next.data_packs.find((item) => item.complete)?.id ?? next.data_packs[0]?.id ?? ""));
       const requestedRunId = pendingLocation.current?.runId;
       const requestedRun = next.runs.find((run) => run.id === requestedRunId);
@@ -476,8 +492,10 @@ export default function Home() {
       pendingLocation.current = null;
       return next;
     } catch (error) {
-      if (error instanceof LauncherAccessError) setLauncherRequired(true);
-      setOnline(false); setConnectionState("offline"); return null;
+      if (classifyRefreshFailure(error) === "launcher") { setLauncherRequired(true); return null; }
+      // The last workspace stays on screen (readable); actions that need the
+      // service are disabled while it is not online.
+      setOnline(false); setRefreshFailures((current) => current + 1); return null;
     }
   }, []);
   const refreshValue101Tutorial = useCallback(async () => {
@@ -529,7 +547,14 @@ export default function Home() {
     return () => { active = false; };
   }, [selectedRunSummary]);
   const hasActiveRun = workspace.runs.some((run) => ["queued", "snapshotting", "running", "cancel_requested"].includes(run.status));
-  useEffect(() => { if (!hasActiveRun) return; const timer = window.setInterval(() => void refresh(), 2000); return () => window.clearInterval(timer); }, [hasActiveRun, refresh]);
+  const activeRunCount = workspace.runs.filter((run) => ["queued", "snapshotting", "running", "cancel_requested"].includes(run.status)).length;
+  // Poll while a Run is active or the service is failing: every 2 s, doubling
+  // after each consecutive failure up to 30 s (P0-3 S8).
+  useEffect(() => {
+    if (!hasActiveRun && refreshFailures === 0) return;
+    const timer = window.setTimeout(() => { void refresh().finally(() => setPollTick((tick) => tick + 1)); }, pollDelay(refreshFailures));
+    return () => window.clearTimeout(timer);
+  }, [hasActiveRun, pollTick, refresh, refreshFailures]);
 
   const selectedPack = useMemo(() => workspace.data_packs.find((pack) => pack.id === selectedPackId) ?? workspace.data_packs[0], [selectedPackId, workspace.data_packs]);
   const selectedProject = workspace.projects.find((project) => project.id === selectedProjectId);
@@ -977,12 +1002,55 @@ export default function Home() {
     setView("projects");
   }
 
+  /** POST a module/extension lifecycle change; when Runs are pending (P0-2, 409
+   * GF_MODULE_LIFECYCLE_RUNS_PENDING) ask, then resend with the confirmation. */
+  async function lifecycleRequest(url: string, init: RequestInit, jsonBody?: Record<string, unknown>): Promise<{ response: Response; payload: Record<string, unknown> & { error?: string; error_code?: string } }> {
+    const send = async (confirmed: boolean) => {
+      const headers = new Headers(init.headers);
+      let body = init.body;
+      if (confirmed) {
+        if (jsonBody !== undefined) body = JSON.stringify({ ...jsonBody, confirm_pending_runs: true });
+        else headers.set("X-VALUE-Confirm-Pending-Runs", "acknowledged");
+      }
+      const response = await fetch(url, { ...init, headers, body });
+      let payload: Record<string, unknown> & { error?: string; error_code?: string } = {};
+      try { payload = await response.json(); } catch { /* the status is authoritative */ }
+      return { response, payload };
+    };
+    const first = await send(false);
+    if (!isPendingRunsRefusal(first.response.status, first.payload.error_code)) return first;
+    if (!window.confirm(pendingRunsQuestion(first.payload.error))) return first;
+    return send(true);
+  }
+
+  const [quarantineBusy, setQuarantineBusy] = useState("");
+  async function disableQuarantined(row: QuarantineRow) {
+    if (!row.disablePath) return;
+    setQuarantineBusy(row.key); setNotice("");
+    try {
+      const { response, payload } = await lifecycleRequest(`${API}${row.disablePath.replace(/^\/api/, "")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
+      if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Disabling ${row.id} failed`}`);
+      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.`); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Disable failed"); }
+    finally { setQuarantineBusy(""); }
+  }
+  async function rescanModules() {
+    setQuarantineBusy("rescan"); setNotice("");
+    try {
+      const response = await fetch(`${API}/modules/rescan`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const payload = await response.json() as { status?: string; error?: string; error_code?: string };
+      if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Rescan failed"}`);
+      setNotice(payload.status === "ok" ? "Rescan complete: no module is quarantined." : "Rescan complete: some modules are still quarantined; see the panel."); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Rescan failed"); }
+    finally { setQuarantineBusy(""); }
+  }
+
   async function installModule() {
     if (!moduleBundle) { setNotice("Choose a VALUE module ZIP first."); return; }
     if (!moduleTrust) { setNotice("Confirm that you trust the executable Python in this bundle."); return; }
     setModuleInstalling(true); setNotice("");
     try {
-      const response = await fetch(`${API}/modules/install`, {
+      const { response, payload } = await lifecycleRequest(`${API}/modules/install`, {
         method: "POST",
         headers: {
           "Content-Type": "application/zip",
@@ -990,8 +1058,7 @@ export default function Home() {
           "X-VALUE-Executable-Trust": "acknowledged",
         },
         body: moduleBundle,
-      });
-      const payload = await response.json();
+      }) as { response: Response; payload: { error?: string; error_code?: string; installation: { name: string; module_version: string } } };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Module installation failed"}`);
       setNotice(`${payload.installation.name} ${payload.installation.module_version} passed structural conformance. Run a wiring test before research use.`);
       setModuleBundle(null); setModuleTrust(false); await refresh();
@@ -1002,13 +1069,12 @@ export default function Home() {
   async function changeModuleState(installation: ModuleInstallation, enabled: boolean) {
     setModuleLifecycle(installation.module_id); setNotice("");
     try {
-      const response = await fetch(`${API}/modules/${encodeURIComponent(installation.module_id)}/${enabled ? "enable" : "disable"}`, {
+      const { response, payload } = await lifecycleRequest(`${API}/modules/${encodeURIComponent(installation.module_id)}/${enabled ? "enable" : "disable"}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
-      });
-      const payload = await response.json();
+      }, {}) as { response: Response; payload: { error?: string; error_code?: string; dependents?: { projects?: string[] } } };
       if (!response.ok) {
         const projects = payload.dependents?.projects?.join(", ");
-        throw new Error(`${payload.error}${projects ? `: ${projects}` : ""}`);
+        throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${projects ? `: ${projects}` : ""}`);
       }
       setNotice(`${installation.name} is now ${enabled ? "enabled and selectable" : "disabled"}.`); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Module state change failed"); }
@@ -1020,7 +1086,7 @@ export default function Home() {
     if (!extensionTrust) { setNotice("Acknowledge the in-process trusted-code boundary before installation."); return; }
     setExtensionInstalling(true); setNotice("");
     try {
-      const response = await fetch(`${API}/extensions/install`, {
+      const { response, payload } = await lifecycleRequest(`${API}/extensions/install`, {
         method: "POST",
         headers: {
           "Content-Type": "application/zip",
@@ -1028,8 +1094,7 @@ export default function Home() {
           "X-VALUE-Executable-Trust": "acknowledged",
         },
         body: extensionBundle,
-      });
-      const payload = await response.json();
+      }) as { response: Response; payload: { error?: string; error_code?: string; installation: { extension_id: string; version: string } } };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Extension installation failed"}`);
       setNotice(`${payload.installation.extension_id} ${payload.installation.version} passed structural extension validation. Its declared scientific maturity has not changed.`);
       setExtensionBundle(null); setExtensionTrust(false); await refresh();
@@ -1040,10 +1105,9 @@ export default function Home() {
   async function changeExtensionState(installation: ExtensionInstallation, enabled: boolean) {
     setExtensionLifecycle(installation.extension_id); setNotice("");
     try {
-      const response = await fetch(`${API}/extensions/${encodeURIComponent(installation.extension_id)}/${enabled ? "enable" : "disable"}`, {
+      const { response, payload } = await lifecycleRequest(`${API}/extensions/${encodeURIComponent(installation.extension_id)}/${enabled ? "enable" : "disable"}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
-      });
-      const payload = await response.json();
+      }, {}) as { response: Response; payload: { error?: string; error_code?: string; dependents?: { projects?: string[]; runs_and_retained_history?: string[] } } };
       if (!response.ok) {
         const dependents = [...(payload.dependents?.projects ?? []), ...(payload.dependents?.runs_and_retained_history ?? [])];
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${dependents.length ? ` — ${dependents.join(", ")}` : ""}`);
@@ -1161,6 +1225,19 @@ export default function Home() {
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Resume failed"); }
     finally { setLaunching(""); }
   }
+  async function markRunLost(run: ModelRun) {
+    // Spec 5 / P0-3 S4: a second, explicit confirmation in which the user types the exact run ID (as Delete does); only that ID is sent to the API's confirmation gate.
+    const confirmation = window.prompt(`Mark Run ${run.id} as lost?\n\nVALUE cannot reach its worker. The Run will be recorded as failed and can then be resumed from its last annual checkpoint. A worker that is still running somewhere would be ignored.\n\nType the exact run ID to confirm:\n${run.id}`);
+    if (confirmation !== run.id) { setNotice("The Run was not marked lost because the exact ID was not entered."); return; }
+    setLaunching("mark-lost"); setNotice("");
+    try {
+      const response = await fetch(`${API}/runs/${encodeURIComponent(run.id)}/mark-lost`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm_run_id: confirmation }) });
+      const payload = await response.json() as { error?: string; error_code?: string };
+      if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "The Run could not be marked lost"}`);
+      setNotice("The Run was marked lost and recorded as failed. Resume it from its last annual checkpoint when ready."); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Mark as lost failed"); }
+    finally { setLaunching(""); }
+  }
   async function rerunAsCopperplate(run: ModelRun) {
     setLaunching("rerun-copperplate"); setNotice("");
     try {
@@ -1217,9 +1294,10 @@ export default function Home() {
       { label: "Results", ids: ["marketReplay", "curtailment", "networkRedispatch", "systems", "audit"] },
       { label: "Guides", ids: ["extend"] },
     ].map((group) => <div className="workspace-nav-group" key={group.label}><p>{group.label}</p>{group.ids.map((id) => views.find((item) => item.id === id)!).map((item) => <button type="button" aria-label={`${item.label}: ${item.note}`} aria-current={view === item.id ? "page" : undefined} key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><i>{item.index}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}</div>)}</nav>
-    <div className="rail-foot"><div className={`service ${connectionState === "online" && workspace.runtime.compatible ? "online" : ""}`}><i /><span><b>{connectionState === "loading" ? "Connecting to model service…" : connectionState === "online" ? `Python ${workspace.runtime.python}` : "Model service offline"}</b><small>{connectionState === "loading" ? "Checking the local API" : connectionState === "online" ? (workspace.runtime.compatible ? `${workspace.runtime.selected_capability ?? "value-native"} ready` : "VALUE native runtime unavailable") : "Start VALUE locally, then retry"}</small></span>{connectionState === "offline" && <button onClick={() => void refresh()}>Retry</button>}</div><small>Contract {workspace.architecture_version.replace("value.contracts/", "")}</small></div></aside>
+    <div className="rail-foot"><div className={`service ${connectionState === "online" && workspace.runtime.compatible ? "online" : connectionState === "degraded" ? "degraded" : connectionState === "offline" ? "offline" : ""}`} role="status"><i /><span><b>{connectionState === "loading" ? "Connecting to model service…" : connectionState === "online" ? `Python ${workspace.runtime.python}` : connectionState === "degraded" ? "● Backend degraded" : "● Backend offline"}</b><small>{connectionState === "loading" ? "Checking the local API" : connectionState === "online" ? (workspace.runtime.compatible ? `${workspace.runtime.selected_capability ?? "value-native"} ready` : "VALUE native runtime unavailable") : connectionState === "degraded" ? (refreshFailures ? `The last ${refreshFailures === 1 ? "request" : `${refreshFailures} requests`} failed; retrying in ${Math.round(pollDelay(refreshFailures) / 1000)} s` : `Running with reduced capability: ${(health?.degraded_reasons ?? []).map((reason) => reason.code).join(", ") || "see Modules"}`) : `No answer after ${OFFLINE_AFTER_FAILURES} attempts. Start VALUE from its launcher, then retry`}</small></span>{(connectionState === "offline" || (connectionState === "degraded" && refreshFailures > 0)) && <button onClick={() => void refresh()}>Retry</button>}</div><small>Contract {workspace.architecture_version.replace("value.contracts/", "")}</small></div></aside>
     <section className="surface"><header className="topbar"><div><small>VALUE / {views.find((item) => item.id === view)?.index}</small><h1>{views.find((item) => item.id === view)?.label}</h1></div><div className="top-meta">
       {!isRunView && view !== "journey" && !(view === "data" && isJourneyData) && <><label><span>Draft data pack</span><select aria-label="Selected data pack" value={selectedPack?.id ?? ""} onChange={(event) => setSelectedPackId(event.target.value)} disabled={!online}>{workspace.data_packs.map((pack) => <option value={pack.id} key={pack.id}>{modelDisplayName(pack.name)}</option>)}</select></label><Badge tone={online && selectedPack?.complete ? "good" : "warn"}>{connectionState !== "online" ? "Inputs not loaded" : selectedPack ? `${selectedPack.valid_required_count} of ${selectedPack.required_count} inputs ready` : "No data pack"}</Badge></>}
+      {activeRunCount > 0 && <button type="button" className="background-runs value-new-control" onClick={() => setView("run")}>● {activeRunCount} {activeRunCount === 1 ? "Run" : "Runs"} running in background</button>}
       <button type="button" className="secondary workspace-readme-trigger" onClick={() => setReadMeOpen(true)} aria-haspopup="dialog">Read me</button>
     </div></header>
     <ReadMePanel open={readMeOpen} onClose={() => setReadMeOpen(false)} />
@@ -1358,6 +1436,7 @@ export default function Home() {
 
     {view === "models" && <div className="page">
       <div className="page-title"><div><span>VALUE module registry</span><h2>The model is assembled here</h2><p>Each card resolves to one executable Python implementation. Install a reviewed local bundle to replace one part of the model without editing VALUE.</p></div><Badge tone="good">{readyModules} of {workspace.modules.length} ready</Badge></div>
+      <ModuleQuarantinePanel report={workspace.module_quarantine} busy={quarantineBusy} onDisable={(row) => void disableQuarantined(row)} onRescan={() => void rescanModules()} />
       <div><ModuleAuthorWorkbench apiOrigin={API_ORIGIN} modules={workspace.modules} projects={workspace.projects}
         onInstallRequest={() => document.getElementById("module-installer")?.scrollIntoView({ block: "start", behavior: "smooth" })}
         onCreated={async ({ id }) => {
@@ -1399,15 +1478,15 @@ export default function Home() {
 
     {view === "projects" && <div className="page project-page"><div className="page-title"><div><span>Study setup</span><h2>Define the scientific question, then resolve the model</h2><p>The composer connects one data pack, physical domain, optional extensions, model chain and assumptions. Saving creates an immutable revision of exactly the graph shown in Review.</p></div><Badge tone={draftResolution?.valid ? "good" : "warn"}>{draftResolving ? "Resolving" : draftResolution?.valid ? "Draft ready" : "Draft incomplete"}</Badge></div><StudyComposer initialStep={composerInitialStep} apiOrigin={API_ORIGIN} workspace={workspace} form={projectForm} selectedPackId={selectedPack?.id ?? selectedPackId} resolution={draftResolution} resolving={draftResolving} resolutionError={draftResolutionError} savedProjects={workspace.projects} studyTrash={workspace.study_trash} selectedProjectId={selectedProjectId} assumptions={<><AdvancedSettings definitions={definitions} values={{ ...parameterValues, ...runtimeValues }} resolvedSources={resolvedSources} onChange={(id, value, runtime) => runtime ? setRuntimeValues((current) => ({ ...current, [id]: value })) : setParameterValues((current) => ({ ...current, [id]: value }))} /><button className="text-button full" onClick={() => void previewParameters()}>Check effective base values</button></>} onForm={(update) => setProjectForm(update)} onPack={setSelectedPackId} onDomain={chooseDomain} onExtension={toggleExtension} onModule={selectStudyModule} onExtensionParameter={(name, value) => setProjectForm((current) => ({ ...current, extension_parameters: { ...current.extension_parameters, [name]: value } }))} onAcknowledgement={(key, value, checked) => setProjectForm((current) => { const maturity_acknowledgements = { ...current.maturity_acknowledgements }; if (checked) maturity_acknowledgements[key] = value; else delete maturity_acknowledgements[key]; return { ...current, maturity_acknowledgements }; })} onSave={() => void saveProject()} onLoad={loadProjectRevision} onOpenRun={(project) => { selectRunProject(project.id); setView("run"); }} onTrash={(project, linkedRunCount) => void moveStudyToTrash(project, linkedRunCount)} onRestore={(entry) => void restoreStudyEntry(entry)} onOpenTrashRuns={(entry) => { const run = workspace.runs.find((item) => item.project_id === entry.study_id); setSelectedProjectId(entry.study_id); setSelectedRunId(run?.id ?? ""); setSelectedRunDetail(null); setView("run"); if (!run) setNotice("No indexed Run is available for this trashed Study; restore it to inspect non-indexed legacy evidence."); }} onOpenData={() => { setDataContextId("draft"); setView("data"); }} traceLevel={(runtimeValues["runtime.market_trace_level"] as TraceProfile | undefined) ?? "summary"} onTraceLevel={(trace) => setRuntimeValues((current) => ({ ...current, "runtime.market_trace_level": trace }))} /></div>}
 
-    {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated }} />}
+    {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost }} />}
 
-    {view === "marketReplay" && <MarketReplayView run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} />}
+    {view === "marketReplay" && <MarketReplayView key={`${selectedRun?.id ?? "no-run"}:${replayTarget?.nonce ?? 0}`} run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} initialWindow={replayTarget} />}
 
     {view === "curtailment" && <><ResultQueryPanel key={`query-${selectedRun?.id ?? "no-run"}`} run={selectedRun} apiOrigin={API_ORIGIN} /><CurtailmentView key={`physical-${selectedRun?.id ?? "no-run"}`} run={selectedRun} /></>}
 
-    {view === "networkRedispatch" && <NetworkRedispatchView key={selectedRun?.id ?? "no-run"} run={selectedRun} apiOrigin={API_ORIGIN} sourceStudyMutable={selectedRunSourceMutable} onOpenMarket={() => setView("marketReplay")} onCreateFullReplayRevision={createFullReplayRevision} onOpenRun={() => setView("run")} onRerun={() => selectedRun ? rerunAsCopperplate(selectedRun) : Promise.resolve()} />}
+    {view === "networkRedispatch" && <NetworkRedispatchView key={selectedRun?.id ?? "no-run"} run={selectedRun} apiOrigin={API_ORIGIN} sourceStudyMutable={selectedRunSourceMutable} onReplay={(year, periodFrom) => { if (selectedRun) { setReplayTarget({ runId: selectedRun.id, year, periodFrom, nonce: Date.now() }); setView("marketReplay"); } }} onOpenInspect={() => setView("audit")} onOpenMarket={() => setView("marketReplay")} onCreateFullReplayRevision={createFullReplayRevision} onOpenRun={() => setView("run")} onRerun={() => selectedRun ? rerunAsCopperplate(selectedRun) : Promise.resolve()} />}
 
-    {view === "systems" && <SystemResultsView run={selectedRun} onOpenMarket={() => setView("marketReplay")} />}
+    {view === "systems" && <SystemResultsView run={selectedRun} onOpenMarket={() => setView("marketReplay")} onOpenNetwork={() => setView("networkRedispatch")} />}
 
     {view === "audit" && <AuditView run={selectedRun} apiOrigin={API_ORIGIN} onCreateFullReplayRevision={createFullReplayRevision} />}
 

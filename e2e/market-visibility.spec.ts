@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const run = {
   id: "market-demo", project_id: "demo", project_name: "Market evidence fixture", mode: "full",
@@ -18,6 +20,8 @@ const flows = [
 const timeline = {
   year: 2025, resolution: "daily", total: 4, limit: 500, offset: 0, source_artifact_sha256: "a".repeat(64),
   period_hours: 0.5, price_aggregation: "demand_weighted_mean_gbp_per_mwh",
+  // P0-9 S3: the read model states what the price is (default PSM: total period cost / demand).
+  price_basis: "average_period_cost", price_basis_source: "semantics",
   items: Array.from({ length: 4 }, (_, period) => ({
     period_start: period, period_end: period, period_count: 1,
     timestamp_start: `2025-01-01T0${period}:00:00`, timestamp_end: `2025-01-01T0${period}:30:00`,
@@ -75,18 +79,64 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
   await expect(page.getByRole("table").getByText("offshore wind")).toBeVisible();
   await expect(page.getByText("£50/MWh").first()).toBeVisible();
-  // R3-01: the selected-period strip must show the recorded bucket price. HEAD
-  // reads a field the API never sends and shows £0/MWh, so this soft assertion
-  // is the one registered failure of this spec (e2e/offline-subset.json) until
-  // P0-9 S3 (M2) fixes the read; the rest of the test still runs and must pass.
-  await expect.soft(page.locator(".selected-period-strip")).toContainText("£61.25/MWh");
+  // R3-01 / Q6: the selected-period strip shows the recorded bucket price under
+  // its basis label; an average period cost is never called a clearing price.
+  const strip = page.locator(".selected-period-strip");
+  await expect(strip).toContainText("£61.25/MWh");
+  await expect(strip).toContainText("Average period cost (£/MWh demand)");
+  await expect(strip).toContainText("Accepted supply");
+  await expect(strip).toContainText("Shortfall");
+  await expect(strip).not.toContainText("Clearing price");
+  await expect(strip).not.toContainText("£0/MWh"); // a zero offer in the merit-order table is legitimate
+  // Spec 9.8: the window card fits a 375 px screen without its own horizontal scroll.
+  await page.setViewportSize({ width: 375, height: 800 });
+  expect(await strip.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.screenshot({ path: test.info().outputPath("prompt56-market-replay.png"), fullPage: true });
 
   await page.getByRole("button", { name: /VRE & curtailment/ }).click();
   await expect(page.getByRole("heading", { name: "See how much VRE was available, used and left unused" })).toBeVisible();
   await expect(page.getByText("5% unused")).toBeVisible();
+  // P0-9 S8 (R3-21): a 20 MWh year is shown in MWh, never as 0 TWh.
+  await expect(page.locator(".curtailment-kpis").getByText("20 MWh", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("0 TWh");
   await expect(page.getByText("inflexible mixed", { exact: true })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
   await page.screenshot({ path: test.info().outputPath("prompt57-vre-curtailment.png"), fullPage: true });
+});
+
+// P0-9 S4 (R3-02): a staged (v8) summary-trace Run has no physical_dispatch
+// rows but a dispatch summary; the chart stacks its final-dispatch supply.
+// The payloads are the generated contract fixtures (real read models).
+const contract = (name: string) => JSON.parse(readFileSync(path.join(process.cwd(), "tests", "fixtures", "ui-contract", `${name}.json`), "utf8")).payload;
+
+test("a v8 summary-trace Run draws its final-dispatch supply stack", async ({ page }) => {
+  const capabilities = contract("toy-v8.capabilities");
+  const daily = contract("toy-v8.dispatch-daily");
+  await page.route("**/api/**", async (route) => {
+    const url = route.request().url();
+    let body: unknown;
+    if (url.endsWith("/api/workspace")) body = {
+      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [],
+      projects: [{ id: run.project_id, name: run.project_name, data_pack_id: "fixture", start_year: 2025, end_year: 2025, modules: {}, updated_at: run.updated_at }],
+      data_packs: [{ id: "fixture", name: "Fixture", country: "GB", timezone: "Europe/London", bindings: {}, required_count: 0, bound_required_count: 0, valid_required_count: 0, binding_issues: {}, complete: true }],
+      runs: [run], runtime: { python: "3.10.11", compatible: true, selected_capability: "value-native" },
+    };
+    else if (url.endsWith("/api/runs/market-demo")) body = run;
+    else if (url.includes("/market/capabilities")) body = capabilities;
+    else if (url.includes("/market/dispatch")) body = daily;
+    else body = { error: "unmocked API" };
+    await route.fulfill({ status: url.includes("/market/") || url.endsWith("/api/workspace") || url.endsWith("/api/runs/market-demo") ? 200 : 404, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Market replay/ }).click();
+  await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  expect(capabilities.physical_dispatch).toBe(false);
+  await expect(page.locator(".evidence-chart rect.dispatch-segment").first()).toBeVisible();
+  expect(await page.locator(".evidence-chart rect.dispatch-segment").count()).toBeGreaterThanOrEqual(1);
+  await expect(page.locator(".chart-legend")).toContainText("onshore wind");
+  await expect(page.locator(".selected-period-strip")).toContainText("Demand-weighted national ahead clearing price");
+  await expect(page.locator(".selected-period-strip")).toContainText("£55/MWh");
+  await expect(page.getByText("No supply flows recorded for this window")).toHaveCount(0);
 });

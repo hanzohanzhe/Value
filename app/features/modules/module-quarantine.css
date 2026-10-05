@@ -1,0 +1,9 @@
+/* P0 frontend spec 6: module quarantine panel (>= 12px, tokens only). */
+.module-quarantine-panel .quarantine-rows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.module-quarantine-panel .quarantine-rows li { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.quarantine-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font-size: 13px; }
+.quarantine-row-head code { font-size: 12px; color: var(--muted); }
+.quarantine-error { color: var(--ink); overflow-wrap: anywhere; }
+.module-quarantine-panel pre { max-height: 220px; overflow: auto; white-space: pre-wrap; font-size: 12px; }
+.quarantine-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 6px; }
+.quarantine-help { margin: 6px 0 0; font-size: 12px; color: var(--muted); }

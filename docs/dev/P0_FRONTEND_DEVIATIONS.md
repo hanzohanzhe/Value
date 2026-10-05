@@ -34,3 +34,23 @@
 |---|---|---|---|---|
 | F-P08-1 | 4.6 网络页：可靠性数值用统一格式化（<0.01 MWh 不显示为 0）、运行期 fallback 审计超阈值时顶部 caution Callout `Spatially indicative: {x}% of {tech} capacity fell back to {zone}.` | 本 lane 只交付后端字段与 TS 类型：`known_defects`、`load_shedding_reporting_threshold_mwh`、`numerical_residual_unserved_mwh`（年度简报）、`runtime_fallback_audit`（能力接口，含 `spatially_indicative_technologies` 的 year/technology/fraction/zone，足以拼出规格文案），`networkRedispatch.ts` 增加对应可选类型。`NetworkRedispatchView.tsx` 未改 | 冲突热点 C11 规定 P0-8 的网络页改动放在 P0-9 S6 之后；`Callout` 与 `format.ts` 由并行的 P0-9 lane 新建，本分支上尚不存在，自行实现会与设计方的组件重复 | 是：集成者在 P0-9 S6 合入后补一个提交，用 `Callout`（caution）与 `formatEnergy` 渲染上述字段 |
 | F-P08-2 | 规格未覆盖 SolverSettingsEditor | 历史合同（v2、v3）显示 `Historical {v2 / v3 GBP 1 lock} policy` 徽章；升级说明框里新增一张只读对照表（Setting / Recorded / Current v4），按钮文案改为 `Use current v4 policy`；当前合同徽章改为 `Built-in v4 default settings` / `Custom v4 settings`。只用已有的 `Badge`、`info-box`、`table-scroll` 样式（对照表按应用惯例包在 `.table-scroll` 里，避免全局 `table { min-width: 800px }` 撑破设置面板；评审 M2-P0-8a 指出后补上），没有新增颜色或字号 | P0-8 S5 要求升级前预览差异（Q13 method_upgrade_required）；原文案写死 “£1 policy”，在 v4 下会误导 | 是：文案与表格样式 |
+
+## P0-9 / P0-2 S9 / P0-3 S8（M2-P0-9：第 1、3–6 节）
+
+| # | 规格 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-P09-1 | 1.2：`formatNumber` 缺失时返回 `null` | `shared/format.ts` 的 `formatNumber` 返回 `null`；保留签名的 `presentation.tsx` 版本对缺失返回状态词 `—`（`VALUE_STATES.missing`） | 规格要求旧签名不变，旧调用方需要字符串；计划 6.9 的测试写的是 `formatNumber(undefined)='—'`，两者在不同层同时满足 | 否 |
+| F-P09-2 | 1.2：非零小值显示 `<0.01` / `>-0.01`；`formatMoney(999999.9)` 显示 `£1.00m` | 按规格实现（`formatNumber(-0.001)` 为 `>-0.01`，金额 k/m/bn 段保留 2–3 位小数：`£1.00m`、`£12.346bn`、`£1.234k`）。负数写作 `-£1.234k`，亚便士写作 `<£0.01` | 计划 6.9 的手算表写的是 `formatNumber(-0.001)='0'`、`formatMoney(999999.9)='£1m'`，与规格冲突；按规格（设计方）执行 | 是（计划测试表需同步） |
+| F-P09-3 | 3.1：窗口行写 `(UTC)` | 写作 `({timezone} model time)`，取自读模型的 `timezone`（当前为 Europe/London）；网络页事件列表表头为 `Start (model date & time)` | 账本时间戳是固定 365 天日历上的本地模型时间，不是 UTC；标成 UTC 会误导 | 是 |
+| F-P09-4 | 3.1/3.3/4.4：shortfall、stress period、stress band、`stress (supply < demand)` 类型 | 窗口卡显示 `Shortfall: Not recorded`；`shortfall_mwh`/`stress_periods` 字段一到即显示数值与 amber pill，图上画 4px amber 带并加图例；可靠性列表目前只有 `lost load (network)` 一类 | A2 的后端字段在 M4 落地（任务说明：缺失时显示 Not recorded）；前端不做减法 | 否（M4 接入后复核） |
+| F-P09-5 | 4.2：非 Complete 时不显示年度合计 | 后端给出 coverage 时严格执行；**后端没有给出 coverage（旧后端）时**，合计照常显示，pill 为 `Coverage not recorded`（muted） | 原则 3「不确定就降级」：降级的是标签而不是隐藏数值；同时保持旧 mock 的 e2e 不被整体改写 | 是 |
+| F-P09-6 | 4.2：`Withheld` pill（复现口径未通过不变量，Q14） | `coveragePill(…, { withheld: true })` 已就绪，但当前没有后端字段可读，界面不会出现 Withheld | 复现口径的发布判定由 X0/M4 提供字段；不臆造字段名 | 是（需约定字段） |
+| F-P09-7 | 4.3：修正口径径流水电兼容资本的 memo 行 | 当 Run 指标中有 `ror_hydro_compatibility_capital_gbp` 时在构成表末尾列出（不计入头条、不画进条形）；当前后端没有该字段 | 该数值属于修正口径（P0-7/X0），字段名先按此约定，需对方实现时采用 | 是（字段名） |
+| F-P09-8 | 4.6：运行期 fallback 审计 Callout | 未实现 | 依赖 P0-8 S12 的后端字段，接口未定 | 是（P0-8 交付后补） |
+| F-P09-9 | 4.6：P0-8b 后表头改为 `Boundary marginal value (£/MWh)` | 仍为 `Diagnostic marginal value`；值为 null 时显示 `Not computed` | P0-8b 尚未合入 | 否 |
+| F-P09-10 | 1.2 / 计划 S1：`RunContextBar.tsx:27`、`Value101Learn.tsx:124` 改用共享格式化 | 未改，列入 `toLocaleString` 白名单 | 两处都是整数周期数，不存在缺失变 0；`RunContextBar` 属 X0 S12（并行 lane 在改），避免冲突 | 否 |
+| F-P09-11 | 5：`Mark as lost` 二次确认 | 浏览器 `prompt`，用户须输入精确 run ID（与 Delete 相同），前端只把用户输入的 ID 作为 `confirm_run_id` 发给 API 的确认门；输入不符时不发请求（评审后修改，原实现是确认框 + 自动带上 ID） | 规格只要求二次确认；P0-3 S4 的精确 ID 门不能由前端代填；API 的安静期门仍由后端执行，拒绝时显示错误码 | 否 |
+| F-P09-12 | 5：`Backend offline` 在连续失败 3 次后 | 实现如此；第一次失败即显示 `Backend degraded` 与 Retry，轮询 2 s 起翻倍至 30 s。`e2e/happy-path.spec.ts` 的离线断言改为匹配 `Backend (degraded|offline)`（该 spec 需真实服务，本次未运行） | 规格 | 否 |
+| F-P09-13 | 9.8：375 px 不引起页面级横向滚动 | 只断言新组件自身不横向溢出（窗口卡、隔离面板）；旧布局（252 px 侧栏网格）在 375 px 的页面级溢出不在本轮 | 做法一不改旧元素样式 | 是 |
+| F-P09-14 | 6：Disable 确认 | 使用浏览器确认框（文案与规格逐字一致），未用 `<dialog>` | 规格第 6 节未指定对话框形式（`<dialog>` 是第 7 节迁移确认的要求） | 否 |
+| F-P09-15 | 10：截图用 PNG | 用 JPEG（质量 55，整页），共 14 张约 2.7 MB，放在 `docs/dev/p0-ui-screens/` | 控制仓库体积；来源是 scratch 实例（端口 18966/18967）上真实的 VALUE 101 day Run | 否 |

@@ -177,6 +177,17 @@ the built-in staged adapter; capability resolution alone does not execute a
 third-party evidence adapter. A v2-producing integration whose identity does
 not reconcile must fail separately and retain failure evidence.
 
+Result views use one set of state words (P0-9). Only `invalid` is shown in a
+red frame:
+
+| State | Meaning | What to do |
+| --- | --- | --- |
+| `reconciled` | Recorded values passed their identity checks | Read the values |
+| `unavailable` | No evidence of this kind was recorded (for example a copperplate Run has no attribution tables) | Nothing is wrong; choose a method that records it if you need it |
+| `withheld` | Values exist but are not published here (a non-annual or unfinished Run, or a partial year) | Open the Run in Inspect for the period-level ledger |
+| `invalid` | The recorded evidence contradicts itself (identities or year sets do not match) | Treat the Run's results as unverified and inspect its ledgers |
+| `Not modelled` / `Not computed` / `Not recorded` | The method does not model the quantity / the implementation does not compute it yet / an older Run did not record it | Never read these as zero |
+
 ### 6.1 Experimental zonal solver controls and evidence
 
 `value-zonal-redispatch-balancing` `2.0.0` is an Experimental, lossless

@@ -593,7 +593,11 @@ class Prompt123BoundedReplayExportTests(unittest.TestCase):
             self.assertEqual(timeline["total"], 3)
             self.assertEqual(timeline["items"][0]["flows"], [{
                 "technology": "ccgt",
+                "raw_technology": "ccgt",
                 "flow_type": "accepted_dispatch",
+                "role": "supply",
+                "stage": "final_dispatch",
+                "zone_id": "GB",
                 "evidence_scope": "zone:GB;stage:final_dispatch",
                 "energy_mwh": 10.0,
                 "balance_component_mwh": 10.0,

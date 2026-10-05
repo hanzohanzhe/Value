@@ -295,6 +295,60 @@ def record_run_cancelled(status_path: Path, *, run_id: str, project_id: str, mod
     )
 
 
+# Reviewed basis of every CEM cost-ledger line that can enter the headline
+# (P0-9 S9 review response): True = the line contains blackout x VoLL, False =
+# it does not, ZONAL_VOLL = it does exactly when the Run cleared zonal
+# redispatch.  A line id outside this map makes the basis unknown ("VoLL basis
+# not recorded") instead of being guessed from its name.
+#   operation.blackout_prevention_failure   perfect_foresight_psm: blackout x VoLL
+#   operation.blackout_reliability           P0-6 S4 native VoLL line (C30)
+#   operation.generation_import_and_reliability  scheme_c native/staged PSM:
+#       copperplate balancing prices dispatch only (no VoLL, plan 4.6 / C30);
+#       zonal redispatch adds load_shedding x VoLL to the same class total, and
+#       staged_psm._build_redispatch_summary_rows enforces that reconciliation
+#       whenever a network pack is bound (the ledger then carries zonal.* lines)
+#   operation.psm_resource_cost              opaque total: basis unknown (absent here)
+ZONAL_VOLL = "included_when_zonal_redispatch"
+VOLL_BASIS_BY_LEDGER_LINE: dict[str, bool | str] = {
+    "commissioned_fleet.annualised_capital": False,
+    "network.commissioned_assets.annualised_capex": False,
+    "network.commissioned_assets.fixed_opex": False,
+    "operation.blackout_prevention_failure": True,
+    "operation.blackout_reliability": True,
+    "operation.generation_and_import_variable": False,
+    "operation.generation_import_and_reliability": ZONAL_VOLL,
+    "operation.storage_cycle_depreciation": False,
+    "operation.storage_variable_degradation": False,
+}
+
+
+def _system_cost_includes_voll(ledger: dict | None) -> bool | None:
+    """Whether the headline system cost contains the value of lost load.
+
+    The legacy (doctoral) total adds Lost_Value_of_Electricity.  For a CEM
+    resource-cost ledger the answer comes from the declared components of the
+    headline (``VOLL_BASIS_BY_LEDGER_LINE``): True when a VoLL line is part of
+    it, False when every included line is known not to be VoLL, and None
+    ("VoLL basis not recorded") when an included line is not in the map
+    (P0-9 S9, F3-04)."""
+
+    if ledger is None:
+        return True
+    lines = [line for line in ledger.get("lines") or [] if isinstance(line, dict)]
+    zonal = any(str(line.get("id", "")).startswith("zonal.") for line in lines)
+    bases = []
+    for line in lines:
+        if not line.get("included_in_cem_system_cost"):
+            continue
+        basis = VOLL_BASIS_BY_LEDGER_LINE.get(str(line.get("id", "")))
+        bases.append(zonal if basis == ZONAL_VOLL else basis)
+    if any(basis is True for basis in bases):
+        return True
+    if not bases or any(basis is None for basis in bases):
+        return None
+    return False
+
+
 def _frontend_results(
     exact: dict,
     modules: dict[str, str],
@@ -360,8 +414,19 @@ def _frontend_results(
                 "total_energy_generated_mwh": cost["Total_Energy_Generated_MWh"],
                 "total_levelized_capital_cost_gbp": cost["Total_Levelized_Capital_Cost_GBP"],
                 "total_operational_cost_gbp": cost["Total_Operational_Cost_GBP"],
-                "cm_mechanism_cost_gbp": cost["CM_Mechanism_Cost_Added_to_System_GBP"],
-                "decarbonization_mechanism_cost_gbp": cost["Decarbonization_Mechanism_Cost_Added_to_System_GBP"],
+                # F3-04 (P0-9 S9): a mechanism the path does not model is null
+                # with a status, never 0.0; the legacy path records all five
+                # components of its headline (VoLL included).
+                "cm_mechanism_cost_gbp": cost.get("CM_Mechanism_Cost_Added_to_System_GBP"),
+                "cm_mechanism_cost_status": cost.get("CM_Mechanism_Cost_Status") or (
+                    "recorded" if cost.get("CM_Mechanism_Cost_Added_to_System_GBP") is not None else "not_recorded"
+                ),
+                "decarbonization_mechanism_cost_gbp": cost.get("Decarbonization_Mechanism_Cost_Added_to_System_GBP"),
+                "decarbonization_mechanism_cost_status": cost.get("Decarbonization_Mechanism_Cost_Status") or (
+                    "recorded" if cost.get("Decarbonization_Mechanism_Cost_Added_to_System_GBP") is not None else "not_recorded"
+                ),
+                "lost_value_of_electricity_gbp": cost.get("Lost_Value_of_Electricity_GBP"),
+                "system_cost_includes_voll": _system_cost_includes_voll(ledger),
                 "blackout_mwh": cost["Total_Energy_Deficit_MWh"],
                 "curtailment_mwh": cost.get("Total_VRE_Curtailed_MWh", cost.get("Total_Excess_Energy_MWh")),
                 "vre_curtailment_mwh": curtailment.get("total_mwh") if curtailment is not None else None,

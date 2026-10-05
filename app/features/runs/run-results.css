@@ -1,0 +1,11 @@
+/* P0 frontend spec 4.2 / 4.3: annual coverage and cost composition (>= 12px, tokens only). */
+.cost-composition { margin-top: 12px; display: grid; gap: 8px; }
+.cost-composition-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.cost-composition-note { margin: 0; font-size: 13px; color: var(--muted); }
+.cost-composition-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cost-composition-table th, .cost-composition-table td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; color: var(--ink); }
+.cost-composition-table th { text-align: left; }
+.cost-legend-swatch { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border-radius: 3px; }
+.cost-legend-swatch.empty { border: 1px dashed var(--line); }
+.annual-withheld { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 10px 0; font-size: 13px; color: var(--ink); }
+.latest-result .value-pill, .year-record summary .value-pill { margin: 4px 8px 4px 0; }

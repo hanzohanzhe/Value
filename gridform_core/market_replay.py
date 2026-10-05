@@ -14,15 +14,11 @@ from .market_ledger import _read_only_connection
 
 AUCTION_VIEW_SCHEMA = "value.market-auction-view/v1"
 PHYSICAL_DISPATCH_SCHEMA = "value.physical-dispatch-view/v1"
-DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v1"
+DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v2"
 REPLAY_CAPABILITIES_SCHEMA = "value.market-replay-capabilities/v1"
 VRE_SUMMARY_SCHEMA = "value.vre-curtailment-summary/v1"
 VRE_TIMELINE_SCHEMA = "value.vre-curtailment-timeline/v1"
 ZONAL_REPLAY_CAPABILITY = "value.zonal-results-page/v1"
-ZONAL_REPLAY_TABLES = {
-    "zonal_period_summary", "zone_period_summary", "boundary_period_summary",
-    "zonal_resource_dispatch", "reliability_event",
-}
 
 
 def canonical_technology(
@@ -71,6 +67,39 @@ def canonical_technology(
     return "unmapped"
 
 
+# Role of each physical-dispatch flow type in the period energy balance
+# (dispatch timeline v2, P0-9 S4).  Only ``supply`` flows are stacked as
+# generation; the others are context.  Every flow type the three writers
+# (scheme_c_native_psm, perfect_foresight_psm, staged_psm) record is listed;
+# tests/test_market_replay.py scans their source to keep this complete.  An
+# unknown flow type is ``context``: shown in evidence, never stacked.
+FLOW_ROLE_BY_TYPE = {
+    "generation": "supply",
+    "import": "supply",
+    "storage_discharge": "supply",
+    "storage_charge": "storage_charge",
+    "flexible_demand": "demand",
+    "export": "demand",
+    "balancing_curtailment": "curtailment",
+    "unused_vre": "curtailment",
+    "excess_generation": "excess",
+    "blackout": "unserved",
+}
+FLOW_ROLES = ("supply", "demand", "storage_charge", "curtailment", "excess", "unserved", "context")
+V8_SUPPLY_STAGE = "final_dispatch"
+
+
+def flow_role(flow_type: str) -> str:
+    return FLOW_ROLE_BY_TYPE.get(str(flow_type), "context")
+
+
+def v8_summary_flow_role(stage: str, energy_mwh: float) -> str:
+    """v8 dispatch summaries: only positive final dispatch is supply; earlier
+    stages (ahead schedules) are context for the same period."""
+
+    return "supply" if str(stage) == V8_SUPPLY_STAGE and float(energy_mwh) > 0 else "context"
+
+
 def _tables(connection: sqlite3.Connection) -> set[str]:
     return {
         str(row[0])
@@ -104,6 +133,80 @@ def _semantic_metadata(database: Path) -> dict[str, object]:
             except json.JSONDecodeError:
                 result[str(key)] = str(value)
     return result
+
+
+# What a period price in ``period_summary.clearing_price_gbp_per_mwh`` means
+# (P0-9 S3, Q6).  The read model states it; the UI only renders the label.
+PRICE_BASES = (
+    "average_period_cost",
+    "national_ahead_clearing_price",
+    "balance_shadow_price",
+    "ahead_settlement_price",
+    "not_declared",
+)
+
+
+def period_price_basis(
+    semantic: Mapping[str, object], ledger_schema_version: str | None = None,
+) -> tuple[str, str]:
+    """Return ``(price_basis, price_basis_source)`` for one market ledger.
+
+    ``source`` is ``declared`` when the writer named the basis, ``semantics``
+    when it is read from the writer's price semantics text, and
+    ``inferred_from_writer`` for the staged (v8) writer, which records a
+    national pay-as-clear price but no semantics key (the v8 metadata is
+    compared on reopen, so no key is added to it).  Anything else is
+    ``not_declared``: the UI then says "basis not recorded".
+    """
+
+    declared = semantic.get("price_basis")
+    if isinstance(declared, str) and declared in PRICE_BASES:
+        return declared, "declared"
+    semantics = str(semantic.get("period_price_semantics") or "").lower()
+    pricing_rule = str(semantic.get("pricing_rule") or "").lower()
+    legacy_basis = str(semantic.get("period_price_basis") or "").lower()
+    if semantics.startswith("demand_normalised_total_period_cost"):
+        return "average_period_cost", "semantics"
+    if "objective derivative" in semantics or pricing_rule == "lp_balance_dual":
+        return "balance_shadow_price", "semantics"
+    if legacy_basis.startswith("ahead_generator_settlement"):
+        return "ahead_settlement_price", "semantics"
+    if str(ledger_schema_version or "") == "value.market-ledger/v8":
+        return "national_ahead_clearing_price", "inferred_from_writer"
+    return "not_declared", "not_declared"
+
+
+def _ledger_schema_version(database: Path) -> str:
+    metadata_path = database.parent / "metadata.json"
+    if metadata_path.is_file():
+        version = json.loads(metadata_path.read_text(encoding="utf-8")).get("schema_version")
+        if version:
+            return str(version)
+    with _read_only_connection(database) as connection:
+        if "metadata" not in _tables(connection):
+            return "unknown"
+        row = connection.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()
+    return str(row[0]) if row else "unknown"
+
+
+def market_year_bounds(database: Path) -> dict[int, tuple[int, int, int]]:
+    """``{year: (first period, last period, distinct periods)}`` of the period ledger (P0-9 S5)."""
+
+    with _read_only_connection(database) as connection:
+        if "period_summary" not in _tables(connection):
+            return {}
+        rows = connection.execute(
+            "SELECT year, MIN(period), MAX(period), COUNT(DISTINCT period) "
+            "FROM period_summary GROUP BY year ORDER BY year"
+        ).fetchall()
+    return {int(year): (int(first), int(last), int(count)) for year, first, last, count in rows}
+
+
+def market_price_basis(database: Path) -> dict[str, str]:
+    """``{"price_basis", "price_basis_source"}`` of the run's market ledger."""
+
+    basis, source = period_price_basis(_semantic_metadata(database), _ledger_schema_version(database))
+    return {"price_basis": basis, "price_basis_source": source}
 
 
 def _artifact_hash(database: Path) -> str | None:
@@ -274,10 +377,13 @@ def market_replay_capabilities(database: Path) -> dict[str, object]:
             int(connection.execute("SELECT COUNT(*) FROM period_summary").fetchone()[0])
             if "period_summary" in tables else 0
         )
-        zonal_rows = (
-            int(connection.execute("SELECT COUNT(*) FROM zonal_period_summary").fetchone()[0])
-            if ZONAL_REPLAY_TABLES.issubset(tables) else 0
-        )
+        # R3-16: v6+ ledgers keep zonal periods in zonal_period_accounting;
+        # an EXISTS-style probe, not a COUNT over the year.
+        zonal_rows = int(any(
+            table in tables
+            and connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone() is not None
+            for table in ("zonal_period_accounting", "zonal_period_summary")
+        ))
         order_rows = (
             int(connection.execute("SELECT COUNT(*) FROM orders").fetchone()[0])
             if "orders" in tables else 0
@@ -288,10 +394,14 @@ def market_replay_capabilities(database: Path) -> dict[str, object]:
         )
     trace_level = str(metadata.get("trace_level", semantic.get("trace_level", "unknown")))
     bid_replay_available = trace_level == "full" and (bool(stages) or order_rows > 0)
+    ledger_schema_version = str(metadata.get("schema_version", semantic.get("schema_version", "unknown")))
+    price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
     return {
         "schema_version": REPLAY_CAPABILITIES_SCHEMA,
-        "ledger_schema_version": metadata.get("schema_version", semantic.get("schema_version", "unknown")),
+        "ledger_schema_version": ledger_schema_version,
         "trace_level": trace_level,
+        "price_basis": price_basis,
+        "price_basis_source": price_basis_source,
         "years": years,
         "period_summary": period_rows > 0,
         "physical_dispatch": physical_rows > 0,
@@ -523,6 +633,7 @@ def query_dispatch_timeline(
             "SELECT value FROM metadata WHERE key='schema_version'"
         ).fetchone() if "metadata" in tables else None
         ledger_schema_version = str(schema_row[0]) if schema_row else "unknown"
+        price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
         if ledger_schema_version == "value.market-ledger/v8":
             dispatch_source = "dispatch_summary"
         elif ledger_schema_version in {
@@ -560,6 +671,7 @@ def query_dispatch_timeline(
                 "total": total_buckets, "limit": limit, "offset": offset,
                 "dispatch_source": dispatch_source,
                 "dispatch_summary_available": False,
+                "price_basis": price_basis, "price_basis_source": price_basis_source,
                 "items": [], "units": {"energy": "MWh", "price": "GBP/MWh"},
             }
         bucket_placeholders = ",".join("?" for _ in selected_buckets)
@@ -626,9 +738,17 @@ def query_dispatch_timeline(
                     start_period, bucket_periods, *selected_buckets,
                 ),
             ):
+                raw_technology = str(row["technology"])
                 flows_by_bucket[int(row["bucket"])].append({
-                    "technology": str(row["technology"]),
+                    # R3-02: the staged writer records raw technology names
+                    # ("CCGT", "onshore"); the read model sends the canonical
+                    # group and keeps the raw name.
+                    "technology": canonical_technology(raw_technology, declared_technology=raw_technology),
+                    "raw_technology": raw_technology,
                     "flow_type": "accepted_dispatch",
+                    "role": v8_summary_flow_role(str(row["stage"]), float(row["energy_mwh"])),
+                    "stage": str(row["stage"]),
+                    "zone_id": str(row["zone_id"]),
                     "evidence_scope": (
                         f"zone:{row['zone_id']};stage:{row['stage']}"
                     ),
@@ -656,6 +776,7 @@ def query_dispatch_timeline(
                 flows_by_bucket[int(row["bucket"])].append({
                     "technology": str(row["technology"]),
                     "flow_type": str(row["flow_type"]),
+                    "role": flow_role(str(row["flow_type"])),
                     "evidence_scope": str(row["evidence_scope"]),
                     "energy_mwh": float(row["energy_mwh"]),
                     "balance_component_mwh": float(row["balance_component_mwh"]),
@@ -690,7 +811,37 @@ def query_dispatch_timeline(
         "items": items,
         "source_artifact_sha256": _artifact_hash(database),
         "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
+        "price_basis": price_basis,
+        "price_basis_source": price_basis_source,
         "units": {"energy": "MWh", "price": "GBP/MWh"},
+    }
+
+
+def _event_statistics(
+    values: list[float], periods: list[int], year: int, period_hours: float, basis: str,
+) -> dict[str, object]:
+    """Affected periods, longest run and peak of one per-period event series."""
+
+    longest = 0
+    current = 0
+    for value in values:
+        if value > 1e-9:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    peak_index = max(range(len(values)), key=values.__getitem__) if values else None
+    peak_period = periods[peak_index] if peak_index is not None else None
+    return {
+        "basis": basis,
+        "affected_periods": sum(value > 1e-9 for value in values),
+        "longest_event_periods": longest,
+        "longest_event_hours": longest * period_hours,
+        "peak_event_mwh": values[peak_index] if peak_index is not None else None,
+        "peak_event_period": peak_period,
+        "peak_event_timestamp": (
+            _model_timestamp(year, peak_period, period_hours) if peak_period is not None else None
+        ),
     }
 
 
@@ -727,36 +878,44 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
             excess = sum(float(row["excess_mwh"]) for row in rows)
             split_excess: float | None = None
             split_curtailment: float | None = None
-            if relationship == "alias_of_unused_vre":
-                event_values = [max(
-                    float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
-                ) for row in rows]
-            elif relationship == "separate_prebalancing":
-                event_values = [
-                    float(row["curtailed_mwh"]) + float(row["excess_mwh"])
-                    for row in rows
-                ]
+            if relationship == "separate_prebalancing":
                 split_excess = excess
                 split_curtailment = balancing_curtailment
-            else:
-                event_values = [max(
-                    float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
-                ) for row in rows]
-            longest = 0
-            current = 0
-            for value in event_values:
-                if value > 1e-9:
-                    current += 1
-                    longest = max(longest, current)
-                else:
-                    current = 0
-            peak_index = max(range(len(event_values)), key=event_values.__getitem__) if rows else None
-            peak_period = int(rows[peak_index]["period"]) if peak_index is not None else None
             reconciliation = available - accepted - neutral_unused
+            # G1-08 (P0-9 S8): the two event bases are reported separately so the
+            # UI never mixes unused VRE with pre-balancing excess plus
+            # curtailment; the legacy top-level event fields are the statistics
+            # of the run's event basis (excess + curtailment when the ledger
+            # separates them, unused VRE otherwise).
+            periods = [int(row["period"]) for row in rows]
+            unused_values = [max(
+                float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
+            ) for row in rows]
+            unused_vre_events = _event_statistics(unused_values, periods, year, period_hours, "unused_vre")
+            excess_curtailment_events = (
+                _event_statistics(
+                    [float(row["curtailed_mwh"]) + float(row["excess_mwh"]) for row in rows],
+                    periods, year, period_hours, "excess_plus_balancing_curtailment",
+                )
+                if relationship == "separate_prebalancing" else None
+            )
+            legacy_events = {
+                key: value
+                for key, value in (excess_curtailment_events or unused_vre_events).items()
+                if key != "basis"
+            }
             results.append({
                 "year": year,
                 "period_count": len(rows),
-                "full_chronology": len(rows) == expected_periods,
+                "first_period": int(rows[0]["period"]) if rows else None,
+                "last_period": int(rows[-1]["period"]) if rows else None,
+                # A full chronology covers periods 0..N-1 exactly, not just N rows.
+                "full_chronology": (
+                    len(rows) == expected_periods
+                    and bool(rows)
+                    and int(rows[0]["period"]) == 0
+                    and int(rows[-1]["period"]) == expected_periods - 1
+                ),
                 "available_vre_mwh": available,
                 "accepted_vre_mwh": accepted,
                 "neutral_unused_vre_mwh": neutral_unused,
@@ -767,15 +926,7 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                 "reported_balancing_curtailment_mwh": balancing_curtailment if relationship != "unknown" else None,
                 "vre_utilisation_fraction": accepted / available if available > 0 else None,
                 "average_unused_vre_fraction": neutral_unused / available if available > 0 else None,
-                "affected_periods": sum(value > 1e-9 for value in event_values),
-                "longest_event_periods": longest,
-                "longest_event_hours": longest * period_hours,
-                "peak_event_mwh": event_values[peak_index] if peak_index is not None else None,
-                "peak_event_period": peak_period,
-                "peak_event_timestamp": (
-                    _model_timestamp(year, peak_period, period_hours)
-                    if peak_period is not None else None
-                ),
+                **legacy_events,
                 "storage_charge_mwh": sum(float(row["storage_charge_mwh"]) for row in rows),
                 "export_mwh": sum(float(row["export_mwh"]) for row in rows),
                 "flexible_demand_mwh": sum(float(row["flexible_demand_mwh"]) for row in rows),
@@ -787,6 +938,12 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                     if relationship == "alias_of_unused_vre"
                     else "partial_semantic_attribution"
                 ),
+                "event_basis": (
+                    "excess_plus_balancing_curtailment"
+                    if relationship == "separate_prebalancing" else "unused_vre"
+                ),
+                "unused_vre_events": unused_vre_events,
+                "excess_curtailment_events": excess_curtailment_events,
                 "marginal_curtailment_status": "not_evaluated",
                 "marginal_curtailment_reason": "No versioned marginal-capacity experiment artifact is attached to this run.",
             })

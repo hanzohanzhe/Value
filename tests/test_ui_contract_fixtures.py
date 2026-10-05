@@ -76,20 +76,26 @@ class CommittedFixtureTests(unittest.TestCase):
     def test_toy_v8_daily_bucket_matches_the_plan_oracles(self) -> None:
         # Plan 6.9 R3-02 (S4): stackSupply on v8 daily gives ccgt=32, onshore_wind=8,
         # total 40 = accepted_supply; R3-01 (S3): the v8 daily price is £55/MWh.
-        # The toy keeps the raw names the staged writer records (CCGT, onshore).
+        # The toy keeps the raw names the staged writer records (CCGT, onshore);
+        # since dispatch timeline v2 the read model sends the canonical group in
+        # ``technology``, the raw name in ``raw_technology`` and the ``role``.
         payload = _committed()["toy-v8.dispatch-daily.json"]["payload"]
         (bucket,) = payload["items"]
         by_technology: dict[str, float] = {}
+        by_raw: dict[str, float] = {}
         for flow in bucket["flows"]:
             self.assertIn(";stage:final_dispatch", flow["evidence_scope"])
+            self.assertEqual(flow["role"], "supply")
             by_technology[flow["technology"]] = by_technology.get(flow["technology"], 0.0) + flow["energy_mwh"]
+            by_raw[flow["raw_technology"]] = by_raw.get(flow["raw_technology"], 0.0) + flow["energy_mwh"]
         oracle = fixtures.TOY_V8_DAILY_ORACLE
-        self.assertEqual(by_technology, {"CCGT": oracle["CCGT"], "onshore": oracle["onshore"]})
+        self.assertEqual(by_raw, {"CCGT": oracle["CCGT"], "onshore": oracle["onshore"]})
+        self.assertEqual(by_technology, {"ccgt": oracle["CCGT"], "onshore_wind": oracle["onshore"]})
         self.assertEqual(bucket["accepted_supply_mwh"], oracle["accepted_supply_mwh"])
         self.assertEqual(sum(by_technology.values()), bucket["accepted_supply_mwh"])
         self.assertEqual(bucket["price_gbp_per_mwh"], oracle["price_gbp_per_mwh"])
         self.assertEqual(payload["price_aggregation"], "demand_weighted_mean_gbp_per_mwh")
-        zones = {flow["evidence_scope"].split(";")[0] for flow in bucket["flows"] if flow["technology"] == "CCGT"}
+        zones = {flow["evidence_scope"].split(";")[0] for flow in bucket["flows"] if flow["raw_technology"] == "CCGT"}
         self.assertEqual(zones, {"zone:north", "zone:south"}, "the same technology in both zones")
         prices = [item["price_gbp_per_mwh"] for item in _committed()["toy-v8.dispatch-half-hour.json"]["payload"]["items"]]
         self.assertIn(0.0, prices, "a legitimate 0.0 price stays in the toy")

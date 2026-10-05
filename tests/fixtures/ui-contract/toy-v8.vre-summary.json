@@ -7,13 +7,26 @@
   "schema_version": "value.vre-curtailment-summary/v1",
   "definition_id": "value.vre-excess-curtailment-accounting/v1",
   "years": [
-   {"year":2025,"period_count":4,"full_chronology":false,"available_vre_mwh":8.0,"accepted_vre_mwh":8.0,"neutral_unused_vre_mwh":0.0,"pre_balancing_excess_mwh":0.0,"pre_balancing_excess_scope":"inflexible_mixed","balancing_curtailment_mwh":0.0,"reported_excess_mwh":0.0,"reported_balancing_curtailment_mwh":0.0,"vre_utilisation_fraction":1.0,"average_unused_vre_fraction":0.0,"affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00","storage_charge_mwh":1.0,"export_mwh":0.0,"flexible_demand_mwh":0.0,"vre_identity_residual_mwh":0.0,"coverage_status":"complete_vre_boundary_with_separate_inflexible_excess","marginal_curtailment_status":"not_evaluated","marginal_curtailment_reason":"No versioned marginal-capacity experiment artifact is attached to this run."}
+   {"year":2025,"period_count":4,"first_period":0,"last_period":3,"full_chronology":false,"available_vre_mwh":8.0,"accepted_vre_mwh":8.0,"neutral_unused_vre_mwh":0.0,"pre_balancing_excess_mwh":0.0,"pre_balancing_excess_scope":"inflexible_mixed","balancing_curtailment_mwh":0.0,"reported_excess_mwh":0.0,"reported_balancing_curtailment_mwh":0.0,"vre_utilisation_fraction":1.0,"average_unused_vre_fraction":0.0,"affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00","storage_charge_mwh":1.0,"export_mwh":0.0,"flexible_demand_mwh":0.0,"vre_identity_residual_mwh":0.0,"coverage_status":"complete_vre_boundary_with_separate_inflexible_excess","event_basis":"excess_plus_balancing_curtailment","unused_vre_events":{"basis":"unused_vre","affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00"},"excess_curtailment_events":{"basis":"excess_plus_balancing_curtailment","affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00"},"marginal_curtailment_status":"not_evaluated","marginal_curtailment_reason":"No versioned marginal-capacity experiment artifact is attached to this run."}
   ],
   "period_hours": 0.5,
   "timezone": "Europe/London",
   "excess_relationship": "separate_prebalancing",
   "excess_scope": "inflexible_mixed",
   "source_artifact_sha256": "<sqlite-file-sha256>",
-  "units": {"energy":"MWh","rate":"fraction"}
+  "units": {"energy":"MWh","rate":"fraction"},
+  "coverage": {
+   "schema_version": "value.result-coverage/v1",
+   "annual_status": "partial",
+   "reason_code": "annual_period_boundary_incomplete",
+   "coverage_fraction": 0.00022831050228310502,
+   "coverage_percent": 0.0,
+   "expected_years": [2025],
+   "observed_years": [2025],
+   "periods_per_year": 17520,
+   "years": [
+    {"year":2025,"first_period":0,"last_period":3,"period_count":4,"coverage_fraction":0.00022831050228310502,"complete":false}
+   ]
+  }
  }
 }

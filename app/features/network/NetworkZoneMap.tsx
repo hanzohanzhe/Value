@@ -1,4 +1,5 @@
-import { formatNetworkNumber, numberValue } from "./networkRedispatch";
+import { formatNetworkNumber, numberValue, scaled } from "./networkRedispatch";
+import { withUnit } from "../shared/format.ts";
 
 type Row = Record<string, unknown>;
 
@@ -14,8 +15,8 @@ export default function NetworkZoneMap({ zones, boundaries }: { zones: Row[]; bo
       {zones.map((zone) => <div className="network-zone-node" key={String(zone.zone_id)}>
         <article>
           <b>{String(zone.zone_id)}</b>
-          <small>{formatNetworkNumber(numberValue(zone, "demand_mwh"))} MWh demand</small>
-          <em>{formatNetworkNumber(numberValue(zone, "net_position_mwh"))} MWh net position</em>
+          <small>{withUnit(formatNetworkNumber(numberValue(zone, "demand_mwh")), "MWh")} demand</small>
+          <em>{withUnit(formatNetworkNumber(numberValue(zone, "net_position_mwh")), "MWh")} net position</em>
         </article>
       </div>)}
       </div>
@@ -23,8 +24,8 @@ export default function NetworkZoneMap({ zones, boundaries }: { zones: Row[]; bo
         <b>Computational corridors</b>
         {boundaries.map((boundary) => <aside key={String(boundary.boundary_id)}>
           <strong>{String(boundary.boundary_id)}</strong>
-          <span>{formatNetworkNumber(numberValue(boundary, "transfer_mwh"))} MWh transfer</span>
-          <small>{formatNetworkNumber(numberValue(boundary, "utilisation_fraction") * 100, 1)}% used</small>
+          <span>{withUnit(formatNetworkNumber(numberValue(boundary, "transfer_mwh")), "MWh")} transfer</span>
+          <small>{withUnit(formatNetworkNumber(scaled(numberValue(boundary, "utilisation_fraction"), 100), 1), "%", "")} used</small>
         </aside>)}
         <small>Topology is defined by the signed network pack; this ledger view does not infer endpoints from table order.</small>
       </div>
