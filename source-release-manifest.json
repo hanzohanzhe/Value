@@ -1055,6 +1055,7 @@
     "scripts/methodology/requirements.txt",
     "scripts/p04_capture_trajectory_golden.py",
     "scripts/p07_record_head_decide.py",
+    "scripts/p08_zonal_lock_repair_scan.py",
     "scripts/p0_gate.py",
     "scripts/package_policy_scan.py",
     "scripts/portable_path_scan.py",
@@ -9037,6 +9038,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "scripts/p08_zonal_lock_repair_scan.py",
+      "sha256": "579ea813a089ef875e3e5555ac2532055ca231fb68bde46e439ac07d49ffa331",
+      "bytes": 4648,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/p0_gate.py",
       "sha256": "ef121ccebd1f6462da98a7d628c042234b4a024025086bbc49ee14cdc5f7220c",
       "bytes": 45718,
@@ -10766,8 +10773,8 @@
     },
     {
       "path": "tests/test_p08_zonal_solver_v4.py",
-      "sha256": "9c09759a6b10e3083558d8fcde4e763263eb4f7b2a1385de3656613d28123b36",
-      "bytes": 22834,
+      "sha256": "34fb0655d7d98debf149e62cd778903fa97af23ebf2af646c49e2f7783fe1e4b",
+      "bytes": 24064,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

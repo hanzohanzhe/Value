@@ -336,6 +336,31 @@ class GbScaleLockRepairTests(unittest.TestCase):
             )
 
 
+class LockRepairScanTests(unittest.TestCase):
+    """scripts/p08_zonal_lock_repair_scan.py: the committed repair-count scan."""
+
+    def test_short_scan_counts_through_the_real_repair_entry_point(self) -> None:
+        import importlib.util
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parents[1] / "scripts" / "p08_zonal_lock_repair_scan.py"
+        spec = importlib.util.spec_from_file_location("p08_zonal_lock_repair_scan", path)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        stats = module.scan(periods=3, scarce_every=3)
+        self.assertEqual(stats["periods_cleared"], 3)
+        self.assertEqual(stats["scarce_periods"], 1)
+        self.assertEqual(stats["hard_failures"], 0)
+        self.assertEqual(stats["violations"], stats["repairs"] + stats["repair_failures"])
+        self.assertLessEqual(stats["worst_primary_degradation_over_tolerance"], 1.0 + 1e-9)
+        # The counter wraps the production repair function and is removed again.
+        self.assertEqual(
+            zonal_redispatch._tighten_violated_objective_cap.__name__,
+            "_tighten_violated_objective_cap",
+        )
+
+
 class OracleAgreementTests(unittest.TestCase):
     def test_small_cases_match_the_exact_lock_cbc_oracle(self) -> None:
         for declaration in (
