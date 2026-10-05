@@ -54,7 +54,6 @@ class _TemporaryModules(unittest.TestCase):
 class ReviewedFailureReproductions(_TemporaryModules):
     packages = ("value_example_flat_offer", "p02_broken_plugin", "p02_hook_broken")
 
-    @unittest.expectedFailure  # reproduction; fixed by a later P0-2 step
     def test_r1_g401_enable_into_a_taken_namespace_is_refused_before_any_write(self) -> None:
         install_extension_bundle(build_extension_bundle(self.root / "a.zip", "g4-ns-a", "local.g4-shared"),
                                  trust_acknowledged=True, modules_root=self.modules)
@@ -88,7 +87,6 @@ class ReviewedFailureReproductions(_TemporaryModules):
         presets = system_domain_presets(registry, VALUE_101_MODULES)
         self.assertTrue(presets)
 
-    @unittest.expectedFailure  # reproduction; fixed by a later P0-2 step
     def test_r4_disable_leaves_no_module_of_the_package_loaded(self) -> None:
         bundle = self.root / "example.zip"
         build_module_bundle(manifest_path=EXAMPLE / "value-module.json", source_root=EXAMPLE / "src",
@@ -103,7 +101,6 @@ class ReviewedFailureReproductions(_TemporaryModules):
         self.assertEqual(loaded, [])
         self.assertFalse([item for item in sys.path if str(item).startswith(root_text)])
 
-    @unittest.expectedFailure  # reproduction; fixed by a later P0-2 step
     def test_r5_failed_install_leaves_no_source_root_on_sys_path(self) -> None:
         import gridform_core.module_installation as installation
 
@@ -123,7 +120,6 @@ class ReviewedFailureReproductions(_TemporaryModules):
         self.assertFalse([item for item in sys.path if str(item).startswith(root_text)])
         self.assertFalse((self.modules / "example-flat-storage-offer.json").exists())
 
-    @unittest.expectedFailure  # reproduction; fixed by a later P0-2 step
     def test_r6_a_schema_drifted_extension_can_still_be_disabled(self) -> None:
         install_extension_bundle(build_extension_bundle(self.root / "a.zip", "p02-drift", "local.p02-drift"),
                                  trust_acknowledged=True, modules_root=self.modules)
@@ -135,6 +131,85 @@ class ReviewedFailureReproductions(_TemporaryModules):
         record = set_extension_enabled("p02-drift", False, modules_root=self.modules)
         self.assertFalse(record["enabled"])
         self.assertFalse((self.modules / "extensions" / "p02-drift.json").exists())
+
+class LifecycleHygieneTests(_TemporaryModules):
+    """P0-2 S2: coded conflicts, raw-record lifecycle, byte rollback, one lock."""
+
+    packages = ("p02_hygiene_plugin",)
+
+    def test_install_into_a_taken_namespace_names_the_real_owner(self) -> None:
+        install_extension_bundle(build_extension_bundle(self.root / "a.zip", "p02-owner", "local.p02-shared"),
+                                 trust_acknowledged=True, modules_root=self.modules)
+        before = tree_digest(self.modules)
+        with self.assertRaises(ExtensionBundleError) as caught:
+            install_extension_bundle(build_extension_bundle(self.root / "b.zip", "p02-late", "local.p02-shared"),
+                                     trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_EXTENSION_NAMESPACE_COLLISION")
+        self.assertIn("owned by enabled extension p02-owner", str(caught.exception))
+        self.assertEqual(tree_digest(self.modules), before)
+
+    def test_builtin_namespace_is_reported_with_its_owner(self) -> None:
+        from gridform_core.extension_bundle import _builtin_extensions
+
+        builtin = _builtin_extensions()[0]
+        with self.assertRaises(ExtensionBundleError) as caught:
+            install_extension_bundle(build_extension_bundle(self.root / "c.zip", "p02-shadow", builtin.namespace),
+                                     trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_EXTENSION_NAMESPACE_COLLISION")
+        self.assertIn(builtin.id, str(caught.exception))
+
+    def test_failed_module_enable_restores_every_byte(self) -> None:
+        import gridform_core.module_installation as installation
+
+        write_external_module(self.modules, "p02-hygiene", "p02_hygiene_plugin", enabled=False)
+        before = tree_digest(self.modules)
+        failed = {"module_id": "p02-hygiene", "status": "failed", "errors": ["injected"], "warnings": []}
+        with patch.object(installation, "check_manifest", return_value=failed):
+            with self.assertRaises(ValueError) as caught:
+                set_module_enabled("p02-hygiene", True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_CONFORMANCE")
+        self.assertEqual(tree_digest(self.modules), before)
+        root_text = str(self.modules.resolve())
+        self.assertFalse([name for name, module in sys.modules.items()
+                          if str(getattr(module, "__file__", "") or "").startswith(root_text)])
+
+    def test_failed_extension_enable_restores_every_byte(self) -> None:
+        install_extension_bundle(build_extension_bundle(self.root / "a.zip", "p02-toggle", "local.p02-toggle"),
+                                 trust_acknowledged=True, modules_root=self.modules)
+        set_extension_enabled("p02-toggle", False, modules_root=self.modules)
+        before = tree_digest(self.modules)
+        import gridform_core.extension_bundle as bundle_module
+
+        real = bundle_module.activate_external_module_sources
+        calls = []
+
+        def fail_once(*args, **kwargs):
+            calls.append(1)
+            real(*args, **kwargs)
+            if len(calls) == 1:
+                raise RuntimeError("injected failure after the write")
+
+        with patch.object(bundle_module, "activate_external_module_sources", fail_once):
+            with self.assertRaises(RuntimeError):
+                set_extension_enabled("p02-toggle", True, modules_root=self.modules)
+        self.assertEqual(tree_digest(self.modules), before)
+
+    def test_lifecycle_entry_points_hold_the_module_lifecycle_lock(self) -> None:
+        import gridform_core.module_installation as installation
+        from gridform_core.module_quarantine import MODULE_LIFECYCLE_LOCK
+
+        write_external_module(self.modules, "p02-hygiene", "p02_hygiene_plugin")
+        owned = []
+        real = installation.purge_source_root
+
+        def record(*args, **kwargs):
+            owned.append(MODULE_LIFECYCLE_LOCK._is_owned())
+            return real(*args, **kwargs)
+
+        with patch.object(installation, "purge_source_root", record):
+            set_module_enabled("p02-hygiene", False, modules_root=self.modules)
+        self.assertEqual(owned, [True])
+        self.assertFalse(MODULE_LIFECYCLE_LOCK._is_owned())
 
 
 if __name__ == "__main__":

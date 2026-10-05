@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 import json
 import sys
@@ -77,3 +78,42 @@ def activate_external_module_sources(modules_root: Path | None = None) -> tuple[
                  if Path(raw or os.getcwd()).resolve() not in controlled]
     sys.path[:] = [str(source) for source in reversed(active)] + remaining
     return tuple(active)
+
+
+def purge_source_root(source_root: Path) -> tuple[str, ...]:
+    """Forget every module loaded from ``source_root`` and its sys.path entry.
+
+    Disabling a module or rolling back an install must leave no import state
+    behind, otherwise an in-process check would still see the old code (P0-2).
+    Returns the purged module names.
+    """
+
+    try:
+        root = Path(source_root).resolve()
+    except OSError:
+        root = Path(source_root).absolute()
+    purged: list[str] = []
+    for name, module in list(sys.modules.items()):
+        locations = [getattr(module, "__file__", None) or ""]
+        locations.extend(str(item) for item in (getattr(module, "__path__", None) or ()))
+        for raw in locations:
+            if not raw:
+                continue
+            try:
+                Path(raw).resolve().relative_to(root)
+            except (OSError, ValueError):
+                continue
+            sys.modules.pop(name, None)
+            purged.append(name)
+            break
+    def _same(item: str) -> bool:
+        if not item:
+            return False
+        try:
+            return Path(item).resolve() == root
+        except OSError:
+            return item in {str(root), str(source_root)}
+
+    sys.path[:] = [item for item in sys.path if not _same(item)]
+    importlib.invalidate_caches()
+    return tuple(sorted(purged))

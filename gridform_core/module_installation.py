@@ -20,7 +20,8 @@ from .module_bundle import (
     validate_module_bundle,
 )
 from .module_conformance import check_manifest
-from .runtime_paths import activate_external_module_sources, external_modules_root
+from .module_quarantine import MODULE_LIFECYCLE_LOCK
+from .runtime_paths import activate_external_module_sources, external_modules_root, purge_source_root
 from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, builtin_registry, workspace_registry
 
 
@@ -76,20 +77,7 @@ def _entry_source_exists(source_root: Path, implementation: str) -> bool:
 
 
 def _remove_staged_modules(source_root: Path) -> None:
-    source_root = source_root.resolve()
-    for name, module in list(sys.modules.items()):
-        raw = getattr(module, "__file__", None)
-        if not raw:
-            continue
-        try:
-            Path(raw).resolve().relative_to(source_root)
-        except (OSError, ValueError):
-            continue
-        sys.modules.pop(name, None)
-    text = str(source_root)
-    while text in sys.path:
-        sys.path.remove(text)
-    importlib.invalidate_caches()
+    purge_source_root(source_root)
 
 
 def _active_package_names(root: Path) -> set[str]:
@@ -156,6 +144,18 @@ def _validate_manifest_for_install(
 
 
 def install_module_bundle(
+    bundle_path: Path,
+    *,
+    trust_acknowledged: bool,
+    modules_root: Path | None = None,
+) -> dict[str, object]:
+    with MODULE_LIFECYCLE_LOCK:
+        return _install_module_bundle(
+            bundle_path, trust_acknowledged=trust_acknowledged, modules_root=modules_root
+        )
+
+
+def _install_module_bundle(
     bundle_path: Path,
     *,
     trust_acknowledged: bool,
@@ -231,6 +231,10 @@ def install_module_bundle(
     except Exception:
         if active_manifest is not None and active_manifest.exists():
             active_manifest.unlink()
+        if promoted is not None:
+            # The promoted source root was activated on sys.path and may have
+            # been imported; leave no import state behind (P0-2 R5).
+            purge_source_root(promoted / "src")
         if promoted is not None and promoted.exists():
             _inside(promoted, root / "installed")
             shutil.rmtree(promoted)
@@ -246,6 +250,16 @@ def set_module_enabled(
     *,
     modules_root: Path | None = None,
 ) -> dict[str, object]:
+    with MODULE_LIFECYCLE_LOCK:
+        return _set_module_enabled(module_id, enabled, modules_root=modules_root)
+
+
+def _set_module_enabled(
+    module_id: str,
+    enabled: bool,
+    *,
+    modules_root: Path | None = None,
+) -> dict[str, object]:
     root = (modules_root or external_modules_root()).resolve()
     matches = [record for record in _records(root) if record.get("module_id") == module_id]
     if not matches:
@@ -256,7 +270,9 @@ def set_module_enabled(
     record_path = Path(str(record.pop("record_path")))
     active_manifest = root / f"{module_id}.json"
     source_root = record_path.parent / str(record["source_root"])
-    original_record = dict(record)
+    # Byte-exact rollback: the record and the active manifest are restored to
+    # the bytes they had, never re-serialised (P0-2 S2).
+    original_record = record_path.read_bytes()
     original_manifest = active_manifest.read_bytes() if active_manifest.is_file() else None
     source_text = str(source_root.resolve())
     try:
@@ -264,12 +280,15 @@ def set_module_enabled(
             if active_manifest.exists():
                 raise ModuleInstallationError("GF_MODULE_ID_COLLISION", "An active manifest already uses this module ID")
             activate_external_module_sources(root)
-            if source_text not in sys.path:
-                sys.path.insert(0, source_text)
             manifest = ModuleManifest.from_dict(
                 json.loads((record_path.parent / str(record["manifest_path"])).read_text(encoding="utf-8"))
             )
             existing = workspace_registry(root)
+            # workspace_registry re-activates only enabled sources; the source
+            # being enabled goes on sys.path after it, for the candidate check.
+            if source_text not in sys.path:
+                sys.path.insert(0, source_text)
+            importlib.invalidate_caches()
             candidate = ModuleRegistryV2(tuple(existing.manifests().values()) + (manifest,))
             conformance = check_manifest(candidate, manifest)
             if conformance["status"] != "passed":
@@ -281,18 +300,18 @@ def set_module_enabled(
             ).hexdigest()
         else:
             active_manifest.unlink(missing_ok=True)
-            while source_text in sys.path:
-                sys.path.remove(source_text)
-            importlib.invalidate_caches()
+            # Disabled code must not stay importable from sys.modules (P0-2 R4).
+            purge_source_root(source_root)
         record["enabled"] = enabled
         record["updated_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
         _atomic_json(record_path, record)
     except Exception:
-        _atomic_json(record_path, original_record)
+        for temporary in (record_path, active_manifest):
+            temporary.with_suffix(temporary.suffix + ".tmp").unlink(missing_ok=True)
+        record_path.write_bytes(original_record)
         if original_manifest is None:
             active_manifest.unlink(missing_ok=True)
-            while source_text in sys.path:
-                sys.path.remove(source_text)
+            purge_source_root(source_root)
         else:
             active_manifest.write_bytes(original_manifest)
             if source_text not in sys.path:

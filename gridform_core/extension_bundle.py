@@ -17,10 +17,14 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Mapping
 
-from .extension_framework import EXTENSION_SCHEMA, ExtensionManifest, ExtensionRegistry, hook_source_identity, canonical_hash
+from .extension_framework import (
+    EXTENSION_SCHEMA, ExtensionManifest, ExtensionRegistry, canonical_hash, hook_source_identity,
+    load_extension_manifests,
+)
 from .module_bundle import MAX_BUNDLE_BYTES, MAX_MEMBERS, MAX_UNCOMPRESSED_BYTES, validate_module_bundle
+from .module_quarantine import MODULE_LIFECYCLE_LOCK
 from .v2.module_manifest import workspace_registry
-from .runtime_paths import activate_external_module_sources
+from .runtime_paths import PACKAGE_ROOT, activate_external_module_sources
 
 
 DESCRIPTOR = "force-extension-bundle.json"
@@ -64,12 +68,73 @@ def list_extension_installations(modules_root: Path) -> list[dict[str, object]]:
     return sorted(rows, key=lambda item: (str(item.get("extension_id")), str(item.get("version"))))
 
 
+def _read_json_object(path: Path) -> dict[str, object] | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _raw_extension_records(modules_root: Path) -> list[dict[str, object]]:
+    """Installer records read as raw JSON, without parsing any manifest.
+
+    Lifecycle decisions (disable, current version, migration checks) must not
+    depend on whether a manifest still parses under the current schema: a
+    schema-drifted or quarantined extension must remain disableable and must
+    not hide its state schema from an upgrade (P0-2 S2).
+    """
+
+    root = modules_root.resolve()
+    rows: list[dict[str, object]] = []
+    for path in sorted((root / "installed-extensions").glob("*/*/installation.json")):
+        record = _read_json_object(path)
+        if record is None or not record.get("extension_id"):
+            continue
+        rows.append({
+            **record,
+            "installation_path": str(path.parent.relative_to(root).as_posix()),
+            "record_path": path,
+            "raw_manifest": _read_json_object(path.parent / MANIFEST),
+        })
+    return rows
+
+
 def _current_local_installation(modules_root: Path, extension_id: str) -> dict[str, object] | None:
     records = [
-        item for item in list_extension_installations(modules_root)
+        item for item in _raw_extension_records(modules_root)
         if item.get("extension_id") == extension_id and item.get("enabled")
     ]
     return max(records, key=lambda item: _semver_tuple(str(item["version"]))) if records else None
+
+
+def _builtin_extensions() -> tuple[ExtensionManifest, ...]:
+    return load_extension_manifests(PACKAGE_ROOT / "extension_manifests")
+
+
+def _namespace_owner(modules_root: Path, extension_id: str, namespace: str) -> str | None:
+    """The extension that really holds ``namespace`` (built-in or enabled local).
+
+    Read from raw active manifests so an enabled but quarantined owner is still
+    found, and so the answer never depends on file-name order (G4-01).
+    """
+
+    for manifest in _builtin_extensions():
+        if manifest.namespace == namespace and manifest.id != extension_id:
+            return manifest.id
+    owners = []
+    for path in sorted((modules_root.resolve() / "extensions").glob("*.json")):
+        payload = _read_json_object(path)
+        if payload is None:
+            continue
+        owner = str(payload.get("id") or path.stem)
+        if payload.get("namespace") == namespace and owner != extension_id:
+            owners.append(owner)
+    return ", ".join(sorted(owners)) or None
+
+
+def _public_record(row: Mapping[str, object]) -> dict[str, object]:
+    return {key: value for key, value in row.items() if key not in {"record_path", "raw_manifest"}}
 
 
 class ExtensionBundleError(ValueError):
@@ -231,6 +296,15 @@ def _check_hooks(manifest: ExtensionManifest, source: Path | None) -> list[dict[
 def install_extension_bundle(
     path: Path, *, trust_acknowledged: bool, modules_root: Path
 ) -> dict[str, object]:
+    with MODULE_LIFECYCLE_LOCK:
+        return _install_extension_bundle(
+            path, trust_acknowledged=trust_acknowledged, modules_root=modules_root
+        )
+
+
+def _install_extension_bundle(
+    path: Path, *, trust_acknowledged: bool, modules_root: Path
+) -> dict[str, object]:
     if not trust_acknowledged:
         raise ExtensionBundleError(
             "GF_EXTENSION_TRUST_REQUIRED",
@@ -240,18 +314,21 @@ def install_extension_bundle(
     root = modules_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     current = workspace_registry(root)
-    existing_manifest = current.extension_manifests().get(validated.manifest.id)
-    existing_installation = _current_local_installation(root, validated.manifest.id)
-    if existing_manifest is not None and existing_installation is None:
+    if any(item.id == validated.manifest.id for item in _builtin_extensions()):
         raise ExtensionBundleError(
             "GF_EXTENSION_BUILTIN_COLLISION",
             "A retained built-in extension cannot be overwritten",
         )
+    existing_installation = _current_local_installation(root, validated.manifest.id)
     if existing_installation is not None:
         current_version = str(existing_installation["version"])
         if validated.manifest.version == current_version:
             if validated.bundle_sha256 == existing_installation.get("bundle_sha256"):
-                return {**existing_installation, "idempotent": True}
+                listed = next((
+                    row for row in list_extension_installations(root)
+                    if row.get("extension_id") == validated.manifest.id and row.get("version") == current_version
+                ), None)
+                return {**(listed or _public_record(existing_installation)), "idempotent": True}
             raise ExtensionBundleError(
                 "GF_EXTENSION_VERSION_COLLISION",
                 "The same extension version already exists with different bytes",
@@ -262,16 +339,34 @@ def install_extension_bundle(
                 f"Refusing downgrade from {current_version} to {validated.manifest.version}",
             )
         migration = validated.manifest.state_migrations.get(current_version)
-        if existing_manifest is not None and existing_manifest.state_schema_version and not migration:
+        # The retained manifest is read as raw JSON: a quarantined or
+        # schema-drifted current version must not bypass this check.
+        retained_manifest = existing_installation.get("raw_manifest")
+        if not isinstance(retained_manifest, Mapping):
+            raise ExtensionBundleError(
+                "GF_EXTENSION_INSTALL_STATE",
+                f"The installed {current_version} manifest is unreadable; disable that version before upgrading",
+            )
+        if retained_manifest.get("state_schema_version") and not migration:
             raise ExtensionBundleError(
                 "GF_EXTENSION_MIGRATION_REQUIRED",
                 f"Upgrade from {current_version} must declare a state migration",
             )
+    owner = _namespace_owner(root, validated.manifest.id, validated.manifest.namespace)
+    if owner:
+        raise ExtensionBundleError(
+            "GF_EXTENSION_NAMESPACE_COLLISION",
+            f"Extension namespace {validated.manifest.namespace} is owned by enabled extension {owner}; "
+            f"disable {owner} before installing {validated.manifest.id}",
+        )
     combined = tuple(
         manifest for extension_id, manifest in current.extension_manifests().items()
         if extension_id != validated.manifest.id
     ) + (validated.manifest,)
-    ExtensionRegistry(combined)
+    try:
+        ExtensionRegistry(combined)
+    except ValueError as exc:
+        raise ExtensionBundleError("GF_EXTENSION_REGISTRY_CONFLICT", str(exc)) from exc
     available_modules = set(current.manifests())
     embedded = {
         str(item)
@@ -294,7 +389,7 @@ def install_extension_bundle(
     staging_parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix="extension-", dir=staging_parent))
     active = root / "extensions" / f"{validated.manifest.id}.json"
-    previous = root / str(existing_installation["installation_path"]) / "installation.json" if existing_installation else None
+    previous = Path(existing_installation["record_path"]) if existing_installation else None
     retained = {item: item.read_bytes() if item.exists() else None for item in (active, *((previous,) if previous else ()))}
     promoted = False
     try:
@@ -351,9 +446,20 @@ def set_extension_enabled(
     *,
     modules_root: Path,
 ) -> dict[str, object]:
+    with MODULE_LIFECYCLE_LOCK:
+        return _set_extension_enabled(extension_id, enabled, modules_root=modules_root)
+
+
+def _set_extension_enabled(
+    extension_id: str,
+    enabled: bool,
+    *,
+    modules_root: Path,
+) -> dict[str, object]:
     root = modules_root.resolve()
+    # Raw installer records: a schema-drifted extension stays disableable (R6).
     records = [
-        item for item in list_extension_installations(root)
+        item for item in _raw_extension_records(root)
         if item.get("extension_id") == extension_id
     ]
     if not records:
@@ -362,13 +468,31 @@ def set_extension_enabled(
             "Built-in or unknown extensions cannot be disabled from the browser",
         )
     record = max(records, key=lambda item: _semver_tuple(str(item["version"])))
-    record_path = root / str(record["installation_path"]) / "installation.json"
+    record_path = Path(record["record_path"])
+    listed = next((
+        row for row in list_extension_installations(root)
+        if row.get("extension_id") == extension_id and row.get("version") == record.get("version")
+    ), None)
+    record = listed or _public_record(record)
     stored = json.loads(record_path.read_text(encoding="utf-8"))
     active = root / "extensions" / f"{extension_id}.json"
     inactive = root / "disabled-extensions" / f"{extension_id}.json"
     source_manifest = record_path.parent / MANIFEST
+    if enabled:
+        try:
+            manifest = ExtensionManifest.from_dict(json.loads(source_manifest.read_text(encoding="utf-8")))
+        except (OSError, TypeError, ValueError, AttributeError) as exc:
+            raise ExtensionBundleError(
+                "GF_EXTENSION_MANIFEST", f"The installed extension manifest is not valid: {exc}"
+            ) from exc
+        owner = _namespace_owner(root, extension_id, manifest.namespace)
+        if owner:
+            raise ExtensionBundleError(
+                "GF_EXTENSION_NAMESPACE_COLLISION",
+                f"Extension namespace {manifest.namespace} is owned by enabled extension {owner}; "
+                f"disable {owner} before enabling {extension_id}",
+            )
     if enabled and stored.get("source_root") == "src":
-        manifest = ExtensionManifest.from_dict(json.loads(source_manifest.read_text(encoding="utf-8")))
         observed = _check_hooks(manifest, record_path.parent / "src")
         if observed != stored.get("hook_source_identities"):
             raise ExtensionBundleError("GF_EXTENSION_SOURCE_CHANGED", "Installed hook source no longer matches its retained identity")
