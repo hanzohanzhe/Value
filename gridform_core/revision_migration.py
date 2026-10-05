@@ -78,13 +78,22 @@ class RevisionMigrationError(ValueError):
 
 
 @lru_cache(maxsize=1)
-def _ledger() -> dict[str, Any]:
+def _ledger() -> dict[str, Any] | None:
+    """VERSION_LEDGER modules, or None when the ledger is not installed or unreadable.
+
+    The ledger lives in docs/release (source checkouts and the Linux local
+    package carry it; a bare wheel does not).  Without it no version change
+    can be verified as code-only and no 35aadb3 basis can be rebuilt: the
+    classification says so (``ledger_status: unavailable``) instead of
+    silently treating every module as unknown.
+    """
+
     try:
         payload = json.loads(LEDGER_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return {}
+        return None
     modules = payload.get("modules") if isinstance(payload, Mapping) else None
-    return dict(modules) if isinstance(modules, Mapping) else {}
+    return dict(modules) if isinstance(modules, Mapping) else None
 
 
 def _version_tuple(text: object) -> tuple[int, ...]:
@@ -98,10 +107,13 @@ def _version_tuple(text: object) -> tuple[int, ...]:
 def _module_change_kind(module_id: str, old: str, new: str) -> tuple[str, str]:
     """(classification, reason) of a module version change."""
 
-    entry = _ledger().get(module_id)
+    ledger = _ledger()
     old_v, new_v = _version_tuple(old), _version_tuple(new)
     if not old_v or not new_v or new_v < old_v:
         return "method_upgrade_required", "the module version moved backwards or is not a version"
+    if ledger is None:
+        return "method_upgrade_required", "VERSION_LEDGER is unavailable in this installation (ledger_unavailable); the change cannot be verified as code-only"
+    entry = ledger.get(module_id)
     if isinstance(entry, Mapping):
         bumps = [row for row in entry.get("bumps") or [] if isinstance(row, Mapping)]
         between = [row for row in bumps if old_v < _version_tuple(row.get("to")) <= new_v]
@@ -123,7 +135,7 @@ def _module_change_kind(module_id: str, old: str, new: str) -> tuple[str, str]:
 def _baseline_overrides(registry: ModuleRegistryV2, modules: Mapping[str, str]) -> dict[str, tuple[str, str]]:
     overrides: dict[str, tuple[str, str]] = {}
     for slot, module_id in modules.items():
-        entry = _ledger().get(str(module_id))
+        entry = (_ledger() or {}).get(str(module_id))
         if not isinstance(entry, Mapping) or not entry.get("baseline_version"):
             continue
         try:
@@ -397,32 +409,42 @@ def classify_revision_mismatch(project: Mapping[str, Any], registry: ModuleRegis
     declared = project.get("revision_sha256")
     record: dict[str, Any] = {"schema_version": CLASSIFICATION_SCHEMA, "declared_sha256": declared,
                               "calculated_sha256": None, "basis_source": None, "differences": []}
+    ledger_available = _ledger() is not None
+    record["ledger_status"] = "available" if ledger_available else "unavailable"
+    # A superseded solver contract cannot be canonicalised by the installed
+    # code; the current side is computed as the confirmed migration would
+    # save it (installed default contract), so every other difference,
+    # including unsaved content edits, is still found and ranked.
     solver = _solver_contract_upgrade(project, registry)
-    if solver is not None:
-        record.update(classification="method_upgrade_required", differences=[solver])
-        return _finish(record)
-    current = canonical_project_payload(project, registry, data_pack_manifest)
+    probe = project if solver is None else migration_candidate(project, registry, write_methodology=False)
+    current = canonical_project_payload(probe, registry, data_pack_manifest)
     calculated = hashlib.sha256(_canonical_bytes(current)).hexdigest()
     record["calculated_sha256"] = calculated
     if not declared:
         record["classification"] = "unsaved"
         return _finish(record)
-    if declared == calculated:
+    if declared == calculated and solver is None:
         record["classification"] = "none"
         return _finish(record)
     basis = _recorded_basis(project, str(declared)) or _reconstructed_basis(project, registry, data_pack_manifest, str(declared))
     if basis is None:
-        record.update(classification="unverifiable", basis_source="none", differences=_unverifiable_rows(current))
+        rows = _unverifiable_rows(current)
+        if not ledger_available:
+            rows[0]["effect"] += " VERSION_LEDGER is unavailable in this installation, so the 35aadb3 basis could not be rebuilt."
+        record.update(classification="unverifiable", basis_source="none",
+                      differences=rows + ([solver] if solver is not None else []))
         return _finish(record)
     record["basis_source"] = basis["source"]
     differences = _differences(basis, current, project)
+    if solver is not None:
+        differences = [row for row in differences if row.get("dimension") != "solver_contract"] + [solver]
     record["differences"] = differences
     kinds = {row["classification"] for row in differences}
     record["classification"] = next((kind for kind in PRECEDENCE if kind in kinds), "code_identity_upgrade")
     return _finish(record)
 
 
-def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2) -> dict[str, Any]:
+def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2, *, write_methodology: bool = True) -> dict[str, Any]:
     """The Study content a confirmed migration saves.
 
     The methodology is written explicitly when absent (first write, Q13) and a
@@ -432,10 +454,11 @@ def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2) 
     from .zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 
     candidate = json.loads(json.dumps(dict(project)))
-    key = "parameters" if "parameters" in candidate or "parameter_overrides" not in candidate else "parameter_overrides"
-    parameters = dict(candidate.get(key) or {})
-    parameters.setdefault(PROFILE_PARAMETER, default_profile_id())
-    candidate[key] = parameters
+    if write_methodology:
+        key = "parameters" if "parameters" in candidate or "parameter_overrides" not in candidate else "parameter_overrides"
+        parameters = dict(candidate.get(key) or {})
+        parameters.setdefault(PROFILE_PARAMETER, default_profile_id())
+        candidate[key] = parameters
     if _solver_contract_upgrade(candidate, registry) is not None:
         candidate["solver_contract"] = DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
     return candidate

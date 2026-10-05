@@ -275,17 +275,68 @@ class MigrationTests(unittest.TestCase):
         self.assertIsNone(rows["profile_id"]["old"])
         self.assertNotIn("unverifiable", {row["classification"] for row in result["differences"]})
 
+    def zonal_study_with_superseded_contract(self):
+        """A saved zonal Study whose revision (and basis) carry the superseded v2 solver contract."""
+
+        manifest = json.loads((NETWORK_PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
+        project = json.loads((ROOT / "tests" / "golden" / "projects" / "C8.json").read_text(encoding="utf-8"))
+        project["id"] = "zonal"
+        folder = Path(self.folder.name) / "projects" / "zonal"
+        saved = save_project_revision(folder, project, self.registry, manifest)
+        old = "value.zonal-lexicographic-gbp1/v2"
+        payload = json.loads(json.dumps(saved["fingerprint_basis"]["payload"]))
+        payload["solver_contract"]["contract_version"] = old
+        declared = hashlib.sha256(_canonical_bytes(payload)).hexdigest()
+        saved["solver_contract"]["contract_version"] = old
+        saved["fingerprint_basis"] = dict(saved["fingerprint_basis"], payload=payload, revision_sha256=declared)
+        saved["revision_sha256"] = declared
+        (folder / "project.json").write_text(json.dumps(saved), encoding="utf-8")
+        return folder, saved, manifest
+
     def test_superseded_solver_contract_requires_an_explicit_upgrade(self):
         from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 
-        contract = dict(DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict(), contract_version="value.zonal-lexicographic-gbp1/v2")
-        project = dict(self.project(), modules={"psm": "value-staged-bid-at-cost-psm", "balancing": "value-zonal-redispatch-balancing"},
-                       solver_contract=contract)
-        result = self.classify(project=project)
+        folder, project, manifest = self.zonal_study_with_superseded_contract()
+        result = classify_revision_mismatch(project, self.registry, manifest)
+        self.assertEqual(result["basis_source"], "recorded")
         self.assertEqual(result["classification"], "method_upgrade_required")
         self.assertEqual(result["error_code"], "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")
+        self.assertEqual([row["dimension"] for row in result["differences"]], ["solver_contract"])
         candidate = revision_migration.migration_candidate(project, self.registry)
         self.assertEqual(candidate["solver_contract"], DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
+        saved, _ = migrate_project_revision(folder, self.registry, manifest, confirm_diff_sha256=result["diff_sha256"])
+        self.assertEqual(saved["solver_contract"], DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
+        self.assertEqual(classify_revision_mismatch(saved, self.registry, manifest)["classification"], "none")
+
+    def test_superseded_solver_contract_does_not_hide_an_unsaved_content_edit(self):
+        folder, project, manifest = self.zonal_study_with_superseded_contract()
+        project["start_year"] = 2030  # edited on disk, never saved
+        (folder / "project.json").write_text(json.dumps(project), encoding="utf-8")
+        result = classify_revision_mismatch(project, self.registry, manifest)
+        self.assertEqual(result["classification"], "content_changed")
+        self.assertFalse(result["confirmable"])
+        keys = {row["key"] for row in result["differences"]}
+        self.assertTrue({"start_year", "contract_version"} <= keys, keys)
+        before = (folder / "project.json").read_bytes()
+        with self.assertRaises(RevisionMigrationError) as caught:
+            migrate_project_revision(folder, self.registry, manifest, confirm_diff_sha256=result["diff_sha256"])
+        self.assertEqual(caught.exception.code, "GF_PREFLIGHT_PROJECT_REVISION")
+        self.assertEqual((folder / "project.json").read_bytes(), before)
+
+    def test_missing_version_ledger_is_reported_not_silently_assumed(self):
+        upgraded = VersionedRegistry(self.registry, {PSM: "5.2.0"})
+        with patch.object(revision_migration, "_ledger", return_value=None):
+            result = self.classify(upgraded)
+            self.assertEqual(result["ledger_status"], "unavailable")
+            self.assertEqual(result["classification"], "method_upgrade_required")
+            self.assertIn("ledger_unavailable", result["differences"][0]["effect"])
+            project = self.project()
+            project.pop("fingerprint_basis")
+            project["revision_sha256"] = "1" * 64
+            unverifiable = self.classify(project=project)
+            self.assertEqual(unverifiable["classification"], "unverifiable")
+            self.assertIn("VERSION_LEDGER is unavailable", unverifiable["differences"][0]["effect"])
+        self.assertEqual(self.classify()["ledger_status"], "available")
 
     def test_cli_preflight_accepts_a_code_only_change(self):
         """The CLI (application.main) runs the same preflight; a code-only change only warns."""
