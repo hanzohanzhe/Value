@@ -514,6 +514,21 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
     }
 
 
+def zonal_year_bounds(database: Path) -> dict[int, tuple[int, int, int]]:
+    """``{year: (first, last, distinct periods)}`` of the zonal accounting table (P0-9 S5)."""
+
+    ledger_schema_version = str(market_ledger_capabilities(database)["ledger_schema_version"])
+    period_table = "zonal_period_accounting" if ledger_schema_version in ATTRIBUTION_SCHEMA_VERSIONS else "zonal_period_summary"
+    with _read_only_connection(database) as connection:
+        tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if period_table not in tables:
+            return {}
+        rows = connection.execute(
+            f"SELECT year, MIN(period), MAX(period), COUNT(DISTINCT period) FROM {period_table} GROUP BY year ORDER BY year"
+        ).fetchall()
+    return {int(year): (int(first), int(last), int(count)) for year, first, last, count in rows}
+
+
 def query_zonal_annual_brief(database: Path) -> dict[str, object]:
     """Return annual scientific totals plus congestion and reliability counts."""
 

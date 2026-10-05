@@ -328,12 +328,23 @@ def _first_period(database: Path, stage: str) -> int | None:
     return None if row is None or row[0] is None else int(row[0])
 
 
-def _requests(database: Path) -> list[tuple[str, str, dict[str, Any], Callable[[], dict[str, Any]]]]:
+# The status.json the server reads to add a result-coverage verdict (P0-9 S5).
+# The toy ledgers stand for a completed one-year "full" Run that recorded only
+# four periods; the real C3 Run is a completed value_101_day lesson.
+FIXTURE_RUN_STATUS = {
+    "toy-v7": {"status": "completed", "mode": "full", "run_policy": {"start_year": YEAR, "end_year": YEAR, "periods_per_year": 17520}},
+    "toy-v8": {"status": "completed", "mode": "full", "run_policy": {"start_year": YEAR, "end_year": YEAR, "periods_per_year": 17520}},
+    "value-101-day": {"status": "completed", "mode": "value_101_day", "run_policy": {"start_year": YEAR, "end_year": YEAR, "periods_per_year": 48}},
+}
+
+
+def _requests(database: Path, run_status: Mapping[str, Any] | None = None) -> list[tuple[str, str, dict[str, Any], Callable[[], dict[str, Any]]]]:
     """(name, endpoint, query, call) for every market request the UI makes."""
 
     from gridform_core.market_ledger import query_market_table
+    from gridform_core.result_coverage import result_coverage
     from gridform_core.market_replay import (
-        market_price_basis, market_replay_capabilities, query_auction_view, query_dispatch_timeline,
+        market_price_basis, market_replay_capabilities, market_year_bounds, query_auction_view, query_dispatch_timeline,
         query_vre_curtailment_summary, query_vre_curtailment_timeline,
     )
 
@@ -355,6 +366,12 @@ def _requests(database: Path) -> list[tuple[str, str, dict[str, Any], Callable[[
             return page
         return call
 
+    def vre_summary() -> dict[str, Any]:
+        payload = query_vre_curtailment_summary(database)
+        # backend/server.py adds the shared annual-coverage verdict.
+        payload["coverage"] = result_coverage(run_status or {}, market_year_bounds(database))
+        return payload
+
     # MarketReplayView: 24-hour window from period 0 (period_to = 47), limit 96.
     window = {"year": YEAR, "period_from": 0, "period_to": 47, "limit": 96, "offset": 0}
     requests: list[tuple[str, str, dict[str, Any], Callable[[], dict[str, Any]]]] = [
@@ -363,7 +380,7 @@ def _requests(database: Path) -> list[tuple[str, str, dict[str, Any], Callable[[
          lambda: query_dispatch_timeline(database, resolution="daily", **window)),
         ("dispatch-half-hour", "dispatch", {**window, "resolution": "half_hour"},
          lambda: query_dispatch_timeline(database, resolution="half_hour", **window)),
-        ("vre-summary", "vre-summary", {}, lambda: query_vre_curtailment_summary(database)),
+        ("vre-summary", "vre-summary", {}, vre_summary),
         ("vre-timeline-daily", "vre-timeline", {"year": YEAR, "resolution": "daily", "limit": 500},
          lambda: query_vre_curtailment_timeline(database, year=YEAR, resolution="daily", limit=500)),
         ("periods", "periods", {"limit": 50, "offset": 0}, table("period_summary", limit=50, offset=0)),
@@ -414,7 +431,7 @@ def fixture_name(source: str, request: str) -> str:
 def build_documents(databases: Mapping[str, Path]) -> dict[str, dict[str, Any]]:
     documents: dict[str, dict[str, Any]] = {}
     for source in SOURCES:
-        for name, endpoint, query, call in _requests(databases[source]):
+        for name, endpoint, query, call in _requests(databases[source], FIXTURE_RUN_STATUS[source]):
             documents[fixture_name(source, name)] = {
                 "schema_version": SCHEMA_VERSION,
                 "generated_by": GENERATOR,

@@ -88,6 +88,7 @@ from gridform_core.market_ledger import query_market_table
 from gridform_core.market_replay import (
     legacy_staged_market_available,
     market_price_basis,
+    market_year_bounds,
     market_replay_capabilities,
     query_auction_view,
     query_dispatch_timeline,
@@ -98,6 +99,7 @@ from gridform_core.market_replay import (
 from gridform_core.zonal_results import (
     export_zonal_results,
     query_zonal_annual_brief,
+    zonal_year_bounds,
     query_zonal_results,
     zonal_workspace_capabilities,
 )
@@ -109,6 +111,7 @@ from gridform_core.planning_index import (
 )
 from gridform_core.errors import public_failure
 from gridform_core.run_policy import resolve_run_policy
+from gridform_core.result_coverage import result_coverage
 from gridform_core.value_101 import (
     VALUE_101_NETWORK_PACK_ID,
     VALUE_101_PACK_IDS,
@@ -1083,6 +1086,29 @@ def _move_value_101_reset_records(
     }
 
 
+def run_result_coverage(root: Path, run: Mapping[str, Any]) -> dict[str, Any]:
+    """Annual coverage of one Run for the Runs page (P0-9 S5): period bounds of
+    its market ledger, or, without a ledger, the years its status records as
+    finished (``coverage_source`` says which)."""
+
+    database = root / "model-output" / "market" / "market.sqlite"
+    source = "market_ledger"
+    try:
+        bounds = market_year_bounds(database) if database.is_file() else None
+    except (OSError, sqlite3.DatabaseError):
+        bounds = None
+    if bounds is None:
+        source = "status_results"
+        bounds = {
+            int(item["year"]): (0, 17_519, 17_520)
+            for item in run.get("results") or []
+            if isinstance(item, Mapping) and isinstance(item.get("year"), int)
+        }
+    coverage = result_coverage(run, bounds)
+    coverage["coverage_source"] = source
+    return coverage
+
+
 def present_run(run: dict[str, Any]) -> dict[str, Any]:
     """Add UI-compatible aliases without rewriting persisted research results."""
     if run.get("id"):
@@ -1787,7 +1813,9 @@ class Handler(BaseHTTPRequestHandler):
             if root is None:
                 self._json({"error": "run not found"}, 404); return
             if len(parts) == 3:
-                self._json(present_run(read_json(root / "status.json", {}))); return
+                detail = present_run(read_json(root / "status.json", {}))
+                detail["result_coverage"] = run_result_coverage(root, detail)
+                self._json(detail); return
             resource = parts[3]
             if resource == "results" and len(parts) == 5 and parts[4] == "vre-curtailment":
                 try:
@@ -1975,7 +2003,11 @@ class Handler(BaseHTTPRequestHandler):
                             database, year=year, period=period, stage=stage,
                         )); return
                     if market_resource == "vre-summary":
-                        self._json(query_vre_curtailment_summary(database)); return
+                        summary = query_vre_curtailment_summary(database)
+                        summary["coverage"] = result_coverage(
+                            read_json(root / "status.json", {}), market_year_bounds(database),
+                        )
+                        self._json(summary); return
                     if market_resource == "vre-timeline":
                         year = _optional_integer_query(query, "year")
                         if year is None:
@@ -2050,7 +2082,13 @@ class Handler(BaseHTTPRequestHandler):
                                 "Unsupported network redispatch query field: "
                                 + ", ".join(sorted(query))
                             )
-                        self._json(query_zonal_annual_brief(database)); return
+                        brief = query_zonal_annual_brief(database)
+                        # P0-9 S5 (F3-02/G1-10): the same annual-coverage verdict
+                        # as result queries; the brief itself is unchanged.
+                        brief["coverage"] = result_coverage(
+                            read_json(root / "status.json", {}), zonal_year_bounds(database),
+                        )
+                        self._json(brief); return
                     view_aliases = {
                         "periods": "period",
                         "curtailment": "curtailment",

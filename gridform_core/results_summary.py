@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Mapping, Sequence
 from .comparison_identity import build_comparison_identity, review_comparison_identities
 
+from .result_coverage import ANNUAL_PERIODS, NON_ANNUAL_MODES
 from .comparison_eligibility import (
     evaluate_curtailment_comparison,
     evaluate_network_comparison,
@@ -17,9 +18,8 @@ from .comparison_eligibility import (
 
 
 MAX_ANNUAL_ROWS = 200
-_NONANNUAL_MODES = {
-    "smoke", "two_year_smoke", "validation_24h", "validation_168h", "tutorial", "value_101_day",
-}
+# One shared rule for non-annual modes (P0-9 S5): derived from the run policies.
+_NONANNUAL_MODES = NON_ANNUAL_MODES
 _ATTRIBUTION_SCHEMA = "value.vre-curtailment-run-evidence/v1"
 _ATTRIBUTION_CONTRACT = "value.vre-curtailment-attribution/v2"
 
@@ -79,7 +79,7 @@ def validate_vre_curtailment_attribution(
         return _unavailable_attribution(
             "annual_evidence_withheld_for_nonannual_run", status="withheld"
         )
-    if periods_per_year != 17520:
+    if periods_per_year != ANNUAL_PERIODS:
         return _unavailable_attribution(
             "annual_evidence_withheld_for_nonannual_run", status="withheld"
         )

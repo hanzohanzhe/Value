@@ -193,6 +193,19 @@ def _ledger_schema_version(database: Path) -> str:
     return str(row[0]) if row else "unknown"
 
 
+def market_year_bounds(database: Path) -> dict[int, tuple[int, int, int]]:
+    """``{year: (first period, last period, distinct periods)}`` of the period ledger (P0-9 S5)."""
+
+    with _read_only_connection(database) as connection:
+        if "period_summary" not in _tables(connection):
+            return {}
+        rows = connection.execute(
+            "SELECT year, MIN(period), MAX(period), COUNT(DISTINCT period) "
+            "FROM period_summary GROUP BY year ORDER BY year"
+        ).fetchall()
+    return {int(year): (int(first), int(last), int(count)) for year, first, last, count in rows}
+
+
 def market_price_basis(database: Path) -> dict[str, str]:
     """``{"price_basis", "price_basis_source"}`` of the run's market ledger."""
 
@@ -867,7 +880,15 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
             results.append({
                 "year": year,
                 "period_count": len(rows),
-                "full_chronology": len(rows) == expected_periods,
+                "first_period": int(rows[0]["period"]) if rows else None,
+                "last_period": int(rows[-1]["period"]) if rows else None,
+                # A full chronology covers periods 0..N-1 exactly, not just N rows.
+                "full_chronology": (
+                    len(rows) == expected_periods
+                    and bool(rows)
+                    and int(rows[0]["period"]) == 0
+                    and int(rows[-1]["period"]) == expected_periods - 1
+                ),
                 "available_vre_mwh": available,
                 "accepted_vre_mwh": accepted,
                 "neutral_unused_vre_mwh": neutral_unused,

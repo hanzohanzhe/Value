@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Mapping
 
 from gridform_core.market_ledger import _read_only_connection, market_ledger_capabilities, ATTRIBUTION_SCHEMA_VERSIONS
+from gridform_core.result_coverage import REASON_NON_ANNUAL, is_non_annual, legacy_reason, result_coverage, year_bounds_from_rows
 from gridform_core.results_summary import validate_vre_curtailment_attribution
 from gridform_core.zonal_results import query_zonal_annual_brief, query_zonal_results
 from gridform_core.vre_curtailment_attribution import ATTRIBUTION_METHOD_ID
@@ -195,9 +196,9 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
                     identity[key] = value
         identity["attribution_method_id"] = ATTRIBUTION_METHOD_ID
         if resolution == "annual":
-            policy = status.get("run_policy") or {}
-            if status.get("mode") in {"smoke", "two_year_smoke", "validation_24h", "validation_168h", "tutorial"} or policy.get("periods_per_year") != 17520:
-                result.update(status="withheld", reason_code="annual_evidence_withheld_for_nonannual_run")
+            # P0-9 S5: the shared annual-coverage rule (gridform_core.result_coverage).
+            if is_non_annual(status):
+                result.update(status="withheld", reason_code=REASON_NON_ANNUAL)
                 return result
             brief_years = query_zonal_annual_brief(database)["years"]
             if not expected_years or {item["year"] for item in brief_years} != set(expected_years):
@@ -205,8 +206,10 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
                 return result
             with _read_only_connection(database) as connection:
                 bounds = connection.execute("SELECT year,MIN(period),MAX(period),COUNT(DISTINCT period) FROM vre_curtailment_period GROUP BY year").fetchall()
-            if any(first != 0 or last != 17519 or count != 17520 for _, first, last, count in bounds):
-                result.update(status="withheld", reason_code="annual_evidence_withheld_for_nonannual_run")
+            coverage = result_coverage(status, year_bounds_from_rows(bounds))
+            result["coverage"] = coverage
+            if coverage["annual_status"] != "complete":
+                result.update(status="invalid" if coverage["annual_status"] == "invalid" else "withheld", reason_code=legacy_reason(coverage))
                 return result
             rows = []
             for item in brief_years:
