@@ -48,6 +48,13 @@ compatibility route requires it, and `resolved-run.json`. A bid
 multiplier other than 1.0 is marked experimental and the run must not be described
 as strict bid-at-cost.
 
+Investment rule (P0-7). Investment decisions are undiscounted ROI / payback
+tests in constant base-year money (decision A6). Thermal plants net their
+running cost (fuel, carbon, unit-time cost) in both profiles (decision A4);
+VRE and storage keep gross revenue as profit and carry no separate fixed OPEX
+(A7). Only the corrected profile opens storage expansion (post-charge surplus,
+one power-battery pool); the doctoral profile keeps zero storage headroom.
+
 Default PSM market rule sets (P0-6). The doctoral reproduction profile clears
 with the 0.6.0-alpha.2 rules (`native-doctoral-thesis-v1`) and declares their
 known deviations: VRE crowded out by zero-priced storage or must-run nuclear is

@@ -21,6 +21,11 @@ cost)`` even with zero fuel and carbon cost; VRE and storage keep gross revenue
 as profit. Each cashflow row names its technology, copied from the asset, and
 writes every A4 income and cost component out, zeros included.
 P0-7 S4 consumes them.
+
+Since P0-7 S4 (agent-investment 3.0.0) the decide() sources differ from
+35aadb3, so recording and ``--check`` refuse to run (exit 2): the record is
+frozen. ``tests/test_p07_head_decide_record.py`` compares the live decide()
+with it under the declared A4 deltas.
 """
 from __future__ import annotations
 
