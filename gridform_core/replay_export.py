@@ -474,6 +474,7 @@ def _validate_snapshot_context_identity(
     try:
         frozen_network = load_zonal_network_pack(
             run_root / "input-snapshot" / "network-pack", network,
+            topology_policy="audit",  # reading a historical Run (P0-8 S11)
         )
     except (OSError, TypeError, ValueError) as exc:
         raise ValueError(f"Frozen network-pack identity validation failed: {exc}") from exc

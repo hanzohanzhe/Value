@@ -102,7 +102,7 @@ class Value101NetworkPackTests(unittest.TestCase):
                 )
 
     def test_checked_in_pack_is_complete_three_zone_and_asymmetric(self) -> None:
-        model = load_zonal_network_pack(NETWORK)
+        model = load_zonal_network_pack(NETWORK, topology_policy="enforce")
         self.assertEqual([zone.zone_id for zone in model.zones], ["north", "central", "south"])
         self.assertEqual(
             [(row.corridor_id, row.from_zone_id, row.to_zone_id) for row in model.corridors],
@@ -141,7 +141,7 @@ class Value101NetworkPackTests(unittest.TestCase):
         manifest = payload(BASELINE / "manifest.json")
         demand_path = BASELINE / manifest["bindings"]["demand.real"]["uri"]
         baseline_mwh = [value * 0.5 for value in series(demand_path)]
-        model = load_zonal_network_pack(NETWORK)
+        model = load_zonal_network_pack(NETWORK, topology_policy="enforce")
         self.assertEqual(list(model.zonal_demand.national_demand_mwh[:17_520]), baseline_mwh)
         self.assertEqual(list(model.zonal_demand.national_demand_mwh[17_520:]), baseline_mwh)
 

@@ -122,7 +122,7 @@ class OverlayEditor:
                 if not manifest.get('zonal_network_pack'): continue
                 root = child(installed, path.parent.name)
                 inventory(root)
-                network = load_zonal_network_pack(root, manifest)
+                network = load_zonal_network_pack(root, manifest, topology_policy='audit')
                 reason, status = None, 'available'
                 years = sorted({int(period[:4]) for period in network.zonal_demand.period_ids if period[:4].isdigit()})
             except (ValueError, OSError, KeyError, TypeError, AttributeError) as exc:
@@ -184,7 +184,7 @@ class OverlayEditor:
             if target.exists() or source_id == new_id: raise ValueError('New overlay ID is already installed')
             source_hash = digest(source / 'manifest.json'); original = inventory(source)
             if source_hash != request['source_manifest_sha256']: raise ValueError('Source manifest changed; refresh installed overlays')
-            manifest = read(source / 'manifest.json'); load_zonal_network_pack(source, manifest)
+            manifest = read(source / 'manifest.json'); load_zonal_network_pack(source, manifest, topology_policy='audit')
             candidates = self.state / 'candidates'; candidates.mkdir(exist_ok=True)
             directory_id = 'overlay-' + uuid.uuid4().hex
             stage = Path(tempfile.mkdtemp(prefix='.overlay-', dir=candidates))
@@ -321,7 +321,7 @@ class OverlayEditor:
         try:
             general = validate_data_pack(root / 'pack', manifest, self.slots, verify_hashes_below_bytes=MAX_TREE)
             errors.extend(general.get('errors', [])); warnings.extend(general.get('warnings', []))
-            network = load_zonal_network_pack(root / 'pack', manifest)
+            network = load_zonal_network_pack(root / 'pack', manifest, topology_policy='enforce')
             if network.network_pack_id != manifest['id']: errors.append('Manifest and network identity IDs differ')
             years = sorted({int(period[:4]) for period in network.zonal_demand.period_ids if period[:4].isdigit()})
             declared = manifest.get('years')

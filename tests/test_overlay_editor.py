@@ -72,7 +72,7 @@ class OverlayEditorTests(unittest.TestCase):
         receipt = self.editor.promote(changed['directory_id'], {'schema_version': 'value.data-promotion-request/v1', 'candidate_id': changed['candidate_id'], 'version': '1.0.0', 'reviewer': 'Test reviewer', 'accepted_waivers': []})
         self.assertEqual(receipt['network_pack_id'], 'edited-network-v1')
         self.assertEqual(receipt['version'], '1.0.0')
-        load_zonal_network_pack(self.state / 'installed-packs/edited-network-v1')
+        load_zonal_network_pack(self.state / 'installed-packs/edited-network-v1', topology_policy='enforce')
         after = {p.relative_to(self.source).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in self.source.rglob('*') if p.is_file()}
         self.assertEqual(before, after)
         with self.assertRaisesRegex(ValueError, 'already installed'):

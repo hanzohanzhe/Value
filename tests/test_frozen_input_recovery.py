@@ -102,7 +102,7 @@ class FrozenInputRecoveryTests(unittest.TestCase):
         self.assertTrue(set(ZONAL_ROLES).isdisjoint(result["base_manifest"]["bindings"]))
         self.assertEqual(set(result["network_manifest"]["bindings"]), set(ZONAL_ROLES))
         self.assertIn("demand.real", result["base_manifest"]["bindings"])
-        network = load_zonal_network_pack(result["network_root"], result["network_manifest"])
+        network = load_zonal_network_pack(result["network_root"], result["network_manifest"], topology_policy="audit")
         self.assertEqual(network.network_pack_id, "recovered-network-v1")
         self.assertNotEqual(network.scientific_sha256, before["network_manifest"]["zonal_network_pack"]["scientific_sha256"])
         self.assertFalse(result["network_manifest"]["scientific_baseline_eligible"])

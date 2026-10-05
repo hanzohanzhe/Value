@@ -231,7 +231,7 @@ def _write_v8_run(
     network_context = None
     if include_network:
         frozen_network = run_root / "input-snapshot" / "network-pack"
-        network_context = load_zonal_network_pack(frozen_network).to_dict()
+        network_context = load_zonal_network_pack(frozen_network, topology_policy="audit").to_dict()
         if tamper_network_context:
             network_context["scientific_sha256"] = "f" * 64
     run_context = {

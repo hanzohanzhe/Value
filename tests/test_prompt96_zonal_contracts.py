@@ -296,7 +296,7 @@ class ZonalContractValidationTests(unittest.TestCase):
 class ZonalPackLoaderAndRegistryTests(unittest.TestCase):
     def test_example_pack_loads_and_hashes_every_required_binding(self):
         pack_root = ROOT / "examples" / "zonal-network-pack"
-        loaded = load_zonal_network_pack(pack_root)
+        loaded = load_zonal_network_pack(pack_root, topology_policy="enforce")
         loaded.validate()
         self.assertEqual(loaded.network_pack_id, "force-zonal-template-v1")
         self.assertEqual(len(loaded.zones), 3)
@@ -358,7 +358,7 @@ class ZonalPackLoaderAndRegistryTests(unittest.TestCase):
             ).hexdigest()
             (destination / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "scientific SHA-256"):
-                load_zonal_network_pack(destination)
+                load_zonal_network_pack(destination, topology_policy="enforce")
 
 
 if __name__ == "__main__":

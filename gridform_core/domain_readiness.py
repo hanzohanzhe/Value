@@ -21,7 +21,12 @@ from .network_expansion import STATE_KEY, NetworkCandidate, load_network_expansi
 from .parameters import resolve_scheme_c_parameters
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .v2.module_manifest import ModuleRegistryV2
-from .zonal_contracts import ZonalNetworkPack, load_zonal_network_pack
+from .zonal_contracts import (
+    ZonalNetworkPack,
+    ZonalTopologyError,
+    audit_zonal_network_topology,
+    load_zonal_network_pack,
+)
 
 
 SCHEMA_VERSION = "value.domain-readiness/v1"
@@ -476,8 +481,12 @@ def build_domain_readiness(
         try:
             zonal_root = network_pack_root or pack_root
             zonal_manifest = network_pack_manifest or pack_manifest
-            zonal = load_zonal_network_pack(zonal_root, zonal_manifest)
+            zonal, topology = audit_zonal_network_topology(zonal_root, zonal_manifest)
             sections["zonal_network"] = summarise_zonal_network_pack(zonal)
+            sections["zonal_network"]["cutset_classification"] = dict(topology["counts"])
+            if topology["error_count"]:
+                # Same rule as the enforcing loaders of preflight and runs.
+                raise ZonalTopologyError(topology)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             issues.append(_issue(
                 "GF_DOMAIN_ZONAL_INPUT", str(exc), severity="error", scope="zonal_network",

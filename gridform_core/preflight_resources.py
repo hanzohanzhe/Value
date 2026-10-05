@@ -150,7 +150,9 @@ def build_frozen_resource_contexts(
     network_manifest = json.loads(
         (network_pack_root / "manifest.json").read_text(encoding="utf-8")
     )
-    network_pack = load_zonal_network_pack(network_pack_root, network_manifest)
+    network_pack = load_zonal_network_pack(
+        network_pack_root, network_manifest, topology_policy="enforce"
+    )
     run_context = build_run_static_context(
         resolved=resolved,
         project=frozen_project,
@@ -780,7 +782,7 @@ def selected_staged_zonal_calibration_runner(
             (frozen_network_root / "manifest.json").read_text(encoding="utf-8")
         )
         network_pack = load_zonal_network_pack(
-            frozen_network_root, network_manifest
+            frozen_network_root, network_manifest, topology_policy="enforce"
         )
         chronology = build_chronology(
             frozen_pack_root, pack_manifest, operating_state,
