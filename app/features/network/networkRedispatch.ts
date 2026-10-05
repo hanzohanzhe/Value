@@ -294,6 +294,17 @@ export function isSolverValidationSummary(value: unknown): value is SolverValida
   return true;
 }
 
+/** A method defect of a historical ledger, derived when reading (P0-8 S6). */
+export type ZonalKnownDefect = {
+  defect_id: string;
+  finding_ids: string[];
+  severity: string;
+  summary: string;
+  affected_outputs: string[];
+  remedy: string;
+  evidence_rows?: number;
+};
+
 export type ZonalCapabilities = {
   trace_level: "off" | "summary" | "full";
   years: number[];
@@ -305,6 +316,8 @@ export type ZonalCapabilities = {
   network_semantics: string;
   boundary_value_semantics: string;
   reliability_semantics: string;
+  load_shedding_reporting_threshold_mwh?: number;
+  known_defects?: ZonalKnownDefect[];
   security_scope: string;
   unsupported_scope: string[];
   solver_validation_summary?: SolverValidationSummary | null;
@@ -395,6 +408,7 @@ export type AnnualNetworkRow = {
   observed_loss_of_load_hours: number;
   observed_loss_of_load_events: number;
   affected_load_shedding_zones: number;
+  numerical_residual_unserved_mwh?: number;
   solver_validation_summary?: SolverValidationSummary;
 };
 
@@ -403,6 +417,8 @@ export type AnnualBrief = {
   ledger_schema_version?: string;
   years: AnnualNetworkRow[];
   reliability_semantics: string;
+  load_shedding_reporting_threshold_mwh?: number;
+  known_defects?: ZonalKnownDefect[];
   security_scope: string;
   solver_validation_summary?: SolverValidationSummary | null;
 };

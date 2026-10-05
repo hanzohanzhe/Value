@@ -1984,8 +1984,11 @@ class ZonalRedispatchBalancing:
             asset: final_dispatch[asset] for asset in sorted(final_dispatch)
         }
 
+        # |shed| <= TOLERANCE is LP noise, mapped to exactly zero like the
+        # SOC above (P0-8 S6); v4 already fixes it at zero when the primary
+        # sheds nothing.
         load_shedding = {
-            zone: float(values[index])
+            zone: (0.0 if abs(float(values[index])) <= TOLERANCE else float(values[index]))
             for zone, index in sorted(problem.shedding_index.items())
         }
         blackout = math.fsum(

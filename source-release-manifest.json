@@ -1339,6 +1339,7 @@
     "tests/test_p07_head_decide_record.py",
     "tests/test_p07_investment_accounts.py",
     "tests/test_p08_network_shares.py",
+    "tests/test_p08_reliability_reporting.py",
     "tests/test_p08_solver_contract_upgrade.py",
     "tests/test_p08_zonal_solver_v4.py",
     "tests/test_p0_5_baseline.py",
@@ -3075,8 +3076,8 @@
     },
     {
       "path": "app/features/network/networkRedispatch.ts",
-      "sha256": "b93ffa19d4f3ebc7830e7b689593c8676330ed6a556f7df049dccc20fc3e9ba1",
-      "bytes": 18870,
+      "sha256": "7409b7ba0e2d5278f2a070d42ace0bad395f941c6a7186f2073aeef82566e954",
+      "bytes": 19381,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4401,7 +4402,7 @@
     },
     {
       "path": "docs/generated/MODULES.md",
-      "sha256": "8c751d58e375f0a313bca4092d995c7de86c3e9be1cf82ce0a0bf33750898004",
+      "sha256": "ea7643ed1cbb171d1bac9e52349977dd8adc57797e2c1c66301b32cc8263885d",
       "bytes": 4128,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -8082,15 +8083,15 @@
     },
     {
       "path": "gridform_core/zonal_redispatch.py",
-      "sha256": "767e9a1049cd85441ace864c94e8c7c9b248f40cc6592168422c3a385944c64e",
-      "bytes": 86474,
+      "sha256": "9f117f57f97100cc1a2203050840a84f04e4b8cedc36f95549c331a8e64b821e",
+      "bytes": 86706,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/zonal_results.py",
-      "sha256": "7b960da1710da5528524c3816798103f36ed7933530188a09b21d5e16f1c920e",
-      "bytes": 53548,
-      "transform": "byte copy"
+      "sha256": "1ec39996761b31a73dd1cf4ff70dc695773605f347cb89c4ba563ad4c8cc9fa0",
+      "bytes": 56645,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/zonal_solver_contract.py",
@@ -10728,6 +10729,12 @@
       "path": "tests/test_p08_network_shares.py",
       "sha256": "15f73d376062b463aa35aae39abef020663400091c6dac45b3a2bd92e619bd60",
       "bytes": 8650,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p08_reliability_reporting.py",
+      "sha256": "5083c21a9ada4fc2e662be8a7f04d81721a265e2e8b2244bdd82873679881446",
+      "bytes": 3473,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
