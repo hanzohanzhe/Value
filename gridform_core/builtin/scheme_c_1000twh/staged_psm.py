@@ -1471,13 +1471,17 @@ class StagedBidAtCostPSM:
             configured_defaults = self._run_context.solver_contract.get("defaults")
             if isinstance(configured_defaults, Mapping):
                 solver_contract_defaults = configured_defaults
+        # C22: the maintained balancing identity comes from the module class,
+        # so a version bump cannot silently disable subannual restore.
+        from ...zonal_redispatch import ZonalRedispatchBalancing
+
         maintained_zonal_runtime = (
             self._network_pack is not None
             and (
                 str(getattr(self._balancing, "id", "")),
                 str(getattr(self._balancing, "version", "")),
             )
-            == ("value-zonal-redispatch-balancing", "4.0.0")
+            == (ZonalRedispatchBalancing.id, ZonalRedispatchBalancing.version)
             and self._run_context is not None
             and str(
                 self._run_context.solver_contract.get("contract_version")

@@ -6823,8 +6823,8 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/staged_psm.py",
-      "sha256": "684b59d7996969440822c3aab4b85dd7030a92492194c039836f6e085444920a",
-      "bytes": 137505,
+      "sha256": "6c48c51079c4a27649871ed8c46dba0dbb5cecb33a69a5ddfa099c08ac6823fb",
+      "bytes": 137738,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11492,9 +11492,9 @@
     },
     {
       "path": "tests/test_zonal_subannual_resume.py",
-      "sha256": "f8a38cc718c995ff7a320ae8f8806de6481f1e27eecfe2f89028cfc37a4cf78a",
-      "bytes": 34119,
-      "transform": "byte copy"
+      "sha256": "13aea960f37d37fd1b8a19c90c66eb17d508eb0d25e81ec2bdf3b0c5c386a5b3",
+      "bytes": 34989,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/ui-gateway.test.mjs",
