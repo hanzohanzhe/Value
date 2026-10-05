@@ -1208,7 +1208,17 @@ def _native_result_payload(typed_results, ledgers, *, planning_mode: str) -> dic
             "Total_System_Cost_GBP": float(ledger.cem_system_cost_gbp or 0.0),
             "Cost_per_MWh_GBP": float(ledger.cem_system_cost_gbp_per_mwh_served or 0.0),
             "Total_Energy_Generated_MWh": market.total_generation_mwh,
-            "Total_Levelized_Capital_Cost_GBP": market.total_levelized_capital_cost_gbp,
+            # Cost ledger v2 (P0-7 S8): the capital that is in the headline, so
+            # capital + operating = Total_System_Cost_GBP.
+            "Total_Levelized_Capital_Cost_GBP": (
+                ledger.headline_capital_gbp
+                if getattr(ledger, "headline_capital_gbp", None) is not None
+                else market.total_levelized_capital_cost_gbp
+            ),
+            "RoR_Hydro_Compatibility_Capital_GBP": (
+                ledger.compatibility_capital_gbp
+                if getattr(ledger, "compatibility_capital_in_headline", None) is False else None
+            ),
             "Total_Operational_Cost_GBP": market.total_operational_cost_gbp,
             # F3-04 (P0-9 S9): the native path does not model the capacity or
             # decarbonisation mechanisms; record that instead of a false 0.0.
@@ -2038,7 +2048,14 @@ def _run_native_project(
             f"{expected_years}, found {[result.year for result in typed_results]}"
         )
     execution_seconds = time.perf_counter() - started
-    ledgers = [build_cem_cost_ledger(result.market) for result in typed_results]
+    # P0-7 S8 (P4-03, value-corrected): run-of-river hydro compatibility
+    # capital leaves the headline as a memo line; the doctoral headline keeps
+    # it (memo "of which"). VRE/storage FOM is a memo in both (A7).
+    exclude_compatibility = current_methodology().enabled("p07.compatibility-capital-out-of-headline")
+    ledgers = [
+        build_cem_cost_ledger(result.market, exclude_compatibility_capital=exclude_compatibility)
+        for result in typed_results
+    ]
     cost_ledger_path = write_cost_ledgers(
         output_dir / "ledgers" / "annual-cost-ledger.json", ledgers
     )

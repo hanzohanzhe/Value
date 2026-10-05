@@ -13,6 +13,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from . import agent_cashflow
 from .methodology import methodology_scoped
 from .network_contracts import (
     NetworkPSMInput,
@@ -363,6 +364,22 @@ class ReferenceDCNetworkPSM:
             ))
             for resource in chronology.resources
         }
+        # P0-7 (A4): running cost by resource, as the MWh-weighted unit cost.
+        running_cost_by_asset: dict[str, float] = {}
+        for resource_index, resource in enumerate(chronology.resources):
+            per_period = [
+                float(sum(
+                    solution[layout.generation[unit_index, p]]
+                    for unit_index, unit in enumerate(generation_units)
+                    if unit.asset_id == resource.asset_id
+                ))
+                for p in range(periods)
+            ]
+            energy = float(sum(per_period))
+            running_cost_by_asset[resource.asset_id] = (
+                float(np.dot(per_period, marginal_costs[resource_index])) / energy
+                if energy > 0 else float(np.mean(marginal_costs[resource_index]))
+            )
         for storage in chronology.storage:
             generation[storage.asset_id] = float(sum(
                 solution[layout.discharge[unit_index, p]]
@@ -545,6 +562,15 @@ class ReferenceDCNetworkPSM:
                 "boundary_import_mwh": total_import,
                 "storage_charge_mwh": total_charge,
                 "storage_discharge_mwh": total_discharge,
+                agent_cashflow.EXTENSION_KEY: agent_cashflow.extension(
+                    agent_cashflow.unit_cost_cashflow(
+                        generation, running_cost_by_asset,
+                        {asset.asset_id: asset.technology for asset in model_input.operating_state.assets},
+                        cost_basis="dc_mwh_weighted_marginal_cost",
+                    ),
+                    psm_module_id=self.id,
+                    cost_basis="dc_mwh_weighted_marginal_cost",
+                ),
             },
         )
 

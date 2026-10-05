@@ -413,6 +413,8 @@ def _frontend_results(
                 "demand_served_mwh": ledger.get("demand_served_mwh") if ledger else None,
                 "total_energy_generated_mwh": cost["Total_Energy_Generated_MWh"],
                 "total_levelized_capital_cost_gbp": cost["Total_Levelized_Capital_Cost_GBP"],
+                # P0-7 S8 (P4-03): memo of the capital kept out of the headline (corrected).
+                "ror_hydro_compatibility_capital_gbp": cost.get("RoR_Hydro_Compatibility_Capital_GBP"),
                 "total_operational_cost_gbp": cost["Total_Operational_Cost_GBP"],
                 # F3-04 (P0-9 S9): a mechanism the path does not model is null
                 # with a status, never 0.0; the legacy path records all five

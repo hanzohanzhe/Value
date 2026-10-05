@@ -208,8 +208,12 @@ class FixtureRunTests(unittest.TestCase):
             "p05.interconnector-clock", "VALUE-ADV-2026-10-04-REVIEW",
             "p06.avoided-cost-downward-order", "p06.d1-surplus-accounting",
             "p06.storage-bid-cycle-only", "p06.storage-net-per-period",
+            # P0-7: the run's cost ledger kept the hydro compatibility capital in
+            # the headline (P4-03) and its storage policy did not apply P5-01/P5-02.
+            "p07.compatibility-capital-out-of-headline", "p07.storage-leftover-headroom",
             "GF_VALIDATION_LEGACY_REPORT",
             "p06.no-vre-pre-clearing-skim", "p06.storage-uniform-price-settlement",
+            "p07.power-battery-pool",
         ])
         self.assertEqual(run["result_publication"]["status"], "published")
         self.assertEqual(len(run["results"]), 1)

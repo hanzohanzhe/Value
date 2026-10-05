@@ -16,7 +16,10 @@ parts:
    storage keep gross revenue as profit (thesis assumption: CAPEX and
    depreciation only, no OPEX). Every income and cost component is a
    required argument: a left-out component is an error, never a zero.
-   ``a4_net_revenue_for_decidable_groups`` applies it only to groups whose
+   ``a4_net_revenue_for_decidable_groups`` is the decide() path (lead ruling
+   2026-10-05): it changes only the operating-cost term, net = HEAD income
+   (``market_income_gbp_by_agent``) - ``a4_operating_cost``, so VRE and
+   storage nets equal the HEAD income bit for bit. It applies to groups whose
    investment mode can reach a decision (mode filter first), and admits
    exactly one operating-cost source (``A4_OPERATING_COST_RULE``).
 3. The ``head_*`` functions: the investment rule of the v2
@@ -78,6 +81,10 @@ A4_OPERATING_COST_RULE = (
     "neither added to nor silently dropped from the A4 net."
 )
 RECORDED_OPERATIONAL_COST_KEY = "annual_operational_cost_gbp"
+# P0-7 S4: relative tolerance under which a thermal A4 net revenue is rounding
+# of income and running cost summed over the same dispatch (a bid-at-cost unit
+# is paid exactly its cost), snapped to 0.0 by agent-investment.
+A4_NET_NOISE_RTOL = 1e-9
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +255,42 @@ def scheme_c_investment_net_revenue(
     }
 
 
+A4_COST_FIELDS = (
+    "generated_mwh", "generation_cost_gbp_per_mwh", "fuel_cost_gbp_per_mwh",
+    "carbon_cost_gbp_per_mwh", "unit_time_cost_gbp_per_mwh",
+)
+A4_INCOME_FIELDS = ("electricity_income_gbp", "hydrogen_income_gbp", "income_gbp", "market_income_gbp")
+
+
+def a4_operating_cost(
+    *,
+    technology: str,
+    generated_mwh: float,
+    generation_cost_gbp_per_mwh: float,
+    fuel_cost_gbp_per_mwh: float,
+    carbon_cost_gbp_per_mwh: float,
+    unit_time_cost_gbp_per_mwh: float,
+) -> dict[str, object]:
+    """The A4 operating-cost term alone (lead ruling 2026-10-05, DECISIONS A4/A7).
+
+    Thermal assets (``deducts_energy_cost``): ``generated_mwh x (generation +
+    fuel + carbon + unit_time)``. VRE and storage: exactly 0.0 (no variable
+    OPEX; their fixed OPEX is folded into levelised CAPEX, A7). Every argument
+    is required; a zero is passed explicitly.
+    """
+    energy = finite_number(generated_mwh, "generated MWh", nonnegative=True)
+    generation = finite_number(generation_cost_gbp_per_mwh, "generation cost", nonnegative=True)
+    fuel = finite_number(fuel_cost_gbp_per_mwh, "fuel cost", nonnegative=True)
+    carbon = finite_number(carbon_cost_gbp_per_mwh, "carbon cost", nonnegative=True)
+    unit_time = finite_number(unit_time_cost_gbp_per_mwh, "unit-time cost", nonnegative=True)
+    if deducts_energy_cost(technology=technology, fuel_cost_gbp_per_mwh=fuel, carbon_cost_gbp_per_mwh=carbon):
+        gen_cost = generation + carbon + fuel + unit_time
+        return {"technology": technology, "generated_mwh": energy, "gen_cost_gbp_per_mwh": gen_cost,
+                "operating_cost_gbp": energy * gen_cost, "basis": NET_REVENUE_BASIS_THERMAL}
+    return {"technology": technology, "generated_mwh": energy, "gen_cost_gbp_per_mwh": None,
+            "operating_cost_gbp": 0.0, "basis": NET_REVENUE_BASIS_GROSS}
+
+
 def a4_net_revenue_for_decidable_groups(
     groups: Sequence[Mapping[str, object]],
     mode_of: Callable[[str], str],
@@ -255,21 +298,31 @@ def a4_net_revenue_for_decidable_groups(
 ) -> dict[str, dict[str, object]]:
     """A4 net revenue for the members of the groups that can reach a decision.
 
-    ``groups`` come from ``head_group_assets`` (each member has an
-    ``asset_id``). The investment-mode filter runs first: a group whose mode
-    is in ``HEAD_SKIPPED_MODES`` (Nuclear, hydro, coal, unknown technologies)
-    is skipped before any A4 call, and cashflow rows of its assets are
-    ignored. Every member of every other group needs a cashflow row carrying
-    all arguments of ``scheme_c_investment_net_revenue`` except the
-    technology; a missing row is a ``ValueError``, never a zero. A row may
-    name its technology, which must then equal the group's. Returns the A4
-    result row by asset id.
+    Lead ruling 2026-10-05 (review round 4): A4 changes **only the operating
+    cost term** of the HEAD account. For every member,
+
+        net = HEAD income (``member["income_gbp"]``, i.e. the PSM's
+              ``market_income_gbp_by_agent`` entry) - A4 operating cost
+
+    where the A4 operating cost (``a4_operating_cost``) is
+    ``generated MWh x (generation + fuel + carbon + unit_time)`` for thermal
+    assets and exactly 0.0 for VRE and storage, so their net equals the HEAD
+    income bit for bit (DECISIONS A4: gross revenue is profit; A7: no
+    variable OPEX, fixed OPEX folded into levelised CAPEX).
+
+    ``groups`` come from ``head_group_assets``. The investment-mode filter runs
+    first: a group whose mode is in ``HEAD_SKIPPED_MODES`` (Nuclear, hydro,
+    coal, unknown technologies) is skipped before any A4 call, and cashflow
+    rows of its assets are ignored. A thermal member needs a cashflow row with
+    every field of ``A4_COST_FIELDS``; a missing row or field is a
+    ``ValueError``, never a zero. A VRE or storage member needs no row; a row
+    given for it is validated (a fuel or carbon cost is an error). A row may
+    name its technology, which must then equal the group's; income fields are
+    refused (income comes only from the HEAD income map).
 
     ``A4_OPERATING_COST_RULE``: a member whose ``extensions`` carry a
-    non-zero ``annual_operational_cost_gbp`` is a ``ValueError``. The A4
-    operating cost is the only operating-cost term, so S4 feeds these net
-    values to the HEAD tier rule, whose recorded-operational-cost term is
-    then zero for every member, and nothing is charged twice.
+    non-zero ``annual_operational_cost_gbp`` is a ``ValueError``; nothing is
+    charged twice.
     """
     if not isinstance(cashflow_inputs, Mapping):
         raise ValueError("A4 cashflow inputs must be a mapping keyed by asset id")
@@ -280,20 +333,40 @@ def a4_net_revenue_for_decidable_groups(
             continue
         for member in group["members"]:  # type: ignore[union-attr]
             asset_id = str(member["asset_id"])
-            recorded = dict(member.get("extensions") or {}).get(RECORDED_OPERATIONAL_COST_KEY)
+            recorded = dict(member.get("extensions") or {}).get(RECORDED_OPERATIONAL_COST_KEY)  # type: ignore[union-attr]
             if recorded is not None and finite_number(
                     recorded, f"{asset_id} {RECORDED_OPERATIONAL_COST_KEY}") != 0.0:
                 raise ValueError(
                     f"{asset_id} carries {RECORDED_OPERATIONAL_COST_KEY} = {recorded!r} beside the A4 "
                     "energy x gen_cost operating cost; " + A4_OPERATING_COST_RULE)
+            income = finite_number(member.get("income_gbp"), f"{asset_id} HEAD income")  # type: ignore[union-attr]
             row = cashflow_inputs.get(asset_id)
-            if not isinstance(row, Mapping):
-                raise ValueError(f"A4 cashflow inputs missing for asset {asset_id}")
-            arguments = dict(row)
-            named = arguments.pop("technology", technology)
-            if named != technology:
-                raise ValueError(f"A4 cashflow row of {asset_id} names {named}, its group is {technology}")
-            result[asset_id] = scheme_c_investment_net_revenue(technology=technology, **arguments)
+            if row is None and technology in GROSS_PROFIT_TECHNOLOGIES:
+                cost: dict[str, object] = {
+                    "technology": technology, "generated_mwh": None, "gen_cost_gbp_per_mwh": None,
+                    "operating_cost_gbp": 0.0, "basis": NET_REVENUE_BASIS_GROSS}
+            else:
+                if not isinstance(row, Mapping):
+                    raise ValueError(f"A4 cashflow inputs missing for asset {asset_id}")
+                arguments = dict(row)
+                named = arguments.pop("technology", technology)
+                if named != technology:
+                    raise ValueError(f"A4 cashflow row of {asset_id} names {named}, its group is {technology}")
+                income_fields = sorted(set(arguments) & set(A4_INCOME_FIELDS))
+                if income_fields:
+                    raise ValueError(
+                        f"A4 cashflow row of {asset_id} carries income {income_fields}; A4 changes only the "
+                        "operating-cost term, income is the HEAD income map")
+                missing = [name for name in A4_COST_FIELDS if name not in arguments]
+                if missing:
+                    raise ValueError(f"A4 cashflow row of {asset_id} lacks {missing}")
+                unknown = sorted(set(arguments) - set(A4_COST_FIELDS))
+                if unknown:
+                    raise ValueError(f"A4 cashflow row of {asset_id} has unknown fields {unknown}")
+                cost = a4_operating_cost(technology=technology, **arguments)
+            operating = float(cost["operating_cost_gbp"])  # type: ignore[arg-type]
+            net = income if cost["basis"] == NET_REVENUE_BASIS_GROSS else income - operating
+            result[asset_id] = {**cost, "income_gbp": income, "net_revenue_gbp": net}
     return result
 
 

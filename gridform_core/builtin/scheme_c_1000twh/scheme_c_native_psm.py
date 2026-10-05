@@ -13,7 +13,13 @@ import numpy as np
 import pandas as pd
 
 from ...methodology import current_methodology, methodology_scoped
-from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
+from ... import agent_cashflow
+from ...asset_economics import (
+    CAPITAL_COST_COMPONENTS_KEY,
+    capital_cost_components,
+    primary_annual_asset_costs,
+    validate_asset_economics,
+)
 from ...market_ledger import (
     PhysicalDispatchRow,
     StorageYearBoundaryRow,
@@ -35,6 +41,7 @@ from .native_market_rules import (
 )
 from .native_realisation import COST_COLUMNS, DIAGNOSTIC_COLUMNS, RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
+from .storage_headroom import HEADROOM_INPUTS_KEY, headroom_inputs
 
 
 class _NativeParameterAdapter:
@@ -273,6 +280,37 @@ class SchemeCNativePSM:
             if str(key) not in consumed:
                 allocated[str(key)] += float(value)
         return dict(allocated)
+
+    def _agent_cashflow(
+        self,
+        generation: Mapping[str, float],
+        components: Mapping[str, Mapping[str, float]],
+        coupling: Mapping[str, object],
+        model_input: PSMInput,
+    ) -> dict[str, object]:
+        """``value.agent-cashflow/v1`` (P0-7, decision A4): generated MWh and running-cost parts by asset.
+
+        Each runtime generator object is allocated to the typed assets it
+        aggregates by their MW share, as its income is
+        (``_allocate_runtime_income``).
+        """
+
+        objects = []
+        for name, row_value in dict(coupling.get("generator_objects") or {}).items():
+            row = dict(row_value or {})
+            agent = str(row.get("market_agent_id") or name)
+            objects.append({
+                "generated_mwh": float(generation.get(agent, 0.0)),
+                **dict(components.get(name) or {
+                    field: 0.0 for field in agent_cashflow.COMPONENT_FIELDS}),
+                "source_asset_capacity_mw": dict(row.get("source_asset_capacity_mw") or {}),
+            })
+        technology = {
+            asset.asset_id: asset.technology for asset in model_input.operating_state.assets
+        }
+        basis = "scheme_c_generator_object_cost_components"
+        rows = agent_cashflow.allocate_object_cashflow(objects, technology, cost_basis=basis)
+        return agent_cashflow.extension(rows, psm_module_id=self.id, cost_basis=basis)
 
     @staticmethod
     def _restore_previous_observations(batteries: dict[str, object], model_input: PSMInput) -> None:
@@ -661,6 +699,18 @@ class SchemeCNativePSM:
                     else:
                         value = ExpensiverenewableGenerator(**raw)
                     fleet_generators[name] = value
+                # P0-7 (A4): the running-cost parts each generator object was
+                # built with (gen_cost of Gas/Biomass = generation + carbon +
+                # fuel + unit_time, runtime_compat/modular_simulation_model.py).
+                generator_cost_components = {
+                    name: {
+                        "generation_cost_gbp_per_mwh": float(raw.get("gen_cost", 0.0) or 0.0),
+                        "fuel_cost_gbp_per_mwh": float(raw.get("fuel_cost", 0.0) or 0.0),
+                        "carbon_cost_gbp_per_mwh": float(raw.get("carbon_price", 0.0) or 0.0),
+                        "unit_time_cost_gbp_per_mwh": float(raw.get("unit_time_cost", 0.0) or 0.0),
+                    }
+                    for name, raw in config.generators.items()
+                }
                 batteries = {name: Battery(**raw) for name, raw in config.batteries.items()}
                 state_coupling = self._apply_state(fleet_generators, batteries, model_input)
                 self._restore_previous_observations(batteries, model_input)
@@ -783,6 +833,24 @@ class SchemeCNativePSM:
             named.market_income_gbp_by_agent,
             state_coupling,
         )
+        cashflow = self._agent_cashflow(
+            generation, generator_cost_components, state_coupling, model_input,
+        )
+        # P0-7 S6 (P5-01, C20): the surplus left after the existing fleet
+        # charged, read through the rule set's declared column semantics. Only
+        # the corrected rule set declares it (excess and curtailment are
+        # disjoint there); the doctoral rule set publishes nothing (Q1).
+        semantics = column_semantics(market_rules)
+        headroom_extension = {}
+        if semantics.get("leftover_relationship") == "excess_plus_curtailed_disjoint":
+            headroom_extension[HEADROOM_INPUTS_KEY] = headroom_inputs(
+                [
+                    float(excess) * period_hours + float(row.curtailed_mwh)
+                    for excess, row in zip(named.excess_electricity_mwh_by_period, summaries)
+                ],
+                basis="excess_plus_curtailed_disjoint",
+                psm_module_id=self.id,
+            )
         self._invocations.append(model_input.year)
         return MarketYearResult(
             result_id=f"{model_input.run_id}:market:{model_input.year}",
@@ -824,6 +892,9 @@ class SchemeCNativePSM:
                     model_input.chronology.extensions.get("vre_expansion_headroom_mw_by_technology") or {}
                 ),
                 "physical_operating_cost_detail_gbp": operating_detail,
+                agent_cashflow.EXTENSION_KEY: cashflow,
+                CAPITAL_COST_COMPONENTS_KEY: capital_cost_components(model_input.operating_state.assets),
+                **headroom_extension,
                 "market_settlement_components_gbp": settlement,
                 "market_rule_diagnostics": self._rule_diagnostics(realisation_log, market_rules, period_hours),
                 "market_rule_set": market_rule_set_record(

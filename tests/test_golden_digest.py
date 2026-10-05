@@ -458,6 +458,9 @@ class GoldenReviseWorkflowTests(unittest.TestCase):
         for family in ("doctoral", "corrected"):
             shutil.copytree(ROOT / "tests" / "golden" / family, self.golden_dir / family)
         self.reports = self.golden_dir / "reports"
+        # Real doctoral re-baselines (e.g. P0-7 A4 on D4) carry their reports.
+        if (ROOT / "tests" / "golden" / "reports").is_dir():
+            shutil.copytree(ROOT / "tests" / "golden" / "reports", self.reports)
         for name, value in (("GOLDEN_DIR", self.golden_dir), ("REPORT_DIR", self.reports)):
             patcher = mock.patch.object(self.capture, name, value)
             patcher.start()

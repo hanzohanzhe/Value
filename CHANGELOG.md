@@ -144,6 +144,28 @@
 - API additions: `worker_liveness`, `worker`, `cancel_requested_at`,
   `persisted_status`; `worker.json` v2.
 
+### Investment decisions, storage headroom and cost ledger (P0-7)
+
+- Thermal investment net revenue restored in both profiles (decision A4,
+  `p07.thermal-net-revenue`): gas and biomass net generated MWh x (generation
+  + fuel + carbon + unit-time cost) from their income; VRE and storage keep
+  gross revenue as profit. A CCGT paid exactly its marginal cost no longer
+  expands (HEAD built 10.95 MW per 100 MW). PSMs publish
+  `value.agent-cashflow/v1`; agent-investment 3.0.0 fails closed for a
+  thermal group without it. The doctoral two-year golden (D4) was
+  re-baselined once with a numeric report.
+- Corrected profile: storage headroom from the post-charge surplus (P5-01;
+  it was always zero) with a full-year guard, and one shared power-battery
+  pool (P5-02; the cap was counted three times). value-storage-expansion-policy
+  5.0.0. The doctoral profile keeps both 0.6.0-alpha.2 behaviours.
+- Cost ledger v2: VRE and storage fixed OPEX is a memo, not part of the
+  headline (decision A7, both profiles); the corrected headline excludes the
+  run-of-river hydro compatibility capital (P4-03), shown as a memo row on the
+  Runs page. Perfect foresight books thermal FOM from `annual_fixed_opex_gbp`
+  (the key it read never existed).
+- Investment decisions stay undiscounted in constant base-year money (decision
+  A6, P4-02 out of scope); see `docs/methodology/drafts/0.4/p07_investment.md`.
+
 ### Default PSM clearing and storage dispatch (P0-6)
 
 - `value-bid-at-cost-psm` 6.0.0 runs one of two market rule sets derived from

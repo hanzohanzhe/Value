@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from ...methodology import methodology_scoped
-from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
+from ... import agent_cashflow
+from ...asset_economics import (
+    CAPITAL_COST_COMPONENTS_KEY,
+    capital_cost_components,
+    primary_annual_asset_costs,
+    validate_asset_economics,
+)
 from ...comparison_eligibility import build_psm_comparison_input_evidence
 from ...market_ledger import (
     BoundaryPeriodLedgerRow,
@@ -342,6 +348,26 @@ def runtime_fallback_audit(
         "assets": assets,
         "spatially_indicative": any(row["spatially_indicative"] for row in technologies),
     }
+
+
+def _staged_agent_cashflow(module_id, generation, resources, base_by_asset, assets) -> dict[str, object]:
+    """``value.agent-cashflow/v1`` (P0-7, decision A4) from the staged resource offers.
+
+    The staged PSM prices every resource at one total running cost per MWh
+    (generation + fuel + carbon + unit_time, ``marginal_cost_gbp_per_mwh``);
+    a base asset split over zones keeps that cost only when every split
+    agrees, otherwise it gets no row (a thermal asset then fails closed in
+    ``agent-investment``).
+    """
+    costs: dict[str, set[float]] = defaultdict(set)
+    for resource in resources:
+        costs[str(base_by_asset.get(resource.asset_id, resource.asset_id))].add(
+            float(resource.marginal_cost_gbp_per_mwh))
+    unit_cost = {asset_id: next(iter(values)) for asset_id, values in costs.items() if len(values) == 1}
+    technology = {asset.asset_id: asset.technology for asset in assets}
+    basis = "staged_resource_marginal_cost_total"
+    rows = agent_cashflow.unit_cost_cashflow(generation, unit_cost, technology, cost_basis=basis)
+    return agent_cashflow.extension(rows, psm_module_id=module_id, cost_basis=basis)
 
 
 def _owner_id(resource: object) -> str:
@@ -2955,6 +2981,11 @@ class StagedBidAtCostPSM:
                 "storage_cost_observations": storage_reports,
                 "final_storage_soc_mwh_by_asset": last_soc_by_base,
                 "actual_storage_discharge_mwh_by_asset": dict(actual_storage_discharge),
+                CAPITAL_COST_COMPONENTS_KEY: capital_cost_components(model_input.operating_state.assets),
+                agent_cashflow.EXTENSION_KEY: _staged_agent_cashflow(
+                    self.id, generation, chronology.resources, base_by_asset,
+                    model_input.operating_state.assets,
+                ),
                 "national_settlement_gbp_by_owner": dict(national_settlement),
                 "redispatch_settlement_gbp_by_owner": dict(redispatch_settlement),
                 "market_income_identity": "economic_owner",

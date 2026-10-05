@@ -203,7 +203,7 @@ class SchemeCNetRevenueTest(unittest.TestCase):
 class SingleOperatingCostSourceTest(unittest.TestCase):
     """A4_OPERATING_COST_RULE: the A4 path refuses a recorded annual_operational_cost_gbp (round 3)."""
 
-    ROW = {"technology": "CCGT", "electricity_income_gbp": 1e6, "hydrogen_income_gbp": 0.0,
+    ROW = {"technology": "CCGT",
            "generated_mwh": 1e4, "generation_cost_gbp_per_mwh": 0.0, "fuel_cost_gbp_per_mwh": 35.0,
            "carbon_cost_gbp_per_mwh": 22.0, "unit_time_cost_gbp_per_mwh": 3.0}
 
@@ -219,7 +219,7 @@ class SingleOperatingCostSourceTest(unittest.TestCase):
                     self._groups(extensions), lambda technology: "explicit_uncapped", {"a": self.ROW})
                 self.assertEqual(rows["a"]["net_revenue_gbp"], 1e6 - 1e4 * 60.0)
         # A member row without extensions (plain data) is accepted too.
-        groups = [{"owner": "o", "technology": "CCGT", "region": "GB", "members": [{"asset_id": "a"}]}]
+        groups = [{"owner": "o", "technology": "CCGT", "region": "GB", "members": [{"asset_id": "a", "income_gbp": 1e6}]}]
         self.assertIn("a", ia.a4_net_revenue_for_decidable_groups(
             groups, lambda technology: "explicit_uncapped", {"a": self.ROW}))
 

@@ -18,12 +18,21 @@ from ...asset_economics import (
     resize_asset_economics,
     validate_asset_economics,
 )
+from ...agent_cashflow import EXTENSION_KEY as AGENT_CASHFLOW_KEY, cost_rows_for_a4
 from ...cem_identity import cem_identity_summary
+from ...investment_accounts import (
+    A4_NET_NOISE_RTOL,
+    GROSS_PROFIT_TECHNOLOGIES,
+    MONEY_BASIS,
+    a4_net_revenue_for_decidable_groups,
+    allocate_capped_requests,
+)
 from ...cem_investment_policy import (
     investment_mode,
     missing_site_evidence,
     policy_summary,
 )
+from .storage_headroom import corrected_storage_headroom, headroom_pools
 from ...v2.contracts import (
     AssetStateV2,
     ExpansionHeadroom,
@@ -48,6 +57,31 @@ class _NativeDefinition:
     execution_kind = "live_module"
 
 
+def run_methodology(run: ResolvedRun):
+    """The methodology of ``run``: the active one inside a run, else the run's declared profile.
+
+    Mirrors ``methodology.methodology_scoped`` for module calls made outside
+    ``run_project_application`` (unit tests, tools): an absent profile is the
+    default (corrected) profile.
+    """
+    from ...methodology import (
+        PROFILE_PARAMETER,
+        MethodologyMismatchError,
+        active_methodology,
+        resolve_methodology,
+    )
+
+    declared = run.scientific_parameters.get(PROFILE_PARAMETER)
+    declared = str(declared) if declared else None
+    current = active_methodology()
+    if current is not None:
+        if declared is not None and declared != current.profile_id:
+            raise MethodologyMismatchError(
+                f"run {run.run_id} declares methodology {declared} inside an active {current.profile_id} run")
+        return current
+    return resolve_methodology(declared)
+
+
 class _ExpansionDefinition(_NativeDefinition):
     def evaluate(self, run: ResolvedRun, state: OperatingState, market: MarketYearResult) -> ExpansionHeadroom:
         if self.id == "vre-expansion-cap":
@@ -58,6 +92,29 @@ class _ExpansionDefinition(_NativeDefinition):
                 for key, value in dict(raw).items()
             }
             evidence = {"cap_fraction": fraction, "native_typed_execution": 1.0}
+        elif run_methodology(run).enabled("p07.storage-leftover-headroom"):
+            # P0-7 S6/S7 (P5-01, P5-02; value-corrected only): post-charge
+            # leftover surplus, full-year guard, one power-battery pool, no
+            # kernel global rebound.  The doctoral profile keeps the branch below.
+            existing: defaultdict[str, float] = defaultdict(float)
+            for asset in state.assets:
+                if asset.capacity_mw > 0 and asset.status != "retired":
+                    existing[asset.technology] += float(asset.capacity_mw)
+            limits, evidence, extensions = corrected_storage_headroom(
+                tuple(market.period_summaries),
+                market.extensions,
+                cap_fraction=float(run.scientific_parameters.get("expansion.storage_cap_fraction", 0.20)),
+                period_hours=float(run.scientific_parameters.get("clock.period_hours", 0.5)),
+                pooled=run_methodology(run).enabled("p07.power-battery-pool"),
+                existing_mw_by_technology={
+                    tech: value for tech, value in existing.items()
+                    if tech in {"0.25c_battery", "0.5c_battery", "1c_battery", "hydrogen_battery", "pumped_hydro"}
+                },
+            )
+            return ExpansionHeadroom(
+                f"{run.run_id}:{self.id}:{market.year}", market.year, self.id,
+                dict(limits), evidence=evidence, extensions=extensions,
+            )
         else:
             # The copied aligned-utilisation calculation operates on the typed
             # period summaries emitted by the selected PSM, never on live files.
@@ -104,11 +161,11 @@ class SchemeCVREExpansionPolicyDefinition(_ExpansionDefinition):
 
 
 class SchemeCStorageExpansionPolicyDefinition(_ExpansionDefinition):
-    id, version = "storage-expansion-scheme-c", "4.0.0"
+    id, version = "storage-expansion-scheme-c", "5.0.0"
 
 
 class SchemeCAgentInvestmentDefinition(_NativeDefinition):
-    id, version = "agent-investment", "2.2.0"
+    id, version = "agent-investment", "3.0.0"
 
     def decide(self, run: ResolvedRun, state: OperatingState, market: MarketYearResult, headroom: Sequence[ExpansionHeadroom]) -> InvestmentDecision:
         caps: dict[str, float] = {}
@@ -117,88 +174,21 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 value = max(0.0, float(value))
                 caps[technology] = min(caps.get(technology, value), value)
         remaining_caps = dict(caps)
+        # P0-7 S4, decision A4 (universal p07.thermal-net-revenue, both
+        # profiles): thermal net revenue = income - generated MWh x gen_cost
+        # from the PSM's agent cashflow; VRE and storage keep gross = profit.
+        a4_costs = cost_rows_for_a4(market.extensions)
+        a4_operating: dict[str, float] = {}
+        methodology = run_methodology(run)
+        pools = headroom_pools(headroom, pooled=methodology.enabled("p07.power-battery-pool"))
+        pooled_technologies = {tech for spec in pools.values() for tech in spec["technologies"]}
+        pending: list[dict[str, object]] = []
+        pool_record: dict[str, object] = {}
         proposals: list[InvestmentProposal] = []
-        retirements: dict[str, float] = {}
-        grouped: dict[tuple[str, str, str], list[AssetStateV2]] = defaultdict(list)
-        ineligible_assets: list[dict[str, str]] = []
-        for asset in state.assets:
-            if asset.capacity_mw <= 0 or asset.status == "retired":
-                continue
-            extensions = dict(asset.extensions)
-            owner = str(
-                extensions.get("investment_owner_id")
-                or extensions.get("source_agent_id")
-                or ("" if asset.asset_id.startswith("commissioned:") else asset.asset_id)
-            )
-            if not owner or extensions.get("investment_eligible") is False:
-                ineligible_assets.append({"asset_id": asset.asset_id, "reason": "no_investment_owner"})
-                continue
-            grouped[(owner, asset.technology, asset.region or "GB")].append(asset)
 
-        ineligible_groups: list[dict[str, str]] = []
-        for index, ((owner, technology, region), members) in enumerate(sorted(grouped.items())):
-            mode = investment_mode(technology)
-            if mode in {"denied", "site_data_required"}:
-                ineligible_groups.append({
-                    "investment_owner_id": owner,
-                    "technology": technology,
-                    "reason": mode,
-                })
-                continue
-            capacity = sum(float(asset.capacity_mw) for asset in members)
-            income = sum(
-                float(market.market_income_gbp_by_agent.get(asset.asset_id, 0.0) or 0.0)
-                for asset in members
-            )
-            operational = sum(
-                float(asset.extensions.get("annual_operational_cost_gbp", 0.0) or 0.0)
-                for asset in members
-            )
-            net = income - operational
-            replacement = sum(
-                float(asset.extensions.get("total_capex_gbp", 0.0) or 0.0)
-                for asset in members
-            )
-            cost_per_mw = replacement / capacity if capacity > 0 else 0.0
-            roi = net / replacement if replacement > 0 else 0.0
-            preferred = max(
-                float(asset.extensions.get("preferred_rate", 0.08) or 0.08)
-                for asset in members
-            )
-            life = min(
-                float(asset.extensions.get("economic_lifetime_years", 25.0) or 25.0)
-                for asset in members
-            )
-            target_payback = float(
-                min(
-                    float(asset.extensions.get("target_payback_years", life) or life)
-                    for asset in members
-                )
-            )
-            payback = replacement / net if net > 0 else math.inf
-            if net < 0 and cost_per_mw > 0:
-                requested_retirement = min(capacity, abs(net) * target_payback / cost_per_mw)
-                for asset in members:
-                    retirements[asset.asset_id] = requested_retirement * asset.capacity_mw / capacity
-                continue
-            recommendation = (
-                "Invest_High" if roi > preferred
-                else "Invest_Profit" if payback <= target_payback
-                else "Do_Nothing"
-            )
-            if cost_per_mw <= 0 or recommendation == "Do_Nothing":
-                continue
-            requested = net / cost_per_mw
-            allowed = (
-                remaining_caps.get(technology, 0.0)
-                if mode == "headroom_required"
-                else requested
-            )
-            addition = min(max(requested, 0.0), max(allowed, 0.0))
-            if addition <= 0:
-                continue
-            if mode == "headroom_required":
-                remaining_caps[technology] = max(0.0, allowed - addition)
+        def propose(index, owner, technology, region, members, capacity, cost_per_mw, life,
+                    preferred, target_payback, recommendation, mode, roi, payback, addition):
+            """One proposal; arithmetic identical to the HEAD loop body (35aadb3)."""
             proposal_id = f"{run.run_id}:{market.year}:{owner}:{index}"
             duration = (
                 sum(float(asset.energy_capacity_mwh or 0.0) for asset in members) / capacity
@@ -242,7 +232,7 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 "investment_owner_id": owner,
                 "investment_eligibility_mode": mode,
             })
-            proposals.append(InvestmentProposal(
+            return InvestmentProposal(
                 proposal_id,
                 market.year,
                 owner,
@@ -260,7 +250,152 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                     "recommendation_code": 3.0 if recommendation == "Invest_High" else 2.0,
                 },
                 extensions=project_extensions,
+            )
+
+        retirements: dict[str, float] = {}
+        grouped: dict[tuple[str, str, str], list[AssetStateV2]] = defaultdict(list)
+        ineligible_assets: list[dict[str, str]] = []
+        for asset in state.assets:
+            if asset.capacity_mw <= 0 or asset.status == "retired":
+                continue
+            extensions = dict(asset.extensions)
+            owner = str(
+                extensions.get("investment_owner_id")
+                or extensions.get("source_agent_id")
+                or ("" if asset.asset_id.startswith("commissioned:") else asset.asset_id)
+            )
+            if not owner or extensions.get("investment_eligible") is False:
+                ineligible_assets.append({"asset_id": asset.asset_id, "reason": "no_investment_owner"})
+                continue
+            grouped[(owner, asset.technology, asset.region or "GB")].append(asset)
+
+        ineligible_groups: list[dict[str, str]] = []
+        for index, ((owner, technology, region), members) in enumerate(sorted(grouped.items())):
+            mode = investment_mode(technology)
+            if mode in {"denied", "site_data_required"}:
+                ineligible_groups.append({
+                    "investment_owner_id": owner,
+                    "technology": technology,
+                    "reason": mode,
+                })
+                continue
+            capacity = sum(float(asset.capacity_mw) for asset in members)
+            income = sum(
+                float(market.market_income_gbp_by_agent.get(asset.asset_id, 0.0) or 0.0)
+                for asset in members
+            )
+            if a4_costs is None and technology not in GROSS_PROFIT_TECHNOLOGIES:
+                raise ValueError(
+                    f"PSM {market.module_id} publishes no {AGENT_CASHFLOW_KEY}; the A4 thermal net revenue of "
+                    f"{technology} (owner {owner}) needs its generated MWh and running cost"
+                )
+            a4 = a4_net_revenue_for_decidable_groups(
+                [{"technology": technology, "members": [
+                    {
+                        "asset_id": asset.asset_id,
+                        "income_gbp": float(market.market_income_gbp_by_agent.get(asset.asset_id, 0.0) or 0.0),
+                        "extensions": asset.extensions,
+                    }
+                    for asset in members
+                ]}],
+                investment_mode,
+                a4_costs or {},
+            )
+            operational = sum(float(a4[asset.asset_id]["operating_cost_gbp"]) for asset in members)
+            net = income - operational
+            if technology not in GROSS_PROFIT_TECHNOLOGIES:
+                a4_operating[f"{owner}|{technology}|{region}"] = operational
+                # A bid-at-cost thermal unit is paid its running cost: the
+                # difference of two sums of the same flows is rounding, not a
+                # loss (it would retire ~1e-12 MW). Snap it to zero.
+                if abs(net) <= A4_NET_NOISE_RTOL * max(abs(income), operational):
+                    net = 0.0
+            replacement = sum(
+                float(asset.extensions.get("total_capex_gbp", 0.0) or 0.0)
+                for asset in members
+            )
+            cost_per_mw = replacement / capacity if capacity > 0 else 0.0
+            roi = net / replacement if replacement > 0 else 0.0
+            preferred = max(
+                float(asset.extensions.get("preferred_rate", 0.08) or 0.08)
+                for asset in members
+            )
+            life = min(
+                float(asset.extensions.get("economic_lifetime_years", 25.0) or 25.0)
+                for asset in members
+            )
+            target_payback = float(
+                min(
+                    float(asset.extensions.get("target_payback_years", life) or life)
+                    for asset in members
+                )
+            )
+            payback = replacement / net if net > 0 else math.inf
+            if net < 0 and cost_per_mw > 0:
+                requested_retirement = min(capacity, abs(net) * target_payback / cost_per_mw)
+                for asset in members:
+                    retirements[asset.asset_id] = requested_retirement * asset.capacity_mw / capacity
+                continue
+            recommendation = (
+                "Invest_High" if roi > preferred
+                else "Invest_Profit" if payback <= target_payback
+                else "Do_Nothing"
+            )
+            if cost_per_mw <= 0 or recommendation == "Do_Nothing":
+                continue
+            requested = net / cost_per_mw
+            if mode == "headroom_required" and technology in pooled_technologies:
+                # P0-7 S7 (P5-02, corrected): collected, then scaled to the
+                # technology caps and the shared power-battery pool together.
+                pending.append({
+                    "args": (index, owner, technology, region, members, capacity, cost_per_mw, life,
+                             preferred, target_payback, recommendation, mode, roi, payback),
+                    "requested": requested,
+                })
+                continue
+            allowed = (
+                remaining_caps.get(technology, 0.0)
+                if mode == "headroom_required"
+                else requested
+            )
+            addition = min(max(requested, 0.0), max(allowed, 0.0))
+            if addition <= 0:
+                continue
+            if mode == "headroom_required":
+                remaining_caps[technology] = max(0.0, allowed - addition)
+            proposals.append(propose(
+                index, owner, technology, region, members, capacity, cost_per_mw, life,
+                preferred, target_payback, recommendation, mode, roi, payback, addition,
             ))
+        if pending:
+            requests = [
+                {"request_id": str(row["args"][0]), "technology": row["args"][2],
+                 "requested_mw": max(float(row["requested"]), 0.0)}
+                for row in pending
+            ]
+            allocation = allocate_capped_requests(
+                requests,
+                technology_caps={tech: caps.get(tech, 0.0) for tech in pooled_technologies},
+                pools=pools,
+            )
+            accepted = allocation["accepted_mw"]
+            for row in pending:
+                addition = accepted[str(row["args"][0])]
+                if addition > 0:
+                    proposals.append(propose(*row["args"], addition))
+            for tech in pooled_technologies:
+                used = math.fsum(accepted[str(row["args"][0])] for row in pending if row["args"][2] == tech)
+                remaining_caps[tech] = max(0.0, caps.get(tech, 0.0) - used)
+            proposals.sort(key=lambda proposal: int(proposal.proposal_id.rsplit(":", 1)[1]))
+            pool_record = {
+                "pools": {key: {"cap_mw": spec["cap_mw"], "technologies": list(spec["technologies"])}
+                          for key, spec in pools.items()},
+                "requested_mw": {row["request_id"]: row["requested_mw"] for row in requests},
+                "accepted_mw": dict(accepted),
+                "technology_scale": dict(allocation["technology_scale"]),
+                "pool_scale": dict(allocation["pool_scale"]),
+                "rule": "requests collected first, scaled to each technology cap, then to the shared pool (P5-02)",
+            }
         return InvestmentDecision(
             f"{run.run_id}:investment:{market.year}", market.year, self.id,
             tuple(proposals), retirements,
@@ -273,6 +408,13 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 "ineligible_groups": ineligible_groups,
                 "initial_headroom_mw_by_technology": caps,
                 "remaining_headroom_mw_by_technology": remaining_caps,
+                **({"power_battery_pool": pool_record} if pool_record else {}),
+                "a4_net_revenue": {
+                    "rule": "thermal: income - generated MWh x (generation + fuel + carbon + unit_time); "
+                            "VRE and storage: gross income (DECISIONS A4, A7)",
+                    "money_basis": MONEY_BASIS,
+                    "thermal_operating_cost_gbp_by_group": a4_operating,
+                },
             },
         )
 
