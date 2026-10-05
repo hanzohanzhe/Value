@@ -208,6 +208,15 @@ def validate_vre_curtailment_attribution(
     }
 
 
+def _runtime_fallback_summary(market_dir: Path) -> dict[str, object] | None:
+    from .zonal_results import query_runtime_fallback_audit
+
+    try:
+        return query_runtime_fallback_audit(market_dir)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return {"schema_version": "value.zonal-runtime-fallback-summary/v1", "status": "invalid", "error": str(exc)}
+
+
 def build_run_summary(run_root: Path) -> dict[str, object]:
     status = _read(run_root / "status.json", {})
     if not isinstance(status, Mapping):
@@ -307,6 +316,9 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
             if isinstance(curtailment_attribution, Mapping)
             else None
         ),
+        # P0-8 S12: share of each technology placed in a fallback zone;
+        # None when the Run is not zonal or predates the audit.
+        "zonal_runtime_fallback": _runtime_fallback_summary(output / "market"),
         "terminal": {
             key: terminal.get(key) for key in (
                 "terminal_policy", "outstanding_project_count", "outstanding_capacity_mw",

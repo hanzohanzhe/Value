@@ -539,6 +539,32 @@ def _load_zonal_network_pack(
     return pack, report
 
 
+def pack_fallback_assets(pack: ZonalNetworkPack) -> dict[str, object]:
+    """Assets the pack itself places in an unconstrained fallback zone (P2-13).
+
+    Read-only preflight evidence; the run-time audit
+    (``staged_psm.runtime_fallback_audit``) must report the same assets with
+    allocation source ``pack_mapping``.
+    """
+
+    fallback = sorted(zone.zone_id for zone in pack.zones if zone.is_unconstrained_fallback)
+    rows = sorted(
+        (
+            {
+                "asset_id": mapping.asset_id,
+                "technology": mapping.technology,
+                "zone_id": mapping.zone_id,
+                "share": float(mapping.share),
+                "mapping_method": mapping.mapping_method,
+            }
+            for mapping in pack.asset_mappings
+            if mapping.zone_id in fallback and mapping.asset_class != "demand"
+        ),
+        key=lambda row: (str(row["technology"]), str(row["asset_id"])),
+    )
+    return {"fallback_zone_ids": fallback, "assets": rows}
+
+
 # --------------------------------------------------------------------------
 # Cut-set classification (P0-8 S11, findings P1-05 / P2-15)
 # --------------------------------------------------------------------------

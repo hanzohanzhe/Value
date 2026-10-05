@@ -66,6 +66,42 @@ V3_LOCK_DEFECT = {
 }
 
 
+def query_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
+    """Read the per-year run-time fallback audits written beside the ledger.
+
+    ``None`` when the Run wrote none (copperplate, or a ledger from before
+    P0-8 S12; status ``not_recorded`` is for the caller to show).
+    """
+
+    paths = sorted(Path(market_dir).glob("runtime-fallback-audit-*.json"))
+    if not paths:
+        return None
+    years = []
+    for path in paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, Mapping) or payload.get("schema_version") != "value.zonal-runtime-fallback-audit/v1":
+            raise ValueError(f"Invalid runtime fallback audit: {path.name}")
+        years.append(dict(payload))
+    indicative = [
+        {
+            "year": int(year["year"]),
+            "technology": str(row["technology"]),
+            "fallback_fraction": float(row["fallback_fraction"]),
+            "fallback_mw": float(row["fallback_mw"]),
+            "fallback_zone_ids": list(year.get("fallback_zone_ids") or []),
+        }
+        for year in years
+        for row in year.get("by_technology", ())
+        if row.get("spatially_indicative")
+    ]
+    return {
+        "schema_version": "value.zonal-runtime-fallback-summary/v1",
+        "years": years,
+        "spatially_indicative": bool(indicative),
+        "spatially_indicative_technologies": indicative,
+    }
+
+
 def is_reportable_shedding(value: object) -> bool:
     """True when a load-shedding quantity is above the reporting threshold."""
 
@@ -554,6 +590,7 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
         "reliability_semantics": "observed_chronology_not_statistical_lole",
         "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
         "known_defects": known_defects,
+        "runtime_fallback_audit": query_runtime_fallback_audit(Path(database).parent),
         "security_scope": "not_a_security_analysis",
         "unsupported_scope": [
             "AC_power_flow", "voltage_security", "contingency_security", "dynamic_stability"

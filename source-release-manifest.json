@@ -1341,6 +1341,7 @@
     "tests/test_p08_cutset_classification.py",
     "tests/test_p08_network_shares.py",
     "tests/test_p08_reliability_reporting.py",
+    "tests/test_p08_runtime_fallback_audit.py",
     "tests/test_p08_solver_contract_upgrade.py",
     "tests/test_p08_zonal_solver_v4.py",
     "tests/test_p0_5_baseline.py",
@@ -3077,8 +3078,8 @@
     },
     {
       "path": "app/features/network/networkRedispatch.ts",
-      "sha256": "7409b7ba0e2d5278f2a070d42ace0bad395f941c6a7186f2073aeef82566e954",
-      "bytes": 19381,
+      "sha256": "009fb764a0054f41834c988f7f4c6b37a9f84bd9152393eb0442e24f82c18394",
+      "bytes": 20234,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6821,8 +6822,8 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/staged_psm.py",
-      "sha256": "5755f802309db6427c9e51ca6b7f0261e72d65cf135ff2e195a60131f2912bf2",
-      "bytes": 131607,
+      "sha256": "684b59d7996969440822c3aab4b85dd7030a92492194c039836f6e085444920a",
+      "bytes": 137505,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7388,8 +7389,8 @@
     },
     {
       "path": "gridform_core/domain_readiness.py",
-      "sha256": "c52097bc72073233c20d002a839fddf559091005f25a027b6acfa0eeb4f259a4",
-      "bytes": 28564,
+      "sha256": "ba5470dbc1e6fb8cefdcb416e078b786c86cfc21ecc6df394dcb707feccaeff6",
+      "bytes": 28825,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7844,9 +7845,9 @@
     },
     {
       "path": "gridform_core/results_summary.py",
-      "sha256": "c1e4dcba4425e2312c133043d2be83180617c6021a23918aebb3c2e9ef776a4e",
-      "bytes": 28924,
-      "transform": "byte copy"
+      "sha256": "33d1a2e0a4284409abfa5c68b327a2b2d130835eca6146587973f45c4a29fe98",
+      "bytes": 29536,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/run_bundle.py",
@@ -8066,8 +8067,8 @@
     },
     {
       "path": "gridform_core/zonal_contracts.py",
-      "sha256": "fe3dc305276a20d13abed68e767bb01e71ea323cce3f4fe08d7af82df341d509",
-      "bytes": 34260,
+      "sha256": "1428192ea7bee736f22b769b4af9c8860615bfad78b2d18d88ee4e92d4d04e72",
+      "bytes": 35288,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8090,8 +8091,8 @@
     },
     {
       "path": "gridform_core/zonal_results.py",
-      "sha256": "1ec39996761b31a73dd1cf4ff70dc695773605f347cb89c4ba563ad4c8cc9fa0",
-      "bytes": 56645,
+      "sha256": "15648a225757581a64e800309c73069d8ad6a4d6fff7dcbee96b3a57175273e2",
+      "bytes": 58194,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9876,8 +9877,8 @@
     },
     {
       "path": "tests/golden/corrected/C8.json",
-      "sha256": "42d0cb81eab54e696203b9ac6b5320c931a80124cae58c03cdc6f7d01b2a1187",
-      "bytes": 704811,
+      "sha256": "212b8ede8e3c78297173556de1967066cd9947273194798856c8539505bb0f4c",
+      "bytes": 1052006,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9996,8 +9997,8 @@
     },
     {
       "path": "tests/golden/zones.json",
-      "sha256": "08a1e9011195f81d6b1394d858ee6bf5d2875ece25389250b9872eab31b674b5",
-      "bytes": 12959,
+      "sha256": "0b5173057c731007227176f51bf98c92e7f169d929e94208d7fe2ae5bf0749ec",
+      "bytes": 13214,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10742,6 +10743,12 @@
       "path": "tests/test_p08_reliability_reporting.py",
       "sha256": "5083c21a9ada4fc2e662be8a7f04d81721a265e2e8b2244bdd82873679881446",
       "bytes": 3473,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p08_runtime_fallback_audit.py",
+      "sha256": "b08ffaad98028bf7b482a7ec45ef72bae7a60a4df114bccf9786f40bf1b3af86",
+      "bytes": 6115,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

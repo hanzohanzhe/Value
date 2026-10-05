@@ -238,6 +238,11 @@
    "why": "index metadata"
   },
   {
+   "pattern": "market/runtime-fallback-audit-*.json::*",
+   "zone": "accounting",
+   "why": "P0-8 S12 (P2-13, plan OQ-7): run-time fallback audit is a derived audit table of capacity placed in unconstrained fallback zones; dispatch is unchanged"
+  },
+  {
    "pattern": "ledgers/*",
    "zone": "accounting",
    "why": "cost and carbon ledgers"

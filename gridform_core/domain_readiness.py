@@ -25,6 +25,7 @@ from .zonal_contracts import (
     ZonalNetworkPack,
     ZonalTopologyError,
     audit_zonal_network_topology,
+    pack_fallback_assets,
     load_zonal_network_pack,
 )
 
@@ -484,6 +485,9 @@ def build_domain_readiness(
             zonal, topology = audit_zonal_network_topology(zonal_root, zonal_manifest)
             sections["zonal_network"] = summarise_zonal_network_pack(zonal)
             sections["zonal_network"]["cutset_classification"] = dict(topology["counts"])
+            # Preflight side of the P0-8 S12 fallback audit: the assets the
+            # pack itself places in an unconstrained fallback zone.
+            sections["zonal_network"]["fallback_assets"] = pack_fallback_assets(zonal)
             if topology["error_count"]:
                 # Same rule as the enforcing loaders of preflight and runs.
                 raise ZonalTopologyError(topology)

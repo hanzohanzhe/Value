@@ -305,6 +305,21 @@ export type ZonalKnownDefect = {
   evidence_rows?: number;
 };
 
+/** P0-8 S12 run-time fallback audit (one row per technology and year). */
+export type ZonalRuntimeFallbackSummary = {
+  schema_version: string;
+  years: {
+    year: number;
+    fallback_zone_ids: string[];
+    threshold_fraction: number;
+    spatially_indicative: boolean;
+    by_technology: { technology: string; capacity_mw: number; fallback_mw: number; fallback_fraction: number; runtime_unallocated_mw: number; spatially_indicative: boolean }[];
+    assets: { asset_id: string; technology: string; capacity_mw: number; fallback_mw: number; allocation_source: string }[];
+  }[];
+  spatially_indicative: boolean;
+  spatially_indicative_technologies: { year: number; technology: string; fallback_fraction: number; fallback_mw: number; fallback_zone_ids: string[] }[];
+};
+
 export type ZonalCapabilities = {
   trace_level: "off" | "summary" | "full";
   years: number[];
@@ -318,6 +333,7 @@ export type ZonalCapabilities = {
   reliability_semantics: string;
   load_shedding_reporting_threshold_mwh?: number;
   known_defects?: ZonalKnownDefect[];
+  runtime_fallback_audit?: ZonalRuntimeFallbackSummary | null;
   security_scope: string;
   unsupported_scope: string[];
   solver_validation_summary?: SolverValidationSummary | null;
