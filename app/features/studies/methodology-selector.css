@@ -1,0 +1,49 @@
+/* P0 frontend spec 7 (X0 S11/S12): Methodology choice, the code-identity line
+   and the migration confirmation dialog. New elements only; existing tokens
+   only; body text >= 13px, helper text >= 12px. */
+
+.methodology-selector { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 10px; min-width: 0; }
+.methodology-selector legend { padding: 0 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.methodology-selector label { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; }
+.methodology-selector label:has(input:checked) { border-color: var(--blue); background: var(--blue-soft); }
+.methodology-selector label:has(input:disabled) { cursor: not-allowed; color: var(--muted); }
+.methodology-selector label > span { display: grid; gap: 3px; min-width: 0; }
+.methodology-selector small { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
+/* The composer's form styles (.form-panel label > span, input boxes) do not apply to this group. */
+.form-panel .methodology-selector label > span { color: var(--ink); font-size: 13px; font-weight: 400; }
+.form-panel .methodology-selector label > span small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.methodology-selector input[type="radio"] { width: 16px; height: 16px; min-height: 0; margin: 2px 0 0; padding: 0; border: 0; box-shadow: none; }
+.methodology-selector input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.methodology-note { margin: 6px 0 0; color: var(--amber); font-size: 12px; line-height: 1.5; }
+.methodology-note p { margin: 0 0 4px; }
+
+.study-code-identity { display: block; margin-top: 4px; color: var(--blue); font-size: 12px; line-height: 1.4; }
+
+.study-migration-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.study-migration-dialog::backdrop { background: var(--navy); opacity: .45; }
+.study-migration-dialog h2 { margin: 0 0 6px; font-size: 17px; font-weight: 650; }
+.study-migration-dialog h2:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.study-migration-dialog p { margin: 0 0 10px; }
+.study-migration-study { color: var(--muted); font-size: 13px; }
+.study-migration-diff { display: grid; gap: 10px; margin: 0 0 12px; padding: 0 0 0 18px; }
+.study-migration-diff li { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.study-migration-change { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.study-migration-diff small { color: var(--muted); font-size: 12px; }
+.study-migration-error { color: var(--red); font-size: 13px; }
+.study-migration-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.study-migration-actions button { font-size: 13px; min-height: 34px; }
+.study-migration-actions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }

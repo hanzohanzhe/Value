@@ -3,10 +3,13 @@
 import ModuleAuthorWorkbench from "./features/modules/ModuleAuthorWorkbench";
 import ExtensionAuthorWorkbench from "./features/extensions/ExtensionAuthorWorkbench";
 import StudyComposer from "./features/studies/StudyComposer";
+import StudyMigrationDialog from "./features/studies/StudyMigrationDialog";
+import { applyProfileChoice, isMethodologyCatalogue, selectedProfileId, type MethodologyCatalogue } from "./features/studies/methodologyChoice.ts";
+import { migrationFromResponse, openingMigration, type RevisionMigration } from "./features/studies/studyMigration.ts";
 import AdvancedSettings from "./features/studies/AdvancedSettings";
 import { alignZonalSolverContract } from "./features/studies/solverContract";
 import RunWorkspace from "./features/runs/RunWorkspace";
-import AuditView from "./features/evidence/AuditView";
+import AuditView, { type AuditTab } from "./features/evidence/AuditView";
 import { Badge, formatBytes, formatNumber, modelDisplayName, withUnit } from "./features/shared/presentation";
 import { API_BASE, OFFLINE_AFTER_FAILURES, classifyRefreshFailure, getJson, pollDelay, serviceState } from "./features/shared/api";
 import "./features/shared/service-status.css";
@@ -382,7 +385,7 @@ export default function Home() {
   // status, and offline only after OFFLINE_AFTER_FAILURES consecutive failures.
   const [refreshFailures, setRefreshFailures] = useState(0);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
-  const [health, setHealth] = useState<{ status: string; degraded_reasons?: { code: string; count: number }[] } | null>(null);
+  const [health, setHealth] = useState<{ status: string; version?: string; degraded_reasons?: { code: string; count: number }[] } | null>(null);
   const [pollTick, setPollTick] = useState(0);
   const connectionState = serviceState(refreshFailures, health?.status, workspaceLoaded);
   const [selectedPackId, setSelectedPackId] = useState("value-uk-1000twh-reproduction");
@@ -413,6 +416,11 @@ export default function Home() {
   const [extensionLifecycle, setExtensionLifecycle] = useState("");
   const [launching, setLaunching] = useState("");
   const [replayTarget, setReplayTarget] = useState<ReplayTarget | null>(null);
+  const [inspectTarget, setInspectTarget] = useState<{ tab: AuditTab; nonce: number } | null>(null);
+  // Spec 7 / X0 S12: methodology catalogue for the Study composer, and the pending migration confirmation.
+  const [methodologyCatalogue, setMethodologyCatalogue] = useState<MethodologyCatalogue | null>(null);
+  const [methodologyError, setMethodologyError] = useState("");
+  const [migrationPrompt, setMigrationPrompt] = useState<{ projectId: string; studyName?: string; migration: RevisionMigration; nonce: number } | null>(null);
   const [preflightMode, setPreflightMode] = useState<RunMode>("smoke");
   const [storedPreflight, setPreflight] = useState<PreflightReport | null>(null);
   const [pendingPreflightKey, setPendingPreflightKey] = useState<string | null>(null);
@@ -483,7 +491,7 @@ export default function Home() {
       setOnline(true);
       setWorkspaceLoaded(true);
       setRefreshFailures(0);
-      void getJson<{ status: string; degraded_reasons?: { code: string; count: number }[] }>(`${API}/health`).then(setHealth).catch(() => setHealth(null));
+      void getJson<{ status: string; version?: string; degraded_reasons?: { code: string; count: number }[] }>(`${API}/health`).then(setHealth).catch(() => setHealth(null));
       setSelectedPackId((current) => next.data_packs.some((item) => item.id === current) ? current : (next.data_packs.find((item) => item.complete)?.id ?? next.data_packs[0]?.id ?? ""));
       const requestedRunId = pendingLocation.current?.runId;
       const requestedRun = next.runs.find((run) => run.id === requestedRunId);
@@ -516,6 +524,9 @@ export default function Home() {
       void refreshValue101Tutorial();
       void getJson<{ parameters: ParameterDefinition[] }>(`${API}/parameters`)
         .then((payload) => setDefinitions(payload.parameters)).catch(() => undefined);
+      void getJson<unknown>(`${API}/methodology/profiles`)
+        .then((payload) => { if (isMethodologyCatalogue(payload)) { setMethodologyCatalogue(payload); setMethodologyError(""); } else setMethodologyError("unexpected catalogue format"); })
+        .catch((reason: unknown) => setMethodologyError(reason instanceof Error ? reason.message : "catalogue unavailable"));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [refresh, refreshValue101Tutorial]);
@@ -766,6 +777,17 @@ export default function Home() {
     });
   }
 
+  function chooseMethodology(profileId: string) {
+    if (!methodologyCatalogue) return;
+    const next = applyProfileChoice({ parameters: parameterValues, modules: projectForm.modules }, profileId, methodologyCatalogue);
+    setParameterValues(next.parameters);
+    setProjectForm((current) => ({ ...current, modules: next.modules }));
+  }
+  /** Spec 7: a method or data change of the saved Study opens the confirmation dialog; nothing runs until it is confirmed. */
+  async function promptMigration(project: Project, migration: RevisionMigration) {
+    const opening = await openingMigration(API, project.id, migration);
+    setMigrationPrompt({ projectId: project.id, studyName: project.name, migration: opening, nonce: Date.now() });
+  }
   function selectStudyModule(slot: string, moduleId: string) {
     setProjectForm((current) => {
       const modules = { ...current.modules };
@@ -1194,6 +1216,13 @@ export default function Home() {
       const payload = await response.json();
       if (requestId !== preflightRequest.current) return;
       if (!response.ok) throw new Error(payload.error || "Preflight failed");
+      // Spec 7: a method or data change is reported against the declared revision; it opens the confirmation dialog.
+      const migration = migrationFromResponse(payload);
+      if (migration && payload.project_id === target.id && migration.declared_sha256 === target.revision_sha256) {
+        setNotice("The installed VALUE computes this Study differently from its saved revision. Review the changes before it runs.");
+        void promptMigration(target, migration);
+        return;
+      }
       if (!preflightMatches(payload, target, mode)) throw new Error("Preflight identity changed. Refresh the saved Study and check it again.");
       // Rendering also matches the current selection, so an old Study response cannot appear on a new one.
       setPreflight(payload);
@@ -1209,7 +1238,7 @@ export default function Home() {
     setLaunching(mode); setNotice("");
     try {
       const response = await fetch(`${API}/projects/${targetProject.id}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
-      const payload = await response.json(); if (!response.ok) { if (preflightMatches(payload.preflight, targetProject, mode)) { setPreflight(payload.preflight); } throw new Error(payload.error || "Unable to start the model"); }
+      const payload = await response.json(); if (!response.ok) { if (preflightMatches(payload.preflight, targetProject, mode)) { setPreflight(payload.preflight); } const migration = migrationFromResponse(payload); if (migration && migration.declared_sha256 === targetProject.revision_sha256) void promptMigration(targetProject, migration); throw new Error(payload.error || "Unable to start the model"); }
       setSelectedRunId(payload.run.id);
       setView("run");
       setNotice(mode === "smoke" ? "The two-period wiring verification has started." : mode === "two_year_smoke" ? "The two-year smoke verification has started." : mode === "value_101_day" ? "The one-day VALUE 101 PSM lesson has started." : mode === "two_year" ? "The complete two-year model has started." : "The complete annual model run has started.");
@@ -1302,9 +1331,12 @@ export default function Home() {
     </div></header>
     <ReadMePanel open={readMeOpen} onClose={() => setReadMeOpen(false)} />
     {view !== "overview" && <CommunityPathPicker activePath={activePath} onSelect={chooseCommunityPath} />}
-    {isRunView ? <RunContextBar run={selectedRun} frozen={{ runId: frozenRunSelectionId, status: frozenRunSelectionId === selectedRun?.id ? frozenRunProject ? "ready" : "unavailable" : "loading", project: frozenRunProject, snapshot: frozenInputSnapshot }} /> : view === "projects" && !editingProjectId ? <div className="workspace-study-context"><span>Independent Study draft</span><b>{projectForm.name}</b><small>Review and save to create a new Study.</small></div> : selectedProject && <div className="workspace-study-context"><span>Selected saved Study</span><b>{selectedProject.name}</b><span>revision {selectedProject.revision_number ?? "not recorded"}</span><small>Editing is saved as a new revision.</small></div>}
+    {isRunView ? <RunContextBar run={selectedRun} frozen={{ runId: frozenRunSelectionId, status: frozenRunSelectionId === selectedRun?.id ? frozenRunProject ? "ready" : "unavailable" : "loading", project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ onOpenInspect: (tab) => { setInspectTarget({ tab: tab ?? "planning", nonce: Date.now() }); setView("audit"); }, onShowStressEvents: () => setView("marketReplay") }} /> : view === "projects" && !editingProjectId ? <div className="workspace-study-context"><span>Independent Study draft</span><b>{projectForm.name}</b><small>Review and save to create a new Study.</small></div> : selectedProject && <div className="workspace-study-context"><span>Selected saved Study</span><b>{selectedProject.name}</b><span>revision {selectedProject.revision_number ?? "not recorded"}</span><small>Editing is saved as a new revision.</small></div>}
     {online && selectedRunId && isRunView && !selectedRun && <div className="notice" role="status">The requested Run is unavailable or belongs to another Study. Choose a Study and Run from Runs; no substitute result has been opened.</div>}
     {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>Close</button></div>}
+    {migrationPrompt && <StudyMigrationDialog key={migrationPrompt.nonce} projectId={migrationPrompt.projectId} studyName={migrationPrompt.studyName} migration={migrationPrompt.migration} version={health?.version} apiBase={API}
+      onCancel={() => { setMigrationPrompt(null); setNotice("The Study was not changed. It cannot run until the listed changes are confirmed."); }}
+      onSaved={(revisionNumber) => { setMigrationPrompt(null); setPreflight(null); setNotice(`Saved as a new revision${revisionNumber ? ` (revision ${revisionNumber})` : ""}. Check readiness again, then start the Run.`); void refresh(); }} />}
 
     <div hidden={view !== "journey"} className="page">
       <ResearchJourney intent={activePath === "data" ? "data" : "reproduce"} studies={workspace.projects} packs={workspace.data_packs}
@@ -1476,9 +1508,9 @@ export default function Home() {
       <div className="module-list">{workspace.modules.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((module, index) => <article className="module-card" key={module.id}><header><div className={`module-mark ${module.kind}`}>{String(index + 1).padStart(2, "0")}</div><div><span>{module.kind.toUpperCase()} · {module.slot.replaceAll("_", " ")} · {module.version}</span><h3>{modelDisplayName(module.name)}</h3></div><Badge tone={module.status === "ready" ? "good" : "warn"}>{module.origin === "local_bundle" ? `local · ${module.status}` : module.status}</Badge></header><p>{modelDisplayName(module.description)}</p><div className="module-id"><span>Implementation</span><code>{module.id}</code><small>Contract {module.contract_version ?? "not recorded"}</small></div>{module.id === "value-bid-at-cost-psm" && <div className="compatibility-note">Live module · bid-at-cost clearing through the v2 orchestrator</div>}<details className="io"><summary>Inputs and outputs</summary><div><span>Inputs</span>{module.inputs.map((input) => <code key={input}>{input}</code>)}</div><i>→</i><div><span>Outputs</span>{module.outputs.map((output) => <code key={output}>{output}</code>)}</div></details></article>)}</div>
     </div>}
 
-    {view === "projects" && <div className="page project-page"><div className="page-title"><div><span>Study setup</span><h2>Define the scientific question, then resolve the model</h2><p>The composer connects one data pack, physical domain, optional extensions, model chain and assumptions. Saving creates an immutable revision of exactly the graph shown in Review.</p></div><Badge tone={draftResolution?.valid ? "good" : "warn"}>{draftResolving ? "Resolving" : draftResolution?.valid ? "Draft ready" : "Draft incomplete"}</Badge></div><StudyComposer initialStep={composerInitialStep} apiOrigin={API_ORIGIN} workspace={workspace} form={projectForm} selectedPackId={selectedPack?.id ?? selectedPackId} resolution={draftResolution} resolving={draftResolving} resolutionError={draftResolutionError} savedProjects={workspace.projects} studyTrash={workspace.study_trash} selectedProjectId={selectedProjectId} assumptions={<><AdvancedSettings definitions={definitions} values={{ ...parameterValues, ...runtimeValues }} resolvedSources={resolvedSources} onChange={(id, value, runtime) => runtime ? setRuntimeValues((current) => ({ ...current, [id]: value })) : setParameterValues((current) => ({ ...current, [id]: value }))} /><button className="text-button full" onClick={() => void previewParameters()}>Check effective base values</button></>} onForm={(update) => setProjectForm(update)} onPack={setSelectedPackId} onDomain={chooseDomain} onExtension={toggleExtension} onModule={selectStudyModule} onExtensionParameter={(name, value) => setProjectForm((current) => ({ ...current, extension_parameters: { ...current.extension_parameters, [name]: value } }))} onAcknowledgement={(key, value, checked) => setProjectForm((current) => { const maturity_acknowledgements = { ...current.maturity_acknowledgements }; if (checked) maturity_acknowledgements[key] = value; else delete maturity_acknowledgements[key]; return { ...current, maturity_acknowledgements }; })} onSave={() => void saveProject()} onLoad={loadProjectRevision} onOpenRun={(project) => { selectRunProject(project.id); setView("run"); }} onTrash={(project, linkedRunCount) => void moveStudyToTrash(project, linkedRunCount)} onRestore={(entry) => void restoreStudyEntry(entry)} onOpenTrashRuns={(entry) => { const run = workspace.runs.find((item) => item.project_id === entry.study_id); setSelectedProjectId(entry.study_id); setSelectedRunId(run?.id ?? ""); setSelectedRunDetail(null); setView("run"); if (!run) setNotice("No indexed Run is available for this trashed Study; restore it to inspect non-indexed legacy evidence."); }} onOpenData={() => { setDataContextId("draft"); setView("data"); }} traceLevel={(runtimeValues["runtime.market_trace_level"] as TraceProfile | undefined) ?? "summary"} onTraceLevel={(trace) => setRuntimeValues((current) => ({ ...current, "runtime.market_trace_level": trace }))} /></div>}
+    {view === "projects" && <div className="page project-page"><div className="page-title"><div><span>Study setup</span><h2>Define the scientific question, then resolve the model</h2><p>The composer connects one data pack, physical domain, optional extensions, model chain and assumptions. Saving creates an immutable revision of exactly the graph shown in Review.</p></div><Badge tone={draftResolution?.valid ? "good" : "warn"}>{draftResolving ? "Resolving" : draftResolution?.valid ? "Draft ready" : "Draft incomplete"}</Badge></div><StudyComposer initialStep={composerInitialStep} apiOrigin={API_ORIGIN} workspace={workspace} form={projectForm} selectedPackId={selectedPack?.id ?? selectedPackId} resolution={draftResolution} resolving={draftResolving} resolutionError={draftResolutionError} savedProjects={workspace.projects} studyTrash={workspace.study_trash} selectedProjectId={selectedProjectId} assumptions={<><AdvancedSettings definitions={definitions} values={{ ...parameterValues, ...runtimeValues }} resolvedSources={resolvedSources} onChange={(id, value, runtime) => runtime ? setRuntimeValues((current) => ({ ...current, [id]: value })) : setParameterValues((current) => ({ ...current, [id]: value }))} /><button className="text-button full" onClick={() => void previewParameters()}>Check effective base values</button></>} onForm={(update) => setProjectForm(update)} onPack={setSelectedPackId} onDomain={chooseDomain} onExtension={toggleExtension} onModule={selectStudyModule} onExtensionParameter={(name, value) => setProjectForm((current) => ({ ...current, extension_parameters: { ...current.extension_parameters, [name]: value } }))} onAcknowledgement={(key, value, checked) => setProjectForm((current) => { const maturity_acknowledgements = { ...current.maturity_acknowledgements }; if (checked) maturity_acknowledgements[key] = value; else delete maturity_acknowledgements[key]; return { ...current, maturity_acknowledgements }; })} onSave={() => void saveProject()} onLoad={loadProjectRevision} onOpenRun={(project) => { selectRunProject(project.id); setView("run"); }} onTrash={(project, linkedRunCount) => void moveStudyToTrash(project, linkedRunCount)} onRestore={(entry) => void restoreStudyEntry(entry)} onOpenTrashRuns={(entry) => { const run = workspace.runs.find((item) => item.project_id === entry.study_id); setSelectedProjectId(entry.study_id); setSelectedRunId(run?.id ?? ""); setSelectedRunDetail(null); setView("run"); if (!run) setNotice("No indexed Run is available for this trashed Study; restore it to inspect non-indexed legacy evidence."); }} onOpenData={() => { setDataContextId("draft"); setView("data"); }} traceLevel={(runtimeValues["runtime.market_trace_level"] as TraceProfile | undefined) ?? "summary"} onTraceLevel={(trace) => setRuntimeValues((current) => ({ ...current, "runtime.market_trace_level": trace }))} methodology={{ catalogue: methodologyCatalogue, profileId: selectedProfileId(parameterValues, methodologyCatalogue), error: methodologyError }} onMethodology={chooseMethodology} /></div>}
 
-    {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost }} />}
+    {view === "run" && <RunWorkspace apiOrigin={API_ORIGIN} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: setView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost, openInspect: (tab) => { setInspectTarget({ tab, nonce: Date.now() }); setView("audit"); } }} />}
 
     {view === "marketReplay" && <MarketReplayView key={`${selectedRun?.id ?? "no-run"}:${replayTarget?.nonce ?? 0}`} run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} initialWindow={replayTarget} />}
 
@@ -1488,7 +1520,7 @@ export default function Home() {
 
     {view === "systems" && <SystemResultsView run={selectedRun} onOpenMarket={() => setView("marketReplay")} onOpenNetwork={() => setView("networkRedispatch")} />}
 
-    {view === "audit" && <AuditView run={selectedRun} apiOrigin={API_ORIGIN} onCreateFullReplayRevision={createFullReplayRevision} />}
+    {view === "audit" && <AuditView run={selectedRun} apiOrigin={API_ORIGIN} onCreateFullReplayRevision={createFullReplayRevision} initialTab={inspectTarget} />}
 
     {view === "extend" && <div className="page"><div className="page-title"><div><span>Data adapters</span><h2>Bring another dataset into VALUE</h2><p>Map local tables to stable model roles once. The PSM and CEM can then read the new source without source-specific code entering the model modules.</p></div></div><div className="adapter-steps">{[["01", "Describe the pack", "Record its country, timezone, licence and source versions."], ["02", "Map each role", "Connect local tables and columns to the PSM and CEM input contracts."], ["03", "Align units and time", "Convert power, energy, currency and timestamps at the adapter boundary."], ["04", "Check the contract", "Confirm every selected module receives the expected fields and units."]].map(([number, title, copy]) => <article key={number}><i>{number}</i><h3>{title}</h3><p>{copy}</p></article>)}</div><section className="panel contract-example"><div><span>Minimal adapter output</span><h3>A manifest and a mapping</h3><p>VALUE recognises semantic roles. File formats, column names and API details remain inside the adapter.</p></div><pre>{`data_pack: my-country-2030\ncountry: XX\ntimezone: Region/City\nbindings:\n  demand.real:\n    source: demand.csv\n    column: observed_mwh\n    unit: MWh/period\n  projects.repd:\n    source: projects.parquet\n    mapping:\n      capacity_mw: size_mw\n      technology: tech_code`}</pre></section></div>}
     </section></main>;

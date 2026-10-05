@@ -80,6 +80,7 @@ export const NEW_STYLESHEETS = [
   "app/features/shared/service-status.css",
   "app/features/modules/module-quarantine.css",
   "app/features/workspace/run-context-validation.css",
+  "app/features/studies/methodology-selector.css",
 ];
 
 test("new stylesheets use no font size below 12px and only existing colour tokens", async () => {

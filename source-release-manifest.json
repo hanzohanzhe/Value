@@ -103,8 +103,12 @@
     "app/features/studies/NetworkOverlaySelector.tsx",
     "app/features/studies/SolverSettingsEditor.tsx",
     "app/features/studies/StudyComposer.tsx",
+    "app/features/studies/StudyMigrationDialog.tsx",
+    "app/features/studies/methodology-selector.css",
+    "app/features/studies/methodologyChoice.ts",
     "app/features/studies/network-overlay-selector.css",
     "app/features/studies/solverContract.ts",
+    "app/features/studies/studyMigration.ts",
     "app/features/studies/types.ts",
     "app/features/workspace/BaselineRuns.tsx",
     "app/features/workspace/CommunityPaths.tsx",
@@ -588,6 +592,7 @@
     "e2e/offline-subset.json",
     "e2e/research-journey.spec.ts",
     "e2e/result-queries.spec.ts",
+    "e2e/run-context-methodology.spec.ts",
     "e2e/run-tests.mjs",
     "e2e/security-boundary.spec.ts",
     "e2e/service-status.spec.ts",
@@ -1235,6 +1240,7 @@
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
     "tests/frontend/render/shared-components.test.mjs",
+    "tests/frontend/render/study-methodology.test.mjs",
     "tests/frontend/unit/api-error.test.mjs",
     "tests/frontend/unit/comparison-review.test.mjs",
     "tests/frontend/unit/dispatch-view.test.mjs",
@@ -1246,6 +1252,7 @@
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
+    "tests/frontend/unit/study-methodology.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-contract-keys.test.mjs",
     "tests/frontend/unit/ui-test-groups.test.mjs",
@@ -3404,8 +3411,26 @@
     },
     {
       "path": "app/features/studies/StudyComposer.tsx",
-      "sha256": "3fb6a0f66eff1902d1782ffd457a5c756a9a93f6342aa931097574a98b7b757d",
-      "bytes": 21915,
+      "sha256": "9e41ab541037c1f8de1193919337e7a1e481e9a0c7967241daa084bf993a93e2",
+      "bytes": 25761,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/studies/StudyMigrationDialog.tsx",
+      "sha256": "a7137b62494eb685649ce7b6109e5d53d5e302b9b9c55a881de3eb592df15483",
+      "bytes": 5628,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/studies/methodology-selector.css",
+      "sha256": "1433e6322084d80da71eed7694794396e341c9121779b103936a2f77ba133aa7",
+      "bytes": 3297,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/studies/methodologyChoice.ts",
+      "sha256": "6ce611020618678bf1fb388ce11fb82369864885ddafbe99838db89489a38e07",
+      "bytes": 5909,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3421,10 +3446,16 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/studies/studyMigration.ts",
+      "sha256": "5aa6ef5b2a2ecf45d58e9f129d0df47c0ed52c42bf3a99836c38703ab319bf9c",
+      "bytes": 7377,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/studies/types.ts",
-      "sha256": "2b9f9bd740d9f386eb5037fc12e2575ee3ac67f03453e4931d1142e96809f455",
-      "bytes": 8079,
-      "transform": "byte copy"
+      "sha256": "de38a4057d86735b1328fa3f676e20e8a24461870bab1a943f33f89c51a367a9",
+      "bytes": 8551,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/BaselineRuns.tsx",
@@ -3572,8 +3603,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "ffc7b85e4dc169518a86c03f7b5c1eff191f203ae17f7b1328deea7aa99266f2",
-      "bytes": 160114,
+      "sha256": "624a5fc46f018324f4929c3cd9a92360888b7b80b8ce1c0440aef52ffaa963cb",
+      "bytes": 163931,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6302,8 +6333,8 @@
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "31a047cbb1c362aa03bda7348ee3b4a74fd6ad7c2191e3d548c0ded3ae90ea38",
-      "bytes": 2999,
+      "sha256": "27e2012090040e7dfdfe2eca62a795882fbd3b7c8f3a78932fd498cbf54d17b6",
+      "bytes": 3088,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6316,6 +6347,12 @@
       "path": "e2e/result-queries.spec.ts",
       "sha256": "a3807babffde7d588e6c475a7466636eb5d525c3727382789d31872559409a3d",
       "bytes": 7103,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "e2e/run-context-methodology.spec.ts",
+      "sha256": "2f336462aa034a628c3bee04208577d56652e079c0d6cc874e2f9a52fde8a390",
+      "bytes": 15528,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10184,6 +10221,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/study-methodology.test.mjs",
+      "sha256": "07e4500ec8c1c2e0e11aef9088f783347cbb956f2a0cd0f31b095488cd1e5467",
+      "bytes": 7443,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/unit/api-error.test.mjs",
       "sha256": "95f4053c1bd5f5d1d29048f91dd86ab41ea233d60603b62afbf1e51741a2ca41",
       "bytes": 3540,
@@ -10215,8 +10258,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "d05721a0d4da8bcfd41937c5a8202e422ed240dfccca94157321f6fbb26667d2",
-      "bytes": 5096,
+      "sha256": "555f5638ee89bc9b4cd343bac7c862ccc029600b6fc4a7364c290192bb951a79",
+      "bytes": 5147,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10247,6 +10290,12 @@
       "path": "tests/frontend/unit/result-metrics.test.mjs",
       "sha256": "0851593157f3a4f2e9842dbd59011d76adbfdca09c9f55cd48aca661042d4ea2",
       "bytes": 3233,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/study-methodology.test.mjs",
+      "sha256": "804c5c6caf336efebfe0f1bc673f49cc7e7850b0314d72e2e424b7f45ae76daa",
+      "bytes": 9444,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

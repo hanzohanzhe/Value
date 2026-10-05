@@ -11,7 +11,8 @@
     "e2e/result-queries.spec.ts",
     "e2e/comparison-review.spec.ts",
     "e2e/evidence-isolation.spec.ts",
-    "e2e/service-status.spec.ts"
+    "e2e/service-status.spec.ts",
+    "e2e/run-context-methodology.spec.ts"
   ],
   "min_passed": {
     "e2e/market-visibility.spec.ts": 2,
@@ -20,7 +21,8 @@
     "e2e/result-queries.spec.ts": 2,
     "e2e/comparison-review.spec.ts": 1,
     "e2e/evidence-isolation.spec.ts": 1,
-    "e2e/service-status.spec.ts": 4
+    "e2e/service-status.spec.ts": 4,
+    "e2e/run-context-methodology.spec.ts": 4
   },
   "known_failures": [
     {
