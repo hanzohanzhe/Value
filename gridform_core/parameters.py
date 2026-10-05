@@ -93,6 +93,9 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("network.expansion.random_seed", "Network expansion", "integer", 0, "scientific", "advanced", "Seed namespace for physical transmission-project planning success; circuits are never probability-weighted fractions.", "reference-transmission-expansion", minimum=0, maximum=2_147_483_647, experimental=True),
     ParameterDefinition("scenario.id", "Scenario", "enum", "existing_decarb_base", "scientific", "basic", "Selects the VALUE policy/decarbonisation scenario.", "value-annual-state-transition", allowed_values=("existing_decarb_base", "subsidy_as_usual", "government_target")),
     ParameterDefinition("market.bid_multiplier", "Market experiment", "float", 1.0, "scientific", "advanced", "Experimental multiplier on cost-based offers; values other than one are not strict bid-at-cost.", "value-bid-at-cost-psm", unit="multiplier", minimum=0.01, maximum=10.0, data_pack_role="config.model_parameters", data_pack_path="simulation_parameters.bidding_factor", experimental=True),
+    ParameterDefinition("market.dec_multiplier", "Market experiment", "float", 1.0, "scientific", "advanced", "Multiplier on the avoided running cost that a fuel unit or import returns when it is decremented in staged balancing; must not exceed market.bid_multiplier.", "value-staged-bid-at-cost-psm", unit="multiplier", minimum=0.0, maximum=10.0, experimental=True),
+    ParameterDefinition("market.policy_support_gbp_per_mwh_by_technology", "Market experiment", "string", "{}", "scientific", "advanced", "JSON object {technology: GBP/MWh} of output-based support a decremented asset loses (CfD strike minus reference, ROC value); technologies not listed are merchant (0).", "value-staged-bid-at-cost-psm", unit="GBP/MWh", experimental=True),
+    ParameterDefinition("network.inflexible_dec_premium_gbp_per_mwh_by_technology", "Market experiment", "string", '{"nuclear":100.0}', "scientific", "advanced", "JSON object {technology: GBP/MWh} of the extra price an inflexible unit asks to be decremented; nuclear uses the shared down-regulation table value by default.", "value-staged-bid-at-cost-psm", unit="GBP/MWh", experimental=True),
     ParameterDefinition("market.perfect_foresight_terminal_soc_rule", "Market experiment", "enum", "cyclic", "scientific", "advanced", "Terminal storage state for the optional perfect-foresight PSM.", "value-perfect-foresight-lp", allowed_values=("cyclic", "fixed", "free")),
     ParameterDefinition("market.voll_gbp_per_mwh", "Market experiment", "float", 10000.0, "scientific", "advanced", "Value of lost load charged to involuntary demand curtailment.", "value-perfect-foresight-lp", unit="GBP/MWh", minimum=0.0, maximum=1000000.0),
     ParameterDefinition("carbon.factor_scenario", "Carbon accounting", "enum", "value_current_authoritative_v1", "scientific", "advanced", "Pins the carbon-factor dataset, variants and accounting boundary used by the annual carbon ledger.", "application", allowed_values=("value_current_authoritative_v1", "doctoral_reproduction_2026_07_18")),
@@ -298,6 +301,12 @@ def resolve_scheme_c_parameters(
             "The bid multiplier is experimental; this run is not strict bid-at-cost.",
         ))
     compile_storage_formula(str(scientific["storage.cost.custom_formula"]))
+    from .network_method_rules import NetworkMethodRulesError, dec_pricing_inputs
+
+    try:
+        dec_pricing_inputs(scientific)
+    except NetworkMethodRulesError as exc:
+        raise ParameterValidationError(str(exc)) from exc
     return ResolvedParameterSet(
         SchemeCScientificParameters(scientific),
         SchemeCRuntimeOptions(runtime, periods_per_year),

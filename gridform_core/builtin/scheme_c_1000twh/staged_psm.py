@@ -101,6 +101,7 @@ from ...vre_curtailment_attribution import (
     failure_payload,
 )
 from ...zonal_solver_contract import SOLVER_CONTRACT_VERSION
+from ... import network_method_rules
 from .copperplate_balancing import CopperplateBalancing
 from .psm_runtime_state import StagedPSMRuntimeState, StagedPeriodOutcome
 from .runtime_compat.storage_cost import (
@@ -608,10 +609,15 @@ class StagedBidAtCostPSM:
     """Sequential forecast-only scheduling followed by realised balancing."""
 
     id = "force-staged-bid-at-cost-psm"
-    version = "1.2.0"
+    version = "1.3.0"
     execution_kind = "live_module"
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        network_rules: network_method_rules.NetworkMethodRules | None = None,
+    ) -> None:
+        # P0-8 S7: the maintained economic rules; LEGACY only for internal tests.
+        self._network_rules = network_rules or network_method_rules.ECONOMIC
         self._output_dir: Path | None = None
         self._storage_cost: object | None = None
         self._balancing: object | None = None
@@ -1229,9 +1235,23 @@ class StagedBidAtCostPSM:
         soc: Mapping[str, float],
         storage_models: Mapping[str, object],
     ) -> tuple[FlexibilityBid, ...]:
+        """Balancing bids of one period (P0-8 S7 economic dec pricing).
+
+        BM convention: an up bid is paid MWh x price, a down (dec) bid pays
+        MWh x price back, and the balancer accepts the highest dec first.  Dec
+        prices follow :mod:`gridform_core.network_method_rules`: a fuel unit
+        returns its avoided running cost, an import its period price, VRE and
+        run-of-river hydro lose their support, nuclear also carries the
+        inflexibility premium, and storage bids at most min(own up x round-trip
+        efficiency, the period's lowest inc price).  A dec'd thermal unit
+        therefore keeps no windfall (review P2-05).
+        """
+
         assert model_input.chronology is not None
+        rules = self._network_rules
         period_id = str(model_input.chronology.period_ids[period])
         multiplier = float(model_input.parameters.get("market.bid_multiplier", 1.0))
+        pricing = network_method_rules.dec_pricing_inputs(model_input.parameters)
         bids: list[FlexibilityBid] = []
         for resource in model_input.chronology.resources:
             available_mw = resource.capacity_mw * max(
@@ -1267,6 +1287,16 @@ class StagedBidAtCostPSM:
                 ))
             if scheduled > 1e-12:
                 curtailment_class = "balancing_added_vre" if resource_class == "vre" else ""
+                dec_price = network_method_rules.resource_dec_price(
+                    rules,
+                    resource_class=resource_class,
+                    technology=resource.technology,
+                    marginal_cost_gbp_per_mwh=marginal,
+                    inputs=pricing,
+                    legacy_curtailment_cost_gbp_per_mwh=float(
+                        resource.extensions.get("curtailment_cost_gbp_per_mwh", 0.0) or 0.0
+                    ),
+                )
                 bids.append(FlexibilityBid(
                     f"balance:{model_input.year}:{period}:down:{resource.asset_id}",
                     agent_id,
@@ -1276,17 +1306,20 @@ class StagedBidAtCostPSM:
                     period_id,
                     "down",
                     scheduled / model_input.period_hours,
-                    -float(resource.extensions.get("curtailment_cost_gbp_per_mwh", 0.0) or 0.0),
+                    dec_price,
                     scheduled / model_input.period_hours,
                     marginal,
                     f"{zone_id}:injection",
                     {
                         "resource_class": resource_class,
                         "curtailment_class": curtailment_class,
-                        "priority": 2 if resource_class == "vre" else 3,
+                        "dec_class": network_method_rules.dec_class(
+                            resource_class, resource.technology
+                        ),
                     },
                     extensions={"available_mwh": scheduled},
                 ))
+        storage_rows: list[tuple[object, str, str, float, float]] = []
         for resource in model_input.chronology.storage:
             owner_id = _owner_id(resource)
             zone_id = str(resource.extensions.get("zone_id") or "GB")
@@ -1297,6 +1330,7 @@ class StagedBidAtCostPSM:
             )
             up_mwh = max(maximum_discharge - scheduled, 0.0)
             price = float(storage_models[resource.asset_id].bid_price_gbp_per_mwh(0.0))
+            storage_rows.append((resource, owner_id, zone_id, scheduled, price * multiplier))
             if up_mwh > 1e-12:
                 bids.append(FlexibilityBid(
                     f"balance:{model_input.year}:{period}:up-storage:{resource.asset_id}",
@@ -1314,6 +1348,9 @@ class StagedBidAtCostPSM:
                     {"resource_class": "storage", "priority": 0},
                     extensions={"available_mwh": up_mwh},
                 ))
+        up_prices = [bid.price_gbp_per_mwh for bid in bids if bid.direction == "up"]
+        lowest_inc = min(up_prices) if up_prices else None
+        for resource, owner_id, zone_id, scheduled, up_price in storage_rows:
             down_mwh = scheduled + min(
                 resource.charge_power_mw * model_input.period_hours,
                 max(resource.energy_capacity_mwh - soc[resource.asset_id], 0.0)
@@ -1329,7 +1366,13 @@ class StagedBidAtCostPSM:
                     period_id,
                     "down",
                     down_mwh / model_input.period_hours,
-                    0.0,
+                    network_method_rules.storage_dec_price(
+                        rules,
+                        up_price_gbp_per_mwh=up_price,
+                        charge_efficiency=resource.charge_efficiency,
+                        discharge_efficiency=resource.discharge_efficiency,
+                        lowest_inc_price_gbp_per_mwh=lowest_inc,
+                    ),
                     scheduled / model_input.period_hours,
                     resource.variable_degradation_gbp_per_mwh_discharged,
                     f"{zone_id}:withdrawal",
