@@ -469,3 +469,55 @@ def verify_registry_out_of_process(
 def verify_after_write(modules_root: Path, *, before_keys: frozenset, kind: str, entry_id: str) -> None:
     verify_registry_in_process(modules_root, before_keys=before_keys, kind=kind, entry_id=entry_id)
     verify_registry_out_of_process(modules_root, before_keys=before_keys, kind=kind, entry_id=entry_id)
+
+
+# -- evidence for preflight/provenance (P0-2 S7, X0 external_code_policy) -----------
+_BUILTIN_PACKAGES = ("gridform_core.", "gridform_validation.")
+
+
+def _is_builtin_entry(entry_point: str) -> bool:
+    return str(entry_point).startswith(_BUILTIN_PACKAGES)
+
+
+def external_code_evidence(
+    registry: object, module_ids: Iterable[object] = (), extension_ids: Iterable[object] = (),
+) -> dict[str, object]:
+    """Which local (non built-in) code the registry holds and the Study selects.
+
+    The worker imports every enabled external implementation in process, so
+    an external module can affect a run without being selected; X0's
+    ``external_code_policy`` reads this record (checks.external_code).
+    """
+
+    modules = getattr(registry, "manifests", lambda: {})()
+    extensions = getattr(registry, "extension_manifests", lambda: {})()
+    external_modules = sorted(key for key, manifest in modules.items()
+                              if not _is_builtin_entry(getattr(manifest, "implementation", "")))
+    external_extensions = sorted(
+        key for key, manifest in extensions.items()
+        if any(not _is_builtin_entry(hook.implementation) for hook in getattr(manifest, "hooks", ()))
+    )
+    selected_modules = sorted({str(item) for item in module_ids} & set(external_modules))
+    selected_extensions = sorted({str(item) for item in extension_ids} & set(external_extensions))
+    return {
+        "schema_version": "value.external-code/v1",
+        "enabled_external_modules": external_modules,
+        "enabled_external_extensions": external_extensions,
+        "selected_external_modules": selected_modules,
+        "selected_external_extensions": selected_extensions,
+        "external_code_loaded": bool(external_modules or external_extensions),
+        "execution_boundary": "in_process_trusted_python",
+    }
+
+
+def quarantine_check(
+    registry: object, module_ids: Iterable[object] = (), extension_ids: Iterable[object] = (),
+) -> dict[str, object]:
+    blockers = selection_blockers(registry, module_ids, extension_ids)
+    entries = all_quarantine_entries(registry)
+    return {
+        "passed": not blockers,
+        "status": "degraded" if entries else "ok",
+        "blockers": [entry.to_dict() for entry in blockers],
+        "entries": [entry.to_dict() for entry in entries],
+    }

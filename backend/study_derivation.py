@@ -16,6 +16,7 @@ from typing import Callable, Mapping
 from gridform_core.project_revision import project_fingerprint, save_project_revision
 from gridform_core.data_import import sha256_file
 from gridform_core.frontend_contract import solver_contract_acknowledgement_key
+from gridform_core.module_quarantine import blocker_error, selection_blockers
 
 from backend.module_authoring import module_candidate_identity
 
@@ -49,6 +50,11 @@ def _method_candidate(source: Mapping[str, object], request: Mapping[str, object
         raise StudyDerivationError(
             "GF_STUDY_METHOD_REQUEST_INVALID",
             "Choose a different module for one existing slot and review its exact identity.", 400,
+        )
+    blockers = selection_blockers(registry, [module_id])
+    if blockers:
+        raise StudyDerivationError(
+            "GF_STUDY_MODULE_QUARANTINED", str(blocker_error("GF_STUDY_MODULE_QUARANTINED", blockers)),
         )
     try:
         manifest = registry.manifest(module_id, expected_slot=slot)

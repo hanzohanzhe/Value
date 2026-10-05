@@ -33,6 +33,7 @@ from gridform_core.preflight_resources import (
     selected_staged_zonal_calibration_runner,
 )
 from gridform_core.dataset_slots import DATASET_SLOTS
+from gridform_core.module_quarantine import ModuleQuarantinedError, blocker_error, selection_blockers
 from gridform_core.v2.module_manifest import workspace_registry
 from gridform_core.run_snapshot import SnapshotError, verify_run_input_snapshot
 from gridform_core.run_input_snapshot import (
@@ -419,13 +420,36 @@ def _frontend_results(
     return results
 
 
+def _refuse_quarantined_selection(input_snapshot_root: Path, registry: object) -> None:
+    """Fail with GF_MODULE_QUARANTINED when the frozen Study selects local code
+    the registry has quarantined (P0-2): never a generic verification error,
+    never a run left queued."""
+
+    try:
+        project = json.loads((input_snapshot_root / "project.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return  # snapshot verification reports the damaged snapshot itself
+    if not isinstance(project, dict):
+        return
+    blockers = selection_blockers(
+        registry,
+        dict(project.get("modules") or {}).values(),
+        tuple(project.get("selected_extensions") or ()),
+    )
+    if blockers:
+        raise blocker_error("GF_MODULE_QUARANTINED", blockers)
+
+
 def run(project_id: str, run_id: str, mode: str) -> None:
     run_dir = STATE_ROOT / "runs" / run_id
     status_path = run_dir / "status.json"
     input_snapshot_root = run_dir / "input-snapshot"
     registry = workspace_registry()
+    _refuse_quarantined_selection(input_snapshot_root, registry)
     try:
         input_snapshot = verify_run_input_snapshot(input_snapshot_root, registry)
+    except ModuleQuarantinedError:
+        raise
     except (OSError, ValueError, SnapshotError) as exc:
         raise RuntimeError(f"Frozen run inputs failed verification: {exc}") from exc
     if cancellation_requested(run_dir):

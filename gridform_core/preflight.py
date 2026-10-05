@@ -15,6 +15,7 @@ from typing import Callable, Mapping, Sequence
 from .data_pack_validation import validate_data_pack
 from .domain_readiness import build_domain_readiness
 from .module_conformance import conformance_report
+from .module_quarantine import external_code_evidence, quarantine_check
 from .parameters import ParameterValidationError, resolve_scheme_c_parameters
 from .module_context import canonical_context_sha256
 from .preflight_resources import (
@@ -288,8 +289,30 @@ def run_preflight(
             "Open the Study model-chain settings and save an explicit supported market configuration.",
         ))
     extension_parameters = dict(project.get("extension_parameters") or {})
+    # P0-2: a selected module/extension that is quarantined blocks the run
+    # with its own code; quarantine elsewhere only warns and is recorded.
+    quarantine = quarantine_check(registry, selected.values(), selected_extensions)
+    checks["module_quarantine"] = quarantine
+    checks["external_code"] = external_code_evidence(registry, selected.values(), selected_extensions)
+    if quarantine["blockers"]:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules",
+            "The Study selects quarantined local code: " + ", ".join(
+                f"{row['kind']} {row['id']} ({row['error_code']})" for row in quarantine["blockers"]
+            ),
+            "Open Modules: disable or repair the quarantined entry, then select a working module.",
+        ))
+    elif quarantine["entries"]:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_QUARANTINE_PRESENT", "warning", "modules",
+            f"{len(quarantine['entries'])} local module or extension entr"
+            + ("y is" if len(quarantine["entries"]) == 1 else "ies are")
+            + " quarantined; this Study does not use them.",
+            "Open Modules to disable or repair them; the run is unaffected.",
+        ))
+    registered_extensions = registry.extension_manifests()
     active_dataset_slots = tuple(dataset_slots) + registry.extension_registry.conditional_dataset_slots(
-        selected_extensions
+        tuple(item for item in selected_extensions if item in registered_extensions)
     )
     pack_selection = None
     try:

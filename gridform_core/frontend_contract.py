@@ -12,6 +12,7 @@ from itertools import combinations
 from typing import Mapping, Sequence
 
 from .extension_framework import canonical_hash
+from .module_quarantine import all_quarantine_entries, selection_blockers
 from .data_contract_templates import runtime_supported_formats, template_available
 from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph
 from .study_market_config import resolve_market_configuration
@@ -521,12 +522,31 @@ def resolve_study_draft(
             "Extensions may be selected only once: " + ", ".join(duplicate_extensions),
             scope="extensions", detail=duplicate_extensions,
         ))
+    # P0-2: a selected module/extension that is quarantined gets its own code
+    # (not "unknown"); quarantine elsewhere is only a warning.
+    blockers = selection_blockers(registry, modules.values(), selected_extensions)
+    if blockers:
+        errors.append(_issue(
+            "GF_STUDY_MODULE_QUARANTINED",
+            "This Study selects quarantined local code: " + ", ".join(
+                f"{entry.kind} {entry.entry_id} ({entry.code})" for entry in blockers
+            ) + ". Disable or repair it in Modules, or select another module.",
+            scope="modules", detail=[entry.to_dict() for entry in blockers],
+        ))
+    elif all_quarantine_entries(registry):
+        warnings.append(_issue(
+            "GF_MODULE_QUARANTINE_PRESENT",
+            "Some local modules or extensions are quarantined; this Study does not use them.",
+            scope="modules", detail={"count": len(all_quarantine_entries(registry))},
+        ))
+    blocked_extensions = {str(entry.entry_id) for entry in blockers if entry.kind == "extension"}
     unknown_extensions = []
     for extension_id in selected_extensions:
         try:
             registry.extension_registry.manifest(extension_id)
         except ValueError:
-            unknown_extensions.append(extension_id)
+            if extension_id not in blocked_extensions:
+                unknown_extensions.append(extension_id)
     if unknown_extensions:
         errors.append(_issue(
             "GF_EXTENSION_UNKNOWN",
@@ -545,7 +565,8 @@ def resolve_study_draft(
     ]
     if not unknown_extensions:
         active_slots = active_dataset_slots(
-            registry, base_dataset_slots, selected_extensions
+            registry, base_dataset_slots,
+            tuple(item for item in selected_extensions if item in registry.extension_manifests()),
         )
     available = set(str(item) for item in available_data_roles)
     required_roles = {
@@ -611,7 +632,7 @@ def resolve_study_draft(
     graph = None
     effective_extension_parameters: dict[str, object] = {}
     registry_error: str | None = None
-    if not unknown_slots and not unknown_extensions:
+    if not unknown_slots and not unknown_extensions and not blockers:
         ideal_roles = tuple(sorted(required_roles | available))
         try:
             graph = registry.resolve_selection(
@@ -624,7 +645,11 @@ def resolve_study_draft(
                 effective_extension_parameters = dict(graph.extension_graph.parameters)
         except (ValueError, KeyError, TypeError) as exc:
             registry_error = str(exc)
-            code = "GF_EXTENSION_PARAMETER_INVALID" if "parameter" in registry_error.lower() else "GF_MODULE_INCOMPATIBLE"
+            if getattr(exc, "code", None) == "GF_EXTENSION_HOOK_IMPORT":
+                # A hook that cannot be imported is runtime-quarantined.
+                code = "GF_STUDY_MODULE_QUARANTINED"
+            else:
+                code = "GF_EXTENSION_PARAMETER_INVALID" if "parameter" in registry_error.lower() else "GF_MODULE_INCOMPATIBLE"
             errors.append(_issue(code, registry_error, scope="resolution"))
 
     compatible: dict[str, list[dict[str, object]]] = {}
