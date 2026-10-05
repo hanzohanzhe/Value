@@ -1,8 +1,24 @@
-"""Release-gate comparisons for a completed VALUE run bundle.
+"""Release-gate comparisons for a completed VALUE run bundle (stage parity v3).
 
 The comparison is deliberately read-only.  It compares the copied VALUE
 session artifacts with their public v2 contract materialisation, then checks the
 durable planning and market ledgers.  It never re-runs or rewrites a fixture.
+
+Stage parity v3 (P0-4 S2, finding P7-01):
+
+* ``contract_parity_passed`` is the conjunction of the checks this report
+  actually executed and lists in ``checks``; with no executed check it is
+  ``None`` (not evaluated), never ``True``.  Every check row carries its
+  ``actual``, ``expected`` and ``absolute_tolerance`` so a reader can
+  recompute it (:mod:`gridform_core.scientific_validation` does).
+* The energy balance is not judged here from the ledger's self-reported,
+  compatibility-adjusted residual (finding P7-10): the market evidence
+  delegates to the read-only oracle
+  (:mod:`gridform_core.energy_balance_oracle`), whose verdict is reported with
+  severity ``report`` until P0-4 S7 makes it a gate.
+* :func:`build_native_parity_report` is the parity of the native public
+  contract path (``application.run_project_application``), which used to
+  write a literal ``passed``.
 """
 
 from __future__ import annotations
@@ -14,7 +30,7 @@ import math
 import sqlite3
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 
 CAPACITY_COLUMNS = {
@@ -45,6 +61,255 @@ def _close(actual: float, expected: float, tolerance: float) -> bool:
     return math.isclose(
         float(actual), float(expected), abs_tol=float(tolerance), rel_tol=1e-10
     )
+
+
+SCHEMA_VERSION = "value.stage-parity-report/v3"
+ORACLE_ARTIFACT = "validation/energy-balance-oracle.json"
+RUN_INVARIANTS_ARTIFACT = "validation/run-invariants.json"
+# The core annual stages every year must complete, in this order; optional
+# stages (expansion policies, network expansion) may sit between them.
+CORE_ANNUAL_STAGES = (
+    "planning.advance_year", "psm.run", "investment.decide",
+    "planning.admit_projects", "state_transition.apply",
+)
+COST_CLOSURE_RELATIVE = 1e-6
+
+
+def recompute_check(row: Mapping[str, Any]) -> bool | None:
+    """Recompute one parity check row from its recorded values (None: malformed)."""
+
+    if not isinstance(row, Mapping) or "actual" not in row or "expected" not in row:
+        return None
+    actual, expected = row["actual"], row["expected"]
+    tolerance = row.get("absolute_tolerance", 0.0)
+    numeric = all(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        for value in (actual, expected)
+    )
+    if numeric:
+        if (
+            isinstance(tolerance, bool) or not isinstance(tolerance, (int, float))
+            or not math.isfinite(float(tolerance)) or float(tolerance) < 0
+            or not math.isfinite(float(actual)) or not math.isfinite(float(expected))
+        ):
+            return False
+        return _close(float(actual), float(expected), float(tolerance))
+    return actual == expected
+
+
+def _ledger_period_rows(database: Path) -> int:
+    wal = database.with_name(database.name + "-wal")
+    # immutable=1 would skip rows still in a write-ahead log.
+    flags = "?mode=ro" if wal.is_file() and wal.stat().st_size > 0 else "?mode=ro&immutable=1"
+    connection = sqlite3.connect(database.resolve().as_uri() + flags, uri=True)
+    try:
+        return int(connection.execute("SELECT COUNT(*) FROM period_summary").fetchone()[0])
+    finally:
+        connection.close()
+
+
+def oracle_report_for(output_dir: Path) -> dict[str, Any] | None:
+    """The stored oracle report of a run, or a fresh read-only evaluation."""
+
+    stored = output_dir / ORACLE_ARTIFACT
+    if stored.is_file():
+        try:
+            value = _read_json(stored)
+        except ValueError:
+            value = None
+        if isinstance(value, Mapping):
+            return dict(value)
+    from .energy_balance_oracle import evaluate_run_ledger
+
+    return evaluate_run_ledger(output_dir)
+
+
+def energy_balance_evidence(report: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Compact energy-balance evidence for a parity report (severity report)."""
+
+    if not isinstance(report, Mapping):
+        return {"status": "not_evaluated", "severity": "report", "reasons": ["GF_ENERGY_BALANCE_LEDGER_NOT_RECORDED"]}
+    metrics = dict(report.get("metrics") or {})
+    reported = dict(metrics.get("reported") or {})
+    full_node = dict(metrics.get("full_node") or {})
+    return {
+        "status": report.get("status"),
+        "severity": "report",
+        "artifact": ORACLE_ARTIFACT,
+        "boundary_id": dict(report.get("boundary") or {}).get("boundary_id"),
+        "reasons": list(report.get("reasons") or []),
+        "periods": metrics.get("periods"),
+        "maximum_absolute_full_node_residual_mwh": full_node.get("max_abs_mwh"),
+        "maximum_absolute_raw_residual_mwh": reported.get("max_abs_raw_residual_mwh"),
+        "compatibility_adjustment_periods": reported.get("adjusted_periods"),
+        "sum_abs_compatibility_adjustment_mwh": reported.get("sum_abs_adjustment_mwh"),
+    }
+
+
+def _stage_order_checks(events: list[dict[str, Any]], years: list[int], scope: str) -> list[dict[str, Any]]:
+    rows = []
+    for year in years:
+        stages = [str(event.get("stage")) for event in events if event.get("year") == year]
+        if scope == "psm_only":
+            observed = [stage for stage in stages if stage == "psm.run"]
+            expected: list[str] = ["psm.run"]
+        else:
+            core = [stage for stage in stages if stage in CORE_ANNUAL_STAGES]
+            # A year recomputed after a cancellation repeats its stages; the
+            # last attempt (from the last planning advance) is the one that
+            # produced the result.
+            starts = [index for index, stage in enumerate(core) if stage == CORE_ANNUAL_STAGES[0]]
+            observed = core[starts[-1]:] if starts else core
+            expected = list(CORE_ANNUAL_STAGES)
+        rows.append(_row("contract_lifecycle", year, "core_stage_order", observed, expected))
+    return rows
+
+
+def _row(stage: str, year: int | None, metric: str, actual: Any, expected: Any,
+         tolerance: float = 0.0) -> dict[str, Any]:
+    numeric = all(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        for value in (actual, expected)
+    )
+    row = {
+        "stage": stage,
+        "year": year,
+        "metric": metric,
+        "class": "contract",
+        "actual": actual,
+        "expected": expected,
+        "absolute_difference": abs(float(actual) - float(expected)) if numeric and all(
+            math.isfinite(float(value)) for value in (actual, expected)) else None,
+        "absolute_tolerance": tolerance,
+    }
+    row["pass"] = bool(recompute_check(row))
+    return row
+
+
+def build_native_parity_report(
+    output_dir: Path,
+    *,
+    year_results: list[Mapping[str, Any]],
+    expected_years: list[int],
+    periods_per_year: int,
+    selected_psm: str,
+    execution_scope: str = "annual",
+    energy_balance: Mapping[str, Any] | None = None,
+    run_invariants: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Stage parity v3 of the native public-contract path, recomputed from artifacts.
+
+    ``year_results`` are the typed results as written (``year-results-v2.json``
+    rows; for a PSM-only run ``{"year", "market"}``).  The contract checks
+    compare the typed contracts with the durable ledgers and the stage-event
+    log; the energy balance and run invariants are attached as reported
+    evidence and do not decide ``contract_parity_passed``.
+    """
+
+    output_dir = Path(output_dir)
+    checks: list[dict[str, Any]] = []
+    typed_years = sorted(int(row["year"]) for row in year_results)
+    checks.append(_row("contract_lifecycle", None, "typed_result_years", typed_years, list(expected_years)))
+    events = [
+        row for row in (
+            json.loads(line) for line in (
+                (output_dir / "orchestrator-events.jsonl").read_text(encoding="utf-8").splitlines()
+                if (output_dir / "orchestrator-events.jsonl").is_file() else []
+            ) if line.strip()
+        ) if isinstance(row, dict)
+    ]
+    checks.extend(_stage_order_checks(events, list(expected_years), execution_scope))
+
+    market_db = output_dir / "market" / "market.sqlite"
+    metadata_path = output_dir / "market" / "metadata.json"
+    market_evidence: dict[str, Any]
+    if market_db.is_file() and metadata_path.is_file():
+        metadata = _read_json(metadata_path)
+        row_count = _ledger_period_rows(market_db)
+        checks.append(_row(
+            "market_ledger", None, "period_row_count",
+            row_count, int(dict(metadata.get("rows") or {}).get("period_summary", -1)),
+        ))
+        market_evidence = {
+            "available": True,
+            "periods": row_count,
+            "trace_level": metadata.get("trace_level"),
+            "database_artifact": "market/market.sqlite",
+            "source": "sqlite_ledger",
+        }
+    else:
+        market_evidence = {
+            "available": True,
+            "periods": sum(
+                len(dict(row.get("market") or {}).get("period_summaries") or [])
+                for row in year_results
+            ),
+            "database_artifact": None,
+            "source": "typed_contract",
+        }
+    market_evidence["energy_balance"] = energy_balance_evidence(energy_balance)
+
+    if execution_scope != "psm_only":
+        cost_path = output_dir / "ledgers" / "annual-cost-ledger.json"
+        cost_years = {}
+        if cost_path.is_file():
+            payload = _read_json(cost_path)
+            cost_years = {
+                int(row["year"]): row for row in payload.get("years", [])
+                if isinstance(row, Mapping) and isinstance(row.get("year"), int)
+            }
+        checks.append(_row("cost_ledger", None, "years", sorted(cost_years), list(expected_years)))
+        for year in expected_years:
+            row = cost_years.get(year)
+            if row is None:
+                continue
+            included = math.fsum(
+                float(line.get("amount_gbp") or 0.0)
+                for line in row.get("lines", [])
+                if isinstance(line, Mapping) and line.get("included_in_cem_system_cost")
+            )
+            total = row.get("cem_system_cost_gbp")
+            total_value = float(total) if isinstance(total, (int, float)) and not isinstance(total, bool) else math.nan
+            tolerance = COST_CLOSURE_RELATIVE * max(1.0, abs(total_value)) if math.isfinite(total_value) else 0.0
+            checks.append(_row("cost_ledger", year, "included_lines_equal_cem_system_cost", included, total_value, tolerance))
+
+    failed = [row for row in checks if not row["pass"]]
+    executed = bool(checks)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "source": "native typed contracts, stage-event log and durable ledgers",
+        "target": "VALUE v2 public contracts and durable ledgers",
+        "execution_path": "native_public_contracts",
+        "execution_scope": execution_scope,
+        "selected_psm": selected_psm,
+        "periods_per_year": int(periods_per_year),
+        "passed": (not failed) if executed else None,
+        "contract_parity_passed": (not failed) if executed else None,
+        "retained_numerical_parity_passed": None,
+        "release_gate_passed": None,
+        "checks_passed": len(checks) - len(failed),
+        "checks_total": len(checks),
+        "first_divergence": failed[0] if failed else None,
+        "checks": checks,
+        "market_evidence": market_evidence,
+        "run_invariants": (
+            {
+                "status": run_invariants.get("status"),
+                "severity": run_invariants.get("severity", "report"),
+                "artifact": RUN_INVARIANTS_ARTIFACT,
+            }
+            if isinstance(run_invariants, Mapping) else {"status": "not_evaluated", "artifact": None}
+        ),
+        "planning_evidence": {
+            "available": execution_scope != "psm_only",
+            "years": len(year_results) if execution_scope != "psm_only" else 0,
+            "database_artifact": "planning/project-index.sqlite" if execution_scope != "psm_only" else None,
+        },
+        "agent_economics_evidence": {
+            "available": False,
+            "reason": "Native typed investment decisions are recorded directly; the legacy investment-analysis replay table is reference-only.",
+        },
+    }
 
 
 def compare_run_bundle(
@@ -82,6 +347,7 @@ def compare_run_bundle(
             "stage": stage,
             "year": year,
             "metric": metric,
+            "class": "contract",
             "actual": actual,
             "expected": expected,
             "absolute_difference": difference,
@@ -203,45 +469,21 @@ def compare_run_bundle(
         observed = [event["stage"] for event in stage_events if int(event["year"]) == year]
         check("contract_lifecycle", year, "stage_order", observed, expected_stages)
 
-    # Check every persisted market period with the same absolute/relative rule as
-    # the writer.  This is independent of the metadata summary.
+    # The persisted period rows must be the rows the metadata declares.  The
+    # balance itself is recomputed by the read-only oracle, never taken from
+    # the self-reported (compatibility-adjusted) residual column, which is zero
+    # by construction (P7-10); its verdict is reported, not gated (until S7).
     market_evidence: dict[str, Any] = {"trace_level": "off", "periods": 0}
     market_db = output_dir / "market" / "market.sqlite"
     if market_db.is_file():
-        with sqlite3.connect(market_db) as connection:
-            columns = {
-                row[1] for row in connection.execute("PRAGMA table_info(period_summary)")
-            }
-            if "raw_energy_balance_residual_mwh" in columns:
-                rows = connection.execute(
-                    "SELECT year, period, stage, real_demand_mwh, accepted_supply_mwh, energy_balance_residual_mwh, raw_energy_balance_residual_mwh, compatibility_adjustment_mwh FROM period_summary"
-                ).fetchall()
-            else:
-                rows = [(*row, row[-1], 0.0) for row in connection.execute(
-                    "SELECT year, period, stage, real_demand_mwh, accepted_supply_mwh, energy_balance_residual_mwh FROM period_summary"
-                ).fetchall()]
-        maximum = 0.0
-        maximum_raw = 0.0
-        adjusted_periods = 0
-        invalid = 0
-        for _year, _period, _stage, demand, supply, residual, raw_residual, adjustment in rows:
-            absolute = abs(float(residual))
-            maximum = max(maximum, absolute)
-            maximum_raw = max(maximum_raw, abs(float(raw_residual)))
-            adjusted_periods += int(abs(float(adjustment)) > 1e-9)
-            allowed = max(1e-5, 0.001 * max(abs(float(demand)), abs(float(supply)), 1.0))
-            invalid += int(absolute > allowed)
+        row_count = _ledger_period_rows(market_db)
         metadata = _read_json(output_dir / "market" / "metadata.json")
-        check("market_balance", None, "invalid_periods", invalid, 0)
-        check("market_balance", None, "period_row_count", len(rows), int(metadata["rows"]["period_summary"]))
+        check("market_ledger", None, "period_row_count", row_count, int(metadata["rows"]["period_summary"]))
         market_evidence = {
             "trace_level": metadata["trace_level"],
-            "periods": len(rows),
-            "maximum_absolute_residual_mwh": maximum,
-            "maximum_absolute_raw_residual_mwh": maximum_raw,
-            "compatibility_adjustment_periods": adjusted_periods,
-            "relative_tolerance": 0.001,
+            "periods": row_count,
             "database_artifact": "market/market.sqlite",
+            "energy_balance": energy_balance_evidence(oracle_report_for(output_dir)),
         }
 
     # Agent economics are retained as a compact checksum/count summary while the
@@ -356,11 +598,11 @@ def compare_run_bundle(
             **first_divergence,
         }
     return {
-        "schema_version": "value.stage-parity-report/v1",
+        "schema_version": SCHEMA_VERSION,
         "source": "copied VALUE project-composed session artifacts",
         "target": "VALUE v2 public contracts and durable ledgers",
-        "passed": not failed,
-        "contract_parity_passed": not failed,
+        "passed": (not failed) if checks else None,
+        "contract_parity_passed": (not failed) if checks else None,
         "retained_numerical_parity_passed": (
             retained.get("passed") if retained.get("evaluated") else None
         ),
@@ -406,7 +648,7 @@ def main() -> None:
         "checks_total": report["checks_total"],
         "first_divergence": report["first_divergence"],
     }, indent=2))
-    raise SystemExit(0 if report["passed"] else 1)
+    raise SystemExit(0 if report["passed"] is True else 1)
 
 
 if __name__ == "__main__":

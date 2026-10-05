@@ -493,31 +493,36 @@ class GoldenReviseWorkflowTests(unittest.TestCase):
         (self.reports / name).write_text(json.dumps(payload), encoding="utf-8")
 
     def test_doctoral_trajectory_revise_then_report_then_validate(self) -> None:
+        # The committed D3 may already carry accounting-only revisions (e.g.
+        # p04.validation-v2); the new revision is the next index k.
+        k = len(self._record("doctoral", "D3")["revisions"])
         code, output = self._revise("D3", self._changed("doctoral", "D3", PRICE),
                                     "--correction-id", "p05.ic", "--finding", "P6-24")
         self.assertEqual(code, 0, output)
         record = self._record("doctoral", "D3")
-        self.assertEqual(len(record["revisions"]), 2)
-        self.assertEqual(record["revisions"][1]["delta"]["by_zone"], {"trajectory": 1})
+        self.assertEqual(len(record["revisions"]), k + 1)
+        self.assertEqual(record["revisions"][k]["delta"]["by_zone"], {"trajectory": 1})
         self.assertIn("numeric-report --case D3", output)
         # the revision is written; the commit is refused until its report exists
         errors = self.capture.validate_all()
         self.assertEqual(len(errors), 1, errors)
-        self.assertIn("doctoral/D3: revision 1 changes doctoral trajectory without a numeric before/after report", errors[0])
-        self._write_report("D3-r1.json", self._report_for("doctoral", "D3", 1, {PRICE}))
+        self.assertIn(f"doctoral/D3: revision {k} changes doctoral trajectory without a numeric before/after report", errors[0])
+        report = f"D3-r{k}.json"
+        self._write_report(report, self._report_for("doctoral", "D3", k, {PRICE}))
         self.assertEqual(self.capture.validate_all(), [])
         # a forged report is validated, not just checked for existence
-        self._write_report("D3-r1.json", dict(self._report_for("doctoral", "D3", 1, {PRICE}), digest_sha256="0" * 64))
+        self._write_report(report, dict(self._report_for("doctoral", "D3", k, {PRICE}), digest_sha256="0" * 64))
         self.assertTrue(any("digest_sha256" in error for error in self.capture.validate_all()))
-        self._write_report("D3-r1.json", [])
-        self.assertTrue(any("D3-r1.json" in error for error in self.capture.validate_all()))
-        self._write_report("D3-r1.json", self._report_for("doctoral", "D3", 1, {PRICE}))
+        self._write_report(report, [])
+        self.assertTrue(any(report in error for error in self.capture.validate_all()))
+        self._write_report(report, self._report_for("doctoral", "D3", k, {PRICE}))
 
-        # the next revise checks the committed report of r1 and leaves r2 pending
+        # the next revise checks the committed report of r(k) and leaves r(k+1) pending
         code, output = self._revise("D3", self._changed("doctoral", "D3", "market/market.sqlite::period_summary.accepted_supply_mwh"),
                                     "--correction-id", "p05.gbp1", "--finding", "P6-02")
         self.assertEqual(code, 0, output)
-        self.assertTrue(any("revision 2" in error and "numeric before/after report" in error for error in self.capture.validate_all()))
+        self.assertTrue(any(f"revision {k + 1}" in error and "numeric before/after report" in error
+                            for error in self.capture.validate_all()))
 
     def test_revise_still_refuses_an_unapproved_doctoral_trajectory_change(self) -> None:
         before = (self.golden_dir / "doctoral" / "D3.json").read_text(encoding="utf-8")
@@ -527,19 +532,22 @@ class GoldenReviseWorkflowTests(unittest.TestCase):
         self.assertEqual((self.golden_dir / "doctoral" / "D3.json").read_text(encoding="utf-8"), before)
 
     def test_reports_only_document_doctoral_trajectory_revisions(self) -> None:
+        c = len(self._record("corrected", "C3")["revisions"])
+        d = len(self._record("doctoral", "D3")["revisions"])
         code, _ = self._revise("C3", self._changed("corrected", "C3", PRICE), "--correction-id", "p06.bid")
         self.assertEqual(code, 0)
         code, _ = self._revise("D3", self._changed("doctoral", "D3", RESIDUAL), "--correction-id", "p04.ledger")
         self.assertEqual(code, 0)
         self.assertEqual(self.capture.validate_all(), [])  # neither revision needs a report
-        self._write_report("C3-r1.json", self._report_for("corrected", "C3", 1, {PRICE}))
-        self._write_report("D3-r1.json", self._report_for("doctoral", "D3", 1, {RESIDUAL}))
+        corrected_report, doctoral_report = f"C3-r{c}.json", f"D3-r{d}.json"
+        self._write_report(corrected_report, self._report_for("corrected", "C3", c, {PRICE}))
+        self._write_report(doctoral_report, self._report_for("doctoral", "D3", d, {RESIDUAL}))
         errors = self.capture.validate_all()
-        for name in ("C3-r1.json", "D3-r1.json"):
+        for name in (corrected_report, doctoral_report):
             self.assertTrue(any(name in error and "changes no doctoral trajectory" in error for error in errors), errors)
-        (self.reports / "C3-r1.json").unlink()
-        (self.reports / "D3-r1.json").unlink()
-        for name in ("D3-r2.json", "D3-r01.json", "D9-r1.json", "notes.txt"):
+        (self.reports / corrected_report).unlink()
+        (self.reports / doctoral_report).unlink()
+        for name in (f"D3-r{d + 1}.json", "D3-r01.json", "D9-r1.json", "notes.txt"):
             with self.subTest(report=name):
                 self._write_report(name, {})
                 self.assertTrue(any(name in error for error in self.capture.validate_all()))

@@ -1,4 +1,11 @@
-"""Scientific acceptance reporting independent of process completion."""
+"""Scientific acceptance reporting independent of process completion.
+
+Report v2 (P0-4 S2): every status is recomputed from checks executed on the
+run - the stage-parity v3 contract checks, the run invariants
+(:mod:`gridform_core.run_invariants`) and the read-only energy-balance oracle
+(:mod:`gridform_core.energy_balance_oracle`).  A report that executed no check
+is ``not_evaluated``; it is never ``passed`` (finding P7-01).
+"""
 
 from __future__ import annotations
 
@@ -12,7 +19,15 @@ from .builtin.scheme_c_1000twh.runtime_compat.storage_cost import DynamicAnnualS
 from .dispatch_benchmark import solve_fixture
 
 
-SCHEMA_VERSION = "value.scientific-validation/v1"
+SCHEMA_VERSION = "value.scientific-validation/v2"
+LEGACY_SCHEMA_VERSION = "value.scientific-validation/v1"
+ENERGY_BALANCE_ARTIFACT = "validation/energy-balance-oracle.json"
+ENERGY_BALANCE_ENFORCEMENT = "report_only_until_p0_4_s7"
+R_CONTRACT_NOT_EXECUTED = "GF_VALIDATION_CONTRACT_NOT_EXECUTED"
+R_CONTRACT_MALFORMED = "GF_VALIDATION_CONTRACT_CHECK_MALFORMED"
+R_CONTRACT_SELF_INCONSISTENT = "GF_VALIDATION_CONTRACT_SELF_INCONSISTENT"
+R_INVARIANTS_NOT_EXECUTED = "GF_RUN_INVARIANTS_NOT_EXECUTED"
+R_ENERGY_BALANCE_NOT_EXECUTED = "GF_ENERGY_BALANCE_NOT_EXECUTED"
 PASSED = "passed"
 FAILED = "failed"
 NOT_EVALUATED = "not_evaluated"
@@ -145,6 +160,193 @@ def analytical_mechanism_checks(
     return checks
 
 
+def contract_evidence(parity_report: Mapping[str, object]) -> dict[str, object]:
+    """Recompute the contract verdict from the parity checks it lists (P7-01).
+
+    A bare ``contract_parity_passed`` flag is not evidence: with no executed
+    check the contract is not evaluated.  Every listed check is recomputed
+    from its recorded values; a row whose recorded ``pass`` disagrees with
+    the recomputation, or a top-level flag that disagrees with the rows, makes
+    the report self-inconsistent and the contract failed.
+    """
+
+    from .parity import recompute_check
+
+    checks = parity_report.get("checks") if isinstance(parity_report, Mapping) else None
+    if not isinstance(checks, list) or not checks:
+        return {
+            "status": NOT_EVALUATED, "checks_passed": 0, "checks_total": 0,
+            "reason_code": R_CONTRACT_NOT_EXECUTED, "parity_schema_version": (
+                parity_report.get("schema_version") if isinstance(parity_report, Mapping) else None
+            ),
+        }
+    recomputed = [recompute_check(row) for row in checks]
+    malformed = sum(value is None for value in recomputed)
+    passed = sum(value is True for value in recomputed)
+    inconsistent = [
+        index for index, (row, value) in enumerate(zip(checks, recomputed))
+        if value is not None and isinstance(row, Mapping) and "pass" in row and row.get("pass") is not value
+    ]
+    all_passed = malformed == 0 and passed == len(checks)
+    declared = parity_report.get("contract_parity_passed")
+    reason = None
+    if malformed:
+        reason = R_CONTRACT_MALFORMED
+    elif inconsistent or declared is not all_passed:
+        reason = R_CONTRACT_SELF_INCONSISTENT
+    status = PASSED if all_passed and reason is None else FAILED
+    first = next((row for row, value in zip(checks, recomputed) if value is not True), None)
+    return {
+        "status": status,
+        "checks_passed": passed,
+        "checks_total": len(checks),
+        "reason_code": reason,
+        "first_divergence": first,
+        "parity_schema_version": parity_report.get("schema_version"),
+    }
+
+
+def run_invariant_evidence(report: Mapping[str, object] | None) -> dict[str, object]:
+    if not isinstance(report, Mapping) or not isinstance(report.get("checks"), list):
+        return {"status": NOT_EVALUATED, "severity": "report", "reason_code": R_INVARIANTS_NOT_EXECUTED,
+                "checks_passed": 0, "checks_total": 0}
+    from .run_invariants import summarise
+
+    summary = summarise(report["checks"])  # recomputed, not the stored top-level status
+    return {
+        "status": summary["status"],
+        "severity": report.get("severity", "report"),
+        "enforcement": report.get("enforcement"),
+        "checks_passed": summary["checks_passed"],
+        "checks_total": summary["checks_total"],
+        "integrity_checks_passed": summary["integrity_checks_passed"],
+        "integrity_checks_total": summary["integrity_checks_total"],
+        "failed_checks": summary["failed_checks"],
+        "not_evaluated_checks": summary["not_evaluated_checks"],
+        "artifact": "validation/run-invariants.json",
+    }
+
+
+def energy_balance_summary(report: Mapping[str, object] | None) -> tuple[dict[str, object], dict[str, object] | None]:
+    """(energy_balance, stress) summaries of an oracle report (decision A2)."""
+
+    if not isinstance(report, Mapping):
+        return ({"status": NOT_EVALUATED, "severity": "report", "enforcement": ENERGY_BALANCE_ENFORCEMENT,
+                 "reasons": [R_ENERGY_BALANCE_NOT_EXECUTED], "artifact": None}, None)
+    checks = report.get("checks") if isinstance(report.get("checks"), list) else []
+    status = report.get("status")
+    if status not in {PASSED, FAILED, NOT_EVALUATED}:
+        status = NOT_EVALUATED
+    if any(isinstance(row, Mapping) and row.get("status") == FAILED for row in checks):
+        status = FAILED
+    elif status == PASSED and not checks:
+        status = NOT_EVALUATED
+    metrics = dict(report.get("metrics") or {})
+    reported = dict(metrics.get("reported") or {})
+    full_node = dict(metrics.get("full_node") or {})
+    envelope = dict(metrics.get("envelope") or {})
+    boundary_residual = dict(metrics.get("boundary_residual") or {})
+    boundary = dict(report.get("boundary") or {})
+    energy_balance = {
+        "status": status,
+        "severity": "report",
+        "enforcement": ENERGY_BALANCE_ENFORCEMENT,
+        "boundary_id": boundary.get("boundary_id"),
+        "boundary_source": boundary.get("source"),
+        "reasons": list(report.get("reasons") or []),
+        "periods": metrics.get("periods"),
+        "sum_demand_mwh": metrics.get("sum_demand_mwh"),
+        "maximum_absolute_full_node_residual_mwh": full_node.get("max_abs_mwh"),
+        "maximum_absolute_boundary_residual_mwh": boundary_residual.get("max_abs_mwh"),
+        "maximum_absolute_raw_residual_mwh": reported.get("max_abs_raw_residual_mwh"),
+        "compatibility_adjustment_periods": reported.get("adjusted_periods"),
+        "sum_abs_compatibility_adjustment_mwh": reported.get("sum_abs_adjustment_mwh"),
+        "adjusted_energy_share": reported.get("adjusted_energy_share"),
+        "adjusted_energy_share_cap": reported.get("adjusted_energy_share_cap"),
+        "envelope_lower_violations": envelope.get("lower_violations"),
+        "envelope_upper_violations": envelope.get("upper_violations"),
+        "maximum_envelope_violation_mwh": max(
+            [value for value in (envelope.get("max_lower_violation_mwh"), envelope.get("max_upper_violation_mwh"))
+             if isinstance(value, (int, float))] or [0.0]
+        ) if envelope else None,
+        "worst_periods": list(envelope.get("worst_periods") or [])[:5],
+        "artifact": ENERGY_BALANCE_ARTIFACT,
+    }
+    stress_report = report.get("stress")
+    stress = None
+    if isinstance(stress_report, Mapping):
+        exact = stress_report.get("basis") == "exact"
+        years = [row for row in list(stress_report.get("by_year") or []) if isinstance(row, Mapping)]
+
+        def year_sum(key: str) -> float:
+            return float(f"{math.fsum(float(row.get(key) or 0.0) for row in years):.12g}")
+
+        stress = {
+            "decision": "A2",
+            "shortfall_basis": "exact" if exact else "lower_bound",
+            "stress_periods": stress_report.get("stress_periods"),
+            "possible_stress_periods": stress_report.get("possible_stress_periods"),
+            "event_count": stress_report.get("event_count"),
+            # Certain shortfall: exact with recorded surplus routing, otherwise
+            # the demand that accepted supply did not meet (a lower bound).
+            # Summed over stress periods only (tolerance-level noise is not shortfall).
+            "shortfall_mwh": year_sum("shortfall_lower_mwh"),
+            "shortfall_upper_mwh": year_sum("shortfall_upper_mwh"),
+            "recorded_unserved_mwh": stress_report.get("recorded_unserved_mwh"),
+            "by_year": [
+                {key: row.get(key) for key in (
+                    "year", "stress_periods", "possible_stress_periods", "event_count",
+                    "shortfall_lower_mwh", "shortfall_upper_mwh", "recorded_unserved_mwh",
+                    "hidden_shortfall_lower_mwh",
+                )}
+                for row in years[:200]
+            ],
+            "artifact": ENERGY_BALANCE_ARTIFACT,
+        }
+    return energy_balance, stress
+
+
+def _validation_warnings(contract: Mapping[str, object], invariants: Mapping[str, object],
+                         energy_balance: Mapping[str, object], stress: Mapping[str, object] | None) -> list[dict[str, object]]:
+    warnings: list[dict[str, object]] = []
+
+    def add(code: str, severity: str, message: str, source: str) -> None:
+        warnings.append({"code": code, "severity": severity, "message": message, "source": source})
+
+    if contract["status"] == FAILED:
+        add("GF_VALIDATION_CONTRACT_FAILED", "error",
+            "A recomputed contract parity check failed.", "parity/stage-parity.json")
+    elif contract["status"] == NOT_EVALUATED:
+        add("GF_VALIDATION_CONTRACT_NOT_EVALUATED", "warning",
+            "No contract parity check was executed for this run.", "parity/stage-parity.json")
+    if invariants["status"] == FAILED:
+        add("GF_RUN_INVARIANTS_FAILED", "error",
+            "Run invariants failed: " + ", ".join(invariants.get("failed_checks") or []) +
+            " (reported; not yet a gate).", "validation/run-invariants.json")
+    elif invariants["status"] == NOT_EVALUATED:
+        add("GF_RUN_INVARIANTS_NOT_EVALUATED", "info",
+            "Run invariants could not all be evaluated.", "validation/run-invariants.json")
+    if energy_balance["status"] == FAILED:
+        add("GF_ENERGY_BALANCE_FAILED", "error",
+            "The independent ledger check found periods where supply and use do not reconcile "
+            "(reported; not yet a gate).", ENERGY_BALANCE_ARTIFACT)
+    elif energy_balance["status"] == NOT_EVALUATED:
+        add("GF_ENERGY_BALANCE_NOT_EVALUATED", "info",
+            "The energy balance could not be verified from this ledger (reasons: "
+            + ", ".join(str(item) for item in energy_balance.get("reasons") or []) + ").",
+            ENERGY_BALANCE_ARTIFACT)
+    adjusted = energy_balance.get("compatibility_adjustment_periods")
+    if isinstance(adjusted, int) and adjusted > 0:
+        add("GF_COMPAT_ADJUSTMENT_PRESENT", "warning",
+            f"{adjusted} periods carry a compatibility adjustment that forces the self-reported residual to zero.",
+            ENERGY_BALANCE_ARTIFACT)
+    if stress and isinstance(stress.get("stress_periods"), int) and stress["stress_periods"] > 0:
+        add("GF_STRESS_EVENTS_RECORDED", "warning",
+            f"Accepted supply fell short of demand in {stress['stress_periods']} periods "
+            f"({stress.get('event_count')} stress events); dispatch was not altered.", ENERGY_BALANCE_ARTIFACT)
+    return warnings
+
+
 def build_scientific_validation_report(
     *,
     mode: str,
@@ -152,7 +354,24 @@ def build_scientific_validation_report(
     parity_report: Mapping[str, object],
     mechanism_checks: list[MechanismCheck] | None = None,
     retained_comparison_role: str = RETAINED_COMPARISON_REQUIRED,
+    run_invariants: Mapping[str, object] | None = None,
+    energy_balance: Mapping[str, object] | None = None,
+    execution_scope: str = "annual",
 ) -> dict[str, object]:
+    """Scientific-validation report v2: every status traces to executed checks.
+
+    * ``contract_validation_status`` is recomputed from the parity checks
+      (none executed: ``not_evaluated``; P7-01).
+    * ``analytical_mechanism_status`` (alias ``module_self_test_status``) is
+      the fixed analytical self-test of the VALUE mechanisms; it says nothing
+      about this run's numbers.
+    * ``run_invariant_status`` and ``energy_balance_status`` are recomputed
+      from the run-invariant report and the read-only energy-balance oracle.
+      Both are reported with severity ``report`` (P0-4 S7 makes them gates of
+      the production profile); a failure appears in ``validation_warnings``.
+    * ``raw_invariants`` is the evidence of the Q14 publication rule.
+    """
+
     if retained_comparison_role not in {
         RETAINED_COMPARISON_REQUIRED,
         RETAINED_COMPARISON_INFORMATIONAL,
@@ -161,7 +380,8 @@ def build_scientific_validation_report(
     checks = mechanism_checks if mechanism_checks is not None else analytical_mechanism_checks()
     mechanism_passed = bool(checks) and all(check.passed for check in checks)
     mechanism_status = (PASSED if mechanism_passed else FAILED) if checks else NOT_EVALUATED
-    contract_passed = parity_report.get("contract_parity_passed") is True
+    contract = contract_evidence(parity_report)
+    contract_status = contract["status"]
     retained = parity_report.get("retained_numerical_parity_passed")
     retained_status = PASSED if retained is True else NOT_EVALUATED
     if retained is False:
@@ -171,11 +391,12 @@ def build_scientific_validation_report(
             else EXPECTED_DIFFERENCE
         )
     annual_economics_eligible = (
-        periods_per_year == 17_520 and contract_passed and mechanism_passed
+        periods_per_year == 17_520 and contract_status == PASSED and mechanism_passed
     )
-    if not contract_passed or mechanism_status == FAILED:
+    if contract_status == FAILED or mechanism_status == FAILED:
         scientific_status = FAILED
-    elif mechanism_status == NOT_EVALUATED or periods_per_year != 17_520:
+    elif (contract_status == NOT_EVALUATED or mechanism_status == NOT_EVALUATED
+          or periods_per_year != 17_520):
         scientific_status = NOT_EVALUATED
     elif retained_comparison_role == RETAINED_COMPARISON_REQUIRED:
         scientific_status = retained_status
@@ -185,21 +406,51 @@ def build_scientific_validation_report(
         # retained VALUE scenario is evidence to report, not a failed
         # reproduction claim that the project never made.
         scientific_status = PASSED
+    invariants = run_invariant_evidence(run_invariants)
+    balance, stress = energy_balance_summary(energy_balance)
+    raw_status = (
+        PASSED if invariants["status"] == PASSED and balance["status"] == PASSED
+        else FAILED if FAILED in (invariants["status"], balance["status"])
+        else NOT_EVALUATED
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "mode": mode,
+        "execution_scope": execution_scope,
         "periods_per_year": periods_per_year,
         "execution_status": PASSED,
-        "contract_validation_status": PASSED if contract_passed else FAILED,
+        "contract_validation_status": contract_status,
+        "contract_validation": contract,
         "analytical_mechanism_status": mechanism_status,
+        "module_self_test_status": mechanism_status,
+        "module_self_test_scope": "fixed analytical fixtures; independent of this run's numbers",
         "modular_numerical_baseline_status": NOT_EVALUATED,
         "retained_numerical_comparison_role": retained_comparison_role,
         "retained_numerical_comparison_status": retained_status,
         "scientific_validation_status": scientific_status,
+        "run_invariant_status": invariants["status"],
+        "run_invariants": invariants,
+        "energy_balance_status": balance["status"],
+        "energy_balance": balance,
+        "stress": stress,
+        "raw_invariants": {
+            "status": raw_status,
+            "run_invariant_status": invariants["status"],
+            "energy_balance_status": balance["status"],
+            "decision": "Q14",
+        },
+        "validation_warnings": _validation_warnings(contract, invariants, balance, stress),
         "annual_economics_eligible": annual_economics_eligible,
         "short_run_diagnostics_only": periods_per_year != 17_520,
         "mechanism_checks": [check.to_dict() for check in checks],
     }
+
+
+def _read_optional_json(path: Path | None) -> dict[str, object] | None:
+    if path is None or not Path(path).is_file():
+        return None
+    value = json.loads(Path(path).read_text(encoding="utf-8"))
+    return value if isinstance(value, dict) else None
 
 
 def write_scientific_validation_report(
@@ -209,6 +460,11 @@ def write_scientific_validation_report(
     periods_per_year: int,
     parity_path: Path,
     retained_comparison_role: str = RETAINED_COMPARISON_REQUIRED,
+    run_invariants_path: Path | None = None,
+    energy_balance_path: Path | None = None,
+    execution_scope: str = "annual",
+    mechanism_checks: list[MechanismCheck] | None = None,
+    extra_fields: Mapping[str, object] | None = None,
 ) -> Path:
     parity = json.loads(parity_path.read_text(encoding="utf-8"))
     report = build_scientific_validation_report(
@@ -216,7 +472,12 @@ def write_scientific_validation_report(
         periods_per_year=periods_per_year,
         parity_report=parity,
         retained_comparison_role=retained_comparison_role,
+        run_invariants=_read_optional_json(run_invariants_path),
+        energy_balance=_read_optional_json(energy_balance_path),
+        execution_scope=execution_scope,
+        mechanism_checks=mechanism_checks,
     )
+    report.update(dict(extra_fields or {}))
     path = output_dir / "validation" / "scientific-validation.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

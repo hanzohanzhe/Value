@@ -42,7 +42,14 @@ from .methodology import (
     selection_combination_violations,
 )
 from .parameters import resolve_scheme_c_parameters
-from .parity import write_stage_parity_report
+from .parity import build_native_parity_report
+from .energy_balance_oracle import evaluate_run_ledger, stored_report as stored_oracle_report
+from .run_invariants import (
+    chronology_tally,
+    evaluate_run_invariants,
+    read_jsonl,
+    record_input_tally,
+)
 from .provenance import snapshot_module_manifests, write_run_provenance
 from .builtin.scheme_c_1000twh.runtime_overlay import ensure_runtime_overlay_sealed
 from .performance import write_performance_report
@@ -131,6 +138,71 @@ def _atomic_json_artifact(path: Path, payload: Mapping[str, object]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     # Unique temporary per write (F5-03): never a shared fixed ``.tmp`` name.
     return atomic_write_json(path, payload, indent=2, ensure_ascii=False, sort_keys=True)
+
+
+def _write_validation_artifacts(
+    output_dir: Path,
+    *,
+    mode: str,
+    periods: int,
+    year_results: Sequence[Mapping[str, object]],
+    expected_years: Sequence[int],
+    selected_psm: str,
+    execution_scope: str,
+    retained_comparison_role: str,
+    initial_state_sha256: str | None = None,
+    network_expansion: bool = False,
+    mechanism_checks: list | None = None,
+    extra_fields: Mapping[str, object] | None = None,
+) -> tuple[Path, Path]:
+    """Recompute and write the run's validation evidence (P0-4 S2).
+
+    Order: the read-only energy-balance oracle on the closed ledger, the run
+    invariants, the stage-parity v3 contract checks, then the v2
+    scientific-validation report that recomputes every status from them.
+    """
+
+    oracle = stored_oracle_report(evaluate_run_ledger(output_dir))
+    oracle_path = _atomic_json_artifact(
+        output_dir / "validation" / "energy-balance-oracle.json", oracle
+    )
+    invariants = evaluate_run_invariants(
+        output_dir,
+        year_results=list(year_results),
+        expected_years=list(expected_years),
+        periods_per_year=periods,
+        execution_scope=execution_scope,
+        initial_state_sha256=initial_state_sha256,
+        network_expansion=network_expansion,
+        events=read_jsonl(output_dir / "orchestrator-events.jsonl"),
+    )
+    invariants_path = _atomic_json_artifact(
+        output_dir / "validation" / "run-invariants.json", invariants
+    )
+    parity = build_native_parity_report(
+        output_dir,
+        year_results=list(year_results),
+        expected_years=list(expected_years),
+        periods_per_year=periods,
+        selected_psm=selected_psm,
+        execution_scope=execution_scope,
+        energy_balance=oracle,
+        run_invariants=invariants,
+    )
+    parity_path = _atomic_json_artifact(output_dir / "parity" / "stage-parity.json", parity)
+    scientific_path = write_scientific_validation_report(
+        output_dir,
+        mode=mode,
+        periods_per_year=periods,
+        parity_path=parity_path,
+        retained_comparison_role=retained_comparison_role,
+        run_invariants_path=invariants_path,
+        energy_balance_path=oracle_path,
+        execution_scope=execution_scope,
+        mechanism_checks=mechanism_checks,
+        extra_fields=extra_fields,
+    )
+    return parity_path, scientific_path
 
 
 def _configure_subannual_checkpoint_sink(
@@ -1547,9 +1619,30 @@ def _run_native_project(
         )
         recovery_consumed = True
 
+    configured_demand_mode = str(
+        dict(project.get("market_configuration") or {}).get("zonal_demand_mode") or ""
+    )
+    # P0-4 S2: the demand the input factory hands to the PSM is tallied when
+    # the chronology is built and reconciled with the ledger afterwards
+    # (run.demand_input_reconciliation).  With a network pack the PSM may take
+    # its demand from the pack's zonal series instead of this chronology.
+    demand_authority = (
+        "chronology" if network_pack is None
+        else f"network_pack:{configured_demand_mode or 'not_declared'}"
+    )
+
+    def tallied_input(model_input: PSMInput, source: str) -> PSMInput:
+        tally = chronology_tally(model_input, source=source, demand_authority=demand_authority)
+        if tally is not None:
+            record_input_tally(output_dir, tally)
+        return model_input
+
     def input_factory(run: ResolvedRun, state):
         if selected.get("psm") == "value-doctoral-national-psm":
-            return _doctoral_native_input(run, pack_root, pack_manifest, state, periods)
+            return tallied_input(
+                _doctoral_native_input(run, pack_root, pack_manifest, state, periods),
+                "build_doctoral_psm_input",
+            )
         chronology = build_chronology(
             pack_root,
             pack_manifest,
@@ -1600,7 +1693,7 @@ def _run_native_project(
                     network_input, state
                 )
             input_extensions["network_input"] = network_input.to_dict()
-        return PSMInput(
+        return tallied_input(PSMInput(
             run.run_id,
             state.year,
             run.data_pack_id,
@@ -1609,7 +1702,7 @@ def _run_native_project(
             {**dict(run.scientific_parameters), **dict(run.runtime_controls)},
             chronology=chronology,
             extensions=input_extensions,
-        )
+        ), "build_chronology")
 
     subannual_store = SubannualCheckpointStore(output_dir.parent)
     current_parent_annual_checkpoint_identity = _parent_annual_checkpoint_identity(
@@ -1819,20 +1912,20 @@ def _run_native_project(
             ) + "\n",
             encoding="utf-8",
         )
-        validation_path = _atomic_json_artifact(
-            output_dir / "validation" / "scientific-validation.json",
-            {
-                "schema_version": "value.scientific-validation/v1",
-                "mode": mode,
-                "periods_per_year": periods,
-                "execution_status": "passed",
-                "contract_validation_status": "passed",
-                "scientific_validation_status": "not_evaluated",
-                "annual_economics_eligible": False,
-                "short_run_diagnostics_only": True,
-                "execution_scope": "psm_only",
-                "cem_stages_executed": False,
-            },
+        # P0-4 S2: the lesson's contract status is recomputed from executed
+        # checks (it used to be a literal "passed"); the analytical module
+        # self-test is not part of the PSM-only lesson and is not claimed.
+        _parity_path, validation_path = _write_validation_artifacts(
+            output_dir,
+            mode=mode,
+            periods=periods,
+            year_results=[{"year": market.year, "market": market.to_dict()}],
+            expected_years=[resolved.start_year],
+            selected_psm=implementations["psm"].id,
+            execution_scope="psm_only",
+            retained_comparison_role=RETAINED_COMPARISON_INFORMATIONAL,
+            mechanism_checks=[],
+            extra_fields={"cem_stages_executed": False},
         )
         provenance_path = _atomic_json_artifact(
             output_dir / "provenance.json",
@@ -2001,21 +2094,9 @@ def _run_native_project(
     (output_dir / "resolved-run.json").write_text(
         json.dumps(resolved.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    validation_dir = output_dir / "validation"
-    validation_dir.mkdir(parents=True, exist_ok=True)
-    parity_path = output_dir / "parity" / "stage-parity.json"
-    parity_path.parent.mkdir(parents=True, exist_ok=True)
-    market_metadata_path = output_dir / "market" / "metadata.json"
-    if market_metadata_path.is_file():
-        market_metadata = json.loads(market_metadata_path.read_text(encoding="utf-8"))
-        market_periods = int(market_metadata["rows"]["period_summary"])
-        market_database_artifact: str | None = "market/market.sqlite"
-    else:
-        # A conformant external PSM may return typed period summaries without
-        # using VALUE's optional SQLite writer. Typed results are the contract;
-        # the built-in ledger is an implementation artifact, not a hidden API.
-        market_periods = sum(len(result.market.period_summaries) for result in typed_results)
-        market_database_artifact = None
+    # A conformant external PSM may return typed period summaries without
+    # using VALUE's optional SQLite writer; the parity then reads the typed
+    # contract and the energy balance is not evaluated (no ledger).
     configured_network_pack_id = str(
         dict(project.get("market_configuration") or {}).get("network_pack_id")
         or "not_selected"
@@ -2032,37 +2113,17 @@ def _run_native_project(
         initial_state_sha256=contract_hash(source_initial_state),
         resolution_graph=resolution_graph,
     )
-    parity_path.write_text(json.dumps({
-        "schema_version": "value.stage-parity-report/v2",
-        "passed": True,
-        "contract_parity_passed": True,
-        "retained_numerical_parity_passed": None,
-        "release_gate_passed": None,
-        "first_divergence": None,
-        "execution_path": "native_public_contracts",
-        "selected_psm": selected["psm"],
-        "market_evidence": {
-            "available": True,
-            "periods": market_periods,
-            "database_artifact": market_database_artifact,
-            "source": "sqlite_ledger" if market_database_artifact else "typed_contract",
-        },
-        "planning_evidence": {
-            "available": True,
-            "years": len(typed_results),
-            "database_artifact": "planning/project-index.sqlite",
-        },
-        "agent_economics_evidence": {
-            "available": False,
-            "reason": "Native typed investment decisions are recorded directly; the legacy investment-analysis replay table is reference-only.",
-        },
-    }, indent=2), encoding="utf-8")
-    scientific_path = write_scientific_validation_report(
+    parity_path, scientific_path = _write_validation_artifacts(
         output_dir,
         mode=mode,
-        periods_per_year=periods,
-        parity_path=parity_path,
+        periods=periods,
+        year_results=[item.to_dict() for item in typed_results],
+        expected_years=expected_years,
+        selected_psm=str(selected["psm"]),
+        execution_scope="annual",
         retained_comparison_role=RETAINED_COMPARISON_INFORMATIONAL,
+        initial_state_sha256=contract_hash(source_initial_state),
+        network_expansion=network_expansion is not None,
     )
     comparison_path: Path | None = None
     annual_comparison_evidence = []

@@ -568,6 +568,82 @@ def _stress_report(flows_list: Sequence[contract.PeriodFlows], tier: str, bounda
     }
 
 
+R_NO_LEDGER = "GF_ENERGY_BALANCE_LEDGER_NOT_RECORDED"
+R_INPUT_ERROR = "GF_ENERGY_BALANCE_LEDGER_UNREADABLE"
+STORED_ARTIFACT = "validation/energy-balance-oracle.json"
+STORED_MAX_PERIODS = 2000
+STORED_MAX_EVENTS = 1000
+STORED_MAX_YEARS = 200
+
+
+def evaluate_run_ledger(output_dir: Path | str) -> dict[str, Any]:
+    """Evaluate a run's ``market/market.sqlite``; a run without one is not evaluated.
+
+    Never raises on missing or unreadable ledgers: a PSM may legitimately not
+    write the optional SQLite ledger (typed results are the contract).
+    """
+
+    output_dir = Path(output_dir)
+    database = output_dir / "market" / "market.sqlite"
+    if not database.is_file():
+        return {
+            "schema_version": REPORT_SCHEMA_VERSION,
+            "contract_version": contract.CONTRACT_VERSION,
+            "report_only": True,
+            "ledger": None,
+            "status": NOT_EVALUATED,
+            "reasons": [R_NO_LEDGER],
+            "checks": [],
+            "metrics": {},
+            "stress": None,
+        }
+    try:
+        return evaluate_ledger(database)
+    except (OracleInputError, OSError, sqlite3.DatabaseError) as exc:
+        return {
+            "schema_version": REPORT_SCHEMA_VERSION,
+            "contract_version": contract.CONTRACT_VERSION,
+            "report_only": True,
+            "ledger": {"artifact": "market/market.sqlite"},
+            "status": NOT_EVALUATED,
+            "reasons": [R_INPUT_ERROR],
+            "error": f"{type(exc).__name__}: {exc}",
+            "checks": [],
+            "metrics": {},
+            "stress": None,
+        }
+
+
+def stored_report(report: Mapping[str, Any], *, artifact: str = "market/market.sqlite") -> dict[str, Any]:
+    """A bounded, location-independent copy of a report for a run bundle.
+
+    The absolute ledger path becomes the bundle-relative artifact name, the
+    ledger hashes are recorded once (as ``source_artifact_sha256``), and the
+    per-period stress list and the event list are capped (counts kept).
+    """
+
+    stored = json.loads(json.dumps(report))
+    ledger = stored.get("ledger")
+    if isinstance(ledger, dict):
+        stored["ledger"] = {
+            "artifact": artifact,
+            "source_artifact_sha256": ledger.get("sha256_after") or ledger.get("sha256_before"),
+            "unchanged": ledger.get("unchanged"),
+            "side_files": ledger.get("side_files") or {},
+            "schema_version": ledger.get("schema_version"),
+        }
+    stress = stored.get("stress")
+    if isinstance(stress, dict):
+        for key, limit in (("periods", STORED_MAX_PERIODS), ("events", STORED_MAX_EVENTS), ("by_year", STORED_MAX_YEARS)):
+            rows = stress.get(key)
+            if isinstance(rows, list):
+                stress[f"{key}_total"] = len(rows)
+                stress[f"{key}_truncated"] = len(rows) > limit
+                stress[key] = rows[:limit]
+    stored["stored_artifact"] = STORED_ARTIFACT
+    return stored
+
+
 class _Parser(argparse.ArgumentParser):
     def error(self, message: str) -> None:  # argparse would exit 2 (= not_evaluated)
         self.print_usage(sys.stderr)
