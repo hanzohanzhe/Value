@@ -15,6 +15,11 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(CHECK)
 
 
+def _next_minor(version: str) -> str:
+    major, minor, _patch = (int(part) for part in version.split("."))
+    return f"{major}.{minor + 1}.0"
+
+
 class VersionLedgerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.ledger = json.loads(CHECK.LEDGER.read_text(encoding="utf-8"))
@@ -27,7 +32,8 @@ class VersionLedgerTests(unittest.TestCase):
         ledger = copy.deepcopy(self.ledger)
         manifests = copy.deepcopy(self.manifests)
         entry = ledger["modules"]["value-bid-at-cost-psm"]
-        record = {"from": "5.1.0", "to": "5.2.0", "package": "P0-4", "correction_ids": ["p0-4.x"],
+        current = entry["current_version"]
+        record = {"from": current, "to": _next_minor(current), "package": "P0-x", "correction_ids": ["p0-x.y"],
                   "reason": "test", "requires_user_opt_in": False, **bump}
         entry["bumps"].append(record)
         entry["current_version"] = record["to"]
@@ -48,7 +54,8 @@ class VersionLedgerTests(unittest.TestCase):
 
     def test_manifest_drift_without_ledger_fails(self) -> None:
         manifests = copy.deepcopy(self.manifests)
-        manifests["value-bid-at-cost-psm"]["version"] = "5.2.0"
+        current = self.ledger["modules"]["value-bid-at-cost-psm"]["current_version"]
+        manifests["value-bid-at-cost-psm"]["version"] = _next_minor(current)
         self.assertTrue(CHECK.check(self.ledger, manifests, import_classes=False))
 
 

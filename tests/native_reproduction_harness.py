@@ -719,6 +719,8 @@ class RecordingLedger:
         self.declared: list[dict[str, Any]] = []
         self.storage_audit: list[dict[str, Any]] = []
         self.surplus_routing: list[dict[str, Any]] = []
+        self.balance_declarations: list[dict[str, Any]] = []
+        self.balance_terms: list[dict[str, Any]] = []
 
     def record_period(self, row) -> None:
         self.periods.append(dataclasses.asdict(row))
@@ -736,6 +738,13 @@ class RecordingLedger:
     def record_surplus_routing(self, rows) -> None:
         # P0-4 S5: source-classified surplus routing (accounting, zones.json).
         self.surplus_routing.extend(dataclasses.asdict(row) for row in rows)
+
+    def declare_balance_boundary(self, boundary_id, *, rule_set=None, strict=None) -> None:
+        # P0-4 S6: the boundary the kernel declares for its rule set.
+        self.balance_declarations.append({"boundary_id": boundary_id, "rule_set": rule_set, "strict": strict})
+
+    def record_balance_terms(self, row) -> None:
+        self.balance_terms.append(dataclasses.asdict(row))
 
     def record_clearing_input(self, row) -> None:
         self.declared.append({
@@ -1072,6 +1081,19 @@ def columns_from_run(result: Mapping[str, Any], periods: int = PERIODS) -> dict[
             columns[f"market/market.sqlite::surplus_routing.{source_class}.{field}"] = [
                 canonical(by_period[period][field]) if period in by_period else 0.0 for period in range(periods)
             ]
+    # P0-4 S6: declared boundary (identity like every metadata row) and the
+    # per-period boundary terms (accounting, '*balance_boundary*' in zones.json).
+    if ledger.balance_declarations:
+        columns["market/market.sqlite::metadata.energy_balance_boundary"] = canonical(
+            [item["boundary_id"] for item in ledger.balance_declarations])
+        columns["market/market.sqlite::metadata.energy_balance_rule_set"] = canonical(
+            [item["rule_set"] for item in ledger.balance_declarations])
+    if ledger.balance_terms:
+        for field in ledger.balance_terms[0]:
+            if field in ("year", "period"):
+                continue
+            columns[f"market/market.sqlite::balance_boundary_period.{field}"] = _per_period(
+                [canonical(row[field]) for row in ledger.balance_terms], periods, f"balance terms {field}")
     if len(ledger.orders) != periods:
         raise AssertionError(f"ledger recorded orders for {len(ledger.orders)} periods")
     columns["market/market.sqlite::orders.#rows"] = [len(rows) for rows in ledger.orders]
@@ -1631,5 +1653,12 @@ def coverage_facts(columns: Mapping[str, Any], scenario: Mapping[str, Any] | Non
         "electrolysis": [p for p in range(periods) if columns["kernel/run_simulation::flexible_demand_list"][p] > 0],
         "vre_skim_leak": [p for p in range(periods) if skim_leak(p)],
         "storage_discharge_above_rated_power": [p for p in range(periods) if discharge_above_rating(p)],
-        "compatibility_adjustment": [p for p in range(periods) if columns[summary + "compatibility_adjustment_mwh"][p] != 0.0],
+        # Periods the retained self-report had to close with an adjustment;
+        # since P0-4 S6 the adjustment is noise-only and such a period shows a
+        # non-zero raw residual on the declared boundary instead.
+        "compatibility_adjustment": [
+            p for p in range(periods)
+            if columns[summary + "compatibility_adjustment_mwh"][p] != 0.0
+            or abs(columns[summary + "raw_energy_balance_residual_mwh"][p]) > 1e-9
+        ],
     }

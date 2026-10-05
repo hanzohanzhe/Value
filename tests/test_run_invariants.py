@@ -332,11 +332,12 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         self.assertEqual(validation["scientific_validation_status"], "not_evaluated")  # 2 periods per year
         self.assertEqual(validate_run_bundle(output)["errors"], [])
 
-    def test_overshoot_two_year_smoke_reports_four_adjusted_periods(self):
+    def test_overshoot_two_year_smoke_reports_four_stress_periods(self):
         output = self.runs[("overshoot", "two_year_smoke")]
         validation = _read(output / "validation" / "scientific-validation.json")
         balance = validation["energy_balance"]
-        self.assertEqual(balance["compatibility_adjustment_periods"], 4)
+        # P0-4 S6: the adjustment absorbs numerical noise only (HEAD: 4 periods).
+        self.assertEqual(balance["compatibility_adjustment_periods"], 0)
         self.assertEqual(validation["energy_balance_status"], "failed")
         self.assertEqual(balance["severity"], "report")
         self.assertEqual(validation["stress"]["stress_periods"], 4)
@@ -344,7 +345,7 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         self.assertIn("GF_ENERGY_BALANCE_FAILED", {row["code"] for row in validation["validation_warnings"]})
         parity = _read(output / "parity" / "stage-parity.json")
         self.assertTrue(parity["contract_parity_passed"])  # reported, not gated, until S7
-        self.assertEqual(parity["market_evidence"]["energy_balance"]["compatibility_adjustment_periods"], 4)
+        self.assertEqual(parity["market_evidence"]["energy_balance"]["compatibility_adjustment_periods"], 0)
         oracle = _read(output / "validation" / "energy-balance-oracle.json")
         self.assertEqual(oracle["ledger"]["artifact"], "market/market.sqlite")
         self.assertNotIn(str(output), json.dumps(oracle))
@@ -361,7 +362,7 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         self.assertFalse(validation["cem_stages_executed"])
         self.assertEqual(validation["stress"]["stress_periods"], 48)
         self.assertAlmostEqual(validation["stress"]["shortfall_mwh"], 810.546171074, places=6)
-        self.assertEqual(validation["energy_balance"]["compatibility_adjustment_periods"], 48)
+        self.assertEqual(validation["energy_balance"]["compatibility_adjustment_periods"], 0)  # P0-4 S6
         invariants = _read(output / "validation" / "run-invariants.json")
         self.assertEqual(invariants["status"], "passed")
         self.assertEqual(_check(invariants, "run.state_chain")["status"], "not_applicable")

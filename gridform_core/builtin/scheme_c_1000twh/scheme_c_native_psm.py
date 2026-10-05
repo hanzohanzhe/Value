@@ -74,7 +74,7 @@ class SchemeCNativePSM:
     """Execute the Scheme C market once for the current typed operating year."""
 
     id = "scheme-c-psm"
-    version = "5.1.0"
+    version = "5.2.0"
     execution_kind = "live_module"
 
     def __init__(self) -> None:
@@ -291,8 +291,25 @@ class SchemeCNativePSM:
         period_hours: float,
         forecast,
         real,
+        boundary_id: str | None = None,
+        realisation_log: RealisationLog | None = None,
     ) -> None:
-        """Materialise final physical rows without entering the clearing loop."""
+        """Materialise final physical rows without entering the clearing loop.
+
+        ``balance_component_mwh`` follows the ledger's declared boundary
+        (P0-4 S6): on default_psm_surplus_node_v1 a load's component is minus
+        the load plus the out-of-dispatch surplus that fed it (U_out), and the
+        in-dispatch spill W_in (non_vre_spill) is minus on the excess and
+        curtailment rows, so the components minus demand equal the raw
+        residual.  Row sets, energies and scopes are unchanged.  Without a declared
+        boundary the retained boundary share is kept.
+        """
+
+        surplus_node = (
+            boundary_id == "default_psm_surplus_node_v1"
+            and realisation_log is not None
+            and hasattr(realisation_log, "u_out_to_storage_mwh")
+        )
 
         for period, raw_dispatch in enumerate(named.dispatch_by_period):
             combined: defaultdict[tuple[str, str, str, str], float] = defaultdict(float)
@@ -325,35 +342,51 @@ class SchemeCNativePSM:
                 if abs(energy_mwh) > 1e-12
             ]
             charge_mwh = float(named.storage_charge_by_period[period] or 0.0) * period_hours
-            accounted_charge_mwh = min(
-                charge_mwh,
-                max((float(forecast[period]) - float(real[period])) * period_hours, 0.0),
-            )
+            flexible_mwh = float(named.flexible_demand_mwh_by_period[period] or 0.0) * period_hours
+            export_mwh = float(named.interconnector_exports_mwh_by_period[period] or 0.0) * period_hours
+            if surplus_node:
+                charge_component = -charge_mwh + float(realisation_log.u_out_to_storage_mwh[period])
+                flexible_component = -flexible_mwh + float(realisation_log.u_out_to_flexible_mwh[period])
+                export_component = -export_mwh + float(realisation_log.u_out_to_export_mwh[period])
+                # W_in sits on the rows it came from: the unused excess first,
+                # the booked down-regulation that did not leave S next (W_in <=
+                # XS + K, so the curtailment row exists whenever it is needed).
+                excess_mwh = float(named.excess_electricity_mwh_by_period[period] or 0.0) * period_hours
+                spill_mwh = float(realisation_log.non_vre_spill_mwh[period])
+                excess_component = -min(spill_mwh, max(excess_mwh, 0.0))
+                curtailment_component = -(spill_mwh + excess_component)
+            else:
+                charge_component = -min(
+                    charge_mwh,
+                    max((float(forecast[period]) - float(real[period])) * period_hours, 0.0),
+                )
+                flexible_component = export_component = 0.0
+                excess_component = curtailment_component = 0.0
+            # The scopes are the HEAD labels (physical_dispatch.evidence_scope
+            # is a trajectory column); the boundary is in the ledger metadata.
             context = (
                 (
                     "__storage_charge_unallocated__", "storage_unallocated",
-                    "storage_charge", charge_mwh, -accounted_charge_mwh,
+                    "storage_charge", charge_mwh, charge_component,
                     "aggregate_input_charge; balance component includes only the retained final-dispatch boundary share",
                 ),
                 (
                     "__flexible_demand__", "flexible_demand", "flexible_demand",
-                    float(named.flexible_demand_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "context flow outside the retained demand-serving balance",
+                    flexible_mwh, flexible_component, "context flow outside the retained demand-serving balance",
                 ),
                 (
                     "__boundary_export__", "boundary_export", "export",
-                    float(named.interconnector_exports_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "gb boundary export context flow",
+                    export_mwh, export_component, "gb boundary export context flow",
                 ),
                 (
                     "__balancing_curtailment__", "vre_aggregate", "balancing_curtailment",
                     float(named.curtailed_electricity_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "reported balancing-stage curtailment",
+                    curtailment_component, "reported balancing-stage curtailment",
                 ),
                 (
                     "__prebalancing_excess__", "inflexible_mixed", "excess_generation",
                     float(named.excess_electricity_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "pre-balancing excess may include VRE, nuclear or natural-flow hydro",
+                    excess_component, "pre-balancing excess may include VRE, nuclear or natural-flow hydro",
                 ),
                 (
                     "__blackout__", "unserved_energy", "blackout",
@@ -429,6 +462,10 @@ class SchemeCNativePSM:
                     "SIMULATION_YEAR": str(model_input.year),
                     "PHYSICAL_PERIOD_HOURS": str(period_hours),
                     "SAVE_MARKET_TRACE": "0",
+                    # P0-4 S6: raise on a declared-boundary imbalance.
+                    "ENERGY_BALANCE_STRICT": (
+                        "1" if bool(parameters.get("runtime.energy_balance_strict", False)) else "0"
+                    ),
                 },
             ):
                 fleet_generators = {}
@@ -483,6 +520,8 @@ class SchemeCNativePSM:
                     period_hours=period_hours,
                     forecast=forecast,
                     real=real,
+                    boundary_id=getattr(ledger, "balance_boundary", None),
+                    realisation_log=realisation_log,
                 )
                 storage_reports = {
                     asset_id: battery.storage_cost_report()

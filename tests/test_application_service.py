@@ -1217,7 +1217,7 @@ class ApplicationServiceTests(unittest.TestCase):
         self.assertEqual([row["year"] for row in stages[::7]], [2025, 2026])
         self.assertEqual({row["module_id"] for row in stages}, set(MODULES.values()) | {"value-annual-state-transition"})
         versions = {row["module_id"]: row["module_version"] for row in stages}
-        self.assertEqual(versions["value-bid-at-cost-psm"], "5.1.0")
+        self.assertEqual(versions["value-bid-at-cost-psm"], "5.2.0")
         self.assertEqual(versions["value-storage-expansion-policy"], "4.0.0")
         self.assertEqual(versions["agent-investment"], "2.2.0")
         self.assertEqual(versions["planning-pipeline"], "2.2.0")

@@ -29,21 +29,31 @@ from gridform_core import energy_balance_oracle as oracle
 from scripts import p04_capture_trajectory_golden as golden
 from tests import p04_variants
 
+# Since P0-4 S6 the kernel declares default_psm_surplus_node_v1 (doctoral
+# rule set) and records the surplus routing, so physically closing fixtures
+# pass and the two defective ones fail on the declared boundary.
 EXPECTED = {
-    "baseline": oracle.NOT_EVALUATED,
+    "baseline": oracle.PASSED,
     "overshoot": oracle.FAILED,
-    "export": oracle.NOT_EVALUATED,
-    "export_electrolyser": oracle.NOT_EVALUATED,
-    "nuclear_curtail": oracle.NOT_EVALUATED,
+    "export": oracle.PASSED,
+    "export_electrolyser": oracle.PASSED,
+    "nuclear_curtail": oracle.PASSED,
     "nuclear_balancing": oracle.FAILED,
-    "multi_battery": oracle.NOT_EVALUATED,
+    "multi_battery": oracle.PASSED,
 }
 
 
 # P0-4 S4-S6: tables that later steps add (accounting zone, never trajectory)
 # and existing accounting columns they revise.
 P04_ADDED_TABLES = {"storage_energy_audit", "storage_year_boundary", "surplus_routing"}
-P04_REVISED_COLUMNS: set[str] = set()
+P04_ADDED_TABLES |= {"balance_boundary_period", "stress_event"}
+P04_REVISED_COLUMNS: set[str] = {
+    "period_summary.raw_energy_balance_residual_mwh",
+    "period_summary.compatibility_adjustment_mwh",
+    "period_summary.energy_balance_residual_mwh",
+    "physical_dispatch.balance_component_mwh",
+    "metadata.#rows", "metadata.key", "metadata.value",
+}
 
 
 def _sha(path: Path) -> str:
@@ -136,13 +146,18 @@ class P04VariantFixtures(unittest.TestCase):
     def test_oracle_verdicts(self):
         statuses = {name: report["status"] for name, report in self.reports.items()}
         self.assertEqual(statuses, EXPECTED)
-        self.assertNotIn(oracle.PASSED, statuses.values())
         for name, report in self.reports.items():
             with self.subTest(variant=name):
-                self.assertEqual(report["boundary"]["source"], "registry")
+                self.assertEqual(report["boundary"]["source"], "metadata")
                 self.assertEqual(report["boundary"]["boundary_id"], "default_psm_surplus_node_v1")
-                self.assertIn(oracle.R_LEGACY, report["reasons"])
+                self.assertEqual(report["boundary"]["rule_set"], "native-doctoral-thesis-v1")
+                self.assertNotIn(oracle.R_LEGACY, report["reasons"])
                 self.assertEqual(report["metrics"]["self_report"]["inconsistent_periods"], 0)
+                self.assertEqual(report["metrics"]["self_report"]["raw_residual_basis"], "default_psm_surplus_node_v1")
+                # S6: the compatibility adjustment absorbs numerical noise only.
+                self.assertEqual(report["metrics"]["reported"]["adjusted_periods"], 0)
+        for name in ("overshoot", "nuclear_balancing"):
+            self.assertIn(oracle.R_BOUNDARY_RESIDUAL, self.reports[name]["reasons"])
 
     def test_ledgers_are_never_modified(self):
         for name, path in self.ledgers.items():
@@ -180,11 +195,33 @@ class P04VariantFixtures(unittest.TestCase):
         self.assertAlmostEqual(report["stress"]["periods"][0]["shortfall_lower_mwh"], 18.829, places=3)
         self.assertAlmostEqual(report["stress"]["periods"][0]["shortfall_upper_mwh"], 18.829, places=3)
         reported = report["metrics"]["reported"]
-        self.assertEqual(reported["adjusted_periods"], 48)
-        # Sum |adj| = 810.546 MWh exceeds the day's demand of 775.491 MWh.
+        # HEAD closed every period with sum |adj| = 810.546 MWh (more than the
+        # day's demand of 775.491 MWh); since S6 nothing is adjusted and the
+        # raw residual is the declared boundary's.
         self.assertAlmostEqual(report["metrics"]["sum_demand_mwh"], 775.491, places=3)
-        self.assertAlmostEqual(reported["sum_abs_adjustment_mwh"], 810.546, places=3)
-        self.assertGreater(reported["sum_abs_adjustment_mwh"], report["metrics"]["sum_demand_mwh"])
+        self.assertEqual(reported["adjusted_periods"], 0)
+        self.assertAlmostEqual(reported["sum_abs_raw_residual_mwh"], 810.546, places=3)
+        # A2: the ledger books the shortfall as unserved energy, so its
+        # energy-balance account closes, and records one 48-period event.
+        uri = self.ledgers["overshoot"].resolve().as_uri() + "?mode=ro&immutable=1"
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            shortfall, closing_max, flagged = connection.execute(
+                "SELECT SUM(shortfall_mwh), MAX(ABS(closing_residual_mwh)), SUM(stress_flag) FROM balance_boundary_period"
+            ).fetchone()
+            events = connection.execute(
+                "SELECT first_period, last_period, periods, shortfall_mwh, hidden_unserved_mwh FROM stress_event"
+            ).fetchall()
+        self.assertAlmostEqual(shortfall, 810.546, places=3)
+        self.assertLessEqual(closing_max, 1e-9)
+        self.assertEqual(flagged, 48)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][:3], (0, 47, 48))
+        self.assertAlmostEqual(events[0][3], 810.546, places=3)
+        self.assertAlmostEqual(events[0][4], 810.546, places=3)  # recorded blackout is 0
+        summary = json.loads((self.outputs["overshoot"] / "market" / "metadata.json").read_text(encoding="utf-8"))
+        year = summary["energy_balance"]["by_year"][0]
+        self.assertEqual((year["stress_periods"], year["stress_event_count"]), (48, 1))
+        self.assertAlmostEqual(year["shortfall_mwh"], 810.546, places=3)
         stress = report["stress"]
         self.assertEqual((stress["stress_periods"], stress["event_count"]), (48, 1))
         self.assertEqual(stress["events"][0]["first_period"], 0)
@@ -226,7 +263,7 @@ class P04VariantFixtures(unittest.TestCase):
         # Wherever the nuclear surplus covers the balancing volume the violation is exactly 3.0.
         self.assertEqual(envelope["upper_violations"], 35)
         self.assertAlmostEqual(envelope["max_upper_violation_mwh"], 3.0, places=9)
-        self.assertEqual(report["metrics"]["reported"]["adjusted_periods"], 35)
+        self.assertEqual(report["metrics"]["reported"]["adjusted_periods"], 0)
         # A double count is an excess, not a shortfall: no certain stress period.
         self.assertEqual(report["stress"]["stress_periods"], 0)
 
@@ -302,6 +339,20 @@ class P04VariantFixtures(unittest.TestCase):
                 "SELECT SUM(spilled_mwh) FROM surplus_routing WHERE source_class='in_dispatch'"
             ).fetchone()[0]
         self.assertGreater(spilled, 0.0)
+
+    def test_physical_dispatch_components_follow_the_declared_boundary(self):
+        # Sum of balance components minus demand = the declared raw residual.
+        for name, path in sorted(self.ledgers.items()):
+            uri = path.resolve().as_uri() + "?mode=ro&immutable=1"
+            with self.subTest(variant=name), closing(sqlite3.connect(uri, uri=True)) as connection:
+                rows = connection.execute(
+                    "SELECT p.period, p.raw_energy_balance_residual_mwh, p.real_demand_mwh, "
+                    "(SELECT COALESCE(SUM(balance_component_mwh), 0) FROM physical_dispatch d "
+                    " WHERE d.year=p.year AND d.period=p.period) FROM period_summary p"
+                ).fetchall()
+                self.assertEqual(len(rows), 48)
+                for period, raw, demand, components in rows:
+                    self.assertAlmostEqual(components - demand, raw, places=9, msg=period)
 
     def test_cli_exit_code_on_a_real_ledger(self):
         completed = subprocess.run(

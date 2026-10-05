@@ -51,8 +51,21 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "5.1.0",
-      "bumps": []
+      "current_version": "5.2.0",
+      "bumps": [
+        {
+          "from": "5.1.0",
+          "to": "5.2.0",
+          "package": "P0-4",
+          "correction_ids": [
+            "p04.storage-energy-audit",
+            "p04.surplus-routing",
+            "p04.surplus-node-boundary"
+          ],
+          "reason": "Energy-balance observation of the default PSM (plan 4.4 S4-S6, decisions Q7, A2, Q12): per-asset storage energy audit, source-classified surplus routing, the market rule set's declared balance boundary with a compatibility adjustment capped at numerical noise, and A2 stress events recorded in the ledger. Dispatch, prices, state of charge, costs and investment paths are unchanged (doctoral trajectory bit-identical); only accounting-zone ledger tables and columns change, so this is a code-identity upgrade without user opt-in (Q13).",
+          "requires_user_opt_in": false
+        }
+      ]
     },
     "value-copperplate-balancing": {
       "baseline_version": "1.0.0",

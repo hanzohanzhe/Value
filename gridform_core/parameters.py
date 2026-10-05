@@ -106,6 +106,7 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("runtime.checkpoint_enabled", "Output/runtime", "boolean", True, "runtime", "runtime", "Allows durable annual restart checkpoints.", "application"),
     ParameterDefinition("runtime.market_trace_level", "Output/runtime", "enum", "summary", "runtime", "runtime", "Controls period-level market evidence volume.", "value-bid-at-cost-psm", allowed_values=("off", "summary", "full")),
     ParameterDefinition("runtime.market_balance_diagnostic", "Output/runtime", "boolean", False, "runtime", "runtime", "Writes the verbose per-period balance-composition diagnostic only when explicitly enabled.", "value-bid-at-cost-psm"),
+    ParameterDefinition("runtime.energy_balance_strict", "Output/runtime", "boolean", False, "runtime", "runtime", "Stops a run at the first period whose declared energy-balance residual exceeds the numerical tolerance; by default the imbalance is recorded and reported (P0-4).", "value-bid-at-cost-psm"),
     ParameterDefinition("runtime.market_export_format", "Output/runtime", "enum", "sqlite", "runtime", "runtime", "Keeps SQLite as the canonical ledger and optionally creates post-run Parquet files.", "value-bid-at-cost-psm", allowed_values=("sqlite", "parquet")),
     ParameterDefinition("runtime.generation_trace_level", "Output/runtime", "enum", "off", "runtime", "runtime", "Controls generation trace volume.", "value-bid-at-cost-psm", allowed_values=("off", "summary", "full")),
     ParameterDefinition("runtime.console_verbosity", "Output/runtime", "enum", "normal", "runtime", "runtime", "Controls console logging only.", "application", allowed_values=("quiet", "normal", "debug")),
@@ -348,6 +349,7 @@ class SchemeCLegacyParameterAdapter:
                 "1" if r["runtime.market_balance_diagnostic"] else "0"
             ),
             "MARKET_EXPORT_FORMAT": str(r["runtime.market_export_format"]),
+            "ENERGY_BALANCE_STRICT": "1" if r["runtime.energy_balance_strict"] else "0",
             "SAVE_GENERATION_TRACE": "0" if r["runtime.generation_trace_level"] == "off" else "1",
         }
 

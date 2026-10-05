@@ -75,6 +75,8 @@ DEFAULT_PSM_SURPLUS_NODE_V1 = "default_psm_surplus_node_v1"
 NATIVE_CORRECTED_FULL_NODE_V1 = "native_corrected_full_node_v1"
 # Rule set id the corrected default PSM declares (P0-6 native_market_rules).
 NATIVE_CORRECTED_RULE_SET = "native-corrected-v1"
+# Rule set id of the doctoral default PSM (native_market_rules.DOCTORAL).
+NATIVE_DOCTORAL_RULE_SET = "native-doctoral-thesis-v1"
 RETAINED_DEMAND_SERVING_V1 = "retained_demand_serving_v1"
 UNKNOWN_BOUNDARY = "unknown"
 
@@ -166,7 +168,7 @@ class RegistryEntry:
 # Later packages append entries (P0-6: native_corrected_full_node_v1).
 BOUNDARY_REGISTRY: tuple[RegistryEntry, ...] = (
     RegistryEntry(
-        "value-bid-at-cost-psm", "0", "6.0.0", (None, "doctoral-lineage-0.6.0a2"),
+        "value-bid-at-cost-psm", "0", "6.0.0", (None, "doctoral-lineage-0.6.0a2", NATIVE_DOCTORAL_RULE_SET),
         DEFAULT_PSM_SURPLUS_NODE_V1, EXACT_ARITHMETIC,
         "retained Scheme C kernel; pre-balancing surplus is routed outside S",
         RETAINED_DEMAND_SERVING_V1,
@@ -189,6 +191,20 @@ BOUNDARY_REGISTRY: tuple[RegistryEntry, ...] = (
         FULL_NODE_V1, LP_SOLVER, "DC network LP",
     ),
 )
+
+
+# Boundary the default PSM kernel declares for its market rule set (C19,
+# decision Q7; P0-4 S6).  Partial rule sets (only some P0-6 switches on) mix
+# column semantics and declare nothing (the oracle then falls back to the
+# registry envelope).
+RULE_SET_BOUNDARIES: dict[str, str] = {
+    NATIVE_DOCTORAL_RULE_SET: DEFAULT_PSM_SURPLUS_NODE_V1,
+    NATIVE_CORRECTED_RULE_SET: NATIVE_CORRECTED_FULL_NODE_V1,
+}
+
+
+def boundary_for_rule_set(rule_set_id: str | None) -> str | None:
+    return RULE_SET_BOUNDARIES.get(str(rule_set_id)) if rule_set_id else None
 
 
 def _version_key(version: str) -> tuple[int, ...]:
@@ -494,6 +510,70 @@ def full_node_shortfall(flows: PeriodFlows) -> float:
     """Shortfall when every recorded load must be met by S (full_node_v1)."""
 
     return max(flows.demand_mwh + flows.loads_mwh - flows.supply_mwh, 0.0)
+
+
+def boundary_shortfall(boundary_id: str, flows: PeriodFlows) -> float:
+    """Demand and boundary loads that the accepted supply did not meet (A2).
+
+    The recorded blackout B is part of it (B is not supply).  Exact for every
+    verdict boundary when its inputs are present.
+    """
+
+    if boundary_id == DEFAULT_PSM_SURPLUS_NODE_V1:
+        estimate = period_shortfall(flows)
+        if not estimate.exact:
+            raise ValueError("default_psm_surplus_node_v1 shortfall needs U_out and W_in")
+        return estimate.lower_mwh
+    if boundary_id == NATIVE_CORRECTED_FULL_NODE_V1:
+        return max(flows.demand_mwh + flows.loads_mwh + flows.excess_mwh - flows.supply_mwh, 0.0)
+    if boundary_id == FULL_NODE_V1:
+        return full_node_shortfall(flows)
+    raise KeyError(f"no shortfall definition for boundary {boundary_id!r}")
+
+
+@dataclass(frozen=True)
+class BalanceBooking:
+    """One period of the energy-balance account with the A2 unserved line.
+
+    ``unserved_mwh`` (the shortfall) replaces the recorded blackout on the
+    supply side, so ``closing_residual_mwh = raw - B + unserved`` is zero for
+    a period whose only defect is unmet demand and keeps any excess (for
+    example the DEV-BAL-04 double count) visible.
+    """
+
+    boundary_id: str
+    raw_residual_mwh: float
+    unserved_mwh: float
+    recorded_unserved_mwh: float
+    hidden_unserved_mwh: float
+    closing_residual_mwh: float
+    stress: bool
+
+
+def balance_booking(boundary_id: str, flows: PeriodFlows, tier: str = EXACT_ARITHMETIC) -> BalanceBooking:
+    raw = boundary_residual(boundary_id, flows)
+    unserved = boundary_shortfall(boundary_id, flows)
+    return BalanceBooking(
+        boundary_id=boundary_id,
+        raw_residual_mwh=raw,
+        unserved_mwh=unserved,
+        recorded_unserved_mwh=flows.blackout_mwh,
+        hidden_unserved_mwh=max(unserved - flows.blackout_mwh, 0.0),
+        closing_residual_mwh=raw - flows.blackout_mwh + unserved,
+        stress=unserved > tolerance(tier, flows.demand_mwh, flows.supply_mwh),
+    )
+
+
+def capped_adjustment(raw_residual_mwh: float, tier: str, *magnitudes: float) -> float:
+    """Compatibility adjustment of a declared boundary: numerical noise only.
+
+    ``-raw`` when ``1e-9 < |raw| <= tolerance(tier, ...)``, otherwise 0, so a
+    physical imbalance is never closed by the adjustment (P7-10, P3-02).
+    """
+
+    cap = tolerance(tier, *magnitudes)
+    magnitude = abs(raw_residual_mwh)
+    return -raw_residual_mwh if 1e-9 < magnitude <= cap else 0.0
 
 
 @dataclass

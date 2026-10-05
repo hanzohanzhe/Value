@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "79877f8e0f48e268353005f7d4434f8f7518ce8832190582cda53dfa60f644a7",
+  "runtime_tree_sha256": "018cd8cc81420ad300f813f4b813e163cc577852075fa6f9daf1cc2810e0ca06",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -127,15 +127,16 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "1e9bbdcd675ffe3313ac1bb4b52977f52d9d6bbb1a86ab72df09a5339b44b251",
+      "sha256": "52ee2e5b6cb21187bc551bff630db1d2e27b6edd709cf25ac5a1d5f2769978c4",
       "kind": "declared_runtime_edit",
       "correction_ids": [
         "p04.storage-energy-audit",
+        "p04.surplus-node-boundary",
         "p04.surplus-routing",
         "p06.native-market-rules",
         "p06.realise-period"
       ],
-      "note": "P0-4 S5: source-classified surplus routing trace (observation only; Q7)",
+      "note": "P0-4 S6: declared energy-balance boundary of the market rule set; compatibility adjustment capped at numerical noise (Q7, C19)",
       "previous_kind": "value_instrumentation"
     },
     {

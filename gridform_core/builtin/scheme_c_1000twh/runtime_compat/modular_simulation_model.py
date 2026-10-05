@@ -44,12 +44,14 @@ from pathlib import Path
 from . import config
 from .storage_cost import DynamicAnnualStorageCost, technology_spec
 from ....market_ledger import (
+    BalanceTermsRow,
     OrderLedgerRow,
     PeriodLedgerRow,
     StorageStateRow,
     active_market_ledger,
 )
 from ....clearing_inputs import ClearingInputRow, ClearingOutcomeRow
+from .... import energy_balance_contract as _balance_contract
 # VALUE P0-4 S4-S5: observation-only energy audit (no effect on clearing).
 from ..native_balance_audit import (
     IN_DISPATCH as _IN_DISPATCH,
@@ -2472,6 +2474,16 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     bidding_factor = config.simulation_parameters["bidding_factor"]
     trace_enabled = os.getenv("SAVE_MARKET_TRACE", "1") != "0"
     market_ledger = active_market_ledger()
+    # VALUE P0-4 S6 (C19, Q7): declare the energy-balance boundary of this
+    # run's market rule set on the ledger (also for the reference bridge).  A
+    # rule set without a registered boundary (a partial P0-6 rule set) keeps
+    # the retained self-report.
+    balance_boundary = _balance_contract.boundary_for_rule_set(getattr(market_rules, "rule_set_id", None))
+    if balance_boundary is not None:
+        market_ledger.declare_balance_boundary(
+            balance_boundary, rule_set=market_rules.rule_set_id,
+            strict=True if os.getenv("ENERGY_BALANCE_STRICT", "0") == "1" else None,
+        )
     market_ledger_full = market_ledger.trace_level == "full"
     trace_scenario = os.getenv("DECARB_SCENARIO", "scenario")
     trace_year = os.getenv("SIMULATION_YEAR", "year")
@@ -3036,17 +3048,42 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             storage_charge_mwh,
             max(forecast_demand_mwh - real_demand_mwh, 0.0),
         )
-        raw_balance_residual = (
-            accepted_supply_mwh + blackout_mwh
-            - real_demand_mwh - accounted_storage_charge_mwh
-        )
-        # The copied Scheme C settlement exposes some secondary allocations only
-        # as annual/accounting variables, not asset dispatch rows. Preserve that
-        # raw gap explicitly and close the public ledger with a named compatibility
-        # adjustment; never silently relabel it as generation or blackout.
-        compatibility_adjustment_mwh = (
-            -raw_balance_residual if abs(raw_balance_residual) > 1e-9 else 0.0
-        )
+        if balance_boundary is not None:
+            # VALUE P0-4 S6: the raw residual is the declared boundary's
+            # (default_psm_surplus_node_v1 for the doctoral rule set, with the
+            # S5 U_out and W_in); the compatibility adjustment absorbs only
+            # numerical noise, so a physical imbalance stays visible (P7-10,
+            # P3-02) and A2 books its shortfall as unserved in the ledger.
+            balance_flows = _balance_contract.PeriodFlows(
+                int(trace_year), period,
+                supply_mwh=accepted_supply_mwh, blackout_mwh=blackout_mwh,
+                demand_mwh=real_demand_mwh, storage_charge_mwh=storage_charge_mwh,
+                export_mwh=export_mwh, flexible_demand_mwh=flexible_demand_mwh,
+                excess_mwh=excess_mwh, curtailed_mwh=curtailed_mwh,
+                forecast_demand_mwh=forecast_demand_mwh,
+                u_out_mwh=surplus_terms.u_out_mwh, w_in_mwh=surplus_terms.w_in_mwh,
+            )
+            raw_balance_residual = _balance_contract.boundary_residual(balance_boundary, balance_flows)
+            compatibility_adjustment_mwh = _balance_contract.capped_adjustment(
+                raw_balance_residual, _balance_contract.EXACT_ARITHMETIC,
+                real_demand_mwh, accepted_supply_mwh,
+            )
+            market_ledger.record_balance_terms(BalanceTermsRow(
+                int(trace_year), period, surplus_terms.u_out_mwh, surplus_terms.w_in_mwh,
+                surplus_terms.non_vre_double_counted_mwh, surplus_terms.in_dispatch_unrealised_mwh,
+            ))
+        else:
+            raw_balance_residual = (
+                accepted_supply_mwh + blackout_mwh
+                - real_demand_mwh - accounted_storage_charge_mwh
+            )
+            # The copied Scheme C settlement exposes some secondary allocations only
+            # as annual/accounting variables, not asset dispatch rows. Preserve that
+            # raw gap explicitly and close the public ledger with a named compatibility
+            # adjustment; never silently relabel it as generation or blackout.
+            compatibility_adjustment_mwh = (
+                -raw_balance_residual if abs(raw_balance_residual) > 1e-9 else 0.0
+            )
         balance_residual = raw_balance_residual + compatibility_adjustment_mwh
         allowed_trace_residual = max(
             1e-5,
