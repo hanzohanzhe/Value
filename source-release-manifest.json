@@ -7396,9 +7396,9 @@
     },
     {
       "path": "gridform_core/domain_results.py",
-      "sha256": "4a8be4a9d81a2232486693c0ab8e2941aaca3d66cb0f12afcc5513dc4dc7d430",
-      "bytes": 24589,
-      "transform": "byte copy"
+      "sha256": "ecc724e5c5690a98d8c9fc0f7d85a4d380f5e7ceda106a5ca50306db45aac1fe",
+      "bytes": 25548,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/energy_balance_contract.py",
@@ -11072,9 +11072,9 @@
     },
     {
       "path": "tests/test_prompt83_domain_results.py",
-      "sha256": "119f28de06118dc3f6bbf236cd200f51d26f361968616585acff3ffad12d6773",
-      "bytes": 9189,
-      "transform": "byte copy"
+      "sha256": "68a0285369b68ef3c321fc78cdac1431ddb7fe0511e62a880dd6d046a2557d68",
+      "bytes": 10303,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt86_value_101.py",
