@@ -398,6 +398,25 @@ If a full GB annual run reports zero operational cost, inspect its mode, physica
 
 If diagnose reports stray bytecode, it is Python bytecode inside `__pycache__` folders of the installation. VALUE never reads it (every interpreter uses a fresh `pycache_prefix`). `diagnose-value --repair-bytecode` moves it to `state/quarantine/`; start does the same automatically when the installation is writable.
 
+**A local module or extension is quarantined** (`/api/health` says
+`degraded`, Modules shows the entry with its reason): VALUE keeps running and
+only Studies that select that entry are refused. Disable it on the Modules
+page, or repair it, install it under a new ID and press **Rescan**. If VALUE
+does not get that far, stop it and use the offline rescue, which never imports
+the installed code:
+
+```bash
+python -m gridform_core.module_recovery list
+python -m gridform_core.module_recovery disable module <module-id>
+python -m gridform_core.module_recovery disable extension <extension-id>
+python -m gridform_core.module_recovery park-manifest module <file.json>
+```
+
+`park-manifest` moves an unreadable manifest to
+`modules/disabled-manifests/`, which VALUE never scans. Changing modules while
+runs are queued or running needs an explicit confirmation, because the
+queued runs would start with the changed code.
+
 ## 18. Reproducibility and claim boundary
 
 Archive the project revision, data manifest and hashes, module manifests and implementation hashes, Python environment, random seed, planning uncertainty mode, carbon factor scenario, storage policy, preflight and validation records with every published result.

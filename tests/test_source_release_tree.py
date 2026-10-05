@@ -69,6 +69,23 @@ class SourceReleaseTreeTests(unittest.TestCase):
         listed = set(json.dumps(manifest).split('"'))
         self.assertTrue(required.issubset(listed), required.difference(listed))
 
+    def test_module_isolation_sources_are_release_members(self):
+        """P0-2: quarantine, the offline rescue CLI and the dataset slots ship
+        with every release; the backend cannot import its catalogue without them."""
+        members = {
+            path.relative_to(ROOT).as_posix()
+            for path in MODULE.release_members(ROOT)
+        }
+        required = {
+            "gridform_core/module_quarantine.py",
+            "gridform_core/module_recovery.py",
+            "gridform_core/dataset_slots.py",
+        }
+        self.assertTrue(required.issubset(members), required.difference(members))
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        listed = set(json.dumps(manifest).split('"'))
+        self.assertTrue(required.issubset(listed), required.difference(listed))
+
     def test_local_api_security_sources_are_release_members(self):
         """P0-1: the session module (and, from S3 on, the UI gateway) ship
         with every release; the pilot builder copies only allowlisted files,

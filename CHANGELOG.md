@@ -2,6 +2,56 @@
 
 ## Unreleased — P0 fixes on fix/review-2026-10-04
 
+### External modules and extensions cannot stop VALUE (P0-2)
+
+- Built-in modules stay fail-closed; locally installed (external) module and
+  extension manifests are fail-isolated.  A manifest that cannot be read, an
+  implementation that raises anything while importing (including
+  `SystemExit`), an external ID or namespace that collides with another
+  external entry (every party is quarantined, there is no implicit winner) or
+  with a built-in (only the external entry is quarantined) is listed as
+  quarantined in memory; nothing is written into `modules/`.  A failed import
+  is not retried in the same process until `POST /api/modules/rescan`.
+- Install and enable refuse namespace conflicts before writing anything
+  (`GF_EXTENSION_NAMESPACE_COLLISION`, naming the real owner) and then check
+  the registry twice — in process and in a fresh, worker-like Python process
+  — rolling the change back byte for byte if either refuses
+  (`GF_EXTENSION_REGISTRY_CONFLICT`, `GF_MODULE_REGISTRY_CONFLICT`,
+  `GF_MODULE_PROBE_FAILED`, `GF_MODULE_PROBE_TIMEOUT`).  Each install or
+  enable takes about 1–2 s longer.  Disabling is always possible, also for a
+  schema-drifted extension and for a quarantined entry that saved Studies
+  still name (active runs still block it).
+- The module catalogue is built on first use, never at import;
+  `DATASET_SLOTS` moved to `gridform_core/dataset_slots.py` (re-exported by
+  `gridform_core.catalog`).  A worker no longer imports the catalogue, so a
+  broken module fails the run with `GF_MODULE_QUARANTINED` instead of leaving
+  it queued.  Draft resolution, preflight and Study derivation report
+  `GF_STUDY_MODULE_QUARANTINED` / `GF_PREFLIGHT_MODULE_QUARANTINED` only when
+  the Study selects quarantined code; otherwise they add one warning.
+  `preflight.json` records `checks.module_quarantine` and
+  `checks.external_code`.
+- Offline self-rescue without importing any installed code:
+  `python -m gridform_core.module_recovery list | disable module|extension <id> |
+  park-manifest module|extension <file> | verify`.
+- **API contract changes (additive):** `/api/health` reports
+  `status: degraded` with `degraded_reasons [{code, count}]`
+  (`GF_MODULE_IMPORT_FAILED`, `GF_EXTENSION_NAMESPACE_COLLISION`,
+  `GF_MODULE_CATALOG_STALE`, …); `/api/workspace`, `/api/modules` and
+  `/api/extensions` carry `module_quarantine`; new `POST /api/modules/rescan`;
+  lifecycle conflicts are 409 (were 400), probe timeout 504, a stale
+  catalogue 503 on run start; a lifecycle change while runs are pending is
+  409 `GF_MODULE_LIFECYCLE_RUNS_PENDING` until confirmed with
+  `{"confirm_pending_runs": true}` (JSON) or
+  `X-VALUE-Confirm-Pending-Runs: acknowledged` (ZIP upload); every error
+  answer carries `error_code`.  Library: `workspace_registry(...,
+  strict=False)` quarantines by default (`strict=True` for release gates);
+  catalogue constants are lazy attributes.
+- Scientific identity is unchanged: for VALUE 101 the module graph
+  (`graph_sha256` e6ff10cd…0ee9) and the Study revision (`revision_sha256`
+  8d348df4…626d) are identical before and after this change, and the
+  registry content and order are unchanged for every data directory that
+  loaded before.
+
 ### Local API security boundary (P0-1)
 
 - The browser talks only to the UI origin. `scripts/value-ui-gateway.mjs`

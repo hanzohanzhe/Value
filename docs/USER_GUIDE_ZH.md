@@ -423,6 +423,19 @@ print(urllib.request.urlopen(request).status)
 
 这是安装目录 `__pycache__` 中的 Python 字节码。VALUE 不会读取它们（每个解释器都使用新建的空 `pycache_prefix`）。运行 `diagnose-value --repair-bytecode` 可把它们移入 `state/quarantine/`；安装目录可写时，启动也会自动这样做。
 
+### 本地模块或扩展被隔离（health 显示 degraded）
+
+VALUE 继续运行，只有选中该条目的 Study 会被拒绝，并给出 `GF_STUDY_MODULE_QUARANTINED` 或 `GF_PREFLIGHT_MODULE_QUARANTINED`。在 Modules 页停用它；或修好后用新 ID 安装，再点 **Rescan**。若 VALUE 走不到这一步，先停止 VALUE，再用离线自救命令（不会导入任何已安装代码）：
+
+```bash
+python -m gridform_core.module_recovery list
+python -m gridform_core.module_recovery disable module <module-id>
+python -m gridform_core.module_recovery disable extension <extension-id>
+python -m gridform_core.module_recovery park-manifest module <file.json>
+```
+
+`park-manifest` 把读不了的清单移到 VALUE 从不扫描的 `modules/disabled-manifests/`。有排队或运行中的 Run 时变更模块需要显式确认，因为排队的 Run 会用变更后的代码启动。
+
 ### 结果与保留 Scheme C 不同
 
 先确认比较的是同一数据、年份、碳因子、储能政策和 system-cost 定义。FORCE-CEM v1 有已声明的结构修正，因此 legacy tariff 只复刻储能报价公式，不保证完整轨迹相同。

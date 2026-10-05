@@ -495,6 +495,24 @@ not prove order-level replay.
   overwrite source to simulate rollback.
 - **Disable:** changes registry visibility, not existing Study definitions or
   historical evidence; referenced modules should remain enabled.
+- **Quarantine:** built-in modules are fail-closed. A local manifest that
+  cannot be read, an implementation that raises anything while importing
+  (also `SystemExit`), or an external ID/namespace shared with another local
+  entry is quarantined: it is not registered, `/api/health` turns
+  `degraded`, and only Studies that select it are refused. Colliding local
+  entries are all quarantined (no entry silently wins); a local entry that
+  reuses a built-in ID or namespace is quarantined and the built-in stays.
+- **Checks after install/enable:** conflicts are refused before anything is
+  written; afterwards the registry is rebuilt in process and in a fresh
+  worker-like Python process, and the change is rolled back byte for byte if
+  either refuses. A failed import is not retried until **Rescan**.
+- **Same ID after a fix:** an installed ID stays taken, even disabled.
+  Publish the repaired implementation under a new ID or version (scientific
+  identity policy; same-ID replacement is a later decision).
+- **Offline rescue:** `python -m gridform_core.module_recovery list`,
+  `disable module|extension <id>`, `park-manifest module|extension <file>`
+  work from the JSON files alone and never import installed code; `verify`
+  builds the registry as a new worker would.
 
 ## 13. Explicit current limitations
 

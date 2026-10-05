@@ -503,6 +503,28 @@ ZIP 在 staging 中通过验证后，才原子保存 module/version、安装记�
 启用/禁用只影响 registry 可见性，不会自动修改 Study。存在 Study 引用时不应
 禁用；禁用也不应删除历史源码和运行记录。
 
+### 隔离
+
+内置 module 出错仍然直接失败（fail-closed）。本地清单读不了、实现导入时抛出
+任何异常（包括 `SystemExit`）、本地条目之间 ID 或命名空间重复时，该条目被隔离：
+不注册，`/api/health` 变为 `degraded`，只有选中它的 Study 会被拒绝。互相冲突的
+本地条目全部隔离，不设隐式赢家；与内置 ID 或命名空间冲突时只隔离本地那一条。
+被 Study 引用的隔离条目也可以停用，只有引用它的活动 Run 会阻止停用。
+
+### 安装与启用后的校验
+
+冲突在写盘前就被拒绝；写盘后先在进程内、再在一个与 worker 启动方式相同的新
+Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入失败的结果会被记住，
+点 **Rescan** 才会重试。修好后的实现必须使用新 ID 或新版本发布（同一 ID 即使
+已停用也仍被占用）。
+
+### 离线自救
+
+`python -m gridform_core.module_recovery list`、`disable module|extension <id>`、
+`park-manifest module|extension <file>` 只读写 JSON 文件，不导入任何已安装代码；
+`verify` 按新 worker 的方式构建注册表。VALUE 正在使用该数据目录时，这些命令会
+拒绝执行（`--force` 可覆盖），请改用 Modules 页。
+
 ## 13. 常见失败
 
 | 现象 | 原因 | 处理 |
