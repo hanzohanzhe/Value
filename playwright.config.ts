@@ -34,7 +34,10 @@ export default defineConfig({
     // would need node on PATH, which the construction setup (build/bin/vnode,
     // the gate's VALUE_NODE) does not provide (exit 127, "node: not found").
     command: `${JSON.stringify(process.execPath)} e2e/start-e2e-services.mjs`,
-    url: "http://127.0.0.1:18800",
+    // With the real API, wait until the UI gateway reaches it (P0-1): the UI
+    // alone comes up first, and a page loaded before the API has published its
+    // session would start "offline".  UI-only runs mock every /api route.
+    url: process.env.VALUE_E2E_UI_ONLY === "1" ? "http://127.0.0.1:18800" : "http://127.0.0.1:18800/api/health",
     timeout: 120_000,
     reuseExistingServer: false,
     // SIGTERM to the process group lets start-e2e-services.mjs stop its

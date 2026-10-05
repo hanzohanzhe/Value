@@ -33,7 +33,8 @@ test("API helpers: relative base and launcher-access classification", async () =
   assert.equal(apiUrl("runs/a"), "/api/runs/a");
   assert.equal(isLauncherAccessFailure(421, undefined), true);
   assert.equal(isLauncherAccessFailure(502, "GF_GATEWAY_SESSION_MISMATCH"), true);
-  assert.equal(isLauncherAccessFailure(502, "GF_GATEWAY_SESSION_UNAVAILABLE"), true);
+  // A missing session file means the engine is starting or stopped: offline, not "open from launcher".
+  assert.equal(isLauncherAccessFailure(502, "GF_GATEWAY_SESSION_UNAVAILABLE"), false);
   assert.equal(isLauncherAccessFailure(403, "GF_SESSION_INVALID"), true);
   assert.equal(isLauncherAccessFailure(403, "GF_RUN_LOCKED"), false);
   assert.equal(isLauncherAccessFailure(502, "GF_GATEWAY_UPSTREAM_UNAVAILABLE"), false);

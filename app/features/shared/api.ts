@@ -8,12 +8,14 @@ export function apiUrl(path: string): string {
 }
 
 /** Error codes meaning "this page did not come through the VALUE launcher"
- * (UI gateway or API refused the page's origin, host or session). */
+ * (UI gateway or API refused the page's origin, host or session).  A missing
+ * session file (GF_GATEWAY_SESSION_UNAVAILABLE) is not among them: it usually
+ * means the engine is still starting or stopped, which the rail shows as
+ * "Model service offline" with Retry. */
 const LAUNCHER_ERROR_CODES = new Set([
   "GF_HOST_REJECTED",
   "GF_GATEWAY_CROSS_SITE",
   "GF_GATEWAY_ORIGIN_REJECTED",
-  "GF_GATEWAY_SESSION_UNAVAILABLE",
   "GF_GATEWAY_SESSION_MISMATCH",
   "GF_BROWSER_ORIGIN_REJECTED",
   "GF_SESSION_REQUIRED",

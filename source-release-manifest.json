@@ -566,6 +566,7 @@
     "e2e/research-journey.spec.ts",
     "e2e/result-queries.spec.ts",
     "e2e/run-tests.mjs",
+    "e2e/security-boundary.spec.ts",
     "e2e/start-e2e-services.mjs",
     "eslint.config.mjs",
     "examples/__init__.py",
@@ -1095,6 +1096,7 @@
     "scripts/verify_doctoral_project_weather.py",
     "scripts/verify_doctoral_weather.py",
     "scripts/verify_install_scripts.py",
+    "scripts/verify_local_security_boundary.py",
     "scripts/verify_locks.py",
     "scripts/verify_modular_run.py",
     "scripts/verify_native_install.py",
@@ -1434,6 +1436,7 @@
     "tests/test_ui_gateway_session_path.py",
     "tests/test_value_101_day_configuration.py",
     "tests/test_value_methodology.py",
+    "tests/test_verify_local_security_boundary.py",
     "tests/test_version_ledger.py",
     "tests/test_vre_curtailment_attribution.py",
     "tests/test_weather_demand_ensembles.py",
@@ -3127,8 +3130,8 @@
     },
     {
       "path": "app/features/shared/api.ts",
-      "sha256": "8bb88417e69475b87d28452197f54ae729f68b2dd109163d965e1d63f5f9817a",
-      "bytes": 1734,
+      "sha256": "d377c20dcb1eb00f84f5563f24437ac671132354b6716c5b86f69af96c3c8fea",
+      "bytes": 1901,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6090,6 +6093,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "e2e/security-boundary.spec.ts",
+      "sha256": "109247512e1311eab831212ab9add1183b99dff4f423c73501400dff9ac68447",
+      "bytes": 10961,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "e2e/start-e2e-services.mjs",
       "sha256": "24180bbf8fe454979470b842a37e405a7b367c984de5dbb3eba246691d69d5a0",
       "bytes": 5512,
@@ -8404,8 +8413,8 @@
     },
     {
       "path": "playwright.config.ts",
-      "sha256": "5867e4b901b4ef325c7bb5cf236fb80536c16edcce81a71e0d338c037f56e782",
-      "bytes": 2265,
+      "sha256": "9d38024b52041d464d845ef62677dd07e6f25d609c3d4dd0f341a34424d367b2",
+      "bytes": 2579,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9251,6 +9260,12 @@
       "sha256": "ba368ac0f39c117e167887b7d9b922e33b87cd9d05a5f6a6910df08f7cef2e93",
       "bytes": 4953,
       "transform": "byte copy"
+    },
+    {
+      "path": "scripts/verify_local_security_boundary.py",
+      "sha256": "1eb808af8620031a4c2ceb71b652c71b2b900cd2c010dd1e6745d0de0cfebeb4",
+      "bytes": 10109,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/verify_locks.py",
@@ -11192,8 +11207,8 @@
     },
     {
       "path": "tests/test_source_release_tree.py",
-      "sha256": "85676f5041d8de95eb1f8364a276fa46dc2b645be6a788f1f0a8dc3b555787e0",
-      "bytes": 11172,
+      "sha256": "070ca89ba6b1c18d0325a1bf466cd3426644dab588b8ee71f0958422bed4c25a",
+      "bytes": 11313,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11281,6 +11296,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "tests/test_verify_local_security_boundary.py",
+      "sha256": "051b1c429dd9179a95380456a925a18c7e7630283fa229f24f5c80299536975c",
+      "bytes": 7224,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/test_version_ledger.py",
       "sha256": "28ebaa5509022fcc8d766e31b4314733f1827f31075af1ccbca055b9b7e8aa34",
       "bytes": 2446,
@@ -11348,8 +11369,8 @@
     },
     {
       "path": "tests/value101-api.test.mjs",
-      "sha256": "c6d235abbf515d69ca343f27392aec15bc166f8fcee7d247fee5348021680d71",
-      "bytes": 2329,
+      "sha256": "93baa024879b89553afc93f6118904d59417994e8d0df831f05bef6c23921b3f",
+      "bytes": 2434,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
