@@ -3495,9 +3495,9 @@
     },
     {
       "path": "backend/result_queries.py",
-      "sha256": "f172247a7039a838f9bfd9e8c39cfc99eb8fe2a1c059cae542770013faf39188",
-      "bytes": 19242,
-      "transform": "byte copy"
+      "sha256": "da9125ee32ada256f5ac374e9cae285c86a608a057d385c301bd121111f44041",
+      "bytes": 19844,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/run_execution.py",
@@ -3519,8 +3519,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "48c56beaba6e77810ac2f00318d5e920673075ac34d22cbd3fe939d02459c48f",
-      "bytes": 191472,
+      "sha256": "6513c898a92a20939df2f87961335a317f6ba2af64841e5b61dbc90c270c3e5d",
+      "bytes": 192420,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7872,8 +7872,8 @@
     },
     {
       "path": "gridform_core/result_advisories.py",
-      "sha256": "e31026dfcbbba463bab8dd45db195c5b02a225fa464a5bd4840875aa880ac7f6",
-      "bytes": 15162,
+      "sha256": "59c9daf1719beed915c0dbfa1410446a46b925798382c8f700c50778b6297da4",
+      "bytes": 16938,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8070,9 +8070,9 @@
     },
     {
       "path": "gridform_core/value_101_results.py",
-      "sha256": "91ff67b81d47882859fccbcac662d1184f6afa2865202a5cceed3ca9afa3a35d",
-      "bytes": 14633,
-      "transform": "byte copy"
+      "sha256": "aaee64d2dc6abc59058fb3b04704fd6ad6a06c15f4ea1b544ca649b52a6af5fd",
+      "bytes": 16036,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/value_runtime_adapter.py",
@@ -11278,8 +11278,8 @@
     },
     {
       "path": "tests/test_result_advisories.py",
-      "sha256": "12b972d373aff9371bcc460fc14f19f1aefdd2c9133378db5ec4a930d78cf03a",
-      "bytes": 13630,
+      "sha256": "aef29afa703b5608b689c38ae639bae0725ccb9e2823d7bf6ba7f4d436d036c6",
+      "bytes": 18200,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

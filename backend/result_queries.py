@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Mapping
 
 from gridform_core.market_ledger import _read_only_connection, market_ledger_capabilities, ATTRIBUTION_SCHEMA_VERSIONS
+from gridform_core.result_advisories import withheld_annual_result
 from gridform_core.results_summary import validate_vre_curtailment_attribution
 from gridform_core.zonal_results import query_zonal_annual_brief, query_zonal_results
 from gridform_core.vre_curtailment_attribution import ATTRIBUTION_METHOD_ID
@@ -104,6 +105,14 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
     result = {"schema_version": "value.result-query/v1", "family": "vre-curtailment", "contract_version": CONTRACT, "identity": identity, "source": {"kind": kind, "requested": requested_source, "artifact_path": path.relative_to(run_root).as_posix(), "artifact_sha256": hashlib.sha256(evidence_bytes).hexdigest() if evidence_bytes is not None else _sha(path) if path.is_file() else None, "original_schema_version": None, "trace_level": None}, "scope": {"resolution": resolution, "year": year, "period_from": start, "period_to": end}, "identity_binding": {"container": "status.json", "source": "artifact_metadata", "source_run_id_recorded": bool(evidence.get("run_id"))}, "capabilities": {"available_resolutions": ["annual", "half_hour"] if kind == "sqlite" and path.is_file() else ["annual"] if path.is_file() else [], "available_dimensions": ["year", "period_window"] if kind == "sqlite" and path.is_file() else ["year"] if path.is_file() else [], "unavailable_dimensions": ["zone", "technology"] + (["period_window"] if kind == "compact" else [])}, "status": "unavailable", "reason_code": "result_artifact_missing", "total": 0, "limit": limit, "offset": offset, "count": 0, "has_more": False, "items": []}
     if kind == "compact" and resolution != "annual":
         raise ValueError("GF_RESULT_DIMENSION_UNAVAILABLE: compact evidence only records annual totals")
+    if resolution == "annual":
+        # Q14: a run whose profile publishes annual results only after its raw
+        # invariants pass serves no annual rows until they do.
+        withheld = withheld_annual_result(run_root, "results/vre-curtailment?resolution=annual", status)
+        if withheld is not None:
+            result.update(status="withheld", reason_code=withheld["reason_code"],
+                          result_publication=withheld["result_publication"], available_in=withheld["available_in"])
+            return result
     if not path.is_file():
         return result
     observed_stat = (path.stat().st_size, path.stat().st_mtime_ns)

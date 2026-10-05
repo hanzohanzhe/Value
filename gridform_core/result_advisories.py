@@ -252,6 +252,50 @@ def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapp
     }
 
 
+# Annual-result resources a withheld run does not serve (Q14).  Half-hour
+# replay, Inspect, provenance and exports stay available.
+WITHHELD_ANNUAL_RESOURCES = (
+    "runs/<id> results[] (present_run)",
+    "runs/<id>/summary annual[]",
+    "runs/<id>/results/vre-curtailment?resolution=annual",
+    "runs/<id>/market/vre-summary",
+    "runs/<id>/planning/summary",
+    "runs/<id>/domains/network/summary",
+    "runs/<id>/domains/expansion/summary",
+    "runs/<id>/network-redispatch/annual",
+    "comparison annual deltas",
+    "VALUE 101 comparison totals",
+)
+
+
+def run_result_publication(run_root: Path, run: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """result_publication of a run read from its directory (status.json + resolved-run.json)."""
+
+    if run is None:
+        run = _read_object(Path(run_root) / "status.json")
+    return result_publication(run, Path(run_root))
+
+
+def withheld_annual_result(run_root: Path, resource: str, run: Mapping[str, Any] | None = None) -> dict[str, Any] | None:
+    """The response body for an annual-result resource of a withheld run, or None when published (Q14)."""
+
+    publication = run_result_publication(run_root, run)
+    if publication.get("status") != "withheld":
+        return None
+    return {
+        "schema_version": "value.result-withheld/v1",
+        "status": "withheld",
+        "resource": resource,
+        "reason_code": publication.get("reason_code"),
+        "error_code": publication.get("reason_code"),
+        "error": publication.get("message"),
+        "decision": "Q14",
+        "raw_invariants_status": publication.get("raw_invariants_status"),
+        "available_in": list(publication.get("available_in") or ["inspect", "export"]),
+        "result_publication": dict(publication),
+    }
+
+
 def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> MutableMapping[str, Any]:
     """Set the presented scientific status, methodology, advisories and publication of ``run``.
 

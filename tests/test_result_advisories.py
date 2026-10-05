@@ -178,6 +178,78 @@ class FixtureRunTests(unittest.TestCase):
         self.assertTrue(mixed["annual_metrics_withheld"])
 
 
+class WithheldAnnualResourceTests(unittest.TestCase):
+    """Q14 is enforced by the server for every annual-result resource, not only by the run card."""
+
+    def test_annual_resources_of_a_withheld_run_are_refused_and_half_hour_stays(self):
+        import urllib.error
+        import urllib.request
+
+        from tests.local_api_harness import start_local_api
+
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            run = home / "runs" / "doctoral-no-invariants"
+            shutil.copytree(FIXTURES / "doctoral-no-invariants", run)
+            (run / "model-output" / "market").mkdir()
+            (run / "model-output" / "market" / "market.sqlite").write_bytes(b"")
+            (run / "model-output" / "planning").mkdir()
+
+            def call(path):
+                try:
+                    with urllib.request.urlopen(origin + path, timeout=30) as response:
+                        return response.status, json.loads(response.read())
+                except urllib.error.HTTPError as error:
+                    return error.code, json.loads(error.read())
+
+            with start_local_api(data_home=home) as (_httpd, origin, _token):
+                base = "/api/runs/doctoral-no-invariants/"
+                for resource in ("market/vre-summary", "planning/summary", "domains/network/summary?year=2025",
+                                 "domains/expansion/summary", "network-redispatch/annual"):
+                    with self.subTest(resource):
+                        status, payload = call(base + resource)
+                        self.assertEqual(status, 409, payload)
+                        self.assertEqual(payload["status"], "withheld")
+                        self.assertEqual(payload["reason_code"], result_advisories.WITHHELD_NOT_EVALUATED)
+                        self.assertEqual(payload["available_in"], ["inspect", "export"])
+                status, payload = call(base + "results/vre-curtailment?resolution=annual")
+                self.assertEqual(status, 200, payload)
+                self.assertEqual((payload["status"], payload["reason_code"]),
+                                 ("withheld", result_advisories.WITHHELD_NOT_EVALUATED))
+                self.assertEqual(payload["items"], [])
+                _status, payload = call(base + "results/vre-curtailment?resolution=half_hour&year=2025")
+                self.assertNotEqual(payload.get("reason_code"), result_advisories.WITHHELD_NOT_EVALUATED)
+                status, payload = call(base.rstrip("/"))
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["result_publication"]["status"], "withheld")
+
+    def test_published_runs_are_not_gated(self):
+        status = json.loads((FIXTURES / "doctoral-no-invariants" / "status.json").read_text(encoding="utf-8"))
+        status["raw_invariants"] = {"status": "passed"}
+        self.assertIsNone(result_advisories.withheld_annual_result(FIXTURES / "doctoral-no-invariants", "x", status))
+        self.assertIsNone(result_advisories.withheld_annual_result(FIXTURES / "pre-fix-dynamic-full", "x"))
+        self.assertIsNotNone(result_advisories.withheld_annual_result(FIXTURES / "doctoral-no-invariants", "x"))
+
+    def test_value_101_rows_have_no_totals_for_a_withheld_run(self):
+        from gridform_core.value_101_results import _row
+        from tests.test_prompt114_value_101_results import write_fixture
+
+        doctoral = json.loads((FIXTURES / "doctoral-no-invariants" / "status.json").read_text(encoding="utf-8"))["methodology"]
+        with tempfile.TemporaryDirectory() as folder:
+            published = write_fixture(Path(folder) / "published", run_id="published", kind="baseline", changed=[], scale=1.0)
+            withheld = write_fixture(Path(folder) / "withheld", run_id="withheld", kind="baseline", changed=[], scale=1.0)
+            status_path = Path(withheld) / "status.json"
+            status = json.loads(status_path.read_text(encoding="utf-8"))
+            status["methodology"] = doctoral
+            status_path.write_text(json.dumps(status), encoding="utf-8")
+            open_row, _, _ = _row(Path(published), expected_kind="baseline")
+            row, _, _ = _row(Path(withheld), expected_kind="baseline")
+        self.assertEqual(open_row["teaching_window_system_resource_cost_gbp"], 100.0)
+        self.assertTrue(row["totals_withheld"])
+        self.assertEqual(row["result_publication"]["reason_code"], result_advisories.WITHHELD_NOT_EVALUATED)
+        self.assertFalse([key for key in row if key.startswith("teaching_window_")])
+
+
 class PublicationTests(unittest.TestCase):
     def test_raw_invariant_evidence_decides_doctoral_publication(self):
         doctoral = resolve_methodology(REFERENCE_PROFILE_ID).to_dict()

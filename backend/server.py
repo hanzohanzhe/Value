@@ -80,7 +80,7 @@ from gridform_core.frontend_contract import (
     resolve_study_draft,
 )
 from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
-from gridform_core.result_advisories import present_scientific_status, withhold_annual_results
+from gridform_core.result_advisories import present_scientific_status, withhold_annual_results, withheld_annual_result
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -1828,6 +1828,10 @@ class Handler(BaseHTTPRequestHandler):
                     year = _optional_integer_query(query, "year")
                     if domain in {"network", "ac"} and year is None:
                         self._json({"error": "year is required"}, 400); return
+                    if query_name == "summary" and domain in {"network", "expansion"}:
+                        withheld = withheld_annual_result(root, f"domains/{domain}/summary")
+                        if withheld is not None:
+                            self._json(withheld, 409); return
                     if domain == "network" and query_name == "summary":
                         self._json(query_network_summary(root, year=year)); return
                     if domain == "network" and query_name == "periods":
@@ -1877,6 +1881,9 @@ class Handler(BaseHTTPRequestHandler):
                 planning_dir = root / "model-output" / "planning"
                 native_database = planning_dir / "project-index.sqlite"
                 if parts[4] == "summary":
+                    withheld = withheld_annual_result(root, "planning/summary")
+                    if withheld is not None:
+                        self._json(withheld, 409); return
                     summary = read_json(planning_dir / "summary.json")
                     if not summary and native_database.is_file():
                         summary = query_index_summary(native_database)
@@ -1979,6 +1986,9 @@ class Handler(BaseHTTPRequestHandler):
                             database, year=year, period=period, stage=stage,
                         )); return
                     if market_resource == "vre-summary":
+                        withheld = withheld_annual_result(root, "market/vre-summary")
+                        if withheld is not None:
+                            self._json(withheld, 409); return
                         self._json(query_vre_curtailment_summary(database)); return
                     if market_resource == "vre-timeline":
                         year = _optional_integer_query(query, "year")
@@ -2031,6 +2041,10 @@ class Handler(BaseHTTPRequestHandler):
                         "error_code": "GF_ZONAL_RESULTS_UNAVAILABLE",
                     }, 404); return
                 zonal_resource = parts[4] if len(parts) >= 5 else "capabilities"
+                if zonal_resource == "annual":
+                    withheld = withheld_annual_result(root, "network-redispatch/annual")
+                    if withheld is not None:
+                        self._json(withheld, 409); return
                 try:
                     capabilities = zonal_workspace_capabilities(database)
                     if not capabilities["available_views"]:
