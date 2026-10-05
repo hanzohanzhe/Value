@@ -1,0 +1,41 @@
+/* P0 frontend spec 2 (X0 S12, P0-9 S11): methodology pill, validation fields
+   and notices of the Run context bar. New elements only; existing tokens only;
+   body text >= 13px, helper text >= 12px. */
+
+.run-context-profile { display: flex; flex-wrap: wrap; max-width: 100%; margin-top: 2px; }
+.run-context-profile .value-pill { white-space: normal; }
+
+.run-context-validation-field small { font-size: 12px; }
+.run-context-check { font-size: 12px; font-weight: 600; }
+.run-context-check i { font-style: normal; }
+.run-context-check.ok { color: var(--teal); }
+.run-context-check.danger { color: var(--red); }
+.run-context-check.caution { color: var(--amber); }
+.run-context-check.muted { color: var(--muted); font-weight: 500; }
+
+.run-context-notices { display: grid; gap: 8px; margin-top: 14px; min-width: 0; }
+.run-context-notices .value-callout { margin: 0; }
+.run-context-more {
+  justify-self: start;
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.run-context-advisories { display: grid; gap: 8px; margin: 8px 0 0; padding: 0 0 0 18px; font-size: 13px; }
+.run-context-advisories li { display: grid; gap: 2px; min-width: 0; }
+.run-context-advisories small { color: var(--muted); font-size: 12px; }
+.run-context-advisory-empty { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+.run-context-more:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .run-context-statuses > span { min-width: 0; }
+}

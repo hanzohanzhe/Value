@@ -1,6 +1,7 @@
 import type { SourceStudyStatus } from "../learn/studyLifecycle";
 import type { TraceProfile } from "../market/TraceCoverageNotice";
 import type { ResultCoverage } from "../shared/coverageView.ts";
+import type { RunValidationFields } from "../workspace/runValidation.ts";
 
 export type RunMode = "smoke" | "two_year_smoke" | "validation_24h" | "validation_168h" | "value_101_day" | "two_year" | "full";
 export type PlanningBreakdown = Record<string, Record<string, { projects: number; capacity_mw: number }>>;
@@ -11,7 +12,10 @@ export type RecoveryCapability = {
   user_message: string; state_gaps?: string[];
   latest_safe_point?: { available: boolean; year: number | null; artifact: string | null; meaning?: string };
 };
-export type ModelRun = {
+/** RunValidationFields: methodology, energy balance, stress, advisories and Q14 publication (X0 S12, P0-9 S11). */
+export type ModelRun = RunValidationFields & {
+  /** Q14: number of annual results removed from a withheld Run's record. */
+  withheld_result_year_count?: number;
   input_snapshot_id?: string; input_tree_sha256?: string; recorded_project_revision_sha256?: string | null;
   id: string; project_id: string; project_name: string; mode: RunMode;
   status: "queued" | "snapshotting" | "running" | "cancel_requested" | "cancelled" | "completed" | "failed" | "archived" | "deleting"; current_stage: string;

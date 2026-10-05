@@ -2,14 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { formatNumber, withUnit } from "../shared/presentation";
+import { Callout } from "../shared/Callout";
+import { profileBadge, type MethodologyRecord } from "../workspace/runValidation.ts";
+import { reviewReasonText, type ReviewReason } from "./comparisonReview.ts";
 import "./comparison-workspace.css";
 
-type ComparisonRun = { id: string; project_name: string; mode: string; status: string; updated_at?: string };
+type ComparisonRun = { id: string; project_name: string; mode: string; status: string; updated_at?: string; methodology?: MethodologyRecord | null };
 type Dimension = { status: "same" | "changed" | "unknown"; values: unknown[] };
 type Review = { schema_version: "value.comparison-review/v1"; status: "verified" | "unknown"; evidence_complete: boolean; isolated_change_allowed: boolean; dimensions: Record<string, Dimension>; changed_dimensions: string[]; unknown_dimensions: string[]; warning: string | null };
 type ComparisonMetricValue = { run_id: string; value: number | null; unit?: string; definition_id?: string; denominator?: string | null; delta_from_base?: number | null; percentage_delta_from_base?: number | null };
 type RunComparison = {
   comparison_review?: Review;
+  /** X0 S10b / P0-4 S3: an advisory, a failed check, a withheld Run or different methodologies forbid causal conclusions. */
+  attribution_status?: "needs_review" | "reviewable";
+  attribution_review_reasons?: ReviewReason[];
   schema_version: string; run_ids: string[]; changed_dimensions: Record<string, unknown[]>;
   metric_deltas_allowed: boolean; clean_storage_policy_comparison: boolean;
   comparison_scope: "annual_scientific" | "teaching_diagnostic" | "mixed_tutorial_and_annual";
@@ -83,10 +89,14 @@ export default function ComparisonWorkspace({ runs, apiOrigin }: { runs: Compari
   const eligible = runs.filter((run) => run.status === "completed" && ["full", "two_year", "value_101_day"].includes(run.mode) && (!selectedClass || (run.mode === "value_101_day" ? "tutorial" : "annual") === selectedClass));
   return <section className="comparison-workspace" aria-labelledby="comparison-title">
     <div className="comparison-heading"><div><small>Scenario comparison</small><h3 id="comparison-title">Compare completed runs</h3><p>Select two to six annual runs, or two VALUE 101 teaching runs. Tutorial pairs compare model identity; their annual cost and carbon deltas are withheld.</p></div><div className="comparison-actions"><button className="secondary" disabled={!comparison} onClick={() => onExport("csv")}>Export CSV</button><button className="secondary" disabled={!comparison} onClick={() => onExport("json")}>Export JSON</button></div></div>
-    <div className="comparison-picker">{eligible.map((run) => <label key={run.id}><input type="checkbox" checked={selected.includes(run.id)} disabled={!selected.includes(run.id) && selected.length >= 6} onChange={() => onToggle(run.id)} /><span><b>{run.project_name}</b><small>{run.mode} · {run.updated_at ?? "timestamp pending"}</small><code>{run.id}</code></span></label>)}</div>
+    <div className="comparison-picker">{eligible.map((run) => <label key={run.id}><input type="checkbox" checked={selected.includes(run.id)} disabled={!selected.includes(run.id) && selected.length >= 6} onChange={() => onToggle(run.id)} /><span><b>{run.project_name}</b><small>{run.mode} · {run.updated_at ?? "timestamp pending"} · {profileBadge(run.methodology).text}</small><code>{run.id}</code></span></label>)}</div>
     {error && <div className="error-box">{error}</div>}{loading && <p role="status">正在核对所选 Runs 的冻结身份…</p>}
     {selected.length < 2 && <div className="comparison-empty">Choose at least two completed runs of the same scope.</div>}
     {comparison && <>
+      {comparison.attribution_status === "needs_review" && <Callout tone="caution" className="value-new-control" title="This comparison needs review">
+        <p>{comparison.warning ?? "An advisory, a failed validation or a methodology difference rules out causal conclusions."}</p>
+        {Boolean(comparison.attribution_review_reasons?.length) && <ul className="comparison-review-reasons">{comparison.attribution_review_reasons?.map((reason, index) => <li key={`${reason.reason}-${reason.run_id ?? ""}-${index}`}>{reviewReasonText(reason)}</li>)}</ul>}
+      </Callout>}
       <ComparisonReview review={comparison.comparison_review} />
       <div className={`comparison-gate ${comparison.clean_storage_policy_comparison || comparison.network_cost_attribution_allowed ? "clean" : "changed"}`}><b>{comparison.network_cost_attribution_allowed ? "Controlled copperplate–zonal network comparison" : comparison.comparison_scope === "teaching_diagnostic" && comparison.clean_storage_policy_comparison ? "Controlled teaching configuration" : comparison.clean_storage_policy_comparison ? "Controlled storage-policy comparison" : comparison.storage_pricing_interpretation.replaceAll("_", " ")}</b><small>{comparison.network_cost_attribution_allowed ? "Demand, initial state, weather availability, years and non-network modules have matching machine-readable identities." : comparison.warning ?? "Data, years, non-storage modules and scientific definitions are controlled."}</small></div>
       {!comparison.network_cost_attribution_allowed && comparison.network_comparison.reason_code !== "comparison_eligibility_artifact_missing" && <div className="info-box"><b>Network-cost attribution blocked</b><br />{comparison.network_comparison.reason_code.replaceAll("_", " ")}. Side-by-side results remain available, but the difference is not labelled as a network effect.</div>}

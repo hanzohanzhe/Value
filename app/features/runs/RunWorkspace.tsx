@@ -32,6 +32,8 @@ export type RunWorkspaceActions = {
   rerunAsCopperplate: (run: ModelRun) => Promise<void>;
   lifecycleAction: (run: ModelRun, action: "cancel" | "archive" | "restore" | "export" | "delete") => Promise<void>;
   markLost?: (run: ModelRun) => Promise<void>;
+  /** Open Inspect on one tab (spec 2.3 / 4.2: residuals, ledger export). */
+  openInspect?: (tab: "planning" | "market" | "artifacts") => void;
 };
 
 type RunWorkspaceProps = {
@@ -119,7 +121,7 @@ export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, 
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "export")}>Prepare audit bundle</button>}
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary danger" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "delete")}>Move to trash</button>}
             </div>
-            {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} apiOrigin={apiOrigin} coverage={isResultCoverage(selectedRun.result_coverage) ? selectedRun.result_coverage : null} onOpenInspect={() => onNavigate("audit")} />}
+            {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} apiOrigin={apiOrigin} coverage={isResultCoverage(selectedRun.result_coverage) ? selectedRun.result_coverage : null} onOpenInspect={() => onNavigate("audit")} publication={selectedRun.result_publication} withheldYearCount={selectedRun.withheld_result_year_count} onExportLedger={actions.openInspect ? () => actions.openInspect?.("artifacts") : undefined} />}
             <button className="audit-link" onClick={() => onNavigate("audit")}>Inspect planning projects and market clearing</button>
           </> : <div className="empty-run"><b>No runs yet</b><p>Choose a saved study, check its inputs and start with two full years.</p></div>}
         </section>

@@ -1,5 +1,10 @@
+import {
+  energyBalanceField, legacyStatusField, profileBadge, runAdvisories, runNotices, stressField,
+  type CheckField, type ProfileBadge, type RunAdvisory, type RunNotice, type RunValidationFields,
+} from "./runValidation.ts";
+
 /** Presentation of one Run's recorded identity. No mutable workspace input belongs here. */
-export type ContextRun = {
+export type ContextRun = RunValidationFields & {
   id: string;
   project_id: string;
   project_name?: string;
@@ -8,8 +13,8 @@ export type ContextRun = {
   input_snapshot_id?: string;
   input_tree_sha256?: string;
   execution_status?: string;
-  contract_validation_status?: string;
-  scientific_validation_status?: string;
+  contract_validation_status?: string | null;
+  scientific_validation_status?: string | null;
   source_study_status?: string;
   run_policy?: { label?: string; total_periods?: number; start_year?: number; end_year?: number };
   diagnostic?: { total_periods?: number; years?: number[] };
@@ -59,6 +64,16 @@ export type RunContext = {
   executionStatus: string;
   contractStatus: string;
   scientificStatus: string;
+  /** Spec 2.2 / 2.3 (X0 S12, P0-9 S11): methodology pill, validation fields and notices. */
+  profile: ProfileBadge;
+  methodologyProfileId?: string;
+  profileCatalogueSha?: string;
+  energyBalance: CheckField;
+  stress: CheckField;
+  contractField: CheckField | null;
+  scientificField: CheckField | null;
+  notices: RunNotice[];
+  advisories: RunAdvisory[];
   issue?: string;
 };
 
@@ -97,12 +112,23 @@ export function resolveRunContext({ run, frozen }: {
   run?: ContextRun | null;
   frozen?: FrozenRunContext | null;
 }): RunContext {
+  const contractStatus = recorded(run?.contract_validation_status) ?? "not_evaluated";
+  const scientificStatus = recorded(run?.scientific_validation_status) ?? "not_evaluated";
   const base: RunContext = {
     kind: "empty",
     scope: runScope(run ?? undefined),
     executionStatus: recorded(run?.execution_status) ?? recorded(run?.status) ?? "not_recorded",
-    contractStatus: recorded(run?.contract_validation_status) ?? "not_evaluated",
-    scientificStatus: recorded(run?.scientific_validation_status) ?? "not_evaluated",
+    contractStatus,
+    scientificStatus,
+    profile: profileBadge(run?.methodology),
+    methodologyProfileId: recorded(run?.methodology?.profile_id),
+    profileCatalogueSha: recorded(run?.methodology?.catalogue_sha256),
+    energyBalance: energyBalanceField(run?.energy_balance_status, run?.energy_balance?.enforcement),
+    stress: stressField(run?.stress),
+    contractField: legacyStatusField(contractStatus, run?.recorded_validation_statuses?.contract_validation_status),
+    scientificField: legacyStatusField(scientificStatus, run?.recorded_scientific_validation_status ?? run?.recorded_validation_statuses?.scientific_validation_status),
+    notices: runNotices(run),
+    advisories: runAdvisories(run),
   };
   if (!run) return { ...base, issue: "Select a Run to view its recorded identity." };
   Object.assign(base, {

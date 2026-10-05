@@ -98,7 +98,8 @@ test("Audit summary bid evidence only creates an unsaved Full replay Study revis
   const [page, audit] = await Promise.all([source("../app/page.tsx"),source("../app/features/evidence/AuditView.tsx")]);
 
   assert.doesNotMatch(`${page}\n${audit}`, /Re-run with <code>runtime\.market_trace_level = full<\/code>/);
-  assert.match(audit, /function AuditView\(\{ run, apiOrigin, onCreateFullReplayRevision \}/);
+  // X0 S12 added an optional initialTab (Inspect opened on one tab by a Run notice).
+  assert.match(audit, /function AuditView\(\{ run, apiOrigin, onCreateFullReplayRevision(?:, initialTab)? \}/);
   assert.match(audit, /<TraceCoverageNotice traceLevel=\{periods\.trace_level \?\? "summary"\} bidReplayAvailable=\{false\} onCreateFullReplayRevision=\{onCreateFullReplayRevision\}/);
   assert.match(page, /<AuditView run=\{selectedRun\} apiOrigin=\{API_ORIGIN\} onCreateFullReplayRevision=\{createFullReplayRevision\}/);
 });

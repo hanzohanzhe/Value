@@ -11,21 +11,22 @@ import { formatPrice, type PriceBasis } from "../shared/format.ts";
 import TraceCoverageNotice from "../market/TraceCoverageNotice";
 import ExtensionResultsPanel from "../extensions/ExtensionResultsPanel";
 
-type AuditProps = { run?: ModelRun; apiOrigin: string; onCreateFullReplayRevision: () => void };
-type AuditTab = "planning" | "market" | "artifacts";
+export type AuditTab = "planning" | "market" | "artifacts";
+/** initialTab opens Inspect on one tab (Run context notices, spec 2.3); a new nonce reopens it there. */
+type AuditProps = { run?: ModelRun; apiOrigin: string; onCreateFullReplayRevision: () => void; initialTab?: { tab: AuditTab; nonce: number } | null };
 type PeriodPage = PageResult<MarketPeriod> & { price_basis?: PriceBasis };
 type AuditPayload = { planning?: PageResult<PlanningProject>; events?: PageResult<PlanningEvent>; periods?: PeriodPage; artifacts?: Artifact[]; provenance?: Record<string, unknown> };
 type AuditRequest = { key: string; loading: boolean; error: string; data?: AuditPayload };
 const emptyPage = <T,>(limit: number): PageResult<T> => ({ total: 0, limit, offset: 0, items: [] });
 
-export default function AuditView({ run, apiOrigin, onCreateFullReplayRevision }: AuditProps) {
+export default function AuditView({ run, apiOrigin, onCreateFullReplayRevision, initialTab }: AuditProps) {
   if (!run) return <div className="page"><div className="empty-run"><b>No run selected</b><p>Complete or select a run in the Run centre first.</p></div></div>;
-  return <RunAudit key={`${apiOrigin}|${run.id}|${run.input_snapshot_id ?? "unrecorded"}`} run={run} apiOrigin={apiOrigin} onCreateFullReplayRevision={onCreateFullReplayRevision} />;
+  return <RunAudit key={`${apiOrigin}|${run.id}|${run.input_snapshot_id ?? "unrecorded"}|${initialTab?.nonce ?? 0}`} run={run} apiOrigin={apiOrigin} onCreateFullReplayRevision={onCreateFullReplayRevision} initialTab={initialTab} />;
 }
 
-function RunAudit({ run, apiOrigin, onCreateFullReplayRevision }: AuditProps & { run: ModelRun }) {
+function RunAudit({ run, apiOrigin, onCreateFullReplayRevision, initialTab }: AuditProps & { run: ModelRun }) {
   const API = `${apiOrigin}/api`;
-  const [tab, setTab] = useState<AuditTab>("planning");
+  const [tab, setTab] = useState<AuditTab>(initialTab?.tab ?? "planning");
   const [search, setSearch] = useState("");
   const [outcome, setOutcome] = useState("");
   const [planningOffset, setPlanningOffset] = useState(0);

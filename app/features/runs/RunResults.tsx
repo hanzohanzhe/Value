@@ -8,6 +8,7 @@ import { getJson } from "../shared/api";
 import { StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
 import { costComposition } from "./resultMetrics.ts";
+import type { ResultPublication } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
 /** A recorded annual metric, or null when the Run did not record it (never 0 for missing). */
@@ -97,7 +98,23 @@ export function CostComposition({ result }: { result: RunResult }) {
   </div>;
 }
 
-export function AnnualResults({ runId, results, apiOrigin, coverage, onOpenInspect }: { runId: string; results: RunResult[]; apiOrigin: string; coverage?: ResultCoverage | null; onOpenInspect?: () => void }) {
+/** Q14 / spec 4.2: a withheld reproduction Run shows the state word, one line and the way to the full ledger, never totals. */
+export function WithheldAnnualResults({ publication, withheldYearCount, onOpenInspect, onExportLedger }: { publication: ResultPublication; withheldYearCount?: number | null; onOpenInspect?: () => void; onExportLedger?: () => void }) {
+  const years = typeof withheldYearCount === "number" && withheldYearCount > 0 ? withheldYearCount : null;
+  return <div className="results-cockpit">
+    <section className="latest-result annual-results-withheld value-new-control">
+      <div><small>Annual results</small><StatusPill tone="caution" title={publication.message}>Withheld</StatusPill>
+        <div className="annual-withheld"><ValueState state="withheld" title={publication.reason_code} /> <span>Annual results are not published on result pages for this reproduction run{years ? ` (${years} computed ${years === 1 ? "year" : "years"})` : ""}. The full ledger remains available.</span>
+          {onOpenInspect && <button type="button" className="value-action-link" onClick={onOpenInspect}>Open in Inspect</button>}
+          {onExportLedger && <button type="button" className="value-action-link" onClick={onExportLedger}>Export ledger</button>}
+        </div>
+      </div>
+    </section>
+  </div>;
+}
+
+export function AnnualResults({ runId, results, apiOrigin, coverage, onOpenInspect, publication, withheldYearCount, onExportLedger }: { runId: string; results: RunResult[]; apiOrigin: string; coverage?: ResultCoverage | null; onOpenInspect?: () => void; publication?: ResultPublication | null; withheldYearCount?: number | null; onExportLedger?: () => void }) {
+  if (publication?.status === "withheld") return <WithheldAnnualResults publication={publication} withheldYearCount={withheldYearCount} onOpenInspect={onOpenInspect} onExportLedger={onExportLedger} />;
   if (!results.length) return <div className="empty-run"><b>No annual results yet</b><p>Results appear after a full model year completes.</p></div>;
   const sorted = [...results].sort((a, b) => a.year - b.year);
   const latest = sorted.at(-1)!;
