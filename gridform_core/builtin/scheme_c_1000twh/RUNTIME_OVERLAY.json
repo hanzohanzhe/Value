@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "2ee8c594dd2db3953854c0bb6de3e32dc63c839aec341a85d0cffafbf1fff733",
+  "runtime_tree_sha256": "c926b398e1db601ed198b9d5f5b74eb4f66392d4a660fc82ab496a772e5cade4",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -127,10 +127,13 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "dc4f8164ed2c74187fa9bf954bb12d9dced57fb35ee98f8891233d52683b9e5a",
-      "kind": "value_instrumentation",
-      "correction_ids": [],
-      "note": "VALUE market-ledger, trace and storage-cost instrumentation present at 35aadb3"
+      "sha256": "18e57e2fa831eae9bb8e7ede47caef798e06d274cb9bd0a2574d0fc70f0813bc",
+      "kind": "declared_runtime_edit",
+      "correction_ids": [
+        "p06.native-market-rules"
+      ],
+      "note": "P0-6 S2: run_simulation resolves the market rule set (no clearing step reads it yet)",
+      "previous_kind": "value_instrumentation"
     },
     {
       "path": "modular_storage_expansion_cap.py",

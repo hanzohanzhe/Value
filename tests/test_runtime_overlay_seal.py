@@ -45,7 +45,13 @@ class RuntimeOverlaySealTests(unittest.TestCase):
         self.assertEqual(report["required_bindings"], ["weather.solar", "weather.wind"])
         manifest = json.loads(overlay.MANIFEST_PATH.read_text(encoding="utf-8"))
         kinds = {row["path"]: row["kind"] for row in manifest["runtime_files"]}
-        self.assertEqual(kinds["modular_simulation_model.py"], "value_instrumentation")
+        # The kernel was value_instrumentation at 35aadb3; P0-4/P0-5/P0-6 edits
+        # re-register it as a declared runtime edit carrying correction ids.
+        self.assertIn(kinds["modular_simulation_model.py"], {"value_instrumentation", "declared_runtime_edit"})
+        kernel_row = next(row for row in manifest["runtime_files"] if row["path"] == "modular_simulation_model.py")
+        if kernel_row["kind"] == "declared_runtime_edit":
+            self.assertEqual(kernel_row["previous_kind"], "value_instrumentation")
+            self.assertTrue(kernel_row["correction_ids"])
         self.assertEqual(kinds["storage_cost.py"], "value_instrumentation")
         self.assertEqual(kinds["config.py"], "mechanical_substitution")
         self.assertEqual(kinds["scenarios_v2/decarbonization_cost_scenarios_v2.csv"], "data")
@@ -96,7 +102,8 @@ class RuntimeOverlaySealTests(unittest.TestCase):
         rows = {row["path"]: row for row in manifest["runtime_files"]}
         self.assertEqual(rows["modular_simulation_model.py"]["kind"], "declared_runtime_edit")
         self.assertEqual(rows["modular_simulation_model.py"]["previous_kind"], "value_instrumentation")
-        self.assertEqual(rows["modular_simulation_model.py"]["correction_ids"], ["p06.realise-period"])
+        # Appended to the ids an earlier seal of the repository kernel recorded.
+        self.assertIn("p06.realise-period", rows["modular_simulation_model.py"]["correction_ids"])
         self.assertEqual(rows["energy_contract.py"]["kind"], "value_added_module")
         self.assertEqual(overlay.inspect_runtime_overlay(self.root)["errors"], [])
         self.assertEqual(self._seal("--verify"), 0)

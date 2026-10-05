@@ -12,7 +12,7 @@ from typing import Mapping
 import numpy as np
 import pandas as pd
 
-from ...methodology import methodology_scoped
+from ...methodology import current_methodology, methodology_scoped
 from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
 from ...market_ledger import (
     PhysicalDispatchRow,
@@ -22,6 +22,7 @@ from ...market_ledger import (
 from ...market_replay import canonical_technology
 from ...v2.contracts import MarketYearResult, PSMInput, PeriodSummary
 from .legacy_result_adapter import SchemeCLegacyResultAdapter
+from .native_market_rules import NativeMarketRules, rules_for_methodology, storage_bid_basis_source
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
 
 
@@ -37,14 +38,33 @@ class _NativeParameterAdapter:
 
 
 class _StorageRuntime:
-    def __init__(self, implementation: object, parameters: Mapping[str, object]) -> None:
+    """The storage-cost slot the kernel's ``Battery`` reads through ``get_runtime()``.
+
+    ``bid_basis_sources`` records, per battery type, whether the market rule
+    set owns the created cost object's bid basis (exact
+    ``DynamicAnnualStorageCost``) or the module defines its own bid
+    (``module_defined``).  P0-6 S2 only records this; the rule set's
+    ``storage_bid_basis`` is applied to ``rule_set`` objects from S10 on.
+    """
+
+    def __init__(
+        self,
+        implementation: object,
+        parameters: Mapping[str, object],
+        market_rules: NativeMarketRules | None = None,
+    ) -> None:
         self.id = str(getattr(implementation, "id"))
         self.implementation = implementation
+        self.market_rules = market_rules
+        self.bid_basis_sources: dict[str, str] = {}
         if hasattr(implementation, "parameters"):
             implementation.parameters = dict(parameters)
 
     def create(self, **kwargs):
-        return self.implementation.create(**kwargs)
+        created = self.implementation.create(**kwargs)
+        battery_type = str(kwargs.get("battery_type", ""))
+        self.bid_basis_sources[battery_type] = storage_bid_basis_source(created)
+        return created
 
 
 class SchemeCNativePSM:
@@ -361,8 +381,9 @@ class SchemeCNativePSM:
         )
 
         parameters = dict(model_input.parameters)
-        storage_runtime = _StorageRuntime(self._storage_cost, parameters)
-        runtime = SimpleNamespace(storage_cost=storage_runtime)
+        market_rules = rules_for_methodology(current_methodology())
+        storage_runtime = _StorageRuntime(self._storage_cost, parameters, market_rules)
+        runtime = SimpleNamespace(storage_cost=storage_runtime, market_rules=market_rules)
         periods = len(model_input.chronology.period_ids)
         period_hours = float(model_input.period_hours)
         market_path = self._context.output_dir / "market" / "market.sqlite"

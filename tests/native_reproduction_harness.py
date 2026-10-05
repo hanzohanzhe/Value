@@ -838,10 +838,15 @@ def _loop_environment(kernel, variant: str, bidding_factor: float,
     try:
         os.environ.update(LOOP_ENVIRONMENT)
         kernel.config.simulation_parameters["bidding_factor"] = bidding_factor
-        # HEAD's loop only reads ``storage_cost`` from the module runtime.  Later
-        # rule-set work (P0-6 S2: ``market_rules``) passes extra attributes.
+        # HEAD's loop only reads ``storage_cost`` from the module runtime.  From
+        # P0-6 S2 on the live kernel refuses a configured runtime without
+        # ``market_rules``; the golden is the doctoral rule set's oracle, so it
+        # is the default here (callers may override through runtime_attributes).
+        from gridform_core.builtin.scheme_c_1000twh.native_market_rules import DOCTORAL
+
+        attributes = {"market_rules": DOCTORAL, **dict(runtime_attributes or {})}
         module_context._runtime = SimpleNamespace(
-            storage_cost=_storage_definition(variant), **dict(runtime_attributes or {})
+            storage_cost=_storage_definition(variant), **attributes
         )
         yield
     finally:

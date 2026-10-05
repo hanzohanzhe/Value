@@ -2249,7 +2249,18 @@ def cleanup_accumulating_lists(total_renew_capacity, renew_capacity, gen_list_co
     gc.collect()
 
 
-def run_simulation(periods, generators, batterys, forecast_demands, real_demands, connections, electrolyzer):
+def _active_rules(market_rules=None):
+    """Market rule set of this kernel run (VALUE P0-6 S2; see native_market_rules.active_rules)."""
+    from ..native_market_rules import active_rules
+    from . import module_context
+    return active_rules(market_rules, getattr(module_context, "_runtime", None))
+
+
+def run_simulation(periods, generators, batterys, forecast_demands, real_demands, connections, electrolyzer,
+                   market_rules=None):
+    # VALUE P0-6 S2: resolve the market rule set once per run (fail-closed for
+    # configured runtimes without rules).  No clearing step reads it yet.
+    market_rules = _active_rules(market_rules)
     # plot average generation price
     avg_electricity_prices = []
     avg_gen_fees = []
