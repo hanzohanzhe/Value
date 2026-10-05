@@ -52,6 +52,24 @@ class ReliabilityThresholdTests(unittest.TestCase):
         self.assertEqual((second.start_period, second.end_period), (2, 2))
 
 
+    def test_negative_and_nonfinite_shedding_still_fail_closed(self) -> None:
+        # Review M2-P0-8a: the threshold filter must not swallow invalid values.
+        for value, message in (
+            (-5.0, "cannot be negative"),
+            (-5e-7, "cannot be negative"),
+            (float("nan"), "must be finite"),
+            (float("inf"), "must be finite"),
+        ):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, message):
+                    build_reliability_events([period(0, {"a": value})], period_hours=0.5)
+                with self.assertRaisesRegex(ValueError, message):
+                    build_reliability_events(
+                        [period(0, {"a": 0.4}), period(1, {"a": 0.3, "b": value})],
+                        period_hours=0.5,
+                    )
+
+
 class KnownDefectTests(unittest.TestCase):
     def ledger(self, contract: str) -> sqlite3.Connection:
         connection = sqlite3.connect(":memory:")

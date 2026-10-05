@@ -1036,9 +1036,15 @@ def build_reliability_events(
             raw = row.get("load_shedding_mwh_by_zone") or {}
             if not isinstance(raw, Mapping):
                 raise ValueError("load_shedding_mwh_by_zone must be an object")
-            deficits = {
+            # Validate every recorded value before the reporting threshold
+            # filter, so negative or non-finite shedding still fails closed.
+            checked = {
                 str(zone): _nonnegative(value, f"load shedding in {zone}")
                 for zone, value in raw.items()
+            }
+            deficits = {
+                zone: value
+                for zone, value in checked.items()
                 if is_reportable_shedding(value)
             }
             affected.update(deficits)
@@ -1065,11 +1071,8 @@ def build_reliability_events(
         raw = row.get("load_shedding_mwh_by_zone") or {}
         if not isinstance(raw, Mapping):
             raise ValueError("load_shedding_mwh_by_zone must be an object")
-        total = sum(
-            _nonnegative(value, "load shedding")
-            for value in raw.values()
-            if is_reportable_shedding(value)
-        )
+        checked = [_nonnegative(value, "load shedding") for value in raw.values()]
+        total = sum(value for value in checked if is_reportable_shedding(value))
         consecutive = previous is not None and previous == (year, period - 1)
         if total > 0:
             if active and not consecutive:
