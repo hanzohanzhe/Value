@@ -4153,9 +4153,9 @@
     },
     {
       "path": "docs/MATHEMATICAL_REFERENCE.md",
-      "sha256": "76af56445a0f8af013076e5152949ec756025be216e3689968777609cd0192de",
-      "bytes": 24523,
-      "transform": "byte copy"
+      "sha256": "2bb442c46e13a7dd07b93d29582605510649a97c2c92e1c4323bff3f6c740f46",
+      "bytes": 24888,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
@@ -4603,8 +4603,8 @@
     },
     {
       "path": "docs/release/VERSION_LEDGER.json",
-      "sha256": "3a46debbd83c16d63b0b51f2ab675b82703155539e3d7692c93770d0dac2178c",
-      "bytes": 6876,
+      "sha256": "17db67827407a1f60ae5a75f064c802ef873f452ae17634e270ea88f05fec2e9",
+      "bytes": 7153,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7654,8 +7654,8 @@
     },
     {
       "path": "gridform_core/market_ledger.py",
-      "sha256": "7d32f19c4f3d8ad468eba1989db4d3f27f16fb49bab7e4941315ac1f87e86097",
-      "bytes": 164772,
+      "sha256": "a40dbffbc2c26ec56ade4108b7cbd2d9bad97c97f34a9f36a6c33bf13e88c653",
+      "bytes": 164735,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8098,8 +8098,8 @@
     },
     {
       "path": "gridform_core/zonal_solver_contract.py",
-      "sha256": "96d61236a44ac2621a0c79ed342f39101161e51564c8a6dddb5251e1cd7f0b7b",
-      "bytes": 35279,
+      "sha256": "eef2cd7e443bf5715e5bea01ccbb848bd301ad8df4bf0846fe96ddcc9a224ab5",
+      "bytes": 36073,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10766,8 +10766,8 @@
     },
     {
       "path": "tests/test_p08_zonal_solver_v4.py",
-      "sha256": "11d4a274303d38f17ef77278a8706ef5e31e9d079aa7365254854d61eb3c15e4",
-      "bytes": 20742,
+      "sha256": "9c09759a6b10e3083558d8fcde4e763263eb4f7b2a1385de3656613d28123b36",
+      "bytes": 22834,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

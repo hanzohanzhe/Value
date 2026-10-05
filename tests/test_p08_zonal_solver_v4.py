@@ -25,6 +25,7 @@ from gridform_core.zonal_solver_contract import (
     ZonalSolverContractError,
     compute_lock_tolerance,
     gbp1_stored_policy_matches,
+    gbp1_stored_policy_requirement,
     solver_contract_generation,
     validate_recorded_solver_settings,
     validate_solver_settings,
@@ -431,6 +432,45 @@ class ContractIdentityTests(unittest.TestCase):
         legacy = dict(v3_row, solver_contract_version="value.zonal-lexicographic/v2",
                       computed_tolerance=1e-8, validated_ceiling=0.05, absolute_ceiling=0.1)
         self.assertTrue(gbp1_stored_policy_matches(legacy))
+
+    def test_version_ledger_reason_records_the_forced_part_rule(self) -> None:
+        import json
+        from pathlib import Path
+
+        ledger = json.loads(
+            (Path(__file__).resolve().parents[1] / "docs" / "release" / "VERSION_LEDGER.json")
+            .read_text(encoding="utf-8")
+        )
+        bump = next(
+            row for row in ledger["modules"]["value-zonal-redispatch-balancing"]["bumps"]
+            if row["to"] == "4.0.0"
+        )
+        self.assertIn("no longer splits by resource class", bump["reason"])
+        self.assertIn("forced part", bump["reason"])
+
+    def test_ledger_rejection_names_the_rule_of_the_recorded_contract(self) -> None:
+        """Review M2-P0-8a: a v4 row is not told about the v3 GBP 1 lock."""
+
+        from gridform_core.market_ledger import NetworkSolverDiagnosticRow
+        from tests.test_market_ledger import _three_phase_diagnostic_rows
+
+        primary_row = vars(_three_phase_diagnostic_rows()[0])
+        self.assertEqual(primary_row["phase_id"], "primary_bid_cost")
+        v4_bad = primary_row | {"solver_contract_version": SOLVER_CONTRACT_VERSION}
+        with self.assertRaises(ValueError) as caught:
+            NetworkSolverDiagnosticRow(**v4_bad)
+        self.assertEqual(
+            str(caught.exception), gbp1_stored_policy_requirement(SOLVER_CONTRACT_VERSION)
+        )
+        self.assertIn("v4", str(caught.exception))
+        self.assertIn("validated_ceiling and absolute_ceiling both equal GBP 1", str(caught.exception))
+        self.assertNotIn("computed_tolerance", str(caught.exception))
+        v3_bad = primary_row | {"solver_contract_version": V3_SOLVER_CONTRACT_VERSION}
+        with self.assertRaisesRegex(ValueError, "^v3 primary bid cost evidence requires computed_tolerance"):
+            NetworkSolverDiagnosticRow(**v3_bad)
+        # A v4 row with both ceilings at GBP 1 and a numerical tolerance passes.
+        v4_good = v4_bad | {"warning_ceiling": 0.1, "validated_ceiling": 1.0, "absolute_ceiling": 1.0}
+        NetworkSolverDiagnosticRow(**v4_good)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,7 @@ from .zonal_solver_contract import (
     classify_lock,
     degradation_identity_matches,
     gbp1_stored_policy_matches,
+    gbp1_stored_policy_requirement,
     validate_stored_lock_evidence,
 )
 
@@ -1262,8 +1263,7 @@ class NetworkSolverDiagnosticRow:
             "absolute_ceiling": self.absolute_ceiling,
         }):
             raise ValueError(
-                "v3 primary bid cost evidence requires computed_tolerance, "
-                "validated_ceiling and absolute_ceiling all equal GBP 1"
+                gbp1_stored_policy_requirement(self.solver_contract_version)
             )
         classification = classify_lock(
             self.degradation,

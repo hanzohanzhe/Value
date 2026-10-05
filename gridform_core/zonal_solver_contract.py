@@ -668,6 +668,24 @@ def gbp1_stored_policy_matches(row: Mapping[str, object]) -> bool:
     return True
 
 
+def gbp1_stored_policy_requirement(solver_contract_version: object) -> str:
+    """The rule ``gbp1_stored_policy_matches`` applies, worded per contract."""
+
+    contract = str(solver_contract_version or "")
+    if contract == V3_SOLVER_CONTRACT_VERSION:
+        return (
+            "v3 primary bid cost evidence requires computed_tolerance, "
+            "validated_ceiling and absolute_ceiling all equal GBP 1"
+        )
+    if contract == SOLVER_CONTRACT_VERSION:
+        return (
+            "v4 primary bid cost evidence requires validated_ceiling and "
+            "absolute_ceiling both equal GBP 1 (the computed tolerance is the "
+            "numerical bid lock)"
+        )
+    return f"primary bid cost evidence does not match the {contract or 'recorded'} policy"
+
+
 def validate_stored_lock_evidence(
     row: Mapping[str, object],
 ) -> StoredLockEvidenceValidation:
