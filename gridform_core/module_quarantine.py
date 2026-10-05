@@ -27,7 +27,7 @@ import subprocess
 import sys
 import tempfile
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Iterable, Mapping
 
@@ -82,7 +82,12 @@ QUARANTINE_CODES = (
     "GF_EXTENSION_NAMESPACE_COLLISION",
     "GF_EXTENSION_SHADOWS_BUILTIN",
     "GF_EXTENSION_HOOK_IMPORT",
+    "GF_MODULE_INSTALL_RECORD_INVALID",
 )
+
+# An installer-owned folder whose record the execution archive cannot read:
+# every run start is refused until it is repaired or parked.
+INSTALL_RECORD_CODE = "GF_MODULE_INSTALL_RECORD_INVALID"
 
 ERROR_CODE_STATUS: dict[str, int] = {
     "GF_MODULE_QUARANTINED": 409,
@@ -111,6 +116,7 @@ ERROR_CODE_STATUS: dict[str, int] = {
     "GF_EXTENSION_INSTALL_STATE": 409,
     "GF_MODULE_INSTALL_STATE": 409,
     "GF_EXECUTION_ARCHIVE_MODULE_RECORD": 409,
+    "GF_MODULE_INSTALL_RECORD_INVALID": 409,
     "GF_MODULE_NOT_INSTALLED": 404,
     "GF_MODULE_BUNDLE_SIZE": 413,
     "GF_EXTENSION_SIZE": 413,
@@ -129,7 +135,8 @@ class QuarantinedEntry:
     ``shadows_registered`` marks an external entry that collides with a
     built-in: the built-in stays registered, so a Study selecting that ID is
     not blocked.  ``manifest_file`` is relative to ``modules/`` (no absolute
-    paths ever leave this object).
+    paths ever leave this object).  ``version`` is filled from the raw
+    manifest or the installer folder when known (quarantine_report).
     """
 
     kind: str
@@ -139,6 +146,7 @@ class QuarantinedEntry:
     error_type: str
     message: str
     shadows_registered: bool = False
+    version: str | None = None
 
     def key(self) -> tuple[str, str]:
         return (self.kind, self.entry_id or "file:" + self.manifest_file)
@@ -150,21 +158,32 @@ class QuarantinedEntry:
     def to_dict(self) -> dict[str, object]:
         return {
             "kind": self.kind, "id": self.entry_id, "manifest_file": self.manifest_file,
+            "version": self.version,
             "error_code": self.code, "error_type": self.error_type, "message": self.message,
             "shadows_registered": self.shadows_registered,
             "corrective_action": corrective_action(self),
         }
 
 
+# The offline tool is named, never given as a bare "python -m" command: on an
+# installed VALUE it needs the bundled interpreter, PYTHONPATH and the data
+# directory, which the user guide spells out per platform.
+OFFLINE_HELP = "stop VALUE first; the user guide section 'Offline module recovery' gives the exact command"
+
+
 def corrective_action(entry: QuarantinedEntry) -> str:
+    if entry.code == INSTALL_RECORD_CODE:
+        target = " ".join(item for item in (entry.kind, entry.entry_id or "", entry.version or "") if item)
+        return (f"Move the damaged installation aside offline: module_recovery park-installation {target} "
+                f"({OFFLINE_HELP})")
     if entry.entry_id and entry.kind == "module":
         return (f"Disable module {entry.entry_id} in Modules, or offline: "
-                f"python -m gridform_core.module_recovery disable module {entry.entry_id}")
+                f"module_recovery disable module {entry.entry_id} ({OFFLINE_HELP})")
     if entry.entry_id and entry.kind == "extension":
         return (f"Disable extension {entry.entry_id} in Modules, or offline: "
-                f"python -m gridform_core.module_recovery disable extension {entry.entry_id}")
-    return ("Move the unreadable manifest aside offline: python -m gridform_core.module_recovery "
-            f"park-manifest {entry.kind} {entry.manifest_file}")
+                f"module_recovery disable extension {entry.entry_id} ({OFFLINE_HELP})")
+    return ("Move the unreadable manifest aside offline: module_recovery "
+            f"park-manifest {entry.kind} {entry.manifest_file} ({OFFLINE_HELP})")
 
 
 _HOME = str(Path.home())
@@ -342,25 +361,117 @@ def blocker_error(code: str, blockers: Iterable[QuarantinedEntry]) -> ModuleQuar
     )
 
 
-def degraded_reasons(registry: object, *, extra: Iterable[str] = ()) -> list[dict[str, object]]:
-    """Grouped ``[{code, count}]`` for /api/health (no ids, no paths)."""
+def degraded_reasons(
+    registry: object, *, extra: Iterable[str] = (), entries: Iterable[QuarantinedEntry] = (),
+) -> list[dict[str, object]]:
+    """Grouped ``[{code, count}]`` for /api/health (no ids, no paths).
+
+    ``entries`` are further entries not held by the registry (damaged
+    installer records, installation_record_entries).
+    """
 
     counts: dict[str, int] = {}
-    for entry in all_quarantine_entries(registry):
+    for entry in all_quarantine_entries(registry) + tuple(entries):
         counts[entry.code] = counts.get(entry.code, 0) + 1
     for code in extra:
         counts[code] = counts.get(code, 0) + 1
     return [{"code": code, "count": counts[code]} for code in sorted(counts)]
 
 
-def quarantine_report(registry: object) -> dict[str, object]:
-    entries = all_quarantine_entries(registry)
+def _with_version(entry: QuarantinedEntry, modules_root: Path | None) -> QuarantinedEntry:
+    if entry.version is not None or modules_root is None:
+        return entry
+    try:
+        payload = json.loads((Path(modules_root) / entry.manifest_file).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return entry
+    version = payload.get("version") if isinstance(payload, dict) else None
+    return replace(entry, version=str(version)) if isinstance(version, (str, int, float)) else entry
+
+
+def quarantine_report(
+    registry: object, *, extra_entries: Iterable[QuarantinedEntry] = (), modules_root: Path | None = None,
+) -> dict[str, object]:
+    """The quarantine panel's payload; ``modules_root`` lets each entry carry
+    the version from its raw manifest (best effort)."""
+
+    extra = tuple(extra_entries)
+    entries = tuple(_with_version(entry, modules_root) for entry in all_quarantine_entries(registry) + extra)
     return {
         "schema_version": "value.module-quarantine/v1",
         "status": "degraded" if entries else "ok",
         "entries": [entry.to_dict() for entry in entries],
-        "reasons": degraded_reasons(registry),
+        "reasons": degraded_reasons(registry, entries=extra),
     }
+
+
+# -- installer records (P0-2 review) ---------------------------------------------
+# execution_archive._source_roots reads every record below installed/ and
+# installed-extensions/ (enabled or not) at every run start, so one damaged
+# record refuses every run.  The same conditions are reported here, so that
+# /api/health turns degraded and the panel names the folder to park.
+_INSTALLER_FOLDERS = (("module", "installed"), ("extension", "installed-extensions"))
+
+
+def installation_record_problem(version_folder: Path, *, folder: str) -> str | None:
+    """Why the execution archive would refuse this installer-owned version folder."""
+
+    if version_folder.is_symlink() or not version_folder.is_dir():
+        return "not a regular folder"
+    record_path = version_folder / "installation.json"
+    if record_path.is_symlink():
+        return "installation record is a symbolic link"
+    try:
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return "installation record is missing"
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        return f"installation record is unreadable ({type(exc).__name__})"
+    if not isinstance(record, dict):
+        return "installation record is not a JSON object"
+    if record.get("enabled"):
+        source = record.get("source_root")
+        if source not in (None, "src"):
+            return "enabled installation declares an unsupported source root"
+        if source is None and folder == "installed":
+            return "enabled module has no installer-owned source"
+    return None
+
+
+def installation_record_entries(modules_root: Path) -> tuple[QuarantinedEntry, ...]:
+    """Damaged installer folders as quarantine entries (code GF_MODULE_INSTALL_RECORD_INVALID)."""
+
+    root = Path(modules_root)
+    found: list[QuarantinedEntry] = []
+    for kind, folder in _INSTALLER_FOLDERS:
+        base = root / folder
+        if not base.is_dir():
+            continue
+        try:
+            identifiers = sorted(base.iterdir())
+        except OSError:
+            continue
+        for identifier in identifiers:
+            if identifier.is_symlink() or not identifier.is_dir():
+                found.append(QuarantinedEntry(kind, f"{folder}/{identifier.name}", identifier.name,
+                                              INSTALL_RECORD_CODE, "InstallationRecordError",
+                                              "not a regular folder"))
+                continue
+            try:
+                versions = sorted(identifier.iterdir())
+            except OSError:
+                continue
+            for version in versions:
+                problem = installation_record_problem(version, folder=folder)
+                if problem is None:
+                    continue
+                label = f"{folder}/{identifier.name}/{version.name}"
+                found.append(QuarantinedEntry(
+                    kind, label if problem == "not a regular folder" else label + "/installation.json",
+                    identifier.name, INSTALL_RECORD_CODE, "InstallationRecordError", problem,
+                    version=version.name,
+                ))
+    return tuple(found)
 
 
 # -- post-write verification (P0-2 S4) ---------------------------------------------

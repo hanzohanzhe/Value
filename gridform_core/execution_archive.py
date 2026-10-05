@@ -136,30 +136,45 @@ def _source_roots(source_root, data_home):
             folder = modules / category
             if not folder.exists(): continue
             _no_links(folder)
+            kind = 'module' if category == 'installed' else 'extension'
             for identifier in sorted(folder.iterdir()):
-                if not identifier.is_dir() or identifier.is_symlink(): raise ExecutionArchiveError('Unsafe installer-owned module directory')
+                if not identifier.is_dir() or identifier.is_symlink():
+                    raise ExecutionArchiveError(
+                        'Unsafe installer-owned module directory modules/' + category + '/' + identifier.name
+                        + '; stop VALUE and move it aside with module_recovery park-installation ' + kind + ' '
+                        + identifier.name, code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
                 for version in sorted(identifier.iterdir()):
-                    if not version.is_dir() or version.is_symlink(): raise ExecutionArchiveError('Unsafe installer-owned version directory')
+                    if not version.is_dir() or version.is_symlink():
+                        raise ExecutionArchiveError(
+                            'Unsafe installer-owned version directory modules/' + category + '/' + identifier.name + '/'
+                            + version.name + '; stop VALUE and move it aside with module_recovery park-installation '
+                            + kind + ' ' + identifier.name + ' ' + version.name, code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
                     label = 'modules/' + category + '/' + identifier.name + '/' + version.name
                     # A damaged installer record must not surface as an anonymous
                     # failure of every run: name it and point at the offline repair (P0-2).
+                    repair = ('; stop VALUE and move the installation aside with module_recovery park-installation '
+                              + kind + ' ' + identifier.name + ' '
+                              + version.name + " (user guide: 'Offline module recovery')")
                     try:
                         record_path = _no_links(version / 'installation.json')
                         record = json.loads(record_path.read_text(encoding='utf-8'))
                     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
                         raise ExecutionArchiveError(
-                            'Unreadable installation record ' + label + '/installation.json; repair or remove it '
-                            'with python -m gridform_core.module_recovery list',
+                            'Unreadable installation record ' + label + '/installation.json' + repair,
                             code='GF_EXECUTION_ARCHIVE_MODULE_RECORD') from exc
                     if not isinstance(record, dict):
-                        raise ExecutionArchiveError('Invalid installation record ' + label + '/installation.json',
+                        raise ExecutionArchiveError('Invalid installation record ' + label + '/installation.json' + repair,
                                                     code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
                     if not record.get('enabled'): continue
                     roots.extend([(label + '/installation.json', record_path), (label + '/' + manifest_name, version / manifest_name)])
                     source_kind = record.get('source_root')
                     if source_kind == 'src': roots.append((label + '/src', version / 'src'))
-                    elif source_kind is not None: raise ExecutionArchiveError('Enabled external module declares an unsupported source root')
-                    elif category == 'installed': raise ExecutionArchiveError('Enabled module has no installer-owned source')
+                    elif source_kind is not None:
+                        raise ExecutionArchiveError('Enabled external module declares an unsupported source root (' + label + ')' + repair,
+                                                    code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
+                    elif category == 'installed':
+                        raise ExecutionArchiveError('Enabled module has no installer-owned source (' + label + ')' + repair,
+                                                    code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
     return roots
 
 

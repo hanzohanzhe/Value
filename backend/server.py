@@ -50,6 +50,7 @@ from gridform_core.module_quarantine import (
     all_quarantine_entries,
     clear_negative_caches,
     degraded_reasons,
+    installation_record_entries,
     quarantine_report,
     status_for_code,
 )
@@ -356,8 +357,17 @@ def refresh_module_catalog(*, refresh: bool = True) -> None:
 refresh_module_catalog(refresh=False)
 
 
+def module_record_entries() -> tuple[Any, ...]:
+    """Damaged installer records: each refuses every run start, so they are
+    reported with the quarantine (GF_MODULE_INSTALL_RECORD_INVALID)."""
+
+    return installation_record_entries(external_modules_root())
+
+
 def module_quarantine_payload() -> dict[str, Any]:
-    report = quarantine_report(MODULE_REGISTRY)
+    report = quarantine_report(
+        MODULE_REGISTRY, extra_entries=module_record_entries(), modules_root=external_modules_root()
+    )
     if CATALOG_STALE:
         report = {**report, "status": "degraded", "catalog_stale": True}
     return report
@@ -1336,7 +1346,10 @@ def health_degradation() -> tuple[str, list[dict[str, Any]]]:
     """Backend status and grouped degraded reasons: quarantined local module
     entries and a stale catalogue (codes and counts only; no IDs or paths)."""
 
-    reasons = degraded_reasons(MODULE_REGISTRY, extra=[CATALOG_STALE["code"]] if CATALOG_STALE else [])
+    reasons = degraded_reasons(
+        MODULE_REGISTRY, extra=[CATALOG_STALE["code"]] if CATALOG_STALE else [],
+        entries=module_record_entries(),
+    )
     return ("degraded" if reasons else "ok"), reasons
 
 
@@ -3791,7 +3804,8 @@ def main() -> None:
         if reasons:
             print("VALUE started degraded: " + ", ".join(
                 f"{item['code']} x{item['count']}" for item in reasons
-            ) + " (see Modules, or python -m gridform_core.module_recovery list)", flush=True)
+            ) + " (see Modules, or the offline module_recovery tool: user guide 'Offline module recovery')",
+                  flush=True)
         report = supervisor.reconcile_all(extra_steps=[_startup_quota_repairs])
         if report.settled or report.repaired or report.unverifiable:
             print("VALUE run reconciliation: " + json.dumps(report.to_dict(), ensure_ascii=False), flush=True)

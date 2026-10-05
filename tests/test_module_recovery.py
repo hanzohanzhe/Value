@@ -79,21 +79,87 @@ class ModuleRecoveryTests(unittest.TestCase):
         problems = {(row["file"], problem) for row in report["entries"] for problem in row["problems"]}
         self.assertIn(("installed/p02-rescue/1.0.0/installation.json", "installation record unreadable (JSONDecodeError)"),
                       problems)
+        self.assertIn("park-installation module p02-rescue 1.0.0",
+                      [row.get("fix") for row in report["entries"]])
         self.assertIn(("extensions/p02-ns-a.json", "namespace shared with p02-ns-b"), problems)
         self.assertEqual(len(report["parked_manifests"]), 1)
         self.assertTrue(report["parked_manifests"][0].startswith("disabled-manifests/modules/broken."))
         code, text, _ = self._main("list")
         self.assertIn("problem: installation record unreadable", text)
+        self.assertIn("fix:     park-installation module p02-rescue 1.0.0", text)
 
-    def test_a_damaged_record_points_to_park_manifest(self) -> None:
+    def test_a_damaged_record_is_degraded_and_one_command_rescues_it(self) -> None:
+        from gridform_core.execution_archive import ExecutionArchiveError, _source_roots
+        from gridform_core.module_quarantine import degraded_reasons, installation_record_entries
+
         target = write_external_module(self.modules, "p02-rescue", "p02_rescue_plugin")
         (target / "installation.json").write_text("{damaged", encoding="utf-8")
+        with self.assertRaises(ExecutionArchiveError) as caught:
+            _source_roots(ROOT, self.home)
+        self.assertIn("park-installation module p02-rescue 1.0.0", str(caught.exception))
+        [entry] = installation_record_entries(self.modules)
+        self.assertEqual((entry.kind, entry.entry_id, entry.version, entry.code),
+                         ("module", "p02-rescue", "1.0.0", "GF_MODULE_INSTALL_RECORD_INVALID"))
+        self.assertIn("park-installation module p02-rescue 1.0.0", entry.to_dict()["corrective_action"])
+        # Its source root is no longer activated, so the active manifest also
+        # fails to import; the damaged record is reported in its own right.
+        registry = workspace_registry(self.modules)
+        self.assertIn({"code": "GF_MODULE_INSTALL_RECORD_INVALID", "count": 1},
+                      degraded_reasons(registry, entries=installation_record_entries(self.modules)))
         code, _, err = self._main("disable", "module", "p02-rescue")
         self.assertEqual(code, 1)
-        self.assertIn("park-manifest module p02-rescue", err)
-        self.assertEqual(self._main("park-manifest", "module", "p02-rescue")[0], 0)
+        self.assertIn("park-installation module p02-rescue 1.0.0", err)
+        code, out, _ = self._main("park-installation", "module", "p02-rescue")
+        self.assertEqual(code, 0, out)
+        result = json.loads(out)
+        self.assertTrue(result["parked"][0].startswith("installed/p02-rescue/1.0.0 -> disabled-manifests/installed/p02-rescue/1.0.0."))
+        self.assertTrue(result["active_manifest"].startswith("disabled-manifests/modules/p02-rescue."))
+        self.assertFalse((self.modules / "installed" / "p02-rescue").exists())
         self.assertFalse((self.modules / "p02-rescue.json").exists())
+        _source_roots(ROOT, self.home)  # every run start works again
+        self.assertEqual(installation_record_entries(self.modules), ())
+        self.assertEqual(degraded_reasons(workspace_registry(self.modules)), [])
         self.assertNotIn("p02-rescue", workspace_registry(self.modules).manifests())
+        report = json.loads(self._main("list", "--json")[1])
+        self.assertTrue(any(name.startswith("disabled-manifests/installed/p02-rescue/1.0.0.")
+                            for name in report["parked_manifests"]))
+
+    def test_park_installation_keeps_a_readable_current_version(self) -> None:
+        old = write_external_extension(self.modules, "p02-rescue-ext", "local.p02-rescue", version="1.0.0",
+                                       enabled=False)
+        write_external_extension(self.modules, "p02-rescue-ext", "local.p02-rescue", version="2.0.0")
+        (old / "installation.json").unlink()
+        code, out, err = self._main("list", "--json")
+        rows = [row for row in json.loads(out)["entries"] if row["problems"]]
+        self.assertEqual([(row["file"], row["problems"], row["fix"]) for row in rows], [(
+            "installed-extensions/p02-rescue-ext/1.0.0", ["installation record is missing"],
+            "park-installation extension p02-rescue-ext 1.0.0")])
+        code, out, _ = self._main("park-installation", "extension", "p02-rescue-ext")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("active_manifest", json.loads(out))
+        self.assertTrue((self.modules / "extensions" / "p02-rescue-ext.json").is_file())
+        self.assertTrue((self.modules / "installed-extensions" / "p02-rescue-ext" / "2.0.0").is_dir())
+        self.assertIn("p02-rescue-ext", workspace_registry(self.modules).extension_manifests())
+        code, _, err = self._main("park-installation", "extension", "p02-rescue-ext")
+        self.assertEqual(code, 1)
+        self.assertIn("No damaged installation", err)
+        self.assertEqual(self._main("park-installation", "extension", "p02-absent")[0], 1)
+
+    def test_a_parked_module_id_stays_taken(self) -> None:
+        from gridform_core.module_bundle import build_module_bundle
+        from gridform_core.module_installation import ModuleInstallationError, install_module_bundle
+        from tests.module_lifecycle_fixtures import EXAMPLE
+
+        target = write_external_module(self.modules, "example-flat-storage-offer", "p02_rescue_plugin")
+        (target / "installation.json").write_text("[]", encoding="utf-8")
+        self.assertEqual(self._main("park-installation", "module", "example-flat-storage-offer")[0], 0)
+        bundle = Path(self.folder.name) / "example.zip"
+        build_module_bundle(manifest_path=EXAMPLE / "value-module.json", source_root=EXAMPLE / "src",
+                            license_path=ROOT / "LICENSE", readme_path=EXAMPLE / "README.md", destination=bundle)
+        with self.assertRaises(ModuleInstallationError) as caught:
+            install_module_bundle(bundle, trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_ID_COLLISION")
+        self.assertIn("parked", str(caught.exception))
 
     def test_refuses_while_a_backend_holds_the_data_directory(self) -> None:
         from backend.lifecycle.file_locks import FileLock

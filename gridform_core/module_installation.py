@@ -121,6 +121,12 @@ def _validate_manifest_for_install(
             "GF_MODULE_ID_COLLISION",
             "That module ID is already installed; publish a new ID for a new scientific implementation",
         )
+    if (modules_root / "disabled-manifests" / "installed" / manifest.id).exists():
+        # A parked (damaged) installation keeps its ID taken, like a disabled one.
+        raise ModuleInstallationError(
+            "GF_MODULE_ID_COLLISION",
+            "That module ID belongs to a parked installation; publish a new ID for a new scientific implementation",
+        )
     if top_level in _active_package_names(modules_root):
         raise ModuleInstallationError(
             "GF_MODULE_PACKAGE_COLLISION", "The bundle's top-level Python package is already installed"

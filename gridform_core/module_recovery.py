@@ -3,17 +3,28 @@
     python -m gridform_core.module_recovery list [--json]
     python -m gridform_core.module_recovery disable module|extension <id> [--force]
     python -m gridform_core.module_recovery park-manifest module|extension <file-or-id> [--force]
+    python -m gridform_core.module_recovery park-installation module|extension <id> [<version>] [--force]
     python -m gridform_core.module_recovery verify [--report FILE]
 
-``list``, ``disable`` and ``park-manifest`` read and write the installer's
-JSON files only: they never import a module implementation, an extension
-hook or the module catalogue, so they work when the local code is what
-breaks VALUE.  ``disable`` does exactly what the Modules page does (the
-installation record says ``enabled: false``, the active manifest leaves the
-scanned folder).  ``park-manifest`` moves an active manifest that cannot be
-disabled normally (unreadable, no installation record) to
-``modules/disabled-manifests/{modules,extensions}/``, which VALUE never
-scans.  Both refuse while a VALUE backend holds the data directory (use the
+On an installed VALUE run it with the bundled interpreter, ``-B -s``,
+``PYTHONPATH=<prefix>/app`` and ``--modules-root <prefix>/state/modules``
+(USER_GUIDE, "Offline module recovery").
+
+``list``, ``disable``, ``park-manifest`` and ``park-installation`` read and
+write the installer's files only: they never import a module
+implementation, an extension hook or the module catalogue, so they work
+when the local code is what breaks VALUE.  ``disable`` does exactly what the
+Modules page does (the current installation record says ``enabled: false``,
+the active manifest leaves the scanned folder).  ``park-manifest`` moves an
+active manifest that cannot be disabled normally (unreadable, no
+installation record) to ``modules/disabled-manifests/{modules,extensions}/``.
+``park-installation`` moves a whole installer folder
+``installed[-extensions]/<id>/<version>/`` whose record is damaged (every
+damaged version when no version is given) to
+``modules/disabled-manifests/installed[-extensions]/<id>/``, together with
+the active manifest when no enabled version is left.  VALUE never scans
+``disabled-manifests/`` (registry, source activation, execution archive).
+All of them refuse while a VALUE backend holds the data directory (use the
 Modules page then) unless ``--force``.
 
 ``verify`` builds the workspace registry exactly as a newly started worker
@@ -34,12 +45,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
-from .module_quarantine import PROBE_SCHEMA
+from .module_quarantine import PROBE_SCHEMA, installation_record_problem
 from .runtime_paths import external_modules_root
 
 MODULE_RECORD_SCHEMA = "value.module-installation/v1"
 EXTENSION_MANIFEST = "force-extension.json"
 PARKED = "disabled-manifests"
+INSTALLER_FOLDER = {"module": "installed", "extension": "installed-extensions"}
 EXIT_OK, EXIT_NOTHING, EXIT_USAGE, EXIT_RUNNING = 0, 1, 2, 3
 
 
@@ -122,6 +134,22 @@ def inventory(modules_root: Path) -> dict[str, object]:
                 "version": record.get("module_version" if kind == "module" else "version") or path.parent.name,
                 "enabled": record.get("enabled"), "problems": problems,
             })
+        # Version folders without any record (or not folders at all) refuse
+        # every run start as well (execution archive).
+        for identifier in sorted((root / folder).glob("*")):
+            versions = sorted(identifier.iterdir()) if identifier.is_dir() and not identifier.is_symlink() else [identifier]
+            for version in versions:
+                if (version / "installation.json").exists() and version.is_dir() and not version.is_symlink():
+                    continue
+                problem = installation_record_problem(version, folder=folder)
+                if problem:
+                    rows.append({"kind": kind, "source": "installation_record", "file": _relative(version, root),
+                                 "id": identifier.name, "version": version.name if version != identifier else None,
+                                 "enabled": None, "problems": [problem]})
+    for row in rows:
+        if row["source"] == "installation_record" and row["problems"]:
+            row["fix"] = " ".join(str(item) for item in (
+                "park-installation", row["kind"], row["id"], row.get("version") or "") if item)
     for row in rows:
         if row["source"] != "active_manifest" or not row.get("id"):
             continue
@@ -132,6 +160,8 @@ def inventory(modules_root: Path) -> dict[str, object]:
             row["problems"].append("namespace shared with " + ", ".join(
                 item for item in namespaces[str(row["namespace"])] if item != row["id"]))
     parked = sorted(_relative(path, root) for path in (root / PARKED).glob("*/*.json"))
+    parked += sorted(_relative(path, root) for folder in INSTALLER_FOLDER.values()
+                     for path in (root / PARKED / folder).glob("*/*"))
     return {
         "schema_version": "value.module-recovery-inventory/v1",
         "modules_root": str(root),
@@ -154,6 +184,8 @@ def command_list(root: Path, as_json: bool) -> int:
         print(f"  {row['kind']:9} {state}{row.get('id') or '?'}{version}  [{row['file']}]")
         for problem in row["problems"]:
             print(f"      problem: {problem}")
+        if row.get("fix"):
+            print(f"      fix:     {row['fix']}")
     for name in report["parked_manifests"]:
         print(f"  parked    {name}")
     if not report["entries"]:
@@ -174,7 +206,8 @@ def disable(root: Path, kind: str, entry_id: str) -> dict[str, object]:
         record, error = _read(path)
         if error or not isinstance(record, dict):
             raise ValueError(
-                f"{_relative(path, root)} is {error or 'not a JSON object'}; use park-manifest {kind} {entry_id}"
+                f"{_relative(path, root)} is {error or 'not a JSON object'}; move the whole installation "
+                f"aside with: park-installation {kind} {entry_id} {path.parent.name}"
             )
         if record.get(key, entry_id) != entry_id:
             continue
@@ -214,14 +247,78 @@ def park_manifest(root: Path, kind: str, name: str) -> dict[str, object]:
         raise LookupError(f"No active {kind} manifest {candidate} under {_relative(folder, root) or '.'}")
     target_folder = root / PARKED / ("modules" if kind == "module" else "extensions")
     target_folder.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    target = target_folder / f"{source.stem}.{stamp}.json"
+    target = _free_target(target_folder, source.stem, ".json")
+    source.replace(target)
+    return {"kind": kind, "parked": _relative(target, root), "from": _relative(source, root)}
+
+
+def _stamp() -> str:
+    return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+def _free_target(folder: Path, stem: str, suffix: str = "") -> Path:
+    stamp = _stamp()
+    target = folder / f"{stem}.{stamp}{suffix}"
     counter = 1
     while target.exists():
         counter += 1
-        target = target_folder / f"{source.stem}.{stamp}-{counter}.json"
-    source.replace(target)
-    return {"kind": kind, "parked": _relative(target, root), "from": _relative(source, root)}
+        target = folder / f"{stem}.{stamp}-{counter}{suffix}"
+    return target
+
+
+def _enabled_readable_versions(folder: Path) -> list[str]:
+    enabled = []
+    for path in sorted(folder.glob("*/installation.json")):
+        record, error = _read(path)
+        if not error and isinstance(record, dict) and record.get("enabled"):
+            enabled.append(path.parent.name)
+    return enabled
+
+
+def park_installation(root: Path, kind: str, entry_id: str, version: str | None = None) -> dict[str, object]:
+    """Move damaged installer folders out of every scanned location.
+
+    With ``version`` that folder is moved whatever its state; without it every
+    version folder whose record the execution archive would refuse is moved.
+    The active manifest follows when no enabled, readable version is left
+    (otherwise the registry would quarantine a manifest without source).
+    """
+
+    folder_name = INSTALLER_FOLDER[kind]
+    identifier = root / folder_name / Path(entry_id).name
+    if not identifier.exists() and not identifier.is_symlink():
+        raise LookupError(f"No installed {kind} {entry_id} under {folder_name}/")
+    destination = root / PARKED / folder_name / Path(entry_id).name
+    moved: list[str] = []
+    if identifier.is_symlink() or not identifier.is_dir():
+        candidates = [identifier]
+        destination = root / PARKED / folder_name
+    elif version is not None:
+        candidate = identifier / Path(version).name
+        if not candidate.exists() and not candidate.is_symlink():
+            raise LookupError(f"No version {version} of {kind} {entry_id} under {folder_name}/{entry_id}/")
+        candidates = [candidate]
+    else:
+        candidates = [item for item in sorted(identifier.iterdir())
+                      if installation_record_problem(item, folder=folder_name)]
+        if not candidates:
+            raise ValueError(
+                f"No damaged installation of {kind} {entry_id}; name the version to park a readable one, "
+                f"or use: disable {kind} {entry_id}"
+            )
+    destination.mkdir(parents=True, exist_ok=True)
+    for candidate in candidates:
+        target = _free_target(destination, candidate.name)
+        candidate.replace(target)
+        moved.append(f"{_relative(candidate, root)} -> {_relative(target, root)}")
+    if identifier.is_dir() and not identifier.is_symlink() and not any(identifier.iterdir()):
+        identifier.rmdir()
+    result: dict[str, object] = {"kind": kind, "id": entry_id, "parked": moved}
+    active = root / f"{entry_id}.json" if kind == "module" else root / "extensions" / f"{entry_id}.json"
+    remaining = _enabled_readable_versions(identifier) if identifier.is_dir() else []
+    if active.is_file() and not remaining:
+        result["active_manifest"] = park_manifest(root, kind, active.name)["parked"]
+    return result
 
 
 def _guarded(root: Path, force: bool) -> int | None:
@@ -246,6 +343,19 @@ def command_disable(root: Path, kind: str, entry_id: str, force: bool) -> int:
         return EXIT_NOTHING
     print(json.dumps(result, indent=2))
     return EXIT_OK if result["changed"] else EXIT_NOTHING
+
+
+def command_park_installation(root: Path, kind: str, entry_id: str, version: str | None, force: bool) -> int:
+    refused = _guarded(root, force)
+    if refused is not None:
+        return refused
+    try:
+        result = park_installation(root, kind, entry_id, version)
+    except (LookupError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return EXIT_NOTHING
+    print(json.dumps(result, indent=2))
+    return EXIT_OK
 
 
 def command_park(root: Path, kind: str, name: str, force: bool) -> int:
@@ -302,6 +412,13 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("kind", choices=("module", "extension"))
         command.add_argument("target", help="module/extension ID (park-manifest: manifest file name or ID)")
         command.add_argument("--force", action="store_true", help="act even while VALUE is running")
+    parking = commands.add_parser(
+        "park-installation", help="move a damaged installer folder out of every scanned location")
+    parking.add_argument("kind", choices=("module", "extension"))
+    parking.add_argument("target", help="module/extension ID")
+    parking.add_argument("version", nargs="?", default=None,
+                         help="version folder to park (default: every version whose record is damaged)")
+    parking.add_argument("--force", action="store_true", help="act even while VALUE is running")
     verify = commands.add_parser("verify", help="build the registry as a new worker would and report it")
     verify.add_argument("--modules-root", type=Path, default=None, dest="sub_modules_root")
     verify.add_argument("--report", type=Path, default=None, help="write the JSON report to this file")
@@ -318,6 +435,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return command_disable(root, arguments.kind, arguments.target, arguments.force)
     if arguments.command == "park-manifest":
         return command_park(root, arguments.kind, arguments.target, arguments.force)
+    if arguments.command == "park-installation":
+        return command_park_installation(root, arguments.kind, arguments.target, arguments.version, arguments.force)
     if arguments.command == "verify":
         return command_verify(root, arguments.report)
     return EXIT_USAGE  # pragma: no cover - argparse rejects unknown commands

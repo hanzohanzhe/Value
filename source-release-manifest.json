@@ -3500,8 +3500,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "31cb7ddc4cfff1daba2b4f84fdf8930113953542cb5b274ae10d0b4743b795b9",
-      "bytes": 186728,
+      "sha256": "9eecde3b34ae339705de41ebfe336aafb0e6fd1c61a64c8b49a627f7ec591e97",
+      "bytes": 187226,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7409,8 +7409,8 @@
     },
     {
       "path": "gridform_core/execution_archive.py",
-      "sha256": "bb9115f090b1c809d00af2a6f2c6bdb37fa7393c9c9e890c5c64c05fcea8d5de",
-      "bytes": 35183,
+      "sha256": "808079f19ff66d1062c4c8b8925fbda2cbce630af1129a90e974df63effee460",
+      "bytes": 36364,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7673,20 +7673,20 @@
     },
     {
       "path": "gridform_core/module_installation.py",
-      "sha256": "7203509a0ebb93057be9ab6a4fc2f26a108273c705707f29f6aa1188150cfa55",
-      "bytes": 15516,
+      "sha256": "9ad096f009db36fd5bee7babdb4180c6a2c557965d2edcdb8c3c1cbd3648916a",
+      "bytes": 15892,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/module_quarantine.py",
-      "sha256": "f7a19cd0e56732d386d631b86650776c4140d15dde97e6e2794f7302137cc322",
-      "bytes": 22721,
+      "sha256": "28c5df4a3b23e24361db7809acbaf33abfc13aa97bd2ab9fd28c752bc5c236b6",
+      "bytes": 28037,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/module_recovery.py",
-      "sha256": "efffdef185c04fe55f40bf21e8472028b92ae0bcc3f6099ea63a4d34f076961a",
-      "bytes": 15259,
+      "sha256": "aa163b22d77b0537b317590d49e611055c649cce91c30f09c2d66af6948edf98",
+      "bytes": 21599,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10587,8 +10587,8 @@
     },
     {
       "path": "tests/test_module_quarantine_api.py",
-      "sha256": "0c00ec5a39f7e8ae894ac503d49b598f62ef2ed13a0ae14d2af371ce5ad152cb",
-      "bytes": 16151,
+      "sha256": "3d9deb171e05840f32f90ec074858b0856f1fa9178353d83f05342d9ebdf571a",
+      "bytes": 17815,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10599,8 +10599,8 @@
     },
     {
       "path": "tests/test_module_recovery.py",
-      "sha256": "a1ce0f8679536da2dfd1c7ec3734f80221d8490dca046ef312e7b21aea8a0922",
-      "bytes": 7546,
+      "sha256": "1cddb8c0d72d7ee12f9b4afe20284d99cccef239446ff08e1edf3f818d342608",
+      "bytes": 12381,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

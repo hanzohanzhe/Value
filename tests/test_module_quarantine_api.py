@@ -136,6 +136,31 @@ class ModuleQuarantineApiTests(unittest.TestCase):
         self.assertEqual((health["status"], health["degraded_reasons"]), ("ok", []))
         self.assertEqual(self._request("GET", "/api/workspace")[1]["module_quarantine"]["entries"], [])
 
+    def test_a_damaged_installation_record_degrades_health_until_parked(self) -> None:
+        import contextlib
+        import io
+        from gridform_core import module_recovery
+        from gridform_core.execution_archive import _source_roots
+
+        target = write_external_module(self.modules, "p02-api-ok", "p02_api_ok", enabled=False)
+        (target / "installation.json").write_text("{damaged", encoding="utf-8")
+        server.refresh_module_catalog()
+        health = self._request("GET", "/api/health")[1]
+        self.assertEqual((health["status"], health["degraded_reasons"]),
+                         ("degraded", [{"code": "GF_MODULE_INSTALL_RECORD_INVALID", "count": 1}]))
+        entry = self._request("GET", "/api/workspace")[1]["module_quarantine"]["entries"][0]
+        self.assertEqual((entry["id"], entry["version"], entry["manifest_file"]),
+                         ("p02-api-ok", "1.0.0", "installed/p02-api-ok/1.0.0/installation.json"))
+        self.assertIn("park-installation module p02-api-ok 1.0.0", entry["corrective_action"])
+        self.assertNotIn("python -m", entry["corrective_action"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = module_recovery.main(["--modules-root", str(self.modules), "park-installation", "module",
+                                         "p02-api-ok", "--force"])
+        self.assertEqual(code, 0)
+        _source_roots(ROOT, self.home)
+        health = self._request("GET", "/api/health")[1]
+        self.assertEqual((health["status"], health["degraded_reasons"]), ("ok", []))
+
     def test_a_quarantined_module_referenced_by_a_study_can_be_disabled(self) -> None:
         write_external_module(self.modules, "p02-api-broken", "p02_api_broken", prefix="raise SystemExit(3)\n")
         server.refresh_module_catalog()
@@ -236,6 +261,7 @@ class ErrorCodeMappingTests(unittest.TestCase):
                 _source_roots(ROOT, home)
         self.assertEqual(caught.exception.code, "GF_EXECUTION_ARCHIVE_MODULE_RECORD")
         self.assertIn("modules/installed/p02-damaged/1.0.0/installation.json", str(caught.exception))
+        self.assertIn("park-installation module p02-damaged 1.0.0", str(caught.exception))
         self.assertNotIn(folder, str(caught.exception))
 
 
