@@ -5,6 +5,10 @@ import type { ModelRun, RunResult, PlanningYear } from "./types";
 import { formatOptionalNetworkNumber } from "../network/networkRedispatch";
 import { Badge, formatNumber, formatMoney } from "../shared/presentation";
 import { getJson } from "../shared/api";
+import { StatusPill, ValueState } from "../shared/Callout";
+import { coverageReasonText, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
+import { costComposition } from "./resultMetrics.ts";
+import "./run-results.css";
 
 /** A recorded annual metric, or null when the Run did not record it (never 0 for missing). */
 function metricNumber(result: RunResult, key: string): number | null {
@@ -82,31 +86,42 @@ function PlanningPipelinePanel({ runId, year, apiOrigin }: { runId: string; year
   </details>;
 }
 
-export function AnnualResults({ runId, results, apiOrigin }: { runId: string; results: RunResult[]; apiOrigin: string }) {
+/** Spec 4.3: composition by the recorded cost definition; the bar adds up to the headline. */
+export function CostComposition({ result }: { result: RunResult }) {
+  const composition = costComposition(result.metrics);
+  return <div className="cost-composition value-new-control">
+    <div className="cost-composition-head"><b>Cost composition</b><StatusPill tone="muted">{composition.vollNote}</StatusPill></div>
+    {composition.segments.length > 0 ? <div className="cost-stack" role="img" aria-label={`Cost components for ${result.year}: ${composition.segments.map((segment) => `${segment.label} ${formatNumber(segment.share * 100, 1)}%`).join(", ")}`}>{composition.segments.map((segment) => <i key={segment.key} className={segment.className} style={{ width: `${segment.share * 100}%`, background: segment.colour }} title={`${segment.label}: ${formatMoney(segment.amount)} (${formatNumber(segment.share * 100, 1)}%)`} />)}</div>
+      : <p className="cost-composition-note">{composition.headline == null ? "The headline system cost was not recorded." : "The recorded components exceed the headline; no bar is drawn. See the table."}</p>}
+    <table className="cost-composition-table"><tbody>{composition.rows.map((row) => { const segment = composition.segments.find((item) => item.key === row.key); return <tr key={row.key}><th scope="row">{segment ? <span className="cost-legend-swatch" style={{ background: segment.colour }} aria-hidden="true" /> : <span className="cost-legend-swatch empty" aria-hidden="true" />}{row.label}</th><td>{row.state ? <ValueState state={row.state} title={row.state === "not_modelled" ? "This method does not model this mechanism; it is not part of the headline." : "Not recorded by this Run."} /> : formatMoney(row.amount)}</td><td>{segment ? `${formatNumber(segment.share * 100, 1)}%` : row.note === "excluded" ? "excluded" : ""}</td></tr>; })}</tbody></table>
+  </div>;
+}
+
+export function AnnualResults({ runId, results, apiOrigin, coverage, onOpenInspect }: { runId: string; results: RunResult[]; apiOrigin: string; coverage?: ResultCoverage | null; onOpenInspect?: () => void }) {
   if (!results.length) return <div className="empty-run"><b>No annual results yet</b><p>Results appear after a full model year completes.</p></div>;
   const sorted = [...results].sort((a, b) => a.year - b.year);
   const latest = sorted.at(-1)!;
-  const maxCost = Math.max(...sorted.map((item) => metricNumber(item, "total_system_cost_gbp") ?? 0), 1);
+  const published = (year: number) => yearTotalsPublishable(coverage, year);
+  const maxCost = Math.max(...sorted.filter((item) => published(item.year)).map((item) => metricNumber(item, "total_system_cost_gbp") ?? 0), 1);
+  const withheldNote = (year: number) => <div className="annual-withheld value-new-control"><ValueState state={coverage?.annual_status === "non_annual" ? "non_annual" : "withheld"} /> <span>{coverageReasonText(coverage)} Annual totals are not shown for {year}.</span>{onOpenInspect && <button type="button" className="value-action-link" onClick={onOpenInspect}>Open in Inspect</button>}</div>;
+  const latestPill = yearCoveragePill(coverage, latest.year);
   return <div className="results-cockpit">
     <section className="latest-result">
-      <div><small>Latest completed year</small><strong>{latest.year}</strong><span>{formatMoney(metricNumber(latest, "total_system_cost_gbp"))} total system cost</span></div>
-      <div className="metric-grid">
+      <div><small>Latest completed year</small><strong>{latest.year}</strong><StatusPill tone={latestPill.tone} title={latestPill.title}>{latestPill.text}</StatusPill>{published(latest.year) ? <span>{formatMoney(metricNumber(latest, "total_system_cost_gbp"))} total system cost</span> : withheldNote(latest.year)}</div>
+      {published(latest.year) && <div className="metric-grid">
         <span><small>Average system cost</small><b>{perMwhServed(metricNumber(latest, "cost_per_mwh_gbp"))}</b></span>
         <span><small>Annualised capital</small><b>{formatMoney(metricNumber(latest, "total_levelized_capital_cost_gbp"))}</b></span>
         <span><small>Operating cost</small><b>{formatMoney(metricNumber(latest, "total_operational_cost_gbp"))}</b></span>
         <span><small>Unserved demand</small><b>{energyMwh(metricNumber(latest, "blackout_mwh"))}</b></span>
-      </div>
+      </div>}
     </section>
     {sorted.length > 1 && <section className="cost-trend" aria-label="Annual system cost trend">
       <header><div><small>Across the study</small><h4>Annual system cost</h4></div><span>Relative scale</span></header>
-      <div>{sorted.map((result) => <span key={result.year}>{metricNumber(result, "total_system_cost_gbp") == null ? <i className="not-recorded" /> : <i style={{ height: `${Math.max(8, metricNumber(result, "total_system_cost_gbp")! / maxCost * 100)}%` }} />}<b>{result.year}</b><small>{formatMoney(metricNumber(result, "total_system_cost_gbp"))}</small></span>)}</div>
+      <div>{sorted.map((result) => { const cost = metricNumber(result, "total_system_cost_gbp"); const show = published(result.year) && cost != null; return <span key={result.year}>{show ? <i style={{ height: `${Math.max(8, cost / maxCost * 100)}%` }} /> : <i className="not-recorded" />}<b>{result.year}</b><small>{show ? formatMoney(cost) : yearCoveragePill(coverage, result.year).text}</small></span>; })}</div>
     </section>}
     <div className="year-records">{[...sorted].reverse().map((result, index) => {
-      const capital = metricNumber(result, "total_levelized_capital_cost_gbp");
-      const operating = metricNumber(result, "total_operational_cost_gbp");
-      const capacityMarket = metricNumber(result, "cm_mechanism_cost_gbp");
-      const policy = metricNumber(result, "decarbonization_mechanism_cost_gbp");
-      const visibleTotal = Math.max((capital ?? 0) + (operating ?? 0) + (capacityMarket ?? 0) + (policy ?? 0), 1);
+      const pill = yearCoveragePill(coverage, result.year);
+      const yearPublished = published(result.year);
       const finalCurtailment = optionalRunMetric(result, "vre_curtailment_mwh");
       const curtailmentRate = typeof result.metrics.vre_curtailment_rate === "number" && Number.isFinite(result.metrics.vre_curtailment_rate)
         ? formatOptionalNetworkNumber(result.metrics.vre_curtailment_rate * 100)
@@ -117,10 +132,11 @@ export function AnnualResults({ runId, results, apiOrigin }: { runId: string; re
         : null;
       const missingCurtailmentReason = unavailableCurtailmentReason(result);
       return <details className="year-record" key={result.year} open={index === 0}>
-        <summary><span><b>{result.year}</b><small>{formatMoney(metricNumber(result, "total_system_cost_gbp"))} · {perMwhServed(metricNumber(result, "cost_per_mwh_gbp"))}</small></span><em>View year</em></summary>
-        <div className="metric-grid"><span><small>Annualised capital</small><b>{formatMoney(capital)}</b></span><span><small>Operating cost</small><b>{formatMoney(operating)}</b></span><span><small>Capacity mechanism</small><b>{formatMoney(capacityMarket)}</b></span><span><small>Decarbonisation policy</small><b>{formatMoney(policy)}</b></span></div>
-        <div className="cost-stack" aria-label={`Cost components for ${result.year}`}><i className="capital" style={{ width: `${(capital ?? 0) / visibleTotal * 100}%` }} /><i className="operating" style={{ width: `${(operating ?? 0) / visibleTotal * 100}%` }} /><i className="capacity-market" style={{ width: `${(capacityMarket ?? 0) / visibleTotal * 100}%` }} /><i className="policy" style={{ width: `${(policy ?? 0) / visibleTotal * 100}%` }} /></div>
+        <summary><span><b>{result.year}</b><StatusPill tone={pill.tone} title={pill.title}>{pill.text}</StatusPill><small>{yearPublished ? `${formatMoney(metricNumber(result, "total_system_cost_gbp"))} · ${perMwhServed(metricNumber(result, "cost_per_mwh_gbp"))}` : "Annual totals withheld"}</small></span><em>View year</em></summary>
+        {!yearPublished ? withheldNote(result.year) : <>
+        <CostComposition result={result} />
         <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "total_carbon_emissions_tco2e"))} tCO₂e`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
+        </>}
         {result.planning && <div className="planning-compact"><b>Planning evolution</b><span>Active: {String(result.planning.active ?? "not evaluated")}</span><span>Commissioned: {String(result.planning.commissioned ?? "not evaluated")}</span><span>Failed: {String(result.planning.failed ?? "not applicable")}</span><span>Deferred: {String(result.planning.deferred ?? "not evaluated")}</span></div>}
         <PlanningPipelinePanel key={`${runId}|${result.year}`} runId={runId} year={result.year} apiOrigin={apiOrigin} />
         {result.capacity_mw && <details className="capacity-panel"><summary>Capacity used by the PSM</summary><div className="capacity-grid">{Object.entries(result.capacity_mw).map(([tech, value]) => <span key={tech}><small>{tech}</small><b>{formatNumber(value)} MW</b></span>)}{result.capacity_mwh?.storage != null && <span><small>Storage energy</small><b>{formatNumber(result.capacity_mwh.storage)} MWh</b></span>}</div></details>}

@@ -15,6 +15,7 @@ import ComparisonWorkspace from "../results/ComparisonWorkspace";
 import ReadinessEvidence from "../evidence/ReadinessEvidence";
 import DomainReadinessPanel from "./DomainReadinessPanel";
 import { AnnualResults, SmokeDiagnostics } from "./RunResults";
+import { isResultCoverage } from "../shared/coverageView.ts";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -107,7 +108,7 @@ export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, 
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "export")}>Prepare audit bundle</button>}
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary danger" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "delete")}>Move to trash</button>}
             </div>
-            {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} apiOrigin={apiOrigin} />}
+            {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} apiOrigin={apiOrigin} coverage={isResultCoverage(selectedRun.result_coverage) ? selectedRun.result_coverage : null} onOpenInspect={() => onNavigate("audit")} />}
             <button className="audit-link" onClick={() => onNavigate("audit")}>Inspect planning projects and market clearing</button>
           </> : <div className="empty-run"><b>No runs yet</b><p>Choose a saved study, check its inputs and start with two full years.</p></div>}
         </section>

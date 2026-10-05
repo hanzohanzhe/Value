@@ -294,6 +294,23 @@ def record_run_cancelled(status_path: Path, *, run_id: str, project_id: str, mod
     )
 
 
+def _system_cost_includes_voll(ledger: dict | None) -> bool:
+    """Whether the headline system cost contains the value of lost load.
+
+    The legacy (doctoral) total adds Lost_Value_of_Electricity; the native CEM
+    resource-cost ledger includes it only when a ledger line for it is part of
+    the headline (P0-9 S9, F3-04)."""
+
+    if ledger is None:
+        return True
+    return any(
+        isinstance(line, dict)
+        and line.get("included_in_cem_system_cost")
+        and any(token in str(line.get("id", "")).lower() for token in ("voll", "lost_value", "lost_load"))
+        for line in ledger.get("lines") or []
+    )
+
+
 def _frontend_results(
     exact: dict,
     modules: dict[str, str],
@@ -359,8 +376,19 @@ def _frontend_results(
                 "total_energy_generated_mwh": cost["Total_Energy_Generated_MWh"],
                 "total_levelized_capital_cost_gbp": cost["Total_Levelized_Capital_Cost_GBP"],
                 "total_operational_cost_gbp": cost["Total_Operational_Cost_GBP"],
-                "cm_mechanism_cost_gbp": cost["CM_Mechanism_Cost_Added_to_System_GBP"],
-                "decarbonization_mechanism_cost_gbp": cost["Decarbonization_Mechanism_Cost_Added_to_System_GBP"],
+                # F3-04 (P0-9 S9): a mechanism the path does not model is null
+                # with a status, never 0.0; the legacy path records all five
+                # components of its headline (VoLL included).
+                "cm_mechanism_cost_gbp": cost.get("CM_Mechanism_Cost_Added_to_System_GBP"),
+                "cm_mechanism_cost_status": cost.get("CM_Mechanism_Cost_Status") or (
+                    "recorded" if cost.get("CM_Mechanism_Cost_Added_to_System_GBP") is not None else "not_recorded"
+                ),
+                "decarbonization_mechanism_cost_gbp": cost.get("Decarbonization_Mechanism_Cost_Added_to_System_GBP"),
+                "decarbonization_mechanism_cost_status": cost.get("Decarbonization_Mechanism_Cost_Status") or (
+                    "recorded" if cost.get("Decarbonization_Mechanism_Cost_Added_to_System_GBP") is not None else "not_recorded"
+                ),
+                "lost_value_of_electricity_gbp": cost.get("Lost_Value_of_Electricity_GBP"),
+                "system_cost_includes_voll": _system_cost_includes_voll(ledger),
                 "blackout_mwh": cost["Total_Energy_Deficit_MWh"],
                 "curtailment_mwh": cost.get("Total_VRE_Curtailed_MWh", cost.get("Total_Excess_Energy_MWh")),
                 "vre_curtailment_mwh": curtailment.get("total_mwh") if curtailment is not None else None,

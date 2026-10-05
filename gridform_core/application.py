@@ -1110,8 +1110,12 @@ def _native_result_payload(typed_results, ledgers, *, planning_mode: str) -> dic
             "Total_Energy_Generated_MWh": market.total_generation_mwh,
             "Total_Levelized_Capital_Cost_GBP": market.total_levelized_capital_cost_gbp,
             "Total_Operational_Cost_GBP": market.total_operational_cost_gbp,
-            "CM_Mechanism_Cost_Added_to_System_GBP": 0.0,
-            "Decarbonization_Mechanism_Cost_Added_to_System_GBP": 0.0,
+            # F3-04 (P0-9 S9): the native path does not model the capacity or
+            # decarbonisation mechanisms; record that instead of a false 0.0.
+            "CM_Mechanism_Cost_Added_to_System_GBP": None,
+            "CM_Mechanism_Cost_Status": "not_modelled",
+            "Decarbonization_Mechanism_Cost_Added_to_System_GBP": None,
+            "Decarbonization_Mechanism_Cost_Status": "not_modelled",
             "Total_Energy_Deficit_MWh": market.total_blackout_mwh,
             "Total_Excess_Energy_MWh": market.total_excess_mwh,
             "Total_Imports_MWh": sum(item.import_mwh for item in market.period_summaries),

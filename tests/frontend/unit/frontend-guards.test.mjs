@@ -63,6 +63,7 @@ export const NEW_STYLESHEETS = [
   "app/features/shared/callout.css",
   "app/features/market/market-replay.css",
   "app/features/network/network-coverage.css",
+  "app/features/runs/run-results.css",
 ];
 
 test("new stylesheets use no font size below 12px and only existing colour tokens", async () => {

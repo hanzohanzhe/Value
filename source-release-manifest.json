@@ -76,6 +76,8 @@
     "app/features/runs/DomainReadinessPanel.tsx",
     "app/features/runs/RunResults.tsx",
     "app/features/runs/RunWorkspace.tsx",
+    "app/features/runs/resultMetrics.ts",
+    "app/features/runs/run-results.css",
     "app/features/runs/types.ts",
     "app/features/shared/Callout.tsx",
     "app/features/shared/OpenFromLauncher.tsx",
@@ -1196,6 +1198,7 @@
     "tests/frontend/helpers/chromium.mjs",
     "tests/frontend/helpers/fixtures.mjs",
     "tests/frontend/helpers/render-tsx.mjs",
+    "tests/frontend/render/annual-results.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/shared-components.test.mjs",
     "tests/frontend/unit/dispatch-view.test.mjs",
@@ -1205,6 +1208,7 @@
     "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
+    "tests/frontend/unit/result-metrics.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-contract-keys.test.mjs",
     "tests/frontend/unit/ui-test-groups.test.mjs",
@@ -1346,6 +1350,7 @@
     "tests/test_module_runtime.py",
     "tests/test_native_application_path.py",
     "tests/test_native_checkpoint_resume.py",
+    "tests/test_native_mechanism_scope.py",
     "tests/test_native_reproduction_golden.py",
     "tests/test_netcdf_preflight.py",
     "tests/test_no_positional_scheme_c_results.py",
@@ -3176,21 +3181,33 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "44f4ba8fba65010587892790239e75f21a0c8601c9853a0e2a81b466dd20e6c1",
-      "bytes": 12755,
+      "sha256": "640f4fe1830245b2af38bdb7b7a84840cd1389bb06b8b2bf0d77a18a1ebe180d",
+      "bytes": 14924,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "7029402d1d618e94994ec41bb3ae2185db86c2c6faa4b2c949e941f7253d4f8b",
-      "bytes": 19063,
+      "sha256": "75373391023bd300a500d227cb72c00cff45a45a282e82fac3d77c3ef49e43ee",
+      "bytes": 19261,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/runs/resultMetrics.ts",
+      "sha256": "501244afe4e640cebb694a0d9a51030984a3d71639ac5f40800757e831df965e",
+      "bytes": 6138,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/runs/run-results.css",
+      "sha256": "a305d06d75ea447a831e57bce248fc8ee4c5157f654b095243456140fadce290",
+      "bytes": 1095,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/types.ts",
-      "sha256": "a32e5bbe02c361503145c606b68768bfe60ac45b5c1247a9c40964500a24f9d4",
-      "bytes": 4994,
-      "transform": "byte copy"
+      "sha256": "bca338c68988674bf4fdae6c060ee23147ba60496e31dd4c30357ee04ba2801e",
+      "bytes": 5171,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/shared/Callout.tsx",
@@ -3566,8 +3583,8 @@
     },
     {
       "path": "backend/model_runner.py",
-      "sha256": "7876a027a62478eb651fa7ae0dd0be774f9548d8fe805bbf6dac93fe05e44578",
-      "bytes": 32751,
+      "sha256": "3a552c37a3f8ce9e6abcce00dc2a0f675239a2344c3d078d52c52a38a8248d73",
+      "bytes": 34294,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6446,8 +6463,8 @@
     },
     {
       "path": "gridform_core/application.py",
-      "sha256": "c05071593c748a3b55a58e7761c0d99ade2180d565c77497c4f07ecd471c0ff9",
-      "bytes": 111475,
+      "sha256": "35caae771d29273361c4272bf3a1d636a005f4563350d1ddedad147dcbad867c",
+      "bytes": 111762,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9890,6 +9907,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/annual-results.test.mjs",
+      "sha256": "6d208aa266379093ad0060e061e707e890b3fbe45e15c770e26fa365aaf61835",
+      "bytes": 2230,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/render-harness.test.mjs",
       "sha256": "e20d5da77f6261348f7c2eadec4884363fc9122a1703987f37d58beaa5671b3a",
       "bytes": 1124,
@@ -9921,8 +9944,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "a6a202f6fca184941a69ad31090dd09273ace7e9bec1bc9de8eb58d628e41b58",
-      "bytes": 3619,
+      "sha256": "ce014e78b2bd820870d1fd25eeeea32b7f76c267bc1e65a2423b080580e62d8c",
+      "bytes": 3658,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9941,6 +9964,12 @@
       "path": "tests/frontend/unit/reason-codes.test.mjs",
       "sha256": "cc8504b71ec7e6e2703e43e8f12a4b562dd793f780b561d376bfd1f0efa01a17",
       "bytes": 1137,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/result-metrics.test.mjs",
+      "sha256": "cbaec194898d6ff50ce78fcc19a4e4d5ef91763954997ed0db808653b22dac4e",
+      "bytes": 2881,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10788,6 +10817,12 @@
       "sha256": "22365a72a1c1ec5d6a5db0377f34d78f82e04a0ed458a2099f5e3fa682bf6464",
       "bytes": 7069,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_native_mechanism_scope.py",
+      "sha256": "19a5bcdd34ffd0dcae1998a99cefe7b73f0afad26b763fda14e6379943e5038c",
+      "bytes": 4558,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_native_reproduction_golden.py",
