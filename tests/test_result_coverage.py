@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import sqlite3
 import tempfile
 import unittest
 import urllib.request
@@ -101,6 +103,71 @@ class CoverageOverHttpTests(unittest.TestCase):
         self.assertEqual(detail["result_coverage"]["annual_status"], "partial")
         self.assertEqual(detail["result_coverage"]["coverage_source"], "market_ledger")
 
+
+
+def _wal_ledger(database: Path, years: dict[int, int]) -> sqlite3.Connection:
+    """A market ledger in WAL mode with a non-empty -wal file, as while a Run writes it."""
+
+    database.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(database)
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA wal_autocheckpoint=0")
+    connection.execute("CREATE TABLE period_summary (year INTEGER, period INTEGER)")
+    for year, periods in years.items():
+        connection.executemany("INSERT INTO period_summary VALUES (?, ?)", ((year, period) for period in range(periods)))
+    connection.commit()
+    return connection
+
+
+class LedgerCopyTests(unittest.TestCase):
+    """Review response: a Run-detail poll never copies a live WAL ledger."""
+
+    def test_running_run_detail_does_not_copy_the_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "running-run"
+            database = root / "model-output" / "market" / "market.sqlite"
+            writer = _wal_ledger(database, {2025: 17520, 2026: 300})
+            try:
+                self.assertGreater(database.with_name("market.sqlite-wal").stat().st_size, 0)
+                run = dict(status("running"), results=[{"year": 2025}])
+                with patch("gridform_core.market_ledger.shutil.copyfile") as copyfile:
+                    for _ in range(3):
+                        coverage = server.run_result_coverage(root, run)
+                self.assertEqual(copyfile.call_count, 0)
+                self.assertEqual(coverage["annual_status"], "in_progress")
+                self.assertEqual(coverage["coverage_source"], "status_results")
+                # the finished year keeps its Complete year pill from status.json
+                self.assertEqual([(row["year"], row["complete"]) for row in coverage["years"]], [(2025, True)])
+                # a non-annual Run does not open its ledger either
+                smoke = dict(status("completed", mode="two_year_smoke", periods=2), results=[{"year": 2025}])
+                with patch("gridform_core.market_ledger.shutil.copyfile") as copyfile:
+                    coverage = server.run_result_coverage(root, smoke)
+                self.assertEqual(copyfile.call_count, 0)
+                self.assertEqual(coverage["annual_status"], "non_annual")
+                self.assertEqual(coverage["years"][0]["period_count"], 2)
+            finally:
+                writer.close()
+
+    def test_terminal_ledger_bounds_are_cached_by_size_and_mtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "cancelled-run"
+            database = root / "model-output" / "market" / "market.sqlite"
+            writer = _wal_ledger(database, {2025: 2908})
+            try:
+                run = status("cancelled", end=2025)
+                with patch("gridform_core.market_ledger.shutil.copyfile", wraps=shutil.copyfile) as copyfile:
+                    first = server.run_result_coverage(root, run)
+                    second = server.run_result_coverage(root, run)
+                self.assertEqual(copyfile.call_count, 2, "one DB + WAL snapshot, then the cache")
+                self.assertEqual(first, second)
+                self.assertEqual(first["coverage_source"], "market_ledger")
+                self.assertEqual(first["years"][0]["period_count"], 2908)
+                writer.execute("INSERT INTO period_summary VALUES (2025, 2908)")
+                writer.commit()
+                third = server.run_result_coverage(root, run)
+                self.assertEqual(third["years"][0]["period_count"], 2909, "a changed ledger is read again")
+            finally:
+                writer.close()
 
 if __name__ == "__main__":
     unittest.main()

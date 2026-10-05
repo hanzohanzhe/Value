@@ -3658,8 +3658,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "9c88dc1772017bb2cb45b34b237372c86b396f2852e96e06743511c92700dd50",
-      "bytes": 190370,
+      "sha256": "4b92a79de351db7dd29a9a621564694d1716c911e04dc925466ddb4e90187ca5",
+      "bytes": 192757,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11411,8 +11411,8 @@
     },
     {
       "path": "tests/test_result_coverage.py",
-      "sha256": "eb1ad95bbb5c18d40bb1307ca0dbf6640eb0e12836ddbacea2eceaf491aea3c2",
-      "bytes": 6337,
+      "sha256": "6c0773ed81ad1a422519359c294d4d92b3824473ac53ca33039525e589bff585",
+      "bytes": 10124,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
