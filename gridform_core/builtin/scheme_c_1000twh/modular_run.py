@@ -13,12 +13,19 @@ import importlib
 import json
 import sqlite3
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Mapping
 
 from ...errors import CompatibilityError, DeprecatedRouteError
 from ...execution_identity import scheme_c_execution_identity
+from ...methodology import (
+    PROFILE_PARAMETER,
+    REFERENCE_PROFILE_ID,
+    ProfileCombinationError,
+    active_methodology,
+    profile_scope,
+)
 from ...parameters import (
     ResolvedParameterSet,
     SchemeCLegacyParameterAdapter,
@@ -55,7 +62,12 @@ class ModularRunRequest:
 
 
 def run_modular_scheme_c(request: ModularRunRequest) -> dict:
-    """Resolve selected modules, run the copied yearly chain, and parse results."""
+    """Resolve selected modules, run the copied yearly chain, and parse results.
+
+    The retained reference route always executes the frozen doctoral profile
+    (X0 S9): any other declared or active profile is refused with
+    VALUE_PROFILE_COMBINATION_UNSUPPORTED / reference_path.
+    """
 
     if not request.explicit_reference_comparison:
         raise DeprecatedRouteError(
@@ -63,6 +75,24 @@ def run_modular_scheme_c(request: ModularRunRequest) -> dict:
             "Use gridform_core.application.run_project_application, or invoke "
             "gridform_core.reference_comparison explicitly for retained evidence."
         )
+    declared = dict(request.parameter_overrides).get(PROFILE_PARAMETER)
+    active = active_methodology()
+    for requested in (declared, active.profile_id if active is not None else None):
+        if requested not in (None, REFERENCE_PROFILE_ID):
+            raise ProfileCombinationError(str(requested), [{
+                "sub_reason": "reference_path",
+                "message": f"the retained reference route runs only {REFERENCE_PROFILE_ID}",
+            }])
+    request = replace(request, parameter_overrides={
+        **dict(request.parameter_overrides), PROFILE_PARAMETER: REFERENCE_PROFILE_ID,
+    })
+    if active is not None:
+        return _run_modular_scheme_c(request)
+    with profile_scope(REFERENCE_PROFILE_ID):
+        return _run_modular_scheme_c(request)
+
+
+def _run_modular_scheme_c(request: ModularRunRequest) -> dict:
 
     if sys.version_info[:2] != (3, 10):
         raise CompatibilityError(

@@ -15,6 +15,7 @@ from pathlib import Path
 from types import FunctionType
 from typing import Mapping
 
+from ...methodology import methodology_scoped
 from ...doctoral_checkpoint import DoctoralCheckpointStore, month_end_periods
 from ...doctoral_contract import thesis96_contract_identity
 from ...v2.contracts import MarketYearResult, PeriodSummary
@@ -126,6 +127,7 @@ class DoctoralNationalPSM:
             raise ValueError("National PSM requires frozen data/weather/nuclear identities")
         self._output_dir = Path(output_dir)
 
+    @methodology_scoped
     def run(self, model_input, *, stop_after_period: int | None = None) -> MarketYearResult:
         if not hasattr(self, "_fleet"):
             raise ValueError("Doctoral national PSM must be configured with frozen constructor inputs")

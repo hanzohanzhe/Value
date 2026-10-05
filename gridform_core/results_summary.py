@@ -359,6 +359,9 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         base_method = method_values[0]
         storage_only_method = all(
             value.get("extensions") == base_method.get("extensions")
+            # Runs under different methodologies never form a controlled
+            # storage-policy comparison (X0 S9).
+            and value.get("methodology") == base_method.get("methodology")
             and {slot: row for slot, row in value.get("modules", {}).items() if slot != "storage_cost"}
             == {slot: row for slot, row in base_method.get("modules", {}).items() if slot != "storage_cost"}
             for value in method_values[1:]

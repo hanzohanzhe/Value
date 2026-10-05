@@ -79,7 +79,7 @@ from gridform_core.frontend_contract import (
     module_slot_catalog,
     resolve_study_draft,
 )
-from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, pack_entry
+from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -2667,6 +2667,7 @@ class Handler(BaseHTTPRequestHandler):
                 "current_stage": "Freezing immutable run inputs",
                 "created_at": now(), "results": [],
                 "extensions": teaching_run_extensions,
+                "methodology": methodology_record(project),
             })
             try:
                 queued = self._freeze_and_queue_run(

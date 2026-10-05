@@ -24,6 +24,7 @@ from backend.run_execution import verify_run_execution
 from gridform_core.application import run_project_application
 from gridform_core.errors import public_failure, warning_event
 from gridform_core.provenance import write_failed_run_provenance
+from gridform_core.methodology import methodology_record
 from gridform_core.run_policy import resolve_run_policy
 from gridform_core.project_revision import attach_revision_identity
 from gridform_core.preflight import run_preflight
@@ -591,6 +592,9 @@ def run(project_id: str, run_id: str, mode: str) -> None:
         "preflight_warnings": preflight.get("warnings", []),
         "input_snapshot_id": input_snapshot.get("snapshot_id"),
         "input_tree_sha256": input_snapshot.get("input_tree_sha256"),
+        # The methodology profile is part of the run's method identity and is
+        # recorded before execution, so a failed run carries it too (X0 S9).
+        "methodology": methodology_record(project),
     }
 
     def mark_running(current: dict) -> None:

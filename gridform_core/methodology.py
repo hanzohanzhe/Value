@@ -25,13 +25,16 @@ catalogue lazily; it imports nothing from the model.
 from __future__ import annotations
 
 import copy
+import functools
 import hashlib
 import json
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 PROFILE_PARAMETER = "methodology.profile"
 # The frozen thesis-lineage profile.  Only the reference routes (modular_run,
@@ -732,3 +735,108 @@ def selection_combination_violations(
         data_packs=[item for item in data_packs if item is not None],
         external_code=external_code_entries(registry),
     )
+
+
+# --- activation (X0 S9) ----------------------------------------------------
+#
+# A run executes inside ``activate(m)``: the entry point (run_project_application,
+# the reference routes) activates the resolved profile, and every PSM.run is
+# ``@methodology_scoped``, so a PSM called directly (resource calibration,
+# tests) activates the profile its input declares.  Switches are passed to
+# kernel objects explicitly where possible; only deep functions that cannot take
+# a parameter read ``current_methodology()``.  A future thread pool must run
+# tasks under ``contextvars.copy_context()``.
+
+_ACTIVE: ContextVar[ResolvedMethodology | None] = ContextVar("value_methodology", default=None)
+
+
+class MethodologyNotActiveError(RuntimeError):
+    """Code that needs the run's methodology ran outside an activated run."""
+
+    code = "VALUE_METHODOLOGY_NOT_ACTIVE"
+
+
+class MethodologyMismatchError(RuntimeError):
+    """A nested call asked for a different methodology than the active one."""
+
+    code = "VALUE_PROFILE_MISMATCH"
+
+
+def active_methodology() -> ResolvedMethodology | None:
+    return _ACTIVE.get()
+
+
+def current_methodology() -> ResolvedMethodology:
+    value = _ACTIVE.get()
+    if value is None:
+        raise MethodologyNotActiveError(
+            "No methodology profile is active; run through run_project_application, "
+            "a @methodology_scoped PSM.run, or methodology.profile_scope()."
+        )
+    return value
+
+
+@contextmanager
+def activate(methodology: ResolvedMethodology) -> Iterator[ResolvedMethodology]:
+    """Make ``methodology`` current; re-entering with the same identity is a no-op."""
+
+    current = _ACTIVE.get()
+    if current is not None and current.identity() != methodology.identity():
+        raise MethodologyMismatchError(
+            f"Methodology {methodology.profile_id} requested inside an active "
+            f"{current.profile_id} run"
+        )
+    token = _ACTIVE.set(methodology)
+    try:
+        yield methodology
+    finally:
+        _ACTIVE.reset(token)
+
+
+def profile_scope(profile_id: str | None = None) -> Any:
+    """``with profile_scope(REFERENCE_PROFILE_ID):`` - activate a profile by id (tests, reference routes)."""
+
+    return activate(resolve_methodology(profile_id))
+
+
+def _declared_profile(model_input: object) -> str | None:
+    parameters = getattr(model_input, "parameters", None)
+    if isinstance(parameters, Mapping):
+        value = parameters.get(PROFILE_PARAMETER)
+        return str(value) if value else None
+    return None
+
+
+def methodology_scoped(run: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator for ``PSM.run(self, model_input, ...)``.
+
+    Inside an active run the input's declared profile (if any) must match the
+    active one.  Outside a run the declared profile (absent = default) is
+    activated for the duration of the call.
+    """
+
+    @functools.wraps(run)
+    def wrapper(self: object, model_input: object, *args: Any, **kwargs: Any) -> Any:
+        declared = _declared_profile(model_input)
+        current = _ACTIVE.get()
+        if current is not None:
+            if declared is not None and declared != current.profile_id:
+                raise MethodologyMismatchError(
+                    f"{type(self).__name__}.run received methodology {declared} inside an active "
+                    f"{current.profile_id} run"
+                )
+            return run(self, model_input, *args, **kwargs)
+        with activate(resolve_methodology(declared)):
+            return run(self, model_input, *args, **kwargs)
+
+    wrapper.__methodology_scoped__ = True  # type: ignore[attr-defined]
+    return wrapper
+
+
+def methodology_record(project: Mapping[str, object]) -> dict[str, object]:
+    """Status/provenance record of a Study's methodology; never raises."""
+
+    try:
+        return resolve_project_methodology(project).to_dict()
+    except ValueError as exc:
+        return {"schema_version": RESOLVED_SCHEMA, "status": "unresolved", "error": str(exc)}

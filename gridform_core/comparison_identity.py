@@ -11,6 +11,38 @@ from pathlib import Path
 from collections.abc import Mapping, Sequence
 
 DIMENSIONS = ("data", "method", "config", "years", "scope")
+# The methodology profile is a scientific parameter but belongs to the method
+# dimension only, so a profile-only change is an isolated method change
+# (plan X0 3.5).
+PROFILE_PARAMETER = "methodology.profile"
+
+
+def _without_profile(values: object) -> object:
+    if not isinstance(values, Mapping):
+        return values
+    return {key: value for key, value in values.items() if key != PROFILE_PARAMETER}
+
+
+def recorded_methodology(root: Path, resolved: Mapping | None) -> tuple[dict | None, str | None]:
+    """The method-dimension methodology of a run, or (None, reason).
+
+    New runs carry ``extensions.methodology`` in resolved-run.json.  A run
+    produced before methodology profiles existed is ``unrecorded`` and is
+    identified by its execution bundle; without one the dimension is unknown.
+    """
+
+    extensions = resolved.get("extensions") if isinstance(resolved, Mapping) else None
+    record = extensions.get("methodology") if isinstance(extensions, Mapping) else None
+    if isinstance(record, Mapping):
+        keys = ("profile_id", "profile_version", "profile_definition_sha256", "applied_corrections_sha256")
+        if all(isinstance(record.get(key), str) and record.get(key) for key in keys):
+            return {key: record[key] for key in keys}, None
+        return None, "methodology_record_incomplete"
+    bundle = _read(root / "execution-bundle.json")
+    identity = bundle.get("identity_sha256") if isinstance(bundle, Mapping) else None
+    if _sha(identity):
+        return {"profile_id": "unrecorded", "execution_identity_sha256": str(identity).lower()}, None
+    return None, "methodology_unrecorded_without_execution_bundle"
 
 
 def _read(path: Path):
@@ -114,7 +146,10 @@ def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) ->
                 raise ValueError("frozen_extension_selection_inconsistent")
             extensions = {key: value for key, value in extensions.items() if key != "graph_sha256"}
             extensions["extensions"] = sorted(({**row, "manifest_sha256": row["manifest_sha256"].lower()} for row in extension_rows), key=lambda row: row["id"])
-        identity["method"] = {"modules": normalized, "extensions": extensions}
+        methodology, methodology_reason = recorded_methodology(root, resolved)
+        if methodology is None:
+            raise ValueError(str(methodology_reason))
+        identity["method"] = {"modules": normalized, "extensions": extensions, "methodology": methodology}
     except (ValueError, TypeError) as exc:
         reasons["method"] = str(exc)
 
@@ -127,9 +162,9 @@ def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) ->
         market = dict(raw_market) if isinstance(raw_market, Mapping) else {}
         market.pop("network_pack_id", None)
         identity["config"] = {
-            "parameters": project.get("parameters") or project.get("parameter_overrides") or {},
+            "parameters": _without_profile(project.get("parameters") or project.get("parameter_overrides") or {}),
             "runtime_options": project.get("runtime_options") or project.get("runtime_controls") or {},
-            "scientific_parameters": dict(resolved["scientific_parameters"]),
+            "scientific_parameters": _without_profile(dict(resolved["scientific_parameters"])),
             "runtime_controls": dict(resolved["runtime_controls"]),
             "extension_parameters": project.get("extension_parameters") or {},
             "market_configuration": market,

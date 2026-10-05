@@ -6,6 +6,7 @@ but Studies and module manifests bind only to these product-neutral entry points
 
 from dataclasses import replace
 
+from ..methodology import methodology_scoped
 from ..module_context import ImmutableContextResolver, RunStaticContext, YearContext
 from .scheme_c_1000twh.copperplate_balancing import CopperplateBalancing
 from .scheme_c_1000twh.runtime_compat.storage_cost import (
@@ -28,6 +29,7 @@ from ..value_runtime_adapter import finalize_value_runtime_artifacts, public_val
 class ValueBidAtCostPSM(SchemeCNativePSM):
     id = "value-bid-at-cost-psm"
 
+    @methodology_scoped
     def run(self, model_input):
         result = super().run(model_input)
         if self._context is not None:
@@ -48,6 +50,7 @@ class ValueStagedBidAtCostPSM(StagedBidAtCostPSM):
     def start_year(self, year_context: YearContext) -> None:
         super().start_year(year_context)
 
+    @methodology_scoped
     def run(self, model_input):
         result = super().run(model_input)
         if self._output_dir is not None:

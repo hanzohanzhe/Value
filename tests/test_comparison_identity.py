@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from gridform_core.comparison_identity import build_comparison_identity
+from gridform_core.methodology import resolve_methodology
 from gridform_core.results_summary import build_run_summary, compare_run_summaries
 
 
@@ -29,7 +30,9 @@ class ComparisonIdentityTests(unittest.TestCase):
         if extension:
             snapshot["extension_graph"] = {"extensions": [{"id": "ext", "version": "1", "manifest_sha256": "d" * 64}], "parameters": {}}
         status = {"id": name, "mode": mode, "run_policy": {"start_year": year, "end_year": year, "periods_per_year": periods}}
-        resolved = {"modules": {row["slot"]: {key: row[key] for key in ("module_id", "module_version", "contract_version")} for row in modules}, "scientific_parameters": {"scientific.parameter": parameter}, "runtime_controls": {}}
+        # Runs recorded after X0 S9 carry their methodology in the method dimension.
+        resolved = {"modules": {row["slot"]: {key: row[key] for key in ("module_id", "module_version", "contract_version")} for row in modules}, "scientific_parameters": {"scientific.parameter": parameter}, "runtime_controls": {},
+                    "extensions": {"methodology": resolve_methodology().to_dict()}}
         for path, value in [("input-snapshot/project.json", project), ("input-snapshot/snapshot.json", snapshot), ("input-snapshot/pack/manifest.json", pack), ("status.json", status), ("model-output/resolved-run.json", resolved)]:
             target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)
