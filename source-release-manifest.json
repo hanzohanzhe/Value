@@ -7081,8 +7081,8 @@
     },
     {
       "path": "gridform_core/data/contracts/solver-validation-registry-v1.json",
-      "sha256": "b6792a04570b31ebc325b1df6bb18d4c65edc177ab66cef05fd9490199616017",
-      "bytes": 2877,
+      "sha256": "6d77d976de1f8fd7a10672ae0242108f7fe71d3d8f040d1279d264a44c542e28",
+      "bytes": 3263,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8158,8 +8158,8 @@
     },
     {
       "path": "gridform_validation/zonal_oracle.py",
-      "sha256": "87b1e249b15b04861273f808181af3fa446706861a6a593eb2da57084748a97b",
-      "bytes": 40065,
+      "sha256": "977557cb8327187f3ac1582281703d179068b73c76402fdfb01808a9e77831ac",
+      "bytes": 42666,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10766,8 +10766,8 @@
     },
     {
       "path": "tests/test_p08_zonal_solver_v4.py",
-      "sha256": "21f96bae7064e56f375aafd8cbb18a237ad8bbbc8e0de9b15d90b773d530994d",
-      "bytes": 18648,
+      "sha256": "11d4a274303d38f17ef77278a8706ef5e31e9d079aa7365254854d61eb3c15e4",
+      "bytes": 20742,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

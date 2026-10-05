@@ -326,6 +326,43 @@ def _read_case(declaration: Mapping[str, object]) -> dict[str, object]:
     }
 
 
+def _forced_down_parts(
+    case: Mapping[str, object], bid_capacity: Mapping[str, float]
+) -> dict[str, float]:
+    """Down volume each bid must release because realised availability is short.
+
+    Only assets that carry the realised-availability bound are concerned
+    (storage, exports and interconnector envelopes are bound otherwise).  An
+    asset's shortfall, ahead schedule minus available energy, is spread over
+    its down bids in proportion to their capacity and never exceeds a bid's
+    capacity.
+    """
+
+    period_hours = float(case["period_hours"])
+    schedule = case["schedule"]
+    storage = case["storage"]
+    envelopes = case["envelopes"]
+    classes = case["classes"]
+    result: dict[str, float] = {}
+    for asset, available_mw in sorted(case["availability"].items()):
+        if asset in storage or asset in envelopes or classes.get(asset, "other") == "export":
+            continue
+        shortfall = float(schedule.get(asset, 0.0)) - float(available_mw) * period_hours
+        if shortfall <= 0.0:
+            continue
+        down_ids = [
+            str(bid["bid_id"])
+            for bid in case["bids"]
+            if str(bid["asset_id"]) == asset and bid["direction"] == "down"
+        ]
+        capacity = math.fsum(bid_capacity[bid_id] for bid_id in down_ids)
+        if capacity <= 0.0:
+            continue
+        for bid_id in down_ids:
+            result[bid_id] = min(bid_capacity[bid_id], shortfall * bid_capacity[bid_id] / capacity)
+    return result
+
+
 def _cbc() -> pulp.COIN_CMD:
     try:
         solver = pulp.COIN_CMD(msg=False, mip=False, threads=1, path=cbc_path())
@@ -434,26 +471,43 @@ def solve_zonal_oracle(declaration: Mapping[str, object]) -> dict[str, object]:
             f"storage_bid_identity__{asset}",
         )
 
-    groups: dict[tuple[object, ...], list[dict[str, object]]] = defaultdict(list)
+    # Equal-price rule of solver contract v4, derived here from the declared
+    # data rather than from the production builder.  Bids in the same
+    # direction, zone, network effect and price are economically identical
+    # whatever their technology, so the resource class is not in the key;
+    # storage keeps its own convex identity and stays out.  A down bid whose
+    # asset is bound by realised availability below its ahead schedule must
+    # release that shortfall whatever the prices are: that forced part is
+    # carved out first and only the remaining free volume is shared:
+    #     (x_i - f_i) * free_1 == (x_1 - f_1) * free_i,   free = capacity - f.
     classes = case["classes"]
+    forced_by_bid = _forced_down_parts(case, bid_capacity)
+    groups: dict[tuple[object, ...], list[dict[str, object]]] = defaultdict(list)
     for bid in bids:
+        bid_id = str(bid["bid_id"])
         provenance = _mapping(bid.get("provenance", {}), "bid provenance")
         resource_class = str(provenance.get("resource_class") or classes.get(str(bid["asset_id"]), "other"))
-        if resource_class != "storage":
-            groups[(
-                bid["direction"], bid["zone_id"], bid["network_effect_id"],
-                float(bid["price_gbp_per_mwh"]), resource_class,
-            )].append(bid)
+        if resource_class == "storage":
+            continue
+        if bid_capacity[bid_id] - forced_by_bid.get(bid_id, 0.0) <= EPSILON:
+            continue
+        groups[(
+            bid["direction"], bid["zone_id"], bid["network_effect_id"],
+            float(bid["price_gbp_per_mwh"]),
+        )].append(bid)
     for index, rows in enumerate(groups.values()):
         if len(rows) < 2:
             continue
-        first = rows[0]
-        first_id = str(first["bid_id"])
+        first_id = str(rows[0]["bid_id"])
+        first_forced = forced_by_bid.get(first_id, 0.0)
+        first_free = bid_capacity[first_id] - first_forced
         for row_index, bid in enumerate(rows[1:]):
             bid_id = str(bid["bid_id"])
+            forced = forced_by_bid.get(bid_id, 0.0)
+            free = bid_capacity[bid_id] - forced
             problem += (
-                bid_vars[bid_id] * bid_capacity[first_id]
-                == bid_vars[first_id] * bid_capacity[bid_id],
+                (bid_vars[bid_id] - forced) * first_free
+                == (bid_vars[first_id] - first_forced) * free,
                 f"pro_rata__{index}__{row_index}",
             )
 

@@ -43,7 +43,10 @@
       "evidence_references": [
         "tests/test_prompt103_zonal_validation.py::Prompt103IndependenceAndAnalyticalTests::test_hand_solvable_cases_match_independent_oracle",
         "tests/test_prompt103_zonal_validation.py::Prompt103IndependenceAndAnalyticalTests::test_seeded_random_convex_cases_match",
-        "tests/test_p08_zonal_solver_v4.py::ZonalLockScaleTests::test_zonal_lock_scale"
+        "tests/test_p08_zonal_solver_v4.py::ZonalLockScaleTests::test_zonal_lock_scale",
+        "tests/test_p08_zonal_solver_v4.py::OracleAgreementTests::test_oracle_shares_equal_prices_pro_rata_across_resource_classes",
+        "tests/test_p08_zonal_solver_v4.py::OracleAgreementTests::test_oracle_keeps_forced_curtailment_outside_the_pro_rata_group",
+        "tests/test_p08_zonal_solver_v4.py::OracleAgreementTests::test_oracle_shares_the_free_part_after_a_forced_part"
       ]
     }
   ]

@@ -54,6 +54,62 @@ def primary(result):
     )
 
 
+def cross_class_equal_price_declaration():
+    """Gas 20 MWh and DSR 40 MWh both up at GBP 60, 30 MWh to cover."""
+
+    bids = (
+        zonal_bid("gas-up", "gas", "gb", "up", 20.0, 60.0, resource_class="thermal"),
+        zonal_bid("dsr-up", "dsr", "gb", "up", 40.0, 60.0, resource_class="dsr"),
+    )
+    return zonal_declaration(
+        {"gb": 30.0}, {"gas": 0.0, "dsr": 0.0}, {"gas": "gb", "dsr": "gb"}, bids,
+        classes={"gas": "thermal", "dsr": "dsr"},
+    )
+
+
+def availability_shortfall_declaration(wind_class: str = "vre"):
+    """One zone; wind scheduled 100 but only 50 available (forced 50 down).
+
+    Gas is scheduled 100.  Both down bids are offered at the same price
+    (staged PSM down price is -curtailment_cost, i.e. 0), peak up at 300.
+    """
+
+    bids = (
+        zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
+                  baseline_mwh=100.0, resource_class=wind_class),
+        zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
+                  baseline_mwh=100.0, resource_class="thermal"),
+        zonal_bid("peak-up", "peak", "gb", "up", 100.0, 300.0, resource_class="thermal"),
+    )
+    return zonal_declaration(
+        {"gb": 200.0},
+        {"wind": 100.0, "gas": 100.0, "peak": 0.0},
+        {"wind": "gb", "gas": "gb", "peak": "gb"},
+        bids,
+        availability_mwh={"wind": 50.0, "gas": 1_000.0, "peak": 1_000.0},
+        classes={"wind": wind_class, "gas": "thermal", "peak": "thermal"},
+    )
+
+
+def partial_forced_declaration():
+    """Wind forced 20 down, then a further 60 MWh free down volume to share."""
+
+    bids = (
+        zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
+                  baseline_mwh=100.0, resource_class="vre"),
+        zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
+                  baseline_mwh=100.0, resource_class="thermal"),
+    )
+    return zonal_declaration(
+        {"gb": 120.0},
+        {"wind": 100.0, "gas": 100.0},
+        {"wind": "gb", "gas": "gb"},
+        bids,
+        availability_mwh={"wind": 80.0, "gas": 1_000.0},
+        classes={"wind": "vre", "gas": "thermal"},
+    )
+
+
 class ShedLockTests(unittest.TestCase):
     def test_remote_upward_energy_sheds_exactly_zero(self) -> None:
         # v3: the physical phase shed 1/(VOLL-p) MWh in the south (P2-01).
@@ -120,45 +176,17 @@ class BidLockTests(unittest.TestCase):
                     self.assertLess(dispatch[expensive], 1e-3)
 
     def test_equal_price_bids_share_pro_rata_across_resource_classes(self) -> None:
-        demand = {"gb": 30.0}
-        bids = (
-            zonal_bid("gas-up", "gas", "gb", "up", 20.0, 60.0, resource_class="thermal"),
-            zonal_bid("dsr-up", "dsr", "gb", "up", 40.0, 60.0, resource_class="dsr"),
-        )
-        declaration = zonal_declaration(
-            demand, {"gas": 0.0, "dsr": 0.0}, {"gas": "gb", "dsr": "gb"}, bids,
-            classes={"gas": "thermal", "dsr": "dsr"},
-        )
+        declaration = cross_class_equal_price_declaration()
         first = clear(declaration).final_dispatch_mwh_by_asset
         self.assertAlmostEqual(first["gas"], 10.0, places=6)
         self.assertAlmostEqual(first["dsr"], 20.0, places=6)
-
-    def _availability_shortfall_case(self, *, wind_class: str = "vre"):
-        # One zone; wind scheduled 100 but only 50 available (forced 50 down);
-        # gas scheduled 100.  Both down bids are offered at the same price
-        # (staged PSM down price is -curtailment_cost, i.e. 0), peak up at 300.
-        bids = (
-            zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
-                      baseline_mwh=100.0, resource_class=wind_class),
-            zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
-                      baseline_mwh=100.0, resource_class="thermal"),
-            zonal_bid("peak-up", "peak", "gb", "up", 100.0, 300.0, resource_class="thermal"),
-        )
-        return zonal_declaration(
-            {"gb": 200.0},
-            {"wind": 100.0, "gas": 100.0, "peak": 0.0},
-            {"wind": "gb", "gas": "gb", "peak": "gb"},
-            bids,
-            availability_mwh={"wind": 50.0, "gas": 1_000.0, "peak": 1_000.0},
-            classes={"wind": wind_class, "gas": "thermal", "peak": "thermal"},
-        )
 
     def test_forced_availability_curtailment_is_outside_the_pro_rata_group(self) -> None:
         """Review M2-P0-8a: the forced part must not drag equal-price assets down."""
 
         for wind_class in ("vre", "thermal"):
             with self.subTest(wind_class=wind_class):
-                declaration = self._availability_shortfall_case(wind_class=wind_class)
+                declaration = availability_shortfall_declaration(wind_class)
                 result = clear(declaration)
                 dispatch = result.final_dispatch_mwh_by_asset
                 self.assertAlmostEqual(dispatch["wind"], 50.0, places=6)
@@ -170,20 +198,7 @@ class BidLockTests(unittest.TestCase):
         # Wind forced 20 down (100 -> 80 available) and both units must also
         # release a further 60 MWh at the same price: the free 60 is shared
         # pro rata to free capacity (wind 80, gas 100 -> 26.67 / 33.33).
-        bids = (
-            zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
-                      baseline_mwh=100.0, resource_class="vre"),
-            zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
-                      baseline_mwh=100.0, resource_class="thermal"),
-        )
-        declaration = zonal_declaration(
-            {"gb": 120.0},
-            {"wind": 100.0, "gas": 100.0},
-            {"wind": "gb", "gas": "gb"},
-            bids,
-            availability_mwh={"wind": 80.0, "gas": 1_000.0},
-            classes={"wind": "vre", "gas": "thermal"},
-        )
+        declaration = partial_forced_declaration()
         dispatch = clear(declaration).final_dispatch_mwh_by_asset
         self.assertAlmostEqual(dispatch["wind"], 80.0 - 60.0 * 80.0 / 180.0, places=6)
         self.assertAlmostEqual(dispatch["gas"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
@@ -330,6 +345,40 @@ class OracleAgreementTests(unittest.TestCase):
             oracle = solve_zonal_oracle(declaration)
             comparison = compare_zonal_solutions(declaration, production, oracle)
             self.assertTrue(comparison["passed"], comparison)
+
+    def _assert_match(self, declaration) -> dict[str, object]:
+        production = production_solution(declaration)
+        oracle = solve_zonal_oracle(declaration)
+        comparison = compare_zonal_solutions(declaration, production, oracle)
+        self.assertTrue(comparison["passed"], comparison)
+        self.assertEqual(comparison["classification"], "independent_match")
+        return oracle
+
+    def test_oracle_shares_equal_prices_pro_rata_across_resource_classes(self) -> None:
+        """Review M2-P0-8a (major): the oracle keys pro rata without the class."""
+
+        oracle = self._assert_match(cross_class_equal_price_declaration())
+        dispatch = oracle["final_dispatch_mwh_by_asset"]
+        self.assertAlmostEqual(dispatch["gas"], 10.0, places=6)
+        self.assertAlmostEqual(dispatch["dsr"], 20.0, places=6)
+
+    def test_oracle_keeps_forced_curtailment_outside_the_pro_rata_group(self) -> None:
+        """Review M2-P0-8a (major): forced availability curtailment is not shared."""
+
+        for wind_class in ("vre", "thermal"):
+            with self.subTest(wind_class=wind_class):
+                oracle = self._assert_match(availability_shortfall_declaration(wind_class))
+                dispatch = oracle["final_dispatch_mwh_by_asset"]
+                self.assertAlmostEqual(dispatch["wind"], 50.0, places=6)
+                self.assertAlmostEqual(dispatch["gas"], 100.0, places=6)
+                self.assertAlmostEqual(dispatch["peak"], 50.0, places=6)
+                self.assertAlmostEqual(oracle["primary_objective_gbp"], 15_000.0, places=4)
+
+    def test_oracle_shares_the_free_part_after_a_forced_part(self) -> None:
+        oracle = self._assert_match(partial_forced_declaration())
+        dispatch = oracle["final_dispatch_mwh_by_asset"]
+        self.assertAlmostEqual(dispatch["wind"], 80.0 - 60.0 * 80.0 / 180.0, places=6)
+        self.assertAlmostEqual(dispatch["gas"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
 
 
 class ContractIdentityTests(unittest.TestCase):
