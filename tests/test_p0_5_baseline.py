@@ -181,9 +181,31 @@ class P05BaselineReplayTests(unittest.TestCase):
         cls.baseline = cls.capture.load_baseline()
         cls.coverage = json.loads(cls.capture.COVERAGE_PATH.read_text(encoding="utf-8"))
 
+    def _unexpected(self, label: str, differences: list[str]) -> list[str]:
+        """Differences not covered by a universal expected_change entry (P0-5a applies those)."""
+
+        import fnmatch
+
+        frozen = "doctoral-lineage-0.6.0a2"
+        entries = [
+            pattern for entry in self.baseline["expected_change"]
+            if frozen in entry["profiles"] and ("*" in entry["packs"] or label in entry["packs"])
+            for pattern in entry["entries"]
+        ]
+        return [
+            line for line in differences
+            if not any(fnmatch.fnmatch(line.split(":", 1)[0], pattern)
+                       or fnmatch.fnmatch(line.split(":", 1)[0], pattern + ".*") for pattern in entries)
+        ]
+
     def _replay(self, roots: list[Path], *, kernel: bool = True) -> None:
         report = self.capture.check(roots, self.baseline, kernel=kernel)
-        self.assertEqual(report["differences"], {})
+        # The capture reads with the frozen profile; since P0-5a the universal
+        # corrections (expected_change entries listing the frozen profile)
+        # may differ from the 35aadb3 record, nothing else.
+        unexpected = {label: rows for label, found in report["differences"].items()
+                      if (rows := self._unexpected(label, found))}
+        self.assertEqual(unexpected, {})
         for root in roots:
             label, reason = self.capture.stored_label(self.baseline, root)
             self.assertIsNotNone(label, reason)
@@ -220,8 +242,17 @@ class P05BaselineReplayTests(unittest.TestCase):
                 self.capture.pack_label(self.capture.file_sha256(root / "manifest.json"),
                                         self.capture.RESEARCH_PACKS[GBP1_PUBLIC1]["pack_id"])
 
-    def test_declaration_scan_matches(self) -> None:
-        self.assertEqual(self.capture.declaration_consumers(), self.coverage["mentioned_by_reader_site"])
+    def test_declaration_scan_after_p0_5a(self) -> None:
+        """At S0 no reader site mentioned a declaration (stored record); since P0-5a S1 the
+        sites read through the shared reader, which consumes every series declaration."""
+
+        self.assertTrue(all(sites == [] for key, sites in self.coverage["mentioned_by_reader_site"].items()
+                            if key in ("csv_column", "csv_header", "eur_per_gbp", "time_convention")))
+        reader = (self.capture.ROOT / "gridform_core" / "series_reader.py").read_text(encoding="utf-8")
+        for key in ("csv_header", "csv_column", "unit", "currency", "eur_per_gbp", "interval_minutes", "timestamp_column"):
+            self.assertIn(f'"{key}"', reader, key)
+        canonical = (self.capture.ROOT / "gridform_core" / "canonical_psm_data.py").read_text(encoding="utf-8")
+        self.assertIn("read_role", canonical)
 
 
 class P05KernelBoundaryTests(unittest.TestCase):
@@ -231,41 +262,16 @@ class P05KernelBoundaryTests(unittest.TestCase):
         values = [float(value) for value in capture_module().kernel_clock(np.array([10.0, 11.0, 12.0]), 8)]
         self.assertEqual(values, [10.0, 10.0, 11.0, 11.0, 12.0, 12.0, 10.0, 10.0])
 
-    def test_head_kernel_stretches_and_miswires_a_nonconstant_boundary(self) -> None:
+    def test_head_kernel_record_is_kept_in_the_baseline(self) -> None:
+        """The 35aadb3 kernel stretched (p // 2) and mis-wired the boundary; P0-5a corrects both
+        in every profile (tests/test_kernel_boundary.py).  The stored head_rules keep the record."""
+
         capture = capture_module()
-        with tempfile.TemporaryDirectory() as directory:
-            pack = nonconstant_boundary_pack(Path(directory))
-            recorder = KernelBoundaryRecorder()
-            run_value_101_day(pack, recorder)
-            manifest = capture.load_manifest(pack)
-            oracle = capture.kernel_boundary_oracle(pack, manifest, 48)
-            chronology = capture.chronology_capture(pack, manifest, 48, doctoral=False)
-        self.assertEqual(recorder.periods, list(range(48)))
-        self.assertEqual(set(recorder.connections), set(capture.HEAD_KERNEL_CONNECTION_FEEDS))
-        for connection, feed in capture.HEAD_KERNEL_CONNECTION_FEEDS.items():
-            observed = recorder.connections[connection]
-            with self.subTest(connection=connection, feed=feed):
-                # HEAD (P6-24): period p receives source row p // 2 ...
-                self.assertEqual([float(value) for value in observed["transfer_constraint"]],
-                                 [toy_profile(feed, period // 2) for period in range(48)])
-                self.assertEqual([float(value) for value in observed["external_price"]],
-                                 [toy_price(feed, period // 2) for period in range(48)])
-                # ... and the oracle stored for GBP1/R029 is this kernel.
-                self.assertEqual(capture.digest(observed["transfer_constraint"]),
-                                 oracle["connections"][connection]["transfer_constraint"][2])
-                self.assertEqual(capture.digest(observed["external_price"]),
-                                 oracle["connections"][connection]["external_price"][2])
-        # HEAD mis-wiring: three connections are fed another country's files.
         miswired = {name for name, feed in capture.HEAD_KERNEL_CONNECTION_FEEDS.items()
                     if name.removeprefix("Interconnect_").lower() not in feed}
         self.assertEqual(miswired, {"Interconnect_Netherland", "Interconnect_Ireland", "Interconnect_Beligum"})
-        self.assertEqual(capture.digest(recorder.forecast_demands), oracle["demand"]["forecast"])
-        self.assertEqual(capture.digest(recorder.real_demands), oracle["demand"]["real"])
-        # The canonical adapter reads the same toy period by period: the two
-        # doctoral paths disagree at HEAD (P6-24 note in the review).
-        expected_price = capture.digest([toy_price("france", period) for period in range(48)])
-        self.assertEqual(chronology["imports"]["france"]["price"], expected_price)
-
+        baseline = capture.load_baseline()
+        self.assertEqual(baseline["head_rules"]["kernel_connection_feeds"], capture.HEAD_KERNEL_CONNECTION_FEEDS)
 
 if __name__ == "__main__":
     unittest.main()

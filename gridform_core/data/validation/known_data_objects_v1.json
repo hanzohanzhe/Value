@@ -1,0 +1,285 @@
+{
+  "schema_version": "value.known-data-objects/v1",
+  "notes": [
+    "Truth registry of released research data objects (plan 4.5 scheme 5). Keyed by the object's sha256; series_reader.registry_entry uses an entry only after the bytes on disk hash to its key (and to the binding's declared sha256).",
+    "Field status: declared (the binding's own declaration is right), registry_asserted (the registry's value replaces or completes the binding), declared_unverified (the binding declares it, nobody verified it).",
+    "repairs index the object's data rows under the asserted csv_header (0 = first data row). drop_source_rows removes duplicated source rows (the later publication is kept); interpolate_gaps inserts linearly interpolated periods, applied in order.",
+    "defects are what a validation layer reports for the object (plan 4.5 S4); correction_ids are the universal corrections (decision A5) whose reading repair the entry carries. Evidence: VALUE review 2026-10-04 P6-02/P6-03/P6-04 and the R029 approved_r03 interconnector manifest and demand__utc_2022/audit.json.",
+    "GBP1 public1 interconnector flow files are labelled MWh/period but hold instantaneous MW (review P6-12); the registry asserts MW so the structural unit check reads them as MW with a warning."
+  ],
+  "fx_bases": {
+    "value.approved-eur-gbp-1.1/r029-approved-r03": {
+      "eur_per_gbp": 1.1,
+      "source": "VALUE-UK calendar pack R029 (value-uk-calendar-vx-trade001), files/interconnectors__approved_r03/manifest.json: 'Ember 2022 except Ireland 2021; approved fixed EUR/GBP 1.1'; source EUR/MWh divided by 1.1 once, each UTC hour expanded to two periods once.",
+      "price_year": 2022
+    }
+  },
+  "objects": {
+    "9d74534ffe95efb3a702920c11d28c1a62aa2dc95fd8875e7534447d21885aba": {
+      "object": "GBP1 public1 files/market__belgium__price/Belgium_price.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "market.belgium.price",
+      "fields": {
+        "csv_header": {
+          "status": "registry_asserted",
+          "value": true
+        },
+        "csv_column": {
+          "status": "registry_asserted",
+          "value": "Price (EUR/MWhe)"
+        },
+        "currency": {
+          "status": "registry_asserted",
+          "value": "EUR"
+        },
+        "eur_per_gbp": {
+          "status": "registry_asserted",
+          "value": 1.1
+        },
+        "fx_basis": {
+          "status": "registry_asserted",
+          "value": "value.approved-eur-gbp-1.1/r029-approved-r03"
+        },
+        "interval_minutes": {
+          "status": "registry_asserted",
+          "value": 60
+        },
+        "source_start_utc": {
+          "status": "registry_asserted",
+          "value": "2022-01-01T00:00:00Z"
+        },
+        "timestamp_column": {
+          "status": "registry_asserted",
+          "value": "Datetime (UTC)"
+        },
+        "unit": {
+          "status": "declared_unverified",
+          "value": "GBP/MWh"
+        }
+      },
+      "defects": [
+        {
+          "code": "GF_DATA_PRICE_CURRENCY",
+          "finding": "P6-02",
+          "message": "hourly EUR/MWh (15312 hours, 2022-01 to 2023-09) bound as half-hourly GBP/MWh"
+        }
+      ],
+      "correction_ids": [
+        "p05.belgium-price-currency"
+      ]
+    },
+    "c7d727db62077cacdfb3955aa2daa239d394cdc4a94a66a20be71ce1fa28ae10": {
+      "object": "GBP1 public1 files/market__belgium__profile/belgium_profile.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "market.belgium.profile",
+      "fields": {
+        "unit": {
+          "status": "registry_asserted",
+          "value": "MW"
+        }
+      },
+      "line_identity": {
+        "source_column": "BRITNED_FLOW",
+        "country": "netherlands"
+      },
+      "defects": [
+        {
+          "code": "GF_DATA_BOUNDARY_IDENTITY",
+          "finding": "P6-03",
+          "message": "the Belgium role is bound to BRITNED_FLOW, the GB-Netherlands line"
+        }
+      ],
+      "correction_ids": [
+        "p05.boundary-identity"
+      ]
+    },
+    "ccda2a9e30bdea9a25173423a42ba864d47a0f1cf958abe1dc9c150830e248b8": {
+      "object": "GBP1 public1 files/market__netherlands__profile/nehtheralnd_profile.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "market.netherlands.profile",
+      "fields": {
+        "unit": {
+          "status": "registry_asserted",
+          "value": "MW"
+        }
+      },
+      "line_identity": {
+        "source_column": "NEMO_FLOW",
+        "country": "belgium"
+      },
+      "defects": [
+        {
+          "code": "GF_DATA_BOUNDARY_IDENTITY",
+          "finding": "P6-03",
+          "message": "the Netherlands role is bound to NEMO_FLOW, the GB-Belgium line"
+        }
+      ],
+      "correction_ids": [
+        "p05.boundary-identity"
+      ]
+    },
+    "8298d9b62f89116c56d1ae8b8ffe9ef5ceea2f8fca0f4d8290b24913e5b1ae56": {
+      "object": "GBP1 public1 files/demand__real/2022reald.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "demand.real",
+      "fields": {
+        "csv_header": {
+          "status": "registry_asserted",
+          "value": true
+        },
+        "time_convention": {
+          "status": "registry_asserted",
+          "value": "neso_settlement_rows_without_timestamps"
+        },
+        "source_start_utc": {
+          "status": "registry_asserted",
+          "value": "2022-01-01T00:00:00Z"
+        }
+      },
+      "repairs": {
+        "basis": "R029 demand__utc_2022/audit.json: duplicates on 2022-10-30 (periods 2 and 3, later publication kept) and four named gaps (09:00, 09:30, 23:00, 23:30 UTC) filled by UTC linear interpolation",
+        "drop_source_rows": [
+          14495,
+          14497
+        ],
+        "interpolate_gaps": [
+          {
+            "at": 14514,
+            "count": 2
+          },
+          {
+            "at": 14542,
+            "count": 2
+          }
+        ]
+      },
+      "defects": [
+        {
+          "code": "GF_DATA_LOCAL_TIME_WITHOUT_TIMESTAMPS",
+          "finding": "P6-04",
+          "message": "26204 untimestamped rows declared Europe/London"
+        },
+        {
+          "code": "GF_DATA_DST_ROW_ORDER",
+          "finding": "P6-04",
+          "message": "rows after 2022-10-30 are 2 periods off the UTC clock (duplicated and missing settlement periods)"
+        }
+      ],
+      "correction_ids": [
+        "p05.demand-utc-clock"
+      ]
+    },
+    "a2d21ff52366c36f8711333a12c3a7a7bc3b34017cca852f330a0189dfe4ddfc": {
+      "object": "GBP1 public1 files/demand__forecast/2022fd.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "demand.forecast",
+      "fields": {
+        "csv_header": {
+          "status": "registry_asserted",
+          "value": false
+        },
+        "time_convention": {
+          "status": "registry_asserted",
+          "value": "neso_settlement_rows_without_timestamps"
+        },
+        "source_start_utc": {
+          "status": "registry_asserted",
+          "value": "2022-01-01T00:00:00Z"
+        }
+      },
+      "repairs": {
+        "basis": "R029 demand__utc_2022/audit.json (same rows as demand.real; the archived forecast of the later publication is kept)",
+        "drop_source_rows": [
+          14495,
+          14497
+        ],
+        "interpolate_gaps": [
+          {
+            "at": 14514,
+            "count": 2
+          },
+          {
+            "at": 14542,
+            "count": 2
+          }
+        ]
+      },
+      "defects": [
+        {
+          "code": "GF_DATA_LOCAL_TIME_WITHOUT_TIMESTAMPS",
+          "finding": "P6-04",
+          "message": "26204 untimestamped rows declared Europe/London"
+        },
+        {
+          "code": "GF_DATA_DST_ROW_ORDER",
+          "finding": "P6-04",
+          "message": "rows after 2022-10-30 are 2 periods off the UTC clock (duplicated and missing settlement periods)"
+        }
+      ],
+      "correction_ids": [
+        "p05.demand-utc-clock"
+      ]
+    },
+    "4392a914281816eae8ec230aa290ea0326d2de0aa96b326e02b1979c354e5240": {
+      "object": "GBP1 public1 files/market__france__profile/France_profile.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "market.france.profile",
+      "fields": {
+        "unit": {
+          "status": "registry_asserted",
+          "value": "MW"
+        }
+      },
+      "defects": [],
+      "correction_ids": [
+        "p05.validation-layers"
+      ]
+    },
+    "088041cf8b38a724c06d0cb99d263135b7ccf2ed119b2f8c316b702572f1c6d8": {
+      "object": "GBP1 public1 files/market__norway__profile/Norway_profile.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "market.norway.profile",
+      "fields": {
+        "unit": {
+          "status": "registry_asserted",
+          "value": "MW"
+        }
+      },
+      "defects": [],
+      "correction_ids": [
+        "p05.validation-layers"
+      ]
+    },
+    "182e1d00588a46c636c75864b74b9db7a77facf5f47b0bd1a761eeba67c05104": {
+      "object": "GBP1 public1 files/market__ireland__profile/Ireland_profile.csv",
+      "packs": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "role": "market.ireland.profile",
+      "fields": {
+        "unit": {
+          "status": "registry_asserted",
+          "value": "MW"
+        }
+      },
+      "defects": [],
+      "correction_ids": [
+        "p05.validation-layers"
+      ]
+    }
+  }
+}

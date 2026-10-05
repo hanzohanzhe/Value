@@ -21,6 +21,7 @@ from .value_runtime_adapter import (
     persist_or_verify_value_context,
 )
 from .canonical_psm_data import build_chronology, native_initial_state, build_doctoral_psm_input
+from .data_method import run_policy as current_data_policy
 from .doctoral_weather import uses_doctoral_weather, weather_execution_identity
 from .cost_ledger import build_cem_cost_ledger, write_cost_ledgers
 from .carbon_ledger import build_operational_carbon_ledger, write_carbon_ledgers
@@ -1274,7 +1275,8 @@ def _doctoral_native_input(run, pack_root, pack_manifest, state, periods):
         run_id=run.run_id, periods=periods,
         period_hours=float(run.scientific_parameters["clock.period_hours"]),
         parameters={**dict(run.scientific_parameters), **dict(run.runtime_controls)},
-        voll_gbp_per_mwh=float(run.scientific_parameters.get("market.voll_gbp_per_mwh", 10_000.0)))
+        voll_gbp_per_mwh=float(run.scientific_parameters.get("market.voll_gbp_per_mwh", 10_000.0)),
+        data_policy=current_data_policy(pack_manifest))
 
 
 def _configure_doctoral_native_psm(psm, pack_root, pack_manifest, output_dir):
@@ -1649,6 +1651,7 @@ def _run_native_project(
             state,
             periods=periods,
             period_hours=float(run.scientific_parameters["clock.period_hours"]),
+            data_policy=current_data_policy(pack_manifest),
             terminal_soc_rule=str(
                 run.scientific_parameters.get(
                     "market.perfect_foresight_terminal_soc_rule", "cyclic"

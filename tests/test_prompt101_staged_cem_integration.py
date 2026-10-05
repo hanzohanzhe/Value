@@ -938,6 +938,7 @@ class Prompt101LiveIntegrationTests(unittest.TestCase):
 
     def test_commissioned_child_is_a_real_next_year_physical_resource(self) -> None:
         from gridform_core.canonical_psm_data import build_chronology
+        from gridform_core.data_method import run_policy
 
         child = AssetStateV2(
             "commissioned:model:ccgt-1",
@@ -959,6 +960,7 @@ class Prompt101LiveIntegrationTests(unittest.TestCase):
             state,
             periods=1,
             period_hours=1.0,
+            data_policy=run_policy(manifest),
             terminal_soc_rule="free",
             voll_gbp_per_mwh=17_000.0,
         )

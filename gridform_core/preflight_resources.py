@@ -85,6 +85,7 @@ def build_frozen_resource_contexts(
         build_run_static_context,
     )
     from .canonical_psm_data import build_chronology, native_initial_state
+    from .data_method import project_policy as project_data_policy
     from .cem_investment_policy import investment_mode
     from .parameters import resolve_scheme_c_parameters
     from .v2.contracts import OperatingState, PSMInput
@@ -177,6 +178,7 @@ def build_frozen_resource_contexts(
         pack_root, pack_manifest, opening,
         periods=int(policy["periods_per_year"]),
         period_hours=float(resolved.scientific_parameters["clock.period_hours"]),
+        data_policy=project_data_policy(frozen_project, pack_manifest),
         terminal_soc_rule=str(resolved.scientific_parameters.get(
             "market.perfect_foresight_terminal_soc_rule", "cyclic"
         )),
@@ -695,6 +697,7 @@ def selected_staged_zonal_calibration_runner(
             _network_period_ids_for_year,
         )
         from .canonical_psm_data import build_chronology
+        from .data_method import project_policy as project_data_policy
         from .module_context import ImmutableContextResolver
         from .parameters import resolve_scheme_c_parameters
         from .v2.contracts import OperatingState, PSMInput
@@ -788,6 +791,7 @@ def selected_staged_zonal_calibration_runner(
             frozen_pack_root, pack_manifest, operating_state,
             periods=periods,
             period_hours=run_context.period_hours,
+            data_policy=project_data_policy(calibration_project, pack_manifest),
             terminal_soc_rule=str(resolved_parameters.scientific.values.get(
                 "market.perfect_foresight_terminal_soc_rule", "cyclic"
             )),

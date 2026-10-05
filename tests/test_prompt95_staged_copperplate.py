@@ -615,6 +615,7 @@ class StagedBidAtCostPSMTests(unittest.TestCase):
             SchemeCNativePSM,
         )
         from gridform_core.canonical_psm_data import build_chronology, native_initial_state
+        from gridform_core.data_method import run_policy
 
         manifest = json.loads((BASELINE / "manifest.json").read_text(encoding="utf-8"))
         source_state = native_initial_state(
@@ -628,6 +629,7 @@ class StagedBidAtCostPSMTests(unittest.TestCase):
             operating,
             periods=2,
             period_hours=0.5,
+            data_policy=run_policy(manifest),
             terminal_soc_rule="free",
         )
         model_input = PSMInput(

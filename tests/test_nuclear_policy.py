@@ -10,6 +10,7 @@ from gridform_core.builtin.scheme_c_1000twh.v2_module_definitions import (
     SchemeCStateTransitionDefinition,
 )
 from gridform_core.canonical_psm_data import build_chronology, native_initial_state
+from gridform_core.data_method import run_policy
 from gridform_core.spatialization import allocations_for_state
 from gridform_core.v2.contracts import (
     AssetStateV2,
@@ -317,6 +318,7 @@ class ValueUkNuclearPolicyTests(unittest.TestCase):
             OperatingState(2031, (retired, operating), ()),
             periods=1,
             period_hours=0.5,
+            data_policy=run_policy(manifest),
             terminal_soc_rule="free",
         )
 

@@ -23,6 +23,9 @@ class StaticScanTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, folder)
         shutil.copytree(ROOT / "gridform_core" / "data" / "methodology", folder / "gridform_core" / "data" / "methodology")
         (folder / "gridform_core" / "rules.py").write_text("", encoding="utf-8")
+        # The repository's consumers of the shipped profile-gated corrections
+        # (P0-5a: data_method asks for the p05 gates).
+        shutil.copy2(ROOT / "gridform_core" / "data_method.py", folder / "gridform_core" / "data_method.py")
         return folder
 
     def test_unknown_correction_id_in_code_is_reported(self):

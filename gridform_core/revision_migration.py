@@ -175,6 +175,23 @@ def _recorded_basis(project: Mapping[str, Any], declared: str) -> dict[str, Any]
             if isinstance(records, list) else None}
 
 
+# The dispatch-weather identity of the 35aadb3 sources (doctoral_weather.
+# weather_execution_identity at 35aadb3).  P0-5a changed canonical_psm_data.py,
+# so a Study saved before it is reconstructed with this identity and then
+# classified environment_reidentify (automatic), never unverifiable.
+WEATHER_IDENTITY_35AADB3 = {
+    "method_id": "value.doctoral-site-weather/v1",
+    "source_sha256": {
+        "doctoral_weather.py": "c4f0760c80a3e78533c3243542d07c76de9810cb35d72d75cbc6a925308f49ed",
+        "canonical_psm_data.py": "b8ddd85b69d5d8688fdff38d75bae84c039d33fcc4cb8690448af60ff36750c4",
+        "doctoral_weather_mapping.py": "498b5819ef8cabc89813e6285dedc473d2042014d02ec044c53135ba0fdbafa0",
+        "builtin/scheme_c_1000twh/v2_module_definitions.py": "a26589e268485d09091cbb0dd3ecdb3a4b22ed97f5e1ed7185eb19188f2555f1",
+        "builtin/scheme_c_1000twh/runtime_compat/map_projects_to_generators_by_location.py":
+            "153a9df25054909da849b32709eb228b4cb1d9aadb8ce8b8c5bcf36a668c4745",
+    },
+}
+
+
 def _reconstructed_basis(project: Mapping[str, Any], registry: ModuleRegistryV2, manifest: Mapping[str, Any], declared: str) -> dict[str, Any] | None:
     modules = dict(project.get("modules") or {})
     attempts = (
@@ -192,17 +209,20 @@ def _reconstructed_basis(project: Mapping[str, Any], registry: ModuleRegistryV2,
     graphs: list[tuple[str, Mapping[str, Any] | None]] = [("", None)]
     if isinstance(stored_graph, Mapping) and project.get("selected_extensions"):
         graphs.append(("_stored_graph", stored_graph))
+    weathers: list[tuple[str, Mapping[str, Any] | None]] = [("", None), ("_35aadb3_weather", WEATHER_IDENTITY_35AADB3)]
     for source, overrides in attempts:
         for suffix, graph in graphs:
-            try:
-                payload = canonical_project_payload(
-                    project, registry, manifest, module_version_overrides=overrides, include_methodology=False,
-                    module_resolution_graph=graph, recorded_solver_contract=True,
-                )
-            except (KeyError, ValueError):
-                continue
-            if hashlib.sha256(_canonical_bytes(payload)).hexdigest() == declared:
-                return {"source": source + suffix, "payload": payload, "applied_correction_ids": None}
+            for weather_suffix, weather in weathers:
+                try:
+                    payload = canonical_project_payload(
+                        project, registry, manifest, module_version_overrides=overrides, include_methodology=False,
+                        module_resolution_graph=graph, recorded_solver_contract=True, weather_identity=weather,
+                    )
+                except (KeyError, ValueError):
+                    continue
+                if hashlib.sha256(_canonical_bytes(payload)).hexdigest() == declared:
+                    return {"source": source + suffix + weather_suffix, "payload": payload,
+                            "applied_correction_ids": None}
     return None
 
 

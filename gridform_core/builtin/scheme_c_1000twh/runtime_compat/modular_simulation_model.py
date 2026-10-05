@@ -2733,27 +2733,16 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     Interconnect_Norway = next((c for c in connections if c.name == 'Interconnect_Norway'), None)
     Interconnect_Beligum = next((c for c in connections if c.name == 'Interconnect_Beligum'), None)
 
-    transfer_constraint_france = np.array(pd.read_csv(config.file_paths["france_profile"])).flatten()
-    external_price_france = pd.to_numeric(pd.read_csv(config.file_paths["france_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_beligum = np.array(pd.read_csv(config.file_paths["belgium_profile"])).flatten()
-    external_price_beligum = pd.to_numeric(pd.read_csv(config.file_paths["belgium_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_netherland = np.array(pd.read_csv(config.file_paths["netherlands_profile"])).flatten()
-    external_price_netherland = pd.to_numeric(pd.read_csv(config.file_paths["netherlands_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_norway = np.array(pd.read_csv(config.file_paths["norway_profile"])).flatten()
-    external_price_norway = pd.to_numeric(pd.read_csv(config.file_paths["norway_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_Ireland = np.array(pd.read_csv(config.file_paths["ireland_profile"])).flatten()
-    external_price_Ireland = pd.to_numeric(pd.read_csv(config.file_paths["ireland_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-
-    data1 = IterLimit_new(transfer_constraint_france)
-    data2 = IterLimit_new(external_price_france)
-    data3 = IterLimit_new(transfer_constraint_beligum)
-    data4 = IterLimit_new(external_price_beligum)
-    data5 = IterLimit_new(transfer_constraint_netherland)
-    data6 = IterLimit_new(external_price_netherland)
-    data7 = IterLimit_new(transfer_constraint_norway)
-    data8 = IterLimit_new(external_price_norway)
-    data9 = IterLimit_new(transfer_constraint_Ireland)
-    data10 = IterLimit_new(external_price_Ireland)
+    # VALUE P0-5a (p05.interconnector-clock / p05.boundary-identity, decisions
+    # Q9/A3 and A5): the boundary series come from the shared declarative
+    # reader (injected by the module runtime) and are assigned period by
+    # period to each country's own Connection; IterLimit_new is no longer used.
+    from .. import kernel_boundary as _kernel_boundary
+    from . import module_context as _boundary_context
+    _boundary = _kernel_boundary.active_boundary(
+        getattr(_boundary_context, "_runtime", None), config.file_paths, periods)
+    _boundary_connections = {c.name: c for c in (Interconnect_France, Interconnect_Netherland,
+                             Interconnect_Ireland, Interconnect_Norway, Interconnect_Beligum) if c is not None}
 
     for period in range(periods):
         # Memory cleanup every 100 periods to prevent MemoryError
@@ -2847,16 +2836,7 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         offshore20.capacity_limit = offshore20.capacity_multiplier * (piecewise_limit3(offshore_speed20))
         offshore21.capacity_limit = offshore21.capacity_multiplier * (piecewise_limit4(offshore_speed21))
 
-        Interconnect_France.transfer_constraint = next(data1)
-        Interconnect_France.external_price = next(data2)
-        Interconnect_Netherland.transfer_constraint = next(data3)
-        Interconnect_Netherland.external_price = next(data4)
-        Interconnect_Ireland.transfer_constraint = next(data5)
-        Interconnect_Ireland.external_price = next(data6)
-        Interconnect_Norway.transfer_constraint =next(data7)
-        Interconnect_Norway.external_price = next(data8)
-        Interconnect_Beligum.transfer_constraint = next(data9)
-        Interconnect_Beligum.external_price = next(data10)
+        _kernel_boundary.assign_period(_boundary, _boundary_connections, period)
 
         # chosen generation in wholesale，cost from stored energy and two storage pool variable for plotting
         # accepted_bids use for balancing, other three for plotting

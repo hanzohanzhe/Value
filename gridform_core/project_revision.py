@@ -50,9 +50,12 @@ def canonical_project_payload(
     include_methodology: bool = True,
     module_resolution_graph: Mapping[str, object] | None = None,
     recorded_solver_contract: bool = False,
+    weather_identity: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """The canonical identity payload of a Study revision.
 
+    ``weather_identity`` replaces the current dispatch-weather identity
+    (only to reconstruct a payload saved by older sources, P0-5a).
     ``module_version_overrides`` (module id -> (version, contract version))
     ``include_methodology=False``, ``module_resolution_graph`` (the graph
     stored in project.json, used instead of resolving the current one) and
@@ -93,7 +96,10 @@ def canonical_project_payload(
         "runtime_controls": dict(project.get("runtime_options") or project.get("runtime_controls") or {}),
     }
     if uses_doctoral_weather(data_pack_manifest):
-        result["dispatch_weather_identity"] = weather_execution_identity()
+        result["dispatch_weather_identity"] = (
+            json.loads(json.dumps(dict(weather_identity))) if weather_identity is not None
+            else weather_execution_identity()
+        )
     if "market_configuration" in project:
         result["market_configuration"] = dict(project.get("market_configuration") or {})
     selected_extensions = tuple(str(item) for item in project.get("selected_extensions", ()))

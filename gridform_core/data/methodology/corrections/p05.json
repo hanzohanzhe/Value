@@ -1,0 +1,161 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "p05",
+  "notes": [
+    "P0-5a data reading and validation (plan 4.5 S1-S4, S9, S10). Universal corrections follow decisions A3/Q9 (P6-24) and A5 (P6-02, P6-03, P6-04); P6-01 and the validation/unit contracts are pure software fixes (plan 4.5 dual-track).",
+    "The registry-backed repairs (P6-02/P6-03/P6-04) act only on objects whose sha256 is verified against gridform_core/data/validation/known_data_objects_v1.json; the shipped VALUE 101 packs carry constant, identical boundary series and no registry object, so their trajectories are unchanged."
+  ],
+  "corrections": [
+    {
+      "id": "p05.declared-column",
+      "package": "p05",
+      "findings": ["P6-01"],
+      "track": "universal",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-calendar-vx-trade001"]},
+      "advisory": {
+        "severity": "critical",
+        "title": "Interconnector series read as period numbers",
+        "summary": "Before P0-5a a declared csv_column was ignored: R029 interconnector prices and flows were read as the period index (0..17519), so imports, prices, costs and emissions of this Run are invalid.",
+        "affected_metrics": ["imports", "prices", "costs", "emissions"]
+      },
+      "trigger_fixture": {"test": "tests.test_series_reader.DeclaredColumnTests"},
+      "introduced_in": "P0-5a S1",
+      "deviation_signature": null,
+      "description": "A binding's declared csv_column (and csv_header) is read in every reading mode; an implicitly selected integer index column is refused (GF_DATA_INDEX_COLUMN)."
+    },
+    {
+      "id": "p05.belgium-price-currency",
+      "package": "p05",
+      "findings": ["P6-02"],
+      "track": "universal",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1"]},
+      "advisory": {
+        "severity": "high",
+        "title": "Belgium price read as half-hourly GBP",
+        "summary": "Before P0-5a the GBP1 Belgium price (hourly EUR/MWh) was read as half-hourly GBP/MWh by the canonical adapter and as zero by the retained kernel.",
+        "affected_metrics": ["imports", "prices", "costs"]
+      },
+      "trigger_fixture": {"test": "tests.test_series_reader.RegistryRepairTests"},
+      "introduced_in": "P0-5a S4",
+      "deviation_signature": null,
+      "description": "The verified GBP1 Belgium_price.csv is read from its EUR column, divided by the documented 1.1 EUR/GBP (R029 approved_r03 basis) and expanded hour -> two half-hours, in both profiles (decision A5)."
+    },
+    {
+      "id": "p05.boundary-identity",
+      "package": "p05",
+      "findings": ["P6-03"],
+      "track": "universal",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1"]},
+      "advisory": {
+        "severity": "medium",
+        "title": "Belgium and Netherlands flows swapped",
+        "summary": "Before P0-5a the GBP1 Belgium role carried the BritNed (Netherlands) flow and vice versa, and the retained kernel fed three Connection objects with another country's files.",
+        "affected_metrics": ["imports_by_country", "exports_by_country", "import_emissions"]
+      },
+      "trigger_fixture": {"test": "tests.test_series_reader.BoundaryIdentityTests"},
+      "introduced_in": "P0-5a S4",
+      "deviation_signature": null,
+      "description": "Interconnector flow files are assigned by NESO line identity (BRITNED_FLOW -> netherlands, NEMO_FLOW -> belgium ...), and every kernel Connection receives its own country's series, in both profiles (decision A5; the kernel wiring is part of P6-03)."
+    },
+    {
+      "id": "p05.demand-utc-clock",
+      "package": "p05",
+      "findings": ["P6-04"],
+      "track": "universal",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1"]},
+      "advisory": {
+        "severity": "high",
+        "title": "Demand off the UTC clock after 2022-10-30",
+        "summary": "Before P0-5a GBP1 demand and forecast were read in source row order; from 2022-10-30 they ran 2 periods off the UTC clock.",
+        "affected_metrics": ["demand_shape", "prices", "storage_dispatch"]
+      },
+      "trigger_fixture": {"test": "tests.test_series_reader.RegistryRepairTests"},
+      "introduced_in": "P0-5a S4",
+      "deviation_signature": null,
+      "description": "The verified GBP1 demand files are put on the UTC clock with the R029 audit rule (2022-10-30 duplicates dropped, four named gaps interpolated), in both profiles (decision A5). The doctoral forecast keeps its frozen one-period lead (P6-05 is corrected only)."
+    },
+    {
+      "id": "p05.interconnector-clock",
+      "package": "p05",
+      "findings": ["P6-24"],
+      "track": "universal",
+      "scope": "kernel_input",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"modules_any": ["value-bid-at-cost-psm"]},
+      "advisory": {
+        "severity": "critical",
+        "title": "Interconnector series stretched twice in the retained kernel",
+        "summary": "Before P0-5a the retained kernel served each interconnector row for two periods (IterLimit_new), so a full year used only January to early July boundary data.",
+        "affected_metrics": ["imports", "exports", "prices", "costs"]
+      },
+      "trigger_fixture": {"test": "tests.test_kernel_boundary.KernelBoundaryTests"},
+      "introduced_in": "P0-5a S4 (kernel boundary, decision Q9/A3)",
+      "deviation_signature": null,
+      "description": "The retained kernel receives the interconnector series from the shared reader and assigns them period by period on the run clock (src[p]), in both profiles."
+    },
+    {
+      "id": "p05.validation-layers",
+      "package": "p05",
+      "findings": ["P6-11", "P6-12"],
+      "track": "universal",
+      "scope": "data_validation",
+      "affects": ["presentation"],
+      "applies_when": {},
+      "advisory": null,
+      "trigger_fixture": null,
+      "introduced_in": "P0-5a S9-S10",
+      "deviation_signature": null,
+      "description": "Data-pack validation has structural (decides valid), chronology and plausibility layers and a per-profile eligibility; market slots carry units; CSV mapping declares column, header, interval and EUR conversion."
+    },
+    {
+      "id": "p05.declared-reader",
+      "package": "p05",
+      "findings": ["P6-05"],
+      "track": "profile_gated",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1"]},
+      "advisory": null,
+      "trigger_fixture": {"test": "tests.test_series_reader.DeclaredReaderTests.test_bom_numeric_first_row"},
+      "introduced_in": "P0-5a S1",
+      "deviation_signature": {"doctoral": "legacy-v1 reader: an undeclared header is assumed (the first value of a headerless file is lost)"},
+      "description": "declared-v2 reading: an undeclared header is inferred (only a wholly non-numeric first row), several numeric columns are ambiguous (strict raises GF_DATA_AMBIGUOUS_COLUMN)."
+    },
+    {
+      "id": "p05.series-clock",
+      "package": "p05",
+      "findings": ["P6-07"],
+      "track": "profile_gated",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"modes_any": ["smoke", "value_101_day", "two_year_smoke"]},
+      "advisory": null,
+      "trigger_fixture": {"test": "tests.test_series_reader.ClockTests.test_short_window_keeps_half_hour_resolution"},
+      "introduced_in": "P0-5a S2",
+      "deviation_signature": {"doctoral": "legacy clock: a half-hour profile longer than the window is expanded as hourly"},
+      "description": "The clock takes the resolution from interval_minutes (or an hourly length 8760/8784) before truncating, removes 29 February from a leap year and wraps a short series only when cyclic."
+    },
+    {
+      "id": "p05.data-gate",
+      "package": "p05",
+      "findings": ["P6-11", "P6-02", "P6-03", "P6-04"],
+      "track": "profile_gated",
+      "scope": "data_validation",
+      "affects": ["presentation"],
+      "applies_when": {},
+      "advisory": null,
+      "trigger_fixture": {"test": "tests.test_data_validation_layers.EligibilityTests"},
+      "introduced_in": "P0-5a S4/S9",
+      "deviation_signature": {"doctoral": "chronology and plausibility findings are warnings; registry-identified defects are repaired and recorded"},
+      "description": "Registry-identified data defects and chronology findings of non-workspace packs, and plausibility failures of scientific reference packs, make a pack ineligible for the profile (preflight error)."
+    }
+  ]
+}

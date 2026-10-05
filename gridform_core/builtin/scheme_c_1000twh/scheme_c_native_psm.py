@@ -402,6 +402,30 @@ class SchemeCNativePSM:
             )
             ledger.record_physical_dispatch(rows)
 
+    def _kernel_inputs(self, periods: int) -> dict[str, object] | None:
+        """Demand and boundary series of the frozen pack through the shared reader (P0-5a).
+
+        ``None`` when the run context has no pack manifest (the kernel then
+        reads its configured files with the 35aadb3 readers, period by period).
+        """
+
+        from ...data_method import current_policy, read_role
+        from .kernel_boundary import from_pack
+
+        manifest_path = Path(self._context.pack_root) / "manifest.json"
+        if not manifest_path.is_file():
+            return None
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        policy = current_policy(manifest)
+        pack_root = Path(self._context.pack_root)
+        return {
+            "boundary": from_pack(pack_root, manifest, policy, periods),
+            "forecast": np.asarray(read_role(pack_root, manifest, "demand.forecast", policy, periods=periods).values,
+                                   dtype=float),
+            "real": np.asarray(read_role(pack_root, manifest, "demand.real", policy, periods=periods).values,
+                               dtype=float),
+        }
+
     @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         if self._context is None or self._storage_cost is None:
@@ -420,10 +444,12 @@ class SchemeCNativePSM:
         market_rules = rules_for_methodology(current_methodology())
         storage_runtime = _StorageRuntime(self._storage_cost, parameters, market_rules)
         realisation_log = RealisationLog()
+        periods = len(model_input.chronology.period_ids)
+        kernel_inputs = self._kernel_inputs(periods)
         runtime = SimpleNamespace(
             storage_cost=storage_runtime, market_rules=market_rules, realisation_log=realisation_log,
+            kernel_boundary=kernel_inputs["boundary"] if kernel_inputs else None,
         )
-        periods = len(model_input.chronology.period_ids)
         period_hours = float(model_input.period_hours)
         market_path = self._context.output_dir / "market" / "market.sqlite"
         trace_level = str(parameters.get("runtime.market_trace_level", "summary"))
@@ -490,8 +516,13 @@ class SchemeCNativePSM:
                 # opening state is whatever they start with and the closing
                 # state is discarded at the year end (frozen behaviour, booked).
                 opening_soc = {asset_id: stored_total(battery) for asset_id, battery in batteries.items()}
-                forecast = np.asarray(pd.read_csv(config.file_paths["forecast_demand"]), dtype=float).reshape(-1)[:periods]
-                real = np.asarray(pd.read_csv(config.file_paths["real_demand"]), dtype=float).reshape(-1)[:periods]
+                if kernel_inputs:
+                    # P0-5a: the shared reader (registry repairs such as the
+                    # P6-04 UTC clock apply in every profile).
+                    forecast, real = kernel_inputs["forecast"], kernel_inputs["real"]
+                else:
+                    forecast = np.asarray(pd.read_csv(config.file_paths["forecast_demand"]), dtype=float).reshape(-1)[:periods]
+                    real = np.asarray(pd.read_csv(config.file_paths["real_demand"]), dtype=float).reshape(-1)[:periods]
                 raw_result = run_simulation(
                     periods,
                     list(fleet_generators.values()),

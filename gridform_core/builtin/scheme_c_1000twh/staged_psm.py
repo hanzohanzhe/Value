@@ -1413,6 +1413,10 @@ class StagedBidAtCostPSM:
             real_demand_mwh=chronology.demand_mwh,
             forecast_demand_mwh=forecast,
             availability_mwh_by_technology=availability_by_technology,
+            boundary_series_sha256=dict(chronology.extensions.get("boundary_raw_series") or {}).get(
+                "boundary_series_sha256"),
+            data_method_id=dict(dict(chronology.extensions.get("data_method") or {}).get("method_ids") or {}).get(
+                "data_method"),
         )
 
         storage_models, soc = self._storage_models(model_input)

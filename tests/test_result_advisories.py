@@ -192,7 +192,9 @@ class FixtureRunTests(unittest.TestCase):
         self.assertEqual(run["recorded_validation_statuses"]["contract_validation_status"], "passed")
         self.assertEqual(run["scientific_validation_status"], "failed")
         ids = [row["id"] for row in run["advisories"]]
-        self.assertEqual(ids, ["VALUE-ADV-2026-10-04-REVIEW", "GF_VALIDATION_LEGACY_REPORT"])
+        # P0-5a: a pre-fix run of the retained kernel PSM also gets the P6-24
+        # interconnector-clock advisory of p05.interconnector-clock.
+        self.assertEqual(ids, ["p05.interconnector-clock", "VALUE-ADV-2026-10-04-REVIEW", "GF_VALIDATION_LEGACY_REPORT"])
         self.assertEqual(run["result_publication"]["status"], "published")
         self.assertEqual(len(run["results"]), 1)
 

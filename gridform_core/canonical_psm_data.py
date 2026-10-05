@@ -40,6 +40,10 @@ from .v2.contracts import (
 
 
 SCHEMA_VERSION = "value.canonical-psm-adapter/v1"
+# P0-5a: the chronology adapter reads through data_method (declared reader,
+# data policy).  The operating-state adapter is unchanged and keeps v1 (its
+# schema id is a column of the frozen doctoral trajectory).
+CHRONOLOGY_SCHEMA_VERSION = "value.canonical-psm-adapter/v2"
 DOCTORAL_ALIGNMENT_PROFILE = "value.doctoral-national/v1"
 INTERCONNECTORS = {
     "france": ("market.france.profile", "market.france.price"),
@@ -65,25 +69,20 @@ def _binding_path(pack_root: Path, manifest: Mapping[str, object], role: str) ->
 
 
 def _series(path: Path, *, header: int | None = 0) -> np.ndarray:
-    frame = pd.read_csv(path, header=header)
-    candidates = [pd.to_numeric(frame.iloc[:, index], errors="coerce") for index in range(frame.shape[1])]
-    numeric = max(candidates, key=lambda value: int(value.notna().sum()))
-    values = numeric.dropna().to_numpy(dtype=float)
-    if values.size == 0 or not np.all(np.isfinite(values)):
-        raise ValueError(f"Numeric series contains no usable finite values: {path.name}")
-    return values
+    """35aadb3 reader, kept for the frozen reader inventory: no declaration, legacy-v1.
+
+    Production reads go through ``data_method.read_role`` (P0-5a S1).
+    """
+
+    from .series_reader import LEGACY, SeriesSpec, read_series
+
+    return read_series(path, SeriesSpec(), mode=LEGACY, legacy_header=header).values
 
 
 def _clock(values: np.ndarray, periods: int, *, hourly_repeat: bool = False) -> np.ndarray:
-    if len(values) == periods:
-        return values.copy()
-    if hourly_repeat and len(values) * 2 >= periods:
-        return np.repeat(values, 2)[:periods]
-    if len(values) == 0:
-        raise ValueError("A chronological source is empty.")
-    if len(values) < periods:
-        return np.resize(values, periods)
-    return values[:periods]
+    from .series_reader import legacy_clock
+
+    return legacy_clock(values, periods, hourly_repeat=hourly_repeat)
 
 
 def _technology(value: object) -> str:
@@ -935,6 +934,7 @@ def build_doctoral_psm_input(
     run_id: str, periods: int, period_hours: float = 0.5,
     parameters: Mapping[str, object] | None = None,
     terminal_soc_rule: str = "free", voll_gbp_per_mwh: float = 10_000.0,
+    data_policy: "DataMethodPolicy | None" = None,
 ) -> PSMInput:
     """Build one explicitly selected national input from the station register.
 
@@ -954,8 +954,13 @@ def build_doctoral_psm_input(
             raise ValueError("Nuclear policy identity differs from station state")
         evidence = policy  # Full cost evidence, including Sizewell B life extension; provenance only.
     national = aggregate_doctoral_nuclear_state(state, policy_evidence=evidence)
+    if data_policy is None:
+        from .data_method import run_policy
+
+        data_policy = run_policy(manifest)
     chronology = build_chronology(pack_root, manifest, national, periods=periods,
-        period_hours=period_hours, terminal_soc_rule=terminal_soc_rule, voll_gbp_per_mwh=voll_gbp_per_mwh)
+        period_hours=period_hours, data_policy=data_policy, terminal_soc_rule=terminal_soc_rule,
+        voll_gbp_per_mwh=voll_gbp_per_mwh)
     return PSMInput(run_id, state.year, str(manifest.get("id") or ""), national,
         period_hours, dict(parameters or {}), chronology=chronology,
         extensions={"doctoral_alignment_profile": DOCTORAL_ALIGNMENT_PROFILE,
@@ -969,23 +974,34 @@ def build_chronology(
     *,
     periods: int,
     period_hours: float,
+    data_policy: "DataMethodPolicy",
     terminal_soc_rule: str = "cyclic",
     voll_gbp_per_mwh: float = 10_000.0,
 ) -> ChronologicalPSMData:
-    """Normalize one immutable pack/state revision to chronological contracts."""
+    """Normalize one immutable pack/state revision to chronological contracts.
 
+    ``data_policy`` (required, P0-5a S3) selects the reading method; every
+    chronological role is read through ``data_method.read_role``.
+    """
+
+    from .data_method import DataMethodPolicy, chronology_extension, read_boundary, read_role
+
+    if not isinstance(data_policy, DataMethodPolicy):
+        raise TypeError("build_chronology requires a DataMethodPolicy (data_method.policy_for)")
     pack_root = pack_root.resolve()
+    series = {
+        role: read_role(pack_root, manifest, role, data_policy, periods=periods)
+        for role in ("demand.real", "demand.forecast", "profiles.vre_solar", "profiles.vre_onshore",
+                     "profiles.vre_offshore")
+    }
+    boundary = read_boundary(pack_root, manifest, data_policy, periods=periods)
     # VALUE-derived source rows are instantaneous MW even though the old
     # import manifests labelled them MWh/period.  The typed PSM boundary is
     # strictly MWh/period, so conversion belongs here, once, and is declared in
     # the chronology evidence.  The retained kernel continues to read its
     # unchanged source files and performs the same multiplication internally.
-    demand = _clock(
-        _series(_binding_path(pack_root, manifest, "demand.real")), periods
-    ) * period_hours
-    forecast_demand = _clock(
-        _series(_binding_path(pack_root, manifest, "demand.forecast")), periods
-    ) * period_hours
+    demand = series["demand.real"].values * period_hours
+    forecast_demand = series["demand.forecast"].values * period_hours
     fleet = json.loads(
         _binding_path(pack_root, manifest, "fleet.generators").read_text(encoding="utf-8")
     )
@@ -994,21 +1010,9 @@ def build_chronology(
     if doctoral_alignment and not doctoral_weather:
         raise ValueError("Doctoral national profile requires bound doctoral site weather; CSV dispatch fallback is not permitted")
     profiles = {
-        "solar": _clock(
-            _series(_binding_path(pack_root, manifest, "profiles.vre_solar"), header=None),
-            periods,
-            hourly_repeat=True,
-        ),
-        "onshore": _clock(
-            _series(_binding_path(pack_root, manifest, "profiles.vre_onshore"), header=None),
-            periods,
-            hourly_repeat=True,
-        ),
-        "offshore": _clock(
-            _series(_binding_path(pack_root, manifest, "profiles.vre_offshore"), header=None),
-            periods,
-            hourly_repeat=True,
-        ),
+        "solar": series["profiles.vre_solar"].values,
+        "onshore": series["profiles.vre_onshore"].values,
+        "offshore": series["profiles.vre_offshore"].values,
     }
     profiles = {key: np.clip(value, 0.0, 1.0) for key, value in profiles.items()}
     # The CSVs remain investment-cap inputs. The doctoral UK weather bindings
@@ -1177,13 +1181,11 @@ def build_chronology(
             },
         ))
 
-    for country, (availability_role, price_role) in INTERCONNECTORS.items():
-        raw_availability = _clock(
-            _series(_binding_path(pack_root, manifest, availability_role)), periods
-        ) * period_hours
-        prices = _clock(
-            _series(_binding_path(pack_root, manifest, price_role), header=None), periods
-        )
+    for country in INTERCONNECTORS:
+        # Line identity (P6-03), declared column (P6-01), EUR->GBP (P6-02):
+        # data_method.read_boundary; the flow stays signed, the price raw.
+        raw_availability = boundary.countries[country].flow_mw * period_hours
+        prices = boundary.countries[country].price_gbp_per_mwh
         export_energy = np.maximum(-raw_availability, 0.0)
         if float(np.max(export_energy, initial=0.0)) > 0:
             export_asset_id = f"export:{country}"
@@ -1239,13 +1241,29 @@ def build_chronology(
             storage.asset_id: storage.initial_soc_mwh for storage in storage_assets
         },
         extensions={
-            "adapter_schema": SCHEMA_VERSION,
+            "adapter_schema": CHRONOLOGY_SCHEMA_VERSION,
             **({"doctoral_alignment_profile": DOCTORAL_ALIGNMENT_PROFILE,
                 "doctoral_opening_inventory": "empty_batches_or_explicit_engine_checkpoint"} if doctoral_alignment else {}),
             "dispatch_weather_method": (DOCTORAL_WEATHER_METHOD if doctoral_weather
                                         else "value.declared-technology-csv/v1"),
             "vre_expansion_headroom_mw_by_technology": headroom,
             "source_pack_id": manifest.get("id"),
+            "data_method": {
+                **chronology_extension(data_policy, series, boundary),
+                "boundary": boundary.evidence(),
+            },
+            "boundary_raw_series": {
+                "flow_mw_by_country": {
+                    country: tuple(float(value) for value in entry.flow_mw)
+                    for country, entry in sorted(boundary.countries.items())
+                },
+                "price_gbp_per_mwh_by_country": {
+                    country: tuple(float(value) for value in entry.price_gbp_per_mwh)
+                    for country, entry in sorted(boundary.countries.items())
+                },
+                "flow_sign": "source convention (positive = import to GB unless the binding declares flow_sign)",
+                "boundary_series_sha256": boundary.series_sha256(),
+            },
             "forecast_demand_mwh": tuple(float(value) for value in forecast_demand),
             "boundary_export_envelope_mwh_by_asset": boundary_export_envelopes,
             "boundary_export_price_gbp_per_mwh_by_asset": boundary_export_prices,

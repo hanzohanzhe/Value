@@ -1,0 +1,19 @@
+{
+  "schema_version": "value.frozen-reader-inventory/v1",
+  "notes": [
+    "P0-5a S1: every place that still selects a CSV column implicitly (the column with the most numbers, or the first column) is listed here with the reason it stays. tests/test_reader_inventory.py scans gridform_core/, backend/ and scripts/ for the guessing patterns and fails on an unlisted site or a stale entry.",
+    "Production reading of chronological roles goes through gridform_core/data_method.read_role -> series_reader.read_series, which honours a declared csv_column in every mode."
+  ],
+  "patterns": ["notna().sum()", "max(candidates", ".iloc[:, 0]"],
+  "sites": [
+    {"path": "gridform_core/series_reader.py", "reason": "legacy-v1 reader (_legacy_values): the frozen 35aadb3 rule, used only when no csv_column is declared; an implicit index column is refused (GF_DATA_INDEX_COLUMN)"},
+    {"path": "gridform_core/data_pack_validation.py", "reason": "_first_numeric_column: the validator's structural count for undeclared single-series roles; a declared csv_column is read by _series_cells"},
+    {"path": "gridform_core/builtin/scheme_c_1000twh/kernel_boundary.py", "reason": "from_legacy_files: 35aadb3 kernel file readers for sessions without a pack manifest (reference bridge, unit tests); configured runs inject the shared reader's series"},
+    {"path": "gridform_core/builtin/scheme_c_1000twh/runtime_compat/simulation_model.py", "reason": "retained non-modular Scheme C kernel (byte-preserved runtime overlay); not on any VALUE run path"},
+    {"path": "gridform_core/builtin/scheme_c_1000twh/runtime_compat/investment_support.py", "reason": "retained Scheme C investment support (byte-preserved runtime overlay); reads its own single-column demand file"},
+    {"path": "gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_investment_support.py", "reason": "retained Scheme C investment support (runtime overlay); reads its own single-column demand file"},
+    {"path": "gridform_core/data_workbench/official_gb_candidate.py", "reason": "max(candidates, key=stage_key) selects a planning stage, not a data column"},
+    {"path": "scripts/capture_p0_5_baseline.py", "reason": "S0 capture script: reproduces the 35aadb3 kernel readers to describe HEAD"},
+    {"path": "scripts/verify_doctoral_weather.py", "reason": "offline audit: reads the old single-column CSV weather profile for comparison"}
+  ]
+}

@@ -379,7 +379,13 @@ def chronology_capture(pack_root: Path, manifest: Mapping[str, Any], periods: in
     extensions = {"doctoral_alignment_profile": DOCTORAL_ALIGNMENT_PROFILE} if doctoral else {}
     state = OperatingState(2025, representative_vre_assets(pack_root, manifest), (), extensions=extensions)
     try:
-        chronology = build_chronology(pack_root, manifest, state, periods=periods, period_hours=PERIOD_HOURS)
+        # P0-5a: the reading the baseline describes is the frozen (reference)
+        # profile's: legacy-v1 reader and clock plus the universal corrections.
+        from gridform_core.data_method import policy_for_profile
+        from gridform_core.methodology import REFERENCE_PROFILE_ID
+
+        chronology = build_chronology(pack_root, manifest, state, periods=periods, period_hours=PERIOD_HOURS,
+                                      data_policy=policy_for_profile(REFERENCE_PROFILE_ID, manifest))
     except Exception as error:  # noqa: BLE001
         return {"error": f"{type(error).__name__}: {error}"}
     imports: dict[str, Any] = {}

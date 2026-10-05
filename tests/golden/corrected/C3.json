@@ -22731,6 +22731,4764 @@
    "findings": [],
    "reason": "P0-4 S6: the doctoral rule set declares default_psm_surplus_node_v1; raw residual on that boundary, compatibility adjustment capped at numerical noise, A2 balance account (balance_boundary_period, stress_event) and physical_dispatch balance components on the boundary; PSM 5.2.0 (accounting and identity only)",
    "revision": 4
+  },
+  {
+   "base_commit": "1e61e5ecfe1b49a0f930c966d97e3887ac16e327",
+   "correction_ids": [
+    "p05.series-clock"
+   ],
+   "delta": {
+    "by_zone": {
+     "trajectory": 1
+    },
+    "count": 1,
+    "differences": [
+     {
+      "key": "teaching/one-day-market-result.json::market_result.extensions.vre_expansion_headroom_mw_by_technology.solar",
+      "kind": "changed",
+      "section": "reporting",
+      "zone": "trajectory"
+     }
+    ]
+   },
+   "digest": {
+    "columns": {
+     "market/market.sqlite::balance_boundary_period.#rows": {
+      "count": 1,
+      "sha256": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "sha256_9g": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.boundary_id": {
+      "count": 48,
+      "sha256": "96f54a692efe0ea4dcd5b0a8fa00e749",
+      "sha256_9g": "96f54a692efe0ea4dcd5b0a8fa00e749",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.closing_residual_mwh": {
+      "count": 48,
+      "sha256": "5ceb1c75118fc3bbb6b9c853493d17c1",
+      "sha256_9g": "6d54b539f7ea6e62c938beed9f07034a",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.compatibility_adjustment_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.demand_mwh": {
+      "count": 48,
+      "sha256": "5e9e5fc70a52a0c5b19575f865c3f7da",
+      "sha256_9g": "5e9e5fc70a52a0c5b19575f865c3f7da",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.export_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.flexible_demand_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.hidden_unserved_mwh": {
+      "count": 48,
+      "sha256": "2f15be590800949b51ca91238577e0d8",
+      "sha256_9g": "eb1a48ae73cfef0f6c2c52b8604805c6",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.in_dispatch_unrealised_mwh": {
+      "count": 48,
+      "sha256": "e227d99c1dd7956df9b6a707d61a872d",
+      "sha256_9g": "2798ff65bff797a2ff50e1e808c13e5f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.non_vre_double_counted_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.non_vre_spill_mwh": {
+      "count": 48,
+      "sha256": "b97bf28628fb1e66ba37154470b0c353",
+      "sha256_9g": "b01fed93ffc35c9f783495cba64f8a1f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.period": {
+      "count": 48,
+      "sha256": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "sha256_9g": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.raw_residual_mwh": {
+      "count": 48,
+      "sha256": "e0204bd8c05bb36171c29fd8322c11bc",
+      "sha256_9g": "9ed8eff780f281f9ae7413d4d019e752",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.recorded_unserved_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.shortfall_mwh": {
+      "count": 48,
+      "sha256": "2f15be590800949b51ca91238577e0d8",
+      "sha256_9g": "eb1a48ae73cfef0f6c2c52b8604805c6",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.stage": {
+      "count": 48,
+      "sha256": "f099c66c322d6d488f7bd9ecb58f7640",
+      "sha256_9g": "f099c66c322d6d488f7bd9ecb58f7640",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.storage_charge_mwh": {
+      "count": 48,
+      "sha256": "dacb70fbef3cf2e5362ffd9bf34d7712",
+      "sha256_9g": "2db0cfdc86be45744f51f2f6f1e8d2fd",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.stress_flag": {
+      "count": 48,
+      "sha256": "716b07c88a18e6c6324deeed931821ce",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.supply_mwh": {
+      "count": 48,
+      "sha256": "ea3860366f4dbe06beb2759e8d18cac8",
+      "sha256_9g": "26ff45c86366ddd01252562f03cb7a86",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.u_out_mwh": {
+      "count": 48,
+      "sha256": "572e6330e7ddec9be6752158c420ea66",
+      "sha256_9g": "e92ac77f8b02ef67d8ea5bc941b5a958",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::balance_boundary_period.year": {
+      "count": 48,
+      "sha256": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "sha256_9g": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::boundary_period_summary.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.boundary_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.boundary_shadow_value_gbp_per_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.forward_capacity_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.reverse_capacity_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.shadow_value_semantics": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.transfer_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.utilisation_fraction": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::boundary_period_summary.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.#rows": {
+      "count": 1,
+      "sha256": "e81ea909b43ca5ca930d82cab09b8909",
+      "sha256_9g": "e81ea909b43ca5ca930d82cab09b8909",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.declared_before_clearing": {
+      "count": 96,
+      "sha256": "e5a5c87e5bb85537d8240f8e4221eb74",
+      "sha256_9g": "e5a5c87e5bb85537d8240f8e4221eb74",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.information_scope": {
+      "count": 96,
+      "sha256": "3f532fbe96d1bfb9000a1ccfe9cc3753",
+      "sha256_9g": "3f532fbe96d1bfb9000a1ccfe9cc3753",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.input_sha256": {
+      "count": 96,
+      "sha256": "955a6ac4677e33c771b3888b736de507",
+      "sha256_9g": "955a6ac4677e33c771b3888b736de507",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.payload_json": {
+      "count": 96,
+      "sha256": "483768ac0b6f83e2ebd8876f51c61010",
+      "sha256_9g": "483768ac0b6f83e2ebd8876f51c61010",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.period": {
+      "count": 96,
+      "sha256": "a8bfac5898b93f0f2762947f377186e8",
+      "sha256_9g": "a8bfac5898b93f0f2762947f377186e8",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.schema_version": {
+      "count": 96,
+      "sha256": "7e9b9bbbf4129a48b7cec0c96e57b13e",
+      "sha256_9g": "7e9b9bbbf4129a48b7cec0c96e57b13e",
+      "zone": "identity"
+     },
+     "market/market.sqlite::clearing_inputs.stage": {
+      "count": 96,
+      "sha256": "8bcc5cf981c0981f8524ede7df7ebdaa",
+      "sha256_9g": "8bcc5cf981c0981f8524ede7df7ebdaa",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_inputs.year": {
+      "count": 96,
+      "sha256": "26a37fcf9ebd4928b577a71713ebac2c",
+      "sha256_9g": "26a37fcf9ebd4928b577a71713ebac2c",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_outcomes.#rows": {
+      "count": 1,
+      "sha256": "e81ea909b43ca5ca930d82cab09b8909",
+      "sha256_9g": "e81ea909b43ca5ca930d82cab09b8909",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_outcomes.input_sha256": {
+      "count": 96,
+      "sha256": "955a6ac4677e33c771b3888b736de507",
+      "sha256_9g": "955a6ac4677e33c771b3888b736de507",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_outcomes.outcome_json": {
+      "count": 96,
+      "sha256": "2a37af1c68d0e08357300b682eccdee6",
+      "sha256_9g": "2a37af1c68d0e08357300b682eccdee6",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::clearing_outcomes.schema_version": {
+      "count": 96,
+      "sha256": "1a55fe87dbcb2011a9056e49cf7c19af",
+      "sha256_9g": "1a55fe87dbcb2011a9056e49cf7c19af",
+      "zone": "identity"
+     },
+     "market/market.sqlite::metadata.#rows": {
+      "count": 1,
+      "sha256": "c309198295f8612db436448f06352c97",
+      "sha256_9g": "c309198295f8612db436448f06352c97",
+      "zone": "identity"
+     },
+     "market/market.sqlite::metadata.key": {
+      "count": 17,
+      "sha256": "1110f41fd623a5117d8a39b36bf0e59c",
+      "sha256_9g": "1110f41fd623a5117d8a39b36bf0e59c",
+      "zone": "identity"
+     },
+     "market/market.sqlite::metadata.value": {
+      "count": 17,
+      "sha256": "5490fa98e628ce5bfc93ff062a9e9d9c",
+      "sha256_9g": "5490fa98e628ce5bfc93ff062a9e9d9c",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.absolute_ceiling": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.absolute_term_scale": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.achieved_final_value": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.computed_tolerance": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.declared_input_sha256": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.degradation": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.dual_feasibility_tolerance": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.error_code": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.highs_binary_sha256": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.highs_identity": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.ipm_optimality_tolerance": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.method": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.module_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.module_version": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.nonzero_term_count": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.objective_unit": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.optimum": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.period_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.phase_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.presolve": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.primal_feasibility_tolerance": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.run_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.scipy_version": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.solver_contract_version": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::network_solver_diagnostics.validated_ceiling": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.validation_class": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.warning_ceiling": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::network_solver_diagnostics.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::orders.#rows": {
+      "count": 1,
+      "sha256": "ef51a3e0e6819b835c60e6e392ca9a8d",
+      "sha256_9g": "ef51a3e0e6819b835c60e6e392ca9a8d",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.accepted_mwh": {
+      "count": 2114,
+      "sha256": "5c098849885f94b490b9f724bdf85f12",
+      "sha256_9g": "dceb41c30050cbc0890c6ed91f06cd3d",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.asset_id": {
+      "count": 2114,
+      "sha256": "593fdb5cac6e28e3ed7d53b33169a179",
+      "sha256_9g": "593fdb5cac6e28e3ed7d53b33169a179",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.asset_type": {
+      "count": 2114,
+      "sha256": "57699fe630751d3884759d93be87b23a",
+      "sha256_9g": "57699fe630751d3884759d93be87b23a",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.market_payment_gbp": {
+      "count": 2114,
+      "sha256": "9b800711da788177d1197eeb160ea857",
+      "sha256_9g": "c1cd73505cdf6b01c913f62c2e919431",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::orders.offer_price_gbp_per_mwh": {
+      "count": 2114,
+      "sha256": "aaf47711fed43ad13feb1dabbf620391",
+      "sha256_9g": "a7e6939f039c93f81e9c01c2ee7e1b5c",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.offered_mwh": {
+      "count": 2114,
+      "sha256": "f5bd11f2b1672bdb5951ca20b719cc03",
+      "sha256_9g": "9bc101f2ea2d4ce8bf06d1765da15b4d",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.order_id": {
+      "count": 2114,
+      "sha256": "8594c8198febc6d9d036c5fe92c21a04",
+      "sha256_9g": "8594c8198febc6d9d036c5fe92c21a04",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.period": {
+      "count": 2114,
+      "sha256": "a64d1329362e7b13fcaaf03f6907b706",
+      "sha256_9g": "a64d1329362e7b13fcaaf03f6907b706",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.physical_resource_cost_gbp": {
+      "count": 2114,
+      "sha256": "0dd12b01ef4889880bc5c924a6823f3d",
+      "sha256_9g": "9cac1c73a62b59fd5712de9cfe831eb5",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::orders.reason_code": {
+      "count": 2114,
+      "sha256": "5e7c50fe902a0163ccb735ac54867b56",
+      "sha256_9g": "5e7c50fe902a0163ccb735ac54867b56",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.side": {
+      "count": 2114,
+      "sha256": "9237a51aa93f97889c08274d5a4b39b1",
+      "sha256_9g": "9237a51aa93f97889c08274d5a4b39b1",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.stage": {
+      "count": 2114,
+      "sha256": "45712a4ac5f4bd9e3ac72c76c64d7b12",
+      "sha256_9g": "45712a4ac5f4bd9e3ac72c76c64d7b12",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.status": {
+      "count": 2114,
+      "sha256": "1c299979493c8c09d4affbe9bbed2cbf",
+      "sha256_9g": "1c299979493c8c09d4affbe9bbed2cbf",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::orders.year": {
+      "count": 2114,
+      "sha256": "a1a797accd1204278b5471424f1338ea",
+      "sha256_9g": "a1a797accd1204278b5471424f1338ea",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.#rows": {
+      "count": 1,
+      "sha256": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "sha256_9g": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.accepted_supply_mwh": {
+      "count": 48,
+      "sha256": "ea3860366f4dbe06beb2759e8d18cac8",
+      "sha256_9g": "26ff45c86366ddd01252562f03cb7a86",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.blackout_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh": {
+      "count": 48,
+      "sha256": "25bfc980cc4e28b2e926844c8b547056",
+      "sha256_9g": "63cf3e3cf9f1a35b9a0d256a2365afe1",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.compatibility_adjustment_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::period_summary.curtailed_mwh": {
+      "count": 48,
+      "sha256": "0791130b710107d55fdc09b73030a53a",
+      "sha256_9g": "87c94213774a504a78167739850e200c",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.energy_balance_residual_mwh": {
+      "count": 48,
+      "sha256": "e0204bd8c05bb36171c29fd8322c11bc",
+      "sha256_9g": "9ed8eff780f281f9ae7413d4d019e752",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::period_summary.excess_mwh": {
+      "count": 48,
+      "sha256": "5a6157c33fecd86da593be00d9b393a2",
+      "sha256_9g": "59c88cede3a2991a9783c91936d0c410",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.export_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.flexible_demand_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.forecast_demand_mwh": {
+      "count": 48,
+      "sha256": "783c97fb039dbc4a91a2f3ce1aeab731",
+      "sha256_9g": "783c97fb039dbc4a91a2f3ce1aeab731",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.import_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.market_payment_gbp": {
+      "count": 48,
+      "sha256": "f9326919a1a2bed35920e824d31cd028",
+      "sha256_9g": "21ca5cb90ad294388da0bc773fad7bc9",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::period_summary.period": {
+      "count": 48,
+      "sha256": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "sha256_9g": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.physical_resource_cost_gbp": {
+      "count": 48,
+      "sha256": "d15e36fbf5d2cb45d7c880ab7638c835",
+      "sha256_9g": "24afe9e073ca21909241c205a21a266d",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::period_summary.policy_transfer_gbp": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::period_summary.raw_energy_balance_residual_mwh": {
+      "count": 48,
+      "sha256": "e0204bd8c05bb36171c29fd8322c11bc",
+      "sha256_9g": "9ed8eff780f281f9ae7413d4d019e752",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::period_summary.real_demand_mwh": {
+      "count": 48,
+      "sha256": "5e9e5fc70a52a0c5b19575f865c3f7da",
+      "sha256_9g": "5e9e5fc70a52a0c5b19575f865c3f7da",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.stage": {
+      "count": 48,
+      "sha256": "f099c66c322d6d488f7bd9ecb58f7640",
+      "sha256_9g": "f099c66c322d6d488f7bd9ecb58f7640",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.storage_charge_mwh": {
+      "count": 48,
+      "sha256": "dacb70fbef3cf2e5362ffd9bf34d7712",
+      "sha256_9g": "2db0cfdc86be45744f51f2f6f1e8d2fd",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.storage_discharge_mwh": {
+      "count": 48,
+      "sha256": "345e0ba269ffdd058799fa44cca53be5",
+      "sha256_9g": "a16bb764350aab27dae23987db1714d6",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.vre_accepted_mwh": {
+      "count": 48,
+      "sha256": "59f5a24c78891032ef85cf88600b1883",
+      "sha256_9g": "884435aa13b0c271c26b06b09023f11f",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.vre_available_mwh": {
+      "count": 48,
+      "sha256": "24da1491057a74a7df63ffc8b25560bd",
+      "sha256_9g": "c448e65bf98068406bd1522ea1669caf",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::period_summary.year": {
+      "count": 48,
+      "sha256": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "sha256_9g": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.#rows": {
+      "count": 1,
+      "sha256": "a15a6d443e606125e9321e31003b0df0",
+      "sha256_9g": "a15a6d443e606125e9321e31003b0df0",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.asset_id": {
+      "count": 127,
+      "sha256": "70dc91120963afe0f90f0c3b02138957",
+      "sha256_9g": "70dc91120963afe0f90f0c3b02138957",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.balance_component_mwh": {
+      "count": 127,
+      "sha256": "ef647317294c6bbc5e75299468542e45",
+      "sha256_9g": "5284d9f9098e9262562a3cc4dcca750a",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::physical_dispatch.energy_mwh": {
+      "count": 127,
+      "sha256": "81b61bf67c4072392ae2258fd7756acf",
+      "sha256_9g": "a2637c6df35a95162cfe9734eb259b8c",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.evidence_scope": {
+      "count": 127,
+      "sha256": "ef3ca700d15b787031acb72c6b3b6e30",
+      "sha256_9g": "ef3ca700d15b787031acb72c6b3b6e30",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.flow_type": {
+      "count": 127,
+      "sha256": "ab844411c53a72745bab93dbf5f581bd",
+      "sha256_9g": "ab844411c53a72745bab93dbf5f581bd",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.period": {
+      "count": 127,
+      "sha256": "fa7cf5a7871e0736b9636a090e2ed65b",
+      "sha256_9g": "fa7cf5a7871e0736b9636a090e2ed65b",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.source_stage": {
+      "count": 127,
+      "sha256": "d4b85db01eea76ebef92b09b996914ea",
+      "sha256_9g": "d4b85db01eea76ebef92b09b996914ea",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.technology": {
+      "count": 127,
+      "sha256": "e5efafc612f3fe90c596442b3f602286",
+      "sha256_9g": "e5efafc612f3fe90c596442b3f602286",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::physical_dispatch.year": {
+      "count": 127,
+      "sha256": "9e9e0f7613683847bc9c1d00e612446c",
+      "sha256_9g": "9e9e0f7613683847bc9c1d00e612446c",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.accepted_delta_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.agent_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.asset_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.bid_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.bid_price_gbp_per_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.cashflow_to_agent_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::redispatch_settlement.direction": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.offered_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.reason_code": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.status": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.technology": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::redispatch_settlement.zone_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::reliability_event.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.affected_zones_json": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.end_period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.event_duration_hours": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.event_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.maximum_deficit_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.metric_semantics": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.observed_half_hours": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.start_period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.unserved_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::reliability_event.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.declaration_artifact_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.declared_input_sha256": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "identity"
+     },
+     "market/market.sqlite::solver_declaration_link.failure_artifact_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.solver_artifact_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.solver_status": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::solver_declaration_link.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.#rows": {
+      "count": 1,
+      "sha256": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "sha256_9g": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.asset_id": {
+      "count": 48,
+      "sha256": "a8144e36241bdc018c070a11f39337f5",
+      "sha256_9g": "a8144e36241bdc018c070a11f39337f5",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.charge_input_mwh": {
+      "count": 48,
+      "sha256": "dacb70fbef3cf2e5362ffd9bf34d7712",
+      "sha256_9g": "2db0cfdc86be45744f51f2f6f1e8d2fd",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.charge_stored_mwh": {
+      "count": 48,
+      "sha256": "f6d0a30bf77aefd44b33c834a647a44d",
+      "sha256_9g": "c4ed6472768bb5d431a2be57eddaebb3",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.discharge_output_mwh": {
+      "count": 48,
+      "sha256": "345e0ba269ffdd058799fa44cca53be5",
+      "sha256_9g": "a16bb764350aab27dae23987db1714d6",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.discharge_withdrawn_mwh": {
+      "count": 48,
+      "sha256": "fc3110b2c6a63c5ca856a23b4850a1e6",
+      "sha256_9g": "b739a6719f383c38f1ed4b6c016ebbc2",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.identity_residual_mwh": {
+      "count": 48,
+      "sha256": "7daa23c8e29f4ac7e01b6738c46735e8",
+      "sha256_9g": "add3c5980e77327b2147e0255cb5ec36",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.period": {
+      "count": 48,
+      "sha256": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "sha256_9g": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.self_discharge_mwh": {
+      "count": 48,
+      "sha256": "a8cf6239167d21e7860c6357d0bca85d",
+      "sha256_9g": "03a86070c0212d55db5eb91efc44e761",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.soc_end_mwh": {
+      "count": 48,
+      "sha256": "26c2e6805a2815d8eccd8be26de20fb8",
+      "sha256_9g": "bbdf3bc1bebbde7ca7c1d888ded0f91a",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.soc_start_mwh": {
+      "count": 48,
+      "sha256": "93ee2f70bdddfdc7a545ac4f95dcd115",
+      "sha256_9g": "73801c740e78a8f90a95002a1b9306d0",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.tail_writeoff_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_energy_audit.year": {
+      "count": 48,
+      "sha256": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "sha256_9g": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_state.#rows": {
+      "count": 1,
+      "sha256": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "sha256_9g": "8ac4ad168a9483650ca1ff34c2ce5709",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.asset_id": {
+      "count": 48,
+      "sha256": "a8144e36241bdc018c070a11f39337f5",
+      "sha256_9g": "a8144e36241bdc018c070a11f39337f5",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.charge_mwh": {
+      "count": 48,
+      "sha256": "7ea05f9d43140526afba071cb2adf284",
+      "sha256_9g": "716b07c88a18e6c6324deeed931821ce",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.discharge_mwh": {
+      "count": 48,
+      "sha256": "345e0ba269ffdd058799fa44cca53be5",
+      "sha256_9g": "a16bb764350aab27dae23987db1714d6",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.energy_capacity_mwh": {
+      "count": 48,
+      "sha256": "327ffc2b49bba7f091c8795bd4fd39c3",
+      "sha256_9g": "f7c74d52fb16e4139b896d677c1f233d",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.period": {
+      "count": 48,
+      "sha256": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "sha256_9g": "2dfa7aeaf4eea401942fbd52ea1cfabe",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.power_capacity_mw": {
+      "count": 48,
+      "sha256": "327ffc2b49bba7f091c8795bd4fd39c3",
+      "sha256_9g": "f7c74d52fb16e4139b896d677c1f233d",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.state_of_charge_mwh": {
+      "count": 48,
+      "sha256": "26c2e6805a2815d8eccd8be26de20fb8",
+      "sha256_9g": "bbdf3bc1bebbde7ca7c1d888ded0f91a",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_state.year": {
+      "count": 48,
+      "sha256": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "sha256_9g": "0cb8966ee56e5acc4e2e9f7b183d00f2",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::storage_year_boundary.#rows": {
+      "count": 1,
+      "sha256": "454778f91366e1e2008b6ce4aa1caef3",
+      "sha256_9g": "454778f91366e1e2008b6ce4aa1caef3",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.asset_id": {
+      "count": 1,
+      "sha256": "8c250b8064015588f7616db374b134af",
+      "sha256_9g": "8c250b8064015588f7616db374b134af",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.carried_forward_mwh": {
+      "count": 1,
+      "sha256": "ff9f3d26be4667da0b6f0de417e40596",
+      "sha256_9g": "89dccc040eb34648ee9f340cd069e9ec",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.carry_policy": {
+      "count": 1,
+      "sha256": "cb42724e41f7dc09c54762077371b104",
+      "sha256_9g": "cb42724e41f7dc09c54762077371b104",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.closing_soc_mwh": {
+      "count": 1,
+      "sha256": "2a8941c3ce49d28a8fb9b6a5997d69a1",
+      "sha256_9g": "321266b0add2086b3412193049d58505",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.discarded_mwh": {
+      "count": 1,
+      "sha256": "2a8941c3ce49d28a8fb9b6a5997d69a1",
+      "sha256_9g": "321266b0add2086b3412193049d58505",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.opening_soc_mwh": {
+      "count": 1,
+      "sha256": "ff9f3d26be4667da0b6f0de417e40596",
+      "sha256_9g": "89dccc040eb34648ee9f340cd069e9ec",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::storage_year_boundary.year": {
+      "count": 1,
+      "sha256": "f626a884ce4f8d305c5c3093ca82f213",
+      "sha256_9g": "f626a884ce4f8d305c5c3093ca82f213",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.boundary_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.event_index": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.first_period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.hidden_unserved_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.last_period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.periods": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.recorded_unserved_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.shortfall_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::stress_event.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.#rows": {
+      "count": 1,
+      "sha256": "36b6292d627c1075070b7b703b1d57c6",
+      "sha256_9g": "36b6292d627c1075070b7b703b1d57c6",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.available_mwh": {
+      "count": 11,
+      "sha256": "ef1331161dc04e66d393a972117dee40",
+      "sha256_9g": "efb0efcb2a14acb47a79fa1640cbddb7",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.curtailed_mwh": {
+      "count": 11,
+      "sha256": "fe7c1462eda881d8cee82bf19fb0b12e",
+      "sha256_9g": "33ecb1d6817be170ffe104957c6e7bf2",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.period": {
+      "count": 11,
+      "sha256": "d09876f516c531258c3252002a7a6c50",
+      "sha256_9g": "d09876f516c531258c3252002a7a6c50",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.source_class": {
+      "count": 11,
+      "sha256": "0ab29f388979b7e1758160180d025218",
+      "sha256_9g": "0ab29f388979b7e1758160180d025218",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.spilled_mwh": {
+      "count": 11,
+      "sha256": "f844453ede0127cff7d7ba55ab6e1ac7",
+      "sha256_9g": "1e947498cd8a5a4175822c1ebeac5c1a",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.to_dispatch_mwh": {
+      "count": 11,
+      "sha256": "46691874cde26e34b1d48eddb8d5afcb",
+      "sha256_9g": "90037f3f6be7d4ea3f979a8c0ee789a9",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.to_export_mwh": {
+      "count": 11,
+      "sha256": "46691874cde26e34b1d48eddb8d5afcb",
+      "sha256_9g": "90037f3f6be7d4ea3f979a8c0ee789a9",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.to_flexible_mwh": {
+      "count": 11,
+      "sha256": "46691874cde26e34b1d48eddb8d5afcb",
+      "sha256_9g": "90037f3f6be7d4ea3f979a8c0ee789a9",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.to_storage_mwh": {
+      "count": 11,
+      "sha256": "73baf020c2c86f817d3fc0731178184e",
+      "sha256_9g": "0f95e48ec7f9528abac02410d4e9e8fc",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.unrealised_mwh": {
+      "count": 11,
+      "sha256": "ae9a7f88d4bd3a987a9e9a0b8d7a965e",
+      "sha256_9g": "dc3acc1a6484db3608e308d8ac6688ac",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::surplus_routing.year": {
+      "count": 11,
+      "sha256": "9b017f22fc7fb947ad9057af6152536c",
+      "sha256_9g": "9b017f22fc7fb947ad9057af6152536c",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.asset_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.bid_tranche_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.copperplate_reference_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.economic_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.evidence_level": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.forecast_added_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.forecast_avoided_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.owner_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.perfect_reference_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.period_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.realised_available_vre_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.redispatch_added_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.redispatch_avoided_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.redispatch_net_impact_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.technology": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.total_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.zonal_final_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_detail.zone_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.accounting_status": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.attribution_method_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.copperplate_reference_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.counterfactual_realised_input_sha256": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.curtailment_rate": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.economic_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.forecast_added_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.forecast_avoided_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.identity_residual_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.perfect_reference_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.period_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.realised_available_vre_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.redispatch_added_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.redispatch_avoided_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.redispatch_net_impact_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.total_curtailment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.validation_tolerance_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::vre_curtailment_period.zonal_final_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_demand_alignment.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.aligned_zonal_total_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.conservation_residual_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_demand_alignment.demand_mode": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.network_national_demand_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.period_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.research_forecast_demand_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.research_real_demand_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.scale_factor": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_demand_alignment.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_period_accounting.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.accounting_status": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.blackout_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.counterfactual_realised_input_sha256": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.forecast_error_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.national_settlement_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.network_constraint_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.perfect_forecast_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.period_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.policy_transfer_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.realised_copperplate_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.redispatch_settlement_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.system_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.total_deviation_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_accounting.zonal_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.accounting_status": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.blackout_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.counterfactual_realised_input_sha256": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.curtailment_identity_residual_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.economic_ahead_unused_vre_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.forecast_error_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.national_settlement_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.network_added_curtailment_vre_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.network_constraint_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.perfect_forecast_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.period_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.policy_transfer_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.realised_availability_change_vre_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.realised_copperplate_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.redispatch_settlement_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.system_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.total_curtailment_vre_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.total_deviation_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_period_summary.zonal_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.agent_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.ahead_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.asset_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.charge_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.discharge_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.final_dispatch_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.final_soc_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.physical_resource_cost_gbp": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "accounting"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.signed_adjustment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.technology": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zonal_resource_dispatch.zone_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.#rows": {
+      "count": 1,
+      "sha256": "6ef114af0f3fcb6773ec804b3e74063f",
+      "sha256_9g": "6ef114af0f3fcb6773ec804b3e74063f",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.ahead_injection_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.demand_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.final_injection_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.load_shedding_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.net_position_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.period": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.signed_adjustment_mwh": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.year": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/market.sqlite::zone_period_summary.zone_id": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb924",
+      "sha256_9g": "e3b0c44298fc1c149afbf4c8996fb924",
+      "zone": "trajectory"
+     },
+     "market/metadata.json::bytes": {
+      "count": 1,
+      "sha256": "e08d65f376eebbdb785e8cb3e4454e73",
+      "sha256_9g": "e08d65f376eebbdb785e8cb3e4454e73",
+      "zone": "identity"
+     },
+     "market/metadata.json::compatibility_adjustment_periods": {
+      "count": 1,
+      "sha256": "11b884238d8320d2648b040ae7172676",
+      "sha256_9g": "11b884238d8320d2648b040ae7172676",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_by_year.charge_input_mwh": {
+      "count": 1,
+      "sha256": "f8f9430e62cefadd53c19ff12cfdaa78",
+      "sha256_9g": "354e8e739de526378d8e69e83dcc0975",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_by_year.discharge_output_mwh": {
+      "count": 1,
+      "sha256": "68c4795a23edcad9a71ba8e9d9b9aac6",
+      "sha256_9g": "cd87ed7def5b4cf44c9b6fdb092882f8",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_by_year.maximum_absolute_identity_residual_mwh": {
+      "count": 1,
+      "sha256": "d2a8bcb97b42cb72a3d44b6acb004d19",
+      "sha256_9g": "92619ce02b68f62bf405444579a91325",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_by_year.self_discharge_mwh": {
+      "count": 1,
+      "sha256": "ac5aa3d24fc43366b9b4c74e60037e12",
+      "sha256_9g": "60d0028641c09c12c18f12241adb3431",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_by_year.tail_writeoff_mwh": {
+      "count": 1,
+      "sha256": "4253497ca9ebcce18ec0a3de1b003f26",
+      "sha256_9g": "2a8823241d95662940cbdd8622085bd6",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_by_year.year": {
+      "count": 1,
+      "sha256": "c4011f5ffec02c3260ead489cba3a212",
+      "sha256_9g": "c4011f5ffec02c3260ead489cba3a212",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_throughput_exceedances.enforcement": {
+      "count": 1,
+      "sha256": "c289781324e2e0bbccbc299bf7d2758c",
+      "sha256_9g": "c289781324e2e0bbccbc299bf7d2758c",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_throughput_exceedances.periods": {
+      "count": 1,
+      "sha256": "b672bad5e1cef86068c562252cda2537",
+      "sha256_9g": "b672bad5e1cef86068c562252cda2537",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_year_boundary.carried_forward_mwh": {
+      "count": 1,
+      "sha256": "14e0698f77b1e7f009a08111920d7993",
+      "sha256_9g": "b3e319f8dbe772b26ff3c6d7bb790992",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_year_boundary.discarded_mwh": {
+      "count": 1,
+      "sha256": "349b9e0f14d3fb50ad07b7aa22e8213c",
+      "sha256_9g": "4a4e7ec331e54bd23611cb012e0e0c41",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.storage_year_boundary.year": {
+      "count": 1,
+      "sha256": "c19d22705545a1fefb8ff0b15cb5663d",
+      "sha256_9g": "c19d22705545a1fefb8ff0b15cb5663d",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.available_mwh": {
+      "count": 2,
+      "sha256": "819d421ef8e1bc306ffb33299a9b4d71",
+      "sha256_9g": "90ebeca81c63981500e3e352e948e76a",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.curtailed_mwh": {
+      "count": 2,
+      "sha256": "f9f7fa7293552a307cb111e64b958cd2",
+      "sha256_9g": "692c9d5bfc2c2f2fe236ee085c417da2",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.source_class": {
+      "count": 2,
+      "sha256": "dd4021a6d7edcadde7f8c51022d6aeb0",
+      "sha256_9g": "dd4021a6d7edcadde7f8c51022d6aeb0",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.spilled_mwh": {
+      "count": 2,
+      "sha256": "77d72afbacd082694d67ea4fdb83c43b",
+      "sha256_9g": "beb7d6ca9c9add0107cc1b866de944d6",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.to_dispatch_mwh": {
+      "count": 2,
+      "sha256": "ea69e182e4a62471623b8c47cb143d95",
+      "sha256_9g": "57ff60a2c27bf7a56bfa99b9d91781f1",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.to_export_mwh": {
+      "count": 2,
+      "sha256": "44e163f434a2beec21c261102a5f1384",
+      "sha256_9g": "2a7c44e201c067f26a818d9f3e46ee2b",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.to_flexible_mwh": {
+      "count": 2,
+      "sha256": "54f1624a2c47421d4c605569ce019b85",
+      "sha256_9g": "13a5d95c2292bd7c6e21a16075ea6519",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.to_storage_mwh": {
+      "count": 2,
+      "sha256": "9d7c626c575481054820951a0e1ef634",
+      "sha256_9g": "11f984b8f02333ef5398a096af3ec498",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.unrealised_mwh": {
+      "count": 2,
+      "sha256": "14e4b997d1a6b9a201cdd155eefeaa1a",
+      "sha256_9g": "948ee05bf7d66dbec02d30a2be368e97",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_audit.surplus_routing_by_year.year": {
+      "count": 2,
+      "sha256": "26d31ee0813b29465b2c20976acf4503",
+      "sha256_9g": "26d31ee0813b29465b2c20976acf4503",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.boundary_id": {
+      "count": 1,
+      "sha256": "6e3183f8ce62bc2035698db8a8cbaffc",
+      "sha256_9g": "6e3183f8ce62bc2035698db8a8cbaffc",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.demand_mwh": {
+      "count": 1,
+      "sha256": "173107d01cc99d4c78edcbcbf3ecc9fa",
+      "sha256_9g": "4baa703b8409221739f5541777ce51b4",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.hidden_unserved_mwh": {
+      "count": 1,
+      "sha256": "2298f791dd54ff9df9b1bd2b1e81fb87",
+      "sha256_9g": "c819ab2202e3488a195f81166644ee1c",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.in_dispatch_unrealised_mwh": {
+      "count": 1,
+      "sha256": "ae9925c81dfc23ab93a95f3186dc0e06",
+      "sha256_9g": "bfa40a6b5e2dd14868029c90c7144823",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.maximum_absolute_closing_residual_mwh": {
+      "count": 1,
+      "sha256": "bb416bde51c9b892cbfff3925aa412cd",
+      "sha256_9g": "44a413a0600c4b7f4ce3cb6581632839",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.maximum_absolute_raw_residual_mwh": {
+      "count": 1,
+      "sha256": "331ae694792d17d3950493dfe3280e20",
+      "sha256_9g": "730d410624fe050d7e0cc417145ad55e",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.non_vre_double_counted_mwh": {
+      "count": 1,
+      "sha256": "0d584ef102426648c036b10662590494",
+      "sha256_9g": "ce882a8d62da8d1f0ec6406c88803e3a",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.non_vre_spill_mwh": {
+      "count": 1,
+      "sha256": "ac39ef4a776eebe5d9ab6027e8c6c852",
+      "sha256_9g": "17fb01ef349d4dde3fe17170941ecdc6",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.periods": {
+      "count": 1,
+      "sha256": "7f6d3a0299feba7c6e92592c4ba516c1",
+      "sha256_9g": "7f6d3a0299feba7c6e92592c4ba516c1",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.recorded_unserved_mwh": {
+      "count": 1,
+      "sha256": "d62c370fe7e7cde7e3f109e0464b6c9b",
+      "sha256_9g": "bd0f95059b7ba8754e3f8c6f9bdd7be9",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.shortfall_mwh": {
+      "count": 1,
+      "sha256": "f12c2329ca140df10bd81d25dfcb3dd4",
+      "sha256_9g": "cf011b237e0ec3fefdfc77aadc909cac",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.stress_event_count": {
+      "count": 1,
+      "sha256": "4f75246e85ec06f8a4509928bac2f647",
+      "sha256_9g": "4f75246e85ec06f8a4509928bac2f647",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.stress_periods": {
+      "count": 1,
+      "sha256": "06725483af11d2de074172dbcc19ed06",
+      "sha256_9g": "06725483af11d2de074172dbcc19ed06",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.sum_absolute_compatibility_adjustment_mwh": {
+      "count": 1,
+      "sha256": "e30b2ea51572126987b267678aa4bc70",
+      "sha256_9g": "6fdb0d88094cf33ab022ce15e6dabb59",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.u_out_mwh": {
+      "count": 1,
+      "sha256": "3917b5c8c88025291442c3d41142a3a4",
+      "sha256_9g": "ce50924e85eca0c6a25aa98183c537c9",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.by_year.year": {
+      "count": 1,
+      "sha256": "be3cad86c5462976e922b8251f1e7b9a",
+      "sha256_9g": "be3cad86c5462976e922b8251f1e7b9a",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.decision": {
+      "count": 1,
+      "sha256": "1a326cc4609b2db513d438f84100835e",
+      "sha256_9g": "1a326cc4609b2db513d438f84100835e",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.rule_set": {
+      "count": 1,
+      "sha256": "19135119b928bb719d8c6be1651ded3c",
+      "sha256_9g": "19135119b928bb719d8c6be1651ded3c",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.strict": {
+      "count": 1,
+      "sha256": "9c614e91acdaf4c709d0580aef952b51",
+      "sha256_9g": "9c614e91acdaf4c709d0580aef952b51",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance.tolerance_tier": {
+      "count": 1,
+      "sha256": "a8cedcd62aef12dce416b744329eceda",
+      "sha256_9g": "a8cedcd62aef12dce416b744329eceda",
+      "zone": "accounting"
+     },
+     "market/metadata.json::energy_balance_relative_tolerance": {
+      "count": 1,
+      "sha256": "5d53175fd8a2dfa49310fbda2f72b51c",
+      "sha256_9g": "5d53175fd8a2dfa49310fbda2f72b51c",
+      "zone": "accounting"
+     },
+     "market/metadata.json::maximum_absolute_energy_balance_residual_mwh": {
+      "count": 1,
+      "sha256": "0b18291033127463518d6cedcf97f53a",
+      "sha256_9g": "d21b4a0145aaf9880e3a919403ad7934",
+      "zone": "accounting"
+     },
+     "market/metadata.json::maximum_absolute_raw_energy_balance_residual_mwh": {
+      "count": 1,
+      "sha256": "9e92c1f71e576e10a06437f418ad0ba6",
+      "sha256_9g": "96e811a816a5b4449c75b3c18e466fc1",
+      "zone": "accounting"
+     },
+     "market/metadata.json::parquet_exports": {
+      "count": 1,
+      "sha256": "0852060424cd11bb1191d914e7544bb5",
+      "sha256_9g": "0852060424cd11bb1191d914e7544bb5",
+      "zone": "accounting"
+     },
+     "market/metadata.json::requested_export_format": {
+      "count": 1,
+      "sha256": "e85f1fc196ee373080f76c159e5a2652",
+      "sha256_9g": "e85f1fc196ee373080f76c159e5a2652",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.balance_boundary_period": {
+      "count": 1,
+      "sha256": "4569b2544f3325e8e72941f18dbfb4fc",
+      "sha256_9g": "4569b2544f3325e8e72941f18dbfb4fc",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.boundary_period_summary": {
+      "count": 1,
+      "sha256": "778466858413440649734fe3ec5e97d7",
+      "sha256_9g": "778466858413440649734fe3ec5e97d7",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.clearing_inputs": {
+      "count": 1,
+      "sha256": "62029faae2f58791a80bf52e7556b2cb",
+      "sha256_9g": "62029faae2f58791a80bf52e7556b2cb",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.clearing_outcomes": {
+      "count": 1,
+      "sha256": "f6a85c11550ebe5b23913c30c63fc935",
+      "sha256_9g": "f6a85c11550ebe5b23913c30c63fc935",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.network_solver_diagnostics": {
+      "count": 1,
+      "sha256": "917373ca2031559d4ce6f5f78e6cefdc",
+      "sha256_9g": "917373ca2031559d4ce6f5f78e6cefdc",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.orders": {
+      "count": 1,
+      "sha256": "3d40f3a0e8f19306e2a3027ad5423fd4",
+      "sha256_9g": "3d40f3a0e8f19306e2a3027ad5423fd4",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.period_summary": {
+      "count": 1,
+      "sha256": "e729b4931d6bbe4d7c731c43f7586141",
+      "sha256_9g": "e729b4931d6bbe4d7c731c43f7586141",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.physical_dispatch": {
+      "count": 1,
+      "sha256": "9b156665fc3bc2c918303abe23c571f3",
+      "sha256_9g": "9b156665fc3bc2c918303abe23c571f3",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.redispatch_settlement": {
+      "count": 1,
+      "sha256": "78464c6c2bbaeb90b6a0cb0e472305d3",
+      "sha256_9g": "78464c6c2bbaeb90b6a0cb0e472305d3",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.reliability_event": {
+      "count": 1,
+      "sha256": "ee403976d494615c4b4ca8a203380361",
+      "sha256_9g": "ee403976d494615c4b4ca8a203380361",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.solver_declaration_link": {
+      "count": 1,
+      "sha256": "23c11e7f15f80d59ef496c442064b285",
+      "sha256_9g": "23c11e7f15f80d59ef496c442064b285",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.storage_energy_audit": {
+      "count": 1,
+      "sha256": "6e3c4ba1c6c7dda65ad683bf562bb762",
+      "sha256_9g": "6e3c4ba1c6c7dda65ad683bf562bb762",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.storage_state": {
+      "count": 1,
+      "sha256": "a91cb706d8c1ff67ea2f36a60bb6dbed",
+      "sha256_9g": "a91cb706d8c1ff67ea2f36a60bb6dbed",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.storage_year_boundary": {
+      "count": 1,
+      "sha256": "7b2f955a5d76ca655e598fced3d71e34",
+      "sha256_9g": "7b2f955a5d76ca655e598fced3d71e34",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.stress_event": {
+      "count": 1,
+      "sha256": "ec66d06d9dce58b596a73d931fa926d4",
+      "sha256_9g": "ec66d06d9dce58b596a73d931fa926d4",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.surplus_routing": {
+      "count": 1,
+      "sha256": "86e78a241df52fc9195ccb77ebcf98e7",
+      "sha256_9g": "86e78a241df52fc9195ccb77ebcf98e7",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.vre_curtailment_detail": {
+      "count": 1,
+      "sha256": "1040735da03991f54c363ed2b5c8e58a",
+      "sha256_9g": "1040735da03991f54c363ed2b5c8e58a",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.vre_curtailment_period": {
+      "count": 1,
+      "sha256": "e9affeddafb7d55d01e45ff8bb6db7fb",
+      "sha256_9g": "e9affeddafb7d55d01e45ff8bb6db7fb",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.zonal_demand_alignment": {
+      "count": 1,
+      "sha256": "136badd1d50e83045dce16bd7217759e",
+      "sha256_9g": "136badd1d50e83045dce16bd7217759e",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.zonal_period_accounting": {
+      "count": 1,
+      "sha256": "aae97dce2b43371621b38024ca902cf0",
+      "sha256_9g": "aae97dce2b43371621b38024ca902cf0",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.zonal_period_summary": {
+      "count": 1,
+      "sha256": "0fad53d4da09752ffe8256e62c2601d9",
+      "sha256_9g": "0fad53d4da09752ffe8256e62c2601d9",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.zonal_resource_dispatch": {
+      "count": 1,
+      "sha256": "1317fdbda61b58f406ed405fce9bffc8",
+      "sha256_9g": "1317fdbda61b58f406ed405fce9bffc8",
+      "zone": "accounting"
+     },
+     "market/metadata.json::rows.zone_period_summary": {
+      "count": 1,
+      "sha256": "90aa9640f6eb7b18672edb7ffd243d41",
+      "sha256_9g": "90aa9640f6eb7b18672edb7ffd243d41",
+      "zone": "accounting"
+     },
+     "market/metadata.json::schema_version": {
+      "count": 1,
+      "sha256": "5c90b74c41fc22c75e4e6eb16abffe65",
+      "sha256_9g": "5c90b74c41fc22c75e4e6eb16abffe65",
+      "zone": "identity"
+     },
+     "market/metadata.json::semantic_metadata.calendar": {
+      "count": 1,
+      "sha256": "d01486b945d7153b89f143099d87e5fb",
+      "sha256_9g": "d01486b945d7153b89f143099d87e5fb",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.curtailment_semantics": {
+      "count": 1,
+      "sha256": "78e0ff518ee77a657541e76a8eae7d34",
+      "sha256_9g": "78e0ff518ee77a657541e76a8eae7d34",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.dispatch_formulation": {
+      "count": 1,
+      "sha256": "9fe4a05e0ab9812a81e8e1f782c54135",
+      "sha256_9g": "9fe4a05e0ab9812a81e8e1f782c54135",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.excess_relationship": {
+      "count": 1,
+      "sha256": "28838f06dfa26e47a0541eeeac3877a5",
+      "sha256_9g": "28838f06dfa26e47a0541eeeac3877a5",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.excess_scope": {
+      "count": 1,
+      "sha256": "131bb4c274739827019144d12c0f8819",
+      "sha256_9g": "131bb4c274739827019144d12c0f8819",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.period_hours": {
+      "count": 1,
+      "sha256": "9d4d76a7e919a43a859600261d0be71f",
+      "sha256_9g": "9d4d76a7e919a43a859600261d0be71f",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.period_price_semantics": {
+      "count": 1,
+      "sha256": "23bba70e6af90ce90431b9b3f0698bc9",
+      "sha256_9g": "23bba70e6af90ce90431b9b3f0698bc9",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.pricing_rule": {
+      "count": 1,
+      "sha256": "3d0339f0e582d866c94870e28f511a03",
+      "sha256_9g": "3d0339f0e582d866c94870e28f511a03",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.psm_module_id": {
+      "count": 1,
+      "sha256": "76ccc1ad2cc62c37a50da9980514d3d5",
+      "sha256_9g": "76ccc1ad2cc62c37a50da9980514d3d5",
+      "zone": "identity"
+     },
+     "market/metadata.json::semantic_metadata.psm_module_version": {
+      "count": 1,
+      "sha256": "5044762077e2d817bc2d48706b7a7c0d",
+      "sha256_9g": "5044762077e2d817bc2d48706b7a7c0d",
+      "zone": "identity"
+     },
+     "market/metadata.json::semantic_metadata.requested_trace_level": {
+      "count": 1,
+      "sha256": "a15be72a8c0b82cb7b1f02d308484317",
+      "sha256_9g": "a15be72a8c0b82cb7b1f02d308484317",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.stage_order": {
+      "count": 3,
+      "sha256": "b9187ee93bd0e8c44d0f43edeaf623a7",
+      "sha256_9g": "b9187ee93bd0e8c44d0f43edeaf623a7",
+      "zone": "accounting"
+     },
+     "market/metadata.json::semantic_metadata.timezone": {
+      "count": 1,
+      "sha256": "fb232683813ed49300749589f64226cd",
+      "sha256_9g": "fb232683813ed49300749589f64226cd",
+      "zone": "accounting"
+     },
+     "market/metadata.json::source_artifact_sha256": {
+      "count": 1,
+      "sha256": "0480912d01359b3caf9bd40fc11d2ed6",
+      "sha256_9g": "0480912d01359b3caf9bd40fc11d2ed6",
+      "zone": "identity"
+     },
+     "market/metadata.json::storage_cost_module_id": {
+      "count": 1,
+      "sha256": "6001d8e80d8c8dd9d3b26cf40526498b",
+      "sha256_9g": "6001d8e80d8c8dd9d3b26cf40526498b",
+      "zone": "identity"
+     },
+     "market/metadata.json::trace_level": {
+      "count": 1,
+      "sha256": "58e9932299d763e11370214082f79114",
+      "sha256_9g": "58e9932299d763e11370214082f79114",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::agent_economics_evidence.available": {
+      "count": 1,
+      "sha256": "a6ca6ebc8c18337d1b979d7b7e2da80a",
+      "sha256_9g": "a6ca6ebc8c18337d1b979d7b7e2da80a",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::agent_economics_evidence.reason": {
+      "count": 1,
+      "sha256": "3793749793c8e36b807058ff27745b17",
+      "sha256_9g": "3793749793c8e36b807058ff27745b17",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.absolute_difference": {
+      "count": 3,
+      "sha256": "b838b77ae14349cb4e18a97398462c27",
+      "sha256_9g": "8f2ad63f8cc01587530dd4a0708f36e4",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.absolute_tolerance": {
+      "count": 3,
+      "sha256": "46b86081ea7bfd2867d73d38fcb0fead",
+      "sha256_9g": "fdc8f50b825d57963b195bc6565cc6f8",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.actual": {
+      "count": 3,
+      "sha256": "9afc54af1e66ad3cc0fc6e292ab8bea9",
+      "sha256_9g": "9afc54af1e66ad3cc0fc6e292ab8bea9",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.class": {
+      "count": 3,
+      "sha256": "9ad8b390209f9f0e8037cc626a86d2b8",
+      "sha256_9g": "9ad8b390209f9f0e8037cc626a86d2b8",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.expected": {
+      "count": 3,
+      "sha256": "6ac9e1b5ce6aeaf44623eb2236a9fa31",
+      "sha256_9g": "6ac9e1b5ce6aeaf44623eb2236a9fa31",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.metric": {
+      "count": 3,
+      "sha256": "a86d474ee3530dafd3960650f4ad7e53",
+      "sha256_9g": "a86d474ee3530dafd3960650f4ad7e53",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.pass": {
+      "count": 3,
+      "sha256": "d4e92fc27de14edc74cc81f37290fe44",
+      "sha256_9g": "d4e92fc27de14edc74cc81f37290fe44",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.stage": {
+      "count": 3,
+      "sha256": "8b098cee68b928a26a7589d71f1a6ecb",
+      "sha256_9g": "8b098cee68b928a26a7589d71f1a6ecb",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks.year": {
+      "count": 3,
+      "sha256": "a253bed858980c3332f9540b6a305a43",
+      "sha256_9g": "a253bed858980c3332f9540b6a305a43",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks_passed": {
+      "count": 1,
+      "sha256": "9e2391844ac1239b6dd7809e9555a9ae",
+      "sha256_9g": "9e2391844ac1239b6dd7809e9555a9ae",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::checks_total": {
+      "count": 1,
+      "sha256": "ccd9c1926363dd7c955b427d82ee3179",
+      "sha256_9g": "ccd9c1926363dd7c955b427d82ee3179",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::contract_parity_passed": {
+      "count": 1,
+      "sha256": "033e869f76cea25e56192fa3425184e4",
+      "sha256_9g": "033e869f76cea25e56192fa3425184e4",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::execution_path": {
+      "count": 1,
+      "sha256": "e447831071e4269ef0720c385e6437e9",
+      "sha256_9g": "e447831071e4269ef0720c385e6437e9",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::execution_scope": {
+      "count": 1,
+      "sha256": "63975122e8f2276ae378507a91671b48",
+      "sha256_9g": "63975122e8f2276ae378507a91671b48",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::first_divergence": {
+      "count": 1,
+      "sha256": "c35de5c9109df9f8da0d444d410326f9",
+      "sha256_9g": "c35de5c9109df9f8da0d444d410326f9",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.available": {
+      "count": 1,
+      "sha256": "852150a1b60624e3b7c430d97b0182a3",
+      "sha256_9g": "852150a1b60624e3b7c430d97b0182a3",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.database_artifact": {
+      "count": 1,
+      "sha256": "c8483e0271f1e3d8bfc6f349349120e3",
+      "sha256_9g": "c8483e0271f1e3d8bfc6f349349120e3",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.artifact": {
+      "count": 1,
+      "sha256": "a38804819d4c54904b1eeacc7feab4b9",
+      "sha256_9g": "a38804819d4c54904b1eeacc7feab4b9",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.boundary_id": {
+      "count": 1,
+      "sha256": "15cd813244b44e66eab5fe2a90fd6445",
+      "sha256_9g": "15cd813244b44e66eab5fe2a90fd6445",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.compatibility_adjustment_periods": {
+      "count": 1,
+      "sha256": "76d7b5831f19601155d7d1a67ad58157",
+      "sha256_9g": "76d7b5831f19601155d7d1a67ad58157",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.maximum_absolute_full_node_residual_mwh": {
+      "count": 1,
+      "sha256": "df08cd18bd9a48d330db984848b4ab71",
+      "sha256_9g": "c4bfe066ac03cc0ce49ede0516f4cd7d",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.maximum_absolute_raw_residual_mwh": {
+      "count": 1,
+      "sha256": "057d4cabf8784d9f7b3d25bfb49c1f48",
+      "sha256_9g": "aa857c91f1d45884e960bcde2539c48d",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.periods": {
+      "count": 1,
+      "sha256": "b9450907624ef8bf4a7a4077cfa124cb",
+      "sha256_9g": "b9450907624ef8bf4a7a4077cfa124cb",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.reasons": {
+      "count": 1,
+      "sha256": "22cbfb7f6c179af9fcbf84957b2dfca5",
+      "sha256_9g": "22cbfb7f6c179af9fcbf84957b2dfca5",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.severity": {
+      "count": 1,
+      "sha256": "38f1894e919f4c59f1283df37f31c910",
+      "sha256_9g": "38f1894e919f4c59f1283df37f31c910",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.status": {
+      "count": 1,
+      "sha256": "bb861fc3abe7a853205e92ab0556029a",
+      "sha256_9g": "bb861fc3abe7a853205e92ab0556029a",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.energy_balance.sum_abs_compatibility_adjustment_mwh": {
+      "count": 1,
+      "sha256": "8379fe175b6ca5a4a630bf58d0700ffa",
+      "sha256_9g": "2faf44eea1d6423e071c88763f044c0c",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.periods": {
+      "count": 1,
+      "sha256": "8e8aaa0447c57d75613b707bee11b78c",
+      "sha256_9g": "8e8aaa0447c57d75613b707bee11b78c",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.source": {
+      "count": 1,
+      "sha256": "c1da7931eec87c4bcde10945fa833412",
+      "sha256_9g": "c1da7931eec87c4bcde10945fa833412",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::market_evidence.trace_level": {
+      "count": 1,
+      "sha256": "e9b4e1dc3eb6fc89850f959b9dff53d8",
+      "sha256_9g": "e9b4e1dc3eb6fc89850f959b9dff53d8",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::passed": {
+      "count": 1,
+      "sha256": "d5eb9eac22e3c7cade3cd49c43070bbd",
+      "sha256_9g": "d5eb9eac22e3c7cade3cd49c43070bbd",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::periods_per_year": {
+      "count": 1,
+      "sha256": "a87e39eada77edcf0a22c3b4f7a627d8",
+      "sha256_9g": "a87e39eada77edcf0a22c3b4f7a627d8",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::planning_evidence.available": {
+      "count": 1,
+      "sha256": "a730d4930678031e777cc8a37c194538",
+      "sha256_9g": "a730d4930678031e777cc8a37c194538",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::planning_evidence.database_artifact": {
+      "count": 1,
+      "sha256": "4aba6a7dbc9c4be833be446e747d9108",
+      "sha256_9g": "4aba6a7dbc9c4be833be446e747d9108",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::planning_evidence.years": {
+      "count": 1,
+      "sha256": "b7d820e4d8a5b72af9a937692e6be07d",
+      "sha256_9g": "b7d820e4d8a5b72af9a937692e6be07d",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::release_gate_passed": {
+      "count": 1,
+      "sha256": "bbf575856ae2593daadbe59128c6ee68",
+      "sha256_9g": "bbf575856ae2593daadbe59128c6ee68",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::retained_numerical_parity_passed": {
+      "count": 1,
+      "sha256": "ab44c70a36c2b3fc03214cdbc46428a7",
+      "sha256_9g": "ab44c70a36c2b3fc03214cdbc46428a7",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::run_invariants.artifact": {
+      "count": 1,
+      "sha256": "ad6ea4e479e73096214dbd7053e46485",
+      "sha256_9g": "ad6ea4e479e73096214dbd7053e46485",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::run_invariants.severity": {
+      "count": 1,
+      "sha256": "88122ebc470e3d325801fd7e0623220d",
+      "sha256_9g": "88122ebc470e3d325801fd7e0623220d",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::run_invariants.status": {
+      "count": 1,
+      "sha256": "aff3dc27efd9b08dab57328ff984a732",
+      "sha256_9g": "aff3dc27efd9b08dab57328ff984a732",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::schema_version": {
+      "count": 1,
+      "sha256": "94b3034159e0a2642adeba4f00d54aed",
+      "sha256_9g": "94b3034159e0a2642adeba4f00d54aed",
+      "zone": "identity"
+     },
+     "parity/stage-parity.json::selected_psm": {
+      "count": 1,
+      "sha256": "743140ebc54e1a961faac659908de5e6",
+      "sha256_9g": "743140ebc54e1a961faac659908de5e6",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::source": {
+      "count": 1,
+      "sha256": "f138a916a084856038d0868599752e49",
+      "sha256_9g": "f138a916a084856038d0868599752e49",
+      "zone": "accounting"
+     },
+     "parity/stage-parity.json::target": {
+      "count": 1,
+      "sha256": "a71acc92da7c016a608079299979e178",
+      "sha256_9g": "a71acc92da7c016a608079299979e178",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::execution_scope": {
+      "count": 1,
+      "sha256": "63975122e8f2276ae378507a91671b48",
+      "sha256_9g": "63975122e8f2276ae378507a91671b48",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.artifacts": {
+      "count": 1,
+      "sha256": "0d197f019e6010567ff6a276583759c3",
+      "sha256_9g": "0d197f019e6010567ff6a276583759c3",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.execution_kind": {
+      "count": 1,
+      "sha256": "6bfacaa861baf8bb4dff9d6f86984543",
+      "sha256_9g": "6bfacaa861baf8bb4dff9d6f86984543",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.fleet_economics.active_asset_count": {
+      "count": 1,
+      "sha256": "c7ed4f0c7eb83fb7374c71a58695de69",
+      "sha256_9g": "c7ed4f0c7eb83fb7374c71a58695de69",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.fleet_economics.annual_fixed_opex_gbp": {
+      "count": 1,
+      "sha256": "a5bd45fc08431a72e9c078a82db33ee4",
+      "sha256_9g": "98c194e7637a25395d769e2b9e9bcd76",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.fleet_economics.annualized_capital_cost_gbp": {
+      "count": 1,
+      "sha256": "1d48263783d2e63155e7782087c255bd",
+      "sha256_9g": "4119e0473321e11266f230efb09b9050",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.fleet_economics.missing_economic_asset_count": {
+      "count": 1,
+      "sha256": "2aa8bbcb9219d504a636082caedc6acb",
+      "sha256_9g": "2aa8bbcb9219d504a636082caedc6acb",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.fleet_economics.schema_version": {
+      "count": 1,
+      "sha256": "97f202ec6f83d9326583d48dd188b8d5",
+      "sha256_9g": "97f202ec6f83d9326583d48dd188b8d5",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.live_invocation_sequence": {
+      "count": 1,
+      "sha256": "b71702aef62ea9cc0e09ae8a0873f7fe",
+      "sha256_9g": "b71702aef62ea9cc0e09ae8a0873f7fe",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.live_value_clearing_invocation": {
+      "count": 1,
+      "sha256": "21a572e3854c5d7d0e20fbdc9604d4dd",
+      "sha256_9g": "21a572e3854c5d7d0e20fbdc9604d4dd",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.bytes": {
+      "count": 1,
+      "sha256": "21054893b04835051214784cd7374f97",
+      "sha256_9g": "21054893b04835051214784cd7374f97",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.compatibility_adjustment_periods": {
+      "count": 1,
+      "sha256": "a3296d862669ba2787cab84b693fe711",
+      "sha256_9g": "a3296d862669ba2787cab84b693fe711",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.energy_audit": {
+      "count": 31,
+      "sha256": "2a62ea58de98b983f5c82c9d0682d2eb",
+      "sha256_9g": "9ce9a0aac0e07ea979b684225d6a66c0",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.energy_balance": {
+      "count": 20,
+      "sha256": "55bb86993bfa194dea0adfe1597134f1",
+      "sha256_9g": "4a5248a787f02eb0185490a71346fd4a",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.energy_balance_relative_tolerance": {
+      "count": 1,
+      "sha256": "06f0777019b38bd8594c13d245ec0ce6",
+      "sha256_9g": "06f0777019b38bd8594c13d245ec0ce6",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.maximum_absolute_energy_balance_residual_mwh": {
+      "count": 1,
+      "sha256": "f182447d24596d94b09a39cf772e0656",
+      "sha256_9g": "8b847afdb4f87f0a74ba59710d546a78",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.maximum_absolute_raw_energy_balance_residual_mwh": {
+      "count": 1,
+      "sha256": "b6ef0131f701f7c4270c328c3e50649c",
+      "sha256_9g": "b9b3d824a6db63ffb52feefe4e9a9970",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.parquet_exports": {
+      "count": 1,
+      "sha256": "50a4c3e1a9cf084020128ee99221467b",
+      "sha256_9g": "50a4c3e1a9cf084020128ee99221467b",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.requested_export_format": {
+      "count": 1,
+      "sha256": "1a1a63015606151c93333371d14ac5bf",
+      "sha256_9g": "1a1a63015606151c93333371d14ac5bf",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.rows": {
+      "count": 23,
+      "sha256": "a67edd03d8d026952f34ddd1bfd97b11",
+      "sha256_9g": "a67edd03d8d026952f34ddd1bfd97b11",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.schema_version": {
+      "count": 1,
+      "sha256": "d2bd8e8c467f78db08e2c3a808018e28",
+      "sha256_9g": "d2bd8e8c467f78db08e2c3a808018e28",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.semantic_metadata": {
+      "count": 15,
+      "sha256": "5ec6a82aca27ab42bc8627fcf0c428b7",
+      "sha256_9g": "5ec6a82aca27ab42bc8627fcf0c428b7",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.source_artifact_sha256": {
+      "count": 1,
+      "sha256": "54cbcc9c103228df26f73b1c4893fa06",
+      "sha256_9g": "54cbcc9c103228df26f73b1c4893fa06",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.storage_cost_module_id": {
+      "count": 1,
+      "sha256": "36a1fcca0520d742dde321b56cd42689",
+      "sha256_9g": "36a1fcca0520d742dde321b56cd42689",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.market_ledger.trace_level": {
+      "count": 1,
+      "sha256": "bbadfb145dd5d311a7c825833de5e32e",
+      "sha256_9g": "bbadfb145dd5d311a7c825833de5e32e",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.physical_operating_cost_components_gbp.generation_import_and_reliability": {
+      "count": 1,
+      "sha256": "7b9ace51766f21066ed1f5efbfeb6e50",
+      "sha256_9g": "999c93d571e3eac55c511eae38328d0b",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.physical_operating_cost_components_gbp.storage_cycle_depreciation": {
+      "count": 1,
+      "sha256": "9fa0b8dc9e9cc8078aaf51c555cd3f9b",
+      "sha256_9g": "a64bb7f285ba1f35bdc07b99aeaa31fb",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.runtime_market_income_gbp_by_agent.1c_battery": {
+      "count": 1,
+      "sha256": "6db0d6a796c29fea320b60990d000420",
+      "sha256_9g": "e2cbfa43ec545a6e7f93d698876355c2",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.runtime_market_income_gbp_by_agent.CCGT": {
+      "count": 1,
+      "sha256": "c8d6fa490d44e0de93296de925985594",
+      "sha256_9g": "36bab90959745f7491fe65e247ef3560",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.runtime_market_income_gbp_by_agent.onshore_Portsmouth": {
+      "count": 1,
+      "sha256": "0ec8e0c53b4cfcfa3c59d17718fb6d6b",
+      "sha256_9g": "28f59f70b241626278d81522df59fc8b",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.runtime_market_income_gbp_by_agent.solar_Portsmouth": {
+      "count": 1,
+      "sha256": "e59341aaf6be36a2fce4a3329069d70c",
+      "sha256_9g": "823f8f085c9610917d980cbcc9ddf602",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.active_asset_count": {
+      "count": 1,
+      "sha256": "a41bffeb0d4bff41001dfb34adbdf86d",
+      "sha256_9g": "a41bffeb0d4bff41001dfb34adbdf86d",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.generator_objects": {
+      "count": 132,
+      "sha256": "825046541bf8496be5dcbfbc72a8b484",
+      "sha256_9g": "01f3ef50d9a6397456431ae983c546bd",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.mapped_asset_count": {
+      "count": 1,
+      "sha256": "42efc92e10c9e0b0c5241aac8db146b2",
+      "sha256_9g": "42efc92e10c9e0b0c5241aac8db146b2",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.schema_version": {
+      "count": 1,
+      "sha256": "844f58bf431e221466e31d1a45624621",
+      "sha256_9g": "844f58bf431e221466e31d1a45624621",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.storage_objects": {
+      "count": 4,
+      "sha256": "a0af07391a0ef93036977ffaa198e6fd",
+      "sha256_9g": "cd3e0f39db3fc9d3bb0ffe9e7753849f",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.unmapped_asset_ids": {
+      "count": 1,
+      "sha256": "1cc07fe3cccdbf47a219372b39ecac84",
+      "sha256_9g": "1cc07fe3cccdbf47a219372b39ecac84",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.state_coupling.year": {
+      "count": 1,
+      "sha256": "5c6ef26e670ba40955b6d9b0fff44269",
+      "sha256_9g": "5c6ef26e670ba40955b6d9b0fff44269",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.storage_cost_module_id": {
+      "count": 1,
+      "sha256": "4f4d87c217912564ea6a64644d53fc80",
+      "sha256_9g": "4f4d87c217912564ea6a64644d53fc80",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.storage_cost_observations.1c_battery": {
+      "count": 26,
+      "sha256": "2b371cde5bef7dbfe748ef993b5eb381",
+      "sha256_9g": "332f130fbc190a9033522929bda75983",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.vre_expansion_headroom_mw_by_technology.offshore": {
+      "count": 1,
+      "sha256": "07cd1e1e7b7564dd3083720f5e7a3df1",
+      "sha256_9g": "4ef9cf7332c91fed39f2705f75f1e62b",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.vre_expansion_headroom_mw_by_technology.onshore": {
+      "count": 1,
+      "sha256": "e36dd918d5f83e5f9bf5009a9dea2c01",
+      "sha256_9g": "4c96f3e56e1717e2a6994684dcd1d5e6",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.extensions.vre_expansion_headroom_mw_by_technology.solar": {
+      "count": 1,
+      "sha256": "babb1b519c4cb594e7c3a5073e3d4880",
+      "sha256_9g": "ed6ca17313950014c2e0f04285c2b356",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.generation_mwh_by_asset.CCGT": {
+      "count": 1,
+      "sha256": "f8667282264d59eda6766114260a6890",
+      "sha256_9g": "8f8e75f495226f2b2673ad150481d387",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.generation_mwh_by_asset.onshore_Portsmouth": {
+      "count": 1,
+      "sha256": "915c58c656ebfddbda6e81cda864ae09",
+      "sha256_9g": "b2f94ef7463fc0acbf37fd8275d5aaa7",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.generation_mwh_by_asset.solar_Portsmouth": {
+      "count": 1,
+      "sha256": "6a01f0ca2a1593fda6a2dab22ea22ad6",
+      "sha256_9g": "3cd775ed8c9d679004ac419fc9437dc5",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.market_income_gbp_by_agent.1c_battery": {
+      "count": 1,
+      "sha256": "af795fbe8da01aa39ce819034f5dc687",
+      "sha256_9g": "f4676911d9a92adb10ecd80875c72b92",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.market_income_gbp_by_agent.CCGT": {
+      "count": 1,
+      "sha256": "aadee9821e6a2341ce69e09d3c2fa627",
+      "sha256_9g": "4dd648591833945bb1904547ce750619",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.market_income_gbp_by_agent.onshore_Portsmouth": {
+      "count": 1,
+      "sha256": "49e73c1d579350322029ef2550d4fb3e",
+      "sha256_9g": "6f2c2ad82c8d600ba4dbee30380abbdb",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.market_income_gbp_by_agent.solar_Portsmouth": {
+      "count": 1,
+      "sha256": "54446f29f36e439d9f67e1729b7442e5",
+      "sha256_9g": "9fda8bf0dc9c322d2de53e27e799302a",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.module_id": {
+      "count": 1,
+      "sha256": "6bfd55341a54f80033a650d8cd61edad",
+      "sha256_9g": "6bfd55341a54f80033a650d8cd61edad",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.module_version": {
+      "count": 1,
+      "sha256": "488479e8f00e8368a97c831e0afde918",
+      "sha256_9g": "488479e8f00e8368a97c831e0afde918",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.accepted_supply_mwh": {
+      "count": 48,
+      "sha256": "ac75cb14fae309825fe5010d5d9d3dcd",
+      "sha256_9g": "e29964b56ecf6c2dde1e23a530556da8",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.blackout_mwh": {
+      "count": 48,
+      "sha256": "edbf49d39adbd2cb21a71319b4af5534",
+      "sha256_9g": "8196396e1dcac865df68311979bcc8bd",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.clearing_price_gbp_per_mwh": {
+      "count": 48,
+      "sha256": "ab4e72211920becf87954e7d9c29cbd8",
+      "sha256_9g": "b8004a536b2647c5270ccfeb090cc67b",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.curtailed_mwh": {
+      "count": 48,
+      "sha256": "bae2d2143bd6f277512e8ff512a86644",
+      "sha256_9g": "c56142c2b3a2e804525620053f39804e",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.energy_balance_residual_mwh": {
+      "count": 48,
+      "sha256": "182e9b72999e29b74b8cb8776f0f0919",
+      "sha256_9g": "658a6922b6014d50e5d9cabb83fb44e8",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.forecast_demand_mwh": {
+      "count": 48,
+      "sha256": "65fe7c3244d8f87e6ba8e023fad4e252",
+      "sha256_9g": "65fe7c3244d8f87e6ba8e023fad4e252",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.import_mwh": {
+      "count": 48,
+      "sha256": "fa2590e4f4f01517c2202bf8e8f5484c",
+      "sha256_9g": "9116724b2df33858b51638a38b15eaf8",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.market_payment_gbp": {
+      "count": 48,
+      "sha256": "e11d8ca957d56bedfec850e0a7ac02ea",
+      "sha256_9g": "cb144f86deafdff36010f2aec16c10e2",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.market_stage": {
+      "count": 48,
+      "sha256": "5ca35331781e3ab1ed20967c73747dcf",
+      "sha256_9g": "5ca35331781e3ab1ed20967c73747dcf",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.period": {
+      "count": 48,
+      "sha256": "ccae0daa544cf6f3110955d944b1c52f",
+      "sha256_9g": "ccae0daa544cf6f3110955d944b1c52f",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.period_id": {
+      "count": 48,
+      "sha256": "6f3e04b9be97c4f5138eeef66b0d0a7f",
+      "sha256_9g": "6f3e04b9be97c4f5138eeef66b0d0a7f",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.physical_resource_cost_gbp": {
+      "count": 48,
+      "sha256": "0d2ef2323df4994b22ea58e20bf33b5b",
+      "sha256_9g": "b7cf3bffbcaa6c6aa71cd9378eff440a",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.real_demand_mwh": {
+      "count": 48,
+      "sha256": "4b18e18f24067c1e4fab7a0b52f542e5",
+      "sha256_9g": "4b18e18f24067c1e4fab7a0b52f542e5",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.schema_version": {
+      "count": 48,
+      "sha256": "3cd62c5eb0d5e333c50a6a438b2cd67b",
+      "sha256_9g": "3cd62c5eb0d5e333c50a6a438b2cd67b",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.storage_charge_mwh": {
+      "count": 48,
+      "sha256": "026c05c579bf2c0977ccb5c3eacd7699",
+      "sha256_9g": "baa377c9296d47a864509bb6be9ebc09",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.storage_discharge_mwh": {
+      "count": 48,
+      "sha256": "1bdd5caac8e64497b52801c191a55c74",
+      "sha256_9g": "ad4235d7be4a4bf63455f326064c6fe4",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.units.cost": {
+      "count": 48,
+      "sha256": "7ee0237088a42e833a9b890f3edf15b0",
+      "sha256_9g": "7ee0237088a42e833a9b890f3edf15b0",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.units.energy": {
+      "count": 48,
+      "sha256": "523d384eca4f4dc7f21f668a2dbca897",
+      "sha256_9g": "523d384eca4f4dc7f21f668a2dbca897",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.units.price": {
+      "count": 48,
+      "sha256": "337b66317e8372c31d29f292942ec787",
+      "sha256_9g": "337b66317e8372c31d29f292942ec787",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.vre_accepted_mwh": {
+      "count": 48,
+      "sha256": "77c69c842b92361faf61457cdcffb822",
+      "sha256_9g": "1eec922b05434f7878ca9a3897bcc6ae",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.vre_available_mwh": {
+      "count": 48,
+      "sha256": "d6b4d45c3b96bf23ff5a2b8a00db7833",
+      "sha256_9g": "c033f127fb043840dec75b418de8bf88",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.period_summaries.year": {
+      "count": 48,
+      "sha256": "1e4e2c16a6449199b5f86d5ddfc74598",
+      "sha256_9g": "1e4e2c16a6449199b5f86d5ddfc74598",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.result_id": {
+      "count": 1,
+      "sha256": "a4960e0205c4d7d4cff5d537d51847fc",
+      "sha256_9g": "a4960e0205c4d7d4cff5d537d51847fc",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.schema_version": {
+      "count": 1,
+      "sha256": "8cc525b74391f098c56e711669c31d2a",
+      "sha256_9g": "8cc525b74391f098c56e711669c31d2a",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::market_result.total_blackout_mwh": {
+      "count": 1,
+      "sha256": "2a0431fea0e9e7e8377061db4e986343",
+      "sha256_9g": "9d4fc28d6c187d1fa50c08dbaea237e0",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.total_demand_mwh": {
+      "count": 1,
+      "sha256": "43a73bbb5ac7fe9c6aa1a17a7a3f4de5",
+      "sha256_9g": "9ec30534dd4b40c282ad49ce010acbd3",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.total_excess_mwh": {
+      "count": 1,
+      "sha256": "38b9214b9d7d1a0590613516e2715d39",
+      "sha256_9g": "4131a8ef074356977365f1cc5616f41a",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.total_generation_mwh": {
+      "count": 1,
+      "sha256": "58ce137470dcd6a7590fdcb29f1cd700",
+      "sha256_9g": "5fb5d76947efda872044c2cb6af90804",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.total_levelized_capital_cost_gbp": {
+      "count": 1,
+      "sha256": "461f28340497428ecc3c85e77fd6122e",
+      "sha256_9g": "e4b37af85ff69e40ac2f14a1247dc04e",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.total_operational_cost_gbp": {
+      "count": 1,
+      "sha256": "610616545ce382998381c6f794bc38f1",
+      "sha256_9g": "949313b383ec68c28e3448067e03d6f0",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.total_system_cost_gbp": {
+      "count": 1,
+      "sha256": "d8406af555fd18afeb89d3f4e8514c3f",
+      "sha256_9g": "b5bca78414a7345526d7d96a56999497",
+      "zone": "accounting"
+     },
+     "teaching/one-day-market-result.json::market_result.units.capacity": {
+      "count": 1,
+      "sha256": "1c8edd5b20ff77c9c192a57b4f71c3de",
+      "sha256_9g": "1c8edd5b20ff77c9c192a57b4f71c3de",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.units.cost": {
+      "count": 1,
+      "sha256": "30d16735e920ed769f0cd13d504f2770",
+      "sha256_9g": "30d16735e920ed769f0cd13d504f2770",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.units.energy": {
+      "count": 1,
+      "sha256": "90e9b49c524c0be325e4a4dd0f131f84",
+      "sha256_9g": "90e9b49c524c0be325e4a4dd0f131f84",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::market_result.year": {
+      "count": 1,
+      "sha256": "5ca52abb2e6dea8acfb43a27067e350a",
+      "sha256_9g": "5ca52abb2e6dea8acfb43a27067e350a",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::period_hours": {
+      "count": 1,
+      "sha256": "d108f3bfe86e3078478290a9a4ef7b6c",
+      "sha256_9g": "d108f3bfe86e3078478290a9a4ef7b6c",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::periods": {
+      "count": 1,
+      "sha256": "4856efb76984c7b3a1d71833e059d80f",
+      "sha256_9g": "4856efb76984c7b3a1d71833e059d80f",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::psm_module_id": {
+      "count": 1,
+      "sha256": "2b6bde413d2bff73d7a6d06388e7c7d3",
+      "sha256_9g": "2b6bde413d2bff73d7a6d06388e7c7d3",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::run_id": {
+      "count": 1,
+      "sha256": "51cb2929e860069f7ba812b37461f9cb",
+      "sha256_9g": "51cb2929e860069f7ba812b37461f9cb",
+      "zone": "trajectory"
+     },
+     "teaching/one-day-market-result.json::schema_version": {
+      "count": 1,
+      "sha256": "4c9190a632f60ddd1b968fa2201245b6",
+      "sha256_9g": "4c9190a632f60ddd1b968fa2201245b6",
+      "zone": "identity"
+     },
+     "teaching/one-day-market-result.json::year": {
+      "count": 1,
+      "sha256": "453430ada4be2fdfb140ea7de35a302b",
+      "sha256_9g": "453430ada4be2fdfb140ea7de35a302b",
+      "zone": "trajectory"
+     },
+     "validation/energy-balance-oracle.json::boundary.boundary_id": {
+      "count": 1,
+      "sha256": "2a7e7eabf6cb834feeb6bfd64a8695b9",
+      "sha256_9g": "2a7e7eabf6cb834feeb6bfd64a8695b9",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.known": {
+      "count": 1,
+      "sha256": "5c710554996ac2a886565794623b6535",
+      "sha256_9g": "5c710554996ac2a886565794623b6535",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.module_id": {
+      "count": 1,
+      "sha256": "c14a287b479fa9a7fe6d243176b08c38",
+      "sha256_9g": "c14a287b479fa9a7fe6d243176b08c38",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::boundary.module_version": {
+      "count": 1,
+      "sha256": "c20aa6228727a6b66f5082eadce3896b",
+      "sha256_9g": "c20aa6228727a6b66f5082eadce3896b",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.boundary_id": {
+      "count": 1,
+      "sha256": "8c46ac7ec33cebbbcb9b036c360c8766",
+      "sha256_9g": "8c46ac7ec33cebbbcb9b036c360c8766",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.legacy_raw_basis": {
+      "count": 1,
+      "sha256": "acd36af89648308df990bf0ae81033e3",
+      "sha256_9g": "acd36af89648308df990bf0ae81033e3",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.maximum_version_exclusive": {
+      "count": 1,
+      "sha256": "b7d91833161918e3120465425161302d",
+      "sha256_9g": "b7d91833161918e3120465425161302d",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.minimum_version": {
+      "count": 1,
+      "sha256": "6372830b687d0a4ea34d6df6629cf9bc",
+      "sha256_9g": "6372830b687d0a4ea34d6df6629cf9bc",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.module_id": {
+      "count": 1,
+      "sha256": "58056485811f711781f18c248a2b97db",
+      "sha256_9g": "58056485811f711781f18c248a2b97db",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.rule_sets": {
+      "count": 3,
+      "sha256": "975e1180f14f1e964665f410ce2495a7",
+      "sha256_9g": "975e1180f14f1e964665f410ce2495a7",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.registry_entry.tolerance_tier": {
+      "count": 1,
+      "sha256": "b0b340f4ce3910ff861b1d4f160e08dc",
+      "sha256_9g": "b0b340f4ce3910ff861b1d4f160e08dc",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.rule_set": {
+      "count": 1,
+      "sha256": "5e302f347a21aab784871b60c46c9e66",
+      "sha256_9g": "5e302f347a21aab784871b60c46c9e66",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.source": {
+      "count": 1,
+      "sha256": "7d6dc78cf8332021af61dafcd5050d80",
+      "sha256_9g": "7d6dc78cf8332021af61dafcd5050d80",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::boundary.tolerance_tier": {
+      "count": 1,
+      "sha256": "331aa7c3fa0f34df8d94a6bb71591def",
+      "sha256_9g": "331aa7c3fa0f34df8d94a6bb71591def",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.boundary_id": {
+      "count": 1,
+      "sha256": "2bd155375c708bd254e5d3e116515a4d",
+      "sha256_9g": "2bd155375c708bd254e5d3e116515a4d",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.class": {
+      "count": 5,
+      "sha256": "22e966715b04e5cfae43f95193009023",
+      "sha256_9g": "22e966715b04e5cfae43f95193009023",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.id": {
+      "count": 5,
+      "sha256": "5043a2108f9242dd7f2eef1296c86a85",
+      "sha256_9g": "5043a2108f9242dd7f2eef1296c86a85",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.note": {
+      "count": 1,
+      "sha256": "3e202269c69d414834dfcb584baed5fc",
+      "sha256_9g": "3e202269c69d414834dfcb584baed5fc",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.raw_residual_basis": {
+      "count": 1,
+      "sha256": "5a915fcd4cdab5672de423abeba035b4",
+      "sha256_9g": "5a915fcd4cdab5672de423abeba035b4",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.share": {
+      "count": 1,
+      "sha256": "3901c681fc458cbf1c3b9d3fe3c5e6e6",
+      "sha256_9g": "8d03c6b8ac4d474903c478a2fc7aab8a",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::checks.status": {
+      "count": 5,
+      "sha256": "06d92e79cce1f0f87e8960dac231d33d",
+      "sha256_9g": "06d92e79cce1f0f87e8960dac231d33d",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::contract_version": {
+      "count": 1,
+      "sha256": "e27307e8673ea14e88ce9770f6f9efc2",
+      "sha256_9g": "e27307e8673ea14e88ce9770f6f9efc2",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::ledger.artifact": {
+      "count": 1,
+      "sha256": "7f3234cc77e7415e9093ca5d383ee991",
+      "sha256_9g": "7f3234cc77e7415e9093ca5d383ee991",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::ledger.schema_version": {
+      "count": 1,
+      "sha256": "e1d812dbc3ec546109ea4f64bb729afc",
+      "sha256_9g": "e1d812dbc3ec546109ea4f64bb729afc",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::ledger.side_files": {
+      "count": 1,
+      "sha256": "a6db2a394a0f2564d778fcd130e84517",
+      "sha256_9g": "a6db2a394a0f2564d778fcd130e84517",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::ledger.source_artifact_sha256": {
+      "count": 1,
+      "sha256": "7797d7a702d6cbc29d23d5944c117841",
+      "sha256_9g": "7797d7a702d6cbc29d23d5944c117841",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::ledger.unchanged": {
+      "count": 1,
+      "sha256": "20fdb2573c2870cdf0eb256c00b32b7f",
+      "sha256_9g": "20fdb2573c2870cdf0eb256c00b32b7f",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.max_abs_mwh": {
+      "count": 1,
+      "sha256": "e647876ae1918befa86e7b6df34350f8",
+      "sha256_9g": "dfffd4832654fd1f4bbe7be05c926d49",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.max_mwh": {
+      "count": 1,
+      "sha256": "ac138e1ab3cf211c6c98d02615293790",
+      "sha256_9g": "45b8bf0f736b72233a1da2ef633a1f50",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.min_mwh": {
+      "count": 1,
+      "sha256": "ef3e4432d3d65011d406c474092a5548",
+      "sha256_9g": "7336106ee46c9ad06be0a49175af7223",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.periods": {
+      "count": 1,
+      "sha256": "40467f2d1b75025db8de27240dcf3c4e",
+      "sha256_9g": "40467f2d1b75025db8de27240dcf3c4e",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.periods_above_tolerance": {
+      "count": 1,
+      "sha256": "f3c02980127989a1cf337be4682541c6",
+      "sha256_9g": "f3c02980127989a1cf337be4682541c6",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.sum_abs_mwh": {
+      "count": 1,
+      "sha256": "5650f5450ac84bdf8b3c1ed3ff07c3d4",
+      "sha256_9g": "2df6ca175556de2fdb1c9b7696fdb709",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.boundary_residual.sum_mwh": {
+      "count": 1,
+      "sha256": "0adb1d8e6e6cccb735cf7adfd6cd466d",
+      "sha256_9g": "6456a84c1702ffb79b3624750452b358",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.boundary_used": {
+      "count": 1,
+      "sha256": "ef6678505fd30514ad78fba7ae5d6c34",
+      "sha256_9g": "ef6678505fd30514ad78fba7ae5d6c34",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.lower_violations": {
+      "count": 1,
+      "sha256": "1c551737cf78633c1f870a3cd9fb895a",
+      "sha256_9g": "1c551737cf78633c1f870a3cd9fb895a",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.max_lower_violation_mwh": {
+      "count": 1,
+      "sha256": "247643489018f5f0ac8b2bf2fe6551c2",
+      "sha256_9g": "dd0d66e6fd1370b476d765b640f1302f",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.max_upper_violation_mwh": {
+      "count": 1,
+      "sha256": "2f6a5ba8e298444c8ec0e0eb13164020",
+      "sha256_9g": "2df4249a34928cd42d4e84c0b9cf2800",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.sum_lower_violation_mwh": {
+      "count": 1,
+      "sha256": "6f925659c6203251eba9b1455c9249a9",
+      "sha256_9g": "a9afbe89d4d07f4386d8b7bd79fa689d",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.sum_upper_violation_mwh": {
+      "count": 1,
+      "sha256": "ef21f89b4db6eb83f9edaa8828627b55",
+      "sha256_9g": "1738ce9fcfad3bd906e1e563ec77c4ad",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.upper_violations": {
+      "count": 1,
+      "sha256": "1ebed744368438efb072af2cdbf65be8",
+      "sha256_9g": "1ebed744368438efb072af2cdbf65be8",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.envelope.worst_periods": {
+      "count": 1,
+      "sha256": "c5150dad1416f6892033e4067bc802d5",
+      "sha256_9g": "c5150dad1416f6892033e4067bc802d5",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.max_abs_mwh": {
+      "count": 1,
+      "sha256": "59cd8737bd7ab553d799af8b495492a7",
+      "sha256_9g": "4d544803bd01774939834d2b96c67443",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.max_mwh": {
+      "count": 1,
+      "sha256": "50cddb5b49ad76f31977f0fe99d2c972",
+      "sha256_9g": "5c1afcfcf487f3ba95b5e85960d96fcf",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.min_mwh": {
+      "count": 1,
+      "sha256": "38117587f6b59bf00774b1c92525e514",
+      "sha256_9g": "9e1701e84c8e5ee3117679bfe766d737",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.periods": {
+      "count": 1,
+      "sha256": "03e8047c730766025b96cdcad5cd56be",
+      "sha256_9g": "03e8047c730766025b96cdcad5cd56be",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.periods_above_tolerance": {
+      "count": 1,
+      "sha256": "8e8b62991b0a9bbae241044f30745c17",
+      "sha256_9g": "8e8b62991b0a9bbae241044f30745c17",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.sum_abs_mwh": {
+      "count": 1,
+      "sha256": "be20cd5d52c47fe5617f454536d6299e",
+      "sha256_9g": "b7d31016bf9c83bb3447f897dc7103ff",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.full_node.sum_mwh": {
+      "count": 1,
+      "sha256": "fe52e52cbe0ec0f387b910f8ef9427f6",
+      "sha256_9g": "0e784513d0ac5d381411492ec84754ee",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.periods": {
+      "count": 1,
+      "sha256": "3dc1f78b474a961f666cd4b0831075a7",
+      "sha256_9g": "3dc1f78b474a961f666cd4b0831075a7",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.adjusted_energy_share": {
+      "count": 1,
+      "sha256": "54c4da41bfd42e9e1dd12c72277164f1",
+      "sha256_9g": "d5a146abb83ba5c5e379ab5021626a27",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.adjusted_energy_share_cap": {
+      "count": 1,
+      "sha256": "751481c93db335e4020bdbcb29d49305",
+      "sha256_9g": "751481c93db335e4020bdbcb29d49305",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.adjusted_periods": {
+      "count": 1,
+      "sha256": "e58ba9a3206d4e47be0277fc49c738e1",
+      "sha256_9g": "e58ba9a3206d4e47be0277fc49c738e1",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.exceeds_cap": {
+      "count": 1,
+      "sha256": "4db84e8aec86febe72afeb0b94aa3eb3",
+      "sha256_9g": "4db84e8aec86febe72afeb0b94aa3eb3",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.max_abs_raw_residual_mwh": {
+      "count": 1,
+      "sha256": "4a10eb497a9b8ca39f7b26b7b577823a",
+      "sha256_9g": "cf1cf2656c70811c475b6fa013ead39c",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.sum_abs_adjustment_mwh": {
+      "count": 1,
+      "sha256": "f584fe5682a171f0008977f966c6d78d",
+      "sha256_9g": "b008a12373a36d439f06f6fe7d73352c",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.reported.sum_abs_raw_residual_mwh": {
+      "count": 1,
+      "sha256": "f185022aa6a2bb4b542198f78dc78f8c",
+      "sha256_9g": "b8a9d81b4e905469140e42f8a035703e",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.max_abs_mwh": {
+      "count": 1,
+      "sha256": "49844a034a8d7a015eed46968d868394",
+      "sha256_9g": "1f24065ff73ce9e78101c564eef1a928",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.max_mwh": {
+      "count": 1,
+      "sha256": "ba9ce8137622f32ec9a2ac39b44543bf",
+      "sha256_9g": "c63f624ed66a76a153b933e11fec0107",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.min_mwh": {
+      "count": 1,
+      "sha256": "3071a98444639d49bfe29a3387e6c22d",
+      "sha256_9g": "596c7656986a9be9a5cbffc739c0739e",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.periods": {
+      "count": 1,
+      "sha256": "698b5e6f4537ea73e8e2553419048506",
+      "sha256_9g": "698b5e6f4537ea73e8e2553419048506",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.periods_above_tolerance": {
+      "count": 1,
+      "sha256": "450086b5a95c42ccf00075cd56deebed",
+      "sha256_9g": "450086b5a95c42ccf00075cd56deebed",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.sum_abs_mwh": {
+      "count": 1,
+      "sha256": "af97e4bb75d82a40fdc58b55956231da",
+      "sha256_9g": "5c4ec4494d9106963d38d3ae010a12d9",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.retained_demand_serving.sum_mwh": {
+      "count": 1,
+      "sha256": "70b743ff1821740b68c8abaa8c61930e",
+      "sha256_9g": "d56f6b216f48d2704f08979d4dd88df1",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.self_report.inconsistent_periods": {
+      "count": 1,
+      "sha256": "512aac08926a34bd1e6fe81efecb1a5f",
+      "sha256_9g": "512aac08926a34bd1e6fe81efecb1a5f",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.self_report.raw_residual_basis": {
+      "count": 1,
+      "sha256": "ed47c5e1b41dc23b4c08f657b9d8aa59",
+      "sha256_9g": "ed47c5e1b41dc23b4c08f657b9d8aa59",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_blackout_mwh": {
+      "count": 1,
+      "sha256": "58baa87fd779d0503c5b579f35986346",
+      "sha256_9g": "6cdd66efb8c40ea52d17a2e7bb01bd10",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_curtailed_mwh": {
+      "count": 1,
+      "sha256": "54f1b9d2bbc90acaa6a6ee2fdcd00dfe",
+      "sha256_9g": "a295f9d24249c8dcc9270d29a9d7b441",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_demand_mwh": {
+      "count": 1,
+      "sha256": "4d38c8d6dc05c456ececa1d618d106c4",
+      "sha256_9g": "805963fc5ee93af25f06d65e337381db",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_excess_mwh": {
+      "count": 1,
+      "sha256": "ac1e2fd8d2591afd0d81286b47db1e7d",
+      "sha256_9g": "fc6d5f2ac0e4cd0506cfa36baea37751",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_export_mwh": {
+      "count": 1,
+      "sha256": "be54e93c2a2bee32d4a0744739d58791",
+      "sha256_9g": "796cd5bc1b4e269ce968b2fb211f1b09",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_flexible_demand_mwh": {
+      "count": 1,
+      "sha256": "497f69f570added7b0360cba2f47300a",
+      "sha256_9g": "a9ab53a6eef345d1b7863cecc3f7e7d3",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_storage_charge_mwh": {
+      "count": 1,
+      "sha256": "a070ee23194db9b9edbccd420165d5d1",
+      "sha256_9g": "e9631a9861803b4a954cd8acfc666c3b",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.sum_supply_mwh": {
+      "count": 1,
+      "sha256": "25d588763d9068b10ce06d7152620821",
+      "sha256_9g": "6518d1621d2c74480aea13cb4e3ce70d",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::metrics.years": {
+      "count": 1,
+      "sha256": "bb339589aa14594fff23c219e91a8942",
+      "sha256_9g": "bb339589aa14594fff23c219e91a8942",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::reasons": {
+      "count": 1,
+      "sha256": "e3747080edf5f1da362608796b8667e9",
+      "sha256_9g": "e3747080edf5f1da362608796b8667e9",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::report_only": {
+      "count": 1,
+      "sha256": "7c7de85b6780fe33634031a834604070",
+      "sha256_9g": "7c7de85b6780fe33634031a834604070",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::schema_version": {
+      "count": 1,
+      "sha256": "bb79af38e904efbaea26db75269a6938",
+      "sha256_9g": "bb79af38e904efbaea26db75269a6938",
+      "zone": "identity"
+     },
+     "validation/energy-balance-oracle.json::status": {
+      "count": 1,
+      "sha256": "293305358ceb542fb7af1b795c21e65f",
+      "sha256_9g": "293305358ceb542fb7af1b795c21e65f",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stored_artifact": {
+      "count": 1,
+      "sha256": "81575328a3ff036152b632c3cfd5896e",
+      "sha256_9g": "81575328a3ff036152b632c3cfd5896e",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.basis": {
+      "count": 1,
+      "sha256": "e64c4bef17424dd3a78cc1d03e259b98",
+      "sha256_9g": "e64c4bef17424dd3a78cc1d03e259b98",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.boundary_id": {
+      "count": 1,
+      "sha256": "87d32bc411c835ff7c6abe25dd284b3a",
+      "sha256_9g": "87d32bc411c835ff7c6abe25dd284b3a",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.event_count": {
+      "count": 1,
+      "sha256": "50b0a2f2a8e2ec9f8ac5342bf03caa3f",
+      "sha256_9g": "50b0a2f2a8e2ec9f8ac5342bf03caa3f",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.hidden_shortfall_lower_mwh": {
+      "count": 1,
+      "sha256": "715209bcc426616115d3c52ab0e5fa7c",
+      "sha256_9g": "02078921543df2a2cbd7a83cf0046f0c",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.possible_stress_periods": {
+      "count": 1,
+      "sha256": "54d5c1cf4c0a81f838d6f374863cbfaf",
+      "sha256_9g": "54d5c1cf4c0a81f838d6f374863cbfaf",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.recorded_unserved_mwh": {
+      "count": 1,
+      "sha256": "0bd4e6976cc0ea6339e2c333fdbe0937",
+      "sha256_9g": "26143a1c342f3796694877c8df56c80f",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.shortfall_lower_mwh": {
+      "count": 1,
+      "sha256": "717bc943ba2ed967bd7fa80d992c162a",
+      "sha256_9g": "701d7ec1bcc35fb3c46273a37b2de714",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.shortfall_upper_mwh": {
+      "count": 1,
+      "sha256": "44627f3e8061ec6b607efb4a6c8a3fa3",
+      "sha256_9g": "7a1ff3725ca8f568eb20d05eded5b46d",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.stress_periods": {
+      "count": 1,
+      "sha256": "bb5ccc31c67fe6e454978140589b1aed",
+      "sha256_9g": "bb5ccc31c67fe6e454978140589b1aed",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year.year": {
+      "count": 1,
+      "sha256": "4a16a7ebb3b87156f8430da27421147a",
+      "sha256_9g": "4a16a7ebb3b87156f8430da27421147a",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year_total": {
+      "count": 1,
+      "sha256": "eadef838dfee35f185737a54563ed586",
+      "sha256_9g": "eadef838dfee35f185737a54563ed586",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.by_year_truncated": {
+      "count": 1,
+      "sha256": "be59fe984da22d1b0bebb5b40eb048a3",
+      "sha256_9g": "be59fe984da22d1b0bebb5b40eb048a3",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.decision": {
+      "count": 1,
+      "sha256": "15682c174609aad6f99262c223452a26",
+      "sha256_9g": "15682c174609aad6f99262c223452a26",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.event_count": {
+      "count": 1,
+      "sha256": "870d13000f803ed1a5ff7504495cba91",
+      "sha256_9g": "870d13000f803ed1a5ff7504495cba91",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.events": {
+      "count": 1,
+      "sha256": "a318ed4b1191f65790649aabf81e0104",
+      "sha256_9g": "a318ed4b1191f65790649aabf81e0104",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.events_total": {
+      "count": 1,
+      "sha256": "d526b25620ccdfaa0bc27a2248d26334",
+      "sha256_9g": "d526b25620ccdfaa0bc27a2248d26334",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.events_truncated": {
+      "count": 1,
+      "sha256": "d4720977972c38830b18a9281a8c8369",
+      "sha256_9g": "d4720977972c38830b18a9281a8c8369",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.periods": {
+      "count": 1,
+      "sha256": "5bf7cd247e79dc168c064a4d70249317",
+      "sha256_9g": "5bf7cd247e79dc168c064a4d70249317",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.periods_evaluated": {
+      "count": 1,
+      "sha256": "f615d60f512283b32b5777738190e3a5",
+      "sha256_9g": "f615d60f512283b32b5777738190e3a5",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.periods_total": {
+      "count": 1,
+      "sha256": "799519b1df31af60936556c67b487160",
+      "sha256_9g": "799519b1df31af60936556c67b487160",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.periods_truncated": {
+      "count": 1,
+      "sha256": "7c06040305fca74d13e653a6530bb146",
+      "sha256_9g": "7c06040305fca74d13e653a6530bb146",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.possible_stress_periods": {
+      "count": 1,
+      "sha256": "d96c00d746b66de81540e0420777b779",
+      "sha256_9g": "d96c00d746b66de81540e0420777b779",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.recorded_unserved_mwh": {
+      "count": 1,
+      "sha256": "06a6102d54d19e47e67cf976379ffd78",
+      "sha256_9g": "94bc54fc8c22f9ab41d0f99d3a4670a3",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.shortfall_lower_mwh": {
+      "count": 1,
+      "sha256": "9f628e4b5bd7200d7e42be01791d3b05",
+      "sha256_9g": "d13d2019a7e4c816ccac9a83ca3140c8",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.shortfall_mwh": {
+      "count": 1,
+      "sha256": "e4e6c9fac1a949cd54712caedd24b8ed",
+      "sha256_9g": "269847e07b087695c328e37aceb8dcd8",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.shortfall_upper_mwh": {
+      "count": 1,
+      "sha256": "a3b6bc73bcd978009006531064e3260c",
+      "sha256_9g": "bf0a5a3a00ec3f0c045043c71d5e98a4",
+      "zone": "accounting"
+     },
+     "validation/energy-balance-oracle.json::stress.stress_periods": {
+      "count": 1,
+      "sha256": "8618ee55336a00c035b56155232156d7",
+      "sha256_9g": "8618ee55336a00c035b56155232156d7",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::demand_authority": {
+      "count": 1,
+      "sha256": "a5d81df809ccb3f8979bd347e97d0f91",
+      "sha256_9g": "a5d81df809ccb3f8979bd347e97d0f91",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::forecast_periods": {
+      "count": 1,
+      "sha256": "3311cd89d5f050c99277e942c287f19f",
+      "sha256_9g": "3311cd89d5f050c99277e942c287f19f",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::periods": {
+      "count": 1,
+      "sha256": "4856efb76984c7b3a1d71833e059d80f",
+      "sha256_9g": "4856efb76984c7b3a1d71833e059d80f",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::schema_version": {
+      "count": 1,
+      "sha256": "f12c12d7ee6c3e3db984f48a180e3322",
+      "sha256_9g": "f12c12d7ee6c3e3db984f48a180e3322",
+      "zone": "identity"
+     },
+     "validation/input-tally/year-2025.json::source": {
+      "count": 1,
+      "sha256": "21a4ecfaac4e520da9c37ee01fb124bb",
+      "sha256_9g": "21a4ecfaac4e520da9c37ee01fb124bb",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::sum_demand_mwh": {
+      "count": 1,
+      "sha256": "56b5260ee2f20f9e07f8a1d689700520",
+      "sha256_9g": "4aa634beea4473efbc00b18fae225797",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::sum_forecast_demand_mwh": {
+      "count": 1,
+      "sha256": "d527086bdc162517d84b8b3de9fc7157",
+      "sha256_9g": "9ded4e64384b5065af95b42b3be771a7",
+      "zone": "accounting"
+     },
+     "validation/input-tally/year-2025.json::year": {
+      "count": 1,
+      "sha256": "453430ada4be2fdfb140ea7de35a302b",
+      "sha256_9g": "453430ada4be2fdfb140ea7de35a302b",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.assets_compared": {
+      "count": 1,
+      "sha256": "8fca9c3ef0fdd24953ebccaa4e9c1210",
+      "sha256_9g": "8fca9c3ef0fdd24953ebccaa4e9c1210",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.class": {
+      "count": 4,
+      "sha256": "c85083eb94f3e5e1a103554765facbb1",
+      "sha256_9g": "c85083eb94f3e5e1a103554765facbb1",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.comparisons.difference": {
+      "count": 3,
+      "sha256": "b1b7e003c490bbc97cf84baaaa66f648",
+      "sha256_9g": "0c568bfafc0c1d1c803b56a7e47a9854",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.comparisons.input": {
+      "count": 4,
+      "sha256": "56f02f06066f43e654ecb580b9df6beb",
+      "sha256_9g": "169709a463c14d0b3ea997f88f2eabd2",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.comparisons.metric": {
+      "count": 4,
+      "sha256": "1c32f7eb9935d62a480c7313bd8a7d5f",
+      "sha256_9g": "1c32f7eb9935d62a480c7313bd8a7d5f",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.comparisons.recorded": {
+      "count": 4,
+      "sha256": "a501182a6b6d7ca9a13457184b69083e",
+      "sha256_9g": "87c0b225747c6e6a4b39eae0dc8d40e6",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.comparisons.status": {
+      "count": 4,
+      "sha256": "1920b5ab67e4e5119736d047ac12253f",
+      "sha256_9g": "1920b5ab67e4e5119736d047ac12253f",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.comparisons.tolerance": {
+      "count": 4,
+      "sha256": "e90bfc262d17bf0aea4b4bb14982a47e",
+      "sha256_9g": "e90bfc262d17bf0aea4b4bb14982a47e",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.expected": {
+      "count": 1,
+      "sha256": "3edc50f8bdcfabbd30a6fe9efa824a61",
+      "sha256_9g": "3edc50f8bdcfabbd30a6fe9efa824a61",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.id": {
+      "count": 4,
+      "sha256": "7beb8849d3f973af7706a5304f19f91e",
+      "sha256_9g": "7beb8849d3f973af7706a5304f19f91e",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.input_source": {
+      "count": 1,
+      "sha256": "aa6f7cc76c4f1da56707f08b9ee4f662",
+      "sha256_9g": "aa6f7cc76c4f1da56707f08b9ee4f662",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.ledger_periods": {
+      "count": 1,
+      "sha256": "3ac17ee5d91a2f8f4a78c1cd2e0daf98",
+      "sha256_9g": "3ac17ee5d91a2f8f4a78c1cd2e0daf98",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.mismatch_count": {
+      "count": 1,
+      "sha256": "e7c07e125158c580ec47ee5eeeb06077",
+      "sha256_9g": "e7c07e125158c580ec47ee5eeeb06077",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.mismatches": {
+      "count": 1,
+      "sha256": "5bd4038cf66067cd6914ab568cb398a9",
+      "sha256_9g": "5bd4038cf66067cd6914ab568cb398a9",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.note": {
+      "count": 1,
+      "sha256": "8f5b14013e210df7fae0269451c7176c",
+      "sha256_9g": "8f5b14013e210df7fae0269451c7176c",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.reason_code": {
+      "count": 1,
+      "sha256": "da7e7dfb18f940688074101bad0fe6f8",
+      "sha256_9g": "da7e7dfb18f940688074101bad0fe6f8",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.severity": {
+      "count": 4,
+      "sha256": "f35494772174d02bf989ea6c6c410ab2",
+      "sha256_9g": "f35494772174d02bf989ea6c6c410ab2",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.status": {
+      "count": 4,
+      "sha256": "910ef219601c653566312c27e9f45a51",
+      "sha256_9g": "910ef219601c653566312c27e9f45a51",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.typed_periods": {
+      "count": 1,
+      "sha256": "332db5d805b4994c7a86e4070adc16ad",
+      "sha256_9g": "332db5d805b4994c7a86e4070adc16ad",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.typed_sum_by_asset_mwh": {
+      "count": 1,
+      "sha256": "6f038fa1c1607bb43ca2083d4e4c1edd",
+      "sha256_9g": "d62415530595b6089afbface88bc452d",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.typed_total_consistent": {
+      "count": 1,
+      "sha256": "4ba1dffbca6890cd44ecebaaaa5e639f",
+      "sha256_9g": "4ba1dffbca6890cd44ecebaaaa5e639f",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.typed_total_generation_mwh": {
+      "count": 1,
+      "sha256": "1e248b84422a231b41b965b3eb595136",
+      "sha256_9g": "3a4dd4660ded498a1bbf0a4b02ac7574",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks.year": {
+      "count": 3,
+      "sha256": "7d1a3efef6e16675dd0dd58a23961878",
+      "sha256_9g": "7d1a3efef6e16675dd0dd58a23961878",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks_passed": {
+      "count": 1,
+      "sha256": "902209ecb57ee8a03dbcbfd6e73e0196",
+      "sha256_9g": "902209ecb57ee8a03dbcbfd6e73e0196",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::checks_total": {
+      "count": 1,
+      "sha256": "1c1d875387dd24181d882bf4ce83d7ce",
+      "sha256_9g": "1c1d875387dd24181d882bf4ce83d7ce",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::enforcement": {
+      "count": 1,
+      "sha256": "80fe8664437225e746ee9ec52938f6d3",
+      "sha256_9g": "80fe8664437225e746ee9ec52938f6d3",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::execution_scope": {
+      "count": 1,
+      "sha256": "63975122e8f2276ae378507a91671b48",
+      "sha256_9g": "63975122e8f2276ae378507a91671b48",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::expected_years": {
+      "count": 1,
+      "sha256": "a3b01561571bd1c9081e0e4c0d443afd",
+      "sha256_9g": "a3b01561571bd1c9081e0e4c0d443afd",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::failed_checks": {
+      "count": 1,
+      "sha256": "1fff38d5a74672fd80a2ea69c7bbeb34",
+      "sha256_9g": "1fff38d5a74672fd80a2ea69c7bbeb34",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::integrity_checks_passed": {
+      "count": 1,
+      "sha256": "030bf079dc1dfecc29cd354bfdd4406b",
+      "sha256_9g": "030bf079dc1dfecc29cd354bfdd4406b",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::integrity_checks_total": {
+      "count": 1,
+      "sha256": "cbf1a716becbdf16cbc63ba2970a49d0",
+      "sha256_9g": "cbf1a716becbdf16cbc63ba2970a49d0",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::ledger_artifact": {
+      "count": 1,
+      "sha256": "754cdd68faab3a76adf4c6debf2dc49b",
+      "sha256_9g": "754cdd68faab3a76adf4c6debf2dc49b",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::not_evaluated_checks": {
+      "count": 1,
+      "sha256": "3101892fab79bca1d13f9754d3bb21d9",
+      "sha256_9g": "3101892fab79bca1d13f9754d3bb21d9",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::periods_per_year": {
+      "count": 1,
+      "sha256": "a87e39eada77edcf0a22c3b4f7a627d8",
+      "sha256_9g": "a87e39eada77edcf0a22c3b4f7a627d8",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::schema_version": {
+      "count": 1,
+      "sha256": "de7dce9ab95b5d7f99fad38e0b216f15",
+      "sha256_9g": "de7dce9ab95b5d7f99fad38e0b216f15",
+      "zone": "identity"
+     },
+     "validation/run-invariants.json::severity": {
+      "count": 1,
+      "sha256": "51f5b5361cc748248304a9300ccf9f31",
+      "sha256_9g": "51f5b5361cc748248304a9300ccf9f31",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::status": {
+      "count": 1,
+      "sha256": "293305358ceb542fb7af1b795c21e65f",
+      "sha256_9g": "293305358ceb542fb7af1b795c21e65f",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::tolerance.absolute_mwh": {
+      "count": 1,
+      "sha256": "607011b498b284f46111dbfeb7d151b0",
+      "sha256_9g": "607011b498b284f46111dbfeb7d151b0",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::tolerance.relative": {
+      "count": 1,
+      "sha256": "4b6ea9894aef4b75f9c1a31d02376958",
+      "sha256_9g": "4b6ea9894aef4b75f9c1a31d02376958",
+      "zone": "accounting"
+     },
+     "validation/run-invariants.json::tolerance_tier": {
+      "count": 1,
+      "sha256": "2b18354c8f8f664f90802f995d8c10a5",
+      "sha256_9g": "2b18354c8f8f664f90802f995d8c10a5",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::analytical_mechanism_status": {
+      "count": 1,
+      "sha256": "fe1a532f6e20c472f80965fe406dd542",
+      "sha256_9g": "fe1a532f6e20c472f80965fe406dd542",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::annual_economics_eligible": {
+      "count": 1,
+      "sha256": "0533cb37789a6074acdc55bb29d6e3b3",
+      "sha256_9g": "0533cb37789a6074acdc55bb29d6e3b3",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::cem_stages_executed": {
+      "count": 1,
+      "sha256": "37d60626aa4cb39e2619efae297d046e",
+      "sha256_9g": "37d60626aa4cb39e2619efae297d046e",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::contract_validation.checks_passed": {
+      "count": 1,
+      "sha256": "e1497e51a576f0d7d2cb203a3ebdc271",
+      "sha256_9g": "e1497e51a576f0d7d2cb203a3ebdc271",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::contract_validation.checks_total": {
+      "count": 1,
+      "sha256": "fd995507922f06d07e6671c49be4d4f0",
+      "sha256_9g": "fd995507922f06d07e6671c49be4d4f0",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::contract_validation.first_divergence": {
+      "count": 1,
+      "sha256": "1ce5616c7dc5c4df83f7c679a2cedd05",
+      "sha256_9g": "1ce5616c7dc5c4df83f7c679a2cedd05",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::contract_validation.parity_schema_version": {
+      "count": 1,
+      "sha256": "e6f54a5bcfd96091823651d76275acf2",
+      "sha256_9g": "e6f54a5bcfd96091823651d76275acf2",
+      "zone": "identity"
+     },
+     "validation/scientific-validation.json::contract_validation.reason_code": {
+      "count": 1,
+      "sha256": "c4d41082f010f2a5d0fcf351fc86fec8",
+      "sha256_9g": "c4d41082f010f2a5d0fcf351fc86fec8",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::contract_validation.status": {
+      "count": 1,
+      "sha256": "f4c9b1ce1257a100fe0cc70d154d3c52",
+      "sha256_9g": "f4c9b1ce1257a100fe0cc70d154d3c52",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::contract_validation_status": {
+      "count": 1,
+      "sha256": "3dc7a7666091de499f30fb06532d3618",
+      "sha256_9g": "3dc7a7666091de499f30fb06532d3618",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.adjusted_energy_share": {
+      "count": 1,
+      "sha256": "5a8c1e50314e3b5c4fe5c8993c30b621",
+      "sha256_9g": "0c544e0418934f45cd5241d15a56b23b",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.adjusted_energy_share_cap": {
+      "count": 1,
+      "sha256": "9f91a1b48f781731263795906b05b511",
+      "sha256_9g": "9f91a1b48f781731263795906b05b511",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.artifact": {
+      "count": 1,
+      "sha256": "1b603755fe6fef334707bf25ea919128",
+      "sha256_9g": "1b603755fe6fef334707bf25ea919128",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.boundary_id": {
+      "count": 1,
+      "sha256": "6e3183f8ce62bc2035698db8a8cbaffc",
+      "sha256_9g": "6e3183f8ce62bc2035698db8a8cbaffc",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.boundary_source": {
+      "count": 1,
+      "sha256": "6170ffb1752a0e43c694808c26217d4e",
+      "sha256_9g": "6170ffb1752a0e43c694808c26217d4e",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.compatibility_adjustment_periods": {
+      "count": 1,
+      "sha256": "fb66f4ec6475596478993fc830839a05",
+      "sha256_9g": "fb66f4ec6475596478993fc830839a05",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.enforcement": {
+      "count": 1,
+      "sha256": "dce1e008bc90b45cf798f5c5152a9af9",
+      "sha256_9g": "dce1e008bc90b45cf798f5c5152a9af9",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.envelope_lower_violations": {
+      "count": 1,
+      "sha256": "e93ea21b8debcf3aa4ccbd0da8ad693b",
+      "sha256_9g": "e93ea21b8debcf3aa4ccbd0da8ad693b",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.envelope_upper_violations": {
+      "count": 1,
+      "sha256": "d7062c1ec8b4b205ae28d6fdfde7f4ab",
+      "sha256_9g": "d7062c1ec8b4b205ae28d6fdfde7f4ab",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.maximum_absolute_boundary_residual_mwh": {
+      "count": 1,
+      "sha256": "5d1f0653132c9eb9480b178315ccc257",
+      "sha256_9g": "f74479d7d9044ea5891310dec4cf3356",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.maximum_absolute_full_node_residual_mwh": {
+      "count": 1,
+      "sha256": "a4fab373a596e650922e11125bae8bf5",
+      "sha256_9g": "8ceb8f1988d39837643e829c4175b339",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.maximum_absolute_raw_residual_mwh": {
+      "count": 1,
+      "sha256": "323110de94c7a9c3717dbb0016747380",
+      "sha256_9g": "e43876aa99220594d664a47f5dda6e7a",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.maximum_envelope_violation_mwh": {
+      "count": 1,
+      "sha256": "a817a94ec936b4cfd0a7923c0469ad47",
+      "sha256_9g": "a96ffde9dd5f8d3e6d5178ba7cbfabf6",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.periods": {
+      "count": 1,
+      "sha256": "8fe942b4b218d934616d58df49df2fa0",
+      "sha256_9g": "8fe942b4b218d934616d58df49df2fa0",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.reasons": {
+      "count": 1,
+      "sha256": "9f94774640e98c5fa65aa14a42edc09f",
+      "sha256_9g": "9f94774640e98c5fa65aa14a42edc09f",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.severity": {
+      "count": 1,
+      "sha256": "a82db6840ef8213df840fd3786f90003",
+      "sha256_9g": "a82db6840ef8213df840fd3786f90003",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.status": {
+      "count": 1,
+      "sha256": "f8f19376f0877f4f5d138d17a99b840b",
+      "sha256_9g": "f8f19376f0877f4f5d138d17a99b840b",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.sum_abs_compatibility_adjustment_mwh": {
+      "count": 1,
+      "sha256": "b7b992bfdf5cc27a8f231f532d9081ed",
+      "sha256_9g": "8a847a20db31db95b7743d349689624a",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.sum_demand_mwh": {
+      "count": 1,
+      "sha256": "33ba5f052a013a0184824e29df7a825b",
+      "sha256_9g": "2b59dcf665693091a8ff99d97489d973",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance.worst_periods": {
+      "count": 1,
+      "sha256": "e603ccae3c6000ae6501f520114535b6",
+      "sha256_9g": "e603ccae3c6000ae6501f520114535b6",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::energy_balance_status": {
+      "count": 1,
+      "sha256": "d498599919bf2d56bd5424cf4f07738c",
+      "sha256_9g": "d498599919bf2d56bd5424cf4f07738c",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::execution_scope": {
+      "count": 1,
+      "sha256": "63975122e8f2276ae378507a91671b48",
+      "sha256_9g": "63975122e8f2276ae378507a91671b48",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::execution_status": {
+      "count": 1,
+      "sha256": "8ea35ad95d66dcb13e76d7e0fe659b74",
+      "sha256_9g": "8ea35ad95d66dcb13e76d7e0fe659b74",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::mechanism_checks": {
+      "count": 1,
+      "sha256": "f32dae04a26a98e545d6c6b1b6284fdd",
+      "sha256_9g": "f32dae04a26a98e545d6c6b1b6284fdd",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::mode": {
+      "count": 1,
+      "sha256": "088b631a6124a692d185e54bbe7527a4",
+      "sha256_9g": "088b631a6124a692d185e54bbe7527a4",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::modular_numerical_baseline_status": {
+      "count": 1,
+      "sha256": "555c838d64e8ddd9dd6ca0d5f3260dc4",
+      "sha256_9g": "555c838d64e8ddd9dd6ca0d5f3260dc4",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::module_self_test_scope": {
+      "count": 1,
+      "sha256": "eb71470c1112190e343798d75b546789",
+      "sha256_9g": "eb71470c1112190e343798d75b546789",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::module_self_test_status": {
+      "count": 1,
+      "sha256": "d926fef3ebb28374a35485eff71102c7",
+      "sha256_9g": "d926fef3ebb28374a35485eff71102c7",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::periods_per_year": {
+      "count": 1,
+      "sha256": "a87e39eada77edcf0a22c3b4f7a627d8",
+      "sha256_9g": "a87e39eada77edcf0a22c3b4f7a627d8",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::raw_invariants.decision": {
+      "count": 1,
+      "sha256": "82da95c9a783d0151822240b0dffa8ec",
+      "sha256_9g": "82da95c9a783d0151822240b0dffa8ec",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::raw_invariants.energy_balance_status": {
+      "count": 1,
+      "sha256": "818b982bd08695248aa541057d43c41a",
+      "sha256_9g": "818b982bd08695248aa541057d43c41a",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::raw_invariants.run_invariant_status": {
+      "count": 1,
+      "sha256": "6dc397dd61feeaf249fc1b4754d51481",
+      "sha256_9g": "6dc397dd61feeaf249fc1b4754d51481",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::raw_invariants.status": {
+      "count": 1,
+      "sha256": "fc28f2b8bd500b1cdf4d200efb09f9e6",
+      "sha256_9g": "fc28f2b8bd500b1cdf4d200efb09f9e6",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::retained_numerical_comparison_role": {
+      "count": 1,
+      "sha256": "08a238a363d66c4292a54fc0c3b954fd",
+      "sha256_9g": "08a238a363d66c4292a54fc0c3b954fd",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::retained_numerical_comparison_status": {
+      "count": 1,
+      "sha256": "0a3807897f34e3a1085145ea979032a5",
+      "sha256_9g": "0a3807897f34e3a1085145ea979032a5",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariant_status": {
+      "count": 1,
+      "sha256": "ccbc9a6996e6047552529d1029f070ff",
+      "sha256_9g": "ccbc9a6996e6047552529d1029f070ff",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.artifact": {
+      "count": 1,
+      "sha256": "ad6ea4e479e73096214dbd7053e46485",
+      "sha256_9g": "ad6ea4e479e73096214dbd7053e46485",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.checks_passed": {
+      "count": 1,
+      "sha256": "0504d5df6948efbe63bd4ced3311066b",
+      "sha256_9g": "0504d5df6948efbe63bd4ced3311066b",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.checks_total": {
+      "count": 1,
+      "sha256": "2385cf1760344277eafda947982348a4",
+      "sha256_9g": "2385cf1760344277eafda947982348a4",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.enforcement": {
+      "count": 1,
+      "sha256": "4abb7d441cf568051794bbb4e9e0080e",
+      "sha256_9g": "4abb7d441cf568051794bbb4e9e0080e",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.failed_checks": {
+      "count": 1,
+      "sha256": "f50d6491c2fe48ae483858ed0c76097a",
+      "sha256_9g": "f50d6491c2fe48ae483858ed0c76097a",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.integrity_checks_passed": {
+      "count": 1,
+      "sha256": "c9d206f8efb74733cb5e899785340652",
+      "sha256_9g": "c9d206f8efb74733cb5e899785340652",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.integrity_checks_total": {
+      "count": 1,
+      "sha256": "11bed39e32699bfb6e1ae176ad894f0c",
+      "sha256_9g": "11bed39e32699bfb6e1ae176ad894f0c",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.not_evaluated_checks": {
+      "count": 1,
+      "sha256": "de5fc6ab5db1ee4b7490b2995153e8f6",
+      "sha256_9g": "de5fc6ab5db1ee4b7490b2995153e8f6",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.severity": {
+      "count": 1,
+      "sha256": "88122ebc470e3d325801fd7e0623220d",
+      "sha256_9g": "88122ebc470e3d325801fd7e0623220d",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::run_invariants.status": {
+      "count": 1,
+      "sha256": "aff3dc27efd9b08dab57328ff984a732",
+      "sha256_9g": "aff3dc27efd9b08dab57328ff984a732",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::schema_version": {
+      "count": 1,
+      "sha256": "9a8074be94835893d0c5c42a42e33a7a",
+      "sha256_9g": "9a8074be94835893d0c5c42a42e33a7a",
+      "zone": "identity"
+     },
+     "validation/scientific-validation.json::scientific_validation_status": {
+      "count": 1,
+      "sha256": "62da432640701ab5e194a4a076da9573",
+      "sha256_9g": "62da432640701ab5e194a4a076da9573",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::short_run_diagnostics_only": {
+      "count": 1,
+      "sha256": "dbad23bddeed4917acce525b213996ea",
+      "sha256_9g": "dbad23bddeed4917acce525b213996ea",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.artifact": {
+      "count": 1,
+      "sha256": "355b37ed726536a6fd043c419174ab52",
+      "sha256_9g": "355b37ed726536a6fd043c419174ab52",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.event_count": {
+      "count": 1,
+      "sha256": "50b0a2f2a8e2ec9f8ac5342bf03caa3f",
+      "sha256_9g": "50b0a2f2a8e2ec9f8ac5342bf03caa3f",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.hidden_shortfall_lower_mwh": {
+      "count": 1,
+      "sha256": "715209bcc426616115d3c52ab0e5fa7c",
+      "sha256_9g": "02078921543df2a2cbd7a83cf0046f0c",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.possible_stress_periods": {
+      "count": 1,
+      "sha256": "54d5c1cf4c0a81f838d6f374863cbfaf",
+      "sha256_9g": "54d5c1cf4c0a81f838d6f374863cbfaf",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.recorded_unserved_mwh": {
+      "count": 1,
+      "sha256": "0bd4e6976cc0ea6339e2c333fdbe0937",
+      "sha256_9g": "26143a1c342f3796694877c8df56c80f",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.shortfall_lower_mwh": {
+      "count": 1,
+      "sha256": "717bc943ba2ed967bd7fa80d992c162a",
+      "sha256_9g": "701d7ec1bcc35fb3c46273a37b2de714",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.shortfall_upper_mwh": {
+      "count": 1,
+      "sha256": "44627f3e8061ec6b607efb4a6c8a3fa3",
+      "sha256_9g": "7a1ff3725ca8f568eb20d05eded5b46d",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.stress_periods": {
+      "count": 1,
+      "sha256": "bb5ccc31c67fe6e454978140589b1aed",
+      "sha256_9g": "bb5ccc31c67fe6e454978140589b1aed",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.by_year.year": {
+      "count": 1,
+      "sha256": "4a16a7ebb3b87156f8430da27421147a",
+      "sha256_9g": "4a16a7ebb3b87156f8430da27421147a",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.decision": {
+      "count": 1,
+      "sha256": "15682c174609aad6f99262c223452a26",
+      "sha256_9g": "15682c174609aad6f99262c223452a26",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.event_count": {
+      "count": 1,
+      "sha256": "870d13000f803ed1a5ff7504495cba91",
+      "sha256_9g": "870d13000f803ed1a5ff7504495cba91",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.possible_stress_periods": {
+      "count": 1,
+      "sha256": "d96c00d746b66de81540e0420777b779",
+      "sha256_9g": "d96c00d746b66de81540e0420777b779",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.recorded_unserved_mwh": {
+      "count": 1,
+      "sha256": "06a6102d54d19e47e67cf976379ffd78",
+      "sha256_9g": "94bc54fc8c22f9ab41d0f99d3a4670a3",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.shortfall_basis": {
+      "count": 1,
+      "sha256": "bbcab2a77d2de6de96b0a7ba96ffbe6f",
+      "sha256_9g": "bbcab2a77d2de6de96b0a7ba96ffbe6f",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.shortfall_mwh": {
+      "count": 1,
+      "sha256": "d5574c927c04502f89f9cf52871c4676",
+      "sha256_9g": "2ffa7f1ee2bb69b5fc48a8653ed63bc0",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.shortfall_upper_mwh": {
+      "count": 1,
+      "sha256": "b782e02279f31fc81733aaf48e4c8ee6",
+      "sha256_9g": "d57739a1253e0e0955214e839aa223d1",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::stress.stress_periods": {
+      "count": 1,
+      "sha256": "8618ee55336a00c035b56155232156d7",
+      "sha256_9g": "8618ee55336a00c035b56155232156d7",
+      "zone": "accounting"
+     },
+     "validation/scientific-validation.json::validation_warnings": {
+      "count": 1,
+      "sha256": "7b0e73844d7f799f59c05463cd7b6a7a",
+      "sha256_9g": "7b0e73844d7f799f59c05463cd7b6a7a",
+      "zone": "accounting"
+     }
+    },
+    "platform": {
+     "implementation": "CPython",
+     "numpy": "1.24.4",
+     "platform": "linux-x86_64",
+     "python": "3.10"
+    },
+    "schema_version": "value.golden-digest/v1"
+   },
+   "findings": [
+    "P6-07"
+   ],
+   "reason": "P0-5a S2: the corrected profile's clock takes the declared resolution before truncating a short window (P6-07); VRE expansion headroom of the smoke/one-day windows changes, dispatch does not",
+   "revision": 5
   }
  ],
  "schema_version": "value.golden-case/v1"

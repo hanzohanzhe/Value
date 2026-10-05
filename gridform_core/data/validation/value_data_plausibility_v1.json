@@ -1,0 +1,21 @@
+{
+  "schema_version": "value.data-plausibility/v1",
+  "notes": [
+    "Versioned ranges of the plausibility layer of data-pack validation (plan 4.5 scheme 6, S9; review P6-11). The layer never decides report.valid (structural only); profile_eligibility turns its findings into errors for scientific reference packs under the corrected profile and into warnings otherwise.",
+    "Interconnector nominal capacities are the GB lines in service in 2022: France IFA 2000 + IFA2 1000 + ElecLink 1000 MW; Belgium Nemo Link 1000 MW; Netherlands BritNed 1000 MW; Norway North Sea Link 1400 MW; Ireland Moyle 500 + East-West 500 MW. The largest measured |flow| in R029 approved_r03 is 1076 MW (Netherlands), below 1.10 x 1000."
+  ],
+  "price_gbp_per_mwh": {"min": -500.0, "max": 5000.0},
+  "flow_capacity_margin": 1.10,
+  "interconnector_nominal_capacity_mw": {
+    "france": 4000.0,
+    "belgium": 1000.0,
+    "netherlands": 1000.0,
+    "norway": 1400.0,
+    "ireland": 1000.0
+  },
+  "gb_demand_mw": {"peak_min": 10000.0, "peak_max": 70000.0, "annual_twh_min": 150.0, "annual_twh_max": 400.0},
+  "teaching_flow_to_peak_demand_max": 1.0,
+  "teaching_demand_to_fleet_capacity": {"min": 0.02, "max": 3.0},
+  "forecast_mape_max": 0.10,
+  "forecast_lag_window_periods": 4
+}
