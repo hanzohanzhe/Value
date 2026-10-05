@@ -509,10 +509,14 @@ not prove order-level replay.
 - **Same ID after a fix:** an installed ID stays taken, even disabled.
   Publish the repaired implementation under a new ID or version (scientific
   identity policy; same-ID replacement is a later decision).
-- **Offline rescue:** `python -m gridform_core.module_recovery list`,
+- **Offline rescue:** `module_recovery list`,
   `disable module|extension <id>`, `park-manifest module|extension <file>`
-  work from the JSON files alone and never import installed code; `verify`
-  builds the registry as a new worker would.
+  and `park-installation module|extension <id> [<version>]` (a damaged
+  installation record) work from the installer's files alone and never
+  import installed code; `verify` builds the registry as a new worker would.
+  In a source checkout run `python -B -m gridform_core.module_recovery ...`;
+  on an installed VALUE use the bundled interpreter as shown in the user
+  guide, "Offline module recovery".
 
 ## 13. Explicit current limitations
 

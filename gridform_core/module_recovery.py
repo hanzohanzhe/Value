@@ -195,8 +195,25 @@ def command_list(root: Path, as_json: bool) -> int:
 
 
 # -- disable -------------------------------------------------------------------
+def _version_key(value: object) -> tuple[int, int, int]:
+    """extension_bundle._semver_tuple without importing it (1.10.0 > 1.9.0);
+    an unparsable version sorts first instead of raising."""
+
+    core = str(value).split("-", 1)[0]
+    try:
+        major, minor, patch = core.split(".")
+        return int(major), int(minor), int(patch)
+    except (TypeError, ValueError):
+        return (-1, -1, -1)
+
+
 def disable(root: Path, kind: str, entry_id: str) -> dict[str, object]:
-    """Disable like the Modules page, from raw JSON only; returns what changed."""
+    """Disable like the Modules page, from raw JSON only; returns what changed.
+
+    Extensions: as ``set_extension_enabled``, only the current record (the
+    highest semantic version) is changed and its retained manifest is kept in
+    ``disabled-extensions/``.  Modules have one record per ID (Q6).
+    """
 
     changed: list[str] = []
     folder = "installed" if kind == "module" else "installed-extensions"
@@ -215,6 +232,8 @@ def disable(root: Path, kind: str, entry_id: str) -> dict[str, object]:
     active = root / f"{entry_id}.json" if kind == "module" else root / "extensions" / f"{entry_id}.json"
     if not records:
         raise LookupError(f"No installed {kind} {entry_id} under {root}")
+    if kind == "extension":
+        records = [max(records, key=lambda item: _version_key(item[1].get("version") or item[0].parent.name))]
     for path, record in records:
         if record.get("enabled"):
             record["enabled"] = False
@@ -226,7 +245,7 @@ def disable(root: Path, kind: str, entry_id: str) -> dict[str, object]:
         if kind == "extension":
             # Same layout as the Modules page: the manifest is kept beside the
             # disabled-extensions list, never in the scanned folder.
-            retained = sorted(records, key=lambda item: item[0].parent.name)[-1][0].parent / EXTENSION_MANIFEST
+            retained = records[0][0].parent / EXTENSION_MANIFEST
             source = retained if retained.is_file() else active
             target = root / "disabled-extensions" / f"{entry_id}.json"
             target.parent.mkdir(parents=True, exist_ok=True)

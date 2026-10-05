@@ -425,16 +425,36 @@ print(urllib.request.urlopen(request).status)
 
 ### 本地模块或扩展被隔离（health 显示 degraded）
 
-VALUE 继续运行，只有选中该条目的 Study 会被拒绝，并给出 `GF_STUDY_MODULE_QUARANTINED` 或 `GF_PREFLIGHT_MODULE_QUARANTINED`。在 Modules 页停用它；或修好后用新 ID 安装，再点 **Rescan**。若 VALUE 走不到这一步，先停止 VALUE，再用离线自救命令（不会导入任何已安装代码）：
+VALUE 继续运行，只有选中该条目的 Study 会被拒绝，并给出 `GF_STUDY_MODULE_QUARANTINED` 或 `GF_PREFLIGHT_MODULE_QUARANTINED`。在 Modules 页停用它；或修好后用新 ID 安装，再点 **Rescan**。若 VALUE 走不到这一步，或所有 Run 都因 `GF_EXECUTION_ARCHIVE_MODULE_RECORD` 被拒绝，先停止 VALUE，再按下一节离线自救。
+
+有排队或运行中的 Run 时变更模块需要显式确认：排队的 Run 会用变更后的代码启动；已在运行的 Run 保持原代码，但变更后无法再 Resume。
+
+### 离线模块自救（Offline module recovery）
+
+`module_recovery` 只读写、移动安装器的文件，不导入任何已安装代码。先停止 VALUE：VALUE 占用数据目录时该工具拒绝执行。安装版 VALUE 要用自带的 Python 和安装目录下的数据目录运行（`<prefix>` 为安装目录；用 `--python` 安装的版本改用当时指定的解释器）：
 
 ```bash
-python -m gridform_core.module_recovery list
-python -m gridform_core.module_recovery disable module <module-id>
-python -m gridform_core.module_recovery disable extension <extension-id>
-python -m gridform_core.module_recovery park-manifest module <file.json>
+# Linux 与 macOS
+PYTHONPATH="<prefix>/app" "<prefix>/runtime/python/bin/python3.10" -B -s \
+  -m gridform_core.module_recovery --modules-root "<prefix>/state/modules" list
 ```
 
-`park-manifest` 把读不了的清单移到 VALUE 从不扫描的 `modules/disabled-manifests/`。有排队或运行中的 Run 时变更模块需要显式确认，因为排队的 Run 会用变更后的代码启动。
+```bat
+rem Windows（命令提示符）
+set PYTHONPATH=<prefix>\app
+"<prefix>\runtime\python\python.exe" -B -s -m gridform_core.module_recovery --modules-root "<prefix>\state\modules" list
+```
+
+`-B` 保证不往安装目录写字节码。在源码检出中运行时，`python -B -m gridform_core.module_recovery list` 使用 `$VALUE_DATA_HOME/modules`。把 `list` 换成：
+
+| 命令 | 用途 |
+| --- | --- |
+| `list` | 列出所有已安装条目、可见问题和 `fix:` 提示 |
+| `disable module <id>`、`disable extension <id>` | 与 Modules 页的停用相同 |
+| `park-manifest module\|extension <file.json>` | 把读不了的活动清单移开 |
+| `park-installation module\|extension <id> [<version>]` | 把安装记录损坏（`GF_MODULE_INSTALL_RECORD_INVALID`）的整个安装目录移开；没有剩余启用版本时连同活动清单一起移开 |
+
+移开的文件放在 VALUE 从不扫描的 `modules/disabled-manifests/`。被移开的模块 ID 与停用的一样仍被占用。
 
 ### 结果与保留 Scheme C 不同
 

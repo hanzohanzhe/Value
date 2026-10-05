@@ -32,7 +32,12 @@
   `checks.external_code`.
 - Offline self-rescue without importing any installed code:
   `python -m gridform_core.module_recovery list | disable module|extension <id> |
-  park-manifest module|extension <file> | verify`.
+  park-manifest module|extension <file> | park-installation module|extension <id> [<version>] |
+  verify`; the user guide ("Offline module recovery") gives the command for
+  an installed VALUE (bundled interpreter, `-B -s`, `PYTHONPATH=<prefix>/app`,
+  `--modules-root <prefix>/state/modules`).  A damaged installation record
+  (which refuses every run start) is reported as
+  `GF_MODULE_INSTALL_RECORD_INVALID` and parked with `park-installation`.
 - **API contract changes (additive):** `/api/health` reports
   `status: degraded` with `degraded_reasons [{code, count}]`
   (`GF_MODULE_IMPORT_FAILED`, `GF_EXTENSION_NAMESPACE_COLLISION`,

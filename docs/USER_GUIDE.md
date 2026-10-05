@@ -402,20 +402,48 @@ If diagnose reports stray bytecode, it is Python bytecode inside `__pycache__` f
 `degraded`, Modules shows the entry with its reason): VALUE keeps running and
 only Studies that select that entry are refused. Disable it on the Modules
 page, or repair it, install it under a new ID and press **Rescan**. If VALUE
-does not get that far, stop it and use the offline rescue, which never imports
-the installed code:
+does not get that far, or every run is refused with
+`GF_EXECUTION_ARCHIVE_MODULE_RECORD`, stop VALUE and use the offline module
+recovery below.
+
+Changing modules while runs are queued or running needs an explicit
+confirmation: queued runs would start with the changed code, and a run that
+is already running keeps its code but can no longer be resumed after the
+change.
+
+### Offline module recovery
+
+`module_recovery` reads and moves the installer's files only; it never
+imports installed code. Stop VALUE first: the tool refuses while VALUE holds
+the data directory. On an installed VALUE run it with the bundled Python and
+the installation's data directory (`<prefix>` is the installation folder;
+installations made with `--python` use that interpreter instead):
 
 ```bash
-python -m gridform_core.module_recovery list
-python -m gridform_core.module_recovery disable module <module-id>
-python -m gridform_core.module_recovery disable extension <extension-id>
-python -m gridform_core.module_recovery park-manifest module <file.json>
+# Linux and macOS
+PYTHONPATH="<prefix>/app" "<prefix>/runtime/python/bin/python3.10" -B -s \
+  -m gridform_core.module_recovery --modules-root "<prefix>/state/modules" list
 ```
 
-`park-manifest` moves an unreadable manifest to
-`modules/disabled-manifests/`, which VALUE never scans. Changing modules while
-runs are queued or running needs an explicit confirmation, because the
-queued runs would start with the changed code.
+```bat
+rem Windows (Command Prompt)
+set PYTHONPATH=<prefix>\app
+"<prefix>\runtime\python\python.exe" -B -s -m gridform_core.module_recovery --modules-root "<prefix>\state\modules" list
+```
+
+`-B` keeps bytecode out of the installation. From a source checkout,
+`python -B -m gridform_core.module_recovery list` uses
+`$VALUE_DATA_HOME/modules`. Replace `list` with:
+
+| Command | Use |
+| --- | --- |
+| `list` | every installed entry, its visible problems and a `fix:` line |
+| `disable module <id>`, `disable extension <id>` | the same as Disable on the Modules page |
+| `park-manifest module\|extension <file.json>` | move an unreadable active manifest aside |
+| `park-installation module\|extension <id> [<version>]` | move an installation whose record is damaged (`GF_MODULE_INSTALL_RECORD_INVALID`) aside, with its active manifest when no enabled version is left |
+
+Parked files go to `modules/disabled-manifests/`, which VALUE never scans.
+A parked module ID stays taken, like a disabled one.
 
 ## 18. Reproducibility and claim boundary
 

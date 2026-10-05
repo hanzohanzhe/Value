@@ -66,6 +66,18 @@ class ModuleRecoveryTests(unittest.TestCase):
         self.assertTrue((self.modules / "disabled-extensions" / "p02-rescue-drift.json").is_file())
         self.assertEqual(workspace_registry(self.modules).quarantined, ())
 
+    def test_extension_disable_changes_only_the_current_version_like_the_modules_page(self) -> None:
+        older = write_external_extension(self.modules, "p02-rescue-sv", "local.p02-sv", version="1.9.0")
+        newer = write_external_extension(self.modules, "p02-rescue-sv", "local.p02-sv", version="1.10.0")
+        older_record = (older / "installation.json").read_bytes()
+        code, out, _ = self._main("disable", "extension", "p02-rescue-sv")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((older / "installation.json").read_bytes(), older_record)
+        self.assertFalse(json.loads((newer / "installation.json").read_text())["enabled"])
+        self.assertEqual((self.modules / "disabled-extensions" / "p02-rescue-sv.json").read_bytes(),
+                         (newer / "force-extension.json").read_bytes())
+        self.assertFalse((self.modules / "extensions" / "p02-rescue-sv.json").exists())
+
     def test_list_reports_damaged_records_collisions_and_parked_files(self) -> None:
         target = write_external_module(self.modules, "p02-rescue", "p02_rescue_plugin")
         (target / "installation.json").write_text("{damaged", encoding="utf-8")
@@ -197,6 +209,41 @@ class ModuleRecoveryTests(unittest.TestCase):
         self.assertIn("value-bid-at-cost-psm", payload["modules"])
         self.assertEqual([row["id"] for row in payload["quarantined"]], ["p02-rescue"])
 
+
+
+class RecoveryDocumentationTests(unittest.TestCase):
+    """The rescue that corrective actions point at works on an installed VALUE."""
+
+    def test_user_guides_give_the_installed_instance_command(self) -> None:
+        from gridform_core.module_quarantine import OFFLINE_HELP, QuarantinedEntry, corrective_action
+
+        self.assertIn("'Offline module recovery'", OFFLINE_HELP)
+        for name, heading in (("USER_GUIDE.md", "### Offline module recovery"),
+                              ("USER_GUIDE_ZH.md", "### 离线模块自救（Offline module recovery）")):
+            text = (ROOT / "docs" / name).read_text(encoding="utf-8")
+            self.assertIn(heading, text)
+            self.assertIn('PYTHONPATH="<prefix>/app" "<prefix>/runtime/python/bin/python3.10" -B -s', text)
+            self.assertIn('--modules-root "<prefix>/state/modules" list', text)
+            self.assertIn('"<prefix>\\runtime\\python\\python.exe" -B -s', text)
+            self.assertIn("park-installation module\\|extension <id> [<version>]", text)
+        for code in ("GF_MODULE_IMPORT_FAILED", "GF_MODULE_INSTALL_RECORD_INVALID"):
+            action = corrective_action(QuarantinedEntry("module", "x.json", "x", code, "E", "m", version="1.0.0"))
+            self.assertNotIn("python -m", action)
+            self.assertIn("Offline module recovery", action)
+
+    def test_the_documented_installed_form_runs(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="value-p02-doc-") as folder:
+            prefix = Path(folder)
+            write_external_module(prefix / "state" / "modules", "p02-doc", "p02_doc_plugin")
+            environment = {key: value for key, value in os.environ.items() if key != "VALUE_DATA_HOME"}
+            environment.update(PYTHONPATH=str(ROOT), PYTHONDONTWRITEBYTECODE="1")
+            result = subprocess.run(
+                [sys.executable, "-B", "-s", "-m", "gridform_core.module_recovery",
+                 "--modules-root", str(prefix / "state" / "modules"), "list"],
+                cwd=prefix, env=environment, capture_output=True, text=True, timeout=180,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr[-2000:])
+        self.assertIn("p02-doc 1.0.0", result.stdout)
 
 if __name__ == "__main__":
     unittest.main()

@@ -520,10 +520,12 @@ Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入�
 
 ### 离线自救
 
-`python -m gridform_core.module_recovery list`、`disable module|extension <id>`、
-`park-manifest module|extension <file>` 只读写 JSON 文件，不导入任何已安装代码；
-`verify` 按新 worker 的方式构建注册表。VALUE 正在使用该数据目录时，这些命令会
-拒绝执行（`--force` 可覆盖），请改用 Modules 页。
+`module_recovery list`、`disable module|extension <id>`、
+`park-manifest module|extension <file>`、`park-installation module|extension <id> [<version>]`
+（安装记录损坏时）只读写安装器的文件，不导入任何已安装代码；`verify` 按新 worker
+的方式构建注册表。VALUE 正在使用该数据目录时，这些命令会拒绝执行（`--force` 可
+覆盖），请改用 Modules 页。源码检出中运行 `python -B -m gridform_core.module_recovery ...`；
+安装版须用自带解释器，命令见用户指南“离线模块自救（Offline module recovery）”。
 
 ## 13. 常见失败
 
