@@ -25,7 +25,7 @@ from .module_bundle import MAX_BUNDLE_BYTES, MAX_MEMBERS, MAX_UNCOMPRESSED_BYTES
 from . import module_quarantine
 from .module_quarantine import MODULE_LIFECYCLE_LOCK, ModuleQuarantinedError, quarantine_keys
 from .v2.module_manifest import workspace_registry
-from .runtime_paths import PACKAGE_ROOT, activate_external_module_sources
+from .runtime_paths import PACKAGE_ROOT, activate_external_module_sources, purge_source_root
 
 
 DESCRIPTOR = "force-extension-bundle.json"
@@ -132,6 +132,13 @@ def _namespace_owner(modules_root: Path, extension_id: str, namespace: str) -> s
         if payload.get("namespace") == namespace and owner != extension_id:
             owners.append(owner)
     return ", ".join(sorted(owners)) or None
+
+
+def _source_packages(modules_root: Path, extension_id: str) -> set[str]:
+    """Top-level hook packages shipped by any installed version of an extension."""
+
+    folder = modules_root.resolve() / "installed-extensions" / extension_id
+    return {item.name for item in folder.glob("*/src/*") if item.is_dir()}
 
 
 def _public_record(row: Mapping[str, object]) -> dict[str, object]:
@@ -438,8 +445,17 @@ def _install_extension_bundle(
             previous.write_text(json.dumps(previous_record, indent=2) + "\n", encoding="utf-8")
         activate_external_module_sources(root)
         _verify_written(root, before_keys, validated.manifest.id)
+        if previous:
+            # The superseded version is disabled: its hooks leave the process.
+            purge_source_root(previous.parent / "src")
+        module_quarantine.clear_hook_quarantine(validated.manifest.id, _source_packages(root, validated.manifest.id))
         return record
     except Exception:
+        if promoted:
+            # The promoted hook source root was activated on sys.path and may
+            # have been imported; sys.path is part of the execution identity,
+            # so a refused install must leave no trace of it (P0-2 R5).
+            purge_source_root(target / "src")
         if promoted and target.exists():
             shutil.rmtree(target)
         if promoted and created_parent:
@@ -529,9 +545,14 @@ def _set_extension_enabled(
         temporary.write_bytes(source_manifest.read_bytes())
         temporary.replace(destination)
         (inactive if enabled else active).unlink(missing_ok=True)
+        if not enabled:
+            # Disabled hooks must not stay importable (the R4 rule for
+            # extensions), and its runtime hook quarantine no longer applies.
+            purge_source_root(record_path.parent / "src")
         activate_external_module_sources(root)
         if enabled:
             _verify_written(root, before_keys, extension_id)
+        module_quarantine.clear_hook_quarantine(extension_id, _source_packages(root, extension_id))
         return {**record, **stored}
     except Exception:
         for item, contents in retained.items():
@@ -540,5 +561,9 @@ def _set_extension_enabled(
                 item.unlink(missing_ok=True)
             else:
                 item.write_bytes(contents)
+        if enabled:
+            # A refused enable leaves no import state of that source behind;
+            # activation below restores it only if the record says enabled.
+            purge_source_root(record_path.parent / "src")
         activate_external_module_sources(root)
         raise

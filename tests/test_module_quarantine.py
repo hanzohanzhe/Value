@@ -508,5 +508,83 @@ class PostWriteVerificationTests(_TemporaryModules):
         self.assertEqual(probe[len(worker) - 2:len(worker)], ["-m", "gridform_core.module_recovery"])
 
 
+class ExtensionRuntimeStateTests(_TemporaryModules):
+    """Review response (M1-P0-2): extension lifecycle leaves no import state.
+
+    sys.path is part of the execution identity (execution_archive import
+    paths), so a stale source root would make every later run fail its
+    worker identity check.
+    """
+
+    packages = ("p02_rev_hooked", "p02_rev_bad")
+
+    def _modules_paths(self) -> list[str]:
+        root_text = str(self.modules.resolve())
+        return [item for item in sys.path if str(item).startswith(root_text)]
+
+    def _loaded(self, package: str) -> list[str]:
+        return [name for name in sys.modules if name.split(".", 1)[0] == package]
+
+    def test_a_refused_hooked_extension_install_leaves_sys_path_and_identity_unchanged(self) -> None:
+        import gridform_core.module_quarantine as quarantine
+        from backend.run_execution import current_execution
+
+        self.modules.mkdir(parents=True)
+        before = current_execution(source_root=ROOT, data_home=self.root)["identity_sha256"]
+        bundle = build_extension_bundle(self.root / "hooked.zip", "p02-rev-hooked", "local.p02-rev-hooked",
+                                        hook_package="p02_rev_hooked")
+        with patch.object(quarantine, "probe_argv",
+                          lambda python, prefix, report, root: [sys.executable, "-B", "-c", "raise SystemExit(4)"]):
+            with self.assertRaises(ExtensionBundleError) as caught:
+                install_extension_bundle(bundle, trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_MODULE_PROBE_FAILED")
+        self.assertEqual(self._modules_paths(), [])
+        self.assertEqual(self._loaded("p02_rev_hooked"), [])
+        self.assertFalse((self.modules / "installed-extensions" / "p02-rev-hooked").exists())
+        self.assertEqual(current_execution(source_root=ROOT, data_home=self.root)["identity_sha256"], before)
+
+    def test_disabling_a_hooked_extension_forgets_its_code(self) -> None:
+        install_extension_bundle(
+            build_extension_bundle(self.root / "hooked.zip", "p02-rev-hooked", "local.p02-rev-hooked",
+                                   hook_package="p02_rev_hooked"),
+            trust_acknowledged=True, modules_root=self.modules)
+        workspace_registry(self.modules).extension_registry.resolve(("p02-rev-hooked",))
+        self.assertTrue(self._loaded("p02_rev_hooked"))
+        self.assertTrue(self._modules_paths())
+        set_extension_enabled("p02-rev-hooked", False, modules_root=self.modules)
+        self.assertEqual(self._loaded("p02_rev_hooked"), [])
+        self.assertEqual(self._modules_paths(), [])
+
+    def _broken_hook_resolved(self) -> None:
+        from gridform_core.module_quarantine import degraded_reasons
+
+        write_external_extension(self.modules, "p02-rev-bad", "local.p02-rev-bad", hook_package="p02_rev_bad",
+                                 hook_prefix="raise RuntimeError('hook breaks')\n")
+        registry = workspace_registry(self.modules)
+        with self.assertRaises(ExtensionHookImportError):
+            registry.extension_registry.resolve(("p02-rev-bad",))
+        self.assertEqual(degraded_reasons(registry), [{"code": "GF_EXTENSION_HOOK_IMPORT", "count": 1}])
+
+    def test_disabling_an_extension_clears_its_runtime_hook_quarantine(self) -> None:
+        from gridform_core.module_quarantine import degraded_reasons
+
+        self._broken_hook_resolved()
+        set_extension_enabled("p02-rev-bad", False, modules_root=self.modules)
+        self.assertEqual(hook_quarantine_entries(), ())
+        self.assertEqual(degraded_reasons(workspace_registry(self.modules)), [])
+
+    def test_a_hook_entry_of_an_unregistered_extension_is_not_a_live_reason(self) -> None:
+        from gridform_core.module_quarantine import degraded_reasons, quarantine_report
+        from gridform_core.module_recovery import disable
+
+        self._broken_hook_resolved()
+        disable(self.modules.resolve(), "extension", "p02-rev-bad")  # offline: no process state touched
+        self.assertEqual(len(hook_quarantine_entries()), 1)
+        registry = workspace_registry(self.modules)
+        self.assertEqual(degraded_reasons(registry), [])
+        self.assertEqual(quarantine_report(registry)["status"], "ok")
+        self.assertEqual(selection_blockers(registry, (), ["p02-rev-bad"]), ())
+
+
 if __name__ == "__main__":
     unittest.main()

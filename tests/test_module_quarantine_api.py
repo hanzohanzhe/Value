@@ -30,6 +30,7 @@ from tests.module_lifecycle_fixtures import (
     build_extension_bundle,
     forget_external_code,
     tree_digest,
+    write_external_extension,
     write_external_module,
 )
 
@@ -51,7 +52,7 @@ class ModuleQuarantineApiTests(unittest.TestCase):
             self.addCleanup(item.stop)
         clear_negative_caches()
         self.addCleanup(clear_negative_caches)
-        self.addCleanup(forget_external_code, self.modules, ("p02_api_broken", "p02_api_ok"))
+        self.addCleanup(forget_external_code, self.modules, ("p02_api_broken", "p02_api_ok", "p02_api_hook"))
         context = start_local_api(data_home=self.home)
         self.httpd, self.origin, self.token = context.__enter__()
         self.addCleanup(context.__exit__, None, None, None)
@@ -117,6 +118,23 @@ class ModuleQuarantineApiTests(unittest.TestCase):
         self.assertEqual(tree_digest(self.modules), before)
         status, health = self._request("GET", "/api/health")
         self.assertEqual(health["status"], "ok")
+
+    def test_disabling_an_extension_with_a_broken_hook_clears_health(self) -> None:
+        from gridform_core.module_quarantine import ExtensionHookImportError
+
+        write_external_extension(self.modules, "p02-api-hook", "local.p02-api-hook", hook_package="p02_api_hook",
+                                 hook_prefix="raise RuntimeError('hook breaks')\n")
+        server.refresh_module_catalog()
+        with self.assertRaises(ExtensionHookImportError):
+            server.MODULE_REGISTRY.extension_registry.resolve(("p02-api-hook",))
+        health = self._request("GET", "/api/health")[1]
+        self.assertEqual((health["status"], health["degraded_reasons"]),
+                         ("degraded", [{"code": "GF_EXTENSION_HOOK_IMPORT", "count": 1}]))
+        status, body = self._request("POST", "/api/extensions/p02-api-hook/disable", {})
+        self.assertEqual(status, 200, body)
+        health = self._request("GET", "/api/health")[1]
+        self.assertEqual((health["status"], health["degraded_reasons"]), ("ok", []))
+        self.assertEqual(self._request("GET", "/api/workspace")[1]["module_quarantine"]["entries"], [])
 
     def test_a_quarantined_module_referenced_by_a_study_can_be_disabled(self) -> None:
         write_external_module(self.modules, "p02-api-broken", "p02_api_broken", prefix="raise SystemExit(3)\n")

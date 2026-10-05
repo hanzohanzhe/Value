@@ -243,6 +243,24 @@ def hook_quarantine_entries() -> tuple[QuarantinedEntry, ...]:
         return tuple(_HOOK_QUARANTINE[key] for key in sorted(_HOOK_QUARANTINE))
 
 
+def clear_hook_quarantine(extension_id: str, packages: Iterable[str] = ()) -> int:
+    """Forget one extension's runtime hook quarantine and failed hook imports.
+
+    Called when that extension is disabled, enabled or installed: the entry
+    described code that is no longer the extension's active state, and the
+    corrective action it carried ("disable the extension") has been taken.
+    ``packages`` are the extension's top-level hook packages.
+    """
+
+    names = {str(item) for item in packages}
+    with _CACHE_GUARD:
+        removed = 1 if _HOOK_QUARANTINE.pop(extension_id, None) is not None else 0
+        for key in [key for key in _HOOK_FAILURES if str(key[0]).split(".", 1)[0] in names]:
+            del _HOOK_FAILURES[key]
+            removed += 1
+    return removed
+
+
 def clear_negative_caches() -> dict[str, int]:
     """Forget failed imports and runtime hook quarantine (rescan)."""
 
@@ -266,8 +284,23 @@ def registry_quarantine(registry: object) -> tuple[QuarantinedEntry, ...]:
     return tuple(getattr(registry, "quarantined", ()) or ())
 
 
+def live_hook_quarantine_entries(registry: object) -> tuple[QuarantinedEntry, ...]:
+    """Runtime hook quarantine of extensions the registry still holds.
+
+    An extension that is no longer registered (disabled offline, parked)
+    cannot run its hooks, so its old hook failure is not a live reason.
+    """
+
+    entries = hook_quarantine_entries()
+    extension_manifests = getattr(registry, "extension_manifests", None)
+    if not callable(extension_manifests):
+        return entries
+    registered = extension_manifests()
+    return tuple(entry for entry in entries if entry.entry_id in registered)
+
+
 def all_quarantine_entries(registry: object) -> tuple[QuarantinedEntry, ...]:
-    return registry_quarantine(registry) + hook_quarantine_entries()
+    return registry_quarantine(registry) + live_hook_quarantine_entries(registry)
 
 
 def selection_blockers(
@@ -283,7 +316,7 @@ def selection_blockers(
     entries = registry_quarantine(registry)
     modules = getattr(registry, "manifests", lambda: {})()
     extensions = getattr(registry, "extension_manifests", lambda: {})()
-    hooks = {entry.entry_id: entry for entry in hook_quarantine_entries()}
+    hooks = {entry.entry_id: entry for entry in live_hook_quarantine_entries(registry)}
     found: list[QuarantinedEntry] = []
     for module_id in dict.fromkeys(str(item) for item in module_ids):
         if module_id not in modules:
