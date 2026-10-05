@@ -26,25 +26,24 @@ from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.methodology import COMBINATION_ERROR_CODE, REFERENCE_PROFILE_ID
 from gridform_core.project_revision import save_project_revision
 from gridform_core.v2.module_manifest import workspace_registry
+from tests.test_frozen_input_integrity import rehash_snapshot_identity
 from tests.test_pack_source_identity import (
     GBP1_ID, VALUE_101_CANONICAL_SHA, VALUE_101_FILE_SHA, doctoral_pins, gbp1_stand_in, stand_in_shas,
     value_101_pinned_by,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+PACK_ID = "value-101-baseline-v1"
+PACK_ROOT = ROOT / "data-packs" / PACK_ID
 
 
 def rehash_snapshot(snapshot: Path, manifest_path: Path, manifest: dict) -> None:
     """Rewrite a frozen pack manifest and re-derive the snapshot identity (an older snapshot format)."""
 
-    from tests.test_frozen_input_integrity import FrozenInputIntegrityTests
-
     for path in (manifest_path, snapshot / "snapshot.json"):
         path.chmod(0o644)
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    FrozenInputIntegrityTests.rehash(None, snapshot)
-PACK_ID = "value-101-baseline-v1"
-PACK_ROOT = ROOT / "data-packs" / PACK_ID
+    rehash_snapshot_identity(snapshot)
 
 
 def numeric_leaves(value, path=""):

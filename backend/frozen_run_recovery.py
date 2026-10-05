@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from backend.frozen_input_recovery import recovered_manifests, stage_recovered_inputs
+from backend.frozen_input_recovery import file_sha256, recovered_manifests, stage_recovered_inputs
 from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.frontend_contract import (
     EXPERIMENTAL_ACK, maturity_acknowledgement_requirements, resolve_study_draft,
@@ -104,7 +104,7 @@ def verify_recovered_inputs(project: dict, base_root: Path, network_root: Path |
             path = root / uri
             if (not uri or path.is_symlink() or not path.is_file()
                     or not path.resolve().is_relative_to(root.resolve())
-                    or hashlib.sha256(path.read_bytes()).hexdigest() != digest):
+                    or file_sha256(path) != digest):
                 raise FrozenRecoveryError(f"Recovered canonical input changed: {role}")
 
 
@@ -156,10 +156,6 @@ def _candidate(integrity: dict, scope: dict, recovery_mode: str, *, registry, mo
     return candidate, draft, changes
 
 
-def _file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 def recovered_methodology_violations(source_run_root: Path, integrity: dict, candidate: dict) -> list[dict]:
     """The methodology whitelist verdict on the packs recovery would publish (Q3).
 
@@ -183,8 +179,8 @@ def recovered_methodology_violations(source_run_root: Path, integrity: dict, can
     projected = recovered_manifests(
         integrity, source_run_id=source_run_root.name, base_pack_id="recovered-base-review",
         network_pack_id="recovered-network-review" if network else None, timestamp="review",
-        base_manifest_sha256=_file_sha256(snapshot / "pack" / "manifest.json"),
-        network_manifest_sha256=_file_sha256(snapshot / "network-pack" / "manifest.json") if network else None)
+        base_manifest_sha256=file_sha256(snapshot / "pack" / "manifest.json"),
+        network_manifest_sha256=file_sha256(snapshot / "network-pack" / "manifest.json") if network else None)
     packs = [(projected["base_manifest"], None)]
     if network:
         packs.append((projected["network_manifest"], None))
@@ -321,7 +317,7 @@ def publish_frozen_recovery(source_run_root: Path, request: dict, *, review: Cal
         # The staging helper copied verified bytes, never hardlinks to history.
         for relative, entry in stage["inventory"].items():
             path = stage["stage_root"] / relative
-            if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
+            if path.is_symlink() or not path.is_file() or file_sha256(path) != entry["sha256"]:
                 raise FrozenRecoveryError("Staged recovery inputs changed before publication")
         candidate = copy.deepcopy(context["candidate"])
         candidate.update(id=project_id, name=name.strip(), data_pack_id=base_id)

@@ -19,6 +19,27 @@ def h(value, ascii=False):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=ascii).encode()).hexdigest()
 
 
+def rehash_snapshot_identity(root):
+    """Re-derive snapshot.json's manifest hashes, graph hash and snapshot id after a test edited the snapshot."""
+
+    path = root / "snapshot.json"; snapshot = json.loads(path.read_bytes())
+    for filename, field in (("project.json", "project_sha256"), ("pack/manifest.json", "pack_manifest_sha256"),
+                            ("network-pack/manifest.json", "network_pack_manifest_sha256")):
+        if (root / filename).exists():
+            snapshot[field] = h(json.loads((root / filename).read_bytes()))
+    graph = snapshot["module_resolution_graph"]
+    payload = dict(graph["modules"])
+    if "extension_graph" in graph:
+        payload["$extensions"] = graph["extension_graph"]
+    graph["graph_sha256"] = h(payload, True)
+    identity = {key: snapshot[key] for key in ("project_sha256", "pack_manifest_sha256", "objects", "modules")}
+    for key in ("network_pack_id", "network_pack_manifest_sha256", "extension_graph"):
+        if key in snapshot:
+            identity[key] = snapshot[key]
+    snapshot["input_tree_sha256"] = snapshot["snapshot_id"] = h(identity)
+    path.write_text(json.dumps(snapshot))
+
+
 class FrozenInputIntegrityTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -65,22 +86,7 @@ class FrozenInputIntegrityTests(unittest.TestCase):
         path.write_text(json.dumps(value))
 
     def rehash(self, root):
-        path = root / "snapshot.json"; snapshot = json.loads(path.read_bytes())
-        for filename, field in (("project.json", "project_sha256"), ("pack/manifest.json", "pack_manifest_sha256"),
-                                ("network-pack/manifest.json", "network_pack_manifest_sha256")):
-            if (root / filename).exists():
-                snapshot[field] = h(json.loads((root / filename).read_bytes()))
-        graph = snapshot["module_resolution_graph"]
-        payload = dict(graph["modules"])
-        if "extension_graph" in graph:
-            payload["$extensions"] = graph["extension_graph"]
-        graph["graph_sha256"] = h(payload, True)
-        identity = {key: snapshot[key] for key in ("project_sha256", "pack_manifest_sha256", "objects", "modules")}
-        for key in ("network_pack_id", "network_pack_manifest_sha256", "extension_graph"):
-            if key in snapshot:
-                identity[key] = snapshot[key]
-        snapshot["input_tree_sha256"] = snapshot["snapshot_id"] = h(identity)
-        path.write_text(json.dumps(snapshot))
+        rehash_snapshot_identity(root)
 
     def test_generated_base_network_resource_defaults_and_read_only_without_registry(self):
         for network, resource, defaults in ((False, False, False), (True, False, False), (True, True, True)):

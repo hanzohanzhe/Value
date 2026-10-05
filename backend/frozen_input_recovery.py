@@ -36,7 +36,9 @@ QUALIFICATION_FIELDS = RECOVERY_QUALIFICATION_FIELDS
 BINDING_HISTORY_FIELDS = RECOVERY_BINDING_HISTORY_FIELDS
 
 
-def _digest(path):
+def file_sha256(path):
+    """sha256 of a file's bytes, streamed (the one file digest of recovery)."""
+
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         while chunk := stream.read(4 * 1024 * 1024):
@@ -165,8 +167,8 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
         projected = recovered_manifests(
             verified, source_run_id=source_run_root.name, base_pack_id=base_pack_id,
             network_pack_id=network_pack_id, timestamp=timestamp,
-            base_manifest_sha256=_digest(source / "pack/manifest.json"),
-            network_manifest_sha256=_digest(source / "network-pack/manifest.json") if original_network else None)
+            base_manifest_sha256=file_sha256(source / "pack/manifest.json"),
+            network_manifest_sha256=file_sha256(source / "network-pack/manifest.json") if original_network else None)
         base_manifest, network_manifest = projected["base_manifest"], projected["network_manifest"]
         recovered, projected_out = projected["canonical_roles"], projected["projected_out_roles"]
         for row in recovered:
@@ -177,7 +179,7 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
             destination = product_root / row["uri"]
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source / directory / row["uri"], destination)
-            if destination.stat().st_nlink != 1 or destination.stat().st_size != row["bytes"] or _digest(destination) != row["sha256"]:
+            if destination.stat().st_nlink != 1 or destination.stat().st_size != row["bytes"] or file_sha256(destination) != row["sha256"]:
                 raise FrozenInputRecoveryError("Copied canonical data does not match its recorded bytes")
         if network_manifest:
             identity = copy.deepcopy(original_network["zonal_network_pack"])
@@ -205,7 +207,7 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
         after = verify_frozen_input_integrity(source)
         if after != verified or after["snapshot_id"] != source_snapshot_id.lower():
             raise FrozenInputRecoveryError("Source inputs changed while staging; prepare recovery again")
-        inventory = {path.relative_to(stage).as_posix(): {"sha256": _digest(path), "bytes": path.stat().st_size}
+        inventory = {path.relative_to(stage).as_posix(): {"sha256": file_sha256(path), "bytes": path.stat().st_size}
                      for path in stage.rglob("*") if path.is_file()}
         return {**record, "stage_root": stage, "base_root": base_root, "network_root": network_root,
                 "base_manifest": base_manifest, "network_manifest": network_manifest, "inventory": inventory,
