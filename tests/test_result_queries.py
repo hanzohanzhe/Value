@@ -145,6 +145,27 @@ class ResultQueriesTests(unittest.TestCase):
         result = query_vre_curtailment_results(self.root, {'source':'sqlite','resolution':'half_hour','year':2025})
         self.assertEqual(result['reason_code'], 'attribution_period_value_invalid')
 
+    def test_copperplate_empty_attribution_is_unavailable_not_invalid(self):
+        # P0-9 S7 (G1-07): no attribution recorded is "unavailable" on every path.
+        database = self.root / 'model-output' / 'market' / 'market.sqlite'
+        with sqlite3.connect(database) as conn:
+            conn.execute('DELETE FROM vre_curtailment_period')
+            conn.execute('DELETE FROM zonal_period_accounting')
+        sqlite_result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        auto_result = query_vre_curtailment_results(self.root, {})
+        path = self.root / 'model-output' / 'network' / 'vre-curtailment-attribution.json'
+        path.parent.mkdir()
+        path.write_text(json.dumps({'schema_version': 'value.vre-curtailment-run-evidence/v1', 'contract_version': 'value.vre-curtailment-attribution/v2', 'capability_status': 'unavailable', 'reason_code': 'selected_balancing_does_not_provide_final_zonal_dispatch'}))
+        compact_result = query_vre_curtailment_results(self.root, {'source': 'compact'})
+        self.assertEqual([sqlite_result['status'], auto_result['status'], compact_result['status']], ['unavailable'] * 3)
+        self.assertEqual(sqlite_result['reason_code'], 'attribution_evidence_not_recorded')
+        self.assertEqual(sqlite_result['items'], [])
+        # one table emptied, the other not, is still an identity failure
+        _write_fixture(database, 'summary')
+        with sqlite3.connect(database) as conn:
+            conn.execute('DELETE FROM vre_curtailment_period')
+        self.assertEqual(query_vre_curtailment_results(self.root, {'source': 'sqlite'})['status'], 'invalid')
+
     def test_bundle_keeps_compact_attribution(self):
         self.assertTrue(_included('model-output/network/vre-curtailment-attribution.json', 'compact_results'))
 

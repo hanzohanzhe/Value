@@ -287,6 +287,18 @@ py -3.10 -m gridform_core.bundle_validator <run-directory>
 
 验证只读取结果，不会重新运行模型。
 
+### 结果状态词
+
+各结果视图使用同一组状态词（P0-9），只有 `invalid` 用红框显示：
+
+| 状态 | 含义 | 怎么办 |
+| --- | --- | --- |
+| `reconciled` | 记录的数值通过了恒等式和身份核对 | 正常阅读 |
+| `unavailable` | 没有记录这类证据（例如铜板 Run 没有弃电归因表） | 不是错误；需要时改用会记录它的方法 |
+| `withheld` | 数值存在，但不在此处发布（非年度或未完成的 Run、部分年份） | 到 Inspect 查看分时段账本 |
+| `invalid` | 记录的证据自相矛盾（身份或年份集合对不上） | 把该 Run 的结果视为未经核实，检查账本 |
+| `Not modelled` / `Not computed` / `Not recorded` | 该方法不建模此项 / 实现尚未计算 / 旧 Run 没有记录 | 都不等于 0 |
+
 ## 13. 取消、恢复、归档和删除
 
 - Request safe cancellation 写入取消请求。原生运行在下一个完整年度 checkpoint 边界停止。

@@ -150,6 +150,16 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
             if not {"vre_curtailment_period", "zonal_period_accounting"} <= tables:
                 result.update(reason_code="attribution_evidence_not_recorded")
                 return result
+            # G1-07 (P0-9 S7): both tables present but empty (a copperplate or
+            # pre-attribution Run) means no evidence was recorded: unavailable,
+            # not invalid.  One empty and one filled table still fails below.
+            recorded_any = any(
+                connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
+                for table in ("vre_curtailment_period", "zonal_period_accounting")
+            )
+            if not recorded_any:
+                result.update(status="unavailable", reason_code="attribution_evidence_not_recorded")
+                return result
             mismatch = connection.execute("SELECT 1 FROM vre_curtailment_period v LEFT JOIN zonal_period_accounting a ON v.year=a.year AND v.period=a.period AND v.period_id=a.period_id WHERE a.period_id IS NULL OR v.counterfactual_realised_input_sha256 IS NULL OR a.counterfactual_realised_input_sha256 IS NULL OR length(v.counterfactual_realised_input_sha256)<>64 OR v.counterfactual_realised_input_sha256 GLOB '*[^0-9a-f]*' OR v.counterfactual_realised_input_sha256<>a.counterfactual_realised_input_sha256 OR a.accounting_status IS NULL OR v.accounting_status IS NULL OR v.attribution_method_id IS NULL OR a.accounting_status<>'reconciled' OR v.accounting_status<>'reconciled' OR v.attribution_method_id<>? LIMIT 1", (ATTRIBUTION_METHOD_ID,)).fetchone()
             missing = connection.execute("SELECT 1 FROM zonal_period_accounting a LEFT JOIN vre_curtailment_period v ON v.year=a.year AND v.period=a.period AND v.period_id=a.period_id WHERE v.period_id IS NULL LIMIT 1").fetchone()
             if mismatch or missing:
