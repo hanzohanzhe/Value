@@ -71,3 +71,19 @@
 4. **折线中的孤立数据点**（两侧都缺失，或只有一个桶）：渲染为半径 2.5px 的实心圆点，颜色与该序列一致；不画成零长度折线。只有一个桶的视图，例如 VALUE 101 的日视图，要能看到这个点。
 5. **没有事件的事件组**（`affected_periods == 0`）：显示 `No events recorded`。不显示「Peak event 0 MWh」和时间戳。
 6. **窗口摘要网格**：1280px 下末行不留空白填充格，可用 `grid-auto-flow: dense`，或让最后一项占满整行。`server.py` 的空行按 PEP 8 修正。
+
+## X0 S12 / P0-9 S11（第 2、7 节：Run 上下文条口径与验证、Study 口径选择与迁移确认；M2b）
+
+| # | 规格 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-S12-1 | 2.3 规则 1：`energy_balance=failed` **且口径为 corrected** 时显示 danger Callout | 条件为 `failed` 且口径**不是 doctoral**：corrected、修复前（`methodology.status=not_recorded`）、无法解析的口径都显示规则 1；doctoral 的失败由规则 2（withheld）表达 | 修复前的旧 Run（如 Release R2）由读取时 oracle 判为 failed，若严格按 corrected 判断，红色 Callout 不出现，只剩琥珀色的「Produced before…」，弱化了失败（原则 3「不确定就降级，不要美化」）；状态条的 Energy balance 字段在任何口径下都是红色 ● Failed | 是 |
+| F-S12-2 | 2.2 只列出 corrected、doctoral、缺失（修复前）三种徽章 | 另有三种降级：后端没有 `methodology` 字段（旧后端）→ `Methodology not recorded`（muted，提示服务未报告）；`methodology.status=unresolved`（记录了本目录无法解析的 id）→ `Methodology not recorded`（muted，不称作修复前）；目录外的已知 id → muted，显示其 label | 原则 3：不猜；`unresolved` 不是修复前的 Run，不能套用 pre-2026-10 文案 | 否 |
+| F-S12-3 | 2.3：Contract check、Scientific validation 字段保留原样 | 两字段值为 `superseded_pre_fix` 时显示琥珀色 ● Superseded（悬停给出原记录值）；为 `reproduction_with_declared_deviations` 时显示琥珀色 ● Declared deviations；其余值文字不变 | 验收清单第 4 条：修复前的旧 Run 不得显示绿色 passed；原样显示 `superseded pre fix` 不可读 | 否 |
+| F-S12-4 | 2.3 规则 2 动作 `Export ledger` | 打开 Inspect 的 Artifacts 标签（账本与审计包导出所在处），不直接下载 | 前端没有单独的「导出账本」接口；导出入口在 Artifacts 标签与 Runs 页的 `Prepare audit bundle` | 否 |
+| F-S12-5 | 2.3 规则 4 动作 `Show stress events` 跳到 4.4 的列表 | 跳到 Market replay（窗口卡已显示 Shortfall 与 stress period，F-P09-4） | 4.4 的 stress event 列表随 M4（A2 的期别字段）落地；届时改为跳到该列表 | 是（M4 后改目标） |
+| F-S12-6 | 2.3 规则 3 `View advisories (n)` 点开为列表 | 在同一个 Callout 内展开列表（标题、一句话说明、受影响指标）；Run 列表行只有 `advisory_summary.count`，详情未到时显示 “The advisory details are loading with this Run’s record.” | 不新增弹层；列表行按 `compact_validation_fields` 只带计数 | 否 |
+| F-S12-7 | 7：迁移对话框只列 diff | 修订前 Study 首次写入口径（后端返回 `profile_choices`，F-X0-2）时，对话框内加与 StudyComposer 文案相同的 `Methodology` 单选组：只有 `supported` 的口径可选，不可选的附原因；默认选中与 Study 参考预设相符的口径；切换时重新 GET 该口径的 diff，加载完成前「Review and save as new revision」不可点；POST 带 `{diff_sha256, profile_id}` | 回应 F-X0-2（设计方尚未补充该细节）；避免论文复现 Study 一次确认就静默改为 corrected | 是（F-X0-2 的展示） |
+| F-S12-8 | 7：Doctoral 选中时「不在白名单内的模块和数据包选项显示为禁用」 | 数据包与扩展按目录（`/api/methodology/profiles`）的白名单 id 预先禁用并附原因；模块按 draft resolution 给每个选项的 `methodology_supported`/`methodology_reason` 禁用；已选中的项不被禁用（以免用户无法看到当前值），由服务端的 draft 校验与预检报错 | 白名单的唯一判定在服务端（C16：一处 whitelist 检查）；前端只预先禁用目录已明确排除的项；pinned 内容哈希检查只在服务端 | 否 |
+| F-S12-9 | 7：方法变化的对话框在用户点 Run 或 Preflight 时弹出 | Preflight 报告 `checks.project_revision.classification` 需确认、或启动 Run 被 409 拒绝且带 `revision_migration` 时弹出；声明的修订哈希与当前 Study 不一致（Study 已被换掉）时不弹出 | 只对用户正在操作的那个 Study 修订弹窗 | 否 |
+| F-S12-10 | 9.8：375 px 不引起页面级横向滚动 | 新组件（口径徽章、状态字段、Callout、单选组、对话框）自身不横向溢出；截图 `s12-composer-methodology-375.jpg` 中右侧裁切来自旧的 composer 网格布局，与 F-P09-13 相同，不在本轮 | 做法一不改旧元素样式 | 否（同 F-P09-13） |
+| F-S12-11 | P0-9 S11：比较页「警示」 | 比较页的 Run 选择列表在每行写出口径徽章文字；比较结果 `attribution_status=needs_review` 时显示 caution Callout `This comparison needs review`，逐条列出 `attribution_review_reasons`（advisory、验证失败、能量平衡失败、withheld、口径不同） | 规格第 2 节没有比较页的线框；按计划 P0-9 S11「比较页警示」的最小实现 | 是（文案） |
