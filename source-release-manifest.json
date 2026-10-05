@@ -1337,6 +1337,7 @@
     "tests/test_p07_doctoral_source_oracle.py",
     "tests/test_p07_head_decide_record.py",
     "tests/test_p07_investment_accounts.py",
+    "tests/test_p08_network_shares.py",
     "tests/test_p0_5_baseline.py",
     "tests/test_p0_gate.py",
     "tests/test_parameter_registry.py",
@@ -4397,7 +4398,7 @@
     },
     {
       "path": "docs/generated/MODULES.md",
-      "sha256": "c3afed111dae4b04ee9b729297b96b849013c9e3dfec1b40f816f6db26ccd5d9",
+      "sha256": "dd0ab6d47924251aac1b705c155959d3903648bc5c77bad4a39c78cf48a236a1",
       "bytes": 4123,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -7442,9 +7443,9 @@
     },
     {
       "path": "gridform_core/extension_manifests/value-network-contract-extension.json",
-      "sha256": "a5736b38fcd9288c714ac1a6eb60ff513c128f7def7fb8e4939aaee2b6d8ffb3",
-      "bytes": 2874,
-      "transform": "byte copy"
+      "sha256": "9dd0d764795fc7d8617620e2be997f950d3e1c13aaf7adb637be215256bc19b6",
+      "bytes": 2873,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/extension_manifests/value-network-expansion-extension.json",
@@ -7700,21 +7701,21 @@
     },
     {
       "path": "gridform_core/network_ac.py",
-      "sha256": "0fb2e4501ac37d592cf49544c7c750fff9836b2be758d152e4e05e350525cc5a",
-      "bytes": 38301,
-      "transform": "byte copy"
+      "sha256": "0ba6e27199b27c842a086e88a63a9b3e27ae5b517084b65870f33d9af3b4379b",
+      "bytes": 38750,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/network_contracts.py",
-      "sha256": "ee3ed2b68b7fe747db2c166d04075163f7a2f06d5ca4c5074aae8627397b6a7e",
-      "bytes": 18434,
-      "transform": "byte copy"
+      "sha256": "ece18783e4d8c9c02838f8130d1a29841ab99cd24f81158fa2b3467cd7c92f1e",
+      "bytes": 20450,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/network_dc.py",
-      "sha256": "4a9e7836c1fb07ff88831f3d53536afd44122361af33ca98ff646214358c36f8",
-      "bytes": 28348,
-      "transform": "byte copy"
+      "sha256": "4a18268f6d5f572451ceab4f3d560e5b0b5ff101a154ca2f5fc8bf05fd2ff9bd",
+      "bytes": 28753,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/network_expansion.py",
@@ -10712,6 +10713,12 @@
       "path": "tests/test_p07_investment_accounts.py",
       "sha256": "323008f92a720ba99b2bce9928d0d9070dfac276684f2b67cafb7a52d44e2a73",
       "bytes": 35021,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p08_network_shares.py",
+      "sha256": "f75d7b93cff4b987170c6647ae776ec78ab1bf15c918822329b2105b6af84449",
+      "bytes": 4208,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

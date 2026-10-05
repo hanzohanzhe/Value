@@ -15,6 +15,13 @@ from .v2.contracts import ChronologicalPSMData, JsonContract, StorageDispatchRes
 
 NETWORK_INPUT_SCHEMA = "value.network-psm-input/v1"
 NETWORK_OUTPUT_SCHEMA = "value.network-psm-output/v1"
+# Every mapped asset's bus shares must sum to one (P1-01).  The tolerance is
+# the same as the zonal asset-map reconciliation (zonal_contracts.py).
+SHARE_SUM_TOLERANCE = 1e-9
+
+
+class MultiBusMappingError(ValueError):
+    """An asset is split across several buses where one bus is required."""
 
 
 @dataclass(frozen=True)
@@ -73,8 +80,34 @@ class NetworkTopology(JsonContract):
     def bus_by_id(self) -> dict[str, NetworkBus]:
         return {item.bus_id: item for item in self.buses}
 
+    def mappings_by_asset(self) -> dict[str, tuple[AssetBusMapping, ...]]:
+        """Every bus share of every asset, in declared row order."""
+
+        result: dict[str, list[AssetBusMapping]] = {}
+        for item in self.asset_mappings:
+            result.setdefault(item.asset_id, []).append(item)
+        return {asset: tuple(rows) for asset, rows in result.items()}
+
     def mapping_by_asset(self) -> dict[str, AssetBusMapping]:
-        return {item.asset_id: item for item in self.asset_mappings}
+        """The single bus of each asset; a split asset is an error, never a guess.
+
+        Before P0-8 this silently kept the last row of a multi-bus asset and
+        solvers then injected the whole asset there (P1-01).
+        """
+
+        result: dict[str, AssetBusMapping] = {}
+        split: list[str] = []
+        for asset, rows in self.mappings_by_asset().items():
+            if len(rows) != 1:
+                split.append(asset)
+                continue
+            result[asset] = rows[0]
+        if split:
+            raise MultiBusMappingError(
+                "Assets are split across several buses and need a share-aware "
+                "solver: " + ", ".join(sorted(split))
+            )
+        return result
 
     def islands(self) -> tuple[tuple[str, ...], ...]:
         adjacency = {item.bus_id: set() for item in self.buses}
@@ -141,17 +174,30 @@ class NetworkTopology(JsonContract):
                     raise ValueError(f"Branch {branch.branch_id} lacks an AC MVA rating")
                 if branch.tap_ratio is not None and branch.tap_ratio <= 0:
                     raise ValueError(f"Transformer {branch.branch_id} has invalid tap")
-        mappings: dict[str, float] = {}
         for mapping in self.asset_mappings:
             if mapping.bus_id not in known or not mapping.asset_id:
                 raise ValueError(f"Network asset map has dangling bus for {mapping.asset_id}")
             if mapping.asset_class not in {"generator", "storage", "boundary_import", "demand"}:
                 raise ValueError(f"Network asset {mapping.asset_id} has invalid class")
-            if mapping.share <= 0 or mapping.share > 1:
+            if (
+                isinstance(mapping.share, bool)
+                or not math.isfinite(float(mapping.share))
+                or mapping.share <= 0
+                or mapping.share > 1
+            ):
                 raise ValueError(f"Network asset {mapping.asset_id} has invalid share")
-            mappings[mapping.asset_id] = mappings.get(mapping.asset_id, 0.0) + mapping.share
-            if mappings[mapping.asset_id] > 1 + 1e-12:
-                raise ValueError(f"Network asset {mapping.asset_id} is multiply mapped")
+        for asset, rows in self.mappings_by_asset().items():
+            buses = [row.bus_id for row in rows]
+            if len(buses) != len(set(buses)):
+                raise ValueError(f"Network asset {asset} maps to the same bus twice")
+            if len({row.asset_class for row in rows}) != 1:
+                raise ValueError(f"Network asset {asset} declares conflicting classes")
+            total = math.fsum(float(row.share) for row in rows)
+            if abs(total - 1.0) > SHARE_SUM_TOLERANCE:
+                raise ValueError(
+                    f"Network asset {asset} bus shares sum to {total!r}; "
+                    "every asset's shares must sum to 1"
+                )
         by_bus = self.bus_by_id()
         for island in self.islands():
             references = [bus for bus in island if by_bus[bus].is_reference]
@@ -210,7 +256,9 @@ class NetworkPSMInput(JsonContract):
                 raise ValueError(
                     f"Nodal demand mismatch at period {period}: {nodal} versus base {base}"
                 )
-        mappings = self.topology.mapping_by_asset()
+        mappings = {
+            asset: rows[0] for asset, rows in self.topology.mappings_by_asset().items()
+        }
         required = {item.asset_id for item in self.chronology.resources} | {
             item.asset_id for item in self.chronology.storage
         }

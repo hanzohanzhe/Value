@@ -2,7 +2,7 @@
   "schema_version": "value.extension-bundle/v1",
   "id": "value-network-contract-extension",
   "name": "VALUE solver-neutral network contract",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "licence": "Apache-2.0",
   "namespace": "value.network",
   "provided_capabilities": ["contract.network-psm/v1", "data.network.topology/v1"],
@@ -11,7 +11,7 @@
   "data_roles": [
     {"role": "value.network.buses", "capability": "data.network.topology/v1", "group": "Network", "label": "Buses and voltage levels", "formats": ["csv", "json"], "required": true, "unit": "kV", "coordinate_semantics": "optional WGS84; electrical identity uses stable bus_id", "validation_rules": {"unique_id": true}},
     {"role": "value.network.branches", "capability": "data.network.topology/v1", "group": "Network", "label": "AC lines, DC links and transformers", "formats": ["csv", "json"], "required": true, "validation_rules": {"valid_endpoints": true, "explicit_units": true}},
-    {"role": "value.network.asset-map", "capability": "data.network.topology/v1", "group": "Network", "label": "Generator, storage, import and demand bus mapping", "formats": ["csv", "json"], "required": true, "validation_rules": {"shares_at_most_one": true}},
+    {"role": "value.network.asset-map", "capability": "data.network.topology/v1", "group": "Network", "label": "Generator, storage, import and demand bus mapping", "formats": ["csv", "json"], "required": true, "validation_rules": {"shares_sum_to_one": true}},
     {"role": "value.network.nodal-demand", "capability": "data.network.topology/v1", "group": "Network", "label": "Chronological nodal demand", "formats": ["csv", "parquet"], "required": true, "unit": "MWh/period", "time_semantics": "same clock as base demand; bus sum must reconcile", "validation_rules": {"reconcile_base_demand": true}},
     {"role": "value.network.contingencies", "capability": "data.network.topology/v1", "group": "Network", "label": "Optional contingency set", "formats": ["csv", "json"], "required": false, "validation_rules": {}},
     {"role": "value.network.dynamic-ratings", "capability": "data.network.topology/v1", "group": "Network", "label": "Optional chronological branch ratings", "formats": ["csv", "parquet"], "required": false, "unit": "MW", "validation_rules": {}},

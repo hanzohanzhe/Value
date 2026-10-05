@@ -14,6 +14,7 @@ from typing import Mapping, Sequence
 import numpy as np
 
 from .network_contracts import (
+    MultiBusMappingError,
     NetworkPSMInput,
     NetworkPSMOutput,
     NetworkPeriodResult,
@@ -179,7 +180,15 @@ class ReferenceDCNetworkPSM:
         buses = tuple(model.topology.buses)
         branches = tuple(model.topology.branches)
         bus_index = {item.bus_id: index for index, item in enumerate(buses)}
-        mapping = model.topology.mapping_by_asset()
+        try:
+            mapping = model.topology.mapping_by_asset()
+        except MultiBusMappingError as exc:
+            # Fail closed (P1-01): this formulation places each asset at one
+            # bus and never re-weights it by share.
+            raise DCNetworkInputError(
+                "value-reference-dc-network 1.0.0 does not solve multi-bus "
+                f"share mappings: {exc}"
+            ) from exc
         layout = _layout(model)
         objective = np.zeros(layout.size)
         bounds: list[tuple[float | None, float | None]] = [(None, None)] * layout.size
