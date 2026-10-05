@@ -27,7 +27,7 @@ CORRECTED = "value-corrected"
 # constant only in a commit that says why (e.g. a package appending the new
 # scientific_version of a lineage module that keeps the doctoral behaviour
 # behind a gated correction).
-DOCTORAL_DEFINITION_SHA256 = "9ee672cf2805322ac9d585ac9b121b772e16505060aac1e0c46722cca3333778"
+DOCTORAL_DEFINITION_SHA256 = "a91a06e0fb2a8d8c6cd7c55c0f2b6a92fad5e83000b2bbcf51827427a395f287"
 
 LINEAGE_MODULES = {
     "psm": "value-bid-at-cost-psm",
@@ -253,6 +253,24 @@ class WhitelistTests(unittest.TestCase):
         self.assertEqual(methodology.classify_data_pack(dict(synthetic, pack_class="synthetic")), "synthetic")
         self.assertEqual(self._violations(DOCTORAL, packs=[(synthetic, None)]), [])
         self.assertEqual(methodology.classify_data_pack(dict(user_copy, pack_class="synthetic")), "user_workspace")
+
+    def test_value_101_baseline_is_pinned_by_manifest_sha(self):
+        pack_root = ROOT / "data-packs" / "value-101-baseline-v1"
+        manifest, raw = methodology.read_pack_manifest(pack_root)
+        self.assertEqual(self._violations(DOCTORAL, packs=[(manifest, raw)]), [])
+        # The same id with edited content (a rebuild in place) is not the frozen pack.
+        edited = json.loads(raw.decode("utf-8"))
+        edited["bindings"]["costs.capital"]["sha256"] = "0" * 64
+        rows = self._violations(DOCTORAL, packs=[(edited, json.dumps(edited).encode("utf-8"))])
+        self.assertEqual([row["sub_reason"] for row in rows], ["data_pack"])
+        self.assertEqual(rows[0]["data_pack_id"], "value-101-baseline-v1")
+        self.assertEqual(self._violations(CORRECTED, packs=[(edited, None)]), [])
+        entries = {row["id"]: row for row in methodology.load_catalogue().profile(DOCTORAL).supported_data_packs}
+        self.assertNotEqual(entries["value-101-baseline-v1"]["manifest_sha256"], "*")
+        self.assertNotEqual(entries["value-uk-open-data-pack-v1"]["manifest_sha256"], "*")
+        # The locally imported 1000 TWh pack cannot be pinned; the catalogue says why.
+        self.assertEqual(entries["value-uk-1000twh-reproduction"]["manifest_sha256"], "*")
+        self.assertIn("timestamps", entries["value-uk-1000twh-reproduction"]["pin_note"])
 
     def test_enabled_external_code_refuses_the_frozen_profile_only(self):
         with patch("gridform_core.methodology.external_code_entries", return_value=["module:my-storage-module"]):

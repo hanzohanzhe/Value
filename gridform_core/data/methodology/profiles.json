@@ -50,8 +50,10 @@
       "supported_data_packs": [
         {"id": "value-uk-open-data-pack-v1", "label": "GBP1 public1", "pack_class": "scientific_reference",
          "manifest_sha256": ["17a68154c26680d472879fbe6a2f67eb3c610d5de68052b1b0101384a3270025", "a4aea569ff0a214becfd728e62b7ea16c1a1ca59489ec73bd4e4fd8799baa84e"]},
-        {"id": "value-uk-1000twh-reproduction", "label": "VALUE UK 1000 TWh reproduction", "pack_class": "scientific_reference", "manifest_sha256": "*"},
-        {"id": "value-101-baseline-v1", "label": "VALUE 101 baseline", "pack_class": "teaching", "manifest_sha256": "*"},
+        {"id": "value-uk-1000twh-reproduction", "label": "VALUE UK 1000 TWh reproduction", "pack_class": "scientific_reference", "manifest_sha256": "*",
+         "pin_note": "Not pinned: this pack is never released; scripts/import_scheme_c_1000twh.py builds it locally from the author's research tree and writes import timestamps (created_at, updated_at, imported_at) into the manifest, so every import has a different manifest sha. Pending author review: pin once a released manifest exists."},
+        {"id": "value-101-baseline-v1", "label": "VALUE 101 baseline", "pack_class": "teaching",
+         "manifest_sha256": ["8fe24b8a54251131d22a28b446deaf395f1148ee138d5d0333d14c88cdc2ac4c", "76d51a937000cba6cd85991e170245a43f45e7688cfa2cdc84019c886127a3cc"]},
         {"id": "*", "label": "Synthetic contract packs", "pack_class": "synthetic", "manifest_sha256": "*"}
       ],
       "external_code_policy": "refuse_when_enabled",
