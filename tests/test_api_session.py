@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import stat
 import subprocess
@@ -209,6 +210,30 @@ class ServerFactoryTests(unittest.TestCase):
             self.assertIn("rejected", second)
             self.assertFalse(data_home.exists())
             self.assertFalse((home / ".local" / "share" / "value").exists())
+
+
+class SessionFileIsNeverCopiedTests(unittest.TestCase):
+    """The session file is transient process state: no export, archived
+    workspace, diagnostic or installer path may carry it (P0-1 identity
+    section).  Only the backend module and the UI gateway know its name, and
+    no code copies a whole data directory."""
+
+    KNOWN = {"backend/api_session.py", "scripts/value-ui-gateway.mjs", "scripts/serve-value-ui.mjs"}
+
+    def test_only_the_backend_and_the_gateway_name_the_session_file(self) -> None:
+        found = set()
+        for folder in ("backend", "gridform_core", "scripts", "packaging", "app", "e2e"):
+            for path in (ROOT / folder).rglob("*"):
+                if path.is_file() and path.suffix in {".py", ".mjs", ".ts", ".tsx", ".ps1", ".sh", ".cmd", ".js"}:
+                    if "api-session-" in path.read_text(encoding="utf-8", errors="replace"):
+                        found.add(path.relative_to(ROOT).as_posix())
+        self.assertEqual(found - self.KNOWN, set())
+
+    def test_archived_workspace_copies_only_named_run_evidence(self) -> None:
+        source = (ROOT / "scripts" / "prepare_archived_workspace.py").read_text(encoding="utf-8")
+        copies = sorted(set(re.findall(r"copy_tree\(([^,]+),", source)))
+        self.assertEqual(copies, ["REPO/'dist'", "REPO/'node_modules'/package", "modules", "source", "source_run/'input-snapshot'"])
+        self.assertNotIn("'runtime'", source)
 
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "POSIX signals")

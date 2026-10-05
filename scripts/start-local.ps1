@@ -162,7 +162,7 @@ $nodePath = (Get-Command node.exe -ErrorAction Stop).Source
 $uiServer = Join-Path $projectRoot "scripts\serve-value-ui.mjs"
 try {
     $frontend = Start-Process -FilePath $nodePath `
-        -ArgumentList @($uiServer, "--host", "127.0.0.1", "--port", $frontendPort) `
+        -ArgumentList @($uiServer, "--host", "127.0.0.1", "--port", $frontendPort, "--api-origin", "http://127.0.0.1:8766") `
         -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErrorLog
 } catch {
@@ -203,6 +203,9 @@ for ($attempt = 0; $attempt -lt 40; $attempt++) {
     try {
         Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$frontendPort/" -TimeoutSec 2 | Out-Null
         Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$frontendPort/$relativeAsset" -TimeoutSec 2 | Out-Null
+        # The API through the UI gateway: proves the gateway found the API session file.
+        $gatewayHealth = Invoke-RestMethod -Uri "http://127.0.0.1:$frontendPort/api/health" -TimeoutSec 2
+        if ($gatewayHealth.service -ne "value-modular-local") { throw "Unexpected gateway response" }
         $frontendReady = $true
         break
     } catch {

@@ -120,7 +120,7 @@ test("Castle 101 runs through the real service and opens indexed evidence", asyn
   await expect(page.getByText("Run completed")).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("heading", { name: "Castle 101 teaching run" })).toBeVisible();
   const runId = await page.getByLabel("Selected run").inputValue();
-  const capabilities = await page.request.get(`http://127.0.0.1:18766/api/runs/${runId}/market/capabilities`);
+  const capabilities = await page.request.get(`/api/runs/${runId}/market/capabilities`);
   expect(capabilities.ok()).toBeTruthy();
   expect((await capabilities.json()).trace_level).toBe("full");
 
@@ -149,7 +149,7 @@ test("Castle 101 runs through the real service and opens indexed evidence", asyn
   const variantRunId = variantPayload.run.id as string;
   expect(variantRunId).not.toBe(runId);
   await expect.poll(async () => {
-    const response = await page.request.get(`http://127.0.0.1:18766/api/runs/${variantRunId}`);
+    const response = await page.request.get(`/api/runs/${variantRunId}`);
     return response.ok() ? (await response.json()).status : "missing";
   }, { timeout: 45_000 }).toBe("completed");
   await expect(page.getByLabel("Selected run")).toHaveValue(variantRunId);

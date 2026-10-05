@@ -5974,8 +5974,8 @@
     },
     {
       "path": "e2e/castle-101.spec.ts",
-      "sha256": "46a019ebaa38d0417edfb62f9071474370b32a352cfac27e457cfc505cf51dcc",
-      "bytes": 9488,
+      "sha256": "1ed7dacb0442a35bbde5b4aeee92a5cff7e1a95810bf2d76fbef2537326d0d3e",
+      "bytes": 9444,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6010,9 +6010,9 @@
     },
     {
       "path": "e2e/happy-path.spec.ts",
-      "sha256": "41d4d8abeb1511e3ef591fd441e9dfc1eb2a8b74900e0b3ad136b714fce1649e",
-      "bytes": 4119,
-      "transform": "byte copy"
+      "sha256": "81f62cc02173f88af6353c970ea256942213dab3bee7eda208ead94e37526775",
+      "bytes": 4202,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/journey-data.spec.ts",
@@ -6076,8 +6076,8 @@
     },
     {
       "path": "e2e/start-e2e-services.mjs",
-      "sha256": "4fedde62674248aa8452e31fc82635d9ff65b0b5256b8e5ce59d8500eb7b609d",
-      "bytes": 5468,
+      "sha256": "24180bbf8fe454979470b842a37e405a7b367c984de5dbb3eba246691d69d5a0",
+      "bytes": 5512,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8131,8 +8131,8 @@
     },
     {
       "path": "packaging/desktop-local/desktop_value.py",
-      "sha256": "26cf15411643092463d42af8a0420aeb38781b906f0f64de22052645e3f03be5",
-      "bytes": 22583,
+      "sha256": "ce7c2c97af6da8c990dd66cb9218a4ebe7c768f230ca489c0a87adde3da196dd",
+      "bytes": 22940,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8317,9 +8317,9 @@
     },
     {
       "path": "packaging/linux-local/archived_value.py",
-      "sha256": "cbd978b5729c43876d78c36685243987e1f804d858aba5fae98b442bf7d05d2d",
-      "bytes": 23621,
-      "transform": "byte copy"
+      "sha256": "d0229a1948941551d713b2d2ca79e775defbcc2cb7626f7275332ea96b5cd9cc",
+      "bytes": 23856,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/linux-local/diagnose-value",
@@ -8335,8 +8335,8 @@
     },
     {
       "path": "packaging/linux-local/local_value.py",
-      "sha256": "80a8aa90882a7ba13e17f1557bbb8421f813f5609dc4909c3494d2fc430beb93",
-      "bytes": 19418,
+      "sha256": "ca80e6f8bfba2fcf1b6f93e62b4a82992e42e5e78a3901530f1f76a5adf6ae50",
+      "bytes": 19706,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8753,9 +8753,9 @@
     },
     {
       "path": "scripts/build_value_101_release_evidence.py",
-      "sha256": "4ce2f4d96a9bc1cc19ac39bfac5df89a925f9b436f5aeb88469ca33737ec40b0",
-      "bytes": 5191,
-      "transform": "byte copy"
+      "sha256": "34659ddf01e9657494ef5977f703fb664094becf1d1f1fa3229b4cf978e80a06",
+      "bytes": 5468,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/build_value_101_to_value_uk_pdf.py",
@@ -8915,9 +8915,9 @@
     },
     {
       "path": "scripts/measure-value-101.mjs",
-      "sha256": "b5b59b3a67f4cd30e061a7a2eb272c35a2536ac96ba0f1697ceb70ec1d76e65d",
-      "bytes": 6422,
-      "transform": "byte copy"
+      "sha256": "a41d6eb0024c4e38cd4b4964202690b227d682c8fb8583b0f6d1bd5a586133eb",
+      "bytes": 6492,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/methodology/README.md",
@@ -9155,15 +9155,15 @@
     },
     {
       "path": "scripts/start-local.ps1",
-      "sha256": "bc1387a9fd55fbe0fbc2334b18f03d6180ff92cba5e3dfbbc8c4516fb9b2685f",
-      "bytes": 9941,
-      "transform": "byte copy"
+      "sha256": "35732770ec39346a9e15d3b50b2a04635e1d283db4b525a28cf9d30314f2ba52",
+      "bytes": 10282,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/start-portable-local.ps1",
-      "sha256": "285eeb1eb62b3dddbc2628d2268ea6b85b8d7d611d442d245556c479addf046e",
-      "bytes": 3760,
-      "transform": "byte copy"
+      "sha256": "3744012d1421e2ec1411fcf62df1c450ed53057c09d1478d5011185426f3a371",
+      "bytes": 4120,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/stop-local.ps1",
@@ -9959,9 +9959,9 @@
     },
     {
       "path": "tests/rendered-html.test.mjs",
-      "sha256": "130a6726741cbf58faab16c332df19b294280e095f80e6b64aad99da45ad5124",
-      "bytes": 8811,
-      "transform": "byte copy"
+      "sha256": "8f322ed99700c99c752a713f9dcd7239c9cecd7749a5d8544ab09cd3b9e675e2",
+      "bytes": 9088,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/run-context.test.mjs",
@@ -9983,8 +9983,8 @@
     },
     {
       "path": "tests/test_api_session.py",
-      "sha256": "89adc973cd801c113e47a9b4348a2ce316eab2ede6a32b8e2cc8f139054a25b1",
-      "bytes": 11641,
+      "sha256": "871b815973c4c72aa3d020a879e2e0a14ed316212017d06dca33fa796f8ba6f0",
+      "bytes": 13084,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10109,8 +10109,8 @@
     },
     {
       "path": "tests/test_desktop_bytecode_policy.py",
-      "sha256": "bc3a746d05cf533d07f8ad0e3f1670176bda2c4900f6834d645abcccfa470dab",
-      "bytes": 16057,
+      "sha256": "42a838240a459f322ccc4101a6f3169b42a383280873c96aec5b0fc26085398e",
+      "bytes": 20719,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -365,27 +365,31 @@ def start(args):
         try:
             for shutdown_signal in shutdown_signals:
                 previous_handlers[shutdown_signal] = signal.signal(shutdown_signal, request_shutdown)
-            commands = [("backend", [*isolated_python_argv(runtime["python"]["path"], new_pycache_prefix()), "-m", "backend.server", "--host", "127.0.0.1", "--port", "8766"]), ("frontend", [runtime["node"]["path"], str(prefix / "app/scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", "8800"])]
+            commands = [("backend", [*isolated_python_argv(runtime["python"]["path"], new_pycache_prefix()), "-m", "backend.server", "--host", "127.0.0.1", "--port", "8766"]), ("frontend", [runtime["node"]["path"], str(prefix / "app/scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", "8800", "--api-origin", "http://127.0.0.1:8766"])]
             for name, command in commands:
                 stream = (logs / f"{name}.log").open("ab")
                 streams.append(stream)
                 options = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
                 children.append(subprocess.Popen(command, cwd=prefix / "app", env=environment, stdout=stream, stderr=stream, **options))
+            # The API, the UI and the API through the UI gateway (which proves
+            # the gateway found the API's session file).  No token is passed.
+            probes = {"api": "http://127.0.0.1:8766/api/health", "ui": "http://127.0.0.1:8800/",
+                      "gateway": "http://127.0.0.1:8800/api/health"}
             ready = set()
             deadline = time.monotonic() + 90
-            while len(ready) < 2:
+            while len(ready) < len(probes):
                 if any(child.poll() is not None for child in children):
                     raise RuntimeError(f"A VALUE service exited; see {logs}")
                 if time.monotonic() > deadline:
-                    raise RuntimeError(f"VALUE startup timed out; see {logs}")
-                for port in (8766, 8800):
-                    if port in ready:
+                    raise RuntimeError(f"VALUE startup timed out ({sorted(set(probes) - ready)} not ready); see {logs}")
+                for name, url in probes.items():
+                    if name in ready:
                         continue
                     try:
-                        with urllib.request.urlopen(f"http://127.0.0.1:{port}" + ("/api/health" if port == 8766 else "/"), timeout=1) as response:
-                            if port == 8766 and json.load(response).get("service") != "value-modular-local":
+                        with urllib.request.urlopen(url, timeout=1) as response:
+                            if name != "ui" and json.load(response).get("service") != "value-modular-local":
                                 raise ValueError("Unexpected backend health response")
-                        ready.add(port)
+                        ready.add(name)
                     except (OSError, ValueError):
                         pass
                 time.sleep(0.25)

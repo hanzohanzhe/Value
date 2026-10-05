@@ -259,7 +259,9 @@ def start(prefix, config):
     env.update(VALUE_DATA_HOME=config["data_home"], PYTHONPATH=str(app), VALUE_LOCAL_INSTANCE=token, PYTHONHASHSEED="0",
                PYTHONDONTWRITEBYTECODE="1", PYTHONPYCACHEPREFIX=pycache, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
     commands = {"api": [*isolated_python_argv(rt["python"]["path"], pycache), "-m", "backend.server", "--host", "127.0.0.1", "--port", str(config["api_port"])],
-                "ui": [rt["node"]["path"], str(app / "scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", str(config["ui_port"])]}
+                # --api-origin follows --port; the gateway reads the API session from VALUE_DATA_HOME (no token here).
+                "ui": [rt["node"]["path"], str(app / "scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", str(config["ui_port"]),
+                       "--api-origin", f"http://127.0.0.1:{config['api_port']}"]}
     processes = {}; children = []
     record = {"schema_version": "value.linux-local-processes/v1", "prefix": str(prefix), "token": token, "processes": processes}
     try:
@@ -273,7 +275,7 @@ def start(prefix, config):
         deadline = time.monotonic() + 40
         while time.monotonic() < deadline:
             if any(child.poll() is not None for child in children): raise ValueError("A local service exited; inspect diagnostics/api.log and ui.log.")
-            if health(config["api_port"], "/api/health") and health(config["ui_port"], "/"):
+            if health(config["api_port"], "/api/health") and health(config["ui_port"], "/") and health(config["ui_port"], "/api/health"):
                 print(json.dumps({"status": "started", "ui": f"http://127.0.0.1:{config['ui_port']}", "api": f"http://127.0.0.1:{config['api_port']}", "data_home": config["data_home"]})); return
             time.sleep(0.2)
         raise ValueError("Local service readiness timed out; inspect diagnostics logs.")
@@ -299,7 +301,8 @@ def diagnose(prefix, config):
     if path.exists():
         record = read(path); report["process_ownership"] = {kind: owned(entry, record["token"]) for kind, entry in record["processes"].items()}
     else: report["process_ownership"] = {}
-    report["health"] = {"api": health(config["api_port"], "/api/health"), "ui": health(config["ui_port"], "/")}
+    report["health"] = {"api": health(config["api_port"], "/api/health"), "ui": health(config["ui_port"], "/"),
+                        "ui_gateway_to_api": health(config["ui_port"], "/api/health")}
     report["logs"] = {}
     for name in ("api.log", "ui.log"):
         path = prefix / "diagnostics" / name
@@ -323,7 +326,7 @@ def main():
     try:
         if platform.system() != "Linux" or platform.machine() not in {"x86_64", "AMD64"}: raise ValueError("This candidate targets Linux x86-64.")
         if args.command == "install":
-            if args.ui_port not in UI_PORTS: raise ValueError("Choose UI port 8800 or 18800; these origins are allowed by the local API.")
+            if args.ui_port not in UI_PORTS: raise ValueError("Choose UI port 8800 or 18800.")
             install(args); return
         prefix = absolute(args.prefix); config = config_for(prefix)
         with (prefix / "control.lock").open("a") as lock:

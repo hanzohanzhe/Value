@@ -282,7 +282,8 @@ def start(prefix,config):
             except OSError as exc: raise ValueError(f'Port {port} is occupied; existing preview will not be stopped') from exc
     probe_workspace(config)
     token=uuid.uuid4().hex; env=archived_environment(config); env['VALUE_LOCAL_INSTANCE']=token
-    commands={'api':archived_python_command(config,'-m','backend.server','--host','127.0.0.1','--port',str(config['api_port'])),'ui':[config['node_executable'],str(Path(config['ui_root'])/'scripts/serve-value-ui.mjs'),'--host','127.0.0.1','--port',str(config['ui_port'])]}
+    commands={'api':archived_python_command(config,'-m','backend.server','--host','127.0.0.1','--port',str(config['api_port'])),'ui':[config['node_executable'],str(Path(config['ui_root'])/'scripts/serve-value-ui.mjs'),'--host','127.0.0.1','--port',str(config['ui_port']),'--api-origin',f"http://127.0.0.1:{config['api_port']}",'--session-optional']}
+    # --session-optional: an archived backend may predate API sessions (P0-1 Q4: no backend guard while it runs).
     record={'schema_version':'value.archived-workspace-processes/v1','prefix':str(prefix),'token':token,'processes':{}}; children=[]
     try:
         for kind,command in commands.items():
@@ -294,7 +295,7 @@ def start(prefix,config):
         deadline=time.monotonic()+40
         while time.monotonic()<deadline:
             if any(c.poll() is not None for c in children): raise ValueError('Service exited; inspect diagnostics logs')
-            if health(config['api_port'],'/api/health') and health(config['ui_port'],'/'): return {'status':'started','ui':workspace_url(config),'source_execution_identity_sha256':config['identity_sha256'],'same_host':True,'fully_isolated':False,'run_started':False}
+            if health(config['api_port'],'/api/health') and health(config['ui_port'],'/') and health(config['ui_port'],'/api/health'): return {'status':'started','ui':workspace_url(config),'source_execution_identity_sha256':config['identity_sha256'],'same_host':True,'fully_isolated':False,'run_started':False}
             time.sleep(.2)
         raise ValueError('Service readiness timed out')
     except Exception:

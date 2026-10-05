@@ -34,12 +34,13 @@ test("non-programmer synthetic study executes the selected external module", asy
   await expect(page.getByText(/recorded calls/).first()).toBeVisible();
 
   const runId = await page.getByLabel("Selected run").inputValue();
-  const run = await page.request.get(`http://127.0.0.1:18766/api/runs/${runId}`);
+  // Direct API calls go through the UI gateway (P0-1): it adds the session.
+  const run = await page.request.get(`/api/runs/${runId}`);
   expect(run.ok()).toBeTruthy();
-  const artifacts = await page.request.get(`http://127.0.0.1:18766/api/runs/${runId}/artifacts`);
+  const artifacts = await page.request.get(`/api/runs/${runId}/artifacts`);
   expect(artifacts.ok()).toBeTruthy();
   expect((await artifacts.json()).items.length).toBeGreaterThan(3);
-  const exportResponse = await page.request.post(`http://127.0.0.1:18766/api/runs/${runId}/export`, { data: { profile: "compact_results" } });
+  const exportResponse = await page.request.post(`/api/runs/${runId}/export`, { data: { profile: "compact_results" }, headers: { origin: "http://127.0.0.1:18800" } });
   expect(exportResponse.status()).toBe(201);
   expect((await exportResponse.json()).validation.valid).toBeTruthy();
 
@@ -51,7 +52,7 @@ test("non-programmer synthetic study executes the selected external module", asy
 
 test("incompatible study and offline recovery are visible failures", async ({ page }) => {
   await page.goto("/");
-  const invalid = await page.request.post("http://127.0.0.1:18766/api/projects", { data: {
+  const invalid = await page.request.post("/api/projects", { headers: { origin: "http://127.0.0.1:18800" }, data: {
     name: "Incompatible", data_pack_id: "value-synthetic-contract-pack-v1", start_year: 2025, end_year: 2026,
     modules: { psm: "value-perfect-foresight-lp", storage_cost: "dynamic-annual-storage-cost" },
   }});

@@ -272,6 +272,11 @@ class StrayBytecodeInventoryTests(unittest.TestCase):
         self.assertEqual(backend[1:4], ["-B", "-s", "-X"])
         self.assertTrue(backend[4].startswith("pycache_prefix="))
         self.assertEqual(backend[5:7], ["-m", "backend.server"])
+        # P0-1 S4 (C31): --api-origin follows --port; no session token anywhere.
+        frontend = popen_calls[1]
+        self.assertEqual(frontend[-6:], ["--host", "127.0.0.1", "--port", "8800", "--api-origin", "http://127.0.0.1:8766"])
+        self.assertTrue(frontend[1].endswith("serve-value-ui.mjs"))
+        self.assertIn("ready", output)
 
     @unittest.skipIf(os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0), "POSIX permissions")
     def test_read_only_install_keeps_files_and_still_starts(self) -> None:
@@ -286,6 +291,71 @@ class StrayBytecodeInventoryTests(unittest.TestCase):
         self.assertEqual(moved, [])
         self.assertEqual(len(failed), 39)
         self.assertTrue(all((self.prefix / name).is_file() for name in names))
+
+
+class LauncherGatewayArgvTests(unittest.TestCase):
+    """P0-1 S4 / C31: every launcher hands the UI gateway the API origin after
+    --port (the process-matching patterns of start-local.ps1:47 and
+    stop-local.ps1:66 keep matching) and never a session token."""
+
+    UI_PATTERN = r"serve-value-ui\.mjs.*--port\s+8800"
+    API_PATTERN = r"backend\.server.*--port\s+8766"
+
+    def _sources(self) -> dict[str, str]:
+        names = [
+            "packaging/desktop-local/desktop_value.py", "packaging/linux-local/local_value.py",
+            "packaging/linux-local/archived_value.py", "scripts/start-local.ps1",
+            "scripts/start-portable-local.ps1", "e2e/start-e2e-services.mjs",
+        ]
+        return {name: (ROOT / name).read_text("utf-8") for name in names}
+
+    def test_powershell_process_patterns_are_unchanged_and_match_the_new_command_lines(self) -> None:
+        start = (ROOT / "scripts/start-local.ps1").read_text("utf-8")
+        stop = (ROOT / "scripts/stop-local.ps1").read_text("utf-8")
+        for source in (start, stop):
+            self.assertIn("'serve-value-ui\\.mjs.*--port\\s+8800'", source)
+            self.assertIn("'backend\\.server.*--port\\s+8766'", source)
+        ui = "C:\\VALUE\\node.exe C:\\VALUE\\scripts\\serve-value-ui.mjs --host 127.0.0.1 --port 8800 --api-origin http://127.0.0.1:8766"
+        self.assertRegex(ui, self.UI_PATTERN)
+        self.assertNotRegex(ui, self.API_PATTERN)
+        api = "python.exe -B -s -X pycache_prefix=C:\\t -m backend.server --host 127.0.0.1 --port 8766"
+        self.assertRegex(api, self.API_PATTERN)
+
+    def test_every_launcher_passes_the_api_origin_after_the_ui_port(self) -> None:
+        sources = self._sources()
+        expectations = {
+            "packaging/desktop-local/desktop_value.py": '"--port", "8800", "--api-origin", "http://127.0.0.1:8766"',
+            "packaging/linux-local/local_value.py": '"--port", str(config["ui_port"]),\n                       "--api-origin", f"http://127.0.0.1:{config[\'api_port\']}"',
+            "packaging/linux-local/archived_value.py": "'--port',str(config['ui_port']),'--api-origin',f\"http://127.0.0.1:{config['api_port']}\",'--session-optional'",
+            "scripts/start-local.ps1": '"--port", $frontendPort, "--api-origin", "http://127.0.0.1:8766"',
+            "scripts/start-portable-local.ps1": '"--port", "8800", "--api-origin", "http://127.0.0.1:8766"',
+            "e2e/start-e2e-services.mjs": '"--port", "18800", "--api-origin", "http://127.0.0.1:18766"',
+        }
+        for name, expected in expectations.items():
+            with self.subTest(name):
+                self.assertIn(expected, sources[name].replace("\r\n", "\n"))
+
+    def test_launchers_probe_the_api_through_the_gateway(self) -> None:
+        sources = self._sources()
+        self.assertIn('"gateway": "http://127.0.0.1:8800/api/health"', sources["packaging/desktop-local/desktop_value.py"])
+        self.assertIn('health(config["ui_port"], "/api/health")', sources["packaging/linux-local/local_value.py"])
+        self.assertIn("health(config['ui_port'],'/api/health')", sources["packaging/linux-local/archived_value.py"])
+        self.assertIn('"http://127.0.0.1:$frontendPort/api/health"', sources["scripts/start-local.ps1"])
+        self.assertIn('"http://127.0.0.1:8800/api/health"', sources["scripts/start-portable-local.ps1"])
+        self.assertIn('ready("http://127.0.0.1:18800/api/health")', sources["e2e/start-e2e-services.mjs"])
+
+    def test_no_launcher_handles_the_session_token(self) -> None:
+        for name, source in self._sources().items():
+            with self.subTest(name):
+                lowered = source.lower()
+                self.assertNotIn("x-value-session", lowered)
+                self.assertNotIn("api-session-", lowered)
+                self.assertNotIn("api_session", lowered)
+                self.assertNotRegex(lowered, r"--session(?!-optional)")
+        self.assertIn("--session-optional", self._sources()["packaging/linux-local/archived_value.py"])
+        for name in ("packaging/desktop-local/desktop_value.py", "packaging/linux-local/local_value.py",
+                     "scripts/start-local.ps1", "scripts/start-portable-local.ps1", "e2e/start-e2e-services.mjs"):
+            self.assertNotIn("--session-optional", self._sources()[name], name)
 
 
 class BackgroundRunNoticeTests(unittest.TestCase):

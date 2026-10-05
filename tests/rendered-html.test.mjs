@@ -153,4 +153,7 @@ test("launcher removes only identified stale listeners and binds IPv4", async ()
   assert.match(launcher, /backend\\\.server\.\*--port/);
   assert.match(launcher, /serve-value-ui\.mjs/);
   assert.match(launcher, /"--host", "127\.0\.0\.1", "--port"/);
+  // P0-1 S4: the gateway learns the API origin after --port; the launcher never handles the session token.
+  assert.match(launcher, /"--port", \$frontendPort, "--api-origin", "http:\/\/127\.0\.0\.1:8766"/);
+  assert.doesNotMatch(launcher, /X-VALUE-Session|api-session-/i);
 });

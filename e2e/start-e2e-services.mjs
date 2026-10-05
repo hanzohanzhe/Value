@@ -92,7 +92,7 @@ async function ready(url) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 await Promise.all([
-  ...(uiOnly ? [] : [ready("http://127.0.0.1:18766/api/health")]),
+  ...(uiOnly ? [] : [ready("http://127.0.0.1:18766/api/health"), ready("http://127.0.0.1:18800/api/health")]),
   ready("http://127.0.0.1:18800/"),
 ]);
 console.log(`VALUE_E2E_READY state=${state}`);
