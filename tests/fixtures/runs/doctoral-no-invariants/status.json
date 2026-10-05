@@ -1,0 +1,61 @@
+{
+ "contract_validation_status": "passed",
+ "execution_engine": "value-annual-orchestrator/v2",
+ "execution_status": "passed",
+ "id": "doctoral-no-invariants",
+ "methodology": {
+  "applied_correction_ids": [
+   "x0.methodology-identity",
+   "x0.study-revision-migration"
+  ],
+  "applied_corrections_sha256": "370d3c302733cbaaa8d15257e0829fb9654f7198bb628d7863b1aab6018ecbf6",
+  "catalogue_sha256": "4842919753b68a2a8cb421841c63e79c788540ed0ac9f1ee66aac0a9b3da1cef",
+  "external_code_policy": "refuse_when_enabled",
+  "frozen": true,
+  "golden_family": "doctoral",
+  "label": "Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)",
+  "note": "not an exact reproduction of the 2026-07-18 retained trajectory",
+  "profile_definition_sha256": "9ee672cf2805322ac9d585ac9b121b772e16505060aac1e0c46722cca3333778",
+  "profile_id": "doctoral-lineage-0.6.0a2",
+  "profile_version": "2026.10",
+  "reference_configuration": {
+   "modules": {
+    "storage_cost": "value-legacy-storage-tariff"
+   },
+   "parameters": {
+    "carbon.factor_scenario": "doctoral_reproduction_2026_07_18"
+   }
+  },
+  "result_publication": {
+   "rule": "raw_invariants_must_pass"
+  },
+  "schema_version": "value.methodology/v1"
+ },
+ "mode": "full",
+ "modules": {
+  "psm": "value-bid-at-cost-psm",
+  "storage_cost": "value-legacy-storage-tariff"
+ },
+ "project_id": "fixture-study",
+ "results": [
+  {
+   "capacity_mw": {
+    "wind": 10.0
+   },
+   "metrics": {
+    "blackout_mwh": 0.0,
+    "system_cost_gbp": 1000000000.0
+   },
+   "year": 2025
+  }
+ ],
+ "run_policy": {
+  "end_year": 2025,
+  "periods_per_year": 17520,
+  "start_year": 2025
+ },
+ "scientific_validation_artifact": "validation/scientific-validation.json",
+ "scientific_validation_status": "passed",
+ "status": "completed",
+ "updated_at": "2026-10-05T12:00:00+01:00"
+}

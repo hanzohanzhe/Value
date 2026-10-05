@@ -3,7 +3,8 @@
 ``python -B scripts/check_methodology_catalog.py`` (p0_gate quick step
 ``methodology_catalog``) fails when:
 
-* ``gridform_core/data/methodology`` does not parse (schema, unique default,
+* ``gridform_core/data/methodology`` (profiles, corrections, advisories) does
+  not parse (schema, unique default,
   gated corrections need a trigger_fixture, correction ids follow the pattern,
   each package edits only its own file);
 * the ``methodology.profile`` parameter's default/allowed values differ from
@@ -65,6 +66,16 @@ def check(root: Path = ROOT) -> list[str]:
         catalogue = methodology.load_catalogue_from(root / "gridform_core" / "data" / "methodology")
     except (methodology.MethodologyCatalogError, ValueError, OSError) as exc:
         return [f"catalogue: {exc}"]
+    advisories_path = root / "gridform_core" / "data" / "methodology" / "advisories.json"
+    if advisories_path.is_file():
+        from gridform_core.result_advisories import load_generic_advisories_from
+
+        try:
+            load_generic_advisories_from(advisories_path)
+        except (methodology.MethodologyCatalogError, ValueError, OSError) as exc:
+            errors.append(f"advisories: {exc}")
+    else:
+        errors.append("advisories: gridform_core/data/methodology/advisories.json is missing")
     definition = REGISTRY.get(methodology.PROFILE_PARAMETER)
     if definition is None:
         errors.append(f"parameter {methodology.PROFILE_PARAMETER} is not registered")

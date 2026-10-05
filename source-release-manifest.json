@@ -735,6 +735,7 @@
     "gridform_core/data/contracts/zonal-network-pack-v1.schema.json",
     "gridform_core/data/doctoral_alignment/pumped_hydro_schedule.json",
     "gridform_core/data/doctoral_alignment/thesis_final96_contract.json",
+    "gridform_core/data/methodology/advisories.json",
     "gridform_core/data/methodology/corrections/x0.json",
     "gridform_core/data/methodology/profiles.json",
     "gridform_core/data/nuclear/value_uk_nuclear_policy_v1.json",
@@ -1150,6 +1151,12 @@
     "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/p07/head_decide_record.json",
     "tests/fixtures/prompt08_audit_project.json",
+    "tests/fixtures/runs/doctoral-no-invariants/model-output/validation/scientific-validation.json",
+    "tests/fixtures/runs/doctoral-no-invariants/status.json",
+    "tests/fixtures/runs/pre-fix-dynamic-full/model-output/validation/scientific-validation.json",
+    "tests/fixtures/runs/pre-fix-dynamic-full/status.json",
+    "tests/fixtures/runs/pre-fix-legacy-failed/model-output/validation/scientific-validation.json",
+    "tests/fixtures/runs/pre-fix-legacy-failed/status.json",
     "tests/fixtures/scheme_c_2025_2026_authoritative.json",
     "tests/fixtures/ui-contract/index.json",
     "tests/fixtures/ui-contract/toy-v7.auction-ahead.json",
@@ -3510,8 +3517,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "b6a8fc54a084f07348c71ea259af363be1a803bcf723ca248f5fa989b19831be",
-      "bytes": 186843,
+      "sha256": "cc0fe83b292902c9d44447285cadf7a2ca17d449f55273f2921737d820efeb9a",
+      "bytes": 187726,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7119,6 +7126,12 @@
       "sha256": "28daae8b2dfa8d053fccf8b150e57c208c59fca1c9eaafeacb6236676aa509d1"
     },
     {
+      "path": "gridform_core/data/methodology/advisories.json",
+      "sha256": "19da8808cc88015dbbfde4b9990fdd737e5a9764141e63a5de53e992aa8136b8",
+      "bytes": 1739,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "gridform_core/data/methodology/corrections/x0.json",
       "sha256": "251986c7cc01baa22f67b6b4c7e423d67e427763da88d8c48a4a115fa88d3b79",
       "bytes": 1991,
@@ -7857,14 +7870,14 @@
     },
     {
       "path": "gridform_core/result_advisories.py",
-      "sha256": "051726d75ad1daaf3742204aaa47f9c4b0cf91daf05dc3bd2855f16db5d10b08",
-      "bytes": 2820,
+      "sha256": "e31026dfcbbba463bab8dd45db195c5b02a225fa464a5bd4840875aa880ac7f6",
+      "bytes": 15162,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/results_summary.py",
-      "sha256": "471458dedc2f1f073adf4dbd6522e41d3537f37c15750b8641008a18f705983c",
-      "bytes": 29124,
+      "sha256": "83d390dc064d08be57ab38a884617718084fe180487d831f937904265196d424",
+      "bytes": 32344,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8887,8 +8900,8 @@
     },
     {
       "path": "scripts/check_methodology_catalog.py",
-      "sha256": "dea73a02f30b6ea4ec0459adcfd5d5a26e1e57f8a808fbfda7b2d6e11f86d97e",
-      "bytes": 5599,
+      "sha256": "616c18e4e997487514b5aab450323e9a1b919bc10f1fcf2fcec27120c79151f4",
+      "bytes": 6149,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9598,6 +9611,42 @@
       "sha256": "26fab9038bd2f341ead8d7f309c30980b197885cdd4dd290132740e2cc02758a",
       "bytes": 580,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/fixtures/runs/doctoral-no-invariants/model-output/validation/scientific-validation.json",
+      "sha256": "a0e89337766a2dac4212b8671129e6615c88b25621bc6cad6e73ae57648ec6b9",
+      "bytes": 300,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/runs/doctoral-no-invariants/status.json",
+      "sha256": "88bec0da71bff4af9434bccf330af1b1e5737536b5b10186509f27c188a0a4c8",
+      "bytes": 1801,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/runs/pre-fix-dynamic-full/model-output/validation/scientific-validation.json",
+      "sha256": "0054978dd0a129993f27f7fa6caf300318ce600f89fe55405944250dab328a66",
+      "bytes": 300,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/runs/pre-fix-dynamic-full/status.json",
+      "sha256": "47581cd2584a720f9a26909a589d55131d0afad025e0d6f1f176a9186b649336",
+      "bytes": 804,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/runs/pre-fix-legacy-failed/model-output/validation/scientific-validation.json",
+      "sha256": "0054978dd0a129993f27f7fa6caf300318ce600f89fe55405944250dab328a66",
+      "bytes": 300,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/fixtures/runs/pre-fix-legacy-failed/status.json",
+      "sha256": "4d50f623db0ccf0c16d723bbcb950af4a314f37203be0435d66ea5fd10d74682",
+      "bytes": 755,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/scheme_c_2025_2026_authoritative.json",
@@ -11215,8 +11264,8 @@
     },
     {
       "path": "tests/test_result_advisories.py",
-      "sha256": "93dfbebc3bbadfd03d9390be0b53873d3a6f45666c20246c382304a608e3e122",
-      "bytes": 2810,
+      "sha256": "12b972d373aff9371bcc460fc14f19f1aefdd2c9133378db5ec4a930d78cf03a",
+      "bytes": 13630,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11341,9 +11390,9 @@
     },
     {
       "path": "tests/test_server_presentation.py",
-      "sha256": "4ac464f937233c49fd0c149052b1f7c346535c7eb721de93002896263382f8ea",
-      "bytes": 2310,
-      "transform": "byte copy"
+      "sha256": "fbfb9090a74cc7dd1fc7474ef53f5dd3126e250cd496850c75cbc2a6ff756800",
+      "bytes": 3011,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_source_release_tree.py",

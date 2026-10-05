@@ -1,0 +1,9 @@
+{
+ "analytical_mechanism_status": "passed",
+ "annual_economics_eligible": true,
+ "contract_validation_status": "passed",
+ "execution_status": "passed",
+ "retained_numerical_comparison_status": "failed",
+ "schema_version": "value.scientific-validation/v1",
+ "scientific_validation_status": "failed"
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "value.methodology-advisories/v1",
+  "notes": [
+    "Generic read-time advisories (X0 S10b). Correction-specific advisories live on the corrections in corrections/<pkg>.json; this file holds the advisories that are not tied to one correction.",
+    "applies_to is one of the predicates implemented in gridform_core/result_advisories.py: pre_profile_run (the run recorded no methodology profile), legacy_validation_report (the run's scientific-validation report is the v1 self-reported schema).",
+    "Severity high or critical puts every comparison that includes the run into attribution_status needs_review (no causal conclusion)."
+  ],
+  "advisories": [
+    {
+      "id": "VALUE-ADV-2026-10-04-REVIEW",
+      "applies_to": "pre_profile_run",
+      "severity": "high",
+      "title": "Produced before the 2026-10 review fixes",
+      "summary": "This Run was produced by a VALUE version before methodology profiles and the 2026-10-04 review corrections. Known issues may affect its energy balance, validation status and annual results; its recorded validation status is superseded.",
+      "affected_metrics": ["scientific_validation_status", "energy_balance", "annual_results", "comparisons"]
+    },
+    {
+      "id": "GF_VALIDATION_LEGACY_REPORT",
+      "applies_to": "legacy_validation_report",
+      "severity": "medium",
+      "title": "Validation report not independently verified",
+      "summary": "The v1 scientific-validation report relies on the model's self-reported, compatibility-adjusted residuals; its passed statements were not recomputed from the ledger by the independent energy-balance check.",
+      "affected_metrics": ["scientific_validation_status", "contract_validation_status"]
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 from typing import Mapping, Sequence
 from .comparison_identity import build_comparison_identity, review_comparison_identities
+from .result_advisories import NEEDS_REVIEW_SEVERITIES, present_scientific_status
 
 from .comparison_eligibility import (
     evaluate_curtailment_comparison,
@@ -275,6 +276,13 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         row["capacity_mw"] = source.get("capacity_mw", {}) if isinstance(source, Mapping) else {}
     modules = resolved.get("modules", status.get("modules", {})) if isinstance(resolved, Mapping) else status.get("modules", {})
     scientific = resolved.get("scientific_parameters", {}) if isinstance(resolved, Mapping) else {}
+    # The same read-time presentation as /api/runs (X0 S10, C7): status
+    # vocabulary, advisories, methodology and the Q14 publication rule.
+    presented = present_scientific_status(json.loads(json.dumps(status)), run_root)
+    publication = presented["result_publication"]
+    withheld_annual_rows = len(annual) if publication.get("status") == "withheld" else 0
+    if withheld_annual_rows:
+        annual = []
     return {
         "schema_version": "value.run-results-summary/v1",
         "comparison_identity": build_comparison_identity(run_root, status, resolved),
@@ -283,7 +291,8 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
             "project_id": status.get("project_id"), "project_revision": (resolved.get("extensions") or {}).get("project_revision_sha256") if isinstance(resolved, Mapping) and isinstance(resolved.get("extensions"), Mapping) else None,
             "input_snapshot_id": status.get("input_snapshot_id"), "timestamp": status.get("finished_at", status.get("updated_at")),
             "mode": status.get("mode"), "status": status.get("status"),
-            "scientific_status": status.get("scientific_scenario_status", status.get("scientific_validation_status")),
+            "scientific_status": presented["scientific_scenario_status"],
+            "recorded_scientific_status": status.get("scientific_scenario_status", status.get("scientific_validation_status")),
             "periods_per_year": (status.get("run_policy") or {}).get("periods_per_year") if isinstance(status.get("run_policy"), Mapping) else None,
             "start_year": (status.get("run_policy") or {}).get("start_year") if isinstance(status.get("run_policy"), Mapping) else None,
             "end_year": (status.get("run_policy") or {}).get("end_year") if isinstance(status.get("run_policy"), Mapping) else None,
@@ -295,6 +304,10 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
             "currency_base_year": "mixed_as_declared_in_asset_sources",
         },
         "modules": modules,
+        "methodology": presented["methodology"],
+        "advisories": presented["advisories"],
+        "advisory_summary": presented["advisory_summary"],
+        "result_publication": {**publication, "withheld_annual_rows": withheld_annual_rows},
         "annual": annual,
         "planning": planning,
         "comparison_eligibility": (
@@ -328,7 +341,15 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         raise ValueError("A comparison requires 2 to 6 runs")
     run_modes = [str(row.get("run", {}).get("mode") or "") for row in summaries]  # type: ignore[union-attr]
     tutorial_count = sum(mode in {"tutorial", "value_101_day"} for mode in run_modes)
-    annual_metrics_withheld = tutorial_count > 0
+    # Q14: a run whose annual results are withheld from result pages cannot
+    # contribute annual deltas either.
+    publication_withheld = [
+        row.get("run", {}).get("run_id")  # type: ignore[union-attr]
+        for row in summaries
+        if isinstance(row.get("result_publication"), Mapping)
+        and row["result_publication"].get("status") == "withheld"  # type: ignore[index]
+    ]
+    annual_metrics_withheld = tutorial_count > 0 or bool(publication_withheld)
     comparison_scope = (
         "teaching_diagnostic" if tutorial_count == len(summaries)
         else "mixed_tutorial_and_annual" if tutorial_count
@@ -501,8 +522,35 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         "multiple_dimensions_changed" if len(review["changed_dimensions"]) > 1 else
         "recorded_configuration_changed"
     )
+    # X0 S10b comparison gate (C9): an advisory of severity high or above, a
+    # failed validation, or different methodologies put the comparison under
+    # review and forbid causal conclusions.
+    review_reasons: list[dict[str, object]] = []
+    for summary in summaries:
+        run_id = summary.get("run", {}).get("run_id")  # type: ignore[union-attr]
+        advisories = summary.get("advisories") if isinstance(summary.get("advisories"), list) else []
+        for advisory in advisories:  # type: ignore[union-attr]
+            if isinstance(advisory, Mapping) and advisory.get("severity") in NEEDS_REVIEW_SEVERITIES:
+                review_reasons.append({"run_id": run_id, "reason": "advisory", "advisory_id": advisory.get("id"), "severity": advisory.get("severity")})
+        if summary.get("run", {}).get("scientific_status") == "failed":  # type: ignore[union-attr]
+            review_reasons.append({"run_id": run_id, "reason": "validation_failed"})
+    profiles = [
+        (row.get("methodology") or {}).get("profile_id") if isinstance(row.get("methodology"), Mapping) else None
+        for row in summaries
+    ]
+    if any(isinstance(row.get("methodology"), Mapping) for row in summaries) and len(set(profiles)) > 1:
+        review_reasons.append({"reason": "methodology_differs", "profile_ids": profiles})
+    for run_id in publication_withheld:
+        review_reasons.append({"run_id": run_id, "reason": "annual_results_withheld"})
+    attribution_status = "needs_review" if review_reasons else "reviewable"
+    if review_reasons:
+        network_cost_attribution_allowed = False
+        if warning is None:
+            warning = "This comparison needs review: an advisory, a failed validation or a methodology difference rules out causal conclusions."
     return {
         "schema_version": "value.run-comparison/v1",
+        "attribution_status": attribution_status,
+        "attribution_review_reasons": review_reasons,
         "run_ids": [row.get("run", {}).get("run_id") for row in summaries],  # type: ignore[union-attr]
         "comparison_scope": comparison_scope,
         "comparison_review": review,
@@ -518,6 +566,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             review["evidence_complete"]
             and (causal_storage_comparison or network_cost_attribution_allowed)
             and not annual_metrics_withheld
+            and not review_reasons
         ),
         "warning": warning,
         "annual_comparison": annual_comparison,

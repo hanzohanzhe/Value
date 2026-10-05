@@ -80,7 +80,7 @@ from gridform_core.frontend_contract import (
     resolve_study_draft,
 )
 from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
-from gridform_core.result_advisories import present_scientific_status
+from gridform_core.result_advisories import present_scientific_status, withhold_annual_results
 from gridform_core.parameters import (
     ParameterValidationError,
     parameter_schema,
@@ -1138,8 +1138,10 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                     "severity": "warning",
                     "message": "Module progress evidence is incomplete or unreadable.",
                 })
-        # Scientific status presentation lives in one function (X0 S10a, C7).
+        # Scientific status presentation lives in one function (X0 S10a, C7):
+        # status vocabulary, advisories and the Q14 publication rule (S10b).
         present_scientific_status(run, run_root)
+        withhold_annual_results(run)
     for result in run.get("results", []):
         if "initial_pipeline" not in result and "pipeline_next_year" in result:
             result["initial_pipeline"] = result["pipeline_next_year"]
@@ -1212,6 +1214,21 @@ def list_runs(*, compact: bool = True) -> list[dict[str, Any]]:
         results = list(row.get("results") or [])
         row["result_year_count"] = len(results)
         row["results"] = []
+        # The listing stays bounded: advisory text, the full methodology
+        # record and the publication message are served by /api/runs/<id>.
+        row.pop("advisories", None)
+        methodology = row.get("methodology")
+        if isinstance(methodology, dict):
+            row["methodology"] = {
+                key: methodology.get(key)
+                for key in ("status", "profile_id", "profile_version", "label")
+                if key in methodology
+            }
+        publication = row.get("result_publication")
+        if isinstance(publication, dict):
+            row["result_publication"] = {
+                key: publication[key] for key in ("status", "reason_code") if key in publication
+            }
     return rows
 
 
