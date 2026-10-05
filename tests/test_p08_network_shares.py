@@ -96,6 +96,22 @@ class ShareStopGapTests(unittest.TestCase):
 
 
 
+V100_SINGLE_BUS_FIXTURE = ROOT / "tests" / "fixtures" / "network_toys" / "dc-1.0.0-single-bus.json"
+
+
+def single_bus_storage_case():
+    """Two buses, AB rated 5 MW, one single-bus battery at each bus."""
+
+    demand = {"A": [0.0, 40.0], "B": [0.0, 40.0]}
+    resources = [{"asset_id": "gas", "capacity_mw": 200.0, "cost": 10.0, "buses": [("A", 1.0)]},
+                 {"asset_id": "peaker", "capacity_mw": 200.0, "cost": 500.0, "buses": [("B", 1.0)]}]
+    branches = [{"branch_id": "AB", "from_bus": "A", "to_bus": "B", "rating_mw": 5.0}]
+    return dc_case(demand, resources, branches=branches, terminal_soc_rule="free", storage=[
+        {"asset_id": "battery-a", "power_mw": 10.0, "energy_mwh": 20.0, "efficiency": 1.0, "buses": [("A", 1.0)]},
+        {"asset_id": "battery-b", "power_mw": 30.0, "energy_mwh": 60.0, "efficiency": 1.0, "buses": [("B", 1.0)]},
+    ])
+
+
 class DCShareExpansionTests(unittest.TestCase):
     """S3: expand-solve-aggregate; HEAD put all 200 MW at the last row's bus."""
 
@@ -144,10 +160,7 @@ class DCShareExpansionTests(unittest.TestCase):
             "asset_id": "battery", "power_mw": 40.0, "energy_mwh": 80.0, "efficiency": 1.0,
             "buses": [("A", 0.25), ("B", 0.75)],
         }])
-        explicit = dc_case(demand, resources, branches=branches, terminal_soc_rule="free", storage=[
-            {"asset_id": "battery-a", "power_mw": 10.0, "energy_mwh": 20.0, "efficiency": 1.0, "buses": [("A", 1.0)]},
-            {"asset_id": "battery-b", "power_mw": 30.0, "energy_mwh": 60.0, "efficiency": 1.0, "buses": [("B", 1.0)]},
-        ])
+        explicit = single_bus_storage_case()
         split_result, split_output = self.solve(*split)
         explicit_result, _ = self.solve(*explicit)
         self.assertAlmostEqual(
@@ -164,12 +177,38 @@ class DCShareExpansionTests(unittest.TestCase):
                 value, sum(sub["soc"][period] for sub in curves.values()), places=9
             )
 
-    def test_single_bus_input_is_bit_identical_to_the_one_bus_solve(self) -> None:
+    def test_single_bus_input_is_tagged_and_has_no_sub_resources(self) -> None:
         network, wrapped = three_bus_dc_case(split=False)
         result, output = self.solve(network, wrapped)
         self.assertNotIn("storage_sub_resources", output.extensions)
         self.assertEqual(output.extensions["share_mapping_rule"], "expand_solve_aggregate/v1")
         self.assertEqual(ReferenceDCNetworkPSM.version, "1.1.0")
+
+    def test_single_bus_inputs_reproduce_the_1_0_0_numbers(self) -> None:
+        """Numerically equal to value-reference-dc-network 1.0.0 (only +/-0 differ).
+
+        The expected values were produced by the 1.0.0 module (network_dc.py
+        at c664330^).  Python ``==`` treats -0.0, 0.0 and 0 as equal; 1.0.0
+        emitted -0.0 in some flow/price/storage entries and an integer 0 for
+        curtailment, so the serialized bytes are not identical.
+        """
+
+        expected = json.loads(V100_SINGLE_BUS_FIXTURE.read_text(encoding="utf-8"))["cases"]
+        cases = {
+            "three_bus_explicit": three_bus_dc_case(split=False),
+            "storage_explicit": single_bus_storage_case(),
+        }
+        self.assertEqual(set(expected), set(cases))
+        for name, (network, wrapped) in cases.items():
+            with self.subTest(case=name):
+                result, _output = self.solve(network, wrapped)
+                payload = result.extensions["network"]
+                want = expected[name]
+                self.assertEqual(result.total_operational_cost_gbp, want["total_operational_cost_gbp"])
+                self.assertEqual(dict(result.generation_mwh_by_asset), want["generation_mwh_by_asset"])
+                self.assertEqual(payload["objective_gbp"], want["objective_gbp"])
+                self.assertEqual(payload["periods"], want["periods"])
+                self.assertEqual(payload["extensions"]["storage"], want["storage"])
 
 if __name__ == "__main__":
     unittest.main()

@@ -1143,6 +1143,7 @@
     "tests/fixtures/native_psm/doctoral_reproduction_golden_v1.json",
     "tests/fixtures/native_psm/head_run_simulation_35aadb3.py",
     "tests/fixtures/native_psm/value101_baseline_48p_head_v1.json",
+    "tests/fixtures/network_toys/dc-1.0.0-single-bus.json",
     "tests/fixtures/network_toys/eleven-zone-topology.json",
     "tests/fixtures/p04_trajectory_golden.json",
     "tests/fixtures/p07/head_decide_record.json",
@@ -9558,6 +9559,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/fixtures/network_toys/dc-1.0.0-single-bus.json",
+      "sha256": "101088ac439dbe3baa4dc88c5d2730a73d203f4a94e92e626acb4f131c8678bd",
+      "bytes": 4228,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/fixtures/network_toys/eleven-zone-topology.json",
       "sha256": "5e6130be61eed6243257e7aa3a42ff8069d0c4d8699b2a1262a4786d484b4df8",
       "bytes": 15614,
@@ -10735,8 +10742,8 @@
     },
     {
       "path": "tests/test_p08_network_shares.py",
-      "sha256": "15f73d376062b463aa35aae39abef020663400091c6dac45b3a2bd92e619bd60",
-      "bytes": 8650,
+      "sha256": "d4ce4f9184dbae079290a7c8fdf22474b65c4246cca8241580a21cd3bbb530ee",
+      "bytes": 10677,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10747,8 +10754,8 @@
     },
     {
       "path": "tests/test_p08_runtime_fallback_audit.py",
-      "sha256": "b08ffaad98028bf7b482a7ec45ef72bae7a60a4df114bccf9786f40bf1b3af86",
-      "bytes": 6115,
+      "sha256": "4378666feb56c3307064a789191770500d87ba6013cc0c23866ffd46423db92f",
+      "bytes": 8697,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

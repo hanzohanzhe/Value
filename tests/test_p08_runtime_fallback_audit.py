@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import json
+import shutil
 import tempfile
 import unittest
 from dataclasses import replace
@@ -114,8 +116,60 @@ class RuntimeFallbackAuditTests(unittest.TestCase):
             sorted(asset for asset, row in by_asset.items() if row["allocation_source"] == "pack_mapping"),
         )
 
-    def test_a_restored_year_reproduces_the_same_audit(self) -> None:
+    def test_the_same_input_reproduces_the_same_audit(self) -> None:
         self.assertEqual(spatialise(StagedBidAtCostPSM()), spatialise(StagedBidAtCostPSM()))
+
+    def test_a_subannual_restore_rewrites_the_same_audit_file(self) -> None:
+        """Restore through the staged PSM's real subannual checkpoint protocol.
+
+        A run stopped after January (no audit file is written before the
+        year ends) and restored into a fresh PSM instance writes the same
+        yearly audit file as an uninterrupted run.
+        """
+
+        from gridform_core.v2.orchestrator import CancellationRequested
+        from tests.test_zonal_subannual_resume import _configured_psm
+
+        def audit_file(output_dir: Path) -> dict[str, object]:
+            path = output_dir / "market" / f"runtime-fallback-audit-{year}.json"
+            return json.loads(path.read_text(encoding="utf-8"))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary) / "same-run"
+            continuous, _balancing, continuous_input = _configured_psm(output_dir)
+            year = int(continuous_input.year)
+            continuous.run(continuous_input)
+            expected = audit_file(output_dir)
+            shutil.rmtree(output_dir)
+
+            stopped, _balancing, stopped_input = _configured_psm(output_dir)
+            captured: list[dict[str, object]] = []
+            stopped.configure_subannual_checkpoint_sink(
+                lambda _boundary, checkpoint, _ledger: captured.append(copy.deepcopy(checkpoint))
+            )
+
+            def stop_after_january(stop_year: int, period: int) -> None:
+                if (stop_year, period) == (year, 1):
+                    raise CancellationRequested("stop after January")
+
+            stopped.configure_period_boundary_cancellation(stop_after_january)
+            with self.assertRaises(CancellationRequested):
+                stopped.run(stopped_input)
+            self.assertEqual(len(captured), 1)
+            audit_path = output_dir / "market" / f"runtime-fallback-audit-{year}.json"
+            self.assertFalse(audit_path.exists())
+
+            resumed, _balancing, resumed_input = _configured_psm(output_dir)
+            # As in the orchestrator, the resuming process prepares the year
+            # context again (that is where the audit is computed), then
+            # restores the runtime checkpoint and runs the remaining periods.
+            resumed.restore_runtime_checkpoint(captured[0])
+            resumed.run(resumed_input)
+            restored = audit_file(output_dir)
+
+        self.assertEqual(restored, expected)
+        self.assertEqual(restored["year"], year)
+        self.assertEqual(len(restored["by_technology"]), 3)
 
     def test_read_model_flags_spatially_indicative_technologies(self) -> None:
         audit = spatialise(StagedBidAtCostPSM())
