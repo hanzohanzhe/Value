@@ -3622,8 +3622,8 @@
     },
     {
       "path": "backend/model_runner.py",
-      "sha256": "3a552c37a3f8ce9e6abcce00dc2a0f675239a2344c3d078d52c52a38a8248d73",
-      "bytes": 34294,
+      "sha256": "1c648258f607065733efe6a857cb68cb0a77ef874de8df66e470d4e0f1430a11",
+      "bytes": 36445,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10031,8 +10031,8 @@
     },
     {
       "path": "tests/frontend/unit/result-metrics.test.mjs",
-      "sha256": "cbaec194898d6ff50ce78fcc19a4e4d5ef91763954997ed0db808653b22dac4e",
-      "bytes": 2881,
+      "sha256": "0851593157f3a4f2e9842dbd59011d76adbfdca09c9f55cd48aca661042d4ea2",
+      "bytes": 3233,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10883,8 +10883,8 @@
     },
     {
       "path": "tests/test_native_mechanism_scope.py",
-      "sha256": "19a5bcdd34ffd0dcae1998a99cefe7b73f0afad26b763fda14e6379943e5038c",
-      "bytes": 4558,
+      "sha256": "117a6006c9c90ddf68144eee042dbdf5da771326eac072f924e9416a7f31387c",
+      "bytes": 8553,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

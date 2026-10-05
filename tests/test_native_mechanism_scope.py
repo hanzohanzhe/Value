@@ -73,5 +73,72 @@ class NativeMechanismScopeTests(unittest.TestCase):
         self.assertIs(metrics["system_cost_includes_voll"], True)
 
 
+
+def _ledger(components: dict[str, float] | None, *, zonal: bool = False) -> dict:
+    """A CEM cost ledger built by the real ledger builder from one PSM's operating components."""
+
+    from gridform_core.cost_ledger import build_cem_cost_ledger
+    from gridform_core.v2.contracts import MarketYearResult
+
+    operating = sum((components or {"_": 30.0}).values())
+    extensions: dict[str, object] = {"physical_operating_cost_components_gbp": components} if components else {}
+    if zonal:
+        extensions["zonal_accounting_gbp"] = {
+            "system_resource_cost_gbp": 100.0 + operating, "transmission_constraint_resource_cost_gbp": 3.0,
+            "national_settlement_gbp": 50.0, "redispatch_settlement_gbp": 4.0, "policy_transfer_gbp": 0.0,
+        }
+    market = MarketYearResult(
+        result_id="voll-basis", year=2025, module_id="fixture-psm", module_version="1",
+        generation_mwh_by_asset={}, market_income_gbp_by_agent={},
+        total_system_cost_gbp=100.0 + operating, total_operational_cost_gbp=operating,
+        total_levelized_capital_cost_gbp=100.0, total_demand_mwh=10.0, total_generation_mwh=9.0,
+        total_blackout_mwh=1.0, total_excess_mwh=0.0,
+        extensions=extensions,
+    )
+    return build_cem_cost_ledger(market).to_dict()
+
+
+class VollBasisTests(unittest.TestCase):
+    """Review response: the VoLL flag comes from the declared headline components, not from name fragments."""
+
+    def test_perfect_foresight_headline_includes_voll(self) -> None:
+        from backend.model_runner import _system_cost_includes_voll
+
+        # perfect_foresight_psm: blackout x VoLL is the operating line blackout_prevention_failure
+        ledger = _ledger({"generation_and_import_variable": 20.0, "storage_variable_degradation": 2.0, "blackout_prevention_failure": 8.0})
+        self.assertIn("operation.blackout_prevention_failure", [line["id"] for line in ledger["lines"] if line["included_in_cem_system_cost"]])
+        self.assertIs(_system_cost_includes_voll(ledger), True)
+
+    def test_native_and_unknown_components(self) -> None:
+        from backend.model_runner import _system_cost_includes_voll
+
+        native = _ledger({"generation_import_and_reliability": 25.0, "storage_cycle_depreciation": 5.0})
+        self.assertIs(_system_cost_includes_voll(native), False)
+        # zonal redispatch adds load_shedding x VoLL to the same class total (staged_psm reconciles it)
+        zonal = _ledger({"generation_import_and_reliability": 25.0, "storage_cycle_depreciation": 5.0}, zonal=True)
+        self.assertTrue(any(line["id"].startswith("zonal.") for line in zonal["lines"]))
+        self.assertIs(_system_cost_includes_voll(zonal), True)
+        # an opaque operating total or an unreviewed component: the basis is not recorded
+        self.assertIsNone(_system_cost_includes_voll(_ledger(None)))
+        self.assertIsNone(_system_cost_includes_voll(_ledger({"generation_import_and_reliability": 25.0, "lost_load_guess": 5.0})))
+        # the doctoral (legacy) total has no CEM ledger and adds Lost_Value_of_Electricity
+        self.assertIs(_system_cost_includes_voll(None), True)
+
+    def test_every_psm_operating_component_is_reviewed(self) -> None:
+        import re
+
+        from backend.model_runner import VOLL_BASIS_BY_LEDGER_LINE
+
+        for relative in ("gridform_core/perfect_foresight_psm.py", "gridform_core/builtin/scheme_c_1000twh/scheme_c_native_psm.py",
+                         "gridform_core/builtin/scheme_c_1000twh/staged_psm.py"):
+            source = (ROOT / relative).read_text(encoding="utf-8")
+            block = source[source.index('"physical_operating_cost_components_gbp": {'):]
+            block = block[:block.index("},")]
+            keys = re.findall(r'"([a-z_]+)":', block.split("{", 1)[1])
+            self.assertTrue(keys, relative)
+            for key in keys:
+                with self.subTest(psm=relative, component=key):
+                    self.assertIn(f"operation.{key}", VOLL_BASIS_BY_LEDGER_LINE)
+
 if __name__ == "__main__":
     unittest.main()

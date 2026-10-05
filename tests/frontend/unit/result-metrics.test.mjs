@@ -53,3 +53,8 @@ test("an older Run without the VoLL flag says so", () => {
   delete older.system_cost_includes_voll;
   assert.equal(costComposition(older).vollNote, "VoLL basis not recorded");
 });
+
+test("the VoLL note follows the backend's declared basis (perfect foresight includes it; unknown is not guessed)", () => {
+  assert.equal(costComposition({ ...native, system_cost_includes_voll: true }).vollNote, "includes VoLL");
+  assert.equal(costComposition({ ...native, system_cost_includes_voll: null }).vollNote, "VoLL basis not recorded");
+});
