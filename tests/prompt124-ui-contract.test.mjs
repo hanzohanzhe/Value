@@ -168,4 +168,7 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.match(editor,/onClick=\{onUpgrade\}/);
   assert.match(editor,/disabled=\{!useCustom \|\| legacy\}/);
   assert.match(editor,/Fixed at GBP 1 total bid cost/);
+  // Review M2-P0-8a: the upgrade preview follows the .table-scroll wrapper
+  // convention (global tables have min-width: 800px).
+  assert.match(editor,/<div className="table-scroll"><table className="solver-upgrade-preview"[^]*?<\/table><\/div>/);
 });

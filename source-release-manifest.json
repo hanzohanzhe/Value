@@ -3199,8 +3199,8 @@
     },
     {
       "path": "app/features/studies/SolverSettingsEditor.tsx",
-      "sha256": "519acbb7213a8d1dda0d6518597a84f46d8a47e8f946b76c36dfaf334f9b6fb2",
-      "bytes": 6609,
+      "sha256": "b3026aa8c7ddd0d704dd37692a9132a05127c5735bf345725bc5955676c2eb54",
+      "bytes": 6645,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10052,8 +10052,8 @@
     },
     {
       "path": "tests/prompt124-ui-contract.test.mjs",
-      "sha256": "c255bbd4f9b45b6d8443f34079d4e20a71e9c874ea878b367b83fb481e146ebc",
-      "bytes": 11100,
+      "sha256": "19d9f87198db1d94fd13157ed0d5f6594c6386f65ade28c7d4440709992007d3",
+      "bytes": 11350,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
