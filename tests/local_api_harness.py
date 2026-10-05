@@ -47,6 +47,7 @@ STATE_ROOT_NAMES = {
     "IMPORT_STAGING_ROOT": "import-staging",
     "ARCHIVES_ROOT": "archives",
     "TRASH_ROOT": "trash",
+    "VALIDATION_CACHE_ROOT": "cache/data-validation",
 }
 SESSION_HEADER = "X-VALUE-Session"
 

@@ -20,6 +20,10 @@ UNIT_FACTORS = {
     ("TWh", "MWh"): 1_000_000.0,
     ("GBP/kWh", "GBP/MWh"): 1000.0,
 }
+# Conversions that need an explicit, documented rate (P0-5a S10, review P6-12):
+# EUR/MWh -> GBP/MWh divides by spec.source["eur_per_gbp"] and records
+# spec.source["fx_basis"]; there is no default rate.
+FX_CONVERSIONS = {("EUR/MWh", "GBP/MWh")}
 
 
 @dataclass(frozen=True)
@@ -76,12 +80,27 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _convert(value: str, rule: ColumnRule, interval_minutes: int | None = None) -> object:
+def fx_factor(source: Mapping[str, object] | None) -> float:
+    """1 / eur_per_gbp of a mapping that converts EUR to GBP; refuses a missing or invalid rate."""
+
+    rate = dict(source or {}).get("eur_per_gbp")
+    basis = dict(source or {}).get("fx_basis")
+    if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not math.isfinite(rate) or rate <= 0:
+        raise ValueError("EUR/MWh to GBP/MWh requires an explicit positive eur_per_gbp")
+    if not isinstance(basis, str) or not basis.strip():
+        raise ValueError("EUR/MWh to GBP/MWh requires an fx_basis naming the rate's source")
+    return 1.0 / float(rate)
+
+
+def _convert(value: str, rule: ColumnRule, interval_minutes: int | None = None,
+             source: Mapping[str, object] | None = None) -> object:
     if not value.strip():
         return None
     if rule.source_unit is None or rule.target_unit is None or rule.source_unit == rule.target_unit:
         return value
     factor = UNIT_FACTORS.get((rule.source_unit, rule.target_unit))
+    if (rule.source_unit, rule.target_unit) in FX_CONVERSIONS:
+        factor = fx_factor(source)
     if rule.source_unit == "MWh/period" and rule.target_unit == "MW":
         if isinstance(interval_minutes, bool) or not isinstance(interval_minutes, (int, float)) or not math.isfinite(interval_minutes) or interval_minutes <= 0:
             raise ValueError("MWh/period to MW requires an explicit positive interval_minutes")
@@ -113,7 +132,8 @@ def preview_csv(
             raise ValueError("Missing mapped columns: " + ", ".join(missing))
         rows = []
         for raw in reader:
-            normalized = {rule.target: _convert(str(raw.get(rule.source, "")), rule, spec.interval_minutes) for rule in spec.columns}
+            normalized = {rule.target: _convert(str(raw.get(rule.source, "")), rule, spec.interval_minutes, spec.source)
+                          for rule in spec.columns}
             if spec.technology_column and spec.technology_column in normalized:
                 raw_technology = str(normalized[spec.technology_column])
                 normalized[spec.technology_column] = spec.technology_mapping.get(
@@ -152,7 +172,8 @@ def execute_adapter(source: Path, spec: AdapterSpec, output: Path) -> AdapterRes
         writer = csv.DictWriter(output_handle, fieldnames=targets, lineterminator="\n")
         writer.writeheader()
         for raw in reader:
-            normalized = {rule.target: _convert(str(raw.get(rule.source, "")), rule, spec.interval_minutes) for rule in spec.columns}
+            normalized = {rule.target: _convert(str(raw.get(rule.source, "")), rule, spec.interval_minutes, spec.source)
+                          for rule in spec.columns}
             if spec.technology_column and spec.technology_column in normalized:
                 technology = str(normalized[spec.technology_column])
                 normalized[spec.technology_column] = spec.technology_mapping.get(technology, technology)

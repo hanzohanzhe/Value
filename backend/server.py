@@ -80,6 +80,7 @@ from gridform_core.frontend_contract import (
     resolve_study_draft,
 )
 from gridform_core.methodology import catalogue_payload as methodology_catalogue_payload, methodology_record, pack_entry
+from gridform_core.methodology import profile_ids as methodology_profile_ids
 from gridform_core.result_advisories import compact_validation_fields, present_scientific_status, withhold_annual_results, withheld_annual_result
 from gridform_core.parameters import (
     ParameterValidationError,
@@ -234,6 +235,8 @@ OBJECTS_ROOT = STATE_ROOT / "objects" / "sha256"
 IMPORT_STAGING_ROOT = STATE_ROOT / "import-staging"
 ARCHIVES_ROOT = STATE_ROOT / "archives"
 TRASH_ROOT = STATE_ROOT / "trash"
+# P0-5a S9: data-validation summaries, outside PACKS_ROOT; list_packs only reads them.
+VALIDATION_CACHE_ROOT = STATE_ROOT / "cache" / "data-validation"
 STUDY_LIFECYCLE_LOCK = threading.RLock()
 # Runs written before the gridform -> value rename keep their stored engine
 # label; both labels denote the v2 annual application service (R2-08).
@@ -776,8 +779,10 @@ def ensure_default_pack() -> None:
     manifest = PACKS_ROOT / "value-uk-research-data" / "manifest.json"
     atomic_json(manifest, {
         "schema_version": "value.data-pack/v1", "id": "value-uk-research-data",
+        # P0-5a S10: no timezone claim for an empty workspace pack; series
+        # declare their own clock when they are mapped (review P6-04).
         "name": "UK VALUE research data", "country": "GB",
-        "timezone": "Europe/London", "created_at": now(), "updated_at": now(),
+        "created_at": now(), "updated_at": now(),
         "bindings": {},
     })
 
@@ -917,6 +922,39 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _validation_cache_path(pack_id: str, manifest_sha256: str) -> Path:
+    return VALIDATION_CACHE_ROOT / f"{slug(pack_id, 'pack')}-{manifest_sha256[:16]}.json"
+
+
+def write_validation_cache(pack_id: str, pack_root: Path, report: dict[str, Any]) -> None:
+    """Keep the layer summary of the last validation of this manifest revision (P0-5a S9)."""
+
+    try:
+        manifest_sha256 = hashlib.sha256((pack_root / "manifest.json").read_bytes()).hexdigest()
+        layers = dict(report.get("layers") or {})
+        summary = {
+            "schema_version": "value.data-validation-cache/v1",
+            "pack_id": pack_id, "manifest_sha256": manifest_sha256, "valid": bool(report.get("valid")),
+            "chronology_codes": list(dict(layers.get("chronology") or {}).get("codes") or []),
+            "plausibility_codes": list(dict(layers.get("plausibility") or {}).get("codes") or []),
+            "profile_eligibility": report.get("profile_eligibility"),
+            "validated_at": now(),
+        }
+        atomic_json(_validation_cache_path(pack_id, manifest_sha256), summary)
+    except (OSError, ValueError, TypeError):
+        return
+
+
+def cached_validation_status(pack_id: str, manifest_sha256: str) -> dict[str, Any]:
+    """The cached layer summary; never reads the pack's data files (NetCDF)."""
+
+    cached = read_json(_validation_cache_path(pack_id, manifest_sha256))
+    if not cached or cached.get("manifest_sha256") != manifest_sha256:
+        return {"status": "not_evaluated"}
+    codes = [*cached.get("chronology_codes", []), *cached.get("plausibility_codes", [])]
+    return {"status": "findings" if codes else "passed", **cached}
+
+
 def list_packs() -> list[dict[str, Any]]:
     ensure_default_pack()
     packs = []
@@ -947,6 +985,7 @@ def list_packs() -> list[dict[str, Any]]:
         if installation:
             pack["installation"] = installation
         pack["manifest_sha256"] = hashlib.sha256(manifest_bytes).hexdigest()
+        pack["plausibility_status"] = cached_validation_status(str(pack["id"]), pack["manifest_sha256"])
         packs.append(pack)
     return sorted(packs, key=lambda item: item.get("name", ""))
 
@@ -1781,7 +1820,14 @@ class Handler(BaseHTTPRequestHandler):
                 )
             except ValueError as exc:
                 self._json({"error": str(exc), "error_code": "GF_EXTENSION_UNKNOWN"}, 400); return
-            self._json(validate_data_pack(pack_root, manifest, slots))
+            profile = query.get("profile", [""])[0]
+            if profile and profile not in methodology_profile_ids():
+                self._json({"error": f"unknown methodology profile {profile}", "error_code": "VALUE_PROFILE_UNKNOWN"}, 400); return
+            report = validate_data_pack(pack_root, manifest, slots)
+            write_validation_cache(pack_id, pack_root, report)
+            if profile:
+                report["profile"] = {"id": profile, **dict((report.get("profile_eligibility") or {}).get(profile) or {})}
+            self._json(report)
         elif route.startswith("/api/data-packs/") and route.endswith("/preview"):
             pack_id = slug(route.strip("/").split("/")[2], "pack")
             role = query.get("role", [""])[0]

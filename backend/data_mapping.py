@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timezone
 
 from backend.data_pack_clone import SAFE_ID, guard_clone_upload
-from gridform_core.data_adapters import AdapterSpec, ColumnRule, UNIT_FACTORS, execute_adapter
+from gridform_core.data_adapters import AdapterSpec, ColumnRule, FX_CONVERSIONS, UNIT_FACTORS, execute_adapter, fx_factor
 from gridform_core.data_contract_templates import CSV_TEMPLATES, runtime_supported_formats
 from gridform_core.data_import import promote_binding_revision
 from gridform_core.data_pack_validation import (
@@ -36,6 +36,30 @@ FIELD_UNITS = {
     "value.network.ac.reactive-demand": {"reactive_demand_mvar": "MVAr"},
     "value.hydrology.site-catalogue": {"capacity_mw": "MW"},
 }
+
+
+MARKET_PROFILE_ROLES = {role for role in CYCLIC_MARKET_ROLES if role.endswith(".profile")}
+MARKET_PRICE_ROLES = {role for role in CYCLIC_MARKET_ROLES if role.endswith(".price")}
+# Roles whose MWh/period source converts to MW with the declared 30-minute interval.
+PER_PERIOD_ENERGY_ROLES = DEMAND_ROLES | MARKET_PROFILE_ROLES
+
+
+def _fx(value: object) -> dict[str, object] | None:
+    """The explicit EUR->GBP rate of a mapping request (P0-5a S10); None when absent."""
+
+    if value is None:
+        return None
+    if not isinstance(value, dict) or not {"eur_per_gbp", "fx_basis"} <= set(value) <= {"eur_per_gbp", "fx_basis", "price_year"}:
+        raise DataMappingError("GF_MAPPING_FX", "fx must be {eur_per_gbp, fx_basis[, price_year]}.")
+    try:
+        fx_factor(value)
+    except ValueError as exc:
+        raise DataMappingError("GF_MAPPING_FX", str(exc)) from exc
+    year = value.get("price_year")
+    if year is not None and (isinstance(year, bool) or not isinstance(year, int)):
+        raise DataMappingError("GF_MAPPING_FX", "price_year must be an integer year.")
+    return {"eur_per_gbp": float(value["eur_per_gbp"]), "fx_basis": str(value["fx_basis"]).strip(),
+            **({"price_year": year} if year is not None else {})}
 
 
 class DataMappingError(ValueError):
@@ -138,10 +162,16 @@ class DataMappingService:
         else:
             raise DataMappingError("GF_MAPPING_ROLE", "This CSV role has no explicit canonical column contract.")
         demand = role in DEMAND_ROLES
+        per_period = role in PER_PERIOD_ENERGY_ROLES
+        price = role in MARKET_PRICE_ROLES
         return {"role": role, "columns": columns, "single_value": single,
                 **({"interval_minutes": 30, "unit_contract": "value.demand-mw-half-hour/v1"} if demand else {}),
-                "conversion_pairs": [{"source_unit": source, "target_unit": target}
-                    for source, target in sorted(set(UNIT_FACTORS) | ({("MWh/period", "MW")} if demand else set()) | {
+                **({"interval_minutes": 30} if role in MARKET_PROFILE_ROLES else {}),
+                **({"fx_required_for": ["EUR/MWh"]} if price else {}),
+                "conversion_pairs": [{"source_unit": source, "target_unit": target,
+                                      **({"requires_fx": True} if (source, target) in FX_CONVERSIONS else {})}
+                    for source, target in sorted(set(UNIT_FACTORS) | ({("MWh/period", "MW")} if per_period else set())
+                                                 | (set(FX_CONVERSIONS) if price else set()) | {
                         (column["target_unit"], column["target_unit"]) for column in columns if column["target_unit"] is not None
                     }) if target in {column["target_unit"] for column in columns}]}
 
@@ -203,7 +233,8 @@ class DataMappingService:
                 raise
             return report
 
-    def _spec(self, role: str, columns: object, source_columns: list[str]) -> AdapterSpec:
+    def _spec(self, role: str, columns: object, source_columns: list[str],
+              fx: Mapping[str, object] | None = None) -> AdapterSpec:
         contract = self._role(role)
         targets = {column["target"]: column["target_unit"] for column in contract["columns"]}
         if not isinstance(columns, list) or len(columns) != len(targets):
@@ -221,23 +252,32 @@ class DataMappingService:
             if target_unit is None:
                 if source_unit is not None:
                     raise DataMappingError("GF_MAPPING_UNITS", "This field has no declared unit conversion.")
+            elif (source_unit, target_unit) in FX_CONVERSIONS and role in MARKET_PRICE_ROLES:
+                if fx is None:
+                    raise DataMappingError("GF_MAPPING_FX", "EUR prices need an explicit eur_per_gbp and fx_basis.")
             elif source_unit is None or (source_unit != target_unit and (source_unit, target_unit) not in UNIT_FACTORS
-                    and not (role in DEMAND_ROLES and source_unit == "MWh/period" and target_unit == "MW")):
+                    and not (role in PER_PERIOD_ENERGY_ROLES and source_unit == "MWh/period" and target_unit == "MW")):
                 raise DataMappingError("GF_MAPPING_UNITS", "Select an explicit supported source unit.")
             rules[target] = ColumnRule(source, target, source_unit, target_unit)
+        uses_fx = any((rule.source_unit, rule.target_unit) in FX_CONVERSIONS for rule in rules.values())
+        if fx is not None and not uses_fx:
+            raise DataMappingError("GF_MAPPING_FX", "fx is only accepted for an EUR/MWh price column.")
         return AdapterSpec("value.explicit-column-mapping", "2" if role in DEMAND_ROLES else "1", "csv", role, "csv",
                            tuple(rules[column["target"]] for column in contract["columns"]),
-                           interval_minutes=30 if role in DEMAND_ROLES else None)
+                           interval_minutes=30 if role in PER_PERIOD_ENERGY_ROLES else None,
+                           source=dict(fx or {}))
 
     def preview(self, stage_id: str, request: Mapping[str, object]) -> dict[str, object]:
-        if set(request) != {"schema_version", "source_sha256", "target_manifest_sha256", "columns"} or request.get("schema_version") != "value.data-mapping-preview-request/v1":
+        base_fields = {"schema_version", "source_sha256", "target_manifest_sha256", "columns"}
+        if set(request) not in (base_fields, base_fields | {"fx"}) or request.get("schema_version") != "value.data-mapping-preview-request/v1":
             raise DataMappingError("GF_MAPPING_REQUEST", "Invalid mapping preview request.")
+        fx = _fx(request.get("fx"))
         stage_dir, stage = self._load("stages", stage_id)
         raw = _bytes(stage_dir / "source.csv", self.staging_root)
         columns, rows = _shape(raw)
         if _hash(raw) != stage["source_sha256"] or request["source_sha256"] != stage["source_sha256"] or request["target_manifest_sha256"] != stage["target_manifest_sha256"]:
             raise DataMappingError("GF_MAPPING_IDENTITY", "Source or target identity changed; upload again.", 409)
-        spec = self._spec(stage["role"], request["columns"], columns)
+        spec = self._spec(stage["role"], request["columns"], columns, fx)
         with self.lock:
             _, manifest, _ = self._target(stage["pack_id"], stage["target_manifest_sha256"])
             token, directory = self._new("reviews")
@@ -293,7 +333,8 @@ class DataMappingService:
             spec_payload = json.loads(_bytes(directory / "spec.json", self.staging_root))
             if not isinstance(spec_payload, dict):
                 raise DataMappingError("GF_MAPPING_IDENTITY", "Mapping specification is corrupt; review again.", 409)
-            spec = self._spec(review["role"], spec_payload.get("columns"), headers)
+            spec = self._spec(review["role"], spec_payload.get("columns"), headers,
+                              _fx(spec_payload.get("source") or None))
             if _canonical(spec_payload) != _canonical(spec.to_dict()) or _hash(_canonical(spec_payload)) != review["spec_sha256"] or _hash(source) != review["source_sha256"]:
                 raise DataMappingError("GF_MAPPING_IDENTITY", "Source or mapping specification changed; review again.", 409)
             normalized = _bytes(directory / "normalized.csv", self.staging_root)
@@ -319,9 +360,15 @@ class DataMappingService:
                 (provenance / "source.csv").write_bytes(source)
                 _write(provenance / "spec.json", spec_payload)
                 _write(provenance / "review.json", review)
+                single = review["role"] in DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
                 metadata = {"unit": self.slots[review["role"]].get("unit"),
                             **({"input_unit_contract": "value.demand-mw-half-hour/v1", "interval_minutes": 30}
                                if review["role"] in DEMAND_ROLES else {}),
+                            # P0-5a S10: the normalized file declares how it is read.
+                            **({"csv_header": True, "csv_column": "value"} if single else {}),
+                            **({"interval_minutes": 30} if review["role"] in MARKET_PROFILE_ROLES else {}),
+                            **({"currency": "GBP"} if review["role"] in MARKET_PRICE_ROLES else {}),
+                            **({"source_currency": "EUR", **dict(spec.source)} if spec.source else {}),
                             "redistribution_class": "not_declared",
                             "owner_extension": self.slots[review["role"]].get("owner_extension"),
                             "capability": self.slots[review["role"]].get("capability"),

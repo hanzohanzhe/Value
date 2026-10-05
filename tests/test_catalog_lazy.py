@@ -19,7 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 # sha256 of the canonical JSON of DATASET_SLOTS as it stood at the P0-2 move
 # (35aadb3 content).  A package that changes dataset_slots.py updates this
 # constant in the same commit and says so in the message (C27).
-DATASET_SLOTS_SHA256 = "4f8c2695cefc6d75eddd29a92e2295e66d6f24c0805518c64d09e9ca03c42fc7"
+# P0-5a S10: interconnector unit contract (market.*.profile MW/30 min,
+# market.*.price GBP/MWh); 35aadb3 value 4f8c2695cefc6d75...
+DATASET_SLOTS_SHA256 = "1cbb27d6ca0a3f3480de84d2762044efb6c21cb9ac9a0ecd5a7697fae88ec231"
 
 
 def _python(code: str, data_home: Path) -> subprocess.CompletedProcess:

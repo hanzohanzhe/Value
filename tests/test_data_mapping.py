@@ -159,3 +159,43 @@ class DataMappingTests(unittest.TestCase):
                 self.commit(review)
         self.assertEqual((self.pack / "manifest.json").read_bytes(), before)
         self.assertFalse((self.pack / "mapping-provenance" / review["review_id"]).exists())
+
+
+class EurPriceMappingTests(DataMappingTests):
+    """P0-5a S10 (P6-12): EUR prices need an explicit rate; mapped series declare how they are read."""
+
+    def preview_with(self, stage, columns, fx=None):
+        request = {"schema_version": "value.data-mapping-preview-request/v1",
+                   "source_sha256": stage["source_sha256"], "target_manifest_sha256": stage["target_manifest_sha256"],
+                   "columns": columns}
+        if fx is not None:
+            request["fx"] = fx
+        return self.service.preview(stage["stage_id"], request)
+
+    def test_eur_price_converts_with_an_explicit_rate(self):
+        roles = {row["role"]: row for row in self.service.catalog(self.pack_id)["roles"]}
+        price = roles["market.belgium.price"]
+        self.assertEqual(price["columns"], [{"target": "value", "target_unit": "GBP/MWh"}])
+        self.assertIn({"source_unit": "EUR/MWh", "target_unit": "GBP/MWh", "requires_fx": True}, price["conversion_pairs"])
+        stage = self.stage(b"hour,eur\n" + b"x,110\n" * 17520, "market.belgium.price")
+        columns = [{"source": "eur", "target": "value", "source_unit": "EUR/MWh", "target_unit": "GBP/MWh"}]
+        with self.assertRaises(DataMappingError) as missing:
+            self.preview_with(stage, columns)
+        self.assertEqual(missing.exception.code, "GF_MAPPING_FX")
+        with self.assertRaises(DataMappingError):
+            self.preview_with(stage, columns, {"eur_per_gbp": 1.1})
+        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.1, "fx_basis": "toy fixed rate", "price_year": 2022})
+        self.assertTrue(review["valid"], review["errors"])
+        self.assertAlmostEqual(float(review["sample_rows"][0]["value"]), 100.0, places=9)
+        binding = self.commit(review)["binding"]
+        self.assertEqual((binding["unit"], binding["currency"], binding["source_currency"]), ("GBP/MWh", "GBP", "EUR"))
+        self.assertEqual((binding["eur_per_gbp"], binding["fx_basis"]), (1.1, "toy fixed rate"))
+        self.assertEqual((binding["csv_column"], binding["csv_header"]), ("value", True))
+
+    def test_market_profile_in_mwh_per_period_converts_to_mw(self):
+        stage = self.stage(b"t,flow\n" + b"x,6\n" * 17520, "market.france.profile")
+        review = self.preview_with(stage, [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}])
+        self.assertTrue(review["valid"], review["errors"])
+        self.assertEqual(float(review["sample_rows"][0]["value"]), 12.0)
+        binding = self.commit(review)["binding"]
+        self.assertEqual((binding["unit"], binding["interval_minutes"]), ("MW", 30))

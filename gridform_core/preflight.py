@@ -10,7 +10,7 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from .data_pack_validation import validate_data_pack
 from .domain_readiness import build_domain_readiness
@@ -245,6 +245,37 @@ def _estimates(
         "zonal_redispatch": zonal,
         "full_trace_requires_presented_disk_estimate": trace == "full",
     }
+
+
+def data_eligibility_issues(project: Mapping[str, Any], pack_manifest: Mapping[str, Any],
+                            data_report: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Preflight issues of the data layers under the Study's profile (P0-5a S9)."""
+
+    from .data_method import project_policy
+    from .data_validation_layers import finding_severity
+
+    layers = dict(data_report.get("layers") or {})
+    findings = [*dict(layers.get("chronology") or {}).get("findings", []),
+                *dict(layers.get("plausibility") or {}).get("findings", [])]
+    if not findings:
+        return []
+    try:
+        policy = project_policy(project, pack_manifest)
+    except ValueError:
+        return []
+    issues = []
+    for finding in findings:
+        severity = finding_severity(policy, finding)
+        if severity == "not_applicable":
+            continue
+        issues.append(_issue(
+            str(finding["code"]), severity, "data",
+            f"{finding.get('role') or 'data pack'}: {finding['message']}",
+            "Use a pack revision that declares this series correctly (or the doctoral reproduction profile, "
+            "which reads the known GBP1 public1 defects repaired and records them)."
+            if severity == "error" else "Review the data-pack finding before publication.",
+        ))
+    return issues
 
 
 def run_preflight(
@@ -543,6 +574,9 @@ def run_preflight(
         ))
     for warning in data_report["warnings"]:
         issues.append(_issue("GF_PREFLIGHT_DATA_WARNING", "warning", "data", str(warning), "Review the declared adapter behaviour before publication."))
+    # P0-5a S9: the chronology and plausibility layers never decide `valid`;
+    # the run's methodology profile decides which of their findings block.
+    issues.extend(data_eligibility_issues(project, pack_manifest, data_report))
     if network_data_report is not None:
         for warning in network_data_report["warnings"]:
             issues.append(_issue(

@@ -82,6 +82,16 @@ def _read_demand_mwh(base_root: Path, manifest: dict[str, object]) -> list[float
     return values[:PERIODS_PER_YEAR]
 
 
+def _interconnector_capacity_mw(base_root: Path, manifest: dict[str, object]) -> float:
+    """Largest |France flow| (MW) of the base pack on the run clock."""
+
+    from gridform_core.data_method import policy_for_profile, read_role
+
+    policy = policy_for_profile(None, manifest)
+    flow = read_role(base_root, manifest, "market.france.profile", policy, periods=PERIODS_PER_YEAR).values
+    return float(max(abs(float(value)) for value in flow))
+
+
 def _read_profile(base_root: Path, manifest: dict[str, object], role: str) -> list[float]:
     binding = dict(dict(manifest["bindings"])[role])
     rows = csv.reader((base_root / str(binding["uri"])).read_text(encoding="utf-8").splitlines())
@@ -171,7 +181,9 @@ def _role_payloads(
         "onshore": float(active["onshore_Portsmouth"].capacity_mw),
         "solar": float(active["solar_Portsmouth"].capacity_mw),
         "1c_battery": float(active["1c_battery"].capacity_mw),
-        "interconnector": 24.0,
+        # P0-5a S10 (P6-12): the landing capacity is the base pack's France
+        # flow envelope read through the shared reader (12 MW), not a constant.
+        "interconnector": _interconnector_capacity_mw(base_root, base_manifest),
     }
     audit = SpatialAudit(
         (
