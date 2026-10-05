@@ -14,7 +14,9 @@ from pathlib import Path, PurePosixPath
 from typing import Callable, Mapping, Sequence
 
 from .data_bundle import DataBundleError, install_data_bundle, validate_data_bundle
-from .project_revision import attach_revision_identity, save_project_revision
+from .methodology import profile_of_parameters, with_profile
+from .project_revision import attach_revision_identity, project_fingerprint, save_project_revision
+from .revision_migration import classify_revision_mismatch
 from .v2.module_manifest import ModuleRegistryV2
 
 
@@ -30,9 +32,10 @@ MAX_SUITE_BYTES = 3 * 1024 * 1024 * 1024
 
 
 class ResearchSuiteError(ValueError):
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, revision_migration: Mapping[str, object] | None = None):
         super().__init__(message)
         self.code = code
+        self.revision_migration = revision_migration
 
 
 @dataclass(frozen=True)
@@ -230,6 +233,36 @@ def _remove_new_directory(path: Path, parent: Path) -> None:
         shutil.rmtree(resolved)
 
 
+def _existing_suite_study(current: Mapping[str, object], template: Mapping[str, object], study_id: str,
+                          registry: ModuleRegistryV2, manifest: Mapping[str, object]) -> None:
+    """Accept an installed suite Study whose hash differs only because VALUE changed (X0 S11).
+
+    * same content as the template, migrated with the methodology written
+      explicitly: already installed, accepted;
+    * same content, saved by an earlier VALUE (code, method or data identity
+      changed): refused with a migration code and the classification, so the
+      user confirms it through /api/projects/<id>/revision-migration;
+    * otherwise a real collision.
+    """
+
+    current_now = project_fingerprint(current, registry, manifest)
+    template_explicit = project_fingerprint(
+        with_profile(template, profile_of_parameters(dict(template.get("parameters") or {}))), registry, manifest,
+    )
+    if current_now == template_explicit and current.get("revision_sha256") == current_now:
+        return
+    if current_now in {project_fingerprint(template, registry, manifest), template_explicit}:
+        classification = classify_revision_mismatch(current, registry, manifest)
+        if classification.get("classification") not in {"content_changed", "none", "unsaved"}:
+            raise ResearchSuiteError(
+                "VALUE_RESEARCH_SUITE_STUDY_MIGRATION_REQUIRED",
+                f"Study {study_id} was installed by an earlier VALUE version; review its revision migration "
+                f"(/api/projects/{study_id}/revision-migration), then install the suite again.",
+                revision_migration=classification,
+            )
+    raise ResearchSuiteError("VALUE_RESEARCH_SUITE_STUDY_COLLISION", f"Study ID already exists with different content: {study_id}")
+
+
 def install_research_suite(
     path: Path,
     *,
@@ -333,7 +366,7 @@ def install_research_suite(
             if current_path.is_file():
                 current = json.loads(current_path.read_text(encoding="utf-8"))
                 if current.get("revision_sha256") != expected.get("revision_sha256"):
-                    raise ResearchSuiteError("VALUE_RESEARCH_SUITE_STUDY_COLLISION", f"Study ID already exists with different content: {study_id}")
+                    _existing_suite_study(current, candidate, study_id, registry, manifest)
             else:
                 save_project_revision(project_dir, candidate, registry, manifest)
                 newly_created.append((project_dir, Path(projects_root)))

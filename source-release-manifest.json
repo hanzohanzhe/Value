@@ -3519,14 +3519,14 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "d71e144b40b4bd0d676eb03500ea970534ef0a32081c22fb6d00cf5078b544e0",
-      "bytes": 192757,
+      "sha256": "0dbf97bfe423ca7e83a90d96fab5d088dbdaff194a13ad6b44e7f2948276acd8",
+      "bytes": 193089,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/study_derivation.py",
-      "sha256": "5b50080ab5319298d78490cd459cf786d43858f98e2bba3f631dd080aac8443c",
-      "bytes": 17609,
+      "sha256": "5bc068fd74ec0cdf605edd31649c54e4b81ae18c4e16a0a10d42c0bd475325ab",
+      "bytes": 18574,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7866,9 +7866,9 @@
     },
     {
       "path": "gridform_core/research_suite.py",
-      "sha256": "20ff06ba7718ef51e753eb10cc696e0482dc98485ee51d21ebac561a06c88ab4",
-      "bytes": 18727,
-      "transform": "byte copy"
+      "sha256": "b2e91248422d97bff92d18d459d2b2dc8aafab25ede4af455869fe53a9c03caf",
+      "bytes": 20722,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/result_advisories.py",
@@ -10900,8 +10900,8 @@
     },
     {
       "path": "tests/test_project_revision_migration.py",
-      "sha256": "90285a6d95d22699df824707b02249fc4d870df3f1d8377cb95e2de50f96d7d3",
-      "bytes": 24745,
+      "sha256": "31adf6b461e4e8bbb6c15227958c7479c48ffb8d75fc13a2e72a8d8dbfb8d024",
+      "bytes": 28425,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11266,9 +11266,9 @@
     },
     {
       "path": "tests/test_research_suite.py",
-      "sha256": "8291b6c211f9918c9acc3202ff1faffe02a30b6a630435aac24f7ffb6c385f5e",
-      "bytes": 9578,
-      "transform": "byte copy"
+      "sha256": "c093d8fc83315dfc1f2cc96ab62fd8bf2ad0c466fc695cabdb1d662af0fbd57e",
+      "bytes": 12219,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_research_suite_api.py",
@@ -11428,8 +11428,8 @@
     },
     {
       "path": "tests/test_study_derivation.py",
-      "sha256": "9030dbd8d6f5ad5a4e61bb7773f407b4a61a1e19931342b15a4e45fa169c765a",
-      "bytes": 16185,
+      "sha256": "20b14d5a512203db509f3c1bc4390b0a0fed1b04598640294d13fe2d5be564da",
+      "bytes": 17160,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

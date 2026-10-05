@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 from gridform_core.project_revision import project_fingerprint, save_project_revision
+from gridform_core.revision_migration import classify_revision_mismatch
 from gridform_core.data_import import sha256_file
 from gridform_core.frontend_contract import solver_contract_acknowledgement_key
 from gridform_core.module_quarantine import blocker_error, selection_blockers
@@ -32,8 +33,10 @@ DERIVED_FIELDS = {
 
 class StudyDerivationError(ValueError):
     def __init__(self, code: str, message: str, status: int = 409,
-                 validation: Mapping[str, object] | None = None):
+                 validation: Mapping[str, object] | None = None,
+                 revision_migration: Mapping[str, object] | None = None):
         self.code, self.status, self.validation = code, status, validation
+        self.revision_migration = revision_migration
         super().__init__(message)
 
 
@@ -207,6 +210,16 @@ def derive_study(
         source_manifest = revision_manifest(source, source_pack)
         if (project_fingerprint(source, registry, source_manifest) != expected
                 or project_fingerprint(record, registry, source_manifest) != expected):
+            # A code, method or data change since the source was saved is a
+            # revision migration (X0 S11, Q13), not a content conflict.
+            classification = classify_revision_mismatch(source, registry, source_manifest)  # type: ignore[arg-type]
+            if classification.get("classification") not in {"content_changed", "none", "unsaved"}:
+                raise StudyDerivationError(
+                    "GF_STUDY_REVISION_MIGRATION_REQUIRED",
+                    "The source Study was saved by an earlier VALUE version or method; review its revision "
+                    f"migration (/api/projects/{source_id}/revision-migration), then derive from the new revision.",
+                    revision_migration=classification,
+                )
             raise StudyDerivationError(
                 "GF_STUDY_DERIVATION_SOURCE_DRIFT",
                 "Source inputs or scientific configuration drifted from the saved revision; review and save a new revision first.",

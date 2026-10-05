@@ -416,6 +416,62 @@ class MigrationApiTests(unittest.TestCase):
                 status, payload = call("GET", "/api/projects/legacy/revision-migration")
                 self.assertEqual(payload["revision_migration"]["classification"], "none")
 
+    def test_run_start_appends_a_code_only_revision_and_is_accepted(self):
+        """POST /runs on a Study whose module moved by a code-only bump: revision appended, run admitted."""
+
+        from backend import server
+        from tests.local_api_harness import start_local_api
+
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            shutil.copytree(PACK_ROOT, home / "data-packs" / "value-101-baseline-v1")
+            registry = workspace_registry(Path("missing-modules-directory"))
+            manifest = json.loads((PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
+            project = json.loads((ROOT / "tests" / "golden" / "projects" / "D1.json").read_text(encoding="utf-8"))
+            project["id"] = "coded"
+            project["parameters"].pop(PROFILE_PARAMETER, None)
+            study = home / "projects" / "coded"
+            saved = save_project_revision(study, project, registry, manifest)
+            upgraded = VersionedRegistry(server.MODULE_REGISTRY, {PSM: "5.2.0"})
+            spawned, preflighted = [], []
+            # The classification and migration are real; the collaborators after
+            # admission (preflight, source archive, input snapshot, worker) are stubbed.
+            stubs = ExitStack()
+            for name, value in {
+                "run_preflight": lambda project, **k: preflighted.append(project) or {
+                    "accepted": True, "estimates": {"disk_bytes": 100}, "warnings": []},
+                "current_execution": lambda **k: {"identity_sha256": "e" * 64},
+                "bind_run_execution": lambda project, run_dir, record: project,
+                "create_run_input_snapshot": lambda **k: {"snapshot_id": "s", "input_tree_sha256": "t"},
+            }.items():
+                stubs.enter_context(patch.object(server, name, value))
+            with start_local_api(data_home=home) as (_httpd, origin, _token), stubs, \
+                    patch.object(server, "MODULE_REGISTRY", upgraded), \
+                    patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=False)), \
+                    patch.object(server.RunSupervisor, "spawn_worker",
+                                 side_effect=lambda **kwargs: spawned.append(kwargs)):
+                request = urllib.request.Request(
+                    origin + "/api/projects/coded/runs", method="POST",
+                    data=json.dumps({"mode": "smoke"}).encode("utf-8"), headers={"Content-Type": "application/json"},
+                )
+                try:
+                    with urllib.request.urlopen(request, timeout=120) as response:
+                        status, payload = response.status, json.loads(response.read())
+                except urllib.error.HTTPError as error:
+                    status, payload = error.code, json.loads(error.read())
+            self.assertIn(status, {200, 201, 202}, payload)
+            self.assertEqual(len(spawned), 1)
+            current = json.loads((study / "project.json").read_text(encoding="utf-8"))
+            self.assertEqual(preflighted[0]["revision_sha256"], current["revision_sha256"])
+            self.assertEqual(current["revision_reason"], "code-identity-upgrade")
+            self.assertEqual(current["parent_revision_sha256"], saved["revision_sha256"])
+            reasons = {
+                json.loads(path.read_text(encoding="utf-8")).get("revision_reason")
+                for path in (study / "revisions").glob("*.json")
+            }
+            self.assertEqual(reasons, {"user-save", "code-identity-upgrade"})
+            self.assertTrue((study / "revisions" / f"{current['revision_sha256']}.json").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

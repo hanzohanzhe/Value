@@ -2419,11 +2419,14 @@ class Handler(BaseHTTPRequestHandler):
                 minimum_free_space_bytes=MIN_FREE_SPACE_BYTES,
             )
         except (ResearchSuiteError, OSError, ValueError) as exc:
-            self._json({
+            payload = {
                 "error": str(exc),
                 "error_code": getattr(exc, "code", "VALUE_RESEARCH_SUITE_INSTALL"),
                 "rollback": "No existing data pack or Study was changed.",
-            }, 400)
+            }
+            if getattr(exc, "revision_migration", None) is not None:
+                payload["revision_migration"] = exc.revision_migration  # type: ignore[attr-defined]
+            self._json(payload, 400)
             return
         finally:
             staged.unlink(missing_ok=True)
@@ -3444,6 +3447,8 @@ class Handler(BaseHTTPRequestHandler):
                 payload = {"error": str(exc), "error_code": exc.code}
                 if exc.validation is not None:
                     payload["validation"] = exc.validation
+                if exc.revision_migration is not None:
+                    payload["revision_migration"] = exc.revision_migration
                 self._json(payload, exc.status); return
             self._json(result, 201)
         elif route == "/api/projects":
