@@ -5,6 +5,14 @@ run - the stage-parity v3 contract checks, the run invariants
 (:mod:`gridform_core.run_invariants`) and the read-only energy-balance oracle
 (:mod:`gridform_core.energy_balance_oracle`).  A report that executed no check
 is ``not_evaluated``; it is never ``passed`` (finding P7-01).
+
+Gates (P0-4 S7; appendix P0-4 Q5): the run invariants, the energy balance
+(the decision-A2 account, in which a shortfall is booked as unserved energy)
+and the storage throughput invariants (after P0-6 S8) are gates.  Under the
+``production`` policy any failed gate fails the run and its annual economics;
+under the ``declared_deviations`` policy of a frozen reproduction profile a
+failure whose every failing period carries a declared signature is
+``reproduction_with_declared_deviations`` (publication then follows Q14).
 """
 
 from __future__ import annotations
@@ -22,18 +30,29 @@ from .dispatch_benchmark import solve_fixture
 SCHEMA_VERSION = "value.scientific-validation/v2"
 LEGACY_SCHEMA_VERSION = "value.scientific-validation/v1"
 ENERGY_BALANCE_ARTIFACT = "validation/energy-balance-oracle.json"
-ENERGY_BALANCE_ENFORCEMENT = "report_only_until_p0_4_s7"
+ENERGY_BALANCE_ENFORCEMENT = "gate"
+GATE_SEVERITY = "gate"
 R_CONTRACT_NOT_EXECUTED = "GF_VALIDATION_CONTRACT_NOT_EXECUTED"
 R_CONTRACT_MALFORMED = "GF_VALIDATION_CONTRACT_CHECK_MALFORMED"
 R_CONTRACT_SELF_INCONSISTENT = "GF_VALIDATION_CONTRACT_SELF_INCONSISTENT"
 R_INVARIANTS_NOT_EXECUTED = "GF_RUN_INVARIANTS_NOT_EXECUTED"
 R_ENERGY_BALANCE_NOT_EXECUTED = "GF_ENERGY_BALANCE_NOT_EXECUTED"
+NOT_APPLICABLE = "not_applicable"
+REPRODUCTION_CONFORMANT = "reproduction_conformant"
+REPRODUCTION_WITH_DECLARED_DEVIATIONS = "reproduction_with_declared_deviations"
+
 PASSED = "passed"
 FAILED = "failed"
 NOT_EVALUATED = "not_evaluated"
 EXPECTED_DIFFERENCE = "expected_difference"
 RETAINED_COMPARISON_REQUIRED = "required_reproduction_gate"
 RETAINED_COMPARISON_INFORMATIONAL = "informational_scenario_difference"
+PRODUCTION_POLICY = "production"
+DECLARED_DEVIATIONS_POLICY = "declared_deviations"
+GATE_POLICIES = (PRODUCTION_POLICY, DECLARED_DEVIATIONS_POLICY)
+# Q14 raw invariants: these gate values count as passed / as not passed.
+RAW_INVARIANT_PASS = frozenset({PASSED, REPRODUCTION_CONFORMANT, NOT_APPLICABLE})
+RAW_INVARIANT_FAIL = frozenset({FAILED, REPRODUCTION_WITH_DECLARED_DEVIATIONS})
 
 
 @dataclass(frozen=True)
@@ -208,15 +227,15 @@ def contract_evidence(parity_report: Mapping[str, object]) -> dict[str, object]:
 
 def run_invariant_evidence(report: Mapping[str, object] | None) -> dict[str, object]:
     if not isinstance(report, Mapping) or not isinstance(report.get("checks"), list):
-        return {"status": NOT_EVALUATED, "severity": "report", "reason_code": R_INVARIANTS_NOT_EXECUTED,
+        return {"status": NOT_EVALUATED, "severity": GATE_SEVERITY, "reason_code": R_INVARIANTS_NOT_EXECUTED,
                 "checks_passed": 0, "checks_total": 0}
     from .run_invariants import summarise
 
     summary = summarise(report["checks"])  # recomputed, not the stored top-level status
     return {
         "status": summary["status"],
-        "severity": report.get("severity", "report"),
-        "enforcement": report.get("enforcement"),
+        "severity": GATE_SEVERITY,
+        "recorded_severity": report.get("severity"),
         "checks_passed": summary["checks_passed"],
         "checks_total": summary["checks_total"],
         "integrity_checks_passed": summary["integrity_checks_passed"],
@@ -230,17 +249,22 @@ def run_invariant_evidence(report: Mapping[str, object] | None) -> dict[str, obj
 def energy_balance_summary(report: Mapping[str, object] | None) -> tuple[dict[str, object], dict[str, object] | None]:
     """(energy_balance, stress) summaries of an oracle report (decision A2)."""
 
+    from .energy_balance_oracle import energy_balance_gate
+
     if not isinstance(report, Mapping):
-        return ({"status": NOT_EVALUATED, "severity": "report", "enforcement": ENERGY_BALANCE_ENFORCEMENT,
+        return ({"status": NOT_EVALUATED, "severity": GATE_SEVERITY, "enforcement": ENERGY_BALANCE_ENFORCEMENT,
                  "reasons": [R_ENERGY_BALANCE_NOT_EXECUTED], "artifact": None}, None)
     checks = report.get("checks") if isinstance(report.get("checks"), list) else []
-    status = report.get("status")
-    if status not in {PASSED, FAILED, NOT_EVALUATED}:
-        status = NOT_EVALUATED
+    raw_status = report.get("status")
+    if raw_status not in {PASSED, FAILED, NOT_EVALUATED}:
+        raw_status = NOT_EVALUATED
     if any(isinstance(row, Mapping) and row.get("status") == FAILED for row in checks):
-        status = FAILED
-    elif status == PASSED and not checks:
-        status = NOT_EVALUATED
+        raw_status = FAILED
+    elif raw_status == PASSED and not checks:
+        raw_status = NOT_EVALUATED
+    gate = energy_balance_gate(report)
+    status = gate["status"]
+    account = report.get("balance_account") if isinstance(report.get("balance_account"), Mapping) else None
     metrics = dict(report.get("metrics") or {})
     reported = dict(metrics.get("reported") or {})
     full_node = dict(metrics.get("full_node") or {})
@@ -249,8 +273,19 @@ def energy_balance_summary(report: Mapping[str, object] | None) -> tuple[dict[st
     boundary = dict(report.get("boundary") or {})
     energy_balance = {
         "status": status,
-        "severity": "report",
+        "severity": GATE_SEVERITY,
         "enforcement": ENERGY_BALANCE_ENFORCEMENT,
+        # Decision A2: the gate is the account that books the shortfall as
+        # unserved energy; the raw boundary verdict stays as evidence.
+        "gate_basis": gate["basis"],
+        "gate_failed_checks": gate["failed_checks"],
+        "raw_boundary_status": raw_status,
+        "balance_account": None if account is None else {
+            key: account.get(key) for key in (
+                "boundary_id", "open_periods", "unexplained_open_periods",
+                "max_abs_closing_residual_mwh", "sum_abs_closing_residual_mwh",
+            )
+        },
         "boundary_id": boundary.get("boundary_id"),
         "boundary_source": boundary.get("source"),
         "reasons": list(report.get("reasons") or []),
@@ -293,6 +328,7 @@ def energy_balance_summary(report: Mapping[str, object] | None) -> tuple[dict[st
             "shortfall_mwh": year_sum("shortfall_lower_mwh"),
             "shortfall_upper_mwh": year_sum("shortfall_upper_mwh"),
             "recorded_unserved_mwh": stress_report.get("recorded_unserved_mwh"),
+            "forecast_above_supply_stress_periods": stress_report.get("forecast_above_supply_stress_periods"),
             "by_year": [
                 {key: row.get(key) for key in (
                     "year", "stress_periods", "possible_stress_periods", "event_count",
@@ -306,8 +342,89 @@ def energy_balance_summary(report: Mapping[str, object] | None) -> tuple[dict[st
     return energy_balance, stress
 
 
+def storage_invariant_evidence(report: Mapping[str, object] | None) -> dict[str, object]:
+    """The storage throughput invariants of an oracle report (gate after P0-6 S8)."""
+
+    from .energy_balance_oracle import storage_gate
+
+    gate = storage_gate(report if isinstance(report, Mapping) else None)
+    storage = report.get("storage") if isinstance(report, Mapping) else None
+    storage = storage if isinstance(storage, Mapping) else {}
+    checks = [row for row in storage.get("checks") or [] if isinstance(row, Mapping)]
+    return {
+        "status": gate["status"],
+        "severity": GATE_SEVERITY,
+        "reasons": gate["reasons"],
+        "failed_checks": gate["failed_checks"],
+        "checks": [
+            {"id": row.get("id"), "class": row.get("class"), "status": row.get("status"), "count": row.get("count")}
+            for row in checks
+        ],
+        "rows": storage.get("rows"),
+        "period_hours": storage.get("period_hours"),
+        "year_end_discarded_mwh": storage.get("year_end_discarded_mwh"),
+        "artifact": ENERGY_BALANCE_ARTIFACT if storage else None,
+    }
+
+
+def apply_validation_gate(
+    policy: str,
+    *,
+    run_invariant_status: str,
+    energy_balance_status: str,
+    storage_invariant_status: str,
+    oracle_report: Mapping[str, object] | None,
+    declared: list[Mapping[str, object]] | None = None,
+) -> dict[str, object]:
+    """Gate verdicts of one run (P0-4 S7).
+
+    ``production``: the three statuses stand; the gate fails when any of
+    them failed.  ``declared_deviations``: the energy-balance and storage
+    verdicts are re-read through the profile's declared signatures
+    (:func:`energy_balance_oracle.match_declared_deviations`).
+    """
+
+    if policy not in GATE_POLICIES:
+        raise ValueError(f"Unknown validation gate policy: {policy}")
+    matched: dict[str, object] | None = None
+    statuses = {
+        "run_invariants": run_invariant_status,
+        "energy_balance": energy_balance_status,
+        "storage_invariants": storage_invariant_status,
+    }
+    if policy == DECLARED_DEVIATIONS_POLICY:
+        from .declared_deviations import gating
+        from .energy_balance_oracle import match_declared_deviations
+
+        matched = match_declared_deviations(oracle_report, gating(list(declared or [])))
+        statuses["energy_balance"] = str(matched["energy_balance_status"])
+        statuses["storage_invariants"] = str(matched["storage_invariant_status"])
+    values = list(statuses.values())
+    if FAILED in values:
+        status = FAILED
+    elif REPRODUCTION_WITH_DECLARED_DEVIATIONS in values:
+        status = REPRODUCTION_WITH_DECLARED_DEVIATIONS
+    elif all(value in RAW_INVARIANT_PASS for value in values):
+        status = REPRODUCTION_CONFORMANT if policy == DECLARED_DEVIATIONS_POLICY else PASSED
+    else:
+        status = NOT_EVALUATED
+    return {"policy": policy, "status": status, "gates": statuses, "matched": matched}
+
+
+def raw_invariants_verdict(*statuses: object) -> str:
+    """Q14: passed only when every raw-invariant gate passed (or does not apply)."""
+
+    if any(value in RAW_INVARIANT_FAIL for value in statuses):
+        return FAILED
+    if statuses and all(value in RAW_INVARIANT_PASS for value in statuses):
+        return PASSED
+    return NOT_EVALUATED
+
+
 def _validation_warnings(contract: Mapping[str, object], invariants: Mapping[str, object],
-                         energy_balance: Mapping[str, object], stress: Mapping[str, object] | None) -> list[dict[str, object]]:
+                         energy_balance: Mapping[str, object], stress: Mapping[str, object] | None,
+                         storage: Mapping[str, object] | None = None,
+                         gate: Mapping[str, object] | None = None) -> list[dict[str, object]]:
     warnings: list[dict[str, object]] = []
 
     def add(code: str, severity: str, message: str, source: str) -> None:
@@ -321,20 +438,36 @@ def _validation_warnings(contract: Mapping[str, object], invariants: Mapping[str
             "No contract parity check was executed for this run.", "parity/stage-parity.json")
     if invariants["status"] == FAILED:
         add("GF_RUN_INVARIANTS_FAILED", "error",
-            "Run invariants failed: " + ", ".join(invariants.get("failed_checks") or []) +
-            " (reported; not yet a gate).", "validation/run-invariants.json")
+            "Run invariants failed: " + ", ".join(invariants.get("failed_checks") or []) + ".",
+            "validation/run-invariants.json")
     elif invariants["status"] == NOT_EVALUATED:
         add("GF_RUN_INVARIANTS_NOT_EVALUATED", "info",
             "Run invariants could not all be evaluated.", "validation/run-invariants.json")
     if energy_balance["status"] == FAILED:
         add("GF_ENERGY_BALANCE_FAILED", "error",
-            "The independent ledger check found periods where supply and use do not reconcile "
-            "(reported; not yet a gate).", ENERGY_BALANCE_ARTIFACT)
+            "The independent ledger check found periods where supply and use do not reconcile, "
+            "even with every shortfall booked as unserved energy.", ENERGY_BALANCE_ARTIFACT)
+    elif energy_balance["status"] == REPRODUCTION_WITH_DECLARED_DEVIATIONS:
+        add("GF_ENERGY_BALANCE_DECLARED_DEVIATIONS", "warning",
+            "Supply and use do not reconcile in some periods; every such period carries the signature "
+            "of a declared deviation of this reproduction profile.", ENERGY_BALANCE_ARTIFACT)
     elif energy_balance["status"] == NOT_EVALUATED:
         add("GF_ENERGY_BALANCE_NOT_EVALUATED", "info",
             "The energy balance could not be verified from this ledger (reasons: "
             + ", ".join(str(item) for item in energy_balance.get("reasons") or []) + ").",
             ENERGY_BALANCE_ARTIFACT)
+    if storage is not None and storage.get("status") == FAILED:
+        add("GF_STORAGE_INVARIANTS_FAILED", "error",
+            "Storage throughput invariants failed: " + ", ".join(storage.get("failed_checks") or []) + ".",
+            ENERGY_BALANCE_ARTIFACT)
+    elif storage is not None and storage.get("status") == REPRODUCTION_WITH_DECLARED_DEVIATIONS:
+        add("GF_STORAGE_INVARIANTS_DECLARED_DEVIATIONS", "warning",
+            "Storage throughput exceeds the per-period limits in a way declared for this reproduction profile.",
+            ENERGY_BALANCE_ARTIFACT)
+    if gate is not None and gate.get("policy") == PRODUCTION_POLICY and gate.get("status") == FAILED:
+        add("GF_VALIDATION_GATE_FAILED", "error",
+            "A validation gate failed, so scientific validation failed and annual economics are not published.",
+            "validation/scientific-validation.json")
     adjusted = energy_balance.get("compatibility_adjustment_periods")
     if isinstance(adjusted, int) and adjusted > 0:
         add("GF_COMPAT_ADJUSTMENT_PRESENT", "warning",
@@ -357,6 +490,9 @@ def build_scientific_validation_report(
     run_invariants: Mapping[str, object] | None = None,
     energy_balance: Mapping[str, object] | None = None,
     execution_scope: str = "annual",
+    gate_policy: str = PRODUCTION_POLICY,
+    profile_id: str | None = None,
+    declared_deviations: list[Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
     """Scientific-validation report v2: every status traces to executed checks.
 
@@ -366,9 +502,11 @@ def build_scientific_validation_report(
       the fixed analytical self-test of the VALUE mechanisms; it says nothing
       about this run's numbers.
     * ``run_invariant_status`` and ``energy_balance_status`` are recomputed
-      from the run-invariant report and the read-only energy-balance oracle.
-      Both are reported with severity ``report`` (P0-4 S7 makes them gates of
-      the production profile); a failure appears in ``validation_warnings``.
+      from the run-invariant report and the read-only energy-balance oracle;
+      ``storage_invariant_status`` from the oracle's storage section.  All
+      three are gates (P0-4 S7): under ``production`` a failure fails the
+      run and its annual economics; under ``declared_deviations`` they are
+      read through the profile's declared signatures.
     * ``raw_invariants`` is the evidence of the Q14 publication rule.
     """
 
@@ -408,11 +546,51 @@ def build_scientific_validation_report(
         scientific_status = PASSED
     invariants = run_invariant_evidence(run_invariants)
     balance, stress = energy_balance_summary(energy_balance)
-    raw_status = (
-        PASSED if invariants["status"] == PASSED and balance["status"] == PASSED
-        else FAILED if FAILED in (invariants["status"], balance["status"])
-        else NOT_EVALUATED
+    storage = storage_invariant_evidence(energy_balance)
+    gate = apply_validation_gate(
+        gate_policy,
+        run_invariant_status=str(invariants["status"]),
+        energy_balance_status=str(balance["status"]),
+        storage_invariant_status=str(storage["status"]),
+        oracle_report=energy_balance,
+        declared=declared_deviations,
     )
+    gates = dict(gate["gates"])  # type: ignore[arg-type]
+    balance["status"] = gates["energy_balance"]
+    storage["status"] = gates["storage_invariants"]
+    if gate_policy == PRODUCTION_POLICY:
+        if gate["status"] == FAILED:
+            scientific_status = FAILED
+            annual_economics_eligible = False
+    else:
+        # A frozen reproduction keeps its annual results for Inspect and
+        # export; Q14 decides at read time whether result pages show them.
+        if scientific_status != FAILED and gate["status"] == FAILED:
+            scientific_status = FAILED
+        elif scientific_status == PASSED:
+            scientific_status = (
+                gate["status"] if gate["status"] in {REPRODUCTION_CONFORMANT, REPRODUCTION_WITH_DECLARED_DEVIATIONS}
+                else NOT_EVALUATED
+            )
+    raw_status = raw_invariants_verdict(gates["run_invariants"], gates["energy_balance"], gates["storage_invariants"])
+    declared_record = None
+    if gate_policy == DECLARED_DEVIATIONS_POLICY:
+        matched = dict(gate["matched"] or {})  # type: ignore[arg-type]
+        declared_record = {
+            "profile_id": profile_id,
+            "declared": [
+                {"id": row.get("id"), "gate_effect": row.get("gate_effect"),
+                 "matcher": dict(row.get("signature") or {}).get("matcher")}
+                for row in declared_deviations or []
+            ],
+            "matched": matched.get("matched") or [],
+            "unexplained_checks": matched.get("unexplained_checks") or [],
+            "evidence": {
+                "DEV-BAL-02": {"forecast_above_supply_stress_periods": (stress or {}).get("forecast_above_supply_stress_periods")},
+                "DEV-BAL-03": {"year_end_discarded_mwh": storage.get("year_end_discarded_mwh")},
+            },
+            "catalogue": "gridform_core/data/methodology/declared_deviations.json",
+        }
     return {
         "schema_version": SCHEMA_VERSION,
         "mode": mode,
@@ -432,14 +610,25 @@ def build_scientific_validation_report(
         "run_invariants": invariants,
         "energy_balance_status": balance["status"],
         "energy_balance": balance,
+        "storage_invariant_status": storage["status"],
+        "storage_invariants": storage,
         "stress": stress,
+        "validation_gate": {
+            "policy": gate_policy,
+            "profile_id": profile_id,
+            "status": gate["status"],
+            "gates": gates,
+            "decision": "P0-4 S7 (appendix P0-4 Q5; A2 account)",
+        },
+        "declared_deviations": declared_record,
         "raw_invariants": {
             "status": raw_status,
-            "run_invariant_status": invariants["status"],
-            "energy_balance_status": balance["status"],
+            "run_invariant_status": gates["run_invariants"],
+            "energy_balance_status": gates["energy_balance"],
+            "storage_invariant_status": gates["storage_invariants"],
             "decision": "Q14",
         },
-        "validation_warnings": _validation_warnings(contract, invariants, balance, stress),
+        "validation_warnings": _validation_warnings(contract, invariants, balance, stress, storage, gate),
         "annual_economics_eligible": annual_economics_eligible,
         "short_run_diagnostics_only": periods_per_year != 17_520,
         "mechanism_checks": [check.to_dict() for check in checks],
@@ -465,6 +654,9 @@ def write_scientific_validation_report(
     execution_scope: str = "annual",
     mechanism_checks: list[MechanismCheck] | None = None,
     extra_fields: Mapping[str, object] | None = None,
+    gate_policy: str = PRODUCTION_POLICY,
+    profile_id: str | None = None,
+    declared_deviations: list[Mapping[str, object]] | None = None,
 ) -> Path:
     parity = json.loads(parity_path.read_text(encoding="utf-8"))
     report = build_scientific_validation_report(
@@ -476,6 +668,9 @@ def write_scientific_validation_report(
         energy_balance=_read_optional_json(energy_balance_path),
         execution_scope=execution_scope,
         mechanism_checks=mechanism_checks,
+        gate_policy=gate_policy,
+        profile_id=profile_id,
+        declared_deviations=declared_deviations,
     )
     report.update(dict(extra_fields or {}))
     path = output_dir / "validation" / "scientific-validation.json"

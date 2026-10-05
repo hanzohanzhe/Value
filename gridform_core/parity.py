@@ -14,8 +14,10 @@ Stage parity v3 (P0-4 S2, finding P7-01):
 * The energy balance is not judged here from the ledger's self-reported,
   compatibility-adjusted residual (finding P7-10): the market evidence
   delegates to the read-only oracle
-  (:mod:`gridform_core.energy_balance_oracle`), whose verdict is reported with
-  severity ``report`` until P0-4 S7 makes it a gate.
+  (:mod:`gridform_core.energy_balance_oracle`).  Its verdict is attached
+  here as evidence (severity ``report``: it is not part of
+  ``contract_parity_passed``); the scientific-validation report gates it
+  (P0-4 S7).
 * :func:`build_native_parity_report` is the parity of the native public
   contract path (``application.run_project_application``), which used to
   write a literal ``passed``.

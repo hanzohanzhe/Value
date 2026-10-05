@@ -141,6 +141,10 @@ def _atomic_json_artifact(path: Path, payload: Mapping[str, object]) -> Path:
     return atomic_write_json(path, payload, indent=2, ensure_ascii=False, sort_keys=True)
 
 
+def _mapping_or_none(value: object) -> Mapping[str, object] | None:
+    return value if isinstance(value, Mapping) else None
+
+
 def _write_validation_artifacts(
     output_dir: Path,
     *,
@@ -155,13 +159,22 @@ def _write_validation_artifacts(
     network_expansion: bool = False,
     mechanism_checks: list | None = None,
     extra_fields: Mapping[str, object] | None = None,
+    methodology: Mapping[str, object] | None = None,
 ) -> tuple[Path, Path]:
     """Recompute and write the run's validation evidence (P0-4 S2).
 
     Order: the read-only energy-balance oracle on the closed ledger, the run
     invariants, the stage-parity v3 contract checks, then the v2
     scientific-validation report that recomputes every status from them.
+    The gate policy (P0-4 S7) follows the run's methodology profile: a
+    frozen reproduction profile reads gate failures through its declared
+    deviations, every other profile gates them.
     """
+
+    from .declared_deviations import for_profile, gate_policy
+
+    policy = gate_policy(methodology)
+    profile_id = str((methodology or {}).get("profile_id") or "") or None
 
     oracle = stored_oracle_report(evaluate_run_ledger(output_dir))
     oracle_path = _atomic_json_artifact(
@@ -202,6 +215,9 @@ def _write_validation_artifacts(
         execution_scope=execution_scope,
         mechanism_checks=mechanism_checks,
         extra_fields=extra_fields,
+        gate_policy=policy,
+        profile_id=profile_id,
+        declared_deviations=for_profile(profile_id),
     )
     return parity_path, scientific_path
 
@@ -1929,6 +1945,7 @@ def _run_native_project(
             retained_comparison_role=RETAINED_COMPARISON_INFORMATIONAL,
             mechanism_checks=[],
             extra_fields={"cem_stages_executed": False},
+            methodology=_mapping_or_none(resolved.extensions.get("methodology")),
         )
         provenance_path = _atomic_json_artifact(
             output_dir / "provenance.json",
@@ -2127,6 +2144,7 @@ def _run_native_project(
         retained_comparison_role=RETAINED_COMPARISON_INFORMATIONAL,
         initial_state_sha256=contract_hash(source_initial_state),
         network_expansion=network_expansion is not None,
+        methodology=_mapping_or_none(resolved.extensions.get("methodology")),
     )
     comparison_path: Path | None = None
     annual_comparison_evidence = []

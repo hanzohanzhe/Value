@@ -285,7 +285,7 @@ class P04VariantFixtures(unittest.TestCase):
 
         uri = self.ledgers[name].resolve().as_uri() + "?mode=ro&immutable=1"
         with closing(sqlite3.connect(uri, uri=True)) as connection:
-            routing, missing = oracle._read_routing(connection)
+            routing, missing = oracle.read_surplus_routing(connection)
             self.assertEqual(missing, [])
             self.assertIsNotNone(routing)
             residuals, gaps, shortfalls = [], [], []

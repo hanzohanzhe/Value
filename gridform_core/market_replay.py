@@ -858,24 +858,33 @@ def _bucket_stress(
 ) -> dict[int, dict[str, object]] | None:
     """A2 stress events per window bucket, from the same contract as the oracle.
 
-    ``shortfall_mwh`` is the certain shortfall summed over stress periods:
-    exact when the ledger records the surplus routing, otherwise the demand
-    that accepted supply did not meet (``shortfall_basis='lower_bound'``;
+    ``shortfall_mwh`` is the certain shortfall summed over stress periods,
+    estimated by :func:`energy_balance_contract.estimate_shortfall` on the
+    boundary the oracle evaluates (declared in the ledger with every input it
+    needs), so window sums equal the run-level stress: exact on a declared
+    full-node boundary or with the surplus routing, otherwise the demand that
+    accepted supply did not meet (``shortfall_basis='lower_bound'``;
     ``shortfall_upper_mwh`` bounds it).  Only the final dispatch row of a
     period counts when a period has several stages.  None when the ledger
     lacks the period columns (the UI then shows "not recorded").
     """
 
     from . import energy_balance_contract as balance
-    from .energy_balance_oracle import _metadata, _read_routing, resolve_boundary
+    from .energy_balance_oracle import read_metadata, read_surplus_routing, resolve_boundary
 
     if "period_summary" not in tables:
         return None
     columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(period_summary)")}
     if any(column not in columns for column in STRESS_COLUMNS):
         return None
-    tier = resolve_boundary(_metadata(connection))["tolerance_tier"]
-    routing, _missing = _read_routing(connection)
+    boundary = resolve_boundary(read_metadata(connection))
+    tier = boundary["tolerance_tier"]
+    routing, _missing = read_surplus_routing(
+        connection, year=year, first_period=start_period, last_period=end_period,
+    )
+    declared = boundary["source"] == "metadata" and boundary["known"]
+    needs_routing = boundary["boundary_id"] == balance.DEFAULT_PSM_SURPLUS_NODE_V1
+    evaluable = boundary["boundary_id"] if declared and (routing is not None or not needs_routing) else None
     placeholders = ",".join("?" for _ in buckets)
     rows_by_period: dict[int, list[sqlite3.Row]] = defaultdict(list)
     previous_factory = connection.row_factory
@@ -911,7 +920,7 @@ def _bucket_stress(
         )
         if not flows.is_finite():
             continue
-        estimate = balance.period_shortfall(flows)
+        estimate = balance.estimate_shortfall(flows, evaluable)
         exact_all = exact_all and estimate.exact
         tol = balance.tolerance(tier, flows.demand_mwh, flows.supply_mwh)
         bucket = (period - start_period) // bucket_periods

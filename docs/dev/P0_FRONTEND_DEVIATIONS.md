@@ -42,7 +42,7 @@
 | F-P09-1 | 1.2：`formatNumber` 缺失时返回 `null` | `shared/format.ts` 的 `formatNumber` 返回 `null`；保留签名的 `presentation.tsx` 版本对缺失返回状态词 `—`（`VALUE_STATES.missing`） | 规格要求旧签名不变，旧调用方需要字符串；计划 6.9 的测试写的是 `formatNumber(undefined)='—'`，两者在不同层同时满足 | 否 |
 | F-P09-2 | 1.2：非零小值显示 `<0.01` / `>-0.01`；`formatMoney(999999.9)` 显示 `£1.00m` | 按规格实现（`formatNumber(-0.001)` 为 `>-0.01`，金额 k/m/bn 段保留 2–3 位小数：`£1.00m`、`£12.346bn`、`£1.234k`）。负数写作 `-£1.234k`，亚便士写作 `<£0.01` | 计划 6.9 的手算表写的是 `formatNumber(-0.001)='0'`、`formatMoney(999999.9)='£1m'`，与规格冲突；按规格（设计方）执行 | 是（计划测试表需同步） |
 | F-P09-3 | 3.1：窗口行写 `(UTC)` | 写作 `({timezone} model time)`，取自读模型的 `timezone`（当前为 Europe/London）；网络页事件列表表头为 `Start (model date & time)` | 账本时间戳是固定 365 天日历上的本地模型时间，不是 UTC；标成 UTC 会误导 | 是 |
-| F-P09-4 | 3.1/3.3/4.4：shortfall、stress period、stress band、`stress (supply < demand)` 类型 | 窗口卡显示 `Shortfall: Not recorded`；`shortfall_mwh`/`stress_periods` 字段一到即显示数值与 amber pill，图上画 4px amber 带并加图例；可靠性列表目前只有 `lost load (network)` 一类 | A2 的后端字段在 M4 落地（任务说明：缺失时显示 Not recorded）；前端不做减法 | 否（M4 接入后复核） |
+| F-P09-4 | 3.1/3.3/4.4：shortfall、stress period、stress band、`stress (supply < demand)` 类型 | 窗口卡显示 `Shortfall: Not recorded`；`shortfall_mwh`/`stress_periods` 字段一到即显示数值与 amber pill，图上画 4px amber 带并加图例；可靠性列表目前只有 `lost load (network)` 一类 | A2 的后端字段**已在 M2 落地**（P0-4 S3：run status、summary 与 replay 窗口的 `shortfall_mwh`/`stress_periods`/`shortfall_basis`；M3 起新 Run 为 exact，M4 P0-4 S7 起 corrected 声明边界上也为 exact）；前端不做减法。旧 Run（没有 surplus routing）的 `shortfall_basis='lower_bound'` 在窗口卡上不加限定词，见 F-P04-1 | 否（展示方式见 F-P04-1） |
 | F-P09-5 | 4.2：非 Complete 时不显示年度合计 | 后端给出 coverage 时严格执行；**后端没有给出 coverage（旧后端）时**，合计照常显示，pill 为 `Coverage not recorded`（muted） | 原则 3「不确定就降级」：降级的是标签而不是隐藏数值；同时保持旧 mock 的 e2e 不被整体改写 | 是 |
 | F-P09-6 | 4.2：`Withheld` pill（复现口径未通过不变量，Q14） | `coveragePill(…, { withheld: true })` 已就绪，但当前没有后端字段可读，界面不会出现 Withheld | 复现口径的发布判定由 X0/M4 提供字段；不臆造字段名 | 是（需约定字段） |
 | F-P09-7 | 4.3：修正口径径流水电兼容资本的 memo 行 | 当 Run 指标中有 `ror_hydro_compatibility_capital_gbp` 时在构成表末尾列出（不计入头条、不画进条形）；当前后端没有该字段 | 该数值属于修正口径（P0-7/X0），字段名先按此约定，需对方实现时采用 | 是（字段名） |
@@ -93,3 +93,13 @@
 | # | 规格 | 实现 | 原因 | 待确认 |
 |---|---|---|---|---|
 | F-P05A-1 | 计划 4.5 S10 列出 `CsvMappingEditor.tsx`（映射界面可声明 EUR、汇率与来源） | 只做了后端：映射目录的价格角色带 `fx_required_for` 与 `requires_fx` 的换算对，预览请求可带 `fx: {eur_per_gbp, fx_basis[, price_year]}`，缺汇率时报 `GF_MAPPING_FX`；界面未改，现有界面选不到 EUR，行为与改动前相同（只能映射 GBP） | 设计规格没有这一处的设计，按约定不即兴实现 | 是（需要设计方补 EUR/汇率输入的界面） |
+
+## P0-4 S7（验证门控与已声明偏差；M4，后端已就绪，前端未改，待设计方裁决）
+
+| # | 规格 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-P04-1 | 2.3 Stress events、3.1 窗口卡 `Shortfall` | 后端给出 `shortfall_basis`（`exact` 或 `lower_bound`）与 `shortfall_upper_mwh`。状态条的 `stressField` 在 `lower_bound` 时只在悬停提示中说明是下界；Market replay 窗口卡直接显示数值，不加任何限定。新 Run 都是 `exact`，只有 P0-4 S5 之前的旧 Run 是 `lower_bound`（例如 r2：下界 570.5 MWh，上界 1015.5 MWh） | 规格没有区分下界与精确值；按“不确定就降级”的原则，应当在数值前加 `≥` 或显式标注 basis，但这是展示决定，需要设计方确认 | 是（下界显示为 `≥ 570.5 MWh`，还是加 basis 提示） |
+| F-P04-2 | 2.3 Energy balance 字段的取值表 | 后端新值 `reproduction_conformant`（doctoral 口径下能量平衡账闭合）落到 `energyBalanceField` 的默认分支，显示为灰色文字 “reproduction conformant” | 规格只给出 `reproduction_with_declared_deviations`（琥珀 Declared deviations），没有 `reproduction_conformant` | 是（建议 teal ● Conformant） |
+| F-P04-3 | 2.3 状态条字段 | 新增的 gate `storage_invariant_status`（以及 `storage_invariants`、`validation_gate`、`declared_deviations`）目前不显示。production 口径下储能不变量失败会使 Scientific validation 变为 failed，但状态条上的 Energy balance 仍可能是 Passed | 规格没有储能不变量的字段和 Callout；不臆造 | 是（是否增加 `Storage limits` 字段，或让 Callout 1 覆盖 `validation_gate.status=failed`） |
+| F-P04-4 | 2.3 规则 1 只看 `energy_balance=failed` | production 口径的 gate 失败（任一 gate）时，后端把 `scientific_validation_status` 置为 failed、`annual_economics_eligible=false`，`results` 为空并写 `publication_blocked.reason_code=GF_VALIDATION_GATE_FAILED`；前端目前不读 `publication_blocked`，年度结果区只显示没有结果 | 计划 4.4 第 6 点“生产口径 gate 失败阻止年度结果发布”；规格只为 doctoral 的 withheld 写了文案（且文案专指 reproduction run），不能套用 | 是（corrected Run 被门控时的文案） |
+| F-P04-5 | 2.3 Callout 4 与决策 A2 | 决策 A2 下，能量平衡 gate 是“缺口记为缺电量”之后的账；单纯的缺电（stress）不再使 corrected Run 的 Energy balance 显示 Failed，只出现 Callout 4（不阻断）。原始边界残差的判定在 `energy_balance.raw_boundary_status` 中，前端没有显示 | 与规格中 Callout 1/4 的分工一致（stress 不阻断）；是否在 Inspect 中展示原始残差，由设计方决定 | 否（如需展示 raw 判定再补） |

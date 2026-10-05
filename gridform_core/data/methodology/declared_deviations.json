@@ -1,0 +1,73 @@
+{
+  "schema_version": "value.methodology-declared-deviations/v1",
+  "notes": [
+    "Declared deviations of a methodology profile (plan 4.4 point 6 and S7; appendix P0-4 Q4, Q6). A deviation is not a correction: it is model behaviour a profile keeps on purpose, with a falsifiable signature that the read-only energy-balance oracle tests on the run's own ledger (gridform_core.energy_balance_oracle.match_declared_deviations).",
+    "gate_effect: explains_gate_failure - a gate failure is reported as reproduction_with_declared_deviations only when every failing period or row has the signature's shape, otherwise it stays failed; none - definition or report-only evidence that never changes a verdict.",
+    "signature.matcher names an oracle matcher (in_dispatch_double_count, stage_power_reset, forecast_above_supply_shortfall, new_battery_each_year); signature.checks lists the gate checks it may explain; signature.relation states the tested relation in words.",
+    "Decision A2 overrides the plan for P3-01 (DEV-BAL-02): the hidden shortfall is kept in both profiles and booked as unserved energy (stress events), so it never fails the energy-balance gate of either profile; it is listed here for its evidence only.",
+    "This file is presentation and verdict evidence; it is not part of any profile definition or applied-corrections hash, so editing it does not migrate Studies."
+  ],
+  "deviations": [
+    {
+      "id": "DEV-BAL-01",
+      "findings": ["P7-10"],
+      "profiles": ["doctoral-lineage-0.6.0a2"],
+      "gate_effect": "none",
+      "signature": null,
+      "corrections": [],
+      "description": "Definition only. The doctoral default PSM keeps the thesis column semantics (Total_Energy_Generated, vre_accepted) in which pre-balancing surplus routed to storage, export and electrolysis lies outside the accepted supply S; its energy balance is therefore evaluated on default_psm_surplus_node_v1 (decision Q7), not on the full node."
+    },
+    {
+      "id": "DEV-BAL-02",
+      "findings": ["P3-01"],
+      "profiles": ["doctoral-lineage-0.6.0a2", "value-corrected"],
+      "gate_effect": "none",
+      "signature": {
+        "matcher": "forecast_above_supply_shortfall",
+        "checks": [],
+        "relation": "stress period (booked shortfall above tolerance) whose day-ahead forecast demand exceeds the accepted supply"
+      },
+      "corrections": [],
+      "description": "Decision A2: when the forecast exceeds what the day-ahead market can supply, the realisation rule cuts by forecast minus real demand and records no blackout. Dispatch is unchanged in both profiles; the shortfall is recorded as stress events and booked as unserved energy in the energy-balance account."
+    },
+    {
+      "id": "DEV-BAL-03",
+      "findings": ["P3-14", "P5-11"],
+      "profiles": ["doctoral-lineage-0.6.0a2", "value-corrected"],
+      "gate_effect": "none",
+      "signature": {
+        "matcher": "new_battery_each_year",
+        "checks": [],
+        "relation": "storage_year_boundary.discarded_mwh equals the closing state of charge of each store at a year end"
+      },
+      "corrections": [],
+      "description": "Appendix P0-4 Q6: the default PSM builds new storage objects every year, so stored energy at a year end is discarded. Reported only (storage_year_boundary); whether the corrected profile carries it across years is decided in P1."
+    },
+    {
+      "id": "DEV-BAL-04",
+      "findings": ["DEV-BAL-04", "P5-04"],
+      "profiles": ["doctoral-lineage-0.6.0a2"],
+      "gate_effect": "explains_gate_failure",
+      "signature": {
+        "matcher": "in_dispatch_double_count",
+        "checks": ["period.balance_account"],
+        "relation": "0 < closing residual of the A2 account <= in-dispatch surplus re-dispatched to the balancing requirement (surplus_routing.to_dispatch_mwh, source_class in_dispatch) + tolerance"
+      },
+      "corrections": ["p06.d1-surplus-accounting"],
+      "description": "The doctoral balancing stage adds the balancing volume to must-run nuclear output that is already in the accepted supply, so that energy is counted twice. The corrected profile removes it (P0-6 S5)."
+    },
+    {
+      "id": "DEV-STO-01",
+      "findings": ["P5-03"],
+      "profiles": ["doctoral-lineage-0.6.0a2"],
+      "gate_effect": "explains_gate_failure",
+      "signature": {
+        "matcher": "stage_power_reset",
+        "checks": ["storage.rated_power", "storage.single_direction"],
+        "relation": "grid-side charge and discharge of the store each <= 2 x rated power x period hours + tolerance in the period (each clearing stage resets the power limit; the curtailment branch may charge a store that discharged)"
+      },
+      "corrections": ["p06.storage-net-per-period"],
+      "description": "The doctoral default PSM resets a store's power limit in every clearing stage and can discharge and charge the same store in one period. The corrected profile keeps one net position per store and period (P0-6 S8). State-of-charge bounds and the audit identity are not declared and always gate."
+    }
+  ]
+}

@@ -165,9 +165,15 @@ class ScientificValidationTests(unittest.TestCase):
         codes = {row["code"] for row in report["validation_warnings"]}
         self.assertTrue({"GF_RUN_INVARIANTS_FAILED", "GF_ENERGY_BALANCE_FAILED",
                          "GF_COMPAT_ADJUSTMENT_PRESENT", "GF_STRESS_EVENTS_RECORDED"} <= codes)
-        # Severity "report" until P0-4 S7: the scenario status is not gated.
-        self.assertEqual(report["energy_balance"]["severity"], "report")
-        self.assertEqual(report["scientific_validation_status"], PASSED)
+        # P0-4 S7: run invariants and the energy balance are gates of the
+        # production policy, so the run fails and its annual economics are
+        # not eligible (this assertion was "passed" while they were report-only).
+        self.assertEqual(report["energy_balance"]["severity"], "gate")
+        self.assertEqual(report["validation_gate"]["policy"], "production")
+        self.assertEqual(report["validation_gate"]["status"], FAILED)
+        self.assertEqual(report["scientific_validation_status"], FAILED)
+        self.assertFalse(report["annual_economics_eligible"])
+        self.assertIn("GF_VALIDATION_GATE_FAILED", codes)
         missing = build_scientific_validation_report(
             mode="full", periods_per_year=17_520, parity_report=_parity(True),
             mechanism_checks=[MechanismCheck("ok", 1.0, 1.0, "MW")])

@@ -17,8 +17,17 @@ and never changes a run's status: it only produces a report.
   ledger written before P0-4 S6) is checked against the necessary envelope
   only, so it is ``failed`` (envelope violated or self-report inconsistent)
   or ``not_evaluated`` - never ``passed``.
-* Stress events (decision A2) are reported for every ledger: exact when the
-  surplus routing is recorded, otherwise as lower/upper bounds.
+* Stress events (decision A2) are reported for every ledger: exact on an
+  evaluable boundary (:func:`energy_balance_contract.estimate_shortfall`),
+  otherwise as lower/upper bounds.
+* P0-4 S7 evidence: the A2 energy-balance account (``balance_account``: the
+  shortfall booked as unserved energy, closing residual per period), the
+  storage throughput invariants (``storage``, from the per-asset audit) and,
+  per failing period or row, whether it has the shape of a declared
+  deviation signature.  The oracle's own ``status`` stays the raw boundary
+  verdict; :func:`energy_balance_gate`, :func:`storage_gate` and
+  :func:`match_declared_deviations` give the gated verdicts that
+  :mod:`gridform_core.scientific_validation` applies.
 
 CLI::
 
@@ -66,6 +75,31 @@ R_ROUTING_MISSING = "GF_ENERGY_BALANCE_SURPLUS_ROUTING_MISSING"
 R_LEDGER_CHANGED = "GF_ENERGY_BALANCE_LEDGER_CHANGED_DURING_READ"
 R_AMBIGUOUS_STAGE = "GF_ENERGY_BALANCE_AMBIGUOUS_PERIOD_STAGE"
 FINAL_STAGE = "final_dispatch"
+NOT_APPLICABLE = "not_applicable"
+R_STORAGE_AUDIT_MISSING = "GF_STORAGE_AUDIT_NOT_RECORDED"
+R_STORAGE_INVARIANT = "GF_STORAGE_INVARIANT_VIOLATED"
+
+# Machine signatures of declared deviations (P0-4 S7).  The catalogue
+# (data/methodology/declared_deviations.json) names which profile declares
+# which signature; the oracle only records, per failing period or row,
+# whether the evidence has the signature's shape.
+SIGNATURE_IN_DISPATCH_DOUBLE_COUNT = "in_dispatch_double_count"
+SIGNATURE_STAGE_POWER_RESET = "stage_power_reset"
+SIGNATURE_FORECAST_ABOVE_SUPPLY = "forecast_above_supply_shortfall"
+SIGNATURE_NEW_BATTERY_EACH_YEAR = "new_battery_each_year"
+# P5-03: each clearing stage reset a store's power limit, so one period can
+# carry up to two stages' worth of rated energy on each side.
+STAGE_POWER_RESET_FACTOR = 2.0
+# Checks of the energy-balance gate (decision A2: the raw boundary residual
+# and the envelope are evidence; the account that books the shortfall as
+# unserved energy is the gate).
+ENERGY_BALANCE_GATE_CHECKS = (
+    "period.finite", "ledger.self_report", "period.surplus_conservation",
+    "run.adjustment_share", "period.balance_account",
+)
+STORAGE_GATE_CHECKS = (
+    "storage.rated_power", "storage.single_direction", "storage.soc_bounds", "storage.soc_identity",
+)
 
 WORST_PERIODS = 10
 
@@ -180,7 +214,20 @@ def resolve_boundary(metadata: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _read_routing(connection: sqlite3.Connection) -> tuple[dict[tuple[int, int], list[contract.SurplusRoutingRow]] | None, list[str]]:
+def read_surplus_routing(
+    connection: sqlite3.Connection,
+    *,
+    year: int | None = None,
+    first_period: int | None = None,
+    last_period: int | None = None,
+) -> tuple[dict[tuple[int, int], list[contract.SurplusRoutingRow]] | None, list[str]]:
+    """Surplus-routing rows by (year, period), optionally for one year and period range.
+
+    Returns ``(None, [])`` when the ledger has no routing table and
+    ``(None, missing_columns)`` when the table lacks a required column.
+    Optional columns absent from older tables read as 0.
+    """
+
     if contract.SURPLUS_ROUTING_TABLE not in _tables(connection):
         return None, []
     columns = _columns(connection, contract.SURPLUS_ROUTING_TABLE)
@@ -192,15 +239,28 @@ def _read_routing(connection: sqlite3.Connection) -> tuple[dict[tuple[int, int],
         name if name in columns else "0.0"
         for name in contract.SURPLUS_ROUTING_OPTIONAL_COLUMNS
     ]
-    query = "SELECT {} FROM {}".format(
-        ", ".join((*contract.SURPLUS_ROUTING_COLUMNS, *optional)), contract.SURPLUS_ROUTING_TABLE
+    where: list[str] = []
+    parameters: list[int] = []
+    for clause, value in (("year = ?", year), ("period >= ?", first_period), ("period <= ?", last_period)):
+        if value is not None:
+            where.append(clause)
+            parameters.append(int(value))
+    query = "SELECT {} FROM {}{}".format(
+        ", ".join((*contract.SURPLUS_ROUTING_COLUMNS, *optional)), contract.SURPLUS_ROUTING_TABLE,
+        (" WHERE " + " AND ".join(where)) if where else "",
     )
-    for raw in connection.execute(query):
+    for raw in connection.execute(query, parameters):
         row = contract.SurplusRoutingRow(
             int(raw[0]), int(raw[1]), str(raw[2]), *(float(value) for value in raw[3:])
         )
         rows[(row.year, row.period)].append(row)
     return dict(rows), []
+
+
+def read_metadata(connection: sqlite3.Connection) -> dict[str, Any]:
+    """The ledger's metadata table, JSON values decoded ({} when absent)."""
+
+    return _metadata(connection)
 
 
 class _Checks:
@@ -249,6 +309,7 @@ def evaluate_ledger(path: Path | str) -> dict[str, Any]:
             raise OracleInputError(f"cannot open {ledger_path}: {exc}") from exc
         try:
             _evaluate(connection, report, checks)
+            report["storage"] = _storage_invariants(connection)
         finally:
             connection.close()
     finally:
@@ -311,7 +372,7 @@ def _evaluate(connection: sqlite3.Connection, report: dict[str, Any], checks: _C
         return
     raw_rows = selected
 
-    routing, routing_missing = _read_routing(connection)
+    routing, routing_missing = read_surplus_routing(connection)
     declared = boundary["source"] == "metadata" and boundary["known"]
     boundary_id = boundary["boundary_id"]
     tier = boundary["tolerance_tier"]
@@ -498,13 +559,257 @@ def _evaluate(connection: sqlite3.Connection, report: dict[str, Any], checks: _C
     # 5. Stress events (decision A2).
     report["stress"] = _stress_report(flows_list, tier, boundary_id if boundary_evaluable else None)
 
+    # 6. The A2 energy-balance account (P0-4 S7 gate): the shortfall is booked
+    # as unserved energy, so a period whose only defect is unmet demand
+    # closes; any remaining residual (supply recorded beyond every use, e.g.
+    # the DEV-BAL-04 double count) is an open period.
+    if boundary_evaluable:
+        report["balance_account"] = _balance_account(flows_list, routing, boundary_id, tier)
+        account = report["balance_account"]
+        if account["open_periods"]:
+            checks.add("period.balance_account", "independent", FAILED,
+                       count=account["open_periods"], periods=account["worst_periods"][:WORST_PERIODS])
+        else:
+            checks.add("period.balance_account", "independent", PASSED, boundary_id=boundary_id)
+
     hard_failures = {R_ENVELOPE, R_SELF_INCONSISTENT, R_BOUNDARY_RESIDUAL, R_SURPLUS_CONSERVATION, R_ADJUSTMENT_CAP, R_NON_FINITE}
     if any(reason in hard_failures for reason in reasons):
         report["status"] = FAILED
-    elif boundary_evaluable and all(check["status"] == PASSED for check in checks.items):
+    elif boundary_evaluable and all(
+        check["status"] == PASSED for check in checks.items if check["id"] != "period.balance_account"
+    ):
         report["status"] = PASSED
     else:
         report["status"] = NOT_EVALUATED
+
+
+def _storage_invariants(connection: sqlite3.Connection) -> dict[str, Any]:
+    """The storage throughput invariants of a default-PSM ledger (P0-4 S7, after P0-6 S8).
+
+    From the per-asset energy audit (P0-4 S4) joined to ``storage_state``:
+    grid-side charge and discharge within rated power x period length, no
+    period that both charges and discharges a store, state of charge within
+    [0, E], and the audit's SoC identity.  A ledger without storage rows is
+    ``not_applicable``; one with storage rows but no audit is
+    ``not_evaluated``.
+    """
+
+    tables = _tables(connection)
+    result: dict[str, Any] = {"status": NOT_EVALUATED, "reasons": [], "checks": [], "signature_matches": {}}
+    if "storage_state" not in tables or connection.execute("SELECT COUNT(*) FROM storage_state").fetchone()[0] == 0:
+        result["status"] = NOT_APPLICABLE
+        return result
+    if "storage_energy_audit" not in tables:
+        result["reasons"].append(R_STORAGE_AUDIT_MISSING)
+        return result
+    metadata = _metadata(connection)
+    try:
+        hours = float(metadata.get("period_hours", 0.5))
+    except (TypeError, ValueError):
+        hours = 0.5
+    result["period_hours"] = hours
+    tier = contract.EXACT_ARITHMETIC
+    rows = connection.execute(
+        "SELECT a.year, a.period, a.asset_id, a.charge_input_mwh, a.discharge_output_mwh, "
+        "a.identity_residual_mwh, s.power_capacity_mw, s.state_of_charge_mwh, s.energy_capacity_mwh "
+        "FROM storage_energy_audit a JOIN storage_state s "
+        "ON a.year=s.year AND a.period=s.period AND a.asset_id=s.asset_id "
+        "ORDER BY a.year, a.period, a.asset_id"
+    ).fetchall()
+    audited = connection.execute("SELECT COUNT(*) FROM storage_energy_audit").fetchone()[0]
+    result["rows"] = len(rows)
+    result["audit_rows"] = int(audited)
+    over_power: list[dict[str, Any]] = []
+    both: list[dict[str, Any]] = []
+    soc: list[dict[str, Any]] = []
+    identity: list[dict[str, Any]] = []
+    reset_matches = 0
+    for year, period, asset, charge, discharge, residual, power, state, energy in rows:
+        rated = float(power) * hours
+        tol = contract.tolerance(tier, rated)
+        charge, discharge = float(charge), float(discharge)
+        key = {"year": int(year), "period": int(period), "asset_id": str(asset)}
+        within_reset = max(charge, discharge) <= STAGE_POWER_RESET_FACTOR * rated + tol
+        if charge > rated + tol or discharge > rated + tol:
+            over_power.append({**key, "charge_mwh": _round(charge), "discharge_mwh": _round(discharge),
+                               "rated_energy_mwh": _round(rated),
+                               "signature": SIGNATURE_STAGE_POWER_RESET if within_reset else None})
+        if charge > tol and discharge > tol:
+            both.append({**key, "charge_mwh": _round(charge), "discharge_mwh": _round(discharge),
+                         "signature": SIGNATURE_STAGE_POWER_RESET if within_reset else None})
+        soc_tol = contract.tolerance(tier, float(energy))
+        if float(state) < -soc_tol or float(state) > float(energy) + soc_tol:
+            soc.append({**key, "state_of_charge_mwh": _round(float(state)), "energy_capacity_mwh": _round(float(energy))})
+        if abs(float(residual)) > soc_tol:
+            identity.append({**key, "identity_residual_mwh": _round(float(residual))})
+    for check_id, check_class, found, signed in (
+        ("storage.rated_power", "independent", over_power, True),
+        ("storage.single_direction", "independent", both, True),
+        ("storage.soc_bounds", "independent", soc, False),
+        ("storage.soc_identity", "integrity", identity, False),
+    ):
+        matched = sum(1 for row in found if signed and row.get("signature"))
+        reset_matches += matched
+        detail: dict[str, Any] = {"count": len(found)}
+        if found:
+            detail["rows"] = found[:WORST_PERIODS]
+            detail["unexplained"] = len(found) - matched
+        result["checks"].append({"id": check_id, "class": check_class,
+                                 "status": FAILED if found else PASSED, **detail})
+    result["signature_matches"] = {SIGNATURE_STAGE_POWER_RESET: reset_matches}
+    if audited != len(rows):
+        # An audit row without its storage_state row cannot be checked.
+        result["checks"].append({"id": "storage.audit_coverage", "class": "integrity", "status": FAILED,
+                                 "audit_rows": int(audited), "joined_rows": len(rows)})
+    failed = any(check["status"] == FAILED for check in result["checks"])
+    if failed:
+        result["reasons"].append(R_STORAGE_INVARIANT)
+    result["status"] = FAILED if failed else PASSED
+    if "storage_year_boundary" in tables:
+        discarded = connection.execute("SELECT SUM(discarded_mwh) FROM storage_year_boundary").fetchone()[0]
+        # DEV-BAL-03 evidence (report only): stored energy dropped at a year end.
+        result["year_end_discarded_mwh"] = _round(float(discarded or 0.0))
+    return result
+
+
+def energy_balance_gate(report: Mapping[str, Any] | None) -> dict[str, Any]:
+    """The gated energy-balance verdict of an oracle report (P0-4 S7, decision A2).
+
+    On an evaluable boundary the gate is the A2 account (the shortfall is
+    booked as unserved energy) plus the ledger-integrity checks; a stress
+    period alone does not fail it.  A ledger without an evaluable boundary
+    (every ledger written before P0-4 S6) keeps the oracle's envelope
+    verdict, which is never ``passed``.
+    """
+
+    if not isinstance(report, Mapping):
+        return {"status": NOT_EVALUATED, "basis": "not_recorded", "failed_checks": []}
+    checks = [row for row in report.get("checks") or [] if isinstance(row, Mapping)]
+    raw = report.get("status") if report.get("status") in {PASSED, FAILED, NOT_EVALUATED} else NOT_EVALUATED
+    if any(row.get("status") == FAILED for row in checks):
+        raw = FAILED
+    if not isinstance(report.get("balance_account"), Mapping):
+        failed = [str(row.get("id")) for row in checks if row.get("status") == FAILED]
+        return {"status": raw, "basis": "oracle_status", "failed_checks": failed}
+    gate = [row for row in checks if row.get("id") in ENERGY_BALANCE_GATE_CHECKS]
+    failed = [str(row.get("id")) for row in gate if row.get("status") == FAILED]
+    present = {row.get("id") for row in gate}
+    if failed:
+        status = FAILED
+    elif "period.balance_account" in present and all(row.get("status") == PASSED for row in gate):
+        status = PASSED
+    else:
+        status = NOT_EVALUATED
+    return {"status": status, "basis": "a2_balance_account", "failed_checks": failed}
+
+
+def storage_gate(report: Mapping[str, Any] | None) -> dict[str, Any]:
+    """The gated storage-invariant verdict of an oracle report (P0-4 S7)."""
+
+    storage = report.get("storage") if isinstance(report, Mapping) else None
+    if not isinstance(storage, Mapping):
+        return {"status": NOT_EVALUATED, "failed_checks": [], "reasons": ["GF_STORAGE_INVARIANTS_NOT_RECORDED"]}
+    checks = [row for row in storage.get("checks") or [] if isinstance(row, Mapping)]
+    failed = [str(row.get("id")) for row in checks if row.get("status") == FAILED]
+    status = storage.get("status")
+    if failed:
+        status = FAILED
+    elif status == PASSED and not checks:
+        status = NOT_EVALUATED
+    elif status not in {PASSED, FAILED, NOT_EVALUATED, NOT_APPLICABLE}:
+        status = NOT_EVALUATED
+    return {"status": status, "failed_checks": failed, "reasons": list(storage.get("reasons") or [])}
+
+
+REPRODUCTION_CONFORMANT = "reproduction_conformant"
+REPRODUCTION_WITH_DECLARED_DEVIATIONS = "reproduction_with_declared_deviations"
+
+
+def match_declared_deviations(
+    report: Mapping[str, Any] | None,
+    declared: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Doctoral verdicts: every gate failure must carry a declared signature (P0-4 S7).
+
+    ``declared`` are the profile's declared deviations, each with a
+    ``signature`` ``{matcher, checks}``.  A gate that passed is
+    ``reproduction_conformant``; a failed gate whose every failing check is
+    covered by a declared matcher and whose every failing period or row has
+    that matcher's shape is ``reproduction_with_declared_deviations``; any
+    other failure stays ``failed``.  ``not_evaluated``/``not_applicable``
+    stay as they are.
+    """
+
+    matchers: dict[str, set[str]] = defaultdict(set)
+    ids_by_matcher: dict[str, list[str]] = defaultdict(list)
+    for row in declared:
+        signature = row.get("signature") if isinstance(row, Mapping) else None
+        if not isinstance(signature, Mapping) or not signature.get("matcher"):
+            continue
+        matcher = str(signature["matcher"])
+        matchers[matcher].update(str(item) for item in signature.get("checks") or [])
+        ids_by_matcher[matcher].append(str(row.get("id")))
+
+    def covering(check_id: str) -> list[str]:
+        return sorted(name for name, check_ids in matchers.items() if check_id in check_ids)
+
+    matched: list[dict[str, Any]] = []
+    unexplained: list[str] = []
+
+    balance = energy_balance_gate(report)
+    balance_verdict = balance["status"]
+    if balance_verdict == PASSED:
+        balance_verdict = REPRODUCTION_CONFORMANT
+    elif balance_verdict == FAILED:
+        account = dict((report or {}).get("balance_account") or {})
+        explained = True
+        for check_id in balance["failed_checks"]:
+            names = covering(check_id)
+            if check_id != "period.balance_account" or SIGNATURE_IN_DISPATCH_DOUBLE_COUNT not in names:
+                explained = False
+                unexplained.append(check_id)
+                continue
+            if int(account.get("unexplained_open_periods") or 0) > 0:
+                explained = False
+                unexplained.append(check_id)
+                continue
+            matched.append({
+                "check": check_id, "matcher": SIGNATURE_IN_DISPATCH_DOUBLE_COUNT,
+                "deviation_ids": ids_by_matcher[SIGNATURE_IN_DISPATCH_DOUBLE_COUNT],
+                "periods": int(account.get("open_periods") or 0),
+            })
+        if balance["basis"] != "a2_balance_account":
+            explained = False
+        balance_verdict = REPRODUCTION_WITH_DECLARED_DEVIATIONS if explained and balance["failed_checks"] else FAILED
+
+    storage = storage_gate(report)
+    storage_verdict = storage["status"]
+    if storage_verdict == PASSED:
+        storage_verdict = REPRODUCTION_CONFORMANT
+    elif storage_verdict == FAILED:
+        rows = {row.get("id"): row for row in (report or {}).get("storage", {}).get("checks") or [] if isinstance(row, Mapping)}
+        explained = True
+        for check_id in storage["failed_checks"]:
+            names = covering(check_id)
+            row = rows.get(check_id) or {}
+            if SIGNATURE_STAGE_POWER_RESET not in names or int(row.get("unexplained", 1)) > 0:
+                explained = False
+                unexplained.append(check_id)
+                continue
+            matched.append({
+                "check": check_id, "matcher": SIGNATURE_STAGE_POWER_RESET,
+                "deviation_ids": ids_by_matcher[SIGNATURE_STAGE_POWER_RESET],
+                "rows": int(row.get("count") or 0),
+            })
+        storage_verdict = REPRODUCTION_WITH_DECLARED_DEVIATIONS if explained else FAILED
+
+    return {
+        "energy_balance_status": balance_verdict,
+        "storage_invariant_status": storage_verdict,
+        "matched": matched,
+        "unexplained_checks": unexplained,
+        "declared_ids": sorted({str(row.get("id")) for row in declared if isinstance(row, Mapping)}),
+    }
 
 
 def _series_metrics(values: Sequence[float], demand: Sequence[float], tier: str) -> dict[str, Any]:
@@ -523,15 +828,65 @@ def _series_metrics(values: Sequence[float], demand: Sequence[float], tier: str)
     }
 
 
+def _balance_account(
+    flows_list: Sequence[contract.PeriodFlows],
+    routing: Mapping[tuple[int, int], Sequence[contract.SurplusRoutingRow]] | None,
+    boundary_id: str,
+    tier: str,
+) -> dict[str, Any]:
+    """Closing residuals of the A2 energy-balance account on an evaluable boundary.
+
+    Each open period also carries the evidence the declared-deviation
+    signatures are tested against (:func:`match_declared_deviations`): the
+    in-dispatch surplus the kernel re-dispatched to the balancing requirement
+    (``surplus_routing.to_dispatch_mwh`` of the ``in_dispatch`` class).
+    """
+
+    open_rows: list[dict[str, Any]] = []
+    matched = 0
+    sum_abs = 0.0
+    maximum = 0.0
+    for item in flows_list:
+        booking = contract.balance_booking(boundary_id, item, tier)
+        closing = booking.closing_residual_mwh
+        sum_abs += abs(closing)
+        maximum = max(maximum, abs(closing))
+        tol = contract.tolerance(tier, item.demand_mwh, item.supply_mwh)
+        if abs(closing) <= tol:
+            continue
+        redispatched = math.fsum(
+            row.to_dispatch_mwh for row in (routing or {}).get((item.year, item.period), [])
+            if row.source_class == "in_dispatch"
+        )
+        signature = (
+            SIGNATURE_IN_DISPATCH_DOUBLE_COUNT
+            if redispatched > tol and tol < closing <= redispatched + tol
+            else None
+        )
+        matched += signature is not None
+        open_rows.append({
+            "year": item.year, "period": item.period,
+            "closing_residual_mwh": _round(closing),
+            "in_dispatch_redispatched_mwh": _round(redispatched),
+            "signature": signature,
+        })
+    open_rows.sort(key=lambda row: (-abs(row["closing_residual_mwh"]), row["year"], row["period"]))
+    return {
+        "decision": "A2",
+        "boundary_id": boundary_id,
+        "rule": "closing = raw residual - recorded blackout + booked shortfall (unserved energy)",
+        "periods": len(flows_list),
+        "open_periods": len(open_rows),
+        "max_abs_closing_residual_mwh": _round(maximum),
+        "sum_abs_closing_residual_mwh": _round(sum_abs),
+        "signature_matches": {SIGNATURE_IN_DISPATCH_DOUBLE_COUNT: matched},
+        "unexplained_open_periods": len(open_rows) - matched,
+        "worst_periods": open_rows[:WORST_PERIODS],
+    }
+
+
 def _stress_report(flows_list: Sequence[contract.PeriodFlows], tier: str, boundary_id: str | None) -> dict[str, Any]:
-    if boundary_id == contract.FULL_NODE_V1:
-        estimates = [
-            contract.ShortfallEstimate(item.year, item.period, value, value, item.blackout_mwh, True)
-            for item in flows_list
-            for value in (contract.full_node_shortfall(item),)
-        ]
-    else:
-        estimates = [contract.period_shortfall(item) for item in flows_list]
+    estimates = [contract.estimate_shortfall(item, boundary_id) for item in flows_list]
     scale = {(item.year, item.period): max(item.demand_mwh, item.supply_mwh) for item in flows_list}
     summary = contract.stress_events(estimates, tier=tier, scale=scale)
     stressed = [item for item in estimates if item.upper_mwh > contract.tolerance(tier, scale[(item.year, item.period)])]
@@ -547,6 +902,14 @@ def _stress_report(flows_list: Sequence[contract.PeriodFlows], tier: str, bounda
         "shortfall_upper_mwh": _round(sum(item.upper_mwh for item in estimates)),
         "shortfall_mwh": _round(sum(item.lower_mwh for item in estimates)) if summary.basis == "exact" else None,
         "recorded_unserved_mwh": _round(sum(item.recorded_unserved_mwh for item in estimates)),
+        # DEV-BAL-02 (P3-01) evidence: stress periods whose day-ahead forecast
+        # exceeded the accepted supply (the ahead market could not meet it).
+        "forecast_above_supply_stress_periods": sum(
+            1 for item, flows in zip(estimates, flows_list)
+            if item.lower_mwh > contract.tolerance(tier, scale[(item.year, item.period)])
+            and flows.forecast_demand_mwh is not None
+            and flows.forecast_demand_mwh > flows.supply_mwh + contract.tolerance(tier, flows.supply_mwh)
+        ),
         "by_year": [
             {"year": year, **{key: (_round(value) if isinstance(value, float) else value) for key, value in values.items()}}
             for year, values in sorted(summary.by_year.items())

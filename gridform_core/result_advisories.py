@@ -39,10 +39,13 @@ from __future__ import annotations
 
 import copy
 import json
+import threading
 from collections import OrderedDict
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, Sequence
+
+from backend.lifecycle.states import ACTIVE_STATES
 
 from .legacy_module_ids import normalize_engine, normalize_module_id
 from .methodology import CATALOGUE_ROOT, SEVERITIES, MethodologyCatalogError, load_catalogue
@@ -56,8 +59,9 @@ VALIDATION_SCHEMA = "value.scientific-validation/v2"
 VALIDATION_EVIDENCE_FIELDS = (
     "run_invariant_status", "run_invariants", "energy_balance_status",
     "energy_balance", "stress", "raw_invariants", "validation_warnings",
+    "storage_invariant_status", "storage_invariants", "validation_gate", "declared_deviations",
 )
-ACTIVE_STATUSES = {"queued", "snapshotting", "running", "cancel_requested"}
+ACTIVE_STATUSES = frozenset(ACTIVE_STATES)
 # Ledgers above this size are not re-read on every listing; the CLI
 # (python -B -m gridform_core.energy_balance_oracle <run>) checks them.
 READ_TIME_ORACLE_MAX_BYTES = 256 * 1024 * 1024
@@ -71,8 +75,10 @@ STATUS_VOCABULARY = (
 SUPERSEDED_FIELDS = (
     "scientific_scenario_status", "scientific_validation_status", "contract_validation_status",
 )
-RAW_INVARIANT_PASS = {"passed", "reproduction_conformant"}
+RAW_INVARIANT_PASS = {"passed", "reproduction_conformant", "not_applicable"}
 RAW_INVARIANT_FAIL = {"failed", "reproduction_with_declared_deviations"}
+# Gate components of the Q14 raw-invariant verdict, in report order.
+RAW_INVARIANT_COMPONENTS = ("run_invariant_status", "energy_balance_status", "storage_invariant_status")
 NEEDS_REVIEW_SEVERITIES = {"high", "critical"}
 WITHHELD_FAILED = "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED"
 WITHHELD_NOT_EVALUATED = "GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED"
@@ -193,6 +199,8 @@ def legacy_validation_report(report: Mapping[str, Any]) -> bool:
 
 
 _ORACLE_CACHE: "OrderedDict[tuple, dict[str, Any]]" = OrderedDict()
+# The API is a ThreadingHTTPServer: the cache is shared between threads.
+_ORACLE_CACHE_LOCK = threading.Lock()
 
 
 def read_time_energy_balance(run_root: Path) -> dict[str, Any] | None:
@@ -212,15 +220,20 @@ def read_time_energy_balance(run_root: Path) -> dict[str, Any] | None:
             "ledger_bytes": stat.st_size,
         }
     key = (str(database.resolve()), stat.st_size, stat.st_mtime_ns, stat.st_ino)
-    cached = _ORACLE_CACHE.get(key)
-    if cached is None:
-        cached = evaluate_run_ledger(Path(run_root) / "model-output")
-        _ORACLE_CACHE[key] = cached
+    with _ORACLE_CACHE_LOCK:
+        cached = _ORACLE_CACHE.get(key)
+        if cached is not None:
+            _ORACLE_CACHE.move_to_end(key)
+            return copy.deepcopy(cached)
+    # Evaluated outside the lock (it reads the ledger); a concurrent first
+    # read of the same file evaluates it twice, which is harmless.
+    evaluated = evaluate_run_ledger(Path(run_root) / "model-output")
+    with _ORACLE_CACHE_LOCK:
+        _ORACLE_CACHE[key] = evaluated
+        _ORACLE_CACHE.move_to_end(key)
         while len(_ORACLE_CACHE) > READ_TIME_ORACLE_CACHE_SIZE:
             _ORACLE_CACHE.popitem(last=False)
-    else:
-        _ORACLE_CACHE.move_to_end(key)
-    return copy.deepcopy(cached)
+    return copy.deepcopy(evaluated)
 
 
 def validation_evidence(run: Mapping[str, Any], run_root: Path, report: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -352,22 +365,29 @@ def advisory_summary(advisories: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 def raw_invariants_status(run: Mapping[str, Any], run_root: Path, evidence: Mapping[str, Any] | None = None) -> str:
     """passed | failed | not_evaluated, from the P0-4 raw-invariant evidence.
 
-    The evidence is the run's v2 report (``raw_invariants``, or
-    ``run_invariant_status`` and ``energy_balance_status``) or the read-time
-    oracle for a run without one (:func:`validation_evidence`).
+    The verdict is derived from the gate statuses of the run's v2 report
+    (run invariants, energy balance and - from P0-4 S7 - storage
+    invariants), or of the read-time oracle for a run without one
+    (:func:`validation_evidence`).  The stored ``raw_invariants.status`` is
+    not trusted on its own: when it disagrees with the derived verdict the
+    evidence is self-inconsistent and the verdict is ``failed``.
     """
 
     if evidence is None:
         evidence = validation_evidence(run, run_root)
-    record = evidence.get("raw_invariants")
-    if isinstance(record, Mapping) and record.get("status") in {"passed", "failed", "not_evaluated"}:
-        return str(record["status"])
-    statuses = [evidence.get("run_invariant_status"), evidence.get("energy_balance_status")]
+    statuses = [evidence.get(field) for field in RAW_INVARIANT_COMPONENTS[:2]]
+    if "storage_invariant_status" in evidence:
+        statuses.append(evidence.get("storage_invariant_status"))
     if any(value in RAW_INVARIANT_FAIL for value in statuses):
+        derived = "failed"
+    elif all(value in RAW_INVARIANT_PASS for value in statuses):
+        derived = "passed"
+    else:
+        derived = "not_evaluated"
+    record = evidence.get("raw_invariants")
+    if isinstance(record, Mapping) and record.get("status") is not None and record.get("status") != derived:
         return "failed"
-    if all(value in RAW_INVARIANT_PASS for value in statuses):
-        return "passed"
-    return "not_evaluated"
+    return derived
 
 
 def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapping[str, Any] | None = None,
@@ -545,7 +565,8 @@ def compact_validation_fields(row: MutableMapping[str, Any]) -> MutableMapping[s
 
     # The listing carries the energy-balance badge and the stress count only.
     for field in ("energy_balance", "run_invariants", "run_invariant_status", "raw_invariants",
-                  "validation_evidence", "validation_warnings"):
+                  "validation_evidence", "validation_warnings", "storage_invariants", "validation_gate",
+                  "declared_deviations"):
         row.pop(field, None)
     stress = row.get("stress")
     if isinstance(stress, Mapping):

@@ -37,6 +37,14 @@ def _validation(**fields):
     }
 
 
+# A v2 report whose gate statuses all passed (P0-4 S7: the Q14 verdict is
+# derived from these, a stored raw_invariants.status alone is not evidence).
+PASSING_RAW_INVARIANTS = {
+    "run_invariant_status": "passed", "energy_balance_status": "reproduction_conformant",
+    "storage_invariant_status": "reproduction_conformant", "raw_invariants": {"status": "passed"},
+}
+
+
 def _v2_validation(**fields):
     """A recomputed (P0-4 S2) report; its evidence fields are authoritative."""
 
@@ -334,7 +342,7 @@ class WithheldAnnualResourceTests(unittest.TestCase):
                 (output / relative).write_text(json.dumps(payload), encoding="utf-8")
             withheld = build_run_summary(run)
             # Passing raw invariants come from a recomputed (v2) report.
-            _run_with_report(run, _v2_validation(raw_invariants={"status": "passed"}))
+            _run_with_report(run, _v2_validation(**PASSING_RAW_INVARIANTS))
             published = build_run_summary(run)
         self.assertEqual(withheld["result_publication"]["status"], "withheld")
         self.assertEqual(withheld["result_publication"]["withheld_fields"],
@@ -359,7 +367,7 @@ class WithheldAnnualResourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             run = Path(folder) / "doctoral-no-invariants"
             shutil.copytree(FIXTURES / "doctoral-no-invariants", run)
-            _run_with_report(run, _v2_validation(raw_invariants={"status": "passed"}))
+            _run_with_report(run, _v2_validation(**PASSING_RAW_INVARIANTS))
             self.assertIsNone(result_advisories.withheld_annual_result(run, "x", status))
         # A copied status claim alone does not publish (P0-4 S3).
         claimed = dict(status, raw_invariants={"status": "passed"})
@@ -398,7 +406,11 @@ class PublicationTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, folder)
         cases = [
             ({}, "withheld", "not_evaluated"),
-            ({"raw_invariants": {"status": "passed"}}, "published", "passed"),
+            ({"raw_invariants": {"status": "passed"}}, "withheld", "failed"),  # a lone claim disagrees: P0-4 S7
+            (PASSING_RAW_INVARIANTS, "published", "passed"),
+            ({**PASSING_RAW_INVARIANTS, "storage_invariant_status": "reproduction_with_declared_deviations"},
+             "withheld", "failed"),
+            ({**PASSING_RAW_INVARIANTS, "storage_invariant_status": "not_applicable"}, "published", "passed"),
             ({"raw_invariants": {"status": "failed"}}, "withheld", "failed"),
             ({"run_invariant_status": "passed", "energy_balance_status": "reproduction_conformant"}, "published", "passed"),
             ({"run_invariant_status": "passed", "energy_balance_status": "reproduction_with_declared_deviations"}, "withheld", "failed"),

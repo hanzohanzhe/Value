@@ -537,6 +537,27 @@ def boundary_shortfall(boundary_id: str, flows: PeriodFlows) -> float:
     raise KeyError(f"no shortfall definition for boundary {boundary_id!r}")
 
 
+EXACT_SHORTFALL_BOUNDARIES = (FULL_NODE_V1, NATIVE_CORRECTED_FULL_NODE_V1)
+
+
+def estimate_shortfall(flows: PeriodFlows, boundary_id: str | None) -> ShortfallEstimate:
+    """The A2 shortfall estimate of one period for an evaluable boundary.
+
+    The one boundary-dependent selection shared by the oracle's run-level
+    stress report and the market-replay window summaries (P0-4 S7).
+    ``boundary_id`` is the boundary the oracle could evaluate (declared in
+    the ledger, with every input it needs), or None.  Full-node boundaries
+    are exact from ``period_summary`` alone and equal the kernel's booked
+    unserved energy; otherwise the surplus-node estimate is exact when the
+    surplus routing is present and lower/upper bounds when it is not.
+    """
+
+    if boundary_id in EXACT_SHORTFALL_BOUNDARIES:
+        value = boundary_shortfall(str(boundary_id), flows)
+        return ShortfallEstimate(flows.year, flows.period, value, value, flows.blackout_mwh, True)
+    return period_shortfall(flows)
+
+
 @dataclass(frozen=True)
 class BalanceBooking:
     """One period of the energy-balance account with the A2 unserved line.

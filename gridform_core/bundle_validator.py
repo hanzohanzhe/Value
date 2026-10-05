@@ -9,10 +9,14 @@ from pathlib import Path
 from .provenance import PROVENANCE_SCHEMA, sha256_file
 from .market_ledger import validate_market_ledger_file
 from .scientific_validation import (
+    PRODUCTION_POLICY,
     SCHEMA_VERSION as SCIENTIFIC_VALIDATION_V2,
+    apply_validation_gate,
     contract_evidence,
     energy_balance_summary,
+    raw_invariants_verdict,
     run_invariant_evidence,
+    storage_invariant_evidence,
 )
 
 
@@ -34,10 +38,13 @@ def _read_object(path: Path) -> dict | None:
 def _validation_evidence_errors(bundle_root: Path, artifacts: dict) -> list[dict[str, str]]:
     """A v2 scientific-validation report must carry, and agree with, its evidence (P0-4 S2).
 
-    The contract, run-invariant and energy-balance statuses are recomputed
-    from the bundled parity, run-invariant and oracle reports; a stored status
-    that differs from the recomputation is an error.  v1 reports predate this
-    evidence and are reported by the read-time advisory instead.
+    The contract, run-invariant, energy-balance and storage-invariant
+    statuses and the Q14 ``raw_invariants.status`` are recomputed from the
+    bundled parity, run-invariant and oracle reports under the report's gate
+    policy (P0-4 S7: a frozen profile's declared deviations come from the
+    catalogue, not from the report); a stored status that differs from the
+    recomputation is an error.  v1 reports predate this evidence and are
+    reported by the read-time advisory instead.
     """
 
     report_id = next(
@@ -61,13 +68,46 @@ def _validation_evidence_errors(bundle_root: Path, artifacts: dict) -> list[dict
             evidence[suffix] = _read_object(bundle_root / artifact_id)
     if errors:
         return errors
+    oracle = evidence["validation/energy-balance-oracle.json"]
     recomputed = {
         "contract_validation_status": contract_evidence(evidence["parity/stage-parity.json"] or {})["status"],
         "run_invariant_status": run_invariant_evidence(evidence["validation/run-invariants.json"])["status"],
-        "energy_balance_status": energy_balance_summary(evidence["validation/energy-balance-oracle.json"])[0]["status"],
+        "energy_balance_status": energy_balance_summary(oracle)[0]["status"],
     }
+    gate_record = report.get("validation_gate")
+    if isinstance(gate_record, dict):
+        # Reports from P0-4 S7 on: re-apply the recorded gate policy.
+        from .declared_deviations import for_profile
+
+        policy = str(gate_record.get("policy") or PRODUCTION_POLICY)
+        try:
+            gate = apply_validation_gate(
+                policy,
+                run_invariant_status=str(recomputed["run_invariant_status"]),
+                energy_balance_status=str(recomputed["energy_balance_status"]),
+                storage_invariant_status=str(storage_invariant_evidence(oracle)["status"]),
+                oracle_report=oracle,
+                declared=for_profile(gate_record.get("profile_id")),
+            )
+        except ValueError:
+            errors.append({"code": "GF_BUNDLE_VALIDATION_STATUS_MISMATCH", "artifact_id": report_id,
+                           "field": "validation_gate.policy"})
+            return errors
+        gates = gate["gates"]
+        recomputed["energy_balance_status"] = gates["energy_balance"]
+        recomputed["storage_invariant_status"] = gates["storage_invariants"]
+        recomputed["validation_gate.status"] = gate["status"]
+        raw = raw_invariants_verdict(gates["run_invariants"], gates["energy_balance"], gates["storage_invariants"])
+    else:
+        raw = raw_invariants_verdict(recomputed["run_invariant_status"], recomputed["energy_balance_status"])
+    recomputed["raw_invariants.status"] = raw
     for field, value in recomputed.items():
-        if report.get(field) != value:
+        if "." in field:
+            head, tail = field.split(".", 1)
+            stored = (report.get(head) or {}).get(tail) if isinstance(report.get(head), dict) else None
+        else:
+            stored = report.get(field)
+        if stored != value:
             errors.append({"code": "GF_BUNDLE_VALIDATION_STATUS_MISMATCH", "artifact_id": report_id, "field": field})
     return errors
 

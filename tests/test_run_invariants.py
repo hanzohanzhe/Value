@@ -338,13 +338,24 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         balance = validation["energy_balance"]
         # P0-4 S6: the adjustment absorbs numerical noise only (HEAD: 4 periods).
         self.assertEqual(balance["compatibility_adjustment_periods"], 0)
-        self.assertEqual(validation["energy_balance_status"], "failed")
-        self.assertEqual(balance["severity"], "report")
+        # P0-4 S7, decision A2: the shortfall is booked as unserved energy, so
+        # the gated account closes; the raw boundary verdict stays as evidence.
+        self.assertEqual(validation["energy_balance_status"], "passed")
+        self.assertEqual(balance["raw_boundary_status"], "failed")
+        self.assertEqual(balance["gate_basis"], "a2_balance_account")
+        self.assertEqual(balance["balance_account"]["open_periods"], 0)
+        self.assertEqual(balance["severity"], "gate")
         self.assertEqual(validation["stress"]["stress_periods"], 4)
-        self.assertEqual(validation["raw_invariants"]["status"], "failed")
-        self.assertIn("GF_ENERGY_BALANCE_FAILED", {row["code"] for row in validation["validation_warnings"]})
+        self.assertEqual(validation["stress"]["forecast_above_supply_stress_periods"], 4)  # DEV-BAL-02 shape
+        self.assertIn("GF_STRESS_EVENTS_RECORDED", {row["code"] for row in validation["validation_warnings"]})
+        self.assertNotIn("GF_ENERGY_BALANCE_FAILED", {row["code"] for row in validation["validation_warnings"]})
+        # The fixture runs the doctoral market rule set under the corrected
+        # (production) profile: its storage throughput fails the gate.
+        self.assertEqual(validation["validation_gate"]["policy"], "production")
+        gates = validation["validation_gate"]["gates"]
+        self.assertEqual(validation["raw_invariants"]["status"], "failed" if "failed" in gates.values() else "passed")
         parity = _read(output / "parity" / "stage-parity.json")
-        self.assertTrue(parity["contract_parity_passed"])  # reported, not gated, until S7
+        self.assertTrue(parity["contract_parity_passed"])  # the contract itself; gates live in the v2 report
         self.assertEqual(parity["market_evidence"]["energy_balance"]["compatibility_adjustment_periods"], 0)
         oracle = _read(output / "validation" / "energy-balance-oracle.json")
         self.assertEqual(oracle["ledger"]["artifact"], "market/market.sqlite")
@@ -358,7 +369,16 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         self.assertEqual(validation["execution_scope"], "psm_only")
         self.assertEqual(validation["contract_validation_status"], "passed")
         self.assertEqual(validation["analytical_mechanism_status"], "not_evaluated")
-        self.assertEqual(validation["scientific_validation_status"], "not_evaluated")
+        # P0-4 S7 (production policy): the doctoral kernel charges and
+        # discharges a store in one period (P5-03), which fails the storage
+        # gate and with it the run; the energy balance closes (A2).
+        self.assertEqual(validation["energy_balance_status"], "passed")
+        self.assertEqual(validation["storage_invariant_status"], "failed")
+        self.assertIn("storage.single_direction", validation["storage_invariants"]["failed_checks"])
+        self.assertEqual(validation["validation_gate"]["status"], "failed")
+        self.assertEqual(validation["scientific_validation_status"], "failed")
+        self.assertFalse(validation["annual_economics_eligible"])
+        self.assertIn("GF_VALIDATION_GATE_FAILED", {row["code"] for row in validation["validation_warnings"]})
         self.assertFalse(validation["cem_stages_executed"])
         self.assertEqual(validation["stress"]["stress_periods"], 48)
         self.assertAlmostEqual(validation["stress"]["shortfall_mwh"], 810.546171074, places=6)

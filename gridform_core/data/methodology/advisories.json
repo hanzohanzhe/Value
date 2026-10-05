@@ -2,7 +2,7 @@
   "schema_version": "value.methodology-advisories/v1",
   "notes": [
     "Generic read-time advisories (X0 S10b). Correction-specific advisories live on the corrections in corrections/<pkg>.json; this file holds the advisories that are not tied to one correction.",
-    "applies_to is one of the predicates implemented in gridform_core/result_advisories.py: pre_profile_run (the run recorded no methodology profile), legacy_validation_report (the run's scientific-validation report is the v1 self-reported schema).",
+    "applies_to is one of the predicates implemented in gridform_core/result_advisories.py: pre_profile_run (the run recorded no methodology profile), legacy_validation_report (the run's scientific-validation report is not the recomputed v2 schema, e.g. the v1 self-reported report).",
     "Severity high or critical puts every comparison that includes the run into attribution_status needs_review (no causal conclusion)."
   ],
   "advisories": [
@@ -19,7 +19,7 @@
       "applies_to": "legacy_validation_report",
       "severity": "medium",
       "title": "Validation report not independently verified",
-      "summary": "The v1 scientific-validation report relies on the model's self-reported, compatibility-adjusted residuals; its passed statements were not recomputed from the ledger by the independent energy-balance check.",
+      "summary": "This run's scientific-validation report is not the recomputed v2 report (for example the v1 report, which relies on the model's self-reported, compatibility-adjusted residuals); its passed statements were not recomputed from the ledger by the independent energy-balance check.",
       "affected_metrics": ["scientific_validation_status", "contract_validation_status"]
     }
   ]

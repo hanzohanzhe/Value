@@ -742,8 +742,17 @@ def run(project_id: str, run_id: str, mode: str) -> None:
     else:
         final["results"] = []
         final["completed_years"] = end_year - start_year + 1
+        gate = scientific_validation.get("validation_gate")
+        gate_failed = isinstance(gate, dict) and gate.get("policy") == "production" and gate.get("status") == "failed"
         final["publication_blocked"] = {
-            "reason": "Required contract or analytical invariant validation failed.",
+            # P0-4 S7: a failed validation gate (run invariants, energy
+            # balance, storage invariants) blocks annual economics too.
+            "reason": (
+                "A validation gate failed (run invariants, energy balance or storage invariants)."
+                if gate_failed
+                else "Required contract or analytical invariant validation failed."
+            ),
+            "reason_code": "GF_VALIDATION_GATE_FAILED" if gate_failed else "GF_VALIDATION_CONTRACT_OR_MECHANISM",
             "scientific_validation_artifact": final["scientific_validation_artifact"],
         }
     final["current_stage"] = "Run completed"
@@ -772,6 +781,10 @@ VALIDATION_STATUS_FIELDS = (
     "stress",
     "raw_invariants",
     "validation_warnings",
+    "storage_invariant_status",
+    "storage_invariants",
+    "validation_gate",
+    "declared_deviations",
 )
 
 

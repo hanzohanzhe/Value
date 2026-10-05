@@ -27,8 +27,9 @@ Statuses: passed, failed, not_evaluated, not_applicable.  The run status is
 passed and at least one independent or cross-path check ran, and
 ``not_evaluated`` otherwise (nothing executed is never evidence of success).
 
-Severity is ``report`` for every check until P0-4 S7 turns run invariants
-into gates of the production profile; the report says so explicitly.
+Severity is ``gate`` (P0-4 S7): a failed run invariant fails the run under
+the production policy and is never a declared deviation of a reproduction
+profile (:mod:`gridform_core.scientific_validation`).
 Reading is strictly read-only: the ledger is opened ``mode=ro&immutable=1``.
 """
 
@@ -58,8 +59,8 @@ CROSS_PATH = "cross_path"
 INTEGRITY = "integrity"
 COUNTED_CLASSES = (INDEPENDENT, CROSS_PATH)
 
-SEVERITY = "report"
-ENFORCEMENT = "report_only_until_p0_4_s7"
+SEVERITY = "gate"
+ENFORCEMENT = "gate_p0_4_s7"
 FINAL_STAGE = "final_dispatch"
 TOLERANCE_TIER = contract.EXACT_ARITHMETIC
 
