@@ -7985,8 +7985,8 @@
     },
     {
       "path": "gridform_core/v2/module_manifest.py",
-      "sha256": "5ee3a96fcdd3b525432dbce7e0fe3996b2fd70181d527df0a5a0dbbfd3786661",
-      "bytes": 30432,
+      "sha256": "4263d45256dc0249a77626f84ef705334322e6658e684634db03bd63654ff27c",
+      "bytes": 30434,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
