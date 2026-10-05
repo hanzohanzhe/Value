@@ -12,9 +12,17 @@ import hashlib
 import importlib
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
+
+from .module_quarantine import (
+    ExtensionHookImportError,
+    cached_hook_failure,
+    record_hook_failure,
+    record_hook_quarantine,
+)
 
 
 EXTENSION_SCHEMA = "value.extension-bundle/v1"
@@ -253,9 +261,32 @@ class ResolvedExtensionGraph:
         # Nested declaration tuples must survive checkpoint JSON round trips.
         return json.loads(json.dumps(payload, ensure_ascii=False))
 
-def hook_source_identity(hook: HookDeclaration) -> dict[str, object]:
+def hook_source_identity(hook: HookDeclaration, *, extension_id: str | None = None) -> dict[str, object]:
     module_name, symbol_name = hook.implementation.split(":", 1)
-    module = importlib.import_module(module_name)
+    # A hook that failed to import is not imported again for the same
+    # sys.path (negative cache); the failure is a coded ValueError so every
+    # resolution path reports it, and the extension is runtime-quarantined.
+    key = (module_name, tuple(sys.path))
+    cached = cached_hook_failure(key)
+    if cached is not None:
+        error = ExtensionHookImportError(
+            f"Extension hook {hook.implementation} failed to import: {cached[0]}: {cached[1]}",
+            extension_id=extension_id, error_type=cached[0],
+        )
+        if extension_id:
+            record_hook_quarantine(extension_id, error)
+        raise error
+    try:
+        module = importlib.import_module(module_name)
+    except (Exception, SystemExit) as exc:
+        record_hook_failure(key, type(exc).__name__, str(exc))
+        error = ExtensionHookImportError(
+            f"Extension hook {hook.implementation} failed to import: {type(exc).__name__}: {exc}",
+            extension_id=extension_id, error_type=type(exc).__name__,
+        )
+        if extension_id:
+            record_hook_quarantine(extension_id, error)
+        raise error from exc
     filename = getattr(module, "__file__", None)
     if not filename or not Path(filename).is_file() or Path(filename).suffix != ".py":
         raise ValueError("Extension hook has no readable Python source: " + hook.implementation)
@@ -392,7 +423,10 @@ class ExtensionRegistry:
             for item in manifests
         }
         order = _hook_order(manifests)
-        source_identities = {item.id: tuple(hook_source_identity(hook) for hook in item.hooks) for item in manifests}
+        source_identities = {
+            item.id: tuple(hook_source_identity(hook, extension_id=item.id) for hook in item.hooks)
+            for item in manifests
+        }
         payload = {
             "extensions": [item.to_dict() for item in manifests],
             "hook_source_identities": source_identities,
@@ -466,7 +500,7 @@ class ExtensionRuntime:
         self._instances: dict[tuple[str, str], Callable[..., object]] = {}
         for manifest in graph.extensions:
             for hook in manifest.hooks:
-                observed = hook_source_identity(hook)
+                observed = hook_source_identity(hook, extension_id=manifest.id)
                 frozen = self.graph.hook_source_identities.get(manifest.id, ())
                 if not any(dict(identity) == observed for identity in frozen):
                     raise ValueError("Extension hook source does not match frozen graph: " + hook.implementation)

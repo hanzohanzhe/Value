@@ -19,9 +19,17 @@ from gridform_core.extension_bundle import (
 )
 from gridform_core.module_bundle import build_module_bundle
 from gridform_core.module_installation import install_module_bundle, set_module_enabled
-from gridform_core.v2.module_manifest import workspace_registry
+from gridform_core.module_quarantine import (
+    ExtensionHookImportError,
+    ModuleQuarantinedError,
+    clear_negative_caches,
+    hook_quarantine_entries,
+    selection_blockers,
+)
+from gridform_core.v2.module_manifest import ModuleManifest, ModuleRegistryV2, load_manifests, workspace_registry
 from tests.module_lifecycle_fixtures import (
     EXAMPLE,
+    IMPORT_FAILURES,
     ROOT,
     build_extension_bundle,
     forget_external_code,
@@ -49,6 +57,8 @@ class _TemporaryModules(unittest.TestCase):
         self.modules = self.root / "modules"
         self.addCleanup(self.folder.cleanup)
         self.addCleanup(forget_external_code, self.modules, self.packages)
+        clear_negative_caches()
+        self.addCleanup(clear_negative_caches)
 
 
 class ReviewedFailureReproductions(_TemporaryModules):
@@ -67,7 +77,6 @@ class ReviewedFailureReproductions(_TemporaryModules):
         self.assertIn("g4-ns-b", str(caught.exception))
         self.assertEqual(tree_digest(self.modules), before)
 
-    @unittest.expectedFailure  # reproduction; fixed by a later P0-2 step
     def test_r2_g402_a_broken_external_module_does_not_break_the_registry(self) -> None:
         write_external_module(self.modules, "p02-broken", "p02_broken_plugin",
                               prefix="raise RuntimeError('simulated broken import')\n")
@@ -76,7 +85,6 @@ class ReviewedFailureReproductions(_TemporaryModules):
         self.assertIn("value-bid-at-cost-psm", registry.manifests())
         self.assertEqual([item.entry_id for item in registry.quarantined], ["p02-broken"])
 
-    @unittest.expectedFailure  # reproduction; fixed by a later P0-2 step
     def test_r3_a_broken_hook_does_not_break_unrelated_draft_presets(self) -> None:
         from gridform_core.frontend_contract import system_domain_presets
 
@@ -210,6 +218,178 @@ class LifecycleHygieneTests(_TemporaryModules):
             set_module_enabled("p02-hygiene", False, modules_root=self.modules)
         self.assertEqual(owned, [True])
         self.assertFalse(MODULE_LIFECYCLE_LOCK._is_owned())
+
+class RegistryQuarantineTests(_TemporaryModules):
+    """P0-2 S3: two-pass isolation, coded hook failures, strict gates."""
+
+    packages = ("p02_good_a", "p02_good_b", "p02_bad", "p02_dup_a", "p02_dup_b", "p02_counted",
+                "p02_hook_bad", "p02_hook_good")
+
+    def _builtin_manifests(self):
+        return load_manifests(Path(__file__).resolve().parents[1] / "gridform_core" / "manifests")
+
+    def test_every_kind_of_import_failure_is_quarantined_with_its_cause(self) -> None:
+        for index, (name, prefix) in enumerate(sorted(IMPORT_FAILURES.items())):
+            write_external_module(self.modules, f"p02-bad-{index}", f"p02_bad_{index}", prefix=prefix)
+        registry = workspace_registry(self.modules)
+        entries = {entry.entry_id: entry for entry in registry.quarantined}
+        self.assertEqual(sorted(entries), [f"p02-bad-{index}" for index in range(len(IMPORT_FAILURES))])
+        observed = {entry.error_type for entry in entries.values()}
+        self.assertEqual(observed, {"RuntimeError", "SyntaxError", "SystemExit", "ModuleNotFoundError"})
+        for entry in entries.values():
+            self.assertEqual(entry.code, "GF_MODULE_IMPORT_FAILED")
+            self.assertIn("failed to import", entry.message)
+            self.assertNotIn(str(self.modules), entry.message)
+            self.assertTrue(entry.blocking)
+        self.assertEqual(
+            list(registry.manifests()), [item.id for item in self._builtin_manifests()],
+        )
+
+    def test_independent_oracle_builtins_plus_healthy_externals_in_original_order(self) -> None:
+        write_external_module(self.modules, "p02-good-b", "p02_good_b")
+        write_external_module(self.modules, "p02-bad", "p02_bad", prefix="raise RuntimeError('no')\n")
+        write_external_module(self.modules, "p02-good-a", "p02_good_a")
+        write_external_extension(self.modules, "p02-ext-good", "local.p02-good")
+        registry = workspace_registry(self.modules)
+        healthy = [path for path in sorted(self.modules.glob("*.json")) if path.stem != "p02-bad"]
+        oracle = ModuleRegistryV2(tuple(self._builtin_manifests()) + tuple(
+            ModuleManifest.from_dict(json.loads(path.read_text(encoding="utf-8"))) for path in healthy
+        ))
+        self.assertEqual(list(registry.manifests()), list(oracle.manifests()))
+        self.assertEqual(registry.catalog(), oracle.catalog())
+        self.assertIn("p02-ext-good", registry.extension_manifests())
+
+    def test_a_registry_that_builds_today_is_unchanged(self) -> None:
+        from gridform_core.extension_framework import load_extension_manifests
+
+        write_external_module(self.modules, "p02-good-a", "p02_good_a")
+        write_external_extension(self.modules, "p02-ext-good", "local.p02-good")
+        registry = workspace_registry(self.modules)
+        builtin_root = Path(__file__).resolve().parents[1] / "gridform_core"
+        legacy = ModuleRegistryV2(
+            tuple(self._builtin_manifests()) + tuple(
+                ModuleManifest.from_dict(json.loads(path.read_text(encoding="utf-8")))
+                for path in sorted(self.modules.glob("*.json"))),
+            tuple(load_extension_manifests(builtin_root / "extension_manifests"))
+            + tuple(load_extension_manifests(self.modules / "extensions")),
+        )
+        self.assertEqual(registry.quarantined, ())
+        self.assertEqual([item.to_dict() for item in registry.manifests().values()],
+                         [item.to_dict() for item in legacy.manifests().values()])
+        self.assertEqual([item.to_dict() for item in registry.extension_manifests().values()],
+                         [item.to_dict() for item in legacy.extension_manifests().values()])
+
+    def test_external_id_collisions_never_silently_replace(self) -> None:
+        write_external_module(self.modules, "value-bid-at-cost-psm", "p02_good_a")
+        write_external_module(self.modules, "p02-dup", "p02_dup_a")
+        (self.modules / "p02-dup.json").rename(self.modules / "p02-dup-first.json")
+        write_external_module(self.modules, "p02-dup", "p02_dup_b", version="2.0.0")
+        registry = workspace_registry(self.modules)
+        by_code = {}
+        for entry in registry.quarantined:
+            by_code.setdefault(entry.code, []).append(entry)
+        shadow = by_code["GF_MODULE_SHADOWS_BUILTIN"][0]
+        self.assertTrue(shadow.shadows_registered)
+        self.assertEqual(registry.manifest("value-bid-at-cost-psm").implementation.split(".")[0], "gridform_core")
+        self.assertEqual(len(by_code["GF_MODULE_ID_DUPLICATE"]), 2)
+        self.assertNotIn("p02-dup", registry.manifests())
+        self.assertEqual(selection_blockers(registry, ["value-bid-at-cost-psm"]), ())
+        self.assertEqual({entry.entry_id for entry in selection_blockers(registry, ["p02-dup"])}, {"p02-dup"})
+
+    def test_extension_namespace_and_id_collisions_quarantine_every_party(self) -> None:
+        write_external_extension(self.modules, "p02-ns-a", "local.p02-shared")
+        write_external_extension(self.modules, "p02-ns-b", "local.p02-shared")
+        write_external_extension(self.modules, "p02-other", "local.p02-other")
+        (self.modules / "extensions" / "p02-other.json").rename(self.modules / "extensions" / "zz-copy.json")
+        write_external_extension(self.modules, "p02-other", "local.p02-other-2")
+        registry = workspace_registry(self.modules)
+        codes = sorted((entry.entry_id, entry.code) for entry in registry.quarantined)
+        self.assertEqual(codes, [
+            ("p02-ns-a", "GF_EXTENSION_NAMESPACE_COLLISION"),
+            ("p02-ns-b", "GF_EXTENSION_NAMESPACE_COLLISION"),
+            ("p02-other", "GF_EXTENSION_ID_DUPLICATE"),
+            ("p02-other", "GF_EXTENSION_ID_DUPLICATE"),
+        ])
+        self.assertFalse({"p02-ns-a", "p02-ns-b", "p02-other"} & set(registry.extension_manifests()))
+
+    def test_unreadable_and_drifted_manifests_are_quarantined_by_file(self) -> None:
+        self.modules.mkdir(parents=True)
+        (self.modules / "broken.json").write_text("{not json", encoding="utf-8")
+        write_external_extension(self.modules, "p02-drift", "local.p02-drift",
+                                 manifest_overrides={"required_force_version": ">=0.5.0"})
+        registry = workspace_registry(self.modules)
+        rows = sorted((entry.kind, entry.manifest_file, entry.entry_id, entry.code) for entry in registry.quarantined)
+        self.assertEqual(rows, [
+            ("extension", "extensions/p02-drift.json", "p02-drift", "GF_EXTENSION_MANIFEST_INVALID"),
+            ("module", "broken.json", None, "GF_MODULE_MANIFEST_INVALID"),
+        ])
+
+    def test_builtins_stay_fail_closed(self) -> None:
+        import gridform_core.v2.module_manifest as manifest_module
+
+        real = manifest_module.load_manifests
+
+        def with_broken_builtin(path):
+            rows = real(path)
+            if path.name == "manifests" and path.parent.name == "gridform_core":
+                broken = manifest_module.ModuleManifest.from_dict(
+                    {**rows[0].to_dict(), "id": "p02-broken-builtin", "implementation": "p02_absent_builtin:X"})
+                return rows + (broken,)
+            return rows
+
+        with patch.object(manifest_module, "load_manifests", with_broken_builtin):
+            with self.assertRaisesRegex(ValueError, "p02-broken-builtin"):
+                workspace_registry(self.modules)
+
+    def test_strict_mode_refuses_any_quarantine(self) -> None:
+        write_external_module(self.modules, "p02-bad", "p02_bad", prefix="raise RuntimeError('no')\n")
+        with self.assertRaises(ModuleQuarantinedError) as caught:
+            workspace_registry(self.modules, strict=True)
+        self.assertEqual(caught.exception.code, "GF_MODULE_QUARANTINED")
+        self.assertIsInstance(caught.exception, ValueError)
+
+    def test_failed_imports_run_once_until_a_rescan(self) -> None:
+        counter = self.root / "imports.txt"
+        write_external_module(self.modules, "p02-counted", "p02_counted",
+                              prefix="raise RuntimeError('counted failure')\n", counter_file=counter)
+        workspace_registry(self.modules)
+        workspace_registry(self.modules)
+        self.assertEqual(counter.read_text(), "x")
+        clear_negative_caches()
+        workspace_registry(self.modules)
+        self.assertEqual(counter.read_text(), "xx")
+
+    def test_hook_import_failure_is_coded_and_runtime_quarantined(self) -> None:
+        write_external_extension(self.modules, "p02-hook-ext", "local.p02-hook", hook_package="p02_hook_bad",
+                                 hook_prefix="raise SystemExit('hook exits')\n")
+        registry = workspace_registry(self.modules)
+        with self.assertRaises(ExtensionHookImportError) as caught:
+            registry.extension_registry.resolve(("p02-hook-ext",))
+        self.assertEqual(caught.exception.code, "GF_EXTENSION_HOOK_IMPORT")
+        self.assertIsInstance(caught.exception, ValueError)
+        [entry] = hook_quarantine_entries()
+        self.assertEqual((entry.entry_id, entry.error_type), ("p02-hook-ext", "SystemExit"))
+        self.assertEqual([item.code for item in selection_blockers(registry, (), ["p02-hook-ext"])],
+                         ["GF_EXTENSION_HOOK_IMPORT"])
+        with self.assertRaises(ExtensionHookImportError):
+            registry.validate_selection(VALUE_101_MODULES, selected_extensions=("p02-hook-ext",))
+
+    def test_quarantined_current_version_cannot_skip_the_migration_check(self) -> None:
+        install_extension_bundle(
+            build_extension_bundle(self.root / "v1.zip", "p02-state", "local.p02-state", version="1.0.0",
+                                   manifest_overrides={"state_schema_version": "local.p02-state/v1"}),
+            trust_acknowledged=True, modules_root=self.modules)
+        active = self.modules / "extensions" / "p02-state.json"
+        payload = json.loads(active.read_text(encoding="utf-8"))
+        payload["required_force_version"] = ">=0.5.0"
+        active.write_text(json.dumps(payload), encoding="utf-8")
+        self.assertIn("p02-state", {entry.entry_id for entry in workspace_registry(self.modules).quarantined})
+        with self.assertRaises(ExtensionBundleError) as caught:
+            install_extension_bundle(
+                build_extension_bundle(self.root / "v2.zip", "p02-state", "local.p02-state", version="2.0.0",
+                                       manifest_overrides={"state_schema_version": "local.p02-state/v2"}),
+                trust_acknowledged=True, modules_root=self.modules)
+        self.assertEqual(caught.exception.code, "GF_EXTENSION_MIGRATION_REQUIRED")
 
 
 if __name__ == "__main__":

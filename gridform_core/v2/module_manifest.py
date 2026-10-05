@@ -13,6 +13,15 @@ from types import MappingProxyType
 from typing import Mapping, Sequence
 
 from ..runtime_paths import activate_external_module_sources, external_modules_root
+from ..module_quarantine import (
+    ExternalImportError,
+    ModuleQuarantinedError,
+    QuarantinedEntry,
+    cached_import_failure,
+    import_cache_key,
+    quarantine_entry,
+    record_import_failure,
+)
 from ..extension_framework import (
     ExtensionManifest,
     ExtensionRegistry,
@@ -210,6 +219,8 @@ class ModuleRegistryV2:
     ) -> None:
         self._manifests: dict[str, ModuleManifest] = {}
         self.extension_registry = ExtensionRegistry(extensions)
+        # External entries workspace_registry refused (P0-2); never on disk.
+        self.quarantined: tuple[QuarantinedEntry, ...] = ()
         for manifest in manifests:
             self.register(manifest)
 
@@ -246,9 +257,12 @@ class ModuleRegistryV2:
         module_name, symbol_name = manifest.implementation.split(":", 1)
         try:
             module = importlib.import_module(module_name)
-        except (ImportError, ModuleNotFoundError) as exc:
-            raise ValueError(
-                f"Module {manifest.id} implementation module is missing: {module_name}"
+        except (Exception, SystemExit) as exc:
+            # External code may raise anything (even SystemExit) at import time;
+            # report the root cause instead of "missing" (G4-02).
+            raise ExternalImportError(
+                f"Module {manifest.id} implementation {module_name} failed to import: "
+                f"{type(exc).__name__}: {exc}"
             ) from exc
         if not hasattr(module, symbol_name):
             raise ValueError(
@@ -471,16 +485,32 @@ def builtin_registry() -> ModuleRegistryV2:
     return ModuleRegistryV2(load_manifests(path), load_extension_manifests(extension_path))
 
 
+def _read_external_manifest(path: Path) -> tuple[bytes, object]:
+    raw = path.read_bytes()
+    return raw, json.loads(raw.decode("utf-8"))
+
+
 def workspace_registry(
     modules_path: Path | None = None,
     *,
     include_internal_experimental: bool = False,
+    strict: bool = False,
 ) -> ModuleRegistryV2:
     """Load built-ins plus explicitly installed local manifests.
 
     There is intentionally no browser upload path for executable modules.
     Researchers install code into their Python environment and place reviewed
     manifests under ``.gridform/modules``.
+
+    Built-in manifests are fail-closed: any error still raises.  External
+    manifests are fail-isolated in two passes (P0-2): pass one parses every
+    file and counts IDs and namespaces (an external entry that collides with a
+    built-in is quarantined alone, ``shadows_registered``; external entries
+    that collide with each other are all quarantined - there is no implicit
+    winner); pass two registers the survivors one by one in the original
+    order, catching any exception including SystemExit.  Refused entries are
+    listed in ``registry.quarantined``.  ``strict=True`` (release gates)
+    raises ``ModuleQuarantinedError`` instead of isolating.
     """
 
     builtin_root = Path(__file__).resolve().parents[1]
@@ -494,9 +524,150 @@ def workspace_registry(
         extensions.extend(
             load_extension_manifests(internal_root / "extension_manifests")
         )
+    registry = ModuleRegistryV2(tuple(manifests), tuple(extensions))
     local_path = modules_path or external_modules_root()
     activate_external_module_sources(local_path)
-    if local_path.is_dir():
-        manifests.extend(load_manifests(local_path))
-        extensions.extend(load_extension_manifests(local_path / "extensions"))
-    return ModuleRegistryV2(tuple(manifests), tuple(extensions))
+    if not local_path.is_dir():
+        return registry
+    roots = (local_path,)
+    quarantined: list[QuarantinedEntry] = []
+
+    # Pass one: parse every external file and collect IDs/namespaces.
+    module_rows: list[tuple[Path, bytes, ModuleManifest | None, str | None]] = []
+    for path in sorted(local_path.glob("*.json")):
+        payload: object = None
+        try:
+            raw, payload = _read_external_manifest(path)
+            module_rows.append((path, raw, ModuleManifest.from_dict(payload), None))  # type: ignore[arg-type]
+        except Exception as exc:
+            entry_id = str(payload.get("id")) if isinstance(payload, dict) and payload.get("id") else None
+            module_rows.append((path, b"", None, entry_id))
+            quarantined.append(quarantine_entry(
+                "module", path.name, entry_id, "GF_MODULE_MANIFEST_INVALID", exc, roots=roots,
+            ))
+    extension_rows: list[tuple[Path, ExtensionManifest | None, str | None, str | None]] = []
+    for path in sorted((local_path / "extensions").glob("*.json")):
+        payload = None
+        try:
+            payload = json.loads(path.read_bytes().decode("utf-8"))
+            extension_rows.append((path, ExtensionManifest.from_dict(payload), None, None))  # type: ignore[arg-type]
+        except Exception as exc:
+            entry_id = str(payload.get("id")) if isinstance(payload, dict) and payload.get("id") else None
+            namespace = str(payload.get("namespace")) if isinstance(payload, dict) and payload.get("namespace") else None
+            extension_rows.append((path, None, entry_id, namespace))
+            quarantined.append(quarantine_entry(
+                "extension", "extensions/" + path.name, entry_id, "GF_EXTENSION_MANIFEST_INVALID", exc,
+                roots=roots,
+            ))
+    module_id_counts: dict[str, int] = {}
+    for _, _, manifest, entry_id in module_rows:
+        key = manifest.id if manifest is not None else entry_id
+        if key:
+            module_id_counts[key] = module_id_counts.get(key, 0) + 1
+    extension_id_counts: dict[str, int] = {}
+    namespace_counts: dict[str, int] = {}
+    for _, manifest, entry_id, namespace in extension_rows:
+        key = manifest.id if manifest is not None else entry_id
+        space = manifest.namespace if manifest is not None else namespace
+        if key:
+            extension_id_counts[key] = extension_id_counts.get(key, 0) + 1
+        if space:
+            namespace_counts[space] = namespace_counts.get(space, 0) + 1
+    builtin_ids = set(registry.manifests())
+    builtin_extensions = registry.extension_manifests()
+    builtin_namespaces = {item.namespace: item.id for item in builtin_extensions.values()}
+
+    # Pass two: register survivors one by one, in the original order.
+    for path, raw, manifest, _ in module_rows:
+        if manifest is None:
+            continue
+        label = path.name
+        if manifest.id in builtin_ids:
+            quarantined.append(quarantine_entry(
+                "module", label, manifest.id, "GF_MODULE_SHADOWS_BUILTIN",
+                f"External module {manifest.id} uses the ID of a built-in module; the built-in stays active",
+                roots=roots, shadows_registered=True,
+            ))
+            continue
+        if module_id_counts[manifest.id] > 1:
+            quarantined.append(quarantine_entry(
+                "module", label, manifest.id, "GF_MODULE_ID_DUPLICATE",
+                f"Module ID {manifest.id} is declared by {module_id_counts[manifest.id]} local manifests; "
+                "all of them are quarantined",
+                roots=roots,
+            ))
+            continue
+        key = import_cache_key(path, raw)
+        cached = cached_import_failure(key)
+        if cached is not None:
+            quarantined.append(QuarantinedEntry(
+                "module", label, manifest.id, "GF_MODULE_IMPORT_FAILED", cached[0], cached[1],
+            ))
+            continue
+        try:
+            registry.register(manifest)
+        except (Exception, SystemExit) as exc:
+            if isinstance(exc, ExternalImportError):
+                entry = quarantine_entry("module", label, manifest.id, "GF_MODULE_IMPORT_FAILED",
+                                         exc, roots=roots)
+                cause = exc.__cause__
+                entry = QuarantinedEntry(entry.kind, entry.manifest_file, entry.entry_id, entry.code,
+                                         type(cause).__name__ if cause is not None else entry.error_type,
+                                         entry.message)
+                record_import_failure(key, entry.error_type, entry.message)
+            else:
+                entry = quarantine_entry("module", label, manifest.id, "GF_MODULE_MANIFEST_INVALID",
+                                         exc, roots=roots)
+            quarantined.append(entry)
+    for path, extension, _, _ in extension_rows:
+        if extension is None:
+            continue
+        label = "extensions/" + path.name
+        if extension.id in builtin_extensions:
+            quarantined.append(quarantine_entry(
+                "extension", label, extension.id, "GF_EXTENSION_SHADOWS_BUILTIN",
+                f"External extension {extension.id} uses the ID of a built-in extension; the built-in stays active",
+                roots=roots, shadows_registered=True,
+            ))
+            continue
+        if extension.namespace in builtin_namespaces:
+            quarantined.append(quarantine_entry(
+                "extension", label, extension.id, "GF_EXTENSION_NAMESPACE_COLLISION",
+                f"Extension namespace {extension.namespace} is owned by built-in extension "
+                f"{builtin_namespaces[extension.namespace]}",
+                roots=roots,
+            ))
+            continue
+        if extension_id_counts[extension.id] > 1:
+            quarantined.append(quarantine_entry(
+                "extension", label, extension.id, "GF_EXTENSION_ID_DUPLICATE",
+                f"Extension ID {extension.id} is declared by {extension_id_counts[extension.id]} local manifests; "
+                "all of them are quarantined",
+                roots=roots,
+            ))
+            continue
+        if namespace_counts[extension.namespace] > 1:
+            quarantined.append(quarantine_entry(
+                "extension", label, extension.id, "GF_EXTENSION_NAMESPACE_COLLISION",
+                f"Extension namespace {extension.namespace} is claimed by "
+                f"{namespace_counts[extension.namespace]} enabled local extensions; all of them are quarantined",
+                roots=roots,
+            ))
+            continue
+        try:
+            registry.extension_registry.register(extension)
+        except (Exception, SystemExit) as exc:
+            quarantined.append(quarantine_entry(
+                "extension", label, extension.id, "GF_EXTENSION_MANIFEST_INVALID", exc, roots=roots,
+            ))
+    registry.quarantined = tuple(quarantined)
+    if strict and quarantined:
+        raise ModuleQuarantinedError(
+            "GF_MODULE_QUARANTINED",
+            "Local module entries are quarantined: " + "; ".join(
+                f"{item.kind} {item.entry_id or item.manifest_file} ({item.code}: {item.message})"
+                for item in quarantined
+            ),
+            entries=tuple(quarantined),
+        )
+    return registry

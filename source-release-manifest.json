@@ -7415,9 +7415,9 @@
     },
     {
       "path": "gridform_core/extension_framework.py",
-      "sha256": "83b904dd0549bd817ab1bb2cc5c1fd24d8f17febc36b99800b1eede8660f3f59",
-      "bytes": 24311,
-      "transform": "byte copy"
+      "sha256": "f3b02243408469cc096b2484570c34086d87d530b689fdf5605cb8b71b51c705",
+      "bytes": 25706,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/extension_manifests/value-hydrology-extension.json",
@@ -7649,9 +7649,9 @@
     },
     {
       "path": "gridform_core/module_conformance.py",
-      "sha256": "3870a6e805f522b30621e24df75bbf2417ba7e18962f36335ef6c01cbd356315",
-      "bytes": 6351,
-      "transform": "byte copy"
+      "sha256": "c2ed2821e186e294c9aa97cdda039a0c1da777d3b4da230e30a5a6183388af0e",
+      "bytes": 6860,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/module_context.py",
@@ -7667,8 +7667,8 @@
     },
     {
       "path": "gridform_core/module_quarantine.py",
-      "sha256": "f3b22400d33f7a11a03f7fd852450b790a67c23ce5ff47ee284c76724580f653",
-      "bytes": 1533,
+      "sha256": "d0ae142ddd59249280cc7b483983b1b19c05b7b50a84b6df8fb3d76495aea545",
+      "bytes": 12278,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7967,9 +7967,9 @@
     },
     {
       "path": "gridform_core/v2/module_manifest.py",
-      "sha256": "46d9c243b7c06c6913d0ac239adff85f933001bdeb9e30866d9697329865e004",
-      "bytes": 21838,
-      "transform": "byte copy"
+      "sha256": "5ee3a96fcdd3b525432dbce7e0fe3996b2fd70181d527df0a5a0dbbfd3786661",
+      "bytes": 30432,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/v2/orchestrator.py",
@@ -9039,9 +9039,9 @@
     },
     {
       "path": "scripts/psm_entrypoint_scan.py",
-      "sha256": "1d328ffbe002e4bdc73b4fc5f70717d5ee6608ed6d568292d4cb36522d2fa4bc",
-      "bytes": 4133,
-      "transform": "byte copy"
+      "sha256": "3cb389f9b7c32674435e73b80d5f5a330ba5fc004e0d08260b1c90bd87c2b3df",
+      "bytes": 4144,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/redraw_decarb_base_cost_ci_readable.py",
@@ -9129,9 +9129,9 @@
     },
     {
       "path": "scripts/run_prompt107_production_gate.py",
-      "sha256": "88cd497fd7d8ad1fe1e33454a42b94799fe45a5a414616485e8525317021afbc",
-      "bytes": 112595,
-      "transform": "byte copy"
+      "sha256": "fa3d6905e24a0ec93d8487a7b50b4a92a6a0a8443d3fe83cba6bb58a6ed8497c",
+      "bytes": 112639,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/run_prompt125_output_context_gate.py",
@@ -9147,9 +9147,9 @@
     },
     {
       "path": "scripts/run_prompt17b_gate.py",
-      "sha256": "9292520d0f2e7c87e2a758ecddbd2948079bfca28d1fd717b42ed1eda608ab3d",
-      "bytes": 5990,
-      "transform": "byte copy"
+      "sha256": "ef4fe36f28ccb3e10702dbfe736953f9952183cfdb4e2efb9057beaf4dad0781",
+      "bytes": 6001,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/run_scheme_c_parity.py",
@@ -10557,8 +10557,8 @@
     },
     {
       "path": "tests/test_module_quarantine.py",
-      "sha256": "689186f18608de6518994220d362323b889f8cceff63b30fe1463ae9227bcf39",
-      "bytes": 11008,
+      "sha256": "ff701f8d904895debb10f7ef23e6bc1e97cb7a179570a91d68dda58b08e1e050",
+      "bytes": 21848,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

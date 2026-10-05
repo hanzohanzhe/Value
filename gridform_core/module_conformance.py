@@ -92,8 +92,9 @@ def check_manifest(registry: ModuleRegistryV2, manifest: ModuleManifest) -> dict
         warnings.append("no explicit units declared; semantic role units remain authoritative")
     try:
         instance = registry.resolve(manifest.id, expected_slot=manifest.slot)
-    except Exception as exc:
-        errors.append(f"implementation resolution failed: {exc}")
+    except (Exception, SystemExit) as exc:
+        # External constructors may raise anything, even SystemExit (P0-2).
+        errors.append(f"implementation resolution failed: {type(exc).__name__}: {exc}")
         instance = None
     if instance is not None:
         for method in REQUIRED_METHODS[manifest.slot]:
@@ -109,7 +110,7 @@ def check_manifest(registry: ModuleRegistryV2, manifest: ModuleManifest) -> dict
                     legacy_holding_fee=0.1,
                 )
                 check_storage_lifecycle(model)
-            except Exception as exc:
+            except (Exception, SystemExit) as exc:
                 errors.append(f"minimal storage-cost fixture failed: {exc}")
     return {
         "module_id": manifest.id,
@@ -137,8 +138,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Validate installed VALUE modules")
     parser.add_argument("--modules", type=Path, default=external_modules_root())
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--allow-quarantine", action="store_true",
+        help="report quarantined local entries instead of failing on them",
+    )
     args = parser.parse_args()
-    report = conformance_report(workspace_registry(args.modules))
+    # A conformance gate is strict: a quarantined local entry fails it (P0-2).
+    registry = workspace_registry(args.modules, strict=not args.allow_quarantine)
+    report = conformance_report(registry)
+    report["quarantined"] = [entry.to_dict() for entry in registry.quarantined]
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")

@@ -50,7 +50,7 @@ def build_report(force_run: Path) -> dict[str, object]:
     ledger_path = force_run / "market" / "market.sqlite"
     typed = json.loads(typed_path.read_text(encoding="utf-8"))
     graph = json.loads(graph_path.read_text(encoding="utf-8"))
-    registry = workspace_registry()
+    registry = workspace_registry(strict=True)
     manifest = registry.manifest("value-bid-at-cost-psm", expected_slot="psm")
     psm_identity = graph["modules"]["psm"]
     live_invocation = bool(
