@@ -20,7 +20,7 @@
     "e2e/result-queries.spec.ts": 2,
     "e2e/comparison-review.spec.ts": 1,
     "e2e/evidence-isolation.spec.ts": 1,
-    "e2e/service-status.spec.ts": 2
+    "e2e/service-status.spec.ts": 3
   },
   "known_failures": [
     {

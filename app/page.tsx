@@ -10,6 +10,8 @@ import AuditView from "./features/evidence/AuditView";
 import { Badge, formatBytes, formatNumber, modelDisplayName } from "./features/shared/presentation";
 import { API_BASE, OFFLINE_AFTER_FAILURES, classifyRefreshFailure, getJson, pollDelay, serviceState } from "./features/shared/api";
 import "./features/shared/service-status.css";
+import ModuleQuarantinePanel, { type QuarantineRow } from "./features/modules/ModuleQuarantinePanel";
+import { isPendingRunsRefusal, pendingRunsQuestion } from "./features/modules/module-quarantine.mjs";
 import { formatEnergy, formatEnergyGroup, formatQuantity } from "./features/shared/format.ts";
 import { kpiCoverageLine, seriesSegments, vreEventGroups, vreKpis } from "./features/market/vreView.ts";
 import type { AuctionView, DispatchTimeline, MarketCapability, StoragePeriodRow, VreSummary } from "./features/market/marketTypes.ts";
@@ -998,12 +1000,55 @@ export default function Home() {
     setView("projects");
   }
 
+  /** POST a module/extension lifecycle change; when Runs are pending (P0-2, 409
+   * GF_MODULE_LIFECYCLE_RUNS_PENDING) ask, then resend with the confirmation. */
+  async function lifecycleRequest(url: string, init: RequestInit, jsonBody?: Record<string, unknown>): Promise<{ response: Response; payload: Record<string, unknown> & { error?: string; error_code?: string } }> {
+    const send = async (confirmed: boolean) => {
+      const headers = new Headers(init.headers);
+      let body = init.body;
+      if (confirmed) {
+        if (jsonBody !== undefined) body = JSON.stringify({ ...jsonBody, confirm_pending_runs: true });
+        else headers.set("X-VALUE-Confirm-Pending-Runs", "acknowledged");
+      }
+      const response = await fetch(url, { ...init, headers, body });
+      let payload: Record<string, unknown> & { error?: string; error_code?: string } = {};
+      try { payload = await response.json(); } catch { /* the status is authoritative */ }
+      return { response, payload };
+    };
+    const first = await send(false);
+    if (!isPendingRunsRefusal(first.response.status, first.payload.error_code)) return first;
+    if (!window.confirm(pendingRunsQuestion(first.payload.error))) return first;
+    return send(true);
+  }
+
+  const [quarantineBusy, setQuarantineBusy] = useState("");
+  async function disableQuarantined(row: QuarantineRow) {
+    if (!row.disablePath) return;
+    setQuarantineBusy(row.key); setNotice("");
+    try {
+      const { response, payload } = await lifecycleRequest(`${API}${row.disablePath.replace(/^\/api/, "")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
+      if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Disabling ${row.id} failed`}`);
+      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.`); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Disable failed"); }
+    finally { setQuarantineBusy(""); }
+  }
+  async function rescanModules() {
+    setQuarantineBusy("rescan"); setNotice("");
+    try {
+      const response = await fetch(`${API}/modules/rescan`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const payload = await response.json() as { status?: string; error?: string; error_code?: string };
+      if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Rescan failed"}`);
+      setNotice(payload.status === "ok" ? "Rescan complete: no module is quarantined." : "Rescan complete: some modules are still quarantined; see the panel."); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Rescan failed"); }
+    finally { setQuarantineBusy(""); }
+  }
+
   async function installModule() {
     if (!moduleBundle) { setNotice("Choose a VALUE module ZIP first."); return; }
     if (!moduleTrust) { setNotice("Confirm that you trust the executable Python in this bundle."); return; }
     setModuleInstalling(true); setNotice("");
     try {
-      const response = await fetch(`${API}/modules/install`, {
+      const { response, payload } = await lifecycleRequest(`${API}/modules/install`, {
         method: "POST",
         headers: {
           "Content-Type": "application/zip",
@@ -1011,8 +1056,7 @@ export default function Home() {
           "X-VALUE-Executable-Trust": "acknowledged",
         },
         body: moduleBundle,
-      });
-      const payload = await response.json();
+      }) as { response: Response; payload: { error?: string; error_code?: string; installation: { name: string; module_version: string } } };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Module installation failed"}`);
       setNotice(`${payload.installation.name} ${payload.installation.module_version} passed structural conformance. Run a wiring test before research use.`);
       setModuleBundle(null); setModuleTrust(false); await refresh();
@@ -1023,13 +1067,12 @@ export default function Home() {
   async function changeModuleState(installation: ModuleInstallation, enabled: boolean) {
     setModuleLifecycle(installation.module_id); setNotice("");
     try {
-      const response = await fetch(`${API}/modules/${encodeURIComponent(installation.module_id)}/${enabled ? "enable" : "disable"}`, {
+      const { response, payload } = await lifecycleRequest(`${API}/modules/${encodeURIComponent(installation.module_id)}/${enabled ? "enable" : "disable"}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
-      });
-      const payload = await response.json();
+      }, {}) as { response: Response; payload: { error?: string; error_code?: string; dependents?: { projects?: string[] } } };
       if (!response.ok) {
         const projects = payload.dependents?.projects?.join(", ");
-        throw new Error(`${payload.error}${projects ? `: ${projects}` : ""}`);
+        throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${projects ? `: ${projects}` : ""}`);
       }
       setNotice(`${installation.name} is now ${enabled ? "enabled and selectable" : "disabled"}.`); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Module state change failed"); }
@@ -1041,7 +1084,7 @@ export default function Home() {
     if (!extensionTrust) { setNotice("Acknowledge the in-process trusted-code boundary before installation."); return; }
     setExtensionInstalling(true); setNotice("");
     try {
-      const response = await fetch(`${API}/extensions/install`, {
+      const { response, payload } = await lifecycleRequest(`${API}/extensions/install`, {
         method: "POST",
         headers: {
           "Content-Type": "application/zip",
@@ -1049,8 +1092,7 @@ export default function Home() {
           "X-VALUE-Executable-Trust": "acknowledged",
         },
         body: extensionBundle,
-      });
-      const payload = await response.json();
+      }) as { response: Response; payload: { error?: string; error_code?: string; installation: { extension_id: string; version: string } } };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Extension installation failed"}`);
       setNotice(`${payload.installation.extension_id} ${payload.installation.version} passed structural extension validation. Its declared scientific maturity has not changed.`);
       setExtensionBundle(null); setExtensionTrust(false); await refresh();
@@ -1061,10 +1103,9 @@ export default function Home() {
   async function changeExtensionState(installation: ExtensionInstallation, enabled: boolean) {
     setExtensionLifecycle(installation.extension_id); setNotice("");
     try {
-      const response = await fetch(`${API}/extensions/${encodeURIComponent(installation.extension_id)}/${enabled ? "enable" : "disable"}`, {
+      const { response, payload } = await lifecycleRequest(`${API}/extensions/${encodeURIComponent(installation.extension_id)}/${enabled ? "enable" : "disable"}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
-      });
-      const payload = await response.json();
+      }, {}) as { response: Response; payload: { error?: string; error_code?: string; dependents?: { projects?: string[]; runs_and_retained_history?: string[] } } };
       if (!response.ok) {
         const dependents = [...(payload.dependents?.projects ?? []), ...(payload.dependents?.runs_and_retained_history ?? [])];
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${dependents.length ? ` — ${dependents.join(", ")}` : ""}`);
@@ -1392,6 +1433,7 @@ export default function Home() {
 
     {view === "models" && <div className="page">
       <div className="page-title"><div><span>VALUE module registry</span><h2>The model is assembled here</h2><p>Each card resolves to one executable Python implementation. Install a reviewed local bundle to replace one part of the model without editing VALUE.</p></div><Badge tone="good">{readyModules} of {workspace.modules.length} ready</Badge></div>
+      <ModuleQuarantinePanel report={workspace.module_quarantine} busy={quarantineBusy} onDisable={(row) => void disableQuarantined(row)} onRescan={() => void rescanModules()} />
       <div><ModuleAuthorWorkbench apiOrigin={API_ORIGIN} modules={workspace.modules} projects={workspace.projects}
         onInstallRequest={() => document.getElementById("module-installer")?.scrollIntoView({ block: "start", behavior: "smooth" })}
         onCreated={async ({ id }) => {

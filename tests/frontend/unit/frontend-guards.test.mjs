@@ -78,6 +78,7 @@ export const NEW_STYLESHEETS = [
   "app/features/network/network-coverage.css",
   "app/features/runs/run-results.css",
   "app/features/shared/service-status.css",
+  "app/features/modules/module-quarantine.css",
 ];
 
 test("new stylesheets use no font size below 12px and only existing colour tokens", async () => {

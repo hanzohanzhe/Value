@@ -52,3 +52,39 @@ test("failed refreshes show degraded with a retry, and the last workspace stays 
   await expect(page.getByRole("button", { name: /Runs: Launch and compare/ })).toBeEnabled();
   await expect(page.getByText("Background fixture").first()).toBeVisible();
 });
+
+// P0-2 S9 / spec 6: a quarantined module is named on the Modules page and can be
+// disabled after two confirmations (the module and the still-running Run).
+test("the quarantine panel disables a module after confirming pending Runs", async ({ page }) => {
+  const quarantine = { schema_version: "value.module-quarantine/v1", status: "degraded", entries: [{ kind: "module", id: "my-storage-module", version: "1.2.0", manifest_file: "installed/my-storage-module/value-module.json", error_code: "GF_MODULE_IMPORT_FAILED", error_type: "ModuleNotFoundError", message: "Import failed: ModuleNotFoundError: No module named 'scipy_extra'\nTraceback: /home/alice/x.py", corrective_action: "Disable module my-storage-module in Modules" }] };
+  const disableBodies: string[] = [];
+  await page.route("**/api/**", async (route) => {
+    const url = route.request().url();
+    if (url.endsWith("/api/modules/my-storage-module/disable")) {
+      const body = route.request().postData() ?? "";
+      disableBodies.push(body);
+      if (!body.includes("confirm_pending_runs")) {
+        await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: "Runs have not finished: 1 run(s) already running (bg-run) keep their code but could not be resumed after the change. Confirm to change installed modules anyway.", error_code: "GF_MODULE_LIFECYCLE_RUNS_PENDING" }) });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, installation: { module_id: "my-storage-module", enabled: false } }) });
+      return;
+    }
+    const body = url.endsWith("/api/workspace") ? { ...workspace, module_quarantine: quarantine } : url.endsWith("/api/health") ? { ok: true, status: "degraded", degraded_reasons: [{ code: "GF_MODULE_IMPORT_FAILED", count: 1 }] } : url.endsWith(`/api/runs/${run.id}`) ? run : { error: "unmocked" };
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  const dialogs: string[] = [];
+  page.on("dialog", (dialog) => { dialogs.push(dialog.message()); void dialog.accept(); });
+  await page.goto("/?view=models");
+  const panel = page.locator(".module-quarantine-panel");
+  await expect(panel).toContainText("1 external module quarantined");
+  await expect(panel).toContainText("my-storage-module 1.2.0");
+  await expect(panel).toContainText("GF_MODULE_IMPORT_FAILED");
+  await expect(panel).not.toContainText("/home/");
+  await panel.getByRole("button", { name: "Disable" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "my-storage-module is disabled" })).toBeVisible();
+  expect(dialogs[0]).toBe("Disable my-storage-module? Studies that use it will need another module before they can run.");
+  expect(dialogs[1]).toContain("Runs have not finished");
+  expect(disableBodies).toHaveLength(2);
+  expect(JSON.parse(disableBodies[1]).confirm_pending_runs).toBe(true);
+});

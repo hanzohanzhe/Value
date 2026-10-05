@@ -61,7 +61,10 @@
     "app/features/market/vreView.ts",
     "app/features/modules/ModuleAuthorWorkbench.css",
     "app/features/modules/ModuleAuthorWorkbench.tsx",
+    "app/features/modules/ModuleQuarantinePanel.tsx",
     "app/features/modules/module-authoring.types.ts",
+    "app/features/modules/module-quarantine.css",
+    "app/features/modules/module-quarantine.mjs",
     "app/features/network/CurtailmentWaterfall.tsx",
     "app/features/network/NetworkRedispatchView.tsx",
     "app/features/network/NetworkZoneMap.tsx",
@@ -1202,6 +1205,7 @@
     "tests/frontend/helpers/fixtures.mjs",
     "tests/frontend/helpers/render-tsx.mjs",
     "tests/frontend/render/annual-results.test.mjs",
+    "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/shared-components.test.mjs",
     "tests/frontend/unit/api-error.test.mjs",
@@ -1209,6 +1213,7 @@
     "tests/frontend/unit/e2e-runner.test.mjs",
     "tests/frontend/unit/format.test.mjs",
     "tests/frontend/unit/frontend-guards.test.mjs",
+    "tests/frontend/unit/module-quarantine.test.mjs",
     "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
@@ -3106,10 +3111,28 @@
       "transform": "byte copy"
     },
     {
+      "path": "app/features/modules/ModuleQuarantinePanel.tsx",
+      "sha256": "037331b6fec931ec242257a3d58063be5c9b2d4db21f8b6ce559caf24ea64693",
+      "bytes": 2970,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/modules/module-authoring.types.ts",
       "sha256": "b90eae590c7e9c751a8bf79beb2d11d5e96715b2ef1c4e6fbfabdc3d877f195a",
       "bytes": 5539,
       "transform": "byte copy"
+    },
+    {
+      "path": "app/features/modules/module-quarantine.css",
+      "sha256": "b764428f3d73cedaffd995f842a3b2e2206b9cc44e6650b3c214833095c5d72e",
+      "bytes": 855,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/modules/module-quarantine.mjs",
+      "sha256": "a80d54d63a2862f0b00a6679cf173ba6916002ea00713be42f36907a574edec2",
+      "bytes": 2447,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/network/CurtailmentWaterfall.tsx",
@@ -3305,9 +3328,9 @@
     },
     {
       "path": "app/features/shared/workspaceTypes.ts",
-      "sha256": "4cbf8f65b1d2342e990545b27efbdf3a851520b0074a0e387335ac053f2c2848",
-      "bytes": 972,
-      "transform": "byte copy"
+      "sha256": "68f6b3c3bbaa49932409551242c33f7ad08fbb7690bcfa2a1f5da22c00b75ad9",
+      "bytes": 1172,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/studies/AdvancedSettings.tsx",
@@ -3485,8 +3508,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "f5f54663abc59b491b27ad8b7444da1dd360d43bcd3591ced027dbb452671023",
-      "bytes": 155617,
+      "sha256": "b247f5a4b13ac252a5b874c41fafd705948ee7b0dc4ae04fd748ee3109429a68",
+      "bytes": 159399,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6215,7 +6238,7 @@
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "f3a05d955f02a396b28fa5d255609d0a2a856364c98f14013fe157dae1f45024",
+      "sha256": "78900caa396bac13c4342a9546fa541b974ab75838dfd25efaee9d3b4a53569b",
       "bytes": 2999,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -6245,8 +6268,8 @@
     },
     {
       "path": "e2e/service-status.spec.ts",
-      "sha256": "6d6c787d87e6761bfc7b503c7c5f4df99f2d7ef56f53f71a2a9df053dca8cbb8",
-      "bytes": 3778,
+      "sha256": "a1a55530cb4382ff00f77a92e36691222701dcc1f71e03982b1938376f617158",
+      "bytes": 6736,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9935,6 +9958,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/module-quarantine.test.mjs",
+      "sha256": "0fa14ac9aaa44a18158dd8669b323916c72b4d0eabac0b63e9563920671f0f4c",
+      "bytes": 1278,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/render-harness.test.mjs",
       "sha256": "e20d5da77f6261348f7c2eadec4884363fc9122a1703987f37d58beaa5671b3a",
       "bytes": 1124,
@@ -9972,8 +10001,14 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "0bda5c2d886e8aff8d94e1d67a514ca5e9b1476da367182a32f707dcdc7cda31",
-      "bytes": 4495,
+      "sha256": "f2e759c8233ad520b357664f14b85f928ebf7e85a733d5d8c2250203aa2d7f9e",
+      "bytes": 4543,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/module-quarantine.test.mjs",
+      "sha256": "40f20d75987abadb29431f79022e08118765bdc42ff9f72a905016500d88b78d",
+      "bytes": 2978,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

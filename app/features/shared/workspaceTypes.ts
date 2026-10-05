@@ -1,5 +1,6 @@
 import type { Module, ModuleSlot, Extension, Slot, DataPack, ModuleInstallation, ExtensionInstallation, Project, StudyTrashEntry } from "../studies/types";
 import type { ModelRun, RecoveryCapability } from "../runs/types";
+import type { QuarantineReport } from "../modules/ModuleQuarantinePanel";
 
 export type RuntimeCapability = {
   capability: string; available: boolean; python: string; supported_python: string[];
@@ -8,7 +9,10 @@ export type RuntimeCapability = {
 export type Workspace = {
   architecture_version: string; frontend_contract_version?: string; modules: Module[]; module_slots: ModuleSlot[];
   extensions: Extension[]; dataset_slots: Slot[]; data_packs: DataPack[];
-  module_installations: ModuleInstallation[]; extension_installations: ExtensionInstallation[]; projects: Project[]; study_trash: StudyTrashEntry[]; runs: ModelRun[]; runtime: {
+  module_installations: ModuleInstallation[]; extension_installations: ExtensionInstallation[]; projects: Project[]; study_trash: StudyTrashEntry[]; runs: ModelRun[];
+  /** P0-2: quarantined external modules/extensions and damaged install records. */
+  module_quarantine?: QuarantineReport;
+  runtime: {
     python: string; compatible: boolean; selected_capability?: string;
     capabilities?: Record<string, RuntimeCapability>;
     recovery?: RecoveryCapability;
