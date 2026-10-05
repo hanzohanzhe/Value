@@ -92,7 +92,9 @@ All beginning capacities in 2025 match. The full machine-readable comparison is
 
 The two-year summary ledger contains 35,040 period rows and 175,200 storage-state
 rows. Maximum adjusted energy-balance residual is
-`1.8189894035458565e-11 MWh`, so every persisted period satisfies the invariant.
+`1.8189894035458565e-11 MWh`, so every persisted period satisfies the invariant
+(withdrawn: the adjusted residual is zero by construction; see the P0-4 erratum
+below).
 
 The copied Scheme C settlement does not expose every secondary allocation as an
 asset dispatch row. Ledger v2 therefore also preserves the unadjusted value:
@@ -102,8 +104,37 @@ asset dispatch row. Ledger v2 therefore also preserves the unadjusted value:
 - the adjustment is never relabelled as generation or blackout.
 
 This is an asset-level visibility limitation, not evidence that the model's
-annual physical accounting has been changed. The Audit page exposes both values
-for affected periods.
+annual physical accounting has been changed (withdrawn: see the erratum below).
+The Audit page exposes both values for affected periods.
+
+### Erratum (P0-4, 2026-10)
+
+The statements above are wrong and are withdrawn:
+
+- "Every persisted period satisfies the invariant" was based on the adjusted
+  residual. The compatibility adjustment was minus the raw residual in every
+  period with a non-zero raw residual, without a cap, so the adjusted residual
+  was zero by construction and tested nothing.
+- The 1,900 adjusted periods and the maximum raw residual of 2,352.98 MWh are
+  not "an asset-level visibility limitation". The raw residual was taken on
+  the retained demand-serving boundary
+  (`S + B - D - min(C, max(F - D, 0))`). By the decomposition of P0-4 it is
+  the sum of (a) VRE surplus that charged storage, was exported or went to
+  electrolysis outside the accepted supply (the boundary omits it), (b)
+  in-dispatch surplus spilled, (c) demand cut by the realisation rule and
+  recorded as zero blackout (hidden shortfall, P3-01) and (d) must-run
+  surplus counted a second time in the balancing stage (DEV-BAL-04). (c) and
+  (d) are model defects, not reporting gaps.
+- The 0.4 ledger itself is not part of the source tree, so the split of the
+  2,352.98 MWh into (a)-(d) is not stated here. It can be reproduced
+  read-only with `python -B -m gridform_core.energy_balance_oracle <run>`; a
+  ledger of that age has no surplus routing and gets the envelope check only
+  (`failed` or `not_evaluated`).
+
+Since P0-4 the default PSM declares its boundary, the adjustment absorbs
+numerical noise only, shortfalls are booked as stress events and unserved
+energy (decision A2), and the energy balance, storage invariants and run
+invariants are gates of scientific validation.
 
 ## Trace benchmark
 

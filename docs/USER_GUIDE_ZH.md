@@ -299,6 +299,22 @@ py -3.10 -m gridform_core.bundle_validator <run-directory>
 | `invalid` | 记录的证据自相矛盾（身份或年份集合对不上） | 把该 Run 的结果视为未经核实，检查账本 |
 | `Not modelled` / `Not computed` / `Not recorded` | 该方法不建模此项 / 实现尚未计算 / 旧 Run 没有记录 | 都不等于 0 |
 
+### 科学验证、能量平衡与 stress event
+
+`validation/scientific-validation.json`（v2）中的每个状态都由本次运行实际执行的检查重算，不再有写死的 “passed”。以下三组检查是 gate：
+
+- **run 不变量**：时段覆盖、需求输入对账、发电跨路径核对、年度状态链。
+- **能量平衡**：只读 oracle 按 PSM 在账本中声明的边界逐期重算。缺口（接纳供给没有满足的需求）记为缺电量，并作为 **stress event** 报告，不判能量平衡失败；记入缺口之后仍不闭合的残差（记录的供给超过全部用途）才判失败。
+- **储能不变量**：充放电不超过额定功率、同一时段不对同一储能既充又放、荷电状态不超出容量，以及逐储能的能量审计恒等式。
+
+默认（corrected）口径下，任一 gate 失败，科学验证即为 `failed`，年度经济结果不发布。论文复现（doctoral）口径保留论文行为：符合已声明偏差的失败（例如必发盈余的重复计入、每个出清阶段重置储能功率上限）显示为 `reproduction_with_declared_deviations`，没有失败显示为 `reproduction_conformant`，其他情况显示为 `failed`。复现口径的年度结果只有在原始不变量全部通过时才在结果页发布，否则只在 Inspect 和导出中提供。市场账本中“调整后残差”一列不能作为能量平衡的证据。任何 Run（包括旧 Run）都可以只读复核：
+
+```powershell
+py -3.10 -B -m gridform_core.energy_balance_oracle <run-directory>
+```
+
+退出码 0 为通过，1 为失败，2 为未评估。这些检查出现之前产生的 Run 在读取时复核，原来的 `passed` 显示为 superseded。
+
 ## 13. 取消、恢复、归档和删除
 
 - Request safe cancellation 写入取消请求。原生运行在下一个完整年度 checkpoint 边界停止。

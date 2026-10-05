@@ -304,6 +304,43 @@ Validate a completed bundle without rerunning the model:
 py -3.10 -m gridform_core.bundle_validator <run-directory>
 ```
 
+### Scientific validation, energy balance and stress events
+
+`validation/scientific-validation.json` (v2) recomputes every status from
+checks executed on the run; nothing is a written-in "passed". Three groups are
+gates:
+
+- **Run invariants**: period coverage, demand input reconciliation,
+  generation cross-path check, annual state chain.
+- **Energy balance**: the read-only oracle recomputes each period on the
+  boundary the PSM declares in its ledger. A shortfall (demand the accepted
+  supply did not meet) is booked as unserved energy and reported as a
+  **stress event**; it does not fail the energy balance. A residual that
+  remains after booking it (supply recorded beyond every use) does.
+- **Storage invariants**: charge and discharge within rated power, no store
+  charging and discharging in the same period, state of charge within its
+  capacity, and the per-store energy audit.
+
+Under the default (corrected) methodology a failed gate makes scientific
+validation `failed` and annual economics are not published. Under the
+doctoral reproduction methodology the run keeps the thesis behaviour: a
+failure that matches a declared deviation (for example the double counting of
+must-run surplus, or storage power limits reset in each clearing stage) is
+shown as `reproduction_with_declared_deviations`, a clean run as
+`reproduction_conformant`, anything else as `failed`. Its annual results
+appear on result pages only when every raw invariant passes; otherwise they
+remain in Inspect and exports. The adjusted residual column of the market
+ledger is not evidence of an energy balance. Check a run, including an old
+one, read-only:
+
+```powershell
+py -3.10 -B -m gridform_core.energy_balance_oracle <run-directory>
+```
+
+Exit code 0 is passed, 1 failed, 2 not evaluated. Runs produced before these
+checks existed are re-checked when they are read; their old `passed` is shown
+as superseded.
+
 ## 12. Cancellation, recovery and retention
 
 Request safe cancellation writes a cancellation request. A native run stops after its next complete annual checkpoint. Resume is available for failed or cancelled runs when frozen data, project revision, parameters, modules and implementation hashes still match.

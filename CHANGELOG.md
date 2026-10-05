@@ -153,6 +153,49 @@
 - Per-period source flows (RealisationLog) stay in memory only; persisting
   them is deferred to ledger v9 (P1).
 
+### Scientific validation recomputed and gated (P0-4)
+
+- No more literal "passed": stage parity v3 and scientific validation v2 are
+  recomputed from checks executed on the run (contract checks, run
+  invariants, the read-only energy-balance oracle).  A report that ran no
+  check is `not_evaluated`.  Pre-fix runs keep their files; a `passed` that
+  rests on a non-v2 report is shown as `superseded_pre_fix` and the ledger is
+  re-checked read-only when the run is read.
+- The default PSM declares its energy-balance boundary
+  (`default_psm_surplus_node_v1` doctoral, `native_corrected_full_node_v1`
+  corrected), records surplus routing per source and a per-asset storage
+  audit, and its compatibility adjustment absorbs numerical noise only (it
+  used to close every residual, so the adjusted residual was zero by
+  construction).
+- Decision A2: dispatch is unchanged when the ahead stage cannot meet the
+  forecast; both profiles record stress events (per-period shortfall, events,
+  annual summary) and book the shortfall as unserved energy in the
+  energy-balance account.  Run status, summaries and market-replay windows
+  carry `stress_periods`, `shortfall_mwh` and `shortfall_basis`; on a declared
+  full-node boundary the shortfall now equals the booked unserved energy
+  (it was a lower bound).
+- Validation gates (P0-4 S7): run invariants, the energy-balance account and
+  the storage throughput invariants (rated power, no charge and discharge in
+  one period, 0 <= SoC <= E, audit identity).  Under the default profile a
+  failed gate fails scientific validation and blocks annual economics
+  (`publication_blocked.reason_code = GF_VALIDATION_GATE_FAILED`).  The
+  doctoral reproduction profile reads gate failures through declared
+  deviations with falsifiable signatures
+  (`gridform_core/data/methodology/declared_deviations.json`: DEV-BAL-04,
+  DEV-STO-01; DEV-BAL-01/02/03 as evidence only) and reports
+  `reproduction_conformant` or `reproduction_with_declared_deviations`;
+  its annual results follow decision Q14 (withheld unless every raw
+  invariant passes).  New report fields: `storage_invariant_status`,
+  `storage_invariants`, `validation_gate`, `declared_deviations`,
+  `energy_balance.raw_boundary_status`.
+- The Q14 verdict is derived from the gate statuses; a stored
+  `raw_invariants.status` that disagrees is treated as failed, and the bundle
+  validator recomputes it.
+- Documentation errata: `docs/visibility-refactor/MARKET_LEDGER.md`,
+  `RELEASE_0.4.md` (the 2,353 MWh statement), `ORCHESTRATOR_V2.md`,
+  `TWO_YEAR_SMOKE.md`; methodology draft
+  `docs/methodology/drafts/0.4/p04_energy_balance_validation.md`.
+
 ## 0.6.0-alpha.2 — VALUE Network Extensions identity (2026-08-20)
 
 - Adopted the scientific name **VALUE**: Variable renewable electricity

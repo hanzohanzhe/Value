@@ -36,8 +36,13 @@ Its outputs are materialised through the typed v2 modules and
 - `year-results-v2.json` with public contracts only;
 - `checkpoints-v2/state-YYYY.json`;
 - `resolved-run.json`.
-- `parity/stage-parity.json`, which compares the scientific-session artifacts,
-  durable ledgers and public contracts.
+- `parity/stage-parity.json` (v3 from P0-4 S2), which records the contract
+  checks actually executed on the run (typed years, stage order, ledger row
+  counts, cost-ledger closure), each with actual, expected and tolerance so
+  it can be recomputed. It is not energy-balance evidence: the energy balance
+  comes from the read-only oracle (`validation/energy-balance-oracle.json`),
+  and `validation/scientific-validation.json` (v2) gates the run on the run
+  invariants, the energy balance and the storage invariants (P0-4 S7).
 
 The direct retained runner remains available only through explicit comparison
 commands. `backend/model_runner.py` imports only the application service. The

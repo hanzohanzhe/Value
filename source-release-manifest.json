@@ -2866,8 +2866,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "55bf30ac120401a945ddd549402e8e2b1ad07a6e1ba32015cfe2c3b91ca44820",
-      "bytes": 13715,
+      "sha256": "ed4292c65aa02427b8508a3ee4fbda59f3f1a40cca766a2e45a2450fb92cc9b6",
+      "bytes": 16409,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4468,14 +4468,14 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "b9072b3a99dede4b048d82983619b037a451a8585a8a14c3726a59fcc7be7b70",
-      "bytes": 32842,
+      "sha256": "68e48464b6d9cd6ae504c42f4210dbef58aa50fc6c51443ea14205746ca8ca07",
+      "bytes": 34780,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/USER_GUIDE_ZH.md",
-      "sha256": "ec22beb2d79ff42608a71bd07b66b0ccb3c6552b36af052ad402a60bd4ec7159",
-      "bytes": 31804,
+      "sha256": "8989982fd6cec18ddc7701cedf0edb7a0d56f33b8505f2dc7f43f032805d4d4f",
+      "bytes": 33554,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6112,9 +6112,9 @@
     },
     {
       "path": "docs/visibility-refactor/MARKET_LEDGER.md",
-      "sha256": "0b7cb187cfe5bfecd1762d57ce51c5cf5ee3bbc0f8e4f36914d3b23ca030731f",
-      "bytes": 3673,
-      "transform": "byte copy"
+      "sha256": "f8037045e1621b87db19a1ce3033d14f011996fb718a1cdb710bbf50d78ee01a",
+      "bytes": 4688,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/visibility-refactor/MIGRATION_V1.md",
@@ -6124,9 +6124,9 @@
     },
     {
       "path": "docs/visibility-refactor/ORCHESTRATOR_V2.md",
-      "sha256": "2a53b48df523dbc9e65ff682e83a84c4fdf61bda69b12ee723ddde0c1616fb8c",
-      "bytes": 2244,
-      "transform": "byte copy"
+      "sha256": "9fb6dee3ed2533e5721c0bce5a5a3fd60d3b773c579b79764d3c8d56653276b4",
+      "bytes": 2659,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/visibility-refactor/PARAMETER_INVENTORY.md",
@@ -6154,9 +6154,9 @@
     },
     {
       "path": "docs/visibility-refactor/RELEASE_0.4.md",
-      "sha256": "5372ecac8b7e538011dbd0500284ebe81e4f39135fdc1aed9d25172a7bf77ac9",
-      "bytes": 6775,
-      "transform": "byte copy"
+      "sha256": "414f3a9d91be870195ecf5163e5186af8b25393c3d083df023d70e4abcb0f47a",
+      "bytes": 8572,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/visibility-refactor/RUN_API_AND_AUDIT_UI.md",
@@ -6166,9 +6166,9 @@
     },
     {
       "path": "docs/visibility-refactor/TWO_YEAR_SMOKE.md",
-      "sha256": "c06331ed693ece2a39a60bccc65b14840258890bfe51374afee3100f00a6ebaa",
-      "bytes": 1691,
-      "transform": "byte copy"
+      "sha256": "61214bf01b102d8438a448d5ec34c2c383ae2323dfffd74f3f3fb3ac73b8545b",
+      "bytes": 2084,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/visibility-refactor/market-ledger-benchmark.json",
