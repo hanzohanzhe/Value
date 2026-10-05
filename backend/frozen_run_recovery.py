@@ -21,6 +21,7 @@ from gridform_core.frontend_contract import (
     solver_contract_upgrade_preview,
 )
 from gridform_core.methodology import COMBINATION_ERROR_CODE, combination_violations, resolve_project_methodology
+from gridform_core.pack_source_identity import ID_KEYED_PACK_IDS
 from gridform_core.run_snapshot import METHOD_SUPERSEDED
 from gridform_core.project_revision import save_project_revision
 from gridform_core.run_policy import resolve_run_policy
@@ -163,13 +164,15 @@ def recovered_methodology_violations(source_run_root: Path, integrity: dict, can
     """The methodology whitelist verdict on the packs recovery would publish (Q3).
 
     Recovery keeps the Run's methodology profile (the method is fixed by the
-    review).  A frozen profile admits a recovered base pack only when it holds
-    the verified content of a pinned pack (``pack_source_identity.recovered_source``:
-    the same data bytes and semantic metadata as the source manifest recorded
-    in the Run's input snapshot).  The check runs on the manifests staging
-    would write (placeholder IDs; IDs, names and timestamps are not part of
-    the identity), through the same resolver as Study validation, preflight
-    and the worker, so a refusal is reported at review rather than at publish.
+    review).  A frozen profile admits a recovered base pack only when it is
+    identified as a pinned pack (``pack_source_identity.recovered_source``: the
+    same data bytes and every manifest field except id, name, timestamps and
+    qualification as the source manifest recorded in the Run's input
+    snapshot, and a source id that does not select model behaviour,
+    ``ID_KEYED_PACK_IDS``).  The check runs on the manifests staging would
+    write (placeholder IDs), through the same resolver as Study validation,
+    preflight and the worker, so a refusal is reported at review rather than
+    at publish.
     """
     try:
         resolved = resolve_project_methodology(candidate)
@@ -260,8 +263,17 @@ def review_frozen_recovery(source_run_root: Path, recovery_mode: str, *, registr
             report["methodology_violations"] = methodology_rows
             report["blocking_reasons"].append(
                 f"{COMBINATION_ERROR_CODE}: the recovered inputs cannot be published under this Run's methodology "
-                "profile, which admits a recovered pack only when it holds the verified content of a pinned pack: "
+                "profile, which admits a recovered pack only when it holds the verified content of a pinned pack "
+                "whose id does not select model behaviour: "
                 + "; ".join(str(row["message"]) for row in methodology_rows))
+        source_pack_id = str(integrity["base_manifest"].get("id") or "")
+        if source_pack_id in ID_KEYED_PACK_IDS and not methodology_rows:
+            # Open issue (predates P0): a profile without a pin admits the
+            # recovered pack, but behaviour keyed on the pack id is lost.
+            report["limitations"].append(
+                f"Model behaviour keys on the source pack id {source_pack_id} (VALUE-UK nuclear fleet policy, "
+                "doctoral site weather); the recovered pack has a new id, so its recomputation can differ "
+                "from the source Run.")
         if recovery_mode == "strict":
             if upgrade is not None:
                 report["blocking_reasons"].append(

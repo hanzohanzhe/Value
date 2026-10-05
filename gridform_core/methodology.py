@@ -673,6 +673,9 @@ def _pack_supported(profile: Profile, identity: "pack_source_identity.PackIdenti
 _UNVERIFIED_PACK_NOTES = {
     "snapshot": " (its run-input snapshot carries no verifiable source manifest identity)",
     "recovery": " (its recovered inputs carry no verifiable source manifest identity, or differ from that source)",
+    "recovery_id_keyed": (" (its recovered inputs hold the verified content of a pack whose id selects model behaviour "
+                          "(VALUE-UK nuclear policy, doctoral site weather); model behaviour keys on the pack id, so "
+                          "the recovered copy under a new id does not behave as that pack)"),
 }
 
 

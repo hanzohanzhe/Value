@@ -26,7 +26,10 @@ from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.methodology import COMBINATION_ERROR_CODE, REFERENCE_PROFILE_ID
 from gridform_core.project_revision import save_project_revision
 from gridform_core.v2.module_manifest import workspace_registry
-from tests.test_pack_source_identity import VALUE_101_CANONICAL_SHA, VALUE_101_FILE_SHA, value_101_pinned_by
+from tests.test_pack_source_identity import (
+    GBP1_ID, VALUE_101_CANONICAL_SHA, VALUE_101_FILE_SHA, doctoral_pins, gbp1_stand_in, stand_in_shas,
+    value_101_pinned_by,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,6 +47,25 @@ PACK_ID = "value-101-baseline-v1"
 PACK_ROOT = ROOT / "data-packs" / PACK_ID
 
 
+def numeric_leaves(value, path=""):
+    """{path: number} for every numeric leaf, timing fields (``*seconds*``) excluded."""
+
+    if isinstance(value, dict):
+        rows = {}
+        for key, item in value.items():
+            if "seconds" not in str(key):
+                rows.update(numeric_leaves(item, f"{path}/{key}"))
+        return rows
+    if isinstance(value, list):
+        rows = {}
+        for index, item in enumerate(value):
+            rows.update(numeric_leaves(item, f"{path}[{index}]"))
+        return rows
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return {path: value}
+    return {}
+
+
 class DoctoralWorkerPathTests(unittest.TestCase):
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
@@ -51,11 +73,11 @@ class DoctoralWorkerPathTests(unittest.TestCase):
         self.home = Path(self.folder.name)
         shutil.copytree(PACK_ROOT, self.home / "data-packs" / PACK_ID)
 
-    def _save_study(self, study_id: str, profile_id: str) -> None:
+    def _save_study(self, study_id: str, profile_id: str, pack_id: str = PACK_ID) -> None:
         registry = workspace_registry(Path("missing-modules-directory"))
-        manifest = json.loads((self.home / "data-packs" / PACK_ID / "manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads((self.home / "data-packs" / pack_id / "manifest.json").read_text(encoding="utf-8"))
         base = json.loads((ROOT / "tests" / "golden" / "projects" / "D1.json").read_text(encoding="utf-8"))
-        project = methodology.apply_reference_preset(dict(base, id=study_id), profile_id)
+        project = methodology.apply_reference_preset(dict(base, id=study_id, data_pack_id=pack_id), profile_id)
         save_project_revision(self.home / "projects" / study_id, project, registry, manifest)
 
     @contextlib.contextmanager
@@ -182,6 +204,36 @@ class DoctoralWorkerPathTests(unittest.TestCase):
         frozen = json.loads((self.home / "runs" / rerun["id"] / "input-snapshot" / "pack" / "manifest.json")
                             .read_text(encoding="utf-8"))
         self.assertEqual(pack_source_identity.resolve_pack_identity(frozen).chain, ("snapshot", "recovery"))
+        # Review round 5: identified as the source means it behaves as the source.
+        results = [json.loads((self.home / "runs" / run_id / "model-output" / "year-results-v2.json")
+                              .read_text(encoding="utf-8")) for run_id in (source["id"], rerun["id"])]
+        expected, actual = (numeric_leaves(item) for item in results)
+        self.assertGreater(len(expected), 100)
+        self.assertEqual(actual, expected)
+
+    def test_a_doctoral_run_on_an_id_keyed_pack_is_blocked_at_recovery_review(self):
+        """Review round 5 (major): model behaviour keys on the GBP1 id, so its recovered copy is not GBP1.
+
+        A VALUE 101 copy under the GBP1 public1 id, pinned by its two shas,
+        stands in for GBP1: the source Run is admitted, its recovery is
+        blocked at review with the profile code.
+        """
+
+        _root, raw = gbp1_stand_in(self.home)
+        with doctoral_pins({GBP1_ID: stand_in_shas(raw)}):
+            self._save_study("doctoral-gbp1", REFERENCE_PROFILE_ID, pack_id=GBP1_ID)
+            source = self._start_and_work("doctoral-gbp1")
+            self.assertEqual(source["status"], "completed", source)
+            with self._api() as (post, _spawned):
+                status, review = post(f"/api/runs/{source['id']}/frozen-recovery/review",
+                                      {"recovery_mode": "migration"})
+        self.assertEqual(status, 200, review)
+        self.assertFalse(review["allowed"])
+        rows = review["methodology_violations"]
+        self.assertEqual([row["sub_reason"] for row in rows], ["data_pack"])
+        self.assertIn("model behaviour keys on the pack id", rows[0]["message"])
+        self.assertTrue(any(reason.startswith(COMBINATION_ERROR_CODE) for reason in review["blocking_reasons"]),
+                        review["blocking_reasons"])
 
     def test_recovery_review_blocks_inputs_that_are_not_the_pinned_content(self):
         """A doctoral Run whose recovered pack would not be a pinned pack is blocked at review, not at publish."""
@@ -211,6 +263,20 @@ class DoctoralWorkerPathTests(unittest.TestCase):
         self.assertEqual([row["sub_reason"] for row in review["methodology_violations"]], ["data_pack"])
         self.assertTrue(any(reason.startswith(COMBINATION_ERROR_CODE) for reason in review["blocking_reasons"]),
                         review["blocking_reasons"])
+
+    def test_a_corrected_run_on_an_id_keyed_pack_states_the_lost_behaviour_at_review(self):
+        """Open issue (predates P0): value-corrected admits the recovered pack; the review says what changes."""
+
+        _root, raw = gbp1_stand_in(self.home)
+        self._save_study("corrected-gbp1", methodology.default_profile_id(), pack_id=GBP1_ID)
+        source = self._start_and_work("corrected-gbp1")
+        self.assertEqual(source["status"], "completed", source)
+        with self._api() as (post, _spawned):
+            status, review = post(f"/api/runs/{source['id']}/frozen-recovery/review", {"recovery_mode": "migration"})
+        self.assertEqual(status, 200, review)
+        self.assertNotIn("methodology_violations", review)
+        self.assertTrue(any(f"Model behaviour keys on the source pack id {GBP1_ID}" in row
+                            for row in review["limitations"]), review["limitations"])
 
     def test_a_refused_combination_in_the_worker_carries_the_profile_code(self):
         """External code enabled between admission and the worker (TOCTOU): the run-entry backstop fires."""

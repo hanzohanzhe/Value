@@ -28,14 +28,16 @@ PACK_ROOT = ROOT / "data-packs" / "value-101-baseline-v1"
 VALUE_101_FILE_SHA = "8fe24b8a54251131d22a28b446deaf395f1148ee138d5d0333d14c88cdc2ac4c"
 VALUE_101_CANONICAL_SHA = "76d51a937000cba6cd85991e170245a43f45e7688cfa2cdc84019c886127a3cc"
 VALUE_101_SHAS = {VALUE_101_FILE_SHA, VALUE_101_CANONICAL_SHA}
+GBP1_ID = pack_source_identity.VALUE_UK_OPEN_DATA_PACK_ID
 
 
-def freeze(run_dir: Path, pack_root: Path, object_root: Path) -> bytes:
+def freeze(run_dir: Path, pack_root: Path, object_root: Path, *, pack_id: str | None = None) -> bytes:
     """Freeze D1 (doctoral) on ``pack_root`` as ``run_snapshot`` does for a queued Run."""
 
     run_dir.mkdir(parents=True)
     project = json.loads((ROOT / "tests" / "golden" / "projects" / "D1.json").read_text(encoding="utf-8"))
-    project = methodology.with_profile(dict(project, id="d1"), REFERENCE_PROFILE_ID)
+    project = dict(project, id="d1", **({"data_pack_id": pack_id} if pack_id else {}))
+    project = methodology.with_profile(project, REFERENCE_PROFILE_ID)
     create_run_input_snapshot(
         run_dir=run_dir, project=project, pack_root=pack_root,
         registry=workspace_registry(Path("missing-modules-directory")),
@@ -45,8 +47,8 @@ def freeze(run_dir: Path, pack_root: Path, object_root: Path) -> bytes:
 
 
 @contextlib.contextmanager
-def value_101_pinned_by(shas):
-    """The doctoral profile with the VALUE 101 entry pinned by ``shas`` only.
+def doctoral_pins(pins):
+    """The doctoral profile with each entry ``pack id -> shas`` in ``pins`` pinned by those shas only.
 
     Only the whitelist entries change (the profile record, and so the
     profile definition and every Study identity, stays the same).
@@ -55,13 +57,40 @@ def value_101_pinned_by(shas):
     catalogue = methodology.load_catalogue()
     profile = catalogue.profile(REFERENCE_PROFILE_ID)
     entries = tuple(
-        dict(entry, manifest_sha256=list(shas)) if entry["id"] == "value-101-baseline-v1" else entry
+        dict(entry, manifest_sha256=list(pins[entry["id"]])) if entry["id"] in pins else entry
         for entry in profile.supported_data_packs
     )
     pinned = dataclasses.replace(profile, supported_data_packs=entries)
     replaced = dataclasses.replace(catalogue, profiles={**catalogue.profiles, REFERENCE_PROFILE_ID: pinned})
     with patch.object(methodology, "load_catalogue", lambda: replaced):
         yield
+
+
+def value_101_pinned_by(shas):
+    """The doctoral profile with the VALUE 101 entry pinned by ``shas`` only."""
+
+    return doctoral_pins({"value-101-baseline-v1": shas})
+
+
+def gbp1_stand_in(folder: Path) -> tuple[Path, bytes]:
+    """A VALUE 101 copy under the GBP1 public1 id, so that model behaviour keys on its id.
+
+    Returns the pack root and its manifest bytes; pin it with
+    ``doctoral_pins({GBP1_ID: stand_in_shas(raw)})``.
+    """
+
+    root = folder / "data-packs" / GBP1_ID
+    shutil.copytree(PACK_ROOT, root)
+    for path in root.rglob("*"):
+        path.chmod(0o755 if path.is_dir() else 0o644)
+    manifest = json.loads((PACK_ROOT / "manifest.json").read_text(encoding="utf-8"))
+    raw = (json.dumps(dict(manifest, id=GBP1_ID), indent=2, sort_keys=True) + "\n").encode("utf-8")
+    (root / "manifest.json").write_bytes(raw)
+    return root, raw
+
+
+def stand_in_shas(raw: bytes) -> list[str]:
+    return [hashlib.sha256(raw).hexdigest(), pack_source_identity.canonical_sha256(json.loads(raw.decode("utf-8")))]
 
 
 class FrozenPackIdentityTests(unittest.TestCase):
@@ -304,6 +333,107 @@ class RecoveredPackIdentityTests(unittest.TestCase):
         self.assertEqual(identity.chain, ("snapshot", "recovery"))
         self.assertEqual(set(identity.sha256_candidates), VALUE_101_SHAS)
         self.assertEqual(self.violations(frozen), [])
+
+
+class IdKeyedRecoveryTests(unittest.TestCase):
+    """Review round 5 (major): recovery never identifies a pack whose id selects model behaviour."""
+
+    @classmethod
+    def setUpClass(cls):
+        from backend.frozen_input_recovery import recovered_manifests
+        from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
+
+        cls.folder = tempfile.TemporaryDirectory()
+        folder = Path(cls.folder.name)
+        cls.pack_root, cls.source_bytes = gbp1_stand_in(folder)
+        cls.source = json.loads(cls.source_bytes.decode("utf-8"))
+        run_dir = folder / "runs" / "r"
+        cls.frozen_bytes = freeze(run_dir, cls.pack_root, folder / "objects", pack_id=GBP1_ID)
+        integrity = verify_frozen_input_integrity(run_dir / "input-snapshot")
+        cls.recovered = recovered_manifests(
+            integrity, source_run_id="r", base_pack_id="recovered-base-0123456789abcdef", network_pack_id=None,
+            timestamp="2026-10-05T00:00:00+00:00", base_manifest_sha256="0" * 64,
+            network_manifest_sha256=None)["base_manifest"]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.folder.cleanup()
+
+    def test_the_id_keyed_list_is_every_id_the_model_keys_on(self):
+        from gridform_core.doctoral_weather import uses_doctoral_weather
+        from gridform_core.nuclear_policy import applies_to_data_pack
+
+        ids = set(methodology.KNOWN_PACK_CLASSES) | {"value-101-baseline-v1", "recovered-base-0123456789abcdef"}
+        ids |= pack_source_identity.ID_KEYED_PACK_IDS
+        for pack_id in sorted(ids):
+            with self.subTest(pack_id=pack_id):
+                manifest = {"id": pack_id, "bindings": {}}
+                self.assertEqual(applies_to_data_pack(manifest), pack_id in pack_source_identity.NUCLEAR_POLICY_PACK_IDS)
+                self.assertEqual(uses_doctoral_weather(manifest), pack_id in pack_source_identity.DOCTORAL_WEATHER_PACK_IDS)
+                self.assertEqual(applies_to_data_pack(manifest) or uses_doctoral_weather(manifest),
+                                 pack_id in pack_source_identity.ID_KEYED_PACK_IDS)
+
+    def test_no_other_module_keys_on_these_ids(self):
+        """The id-keyed list is the only one: doctoral_weather.py (byte-frozen) holds the same set, nothing else compares."""
+
+        import ast
+
+        weather = ast.parse((ROOT / "gridform_core" / "doctoral_weather.py").read_text(encoding="utf-8"))
+        function = next(node for node in ast.walk(weather)
+                        if isinstance(node, ast.FunctionDef) and node.name == "uses_doctoral_weather")
+        literal_sets = [node for node in ast.walk(function) if isinstance(node, ast.Set)]
+        self.assertEqual(len(literal_sets), 1)
+        self.assertEqual({ast.literal_eval(item) for item in literal_sets[0].elts},
+                         set(pack_source_identity.DOCTORAL_WEATHER_PACK_IDS))
+        # Where the ids may appear as literals: the list itself, the doctoral weather
+        # set above, the pack-class registry, and the server's default pack for two
+        # reference routes (a default value, not a behaviour switch).
+        allowed = {"gridform_core/pack_source_identity.py", "gridform_core/doctoral_weather.py",
+                   "gridform_core/methodology.py", "backend/server.py"}
+        found = set()
+        for folder in ("gridform_core", "backend"):
+            for path in (ROOT / folder).rglob("*.py"):
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                if any(isinstance(node, ast.Constant) and node.value in pack_source_identity.ID_KEYED_PACK_IDS
+                       for node in ast.walk(tree)):
+                    found.add(path.relative_to(ROOT).as_posix())
+        self.assertLessEqual(found, allowed)
+
+    def test_a_recovered_gbp1_pack_is_not_identified_as_gbp1(self):
+        from gridform_core.nuclear_policy import applies_to_data_pack
+
+        frozen = json.loads(self.frozen_bytes.decode("utf-8"))
+        recovered = copy.deepcopy(self.recovered)
+        # Why: the nuclear fleet policy follows the source and its frozen copy, not the recovered pack.
+        self.assertEqual([applies_to_data_pack(item) for item in (self.source, frozen, recovered)], [True, True, False])
+        # The content is the source's; only the id-keyed rule refuses it.
+        self.assertIsNone(pack_source_identity.recovered_source(recovered))
+        identity = pack_source_identity.resolve_pack_identity(recovered)
+        self.assertEqual((identity.manifest["id"], identity.chain, identity.unverified),
+                         (recovered["id"], (), "recovery_id_keyed"))
+        with doctoral_pins({GBP1_ID: stand_in_shas(self.source_bytes)}):
+            source_rows = methodology.combination_violations(
+                REFERENCE_PROFILE_ID, data_packs=[(self.source, self.source_bytes)])
+            frozen_rows = methodology.combination_violations(
+                REFERENCE_PROFILE_ID, data_packs=[(frozen, self.frozen_bytes)])
+            rows = methodology.combination_violations(REFERENCE_PROFILE_ID, data_packs=[(recovered, None)])
+        self.assertEqual((source_rows, frozen_rows), ([], []))
+        self.assertEqual([row["sub_reason"] for row in rows], ["data_pack"])
+        self.assertIn("model behaviour keys on the pack id", rows[0]["message"])
+
+    def test_a_recovered_pack_of_another_id_is_still_identified(self):
+        """Control: the same content under the VALUE 101 id is identified (the rule is the id, not the content)."""
+
+        recovered = copy.deepcopy(self.recovered)
+        qualification = recovered["frozen_recovery_origin"]["source_qualification"]
+        record = qualification[pack_source_identity.SOURCE_FIELD]
+        text = record["manifest_text"].replace(f'"id": "{GBP1_ID}"', '"id": "value-101-baseline-v1"')
+        self.assertNotEqual(text, record["manifest_text"])
+        qualification[pack_source_identity.SOURCE_FIELD] = pack_source_identity.source_record(
+            json.loads(text), text.encode("utf-8"))
+        recovered["frozen_recovery_origin"]["source_pack_id"] = "value-101-baseline-v1"
+        identity = pack_source_identity.resolve_pack_identity(recovered)
+        self.assertEqual((identity.manifest["id"], identity.chain), ("value-101-baseline-v1", ("recovery",)))
 
 
 if __name__ == "__main__":

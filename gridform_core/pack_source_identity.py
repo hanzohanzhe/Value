@@ -42,11 +42,17 @@ identity-transformed in the source and has the same data sha (and byte count)
 in the recovered pack; every binding field other than locators, recovery
 bookkeeping and history is unchanged; every top-level field other than the
 recovery-rewritten ones (:data:`RECOVERY_REWRITTEN_FIELDS`,
-:data:`RECOVERY_QUALIFICATION_FIELDS`) is unchanged.  The recovered pack then
-holds exactly the source pack's data and semantic metadata, so it is
-identified as the source pack.  Adapter-transformed bindings, network
-overlays and a base pack whose network roles were projected out are not
-identified (their content differs from the source).
+:data:`RECOVERY_QUALIFICATION_FIELDS`) is unchanged.  The recovered pack then holds
+the source pack's data bytes and every manifest field except its id, name,
+timestamps and qualification.  That is the source's content only where the
+model does not key behaviour on the pack id, so a recovered pack is
+identified as its source only when the source id is not in
+:data:`ID_KEYED_PACK_IDS` (GBP1 public1 selects the VALUE-UK nuclear fleet
+policy and both VALUE-UK ids select the doctoral site-weather adapter by id;
+under a new id the recovered copy would run with an aggregate Nuclear asset,
+a different trajectory).  Adapter-transformed bindings, network overlays and
+a base pack whose network roles were projected out are not identified either
+(their content differs from the source).
 
 A record or origin that is not consistent is ignored, so a forged or damaged
 record never borrows a pinned identity.  Comparisons use canonical JSON (so
@@ -97,6 +103,24 @@ RECOVERY_BINDING_HISTORY_FIELDS = frozenset({
 # Binding fields recovery sets on every recovered binding.
 RECOVERY_BINDING_SET_FIELDS = frozenset({"role", "uri", "sha256", "bytes", "binding_revision", "imported_at"})
 MAX_IDENTITY_DEPTH = 8
+
+# Packs whose id selects model behaviour (the one list): the VALUE-UK nuclear
+# fleet policy applies to GBP1 public1 only (nuclear_policy reads
+# NUCLEAR_POLICY_PACK_IDS), the doctoral site-weather adapter to both VALUE-UK
+# ids.  doctoral_weather.py keeps its own literal set because its bytes are
+# part of the dispatch weather identity (any edit makes every saved 35aadb3
+# Study with site weather unreconstructable, X0 S11);
+# tests/test_pack_source_identity.py asserts that set equals
+# DOCTORAL_WEATHER_PACK_IDS and that no other module compares these ids.  A
+# copy of such a pack under another id does not behave as the pack, so
+# recovery never identifies it as its source.  Adding an id here, or keying
+# any other behaviour on a pack id, changes model behaviour: it needs a
+# correction id and a golden check.
+VALUE_UK_OPEN_DATA_PACK_ID = "value-uk-open-data-pack-v1"
+VALUE_UK_REPRODUCTION_PACK_ID = "value-uk-1000twh-reproduction"
+NUCLEAR_POLICY_PACK_IDS = frozenset({VALUE_UK_OPEN_DATA_PACK_ID})
+DOCTORAL_WEATHER_PACK_IDS = frozenset({VALUE_UK_OPEN_DATA_PACK_ID, VALUE_UK_REPRODUCTION_PACK_ID})
+ID_KEYED_PACK_IDS = NUCLEAR_POLICY_PACK_IDS | DOCTORAL_WEATHER_PACK_IDS
 
 
 def recovery_history_binding_field(name: str) -> bool:
@@ -223,8 +247,8 @@ def _recovered_binding_consistent(role: str, recovered: object, source: object) 
     return _without(recovered, drop) == _without(source, drop)
 
 
-def recovered_source(manifest: Mapping[str, object]) -> tuple[dict[str, object], bytes] | None:
-    """(source manifest, source file bytes) of a recovered base pack with the source's content, else ``None``."""
+def _recovered_content_source(manifest: Mapping[str, object]) -> tuple[dict[str, object], bytes] | None:
+    """(source manifest, source file bytes) when a recovered base pack holds the source's content, else ``None``."""
 
     if manifest.get("snapshot_frozen") is True:
         return None
@@ -254,6 +278,20 @@ def recovered_source(manifest: Mapping[str, object]) -> tuple[dict[str, object],
     return copy.deepcopy(source), raw
 
 
+def recovered_source(manifest: Mapping[str, object]) -> tuple[dict[str, object], bytes] | None:
+    """(source manifest, source file bytes) of a recovered base pack identified as its source, else ``None``.
+
+    Content identity is not enough when the source id is in
+    :data:`ID_KEYED_PACK_IDS`: the recovered pack's new id would change model
+    behaviour, so it is not the source pack.
+    """
+
+    found = _recovered_content_source(manifest)
+    if found is None or str(found[0].get("id") or "") in ID_KEYED_PACK_IDS:
+        return None
+    return found
+
+
 def source_manifest(manifest: Mapping[str, object]) -> dict[str, object] | None:
     """The verified source manifest of a snapshot-frozen manifest, else ``None``."""
 
@@ -267,7 +305,9 @@ class PackIdentity:
 
     ``chain`` lists the verified steps taken (``"snapshot"``, ``"recovery"``);
     ``unverified`` names the copy kind whose identity could not be verified
-    (``"snapshot"`` or ``"recovery"``), else ``None``.
+    (``"snapshot"`` or ``"recovery"``; ``"recovery_id_keyed"`` for a recovered
+    pack with the verified content of a pack in :data:`ID_KEYED_PACK_IDS`),
+    else ``None``.
     """
 
     manifest: Mapping[str, object]
@@ -305,5 +345,5 @@ def resolve_pack_identity(manifest: Mapping[str, object], manifest_bytes: bytes 
     if current.get("snapshot_frozen") is True:
         unverified = "snapshot"
     elif current.get(RECOVERY_ORIGIN_FIELD) is not None:
-        unverified = "recovery"
+        unverified = "recovery_id_keyed" if _recovered_content_source(current) is not None else "recovery"
     return PackIdentity(current, frozenset(shas), tuple(chain), unverified)

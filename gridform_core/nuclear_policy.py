@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .asset_economics import build_asset_economic_extensions
+from .pack_source_identity import NUCLEAR_POLICY_PACK_IDS
 from .v2.contracts import PlanningProject
 
 
@@ -18,13 +19,16 @@ POLICY_PATH = (
     / "value_uk_nuclear_policy_v1.json"
 )
 POLICY_SCHEMA = "value.uk-nuclear-policy/v1"
-VALUE_UK_OPEN_DATA_PACK_ID = "value-uk-open-data-pack-v1"
 
 
 def applies_to_data_pack(manifest: Mapping[str, object]) -> bool:
-    """Keep the VALUE-UK policy out of the retained doctoral reproduction."""
+    """Keep the VALUE-UK policy out of the retained doctoral reproduction.
 
-    return str(manifest.get("id") or "") == VALUE_UK_OPEN_DATA_PACK_ID
+    Keyed on the pack id (``pack_source_identity.NUCLEAR_POLICY_PACK_IDS``,
+    part of ``ID_KEYED_PACK_IDS``, which frozen-input recovery respects).
+    """
+
+    return str(manifest.get("id") or "") in NUCLEAR_POLICY_PACK_IDS
 
 
 @lru_cache(maxsize=1)
