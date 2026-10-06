@@ -390,6 +390,95 @@ def raw_invariants_status(run: Mapping[str, Any], run_root: Path, evidence: Mapp
     return derived
 
 
+# Spec 11.3 (R-D1): the names the status bar and the withheld notice give the
+# raw-invariant checks (gridform_core.energy_balance_oracle check ids).
+RAW_INVARIANT_CHECK_NAMES = {
+    "storage.rated_power": "Storage rated power",
+    "storage.single_direction": "Storage single direction",
+    "storage.soc_bounds": "Storage state-of-charge bounds",
+    "storage.soc_identity": "Storage state-of-charge identity",
+    "storage.audit_coverage": "Storage audit coverage",
+    "period.balance_account": "Energy balance account",
+    "period.finite": "Finite ledger values",
+    "ledger.self_report": "Ledger self-report",
+    "period.surplus_conservation": "Surplus conservation",
+    "run.adjustment_share": "Compatibility adjustment share",
+    "period.envelope": "Energy balance envelope",
+    "period.boundary_residual": "Boundary residual",
+}
+RAW_INVARIANT_GATE_NAMES = {
+    "run_invariants": "Run invariants", "energy_balance": "Energy balance", "storage_invariants": "Storage limits",
+}
+
+
+def _first_sentence(text: str) -> str:
+    text = " ".join(str(text or "").split())
+    for index, char in enumerate(text):
+        if char == "." and (index + 1 == len(text) or text[index + 1] == " "):
+            return text[: index + 1]
+    return text
+
+
+def _count(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def raw_invariant_failures(evidence: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The raw-invariant checks that failed, with their size and any declared deviation (spec 11.3, R-D1).
+
+    Read-only presentation of the evidence already on the run: the gate
+    statuses decide which gates failed; the failing check ids, their row or
+    period counts and the matched declared deviations come from the same
+    report.  A gate without check detail is listed under its own name.
+    """
+
+    from .declared_deviations import catalogue
+
+    summaries = {str(row["id"]): _first_sentence(str(row.get("description") or "")) for row in catalogue()}
+    declared = evidence.get("declared_deviations")
+    matched: dict[str, Mapping[str, Any]] = {}
+    if isinstance(declared, Mapping):
+        for row in declared.get("matched") or []:
+            if isinstance(row, Mapping) and row.get("check"):
+                matched[str(row["check"])] = row
+    failures: list[dict[str, Any]] = []
+
+    def add(gate: str, check: str, count: int | None, unit: str | None) -> None:
+        row = matched.get(check) or {}
+        ids = [str(item) for item in row.get("deviation_ids") or []]
+        failures.append({
+            "gate": gate, "check": check,
+            "name": RAW_INVARIANT_CHECK_NAMES.get(check) or RAW_INVARIANT_GATE_NAMES.get(check) or check,
+            "count": count, "unit": unit if count is not None else None,
+            "deviation_ids": ids,
+            "deviations": [{"id": item, "summary": summaries.get(item)} for item in ids],
+        })
+
+    def section(name: str) -> Mapping[str, Any]:
+        value = evidence.get(name)
+        return value if isinstance(value, Mapping) else {}
+
+    if evidence.get("run_invariant_status") in RAW_INVARIANT_FAIL:
+        for check in section("run_invariants").get("failed_checks") or ["run_invariants"]:
+            add("run_invariants", str(check), None, None)
+    if evidence.get("energy_balance_status") in RAW_INVARIANT_FAIL:
+        balance = section("energy_balance")
+        for check in balance.get("gate_failed_checks") or ["energy_balance"]:
+            count = _count((matched.get(str(check)) or {}).get("periods"))
+            if count is None and check == "period.balance_account":
+                count = _count(dict(balance.get("balance_account") or {}).get("open_periods"))
+            add("energy_balance", str(check), count, "periods")
+    if evidence.get("storage_invariant_status") in RAW_INVARIANT_FAIL:
+        storage = section("storage_invariants")
+        counts = {str(row.get("id")): row.get("count") for row in storage.get("checks") or [] if isinstance(row, Mapping)}
+        for check in storage.get("failed_checks") or ["storage_invariants"]:
+            count = _count((matched.get(str(check)) or {}).get("rows"))
+            if count is None:
+                count = _count(counts.get(str(check)))
+            add("storage_invariants", str(check), count, "rows")
+    return failures
+
+
 def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapping[str, Any] | None = None,
                        evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Whether annual results may appear on result pages (Q14)."""
@@ -558,6 +647,7 @@ def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> 
     run["advisories"] = advisories
     run["advisory_summary"] = advisory_summary(advisories)
     run["result_publication"] = result_publication(run, run_root, methodology, evidence)
+    run["raw_invariant_failures"] = raw_invariant_failures(evidence)
     return run
 
 
@@ -572,6 +662,10 @@ def compact_validation_fields(row: MutableMapping[str, Any]) -> MutableMapping[s
     stress = row.get("stress")
     if isinstance(stress, Mapping):
         row["stress"] = {key: stress.get(key) for key in ("stress_periods", "shortfall_mwh", "shortfall_basis")}
+    # Spec 11.3: the status bar's Raw invariants field reads the listing row too.
+    failures = row.get("raw_invariant_failures")
+    if isinstance(failures, list):
+        row["raw_invariant_failures"] = failures[:10]
     return row
 
 

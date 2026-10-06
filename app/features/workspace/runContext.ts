@@ -1,5 +1,5 @@
 import {
-  energyBalanceField, legacyStatusField, profileBadge, runAdvisories, runNotices, stressField,
+  energyBalanceField, legacyStatusField, profileBadge, rawInvariantsField, runAdvisories, runNotices, stressField,
   type CheckField, type ProfileBadge, type RunAdvisory, type RunNotice, type RunValidationFields,
 } from "./runValidation.ts";
 
@@ -69,6 +69,8 @@ export type RunContext = {
   methodologyProfileId?: string;
   profileCatalogueSha?: string;
   energyBalance: CheckField;
+  /** Spec 11.3: doctoral profile only; null otherwise. */
+  rawInvariants: CheckField | null;
   stress: CheckField;
   contractField: CheckField | null;
   scientificField: CheckField | null;
@@ -124,6 +126,7 @@ export function resolveRunContext({ run, frozen }: {
     methodologyProfileId: recorded(run?.methodology?.profile_id),
     profileCatalogueSha: recorded(run?.methodology?.catalogue_sha256),
     energyBalance: energyBalanceField(run?.energy_balance_status, run?.energy_balance?.enforcement),
+    rawInvariants: rawInvariantsField(run),
     stress: stressField(run?.stress),
     contractField: legacyStatusField(contractStatus, run?.recorded_validation_statuses?.contract_validation_status),
     scientificField: legacyStatusField(scientificStatus, run?.recorded_scientific_validation_status ?? run?.recorded_validation_statuses?.scientific_validation_status),

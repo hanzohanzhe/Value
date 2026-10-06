@@ -61,7 +61,9 @@ test("doctoral Run withheld under Q14: caution pill and the withheld Callout wit
   const text = textOf(html);
   assert.match(html, /<span class="value-pill caution" title="Reproduces the thesis behaviour as implemented in VALUE 0\.6\.0-alpha\.2, including declared deviations\. Not an exact reproduction of the 2026-07-18 retained trajectory\.">Doctoral reproduction \(as implemented in VALUE 0\.6\.0-alpha\.2\)<\/span>/);
   assert.match(text, /Energy balance ● Declared deviations/);
-  assert.match(text, /Annual results withheld for this reproduction run Doctoral reproduction runs keep the thesis behaviour/);
+  // Spec 11.3 (R-D1): without recorded failures the notice says what is known, never a generic energy-balance claim.
+  assert.match(text, /Annual results withheld for this reproduction run Annual results withheld: a raw invariant failed\. No declared deviation explains it\. The full ledger remains available\./);
+  assert.match(text, /Raw invariants ● Failed/);
   assert.match(text, /Open in Inspect Export ledger/);
   assert.match(html, /class="value-callout caution" role="alert"/);
 });
@@ -162,4 +164,43 @@ test("F-P04-5: Inspect's residual panel lists boundary, raw status, max residual
   assert.match(text, /Boundary Raw status Max residual Periods/);
   assert.match(text, /native_corrected_full_node_v1 failed 23\.25 MWh 48/);
   assert.match(textOf(await renderTsx("app/features/evidence/ResidualPanel.tsx", "default", { balance: null })), /did not record an energy-balance report/);
+});
+
+// Spec 11.3 (R-D1): the four-role report's doctoral day. The energy balance is
+// conformant; storage single direction failed in 10 rows (DEV-STO-01).
+const storageFailure = {
+  gate: "storage_invariants", check: "storage.single_direction", name: "Storage single direction", count: 10, unit: "rows",
+  deviation_ids: ["DEV-STO-01"],
+  deviations: [{ id: "DEV-STO-01", summary: "The doctoral default PSM resets a store's power limit in every clearing stage and can discharge and charge the same store in one period." }],
+};
+
+test("doctoral withheld Run names the failed raw invariant and its declared deviation", async () => {
+  const html = await render({
+    methodology: doctoral, energy_balance_status: "reproduction_conformant", stress: { stress_periods: 0 },
+    raw_invariants: { status: "failed" }, raw_invariant_failures: [storageFailure],
+    result_publication: { status: "withheld", reason_code: "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED", raw_invariants_status: "failed" },
+  });
+  const text = textOf(html);
+  assert.match(text, /Annual results withheld: raw invariant "Storage single direction" failed \(10 rows\)\. Matches declared deviation DEV-STO-01: The doctoral default PSM resets a store's power limit in every clearing stage and can discharge and charge the same store in one period\. The full ledger remains available\./);
+  assert.doesNotMatch(text, /physical energy-balance check/);
+  // Energy balance stays as it was; the new field sits beside it, amber with the names on hover.
+  assert.match(text, /Energy balance ● Conformant Raw invariants ● 1 failed/);
+  assert.match(html, /class="run-context-check caution" title="Storage single direction"><i aria-hidden="true">● <\/i>1 failed<\/b>/);
+  assert.match(html, /class="run-context-check ok" title="The doctoral reproduction ledger closes\. This does not certify the method as physically validated\."><i aria-hidden="true">● <\/i>Conformant/);
+});
+
+test("an unexplained raw-invariant failure says no declared deviation explains it", async () => {
+  const html = await render({
+    methodology: doctoral, energy_balance_status: "reproduction_conformant", stress: { stress_periods: 0 },
+    raw_invariant_failures: [{ name: "Storage state-of-charge bounds", count: 3, unit: "rows", deviation_ids: [], deviations: [] }],
+    result_publication: { status: "withheld", raw_invariants_status: "failed" },
+  });
+  assert.match(textOf(html), /raw invariant "Storage state-of-charge bounds" failed \(3 rows\)\. No declared deviation explains it\./);
+});
+
+test("Raw invariants appears only for the doctoral profile; passed is teal", async () => {
+  const passed = await render({ methodology: doctoral, energy_balance_status: "reproduction_conformant", stress: { stress_periods: 0 }, raw_invariants: { status: "passed" }, raw_invariant_failures: [], result_publication: { status: "published", raw_invariants_status: "passed" } });
+  assert.match(passed, /<small>Raw invariants<\/small><b class="run-context-check ok"[^>]*><i aria-hidden="true">● <\/i>Passed/);
+  const correctedHtml = await render({ methodology: corrected, energy_balance_status: "passed", stress: { stress_periods: 0 }, raw_invariant_failures: [storageFailure] });
+  assert.doesNotMatch(correctedHtml, /Raw invariants/);
 });

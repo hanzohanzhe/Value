@@ -1581,6 +1581,7 @@
     "tests/test_provenance_errors.py",
     "tests/test_psm_entrypoint_identity.py",
     "tests/test_public_uk_distribution.py",
+    "tests/test_raw_invariant_failures.py",
     "tests/test_reader_inventory.py",
     "tests/test_recovery_capability.py",
     "tests/test_refresh_source_release_manifest.py",
@@ -3644,8 +3645,8 @@
     },
     {
       "path": "app/features/workspace/RunContextBar.tsx",
-      "sha256": "17f1955416c684d7b6d3fc6c37378d316e249b3c4572196e06f49363052cb8e0",
-      "bytes": 8338,
+      "sha256": "9fb06c2db78bcdf7af3a08e3a1120abfcdd25ea9d190ae309e39eac9576c5601",
+      "bytes": 8501,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3710,8 +3711,8 @@
     },
     {
       "path": "app/features/workspace/runContext.ts",
-      "sha256": "60e4a9b8d263e68145747b54898cde60e587c4a8ce4f1c68b210a705ccac75fe",
-      "bytes": 7882,
+      "sha256": "0d22cfc88d51521cd440bac702c37fa7ed282319bf4ef93f461c319b7b385452",
+      "bytes": 8041,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3722,8 +3723,8 @@
     },
     {
       "path": "app/features/workspace/runValidation.ts",
-      "sha256": "820d4fddd3884e101da9da74fec9dd2805f87bb812a1e0aee5dcadb62dc92cd6",
-      "bytes": 20811,
+      "sha256": "b473d829b0b4ebdbd04ffaabe65bd175c3658239ce3347e670d58db005b06e44",
+      "bytes": 24905,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8459,8 +8460,8 @@
     },
     {
       "path": "gridform_core/result_advisories.py",
-      "sha256": "8ae02e25f4eb97fda5b82ec8f7296cbe2eff0bd69b8ef62ec86035e7f72248ee",
-      "bytes": 27378,
+      "sha256": "127a9369c9f16bbb420c5df797d4616ea967cc7dd2b5fe9c1cd9d1da8b3a748f",
+      "bytes": 32033,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10629,8 +10630,8 @@
     },
     {
       "path": "tests/frontend/render/run-context-bar.test.mjs",
-      "sha256": "d63531fcf39cd6d8ca9667b4161fe4fd3a06f5d89e9518d91092661e25370f42",
-      "bytes": 12279,
+      "sha256": "3f0120d7c613b9e19bf317a6db4e746ce28722ba6c7f33af18865f44b08f05ab",
+      "bytes": 15791,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12360,6 +12361,12 @@
       "sha256": "a1f93eb2fa03f63abc6fb983cff9739d827cc21c3a8c5b6b4062819ce90715e4",
       "bytes": 2995,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_raw_invariant_failures.py",
+      "sha256": "9aa8292f1a480c12eaa00e9718d5d6b21d15f9ceb37c6583ebab1745ccdd7657",
+      "bytes": 4223,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_reader_inventory.py",

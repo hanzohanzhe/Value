@@ -80,8 +80,21 @@ export type ResultPublication = {
   available_in?: string[];
 };
 
+/** Spec 11.3 (R-D1): one raw-invariant check that failed, as the backend names it. */
+export type RawInvariantFailure = {
+  gate?: string;
+  check?: string;
+  name?: string;
+  count?: number | null;
+  unit?: "rows" | "periods" | string | null;
+  deviation_ids?: string[];
+  deviations?: { id?: string; summary?: string | null }[];
+};
+
 /** The validation fields of a Run detail or listing row (both are optional: older backends send none). */
 export type RunValidationFields = {
+  raw_invariants?: { status?: string | null } | null;
+  raw_invariant_failures?: RawInvariantFailure[] | null;
   methodology?: MethodologyRecord | null;
   energy_balance_status?: string | null;
   energy_balance?: EnergyBalanceRecord | null;
@@ -223,6 +236,74 @@ export function shortfallDisplay(
   };
 }
 
+/** The failed raw invariants of a Run (spec 11.3); [] when none are recorded. */
+export function rawInvariantFailures(run: RunValidationFields | null | undefined): RawInvariantFailure[] {
+  return Array.isArray(run?.raw_invariant_failures) ? run.raw_invariant_failures.filter((row): row is RawInvariantFailure => Boolean(row && typeof row === "object")) : [];
+}
+
+/** passed | failed | not_evaluated as recorded (detail, publication record or its reason code); undefined when absent. */
+function rawInvariantStatus(run: RunValidationFields): string | undefined {
+  const reason = text(run.result_publication?.reason_code);
+  return text(run.raw_invariants?.status) ?? text(run.result_publication?.raw_invariants_status)
+    ?? (reason === "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED" ? "failed" : reason === "GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED" ? "not_evaluated" : undefined);
+}
+
+function failureName(failure: RawInvariantFailure): string {
+  return text(failure.name) ?? text(failure.check) ?? "raw invariant";
+}
+
+/** Spec 11.3: the doctoral-only "Raw invariants" status-bar field; null for every other profile. */
+export function rawInvariantsField(run: RunValidationFields | null | undefined): CheckField | null {
+  if (!run || profileKind(run.methodology) !== "doctoral") return null;
+  const failures = rawInvariantFailures(run);
+  const status = rawInvariantStatus(run);
+  if (failures.length) {
+    return { tone: "caution", dot: true, text: `${failures.length} failed`, title: failures.map(failureName).join("\n") };
+  }
+  switch (status) {
+    case "passed": return { tone: "ok", dot: true, text: "Passed", title: "Every raw invariant passed; annual results are published." };
+    case "failed": return { tone: "caution", dot: true, text: "Failed", title: "A raw invariant failed; the backend recorded no detail." };
+    case "not_evaluated": return { tone: "muted", dot: false, text: "Not evaluated" };
+    default: return { tone: "muted", dot: false, text: "Not recorded" };
+  }
+}
+
+function sizeText(failure: RawInvariantFailure): string {
+  const n = count(failure.count);
+  if (n === undefined) return "";
+  const unit = failure.unit === "periods" ? (n === 1 ? "period" : "periods") : (n === 1 ? "row" : "rows");
+  return ` (${formatNumber(n, 0)} ${unit})`;
+}
+
+function stripStop(value: string): string {
+  return value.replace(/[.\s]+$/, "");
+}
+
+/** Spec 11.3: the withheld notice names the raw invariant that failed and whether a declared deviation explains it. */
+export function withheldBody(run: RunValidationFields): string {
+  const failures = rawInvariantFailures(run);
+  const sentences: string[] = [];
+  failures.forEach((failure, index) => {
+    sentences.push(`${index === 0 ? "Annual results withheld: raw invariant" : "Raw invariant"} "${failureName(failure)}" failed${sizeText(failure)}.`);
+    const deviations = (failure.deviations ?? []).filter((row) => text(row?.id));
+    const ids = deviations.length ? deviations.map((row) => text(row.id)!) : (failure.deviation_ids ?? []).filter((id) => text(id));
+    if (ids.length) {
+      const summary = deviations.map((row) => text(row.summary ?? undefined)).find(Boolean);
+      sentences.push(`Matches declared deviation ${ids.join(", ")}${summary ? `: ${stripStop(summary)}` : ""}.`);
+    } else {
+      sentences.push("No declared deviation explains it.");
+    }
+  });
+  if (!failures.length) {
+    const status = rawInvariantStatus(run);
+    sentences.push(status === "not_evaluated" || !status
+      ? "Annual results withheld: the raw invariants of this Run were not evaluated."
+      : "Annual results withheld: a raw invariant failed. No declared deviation explains it.");
+  }
+  sentences.push("The full ledger remains available.");
+  return sentences.join(" ");
+}
+
 export type NoticeId = "energy_balance_failed" | "validation_gate_failed" | "results_withheld" | "pre_fix" | "stress_events";
 export type NoticeAction = "open_residuals" | "open_inspect" | "export_ledger" | "view_advisories" | "show_stress_events";
 export type RunNotice = {
@@ -324,7 +405,8 @@ export function runNotices(run: RunValidationFields | null | undefined): RunNoti
   if (run.result_publication?.status === "withheld") {
     notices.push({
       id: "results_withheld", tone: "caution", title: "Annual results withheld for this reproduction run",
-      body: "Doctoral reproduction runs keep the thesis behaviour, including declared deviations, so they do not pass the physical energy-balance check. Annual results are therefore not published on result pages. The full ledger remains available.",
+      // Spec 11.3 (R-D1): the raw invariant that actually failed, not a generic energy-balance claim.
+      body: withheldBody(run),
       actions: ["open_inspect", "export_ledger"],
     });
   }

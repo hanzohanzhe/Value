@@ -80,6 +80,7 @@ export default function RunContextBar({ run, frozen, actions = {} }: {
         <span><small>Contract check</small>{context.contractField ? <CheckValue field={context.contractField} /> : <b>{label(context.contractStatus)}</b>}</span>
         <span><small>Scientific validation</small>{context.scientificField ? <CheckValue field={context.scientificField} /> : <b>{label(context.scientificStatus)}</b>}</span>
         <span className="run-context-validation-field"><small>Energy balance</small><CheckValue field={context.energyBalance} /></span>
+        {context.rawInvariants && <span className="run-context-validation-field"><small>Raw invariants</small><CheckValue field={context.rawInvariants} /></span>}
         <span className="run-context-validation-field"><small>Stress events</small><CheckValue field={context.stress} /></span>
       </div>}
     </div>
