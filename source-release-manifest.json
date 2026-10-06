@@ -2908,8 +2908,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "f18e71532fd7d60a21945412fbbdef45bbdb1d5e47f6b3fd4064db1b90fd9646",
-      "bytes": 20992,
+      "sha256": "e2bf96f74a1d3516b5bf2c7a3ed67da042355dd19ad92a9cc78346dd80c0d1f3",
+      "bytes": 22238,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4534,8 +4534,8 @@
     },
     {
       "path": "docs/SCHEME_C_MODEL_CARD.md",
-      "sha256": "3b836190b7210e56153dc907a829468683cf9becde0048190a8ff5a8bbdf0cd5",
-      "bytes": 4771,
+      "sha256": "40cc5b42c4d06648b6f9ff995d1d9469747cd0a464255e3500acec9ce2c8f98e",
+      "bytes": 5396,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4558,8 +4558,8 @@
     },
     {
       "path": "docs/VALIDATION_AND_CLAIMS.md",
-      "sha256": "ad95b1bc92c3ac5ab5931507585b9d7a2d9810e2f31c7f4411b59fcc3e04c8cb",
-      "bytes": 9810,
+      "sha256": "8d6d3013444cb36a4811cb31d5771af19c13a8734079c4cbc03c36575379e43d",
+      "bytes": 10473,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

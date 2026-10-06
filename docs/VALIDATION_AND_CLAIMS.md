@@ -72,3 +72,13 @@ solar 0.100) are reported, not claimed to match DUKES load factors, and
 ERA5's own wind bias is not removed. Nuclear and natural-flow hydro
 availability values are PENDING AUTHOR REVIEW; their acceptance against
 Energy Trends 5.1 and DUKES is deferred to the author.
+
+F2 update (A9, A13, A14): corrected solar now uses plane-of-array irradiance
+(GBP1 CF 0.107, 1.04x the DUKES 2020-2024 load factor); onshore and offshore
+wind remain about 1.56x and 1.23x DUKES and are disclosed, not claimed to
+match (reasons: ERA5 wind bias, free-stream single-turbine curve,
+pre-curtailment basis, representative sites, climatology). Natural-flow hydro
+(0.3487 x seasonal shape) gives 6.10 TWh on GBP1 against the DUKES 6.2
+2019-2024 mean of 5.77 TWh (+5.8 %, within the author's +-15 %). The nuclear
+and hydro values were reviewed by the author (A14); the nuclear acceptance run
+against Energy Trends 5.1 on GBP1 has not been made.

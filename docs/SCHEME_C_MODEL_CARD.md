@@ -76,3 +76,12 @@ are PENDING AUTHOR REVIEW. The kernel receives the same arrays as the
 canonical adapter. The doctoral reproduction profile keeps the 0.6.0-alpha.2
 inputs.
 
+Corrected-profile update (F2, decisions A9, A10, A13, A14). Solar output is the
+plane-of-array irradiance (Erbs decomposition, Hay-Davies transposition,
+latitude-optimal south-facing tilt, per-period sun position) times the
+performance ratio, for ERA5 accumulations; every nuclear station retires by
+month; natural-flow hydro uses the DUKES 2019-2024 load factor 0.3487 with a
+seasonal shape. The nuclear and hydro values were reviewed by the author (A14).
+The model's wind capacity factors stay above DUKES load factors (GBP1 onshore
+about 1.6x, offshore 1.2x) and are disclosed next to them, not calibrated (A9).
+

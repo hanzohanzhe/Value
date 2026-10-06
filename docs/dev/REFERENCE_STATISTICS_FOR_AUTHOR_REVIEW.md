@@ -1,6 +1,8 @@
 # VALUE 修正口径参考统计表（供作者审阅）
 
-> **状态：PENDING AUTHOR REVIEW（全文所有数字、所有建议取值均待作者审阅，未被接受前不得写入 corrected 参数表）**
+> **状态（2026-10-06 更新）：第 1、2 节已由作者审核（DECISIONS A14）；第 3 节损耗系数已由作者认可（A9）。** 第 3.4 节 DUKES 对照列只作披露（A9），第 3.5 节光伏倾斜面换算的模型选择（A13，F2 单元）仍为 PENDING AUTHOR REVIEW。以下各节标题中的 "PENDING AUTHOR REVIEW" 为第一、二轮编制时的原状态，保留作记录。
+>
+> 原状态：PENDING AUTHOR REVIEW（全文所有数字、所有建议取值均待作者审阅，未被接受前不得写入 corrected 参数表）
 >
 > 用途：P0 计划 M5 / P0-5 S7（Q15 风光文献损耗系数）与 S8（核电、水电可用率）的参考数据。
 > 编制：2026-10-06 第一轮只读公开网页（WebSearch/WebFetch），未下载数据文件。
@@ -23,7 +25,9 @@
 
 ---
 
-## 1. 英国核电可用率（PENDING AUTHOR REVIEW）
+## 1. 英国核电可用率（PENDING AUTHOR REVIEW → 作者已审核，A14）
+
+> A14：各站 2019–2024 均值获认可，参数表数值不变。F2 单元按 1.6 节把 Heysham 2、Torness 的停发月份 2030-03 写入参数表 `generation_end_month_overrides`（A10，`p05.nuclear-generation-end-month`）。
 
 ### 1.1 来源清单
 
@@ -201,7 +205,9 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 ---
 
-## 2. 英国径流式（natural flow）水电（PENDING AUTHOR REVIEW）
+## 2. 英国径流式（natural flow）水电（PENDING AUTHOR REVIEW → 作者已审核，A14）
+
+> A14：年负荷率取 0.3487，月度形状取 2.4 节阶梯形状；F2 单元已写入参数表（`p05.hydro-dukes-load-factor`）。GBP1 2000 MW 年发电 6.10 TWh，比 DUKES 6.2 2019–2024 均值 5.77 TWh 高 5.8%（±15% 以内）。
 
 ### 2.1 来源清单
 
@@ -284,7 +290,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 ---
 
-## 3. 风电与光伏文献损耗系数（PENDING AUTHOR REVIEW）
+## 3. 风电与光伏文献损耗系数（PENDING AUTHOR REVIEW → 损耗系数已由作者认可，A9）
 
 ### 3.0 适用对象（来自代码，非文献）
 
@@ -381,6 +387,20 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 3. 光伏约为 DUKES 的 0.97 倍，与 3.3 节冲突 2 的判断一致：PR 乘在水平面 GHI 上，遗漏了倾角增益。
 4. DUKES 光伏装机含大量户用小系统，其负荷率按估算出力计算（DUKES 6.2 注 8："estimated using a typical load factor"），精度低于风电。
 
+**F2 补注（A13 倾斜面换算之后）：** 修正口径光伏 CF 由 0.0997 变为 **0.1065**，与 DUKES 2020–2024 均值之比由 0.97 变为 **1.04**；风电不变。同一组数字写入运行结果摘要的 `vre_capacity_factor_disclosure` 字段和参数表 `gridform_core/data/weather/value_uk_vre_cf_disclosure_v1.json`。
+
+### 3.5 光伏倾斜面换算的模型选择（A13，F2 单元；PENDING AUTHOR REVIEW）
+
+| 步骤 | 选择 | 出处 |
+|---|---|---|
+| 太阳位置 | Spencer（1971）赤纬、时差与日地距离修正；按时段中点（365 天 UTC 年）与站点经纬度计算 | Spencer 1971；Iqbal 1983；Duffie & Beckman 2013 |
+| 直射/散射分解 | Erbs、Klein & Duffie（1982）逐时相关式，太阳常数 1361 W/m² | Erbs 等 1982；Kopp & Lean 2011 |
+| 斜面换算 | Hay & Davies（1980），地面反照率 0.2 | Hay & Davies 1980；Duffie & Beckman 2013；Loutzenhiser 等 2007 |
+| 倾角 | 朝南，Jacobson & Jadhav（2018）北半球最优倾角拟合式（51.5°N 约 36.0°；GBP1 各站 35.7–37.7°） | Jacobson & Jadhav 2018 |
+| 适用范围 | 只用于 v2 时钟下的 ERA5 逐时累积量；VALUE 101 合成数据和 R029 public1（`ssrd` 无累积标记）不换算 | — |
+
+GBP1 结果：各站 POA/GHI 1.05–1.10，年散射比例 0.63–0.75；倾角取纬度（A13 允许的另一种选择）时 CF 为 0.1012。增益偏小的主要原因是 GBP1 天气为 2020–2024 多年平均气候态（P6-09），晴空指数被平均抹平（伦敦能量加权 kt 0.47，最大 0.73），Erbs 式给出的散射比例偏高。上述文献的书目信息在 F2 中没有联网复核（F2 未获联网授权）。
+
 ---
 
 ## 4. 未完成与待作者处理事项（PENDING AUTHOR REVIEW）
@@ -388,11 +408,11 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 1. ~~DESNZ DUKES 5.10、5.6、6.2 / 6.3、ET 5.1 / 6.1 的核电负荷率与水电负荷率 [NV]~~ **第二轮已补齐**（1.2、1.4a、2.2 节，[X]）。按 A11，补齐后的本表仍须作者再次审核。
 2. 水电**季度**形状已补齐（2.3 节 [X]）；由季度推出的月度阶梯形状见 2.4 节 [D]。**逐月实测值仍为 [NV]**：授权的 6 个文件没有月度水电数据。
 3. 海上电气损耗绝对值 [NV]；海上可用率只有单一来源。（A9 已接受海上合计约 19%。）
-4. 英国光伏倾斜面相对水平面的增益 [NV]。
+4. 英国光伏倾斜面相对水平面的增益 [NV]。（F2 补注：A13 改为由模型逐时段计算，见 3.5 节；统计意义上的增益仍未核实。）
 5. AGR 停堆换料与在线换料的逐站现状只有 [E] 级证据。法定停运"三年一次"同样是 [E]（ONR 文件为 docx，未打开）。
 6. Dungeness B 两台机组 PRIS 数据完全相同，疑为平分厂用电，需核对。（DESNZ 不公布逐站数据，无法用 xlsx 核对；它对 2019–2021 全国合计的影响不超过 0.2 TWh。）
 7. （第二轮新增）DUKES 6.3 风电合计行标准口径 2020、2021 年的值与分项及复算不符（3.4 节注 *），疑为 DESNZ 发布错误；DUKES 6.3 大型水电 2023、2024 年标准口径值无法由 DUKES 6.2 复算（2.2 节）。两处都不影响建议取值，但引用时需注意。
-8. （第二轮新增）仓库参数表 `gridform_core/data/nuclear/value_uk_firm_availability_v1.json` 的水电年负荷率（0.334，2023 年二手值）与月度形状（平直占位）**本单元没有修改**。作者审核本表后，可按 2.4 节替换为 0.3487（或 0.3459）与阶梯形状；替换会改变修正口径的 golden，需要按 X0 规则做一次修订。核电各站值与 1.4a 节一致，无需修改。
+8. （第二轮新增；F2 已处理）仓库参数表 `gridform_core/data/nuclear/value_uk_firm_availability_v1.json` 的水电年负荷率（0.334，2023 年二手值）与月度形状（平直占位）**F1 单元没有修改**；作者在 A14 选定 0.3487 与阶梯形状，F2 单元已写入（`p05.hydro-dukes-load-factor`）。修正族 golden 只用 VALUE 101 包，没有水电资产，因此没有数值变化。作者审核本表后，可按 2.4 节替换为 0.3487（或 0.3459）与阶梯形状；替换会改变修正口径的 golden，需要按 X0 规则做一次修订。核电各站值与 1.4a 节一致，无需修改。
 
 ## 5. 编制过程说明
 

@@ -2,6 +2,26 @@
 
 ## Unreleased — P0 fixes on fix/review-2026-10-04
 
+### Corrected solar on the module plane, nuclear end month, DUKES hydro, CF disclosure (F2)
+
+- Corrected profile only. Solar: ERA5 horizontal irradiance is split into
+  diffuse and beam (Erbs 1982) and transposed (Hay-Davies 1980, albedo 0.2)
+  onto a south-facing plane at the latitude-optimal tilt (Jacobson & Jadhav
+  2018), with the sun position of each half-hour period, before the PV
+  performance ratio 0.83 (decision A13, `p05.solar-plane-of-array`). GBP1
+  corrected solar CF 0.0997 -> 0.1065. Synthetic teaching weather (VALUE 101)
+  is not transposed.
+- Heysham 2 and Torness retire in March 2030 like Heysham 1 and Hartlepool
+  (A10). Natural-flow hydro uses the DUKES 2019-2024 load factor 0.3487 with a
+  quarterly-derived seasonal shape (A14): GBP1 6.10 TWh against 5.77 TWh.
+  The nuclear and hydro reference values are author-reviewed (A14); the wind
+  and solar loss factors author-accepted (A9).
+- The run results summary carries `vre_capacity_factor_disclosure`: the
+  model's pre-curtailment wind and solar capacity factors next to DUKES 6.3
+  load factors with the reasons they differ (A9; disclosure only, no
+  calibration). GBP1 corrected / DUKES 2020-2024: onshore 1.56, offshore 1.23,
+  solar 1.04.
+
 ### Result views read what was recorded (P0-9 close)
 
 - Stress events (decision A2) are visible end to end: the Run context bar's

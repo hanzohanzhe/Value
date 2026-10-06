@@ -49,6 +49,11 @@ VALUE 101 (synthetic hourly samples): centroid 12.50 -> 12.00.
 
 ## 3 Literature loss factors, no statistical calibration (S7, finding P6-08, decisions Q15/A1)
 
+> Updated by F2 (`f2_solar_poa_firm_cf_disclosure.md`): the author accepted the
+> loss factors including the offshore total of about 18.5 % (A9); solar PR now
+> multiplies plane-of-array irradiance (A13), GBP1 corrected solar CF 0.1065;
+> the DUKES comparison is in the results summary and in that draft (A9).
+
 The single-turbine power curve on ERA5 100 m wind and `ssrd / 3.6e6` (GHI against
 1 kW m-2) are free-stream / horizontal-plane quantities. The corrected profile
 multiplies them by literature loss factors (`p05.vre-loss-factors`,
@@ -86,6 +91,10 @@ curves (`profiles.vre_*`), whose shape and level differ from the dispatch
 weather; this inconsistency is disclosed and is to be unified in the next round.
 
 ## 4 Nuclear and natural-flow hydro availability (S8, findings P5-09, P5-10, P6-10)
+
+> Updated by F2 (`f2_solar_poa_firm_cf_disclosure.md`): the author approved the
+> nuclear values (A14); Heysham 2 and Torness also retire in March 2030 (A10);
+> natural-flow hydro is 0.3487 x a quarterly-derived seasonal shape (A14).
 
 `gridform_core/firm_availability.py` with
 `gridform_core/data/nuclear/value_uk_firm_availability_v1.json`
@@ -144,8 +153,8 @@ always available (P5-09/P5-10).
 
 1. **两条调度路径共用一次换算（S5）。** `site_weather.site_cf_by_source` 把各代表站点的 NetCDF 天气换算为逐期容量因子；canonical 适配器与遗留内核使用同一组数组。修正口径下，内核每期按 `capacity_multiplier × 单位 × cf[p]` 设定出力上限（风电单位 20 MW，光伏 1），不再用自己的 `IterLimit` 时钟重读文件；核电与径流水电的可用率经同一注入传入。canonical 的互联线报价在修正口径下保留负价。内核的进程级天气缓存按两个天气文件的真实路径、大小和修改时间作键（P7-02），两个口径都适用。
 2. **天气 v2 时间约定（S6，P6-06）。** ERA5 累积量（`ssrd`，GRIB `stepType = accum`）标在所累积小时的末尾。旧时钟把第 `t//2` 小时给第 `t` 个半小时，光伏整体滞后约 1 小时。v2：累积量取 `t//2+1`；瞬时量（风速、合成样本）取离时段中点最近的时间戳 `(t+1)//2`；binding 可声明 `time_convention`。GBP1 伦敦站光伏质心由 12.97 变为 11.97 UTC；12 月 21 日首个非零时段从 09:00 提前到 08:00 UTC，最后一个在 16:00 结束。
-3. **文献损耗系数，不做统计标定（S7，P6-08，Q15/A1）。** 陆上 0.95×0.97×0.98 = 0.90307；海上 0.88×0.945×0.98 = 0.814968；光伏性能比 0.83。出处见参数表 `value_uk_vre_loss_factors_v1.json`。逐期形状仍来自 ERA5，弃电仍由出清决定，所得容量因子只报告、不拟合。GBP1：陆上 0.4458→0.4026，海上 0.6028→0.4913，光伏 0.1201→0.0997；VALUE 101：陆上 0.4132→0.3731，海上 0.3270→0.2665，光伏 0.2500→0.2075。披露：海上合计损耗约 18.5%，超出 Q15 所说的约 10–15%，由作者决定；性能比按组件平面辐照度定义，而 VALUE 用水平面 GHI，缺少倾角增益，光伏可能偏低；投资侧仍用技术 CSV 资源曲线，与调度侧不一致，下一轮统一。
-4. **核电与径流水电可用率（S8，P5-09、P5-10、P6-10）。** 核电按站取 PRIS 2019–2024 平均负荷率，并按 EDF 容量折算以保持电量；在建 PWR/EPR 取 0.801，未分站的 `Nuclear` 取 DESNZ 全国值 0.723；宣布在某年某月停发的站，从下个月第一期起为 0（Heysham 1，2030-03 → 第 4320 期起为 0）。径流水电取年负荷率 0.334 × 月度形状（暂为平直占位）。验收（核电对 Energy Trends 5.1 净发电量 ±10%，水电对 DUKES ±15%）由作者审核后进行。
+3. **文献损耗系数，不做统计标定（S7，P6-08，Q15/A1）。**（F2 更新：作者已在 A9 认可损耗系数和海上约 18.5% 的合计损耗；光伏性能比改乘倾斜面辐照（A13），GBP1 修正口径光伏 CF 为 0.1065；DUKES 并列披露见 `f2_solar_poa_firm_cf_disclosure.md`。） 陆上 0.95×0.97×0.98 = 0.90307；海上 0.88×0.945×0.98 = 0.814968；光伏性能比 0.83。出处见参数表 `value_uk_vre_loss_factors_v1.json`。逐期形状仍来自 ERA5，弃电仍由出清决定，所得容量因子只报告、不拟合。GBP1：陆上 0.4458→0.4026，海上 0.6028→0.4913，光伏 0.1201→0.0997；VALUE 101：陆上 0.4132→0.3731，海上 0.3270→0.2665，光伏 0.2500→0.2075。披露：海上合计损耗约 18.5%，超出 Q15 所说的约 10–15%，由作者决定；性能比按组件平面辐照度定义，而 VALUE 用水平面 GHI，缺少倾角增益，光伏可能偏低；投资侧仍用技术 CSV 资源曲线，与调度侧不一致，下一轮统一。
+4. **核电与径流水电可用率（S8，P5-09、P5-10、P6-10）。**（F2 更新：核电数值已获作者认可（A14）；Heysham 2、Torness 也在 2030 年 3 月停发（A10）；径流水电改为 0.3487 × 季度推出的季节形状（A14）。） 核电按站取 PRIS 2019–2024 平均负荷率，并按 EDF 容量折算以保持电量；在建 PWR/EPR 取 0.801，未分站的 `Nuclear` 取 DESNZ 全国值 0.723；宣布在某年某月停发的站，从下个月第一期起为 0（Heysham 1，2030-03 → 第 4320 期起为 0）。径流水电取年负荷率 0.334 × 月度形状（暂为平直占位）。验收（核电对 Energy Trends 5.1 净发电量 ±10%，水电对 DUKES ±15%）由作者审核后进行。
 5. **GBP1 public2（S11）。** 本地构建 `value-uk-open-data-pack-public2`：需求与十条互联线改绑 R029 已批准对象的原始字节，并声明列名、30 分钟间隔、GBP 币种（记录 1.1 EUR/GBP 汇率依据）和 ERA5 时间约定；`flow_sign` 只有在 `audit_boundary_flow_sign.py` 用作者提供的参考表核实后才标为 verified。不上传，发布须经作者同意。
 6. **0.4 版需改的文字。** `datasets.md`（中英第 34、229 行）仍提到已删除的 `doctoral_demand`、`doctoral_interconnectors`，0.4 版改为共用读取器 `data_method.read_role` / `read_boundary`；0.3 的源文件不动，因为已发布的 0.3 docx/pdf 由它们渲染。
 7. **历史运行公告。** 未应用上述修正的运行（P0-5b 之前的全部运行和所有论文复现运行），在 ERA5 研究数据包上读取时附公告：光伏滞后约 1 小时、风光无损耗、核电与径流水电恒可用。
