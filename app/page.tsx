@@ -396,6 +396,9 @@ class EntryLifecycleError extends Error {
 
 export default function Home() {
   const [view, setView] = useState<View>("overview");
+  // S-D10: the page a launch started from; a Run that finishes starting does not pull the user back.
+  const viewRef = useRef<View>("overview");
+  useEffect(() => { viewRef.current = view; }, [view]);
   const [activePath, setActivePath] = useState<CommunityPath | null>(null);
   const [readMeOpen, setReadMeOpen] = useState(false);
   const [locationReady, setLocationReady] = useState(false);
@@ -1316,11 +1319,11 @@ export default function Home() {
     if (!targetProject) { setNotice("Save and select a research project first."); setView("projects"); return; }
     setSelectedProjectId(targetProject.id);
     setLaunching(mode); setNotice(""); setStartedRun(null);
+    const launchView = viewRef.current;
     try {
       const response = await fetch(`${API}/projects/${targetProject.id}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
       const payload = await response.json(); if (!response.ok) { if (preflightMatches(payload.preflight, targetProject, mode)) { setPreflight(payload.preflight); } const migration = migrationFromResponse(payload); if (migration && migration.declared_sha256 === targetProject.revision_sha256) void promptMigration(targetProject, migration); throw new Error(payload.error || "Unable to start the model"); }
-      setSelectedRunId(payload.run.id);
-      setView("run");
+      if (viewRef.current === launchView) { setSelectedRunId(payload.run.id); setView("run"); }
       setStartedRun({ runId: payload.run.id, mode, text: mode === "smoke" ? "The two-period wiring verification has started." : mode === "two_year_smoke" ? "The two-year smoke verification has started." : mode === "value_101_day" ? "The one-day VALUE 101 PSM lesson has started." : mode === "two_year" ? "The complete two-year model has started." : "The complete annual model run has started." });
       await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Launch failed"); } finally { setLaunching(""); }

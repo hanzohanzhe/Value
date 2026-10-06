@@ -97,6 +97,7 @@
     "app/features/runs/readiness-issues.css",
     "app/features/runs/readinessGroups.ts",
     "app/features/runs/resultMetrics.ts",
+    "app/features/runs/run-history.css",
     "app/features/runs/run-results.css",
     "app/features/runs/runHistoryView.ts",
     "app/features/runs/types.ts",
@@ -3479,8 +3480,8 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "08bc22563bffcaccfc5a8bc4b4fb5f403b9c3506656e0eae72e1f1c979a3d7bc",
-      "bytes": 21785,
+      "sha256": "c8ae072072347e99156d52be578bf5c6821c751aec9396f8ea5f83e24fff22ad",
+      "bytes": 22086,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3508,6 +3509,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/runs/run-history.css",
+      "sha256": "925b5be76819efad8f1200c6da697f37ffe8e3c0335d47ed6874b9ba0f1f0732",
+      "bytes": 348,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/runs/run-results.css",
       "sha256": "418f318ee05a8138b6e719be9bd4a9693e69c83943ca15a0e19cdb2846de3472",
       "bytes": 1231,
@@ -3515,8 +3522,8 @@
     },
     {
       "path": "app/features/runs/runHistoryView.ts",
-      "sha256": "af992ff6a995e1a2264d798f7b98059d4483cd3bd7eb46cd2a543affaedf9adf",
-      "bytes": 4235,
+      "sha256": "9063677ac8bf0e639d335a401ea46a267118e28c2d8b29e1b331b15fe28d5470",
+      "bytes": 4959,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3695,8 +3702,8 @@
     },
     {
       "path": "app/features/workspace/FrozenInputRecoveryPanel.tsx",
-      "sha256": "e205771417aee736f72329e2046506e6cbf8b9e2ac6cbc39e7f22eb1cc4282d3",
-      "bytes": 15134,
+      "sha256": "91c880d819f95d394caab5044015a9269110ad988f78bd4eb710c9f1102b2dda",
+      "bytes": 15775,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3743,9 +3750,9 @@
     },
     {
       "path": "app/features/workspace/frozen-input-recovery.css",
-      "sha256": "a34978095495004159f480c04bc4fc416794bb2b12594df69affaa53840533b7",
-      "bytes": 874,
-      "transform": "byte copy"
+      "sha256": "8a478a334242a5654133be49426e941428a3593e76f46db51e744c2c536ab4a4",
+      "bytes": 950,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/frozenInputRecoveryTypes.ts",
@@ -3827,8 +3834,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "535115e3716b9ed421ff79dff0b705f2e4ae3bb8fa6528cbf1a663e84b859547",
-      "bytes": 172537,
+      "sha256": "5bf361d5a22e98fcbf241e072329976466e80bceda2c16dfd345d6d2227ad4ca",
+      "bytes": 172816,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10692,8 +10699,8 @@
     },
     {
       "path": "tests/frontend/frozen-input-recovery.test.mjs",
-      "sha256": "26c8526cb7c9353805bda49250e70cd1417d82838ce166539612d7a675ae65b5",
-      "bytes": 5202,
+      "sha256": "3b248732006837643b5971c43034727b02b17fc78df026fe0202a92c1acf763c",
+      "bytes": 5426,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10770,8 +10777,8 @@
     },
     {
       "path": "tests/frontend/render/run-history.test.mjs",
-      "sha256": "7060ca7582f8c0b1295e416f4e78d630263c4790011bf2b8e2515856f0f74801",
-      "bytes": 3527,
+      "sha256": "c9248bc8af945cf3bb3eb410bd0410a719a475cf6134b97373fd5377754de2d9",
+      "bytes": 4643,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10854,8 +10861,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "2bfa2328ff710a210245052a787a8cac92da281df291d0be5c43ec7a37f6eaf5",
-      "bytes": 6155,
+      "sha256": "29251950bf50b431ccbe2db0d0672e7520c2f8882c386f9c17eb8790890e73a3",
+      "bytes": 6194,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

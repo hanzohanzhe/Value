@@ -76,3 +76,11 @@ export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot:
   if (run.mode === "value_101_day" && slot !== "psm") return "Not called in this scope";
   return "No calls recorded";
 }
+
+/**
+ * S-D10 / O-1: why starting a Run can take minutes. Starting freezes the
+ * Study's inputs and archives the execution environment before the Run is
+ * listed; the first Run in a new data folder archives the Python runtime.
+ */
+export const RUN_FREEZE_NOTE = "VALUE is freezing the Study's inputs and execution environment before the Run is listed. The first Run in a new data folder also archives the Python runtime once (about 3 minutes); later Runs take under a minute. Other pages stay usable; you are not taken back here when it finishes.";
+export const SNAPSHOTTING_NOTE = "The first Run in a new data folder archives the Python runtime once (about 3 minutes); later Runs freeze their inputs in under a minute.";

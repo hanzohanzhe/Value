@@ -41,6 +41,9 @@ function changeSummary(change: FrozenRecoveryReview["changes"][number]): { label
   if (change.field === "module_resolution_graph") return { label, detail: `旧：${moduleSummary(change.recorded)}；新：${moduleSummary(change.current)}` };
   return { label, detail: "记录值与当前值不同；完整记录可在下方展开核对。" };
 }
+// R-D4 (four-role report, round R1-5): both requests take about 20 s; say so while they run.
+const FROZEN_REVIEW_PROGRESS = "正在核对冻结输入与执行身份，通常需要约 20 秒。";
+const FROZEN_CREATE_PROGRESS = "正在创建独立 Study，通常需要约 20 秒。关闭页面后服务端仍会完成创建：之后请在 Studies 中查找它，不要再次创建。";
 async function json(response: Response): Promise<unknown> { const value: unknown = await response.json(); if (!response.ok) throw new Error(record(value) && typeof value.error === "string" ? value.error : "冻结输入请求失败，请重新核对来源 Run。"); return value; }
 
 export default function FrozenInputRecoveryPanel(props: FrozenInputRecoveryPanelProps) {
@@ -92,6 +95,7 @@ function RecoveryForm({ runId, disabled = false, onStudyCreated }: FrozenInputRe
     <label><span>核对方式</span><select disabled={disabled || activity?.kind === "create"} value={mode} onChange={event => { clearReview(); setMode(event.target.value as FrozenRecoveryMode); }}><option value="strict">严格核对当前源码与环境</option><option value="migration">显式按当前方法迁移</option></select></label>
     <p>{mode === "strict" ? "严格方式核对当前本地源码和环境与已归档执行记录。通过核对不表示归档可独立运行；历史证据限制以审阅报告为准。" : "迁移保留冻结规范数据，使用当前方法重新计算。科学政策或方法差异须明确审阅；不恢复旧检查点，也不代表数值相同。"}</p>
     <button type="button" className="secondary" disabled={locked} onClick={() => void review()}>核对冻结输入与执行身份</button>
+    {busy && activity?.kind === "review" && <p role="status" className="frozen-recovery-progress">{FROZEN_REVIEW_PROGRESS}</p>}
     {report && <><h4>{report.allowed ? "核对完成，等待明确创建" : "当前方式存在阻断"}</h4><p>输入完整性：{report.input_integrity} · 规范角色 {report.canonical_role_count}<br />来源快照：<code>{report.source_snapshot_id ?? "缺失"}</code></p><p>核对范围：{report.scope ? `${report.scope.start_year}–${report.scope.end_year} · 每年 ${report.scope.periods_per_year} 时段 · ${report.scope.mode}` : "未记录范围"}</p>{report.changes.length > 0 ? <ul className="frozen-recovery-changes">{report.changes.map((change, index) => { const summary = changeSummary(change); return <li key={index}><b>{summary.label}</b><span>{summary.detail}</span></li>; })}</ul> : <p>报告未列出执行身份变更。</p>}<details><summary>完整身份与差异记录</summary><pre>{JSON.stringify({ scope: report.scope, source_execution_identity_sha256: report.source_execution_identity_sha256, current_execution_identity_sha256: report.current_execution_identity_sha256, changes: report.changes }, null, 2)}</pre></details>{report.missing_evidence.length > 0 && <><b>缺失证据</b><ul>{report.missing_evidence.map((item, index) => <li key={index}>{item}</li>)}</ul></>}{report.blocking_reasons.length > 0 && <ul>{report.blocking_reasons.map((item, index) => <li key={index}>{item}</li>)}</ul>}<ul>{report.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul>{report.allowed && <><label><span>新 Study 名称</span><input maxLength={160} disabled={locked} value={name} onChange={event => { setName(event.target.value); setConfirmation(null); }} /></label><label className="frozen-recovery-confirm"><input type="checkbox" disabled={locked} checked={confirmation === report.review_sha256} onChange={event => setConfirmation(event.target.checked ? report.review_sha256 : null)} /><span>我已审阅此来源 Run、执行身份差异与缺失证据，确认以{mode === "strict" ? "严格核对" : "当前方法迁移"}方式只创建独立 Study，不启动运行。</span></label><button type="button" className="primary" disabled={locked || confirmation !== report.review_sha256 || !name.trim() || name.trim().length > 160} onClick={() => void create()}>确认创建独立 Study</button></>}</>}
     <details className="frozen-archive-instructions">
       <summary>Run with the archived method</summary>
@@ -102,6 +106,7 @@ function RecoveryForm({ runId, disabled = false, onStudyCreated }: FrozenInputRe
       <p>prepare 复制历史源码、Python 与输入，保存独立 Study，复用当前发行界面。准备后先停止当前实例，再按生成说明 start 新工作区；两者共用 8766 端口。进入新工作区后仍须 Check readiness 并明确启动 Run。</p>
       <p>宿主库与 locale 仍依赖原 Linux 环境；不表示完全离线或跨平台恢复。<a href="/README.md" target="_blank" rel="noreferrer">Read me 原文</a></p>
     </details>
+    {busy && activity?.kind === "create" && <p role="status" className="frozen-recovery-progress">{FROZEN_CREATE_PROGRESS}</p>}
     {messageState?.key === context && <p role="status">{messageState.value}</p>}
   </section>;
 }

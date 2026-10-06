@@ -43,3 +43,14 @@ test("a Study without Runs keeps 'No runs yet'; a launch in progress says the Ru
   const starting = await render({ projectRuns: [], selectedRun: undefined, launching: "value_101_day" });
   assert.match(starting, /<b>Starting the Run…<\/b>/);
 });
+
+// S-D10 / O-1: starting a Run and a Run in "snapshotting" say why it can take minutes.
+test("a launch in progress and a snapshotting Run explain the one-time runtime archive", async () => {
+  const starting = await render({ projectRuns: [], selectedRun: undefined, launching: "value_101_day" });
+  assert.match(starting, /class="run-launch-note value-new-control" role="status">VALUE is freezing the Study&#x27;s inputs and execution environment before the Run is listed\. The first Run in a new data folder also archives the Python runtime once \(about 3 minutes\)/);
+  assert.match(starting, /you are not taken back here when it finishes/);
+  const snapshotting = { ...runs[0], status: "snapshotting", current_stage: "Freezing immutable run inputs" };
+  const html = await render({ projectRuns: [snapshotting], selectedRun: snapshotting });
+  assert.match(html, /Freezing immutable run inputs[\s\S]*archives the Python runtime once \(about 3 minutes\); later Runs freeze their inputs in under a minute\./);
+  assert.doesNotMatch(await render({ projectRuns: runs, selectedRun: runs[0] }), /run-launch-note/);
+});

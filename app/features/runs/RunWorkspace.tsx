@@ -20,7 +20,8 @@ import { isResultCoverage } from "../shared/coverageView.ts";
 import { Callout } from "../shared/Callout";
 import { lifecycleNotice } from "./lifecycleView.ts";
 import { preflightRunBlockedReason } from "../workspace/preflightIdentity";
-import { runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
+import "./run-history.css";
+import { RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE, runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -97,6 +98,7 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
           <div className="primary-run-actions">
             <button type="button" className="primary full" disabled={!selectedProject || !effectivePreflightMode || Boolean(launching) || !workspace.runtime.compatible || checkingPreflight || Boolean(runBlockedReason)} aria-describedby={runBlockedReason ? "run-blocked-reason" : undefined} onClick={() => { if (effectivePreflightMode) void startRun(effectivePreflightMode); }}>{launching ? "Starting…" : `Run selected scope · ${effectivePreflightMode ? RUN_SCOPE_LABELS[effectivePreflightMode] : "unavailable"}`}</button>
             {runBlockedReason && <p id="run-blocked-reason" className="readiness-run-blocked" role="status">{runBlockedReason}</p>}
+            {startingRun && <p className="run-launch-note value-new-control" role="status">{RUN_FREEZE_NOTE}</p>}
             <small>The scope selected above is used for both readiness and this Run. Two-period and hand-off checks test wiring; the one-day lesson runs 48 half-hours through the PSM. Full scopes include the annual sequence.</small>
           </div>
           {!workspace.runtime.compatible && <div className="error-box">The VALUE native capability is unavailable. Run the environment doctor for the exact missing interpreter or package.</div>}
@@ -105,7 +107,7 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
         <section className="panel run-results">
           <div className="panel-head"><div><span>Run history</span><h3>Progress and results</h3></div><select aria-label="Selected run" value={selectedRun?.id ?? ""} onChange={(event) => onSelectRun(event.target.value)}>{(!selectedRun || !projectRuns.length) && <option value="" disabled={projectRuns.length > 0}>{runSelectPlaceholder(projectRuns.length)}</option>}{projectRuns.map((run) => <option value={run.id} key={run.id} title={run.id}>{runOptionLabel(run)}</option>)}</select></div>
           {selectedRun ? <>
-            <div className="run-status"><div><Badge tone={selectedRun.status === "completed" ? "good" : selectedRun.status === "failed" ? "warn" : "blue"}>{selectedRun.status}</Badge><b>{selectedRun.current_stage}</b><small>{selectedRun.mode === "smoke" ? "Two-period verification" : selectedRun.mode === "two_year_smoke" ? "Two-year smoke test" : selectedRun.mode === "value_101_day" ? "One-day market lesson" : selectedRun.mode === "two_year" ? "Complete two-year model" : "Complete project"} / {selectedRun.id}</small></div><strong>{selectedRun.completed_years}<span> / {selectedRun.total_years}</span></strong></div>
+            <div className="run-status"><div><Badge tone={selectedRun.status === "completed" ? "good" : selectedRun.status === "failed" ? "warn" : "blue"}>{selectedRun.status}</Badge><b>{selectedRun.current_stage}</b><small>{selectedRun.mode === "smoke" ? "Two-period verification" : selectedRun.mode === "two_year_smoke" ? "Two-year smoke test" : selectedRun.mode === "value_101_day" ? "One-day market lesson" : selectedRun.mode === "two_year" ? "Complete two-year model" : "Complete project"} / {selectedRun.id}</small>{selectedRun.status === "snapshotting" && <small className="run-launch-note value-new-control">{SNAPSHOTTING_NOTE}</small>}</div><strong>{selectedRun.completed_years}<span> / {selectedRun.total_years}</span></strong></div>
             <div className="validation-strip">
               <span><small>Execution</small><b>{selectedRun.execution_status ?? selectedRun.status}</b></span>
               <span><small>Contract check</small><b>{selectedRun.contract_validation_status ?? "not evaluated"}</b></span>

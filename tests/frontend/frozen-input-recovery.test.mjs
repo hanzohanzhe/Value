@@ -27,7 +27,10 @@ test('frozen recovery discards late reviews across mode/Run and creates only an 
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     const review = page.getByRole('button', { name: '核对冻结输入与执行身份' }), save = page.getByRole('button', { name: '确认创建独立 Study' });
     const waitPending = async () => { const deadline = Date.now() + 5000; while (!pending && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10)); assert.ok(pending); };
-    await review.click(); await waitPending(); await page.getByLabel('核对方式').selectOption('migration'); await pending.route.fulfill({ json: pending.response }).catch(() => {}); pending = null;
+    await review.click(); await waitPending();
+    // R-D4 (round R1-5): a running review says it takes about 20 s.
+    assert.match(await page.getByRole('status').filter({ hasText: '通常需要约 20 秒' }).innerText(), /正在核对冻结输入与执行身份/);
+    await page.getByLabel('核对方式').selectOption('migration'); await pending.route.fulfill({ json: pending.response }).catch(() => {}); pending = null;
     assert.equal(await save.count(), 0);
     await review.click(); await waitPending(); await page.getByRole('button', { name: 'Switch Run' }).click(); await pending.route.fulfill({ json: pending.response }).catch(() => {}); pending = null;
     assert.equal(await save.count(), 0); await page.getByRole('button', { name: 'Switch Run' }).click(); assert.equal(await save.count(), 0);

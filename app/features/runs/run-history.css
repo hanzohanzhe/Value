@@ -1,0 +1,5 @@
+/* Round R1-5 (four-role report S-D10, O-1): the note shown while a Run is
+   being started or is freezing its inputs. New elements only; existing
+   tokens only; helper text >= 12px. */
+.run-launch-note { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.run-status .run-launch-note { display: block; max-width: 60ch; }
