@@ -3020,8 +3020,8 @@
     },
     {
       "path": "README_BILINGUAL.md",
-      "sha256": "e69cb0cd1a679092b917271a000ff6929453ab0a2bcc88d3f89badd0f47c70c6",
-      "bytes": 87989,
+      "sha256": "995949169bfdfacf948128ad3639808da3f0aec453d62c724135df219c90ef73",
+      "bytes": 88378,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4550,8 +4550,8 @@
     },
     {
       "path": "docs/BUILD_YOUR_OWN_MODEL_101_ZH.md",
-      "sha256": "47455ca5d2464266d7f0ac4034e759f527ad51454568c6842de07a6cfd8b32c3",
-      "bytes": 17921,
+      "sha256": "5827be4dfc31e5835ec177277500ff4e124cddb636fec7c5d71fb4a7a453bf15",
+      "bytes": 17975,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6260,8 +6260,8 @@
     },
     {
       "path": "docs/tutorial/VALUE_101.md",
-      "sha256": "46ff8e63bc2429c8ec4de4e3a33d2bec031e3ff778c29fc37a10c7dd13922937",
-      "bytes": 13722,
+      "sha256": "aee33b98ea71072db664c36f052d353487aeeb18422bc0f7e00ab55a5b3a5045",
+      "bytes": 14889,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6272,14 +6272,14 @@
     },
     {
       "path": "docs/tutorial/VALUE_101_TO_VALUE_UK.md",
-      "sha256": "489728cc6164a2624c46f4e16843ecc11d17ae42a159eaaa7032ea9fc7693491",
-      "bytes": 19526,
-      "transform": "byte copy"
+      "sha256": "d8c1e51304e57516ae1b37a60f6aed47a65a0023d59e20fd46a99348e7d545bc",
+      "bytes": 19720,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/tutorial/VALUE_101_ZH.md",
-      "sha256": "c3af75ba6e30271f275eda65d08e3c71ad602cfb5383ba4a022ac2df6630eefd",
-      "bytes": 13575,
+      "sha256": "d2fa6d4d460bba6e552d46c458902294d7ae59dc186d18180f833f19d369f99a",
+      "bytes": 14538,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

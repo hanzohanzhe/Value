@@ -69,6 +69,7 @@ P0-1（本地 API 安全边界）、P0-2（外部模块隔离）、P0-3（Run �
 | C14 | dynamic 储能只报循环折旧：电池报 CAPEX/(E·η_dis·N_max)，抽蓄和氢储能报 0，最老批次先用。holding 回收只用于投资充足性检验 | 报价随存放时长递增，加上 LIFO，电量积压卖不出，1C 电池实际上从不调度 | P5-04；Q8；`p06.storage-bid-cycle-only`；dynamic-annual-storage-cost 2.0.0 |
 | C15 | 统一边际价结算：每个阶段所有被接受的供给（含储能、进口）都按该阶段统一边际价结算；充电按当期电价计成本，用弃电充电成本为 0。报价只决定调度顺序 | 储能按自身最高报价 `max_bat_price` 结算 | P5-05；A8(2)；`p06.storage-uniform-price-settlement` |
 | C16 | VoLL 取参数 `market.voll_gbp_per_mwh`（默认 17,000，A16-5） | 常数 17,000（A16-5 前为论文常数 8000） | `p06.voll-chronology-parameter` |
+| C25 | 互联线进口进入日前出清：每条正容量互联线按当期对侧价格 × 报价乘数、以可用进口量报价，与本国机组同一排序；平衡环节只报日前剩余的进口容量；日前接受的进口在下调时按进口避免成本减少，不付削减费。value-bid-at-cost-psm 6.3.0，旧 Study 须显式确认（Q13）。VALUE 101：法国 82 £/MWh 比 CCGT 66.5 贵，全部拒绝，数值不变。GBP1 第一年（本地 public2，修正口径）：进口 0.331 → 1.560 TWh，CCGT −1.27 TWh，头条系统成本 −25.6 百万英镑 | 论文内核的日前出清不接收互联线，进口只在实际需求超出日前计划时的平衡环节出现（四类用户测试 S-D3） | S-D3；A16-2；`fx6.day-ahead-interconnector-imports`（2026-10-06 FX6 新增，只在修正口径） |
 
 - **主要文件**：`builtin/scheme_c_1000twh/native_corrected.py`（新）、`native_market_rules.py`（新）、`runtime_compat/storage_cost.py`、`runtime_compat/modular_simulation_model.py`（按规则字段分支）、`scheme_c_native_psm.py`、`gridform_core/storage_recovery.py`、`corrections/p06.json`。
 - **列语义随之改变（C20）**：修正口径的 `vre_accepted` 是 VRE 毛出力，`curtailed` = 可用 − 毛出力（真正的弃风弃光），`excess` 是非 VRE spill。所以两个口径的 VRE 与弃电列不能直接相比。

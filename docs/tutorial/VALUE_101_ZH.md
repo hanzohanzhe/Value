@@ -103,15 +103,15 @@ Study 以 ID 记录每个执行模块：
 | `demand.real` | CSV | 每期实际需求，单位 MWh/period |
 | `fleet.generators` | JSON | 发电、储能和进口资产 |
 | `market.belgium.price` | CSV | 比利时进口价格 |
-| `market.belgium.profile` | CSV | 比利时进口可用量 |
+| `market.belgium.profile` | CSV | 比利时互联线可用量（正值为进口容量，负值为出口能力） |
 | `market.france.price` | CSV | 法国进口价格 |
-| `market.france.profile` | CSV | 法国进口可用量 |
+| `market.france.profile` | CSV | 法国互联线可用量（正值为进口容量，负值为出口能力） |
 | `market.ireland.price` | CSV | 爱尔兰进口价格 |
-| `market.ireland.profile` | CSV | 爱尔兰进口可用量 |
+| `market.ireland.profile` | CSV | 爱尔兰互联线可用量（正值为进口容量，负值为出口能力） |
 | `market.netherlands.price` | CSV | 荷兰进口价格 |
-| `market.netherlands.profile` | CSV | 荷兰进口可用量 |
+| `market.netherlands.profile` | CSV | 荷兰互联线可用量（正值为进口容量，负值为出口能力） |
 | `market.norway.price` | CSV | 挪威进口价格 |
-| `market.norway.profile` | CSV | 挪威进口可用量 |
+| `market.norway.profile` | CSV | 挪威互联线可用量（正值为进口容量，负值为出口能力） |
 | `planning.success_rates` | CSV | 规划成功率输入 |
 | `planning.timelines` | JSON | 规划阶段时间输入 |
 | `policy.support` | JSON | 政策支持输入 |
@@ -124,6 +124,8 @@ Study 以 ID 记录每个执行模块：
 | `weather.wind` | NetCDF | 风电天气场 |
 
 在 `Data` 页面可以查看接口绑定和源文件。完整 Data Pack 是一个科学输入，不是一堆互不关联的上传文件。
+
+互联线进口在两个方法口径下的用法不同（决策 A16-2）：修正口径（默认）中，`market.<country>.profile` 的正值是当期可用进口容量，按 `market.<country>.price` 进入日前出清，与本国机组一起排序，日前没用完的容量留给平衡环节；论文复现口径保留论文内核的做法，进口只在平衡环节报价，也就是实际需求超出日前计划、需要上调时才可能被接受。VALUE 101 教学包中法国进口为 12 MW、82 GBP/MWh，比 CCGT（含启动成本 66.5 GBP/MWh）贵，所以两个口径下一日课程都不会出现进口；把价格改到 CCGT 以下，修正口径就会在日前接受进口。
 
 ## 建立真实研究模型
 

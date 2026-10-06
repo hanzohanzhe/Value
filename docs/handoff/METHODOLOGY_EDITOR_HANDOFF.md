@@ -226,6 +226,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 | C22 | 无网络 LP 反事实 | `p08.network-free-counterfactual`（P2-02/03/04） | 只在修正口径下运行 | 核算 | ch7；ch4 成本 | p08 §2 |
 | C23 | 边界边际值取 primary 阶段对偶 | `p08.boundary-primary-dual`（P2-06） | 只在修正口径下运行 | 核算 | ch7 | p08 §3 |
 | C24 | DC 网络的份额展开 | `p08.network-share-expansion`（P1-01） | 只在修正口径下运行 | 轨迹 | ch7 DC | **无** |
+| C25 | 互联线进口进入日前出清（按当期对侧价格和可用进口量报价；平衡环节只报剩余容量；下调按进口避免成本）。论文复现口径保留“只在平衡环节进口” | `fx6.day-ahead-interconnector-imports`（S-D3，A16-2） | C | 轨迹 | ch5 Native 伪代码与新段落（N-8）；ch2 互联线一句 | fx6 |
 | — | 运行期 fallback 审计（只报告） | `p08.runtime-fallback-audit`（P2-13） | 只在修正口径下运行 | 展示 | ch7 实现段 | 无 |
 | — | staged dwell 披露（数值不变） | `p06.staged-dwell-disclosure`（P5-15） | staged | 展示 | ch4 储能报价 | p06（末段） |
 | — | 方法身份与 Study 迁移 | `x0.methodology-identity`、`x0.study-revision-migration`（Q13） | U | 身份 | ch1 新小节一句话 | 无 |
@@ -722,6 +723,7 @@ $$
   - **出清前 VRE 分流**：论文复现口径每个 VRE 代理最多分 1 MW 去电解，电解容量不足时这部分能量丢失（P3-08，诊断 `vre_skim_*`）；修正口径没有（`p06.no-vre-pre-clearing-skim`）。
   - **“储能先吸收预测多发，再吸收已有过剩电量”**：修正口径改为“先回购，后充电”（N-5）。
   - **“then apply downward dispatch”**：修正口径改为按避免成本下调（N-9）。
+  - **进口（C25，A16-2）**：“Construct generator and storage-batch offers” 与 “import offers” 两处按草稿 `fx6_day_ahead_imports.md` 第 3 节改写；论文复现口径的进口只出现在平衡分支（GBP1 D5 的 0.336 TWh 全部来自实际需求高于预测的时段），修正口径的日前出清也接受进口，平衡分支只报剩余容量。
 - **新增一段：隐藏缺电与 stress event（U，A2，DEV-BAL-02）**：
   - 平衡分支按 \(D_t\) 与 \(\widehat D_t\) 的比较选择。当日前接纳供给不足以满足预测、且 \(D_t<\widehat D_t\) 时，削减分支仍按 \(\widehat D_t-D_t\) 削减，而真实需求并没有被满足；内核不记录切负荷。
   - 两个口径的**调度都不变**。缺口记账见 N-13。
@@ -735,7 +737,7 @@ v_i=\mathrm{round}\!\left(c_i-\pi_i,\,2\right),\quad \pi_{\mathrm{nuclear}}=100,
 \text{reduce in order of}\ \big(-v_i,\ \mathrm{rank}(i),\ \mathrm{name}_i\big),
 $$
 
-  - 类别次序：thermal 0、hydro/biomass 1、VRE 2、nuclear 3；
+  - 类别次序：thermal 0、hydro/biomass 1、VRE 2、nuclear 3；日前接受的进口（C25）按进口避免成本（对侧价格）参与，类别次序 0.5，即排在 thermal 之后、hydro/biomass 之前，不付削减费；
   - 爬坡下限 \(\max(g_{i,t-1}-r_i,0)\)，上期出力按对象身份读取；
   - 水电和生物质的削减量都返还预算；
   - 下调次序用完后仍剩的要求，记为调度内 spill。

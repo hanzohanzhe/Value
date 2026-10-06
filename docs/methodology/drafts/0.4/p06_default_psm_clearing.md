@@ -70,6 +70,7 @@ period-cost column, whose thesis storage-fee carry is reported as
 | storage bid | `cycle_only`: batteries bid `CAPEX / (E * eta_dis * N_max)`, pumped hydro and hydrogen bid 0, oldest tranche first; holding recovery only in investment adequacy | `p06.storage-bid-cycle-only` | P5-04 (Q8) |
 | settlement | every accepted supplier of a stage, storage included, is paid the stage's uniform marginal price | `p06.storage-uniform-price-settlement` | P5-05 (A8) |
 | VoLL | `market.voll_gbp_per_mwh` | `p06.voll-chronology-parameter` | P5-06 (Q7) |
+| interconnector imports | every connection with a positive transfer constraint offers its available import capacity to the day-ahead clearing at the period's counterparty price x bid multiplier; balancing offers only the capacity left; an accepted day-ahead import is reduced at its avoided import price (doctoral: imports only in the balancing stage). See `fx6_day_ahead_imports.md` | `fx6.day-ahead-interconnector-imports` | S-D3 (A16-2) |
 
 The `cycle_only` basis applies only to the built-in
 `dynamic-annual-storage-cost` object (2.0.0); the legacy tariff, the user formula

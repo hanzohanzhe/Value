@@ -62,7 +62,7 @@ The Data Pack manifest binds each scientific role to a file. VALUE reads roles, 
 | `profiles.vre_solar`, `profiles.vre_onshore`, `profiles.vre_offshore` | CSV | Half-hour availability for each renewable technology |
 | `weather.solar`, `weather.wind` | NetCDF | Weather fields used by the selected weather method |
 | `market.<country>.price` | CSV | Half-hour import offer prices for Belgium, France, Ireland, Netherlands and Norway |
-| `market.<country>.profile` | CSV | Signed half-hour import availability for the same boundaries |
+| `market.<country>.profile` | CSV | Signed half-hour interconnector availability for the same boundaries (positive = import capacity offered day-ahead at the country's price under the corrected methodology, balancing stage only under the doctoral reproduction; negative = export capability) |
 | `projects.repd`, `source.repd_raw` | CSV | Prepared planning records and the retained source records |
 | `planning.success_rates` | CSV | Planning success assumptions |
 | `planning.timelines` | JSON | Stage duration and completion assumptions |

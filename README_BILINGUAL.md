@@ -137,15 +137,15 @@ All 25 roles are currently globally required; requirements are not yet reduced a
 | 3 | Real demand profile<br>`demand.real` | 实际/平衡阶段需求逐期序列 | CSV, Parquet | **CSV** | 同上；当前正常时段为半小时。 | `2022reald.csv` |
 | 4 | Wind weather field<br>`weather.wind` | 用机组位置生成风电可用率的格点天气 | NetCDF, Zarr | **NetCDF (.nc)** | 坐标 `longitude`, `latitude`；变量为 `wind_speed`，或同时有 `u100` 与 `v100`；时间可为 time×lat×lon 或 lat×lon×day×hour。 | `average_annual_wind_profile.nc` |
 | 5 | Solar weather field<br>`weather.solar` | 用机组位置生成光伏可用率的格点辐照数据 | NetCDF, Zarr | **NetCDF (.nc)** | 坐标 `longitude`, `latitude`；辐照变量 `ssrd`；支持 time×lat×lon 或 lat×lon×day×hour。 | `average_annual_solar_profile.nc` |
-| 6 | France import availability<br>`market.france.profile` | 法国边界进口可用电量/流量序列 | CSV | **CSV** | 一个主要数值列，建议表头 `availability_mwh`；`MWh/period`；短序列会循环重复，科学运行建议 17,520 期。 | `France_profile.csv` |
+| 6 | France interconnector availability (+ import / - export)<br>`market.france.profile` | 法国边界的带符号互联线可用量序列：正值为可用进口容量，负值为出口能力。修正口径中正值按当期对侧价格进入日前出清，剩余容量留给平衡环节；论文复现口径只在平衡环节报价（实际需求超出日前计划时） | CSV | **CSV** | 一个主要数值列，建议表头 `availability_mwh`；`MWh/period`；短序列会循环重复，科学运行建议 17,520 期。 | `France_profile.csv` |
 | 7 | France external price<br>`market.france.price` | 法国进口报价/外部价格序列 | CSV | **CSV** | 一个主要数值列；`GBP/MWh`；与 availability 同时间轴。 | `France.csv` |
-| 8 | Belgium import availability<br>`market.belgium.profile` | 比利时边界进口可用量 | CSV | **CSV** | 同 France profile。 | `belgium_profile.csv` |
+| 8 | Belgium interconnector availability (+ import / - export)<br>`market.belgium.profile` | 比利时边界进口可用量 | CSV | **CSV** | 同 France profile。 | `belgium_profile.csv` |
 | 9 | Belgium external price<br>`market.belgium.price` | 比利时进口价格 | CSV | **CSV** | 同 France price；如果原始数据是 EUR/MWh，应在 adapter 边界先统一为 GBP/MWh。 | `Belgium_price.csv` |
-| 10 | Netherlands import availability<br>`market.netherlands.profile` | 荷兰边界进口可用量 | CSV | **CSV** | 同 France profile。 | `nehtheralnd_profile.csv` |
+| 10 | Netherlands interconnector availability (+ import / - export)<br>`market.netherlands.profile` | 荷兰边界进口可用量 | CSV | **CSV** | 同 France profile。 | `nehtheralnd_profile.csv` |
 | 11 | Netherlands external price<br>`market.netherlands.price` | 荷兰进口价格 | CSV | **CSV** | 同 France price。 | `Netherlands.csv` |
-| 12 | Norway import availability<br>`market.norway.profile` | 挪威边界进口可用量 | CSV | **CSV** | 同 France profile。 | `Norway_profile.csv` |
+| 12 | Norway interconnector availability (+ import / - export)<br>`market.norway.profile` | 挪威边界进口可用量 | CSV | **CSV** | 同 France profile。 | `Norway_profile.csv` |
 | 13 | Norway external price<br>`market.norway.price` | 挪威进口价格 | CSV | **CSV** | 同 France price。 | `Norway.csv` |
-| 14 | Ireland import availability<br>`market.ireland.profile` | 爱尔兰边界进口可用量 | CSV | **CSV** | 同 France profile。 | `Ireland_profile.csv` |
+| 14 | Ireland interconnector availability (+ import / - export)<br>`market.ireland.profile` | 爱尔兰边界进口可用量 | CSV | **CSV** | 同 France profile。 | `Ireland_profile.csv` |
 | 15 | Ireland external price<br>`market.ireland.price` | 爱尔兰进口价格 | CSV | **CSV** | 同 France price。 | `Ireland.csv` |
 
 这些 interconnector 文件代表**模型边界外的进口供给报价**，不是英国内部输电线路。正流量被解释为可进口供给；当前模型没有内部线路容量、潮流或节点约束。
