@@ -163,3 +163,24 @@
 |---|---|---|---|---|
 | F-FX2-1 | 11.5 只规定预检、范围下拉框和比较页；任务另要求修正 Inspect 的原因文案 | Inspect 的扩展结果面板遇到后端 reason `extensions_not_executed_in_scope` 时，显示 `Extensions did not run in this scope.` 加后端原文（`The one-day lesson runs the market step only, so the recorded extension(s) {ids} did not execute in this Run. Re-run with two-period or a longer scope to obtain extension results.`），不再显示 `year_results_missing` | 四类用户测试报告 4.2 的修复建议；文案沿用 11.5 预检句式 | 是（文案） |
 | F-FX2-2 | 11.5 预检句中的 `{names}` | 填扩展 id（如 `value-toy-audit-extension`），逗号分隔 | 预检阶段扩展清单以 id 为准，名称可能缺失 | 否 |
+
+## 修复轮 FX3（第 11.1、11.2、11.3、11.4、11.6、11.7 节）
+
+| 编号 | 规格 | 实现 | 理由 | 需设计方复核 |
+|---|---|---|---|---|
+| F-FX3-1 | 11.1 第 6 组“环境类问题” | 组名 `Environment and setup`：除 errors 和数据类（plausibility、chronology、其他数据警告、适配器 unit not declared）之外的所有 warning 都归入此组，包括 project（如 UNSAVED_REVISION）、modules（如 QUARANTINE_PRESENT、STAGED_DWELL、MODULE_SOURCE_CHANGED）和 recovery 类 | 规格只列了六组，未说明非数据、非环境的 warning 放哪里；放进最后一组不丢信息 | 是（组名与归类） |
+| F-FX3-2 | 11.1 组内去重“同一 code 只显示一次” | 去重键为 code + 去掉对象前缀后的消息正文。同一 code 但正文不同（如 `canonical role expects MW` 与 `expects GBP/MWh`）分成两行，各带 `×n`，悬停列出全部对象 | 只按 code 合并会把不同含义的提示藏到悬停里 | 是 |
+| F-FX3-3 | 11.1 组头 tone | errors 组用红色 pill，其余五组都用琥珀色 pill；行内另显示对象（第一个对象 + `and n more`） | 规格写“琥珀色或红色” | 否 |
+| F-FX3-4 | 11.7 预检琥珀色 warning | 后端 warning `GF_PREFLIGHT_MODULE_SOURCE_CHANGED`（消息为规格原句）；Readiness 卡片在分组上方另显示一个 caution Callout（标题 `Module source changed since install`），同一条也留在 `Environment and setup` 组里 | 该组默认折叠，单靠分组看不到 | 是（Callout 标题） |
+| F-FX3-5 | 11.4 预检报告缺 `project_revision_sha256` | 只有 `accepted=false` 且带 errors 的报告才能在缺 revision 时匹配（Study、数据包、范围仍须一致）；Run 按钮旁文案 `Readiness found {n} error(s). Fix it/them, then check readiness again.` | 已通过的报告仍必须核对 revision（P0 身份规则不放松） | 是（按钮旁文案） |
+| F-FX3-6 | 11.4 `Remove` | 新端点 `POST /api/{modules,extensions}/<id>/remove`：把安装目录和清单移到 `modules/disabled-manifests/removed/<kind>s/<id>/<时间戳>/`，不删除文件；已启用且正常的条目须先停用（`*_REMOVE_ENABLED`）；被保存的 Study、活动 Run（扩展另含保留的运行记录）引用时拒绝（`*_IN_USE`）。确认对话框文案见 `disabledEntries.ts` | 保守：不做永久删除，不破坏历史 Run 的可读性 | 是（拒绝条件与文案） |
+| F-FX3-7 | 11.4 隔离条目的三个按钮 | 隔离但仍处于启用状态的条目，`Enable` 按钮禁用并提示 `Fix the source, then Rescan`；`Rescan`、`Remove` 可用 | 已启用的条目没有“启用”可做 | 否 |
+| F-FX3-8 | 11.4 Enable 失败提示 | 后端在 Enable 前清除所有记住的导入失败（等同一次 Rescan），失败信息留在该行，附 `Rescan`；Rescan 成功后清空这些行内错误。四类用户测试中“缓存旧错误”的确切复现路径在测试 harness 中未能重现，单元测试改为断言 Enable 前调用了 `clear_negative_caches` 且报告的是新错误 | 保证“显示最新一次扫描的错误” | 否 |
+| F-FX3-9 | 11.2 “每个数据包一张” | Data 页一次只显示当前输入上下文的一个数据包，面板随之切换（按 pack id 重挂载）；数据来自 `/api/data-packs/<id>/validation?extensions=…`，加载完成前用列表的 `plausibility_status` 缓存 | Data 页现有布局只有一个当前包 | 否 |
+| F-FX3-10 | 11.2 配色与文字 | 层：无发现 teal `Passed`；有发现且不阻断任何口径为琥珀色 `{n} warning(s)`；有发现阻断某个口径为红色 `Failed`（悬停：`{n} findings; blocks {口径}`）；结构层无效为红色 `Failed`，有结构 warning 为琥珀色。口径：`Eligible` teal（有 warning 时悬停列出 code）；不可用为琥珀色 `Not eligible — blocked by {codes}` 或 `— structural validation failed`。规格示例中的 “not a thesis-era pack” 后端没有对应判定，不自造原因 | 原则 3：不确定就不猜 | 是（不可用的颜色与原因文案） |
+| F-FX3-11 | 11.2 最差状态文案 | `validation failed / passed with warnings / passed / not evaluated`；原 `25/25` 数字保留在原位置，其后的说明改为 `inputs present · validation {最差状态}`（沿用旧元素字号，未改旧样式） | 做法一不改旧元素样式 | 否 |
+| F-FX3-12 | 11.3 Callout 句式 | 每个失败的原始不变量一句：首句 `Annual results withheld: raw invariant "{名称}" failed ({n} rows).`，其余 `Raw invariant "{名称}" failed (…).`；能量平衡账户类失败用 `periods`；各自后接 `Matches declared deviation {ID}: {一句话}.` 或 `No declared deviation explains it.`；最后 `The full ledger remains available.`。没有失败明细时：未评估写 `the raw invariants of this Run were not evaluated`，否则 `a raw invariant failed. No declared deviation explains it.`。“一句话”取声明偏差目录 description 的第一句 | 规格只给单个失败的句式 | 是 |
+| F-FX3-13 | 11.3 不变量名称 | 后端读模型新增 `raw_invariant_failures`（gate、check、名称、行数或时段数、命中的声明偏差及一句话），名称表在 `result_advisories.RAW_INVARIANT_CHECK_NAMES`（如 `storage.single_direction` → `Storage single direction`） | 由后端给出原因，前端不拼 | 是（名称用词） |
+| F-FX3-14 | 11.6 时间戳检查结果 | 预览请求可带 `timestamp: {column, time_zone}`；时间轴层逐行检查（不可读、与第 k 行重复、早于上一行、缺口、步长不规则），任何问题都使审阅 `valid=false`、不能提交；逐行表最多列 50 行并注明总数。提交后 binding 记录 `timestamp_column`、`timestamp_time_zone`、`timestamp_uri`（保留的映射源文件）和 `timestamp_check`，数据包时间轴层从该源文件复查；冻结快照里该源文件不在时，以记录的 passed 检查为准 | 规范文件只含 value 列，时间戳必须留在源文件 | 是（阻断提交） |
+| F-FX3-15 | 11.6 下拉框位置与文案 | `Timestamp column (optional)` 字段组放在列映射下方，只对半小时或小时序列角色出现；未选列时 Time zone 禁用；说明句为中文（与编辑器现有文案一致）；EUR 提示为行内琥珀色条（`role="status"`），放在 Currency 下方 | 编辑器现有文案为中文 | 否 |
+| F-FX3-16 | 10：截图 | `docs/dev/p0-ui-screens/fx3-*.jpg`（元素截图，JPEG 质量 80，1280 与 375 各一张）。映射编辑器两组截图来自与 harness 测试相同的独立渲染（模拟映射 API），其余来自 scratch 实例（API 18930、UI 18931）上的真实数据与真实 Run | 映射编辑器在应用中只出现在换数据引导里，需要整套独立数据包流程 | 否 |
