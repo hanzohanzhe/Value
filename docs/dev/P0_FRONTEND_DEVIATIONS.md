@@ -184,3 +184,16 @@
 | F-FX3-14 | 11.6 时间戳检查结果 | 预览请求可带 `timestamp: {column, time_zone}`；时间轴层逐行检查（不可读、与第 k 行重复、早于上一行、缺口、步长不规则），任何问题都使审阅 `valid=false`、不能提交；逐行表最多列 50 行并注明总数。提交后 binding 记录 `timestamp_column`、`timestamp_time_zone`、`timestamp_uri`（保留的映射源文件）和 `timestamp_check`，数据包时间轴层从该源文件复查；冻结快照里该源文件不在时，以记录的 passed 检查为准 | 规范文件只含 value 列，时间戳必须留在源文件 | 是（阻断提交） |
 | F-FX3-15 | 11.6 下拉框位置与文案 | `Timestamp column (optional)` 字段组放在列映射下方，只对半小时或小时序列角色出现；未选列时 Time zone 禁用；说明句为中文（与编辑器现有文案一致）；EUR 提示为行内琥珀色条（`role="status"`），放在 Currency 下方 | 编辑器现有文案为中文 | 否 |
 | F-FX3-16 | 10：截图 | `docs/dev/p0-ui-screens/fx3-*.jpg`（元素截图，JPEG 质量 80，1280 与 375 各一张）。映射编辑器两组截图来自与 harness 测试相同的独立渲染（模拟映射 API），其余来自 scratch 实例（API 18930、UI 18931）上的真实数据与真实 Run | 映射编辑器在应用中只出现在换数据引导里，需要整套独立数据包流程 | 否 |
+
+### 设计方裁决：F-FX3-1…16（2026-10-06，Claude）
+
+**全部批准。** 说明如下：
+
+- **F-FX3-1** 组名 `Environment and setup`，按实现归类，可以。
+- **F-FX3-2** 去重键用 code 加正文，比只用 code 更好。
+- **F-FX3-4** Callout 标题 `Module source changed since install` 批准。
+- **F-FX3-5** 按钮旁的文案批准。已通过的报告仍要核对 revision，这一点正确。
+- **F-FX3-6** Remove 实现为移入 `removed/` 而不删除；拒绝条件为“启用中”和“被引用”。文案批准。
+- **F-FX3-10** 规格示例中的 “not a thesis-era pack” 取消，改为后端实际给出的阻断码，符合原则 3。配色批准：不可用为琥珀色，结构层失败为红色。
+- **F-FX3-12、F-FX3-13** 多条失败时的句式和名称表批准。名称用 Title case，与现有界面一致。
+- **F-FX3-14** 时间戳有问题时阻断提交，批准。用户已明确声明了时间戳列，就必须保证它可信。
