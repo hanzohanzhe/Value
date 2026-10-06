@@ -61,9 +61,13 @@ module.zip
 实现。**它不会覆盖内置文件，也不会删除旧 module。旧 Study 仍保留原 ID、
 版本、参数和哈希，可以回滚或做 A/B 比较。
 
-当前安装器不允许外部包覆盖内置 ID，也不允许用同一个已安装 ID 静默替换
-源码。修改科学实现后应使用新 module ID、version、scientific version 和
-Python package 名。
+当前安装器不允许外部包覆盖内置 ID。对已安装 module 原地修改源码（同 ID、
+同版本）是允许的，会被记录而不是被拒绝（DECISIONS A16-4）：Check readiness
+显示琥珀色警告 `GF_PREFLIGHT_MODULE_SOURCE_CHANGED`，列出安装时和当前的源码
+SHA-256；每个 Run 冻结新的源码哈希；Compare 把该 module 的方法标为已改变。
+安装记录和 scientific version 不会随之更新，所以打算发布或作为方法对照的修改，
+仍应使用新的 module version（或新 ID）、scientific version 和 Python package
+名，并以 bundle 安装。
 
 ## 3. 年度模型链与调用位置
 
@@ -515,8 +519,21 @@ ZIP 在 staging 中通过验证后，才原子保存 module/version、安装记�
 
 冲突在写盘前就被拒绝；写盘后先在进程内、再在一个与 worker 启动方式相同的新
 Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入失败的结果会被记住，
-点 **Rescan** 才会重试。修好后的实现必须使用新 ID 或新版本发布（同一 ID 即使
-已停用也仍被占用）。
+点 **Rescan**（Modules 页顶部，以及每个停用或隔离条目上都有）才会重试；
+**Enable** 会先清除记住的失败，所以它报告的总是一次新扫描的结果。
+
+### 停用与隔离区
+
+Modules 页在 module 列表下方列出所有停用或隔离的本地 module 和扩展，每项都有
+**Enable**、**Rescan** 和 **Remove**。选用了其中某项的 Study 做 Check readiness 时，
+会显示阻断错误并禁用 Run 按钮。**Remove** 经确认后，把安装目录和清单移到
+`modules/disabled-manifests/removed/<modules|extensions>/<id>/`，不删除任何文件。
+已启用且正常的条目要先停用才能移除；被保存的 Study、活动 Run 或（扩展的）
+保留运行记录引用的条目不能移除。
+
+同一 ID 安装期间一直被占用（即使已停用）。修好源码后可以原地修复再 Enable 或
+Rescan（按第 2 节记录），也可以先 Remove 再安装修好的 bundle；要发布的方法改动
+应使用新版本。
 
 ### 离线自救
 

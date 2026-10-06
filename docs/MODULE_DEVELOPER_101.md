@@ -58,9 +58,15 @@ revision. It does not overwrite Scheme C, delete the previous implementation or
 mutate an old Study. The previous revision remains reproducible and supports A/B
 comparison and rollback.
 
-External bundles cannot shadow built-in IDs. The current beta also refuses a
-silent source update under an installed ID. A changed scientific implementation
-should have a new module ID, version, scientific version and package name.
+External bundles cannot shadow built-in IDs. Editing the source of an
+installed module in place (same ID and version) is accepted and recorded, not
+refused (DECISIONS A16-4): Check readiness shows the amber warning
+`GF_PREFLIGHT_MODULE_SOURCE_CHANGED` with the installed and the current source
+SHA-256, every Run freezes the new source hash, and Compare marks the module
+method as changed. The installation record and the scientific version are not
+updated, so a change you intend to publish or compare as a method should still
+get a new module version (or ID), scientific version and package name and be
+installed as a bundle.
 
 ## 3. Annual lifecycle
 
@@ -521,10 +527,22 @@ not prove order-level replay.
 - **Checks after install/enable:** conflicts are refused before anything is
   written; afterwards the registry is rebuilt in process and in a fresh
   worker-like Python process, and the change is rolled back byte for byte if
-  either refuses. A failed import is not retried until **Rescan**.
-- **Same ID after a fix:** an installed ID stays taken, even disabled.
-  Publish the repaired implementation under a new ID or version (scientific
-  identity policy; same-ID replacement is a later decision).
+  either refuses. A failed import is remembered until **Rescan** (at the top
+  of the Modules page and on every disabled or quarantined entry); **Enable**
+  forgets remembered failures first, so it always reports a fresh scan.
+- **Disabled and quarantined:** the Modules page lists every disabled or
+  quarantined local module and extension below the module list, each with
+  **Enable**, **Rescan** and **Remove**. Check readiness of a Study that selects
+  one shows the blocking error and disables Run.
+- **Remove:** after a confirmation, moves the installer folder and the
+  manifests to `modules/disabled-manifests/removed/<modules|extensions>/<id>/`;
+  nothing is deleted. It refuses an enabled, working entry (disable it first)
+  and one that saved Studies, active Runs or, for an extension, retained Run
+  history use.
+- **Same ID after a fix:** an installed ID stays taken while it is installed,
+  even disabled. Repair the source in place and Enable or Rescan (recorded as in
+  section 2), or Remove the entry and install the repaired bundle; a published
+  method change should use a new version.
 - **Offline rescue:** `module_recovery list`,
   `disable module|extension <id>`, `park-manifest module|extension <file>`
   and `park-installation module|extension <id> [<version>]` (a damaged

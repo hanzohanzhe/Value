@@ -4568,14 +4568,14 @@
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
-      "sha256": "8f481072ad20d96b62a0f5467b859eb99f289f1221c04bd1ee82e6a3027d6f0e",
-      "bytes": 24090,
+      "sha256": "b7c0ccfd25b8fdb0d7bf58ef50aaa06709f2df9e95bae85220429823e1dadc92",
+      "bytes": 25334,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/MODULE_DEVELOPER_101_ZH.md",
-      "sha256": "6be125212243f89783b8a3a0bc62b9001f34a33f8b02785678b550ed5262369f",
-      "bytes": 25234,
+      "sha256": "d1836dfceeb64b437a8cbba047fee32a11398e949444bf725d0fb23b1453fb16",
+      "bytes": 26525,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
