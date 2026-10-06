@@ -27,3 +27,13 @@ test("StatusPill and ValueState render the tone class and the state text", async
   assert.equal(textOf(await renderTsx(CALLOUT, "ValueOr", { value: null, state: "not_recorded" })), "Not recorded");
   assert.equal(textOf(await renderTsx(CALLOUT, "ValueOr", { value: "£55/MWh" })), "£55/MWh");
 });
+
+// P0-1 S9 + spec 8: the only full-page error, shown on a gateway/API 403 or 421.
+test("Open VALUE from its launcher is a full-page alert with the spec 8 wording and no token", async () => {
+  const html = await renderTsx("app/features/shared/OpenFromLauncher.tsx");
+  const text = textOf(html);
+  assert.match(html, /role="alert"/);
+  assert.match(text, /Open VALUE from its launcher/);
+  assert.match(text, /This page was not opened through the VALUE launcher, so it cannot talk to the local engine\. Close it and start VALUE again with start-value \(or the desktop shortcut\)\./);
+  assert.doesNotMatch(html, /token|session=|8766/i);
+});

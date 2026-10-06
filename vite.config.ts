@@ -13,7 +13,7 @@ function valueGateway(): Plugin {
   return {
     name: "value-ui-gateway",
     configureServer(server) {
-      const gateway = createGateway({ apiOrigin: process.env.VALUE_API_ORIGIN || "http://127.0.0.1:8766", csp: false });
+      const gateway = createGateway({ upstreamOrigin: process.env.VALUE_API_ORIGIN || "http://127.0.0.1:8766", csp: false });
       server.middlewares.use((req, res, next) => gateway.handle(req, res, () => next()));
     },
   };

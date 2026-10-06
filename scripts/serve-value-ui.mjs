@@ -28,8 +28,8 @@ function argument(name, fallback) {
 const host = validateBindHost(argument("--host", argument("--hostname", "127.0.0.1")));
 const port = Number.parseInt(argument("--port", "8800"), 10);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("--port must be between 1 and 65535");
-const apiOrigin = argument("--api-origin", "http://127.0.0.1:8766");
-const gateway = createGateway({ apiOrigin, sessionOptional: process.argv.includes("--session-optional") });
+const upstreamOrigin = argument("--api-origin", "http://127.0.0.1:8766");
+const gateway = createGateway({ upstreamOrigin, sessionOptional: process.argv.includes("--session-optional") });
 
 const root = path.resolve(import.meta.dirname, "..");
 const serverModule = path.join(root, "node_modules", "vinext", "dist", "server", "prod-server.js");
@@ -44,7 +44,7 @@ try {
   // Same macrotask as vinext's listen callback: no request is accepted before
   // the gateway is in place.  Refuse to run if vinext's listener layout changed.
   wrapServer(started.server, gateway);
-  console.log(`VALUE UI gateway: http://${host}:${started.port}/ -> ${gateway.apiOrigin} (session file ${gateway.sessionFile})`);
+  console.log(`VALUE UI gateway: http://${host}:${started.port}/ -> ${gateway.upstreamOrigin} (session file ${gateway.sessionFile})`);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);

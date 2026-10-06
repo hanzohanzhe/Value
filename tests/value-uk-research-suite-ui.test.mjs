@@ -5,13 +5,9 @@ import test from "node:test";
 test("VALUE-UK research suites target the local atomic installation route", async () => {
   const { researchSuiteApiUrl } = await import("../app/features/data/research-suite-api.mjs");
 
-  assert.equal(
-    researchSuiteApiUrl("http://127.0.0.1:9901/"),
-    "http://127.0.0.1:9901/api/research-suites/install",
-  );
-  // P0-1: same-origin by default.
+  // P0-1 S9: same-origin only; the UI has no API origin to prepend.
   assert.equal(researchSuiteApiUrl(), "/api/research-suites/install");
-  assert.equal(researchSuiteApiUrl(""), "/api/research-suites/install");
+  assert.equal(researchSuiteApiUrl.length, 0);
 });
 
 test("the installed-suite summary keeps component hashes and unrun Study identities", async () => {

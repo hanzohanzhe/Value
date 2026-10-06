@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useState } from "react";
 import { formatNumber, withUnit } from "../shared/presentation";
 import { Callout } from "../shared/Callout";
@@ -55,12 +56,12 @@ function isComparison(value: unknown, ids: string[]): value is RunComparison {
     })
     && typeof item.storage_pricing_interpretation === "string";
 }
-export default function ComparisonWorkspace({ runs, apiOrigin }: { runs: ComparisonRun[]; apiOrigin: string }) {
+export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] }) {
   const [picked, setSelected] = useState<string[]>([]);
   const selected = picked.filter((id) => runs.some((run) => run.id === id && run.status === "completed" && ["full", "two_year", "value_101_day"].includes(run.mode)));
   const [response, setResponse] = useState<{key:string; value?:RunComparison; error?:string} | null>(null);
   const idsKey = JSON.stringify(selected);
-  const key = JSON.stringify([apiOrigin, selected]);
+  const key = JSON.stringify([selected]);
   const comparison = response?.key === key ? response.value ?? null : null;
   const error = response?.key === key ? response.error ?? "" : "";
   const loading = selected.length >= 2 && response?.key !== key;
@@ -68,19 +69,19 @@ export default function ComparisonWorkspace({ runs, apiOrigin }: { runs: Compari
     const ids: string[] = JSON.parse(idsKey);
     if (ids.length < 2) return;
     const controller = new AbortController();
-    void fetch(`${apiOrigin}/api/comparisons?runs=${encodeURIComponent(ids.join(","))}`, { cache: "no-store", signal: controller.signal })
+    void fetch(apiUrl(`comparisons?runs=${encodeURIComponent(ids.join(","))}`), { cache: "no-store", signal: controller.signal })
       .then(async (res) => { const payload: unknown = await res.json(); if (!res.ok) throw new Error((payload as {error?:string}).error || "Comparison unavailable"); if (!isComparison(payload, ids)) throw new Error("比较响应与所选 Run 身份不一致，请重新选择。"); return payload; })
       .then((value) => { if (!controller.signal.aborted) setResponse({key, value}); })
       .catch((reason: Error) => { if (!controller.signal.aborted) setResponse({key, error:reason.message}); });
     return () => controller.abort();
-  }, [apiOrigin, idsKey, key]);
+  }, [idsKey, key]);
   function onToggle(runId: string) {
     setResponse(null);
     setSelected((current) => current.includes(runId) ? current.filter((id) => id !== runId) : [...current, runId].slice(0, 6));
   }
   function onExport(format: "json" | "csv") {
     if (!comparison) return;
-    if (format === "csv") { window.open(`${apiOrigin}/api/comparisons?runs=${encodeURIComponent(comparison.run_ids.join(","))}&format=csv`, "_blank", "noopener,noreferrer"); return; }
+    if (format === "csv") { window.open(apiUrl(`comparisons?runs=${encodeURIComponent(comparison.run_ids.join(","))}&format=csv`), "_blank", "noopener,noreferrer"); return; }
     const link = document.createElement("a"); const url = URL.createObjectURL(new Blob([JSON.stringify(comparison, null, 2)], {type:"application/json"}));
     link.href = url; link.download = "value-comparison.json"; link.click(); URL.revokeObjectURL(url);
   }

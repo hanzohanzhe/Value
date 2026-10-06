@@ -90,7 +90,7 @@ function htmlStub(req, res) {
   res.end(`<!doctype html><script nonce="${nonce}">1</script><script nonce="${nonce}">2</script><p>VALUE</p>`);
 }
 
-async function makeGateway(t, { withSession = true, upstreamPort, apiOrigin, ...options } = {}) {
+async function makeGateway(t, { withSession = true, upstreamPort, upstreamOrigin, ...options } = {}) {
   const upstream = upstreamPort ? null : await makeUpstream();
   const dataHome = fs.mkdtempSync(path.join(os.tmpdir(), "value-gateway-"));
   const port = upstreamPort ?? upstream.port;
@@ -98,7 +98,7 @@ async function makeGateway(t, { withSession = true, upstreamPort, apiOrigin, ...
     fs.mkdirSync(path.join(dataHome, "runtime"), { recursive: true });
     fs.writeFileSync(sessionFilePath(dataHome, port), JSON.stringify({ schema_version: "value.api-session/v1", port, token: TOKEN }));
   }
-  const gateway = createGateway({ apiOrigin: apiOrigin ?? `http://127.0.0.1:${port}`, dataHome, log: () => {}, ...options });
+  const gateway = createGateway({ upstreamOrigin: upstreamOrigin ?? `http://127.0.0.1:${port}`, dataHome, log: () => {}, ...options });
   const server = wrapServer(http.createServer(htmlStub), gateway);
   const uiPort = await listen(server);
   t.after(async () => {
@@ -337,7 +337,7 @@ test("command-line validation: loopback bind hosts and http loopback API origins
 });
 
 test("the gateway refuses to wrap a server unless it has exactly one request listener", () => {
-  const gateway = createGateway({ apiOrigin: "http://127.0.0.1:9", dataHome: os.tmpdir(), log: () => {} });
+  const gateway = createGateway({ upstreamOrigin: "http://127.0.0.1:9", dataHome: os.tmpdir(), log: () => {} });
   assert.throws(() => wrapServer(http.createServer(), gateway), /exactly one request listener/);
   const two = http.createServer(() => {});
   two.on("request", () => {});

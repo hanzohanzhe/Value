@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useState } from "react";
 
 type ExportRange = "" | "period" | "24_hours" | "168_hours" | "year" | "complete";
@@ -20,19 +21,12 @@ type ExportJobPayload = {
 };
 type ExportJob = ExportJobPayload & { request: ExportRequest };
 
-function absoluteJobUrl(apiOrigin: string, statusUrl: string): string {
-  // Same-origin API (P0-1): an empty origin keeps the server's relative URL.
-  return apiOrigin ? new URL(statusUrl, apiOrigin).toString() : statusUrl;
-}
-
 export default function ReplayExportPanel({
-  apiOrigin,
   runId,
   years,
   selectedYear,
   selectedPeriod,
 }: {
-  apiOrigin: string;
   runId: string;
   years: number[];
   selectedYear?: number | null;
@@ -57,7 +51,7 @@ export default function ReplayExportPanel({
     if (!job?.status_url || !["queued", "running"].includes(job.status)) return;
     let active = true;
     const timer = window.setInterval(() => {
-      void fetch(absoluteJobUrl(apiOrigin, job.status_url as string), { cache: "no-store" })
+      void fetch(job.status_url as string, { cache: "no-store" })
         .then(async (response) => {
           const payload = await response.json() as ExportJobPayload;
           if (!response.ok) throw new Error(payload.error || "Replay export status unavailable");
@@ -66,7 +60,7 @@ export default function ReplayExportPanel({
         .catch((reason: Error) => { if (active) setError(reason.message); });
     }, 1500);
     return () => { active = false; window.clearInterval(timer); };
-  }, [apiOrigin, job?.status, job?.status_url]);
+  }, [job?.status, job?.status_url]);
 
   async function startExport() {
     if (!rangeKind || controlsLocked) return;
@@ -83,7 +77,7 @@ export default function ReplayExportPanel({
     };
     setSubmitting(true);
     try {
-      const response = await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/replay-exports`, {
+      const response = await fetch(apiUrl(`runs/${encodeURIComponent(runId)}/replay-exports`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
@@ -111,7 +105,7 @@ export default function ReplayExportPanel({
       <label><span>Format</span><select value={rangeKind === "complete" ? "zip" : outputFormat} disabled={controlsLocked || rangeKind === "complete"} onChange={(event) => { resetJobEvidence(); setOutputFormat(event.target.value as ExportFormat); }}><option value="zip">Replay ZIP</option><option value="jsonl">Bounded JSONL</option><option value="csv">Bounded CSV</option></select></label>
       <button className="secondary" disabled={controlsLocked || !rangeKind} onClick={() => void startExport().catch((reason: Error) => setError(reason.message))}>Start export job</button>
     </div>
-    {job && <div className="export-job-status" role="status"><span>Job <code>{job.job_id}</code></span><b>{job.status}</b>{job.status === "completed" && job.download_url && <a className="secondary" href={absoluteJobUrl(apiOrigin, job.download_url)}>Download completed artifact</a>}{job.status === "failed" && <small>{job.error || "Export failed"}</small>}</div>}
+    {job && <div className="export-job-status" role="status"><span>Job <code>{job.job_id}</code></span><b>{job.status}</b>{job.status === "completed" && job.download_url && <a className="secondary" href={job.download_url}>Download completed artifact</a>}{job.status === "failed" && <small>{job.error || "Export failed"}</small>}</div>}
     {error && <div className="error-box" role="alert">{error}</div>}
   </section>;
 }

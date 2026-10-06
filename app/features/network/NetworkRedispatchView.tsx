@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useMemo, useState } from "react";
 import CurtailmentWaterfall from "./CurtailmentWaterfall";
 import NetworkZoneMap from "./NetworkZoneMap";
@@ -192,7 +193,6 @@ export function SettlementTable({ rows }: { rows: Row[] }) { return <DataTable r
 
 export default function NetworkRedispatchView({
   run,
-  apiOrigin,
   onOpenMarket,
   onCreateFullReplayRevision,
   onOpenRun,
@@ -202,7 +202,6 @@ export default function NetworkRedispatchView({
   onOpenInspect,
 }: {
   run?: ZonalRun;
-  apiOrigin: string;
   /** Open Market replay at a stress / lost-load event (spec 4.4). */
   onReplay?: (year: number, periodFrom: number) => void;
   onOpenInspect?: () => void;
@@ -213,7 +212,7 @@ export default function NetworkRedispatchView({
   sourceStudyMutable: boolean;
 }) {
   const runId = run?.id ?? "";
-  const base = run ? `${apiOrigin}/api/runs/${run.id}/network-redispatch` : "";
+  const base = run ? apiUrl(`runs/${run.id}/network-redispatch`) : "";
   const isKnownCopperplate = run?.modules?.balancing === "value-copperplate-balancing";
   const [capabilities, setCapabilities] = useState<ZonalCapabilities | null>(null);
   const [annual, setAnnual] = useState<AnnualBrief | null>(null);
@@ -262,7 +261,7 @@ export default function NetworkRedispatchView({
   useEffect(() => {
     if (!runId) return;
     let active = true;
-    void fetchNetworkJson<unknown>(`${apiOrigin}/api/runs/${runId}/artifacts/input-snapshot/project.json`)
+    void fetchNetworkJson<unknown>(apiUrl(`runs/${runId}/artifacts/input-snapshot/project.json`))
       .then((project) => {
         if (!active) return;
         const contract = typeof project === "object" && project !== null
@@ -278,7 +277,7 @@ export default function NetworkRedispatchView({
         if (active) setFrozenSolverContract({ selection: runId, status: "error" });
       });
     return () => { active = false; };
-  }, [apiOrigin, runId]);
+  }, [runId]);
 
   useEffect(() => {
     if (!run) return;
@@ -499,7 +498,7 @@ export default function NetworkRedispatchView({
 
       <div className="network-controls"><label><span>Model year</span><select value={year ?? ""} onChange={(event) => { setYear(Number(event.target.value)); setPeriodFrom(0); setPeriodOffset(0); setCurtailmentDetailOffset(0); setSolverDiagnosticOffset(0); setReliabilityOffset(0); }}>{capabilities.years.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Period window</span><select value={periodWindow} onChange={(event) => { setPeriodWindow(Number(event.target.value) as 48 | 336); setPeriodOffset(0); }}><option value={48}>24 hours</option><option value={336}>168 hours</option></select></label><label><span>First period</span><input type="number" min={0} value={periodFrom} onChange={(event) => { setPeriodFrom(Math.max(0, Number(event.target.value))); setPeriodOffset(0); }} /></label><div className="network-tabs" role="tablist">{(["overview", "period", "reliability", "evidence"] as Tab[]).map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item === "period" ? "Period replay" : item === "evidence" ? "Inspect" : item[0].toUpperCase() + item.slice(1)}</button>)}</div></div>
       <TraceCoverageNotice traceLevel={capabilities.trace_level} bidReplayAvailable={capabilities.bid_replay_available} onCreateFullReplayRevision={onCreateFullReplayRevision} />
-      <ReplayExportPanel key={`${run.id}-${year}-${period}`} apiOrigin={apiOrigin} runId={run.id} years={capabilities.years} selectedYear={year} selectedPeriod={period} />
+      <ReplayExportPanel key={`${run.id}-${year}-${period}`} runId={run.id} years={capabilities.years} selectedYear={year} selectedPeriod={period} />
 
       {tab === "overview" && annualRow && !annualPublished && <Callout tone="caution" title={`Annual totals not shown · ${yearBadge.text}`} actions={<><button type="button" className="value-action-primary" onClick={() => onOpenInspect?.()}>Open in Inspect</button><button type="button" className="value-action-link" onClick={() => setTab("period")}>Show selected-period totals</button></>}><p>{coverageReasonText(coverage)} Totals over part of a year are not annual values, so they are not shown here.</p></Callout>}
       {tab === "overview" && annualRow && annualPublished && <div className="network-overview">

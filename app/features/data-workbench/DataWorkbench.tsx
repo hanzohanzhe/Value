@@ -23,8 +23,8 @@ type Tab = "overlays" | "installed" | "sources" | "build" | "candidates";
 const terminal = new Set(["completed", "failed", "cancelled"]);
 const acceptedRights = new Set(["redistributable", "pointer_only", "local_use_only"]);
 
-export default function DataWorkbench({ apiOrigin, onWorkspaceChanged }: { apiOrigin: string; onWorkspaceChanged?: () => Promise<void> | void }) {
-  const client = useMemo(() => new DataWorkbenchClient(apiOrigin), [apiOrigin]);
+export default function DataWorkbench({ onWorkspaceChanged }: { onWorkspaceChanged?: () => Promise<void> | void }) {
+  const client = useMemo(() => new DataWorkbenchClient(), []);
   const [tab, setTab] = useState<Tab>("installed");
   const [sources, setSources] = useState<DataSourceDefinition[]>([]);
   const [revisions, setRevisions] = useState<SourceRevision[]>([]);
@@ -136,7 +136,7 @@ export default function DataWorkbench({ apiOrigin, onWorkspaceChanged }: { apiOr
     {message && <p className="data-workbench-message" role="status">{message}</p>}
     {job && <div className={`data-job ${job.status}`}><div><b>{job.operation.replaceAll("_", " ")}</b><small>{job.error_code ? `${job.error_code}: ${job.error_message ?? "job failed"}` : job.status.replaceAll("_", " ")}</small></div><progress max={1} value={job.progress} />{!terminal.has(job.status) && <button className="text-button" onClick={() => void client.cancelJob(job.job_id).then((result) => setJob(result.job))}>Cancel</button>}</div>}
 
-    {tab === "overlays" && <OverlayEditor apiOrigin={apiOrigin} onWorkspaceChanged={onWorkspaceChanged} />}
+    {tab === "overlays" && <OverlayEditor onWorkspaceChanged={onWorkspaceChanged} />}
 
     {tab === "installed" && <InstalledPacks bundles={bundles} />}
 

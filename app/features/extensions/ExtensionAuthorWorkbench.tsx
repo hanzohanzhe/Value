@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useLayoutEffect, useId, useRef, useState } from "react";
 import {
   authoringRecords, authoringStrings, isAuthoringRecord, isExtensionAuthoringReport, sameProposal,
@@ -9,7 +10,6 @@ import {
 import "./ExtensionAuthorWorkbench.css";
 
 type Props = {
-  apiOrigin: string;
   onInstallRequest: () => void;
   onOpenStudies: () => void;
   extensions?: AuthorExtension[];
@@ -51,7 +51,7 @@ function ValidatedDeclaration({ report }: { report: ValidExtensionAuthoringRepor
   </section>;
 }
 
-export default function ExtensionAuthorWorkbench({ apiOrigin, onInstallRequest, onOpenStudies, extensions = [], modules = [] }: Props) {
+export default function ExtensionAuthorWorkbench({ onInstallRequest, onOpenStudies, extensions = [], modules = [] }: Props) {
   const fieldId = useId();
   const [proposal, setProposal] = useState<ExtensionProposal>({
     id: "my-audit-extension", name: "My research audit observer", namespace: "local.research-audit", version: "0.1.0",
@@ -81,7 +81,7 @@ export default function ExtensionAuthorWorkbench({ apiOrigin, onInstallRequest, 
   const requestText = request ? JSON.stringify(request) : "";
   // The raw editor state also participates: even a whitespace edit requires
   // another explicit review before a package can be downloaded.
-  const requestKey = JSON.stringify([apiOrigin, proposal, advanced, manifestText, requestText]);
+  const requestKey = JSON.stringify([proposal, advanced, manifestText, requestText]);
   const currentKey = useRef(requestKey);
   const report = state?.key === requestKey && state.requestText === requestText ? state.report : undefined;
   const error = state?.key === requestKey ? state.error : undefined;
@@ -119,7 +119,7 @@ export default function ExtensionAuthorWorkbench({ apiOrigin, onInstallRequest, 
     const key = requestKey, text = requestText, reviewedProposal = request.proposal;
     setReviewRequired(false); setValidatingKey(key); setState({ key, requestText: text }); setDownload(undefined);
     try {
-      const response = await fetch(`${apiOrigin}/api/extensions/authoring/validate`, {
+      const response = await fetch(apiUrl("extensions/authoring/validate"), {
         method: "POST", headers: { "Content-Type": "application/json" }, body: text, signal: abort.signal, cache: "no-store",
       });
       const body: unknown = await response.json();
@@ -140,7 +140,7 @@ export default function ExtensionAuthorWorkbench({ apiOrigin, onInstallRequest, 
     const key = requestKey, reviewed = report;
     setDownloadingKey(key); setDownload({ key });
     try {
-      const response = await fetch(`${apiOrigin}/api/extensions/authoring/template`, {
+      const response = await fetch(apiUrl("extensions/authoring/template"), {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal, cache: "no-store",
         body: JSON.stringify({ ...request, expected_package_identity_sha256: reviewed.package_identity_sha256 }),
       });

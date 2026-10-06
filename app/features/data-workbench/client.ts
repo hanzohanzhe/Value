@@ -1,3 +1,4 @@
+import { apiUrl } from "../shared/api";
 import type {
   CandidateReview,
   CandidateSummary,
@@ -14,11 +15,7 @@ const jobStatuses = new Set([
 ]);
 
 export class DataWorkbenchClient {
-  readonly base: string;
-
-  constructor(apiOrigin: string) {
-    this.base = `${apiOrigin}/api/data-workbench/v1`;
-  }
+  readonly base = apiUrl("data-workbench/v1");
 
   private async request<T>(path: string, init?: RequestInit, schema?: string): Promise<T> {
     const response = await fetch(`${this.base}${path}`, {

@@ -1,10 +1,11 @@
 "use client";
+import { apiUrl } from "../shared/api";
 import { useEffect, useRef, useState } from "react";
 import type { OverlayCandidate, OverlayRecord, OverlayValidation } from "./overlay-editor.types";
 import "./overlay-editor.css";
 
-export function OverlayEditor({ apiOrigin, onWorkspaceChanged }: { apiOrigin: string; onWorkspaceChanged?: () => Promise<void> | void }) {
-  const base = `${apiOrigin}/api/data-workbench/v1`;
+export function OverlayEditor({ onWorkspaceChanged }: { onWorkspaceChanged?: () => Promise<void> | void }) {
+  const base = apiUrl("data-workbench/v1");
   const [overlays, setOverlays] = useState<OverlayRecord[]>([]);
   const [saved, setSaved] = useState<{directory_id: string; candidate_id: string}[]>([]);
   const [sourceId, setSourceId] = useState("");

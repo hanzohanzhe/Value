@@ -98,7 +98,7 @@ test("without action handlers the notice still states the problem but offers no 
 
 test("annual results of a withheld reproduction Run show the Withheld pill, never totals or 'No annual results yet'", async () => {
   const html = await renderTsx(RESULTS, "AnnualResults", {
-    runId: "r", apiOrigin: "", results: [], coverage: null, onOpenInspect: () => {}, onExportLedger: () => {},
+    runId: "r", results: [], coverage: null, onOpenInspect: () => {}, onExportLedger: () => {},
     publication: { status: "withheld", reason_code: "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED", message: "Doctoral reproduction runs publish annual results only when every raw invariant passes." },
     withheldYearCount: 2,
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useState } from "react";
 import "./network-overlay-selector.css";
 
@@ -8,11 +9,11 @@ type Overlay = {
   source_manifest_sha256: string; status: "available" | "invalid"; reason: string | null;
 };
 
-export default function NetworkOverlaySelector({ apiOrigin, value, onChange, onOpenData }: {
-  apiOrigin: string; value: string; onChange: (id: string) => void; onOpenData: () => void;
+export default function NetworkOverlaySelector({ value, onChange, onOpenData }: {
+  value: string; onChange: (id: string) => void; onOpenData: () => void;
 }) {
   const [attempt, setAttempt] = useState(0);
-  const requestKey = JSON.stringify([apiOrigin, attempt]);
+  const requestKey = JSON.stringify([attempt]);
   const [result, setResult] = useState<{ key: string; overlays: Overlay[]; error: string } | null>(null);
   const loading = result?.key !== requestKey;
   const overlays = loading ? [] : result.overlays;
@@ -21,7 +22,7 @@ export default function NetworkOverlaySelector({ apiOrigin, value, onChange, onO
     const controller = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(`${apiOrigin}/api/data-workbench/v1/overlays`, { signal: controller.signal });
+        const response = await fetch(apiUrl("data-workbench/v1/overlays"), { signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error?.message ?? data.error ?? "Cannot load network overlays.");
         if (data.schema_version !== "value.network-overlays/v1" || !Array.isArray(data.overlays)) {
@@ -33,7 +34,7 @@ export default function NetworkOverlaySelector({ apiOrigin, value, onChange, onO
       }
     })();
     return () => controller.abort();
-  }, [apiOrigin, requestKey]);
+  }, [requestKey]);
   const selected = overlays.find((item) => item.pack_id === value);
   return <div className="network-overlay-selection">
     <label><span>Network overlay</span>

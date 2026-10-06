@@ -3000,9 +3000,9 @@
     },
     {
       "path": "app/features/data-workbench/DataWorkbench.tsx",
-      "sha256": "8ee48523e8aa06b29ab883a5b9497b14fe268f1b285844eae1197b48eff6946a",
-      "bytes": 8133,
-      "transform": "byte copy"
+      "sha256": "64b8ea01df3e51eb09fd21916e1372c39376f82419b38000147a6363642a2397",
+      "bytes": 8063,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data-workbench/InstalledPacks.tsx",
@@ -3018,15 +3018,15 @@
     },
     {
       "path": "app/features/data-workbench/OverlayEditor.tsx",
-      "sha256": "f2fc1865090ba4ee3b607b1c0947a5b46e24e964f183fbba06c8a58e8a39b208",
-      "bytes": 11559,
-      "transform": "byte copy"
+      "sha256": "baf52771434197042464a5ed6745ca878c76fca28c4b7f85a13554f90309d5fc",
+      "bytes": 11560,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data-workbench/client.ts",
-      "sha256": "f3778a9698ee57644b12b4ba2af4fcc2879dcabd3a0815353b52a1b31148156f",
-      "bytes": 4155,
-      "transform": "byte copy"
+      "sha256": "e5e472019fbeb751c674f7388ec232af6ca7ddc00eb42b993d17b0d52eb395cf",
+      "bytes": 4120,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data-workbench/data-workbench.css",
@@ -3054,9 +3054,9 @@
     },
     {
       "path": "app/features/data/CsvMappingEditor.tsx",
-      "sha256": "cc3c66352c026a0c3b85feeeb35bee53c03625db78a161631092c1e11f80b080",
-      "bytes": 17344,
-      "transform": "byte copy"
+      "sha256": "6f970fd9ae3735d97ec0a4eaa32ae9bc5ebc24e655751a9cc89fbf7301d9122f",
+      "bytes": 17296,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data/csv-mapping-editor.css",
@@ -3072,14 +3072,14 @@
     },
     {
       "path": "app/features/data/research-suite-api.mjs",
-      "sha256": "0b65067af88fc163eb2806bec6b62360b9e7b47f0c82f1bd0065e4209111a583",
-      "bytes": 952,
+      "sha256": "8c7cbadc88eb686ec57f87cef8e9d866c3bd92cbdae61457f8da95e33abbb90f",
+      "bytes": 892,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
-      "sha256": "9c61962de9f4e3dec1acc7bfc6e13ca9b10ca1194f0659b9ab311d820b90e4ec",
-      "bytes": 15084,
+      "sha256": "a11030ea3fc3807c980c3bfafe847ebbb893142cdd3c4f432f8eda532dcd4e05",
+      "bytes": 14969,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3102,9 +3102,9 @@
     },
     {
       "path": "app/features/extensions/ExtensionAuthorWorkbench.tsx",
-      "sha256": "e65a8cc75fa664e40366c561e963446d3718563e068bb751a43957aefd95e1fa",
-      "bytes": 19645,
-      "transform": "byte copy"
+      "sha256": "31db9cc8db1b474324c33a0eecdb4d0ea244a571b63cc37abbb2c1cb2064d803",
+      "bytes": 19624,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/extensions/ExtensionResultsPanel.css",
@@ -3114,9 +3114,9 @@
     },
     {
       "path": "app/features/extensions/ExtensionResultsPanel.tsx",
-      "sha256": "0e93714ecad607fda1998eba9a959efaf35ca6c23ce9af9888d7fffd6b99dce1",
-      "bytes": 7355,
-      "transform": "byte copy"
+      "sha256": "8742804517146c301bf81ff0f6312506b82f117d03d8b3aac3ef42199d19837a",
+      "bytes": 7334,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/extensions/authoring.types.ts",
@@ -3168,8 +3168,8 @@
     },
     {
       "path": "app/features/market/ReplayExportPanel.tsx",
-      "sha256": "67f81a71a7c4637341275ef59b0c7aba924e65d6b3c7c12122c4d9760af92084",
-      "bytes": 6195,
+      "sha256": "ee9fa495b13fdf1dffafbc43c47d78e4439f7ca9a502fee08a449928e371ff4d",
+      "bytes": 5899,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3216,9 +3216,9 @@
     },
     {
       "path": "app/features/modules/ModuleAuthorWorkbench.tsx",
-      "sha256": "62612cbb0338e5133ffd329ed8b4a8d287e998550570e724b0a02105832a7a2c",
-      "bytes": 23241,
-      "transform": "byte copy"
+      "sha256": "00f1fa37472f6f8e25cd5b0e1bcccaca8eb3baf8eca33e019bf652d987cbc013",
+      "bytes": 23130,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/modules/ModuleQuarantinePanel.tsx",
@@ -3252,8 +3252,8 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "90f8b1afa3513ab15103d074784923806d6ead6ead3563c3c561582b473db69b",
-      "bytes": 51137,
+      "sha256": "e9cc27ce1773ffc866833c7b6f629ca14d7e59ff3a5232411dc7704ff84a2a48",
+      "bytes": 51093,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3282,14 +3282,14 @@
     },
     {
       "path": "app/features/results/ComparisonWorkspace.tsx",
-      "sha256": "86740f19015523bc2a8eb8b540f4fce74bfb483b3527480649f2792bf51e0c42",
-      "bytes": 12183,
+      "sha256": "bd0a99aeadf949cfa1b41d9a62afbf3f52523b1e1953580815ab6e30783939c6",
+      "bytes": 12153,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/results/ResultQueryPanel.tsx",
-      "sha256": "189a51ab816cf2d882a811c774967b955b97277d15682bc942dab085ff0085e1",
-      "bytes": 12209,
+      "sha256": "fc1c32c90441ebb263d6cb8b1cb777a73007a0013f1c7c4843dc59c939776538",
+      "bytes": 12188,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3324,14 +3324,14 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "c34dd2d34b5b8fde0760ba09feac4876776e02a70371694591ac3f34cf426b41",
-      "bytes": 16894,
+      "sha256": "f7d597ace072524fd360024eaebb2da8b606f00e745be9fa2df25a769f34d0e3",
+      "bytes": 16789,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "8637ed62d4ecebade6361ef3c1e4ce1b61f4930be7f36ebf64f5435f8a647e59",
-      "bytes": 21110,
+      "sha256": "3d8031a99d2361029563e07d3d431c54dc19bc9ed7fe5cd7ecd5fd2e015339fb",
+      "bytes": 20990,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3456,9 +3456,9 @@
     },
     {
       "path": "app/features/studies/NetworkOverlaySelector.tsx",
-      "sha256": "32d7013b45f227a0c8eceeb5f98d071828db41a1e81260640a89390c055fd61f",
-      "bytes": 3014,
-      "transform": "byte copy"
+      "sha256": "322544c12b4d59d032e9711139c9db86750994097525ef1d434a65d828bf5e17",
+      "bytes": 2993,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/studies/SolverSettingsEditor.tsx",
@@ -3468,8 +3468,8 @@
     },
     {
       "path": "app/features/studies/StudyComposer.tsx",
-      "sha256": "9e41ab541037c1f8de1193919337e7a1e481e9a0c7967241daa084bf993a93e2",
-      "bytes": 25761,
+      "sha256": "403fbc0aebed8b20c11784f8e9da7e81a176f0a0dff76a62a75d010375d08f23",
+      "bytes": 25709,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3528,15 +3528,15 @@
     },
     {
       "path": "app/features/workspace/FrozenInputRecoveryPanel.tsx",
-      "sha256": "6c31e85edf0873786721f88edd4ddbf33b784401a3fbfc5f8f2d7587dbe313eb",
-      "bytes": 15170,
-      "transform": "byte copy"
+      "sha256": "e205771417aee736f72329e2046506e6cbf8b9e2ac6cbc39e7f22eb1cc4282d3",
+      "bytes": 15134,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/JourneyDataEditor.tsx",
-      "sha256": "a86fe36e29f3629f2f172848e24fa9247675581cd5d7e7c5d6aa270ff9079124",
-      "bytes": 6762,
-      "transform": "byte copy"
+      "sha256": "c0163b2cdf5f327e19ee3b835712aedeed19a99922956c50d2845d5175beb8f5",
+      "bytes": 6728,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/ReadMePanel.tsx",
@@ -3546,9 +3546,9 @@
     },
     {
       "path": "app/features/workspace/ResearchJourney.tsx",
-      "sha256": "0e56a62829e81cb7d00d2d7ce06af65e84955c787f08ee1f132512c8300fcc48",
-      "bytes": 15452,
-      "transform": "byte copy"
+      "sha256": "3bb448ca356090b24b91951e2419d4867b575f6d2e3107c6cdaa7e4c60838a90",
+      "bytes": 15442,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/RunContextBar.tsx",
@@ -3564,9 +3564,9 @@
     },
     {
       "path": "app/features/workspace/RunReproductionPanel.tsx",
-      "sha256": "715b36b01405865bb014a3ff599a4582e52d212fc5bfb9b46c1159ce87ec1bee",
-      "bytes": 6745,
-      "transform": "byte copy"
+      "sha256": "1c3d8145a11c8a0fcd4ee14031b9f16b455942c70f8d240102687ca925f5da37",
+      "bytes": 6710,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/community-paths.css",
@@ -3660,8 +3660,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "624a5fc46f018324f4929c3cd9a92360888b7b80b8ce1c0440aef52ffaa963cb",
-      "bytes": 163931,
+      "sha256": "abd57565c77e4dedadd008ab654fc30e424922930357b8bd0cb6e3e35c5be155",
+      "bytes": 163552,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9769,8 +9769,8 @@
     },
     {
       "path": "scripts/serve-value-ui.mjs",
-      "sha256": "cf36c2965442c8d3f0bd74dd469957d08c3972aed5d67177614ac535a8f6e174",
-      "bytes": 2784,
+      "sha256": "d2a6167009c75b84aee1629c6a62be54c1ec9df574603af07c26cbb57ebc82ec",
+      "bytes": 2799,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9841,8 +9841,8 @@
     },
     {
       "path": "scripts/value-ui-gateway.mjs",
-      "sha256": "e89d6dcc25d56d2b38bc45e7bc3090a69fc9d446e788fe24922d64eb49ee89c2",
-      "bytes": 17118,
+      "sha256": "93b0ec27a4ecf99b8d95e84ab125306e76cacd3db0921a99eefb15597e1b761c",
+      "bytes": 17133,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9967,9 +9967,9 @@
     },
     {
       "path": "tests/data-workbench-frontend.test.mjs",
-      "sha256": "0c43170967ee9f46ae2c9d9d51ffe82c55e1271f8f3e34da1da2c56a6f60bed2",
-      "bytes": 3106,
-      "transform": "byte copy"
+      "sha256": "af735dda769ff22aba99b2b8c4866711ac1de66134963f33d9dfdcb5804a10ee",
+      "bytes": 3111,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/data_workbench/fixtures/discovery/neso-catalogue.json",
@@ -10405,14 +10405,14 @@
     },
     {
       "path": "tests/frontend/csv-mapping-editor.test.mjs",
-      "sha256": "591be186f0165830361f98d25f21fd0e29acea5f792d42a746873e0bd5e219c1",
-      "bytes": 7436,
+      "sha256": "34e61f49cc3719fc329d7f1586102ae46ba76b945ec20761bdabf2d2b4fc060c",
+      "bytes": 7408,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/frontend/frozen-input-recovery.test.mjs",
-      "sha256": "791a2b5b57e90c8893b9964790f112574e6c98591b5df9f40ecb0abe90857afc",
-      "bytes": 5230,
+      "sha256": "26c8526cb7c9353805bda49250e70cd1417d82838ce166539612d7a675ae65b5",
+      "bytes": 5202,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10435,8 +10435,8 @@
     },
     {
       "path": "tests/frontend/render/annual-results.test.mjs",
-      "sha256": "6d208aa266379093ad0060e061e707e890b3fbe45e15c770e26fa365aaf61835",
-      "bytes": 2230,
+      "sha256": "dfa77d0a9c1f3fa49c61e1377ec33c632e3474d513108e3794c7b8d6bab4ca83",
+      "bytes": 2200,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10459,20 +10459,20 @@
     },
     {
       "path": "tests/frontend/render/run-context-bar.test.mjs",
-      "sha256": "5b1af729b0c58169ec440cf1b2dada6491aec2847399af12884851dad89a4feb",
-      "bytes": 7662,
+      "sha256": "5f5edee4ea194fc9328a406e1f08c00dba797d2589374d7495228ab6004486bf",
+      "bytes": 7647,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/frontend/render/shared-components.test.mjs",
-      "sha256": "cc9b492dbde1157946bac36c960a0429967802069bb4be92ab214e2030a525cd",
-      "bytes": 2128,
+      "sha256": "1e0239aa5d2d5ec60810514981992a41a95df81af4f84444c548f1faf34c6403",
+      "bytes": 2770,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/frontend/render/study-methodology.test.mjs",
-      "sha256": "07e4500ec8c1c2e0e11aef9088f783347cbb956f2a0cd0f31b095488cd1e5467",
-      "bytes": 7443,
+      "sha256": "09eb3d802b8e4a7471adb297700929439f41a24a64c33818189cf882e82c6b34",
+      "bytes": 7428,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10507,8 +10507,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "555f5638ee89bc9b4cd343bac7c862ccc029600b6fc4a7364c290192bb951a79",
-      "bytes": 5147,
+      "sha256": "d8eba7849adb6ad03638657540c4a9a24f0bad6b0c26476fde832da36d47a794",
+      "bytes": 6017,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10795,8 +10795,8 @@
     },
     {
       "path": "tests/prompt124-ui-contract.test.mjs",
-      "sha256": "7c4d9a2bdce3189cee4ffc07e476df770deb883049c5af3a408cc9a2b1f66eb6",
-      "bytes": 11855,
+      "sha256": "e8855592c2ca68ec6c74f26b0fd033ca28f56ca1dc9ca022cc70a9ad7f0d06db",
+      "bytes": 11819,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12403,8 +12403,8 @@
     },
     {
       "path": "tests/test_verify_local_security_boundary.py",
-      "sha256": "051b1c429dd9179a95380456a925a18c7e7630283fa229f24f5c80299536975c",
-      "bytes": 7224,
+      "sha256": "ac371015b8172dff8cfd7af098676274c3254a6f88fa8d48b4e7d6bbb603f565",
+      "bytes": 7229,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12457,8 +12457,8 @@
     },
     {
       "path": "tests/ui-gateway.test.mjs",
-      "sha256": "714852e862c7eda6e47983f97a3a823cc0f7c9e2f9efb5d3501a61d1091ea5bc",
-      "bytes": 21418,
+      "sha256": "203341bacc1917eb6666ee13851355b3352e97706956a4707957ae44449976e9",
+      "bytes": 21438,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12469,8 +12469,8 @@
     },
     {
       "path": "tests/value-uk-research-suite-ui.test.mjs",
-      "sha256": "df23168a22d8fa3a5ef9f10dced7f357065aef431cd9555c8726cde29f6d5e31",
-      "bytes": 1970,
+      "sha256": "dcbaa8e24f10ffc777c6477a6d81f2ae71cd231eb81de179632b2004809bc33d",
+      "bytes": 1849,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12505,8 +12505,8 @@
     },
     {
       "path": "vite.config.ts",
-      "sha256": "705e7f2b8008127af5622fbdcc8d7c119374b4c41589f86865fc2d732660740c",
-      "bytes": 3515,
+      "sha256": "dea01788455453e04af472ef4e0f315b884b1285c8bc6f7432499cb46b02cfb2",
+      "bytes": 3520,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

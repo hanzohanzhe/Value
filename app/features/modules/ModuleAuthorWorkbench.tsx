@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useRef, useState } from "react";
 import { isAuthorDraftResolution, isAuthoringDetail, record, type AuthorDraftResolution, type AuthoringDetail, type AuthorModule, type AuthorStudy } from "./module-authoring.types";
 import "./ModuleAuthorWorkbench.css";
@@ -9,17 +10,17 @@ function failure(body: unknown, fallback: string): string {
     ? `${typeof body.error_code === "string" ? `${body.error_code}: ` : ""}${body.error}` : fallback;
 }
 
-function useAuthoring(apiOrigin: string, module?: AuthorModule) {
+function useAuthoring(module?: AuthorModule) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{ key: string; detail?: AuthoringDetail; error?: string }>();
   const id = module?.id, version = module?.version, slot = module?.slot;
-  const key = JSON.stringify([apiOrigin, id, version, slot, attempt]);
+  const key = JSON.stringify([id, version, slot, attempt]);
   useEffect(() => {
     if (!id) return;
     const abort = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(`${apiOrigin}/api/modules/${encodeURIComponent(id)}/authoring`, { signal: abort.signal, cache: "no-store" });
+        const response = await fetch(apiUrl(`modules/${encodeURIComponent(id)}/authoring`), { signal: abort.signal, cache: "no-store" });
         const body: unknown = await response.json();
         if (!response.ok) throw new Error(failure(body, `Module detail failed (${response.status})`));
         if (!isAuthoringDetail(body)) throw new Error("Module detail does not match value.module-authoring/v1.");
@@ -31,7 +32,7 @@ function useAuthoring(apiOrigin: string, module?: AuthorModule) {
       }
     })();
     return () => abort.abort();
-  }, [apiOrigin, id, version, slot, key]);
+  }, [id, version, slot, key]);
   return { detail: state?.key === key ? state.detail : undefined, error: state?.key === key ? state.error : undefined,
     loading: Boolean(id && state?.key !== key), refresh: () => setAttempt(current => current + 1) };
 }
@@ -52,8 +53,8 @@ function ModuleDetails({ detail }: { detail: AuthoringDetail }) {
   </div>;
 }
 
-export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, onCreated, onInstallRequest }: {
-  apiOrigin: string; modules: AuthorModule[]; projects: AuthorStudy[];
+export default function ModuleAuthorWorkbench({ modules, projects, onCreated, onInstallRequest }: {
+  modules: AuthorModule[]; projects: AuthorStudy[];
   onCreated: (project: { id: string }) => void; onInstallRequest: () => void;
 }) {
   const [slotSelection, setSlotSelection] = useState("");
@@ -74,8 +75,8 @@ export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, on
   const candidate = options.find(module => module.id === moduleSelection) ?? options[0];
   const compared = options.find(module => module.id === comparisonSelection && module.id !== candidate?.id);
   const source = projects.find(project => project.id === sourceSelection);
-  const candidateInfo = useAuthoring(apiOrigin, candidate);
-  const comparisonInfo = useAuthoring(apiOrigin, compared);
+  const candidateInfo = useAuthoring(candidate);
+  const comparisonInfo = useAuthoring(compared);
   const detail = candidateInfo.detail;
   const candidateId = detail?.module_id;
   const candidateVersion = detail?.identity.module_version;
@@ -98,7 +99,7 @@ export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, on
     market_configuration: source.market_configuration ?? {}, ...(source.solver_contract ? { solver_contract: source.solver_contract } : {}),
   } : undefined;
   const draftBodyText = draftBody ? JSON.stringify(draftBody) : "";
-  const draftKey = JSON.stringify([apiOrigin, source?.id, source?.revision_sha256, detail?.identity_sha256, draftBodyText]);
+  const draftKey = JSON.stringify([source?.id, source?.revision_sha256, detail?.identity_sha256, draftBodyText]);
   const canResolve = Boolean(detail && source?.revision_sha256 && sourceModule && sourceModule !== detail.module_id);
   const resolution = draft?.key === draftKey ? draft.resolution : undefined;
   const draftError = draft?.key === draftKey ? draft.error : undefined;
@@ -120,7 +121,7 @@ export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, on
     const abort = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(`${apiOrigin}/api/projects/resolve-draft`, { method: "POST", headers: { "Content-Type": "application/json" }, body: draftBodyText, signal: abort.signal, cache: "no-store" });
+        const response = await fetch(apiUrl("projects/resolve-draft"), { method: "POST", headers: { "Content-Type": "application/json" }, body: draftBodyText, signal: abort.signal, cache: "no-store" });
         const body: unknown = await response.json();
         if (!response.ok) throw new Error(failure(body, `Compatibility check failed (${response.status})`));
         if (!isAuthorDraftResolution(body)) throw new Error("Compatibility response does not match value.study-draft-resolution/v1.");
@@ -134,7 +135,7 @@ export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, on
       }
     })();
     return () => abort.abort();
-  }, [apiOrigin, canResolve, draftBodyText, draftKey, candidateId, candidateVersion, candidateContract, slot, ackKey]);
+  }, [canResolve, draftBodyText, draftKey, candidateId, candidateVersion, candidateContract, slot, ackKey]);
 
   useEffect(() => () => { saveAbort.current?.abort(); }, [draftKey]);
 
@@ -149,7 +150,7 @@ export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, on
     const abort = new AbortController(); saveAbort.current = abort;
     setSavingKey(draftKey); setSaved(undefined);
     try {
-      const response = await fetch(`${apiOrigin}/api/projects/${encodeURIComponent(source.id)}/derive`, {
+      const response = await fetch(apiUrl(`projects/${encodeURIComponent(source.id)}/derive`), {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
         body: JSON.stringify({ intent: "edit_module", name: studyName.trim(), data_pack_id: source.data_pack_id,
           source_revision_sha256: source.revision_sha256, slot, module_id: detail.module_id,
@@ -176,7 +177,7 @@ export default function ModuleAuthorWorkbench({ apiOrigin, modules, projects, on
     {candidateInfo.loading && <p role="status" className="author-message">Reading the selected module identity and contract…</p>}
     {candidateInfo.error && <p role="alert" className="author-message error">{candidateInfo.error} <button className="text-button" onClick={candidateInfo.refresh}>Reload module details</button></p>}
     {detail && <><ModuleDetails detail={detail} />{!detail.identity.source_sha256 && <p className="author-message error">Candidate source identity is unavailable. The candidate cannot be saved into a controlled method Study.</p>}
-      <section className="author-template"><h4>Prepare a separate implementation</h4><p>Use a new module ID and a new top-level Python package. Existing IDs and packages cannot be overwritten. Downloading a source project does not install or execute it.</p><div className="author-controls"><label>New module ID<input aria-label="Template module ID" value={templateId} onChange={event => setNewModuleId(event.target.value)} /></label><label>New version<input aria-label="Template module version" value={newVersion} onChange={event => setNewVersion(event.target.value)} /></label>{validTemplate ? <a className="text-button" href={`${apiOrigin}/api/modules/${encodeURIComponent(detail.module_id)}/template?${new URLSearchParams({ module_id: templateId, version: newVersion })}`}>Download editable source template</a> : <span className="author-message">Choose an unused module ID and a three-part version.</span>}<button className="secondary" onClick={onInstallRequest}>Open reviewed bundle installer</button></div><p>{slot === "storage_cost" ? "The storage-cost template offers a fixed GBP 42/MWh example. It is an experimental packaging example and has no scientific validation." : "This slot template declares the required methods and raises NotImplementedError until you implement them."} Build and review the ZIP locally before installation.</p><p>Formula editing is not available here. This workbench supports source templates and complete Python module development; the browser has no Python editor or execution environment.</p></section>
+      <section className="author-template"><h4>Prepare a separate implementation</h4><p>Use a new module ID and a new top-level Python package. Existing IDs and packages cannot be overwritten. Downloading a source project does not install or execute it.</p><div className="author-controls"><label>New module ID<input aria-label="Template module ID" value={templateId} onChange={event => setNewModuleId(event.target.value)} /></label><label>New version<input aria-label="Template module version" value={newVersion} onChange={event => setNewVersion(event.target.value)} /></label>{validTemplate ? <a className="text-button" href={apiUrl(`modules/${encodeURIComponent(detail.module_id)}/template?${new URLSearchParams({ module_id: templateId, version: newVersion })}`)}>Download editable source template</a> : <span className="author-message">Choose an unused module ID and a three-part version.</span>}<button className="secondary" onClick={onInstallRequest}>Open reviewed bundle installer</button></div><p>{slot === "storage_cost" ? "The storage-cost template offers a fixed GBP 42/MWh example. It is an experimental packaging example and has no scientific validation." : "This slot template declares the required methods and raises NotImplementedError until you implement them."} Build and review the ZIP locally before installation.</p><p>Formula editing is not available here. This workbench supports source templates and complete Python module development; the browser has no Python editor or execution environment.</p></section>
       <section className="author-comparison"><h4>Compare registered implementations in this slot</h4><label>Reference module<select aria-label="Author reference module" value={compared?.id ?? ""} onChange={event => setComparisonSelection(event.target.value)}><option value="">Choose a reference</option>{options.filter(module => module.id !== detail.module_id).map(module => <option key={module.id} value={module.id}>{module.name} · {module.version}</option>)}</select></label>{comparisonInfo.loading && <p role="status">Reading reference identity…</p>}{comparisonInfo.error && <p role="alert" className="author-message error">{comparisonInfo.error}</p>}{comparison && <><p>Reference {comparison.module_id} {comparison.identity.module_version} → candidate {detail.module_id} {detail.identity.module_version}. Source identities {comparison.identity.source_sha256 == null || detail.identity.source_sha256 == null ? "are unavailable" : comparison.identity.source_sha256 === detail.identity.source_sha256 ? "match" : "differ"}; this is an identity and manifest comparison. Review the Python source separately.</p><div className="author-table"><table><caption>Changed manifest fields</caption><thead><tr><th>Field</th><th>Reference</th><th>Candidate</th></tr></thead><tbody>{changedFields.map(field => <tr key={field}><th>{field}</th><td><code>{JSON.stringify(comparison.manifest[field]) ?? "Not declared"}</code></td><td><code>{JSON.stringify(detail.manifest[field]) ?? "Not declared"}</code></td></tr>)}</tbody></table></div>{!changedFields.length && <p>No manifest fields differ.</p>}</>}</section>
     </>}
     <section className="author-study"><h4>Create an independent Study with one method change</h4><div className="author-controls"><label>Source Study<select aria-label="Module source Study" value={source?.id ?? ""} disabled={saving} onChange={event => setSourceSelection(event.target.value)}><option value="">Choose a saved Study</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label>New Study name<input aria-label="Module new Study name" value={studyName} disabled={saving} onChange={event => setStudyName(event.target.value)} /></label></div>

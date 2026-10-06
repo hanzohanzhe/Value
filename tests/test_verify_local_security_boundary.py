@@ -123,7 +123,7 @@ class RealBoundaryProbeTests(unittest.TestCase):
                 script = (
                     "import http from 'node:http';\n"
                     f"import {{ createGateway, wrapServer }} from {json.dumps((ROOT / 'scripts' / 'value-ui-gateway.mjs').as_uri())};\n"
-                    f"const gateway = createGateway({{ apiOrigin: {json.dumps(api_origin)}, dataHome: {json.dumps(str(home))}, log: () => {{}} }});\n"
+                    f"const gateway = createGateway({{ upstreamOrigin: {json.dumps(api_origin)}, dataHome: {json.dumps(str(home))}, log: () => {{}} }});\n"
                     "const server = wrapServer(http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<p>VALUE</p>'); }), gateway);\n"
                     "server.listen(0, '127.0.0.1', () => console.log('PORT ' + server.address().port));\n"
                     "process.stdin.on('end', () => process.exit(0)); process.stdin.resume();\n"

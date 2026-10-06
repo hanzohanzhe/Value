@@ -1,6 +1,6 @@
-// Same-origin by default (P0-1): the UI gateway forwards /api/* to the engine.
-export function researchSuiteApiUrl(origin = "") {
-  return `${String(origin || "").replace(/\/+$/, "")}/api/research-suites/install`;
+// Same-origin only (P0-1): the UI gateway forwards /api/* to the engine.
+export function researchSuiteApiUrl() {
+  return "/api/research-suites/install";
 }
 
 export function describeResearchSuiteInstallation(installation) {

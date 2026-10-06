@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ModelRun, RunResult, PlanningYear } from "./types";
 import { formatOptionalNetworkNumber } from "../network/networkRedispatch";
 import { Badge, formatNumber, formatMoney, withUnit } from "../shared/presentation";
-import { getJson } from "../shared/api";
+import { apiUrl, getJson } from "../shared/api";
 import { StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
 import { costComposition } from "./resultMetrics.ts";
@@ -52,16 +52,16 @@ export function SmokeDiagnostics({ run }: { run: ModelRun }) {
   </div>;
 }
 
-function PlanningPipelinePanel({ runId, year, apiOrigin }: { runId: string; year: number; apiOrigin: string }) {
+function PlanningPipelinePanel({ runId, year }: { runId: string; year: number }) {
   const [opened, setOpened] = useState(false);
-  const requestKey = JSON.stringify([apiOrigin, runId, year]);
+  const requestKey = JSON.stringify([runId, year]);
   const [record, setRecord] = useState<{ key: string; summary: PlanningYear | null; error: string } | null>(null);
   const summary = record?.key === requestKey ? record.summary : null;
   const error = record?.key === requestKey ? record.error : "";
   useEffect(() => {
     if (!opened) return;
     const controller = new AbortController();
-    void getJson<{ years: PlanningYear[] }>(`${apiOrigin}/api/runs/${runId}/planning/summary`, controller.signal)
+    void getJson<{ years: PlanningYear[] }>(apiUrl(`runs/${runId}/planning/summary`), controller.signal)
       .then((payload) => {
         if (controller.signal.aborted) return;
         const summary = payload.years.find((item) => item.year === year) ?? null;
@@ -71,7 +71,7 @@ function PlanningPipelinePanel({ runId, year, apiOrigin }: { runId: string; year
         if (!controller.signal.aborted) setRecord({ key: requestKey, summary: null, error: reason instanceof Error ? reason.message : "Planning evidence unavailable" });
       });
     return () => controller.abort();
-  }, [apiOrigin, opened, requestKey, runId, year]);
+  }, [opened, requestKey, runId, year]);
   const outcome = summary?.breakdowns.outcome ?? {};
   const kpis = summary?.kpis ?? {};
   const completions = summary?.breakdowns.expected_completion_year ?? {};
@@ -113,7 +113,7 @@ export function WithheldAnnualResults({ publication, withheldYearCount, onOpenIn
   </div>;
 }
 
-export function AnnualResults({ runId, results, apiOrigin, coverage, onOpenInspect, publication, withheldYearCount, onExportLedger }: { runId: string; results: RunResult[]; apiOrigin: string; coverage?: ResultCoverage | null; onOpenInspect?: () => void; publication?: ResultPublication | null; withheldYearCount?: number | null; onExportLedger?: () => void }) {
+export function AnnualResults({ runId, results, coverage, onOpenInspect, publication, withheldYearCount, onExportLedger }: { runId: string; results: RunResult[]; coverage?: ResultCoverage | null; onOpenInspect?: () => void; publication?: ResultPublication | null; withheldYearCount?: number | null; onExportLedger?: () => void }) {
   if (publication?.status === "withheld") return <WithheldAnnualResults publication={publication} withheldYearCount={withheldYearCount} onOpenInspect={onOpenInspect} onExportLedger={onExportLedger} />;
   if (!results.length) return <div className="empty-run"><b>No annual results yet</b><p>Results appear after a full model year completes.</p></div>;
   const sorted = [...results].sort((a, b) => a.year - b.year);
@@ -155,7 +155,7 @@ export function AnnualResults({ runId, results, apiOrigin, coverage, onOpenInspe
         <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${withUnit(formatNumber(metricNumber(result, "total_carbon_emissions_tco2e")), "tCO₂e")}`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
         </>}
         {result.planning && <div className="planning-compact"><b>Planning evolution</b><span>Active: {String(result.planning.active ?? "not evaluated")}</span><span>Commissioned: {String(result.planning.commissioned ?? "not evaluated")}</span><span>Failed: {String(result.planning.failed ?? "not applicable")}</span><span>Deferred: {String(result.planning.deferred ?? "not evaluated")}</span></div>}
-        <PlanningPipelinePanel key={`${runId}|${result.year}`} runId={runId} year={result.year} apiOrigin={apiOrigin} />
+        <PlanningPipelinePanel key={`${runId}|${result.year}`} runId={runId} year={result.year} />
         {result.capacity_mw && <details className="capacity-panel"><summary>Capacity used by the PSM</summary><div className="capacity-grid">{Object.entries(result.capacity_mw).map(([tech, value]) => <span key={tech}><small>{tech}</small><b>{withUnit(formatNumber(value), "MW")}</b></span>)}{result.capacity_mwh?.storage != null && <span><small>Storage energy</small><b>{withUnit(formatNumber(result.capacity_mwh.storage), "MWh")}</b></span>}</div></details>}
       </details>;
     })}</div>

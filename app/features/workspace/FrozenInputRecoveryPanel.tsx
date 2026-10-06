@@ -1,9 +1,10 @@
 "use client";
+import { apiUrl } from "../shared/api";
 import { useEffect, useId, useRef, useState } from "react";
 import type { FrozenRecoveryCreated, FrozenRecoveryMode, FrozenRecoveryReview } from "./frozenInputRecoveryTypes";
 import "./frozen-input-recovery.css";
 
-export type FrozenInputRecoveryPanelProps = { apiOrigin: string; runId: string; disabled?: boolean; onStudyCreated: (projectId: string, mode: string) => Promise<void> | void };
+export type FrozenInputRecoveryPanelProps = { runId: string; disabled?: boolean; onStudyCreated: (projectId: string, mode: string) => Promise<void> | void };
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const hash = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const nullableHash = (value: unknown) => value === null || hash(value);
@@ -43,16 +44,16 @@ function changeSummary(change: FrozenRecoveryReview["changes"][number]): { label
 async function json(response: Response): Promise<unknown> { const value: unknown = await response.json(); if (!response.ok) throw new Error(record(value) && typeof value.error === "string" ? value.error : "冻结输入请求失败，请重新核对来源 Run。"); return value; }
 
 export default function FrozenInputRecoveryPanel(props: FrozenInputRecoveryPanelProps) {
-  return <RecoveryForm key={JSON.stringify([props.apiOrigin, props.runId, Boolean(props.disabled)])} {...props} />;
+  return <RecoveryForm key={JSON.stringify([props.runId, Boolean(props.disabled)])} {...props} />;
 }
 
-function RecoveryForm({ apiOrigin, runId, disabled = false, onStudyCreated }: FrozenInputRecoveryPanelProps) {
+function RecoveryForm({ runId, disabled = false, onStudyCreated }: FrozenInputRecoveryPanelProps) {
   const id = useId();
   const archivedArgs = `--run-id ${shellQuote(runId)} --data-home '/absolute/state' --destination '/absolute/new-workspace' --node '/absolute/node' --name 'Archived method Study'`;
   const archivedReview = `python3 scripts/prepare_archived_workspace.py review ${archivedArgs}`;
   const archivedPrepare = `python3 scripts/prepare_archived_workspace.py prepare ${archivedArgs} --review-sha256 'REVIEW_SHA256_FROM_REPORT' --acknowledge-code`;
   const [mode, setMode] = useState<FrozenRecoveryMode>("strict");
-  const context = JSON.stringify([apiOrigin, runId, mode]);
+  const context = JSON.stringify([runId, mode]);
   const [reportState, setReport] = useState<{ key: string; value: FrozenRecoveryReview } | null>(null);
   const [name, setName] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -68,7 +69,7 @@ function RecoveryForm({ apiOrigin, runId, disabled = false, onStudyCreated }: Fr
   async function review() {
     if (locked) return;
     clearReview(); submitted.current = false; const { abort, attempt } = begin("review");
-    try { const value = await json(await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/frozen-recovery/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recovery_mode: mode }), signal: abort.signal })); if (!live(abort, attempt)) return; if (!validReview(value) || value.source_run_id !== runId || value.recovery_mode !== mode) throw new Error("审阅报告与当前来源 Run 或方式不一致。"); setReport({ key: context, value }); }
+    try { const value = await json(await fetch(apiUrl(`runs/${encodeURIComponent(runId)}/frozen-recovery/review`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recovery_mode: mode }), signal: abort.signal })); if (!live(abort, attempt)) return; if (!validReview(value) || value.source_run_id !== runId || value.recovery_mode !== mode) throw new Error("审阅报告与当前来源 Run 或方式不一致。"); setReport({ key: context, value }); }
     catch (reason) { if (live(abort, attempt)) setMessage({ key: context, value: reason instanceof Error ? reason.message : "冻结输入核对失败。" }); }
     finally { if (live(abort, attempt)) setActivity(null); }
   }
@@ -77,7 +78,7 @@ function RecoveryForm({ apiOrigin, runId, disabled = false, onStudyCreated }: Fr
     submitted.current = true; const { abort, attempt } = begin("create");
     let created = false;
     try {
-      const value = await json(await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/frozen-recovery`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recovery_mode: mode, review_sha256: report.review_sha256, name: name.trim(), acknowledge: true }), signal: abort.signal }));
+      const value = await json(await fetch(apiUrl(`runs/${encodeURIComponent(runId)}/frozen-recovery`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recovery_mode: mode, review_sha256: report.review_sha256, name: name.trim(), acknowledge: true }), signal: abort.signal }));
       if (!live(abort, attempt)) return;
       if (!record(value) || value.schema_version !== "value.frozen-recovery-created/v1" || value.source_run_id !== runId || value.source_snapshot_id !== report.source_snapshot_id || value.run_started !== false || value.mode !== report.scope.mode || !record(value.project) || typeof value.project.id !== "string" || !value.project.id || value.project.id === runId || typeof value.project.name !== "string") throw new Error("创建回执身份不一致，请刷新 Study 列表核对，避免重复创建。");
       const result = value as FrozenRecoveryCreated; created = true; setReport(null); setConfirmation(null);

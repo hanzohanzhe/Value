@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useRef, useState } from "react";
 import { isCurtailmentQueryResponse, isRecord, type CurtailmentQueryResponse, type ResultResolution, type ResultSourceChoice } from "./result-query.types";
 import { formatNumber } from "../shared/format.ts";
@@ -21,7 +22,7 @@ function StatusMessage({ status, reasonCode }: { status: string; reasonCode?: st
   </p>;
 }
 
-export default function ResultQueryPanel({ run, apiOrigin }: { run?: { id: string; status: string }; apiOrigin: string }) {
+export default function ResultQueryPanel({ run }: { run?: { id: string; status: string } }) {
   const [source, setSource] = useState<ResultSourceChoice>("auto");
   const [resolution, setResolution] = useState<ResultResolution>("annual");
   const [yearInput, setYearInput] = useState("");
@@ -33,7 +34,7 @@ export default function ResultQueryPanel({ run, apiOrigin }: { run?: { id: strin
   const [state, setState] = useState<{ key: string; report?: CurtailmentQueryResponse; error?: string }>();
   const [known, setKnown] = useState<{ key: string; capabilities: CurtailmentQueryResponse["capabilities"] }>();
   const generation = useRef(0);
-  const contextKey = JSON.stringify([apiOrigin, run?.id, source]);
+  const contextKey = JSON.stringify([run?.id, source]);
   const requestKey = JSON.stringify([contextKey, resolution, window.year, window.from, window.to, offset, LIMIT]);
   const caps = known?.key === contextKey ? known.capabilities : undefined;
   const report = state?.key === requestKey ? state.report : undefined;
@@ -53,7 +54,7 @@ export default function ResultQueryPanel({ run, apiOrigin }: { run?: { id: strin
     }
     void (async () => {
       try {
-        const response = await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/results/vre-curtailment?${params}`, { signal: abort.signal, cache: "no-store" });
+        const response = await fetch(apiUrl(`runs/${encodeURIComponent(runId)}/results/vre-curtailment?${params}`), { signal: abort.signal, cache: "no-store" });
         const body: unknown = await response.json();
         if (!response.ok) throw new Error(isRecord(body) && typeof body.error === "string" ? body.error : `Result query failed (${response.status})`);
         if (!isCurtailmentQueryResponse(body)) throw new Error("Result response does not match value.result-query/v1.");
@@ -73,7 +74,7 @@ export default function ResultQueryPanel({ run, apiOrigin }: { run?: { id: strin
       }
     })();
     return () => { abort.abort(); generation.current += 1; };
-  }, [apiOrigin, runId, source, resolution, window.year, window.from, window.to, offset, requestKey, contextKey]);
+  }, [runId, source, resolution, window.year, window.from, window.to, offset, requestKey, contextKey]);
 
   function applyWindow() {
     if ([yearInput, fromInput, toInput].some(value => value && !/^\d+$/.test(value))

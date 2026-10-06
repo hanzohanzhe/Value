@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useRef, useState } from "react";
 import "./RunReproductionPanel.css";
 
@@ -38,12 +39,12 @@ function isReport(value: unknown): value is Report {
       && artifact.download_url.startsWith(`/api/runs/${value.run_id}/artifacts/`));
 }
 
-export default function RunReproductionPanel({ runId, apiOrigin }: { runId: string; apiOrigin: string }) {
+export default function RunReproductionPanel({ runId }: { runId: string }) {
   const [result, setResult] = useState<{ key: string; report?: Report; error?: string }>();
   const [loadingKey, setLoadingKey] = useState<string>();
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
-  const key = `${apiOrigin}\n${runId}`;
+  const key = runId;
   useEffect(() => {
     generation.current += 1;
     controller.current?.abort();
@@ -57,7 +58,7 @@ export default function RunReproductionPanel({ runId, apiOrigin }: { runId: stri
     setLoadingKey(key);
     setResult(undefined);
     try {
-      const response = await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/reproduction-capability`, { signal: abort.signal });
+      const response = await fetch(apiUrl(`runs/${encodeURIComponent(runId)}/reproduction-capability`), { signal: abort.signal });
       const body: unknown = await response.json();
       if (!response.ok) throw new Error(isRecord(body) && typeof body.error === "string" ? body.error : `检查失败 (${response.status})`);
       if (!isReport(body)) throw new Error("检查响应格式无效，请重试或检查服务版本");
@@ -89,7 +90,7 @@ export default function RunReproductionPanel({ runId, apiOrigin }: { runId: stri
         <details className="run-reproduction-details"><summary>查看模块与来源文件</summary>
         {report.facts.snapshot_id && <p className="run-reproduction-identity">快照身份：{report.facts.snapshot_id}</p>}
         {!!report.facts.recorded_modules?.length && <ul>{report.facts.recorded_modules.map((module, index) => <li key={`${module.module_id}-${index}`}>{module.module_id} · {module.module_version}</li>)}</ul>}
-        {!!report.metadata_artifacts.length && <><p>保存的元数据：</p><ul>{report.metadata_artifacts.map(artifact => <li key={artifact.path}><a href={`${apiOrigin}${artifact.download_url}`} target="_blank" rel="noreferrer">{artifact.path}</a></li>)}</ul></>}
+        {!!report.metadata_artifacts.length && <><p>保存的元数据：</p><ul>{report.metadata_artifacts.map(artifact => <li key={artifact.path}><a href={artifact.download_url} target="_blank" rel="noreferrer">{artifact.path}</a></li>)}</ul></>}
         </details>
       </>}
     </div>

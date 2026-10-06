@@ -24,7 +24,7 @@ const workspace = {
 const form = { name: "S", purpose: "", start_year: 2025, end_year: 2026, modules: { psm: "value-bid-at-cost-psm" }, selected_extensions: [], extension_parameters: {}, maturity_acknowledgements: {}, market_configuration: {} };
 const noop = () => {};
 const composerProps = (profileId, extra = {}) => ({
-  apiOrigin: "", workspace, form, selectedPackId: "value-101-baseline-v1", resolution: null, resolving: false, resolutionError: "",
+  workspace, form, selectedPackId: "value-101-baseline-v1", resolution: null, resolving: false, resolutionError: "",
   savedProjects: [], studyTrash: [], selectedProjectId: "", assumptions: null,
   onForm: noop, onPack: noop, onDomain: noop, onExtension: noop, onModule: noop, onExtensionParameter: noop, onAcknowledgement: noop,
   onSave: noop, onLoad: noop, onOpenRun: noop, onTrash: noop, onRestore: noop, onOpenTrashRuns: noop, onOpenData: noop,

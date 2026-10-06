@@ -100,3 +100,18 @@ test("no formatted number has a unit appended outside withUnit (never '— MWh' 
   const hits = (await lines()).filter(({ text }) => appended.test(text));
   assert.deepEqual(hits, [], where(hits));
 });
+
+// P0-1 S9 (F1-10): the frontend has no API origin.  Every request is a
+// same-origin /api/... path built by apiUrl() or API_BASE; no prop carries an
+// origin and no source hard-codes the engine port.
+test("no API origin prop, constant or engine address reaches the frontend", async () => {
+  const origin = new RegExp(["api" + "Origin", "API" + "_ORIGIN", "NEXT_PUBLIC_VALUE_API" + "_ORIGIN", "127\\.0\\.0\\.1:8766", "localhost:8766"].join("|"));
+  const hits = (await lines()).filter(({ text }) => origin.test(text));
+  assert.deepEqual(hits, [], where(hits));
+});
+
+test("fetches and API links in app/ use same-origin apiUrl()/API_BASE paths, never an absolute http URL", async () => {
+  const absolute = /(?:fetch|open)\(\s*[`"']https?:\/\//;
+  const hits = (await lines()).filter(({ text }) => absolute.test(text));
+  assert.deepEqual(hits, [], where(hits));
+});

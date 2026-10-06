@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useState } from "react";
 import { isExtensionResults, record, type ExtensionResults } from "./extension-results.types";
 import "./ExtensionResultsPanel.css";
@@ -7,14 +8,14 @@ import "./ExtensionResultsPanel.css";
 const LIMIT = 20;
 const text = (value: string | null) => value ?? "Not recorded";
 
-export default function ExtensionResultsPanel({ runId, apiOrigin }: { runId?: string; apiOrigin: string }) {
+export default function ExtensionResultsPanel({ runId }: { runId?: string }) {
   const [filter, setFilter] = useState({ runId, extensionId: "", year: "", offset: 0 });
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{ key: string; result?: ExtensionResults; error?: string }>();
   const [known, setKnown] = useState<{ key: string; capabilities: ExtensionResults["capabilities"] }>();
   const selection = filter.runId === runId ? filter : { runId, extensionId: "", year: "", offset: 0 };
   const { extensionId, year, offset } = selection;
-  const runKey = JSON.stringify([apiOrigin, runId]);
+  const runKey = JSON.stringify([runId]);
   const key = JSON.stringify([runKey, extensionId, year, LIMIT, offset, attempt]);
   const result = state?.key === key ? state.result : undefined;
   const error = state?.key === key ? state.error : undefined;
@@ -29,7 +30,7 @@ export default function ExtensionResultsPanel({ runId, apiOrigin }: { runId?: st
     if (year) params.set("year", year);
     void (async () => {
       try {
-        const response = await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/extensions/artifacts?${params}`, { signal: abort.signal, cache: "no-store" });
+        const response = await fetch(apiUrl(`runs/${encodeURIComponent(runId)}/extensions/artifacts?${params}`), { signal: abort.signal, cache: "no-store" });
         const body: unknown = await response.json();
         if (!response.ok) throw new Error(record(body) && typeof body.error === "string" ? body.error : `Extension results failed (${response.status})`);
         if (!isExtensionResults(body)) throw new Error("Extension result response does not match value.extension-results/v1.");
@@ -41,7 +42,7 @@ export default function ExtensionResultsPanel({ runId, apiOrigin }: { runId?: st
       }
     })();
     return () => abort.abort();
-  }, [apiOrigin, runId, extensionId, year, offset, key, runKey]);
+  }, [runId, extensionId, year, offset, key, runKey]);
 
   function change(next: { extensionId?: string; year?: string; offset?: number }) {
     setFilter({ ...selection, ...next, runId, offset: next.offset ?? 0 });

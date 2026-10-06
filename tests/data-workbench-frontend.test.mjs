@@ -25,7 +25,7 @@ test("Data page composes the focused Data Workbench feature", async () => {
   assert.match(feature, /reviewer/);
   assert.match(feature, /version/);
   assert.match(feature, /experimental candidate/i);
-  assert.match(client, /\/api\/data-workbench\/v1/);
+  assert.match(client, /apiUrl\("data-workbench\/v1"\)/);
   assert.match(client, /Unexpected Data Workbench schema/);
   assert.match(client, /Unknown Data Workbench job status/);
   assert.match(client, /value\.data-sources\/v1/);

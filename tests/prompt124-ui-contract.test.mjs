@@ -99,9 +99,9 @@ test("Audit summary bid evidence only creates an unsaved Full replay Study revis
 
   assert.doesNotMatch(`${page}\n${audit}`, /Re-run with <code>runtime\.market_trace_level = full<\/code>/);
   // X0 S12 added an optional initialTab (Inspect opened on one tab by a Run notice).
-  assert.match(audit, /function AuditView\(\{ run, apiOrigin, onCreateFullReplayRevision(?:, initialTab)? \}/);
+  assert.match(audit, /function AuditView\(\{ run, onCreateFullReplayRevision(?:, initialTab)? \}/);
   assert.match(audit, /<TraceCoverageNotice traceLevel=\{periods\.trace_level \?\? "summary"\} bidReplayAvailable=\{false\} onCreateFullReplayRevision=\{onCreateFullReplayRevision\}/);
-  assert.match(page, /<AuditView run=\{selectedRun\} apiOrigin=\{API_ORIGIN\} onCreateFullReplayRevision=\{createFullReplayRevision\}/);
+  assert.match(page, /<AuditView run=\{selectedRun\} onCreateFullReplayRevision=\{createFullReplayRevision\}/);
 });
 
 test("GBP1 policy reads historical evidence and upgrades a draft only by explicit action", async () => {

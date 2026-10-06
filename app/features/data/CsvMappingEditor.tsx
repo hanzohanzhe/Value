@@ -1,11 +1,12 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CsvMappingCatalog, CsvMappingColumn, CsvMappingCommit, CsvMappingReview, CsvMappingStage } from "./csvMappingTypes";
 import "./csv-mapping-editor.css";
 
 export type CsvMappingEditorProps = {
-  apiOrigin: string; packId: string; manifestSha256: string; role: string;
+  packId: string; manifestSha256: string; role: string;
   disabled?: boolean; readOnlyReason?: string;
   onMapped: (result: CsvMappingCommit) => Promise<void> | void;
   onBusyChange?: (busy: boolean) => void;
@@ -26,9 +27,9 @@ async function responseJson(response: Response): Promise<Record<string, unknown>
   return value;
 }
 
-export default function CsvMappingEditor({ apiOrigin, packId, manifestSha256, role, disabled = false, readOnlyReason, onMapped, onBusyChange }: CsvMappingEditorProps) {
+export default function CsvMappingEditor({ packId, manifestSha256, role, disabled = false, readOnlyReason, onMapped, onBusyChange }: CsvMappingEditorProps) {
   const id = useId();
-  const contextKey = JSON.stringify([apiOrigin, packId, manifestSha256, role]);
+  const contextKey = JSON.stringify([packId, manifestSha256, role]);
   const [catalogState, setCatalog] = useState<Scoped<CsvMappingCatalog> | null>(null);
   const [stageState, setStage] = useState<Scoped<CsvMappingStage> | null>(null);
   const [mappingState, setMapping] = useState<Scoped<CsvMappingColumn[]> | null>(null);
@@ -55,13 +56,13 @@ export default function CsvMappingEditor({ apiOrigin, packId, manifestSha256, ro
     operation.current?.abort();
     const controller = new AbortController();
     if (disabled || readOnlyReason) return () => controller.abort();
-    void fetch(`${apiOrigin}/api/data-packs/${encodeURIComponent(packId)}/csv-mapping/catalog`, { signal: controller.signal }).then(responseJson).then((value) => {
+    void fetch(apiUrl(`data-packs/${encodeURIComponent(packId)}/csv-mapping/catalog`), { signal: controller.signal }).then(responseJson).then((value) => {
       if (controller.signal.aborted || currentContext.current !== contextKey) return;
       if (value.schema_version !== "value.data-mapping-catalog/v1" || value.pack_id !== packId || value.target_manifest_sha256 !== manifestSha256 || !Array.isArray(value.roles) || !value.roles.every((item) => record(item) && typeof item.role === "string" && Array.isArray(item.columns) && item.columns.every((column) => record(column) && typeof column.target === "string" && (column.target_unit === null || typeof column.target_unit === "string")) && Array.isArray(item.conversion_pairs) && item.conversion_pairs.every((pair) => record(pair) && typeof pair.source_unit === "string" && typeof pair.target_unit === "string") && typeof item.single_value === "boolean") || typeof value.max_upload_bytes !== "number" || value.max_upload_bytes <= 0) throw new Error("映射目录与当前目标包版本不一致，请刷新目标包。");
       setCatalog({ key: contextKey, value: value as CsvMappingCatalog });
     }).catch((reason: Error) => { if (!controller.signal.aborted && currentContext.current === contextKey) setMessage({ key: contextKey, value: reason.message }); });
     return () => { controller.abort(); operation.current?.abort(); requestSequence.current += 1; onBusyChange?.(false); };
-  }, [apiOrigin, packId, manifestSha256, role, contextKey, disabled, readOnlyReason, onBusyChange]);
+  }, [packId, manifestSha256, role, contextKey, disabled, readOnlyReason, onBusyChange]);
 
   function invalidateReview() {
     operation.current?.abort(); requestSequence.current += 1;
@@ -83,7 +84,7 @@ export default function CsvMappingEditor({ apiOrigin, packId, manifestSha256, ro
     if (!file.name.toLowerCase().endsWith(".csv") || file.size === 0 || file.size > catalog.max_upload_bytes) { setMessage({ key: contextKey, value: `请选择含标题行的非空 CSV，最多 ${Math.floor(catalog.max_upload_bytes / 1024 / 1024)} MiB。` }); return; }
     const { controller, sequence } = begin("upload");
     try {
-      const value = await responseJson(await fetch(`${apiOrigin}/api/data-packs/${encodeURIComponent(packId)}/csv-mapping/stages?role=${encodeURIComponent(role)}`, { method: "POST", headers: { "Content-Type": "text/csv", "X-Filename": encodeURIComponent(file.name), "X-Expected-Pack-Revision": manifestSha256 }, body: file, signal: controller.signal }));
+      const value = await responseJson(await fetch(apiUrl(`data-packs/${encodeURIComponent(packId)}/csv-mapping/stages?role=${encodeURIComponent(role)}`), { method: "POST", headers: { "Content-Type": "text/csv", "X-Filename": encodeURIComponent(file.name), "X-Expected-Pack-Revision": manifestSha256 }, body: file, signal: controller.signal }));
       if (!live(sequence, controller)) return;
       if (value.schema_version !== "value.data-mapping-stage/v1" || value.pack_id !== packId || value.role !== role || value.target_manifest_sha256 !== manifestSha256 || !token(value.stage_id) || !hash(value.source_sha256) || !listOfStrings(value.source_columns) || !expiry(value.expires_at) || !count(value.rows) || !count(value.source_bytes) || value.source_bytes !== file.size) throw new Error("暂存文件身份不一致，请重新选择文件。");
       const payload = value as CsvMappingStage;
@@ -102,7 +103,7 @@ export default function CsvMappingEditor({ apiOrigin, packId, manifestSha256, ro
     if (!Number.isFinite(Date.parse(stage.expires_at)) || Date.parse(stage.expires_at) <= requestedAt) { setStage(null); setMapping(null); setMessage({ key: contextKey, value: "原始文件暂存已过期，请重新选择文件。" }); return; }
     const { controller, sequence } = begin("review");
     try {
-      const value = await responseJson(await fetch(`${apiOrigin}/api/data-mapping/stages/${encodeURIComponent(stage.stage_id)}/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-preview-request/v1", source_sha256: stage.source_sha256, target_manifest_sha256: manifestSha256, columns }), signal: controller.signal }));
+      const value = await responseJson(await fetch(apiUrl(`data-mapping/stages/${encodeURIComponent(stage.stage_id)}/preview`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-preview-request/v1", source_sha256: stage.source_sha256, target_manifest_sha256: manifestSha256, columns }), signal: controller.signal }));
       if (!live(sequence, controller)) return;
       if (value.schema_version !== "value.data-mapping-review/v1" || value.pack_id !== packId || value.role !== role || value.stage_id !== stage.stage_id || value.source_sha256 !== stage.source_sha256 || value.target_manifest_sha256 !== manifestSha256 || !validColumns(value.columns) || columnIdentity(value.columns) !== mappingKey || !token(value.review_id) || typeof value.valid !== "boolean" || !listOfStrings(value.errors) || !listOfStrings(value.warnings) || (!Array.isArray(value.sample_rows) || value.sample_rows.length > 20 || !value.sample_rows.every(record)) || value.source_bytes !== stage.source_bytes || value.rows !== stage.rows || !count(value.normalized_bytes) || !hash(value.spec_sha256) || !(value.normalized_sha256 === null || hash(value.normalized_sha256)) || (value.valid && (!hash(value.normalized_sha256) || !record(value.validation))) || !expiry(value.expires_at)) throw new Error("校验报告与所审阅的文件、映射或包版本不一致，请重新校验。");
       setReview({ key: contextKey, mappingKey, value: value as CsvMappingReview });
@@ -114,7 +115,7 @@ export default function CsvMappingEditor({ apiOrigin, packId, manifestSha256, ro
     if (!Number.isFinite(Date.parse(review.expires_at)) || Date.parse(review.expires_at) <= requestedAt) { setReview(null); setConfirmed(null); setMessage({ key: contextKey, value: "审阅报告已过期，请重新校验后确认。" }); return; }
     const { controller, sequence } = begin("commit");
     try {
-      const value = await responseJson(await fetch(`${apiOrigin}/api/data-mapping/reviews/${encodeURIComponent(review.review_id)}/commit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-commit-request/v1", source_sha256: review.source_sha256, spec_sha256: review.spec_sha256, normalized_sha256: review.normalized_sha256, target_manifest_sha256: manifestSha256 }), signal: controller.signal }));
+      const value = await responseJson(await fetch(apiUrl(`data-mapping/reviews/${encodeURIComponent(review.review_id)}/commit`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-commit-request/v1", source_sha256: review.source_sha256, spec_sha256: review.spec_sha256, normalized_sha256: review.normalized_sha256, target_manifest_sha256: manifestSha256 }), signal: controller.signal }));
       if (!live(sequence, controller)) return;
       if (value.schema_version !== "value.data-mapping-commit/v1" || value.ok !== true || value.pack_id !== packId || value.role !== role || value.run_started !== false || !hash(value.manifest_sha256) || !record(value.binding) || value.binding.sha256 !== review.normalized_sha256 || !record(value.binding.mapping_provenance) || value.binding.mapping_provenance.source_sha256 !== review.source_sha256 || value.binding.mapping_provenance.spec_sha256 !== review.spec_sha256 || value.binding.mapping_provenance.normalized_sha256 !== review.normalized_sha256) throw new Error("提交回执身份不一致，请刷新目标包核对绑定。");
       setReview(null); setConfirmed(null); setStage(null); setMapping(null);

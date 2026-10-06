@@ -246,7 +246,7 @@ async function readSession(file) {
 /** Build the gateway.  ``handle(req, res, next)`` serves one request; ``next``
  * is the UI server's own listener for page and asset requests. */
 export function createGateway({
-  apiOrigin = "http://127.0.0.1:8766",
+  upstreamOrigin = "http://127.0.0.1:8766",
   dataHome = undefined,
   env = process.env,
   cwd = process.cwd(),
@@ -255,7 +255,7 @@ export function createGateway({
   sessionOptional = false,
   log = (line) => process.stderr.write(`${line}\n`),
 } = {}) {
-  const upstream = parseApiOrigin(apiOrigin);
+  const upstream = parseApiOrigin(upstreamOrigin);
   const home = dataHome ?? resolveDataHome({ env, cwd, warn: (line) => log(`[value-ui-gateway] ${line}`) });
   const sessionFile = sessionFilePath(home, upstream.port);
   const cspHeader = cspReportOnly ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy";
@@ -381,7 +381,7 @@ export function createGateway({
     });
   }
 
-  return { handle, sessionFile, apiOrigin: upstream.origin, counters };
+  return { handle, sessionFile, upstreamOrigin: upstream.origin, counters };
 }
 
 /** Put the gateway in front of a server's single request listener. */

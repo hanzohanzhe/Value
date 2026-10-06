@@ -1,5 +1,6 @@
 "use client";
 
+import { apiUrl } from "../shared/api";
 import { useId, useRef, useState, type FormEvent } from "react";
 import "./research-journey.css";
 
@@ -30,7 +31,6 @@ export type ResearchJourneyProps = {
   studies: JourneyStudy[];
   packs: JourneyPack[];
   initialStudyId: string;
-  apiOrigin: string;
   online: boolean;
   onCreated: (studyId: string) => Promise<void> | void;
   targetPackId: string;
@@ -45,7 +45,7 @@ export type ResearchJourneyProps = {
 type DeriveResponse = { project?: { id?: string }; error?: string; detail?: string };
 
 export default function ResearchJourney({
-  intent, studies, packs, initialStudyId, apiOrigin, online,
+  intent, studies, packs, initialStudyId, online,
   onCreated, onOpenData, onOpenLearn, onOpenRuns, onReviewSource, targetPackId, onTargetPackChange, onPackCreated,
 }: ResearchJourneyProps) {
   const fieldId = useId();
@@ -79,7 +79,7 @@ export default function ResearchJourney({
     submissionLock.current = true; setBusy(true); setError("");
     let createdPackId = "";
     try {
-      const response = await fetch(`${apiOrigin}/api/data-packs/${encodeURIComponent(originalPack.id)}/clone`, {
+      const response = await fetch(apiUrl(`data-packs/${encodeURIComponent(originalPack.id)}/clone`), {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ schema_version: "value.data-pack-clone-request/v1", name: packName.trim(), source_manifest_sha256: originalPack.manifest_sha256 }),
       });
@@ -101,7 +101,7 @@ export default function ResearchJourney({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`${apiOrigin}/api/projects/${encodeURIComponent(source.id)}/derive`, {
+      const response = await fetch(apiUrl(`projects/${encodeURIComponent(source.id)}/derive`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

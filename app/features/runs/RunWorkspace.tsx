@@ -37,7 +37,6 @@ export type RunWorkspaceActions = {
 };
 
 type RunWorkspaceProps = {
-  apiOrigin: string;
   workspace: Pick<Workspace, "projects" | "runs" | "modules" | "runtime">;
   selectedProjectId: string;
   selectedProject?: Project;
@@ -61,7 +60,7 @@ export function PreflightEstimates({ estimates }: { estimates: PreflightReport["
   return <small>{withUnit(formatNumber(estimates.periods, 0), "periods")} · about {formatBytes(estimates.disk_bytes)} disk · about {formatBytes(estimates.peak_memory_bytes)} peak memory · {estimates.runtime_seconds == null ? "Runtime estimate not available" : `estimated ${withUnit(formatNumber(estimates.runtime_seconds / 3600, 1), "hours")}`}</small>;
 }
 
-export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, selectedProject, selectedProjectPack, selectedRun, projectRuns, preflight, effectivePreflightMode, checkingPreflight, zonalPreflight, teachingProject, launching, selectedRunSourceMutable, canRunMode, frozen, actions }: RunWorkspaceProps) {
+export default function RunWorkspace({ workspace, selectedProjectId, selectedProject, selectedProjectPack, selectedRun, projectRuns, preflight, effectivePreflightMode, checkingPreflight, zonalPreflight, teachingProject, launching, selectedRunSourceMutable, canRunMode, frozen, actions }: RunWorkspaceProps) {
   const { selectRunProject, onSelectRun, onMode, onNavigate, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost } = actions;
   const notice = selectedRun ? lifecycleNotice(selectedRun) : null;
   const recovery = selectedProject?.extensions?.frozen_recovery;
@@ -71,7 +70,7 @@ export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, 
   const frozenRunProject = frozen.project;
   const frozenInputSnapshot = frozen.snapshot;
   return <div className="page">
-      {selectedRun && <><RunReproductionPanel key={selectedRun.id} runId={selectedRun.id} apiOrigin={apiOrigin} /><FrozenInputRecoveryPanel apiOrigin={apiOrigin} runId={selectedRun.id} disabled={["queued", "snapshotting", "running", "cancel_requested"].includes(selectedRun.status) || Boolean(launching)} onStudyCreated={onRecoveredStudyCreated} /></>}
+      {selectedRun && <><RunReproductionPanel key={selectedRun.id} runId={selectedRun.id} /><FrozenInputRecoveryPanel runId={selectedRun.id} disabled={["queued", "snapshotting", "running", "cancel_requested"].includes(selectedRun.status) || Boolean(launching)} onStudyCreated={onRecoveredStudyCreated} /></>}
       {recovery && <section className="panel journey-origin" aria-label="Frozen input Study origin"><b>{recovery.recovery_mode === "strict" ? "严格核对冻结输入" : "冻结输入按当前方法迁移"} · 已保存独立 Study</b><p>来源 Run：<code>{recovery.source_run_id}</code> · 来源快照：<code>{recovery.source_snapshot_id}</code>。迁移或身份核对不表示历史环境已恢复，也不恢复检查点。</p><p>锁定范围：<code>{recovery.required_mode}</code> · {recovery.scope.start_year}–{recovery.scope.end_year} · 每年 {recovery.scope.periods_per_year} 时段。先 Check readiness，再明确启动。</p><details><summary>已接受执行身份</summary><code>{recovery.accepted_execution_identity_sha256}</code></details>{!effectivePreflightMode && <p role="alert">锁定范围与数据包允许范围不相容；不能 readiness 或启动。</p>}</section>}
       {!recovery && selectedProject?.derivation && <section className="panel journey-origin" aria-label="Study origin">
         <div><b>{selectedProject.derivation.intent === "edit_module" ? "方法对照研究" : selectedProject.derivation.intent === "data" ? "换数据研究" : "复现研究"} · 已保存独立 Study</b><p>来源 Study：<code>{selectedProject.derivation.source_study_id}</code>。先选择范围、Check readiness，再明确启动。比较前核对运行范围及输入和方法差异。</p>
@@ -121,11 +120,11 @@ export default function RunWorkspace({ apiOrigin, workspace, selectedProjectId, 
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "export")}>Prepare audit bundle</button>}
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary danger" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "delete")}>Move to trash</button>}
             </div>
-            {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} apiOrigin={apiOrigin} coverage={isResultCoverage(selectedRun.result_coverage) ? selectedRun.result_coverage : null} onOpenInspect={() => onNavigate("audit")} publication={selectedRun.result_publication} withheldYearCount={selectedRun.withheld_result_year_count} onExportLedger={actions.openInspect ? () => actions.openInspect?.("artifacts") : undefined} />}
+            {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} coverage={isResultCoverage(selectedRun.result_coverage) ? selectedRun.result_coverage : null} onOpenInspect={() => onNavigate("audit")} publication={selectedRun.result_publication} withheldYearCount={selectedRun.withheld_result_year_count} onExportLedger={actions.openInspect ? () => actions.openInspect?.("artifacts") : undefined} />}
             <button className="audit-link" onClick={() => onNavigate("audit")}>Inspect planning projects and market clearing</button>
           </> : <div className="empty-run"><b>No runs yet</b><p>Choose a saved study, check its inputs and start with two full years.</p></div>}
         </section>
       </div>
-      <ComparisonWorkspace runs={workspace.runs} apiOrigin={apiOrigin} />
+      <ComparisonWorkspace runs={workspace.runs} />
     </div>;
 }
