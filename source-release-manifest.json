@@ -347,6 +347,7 @@
     "docs/methodology/zh/optional_modules.md",
     "docs/methodology/zh/r029_cem.md",
     "docs/methodology/zh/transmission.md",
+    "docs/release/P0_GOLDEN_DELTA.md",
     "docs/release/VERSION_LEDGER.json",
     "docs/release/installer-source-alignment.json",
     "docs/release/public-data-assets.json",
@@ -1118,6 +1119,7 @@
     "scripts/generate_reference_tables.py",
     "scripts/global_mutation_scan.py",
     "scripts/golden/capture.py",
+    "scripts/golden/delta_report.py",
     "scripts/golden/run_case.py",
     "scripts/import_scheme_c_1000twh.py",
     "scripts/inspect_docx_sources.py",
@@ -1420,6 +1422,7 @@
     "tests/test_get_error_boundary.py",
     "tests/test_global_mutation_allowlist.py",
     "tests/test_golden_corrected.py",
+    "tests/test_golden_delta_report.py",
     "tests/test_golden_digest.py",
     "tests/test_golden_doctoral.py",
     "tests/test_golden_research_pack.py",
@@ -4958,6 +4961,12 @@
       "sha256": "4ca63e23c11a752b28884b556a48f4bcf8fd71a054662fc42220bb27fddbb714",
       "bytes": 15582,
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+    },
+    {
+      "path": "docs/release/P0_GOLDEN_DELTA.md",
+      "sha256": "29561599c1eb79e6ae4b8a7cdcba040779206cb30c736591ea41a867cfa802f6",
+      "bytes": 23461,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/release/VERSION_LEDGER.json",
@@ -9575,6 +9584,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "scripts/golden/delta_report.py",
+      "sha256": "94bb20078f347f0688d26749220684f87bd0aeaeb6e7b8a4643cd890e346c389",
+      "bytes": 28007,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/golden/run_case.py",
       "sha256": "fec3a449c5f00c59aa8afe136e1c1fe17070ca9034308e59c7a00faec1b1ef72",
       "bytes": 10610,
@@ -11378,6 +11393,12 @@
       "path": "tests/test_golden_corrected.py",
       "sha256": "dbe2312ecfaf03f376d209e2872591644ab175d311166573102419a49c95ea06",
       "bytes": 2806,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_golden_delta_report.py",
+      "sha256": "bdd89bb675b3519108a9264d8ccb36cb5561d7a212f15e8703eebb359d6c5250",
+      "bytes": 10252,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -43,6 +43,7 @@
 | `python -B scripts/golden/capture.py revise --cases C1 ... --reason ... --correction-id ...` | 在改变数值的同一提交中追加 golden 修订 |
 | `python -B scripts/golden/capture.py numeric-report --case D1 --parent HEAD` | doctoral trajectory 重基线的数值差异报告，写入 `tests/golden/reports/<case>-r<k>.json` |
 | `python -B scripts/seal_runtime_overlay.py --correction <id>` | 每次改动 `runtime_compat/` 之后登记 |
+| `python -B scripts/golden/delta_report.py --write` | X0 S13：在追加 golden 修订的同一提交中重新生成 `docs/release/P0_GOLDEN_DELTA.md`（相对第 0 号修订与双口径 delta，每行归到 correction id）；`--check` 与 `tests/test_golden_delta_report.py` 在有行无法归因或报告过期时失败 |
 
 规则：
 
