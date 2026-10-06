@@ -575,20 +575,26 @@ export default function Home() {
       .catch(() => { if (current) setSelectedRunDetail(null); });
     return () => { current = false; };
   }, [selectedRunSummary]);
+  // R-D6 / S-D11: the input snapshot is read once per Run, after the Run has
+  // left queued/snapshotting (not on every workspace poll), and the optional
+  // resource-readiness file only when the snapshot records it.
+  const frozenRunId = selectedRunSummary?.id ?? "";
+  const frozenSnapshotWritten = Boolean(selectedRunSummary) && !["queued", "snapshotting"].includes(selectedRunSummary?.status ?? "");
   useEffect(() => {
-    if (!selectedRunSummary) return;
+    if (!frozenRunId || !frozenSnapshotWritten) return;
     let active = true;
-    const artifact = `${API}/runs/${selectedRunSummary.id}/artifacts/input-snapshot`;
+    const artifact = `${API}/runs/${frozenRunId}/artifacts/input-snapshot`;
     void Promise.all([
-      getJson<ResourceReadiness>(`${artifact}/resource-readiness.json`).catch(() => null),
       getJson<Project>(`${artifact}/project.json`).catch(() => null),
       getJson<FrozenInputSnapshot>(`${artifact}/snapshot.json`).catch(() => null),
-    ]).then(([readiness, project, snapshot]) => {
+    ]).then(async ([project, snapshot]) => {
+      const readiness = snapshot?.resource_readiness_path === "resource-readiness.json"
+        ? await getJson<ResourceReadiness>(`${artifact}/resource-readiness.json`).catch(() => null) : null;
       if (!active) return;
-      setFrozenRunReadiness(readiness); setFrozenRunProject(project); setFrozenInputSnapshot(snapshot); setFrozenRunSelectionId(selectedRunSummary.id);
+      setFrozenRunReadiness(readiness); setFrozenRunProject(project); setFrozenInputSnapshot(snapshot); setFrozenRunSelectionId(frozenRunId);
     });
     return () => { active = false; };
-  }, [selectedRunSummary]);
+  }, [frozenRunId, frozenSnapshotWritten]);
   const hasActiveRun = workspace.runs.some((run) => ["queued", "snapshotting", "running", "cancel_requested"].includes(run.status));
   const activeRunCount = workspace.runs.filter((run) => ["queued", "snapshotting", "running", "cancel_requested"].includes(run.status)).length;
   // Poll while a Run is active or the service is failing: every 2 s, doubling

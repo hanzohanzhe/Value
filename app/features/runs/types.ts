@@ -65,6 +65,8 @@ export type ResourceReadiness = {
 };
 export type FrozenInputSnapshot = {
   snapshot_id?: string; state?: string; input_tree_sha256?: string;
+  /** Present only when the Run froze a resource-readiness record (R-D6). */
+  resource_readiness_path?: string;
   pack_manifest_sha256?: string;
   network_pack_id?: string;
   network_pack_manifest_sha256?: string;
