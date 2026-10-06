@@ -47,6 +47,7 @@ import { shortfallDisplay } from "./features/workspace/runValidation.ts";
 import { resolveRunContext } from "./features/workspace/runContext";
 import { journeyFromLocation, readWorkspaceLocation, writeWorkspaceLocation, selectWorkspaceRun, type WorkspaceLocation } from "./features/workspace/workspaceLocation";
 import "./features/workspace/workspace-shell.css";
+import "./features/shared/narrow-layout.css";
 import Value101Learn from "./features/learn/Value101Learn";
 import DataWorkbench from "./features/data-workbench/DataWorkbench";
 import {

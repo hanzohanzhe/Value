@@ -110,6 +110,7 @@
     "app/features/shared/coverageView.ts",
     "app/features/shared/domainConstants.ts",
     "app/features/shared/format.ts",
+    "app/features/shared/narrow-layout.css",
     "app/features/shared/navigation.ts",
     "app/features/shared/pagination.ts",
     "app/features/shared/presentation.tsx",
@@ -3593,6 +3594,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/shared/narrow-layout.css",
+      "sha256": "b7aecf55c6826bddca2e495d4b9e852e1ed54c76a4c84f2bf167c62877b04c55",
+      "bytes": 736,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/shared/navigation.ts",
       "sha256": "a2718d0bf7fe44c64e19ba0ec41e60013b9e4eeb2af1e8dc4010074787839f95",
       "bytes": 182,
@@ -3846,8 +3853,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "a7d0b0e057ef840c5d8fb76e1ad7b43ddb84ac8ac6a18824feced63f82d4be6d",
-      "bytes": 175357,
+      "sha256": "7f3dcec07e5e8dd0446d8901233c294856a568e9cdf177370348b33aba020744",
+      "bytes": 175403,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10897,8 +10904,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "c58007b9886896d6bc906c780a3446ead690f418dfcae1fdcf93a4aac676eab3",
-      "bytes": 6243,
+      "sha256": "d7116dfad25699b17394150e192db629e8959394d1aa78a8b06efd93e6476e23",
+      "bytes": 6286,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
