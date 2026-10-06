@@ -22,9 +22,12 @@ are not revoked.
 
 The backend suite is gated by a fingerprinted ratchet rather than by a green
 bar, because some tests depend on the host (Windows tools, the author's
-private R0 source tree, optional pytest/pypdf, free disk space):
+private R0 source tree, free disk space).  Tests run in the gate venv: the
+managed install's Python 3.10 with only `requirements/value-test-py310.lock`
+(pytest, pypdf and their dependencies) added, named by `VALUE_GATE_VENV`:
 
 ```bash
+export VALUE_GATE_VENV=/path/to/gate-venv          # python -m venv --system-site-packages
 python -B scripts/run_backend_tests.py            # ratchet against the baseline
 python -B scripts/run_backend_tests.py --strict   # also fail on fingerprint drift
 python -B scripts/run_backend_tests.py --update-baseline   # delete fixed ids only

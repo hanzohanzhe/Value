@@ -7,6 +7,7 @@ import importlib.util
 import io
 import json
 import os
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -217,13 +218,12 @@ class BackendTestRunnerTests(unittest.TestCase):
 
         quarantine = RUNNER.read_quarantine(RUNNER.DEFAULT_QUARANTINE)
         bounded = sorted(identifier for identifier, fields in quarantine.items() if fields["expires"] != RUNNER.HOST_EXPIRY)
-        self.assertTrue(bounded)
         self.assertEqual(RUNNER.expired_quarantine(quarantine, "M8"), bounded)
         self.assertEqual(RUNNER.expired_quarantine(quarantine, RUNNER.current_milestone()), [])
-        for identifier, fields in quarantine.items():
-            with self.subTest(identifier=identifier):
-                if fields["owner"] == "X0-gate-venv":
-                    self.assertNotEqual(fields["expires"], RUNNER.HOST_EXPIRY)
+        # F4: pytest and pypdf are approved and pinned in the gate venv, so no
+        # entry may blame their absence any more.
+        self.assertEqual([identifier for identifier, fields in quarantine.items() if fields["owner"] == "X0-gate-venv"], [])
+        self.assertFalse(any("pytest/pypdf" in fields["reason"] for fields in quarantine.values()))
 
     def test_module_filter_limits_fixed_but_listed_to_selected_modules(self) -> None:
         self._write_baseline(EXPECTED_FAILING)
@@ -268,6 +268,78 @@ class BackendTestRunnerTests(unittest.TestCase):
             self.assertIn(key, baseline.fingerprint)
         quarantine = RUNNER.read_quarantine(RUNNER.DEFAULT_QUARANTINE)
         self.assertFalse(baseline.ids & set(quarantine))
+
+    def test_committed_baselines_were_recorded_in_the_locked_gate_venv(self) -> None:
+        """F4: both ratchet baselines carry the pinned pytest/pypdf and the test lock's hash."""
+
+        pins = RUNNER.read_test_lock()
+        lock_sha = RUNNER._sha256_file(RUNNER.TEST_LOCK)
+        for path in (RUNNER.DEFAULT_BASELINE, RUNNER.DEFAULT_PYTEST_BASELINE):
+            with self.subTest(baseline=path.name):
+                fingerprint = RUNNER.read_baseline(path).fingerprint
+                self.assertIsNotNone(fingerprint)
+                self.assertEqual(fingerprint["pytest"], pins["pytest"])
+                self.assertEqual(fingerprint["pypdf"], pins["pypdf"])
+                self.assertEqual(fingerprint["sha256:requirements/value-test-py310.lock"], lock_sha)
+
+    def test_test_lock_pins_exact_versions_and_reports_mismatches(self) -> None:
+        pins = RUNNER.read_test_lock()
+        self.assertEqual(pins["pytest"], "8.4.2")
+        self.assertEqual(pins["pypdf"], "6.1.1")
+        lock = self.root / "lock.txt"
+        lock.write_text("# comment\nnumpy==%s  # base runtime\nvalue-no-such-distribution==1.0\n"
+                        % RUNNER._distribution_version("numpy"), encoding="utf-8")
+        self.assertEqual(RUNNER.locked_package_mismatches(sys.executable, lock),
+                         {"value-no-such-distribution": ["1.0", None]})
+        self.assertIn("<lock>", RUNNER.locked_package_mismatches(sys.executable, self.root / "absent.lock"))
+        lock.write_text("pytest>=8\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            RUNNER.read_test_lock(lock)
+
+    def test_fingerprint_describes_the_test_interpreter_not_the_orchestrator(self) -> None:
+        here = RUNNER.environment_fingerprint()
+        alias = self.root / "bin" / "python-alias"
+        alias.parent.mkdir()
+        os.symlink(sys.executable, alias)
+        self.assertFalse(RUNNER._same_interpreter(str(alias)))  # never resolved: a venv python is a symlink
+        with mock.patch.object(RUNNER, "_distribution_version", side_effect=AssertionError("probed in-process")):
+            there = RUNNER.environment_fingerprint(python=str(alias))
+        for key in ("python", "implementation", "platform", "numpy", "scipy"):
+            self.assertEqual(there[key], here[key], key)
+
+    def test_gate_venv_python_comes_from_value_gate_venv(self) -> None:
+        venv = self.root / "venv"
+        self.assertIsNone(RUNNER.gate_venv_python({}))
+        self.assertIsNone(RUNNER.gate_venv_python({RUNNER.GATE_VENV_ENV: str(venv)}))
+        (venv / "bin").mkdir(parents=True)
+        (venv / "bin" / "python").write_text("", encoding="utf-8")
+        self.assertEqual(RUNNER.gate_venv_python({RUNNER.GATE_VENV_ENV: str(venv)}), str(venv / "bin" / "python"))
+        with mock.patch.dict(os.environ, {RUNNER.GATE_VENV_ENV: str(venv)}):
+            self.assertEqual(RUNNER.default_test_python(), str(venv / "bin" / "python"))
+        with mock.patch.dict(os.environ, {RUNNER.GATE_VENV_ENV: ""}):
+            self.assertEqual(RUNNER.default_test_python(), sys.executable)
+
+    def test_installed_root_is_found_through_a_venv_base_prefix(self) -> None:
+        install = self.root / "install"
+        (install / "app").mkdir(parents=True)
+        (install / "runtime" / "python" / "bin").mkdir(parents=True)
+        environment = {key: value for key, value in os.environ.items() if key != "VALUE_INSTALLED_ROOT"}
+        with mock.patch.dict(os.environ, environment, clear=True), \
+                mock.patch.object(RUNNER.sys, "executable", str(self.root / "venv" / "bin" / "python")), \
+                mock.patch.object(RUNNER.sys, "base_prefix", str(install / "runtime" / "python")):
+            self.assertEqual(RUNNER.installed_root(), install.resolve())
+        with mock.patch.dict(os.environ, environment, clear=True), \
+                mock.patch.object(RUNNER.sys, "executable", str(self.root / "venv" / "bin" / "python")), \
+                mock.patch.object(RUNNER.sys, "base_prefix", str(self.root / "elsewhere")):
+            self.assertIsNone(RUNNER.installed_root())
+
+    def test_junit_identifiers_map_modules_classes_and_parameters(self) -> None:
+        self.assertEqual(RUNNER.junit_identifier("tests.test_market_ledger_v6", "test_a[x.y-1]"),
+                         "tests/test_market_ledger_v6.py::test_a[x.y-1]")
+        self.assertEqual(
+            RUNNER.junit_identifier("tests.data_workbench.test_official_gb_candidate.OfficialGbCandidateTests", "test_b"),
+            "tests/data_workbench/test_official_gb_candidate.py::OfficialGbCandidateTests::test_b",
+        )
 
 
 LIVE_PORT_MODULE = """

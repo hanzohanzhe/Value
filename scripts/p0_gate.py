@@ -32,6 +32,13 @@ Waivers: any step of the tier that is skipped by --skip or left out by
 non-mandatory step may skip itself, and only with a recorded reason (for
 example "no frontend change since --changed-since" or "arrives with X0 S8").
 Only ``status: passed`` (exit 0) counts as "p0_gate passed".
+
+Test interpreter (F4): every Python step runs with ``--python``, by default
+the gate venv's interpreter when ``VALUE_GATE_VENV`` names one, otherwise the
+interpreter running the gate.  ``test_environment`` fails unless that
+interpreter has exactly the versions of ``requirements/value-test-py310.lock``
+(pytest, pypdf and their dependencies), so the unittest and pytest ratchets
+always run in the environment their baselines were recorded in.
 """
 
 from __future__ import annotations
@@ -86,6 +93,9 @@ TRAJECTORY_ALLOWLIST_FILE = "tests/golden/doctoral_trajectory_rebaselines.json"
 MANDATORY_STEPS = (
     "guard", "runtime_overlay", "golden_bookkeeping", "append_only", "backend_ratchet",
     "golden_full", "golden_nightly", "version_ledger", "release_manifest",
+    # F4: pytest and pypdf are approved; the gate venv is the canonical test
+    # environment, and the pytest-style suite is part of ``full``.
+    "test_environment", "pytest_ratchet",
     # P0-9 S0 delivered the offline e2e subset; plan C13 makes it part of
     # ``full``, so a run without a browser is a waiver, never a pass.
     "e2e_offline",
@@ -382,7 +392,7 @@ def step_version_ledger(gate: Gate) -> dict[str, Any]:
 def step_backend_ratchet(gate: Gate) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="value-gate-ratchet-") as folder:
         report = Path(folder) / "ratchet.json"
-        command = [gate.python, "-B", "scripts/run_backend_tests.py", "--json-output", str(report)]
+        command = [gate.python, "-B", "scripts/run_backend_tests.py", "--python", gate.python, "--json-output", str(report)]
         if gate.arguments.jobs:
             command += ["--jobs", str(gate.arguments.jobs)]
         completed = run(command, timeout=3600)
@@ -394,15 +404,33 @@ def step_backend_ratchet(gate: Gate) -> dict[str, Any]:
     return _status(completed.returncode == 0 and payload.get("passed", False) and milestone_ok, summary or _tail(completed.stderr))
 
 
+def step_test_environment(gate: Gate) -> dict[str, Any]:
+    """The test interpreter has exactly the pinned test packages (F4)."""
+
+    mismatches = RATCHET.locked_package_mismatches(gate.python)
+    detail: dict[str, Any] = {"python": gate.python, "lock": RATCHET.TEST_LOCK.relative_to(ROOT).as_posix(),
+                              "mismatches": mismatches}
+    if mismatches:
+        detail["action"] = (f"run the gate with {RATCHET.GATE_VENV_ENV}=<gate venv> or <gate venv>/bin/python; "
+                            "the venv adds only the pinned packages to the managed install's Python")
+    return _status(not mismatches, detail)
+
+
 def step_pytest_ratchet(gate: Gate) -> dict[str, Any]:
-    completed = run([gate.python, "-B", "scripts/run_backend_tests.py", "--pytest"], timeout=3600)
-    try:
-        payload = json.loads(completed.stdout)
-    except json.JSONDecodeError:
-        payload = {"raw": _tail(completed.stdout + completed.stderr)}
+    with tempfile.TemporaryDirectory(prefix="value-gate-pytest-") as folder:
+        report = Path(folder) / "pytest.json"
+        completed = run([gate.python, "-B", "scripts/run_backend_tests.py", "--pytest", "--python", gate.python,
+                         "--json-output", str(report)], timeout=3600)
+        payload = json.loads(report.read_text(encoding="utf-8")) if report.is_file() else {}
+    if not payload:
+        return _status(False, _tail(completed.stdout + completed.stderr))
     if payload.get("status") == "not_run":
-        return {"status": "skipped", "detail": f"pytest unavailable; {payload.get('not_run_count')} pytest-style ids not run"}
-    return _status(completed.returncode == 0, payload)
+        # pytest is approved (F4): a test interpreter without it is a failure, not a skip.
+        return _status(False, f"pytest is not importable by {gate.python}; "
+                              f"{payload.get('not_run_count')} pytest-style ids not run (set {RATCHET.GATE_VENV_ENV})")
+    summary = {key: payload.get(key) for key in ("python", "counts", "ids", "failing", "baseline_size", "new_failures",
+                                                 "fixed_but_listed", "forbidden_port_attempts", "fingerprint_differences", "errors")}
+    return _status(completed.returncode == 0 and payload.get("passed", False), summary)
 
 
 def step_golden_bookkeeping(gate: Gate) -> dict[str, Any]:
@@ -850,6 +878,7 @@ def step_golden_sensitivity(gate: Gate) -> dict[str, Any]:
 
 QUICK_STEPS = [
     Step("guard", step_guard),
+    Step("test_environment", step_test_environment),
     Step("release_manifest", step_release_manifest),
     Step("release_path_hygiene", step_release_path_hygiene),
     Step("methodology_catalog", step_methodology_catalog),
@@ -887,13 +916,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--append-base", default=APPEND_ONLY_BASE,
                         help="commit whose golden revisions and baselines HEAD may only extend or shrink")
     parser.add_argument("--report", default=str(Path(tempfile.gettempdir()) / "p0-gate-report.json"))
-    parser.add_argument("--python", default=sys.executable)
+    parser.add_argument("--python", default=None,
+                        help=f"test interpreter (default: ${RATCHET.GATE_VENV_ENV}/bin/python if set, else this one)")
     parser.add_argument("--jobs", type=int)
     parser.add_argument("--skip", action="append", help="skip a named step (recorded in the report)")
     parser.add_argument("--only", action="append", help="run only the named step(s)")
     parser.add_argument("--update-eslint-baseline", action="store_true", help="shrink the ESLint baseline after fixes")
     parser.add_argument("--quiet", action="store_true")
     arguments = parser.parse_args(argv)
+    arguments.python = arguments.python or RATCHET.default_test_python()
     scratch = Path(tempfile.mkdtemp(prefix="value-gate-netguard-"))
     try:
         enable_netguard(scratch)

@@ -452,6 +452,62 @@ class P0GateTests(unittest.TestCase):
     def test_quick_tier_enforces_append_only(self) -> None:
         self.assertIn("append_only", [step.name for step in GATE.QUICK_STEPS])
 
+    def test_test_environment_step_requires_the_locked_test_packages(self) -> None:
+        """F4: the ratchets only run in the gate venv pinned by value-test-py310.lock."""
+
+        self.assertIn("test_environment", [step.name for step in GATE.QUICK_STEPS])
+        self.assertIn("test_environment", GATE.MANDATORY_STEPS)
+        self.assertIn("pytest_ratchet", GATE.MANDATORY_STEPS)
+        with mock.patch.object(GATE.RATCHET, "locked_package_mismatches", return_value={}) as probe:
+            outcome = GATE.step_test_environment(_gate(python="/venv/bin/python"))
+        probe.assert_called_once_with("/venv/bin/python")
+        self.assertEqual(outcome["status"], "passed")
+        self.assertEqual(outcome["detail"]["lock"], "requirements/value-test-py310.lock")
+        with mock.patch.object(GATE.RATCHET, "locked_package_mismatches", return_value={"pytest": ["8.4.2", None]}):
+            outcome = GATE.step_test_environment(_gate())
+        self.assertEqual(outcome["status"], "failed")
+        self.assertIn(GATE.RATCHET.GATE_VENV_ENV, outcome["detail"]["action"])
+
+    def test_pytest_ratchet_runs_in_the_gate_python_and_fails_without_pytest(self) -> None:
+        seen = {}
+
+        def fake_run(payload):
+            def run(command, **_kwargs):
+                seen["command"] = list(command)
+                report = Path(command[command.index("--json-output") + 1])
+                report.write_text(json.dumps(payload), encoding="utf-8")
+                return SimpleNamespace(returncode=0 if payload.get("passed") else 1, stdout="", stderr="")
+            return run
+
+        with mock.patch.object(GATE, "run", side_effect=fake_run({"status": "not_run", "not_run_count": 139, "passed": True})):
+            outcome = GATE.step_pytest_ratchet(_gate("full", python="/venv/bin/python"))
+        self.assertEqual(outcome["status"], "failed")
+        self.assertIn("pytest is not importable", outcome["detail"])
+        self.assertEqual(seen["command"][:5], ["/venv/bin/python", "-B", "scripts/run_backend_tests.py", "--pytest", "--python"])
+        self.assertEqual(seen["command"][5], "/venv/bin/python")
+        passed = {"passed": True, "counts": {"pass": 158, "skip": 38}, "ids": 196, "failing": 0, "new_failures": []}
+        with mock.patch.object(GATE, "run", side_effect=fake_run(passed)):
+            outcome = GATE.step_pytest_ratchet(_gate("full"))
+        self.assertEqual(outcome["status"], "passed")
+        self.assertEqual(outcome["detail"]["ids"], 196)
+        with mock.patch.object(GATE, "run", side_effect=fake_run(dict(passed, passed=False, new_failures=["t::x"]))):
+            self.assertEqual(GATE.step_pytest_ratchet(_gate("full"))["status"], "failed")
+
+    def test_gate_python_defaults_to_the_gate_venv(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            python = Path(folder) / "bin" / "python"
+            python.parent.mkdir()
+            python.write_text("", encoding="utf-8")
+            seen = {}
+            with mock.patch.dict(os.environ, {GATE.RATCHET.GATE_VENV_ENV: folder}), \
+                    mock.patch.object(GATE, "_main", side_effect=lambda arguments: seen.setdefault("python", arguments.python) and 0):
+                GATE.main(["quick"])
+            self.assertEqual(seen["python"], str(python))
+            with mock.patch.dict(os.environ, {GATE.RATCHET.GATE_VENV_ENV: folder}), \
+                    mock.patch.object(GATE, "_main", side_effect=lambda arguments: seen.update(explicit=arguments.python) or 0):
+                GATE.main(["quick", "--python", "/other/python"])
+            self.assertEqual(seen["explicit"], "/other/python")
+
     def test_append_only_step_passes_on_this_checkout(self) -> None:
         if GATE.run(["git", "rev-parse", "--git-dir"]).returncode != 0:
             self.skipTest("not a git checkout")

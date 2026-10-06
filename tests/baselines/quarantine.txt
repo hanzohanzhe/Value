@@ -6,15 +6,9 @@
 # expires=host is a permanent host quarantine: the failure comes from a
 # property of this host that no P0 package changes (private Windows R0 source
 # tree, Windows-only tools or the live install on port 8766, free-disk reserve).
-# The gate-venv entries expire after M7: the author decides on the offline
-# test-venv install before the final milestone.
+# The six X0-gate-venv entries (host lacked pytest/pypdf) were removed in F4:
+# the author approved pytest and pypdf; the gate venv (requirements/value-test-py310.lock) is canonical.
 # p0_gate quick (append_only) refuses new ids and later expiries.
-IMPORT:test_full_desktop_installer | reason=host lacks optional test dependency pytest/pypdf (gate venv needs an approved offline install) | owner=X0-gate-venv | expires=M7
-IMPORT:test_market_ledger_v6 | reason=host lacks optional test dependency pytest/pypdf (gate venv needs an approved offline install) | owner=X0-gate-venv | expires=M7
-IMPORT:test_preflight_documentation | reason=host lacks optional test dependency pytest/pypdf (gate venv needs an approved offline install) | owner=X0-gate-venv | expires=M7
-IMPORT:test_prompt107_production_gate | reason=host lacks optional test dependency pytest/pypdf (gate venv needs an approved offline install) | owner=X0-gate-venv | expires=M7
-IMPORT:test_value_methodology | reason=host lacks optional test dependency pytest/pypdf (gate venv needs an approved offline install) | owner=X0-gate-venv | expires=M7
-IMPORT:test_vre_curtailment_attribution | reason=host lacks optional test dependency pytest/pypdf (gate venv needs an approved offline install) | owner=X0-gate-venv | expires=M7
 test_doctoral_commissioning_alignment.DoctoralCommissioningAlignmentTests.test_assigned_owner_is_applied_before_unassigned_proportional_additions | reason=author's private Windows R0 source tree is not present on this host (R2-09) | owner=P1-1 | expires=host
 test_doctoral_commissioning_alignment.DoctoralCommissioningAlignmentTests.test_original_micro_capacity_skip_is_visible_and_not_renormalized | reason=author's private Windows R0 source tree is not present on this host (R2-09) | owner=P1-1 | expires=host
 test_doctoral_commissioning_alignment.DoctoralCommissioningAlignmentTests.test_schedule_each_year_matches_original_literals_and_annual_assignments | reason=author's private Windows R0 source tree is not present on this host (R2-09) | owner=P1-1 | expires=host

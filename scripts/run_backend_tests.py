@@ -26,6 +26,12 @@ entries requires ``--allow-add --reason "..."``.
 ``--pytest`` runs the pytest-style modules against a separate baseline.  When
 pytest is not importable those ids are reported as ``not_run``.
 
+Test interpreter: ``--python`` (default: the gate venv's interpreter when
+``VALUE_GATE_VENV`` names one, otherwise this interpreter).  The gate venv is
+the managed install's Python with only ``requirements/value-test-py310.lock``
+(pytest, pypdf and their dependencies) added; the environment fingerprint
+always describes the test interpreter, not the orchestrating one.
+
 Every subprocess runs with ``-B``, ``PYTHONDONTWRITEBYTECODE=1`` and private
 ``PYTHONPYCACHEPREFIX``/``VALUE_DATA_HOME``/``HOME``/``TMPDIR`` directories
 created with ``mkdtemp`` and removed afterwards.
@@ -82,6 +88,8 @@ MILESTONE_FILE = BASELINE_DIR / "milestone.txt"
 FINGERPRINT_PREFIX = "# fingerprint: "
 FINGERPRINT_PACKAGES = ("numpy", "scipy", "pandas", "pulp", "cbcbox", "pytest", "pypdf")
 FINGERPRINT_LOCKS = ("requirements/value-all-py310.lock", "requirements/value-test-py310.lock")
+TEST_LOCK = ROOT / "requirements" / "value-test-py310.lock"
+GATE_VENV_ENV = "VALUE_GATE_VENV"
 FAILING_OUTCOMES = frozenset({"fail", "error", "unexpected_success"})
 MILESTONES = tuple(f"M{index}" for index in range(0, 9))
 # ``expires=host``: permanent host quarantine.  Only for failures caused by a
@@ -110,11 +118,29 @@ def installed_root() -> Path | None:
     configured = os.environ.get("VALUE_INSTALLED_ROOT")
     if configured:
         return Path(configured).resolve()
-    executable = Path(sys.executable).resolve()
-    for parent in executable.parents:
-        if parent.name == "runtime" and (parent.parent / "app").exists():
-            return parent.parent
+    # A gate venv's own executable lives outside the install; its base prefix
+    # (``<install>/runtime/python``) still identifies the install.
+    for start in (Path(sys.executable).resolve(), Path(sys.base_prefix).resolve() / "bin"):
+        for parent in start.parents:
+            if parent.name == "runtime" and (parent.parent / "app").exists():
+                return parent.parent
     return None
+
+
+def gate_venv_python(environ: Mapping[str, str] | None = None) -> str | None:
+    """The interpreter of the venv named by ``VALUE_GATE_VENV`` (``None`` if unset or absent)."""
+
+    venv = (environ if environ is not None else os.environ).get(GATE_VENV_ENV, "").strip()
+    if not venv:
+        return None
+    for candidate in (Path(venv) / "bin" / "python", Path(venv) / "Scripts" / "python.exe"):
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def default_test_python() -> str:
+    return gate_venv_python() or sys.executable
 
 
 def refuse_installed_paths(paths: Iterable[Path | str | None], installed: Path | None = None) -> None:
@@ -218,14 +244,90 @@ def _sha256_file(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def environment_fingerprint(root: Path = ROOT) -> dict[str, Any]:
+_INTERPRETER_PROBE = """
+import json, platform, sys
+from importlib import metadata
+def version(name):
+    try:
+        return metadata.version(name)
+    except Exception:
+        return None
+names = json.loads(sys.argv[1])
+sys.stdout.write(json.dumps({
+    "python": platform.python_version(),
+    "implementation": platform.python_implementation(),
+    "platform": f"{sys.platform}-{platform.machine()}",
+    "versions": {name: version(name) for name in names},
+}))
+"""
+
+
+def _same_interpreter(python: str | None) -> bool:
+    # A venv's python is a symlink to the base interpreter: compare the paths
+    # as given, never resolved, or the venv would look like its base.
+    return python is None or os.path.abspath(python) == os.path.abspath(sys.executable)
+
+
+def interpreter_facts(python: str | None, packages: Iterable[str]) -> dict[str, Any]:
+    """Python/platform facts and distribution versions as seen by ``python``."""
+
+    names = sorted(set(packages))
+    if _same_interpreter(python):
+        return {
+            "python": platform.python_version(),
+            "implementation": platform.python_implementation(),
+            "platform": f"{sys.platform}-{platform.machine()}",
+            "versions": {name: _distribution_version(name) for name in names},
+        }
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    environment.pop("PYTHONPATH", None)
+    completed = subprocess.run(
+        [str(python), "-B", "-c", _INTERPRETER_PROBE, json.dumps(names)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", env=environment, cwd=ROOT,
+    )
+    if completed.returncode != 0:
+        raise SystemExit(f"test interpreter {python} cannot be probed: {completed.stderr[-500:]}")
+    return json.loads(completed.stdout)
+
+
+def read_test_lock(path: Path = TEST_LOCK) -> dict[str, str]:
+    """``name -> version`` of the ``name==version`` lines of a lock file."""
+
+    pins: dict[str, str] = {}
+    if not path.is_file():
+        return pins
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].split(";", 1)[0].strip()
+        if not line or line.startswith("-"):
+            continue
+        name, separator, version = line.partition("==")
+        if not separator:
+            raise ValueError(f"{path}: not an exact pin: {raw!r}")
+        pins[name.strip()] = version.strip()
+    return pins
+
+
+def locked_package_mismatches(python: str | None = None, lock: Path = TEST_LOCK) -> dict[str, list[Any]]:
+    """Locked test packages whose installed version differs (``[locked, installed]``)."""
+
+    pins = read_test_lock(lock)
+    if not pins:
+        return {"<lock>": [str(lock), "missing or empty"]}
+    versions = interpreter_facts(python, pins)["versions"]
+    return {name: [locked, versions.get(name)] for name, locked in sorted(pins.items()) if versions.get(name) != locked}
+
+
+def environment_fingerprint(root: Path = ROOT, python: str | None = None) -> dict[str, Any]:
+    """Fingerprint of the test interpreter ``python`` (default: this one)."""
+
+    facts = interpreter_facts(python, FINGERPRINT_PACKAGES)
     fingerprint: dict[str, Any] = {
-        "python": platform.python_version(),
-        "implementation": platform.python_implementation(),
-        "platform": f"{sys.platform}-{platform.machine()}",
+        "python": facts["python"],
+        "implementation": facts["implementation"],
+        "platform": facts["platform"],
     }
     for package in FINGERPRINT_PACKAGES:
-        fingerprint[package] = _distribution_version(package)
+        fingerprint[package] = facts["versions"].get(package)
     for lock in FINGERPRINT_LOCKS:
         fingerprint[f"sha256:{lock}"] = _sha256_file(root / lock)
     return fingerprint
@@ -627,6 +729,22 @@ def _pytest_available(python: str) -> str | None:
     return completed.stdout.strip() if completed.returncode == 0 else None
 
 
+def junit_identifier(classname: str, name: str, root: Path = ROOT) -> str:
+    """pytest node id from a junit ``classname``/``name`` pair.
+
+    ``tests.data_workbench.test_x.SomeTests`` names the module
+    ``tests/data_workbench/test_x.py`` and the class ``SomeTests``: the longest
+    dotted prefix that is a file is the module, the rest are classes.
+    """
+
+    parts = classname.split(".") if classname else []
+    for split in range(len(parts), 0, -1):
+        module = "/".join(parts[:split]) + ".py"
+        if (root / module).is_file():
+            return "::".join([module, *parts[split:], name])
+    return f"{'/'.join(parts)}.py::{name}"
+
+
 def run_pytest(python: str) -> dict[str, Any]:
     identifiers = static_pytest_ids()
     version = _pytest_available(python)
@@ -649,9 +767,7 @@ def run_pytest(python: str) -> dict[str, Any]:
         outcomes: dict[str, str] = {}
         if report.is_file():
             for case in element_tree.parse(report).iter("testcase"):
-                classname = case.get("classname", "").replace(".", "/")
-                name = case.get("name", "")
-                identifier = f"{classname}.py::{name}"
+                identifier = junit_identifier(case.get("classname", ""), case.get("name", ""))
                 if case.find("failure") is not None:
                     outcomes[identifier] = "fail"
                 elif case.find("error") is not None:
@@ -680,7 +796,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--tests-dir", type=Path, default=TESTS, help="directory holding test_*.py modules")
     parser.add_argument("--jobs", type=int, default=None)
     parser.add_argument("--timeout", type=float, default=DEFAULT_MODULE_TIMEOUT_SECONDS)
-    parser.add_argument("--python", default=sys.executable, help="interpreter used for test subprocesses")
+    parser.add_argument("--python", default=None,
+                        help=f"interpreter used for test subprocesses (default: ${GATE_VENV_ENV}/bin/python if set, else this one)")
     parser.add_argument("--baseline", type=Path, default=None)
     parser.add_argument("--quarantine", type=Path, default=DEFAULT_QUARANTINE)
     parser.add_argument("--strict", action="store_true", help="fail when the environment fingerprint differs")
@@ -703,7 +820,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.allow_add and not arguments.update_baseline:
         parser.error("--allow-add is only valid with --update-baseline")
 
-    fingerprint = environment_fingerprint()
+    arguments.python = arguments.python or default_test_python()
+    fingerprint = environment_fingerprint(python=arguments.python)
     baseline_path = arguments.baseline or (DEFAULT_PYTEST_BASELINE if arguments.pytest else DEFAULT_BASELINE)
     baseline = read_baseline(baseline_path)
     quarantine = read_quarantine(arguments.quarantine)
@@ -722,6 +840,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "reason": result["reason"],
                 "not_run_ids": result["ids"],
                 "not_run_count": len(result["ids"]),
+                "python": arguments.python,
                 "fingerprint": fingerprint,
                 "fingerprint_differences": differences,
                 "passed": True,
@@ -813,6 +932,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "baseline": str(baseline_path.relative_to(ROOT)) if baseline_path.is_relative_to(ROOT) else str(baseline_path),
         "milestone": milestone,
         "milestone_source": milestone_source,
+        "python": arguments.python,
         "fingerprint": fingerprint,
         "fingerprint_differences": differences,
         "counts": _summary(all_outcomes),

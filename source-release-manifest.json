@@ -1061,6 +1061,7 @@
     "requirements/value-native-py310.lock",
     "requirements/value-open-core-py310.lock",
     "requirements/value-perfect-foresight-py310.lock",
+    "requirements/value-test-py310.lock",
     "requirements/value-validation-py310.lock",
     "run-two-year-parity.cmd",
     "scripts/assemble_public_uk_pack.py",
@@ -1196,6 +1197,7 @@
     "task-2-report.md",
     "tests/baselines/eslint-baseline.json",
     "tests/baselines/known-failures-linux-py310.txt",
+    "tests/baselines/known-failures-pytest-linux-py310.txt",
     "tests/baselines/milestone.txt",
     "tests/baselines/quarantine.txt",
     "tests/baselines/release-exclusions.txt",
@@ -2931,8 +2933,8 @@
     },
     {
       "path": "CONTRIBUTING.md",
-      "sha256": "aa45e5fe569737dfaceb17ba80d6ca5a6b86ff1c8cde86314d7d807319c11707",
-      "bytes": 3732,
+      "sha256": "6ea37235e8281fe1132858b69a31636ab962b13d9cb93d88d81567e82f4c996e",
+      "bytes": 3987,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9231,6 +9233,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "requirements/value-test-py310.lock",
+      "sha256": "62ba7b14a47b8310f4bbef1351f61db88baad56ee2f75c6514ac0aa1368a79b9",
+      "bytes": 2186,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "requirements/value-validation-py310.lock",
       "sha256": "fcdfb4f5293722566e5aca9fb1074a9f54782a524f632b17fdb25f799a55dfb8",
       "bytes": 73,
@@ -9682,8 +9690,8 @@
     },
     {
       "path": "scripts/p0_gate.py",
-      "sha256": "ef121ccebd1f6462da98a7d628c042234b4a024025086bbc49ee14cdc5f7220c",
-      "bytes": 45718,
+      "sha256": "7fd6ff32181106ff35ca4d0e5cc042900317b3b8d7934b2cd3da3c86cafae1f9",
+      "bytes": 47931,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9790,8 +9798,8 @@
     },
     {
       "path": "scripts/run_backend_tests.py",
-      "sha256": "1ef6fc6f81115e81bc209969c5bb2da4fbebdff5cd0d2acc5780ef285879d37a",
-      "bytes": 36508,
+      "sha256": "7c91c280fd32b2f7c8d829bd46ed2a24da842afe93a8765a06d154ecc42b3ca2",
+      "bytes": 41561,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10030,8 +10038,14 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "f1441b28908b591cfaac1e2886215fd5dc8e57af5d93b6f05d44c5d425151dd1",
-      "bytes": 20217,
+      "sha256": "ce89aadeff2f7be7e7a091084805d38bfca4f258053f08101eab763d9bcdf37c",
+      "bytes": 20285,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/baselines/known-failures-pytest-linux-py310.txt",
+      "sha256": "fa7fb61c43b945ca5b009b07cc1c78dcee22798ad339f1ce2b2e99140362e116",
+      "bytes": 448,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10042,8 +10056,8 @@
     },
     {
       "path": "tests/baselines/quarantine.txt",
-      "sha256": "b9fc581c68d3f075b3152c1511bf72d002250bb55fd6d09471e2a3371a2c5a6b",
-      "bytes": 12073,
+      "sha256": "d5e4386da1d3a3c7e23bfb03965db2bd23d28bc58c1a743d6e55a830ae218f84",
+      "bytes": 11097,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10978,8 +10992,8 @@
     },
     {
       "path": "tests/test_backend_test_runner.py",
-      "sha256": "0439a29096a3b8398d7fdc2956e2757377f072e027c4062e8f69ef85022e88b7",
-      "bytes": 19538,
+      "sha256": "88dc0ecdf653915814d54e4e770fa25c6eaafb8e707d31e164045bec37498bb0",
+      "bytes": 24244,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11836,8 +11850,8 @@
     },
     {
       "path": "tests/test_p0_gate.py",
-      "sha256": "1526452d3e5811426c3c5399c02b81865040f932157b4604dba3dd27118a4c44",
-      "bytes": 34534,
+      "sha256": "c2583d20090edd21d75c5f5722c1ccbcfc03c143fd25036a8200fed9cf9826a0",
+      "bytes": 38175,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

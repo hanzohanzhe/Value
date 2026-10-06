@@ -1,0 +1,29 @@
+# VALUE test environment (gate venv) for CPython 3.10 on linux-x86_64.
+#
+# The gate venv is an overlay on the managed install's read-only Python
+# 3.10.18 (``venv --system-site-packages``): the runtime packages come from
+# value-all-py310.lock through the base interpreter, and only the packages
+# below are added.  The author approved pytest and pypdf (P0 F4); the rest are
+# their Linux dependencies.  Point the gate at the venv with
+# ``VALUE_GATE_VENV=<venv>`` (scripts/p0_gate.py, scripts/run_backend_tests.py)
+# or start the gate with ``<venv>/bin/python -B scripts/p0_gate.py``.
+#
+# Exact versions are binding: p0_gate's ``test_environment`` step fails when
+# the test interpreter has any other version.  ``installed RECORD sha256`` is
+# the sha256 of the installed ``<name>-<version>.dist-info/RECORD`` file of
+# the reference gate venv (2026-10-05); RECORD itself lists the sha256 of
+# every installed file.  Wheel ``--hash=sha256:`` pins are not recorded: no
+# wheel was available offline and P0 forbids downloads; add them with
+# ``pip hash`` when the wheels are next fetched for an approved install.
+#
+# packaging (a pytest dependency) is already pinned by the runtime
+# (packaging==25.0) and is not repeated here; colorama is a Windows-only
+# pytest dependency and is not part of the Linux gate venv.
+exceptiongroup==1.3.1  # installed RECORD sha256 df7e74c59f9f81421851eb29f3fd6df11ab08e9a00493f4838dd377a1053d1c0
+iniconfig==2.3.0  # installed RECORD sha256 a51739a35da002b62ecb9c2f84d1f89614a124c3c35728fee10911f145558b2c
+pluggy==1.6.0  # installed RECORD sha256 2ffd22e0a0f585aef1c081cc180dab94bd8323a0a0f79e6f7edebd8a4dde5f70
+pygments==2.21.0  # installed RECORD sha256 86c846e98231febdde2b4a701993f4c1aedccbd21ca07220b0e167ad75b5f27e
+pypdf==6.1.1  # installed RECORD sha256 932c0a3b94e1f229a1c168c3d611ed794ed6396da693423bb4b73dcd32f6202b
+pytest==8.4.2  # installed RECORD sha256 8a7af43d18b445767984f43cf62f25172c43318a87077e7e01f7ef8fb3d38285
+tomli==2.4.1  # installed RECORD sha256 051b9188265fbfdf908619b555aab2c41678fe7051e6e88613afbf9fc63558bb
+typing_extensions==4.16.0  # installed RECORD sha256 71c5e60c7e85c827958bb5b6d2eb501ad481ae87674e0bdb1d45bf21855b7108
