@@ -1,12 +1,14 @@
 # VALUE 修正口径参考统计表（供作者审阅）
 
-> **状态（2026-10-06 更新）：第 1、2 节已由作者审核（DECISIONS A14）；第 3 节损耗系数已由作者认可（A9）。** 第 3.4 节 DUKES 对照列只作披露（A9）；第 3.5 节光伏倾斜面换算的模型选择（A13，F2 单元）已由作者直接认可（DECISIONS A16-6，2026-10-06）。以下各节标题中的 "PENDING AUTHOR REVIEW" 为第一、二轮编制时的原状态，保留作记录。
+> **状态（2026-10-07 更新）：第 1–3 节（含 3.4、3.5 节）全部为"作者已审核 (2026-10-07, DECISIONS A21)"。** 此前：第 1、2 节已由作者审核（DECISIONS A14）；第 3 节损耗系数已由作者认可（A9）；第 3.4 节 DUKES 对照列只作披露（A9）；第 3.5 节光伏倾斜面换算的模型选择（A13，F2 单元）已由作者直接认可（DECISIONS A16-6，2026-10-06）。**第 4 节火电重启成本（A19，2026-10-07 新增）为 PENDING AUTHOR REVIEW**，作者审核前不得写入修正口径参数表。
 >
-> 原状态：PENDING AUTHOR REVIEW（全文所有数字、所有建议取值均待作者审阅，未被接受前不得写入 corrected 参数表）
+> 原有第 4、5、6 节顺延为第 5、6、7 节（第二轮下载文件清单现为第 7 节）。
+>
+> 第一、二轮原状态（保留作记录）：PENDING AUTHOR REVIEW（全文所有数字、所有建议取值均待作者审阅，未被接受前不得写入 corrected 参数表）。
 >
 > 用途：P0 计划 M5 / P0-5 S7（Q15 风光文献损耗系数）与 S8（核电、水电可用率）的参考数据。
 > 编制：2026-10-06 第一轮只读公开网页（WebSearch/WebFetch），未下载数据文件。
-> **第二轮补齐（2026-10-06，DECISIONS A11 授权，单元 F1-DESNZ-refstats）：** 从 gov.uk 下载了 6 个 DESNZ 官方 xlsx（DUKES 2026 表 5.6、5.10、6.2、6.3；Energy Trends 2026 年 9 月版表 5.1、6.1），只放在施工临时目录，未入库。文件清单、URL、sha256 与访问时间见第 6 节。原先标 [NV] 的核电与水电数据已全部用 xlsx 单元格补齐，标为 [X]。按 A11，补齐后的本表须再次交作者审核，审核通过前不算验收。
+> **第二轮补齐（2026-10-06，DECISIONS A11 授权，单元 F1-DESNZ-refstats）：** 从 gov.uk 下载了 6 个 DESNZ 官方 xlsx（DUKES 2026 表 5.6、5.10、6.2、6.3；Energy Trends 2026 年 9 月版表 5.1、6.1），只放在施工临时目录，未入库。文件清单、URL、sha256 与访问时间见第 7 节。原先标 [NV] 的核电与水电数据已全部用 xlsx 单元格补齐，标为 [X]。按 A11，补齐后的本表须再次交作者审核，审核通过前不算验收。
 > 访问日期：所有链接实际访问于 **2026-10-06**（任务模板要求写 2026-10-04；为如实起见此处记录实际访问日期，作者可统一改写）。
 > 版本说明：本次下载的是 **DUKES 2026**（2026-07-30 发布，含 2025 年数据，2023–2024 年为修订值）和 **Energy Trends 2026 年 9 月版**。第一轮引用的 DUKES 2025 正文数字（[E]）与新版不一致时，以 [X] 为准，原值保留在表中供对照。
 
@@ -19,13 +21,13 @@
 | **[E]** | 仅来自搜索引擎对原文（DESNZ PDF、ONR docx、期刊全文）的摘录，原文件本身未能打开（gov.uk 的 DUKES/Energy Trends 只以 PDF/xlsx 发布，WebFetch 无法解析，且本任务禁止下载文件）。**作者必须对照原表复核。** |
 | **[D]** | 由上面已核实的数字推导，推导式写在旁边，不是独立来源。 |
 | **[NV]** | 未能从任何可读来源核实。按规则**不给数**，只说明应从哪里取。 |
-| **[X]** | （第二轮新增）直接读自第 6 节所列 DESNZ 官方 xlsx 的单元格，用运行时自带的 openpyxl 读取（`data_only=True`），表名、工作表与行名写在旁边。四舍五入只在本文展示时进行。 |
+| **[X]** | （第二轮新增）直接读自第 7 节所列 DESNZ 官方 xlsx 的单元格，用运行时自带的 openpyxl 读取（`data_only=True`），表名、工作表与行名写在旁边。四舍五入只在本文展示时进行。 |
 
 重要限制（第一轮）：DESNZ 的 DUKES 表 5.6 / 5.10 / 6.2 / 6.3 和 Energy Trends 表 5.1 / 6.1 只以 xlsx/ods/PDF 发布，第一轮没有读到单元格。**第二轮已按 A11 下载并读取这些表**；凡是第一轮标 [E] 的 DESNZ 数字，现在都有对应的 [X] 值可对照。
 
 ---
 
-## 1. 英国核电可用率（PENDING AUTHOR REVIEW → 作者已审核，A14）
+## 1. 英国核电可用率（作者已审核 (2026-10-07, DECISIONS A21)；此前 A14 已审核）
 
 > A14：各站 2019–2024 均值获认可，参数表数值不变。F2 单元按 1.6 节把 Heysham 2、Torness 的停发月份 2030-03 写入参数表 `generation_end_month_overrides`（A10，`p05.nuclear-generation-end-month`）。
 
@@ -50,9 +52,9 @@
 | N15 | Statista "Plant load factor of nuclear stations in the UK 2010–2023" | 图表说明文字 | 2025 | https://www.statista.com/statistics/548830/plant-load-factor-nuclear-stations-uk | [V2] |
 | N16 | DESNZ DUKES 2020 / 2021 / 2022 / 2024 / 2026 第 5 章正文（逐年变化描述） | 第 5 章正文 | 各年 7 月 | DUKES 合集页：https://www.gov.uk/government/collections/digest-of-uk-energy-statistics-dukes ；第 5 章页：https://www.gov.uk/government/statistics/electricity-chapter-5-digest-of-united-kingdom-energy-statistics-dukes | [E] |
 | N17 | Carbon Brief "Analysis: UK nuclear output falls to lowest level since 1982"（数据源注明为 BEIS Energy Trends 5/6 与 BM Reports） | 正文 | 2022-01-07 | https://www.carbonbrief.org/analysis-uk-nuclear-output-falls-to-lowest-level-since-1982/ | [V2] |
-| X1 | DESNZ DUKES 2026 表 5.10 "Plant loads, demand and efficiency of major power producers"（xlsx） | 工作表 `5.10.B and 5.10.C`，表 5.10.B 行 "Nuclear stations" | 2026-07-30 | 见第 6 节 | [X] |
-| X2 | DESNZ DUKES 2026 表 5.6 "Electricity fuel use, generation and supply"（xlsx） | 工作表 `5.6`，表 5.6.B（generated）、5.6.D（used on works）、5.6.E（supplied (gross)），行 "All generating companies / Nuclear" | 2026-07-30 | 见第 6 节 | [X] |
-| X3 | DESNZ Energy Trends 表 5.1 "Fuel used in generation, electricity generated and supplied"，2026 年 9 月版（xlsx） | 工作表 `Quarter`，表 5.1b（generated）、5.1c（supplied），行 "All generating companies / Nuclear" | 2026-09 | 见第 6 节 | [X] |
+| X1 | DESNZ DUKES 2026 表 5.10 "Plant loads, demand and efficiency of major power producers"（xlsx） | 工作表 `5.10.B and 5.10.C`，表 5.10.B 行 "Nuclear stations" | 2026-07-30 | 见第 7 节 | [X] |
+| X2 | DESNZ DUKES 2026 表 5.6 "Electricity fuel use, generation and supply"（xlsx） | 工作表 `5.6`，表 5.6.B（generated）、5.6.D（used on works）、5.6.E（supplied (gross)），行 "All generating companies / Nuclear" | 2026-07-30 | 见第 7 节 | [X] |
+| X3 | DESNZ Energy Trends 表 5.1 "Fuel used in generation, electricity generated and supplied"，2026 年 9 月版（xlsx） | 工作表 `Quarter`，表 5.1b（generated）、5.1c（supplied），行 "All generating companies / Nuclear" | 2026-09 | 见第 7 节 | [X] |
 
 ### 1.2 全国总量（DESNZ 口径与 EDF 口径）
 
@@ -148,7 +150,7 @@ EDF 站级旁证 [V]（N3）：2025 年 Sizewell B 发电 10.4 TWh，负荷率 9
 
 以上均为 PRIS 参考功率口径。
 
-### 1.4a 各站 2019–2024 平均负荷率（A10 所需表；PENDING AUTHOR REVIEW）
+### 1.4a 各站 2019–2024 平均负荷率（A10 所需表；作者已审核 (2026-10-07, DECISIONS A21)）
 
 A10 规定：修正口径下各站用自己的 2019–2024 年平均负荷率（PRIS 参考功率口径）作为固定值，退役按月份折算。DESNZ 不公布逐站发电量或负荷率（DUKES 5.10 只有全国 "Nuclear stations" 一行），所以逐站值只能来自 PRIS（N1 [V]）。第二轮用 DUKES 5.6.E 全国 supplied 对 PRIS 逐堆合计做了校核（1.2 节），2019–2024 年各年相对差都在 0.9% 以内。
 
@@ -196,7 +198,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 建模含义 [D]：2030 年不是闰年，1–3 月共 90 天，即 90 × 48 = 4320 个半小时时段。"2030 年 3 月停发" 对应 2030 年第 4320 期起为 0，与计划 S8 中 "Heysham 1 从第 4320 期起为 0" 的测试一致。仓库 `value_uk_nuclear_policy_v1.json`（evidence_as_of 2026-08-31）中四座 AGR 的 announced_generation_end 已与此一致。Sizewell B 的 2055 也一致。
 
-### 1.7 建议取值（PENDING AUTHOR REVIEW，供 S8 使用；仅为建议，非结论）
+### 1.7 建议取值（供 S8 使用；作者已审核 (2026-10-07, DECISIONS A21)）
 
 - **站级年负荷率：** 建议使用 1.3 节各站 2019–2024 均值（Heysham 1 66.8%、Hartlepool 68.9%、Heysham 2 75.2%、Torness 79.2%、Sizewell B 80.1%，PRIS 参考功率口径）[D]。若模型容量采用 EDF 数值，需要按 1.3 节的警示重新折算。另一种做法是按堆型取值：AGR 72.7%，PWR 80.1% [D]。
 - **年际波动：** 观测区间 AGR 为 58–85%，PWR 为 64–99% [D]。是否用随机或固定年份序列由作者决定。
@@ -205,7 +207,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 ---
 
-## 2. 英国径流式（natural flow）水电（PENDING AUTHOR REVIEW → 作者已审核，A14）
+## 2. 英国径流式（natural flow）水电（作者已审核 (2026-10-07, DECISIONS A21)；此前 A14 已审核）
 
 > A14：年负荷率取 0.3487，月度形状取 2.4 节阶梯形状；F2 单元已写入参数表（`p05.hydro-dukes-load-factor`）。GBP1 2000 MW 年发电 6.10 TWh，比 DUKES 6.2 2019–2024 均值 5.77 TWh 高 5.8%（±15% 以内）。
 
@@ -218,9 +220,9 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 | H3 | DESNZ DUKES 2025 第 6 章 | 第 6 章正文 | 2025-07-31 | https://assets.publishing.service.gov.uk/media/688a193f6478525675739024/DUKES_2025_Chapter_6.pdf | [E] |
 | H4 | Statista "Load factor of electricity from hydropower in the UK 2010–2023" | 图表说明 | 2025-01-14 | https://www.statista.com/statistics/555705/hydro-electricity-load-factor-uk | [V2] |
 | H5 | DESNZ DUKES 第 6 章页面（列出 DUKES 6.2 发电量、DUKES 6.3 负荷率两张 xlsx） | 表 6.2、6.3 | 2026-07-30 更新 | https://www.gov.uk/government/statistics/renewable-sources-of-energy-chapter-6-digest-of-united-kingdom-energy-statistics-dukes | [V]（第一轮只核实表存在；第二轮见 X4、X5） |
-| X4 | DESNZ DUKES 2026 表 6.2 "Capacity of, and electricity generated from, renewable sources"（xlsx） | 工作表 `6.2`："Installed Capacity (MW)"（年末值）与 "Generation (GWh)" 两表，行 "Hydro:"、"Small scale"、"Large scale"（不含抽水蓄能） | 2026-07-30 | 见第 6 节 | [X] |
-| X5 | DESNZ DUKES 2026 表 6.3 "Load factors for renewable electricity generation"（xlsx） | 工作表 `6.3`：上表 "based on average of beginning and end of year capacity"（标准口径，注 1），下表 "for schemes operating on an unchanged configuration basis"（不变配置口径，注 2） | 2026-07-30 | 见第 6 节 | [X] |
-| X6 | DESNZ Energy Trends 表 6.1 "Renewable electricity capacity and generation"，2026 年 9 月版（xlsx） | 工作表 `Quarter`："ELECTRICITY GENERATED (GWh)" 与 "LOAD FACTORS (%)" 两表，行 "Hydro"；容量表行 "Small scale hydro"、"Large scale hydro" | 2026-09 | 见第 6 节 | [X] |
+| X4 | DESNZ DUKES 2026 表 6.2 "Capacity of, and electricity generated from, renewable sources"（xlsx） | 工作表 `6.2`："Installed Capacity (MW)"（年末值）与 "Generation (GWh)" 两表，行 "Hydro:"、"Small scale"、"Large scale"（不含抽水蓄能） | 2026-07-30 | 见第 7 节 | [X] |
+| X5 | DESNZ DUKES 2026 表 6.3 "Load factors for renewable electricity generation"（xlsx） | 工作表 `6.3`：上表 "based on average of beginning and end of year capacity"（标准口径，注 1），下表 "for schemes operating on an unchanged configuration basis"（不变配置口径，注 2） | 2026-07-30 | 见第 7 节 | [X] |
+| X6 | DESNZ Energy Trends 表 6.1 "Renewable electricity capacity and generation"，2026 年 9 月版（xlsx） | 工作表 `Quarter`："ELECTRICITY GENERATED (GWh)" 与 "LOAD FACTORS (%)" 两表，行 "Hydro"；容量表行 "Small scale hydro"、"Large scale hydro" | 2026-09 | 见第 7 节 | [X] |
 | X2/X3 | 同 1.1 节（DUKES 5.6、ET 5.1 的 "Hydro (natural flow)" 行，用于交叉检验） | | | | [X] |
 
 ### 2.2 年发电量与负荷率
@@ -278,7 +280,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 **月度：仍为 [NV]。** 本次授权下载的 6 个文件（DUKES 5.6、5.10、6.2、6.3，ET 5.1、6.1）都只有年度或季度数据，没有月度水电发电量。月度值需要另取（例如 DESNZ 月度电力统计表或 Elexon BMRS 的 NPSHYD 半小时数据），不在 A11 授权范围内，本次未下载。
 
-### 2.4 建议取值（PENDING AUTHOR REVIEW）
+### 2.4 建议取值（作者已审核 (2026-10-07, DECISIONS A21)）
 
 - **年负荷率：** 建议取 DUKES 6.3 标准口径 2019–2024 均值 **34.87%（0.3487）**[D]。不变配置口径均值 34.59%，两者只差 0.28 pp，因为水电装机几乎不变；若作者偏好剔除容量变动影响，可用 0.3459。逐年范围 30.60–41.59%。现参数表用的是 2023 单年二手值 0.334，作者审核后可替换（本单元没有改参数表）。
 - **月度形状（由季度推出的阶梯形状）[D]：** 同一季度的 3 个月取相同系数，并归一化为 12 个月算术均值正好为 1（满足 `firm_availability.py` 对 `monthly_shape` 的检查）：
@@ -290,7 +292,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 ---
 
-## 3. 风电与光伏文献损耗系数（PENDING AUTHOR REVIEW → 损耗系数已由作者认可，A9）
+## 3. 风电与光伏文献损耗系数（作者已审核 (2026-10-07, DECISIONS A21)；损耗系数此前已由作者认可，A9）
 
 ### 3.0 适用对象（来自代码，非文献）
 
@@ -338,7 +340,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 | 光伏 PR（法国，参考） | 户用系统 PR 均值 76%（比利时 78% [E]） | S4 [V] |
 | 光伏系统损耗（机构默认） | PVGIS 默认 "overall losses" 14%（电缆、逆变器、污渍、老化），**不含**温度与辐照效应（另行建模） | S5 [V] |
 
-### 3.3 建议中心值与区间（PENDING AUTHOR REVIEW；每项都是"选择"，不是文献结论）
+### 3.3 建议中心值与区间（每项都是"选择"，不是文献结论；作者已审核 (2026-10-07, DECISIONS A21)）
 
 | 项目 | 陆上：中心值（区间） | 海上：中心值（区间） | 选择理由 |
 |---|---|---|---|
@@ -355,7 +357,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 （第二轮补注：冲突 1 已由作者在 DECISIONS A9 裁定，接受海上合计约 19%，不受"10–15%"限制；修正口径 CF 偏高时保持现状、不做统计标定，但须与 DUKES 并列披露并写明原因。）
 
-### 3.4 DUKES 风电、光伏负荷率对照列（A9 CF 披露用；PENDING AUTHOR REVIEW）
+### 3.4 DUKES 风电、光伏负荷率对照列（A9 CF 披露用；作者已审核 (2026-10-07, DECISIONS A21)）
 
 来源：X5（DUKES 2026 表 6.3）[X]；复算用 X4（DUKES 6.2）[X]。
 
@@ -389,7 +391,7 @@ Heysham 1 / Hartlepool 的寿期多次延长 [V]：N2（2024-01）延到 2026 �
 
 **F2 补注（A13 倾斜面换算之后）：** 修正口径光伏 CF 由 0.0997 变为 **0.1065**，与 DUKES 2020–2024 均值之比由 0.97 变为 **1.04**；风电不变。同一组数字写入运行结果摘要的 `vre_capacity_factor_disclosure` 字段和参数表 `gridform_core/data/weather/value_uk_vre_cf_disclosure_v1.json`。
 
-### 3.5 光伏倾斜面换算的模型选择（A13，F2 单元；PENDING AUTHOR REVIEW → 作者已认可，A16-6）
+### 3.5 光伏倾斜面换算的模型选择（A13，F2 单元；作者已认可，A16-6；作者已审核 (2026-10-07, DECISIONS A21)）
 
 > A16-6（2026-10-06）：作者直接认可下表的文献模型（Spencer、Erbs、Hay–Davies、反照率 0.2、Jacobson & Jadhav 最优倾角），参数表数值不变。参数表 `value_uk_vre_loss_factors_v1.json` 的 `solar_plane_of_array.status` 已改为 AUTHOR APPROVED。作者没有要求联网复核书目。
 
@@ -405,7 +407,182 @@ GBP1 结果：各站 POA/GHI 1.05–1.10，年散射比例 0.63–0.75；倾角�
 
 ---
 
-## 4. 未完成与待作者处理事项（PENDING AUTHOR REVIEW）
+## 4. 火电重启成本（A19，PENDING AUTHOR REVIEW）
+
+> 状态：**PENDING AUTHOR REVIEW**（2026-10-07 编制，单元 R1-1-startup-cost-data）。本节所有数字和建议取值在作者审核前不得写入修正口径参数表。论文复现口径（Q1）不受影响。
+>
+> 用途：DECISIONS A19，即修正口径的下调/弃电经济顺序。火电下调的代价由重启成本和省下的燃料、碳与可变成本共同决定，再与风电弃电代价 0 比较；不得预设火电一定比风电贵。
+>
+> 编制方式：只用 WebSearch / WebFetch 读取公开网页和公开 JSON 接口（Elexon Insights API、ONS 时间序列、英格兰银行数据库），没有下载文件，也没有打开 PDF。原文只有 PDF 的文献，数字取自搜索引擎摘录，标 [E]，作者须对照原文复核。所有链接访问于 **2026-10-07**。计算脚本：scratchpad `refstats/startup.py`。
+
+### 4.0 模型现状（来自代码，非文献）
+
+- 论文内核没有机组组合（commitment）状态，也没有最小稳定出力和最短停机时间。每类火电是一台聚合机组，每个半小时时段只受 `alter_limit` 爬坡约束（`runtime_compat/config.py:79-106`；`native_corrected.ramp_floor_mw`）。
+- 论文参数中的 `startup_cost` 是 £/MWh 加价。机组上一时段未被接受时，日前报价加上 `startup_cost`（默认 PSM 内核 `runtime_compat/modular_simulation_model.py:1434`）；物理成本账另记 energy × `startup_cost`（`native_corrected.physical_cost_terms`）。加价只作用于一个半小时时段，所以折成"每 MW 每次启动"等于 0.5 h × `startup_cost` [D]：CCGT 50 → £25/MW，OCGT 30 → £15/MW，bio_and_waste 83 → £41.5/MW，核电 500 → £250/MW。这些是论文口径参数，保持不变（Q1）。
+- 可变成本 `gen_cost` = 基数 + `carbon_price` + `fuel_cost` + `unit_time_cost`（`modular_simulation_model.py:607,688`）。论文参数为 CCGT 0.1 + 15.76 + 39.21 = **£55.07/MWh**，OCGT 0.1 + 26.04 + 48.78 = **£74.92/MWh**，bio_and_waste 0.2 + 4.8 + 80 = **£85.0/MWh**；VALUE 101 包的 CCGT 为 0.5 + 8 + 58 = **£66.5/MWh** [D]。
+- 修正口径现行的下调顺序（P3-03 修复，`native_corrected.avoided_cost` / `downward_key`）按 `gen_cost` 降序排列，没有计入重启成本。这就是 A19 要撤回的"永远先降火电"。
+
+### 4.1 来源清单
+
+| ID | 出版方 / 文献 | 内容 | 年份 | URL | 等级 |
+|---|---|---|---|---|---|
+| R1 | Kumar, Besuner, Lefton, Agan, Hilleman（Intertek APTECH 为 NREL 编写），"Power Plant Cycling Costs"，NREL/SR-5500-55433 | 表 1-1：各类机组热/温/冷启动的 capital & maintenance（磨损）成本，按装机计 $/MW，2011 美元，"lower bound" 的中位数，**不含启动燃料** | 2012-04 | https://www.nrel.gov/docs/fy12osti/55433.pdf （PDF 未打开）；书目页 https://research-hub.nlr.gov/en/publications/power-plant-cycling-costs/ | 书目 [V]；数字 [E] |
+| R2 | Bailera, Peña, Lisbona, Romeo，"Improved Flexibility and Economics of Combined Cycles by Power to Gas"，Frontiers in Energy Research 8:151 | 引用 R1：400 MWe 联合循环热/温/冷启动 €14,000 / €22,000 / €32,000；常规最低负荷 30%；热启动约停机 6 h，温启动停机 12–48 h，冷启动停机 > 48 h | 2020 | https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2020.00151/full | [V2]（转述 R1，不是独立来源） |
+| R3 | Staffell & Green，"Is There Still Merit in the Merit Order Stack? The Impact of Dynamic Constraints on Optimal Plant Mix"，IEEE Trans. Power Systems 31(1):43–53，doi:10.1109/TPWRS.2015.2407613 | **英国系统**。每 MW 启动成本 = 把机组加热到工作温度所需的燃料 + 碳排放成本：大型燃煤 £47.78，小型燃煤 £52.02，大型 CCGT £53.25，小型 CCGT £59.06，OCGT £93.30 | 2015（期刊卷 2016） | https://spiral.imperial.ac.uk/entities/publication/79c6b13b-60ed-413e-a6e2-bb843cf1c9a2 | 书目 [V]；数字 [E]；价格年 [NV]（论文用 2010 年英国系统检验，下文暂按 2010 年英镑换算） |
+| R4 | Schröder, Kunz, Meiss, Mendelevitch, von Hirschhausen，"Current and Prospective Costs of Electricity Generation until 2050"，DIW Data Documentation 68 | 表 25 启动参数。CCGT：最低负荷 45%，最短停机 2 h，冷启动燃料 2.8 MWh_th/MW，启动折旧 60 €/MW | 2013 | https://www.diw.de/documents/publikationen/73/diw_01.c.424566.de/diw_datadoc_2013-068.pdf | [E]（只读到 CCGT 一行；OCGT、燃煤各行 [NV]） |
+| R5 | PyPSA-Eur（开源欧洲电力系统模型）`data/unit_commitment.csv` | OCGT / CCGT / coal / lignite / nuclear：`p_min_pu` 0.2 / 0.45 / 0.38 / 0.5 / 0.5；`min_up_time` 0 / 4 / 8 / 8 / 10 h；`min_down_time` 0 / 2 / 8 / 8 / 10 h；`start_up_cost` 24 / 60 / 49 / 49 / 250 | 文件最近一次修改 2026-02-18（PR #2073） | https://raw.githubusercontent.com/PyPSA/pypsa-eur/master/data/unit_commitment.csv | [V]。文件本身不注明出处和单位。CCGT 的 0.45、2 h、60 与 R4 一致，推断沿用 DIW 数据，下文按 €/MW、2013 年价格处理 [D]。属于模型默认值，不是独立实测 |
+| R6 | Badesa, Teng, Strbac，"Simultaneous Scheduling of Multiple Frequency Services in Stochastic Unit Commitment"，IEEE Trans. Power Systems 34(5):3858–3868（arXiv:1809.10391） | **英国 2030 系统**机组参数。CCGT：500 MW/台，启动 £10,000/次，最小稳定出力 250 MW，最短运行 4 h，最短停机 1 h，空载成本 £4,500/h。OCGT：100 MW/台，启动成本 0，最小稳定出力 50 MW | 2019 | https://arxiv.org/abs/1809.10391 | [E] |
+| R7 | Oates & Jaramillo，"Production cost and air emissions impacts of coal cycling in power systems with large-scale wind penetration"，Environ. Res. Lett. 8:024022 | 表 1，2010 美元，按**每次启动**计（低情景来自 PJM 数据）：NGCC 冷/温/热 $25k / $19k / $15k；NGCT $10k / $7.6k / $6k；燃煤低情景 $52k / $40k / $31k，高情景 $350k / $210k / $170k | 2013 | https://iopscience.iop.org/article/10.1088/1748-9326/8/2/024022 | [V]。不注明机组容量，无法折成每 MW，只用作热/温/冷比例对照 |
+| R8 | Elexon Insights Solution（BMRS）API：动态参数 SEL（稳定出力下限）、MZT（最短零出力时间）、MNZT（最短非零出力时间），以及物理数据 MEL | 英国 BM 机组的实际申报值；快照时点 2026-09-01T00:00Z | — | `https://data.elexon.co.uk/bmrs/api/v1/balancing/dynamic?bmUnit=<ID>&snapshotAt=2026-09-01T00:00Z&until=2026-09-01T01:00Z`；`https://data.elexon.co.uk/bmrs/api/v1/balancing/physical?bmUnit=<ID>&from=2026-09-01T00:00Z&to=2026-09-01T00:30Z` | [V] |
+| R9 | Elexon BSC 术语表 | SEL：BM 机组 "minimum stable export operating level"；MZT：机组接受调度后须保持零出力（或反向运行）的最短时间，单位为分钟（Grid Code BC1） | — | https://www.elexon.co.uk/glossary/stable-export-limit/ ；https://www.elexon.co.uk/glossary/minimum-zero-time/ | [V] |
+| R10 | 英格兰银行 XUAAUSS / XUAAERS 年均即期汇率 | 2011 年 1 GBP = 1.603 USD；2013 年 1 GBP = 1.1776 EUR | — | https://www.bankofengland.co.uk/boeapps/database/ | [V] |
+| R11 | ONS CPI INDEX 00: ALL ITEMS（D7BT，2015=100）年均值 | 2010 年 89.4，2011 年 93.4，2013 年 98.5，2024 年 133.9 | 2026-09-16 版 | https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23 | [V] |
+
+R1 数字的核实情况：
+- 搜索摘录给出 R1 表 1-1 七类机组热启动磨损中位数依次为 94、59、54、35、32、19、36 $/MW。按 R1 的机组分类顺序（小型亚临界燃煤、大型亚临界燃煤、超临界燃煤、燃气联合循环、大型框架式燃气轮机、航改型燃气轮机、燃气蒸汽机组），对应关系是编制者推断的 [E]/[D]。另一条摘录单独确认了大型亚临界燃煤热启动为 59 $/MW。
+- CCGT 冷启动 79 $/MW 由另一条摘录确认 [E]。温启动 55 $/MW 由 R2 推出：€22,000 ÷ 400 MW = 55 [D]。R2 的三个值折成每 MW 为 35 / 55 / 80，与 R1 一致。
+- 燃气轮机和燃煤的温启动、冷启动值 [NV]。摘录只说航改型燃气轮机的热、温、冷启动成本"几乎相同"，因为这类机组的关键部件每次都按冷启动设计 [E]。
+- 另有一条摘录称 R1 表 1-2 中框架式燃气轮机热启动为 22、航改型为 12 $/MW。它与表 1-1 的口径差别未核实 [E]。
+
+### 4.2 换算方法 [D]
+
+先按原文年份的年均汇率（R10）换成英镑，再用英国 CPI（R11）换到 **2024 年英镑**：
+
+- 2011 美元：÷ 1.603 × (133.9 / 93.4 = 1.4336)
+- 2013 欧元：÷ 1.1776 × (133.9 / 98.5 = 1.3594)
+- 2010 英镑（R3，价格年未核实）：× (133.9 / 89.4 = 1.4978)
+- R6 的英镑值没有注明价格年，不做换算。
+
+模型的货币口径是 `constant_base_year_gbp_undiscounted`（`gridform_core/investment_accounts.py:48`），基年随各资产成本来源而定（`results_summary.py:347`："mixed_as_declared_in_asset_sources"）。本节统一用 2024 年英镑，作者可另选基年。燃料成本随燃料价格大幅波动，按 CPI 换算只是粗略处理（见 4.7 节）。
+
+### 4.3 启动成本（按装机计，每 MW 每次启动）
+
+| 技术 | 来源 | 口径 | 原值 热 / 温 / 冷 | 2024 年英镑 热 / 温 / 冷 [D] | 等级 |
+|---|---|---|---|---|---|
+| CCGT | R1 | 磨损（不含燃料） | $35 / $55 / $79（2011） | **31.3 / 49.2 / 70.7** | [E]（温启动经 R2 [V2]） |
+| CCGT | R4 / R5 | 磨损（折旧，不分启动类型）；R4 另计冷启动燃料 2.8 MWh_th/MW | €60（2013） | 69.3 | R4 [E]；R5 [V] |
+| CCGT | R3 | 燃料 + 碳（英国） | 大型 £53.25，小型 £59.06（2010?） | **79.8**（大型），88.5（小型） | [E] |
+| CCGT | R6 | 合计（英国 2030） | £10,000 / 500 MW = £20 | 20（未换算） | [E] |
+| CCGT | R7 | 每次启动 | $15k / $19k / $25k（2010） | —（无容量）；热 : 温 : 冷 = 0.60 : 0.76 : 1 | [V] |
+| OCGT | R1 | 磨损 | 框架式 $32、航改型 $19（只有热启动） | **28.6**（框架式），17.0（航改型）；温、冷 [NV] | [E] |
+| OCGT | R5 | 磨损（推断） | €24（2013?） | 27.7 | [V] |
+| OCGT | R3 | 燃料 + 碳（英国） | £93.30（2010?） | **139.7** | [E] |
+| OCGT | R6 | 合计（英国 2030） | 0 | 0 | [E] |
+| OCGT | R7 | 每次启动 | $6k / $7.6k / $10k（2010） | —（无容量） | [V] |
+| 生物质（燃煤代理） | R1 | 磨损：大型亚临界燃煤 | $59（只有热启动） | **52.8**；温、冷 [NV] | [E] |
+| 生物质（燃煤代理） | R5 | 磨损（推断）：coal | €49（2013?） | 56.6 | [V] |
+| 生物质（燃煤代理） | R3 | 燃料 + 碳：大型燃煤（英国） | £47.78（2010?） | **71.6** | [E] |
+| 生物质（燃煤代理） | R7 | 每次启动：燃煤低情景 | $31k / $40k / $52k（2010） | —（无容量） | [V] |
+
+生物质说明：没有找到生物质专属的启动成本来源 [NV]。英国大型生物质机组主要由燃煤机组改烧而来（Drax 4 台、Lynemouth），因此用大型燃煤机组作代理。R3 的燃料 + 碳是按燃煤计算的；模型中生物质的 `carbon_price` 只有 4.8，而燃料更贵，两者对启动燃料成本的净影响方向未核实 [NV]。
+
+### 4.4 最小稳定出力与最短停机时间
+
+**英国实际申报值（R8，快照 2026-09-01T00:00Z；MEL 取 2026-09-01 第 2–4 结算时段）[V]：**
+
+| BM 机组（API 代码） | 站名（编制者识别，API 不返回站名） | 技术 | SEL (MW) | MEL (MW) | SEL ÷ MEL [D] | MZT（分钟） | MNZT（分钟） |
+|---|---|---|---|---|---|---|---|
+| T_PEMB-11 | Pembroke | CCGT | 219 | 427 | 51.3% | 360 | 360 |
+| T_GRAI-6 | Grain | CCGT | 230 | 386 | 59.6% | 360 | 360 |
+| T_STAY-1 | Staythorpe | CCGT | 195 | 414 | 47.1% | 360 | 360 |
+| T_CARR-1 | Carrington | CCGT | 220 | 0（采样时不可用） | — | 360 | 360 |
+| T_WBURB-1 | West Burton B | CCGT | 185 | 0（采样时不可用） | — | 360 | 720 |
+| T_KEAD-2 | Keadby 2 | CCGT | 380 | 0（采样时不可用） | — | 360 | 360 |
+| T_DRAXX-1 | Drax 1 | 生物质 | 215 | 660 | 32.6% | 360 | 300 |
+| T_DRAXX-2 | Drax 2 | 生物质 | 200 | 600 | 33.3% | 360 | 300 |
+| T_INDQ-1 | Indian Queens | OCGT | 120 | 134 | 89.6% | 20 | 30 |
+
+注：MZT 即最短停机时间，MNZT 即最短运行时间。三台 CCGT 在 2026-08-20 12:00Z 再采样一次，MEL 仍为 0，未查装机容量。Drax 2 采样时 PN 645 MW 高于 MEL 600 MW，原样记录。只抽了 9 台机组的一个时点，不是全量统计。这些是机组自报的运行参数，可能偏保守。
+
+**文献值：**
+
+| 技术 | 最小稳定出力 | 最短停机时间 | 最短运行时间 |
+|---|---|---|---|
+| CCGT | R4 45% [E]；R5 45% [V]；R6 250/500 = 50% [E]；R2 新型单台 30% [V2] | R4 2 h [E]；R5 2 h [V]；R6 1 h [E] | R5 4 h [V]；R6 4 h [E] |
+| OCGT | R5 20% [V]；R6 50/100 = 50% [E] | R5 0 [V] | R5 0 [V] |
+| 燃煤（生物质代理） | R5 38% [V] | R5 8 h [V] | R5 8 h [V] |
+
+### 4.5 建议取值（PENDING AUTHOR REVIEW；每项都是"选择"，不是文献结论）
+
+做法：每次启动成本 S = 磨损（R1 中位数，属于下界性质）+ 启动燃料与碳（R3 英国值，按 CPI 换算）。R1 是磨损成本最常用的来源，R3 是唯一给出英国燃料 + 碳的来源；两者口径互补，没有重复计算。R4 / R5 的磨损值（CCGT 69、OCGT 28、燃煤 57）与 R1 同量级，作为交叉检验。
+
+| 技术 | 热启动 | 温启动 | 冷启动 | **建议单一取值（A19 用）** | 文献区间 | 最小稳定出力 | 最短停机时间 |
+|---|---|---|---|---|---|---|---|
+| CCGT | 31 + 80 = **£110/MW** | 49 + 80 = **£130/MW** | 71 + 80 = **£150/MW** | **£110/MW**（热启动） | £20（R6 合计）至 £160（R1 冷启动 + R3 小型机组） | **50%**（区间 30–60%） | **6 h**（英国申报值；文献 1–2 h） |
+| OCGT | 29 + 140 = **£170/MW** | [NV]（暂同热启动） | [NV]（暂同热启动） | **£170/MW**；另一选择为只计磨损的 **£30/MW** | £0（R6）至 £170 | **50%**（区间 20–90%） | **0.5 h**（一个时段；英国申报 20 分钟，R5 为 0） |
+| 生物质（燃煤代理） | 53 + 72 = **£125/MW** | [NV] | [NV] | **£125/MW**（热启动；温、冷启动应更高） | £57（R5 只计磨损）至 £128（R5 磨损 + R3 燃料） | **35%**（区间 33–38%） | **6 h**（英国申报值；R5 燃煤 8 h） |
+
+说明：
+1. **为什么建议值取热启动：** 模型里的盈余/弃电事件多为几小时的低谷，停机时长一般短于 12 h，对应热启动。只有 CCGT 有温、冷启动值，可按 4.6 节的预计停机时长 H 选用：H < 12 h 用热启动，12–48 h 用温启动，> 48 h 用冷启动。界线依据 R2 转述的 R1 定义；6–12 h 之间原文没有明确界线，这里取 12 h [D]。
+2. **OCGT 分歧最大：** R3 的燃料 + 碳 £140 远高于 R1 / R5 的磨损 £17–29，R6 则直接取 0。按三种技术统一的口径（磨损 + 燃料）得 £170，但燃料项只有 R3 一个来源支持。由作者在 £170 与 £30 之间选择。编制者倾向 £170，以保持口径统一。
+3. **最小稳定出力**按英国申报值与文献的中间取整。OCGT 只有一台申报样本（大型单机框架式，89.6%），与文献 20–50% 差别很大，所以取 R6 的英国值 50%。
+4. **最短停机时间**取英国申报值。它只在实施"停机段"约束时使用（见 4.6 节第 3 点）。
+
+### 4.6 每次启动成本如何折成每 MWh，与燃料 + 碳 + VOM 的节省比较 [D]
+
+记某类火电 k：
+
+- c_k：下调 1 MWh 省下的可变成本，即模型的 `gen_cost`（已包含燃料、碳、`unit_time_cost`（VOM）和基数），单位 £/MWh；
+- S_k：每 MW 每次重启的成本（4.5 节），单位 £/MW；
+- m_k：最小稳定出力占装机的比例；
+- H：这部分容量被降下来之后，预计连续不被需要的时长（h），即这次盈余/弃电事件预计持续多久。
+
+**两段下调曲线：**
+
+1. **不停机段。** 机组仍运行在 m_k 以上，下调不触发重启。每下调 1 MWh 省 c_k > 0，**总比弃风（0）划算**，这一段应先于风电下调。聚合机组可近似为：从当前出力 P 降到 m_k × P_在运，其中 P_在运 是在运容量。部分负荷效率损失没有计入 [NV]。
+2. **停机段。** 要继续下调就必须停机，以后重启要付 S_k × ΔP；停机 H 小时共省 c_k × ΔP × H。把重启成本摊到被替代的电量上，每 MWh 的净节省为
+
+   **a_k(H) = c_k − S_k / H**
+
+   - a_k(H) > 0，即 H > H\*_k = S_k / c_k：先停火电，再弃风；
+   - a_k(H) ≤ 0：先弃风，火电保持在 m_k。
+
+   这正是 A19 的表述：省下的成本（c_k × H）高于重启成本（S_k）时先降火电，否则先弃风电。
+3. **最短停机时间 MZT_k 的作用。** 机组一旦停下，MZT_k 之内不能再出力。如果 H < MZT_k，盈余结束、需求回升时它回不来，只能由其它更贵的机组补上，甚至出现缺供。所以建议：只有 H ≥ MZT_k 时才允许进入停机段 [D，建议]。
+
+**盈亏平衡时长（按 4.5 节建议值）：**
+
+| 技术 | c_k (£/MWh) | S_k (£/MW) | H\* = S_k / c_k | 合半小时时段数 | a(0.5 h) | a(2 h) | a(6 h) |
+|---|---|---|---|---|---|---|---|
+| CCGT（论文参数） | 55.07 | 110 | 2.00 h | 4.0 | −164.9 | +0.1 | +36.7 |
+| CCGT（论文参数，温启动） | 55.07 | 130 | 2.36 h | 4.7 | −204.9 | −9.9 | +33.4 |
+| CCGT（VALUE 101） | 66.5 | 110 | 1.65 h | 3.3 | −153.5 | +11.5 | +48.2 |
+| OCGT | 74.92 | 170 | 2.27 h | 4.5 | −265.1 | −10.1 | +46.6 |
+| OCGT（只计磨损） | 74.92 | 30 | 0.40 h | 0.8 | +14.9 | +59.9 | +69.9 |
+| 生物质 | 85.0 | 125 | 1.47 h | 2.9 | −165.0 | +22.5 | +64.2 |
+
+（a 的单位为 £/MWh。）
+
+解读：如果只看单个半小时时段（H = 0.5 h），重启成本折合每 MWh 为 S_k ÷ 0.5 h = 2 × S_k（CCGT 约 £220/MWh），远高于 c_k，单时段的小幅盈余应先弃风。盈余持续约 2 小时以上时，按建议值先停火电更省。因此 **H 的取法决定结果**，任何一方都不能预设更贵（A19）。
+
+**H 的取法（交作者或实施单元决定）：**
+
+- (a) 从当前时段起，日前预测中连续盈余的时段数 × 0.5 h。需要模型在下调时能看到后续时段的预测。
+- (b) 只看当前时段，H = 0.5 h。实现最简单，但系统性偏向先弃风。
+- (c) 固定 H = MZT_k。实现简单，但系统性偏向先停火电。
+
+编制者建议 (a)。
+
+**与论文参数对比：** 论文的 `startup_cost` 加价相当于每次启动 £25/MW（CCGT）、£15/MW（OCGT）、£41.5/MW（生物质），约为本节建议值的 1/3 到 1/11。论文口径不改（Q1）。
+
+### 4.7 局限
+
+- R1 是美国机组数据，而且是 "lower bound"。R3 的价格年 [NV]。R4 只读到 CCGT 一行。R5 不注明出处和单位。生物质没有专属来源，用燃煤代理。
+- 燃料项按 CPI 换算，不随燃料价格变化。作者如果希望燃料项随模型燃料价格变化，可以改为"冷启动燃料（MWh_th/MW）× 模型自身的燃料 + 碳价格"。但模型的 `fuel_cost` 是按每 MWh 电计的，需要用效率换算，效率值 [NV]。
+- Elexon 申报值只是 9 台机组在一个时点的样本。
+- 模型的聚合机组没有"在运容量"这一状态。两段下调需要实施单元新增该状态，属于方法改动（Q13）。本节只提供数据。
+- 部分负荷效率损失和空载成本（R6：CCGT £4,500/h）没有计入。
+
+### 4.8 待作者处理事项
+
+1. 审核 4.5 节建议值：CCGT 热/温/冷 £110 / £130 / £150 每 MW，OCGT £170（或只计磨损的 £30），生物质 £125；以及最小稳定出力与最短停机时间。
+2. 决定 H 的取法（4.6 节 (a) / (b) / (c)）。
+3. 决定是否采用两段下调（不停机段先于风电）。
+4. 决定价格基年（本节用 2024 年英镑）。
+
+---
+
+## 5. 未完成与待作者处理事项（第 1–3 节部分：作者已审核 (2026-10-07, DECISIONS A21)，各条保留作记录；第 4 节的待办见 4.8 节）
 
 1. ~~DESNZ DUKES 5.10、5.6、6.2 / 6.3、ET 5.1 / 6.1 的核电负荷率与水电负荷率 [NV]~~ **第二轮已补齐**（1.2、1.4a、2.2 节，[X]）。按 A11，补齐后的本表仍须作者再次审核。
 2. 水电**季度**形状已补齐（2.3 节 [X]）；由季度推出的月度阶梯形状见 2.4 节 [D]。**逐月实测值仍为 [NV]**：授权的 6 个文件没有月度水电数据。
@@ -416,14 +593,15 @@ GBP1 结果：各站 POA/GHI 1.05–1.10，年散射比例 0.63–0.75；倾角�
 7. （第二轮新增）DUKES 6.3 风电合计行标准口径 2020、2021 年的值与分项及复算不符（3.4 节注 *），疑为 DESNZ 发布错误；DUKES 6.3 大型水电 2023、2024 年标准口径值无法由 DUKES 6.2 复算（2.2 节）。两处都不影响建议取值，但引用时需注意。
 8. （第二轮新增；F2 已处理）仓库参数表 `gridform_core/data/nuclear/value_uk_firm_availability_v1.json` 的水电年负荷率（0.334，2023 年二手值）与月度形状（平直占位）**F1 单元没有修改**；作者在 A14 选定 0.3487 与阶梯形状，F2 单元已写入（`p05.hydro-dukes-load-factor`）。修正族 golden 只用 VALUE 101 包，没有水电资产，因此没有数值变化。作者审核本表后，可按 2.4 节替换为 0.3487（或 0.3459）与阶梯形状；替换会改变修正口径的 golden，需要按 X0 规则做一次修订。核电各站值与 1.4a 节一致，无需修改。
 
-## 5. 编制过程说明
+## 6. 编制过程说明
 
 - 第一轮：只用了 WebSearch / WebFetch 读取公开网页，未用 curl/wget，也未主动下载文件。
 - 第一轮：有 5 次 WebFetch 指向的是 PDF 或 docx（gov.uk 的 DUKES 2026 第 5 章 PDF、UK Energy in Brief 2025 PDF、OSTI 的一份 PDF、两份 ONR docx）。工具自动把二进制副本存进了会话的 tool-results 缓存，而且都无法解析。这些副本已立即删除，内容未被使用。之后不再尝试 PDF 或 docx。
 - 第 1.3 节的汇总计算脚本在 scratchpad 中：`refstats/nuc.py`（第一轮）。
-- 第二轮（A11）：用 curl 读取 4 个 gov.uk 统计页面的 HTML，取得附件链接；然后只下载第 6 节所列 6 个 xlsx，放在施工临时目录 `build/desnz/`，**未入库**。读取用运行时自带 Python 的 openpyxl（`read_only=True, data_only=True`）。读取与计算脚本在 scratchpad `refstats/`：`dump.py`（逐行导出）、`q51.py`（ET 5.1 季度）、`qdump.py` 与 `hq.py`（ET 6.1 季度与水电形状）、`calc.py`（核电逐站均值、PRIS 与 DESNZ 校核、DUKES 6.2/6.3 复算）。
+- 第二轮（A11）：用 curl 读取 4 个 gov.uk 统计页面的 HTML，取得附件链接；然后只下载第 7 节所列 6 个 xlsx，放在施工临时目录 `build/desnz/`，**未入库**。读取用运行时自带 Python 的 openpyxl（`read_only=True, data_only=True`）。读取与计算脚本在 scratchpad `refstats/`：`dump.py`（逐行导出）、`q51.py`（ET 5.1 季度）、`qdump.py` 与 `hq.py`（ET 6.1 季度与水电形状）、`calc.py`（核电逐站均值、PRIS 与 DESNZ 校核、DUKES 6.2/6.3 复算）。
+- 第三轮（A19，单元 R1-1-startup-cost-data，2026-10-07）：只用 WebSearch / WebFetch 读取公开网页与公开 JSON 接口（Elexon Insights API 的 `balancing/dynamic` 与 `balancing/physical`、ONS D7BT 的 `/data` JSON、英格兰银行汇率数据库页面、GitHub 上 PyPSA-Eur 的 CSV 原文），没有下载文件，也没有用 WebFetch 打开任何 PDF；凡原文只有 PDF 的文献，数字取自搜索引擎摘录并标 [E]。nature.com 上 Schill、Pahle、Gambardella（2017，Nature Energy）的论文需要登录，ScienceDirect 返回 403，都没有读到正文，因此未列入来源清单。换算脚本在 scratchpad `refstats/startup.py`。
 
-## 6. 第二轮下载文件清单（DECISIONS A11）
+## 7. 第二轮下载文件清单（DECISIONS A11）
 
 访问（下载）时间：2026-10-06T02:54:09Z（UTC），即英国夏令时 2026-10-06 03:54。保存位置：施工临时目录 `scratchpad/build/desnz/`（不入库）。
 
