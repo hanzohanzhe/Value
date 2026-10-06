@@ -327,3 +327,55 @@ Modules 页顶部，仅在有隔离项时显示，使用 caution Callout：
 
 - 每个视图在 1280px 和 375px 宽度下的截图，放在 `docs/dev/p0-ui-screens/`，使用 scratch 实例和 VALUE 101 Run。
 - `docs/dev/P0_FRONTEND_DEVIATIONS.md`：记录与本规格不一致的地方，没有就写「无」。
+
+---
+
+## 11. 修复轮设计（四类用户测试后，2026-10-06，Claude）
+
+继续遵守第 1.3 节的样式约定，以及第 0 节的原则。
+
+### 11.1 Readiness 卡片（S-D1）
+- **不再截断。** 问题按以下优先级分组：
+  1. errors：始终展开；
+  2. 数据 plausibility；
+  3. 时间轴（chronology）；
+  4. 其他数据警告；
+  5. 适配器的 “unit is not declared”；
+  6. 环境类问题。
+- **组头：** `{组名} · {n}`，琥珀色或红色 StatusPill。errors 组和 plausibility 组默认展开，其余组默认折叠，展开按钮写 `Show {n}`。
+- **组内去重：** 同一 code 只显示一次，并在后面注明 `×{n}`，悬停时列出全部对象。
+
+### 11.2 数据包校验面板（S-D2，Data 页，每个数据包一张）
+```
+Validation        Structural ● Passed   Chronology ● 2 warnings   Plausibility ● 1 warning
+Methodology use   Corrected ● Eligible   Doctoral reproduction ● Not eligible — not a thesis-era pack
+[Show details ▾]   (逐层列出发现：code、对象、一句话说明)
+```
+- **配色：** Passed 为 teal；有 warning 为琥珀色；Failed 为红色；未评估为 muted 色、文字 `Not evaluated`。
+- **替换旧文案：** 原来的 `25/25 required inputs ready` 改为 `25/25 inputs present · validation {最差状态}`。
+- **数据来源：** `/api/data-packs/<id>/validation` 和 `plausibility_status`。
+
+### 11.3 论文复现口径扣发的说明（R-D1）
+- **Callout 正文写明真正失败的原始不变量：** `Annual results withheld: raw invariant "{名称}" failed ({n} rows).` 其后另起一句：
+  - 命中声明偏差：`Matches declared deviation {DEV-ID}: {一句话}.`
+  - 未命中：`No declared deviation explains it.`
+- **状态条：** 仅在 doctoral 口径下增加字段 `Raw invariants`。全部通过显示 teal `● Passed`；有失败显示琥珀色 `● {k} failed`，悬停列出名称。`Energy balance` 字段保持不变。
+- **`reproduction_conformant`：** 维持 teal `● Conformant`（第 2.3 节补入该值）。悬停说明强调“账闭合 ≠ 物理验证通过”。
+
+### 11.4 隔离和停用后的出路（M-D3、M-D4、F-D3）
+- **预检结果（M-D3）：** 预检报告即使缺少 `project_revision_sha256`，也必须显示后端返回的 errors，包括 `GF_PREFLIGHT_MODULE_QUARANTINED` 及其修复指引。有 errors 时 Run 按钮禁用，旁边注明原因。
+- **停用项入口（M-D4、F-D3）：** Modules 页在列表下方始终保留 `Disabled and quarantined` 区，只要存在停用或隔离的模块或扩展就显示。每项提供 `Enable`、`Rescan`、`Remove` 三个按钮，`Remove` 需要二次确认。页头另有全局 `Rescan modules` 按钮。
+- **Enable 失败时的提示：** 显示最新一次扫描的错误，不显示缓存的旧错误，并附 `Rescan` 按钮。
+
+### 11.5 一日范围与扩展（F-D2）
+- **预检：** 阻断级 error：`The one-day lesson runs the market step only, so the selected extension(s) {names} would not execute. Choose two-period or a longer scope, or deselect the extension(s).`
+- **范围下拉框：** 选中扩展时，在一日选项后附注 `(extensions do not run)`。
+- **比较页：** 不把这种情况判为方法改变。
+
+### 11.6 映射编辑器防错（S-D4、S-D5）
+- **时间戳列（S-D4）：** 新增可选的 `Timestamp column` 下拉框和 `Time zone` 下拉框（UTC / Europe/London）。选定后声明 `timestamp_column`，由时间轴层校验单调性、缺口和重复，错误逐行显示。
+- **币种提示（S-D5）：** 列名含 `eur` 或 `€`，而 Currency 选的是 GBP 时，显示琥珀色行内提示 `Column name suggests EUR — confirm the currency.`。该提示不阻断。
+
+### 11.7 原地修改模块源码（M-D2，作者决定：接受并记录）
+- **预检：** 显示琥珀色 warning：`Module {id} source changed since install ({old8}… → {new8}…). Results will record the new source hash.`
+- **比较页：** 沿用现有的“方法已改变”标记。
