@@ -4,16 +4,24 @@
 - 读者：维护以下文件的人：`docs/methodology/`（`en/`、`zh/`、`VALUE_METHODOLOGY.md`、`README.md`、`edition.json`、`generation.json`、`artifacts.json`）、`docs/MATHEMATICAL_REFERENCE.md`、`docs/SCHEME_C_MODEL_CARD.md`、`docs/VALIDATION_AND_CLAIMS.md`，以及方法学文档构建工具（`scripts/methodology/`、`scripts/build_value_methodology_pdf.py`、`website/sync_methodology.py`）。
 - 交付：DECISIONS“收尾交付”第 2 项。仓库副本为 `docs/handoff/METHODOLOGY_EDITOR_HANDOFF.md`，worktree 根目录副本为 `VALUE_handoff_methodology_editor_2026-10-04.md`。
 - 事实来源（按权威排序）：
-  1. `docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A15）；
+  1. `docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A18）；
   2. 修正目录 `gridform_core/data/methodology/{profiles.json,corrections/*.json,declared_deviations.json}`，以及由它生成的 `docs/generated/METHODOLOGY_PROFILES.md`；
   3. `docs/release/VERSION_LEDGER.json`、`docs/release/P0_GOLDEN_DELTA.md`；
   4. 草稿 `docs/methodology/drafts/0.4/*.md`；
   5. `docs/handoff/MODEL_CHANGES_BRIEF.md`（下文的 U1–U11、C1–C24 编号沿用该简报）；
-  6. `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`、`docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；
-  7. `docs/dev/p0-reports/*.md`。
+  6. `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`、`docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`、`docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；
+  7. `docs/dev/p0-reports/*.md`（修复轮为 FX1–FX7）。
   
   文中凡是“代码中”的描述，都在本分支的源码上核对过，行号以本分支 HEAD 为准。
 - 本文只写**改哪里、改成什么**。本单元没有改动任何方法学文档。P0 各包已经写好的内容见第 1 节。
+- **修复轮更新（2026-10-06，A16，HEAD `be30884`）**：四类用户测试后的修复轮对方法学有五处影响，已并入下文：
+  1. **VoLL 两个口径都是 17,000 £/MWh**（A16-5，`fx5.voll-17000`，草稿 `fx5_voll_17000.md`）：N-12、R-4、O-2、V-4 已改；注意完全预见 LP 的默认值也随参数改为 17,000（O-2 原写“10,000 不改”，已更正）；
+  2. **互联线进口的口径语义**（A16-2，`fx6.day-ahead-interconnector-imports`，草稿 `fx6_day_ahead_imports.md`）：论文复现口径的进口只在平衡分支出现，修正口径的日前出清也接受进口（C25、DS-7、N-8、N-9、N-10）；
+  3. **核电路径依赖**：论文复现口径按 A15 必写（N-7）；修正口径同样存在，FX7 已实测（全年只发 2.02 TWh），作者已在 A18 决定修正口径核电开局在运，**尚未实施**（N-4、N-7、第 9 节第 6 条）；
+  4. **光伏倾斜面换算的模型选择已由作者认可**（A16-6）：W-3、MC-3、VC-6 去掉 PENDING；
+  5. **GBP1 public2 本地登记与逐站核电**（A16-7，`p05.nuclear-stations-public2`）：DS-1、N-4、MC-5 已改；另有两处校验与读取问题要写对（DS-8 的资格判断、R-1 的 R029 光伏严格读取）。
+  
+  修复轮的其他改动（F-D1 扩展状态链、F-D2 一日课程阻断扩展、M-D2 原地改模块源码、M-D1 储能报价账本、界面）不改变方法学，只在第 3.3 节修正总表中登记，方便对照。
 
 ## 0 先读这一段
 
@@ -22,13 +30,13 @@
    - 理由一：改了以后，源稿与已发布文件不一致。
    - 理由二：`scripts/check_publication_scope.py` 逐字比较 `website/methodology/chapters*.json` 与源稿（“Generated markdown diverges from source”），改了就会失败。
    - 0.4 的发布须经作者同意（Q-X3：本轮只发布 `METHODOLOGY_PROFILES.md` 和模型卡，0.4 放到 P1 或经作者同意后单独发布）。
-2. **七份草稿已经写好**，在 `docs/methodology/drafts/0.4/` 下：p04、p05a、p05b、p06、p07、p08、f2。它们覆盖了大部分正文改动，但有三个问题：
+2. **九份草稿已经写好**，在 `docs/methodology/drafts/0.4/` 下：p04、p05a、p05b、p06、p07、p08、f2，以及修复轮的 fx5（VoLL）、fx6（日前进口）。它们覆盖了大部分正文改动，但有三个问题：
    - 草稿按工作包组织，不按章节组织；
    - 有几处已被后续决定取代，见第 6 节；
    - 中文部分大多只是摘要，p04 除外。
 3. **以下内容没有草稿，需要你根据本文新写**：
    - 方法学口径总述（第 1 章新增一节）；
-   - A15 核电路径依赖；
+   - A15 核电路径依赖（以及修正口径中同样存在、A18 待实施的部分，见 N-7）；
    - 修正口径储能余量和电池池的公式；
    - Q6 价格标签；
    - A8 储能投资审核的公式；
@@ -53,17 +61,19 @@
    - 章节正文不得出现私有产品名（`sync_methodology.py` 的 PRIVATE 正则）；
    - 三份参考文档有固定短语和禁止短语（第 5 节开头）。
 7. **命名陷阱。** 方法学第 5、6 章里的 “Doctoral” 路径是另一个模块 `value-doctoral-national-psm`（R029 thesis96），**不是**“论文复现口径” `doctoral-lineage-0.6.0a2`。复现口径的 golden（D1–D5）走的是第 5 章的 “Native” 路径，即默认 PSM `value-bid-at-cost-psm`。0.4 必须在第 1、5 章写清这一点（第 2.2 节）。
-8. **写 0.4 之前须确认的事项**见第 9 节，共九条。其中最重要的三条：
-   - R029 研究在 0.7.0 中按哪个口径运行，哪些修正对 thesis96 路径生效；
-   - 逐站核电可用率实际上只对 GBP1 public1 生效，而该包在修正口径下不合格；
-   - 修正目录中 `p05.solar-plane-of-array` 的描述把倾角写成“站点纬度”，与代码不符。代码取 Jacobson & Jadhav 最优倾角。
+8. **写 0.4 之前须确认的事项**见第 9 节，共十一条。修复轮之后最重要的三条：
+   - R029 研究在 0.7.0 中按哪个口径运行，哪些修正对 thesis96 路径生效；修复轮又发现 R029 public1 的光伏曲线在修正口径的严格读取下被拒绝（第 9 节第 1、10 条）；
+   - **修正口径的核电规则（A18）尚未实施**：第 5 章修正口径的核电段落要等实施并重跑后再定稿（第 9 节第 6 条）；
+   - DUKES 对照列仍标 PENDING（第 9 节第 5 条）。
+   
+   原来的两条已经解决：逐站核电已由 `p05.nuclear-stations-public2` 扩展到 public2（第 9 节第 2 条）；修正目录中 `p05.solar-plane-of-array` 的倾角描述已改正（第 9 节第 3 条）。
 
 ## 1 文件现状
 
 | 文件 | 本轮是否已由各包改过 | 已改内容 | 还要做什么 |
 |---|---|---|---|
 | `docs/methodology/en/*.md`、`zh/*.md`（0.3） | 否（C26 冻结） | — | 合并为 0.4，见第 4 节 |
-| `docs/methodology/drafts/0.4/*.md` | 是（7 份） | 各包的方法学改动 | 并入 0.4 后，删除或标注“已并入”，见第 7.5 节 |
+| `docs/methodology/drafts/0.4/*.md` | 是（9 份，含修复轮的 fx5、fx6；f2 的状态措辞在修复轮改为作者已认可） | 各包的方法学改动 | 并入 0.4 后，删除或标注“已并入”，见第 7.5 节 |
 | `docs/methodology/VALUE_METHODOLOGY.md` | 否 | — | 按第 4.10 节改，并把版次改为 0.4 |
 | `docs/methodology/README.md`、`edition.json`、`generation.json`、`artifacts.json` | 否 | — | 0.4 生成并审阅后更新，见第 7 节 |
 | `docs/MATHEMATICAL_REFERENCE.md` | 部分（`09221f6`、`bca6607`、`4324ac7`、`8e34038`、`020d402`） | 版本行、§2.4 网络经济学与求解合同 v4、§5.1 参照情形 | §2.1、§2.2、§2.3、§3、§4、§5、§7、§8，见第 5.1 节 |
@@ -90,9 +100,9 @@
 
 | 方法学 0.3 中的叫法 | 模块 id（版本） | 两个口径下的情况 |
 |---|---|---|
-| 第 5 章 “Native” | `value-bid-at-cost-psm`（6.0.0），保留的 Scheme C 内核 `runtime_compat/modular_simulation_model.py` | **默认 PSM**。论文复现口径使用规则集 `native-doctoral-thesis-v1`，修正口径使用 `native-corrected-v1`（`native_market_rules.py`）。golden D1–D5、C1–C6 都走这条路径 |
-| 第 4 章 “staged market” | `value-staged-bid-at-cost-psm`（1.3.0）加平衡模块 `value-copperplate-balancing`（1.1.0）或 `value-zonal-redispatch-balancing`（4.0.0） | 分阶段与网络路径。论文复现口径不允许使用（Q3），实际只在修正口径下运行（C7、C8） |
-| 第 5、6 章 “Doctoral” | `value-doctoral-national-psm`（0.2.0，experimental），R029 thesis96 | 论文复现口径的白名单包含它，但 P0 没有修改它的算法。它**不是**论文复现口径本身 |
+| 第 5 章 “Native” | `value-bid-at-cost-psm`（6.0.0；修复轮后 6.3.0：6.1.0 储能报价账本，6.2.0 VoLL，6.3.0 日前进口），保留的 Scheme C 内核 `runtime_compat/modular_simulation_model.py` | **默认 PSM**。论文复现口径使用规则集 `native-doctoral-thesis-v1`，修正口径使用 `native-corrected-v1`（`native_market_rules.py`）。golden D1–D5、C1–C6 都走这条路径 |
+| 第 4 章 “staged market” | `value-staged-bid-at-cost-psm`（1.3.0；修复轮 VoLL 后 1.4.0）加平衡模块 `value-copperplate-balancing`（1.1.0）或 `value-zonal-redispatch-balancing`（4.0.0） | 分阶段与网络路径。论文复现口径不允许使用（Q3），实际只在修正口径下运行（C7、C8） |
+| 第 5、6 章 “Doctoral” | `value-doctoral-national-psm`（0.2.0，experimental；修复轮 VoLL 后 0.3.0，scientific_version 不变），R029 thesis96 | 论文复现口径的白名单包含它，但 P0 没有修改它的算法。它**不是**论文复现口径本身 |
 
 0.4 的写法建议：
 - 第 5 章开头加一句：“Native is the default PSM (`value-bid-at-cost-psm`); it runs one of two market rule sets selected by the methodology profile. The Doctoral pathway below is a separate experimental module (`value-doctoral-national-psm`); it is not the doctoral reproduction profile.”
@@ -189,7 +199,8 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 - 天气 v1 时钟，没有损耗；核电和径流水电 100% 可用；
 - 旧读法（无表头首行、短序列时钟）；
 - 径流水电兼容资本留在头条（VoLL 原为 8000 £/MWh，A16-5 起两个口径都是 17,000，属于只进成本账的通用修正 `fx5.voll-17000`）；
-- **核电路径依赖（A15）**，见第 4.5 节 N-7。
+- **核电路径依赖（A15）**，见第 4.5 节 N-7；
+- **互联线进口只在平衡分支出现**（修复轮 S-D3 的追踪结果）：日前出清不接收互联线，进口只用于实际需求高于日前计划的剩余缺口。GBP1 D5 的 0.336 TWh 进口全部来自这样的 1,130 个时段。见 N-8。
 
 ### 3.3 修正总表
 
@@ -227,6 +238,13 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 | C23 | 边界边际值取 primary 阶段对偶 | `p08.boundary-primary-dual`（P2-06） | 只在修正口径下运行 | 核算 | ch7 | p08 §3 |
 | C24 | DC 网络的份额展开 | `p08.network-share-expansion`（P1-01） | 只在修正口径下运行 | 轨迹 | ch7 DC | **无** |
 | C25 | 互联线进口进入日前出清（按当期对侧价格和可用进口量报价；平衡环节只报剩余容量；下调按进口避免成本）。论文复现口径保留“只在平衡环节进口” | `fx6.day-ahead-interconnector-imports`（S-D3，A16-2） | C | 轨迹 | ch5 Native 伪代码与新段落（N-8）；ch2 互联线一句 | fx6 |
+| U12 | 修复轮：储能报价写进市场账本的核算表 `storage_orders`（每条报价的价格、可报量、接受量、状态），`orders` 不变 | `fx4.storage-offer-ledger`（M-D1） | U | 核算 | ch5 “Data and implementation”（N-15）一句；可选 | 无（`docs/visibility-refactor/MARKET_LEDGER.md` “Storage offers (M-D1)” 一段） |
+| U13 | 修复轮：VoLL 两个口径都是 17,000 £/MWh | `fx5.voll-17000`（A16-5；不在修正目录中，同 `p04.*`） | U | 核算（论文复现口径）；完全预见 LP、DC 网络、分区再调度中是目标系数 | ch5 N-12；ch6 R-4；ch8 O-2；ch4 K-14；`VALUE_METHODOLOGY.md` V-4 | fx5 |
+| C26 | 修复轮：GBP1 public2 本地登记为 scientific_reference，并加入核电分站名单 | `p05.nuclear-stations-public2`（P5-10，A16-7） | C | 轨迹 | ch2 DS-1；ch5 N-4 | 无（FX7 报告、`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`） |
+| （C27） | **已决定、尚未实施**：修正口径核电从第 0 期起在运，按各站可用率作基荷；启动成本只在换料或停运后重启时收取。新规则集版本与 correction id 实施时确定 | 待定（A18） | C | 轨迹 | ch5 N-4、N-7 | 无。实施后由代码负责人补草稿 |
+| — | 修复轮：扩展 initialize 作为状态链上被校验的一环（`value.extension-initialize-link/v1`） | 无 correction id（F-D1，软件与验证） | U | 验证 | ch1 新小节中 Q14/gate 一句可提；可选 | 无（FX1 报告） |
+| — | 修复轮：一日课程（`value_101_day`）只跑市场步骤，选了扩展时预检阻断；比较时不把未执行的扩展算作方法改变 | 无（F-D2，A16-3） | U | 展示 | ch1 或 ch8 一句；可选 | 无（FX2 报告） |
+| — | 修复轮：原地修改已安装模块的源码被接受，Run 记录新的源码哈希，比较页显示方法已改变 | 无（M-D2，A16-4） | U | 身份 | 不进方法学正文；开发者文档 `MODULE_DEVELOPER_101` 已改 | — |
 | — | 运行期 fallback 审计（只报告） | `p08.runtime-fallback-audit`（P2-13） | 只在修正口径下运行 | 展示 | ch7 实现段 | 无 |
 | — | staged dwell 披露（数值不变） | `p06.staged-dwell-disclosure`（P5-15） | staged | 展示 | ch4 储能报价 | p06（末段） |
 | — | 方法身份与 Study 迁移 | `x0.methodology-identity`、`x0.study-revision-migration`（Q13） | U | 身份 | ch1 新小节一句话 | 无 |
@@ -278,7 +296,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 - 口径：C 与 D。
 - 新：加注三点：
   - GBP1 public1 只满足论文复现口径的资格；
-  - 修正口径要使用 R029 public1，或本地构建的 `value-uk-open-data-pack-public2`（未发布）；
+  - 修正口径要使用 R029 public1，或本地构建的 `value-uk-open-data-pack-public2`（修复轮 FX7 已在代码中登记为 scientific_reference，数据包未发布）。注意：R029 public1 的光伏曲线在修正口径严格读取下被拒绝（第 9 节第 10 条），修法确定前不要写“R029 public1 可用于修正口径”；
   - 网络模块只在修正口径下运行（Q3）。
 - 写之前须确认 23 区研究以哪个基础包运行（第 9 节第 4 条）。
 
@@ -342,6 +360,10 @@ $$
 
   - 修复前，荷兰线接的是比利时文件，价格读成 0，成了免费进口源。修复后 GBP1 进口减少 78%。作者决定把这份对比作为论文结果的勘误说明保留（A15）。是否在方法学中加“勘误”框，由作者决定（第 9 节第 9 条）。
 - 第 158–163 行的公式不变。补一句：GBP1 的潮流文件标为 MWh/period，实际是瞬时 MW，登记表按 MW 读取（P6-12）。
+- **第 158 行，进口能力的用途（修复轮 C25，A16-2）**：
+  - 旧：“positive values assign import capacity and negative values assign export capacity”。
+  - 新：句后补一句。EN：“Under the corrected methodology the import capacity is offered to the day-ahead clearing; under the doctoral reproduction only to the balancing stage (Chapter on national dispatch).” ZH：“修正口径中进口容量进入日前出清；论文复现口径中只进入平衡环节（见全国调度章）。”（`fx6_day_ahead_imports.md` 第 3 节）
+  - 应用中的数据角色已改名为 “<Country> interconnector availability (+ import / - export)”；正文提到角色时用这个名字。
 - 第 165 行之后补披露：R029 的 `flow_sign` 为 `declared_unverified`，逐国年净潮流还没有核实（P0-5 Q13）。
 
 **DS-8 新增一段：数据包校验与口径资格**
@@ -351,6 +373,12 @@ $$
   - 时序层：线路身份、价格币种、无时间戳的本地时间需求、行序缺陷、预测与实测错位；
   - 合理性层：范围检查，见 `value_data_plausibility_v1.json`。
 - `profile_eligibility` 决定哪些发现阻断哪个口径：在修正口径下是 preflight 错误，在论文复现口径下只是警告。所以 GBP1 public1 能安装，但在修正口径下不能运行。
+- **修复轮须补一句（复测 N-1）**：论文复现口径的资格还有第二道检查，即口径白名单（`methodology.py` 的 `_pack_supported`：只接受论文期数据包，按 id、pack_class 与 manifest sha 比对，否则报 “is not a thesis-era pack”）。目前 Data 页的校验面板只反映第一道（校验层），所以会对用户数据包显示论文复现口径可用，而 Study 编辑器按白名单拒绝。正文按“校验层 + 白名单”两道检查写，不要写成只由校验层决定；面板与编辑器的不一致是待修的软件问题，不写进方法学。
+- **数据包验证层的已知漏检（修复轮 FX7）**：验证层不检查 VRE 曲线的时钟，所以 R029 public1、GBP1 public1 的光伏曲线（8,761 个值、无 interval 声明）能通过三层校验，却在修正口径的严格读取中报 `GF_DATA_SHORT_SERIES`。修法未定（第 9 节第 10 条），正文不要写“三层校验通过即可运行”。
+
+**DS-8b 新增一句：映射时声明的时间戳列（修复轮 S-D4）**
+- 位置：DS-3 的读取规则之后，或 DS-8 时序层一句。口径：U（展示，不改读数）。
+- 新：用户映射 CSV 时可以声明时间戳列（UTC 或 Europe/London）。时序层按源文件逐行检查不可读、重复、倒序、缺口和步长不规则，有问题不能提交；声明不改变读数路径和 `interval_minutes`，只用于校验。首个时间戳是否与模型时钟、年份对齐**不检查**（复测 N-3，规格缺口），正文不要写成“时间戳与模型时钟已对齐”。
 
 **DS-9 第 229 行，“Data and implementation”**
 - 口径：U。
@@ -439,7 +467,8 @@ $$
 - **不换算的情形**：不是 v2 ERA5 累积量的光伏源，修正口径取 \(a^{\mathrm{corr}}_{s,t}=0.83\,G_t\)，不封顶。具体是：
   - VALUE 101 的合成样本；
   - R029 public1：`ssrd` 没有 GRIB step type，也没有声明时间约定。
-- 状态：模型选择（Spencer、Erbs、Hay–Davies、反照率 0.2、Jacobson–Jadhav 倾角、87° 截止）仍为 **PENDING AUTHOR REVIEW**（参考统计表 3.5 节）。0.4 正文要么标注“待作者审核”，要么等作者审核后再发布。
+- 状态：模型选择（Spencer、Erbs、Hay–Davies、反照率 0.2、Jacobson–Jadhav 倾角、87° 截止）**已由作者直接认可**（修复轮 A16-6，2026-10-06）；参数表 `value_uk_vre_loss_factors_v1.json`、参考统计表 3.5 节和 f2 草稿都已改为 AUTHOR APPROVED，数值不变。0.4 正文不带 PENDING 标记，但不要写“已校准”：书目信息和拟合系数没有联网复核，CF 只与 DUKES 并列披露。
+- GBP1 public2 修正口径全年运行（修复轮 FX7）的光伏 CF 为 0.112（按装机加权，DUKES 0.1025 的 1.09 倍），可以作为 W-4 披露表的补充，注明“本地运行、数据包未发布”。
 - 披露：GBP1 是 2020–2024 多年平均气候态（P6-09），平均后晴空指数被抹平，倾斜增益偏小。f2 §1 末段可直接使用。
 
 **W-4 新增小节 “Capacity factors compared with DUKES / 容量因子与 DUKES 对照”**
@@ -671,8 +700,12 @@ $$
   - 0.3487 是 DUKES 6.3 标准口径 2019–2024 均值。季节形状由 Energy Trends 6.1 的季度数据推出，12 个月算术均值为 1（A14，`p05.hydro-dukes-load-factor`）。
   - 按 365 天加权，形状均值为 0.99883，模型年负荷率为 0.3483。GBP1 的 2,000 MW 一年发电 6.10 TWh，比 DUKES 6.2 的 5.77 TWh 高 5.8%，在 ±15% 以内。
   - 未应用 A14 的运行使用 P0-5b 临时值（0.334，平直形状）。
-- **数据包限制，必须写明**：逐站规则只作用于 `NUCLEAR_POLICY_PACK_IDS` 中的包（`pack_source_identity.py` 第 121 行），目前只有 GBP1 public1，而 GBP1 public1 不满足修正口径的资格。public2 和 R029 上，核电按单一资产取回退值 0.723。见第 9 节第 2 条。
-- 验收：核电对 Energy Trends 5.1 的 ±10% 验收**还没有运行**；GBP1 修正口径的全年运行也没有做。只能写成“机制与参数”，不能写成“已验证”。
+- **数据包限制，必须写明**：逐站规则只作用于 `NUCLEAR_POLICY_PACK_IDS` 中的包（`pack_source_identity.py`）。修复轮之前只有 GBP1 public1，而它不满足修正口径资格；修复轮（FX7，A16-7）把 public2 加入名单，并由新修正 `p05.nuclear-stations-public2` 控制：public1 不变，public2 只在修正口径下取得五个 EDF 电站（各自负荷率、按月退役）以及外生的 HPC、SZC 管线项目，论文复现口径仍拒绝 public2。R029 上核电仍按单一资产取回退值 0.723。见第 9 节第 2 条。
+- 验收（修复轮 FX7，本地，public2 未发布；`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`）：
+  - 径流水电 6.06 TWh，对 DUKES 6.2 的 5.77 TWh +5.1%，在 ±15% 内，**通过**；
+  - 核电按可用率连续运行的上限 38.26 TWh，对 Energy Trends 5.1（2023–2024 supplied 约 37.3 TWh）+2.5%，说明可用率与逐站名单本身是对的；但**实际只发 2.02 TWh（−95%）**，原因是 N-7 的启动路径依赖，不是可用率。
+  - 所以正文写成“机制与参数；水电量级已在本地核对”。核电的验收要等 A18 实施并重跑（N-7、第 9 节第 6 条），在那之前不能写“已验证”。
+- 修正口径的核电开局在运（A18，**已决定、尚未实施**）：实施后本段要补一句：核电从第 0 期起在运，按 \(a^{\mathrm{nuc}}_{N,t}\) 作基荷；启动成本只在换料或停运后重启时收取。规则集版本与 correction id 以实施时为准，不要预写。
 
 **N-5 第 34–44 行，Native 批次与充电**
 - 论文复现口径（D，DEV-STO-01）：保留原文“每个阶段分别构造功率预算”。须补明后果：同一时段可以既充又放，单期放电可达 \(2P_b\Delta\)。
@@ -716,14 +749,22 @@ $$
   - 机制：内核把核电当作不能降出力的机组，接受量为 \(\max(g_{t-1}-r,L)\)。一旦被接受，下一期的出发点仍是满出力，所以会一直满功率运行到年底。没有被接受的时段，记忆出力 \(g\) 每期乘 0.99。
   - GBP1 实例（第一年）：35aadb3 中，核电从第 16,588 期（约 12 月 12 日 14:00 UTC）开始被接受，此后运行 932 个时段，发电 2.73 TWh；全年 30 个超过 1000 £/MWh 的时段都在这个窗口里。读取修正（A3/A5）之后，核电全年没有被接受，价格尖峰随之消失。
   - 写明两点：这不是针对核电的修正，而是冻结内核对边界输入敏感的表现；复现结果的核电与价格尖峰可能随输入的微小变化而整段出现或消失。
-  - 修正口径共用同一段日前接受代码，但修正口径有核电降额（N-4），并且下调次序带 100 £/MWh 的核电溢价（N-9），后果不同。这一点在修正口径下的量级没有测量；写进修正口径部分之前请代码负责人确认（第 9 节第 6 条）。
+  - 写进机制的还有报价一侧：上一时段没被接受的机组，日前报价要加 `startup_cost`（GBP1 核电 0 + 500 £/MWh），所以没运行的核电排在所有资源之后，只有其他资源（含 CCGT 爬坡上限）都不够时才被接受；被接受后报价回到 0，又受 `alter_limit`（GBP1 核电每期最多降 500 MW）约束，于是运行到年底。
+  - **修正口径（修复轮 FX7 已实测）**：修正口径共用同一段日前接受代码，路径依赖同样存在。GBP1 public2 修正口径 2025 年，核电到第 16,593 期（12 月 12 日 16:30 UTC，全年最高价时段）才第一次被接受，此后运行 927 个时段，全年 2.02 TWh；按可用率可发 38.26 TWh。诊断性敏感性运行（临时把核电 `startup_cost` 设为 0）中核电为 38.26 TWh，系统成本 −1,830.7 百万英镑，排放 −13.0 Mt。
+  - **作者决定（A18，尚未实施）**：修正口径中核电从第 0 期起在运，按各站可用率作基荷，启动成本只在换料或停运后重启时收取；论文复现口径不变（Q1）。所以 0.4 的写法分两步：
+    1. 论文复现口径部分现在就可以写（A15 必写，GBP1 前后对比为例）；
+    2. 修正口径部分等 A18 实施并在 GBP1 public2 上重跑（验收：核电对 Energy Trends 5.1 ±10%）之后，按实施时的规则集与 correction id 写；在那之前，若 0.4 必须先出，只能写“修正口径的核电启动规则正在修订”，不得写修正口径的核电数字。
 
 **N-8 第 64–80 行（zh 第 64–78 行），伪代码**
 - 按规则集标注以下改动，或者给出两份伪代码：
   - **出清前 VRE 分流**：论文复现口径每个 VRE 代理最多分 1 MW 去电解，电解容量不足时这部分能量丢失（P3-08，诊断 `vre_skim_*`）；修正口径没有（`p06.no-vre-pre-clearing-skim`）。
   - **“储能先吸收预测多发，再吸收已有过剩电量”**：修正口径改为“先回购，后充电”（N-5）。
   - **“then apply downward dispatch”**：修正口径改为按避免成本下调（N-9）。
-  - **进口（C25，A16-2）**：“Construct generator and storage-batch offers” 与 “import offers” 两处按草稿 `fx6_day_ahead_imports.md` 第 3 节改写；论文复现口径的进口只出现在平衡分支（GBP1 D5 的 0.336 TWh 全部来自实际需求高于预测的时段），修正口径的日前出清也接受进口，平衡分支只报剩余容量。
+  - **进口（C25，A16-2）**：“Construct generator and storage-batch offers” 与 “import offers” 两处按草稿 `fx6_day_ahead_imports.md` 第 3 节改写（en 第 68、76–77 行；zh 第 67、75 行），并在伪代码之后新增草稿给出的 “Interconnector imports / 互联线进口” 一段（中英文原文都在草稿中）。语义要点：
+    - 论文复现口径：日前出清函数不接收互联线；进口只出现在平衡分支（实际需求 ≥ 预测时），报价为 `external_price × 报价乘数`，只满足“实际 − 预测”的剩余上调需求；负约束在削减分支按正价出口。GBP1 D5 的 0.336 TWh 全部来自实际需求高于预测的 1,130 个时段；VALUE 101 一日课程没有这样的时段，所以不论法国容量和价格怎么填都没有进口。
+    - 修正口径：每条正容量互联线按当期对侧价格（× 报价乘数）报入日前出清，与本国机组同一排序键，同一 0.01 £/MWh 档内排在发电之后、储能之前，没有爬坡和启动加价；平衡分支只报 \(\max(\text{transfer\_constraint}-\text{日前进口},0)\)，不重复计算；出口不变。
+    - 账本：日前进口在 `orders` 中记为 `ahead_offer` 行。
+    - 数字（草稿第 4 节）：VALUE 101 进口全部被拒绝、数值不变；GBP1 public2 修正口径 2025 年进口 0.331 → 1.560 TWh，CCGT −1.27 TWh，头条系统成本 −25.6 百万英镑（本地、未发布、不是标定）。
 - **新增一段：隐藏缺电与 stress event（U，A2，DEV-BAL-02）**：
   - 平衡分支按 \(D_t\) 与 \(\widehat D_t\) 的比较选择。当日前接纳供给不足以满足预测、且 \(D_t<\widehat D_t\) 时，削减分支仍按 \(\widehat D_t-D_t\) 削减，而真实需求并没有被满足；内核不记录切负荷。
   - 两个口径的**调度都不变**。缺口记账见 N-13。
@@ -737,7 +778,7 @@ v_i=\mathrm{round}\!\left(c_i-\pi_i,\,2\right),\quad \pi_{\mathrm{nuclear}}=100,
 \text{reduce in order of}\ \big(-v_i,\ \mathrm{rank}(i),\ \mathrm{name}_i\big),
 $$
 
-  - 类别次序：thermal 0、hydro/biomass 1、VRE 2、nuclear 3；日前接受的进口（C25）按进口避免成本（对侧价格）参与，类别次序 0.5，即排在 thermal 之后、hydro/biomass 之前，不付削减费；
+  - 类别次序：thermal 0、hydro/biomass 1、VRE 2、nuclear 3；日前接受的进口（C25）按进口避免成本（对侧价格，不乘报价乘数）参与，类别次序 0.5，即排在 thermal 之后、hydro/biomass 之前，没有爬坡下限，不付削减费（只是少买这部分电量）；
   - 爬坡下限 \(\max(g_{i,t-1}-r_i,0)\)，上期出力按对象身份读取；
   - 水电和生物质的削减量都返还预算；
   - 下调次序用完后仍剩的要求，记为调度内 spill。
@@ -755,6 +796,7 @@ $$
 $$
 
   - 储能费在本期结算，不再结转（`p06.storage-fee-per-period`）。
+  - 修正口径的日前进口（C25）同样按日前阶段的统一边际价结算，进口也可以是边际报价，所以 \(\mathcal A^{A}_t\) 含日前进口。
 
 **N-11 第 88–93/86–91 行，显示价格**
 - 公式不变。
@@ -804,13 +846,15 @@ $$
 - 修正口径的 P0-5b 输入是否作用于这条路径，须确认（第 9 节第 1 条）。
 
 **N-15 第 216–218/214–216 行，“Data and implementation”**
-- 补 `native_market_rules.py`、`native_corrected.py`、`native_realisation.py`、`native_balance_audit.py`、`energy_balance_contract.py`、`energy_balance_oracle.py`、`kernel_injection.py`、`kernel_boundary.py`、`firm_availability.py`、`storage_headroom.py`。
+- 补 `native_market_rules.py`、`native_corrected.py`、`native_realisation.py`、`native_balance_audit.py`、`energy_balance_contract.py`、`energy_balance_oracle.py`、`kernel_injection.py`、`kernel_boundary.py`、`firm_availability.py`、`storage_headroom.py`，以及修复轮的 `voll.py`（唯一 VoLL 常数）、`native_storage_orders.py`。
+- 修复轮（U12，可选一句）：市场账本另有核算表 `storage_orders`，记录每条储能报价（价格 = 储能成本模块报价 × 报价乘数，可报量，接受量，状态）；`orders` 中电池行仍是价格 0.0 的净调度记录。修正口径按净头寸结算，同期回购时报价接受量之和可以大于电池净放电。
 
 ### 4.6 `r029_cem.md`（第 6 章；第 120 行之后 zh = en − 2）
 
 **R-1 第 3 行，R029 研究**
 - 口径：需确认。
 - R029 数据包（`value-uk-calendar-vx-trade001`）不在论文复现口径的白名单中，所以 0.7.0 中 R029 研究只能用修正口径运行（P0-5 Q4：修正口径的默认全国包是 R029 public1）。
+- 修复轮（FX7）发现：R029 public1 的逐时光伏曲线 `sa.csv` 有 8,761 个值且没有 interval 声明，修正口径的严格读取报 `GF_DATA_SHORT_SERIES`，所以 R029 public1 在修正口径下用默认 PSM 运行会在构建时间序列时失败（没有跑完整 R029）。修法未定（第 9 节第 10 条）。
 - 0.4 须写明 R029 按哪个口径运行，以及哪些口径受控修正作用于 thesis96 路径。例如 R029 public1 的光伏不做倾斜面换算。确认后再写（第 9 节第 1 条）。
 
 **R-2 第 39–68 行，年度账户与决策单位**
@@ -830,8 +874,9 @@ $$
 - 新：与 N-12 对齐：
   - 论文复现规则集为常数 17,000（A16-5；论文代码原为 8000）；
   - 修正口径为 `market.voll_gbp_per_mwh`（默认 17,000；原为 10000）；
-  - 分区为 17,000；
-  - 完全预见默认 10,000。
+  - 分区为 17,000（读同一参数；VALUE UK 研究一直显式设 17,000）；
+  - 完全预见 LP、参考 DC 网络同样读该参数，默认 17,000（修复轮之前为 10,000）。
+  - 中英文替换句见 `fx5_voll_17000.md` 第 2 节（en 第 211 行、zh 第 209 行）。
 
 **R-5 第 252/250 行，核电日程**
 - 旧：“… Heysham 1, Hartlepool, Heysham 2 and Torness … withdraw from model year 2031 …”
@@ -930,7 +975,7 @@ $$
 - 基础数据包的口径资格同 DS-1，须确认（第 9 节第 4 条）。
 
 **T-8 第 140–161 行，DC 网络调度**
-- 口径：C24，`p08.network-share-expansion`，P1-01，`value-reference-dc-network` 1.1.0。草稿：无。
+- 口径：C24，`p08.network-share-expansion`，P1-01，`value-reference-dc-network` 1.1.0（修复轮 VoLL 默认值后为 1.2.0，份额展开不变）。草稿：无。
 - 新增：映射到多个母线的资产，按份额 \(\sigma_{a,n}\) 展开为子资源（\(\sum_n\sigma_{a,n}=1\)，否则报错）：
 
 $$
@@ -957,8 +1002,10 @@ $$
   - 现在改读 `annual_fixed_opex_gbp`，并且只计非风光储资产；
   - 风光储 FOM 是备忘项（A7）。
 
-**O-2 第 25 行**
-- \(V=10{,}000\) 不改，与 `market.voll_gbp_per_mwh` 默认值一致。
+**O-2 第 25 行（修复轮更正）**
+- 旧：“Defaults are \(\Delta t=0.5\) h, \(V=10{,}000\) GBP/MWh and \(\delta_s=0\) …”。
+- 新：\(V=17{,}000\) GBP/MWh。修复轮（A16-5）把 `market.voll_gbp_per_mwh` 的默认值改为 17,000，完全预见 LP 随之改变（`value-perfect-foresight-lp` 1.1.0，须确认）。本文此前写“10,000 不改”已过时。中英文替换句见 `fx5_voll_17000.md` 第 2 节。
+- 补一句：完全预见 LP 中 VoLL 是目标系数，依赖旧默认值的 Study 改用 17,000 后调度可能改变。
 
 **O-3 第 51–65 行，径流水电模块**
 - 不改。
@@ -1009,9 +1056,9 @@ $$
 
 | # | 位置 | 改动 | 依据 |
 |---|---|---|---|
-| M-1 | §2.1（第 34–72 行） | 模块 id `scheme-c-psm` 改为 `value-bid-at-cost-psm` 6.0.0。加入两套规则集，以及第 4.5 节的 N-5、N-6、N-7、N-9、N-10、N-12。第 61–62 行 “Dynamic storage orders positive holding-cost tranches newest first” 限定为论文复现口径。加入 A2 stress event 一句 | p06 草稿、C8–C16、U10 |
+| M-1 | §2.1（第 34–72 行） | 模块 id `scheme-c-psm` 改为 `value-bid-at-cost-psm`（当前 6.3.0；P0-6 为 6.0.0）。修复轮另加：C25 日前进口、VoLL 17,000（A16-5）。加入两套规则集，以及第 4.5 节的 N-5、N-6、N-7、N-9、N-10、N-12。第 61–62 行 “Dynamic storage orders positive holding-cost tranches newest first” 限定为论文复现口径。加入 A2 stress event 一句 | p06 草稿、C8–C16、U10 |
 | M-2 | §2.2（第 74–112 行） | PF 价格标签 “Balance shadow price”；系统成本的 FOM 键（U11） | Q6、A7 |
-| M-3 | §2.3（第 114–132 行） | 份额展开（T-8）；模块 id 改为 `value-reference-dc-network` 1.1.0 | C24 |
+| M-3 | §2.3（第 114–132 行） | 份额展开（T-8）；模块 id 改为 `value-reference-dc-network`（P1-01 为 1.1.0，修复轮 VoLL 默认值后为 1.2.0） | C24 |
 | M-4 | §3 与 §3.1（第 310–375 行） | 修正口径只报循环折旧；持有回收只用于充足性诊断；staged dwell 披露；`scheme-c-legacy-storage-tariff` 改为 `value-legacy-storage-tariff` | C14、P5-15 |
 | M-5 | §4（第 377–397 行） | 模块名：`storage-expansion-scheme-c` 改为 `value-storage-expansion-policy` 5.0.0，`scheme-c-state-transition` 改为 `value-annual-state-transition`，agent-investment 3.0.0。加入 A4 净收入式（K-10）、A6 的四档规则与不折现说明、A7、A8(3)(4)、修正口径储能余量与电池池（K-9） | U6、C17、C18 |
 | M-6 | §5（第 428–456 行） | 头条按成本账 v2 写（K-14）。第 446 行碳情景 id 改为 `value_current_authoritative_v1` / `doctoral_reproduction_2026_07_18`（审查 G3-11，顺带修正）。新增 §5.2 “Energy balance, stress events and validation gates”，内容取自 p04 草稿，含 Q14 | U7–U11、C19 |
@@ -1026,9 +1073,10 @@ $$
 |---|---|---|
 | MC-1 | 第 74–80 行 | 第 76 行 `force.cem-system-resource-cost/v1` 是过时 id，代码中是 `value.cem-system-resource-cost/v1`（`cost_ledger.py` 第 15 行）。成本按成本账 v2 写（K-14）：风光储 FOM 是备忘项；径流水电兼容资本在修正口径下不计入头条，在论文复现口径下计入；物理运营成本含“记录的切负荷 × VoLL”。“explicit fixed O&M” 改为只指火电 FOM |
 | MC-2 | 第 58–62 行 | 水电存量值：补 P4-03 按口径的头条处理；补修正口径下的径流水电可用率（N-4） |
-| MC-3 | 第 37–49 行 | 已知简化补：储能只用盈余充电（S7）；DEV-BAL-03；投资侧 CSV 与调度天气不一致（S9）；A13 模型选择仍待审核 |
+| MC-3 | 第 37–49 行 | 已知简化补：储能只用盈余充电（S7）；DEV-BAL-03；投资侧 CSV 与调度天气不一致（S9）；A13 模型选择已由作者认可（A16-6），只写“文献标准模型”；修正口径的核电启动路径依赖（N-7，A18 待实施） |
 | MC-4 | 第 27–31 行附近 | Q14 写成一般规则，并补 VALUE 101 two_year 论文复现运行因 DEV-STO-01 被扣发的实例 |
-| MC-5 | 新增一段 | 数据资格：GBP1 public1 只用于论文复现口径；修正口径用 R029 public1 或本地 public2；逐站核电只作用于 `NUCLEAR_POLICY_PACK_IDS` 中的包 |
+| MC-5 | 新增一段 | 数据资格：GBP1 public1 只用于论文复现口径；修正口径用 R029 public1 或本地 public2（修复轮已在代码中登记，数据包未发布；R029 public1 的光伏严格读取问题见第 9 节第 10 条）；逐站核电只作用于 `NUCLEAR_POLICY_PACK_IDS` 中的包，public2 由 `p05.nuclear-stations-public2` 控制，只在修正口径生效 |
+| MC-6 | 第 74–80 行或成本段 | VoLL 17,000 £/MWh，两个口径相同（A16-5）；修正口径的互联线进口进入日前出清（C25） |
 
 ### 5.3 `docs/VALIDATION_AND_CLAIMS.md`
 
@@ -1041,7 +1089,8 @@ $$
 | VC-3 | 新增行 | A4 火电净收入：`tests/test_p07_investment_corrections.py`，passed，边界为“玩具算例与 D4；电价等于 MC 时既不扩容也不退役” |
 | VC-4 | 新增行 | A2 stress event 记账：`tests/test_p04_balance_boundary.py`、`tests/test_stress_events_query.py`，passed，边界为“调度不变，只记账” |
 | VC-5 | 新增行 | Q14 发布规则：`tests/test_result_advisories.py`、`tests/test_methodology_profiles.py`，passed |
-| VC-6 | 第 85–93 行 | 写明 A13 模型选择仍待审核；核电对 Energy Trends 5.1 的验收没有运行，属于 not_evaluated |
+| VC-6 | 第 85–93 行 | A13 模型选择已由作者认可（A16-6），去掉“待审核”；GBP1 修正口径的本地全年验收（FX7，public2 未发布）：水电对 DUKES +5.1%，passed；核电对 Energy Trends 5.1 −95%，**failed**（启动路径依赖，A18 待实施后重跑）。写成“local check, pack not published”，不要写成公开证据 |
+| VC-8 | 新增行 | 修复轮：VoLL 17,000 两个口径（`tests/test_fx5_voll.py`）；修正口径日前进口（`tests/test_fx6_ahead_imports.py`）；扩展状态链（`tests/test_run_invariants.py`、`tests/test_prompt65_extension_framework.py`）；储能报价账本（`tests/test_fx4_storage_orders.py`）。都是 passed，边界写清是合成或 VALUE 101 算例 |
 | VC-7 | 第 57–64 行 | “NO-GO for a fresh GitHub checkout because 460 intended source members are not tracked” 已过时（审查 R2-07）。是否删改由作者决定，因为它与源码公开的决定相关 |
 
 ## 6 草稿使用说明：哪些句子已经过时
@@ -1049,12 +1098,14 @@ $$
 | 草稿 | 并入位置 | 已过时、不要照抄的内容 | 以哪份为准 |
 |---|---|---|---|
 | `p05a_data_reading.md` | ch2 | 无 | — |
-| `p05b_corrected_data.md` | ch3、ch2、ch5 | ① 状态段 “Every numeric reference value named here is PENDING AUTHOR REVIEW”：作者已在 A9 认可损耗系数、在 A14 审核核电与水电，只有 A13 的模型选择和 DUKES 对照列仍待审核。② §3 两条披露：海上约 18.5% 已在 A9 接受；“PV 乘水平 GHI、缺倾角增益”已由 A13 解决。③ §3 GBP1 光伏修正口径 CF 0.0997，现在是 0.1065。④ §4 只写 Heysham 1 按月停发，现在四座 AGR 都是 2030-03。⑤ §4 水电 0.334 乘平直占位形状，现在是 0.3487 乘季节形状。⑥ §3 “the author reads the values from the DUKES 6.3 workbook”：f2 已给出数值 | f2 草稿；DECISIONS A9、A13、A14 |
+| `p05b_corrected_data.md` | ch3、ch2、ch5 | ① 状态段 “Every numeric reference value named here is PENDING AUTHOR REVIEW”：作者已在 A9 认可损耗系数、在 A14 审核核电与水电、在 A16-6 认可 A13 的模型选择，只有 DUKES 对照列仍待审核。② §3 两条披露：海上约 18.5% 已在 A9 接受；“PV 乘水平 GHI、缺倾角增益”已由 A13 解决。③ §3 GBP1 光伏修正口径 CF 0.0997，现在是 0.1065。④ §4 只写 Heysham 1 按月停发，现在四座 AGR 都是 2030-03。⑤ §4 水电 0.334 乘平直占位形状，现在是 0.3487 乘季节形状。⑥ §3 “the author reads the values from the DUKES 6.3 workbook”：f2 已给出数值 | f2 草稿；DECISIONS A9、A13、A14 |
 | `p06_default_psm_clearing.md` | ch5、ch4 | “Known approximations” 中 “Storage charging cost and the storage investment test are P0-7's”：P0-7 已按 A8(3) 维持现规则，改写为 K-12 | M5-P0-7、M5-P0-7-S10 报告 |
 | `p07_investment.md` | ch4 | 储能余量一节只有文字，公式按 K-9 补写 | 本文 K-9 |
 | `p04_energy_balance_validation.md` | ch5（替换残差段） | 无。它说替换 “Native retains both raw supply-demand residuals …” 一段，位置是 en 第 97–108 行、zh 第 95–106 行 | — |
 | `p08_network_economics.md` | ch7、ch4 | 中文只有摘要，中文正文须按英文全文译写。§1 末尾括号中 “(Edit for `transmission.md` 0.3 …)” 是给你的编辑说明，不要并入正文 | — |
-| `f2_solar_poa_firm_cf_disclosure.md` | ch3、ch5、ch2 | 无。注意它的倾角写法正确，修正目录 `p05.json` 第 243 行的描述是错的 | 代码 `solar_irradiance.py` |
+| `f2_solar_poa_firm_cf_disclosure.md` | ch3、ch5、ch2 | 无。它的倾角写法正确；修正目录 `p05.json` 中原来错误的描述已在修复轮改正。状态措辞已改为作者认可（A16-6）。核电段落只写可用率，修正口径核电的实际发电量要等 A18（N-7） | 代码 `solar_irradiance.py` |
+| `fx5_voll_17000.md`（修复轮） | ch5、ch6、ch8、ch4 | 无。它已替代 p06 草稿中的 VoLL 表述（p06 已同步） | DECISIONS A16-5 |
+| `fx6_day_ahead_imports.md`（修复轮） | ch5、ch2 | 无。第 4 节的 GBP1 public2 数字是 FX6 前后对比，不是验收；FX7 的验收运行在其上又加了逐站核电（进口 1.558 TWh） | DECISIONS A16-2；`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` |
 
 ## 7 版次升级（0.3 → 0.4）
 
@@ -1075,7 +1126,7 @@ $$
 | | `basisLabel.zh` / `basisLabel.en` | `"模型实现与数据依据 YYYY年M月D日"` / `"Implementation and data basis D Month YYYY"`。是否加上 “VALUE 0.7.0-alpha.1” 由作者决定 |
 | | `chapterIDs` | 不变（九个） |
 | `docs/methodology/generation.json` | `edition`、`date`、`basis` | 同上 |
-| | `scope_changes` | 改写为 0.4 的范围：两个方法学口径；通用修正与口径受控修正（第 3.3 节）；设计假设 S1–S3；已声明偏差；A15 核电路径依赖；网络经济学（P0-8） |
+| | `scope_changes` | 改写为 0.4 的范围：两个方法学口径；通用修正与口径受控修正（第 3.3 节）；设计假设 S1–S3；已声明偏差；A15 核电路径依赖；网络经济学（P0-8）；修复轮的 VoLL 17,000（A16-5）与修正口径日前进口（A16-2）；若 A18 已实施，加修正口径核电开局在运 |
 | | `checks` | 重新执行后填写。原有的 `numeric_tokens_preserved_after_chapter_reference_updates` 是 0.3 只改章节号时的检查，0.4 是内容修订，建议改为第 8 节的双语数值一致检查 |
 | | `dependencies` | 不变，除非构建工具升级 |
 | `docs/methodology/artifacts.json` | `edition`、`date`、`basis`、`files[6]`（path、sha256、bytes、render_review）、`review` | 六个文件审阅通过后填写，`review.status = "passed"` |
@@ -1147,6 +1198,7 @@ for cid in ids:
    - 舍入吸收 \(10^{-9}\)，\(\tau_t\) 的三个数；
    - 汇率 1.1；
    - GBP1 的进口 −78%、系统成本 −3.2%、排放 +3.4%；
+   - 修复轮：GBP1 D5 进口 0.336 TWh、1,130 个时段；修正口径 public2 进口 0.331 → 1.560 TWh；核电 2.02 / 38.26 TWh、水电 6.06 TWh（若引用，注明本地、未发布）；
    - CF 表；
    - stress 157 / 890 / 300,855。
 5. 待审核标记一致：DUKES 对照列两版都标 PENDING AUTHOR REVIEW，或都在作者审核后去掉。A13 模型选择已由作者在 A16-6 认可，两版都去掉 PENDING 标记。
@@ -1162,10 +1214,12 @@ for cid in ids:
 | 3 | 修正目录 `corrections/p05.json` 第 243 行 `p05.solar-plane-of-array` 的描述写 “tilted at the site latitude”，与代码（`tilt_rule = jacobson-jadhav-2018`）、参数表、f2 草稿不符；它也出现在生成的 `METHODOLOGY_PROFILES.md` 中。另外 `p05.vre-loss-factors` 的描述仍写 “PENDING AUTHOR REVIEW”，但 A9 已认可 | 描述只是展示字段，不进入方法哈希（`methodology.py` 第 171–179 行），但会被网站和读者引用 | 代码负责人：修目录描述后重新生成表（FX7 已修：两条描述已改正，`METHODOLOGY_PROFILES.md` 已重新生成） |
 | 4 | 23 区 GB 研究的基础数据包是哪个。网络模块只在修正口径下运行，而 GBP1 public1 在修正口径下不合格 | 第 2 章第 9 行、第 7 章第 107 行 | 代码负责人 |
 | 5 | ~~A13 光伏倾斜面换算的模型选择~~（A16-6 已认可），以及 DUKES 对照列 | 0.4 正文是否带 PENDING 标记 | 作者 |
-| 6 | 修正口径下，核电日前接受的路径依赖是否仍然存在、量级多大。**FX7 实测：** 仍然存在，且量级很大。GBP1 public2 修正口径 2025 年，核电到第 16593 期（12 月 12 日）才首次被接受，全年 2.0 TWh；按可用率可发 38.3 TWh，Energy Trends 5.1 的 2023–2024 supplied 约 37.3 TWh。见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` | 第 5 章 N-7 能否把这段写进修正口径 | 代码负责人、作者 |
+| 6 | 修正口径下，核电日前接受的路径依赖是否仍然存在、量级多大。**FX7 实测：** 仍然存在，且量级很大。GBP1 public2 修正口径 2025 年，核电到第 16593 期（12 月 12 日）才首次被接受，全年 2.0 TWh；按可用率可发 38.3 TWh，Energy Trends 5.1 的 2023–2024 supplied 约 37.3 TWh。见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`。**作者已决定（A18）：** 修正口径核电从第 0 期起在运，启动成本只在换料或停运后收取；论文复现口径不变。**截至 `be30884` 尚未实施。** 剩下的问题：实施后的规则集版本、correction id 和重跑数字 | 第 5 章 N-4、N-7 修正口径部分何时定稿 | 代码负责人（实施与重跑） |
 | 7 | 起始年不变币值的表述：哪个价格基年、是否承认输入的来源年份混合；以及 R029 年度资本费用中的 5% 利率与“不折现”如何并列表述 | 第 1 章新小节、第 2 章、第 6 章 | 作者 |
 | 8 | 方法学中 “Doctoral” 路径是否改名 | 避免与论文复现口径混淆 | 作者 |
 | 9 | 是否在方法学中加入 GBP1 的勘误说明（A15 说该对比作为论文结果的勘误保留），以及 A15 surplus conservation 失败（471 个时段、最大 991 MWh）在方法学中怎样写：它是待调查的已知问题，不是已声明偏差 | 第 2 章或第 5 章的写法 | 作者 |
+| 10 | 修复轮新发现：R029 public1 与 GBP1 public1 绑定同一份逐时光伏曲线 `sa.csv`（8,761 个值、无 interval 声明），修正口径严格读取报 `GF_DATA_SHORT_SERIES`；数据包验证层没有发现。修法三选一：给数据包补声明；在真相登记中断言逐时（会同时改变论文复现口径的读取，须另立修正）；扩展验证层 | 第 2 章 DS-1、DS-8，第 6 章 R-1：R029 能否写成修正口径的默认包 | 代码负责人、作者 |
+| 11 | 修复轮新发现：GBP1 public2 修正口径 2025 年生物质 4,762 MW 只发 0.05 TWh（CF 0.1%），因为报价只用 `gen_cost`（0.2，高于 CCGT 的 0.1），不含燃料成本。是否属于论文方法的预期行为 | 第 5 章 N-1 的报价式是否要加说明 | 作者 |
 
 ## 10 顺带发现、不属于 P0 的过时表述（可以在 0.4 一并改，也可以不改）
 
