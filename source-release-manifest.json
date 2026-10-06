@@ -98,6 +98,7 @@
     "app/features/runs/readinessGroups.ts",
     "app/features/runs/resultMetrics.ts",
     "app/features/runs/run-results.css",
+    "app/features/runs/runHistoryView.ts",
     "app/features/runs/types.ts",
     "app/features/shared/Callout.tsx",
     "app/features/shared/OpenFromLauncher.tsx",
@@ -1309,6 +1310,7 @@
     "tests/frontend/render/readiness-issues.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
+    "tests/frontend/render/run-history.test.mjs",
     "tests/frontend/render/run-scope-extensions.test.mjs",
     "tests/frontend/render/shared-components.test.mjs",
     "tests/frontend/render/study-methodology.test.mjs",
@@ -1329,6 +1331,7 @@
     "tests/frontend/unit/readiness-groups.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
+    "tests/frontend/unit/run-history-view.test.mjs",
     "tests/frontend/unit/run-scope-extensions.test.mjs",
     "tests/frontend/unit/stress-events-view.test.mjs",
     "tests/frontend/unit/study-methodology.test.mjs",
@@ -3470,14 +3473,14 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "9d16fc130f889498abddc503be562a01dbb2e8cf8ca88c34c17c9118fb405451",
-      "bytes": 17935,
+      "sha256": "7fa25ec8caab77d6944a5622331be2edb401b4751032d8bf2c2c6d8f161a4872",
+      "bytes": 17973,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "a8b0bf410f0091f5c8b678b31fd66a2ee6d2b67a15d7ecbb30d0843a65d7eb65",
-      "bytes": 21438,
+      "sha256": "08bc22563bffcaccfc5a8bc4b4fb5f403b9c3506656e0eae72e1f1c979a3d7bc",
+      "bytes": 21785,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3508,6 +3511,12 @@
       "path": "app/features/runs/run-results.css",
       "sha256": "418f318ee05a8138b6e719be9bd4a9693e69c83943ca15a0e19cdb2846de3472",
       "bytes": 1231,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/runs/runHistoryView.ts",
+      "sha256": "af992ff6a995e1a2264d798f7b98059d4483cd3bd7eb46cd2a543affaedf9adf",
+      "bytes": 4235,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3818,8 +3827,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "b679cd4d26b746a728e6049f061090d15b7d6136677f8c8df41d4e09356a3e32",
-      "bytes": 171819,
+      "sha256": "535115e3716b9ed421ff79dff0b705f2e4ae3bb8fa6528cbf1a663e84b859547",
+      "bytes": 172537,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10760,6 +10769,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/run-history.test.mjs",
+      "sha256": "7060ca7582f8c0b1295e416f4e78d630263c4790011bf2b8e2515856f0f74801",
+      "bytes": 3527,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/run-scope-extensions.test.mjs",
       "sha256": "fa49e8e283c9bee5265a1edc73d00f37ba7d14abdd9918261ab4cad7f030fe0d",
       "bytes": 2269,
@@ -10877,6 +10892,12 @@
       "path": "tests/frontend/unit/result-metrics.test.mjs",
       "sha256": "94af8a893360dbf72533869da0919baed8bbd5c5e5c911fc5cd259ad79abe4ef",
       "bytes": 4355,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/run-history-view.test.mjs",
+      "sha256": "585c265c3bd4b7290037ad262768d0c1932e6108ac1fa06657aa56066022cd3a",
+      "bytes": 3804,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

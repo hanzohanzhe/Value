@@ -8,6 +8,7 @@ import { apiUrl, getJson } from "../shared/api";
 import { Callout, StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
 import { costComposition, unitCostText } from "./resultMetrics.ts";
+import { moduleEvidenceText } from "./runHistoryView.ts";
 import { gateBlockedPublication, gateBlockedText, type ResultPublication, type RunValidationFields } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
@@ -44,7 +45,7 @@ export function SmokeDiagnostics({ run }: { run: ModelRun }) {
     {run.diagnostic?.warning && <small>{run.diagnostic.warning}</small>}
     <div className="smoke-modules">{Object.entries(run.modules ?? {}).map(([slot, moduleId]) => {
       const evidence = run.module_evidence?.[moduleId];
-      return <span key={slot}><small>{slot.replaceAll("_", " ")}</small><b>{moduleId}</b><em>{evidence ? `${evidence.actions} recorded calls` : "Evidence pending"}</em></span>;
+      return <span key={slot}><small>{slot.replaceAll("_", " ")}</small><b>{moduleId}</b><em>{moduleEvidenceText(run, slot, evidence?.actions)}</em></span>;
     })}</div>
   </div>;
 }

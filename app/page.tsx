@@ -57,6 +57,7 @@ import NetworkRedispatchView from "./features/network/NetworkRedispatchView";
 import ReplayExportPanel from "./features/market/ReplayExportPanel";
 import StressEventList from "./features/market/StressEventList";
 import { isResultCoverage } from "./features/shared/coverageView.ts";
+import { startedRunNoticeText, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
 import TraceCoverageNotice, { type TraceProfile } from "./features/market/TraceCoverageNotice";
 import {
   copyDefaultZonalSolverContract,
@@ -446,11 +447,14 @@ export default function Home() {
   const [methodologyCatalogue, setMethodologyCatalogue] = useState<MethodologyCatalogue | null>(null);
   const [methodologyError, setMethodologyError] = useState("");
   const [migrationPrompt, setMigrationPrompt] = useState<{ projectId: string; studyName?: string; migration: RevisionMigration; nonce: number } | null>(null);
-  const [preflightMode, setPreflightMode] = useState<RunMode>("smoke");
+  // S-D12: null until the user picks a scope; until then "Check for" follows the selected Run.
+  const [preflightMode, setPreflightMode] = useState<RunMode | null>(null);
   const [storedPreflight, setPreflight] = useState<PreflightReport | null>(null);
   const [pendingPreflightKey, setPendingPreflightKey] = useState<string | null>(null);
   const preflightRequest = useRef(0);
   const [notice, setNotice] = useState("");
+  // S-D12 / M2-N1: the start notice follows its Run to completion or failure.
+  const [startedRun, setStartedRun] = useState<StartedRunNotice | null>(null);
   const [parameterValues, setParameterValues] = useState<Record<string, unknown>>({});
   const [runtimeValues, setRuntimeValues] = useState<Record<string, unknown>>({ "runtime.market_trace_level": "summary" });
   const [resolvedSources, setResolvedSources] = useState<Record<string, { source?: string }>>({});
@@ -597,7 +601,7 @@ export default function Home() {
   const selectedProjectPack = workspace.data_packs.find((pack) => pack.id === selectedProject?.data_pack_id);
   const allowedStudyModes = runModesForStudy(selectedProject, selectedProjectPack);
   const canRunMode = (mode: RunMode) => allowedStudyModes.includes(mode);
-  const effectivePreflightMode = selectedRunScope(preflightMode, allowedStudyModes);
+  const effectivePreflightMode = selectedRunScope(preflightMode ?? selectedRunSummary?.mode ?? "smoke", allowedStudyModes);
   const currentPreflightKey = effectivePreflightMode ? preflightKey(selectedProject, effectivePreflightMode) : null;
   const checkingPreflight = Boolean(currentPreflightKey && pendingPreflightKey === currentPreflightKey);
   const preflight = effectivePreflightMode && preflightMatches(storedPreflight, selectedProject, effectivePreflightMode) ? storedPreflight : null;
@@ -608,7 +612,7 @@ export default function Home() {
     setSelectedRunId("");
     setPreflight(null);
     const nextModes = runModesForStudy(nextProject, nextPack);
-    if (!nextModes.includes(preflightMode) && nextModes.length) {
+    if (preflightMode && !nextModes.includes(preflightMode) && nextModes.length) {
       setPreflightMode(selectedRunScope(preflightMode, nextModes)!);
     }
   }
@@ -1311,13 +1315,13 @@ export default function Home() {
     if (!runModesForStudy(targetProject, targetPack).includes(mode)) { setNotice("此运行范围不属于 Study 锁定范围与数据包允许范围的交集。"); return; }
     if (!targetProject) { setNotice("Save and select a research project first."); setView("projects"); return; }
     setSelectedProjectId(targetProject.id);
-    setLaunching(mode); setNotice("");
+    setLaunching(mode); setNotice(""); setStartedRun(null);
     try {
       const response = await fetch(`${API}/projects/${targetProject.id}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
       const payload = await response.json(); if (!response.ok) { if (preflightMatches(payload.preflight, targetProject, mode)) { setPreflight(payload.preflight); } const migration = migrationFromResponse(payload); if (migration && migration.declared_sha256 === targetProject.revision_sha256) void promptMigration(targetProject, migration); throw new Error(payload.error || "Unable to start the model"); }
       setSelectedRunId(payload.run.id);
       setView("run");
-      setNotice(mode === "smoke" ? "The two-period wiring verification has started." : mode === "two_year_smoke" ? "The two-year smoke verification has started." : mode === "value_101_day" ? "The one-day VALUE 101 PSM lesson has started." : mode === "two_year" ? "The complete two-year model has started." : "The complete annual model run has started.");
+      setStartedRun({ runId: payload.run.id, mode, text: mode === "smoke" ? "The two-period wiring verification has started." : mode === "two_year_smoke" ? "The two-year smoke verification has started." : mode === "value_101_day" ? "The one-day VALUE 101 PSM lesson has started." : mode === "two_year" ? "The complete two-year model has started." : "The complete annual model run has started." });
       await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Launch failed"); } finally { setLaunching(""); }
   }
@@ -1410,6 +1414,7 @@ export default function Home() {
     {isRunView ? <RunContextBar run={selectedRun} frozen={{ runId: frozenRunSelectionId, status: frozenRunSelectionId === selectedRun?.id ? frozenRunProject ? "ready" : "unavailable" : "loading", project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ onOpenInspect: (tab) => { setInspectTarget({ tab: tab ?? "planning", nonce: Date.now() }); setView("audit"); }, onShowStressEvents: () => { setReplayTarget(null); setStressEventsFocus(Date.now()); setView("marketReplay"); } }} /> : view === "projects" && !editingProjectId ? <div className="workspace-study-context"><span>Independent Study draft</span><b>{projectForm.name}</b><small>Review and save to create a new Study.</small></div> : selectedProject && <div className="workspace-study-context"><span>Selected saved Study</span><b>{selectedProject.name}</b><span>revision {selectedProject.revision_number ?? "not recorded"}</span><small>Editing is saved as a new revision.</small></div>}
     {online && selectedRunId && isRunView && !selectedRun && <div className="notice" role="status">The requested Run is unavailable or belongs to another Study. Choose a Study and Run from Runs; no substitute result has been opened.</div>}
     {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>Close</button></div>}
+    {!notice && startedRun && <div className="notice" role="status"><span>{startedRunNoticeText(startedRun, workspace.runs.find((run) => run.id === startedRun.runId))}</span><button onClick={() => setStartedRun(null)}>Close</button></div>}
     {migrationPrompt && <StudyMigrationDialog key={migrationPrompt.nonce} projectId={migrationPrompt.projectId} studyName={migrationPrompt.studyName} migration={migrationPrompt.migration} version={health?.version} apiBase={API}
       onCancel={() => { setMigrationPrompt(null); setNotice("The Study was not changed. It cannot run until the listed changes are confirmed."); }}
       onSaved={(revisionNumber) => { setMigrationPrompt(null); setPreflight(null); setNotice(`Saved as a new revision${revisionNumber ? ` (revision ${revisionNumber})` : ""}. Check readiness again, then start the Run.`); void refresh(); }} />}

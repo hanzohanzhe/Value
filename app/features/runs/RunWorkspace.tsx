@@ -20,6 +20,7 @@ import { isResultCoverage } from "../shared/coverageView.ts";
 import { Callout } from "../shared/Callout";
 import { lifecycleNotice } from "./lifecycleView.ts";
 import { preflightRunBlockedReason } from "../workspace/preflightIdentity";
+import { runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -68,6 +69,9 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
   // Spec 11.4 (M-D3): a blocked readiness check disables the Run and says why.
   const runBlockedReason = preflightRunBlockedReason(preflight);
   const recovery = selectedProject?.extensions?.frozen_recovery;
+  // R-D2 / S-D12: launching holds the scope while a Run is being started.
+  const startingRun = Object.hasOwn(RUN_SCOPE_LABELS, launching);
+  const emptyHistory = runHistoryEmpty(projectRuns.length, startingRun);
   const selectedRunContext = { kind: frozen.contextKind };
   const frozenRunSelectionId = frozen.runId;
   const frozenRunReadiness = frozen.readiness;
@@ -99,7 +103,7 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
           <small className="run-warning">Full studies may take several hours. Closing this page does not stop a background run.</small>
         </section>
         <section className="panel run-results">
-          <div className="panel-head"><div><span>Run history</span><h3>Progress and results</h3></div><select aria-label="Selected run" value={selectedRun?.id ?? ""} onChange={(event) => onSelectRun(event.target.value)}><option value="">No runs yet for this Study</option>{projectRuns.map((run) => <option value={run.id} key={run.id}>{run.project_name} · {run.mode} · {run.status}</option>)}</select></div>
+          <div className="panel-head"><div><span>Run history</span><h3>Progress and results</h3></div><select aria-label="Selected run" value={selectedRun?.id ?? ""} onChange={(event) => onSelectRun(event.target.value)}>{(!selectedRun || !projectRuns.length) && <option value="" disabled={projectRuns.length > 0}>{runSelectPlaceholder(projectRuns.length)}</option>}{projectRuns.map((run) => <option value={run.id} key={run.id} title={run.id}>{runOptionLabel(run)}</option>)}</select></div>
           {selectedRun ? <>
             <div className="run-status"><div><Badge tone={selectedRun.status === "completed" ? "good" : selectedRun.status === "failed" ? "warn" : "blue"}>{selectedRun.status}</Badge><b>{selectedRun.current_stage}</b><small>{selectedRun.mode === "smoke" ? "Two-period verification" : selectedRun.mode === "two_year_smoke" ? "Two-year smoke test" : selectedRun.mode === "value_101_day" ? "One-day market lesson" : selectedRun.mode === "two_year" ? "Complete two-year model" : "Complete project"} / {selectedRun.id}</small></div><strong>{selectedRun.completed_years}<span> / {selectedRun.total_years}</span></strong></div>
             <div className="validation-strip">
@@ -127,7 +131,7 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
             </div>
             {["smoke", "two_year_smoke", "value_101_day"].includes(selectedRun.mode) ? <SmokeDiagnostics run={selectedRun} /> : <AnnualResults key={selectedRun.id} runId={selectedRun.id} results={selectedRun.results ?? []} coverage={isResultCoverage(selectedRun.result_coverage) ? selectedRun.result_coverage : null} onOpenInspect={() => onNavigate("audit")} publication={selectedRun.result_publication} withheldYearCount={selectedRun.withheld_result_year_count} validation={selectedRun} onExportLedger={actions.openInspect ? () => actions.openInspect?.("artifacts") : undefined} />}
             <button className="audit-link" onClick={() => onNavigate("audit")}>Inspect planning projects and market clearing</button>
-          </> : <div className="empty-run"><b>No runs yet</b><p>Choose a saved study, check its inputs and start with two full years.</p></div>}
+          </> : <div className="empty-run"><b>{emptyHistory.title}</b><p>{emptyHistory.body}</p></div>}
         </section>
       </div>
       <ComparisonWorkspace runs={workspace.runs} />
