@@ -1288,6 +1288,7 @@
     "tests/frontend/render/network-tables.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
+    "tests/frontend/render/run-scope-extensions.test.mjs",
     "tests/frontend/render/shared-components.test.mjs",
     "tests/frontend/render/study-methodology.test.mjs",
     "tests/frontend/unit/api-error.test.mjs",
@@ -1303,6 +1304,7 @@
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
+    "tests/frontend/unit/run-scope-extensions.test.mjs",
     "tests/frontend/unit/stress-events-view.test.mjs",
     "tests/frontend/unit/study-methodology.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
@@ -1514,6 +1516,7 @@
     "tests/test_planning_preprocessing_contract.py",
     "tests/test_preflight.py",
     "tests/test_preflight_documentation.py",
+    "tests/test_preflight_scope_extensions.py",
     "tests/test_prepare_archived_workspace.py",
     "tests/test_project_migration_v2.py",
     "tests/test_project_revision.py",
@@ -3160,8 +3163,8 @@
     },
     {
       "path": "app/features/extensions/ExtensionResultsPanel.tsx",
-      "sha256": "8742804517146c301bf81ff0f6312506b82f117d03d8b3aac3ef42199d19837a",
-      "bytes": 7334,
+      "sha256": "84018924a784461cf02fdeec5368bdc67be3716e0db8975d3f07d4bdc237ed5f",
+      "bytes": 7542,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3394,8 +3397,8 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "be9443bed950e2dec45c9e417d2be15ff9c4a8bc5703dfd1a36d35cca0f90a8c",
-      "bytes": 21015,
+      "sha256": "9b21c8d575bf2d3de569c28c75d6cd21adea6f2dddd7a6f531e6c50914e6e54c",
+      "bytes": 21056,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3688,9 +3691,9 @@
     },
     {
       "path": "app/features/workspace/runScope.ts",
-      "sha256": "c12d8737f9308f653eedaab93234850cbe399b8d736b6cb8314d38e4b9254b53",
-      "bytes": 1470,
-      "transform": "byte copy"
+      "sha256": "26722da2790ce3b645710ee6be881e029b8005bc7528b9f51d5c9b29b8c43eb2",
+      "bytes": 2201,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/runValidation.ts",
@@ -3772,9 +3775,9 @@
     },
     {
       "path": "backend/extension_results.py",
-      "sha256": "73e761d3da5230a530a2d3eb60028a9992ed0655bd75379b33ef3f143c38c76f",
-      "bytes": 16262,
-      "transform": "byte copy"
+      "sha256": "a71f9f4a414a9db1e3187e7c4927cb840a6a33ad4e2af8bcdc55e7fb228e4270",
+      "bytes": 16886,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "backend/frozen_input_recovery.py",
@@ -7378,8 +7381,8 @@
     },
     {
       "path": "gridform_core/comparison_identity.py",
-      "sha256": "38a9f91ab34973996451f159f93785825a0a9a5a5b03d047a516655daaf0c8d8",
-      "bytes": 13039,
+      "sha256": "91f6f5445a3559cab3ba6630b45002ea83d0746df14d7c5fc2ea2e6b211e1bb4",
+      "bytes": 13919,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8383,8 +8386,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "57e8147f62d1d5f7c3facdae4698b94478478b43661697dc685799bd81020188",
-      "bytes": 40009,
+      "sha256": "f94102d907374bad796bea6adfd84e754086c8d137abad9584d0f181a27c28af",
+      "bytes": 40678,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8485,9 +8488,9 @@
     },
     {
       "path": "gridform_core/run_policy.py",
-      "sha256": "231c54c7effffcd169f2b7c4e138a4e54a97fc2087c2ec1597d858813ee7eee8",
-      "bytes": 3977,
-      "transform": "byte copy"
+      "sha256": "e9972f55c7f52f51e70057e8f1ce277fd29861ef1e54c65d7122e9582e029620",
+      "bytes": 4919,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/run_quota.py",
@@ -10594,6 +10597,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/run-scope-extensions.test.mjs",
+      "sha256": "fa49e8e283c9bee5265a1edc73d00f37ba7d14abdd9918261ab4cad7f030fe0d",
+      "bytes": 2269,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/shared-components.test.mjs",
       "sha256": "1e0239aa5d2d5ec60810514981992a41a95df81af4f84444c548f1faf34c6403",
       "bytes": 2770,
@@ -10681,6 +10690,12 @@
       "path": "tests/frontend/unit/result-metrics.test.mjs",
       "sha256": "94af8a893360dbf72533869da0919baed8bbd5c5e5c911fc5cd259ad79abe4ef",
       "bytes": 4355,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/run-scope-extensions.test.mjs",
+      "sha256": "adf115fa00512bc292706a18144967d2a487e119875cc26586d854597dee573b",
+      "bytes": 1724,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11069,8 +11084,8 @@
     },
     {
       "path": "tests/test_comparison_identity.py",
-      "sha256": "faeec495e2ca7c19cb75613da784d8bac40bd5ef0e69fe64072d8a9a9cceb05b",
-      "bytes": 12159,
+      "sha256": "0f683234a6de3baca13997710da6a38d9499c4284f6bd718e4ca07bb954c7ed2",
+      "bytes": 14608,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11327,9 +11342,9 @@
     },
     {
       "path": "tests/test_extension_results.py",
-      "sha256": "1d34edd3adc758368f0c63fd8b23edc19ab6c1ffc7c0e4a4a3666ef41262bb0c",
-      "bytes": 9097,
-      "transform": "byte copy"
+      "sha256": "2799282d337922e483be8634421fd39f2bcfef8f1ac69ccd8469ffcfe5a1b2ea",
+      "bytes": 10252,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_extension_source_bundle.py",
@@ -11947,6 +11962,12 @@
       "path": "tests/test_preflight_documentation.py",
       "sha256": "5d9b9294122f02fafeaf869aec47f267f376fc0f63420072a4536471ab31673d",
       "bytes": 3614,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_preflight_scope_extensions.py",
+      "sha256": "671ad89034fd33cedbaf19bd5b68a1563867202081a772585d021b7c24d89892",
+      "bytes": 3476,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

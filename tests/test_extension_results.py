@@ -57,6 +57,24 @@ class ExtensionResultTests(unittest.TestCase):
         self.assertNotIn("private_undeclared", json.dumps(first))
         self.assertEqual(len(first["source"]["year_results"]["sha256"]), 64)
 
+    def test_one_day_lesson_names_the_scope_instead_of_missing_year_results(self):
+        # F-D2 (DECISIONS A16-3): the one-day lesson records the extension graph
+        # but never runs its hooks and writes no year results.
+        self.status["mode"] = "value_101_day"
+        self.write()
+        (self.root / "model-output/year-results-v2.json").unlink()
+        result = query_extension_artifacts(self.root, {})
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["reason_code"], "extensions_not_executed_in_scope")
+        self.assertIn("runs the market step only", result["message"])
+        self.assertIn("old-audit", result["message"])
+        self.assertEqual([row["id"] for row in result["capabilities"]["extensions"]], ["old-audit"])
+        self.assertNotEqual(result["reason_code"], "year_results_missing")
+        # A scope that runs hooks still reports the missing evidence itself.
+        self.status["mode"] = "smoke"
+        (self.root / "status.json").write_text(json.dumps(self.status))
+        self.assertEqual(query_extension_artifacts(self.root, {})["reason_code"], "year_results_missing")
+
     def test_old_declaration_and_hook_source_missing_are_unavailable(self):
         del self.graph["manifests"]
         self.write(False)

@@ -10,6 +10,7 @@ import re
 from typing import Mapping
 
 from gridform_core.extension_framework import ExtensionManifest, canonical_hash, validate_extension_artifact
+from gridform_core.run_policy import scope_runs_extensions
 
 HEX = re.compile(r"[0-9a-f]{64}\Z")
 LIMITS = {"status": 64 * 1024, "year_results": 16 * 1024 * 1024, "module_resolution": 2 * 1024 * 1024}
@@ -160,6 +161,12 @@ def query_extension_artifacts(run_root: Path, query: Mapping) -> dict:
         result["capabilities"]["extensions"] = identities
         if extension_id is not None and extension_id not in manifests:
             raise EvidenceError("unavailable", "extension_not_in_frozen_graph", "The selected extension was not frozen in this Run.")
+        # F-D2 (DECISIONS A16-3): the one-day lesson runs the market step only;
+        # name that as the reason instead of reporting missing year results.
+        if not scope_runs_extensions(status.get("mode")):
+            names = ", ".join(sorted(manifests))
+            raise EvidenceError("unavailable", "extensions_not_executed_in_scope",
+                                f"The one-day lesson runs the market step only, so the recorded extension(s) {names} did not execute in this Run. Re-run with two-period or a longer scope to obtain extension results.")
         years_path = run_root / result["source"]["year_results"]["path"]
         years, digest, stamp = _read(years_path, run_root, "year_results")
         snapshots.append((years_path, stamp)); result["source"]["year_results"]["sha256"] = digest

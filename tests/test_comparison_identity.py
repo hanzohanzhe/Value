@@ -190,6 +190,38 @@ class ComparisonIdentityTests(unittest.TestCase):
         path.write_text(json.dumps(resolved))
         self.assertIsNone(build_run_summary(root)["comparison_identity"]["dimensions"]["method"])
 
+    def test_one_day_lesson_recorded_extension_is_not_a_method_change(self):
+        # F-D2 (DECISIONS A16-3): the one-day lesson runs the market step only,
+        # so a recorded but never executed extension is not a method change.
+        for mode, periods in (("value_101_day", 48), ("smoke", 2)):
+            with self.subTest(mode=mode):
+                left = build_run_summary(self.fixture("lesson-left-" + mode, mode=mode, periods=periods))
+                right_root = self.fixture("lesson-right-" + mode, mode=mode, periods=periods, extension=True)
+                project_path = right_root / "input-snapshot/project.json"
+                project = json.loads(project_path.read_text())
+                project["extension_parameters"] = {"ext": {"threshold": 3}}
+                project_path.write_text(json.dumps(project))
+                snapshot_path = right_root / "input-snapshot/snapshot.json"
+                snapshot = json.loads(snapshot_path.read_text())
+                snapshot["project_sha256"] = digest(project)
+                snapshot_path.write_text(json.dumps(snapshot))
+                right = build_run_summary(right_root)
+                identity = right["comparison_identity"]
+                result = compare_run_summaries([left, right])
+                if mode == "value_101_day":
+                    self.assertIsNone(identity["dimensions"]["method"]["extensions"])
+                    self.assertEqual(identity["dimensions"]["config"]["extension_parameters"], {})
+                    self.assertEqual(identity["non_executed_extensions"], {"reason_code": "extensions_not_executed_in_scope", "extensions": ["ext"]})
+                    self.assertEqual(result["comparison_review"]["dimensions"]["method"]["status"], "same")
+                    self.assertEqual(result["comparison_review"]["dimensions"]["config"]["status"], "same")
+                    self.assertEqual(result["changed_dimensions"], {})
+                    self.assertEqual(result["storage_pricing_interpretation"], "matching_teaching_configuration")
+                else:
+                    # Scopes that run extension hooks keep them in the method.
+                    self.assertNotIn("non_executed_extensions", identity)
+                    self.assertEqual(result["comparison_review"]["dimensions"]["method"]["status"], "changed")
+                    self.assertEqual(result["comparison_review"]["dimensions"]["config"]["status"], "changed")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 from collections.abc import Mapping, Sequence
 
+from .run_policy import scope_runs_extensions
+
 DIMENSIONS = ("data", "method", "config", "years", "scope")
 # The methodology profile is a scientific parameter but belongs to the method
 # dimension only, so a profile-only change is an isolated method change
@@ -65,6 +67,12 @@ def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) ->
     project = _read(root / "input-snapshot/project.json")
     identity = {key: None for key in DIMENSIONS}
     reasons = {}
+    # F-D2 (DECISIONS A16-3): a market-step-only scope (the one-day lesson)
+    # never executes extension hooks.  Extensions recorded in such a Run are
+    # kept as audit evidence but are not part of its method or configuration,
+    # so they never make two otherwise identical lessons a method change.
+    extensions_execute = scope_runs_extensions(status.get("mode"))
+    non_executed_extensions: list[str] = []
     if not isinstance(snapshot, Mapping) or not isinstance(project, Mapping):
         return {"schema_version": "value.comparison-identity/v1", "dimensions": identity,
                 "unknown_reasons": {key: "frozen_snapshot_or_project_missing" for key in DIMENSIONS}}
@@ -146,6 +154,9 @@ def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) ->
                 raise ValueError("frozen_extension_selection_inconsistent")
             extensions = {key: value for key, value in extensions.items() if key != "graph_sha256"}
             extensions["extensions"] = sorted(({**row, "manifest_sha256": row["manifest_sha256"].lower()} for row in extension_rows), key=lambda row: row["id"])
+            if not extensions_execute:
+                non_executed_extensions = [row["id"] for row in extensions["extensions"]]
+                extensions = None
         methodology, methodology_reason = recorded_methodology(root, resolved)
         if methodology is None:
             raise ValueError(str(methodology_reason))
@@ -166,7 +177,7 @@ def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) ->
             "runtime_options": project.get("runtime_options") or project.get("runtime_controls") or {},
             "scientific_parameters": _without_profile(dict(resolved["scientific_parameters"])),
             "runtime_controls": dict(resolved["runtime_controls"]),
-            "extension_parameters": project.get("extension_parameters") or {},
+            "extension_parameters": (project.get("extension_parameters") or {}) if extensions_execute else {},
             "market_configuration": market,
             "solver_contract": project.get("solver_contract"),
         }
@@ -184,7 +195,13 @@ def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) ->
         identity["scope"] = {"mode": status["mode"], "periods_per_year": policy["periods_per_year"], "annual_economics_candidate": policy.get("annual_economics_candidate"), "scientific_baseline_candidate": policy.get("scientific_baseline_candidate")}
     else:
         reasons["scope"] = "executed_scope_missing"
-    return {"schema_version": "value.comparison-identity/v1", "dimensions": identity, "unknown_reasons": reasons}
+    record = {"schema_version": "value.comparison-identity/v1", "dimensions": identity, "unknown_reasons": reasons}
+    if non_executed_extensions:
+        record["non_executed_extensions"] = {
+            "reason_code": "extensions_not_executed_in_scope",
+            "extensions": non_executed_extensions,
+        }
+    return record
 
 
 def review_comparison_identities(summaries: Sequence[Mapping]) -> dict:

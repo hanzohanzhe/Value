@@ -42,7 +42,12 @@ from .run_quota import (
     output_reservation_bytes,
     quota_usage,
 )
-from .run_policy import resolve_run_policy, validate_pack_run_mode
+from .run_policy import (
+    resolve_run_policy,
+    scope_extension_block_message,
+    scope_runs_extensions,
+    validate_pack_run_mode,
+)
 from .frontend_contract import validate_maturity_acknowledgements
 from .v2.module_manifest import ModuleRegistryV2, workspace_registry
 from .runtime_paths import user_data_root
@@ -569,7 +574,16 @@ def run_preflight(
         "selected": list(selected_extensions),
         "base_roles": len(dataset_slots),
         "conditional_roles": len(active_dataset_slots) - len(dataset_slots),
+        "executes_in_scope": bool(selected_extensions) and scope_runs_extensions(mode),
     }
+    # F-D2 (DECISIONS A16-3): a market-step-only scope never runs extension
+    # hooks, so selecting extensions there would record methods that do not run.
+    if selected_extensions and not scope_runs_extensions(mode):
+        issues.append(_issue(
+            "GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS", "error", "project",
+            scope_extension_block_message(selected_extensions),
+            "Choose two-period or a longer scope, or deselect the extension(s) in the Study.",
+        ))
     checks["data_pack"] = data_report
     checks["network_data_pack"] = network_data_report
     if not data_report["valid"]:
