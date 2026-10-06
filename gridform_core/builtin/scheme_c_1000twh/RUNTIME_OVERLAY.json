@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "9a942adab146c1a274e439e68ccdf3e0c164309668cc89533dda7a55daa4af43",
+  "runtime_tree_sha256": "97a43f5d06aeb8a16407e5f0f9aa638193f59136c3f41ac3c50c6f2287149b33",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -59,9 +59,12 @@
     },
     {
       "path": "case3.py",
-      "sha256": "68baa3c61630e3959087ba863e1ba697ec3e3c76a4eb1384d8751de4f9e77dd8",
-      "kind": "source_identical",
-      "correction_ids": []
+      "sha256": "7a0ca97b5c9b11f1a5305de450825918aad1529cfd2647f4101ba7c473ce2a77",
+      "kind": "declared_runtime_edit",
+      "correction_ids": [
+        "fx5.voll-17000"
+      ],
+      "previous_kind": "source_identical"
     },
     {
       "path": "cm_battery_cm_allocation.py",
@@ -115,9 +118,12 @@
     },
     {
       "path": "modular_case3.py",
-      "sha256": "de3f7025c863b11fb5c302051541c966e049c0dc28395af7a310eb2377b2a540",
-      "kind": "source_identical",
-      "correction_ids": []
+      "sha256": "166c5e847c507e9ed6cf9cd84f3c2d1450bdff7ee745a798655f0df548fde2ea",
+      "kind": "declared_runtime_edit",
+      "correction_ids": [
+        "fx5.voll-17000"
+      ],
+      "previous_kind": "source_identical"
     },
     {
       "path": "modular_investment_support.py",

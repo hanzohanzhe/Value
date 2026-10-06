@@ -113,7 +113,7 @@ def _validate_summaries(summaries, model_input, totals) -> None:
 
 
 class DoctoralNationalPSM:
-    id, version = "value-doctoral-national-psm", "0.2.0"
+    id, version = "value-doctoral-national-psm", "0.3.0"
     execution_kind = "live_module"
 
     def configure_run(self, *, output_dir: Path, fleet_parameters: Mapping,

@@ -351,7 +351,7 @@ A single visible option means that only one conforming implementation is current
 |---|---|---|
 | `market.bid_multiplier` | 1.0；0.01–10 | `value-bid-at-cost-psm` 的成本报价乘数。只有 1.0 才是严格 bid-at-cost；其他值是明确的实验性 markup/markdown。 |
 | `market.perfect_foresight_terminal_soc_rule` | `cyclic`; 可选 `fixed`, `free` | 只对 perfect-foresight LP 生效。`cyclic` 使终点 SOC 回到初点；`fixed` 使用声明终值；`free` 不强制终点。 |
-| `market.voll_gbp_per_mwh` | 10,000 GBP/MWh；0–1,000,000 | perfect-foresight LP 对未服务需求采用的 Value of Lost Load。 |
+| `market.voll_gbp_per_mwh` | 17,000 GBP/MWh；0–1,000,000 | 未服务需求的 Value of Lost Load（作者取值，决策 A16-5）：perfect-foresight LP、参考 DC 网络和分区再调度用它给切负荷定价，默认 PSM 的修正口径用它计算物理运行成本（论文复现口径固定为 17,000）。 |
 
 #### Output/runtime
 
@@ -938,7 +938,7 @@ The actual annual order is planning advance/commissioning → selected PSM → e
 |---|---|---|
 | `market.bid_multiplier` | 1.0 | Multiplies cost offers under `value-bid-at-cost-psm`. Only 1.0 is strict bid-at-cost; other values are explicit markup/markdown experiments. |
 | `market.perfect_foresight_terminal_soc_rule` | `cyclic`; `fixed`, `free` | Sets terminal storage SOC only for the perfect-foresight LP. |
-| `market.voll_gbp_per_mwh` | 10,000 GBP/MWh | Value of lost load used by the perfect-foresight LP for unserved demand. |
+| `market.voll_gbp_per_mwh` | 17,000 GBP/MWh | Value of lost load for unserved demand (author value, decision A16-5): it prices shedding in the perfect-foresight LP, the reference DC network and zonal redispatch, and values recorded blackout in the corrected default-PSM operating cost (the doctoral reproduction profile uses a fixed 17,000). |
 
 #### Output and runtime settings
 

@@ -2,7 +2,7 @@
   "schema_version": "value.module/v2",
   "id": "value-perfect-foresight-lp",
   "name": "Perfect-foresight co-optimization",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scientific_version": "value-perfect-foresight-single-node-lp-v1",
   "slot": "psm",
   "implementation": "gridform_core.perfect_foresight_psm:PerfectForesightPSM",

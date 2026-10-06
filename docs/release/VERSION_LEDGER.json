@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.1.0",
+      "current_version": "6.2.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -123,6 +123,16 @@
           ],
           "reason": "Four-role finding M-D1 (decisions A16-1, Q12): the default PSM books every storage discharge offer of the ahead and balancing stages, accepted or not, at its real price in the new accounting table storage_orders (full trace level), with the energy each offer delivered. The battery's orders row (final_dispatch, offer price 0.0) is frozen and unchanged. Dispatch, prices, state of charge, costs and investment paths are unchanged in both profiles (doctoral trajectory bit-identical); only an accounting-zone ledger table is added, so this is a code-identity upgrade without user opt-in (Q13).",
           "requires_user_opt_in": false
+        },
+        {
+          "from": "6.1.0",
+          "to": "6.2.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: VoLL is 17000 GBP/MWh in both profiles. The doctoral rule set values recorded unserved energy in the physical operating cost at the constant 17000 instead of the thesis constant 8000 (reliability_voll constant_17000; universal accounting correction, dispatch unchanged); the corrected rule set reads market.voll_gbp_per_mwh, whose registry default is now 17000 instead of 10000. Operating and system cost of years with recorded blackout change, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
         }
       ]
     },
@@ -147,8 +157,19 @@
     "value-doctoral-national-psm": {
       "baseline_version": "0.2.0",
       "baseline_scientific_version": "doctoral-national-final96-signed-settlement-2026.09.10",
-      "current_version": "0.2.0",
-      "bumps": []
+      "current_version": "0.3.0",
+      "bumps": [
+        {
+          "from": "0.2.0",
+          "to": "0.3.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000; the module's system cost books blackout x VoLL, so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). Scientific version unchanged (doctoral profile whitelist).",
+          "requires_user_opt_in": true
+        }
+      ]
     },
     "value-legacy-storage-tariff": {
       "baseline_version": "1.0.0",
@@ -159,13 +180,24 @@
     "value-perfect-foresight-lp": {
       "baseline_version": "1.0.0",
       "baseline_scientific_version": "value-perfect-foresight-single-node-lp-v1",
-      "current_version": "1.0.0",
-      "bumps": []
+      "current_version": "1.1.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "1.1.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The LP trades shedding against cost at this price, so dispatch and cost of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). Code unchanged apart from the default.",
+          "requires_user_opt_in": true
+        }
+      ]
     },
     "value-reference-dc-network": {
       "baseline_version": "1.0.0",
       "baseline_scientific_version": "reference-chronological-dc-opf-v1",
-      "current_version": "1.1.0",
+      "current_version": "1.2.0",
       "bumps": [
         {
           "from": "1.0.0",
@@ -175,6 +207,16 @@
             "p08.network-share-expansion"
           ],
           "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs give numerically equal results (only signed zeros and an integer curtailment zero differ in serialization). Studies with split mappings change numerically, so per Q13 the upgrade is marked as needing explicit user confirmation (pending author ruling; M2-P0-8a review). Since the M2 integration merged X0 S11 the flag is enforced: a saved Study that selects this module is classified method_upgrade_required (Q13) and runs under 1.1.0 only after the user confirms its revision migration.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.1.0",
+          "to": "1.2.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The DC-OPF objective and physical cost price shedding at this value, so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13).",
           "requires_user_opt_in": true
         }
       ]
@@ -194,7 +236,7 @@
     "value-staged-bid-at-cost-psm": {
       "baseline_version": "1.1.0",
       "baseline_scientific_version": "value-staged-national-market-2026.08.21",
-      "current_version": "1.3.0",
+      "current_version": "1.4.0",
       "bumps": [
         {
           "from": "1.1.0",
@@ -218,6 +260,16 @@
             "p08.dec-class-order"
           ],
           "reason": "P0-8 S7 (P2-05, P3-04): staged balancing dec bids carry an economic price (network_method_rules ECONOMIC): fuel units SRMC x market.dec_multiplier - support, imports the period price x dec multiplier, VRE and run-of-river hydro -support, nuclear SRMC x m_dec - support - inflexibility premium (shared down-regulation table), storage min(own up x round-trip efficiency, the period's lowest inc price). Before, every dec was GBP 0 and the curtailed asset depended on its id; a dec'd thermal unit kept a windfall. Dispatch, curtailment, settlement and investment income of staged Runs change, so saved Studies need explicit confirmation (Q13). Scientific version value-staged-network-economics-2026.10.06. P0-8 S9 (P2-02, P2-03, P2-04, C22): the two reference cases of the network cost are the zonal LP without the network (value.network-free-lp/v1: same bids, envelopes, VOLL, solver), every case and the agent running cost are priced with one per-period unit-cost table, and every period checks primary_zonal >= primary_network_free - tol; network_constraint_cost is zero whenever the network does not bind. P0-8 S10 (P2-06, F3-05): boundary marginal values are the primary-stage duals of the zonal LP (signed forward, status computed / degenerate_dual / shared_member, ledger semantics value.boundary-marginal-value/v2); the annual key boundary_shadow_value_gbp (a hard-coded 0.0) is replaced by boundary_congestion_rent_diagnostic_gbp and pre-P0-8b rows read as not_computed. M6 review (p08.dec-class-order): at an equal dec price storage charging precedes run-of-river, VRE and nuclear reductions in copperplate and in the zonal LP (a down bid's pro-rata group carries its dec class; the physical tie phase weighs non-storage down bids by class: fuel 0, import 0.5, run-of-river 2, VRE 3, nuclear 4 per MWh against storage throughput 1), and the rule set records dec_class_order.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.3.0",
+          "to": "1.4.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The staged chronology carries it to copperplate balancing (an up bid above VoLL is never accepted) and to zonal redispatch (VoLL x shed in the primary objective, the network-free counterfactual and the redispatch accounting), so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). The zonal balancing module keeps 4.0.0 (its code and solver contract are unchanged; the VALUE UK study already pinned 17000).",
           "requires_user_opt_in": true
         }
       ]

@@ -36,6 +36,7 @@ from dataclasses import dataclass, fields, replace
 from typing import Any, Mapping
 
 from ...energy_balance_contract import NATIVE_CORRECTED_RULE_SET
+from ...voll import VOLL_GBP_PER_MWH
 
 SCHEMA_VERSION = "value.native-market-rules/v1"
 RECORD_SCHEMA_VERSION = "value.native-market-rule-set-record/v1"
@@ -107,7 +108,9 @@ DOCTORAL = NativeMarketRules(
     storage_bid_basis="thesis_dwell_linear",
     storage_settlement_basis="thesis_max_bat_price",
     operating_cost_basis="dispatch_unit_cost/v1",
-    reliability_voll="thesis_constant_8000",
+    # FX5 (A16-5, universal accounting correction fx5.voll-17000): the thesis
+    # cost-ledger constant 8000 GBP/MWh is replaced by the author's 17000.
+    reliability_voll="constant_17000",
 )
 
 CORRECTED = NativeMarketRules(
@@ -221,19 +224,23 @@ def active_rules(explicit: NativeMarketRules | None, runtime: object | None) -> 
     )
 
 
-THESIS_VOLL_GBP_PER_MWH = 8000.0
-DEFAULT_VOLL_GBP_PER_MWH = 10000.0
+# A16-5: VoLL is 17000 GBP/MWh in both profiles (gridform_core/voll.py).
+DOCTORAL_VOLL_GBP_PER_MWH = VOLL_GBP_PER_MWH
+DEFAULT_VOLL_GBP_PER_MWH = VOLL_GBP_PER_MWH
 
 
 def voll_gbp_per_mwh(rules: NativeMarketRules, parameters: Mapping[str, Any] | None) -> float:
-    """VoLL of the physical operating cost (plan appendix P0-6 Q7).
+    """VoLL of the physical operating cost (plan appendix P0-6 Q7, decision A16-5).
 
-    The doctoral rule set uses the thesis constant 8000 GBP/MWh; the corrected
-    one reads ``market.voll_gbp_per_mwh`` (default 10000 GBP/MWh).
+    The doctoral rule set uses the constant 17000 GBP/MWh (the thesis code's
+    8000 was replaced by the universal accounting correction
+    ``fx5.voll-17000``); the corrected one reads ``market.voll_gbp_per_mwh``
+    (default 17000 GBP/MWh).  VoLL enters only the cost accounts of the
+    default PSM, never its dispatch.
     """
 
-    if rules.reliability_voll == "thesis_constant_8000":
-        return THESIS_VOLL_GBP_PER_MWH
+    if rules.reliability_voll == "constant_17000":
+        return DOCTORAL_VOLL_GBP_PER_MWH
     value = (parameters or {}).get("market.voll_gbp_per_mwh", DEFAULT_VOLL_GBP_PER_MWH)
     return float(DEFAULT_VOLL_GBP_PER_MWH if value is None else value)
 

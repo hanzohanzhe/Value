@@ -14,19 +14,19 @@ trajectory re-baselines are in `tests/golden/reports/` (`D4-r9.json`, `D5-r1.jso
 
 | Case | Family | Tier | Title | Latest revision | Trajectory | Accounting | Identity | Unattributed |
 |---|---|---|---|---|---|---|---|---|
-| C1 | corrected | fast | dynamic storage smoke | r10 | 34 | 467 | 56 | 0 |
-| C2 | corrected | fast | dynamic storage two_year_smoke | r10 | 35 | 474 | 58 | 0 |
-| C3 | corrected | fast | dynamic storage value_101_day | r12 | 50 | 483 | 40 | 0 |
-| C4 | corrected | fast | legacy storage smoke | r10 | 32 | 467 | 55 | 0 |
-| C5 | corrected | full | legacy storage two_year | r10 | 503 | 529 | 75 | 0 |
-| C6 | corrected | nightly | dynamic storage two_year | r8 | 490 | 531 | 74 | 0 |
+| C1 | corrected | fast | dynamic storage smoke | r11 | 34 | 467 | 56 | 0 |
+| C2 | corrected | fast | dynamic storage two_year_smoke | r11 | 35 | 474 | 58 | 0 |
+| C3 | corrected | fast | dynamic storage value_101_day | r13 | 50 | 483 | 40 | 0 |
+| C4 | corrected | fast | legacy storage smoke | r11 | 32 | 467 | 55 | 0 |
+| C5 | corrected | full | legacy storage two_year | r11 | 503 | 529 | 75 | 0 |
+| C6 | corrected | nightly | dynamic storage two_year | r9 | 490 | 531 | 74 | 0 |
 | C7 | corrected | fast | staged copperplate smoke | r11 | 34 | 309 | 102 | 0 |
 | C8 | corrected | fast | staged zonal redispatch value_101_day | r14 | 111 | 382 | 104 | 0 |
-| D1 | doctoral | fast | legacy storage smoke | r9 | 0 | 420 | 53 | 0 |
-| D2 | doctoral | fast | legacy storage two_year_smoke | r9 | 0 | 427 | 54 | 0 |
-| D3 | doctoral | fast | legacy storage value_101_day | r11 | 0 | 500 | 40 | 0 |
-| D4 | doctoral | full | legacy storage two_year | r10 | 426 | 496 | 73 | 0 |
-| D5 | doctoral | full | GBP1 public1 legacy storage, first model year (A12) | r1 | 377 | 639 | 64 | 0 |
+| D1 | doctoral | fast | legacy storage smoke | r10 | 0 | 420 | 53 | 0 |
+| D2 | doctoral | fast | legacy storage two_year_smoke | r10 | 0 | 427 | 54 | 0 |
+| D3 | doctoral | fast | legacy storage value_101_day | r12 | 0 | 500 | 40 | 0 |
+| D4 | doctoral | full | legacy storage two_year | r11 | 426 | 496 | 73 | 0 |
+| D5 | doctoral | full | GBP1 public1 legacy storage, first model year (A12) | r2 | 377 | 639 | 64 | 0 |
 
 Doctoral trajectory columns change only under the universal corrections the author approved
 (`tests/golden/doctoral_trajectory_rebaselines.json`: P6-24, P6-02, P6-03, P6-04 and
@@ -42,6 +42,7 @@ A column changed by several revisions is counted under each of their correction 
 | Correction id | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | D1 | D2 | D3 | D4 | D5 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `fx4.storage-offer-ledger` |  |  | 0/20/9 |  |  |  |  |  |  |  | 0/20/11 |  |  |
+| `fx5.voll-17000` | 0/1/12 | 0/1/12 | 0/1/10 | 0/1/12 | 0/1/12 | 0/1/12 |  |  | 0/2/15 | 0/2/15 | 0/2/13 | 0/2/15 | 0/2/15 |
 | `p04.storage-energy-audit` | 0/36/5 | 0/36/5 | 0/36/3 | 0/36/5 | 0/36/5 | 0/141/14 |  |  | 0/36/5 | 0/36/5 | 0/36/5 | 0/36/5 | 377/639/64 |
 | `p04.surplus-node-boundary` | 0/69/14 | 0/69/14 | 0/92/10 | 0/69/14 | 0/87/14 | 0/141/14 | 0/0/25 | 0/0/31 | 0/71/14 | 0/71/14 | 0/90/12 | 0/90/14 | 377/639/64 |
 | `p04.surplus-routing` |  |  | 0/15/3 |  | 0/17/5 | 0/141/14 |  |  |  |  | 0/39/5 | 0/40/5 | 377/639/64 |
@@ -87,10 +88,10 @@ difference, not a correction.
 
 | Doctoral | Corrected | Configuration difference | Trajectory | Accounting | Identity | Unattributed |
 |---|---|---|---|---|---|---|
-| D1 | C4 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 32 | 217 | 16 | 0 |
-| D2 | C2 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 35 | 217 | 27 | 0 |
-| D3 | C3 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 50 | 203 | 22 | 0 |
-| D4 | C5 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 144 | 316 | 19 | 0 |
+| D1 | C4 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 32 | 216 | 14 | 0 |
+| D2 | C2 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 35 | 216 | 25 | 0 |
+| D3 | C3 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 50 | 202 | 21 | 0 |
+| D4 | C5 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 144 | 315 | 17 | 0 |
 
 Doctoral cases without a corrected partner on the same pack and mode: D5. (D5 runs the GBP1 research
 pack, which has no corrected golden case; its before/after comparison is a construction
@@ -101,24 +102,25 @@ document outside the public source.)
 | Attribution | D1↔C4 | D2↔C2 | D3↔C3 | D4↔C5 |
 |---|---|---|---|---|
 | `fx4.storage-offer-ledger` |  |  | 0/20/7 |  |
+| `fx5.voll-17000` | 0/1/8 | 0/1/9 | 0/1/8 | 0/1/8 |
 | `p04.storage-energy-audit` | 0/0/3 | 0/0/3 | 0/16/5 | 0/16/5 |
 | `p04.surplus-node-boundary` | 0/17/7 | 0/17/8 | 0/42/9 | 0/43/9 |
 | `p04.surplus-routing` |  |  | 0/28/5 | 0/28/5 |
 | `p04.validation-gate` | 0/43/0 | 0/43/0 | 0/56/0 | 0/60/0 |
 | `p04.validation-v2` | 0/34/1 | 0/34/2 | 0/44/1 | 0/53/1 |
 | `p05.series-clock` | 8/0/0 | 8/0/0 | 1/0/0 |  |
-| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/75/5 | 124/104/7 |
-| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/75/5 | 124/104/7 |
-| `p06.avoided-cost-downward-order` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.d1-surplus-accounting` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.no-vre-pre-clearing-skim` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.physical-operating-cost` | 0/8/14 | 0/8/16 | 0/13/15 | 0/19/14 |
-| `p06.storage-after-generation-merit-key` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.storage-bid-cycle-only` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.storage-fee-per-period` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.storage-net-per-period` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.storage-uniform-price-settlement` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
-| `p06.voll-chronology-parameter` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p05.vre-loss-factors` | 15/40/3 | 15/40/3 | 47/75/5 | 124/104/6 |
+| `p05.weather-time-convention` | 15/40/3 | 15/40/3 | 47/75/5 | 124/104/6 |
+| `p06.avoided-cost-downward-order` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.d1-surplus-accounting` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.no-vre-pre-clearing-skim` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.physical-operating-cost` | 0/7/12 | 0/7/14 | 0/12/14 | 0/18/12 |
+| `p06.storage-after-generation-merit-key` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.storage-bid-cycle-only` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.storage-fee-per-period` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.storage-net-per-period` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.storage-uniform-price-settlement` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
+| `p06.voll-chronology-parameter` | 15/90/12 | 18/90/15 | 46/124/14 | 118/177/15 |
 | `p07.compatibility-capital-out-of-headline` | 9/13/2 | 9/13/3 | 0/3/2 | 97/62/3 |
 | `p07.cost-ledger-v2` | 9/13/2 | 9/13/3 | 0/3/2 | 97/62/3 |
 | `p07.power-battery-pool` | 9/13/2 | 9/13/3 | 0/3/2 | 97/62/3 |
@@ -136,6 +138,7 @@ only as a golden revision reason. Families: the golden families with a revision 
 | Correction id | Source | Families | Findings | Module bumps | Description |
 |---|---|---|---|---|---|
 | `fx4.storage-offer-ledger` | VERSION_LEDGER | corrected, doctoral | M-D1 | value-bid-at-cost-psm 6.0.0->6.1.0 | Four-role M-D1 (A16-1, Q12): new accounting table storage_orders books every storage discharge offer of the default PSM (ahead and balancing, accepte… |
+| `fx5.voll-17000` | VERSION_LEDGER | corrected, doctoral | A16-5 | value-bid-at-cost-psm 6.1.0->6.2.0; value-doctoral-national-psm 0.2.0->0.3.0; value-perfect-foresight-lp 1.0.0->1.1.0; value-reference-dc-network 1.1.0->1.2.0; value-staged-bid-at-cost-psm 1.3.0->1.4.0 | A16-5: VoLL 17000 GBP/MWh in both profiles. Doctoral: the thesis cost-ledger constant 8000 is replaced by 17000 (universal accounting correction; dis… |
 | `p04.storage-energy-audit` | VERSION_LEDGER | corrected, doctoral | — | value-bid-at-cost-psm 5.1.0->5.2.0 | P0-4 S4: per-asset storage energy audit tables (storage_energy_audit, storage_year_boundary) in the default PSM ledger; accounting only (Q12; P3-14,… |
 | `p04.surplus-node-boundary` | VERSION_LEDGER | corrected, doctoral | — | value-bid-at-cost-psm 5.1.0->5.2.0 | P0-4 S6: the doctoral rule set declares default_psm_surplus_node_v1; raw residual on that boundary, compatibility adjustment capped at numerical nois… |
 | `p04.surplus-routing` | VERSION_LEDGER | corrected, doctoral | — | value-bid-at-cost-psm 5.1.0->5.2.0 | P0-4 S5: source-classified surplus routing table (surplus_routing) and its summary; oracle and replay stress become exact (accounting only; Q7, A2) |
@@ -168,7 +171,7 @@ only as a golden revision reason. Families: the golden families with a revision 
 | `p06.storage-fee-per-period` | catalogue (profile_gated) | corrected, doctoral | P5-06 | value-bid-at-cost-psm 5.2.0->6.0.0 | The storage offer payment is settled in its own period; the thesis carried the last balancing period's storage fee into later curtailment periods (an… |
 | `p06.storage-net-per-period` | catalogue (profile_gated) | corrected, doctoral | P5-03 | value-bid-at-cost-psm 5.2.0->6.0.0 | One storage position per period: stages share the rated power, a store that discharged buys back (need before surplus) before it can charge, a store… |
 | `p06.storage-uniform-price-settlement` | catalogue (profile_gated) | corrected, doctoral | P5-05 | value-bid-at-cost-psm 5.2.0->6.0.0 | Decision A8 (2): in each stage every accepted supplier, storage included, is paid the stage's uniform marginal price (the highest accepted generation… |
-| `p06.voll-chronology-parameter` | catalogue (profile_gated) | corrected, doctoral | P5-06 | value-bid-at-cost-psm 5.2.0->6.0.0 | Unserved energy in the physical operating cost is valued at market.voll_gbp_per_mwh (default 10000 GBP/MWh); the doctoral rule set keeps the thesis c… |
+| `p06.voll-chronology-parameter` | catalogue (profile_gated) | corrected, doctoral | P5-06 | value-bid-at-cost-psm 5.2.0->6.0.0 | Unserved energy in the physical operating cost is valued at market.voll_gbp_per_mwh (default 17000 GBP/MWh, decision A16-5); the doctoral rule set us… |
 | `p07.compatibility-capital-out-of-headline` | catalogue (profile_gated) | corrected | P4-03 | — | value-corrected: cost ledger v2 keeps the existing_stock_compatibility annualised capital out of the headline and lists it as the memo line existing_… |
 | `p07.cost-ledger-v2` | golden revision | corrected, doctoral | — | — | P0-7 S8 cost ledger v2 (universal accounting, decision A7): VRE and storage fixed OPEX is folded into levelised CAPEX and leaves the headline as a me… |
 | `p07.power-battery-pool` | catalogue (profile_gated) | corrected | P5-02 | value-storage-expansion-policy 4.0.0->5.0.0 | value-corrected: the three power batteries share one pool of cap_fraction x power_room; agent-investment collects their requests first and scales the… |

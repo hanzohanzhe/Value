@@ -56,7 +56,14 @@ class RuntimeOverlaySealTests(unittest.TestCase):
                 self.assertTrue(row["correction_ids"])
         self.assertEqual(kinds["config.py"], "mechanical_substitution")
         self.assertEqual(kinds["scenarios_v2/decarbonization_cost_scenarios_v2.csv"], "data")
-        self.assertEqual(kinds["case3.py"], "source_identical")
+        self.assertEqual(kinds["simulation_model.py"], "source_identical")
+        # FX5 (A16-5): the thesis cost-history VoLL 8000 -> 17000 in case3.py and
+        # modular_case3.py is a declared edit of formerly source-identical files.
+        for path in ("case3.py", "modular_case3.py"):
+            row = next(row for row in manifest["runtime_files"] if row["path"] == path)
+            self.assertEqual(row["kind"], "declared_runtime_edit")
+            self.assertEqual(row["previous_kind"], "source_identical")
+            self.assertIn("fx5.voll-17000", row["correction_ids"])
 
     def test_changed_registered_python_or_csv_fails(self) -> None:
         self.assertEqual(overlay.inspect_runtime_overlay(self.root)["errors"], [])

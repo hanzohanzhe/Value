@@ -19,10 +19,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 import math
 
+from .voll import VOLL_GBP_PER_MWH
 
 LEDGER_VERSION = "value.doctoral-explicit-ledgers/v1"
 PERIOD_HOURS = 0.5
-LEGACY_DEFICIT_VALUE_GBP_PER_MWH = 8000.0
+# A16-5 (fx5.voll-17000, universal accounting correction): the thesis code's
+# 8000 GBP/MWh loss value is replaced by the author's VoLL of 17000 GBP/MWh.
+LEGACY_DEFICIT_VALUE_GBP_PER_MWH = VOLL_GBP_PER_MWH
 _CASH_FIELDS = (
     "market_income_gbp", "balancing_income_gbp", "redispatch_income_gbp",
     "cm_income_gbp", "decarb_income_gbp", "operating_cost_gbp", "net_profit_gbp",
@@ -353,7 +356,10 @@ def build_system_cost_views(*, legacy_capital_cost_gbp: float, legacy_operating_
                             generated_mwh: float, resource_capital_cost_gbp: float,
                             resource_operating_cost_gbp: float, resource_reliability_cost_gbp: float,
                             served_mwh: float) -> dict:
-    """Original generation denominator and £8000 loss value beside resource view.
+    """Original generation denominator and £17000 loss value beside resource view.
+
+    The loss value was £8000 in the thesis code; decision A16-5 replaced it
+    by the author's VoLL (accounting correction ``fx5.voll-17000``).
 
     The resource inputs are independently evaluated physical costs. Policy levies
     appear only in the original view; market payments are not resource costs.

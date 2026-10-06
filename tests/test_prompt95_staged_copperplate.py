@@ -199,7 +199,7 @@ class Prompt95PublicModuleTests(unittest.TestCase):
         balancing = MODULE_REGISTRY.manifest(
             "value-copperplate-balancing", expected_slot="balancing"
         )
-        self.assertEqual(staged.version, "1.3.0")  # P0-8 S7 (economic dec pricing)
+        self.assertEqual(staged.version, "1.4.0")  # P0-8 S7 (economic dec pricing) 1.3.0; FX5 (VoLL 17000) 1.4.0
         self.assertEqual(balancing.version, "1.1.0")  # P0-8 S7 (pro-rata ties)
         self.assertIn("market.ahead-schedule/v1", staged.provides_capabilities)
         self.assertIn("market.balancing/v1", balancing.provides_capabilities)

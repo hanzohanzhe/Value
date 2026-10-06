@@ -127,7 +127,11 @@ class D5DefinitionTests(unittest.TestCase):
     def test_revision_0_is_35aadb3_and_revision_1_uses_the_universal_allowlist(self):
         revisions = self.golden["revisions"]
         self.assertEqual(revisions[0]["base_commit"], COMMIT_35AADB3)
-        self.assertEqual(len(revisions), 2)
+        self.assertGreaterEqual(len(revisions), 2)
+        # Later revisions are accounting/identity only (e.g. FX5 fx5.voll-17000):
+        # the trajectory rebaseline of D5 happens once, in revision 1.
+        for later in revisions[2:]:
+            self.assertEqual(later["delta"]["by_zone"].get("trajectory", 0), 0, later["revision"])
         allowlist = json.loads((GOLDEN / "doctoral_trajectory_rebaselines.json").read_text(encoding="utf-8"))["findings"]
         trajectory_findings = sorted(set(revisions[1]["findings"]) & set(allowlist))
         self.assertEqual(trajectory_findings, A3_A5_A4)

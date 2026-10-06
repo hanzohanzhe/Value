@@ -62,6 +62,7 @@ from .scientific_validation import (
 )
 from .run_policy import resolve_run_policy, validate_pack_run_mode
 from .terminal_state import write_terminal_artifacts
+from .voll import VOLL_GBP_PER_MWH
 from .run_lifecycle import cancellation_requested
 from backend.lifecycle.atomic_io import atomic_write_json
 from backend.lifecycle.run_status import WRITER_WORKER, update_status
@@ -1301,7 +1302,7 @@ def _doctoral_native_input(run, pack_root, pack_manifest, state, periods):
         run_id=run.run_id, periods=periods,
         period_hours=float(run.scientific_parameters["clock.period_hours"]),
         parameters={**dict(run.scientific_parameters), **dict(run.runtime_controls)},
-        voll_gbp_per_mwh=float(run.scientific_parameters.get("market.voll_gbp_per_mwh", 10_000.0)),
+        voll_gbp_per_mwh=float(run.scientific_parameters.get("market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH)),
         data_policy=current_data_policy(pack_manifest))
 
 
@@ -1684,7 +1685,7 @@ def _run_native_project(
                 )
             ),
             voll_gbp_per_mwh=float(
-                run.scientific_parameters.get("market.voll_gbp_per_mwh", 10_000.0)
+                run.scientific_parameters.get("market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH)
             ),
         )
         if network_pack is not None:

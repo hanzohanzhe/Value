@@ -32,7 +32,7 @@
   "source_artifact_sha256": "<sqlite-file-sha256>",
   "semantic_metadata": {
    "psm_module_id": "value-bid-at-cost-psm",
-   "psm_module_version": "6.1.0",
+   "psm_module_version": "6.2.0",
    "period_hours": 0.5,
    "timezone": "Europe/London",
    "calendar": "fixed_365_day_local_periods",

@@ -226,7 +226,7 @@ class PerfectForesightPSM:
     """SciPy/HiGHS implementation of the public v2 PSM contract."""
 
     id = "value-perfect-foresight-lp"
-    version = "1.0.0"
+    version = "1.1.0"
 
     @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:

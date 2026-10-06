@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .asset_economics import build_asset_economic_extensions
+from .voll import VOLL_GBP_PER_MWH
 from .doctoral_weather import METHOD_ID as DOCTORAL_WEATHER_METHOD, site_weather_profiles, uses_doctoral_weather
 from .nuclear_policy import (
     applies_to_data_pack,
@@ -933,7 +934,7 @@ def build_doctoral_psm_input(
     pack_root: Path, manifest: Mapping[str, object], state: OperatingState, *,
     run_id: str, periods: int, period_hours: float = 0.5,
     parameters: Mapping[str, object] | None = None,
-    terminal_soc_rule: str = "free", voll_gbp_per_mwh: float = 10_000.0,
+    terminal_soc_rule: str = "free", voll_gbp_per_mwh: float = VOLL_GBP_PER_MWH,
     data_policy: "DataMethodPolicy | None" = None,
 ) -> PSMInput:
     """Build one explicitly selected national input from the station register.
@@ -984,7 +985,7 @@ def build_chronology(
     period_hours: float,
     data_policy: "DataMethodPolicy",
     terminal_soc_rule: str = "cyclic",
-    voll_gbp_per_mwh: float = 10_000.0,
+    voll_gbp_per_mwh: float = VOLL_GBP_PER_MWH,
 ) -> ChronologicalPSMData:
     """Normalize one immutable pack/state revision to chronological contracts.
 

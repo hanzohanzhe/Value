@@ -24,6 +24,7 @@ from typing import Callable, Mapping, Sequence
 
 from .module_context import RunStaticContext, YearContext, canonical_context_sha256
 from .run_quota import QuotaUsage, RunQuotaPolicy, global_quota_reasons
+from .voll import VOLL_GBP_PER_MWH
 
 
 GIB = 1024**3
@@ -183,7 +184,7 @@ def build_frozen_resource_contexts(
             "market.perfect_foresight_terminal_soc_rule", "cyclic"
         )),
         voll_gbp_per_mwh=float(resolved.scientific_parameters.get(
-            "market.voll_gbp_per_mwh", 10_000.0
+            "market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH
         )),
     )
     chronology = replace(
@@ -796,7 +797,7 @@ def selected_staged_zonal_calibration_runner(
                 "market.perfect_foresight_terminal_soc_rule", "cyclic"
             )),
             voll_gbp_per_mwh=float(resolved_parameters.scientific.values.get(
-                "market.voll_gbp_per_mwh", 10_000.0
+                "market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH
             )),
         )
         chronology = replace(

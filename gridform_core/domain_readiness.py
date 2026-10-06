@@ -22,6 +22,7 @@ from .network_expansion import STATE_KEY, NetworkCandidate, load_network_expansi
 from .parameters import resolve_scheme_c_parameters
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .v2.module_manifest import ModuleRegistryV2
+from .voll import VOLL_GBP_PER_MWH
 from .zonal_contracts import (
     ZonalNetworkPack,
     ZonalTopologyError,
@@ -429,7 +430,7 @@ def build_domain_readiness(
                 data_policy=project_data_policy(project, pack_manifest),
                 period_hours=float(resolved_parameters.scientific.values["clock.period_hours"]),
                 terminal_soc_rule=str(resolved_parameters.scientific.values.get("market.perfect_foresight_terminal_soc_rule", "cyclic")),
-                voll_gbp_per_mwh=float(resolved_parameters.scientific.values.get("market.voll_gbp_per_mwh", 10_000.0)),
+                voll_gbp_per_mwh=float(resolved_parameters.scientific.values.get("market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH)),
             )
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             issues.append(_issue(

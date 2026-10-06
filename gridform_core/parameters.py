@@ -12,6 +12,7 @@ from .errors import warning_event
 from .builtin.scheme_c_1000twh.runtime_compat.storage_cost import compile_storage_formula
 from .cost_ledger import CEM_SYSTEM_COST_DEFINITION
 from .methodology import PROFILE_PARAMETER, default_profile_id, profile_ids
+from .voll import VOLL_GBP_PER_MWH
 
 
 class ParameterValidationError(ParameterError, ValueError):
@@ -97,7 +98,7 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("market.policy_support_gbp_per_mwh_by_technology", "Market experiment", "string", "{}", "scientific", "advanced", "JSON object {technology: GBP/MWh} of output-based support a decremented asset loses (CfD strike minus reference, ROC value); technologies not listed are merchant (0).", "value-staged-bid-at-cost-psm", unit="GBP/MWh", experimental=True),
     ParameterDefinition("network.inflexible_dec_premium_gbp_per_mwh_by_technology", "Market experiment", "string", '{"nuclear":100.0}', "scientific", "advanced", "JSON object {technology: GBP/MWh} of the extra price an inflexible unit asks to be decremented; nuclear uses the shared down-regulation table value by default.", "value-staged-bid-at-cost-psm", unit="GBP/MWh", experimental=True),
     ParameterDefinition("market.perfect_foresight_terminal_soc_rule", "Market experiment", "enum", "cyclic", "scientific", "advanced", "Terminal storage state for the optional perfect-foresight PSM.", "value-perfect-foresight-lp", allowed_values=("cyclic", "fixed", "free")),
-    ParameterDefinition("market.voll_gbp_per_mwh", "Market experiment", "float", 10000.0, "scientific", "advanced", "Value of lost load charged to involuntary demand curtailment.", "value-perfect-foresight-lp", unit="GBP/MWh", minimum=0.0, maximum=1000000.0),
+    ParameterDefinition("market.voll_gbp_per_mwh", "Market experiment", "float", VOLL_GBP_PER_MWH, "scientific", "advanced", "Value of lost load charged to involuntary demand curtailment (author value 17000 GBP/MWh, decision A16-5).", "value-perfect-foresight-lp", unit="GBP/MWh", minimum=0.0, maximum=1000000.0),
     ParameterDefinition("carbon.factor_scenario", "Carbon accounting", "enum", "value_current_authoritative_v1", "scientific", "advanced", "Pins the carbon-factor dataset, variants and accounting boundary used by the annual carbon ledger.", "application", allowed_values=("value_current_authoritative_v1", "doctoral_reproduction_2026_07_18")),
     ParameterDefinition("terminal.policy", "Terminal horizon", "enum", "report_only", "scientific", "advanced", "Reports, advances planning-only tail years, or extends the complete model under a distinct project revision.", "application", allowed_values=("report_only", "pipeline_tail", "full_extension")),
     ParameterDefinition("fleet.valuation_discount_rate", "Terminal horizon", "float", 0.05, "scientific", "advanced", "Discount rate for informational model remaining-capital value; the value never enters dispatch or system cost.", "application", unit="fraction", minimum=0.0, maximum=1.0),

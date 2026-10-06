@@ -291,7 +291,7 @@
       },
       "introduced_in": "P0-6 S4",
       "deviation_signature": null,
-      "description": "Unserved energy in the physical operating cost is valued at market.voll_gbp_per_mwh (default 10000 GBP/MWh); the doctoral rule set keeps the thesis constant 8000 GBP/MWh (plan appendix P0-6 Q7)."
+      "description": "Unserved energy in the physical operating cost is valued at market.voll_gbp_per_mwh (default 17000 GBP/MWh, decision A16-5); the doctoral rule set uses the constant 17000 GBP/MWh and ignores the parameter (plan appendix P0-6 Q7; the thesis constant 8000 was replaced by the universal accounting correction fx5.voll-17000)."
     }
   ]
 }

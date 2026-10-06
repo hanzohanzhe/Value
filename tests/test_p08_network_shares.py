@@ -182,7 +182,8 @@ class DCShareExpansionTests(unittest.TestCase):
         result, output = self.solve(network, wrapped)
         self.assertNotIn("storage_sub_resources", output.extensions)
         self.assertEqual(output.extensions["share_mapping_rule"], "expand_solve_aggregate/v1")
-        self.assertEqual(ReferenceDCNetworkPSM.version, "1.1.0")
+        # 1.1.0 introduced the share expansion (P0-8a); FX5 (A16-5 VoLL default) is 1.2.0.
+        self.assertEqual(ReferenceDCNetworkPSM.version, "1.2.0")
 
     def test_single_bus_inputs_reproduce_the_1_0_0_numbers(self) -> None:
         """Numerically equal to value-reference-dc-network 1.0.0 (only +/-0 differ).

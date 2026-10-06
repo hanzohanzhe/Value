@@ -33,6 +33,8 @@ existing installation is upgraded side by side, as described in
     was shifted after the DST change on 2022-10-30 (P6-04);
   - thermal investment net of running cost (A4);
   - stress events (A2);
+  - value of lost load 17,000 GBP/MWh (A16-5; the thesis code's 8,000 entered
+    only the cost accounts);
   - corrections in the accounting zone only (residuals, audits, cost ledger,
     validation; Q12).
 - The investment rule stays undiscounted, in constant base-year money (A6).
@@ -50,6 +52,7 @@ existing installation is upgraded side by side, as described in
 | P0-7 | `p07.thermal-net-revenue`, `p07.cost-ledger-v2` | `p07.storage-leftover-headroom`, `p07.power-battery-pool`, `p07.compatibility-capital-out-of-headline` |
 | P0-8 | `p08.zonal-solver-v4`, `p08.runtime-fallback-audit`, `p08.dec-economic-pricing`, `p08.pro-rata-ties`, `p08.dec-class-order`, `p08.network-free-counterfactual`, `p08.boundary-primary-dual`, `p08.network-share-expansion` (software fixes; network modules run only under the corrected profile, Q3) | — |
 | FX4 (post-UAT M-D1) | `fx4.storage-offer-ledger` (accounting zone) | — |
+| FX5 (A16-5 VoLL) | `fx5.voll-17000` (doctoral: accounting zone; parameter default for every module that reads `market.voll_gbp_per_mwh`) | — |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -424,8 +427,9 @@ unattributed.
   ahead stage cannot meet the forecast keeps its shortfall, booked as a
   stress event.
 - Operating cost of the default PSM (both profiles) is physical: generation
-  at running cost, imports, start-up adder, unserved energy x VoLL (8000
-  doctoral, `market.voll_gbp_per_mwh` corrected) and storage cycle wear,
+  at running cost, imports, start-up adder, unserved energy x VoLL (17,000
+  in both profiles since FX5; 8000 doctoral and `market.voll_gbp_per_mwh`
+  corrected before) and storage cycle wear,
   which was previously counted twice.  New extensions
   `physical_operating_cost_detail_gbp`, `market_settlement_components_gbp`,
   `market_rule_diagnostics`, `market_rule_set`.
@@ -447,6 +451,32 @@ unattributed.
   row (`final_dispatch`, price 0.0) is unchanged.  Dispatch is unchanged in
   both profiles; golden D3 and C3 gained an accounting revision
   (`fx4.storage-offer-ledger`).
+
+### Value of lost load 17,000 GBP/MWh in both profiles (A16-5)
+
+- VoLL is the author's 17,000 GBP/MWh (8,500 GBP per MW and half-hour
+  period) everywhere (`gridform_core/voll.py`).  Doctoral reproduction: the
+  thesis cost-ledger constant 8,000 (`case3.py` / `modular_case3.py`
+  `DEFICIT_VALUE_PER_MWH`, the native doctoral rule set, now
+  `reliability_voll = constant_17000`, and the original-thesis system-cost
+  view) becomes 17,000.  VoLL enters only the cost accounts there, so this is
+  a universal accounting correction (`fx5.voll-17000`, Q12): the doctoral
+  trajectory is bit-identical.  Corrected profile and every module that reads
+  `market.voll_gbp_per_mwh`: the registry default is 17,000 instead of 10,000
+  (zonal redispatch on the VALUE UK study already pinned 17,000).
+- Method upgrades with explicit confirmation (Q13): `value-bid-at-cost-psm`
+  6.2.0, `value-perfect-foresight-lp` 1.1.0, `value-staged-bid-at-cost-psm`
+  1.4.0, `value-reference-dc-network` 1.2.0, `value-doctoral-national-psm`
+  0.3.0.  `value-zonal-redispatch-balancing` keeps 4.0.0 (code and solver
+  contract unchanged; a zonal Study always runs the staged PSM).
+- A saved Study whose derived market configuration still carries the old
+  default 10,000 without an explicit parameter is re-projected to 17,000
+  instead of being refused; an explicit `market.voll_gbp_per_mwh` stays
+  authoritative.
+- VALUE 101 golden cases and GBP1 D5 record no blackout, so their headline
+  cost is unchanged; only the VoLL value and its basis label in
+  `physical_operating_cost_detail_gbp` change (accounting revisions of
+  D1–D5 and C1–C6).
 
 ### Scientific validation recomputed and gated (P0-4)
 

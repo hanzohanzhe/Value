@@ -74,11 +74,15 @@ class PhysicalCostTermsTests(unittest.TestCase):
 
 
 class VollTests(unittest.TestCase):
-    def test_doctoral_uses_the_thesis_constant(self):
-        self.assertEqual(voll_gbp_per_mwh(DOCTORAL, {"market.voll_gbp_per_mwh": 12345.0}), 8000.0)
+    def test_doctoral_uses_the_author_constant(self):
+        # A16-5 (fx5.voll-17000): the thesis constant 8000 is replaced by 17000;
+        # the doctoral rule set ignores the parameter.
+        self.assertEqual(voll_gbp_per_mwh(DOCTORAL, {"market.voll_gbp_per_mwh": 12345.0}), 17000.0)
+        self.assertEqual(voll_gbp_per_mwh(DOCTORAL, {}), 17000.0)
 
     def test_corrected_reads_the_parameter(self):
-        self.assertEqual(voll_gbp_per_mwh(CORRECTED, {}), 10000.0)
+        self.assertEqual(voll_gbp_per_mwh(CORRECTED, {}), 17000.0)
+        self.assertEqual(voll_gbp_per_mwh(CORRECTED, {"market.voll_gbp_per_mwh": None}), 17000.0)
         self.assertEqual(voll_gbp_per_mwh(CORRECTED, {"market.voll_gbp_per_mwh": 12345.0}), 12345.0)
 
 
@@ -104,14 +108,20 @@ class OperatingAccountTests(unittest.TestCase):
         detail, settlement = SchemeCNativePSM._operating_cost_accounts(
             log, (_Summary(0.0), _Summary(5.0)), DOCTORAL, {}, 7.5,
         )
-        # 969.35 generation + 5 MWh x 8000 + 7.5 wear; the storage offer
-        # payment (which already contains the wear) is a transfer.
-        self.assertAlmostEqual(detail["total_gbp"], 969.35 + 40000.0 + 7.5)
-        self.assertEqual(detail["blackout_reliability"], 40000.0)
+        # 969.35 generation + 5 MWh x 17000 + 7.5 wear (A16-5: the thesis
+        # constant was 8000); the storage offer payment (which already
+        # contains the wear) is a transfer.
+        self.assertAlmostEqual(detail["total_gbp"], 969.35 + 85000.0 + 7.5)
+        self.assertEqual(detail["blackout_reliability"], 85000.0)
+        self.assertEqual(detail["voll_basis"], "constant_17000")
         detail_corrected, _ = SchemeCNativePSM._operating_cost_accounts(
             log, (_Summary(0.0), _Summary(5.0)), CORRECTED, {}, 7.5,
         )
-        self.assertEqual(detail_corrected["blackout_reliability"], 50000.0)
+        self.assertEqual(detail_corrected["blackout_reliability"], 85000.0)
+        detail_override, _ = SchemeCNativePSM._operating_cost_accounts(
+            log, (_Summary(0.0), _Summary(5.0)), CORRECTED, {"market.voll_gbp_per_mwh": 10000.0}, 7.5,
+        )
+        self.assertEqual(detail_override["blackout_reliability"], 50000.0)
         # The thesis cost column carried 30 GBP of storage fee into period 1.
         self.assertAlmostEqual(settlement["storage_fee_carry_residual"], 30.0)
         self.assertEqual(settlement["reconciliation"], "reconciled")

@@ -69,7 +69,7 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "vre_direct_electrolysis": "thesis_pre_clearing_skim",
             "storage_bid_basis": "thesis_dwell_linear",
             "storage_settlement_basis": "thesis_max_bat_price",
-            "reliability_voll": "thesis_constant_8000",
+            "reliability_voll": "constant_17000",
         })
         self.assertEqual(CORRECTED.switches(), {
             "surplus_accounting": "rebuilt_available_minus_accepted",
@@ -242,13 +242,13 @@ class RecordTests(unittest.TestCase):
         record = market_rule_set_record(
             DOCTORAL, storage_cost_module_id="dynamic-annual-storage-cost",
             storage_bid_basis_sources={"lithium_battery": "rule_set"},
-            runtime_kernel_tree_sha256="a" * 64, voll_gbp_per_mwh=8000.0,
+            runtime_kernel_tree_sha256="a" * 64, voll_gbp_per_mwh=17000.0,
         )
         self.assertEqual(record["rule_set_id"], DOCTORAL.rule_set_id)
         self.assertEqual(record["rule_set_sha256"], DOCTORAL.sha256)
         self.assertEqual(record["rules"], DOCTORAL.definition())
         self.assertEqual(record["pending_switches"], sorted(PENDING_CORRECTION_IDS))
-        self.assertEqual(record["voll_gbp_per_mwh"], 8000.0)
+        self.assertEqual(record["voll_gbp_per_mwh"], 17000.0)
         json.dumps(record)  # serialisable
         self.assertEqual(market_rule_set_record(CORRECTED)["pending_switches"], [])
         self.assertIsInstance(DOCTORAL, NativeMarketRules)

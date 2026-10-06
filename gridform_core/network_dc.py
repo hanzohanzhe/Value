@@ -197,7 +197,7 @@ def expand_share_mappings(
 
 class ReferenceDCNetworkPSM:
     id = "value-reference-dc-network"
-    version = "1.1.0"
+    version = "1.2.0"
 
     @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
