@@ -22,16 +22,17 @@ function ReadinessGroupView({ group }: { group: ReadinessGroup }) {
   const [open, setOpen] = useState(group.defaultOpen);
   const expanded = !group.collapsible || open;
   const listId = `readiness-group-${group.id}`;
-  return <section className={`readiness-group value-new-control ${group.id}`} aria-label={`${group.label}: ${group.count}`}>
-    <header>
+  // div, not section/header/b: the older `.preflight-card section …` rules must not restyle these rows.
+  return <div role="group" className={`readiness-group value-new-control ${group.id}`} aria-label={`${group.label}: ${group.count}`}>
+    <div className="readiness-group-head">
       <StatusPill tone={group.tone}>{group.label} · {group.count}</StatusPill>
       {group.collapsible && <button type="button" className="readiness-toggle" aria-expanded={expanded} aria-controls={listId} onClick={() => setOpen(!open)}>{expanded ? "Hide" : `Show ${group.count}`}</button>}
-    </header>
+    </div>
     {expanded && <ul id={listId}>{group.rows.map((row) => <li key={row.key} title={rowTitle(row)}>
-      <span className="readiness-row-text"><b>{row.text}</b>{row.count > 1 && <span className="readiness-count" aria-label={`${row.count} occurrences`}> ×{row.count}</span>}</span>
+      <span className="readiness-row-text"><span className="readiness-row-title">{row.text}</span>{row.count > 1 && <span className="readiness-count" aria-label={`${row.count} occurrences`}> ×{row.count}</span>}</span>
       {row.objects.length > 0 && <small className="readiness-objects">{row.objects.length === 1 ? row.objects[0] : `${row.objects[0]} and ${row.objects.length - 1} more`}</small>}
       {row.correctiveAction && <small>{row.correctiveAction}</small>}
       <code>{row.code}</code>
     </li>)}</ul>}
-  </section>;
+  </div>;
 }

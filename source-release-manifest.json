@@ -3439,8 +3439,8 @@
     },
     {
       "path": "app/features/runs/ReadinessIssues.tsx",
-      "sha256": "191ffe57d2bdbd264a6c14a7cbc417a7f82c55d96271ae7801c1f314ee7188e4",
-      "bytes": 2391,
+      "sha256": "1e39450fbb906c15c792eb9493e7da763e64485393e1894fff8a35f304f294bf",
+      "bytes": 2568,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3463,8 +3463,8 @@
     },
     {
       "path": "app/features/runs/readiness-issues.css",
-      "sha256": "b584a73bb0282e6eb435c63f5b35e901108dada01a2d8782129cd11594da9e71",
-      "bytes": 1238,
+      "sha256": "51bb543e1282065f627fee96921eec5c58bfe5088f2bb7f642a63b4a8f6f7b7f",
+      "bytes": 1477,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
