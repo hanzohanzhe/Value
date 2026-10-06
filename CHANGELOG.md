@@ -67,12 +67,29 @@ unattributed.
   101 two_year) was re-baselined once for the thermal net revenue (A4): only
   an unprofitable CCGT is no longer built, two-year proposals fall from
   21.32 MW to 8.26 MW and system cost falls by 1.7 % (approved in A12). D5
-  (GBP1 public1, first model year) was re-baselined once for A3, A5 and A4.
+  (GBP1 public1, first model year) was re-baselined once for A3, A5 and A4,
+  and the author accepted it as the new reference (A15): imports fall by
+  78 %, price spikes disappear, system cost falls by 3.2 %, the CCGT proposal
+  is dropped and emissions rise by 3.4 %.
   Numeric reports: `tests/golden/reports/D4-r9.json` and `D5-r1.json`. All
   other doctoral changes are in the accounting and identity zones.
 - **Corrected family.** C1–C8 were revised under the correction ids above.
   Trajectory columns that changed since revision 0, by case: C1 34, C2 35,
   C3 50, C4 32, C5 503, C6 490, C7 34, C8 111.
+
+### Known issues
+
+- **GBP1 doctoral run fails surplus conservation (decision A15).** The GBP1
+  doctoral run (golden D5, one model year) fails the surplus-conservation
+  invariant in 471 periods, by up to 991 MWh. The 35aadb3 code fails it as
+  well. It is recorded as a known issue under investigation: it is not
+  registered as a declared deviation and the check is not changed. The next
+  round decides whether it is a kernel bookkeeping boundary or a real
+  imbalance. Until then that run's annual results stay withheld (Q14).
+- **Nuclear path dependency in the doctoral profile.** In the frozen kernel,
+  a nuclear unit that has been accepted runs at full power until the end of
+  the year. In the GBP1 before/after comparison this is one mechanism behind
+  the differences (A15).
 
 ### Migration notes
 

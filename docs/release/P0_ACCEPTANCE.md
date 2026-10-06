@@ -27,7 +27,7 @@ failure by the integrator.
 | Tier | When | Steps (in order) | Disk floor | Measured |
 |---|---|---|---|---|
 | `quick` | before every commit | guard, test_environment, release_manifest, release_path_hygiene, methodology_catalog, runtime_overlay, version_ledger, golden_bookkeeping, append_only, backend_ratchet, node_tests, http_harness, typecheck_frontend, eslint_ratchet (+ network_guard, installed_inventory) | 1 GB free | 139 s (2026-10-06, 32-core reference machine) |
-| `full` | before a package is merged; at M7 and M8 | quick + pytest_ratchet, golden_full (D4, C5, D5), reference_tables, publication_scope, e2e_offline, energy_balance | 1.5 GB free | about 211 s at M0; grows with the e2e suite and D5 (see 2) |
+| `full` | before a package is merged; at M7 and M8 | quick + pytest_ratchet, golden_full (D4, C5, D5), reference_tables, publication_scope, e2e_offline, energy_balance | 1.5 GB free | 419 s (2026-10-06, without the GBP1 pack, so D5 unavailable; e2e 129 s, golden_full 142 s) |
 | `nightly` | at the end of each milestone | full + golden_nightly (C6), validation_oracles, golden_sensitivity | 2 GB free | full + about 17 min (C6) |
 
 Test environment: the gate venv (`VALUE_GATE_VENV`, an overlay venv on the

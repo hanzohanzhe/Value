@@ -24,6 +24,12 @@ one of two methodology profiles (`docs/generated/METHODOLOGY_PROFILES.md`):
   P6-04, thermal net revenue A4, stress events A2, and accounting-only
   corrections.
 
+In the doctoral profile, an accepted nuclear unit runs at full power until the
+end of the year (path dependency of the frozen kernel). Its GBP1 run fails the
+surplus-conservation invariant in 471 periods (up to 991 MWh), as the 35aadb3
+code did. This is a known issue under investigation (A15), and the run's annual
+results stay withheld.
+
 The paragraphs below say which profile each statement applies to. The bounded
 claims are in `docs/VALIDATION_AND_CLAIMS.md`, section "Scope of the
 0.7.0-alpha.1 claims".

@@ -111,6 +111,12 @@ against Energy Trends 5.1 on GBP1 has not been made.
 - The GBP1 before/after comparison of the doctoral profile covers one model
   year (golden D5). Multi-year GBP1 doctoral runs were not repeated after the
   fixes.
+- Known issue (A15): that GBP1 doctoral run fails the surplus-conservation
+  invariant in 471 periods, by up to 991 MWh, as the 35aadb3 code did. It is
+  under investigation and is not a declared deviation. Its annual results stay
+  withheld (Q14), and no energy-balance statement is made for it. In the
+  frozen kernel an accepted nuclear unit runs at full power to the end of the
+  year (path dependency).
 - Investment decisions are undiscounted ROI and payback tests in constant
   base-year money (A6). This is a model assumption, not a validated optimum.
 - The corrected profile is a method change. Runs of different profiles are
