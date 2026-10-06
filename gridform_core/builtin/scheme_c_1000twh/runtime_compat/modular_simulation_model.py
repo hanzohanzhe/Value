@@ -96,6 +96,8 @@ class _P06State:
         self.surplus = None          # corrected SurplusBook of the period
         self.diagnostics = {}        # doctoral market_rule_diagnostics of the period (MW / GBP)
         self.imports = _p06.ImportSchedule()  # FX6 (A16-2): day-ahead imports of the period
+        self.outlook = None          # R1-2 (A19/A22): SurplusOutlook of the run (expected downtime H)
+        self.downward_tally = None   # R1-2 (A19/A22): DownwardTally of the run
 
     def rule(self, field):
         return getattr(self.rules, field)
@@ -103,6 +105,11 @@ class _P06State:
     @property
     def corrected(self):
         return self.rules.surplus_accounting == "rebuilt_available_minus_accepted"
+
+    @property
+    def restart_economics(self):
+        # VALUE R1-2 (A19/A22, r12.economic-downward-order).
+        return self.rules.downward_restart_economics == "restart_cost_vs_avoided_cost_v1"
 
     @property
     def ahead_imports(self):
@@ -1377,8 +1384,18 @@ def store_service_corrected(accepted_bids, new_bids, period, need_curtailed_ener
         electrolyzer.set_real_energy(0)
         energy_cell_period = 0
     need_curtailed_energy = max(need_curtailed_energy, 0.0)
-    remaining, curtailed_fee, curtailed_energy_list = _p06.downward_stack(
-        accepted_bids, last_gen_energy, need_curtailed_energy, gen_list)
+    if _P06_STATE.restart_economics:
+        # VALUE R1-2 (A19/A22): gas and biomass are reduced before VRE down to
+        # minimum stable generation; below it a shutdown competes with VRE by
+        # its net saving c - S(H)/H over the expected downtime H.
+        horizon_h = (_P06_STATE.outlook.horizon_hours(period) if _P06_STATE.outlook is not None
+                     else physical_period_hours())
+        remaining, curtailed_fee, curtailed_energy_list = _p06.economic_downward_stack(
+            accepted_bids, last_gen_energy, need_curtailed_energy, gen_list,
+            horizon_h=horizon_h, tally=_P06_STATE.downward_tally)
+    else:
+        remaining, curtailed_fee, curtailed_energy_list = _p06.downward_stack(
+            accepted_bids, last_gen_energy, need_curtailed_energy, gen_list)
     if not curtailed_fee:
         curtailed_fee.append(0)
     # Down regulation actually taken (the thesis column books the requirement).
@@ -3070,6 +3087,14 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     # the canonical adapter; None (doctoral, unit sessions) keeps the frozen path.
     _site_inputs = _kernel_injection.active_site_inputs(
         getattr(_boundary_context, "_runtime", None), generators, periods)
+    if _P06_STATE.restart_economics:
+        # VALUE R1-2 (A19/A22, r12.economic-downward-order): expected downtime
+        # of a shutdown from the day-ahead forecast (demand vs VRE + nuclear).
+        _P06_STATE.outlook = _p06.build_surplus_outlook(
+            forecast_demands, _site_inputs, generators, physical_period_hours(), periods)
+        _P06_STATE.downward_tally = _p06.DownwardTally(
+            _P06_STATE.outlook.basis, _P06_STATE.outlook.vre_covered, _P06_STATE.outlook.vre_total)
+        realisation_log.downward_economics = _P06_STATE.downward_tally
 
     for period in range(periods):
         # Memory cleanup every 100 periods to prevent MemoryError

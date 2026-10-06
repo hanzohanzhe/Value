@@ -100,6 +100,8 @@ class RealisationLog:
             setattr(self, column, np.zeros(self.periods, dtype=np.float64))
         self._start_surplus()
         self._start_costs()
+        # R1-2 (A19/A22): DownwardTally of the corrected economic stack (None otherwise).
+        self.downward_economics = None
 
     def record(self, period: int, realisation: PeriodRealisation, *, forecast_demand: float,
                real_demand: float, flexible_demand: float, export: float) -> None:

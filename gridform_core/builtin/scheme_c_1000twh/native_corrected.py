@@ -14,6 +14,13 @@ outside ``runtime_compat`` (C18) and work on the kernel's own objects:
 * :func:`downward_stack` - P3-03 (``downward_order = avoided_cost``): down
   regulation in descending avoided cost, ties by technology class then name,
   read by object identity, bounded by the ramp floor.
+* :func:`economic_downward_stack` - A19/A22 (``downward_restart_economics =
+  restart_cost_vs_avoided_cost_v1``, ``r12.economic-downward-order``): the
+  stack above with gas and biomass split at minimum stable generation; the
+  running range keeps its avoided cost, the shutdown segment is ranked by
+  the net saving a(H) = c - S(H)/H against VRE (restart table
+  ``data/thermal/value_thermal_restart_v1.json``, expected downtime H from
+  :class:`SurplusOutlook`).  Thermal is never assumed dearer than VRE.
 * :func:`merit_key` - Q8 (``ahead_merit_key``): ``(round(price, 2),
   is_storage, price)`` with a stable sort, i.e. storage after generation in
   the same 0.01 band.
@@ -44,7 +51,12 @@ thesis order.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from .native_realisation import BALANCING_BRANCH  # noqa: F401  (kernel reads it from here)
@@ -267,6 +279,321 @@ def downward_stack(accepted_bids: list, last_gen_energy: Iterable[Any], need_mw:
         reductions.append([asset, take])
         remaining -= take
     return (remaining if remaining > TOLERANCE_MW else 0.0), fees, reductions
+
+
+# ---------------------------------------------------------------------------
+# A19/A22 economic down-regulation order (restart cost vs avoided cost)
+# ---------------------------------------------------------------------------
+
+RESTART_TABLE_PATH = (Path(__file__).resolve().parents[2] / "data" / "thermal"
+                      / "value_thermal_restart_v1.json")
+RESTART_TABLE_SCHEMA = "value.thermal-restart-table/v1"
+ECONOMIC_DOWNWARD_SCHEMA = "value.downward-restart-economics/v1"
+
+# Rank of a shutdown segment at an equal rounded cost: after VRE (2), before
+# nuclear (3).  A shutdown is chosen before VRE only when its net saving is
+# strictly larger than the VRE avoided cost after 0.01 rounding (A22: "a > 0").
+SHUTDOWN_CLASS_RANK = 2.5
+
+# Segment labels of the economic stack (tally keys).
+SEGMENT_THERMAL_RUNNING = "thermal_running_range"
+SEGMENT_THERMAL_SHUTDOWN_SAVING = "thermal_shutdown_net_saving"
+SEGMENT_THERMAL_SHUTDOWN_AFTER_VRE = "thermal_shutdown_after_vre"
+SEGMENT_THERMAL_SHUTDOWN_LAST_RESORT = "thermal_shutdown_below_min_down_time"
+SEGMENT_VRE = "vre"
+SEGMENT_IMPORT = "import"
+SEGMENT_HYDRO = "hydro"
+SEGMENT_NUCLEAR = "nuclear"
+SEGMENT_OTHER = "other"
+SEGMENTS = (
+    SEGMENT_THERMAL_RUNNING, SEGMENT_THERMAL_SHUTDOWN_SAVING, SEGMENT_THERMAL_SHUTDOWN_AFTER_VRE,
+    SEGMENT_THERMAL_SHUTDOWN_LAST_RESORT, SEGMENT_VRE, SEGMENT_IMPORT, SEGMENT_HYDRO, SEGMENT_NUCLEAR,
+    SEGMENT_OTHER,
+)
+
+OUTLOOK_FORECAST = "day_ahead_forecast_vre_plus_nuclear"
+OUTLOOK_CURRENT_ONLY = "current_period_only"
+
+
+@lru_cache(maxsize=1)
+def restart_table() -> dict[str, Any]:
+    """The author-reviewed restart table (A22); validated on load."""
+
+    table = json.loads(RESTART_TABLE_PATH.read_text(encoding="utf-8"))
+    if table.get("schema_version") != RESTART_TABLE_SCHEMA:
+        raise ValueError("Unsupported thermal restart table")
+    for technology, row in table["technologies"].items():
+        costs = row["restart_cost_gbp_per_mw"]
+        if set(costs) != {"hot", "warm", "cold"} or min(float(value) for value in costs.values()) <= 0:
+            raise ValueError(f"Restart costs of {technology} must be positive hot/warm/cold values")
+        if not 0.0 <= float(row["min_stable_fraction"]) < 1.0:
+            raise ValueError(f"Minimum stable generation of {technology} out of range")
+        if float(row["min_down_time_h"]) <= 0:
+            raise ValueError(f"Minimum down time of {technology} must be positive")
+    return table
+
+
+def restart_table_sha256() -> str:
+    return hashlib.sha256(RESTART_TABLE_PATH.read_bytes()).hexdigest()
+
+
+@dataclass(frozen=True)
+class RestartParameters:
+    technology: str
+    restart_cost_gbp_per_mw: Mapping[str, float]
+    min_stable_fraction: float
+    min_down_time_h: float
+    hot_below_h: float
+    warm_up_to_h: float
+
+    def start_class(self, horizon_h: float) -> str:
+        if horizon_h < self.hot_below_h:
+            return "hot"
+        return "warm" if horizon_h <= self.warm_up_to_h else "cold"
+
+    def restart_cost(self, horizon_h: float) -> float:
+        """S(H), GBP per MW of capacity shut down, chosen by the expected downtime H."""
+
+        return float(self.restart_cost_gbp_per_mw[self.start_class(horizon_h)])
+
+    def net_saving(self, avoided_cost: float, horizon_h: float) -> float:
+        """a(H) = c - S(H) / H, GBP per MWh not generated during the shutdown."""
+
+        return float(avoided_cost) - self.restart_cost(horizon_h) / float(horizon_h)
+
+
+def restart_technology(asset: Any) -> str | None:
+    """Restart-table technology of a kernel asset (None: no restart economics)."""
+
+    kind = type(asset).__name__
+    if kind == "GasGenerator":
+        return "OCGT" if "OCGT" in str(getattr(asset, "name", "")).upper() else "CCGT"
+    if kind == "BiomassGenerator":
+        return "biomass"
+    return None
+
+
+@lru_cache(maxsize=1)
+def restart_parameters() -> dict[str, RestartParameters]:
+    table = restart_table()
+    classes = table["rule"]["start_class_by_downtime_h"]
+    return {
+        technology: RestartParameters(
+            technology,
+            {key: float(value) for key, value in row["restart_cost_gbp_per_mw"].items()},
+            float(row["min_stable_fraction"]),
+            float(row["min_down_time_h"]),
+            float(classes["hot_below_h"]),
+            float(classes["warm_up_to_h"]),
+        )
+        for technology, row in table["technologies"].items()
+    }
+
+
+def _segment_label(asset: Any) -> str:
+    """Tally label of a row without restart economics (a gas or biomass row
+    without a table entry is ``other``)."""
+
+    kind = _kind(asset)
+    if kind == "vre":
+        return SEGMENT_VRE
+    if kind == "import":
+        return SEGMENT_IMPORT
+    if kind == "nuclear":
+        return SEGMENT_NUCLEAR
+    if type(asset).__name__ == "WaterGenerator":
+        return SEGMENT_HYDRO
+    return SEGMENT_OTHER
+
+
+def economic_segments(accepted_bids: list, previous: Mapping[int, float], horizon_h: float,
+                      parameters: Mapping[str, RestartParameters] | None = None) -> list:
+    """Down-regulation segments ``(key, row, MW, label)`` in clearing order.
+
+    A gas or biomass row is split at ``min_stable_fraction x`` its accepted
+    output (its online capacity): the running range above it costs minus the
+    avoided cost c and keeps the P3-03 key; the shutdown segment below it (down
+    to the ramp floor) is keyed by the net saving a(H) = c - S(H)/H when
+    H >= the minimum down time, otherwise it is a last resort.  Every other
+    row is one segment with the P3-03 key.  A stable sort keeps the input
+    order of equal keys (deterministic ties).
+    """
+
+    parameters = restart_parameters() if parameters is None else parameters
+    horizon = float(horizon_h)
+    segments = []
+    for item in accepted_bids:
+        asset = item[0]
+        power = float(item[2])
+        floor = ramp_floor_mw(asset, previous.get(id(asset)))
+        reducible = max(power - floor, 0.0)
+        if reducible <= 0:
+            continue
+        kind = _kind(asset)
+        rank = IMPORT_DOWNWARD_CLASS_RANK if kind == "import" else DOWNWARD_CLASS_RANK[kind]
+        cost = avoided_cost(asset)
+        name = str(getattr(asset, "name", ""))
+        technology = restart_technology(asset)
+        params = parameters.get(technology) if technology is not None else None
+        if params is None:
+            segments.append(((-round(cost, 2), rank, name, 0), item, reducible, _segment_label(asset)))
+            continue
+        stable = params.min_stable_fraction * max(power, 0.0)
+        running = max(power - max(floor, stable), 0.0)
+        shutdown = reducible - running
+        if running > 0:
+            segments.append(((-round(cost, 2), rank, name, 0), item, running, SEGMENT_THERMAL_RUNNING))
+        if shutdown > TOLERANCE_MW:
+            if horizon >= params.min_down_time_h - 1e-9:
+                saving = params.net_saving(cost, horizon)
+                label = SEGMENT_THERMAL_SHUTDOWN_SAVING if saving > 0 else SEGMENT_THERMAL_SHUTDOWN_AFTER_VRE
+                key = (-round(saving, 2), SHUTDOWN_CLASS_RANK, name, 1)
+            else:
+                label = SEGMENT_THERMAL_SHUTDOWN_LAST_RESORT
+                key = (math.inf, rank, name, 1)
+            segments.append((key, item, shutdown, label))
+    segments.sort(key=lambda segment: segment[0])
+    return segments
+
+
+@dataclass
+class DownwardTally:
+    """Annual totals of the economic stack (MW summed over periods; x period hours = MWh)."""
+
+    outlook_basis: str = OUTLOOK_CURRENT_ONLY
+    vre_covered: int = 0
+    vre_total: int = 0
+    power_mw: dict = field(default_factory=lambda: {label: 0.0 for label in SEGMENTS})
+    periods: dict = field(default_factory=lambda: {label: 0 for label in SEGMENTS})
+    down_periods: int = 0
+    horizon_hours_sum: float = 0.0
+
+    def add_period(self, horizon_h: float, taken: Mapping[str, float]) -> None:
+        self.down_periods += 1
+        self.horizon_hours_sum += float(horizon_h)
+        for label, power in taken.items():
+            if power > 0:
+                self.power_mw[label] += float(power)
+                self.periods[label] += 1
+
+    def summary(self, period_hours: float) -> dict[str, Any]:
+        table = restart_table()
+        return {
+            "schema_version": ECONOMIC_DOWNWARD_SCHEMA,
+            "rule": "restart_cost_vs_avoided_cost_v1",
+            "restart_table_id": table["table_id"],
+            "restart_table_sha256": restart_table_sha256(),
+            "outlook_basis": self.outlook_basis,
+            "outlook_vre_assets_covered": int(self.vre_covered),
+            "outlook_vre_assets_total": int(self.vre_total),
+            "down_regulation_periods": int(self.down_periods),
+            "mean_horizon_hours": (self.horizon_hours_sum / self.down_periods) if self.down_periods else 0.0,
+            "reduced_mwh_by_segment": {label: self.power_mw[label] * float(period_hours) for label in SEGMENTS},
+            "periods_by_segment": dict(self.periods),
+        }
+
+
+def economic_downward_stack(accepted_bids: list, last_gen_energy: Iterable[Any], need_mw: float,
+                            gen_list: list, *, horizon_h: float,
+                            parameters: Mapping[str, RestartParameters] | None = None,
+                            tally: DownwardTally | None = None) -> tuple[float, list, list]:
+    """A19/A22 down regulation: like :func:`downward_stack`, cheapest first by segment.
+
+    Returns (remaining need, curtailment fees, [[asset, MW]] reductions with
+    one row per asset in the order of its first reduction).
+    """
+
+    previous = {id(row[0]): float(row[2]) for row in last_gen_energy}
+    remaining = max(float(need_mw), 0.0)
+    fees: list = []
+    reductions: list = []
+    by_asset: dict[int, list] = {}
+    taken: dict[str, float] = {}
+    if remaining > TOLERANCE_MW:
+        for _key, item, limit, label in economic_segments(accepted_bids, previous, horizon_h, parameters):
+            if remaining <= TOLERANCE_MW:
+                break
+            take = min(float(limit), float(item[2]), remaining)
+            if take <= 0:
+                continue
+            asset = item[0]
+            item[2] = float(item[2]) - take
+            if _kind(asset) != "import":
+                asset.set_real_gen_energy(item[2])
+            reduce_output(gen_list, asset, take)
+            if _kind(asset) == "hydro_biomass":
+                asset.dec_have_gen_energy(take)
+            fees.append(take * float(item[3]))
+            row = by_asset.get(id(asset))
+            if row is None:
+                row = by_asset[id(asset)] = [asset, 0.0]
+                reductions.append(row)
+            row[1] += take
+            taken[label] = taken.get(label, 0.0) + take
+            remaining -= take
+        if tally is not None:
+            tally.add_period(horizon_h, taken)
+    return (remaining if remaining > TOLERANCE_MW else 0.0), fees, reductions
+
+
+@dataclass(frozen=True)
+class SurplusOutlook:
+    """Expected downtime H of a shutdown decided in a period (A22).
+
+    ``run_after[t]`` is the number of consecutive periods t+1, t+2, ... whose
+    day-ahead forecast is in surplus (forecast demand <= forecast VRE
+    availability plus nuclear availability, i.e. no thermal output needed).
+    The current period counts as one surplus period (down regulation is being
+    decided because it is in surplus), so H = (1 + run_after[t]) x period hours.
+    Without per-period availability arrays H is the current period only.
+    """
+
+    period_hours: float
+    run_after: Any = None
+    basis: str = OUTLOOK_CURRENT_ONLY
+    vre_covered: int = 0
+    vre_total: int = 0
+
+    def horizon_hours(self, period: int) -> float:
+        if self.run_after is None or not 0 <= int(period) < len(self.run_after):
+            return float(self.period_hours)
+        return (1 + int(self.run_after[int(period)])) * float(self.period_hours)
+
+
+def surplus_run_after(surplus: Iterable[bool]) -> Any:
+    import numpy as np
+
+    flags = np.asarray(list(surplus), dtype=bool)
+    run = np.zeros(len(flags) + 1, dtype=np.int64)
+    for period in range(len(flags) - 1, -1, -1):
+        run[period] = run[period + 1] + 1 if flags[period] else 0
+    return run[1:]
+
+
+def build_surplus_outlook(forecast_demand: Any, site_inputs: Any, generators: Iterable[Any],
+                          period_hours: float, periods: int) -> SurplusOutlook:
+    """The run's outlook from the forecast demand and the injected availability arrays.
+
+    ``site_inputs`` is the kernel's bound site-input record (``vre``: rows
+    ``(generator, scale, cf)``, ``firm``: rows ``(generator, base MW, availability)``);
+    VRE availability = capacity_multiplier x scale x cf as the kernel assigns it.
+    """
+
+    import numpy as np
+
+    vre_total = sum(1 for asset in generators if is_vre(asset))
+    vre_rows = list(getattr(site_inputs, "vre", None) or []) if site_inputs is not None else []
+    if not vre_rows:
+        return SurplusOutlook(float(period_hours), vre_total=vre_total)
+    must_take = np.zeros(int(periods), dtype=float)
+    for generator, scale, values in vre_rows:
+        must_take += float(generator.capacity_multiplier) * float(scale) * np.asarray(values, dtype=float)[:periods]
+    for generator, base, values in getattr(site_inputs, "firm", None) or []:
+        if _kind(generator) == "nuclear":
+            must_take += float(base) * np.asarray(values, dtype=float)[:periods]
+    forecast = np.asarray(forecast_demand, dtype=float)[:periods]
+    run_after = surplus_run_after(forecast <= must_take + 1e-9)
+    return SurplusOutlook(float(period_hours), run_after, OUTLOOK_FORECAST, len(vre_rows), vre_total)
 
 
 # ---------------------------------------------------------------------------

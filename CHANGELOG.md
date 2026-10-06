@@ -56,6 +56,7 @@ existing installation is upgraded side by side, as described in
 | FX6 (A16-2, four-role S-D3) | — | `fx6.day-ahead-interconnector-imports` (method change, explicit Study confirmation) |
 | FX7 (A16-7, GBP1 public2 local acceptance) | — | `p05.nuclear-stations-public2` (GBP1 public2 only) |
 | FX8 (A18, nuclear in service at start) | — | `fx8.nuclear-in-service-at-start` (method change, explicit Study confirmation) |
+| R1-2 (A19/A22, economic down-regulation order) | — | `r12.economic-downward-order` (method change, explicit Study confirmation) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -85,6 +86,9 @@ unattributed.
   C3 50, C4 32, C5 503, C6 490, C7 34, C8 111.
   C9 (GBP1 public2, corrected, FX8) starts at revision 0 = the code before
   A18 and has one revision for A18 (trajectory 394 columns).
+  R1-2 (A19/A22, `r12.economic-downward-order`) revised C1-C6 and C9 once
+  (C1-C4, C9: the ten new `downward_restart_economics` columns; C5/C6: one
+  2025 period, 28 trajectory and 41/43 accounting columns).
 
 ### Known issues
 
@@ -576,6 +580,43 @@ unattributed.
   full) records the run before and after A18; numeric report
   `docs/dev/p0-reports/fx8-golden/C9-r1.json`.  VALUE 101 has no nuclear, so
   C1–C8 change only in identity.
+
+### Economic down-regulation order: restart cost against avoided cost (A19/A22, corrected profile)
+
+- P0-6 S7 had read finding P3-03 as "always reduce gas and biomass before
+  curtailing VRE".  Decision A19 withdrew that: whether reducing thermal
+  output is cheaper than curtailing wind depends on the restart cost as well
+  as on the fuel, carbon and variable cost saved, and neither side may be
+  assumed dearer.
+- Corrected profile (`r12.economic-downward-order`, rule-set field
+  `downward_restart_economics = restart_cost_vs_avoided_cost_v1`): in the
+  curtailment branch a gas or biomass row is split at minimum stable
+  generation (50 % CCGT/OCGT, 35 % biomass, of its accepted output).  The
+  running range above it is reduced at its avoided cost before VRE (no
+  restart).  Below it, shutting units down saves `a(H) = c - S(H)/H` per MWh
+  (restart cost S: CCGT 110/130/150 GBP/MW hot/warm/cold, OCGT 170, biomass
+  125; H = expected downtime from the day-ahead forecast surplus run): before
+  VRE when `a > 0`, after VRE otherwise, and only as a last resort when H is
+  below the minimum down time (6 h / 0.5 h / 6 h).  Values: reference
+  statistics section 4, author-reviewed in A22, stored in
+  `gridform_core/data/thermal/value_thermal_restart_v1.json`.  The restart
+  cost ranks the stack only; cost accounts are unchanged.
+- Every corrected market year records
+  `extensions.downward_restart_economics` (MWh by segment, periods, mean H).
+- The doctoral reproduction profile keeps the thesis curtail-cost order bit
+  for bit (D1-D5 unchanged); doctoral Runs carry the read-time advisory of
+  the correction (severity medium).
+- `value-bid-at-cost-psm` 6.4.0 → 6.5.0 with `requires_user_opt_in` (Q13).
+- Effect on the reference runs is small, because down regulation is rarely
+  needed while gas is scheduled day-ahead.  VALUE 101 two_year (C5/C6): one
+  period of 2025 changes (CCGT +0.16 MWh, curtailment +0.16 MWh, emissions
+  +0.06 tCO2, system cost +GBP 10.4); 2026 is unchanged.  GBP1 public2 2025
+  (local, C9): dispatch, curtailment (1.735 TWh), CCGT (67.53 TWh),
+  emissions and costs are unchanged; of the 357 down-regulation periods only
+  2 reduce gas (190.7 MWh, inside the running range), and no shutdown
+  segment is reached.  Golden: C1-C4 and C9 gain the new extension columns
+  only; C5/C6 one period; numeric reports
+  `docs/dev/p0-reports/r12-golden/`.
 
 ### Scientific validation recomputed and gated (P0-4)
 

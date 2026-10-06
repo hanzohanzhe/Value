@@ -43,6 +43,9 @@ from .native_realisation import COST_COLUMNS, DIAGNOSTIC_COLUMNS, RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
 from .storage_headroom import HEADROOM_INPUTS_KEY, headroom_inputs
 
+# R1-2 (A19/A22): extension key of the corrected economic down-regulation totals.
+DOWNWARD_ECONOMICS_KEY = "downward_restart_economics"
+
 
 class _NativeParameterAdapter:
     def __init__(self, model_input: PSMInput) -> None:
@@ -93,7 +96,7 @@ class SchemeCNativePSM:
     """Execute the Scheme C market once for the current typed operating year."""
 
     id = "scheme-c-psm"
-    version = "6.4.0"
+    version = "6.5.0"
     execution_kind = "live_module"
 
     def __init__(self) -> None:
@@ -853,6 +856,12 @@ class SchemeCNativePSM:
                 basis="excess_plus_curtailed_disjoint",
                 psm_module_id=self.id,
             )
+        # R1-2 (A19/A22): annual totals of the corrected economic down-regulation
+        # stack (only the corrected rule set records them; the doctoral rule set
+        # publishes nothing, Q1).
+        downward_tally = getattr(realisation_log, "downward_economics", None)
+        if downward_tally is not None:
+            headroom_extension[DOWNWARD_ECONOMICS_KEY] = downward_tally.summary(period_hours)
         self._invocations.append(model_input.year)
         return MarketYearResult(
             result_id=f"{model_input.run_id}:market:{model_input.year}",

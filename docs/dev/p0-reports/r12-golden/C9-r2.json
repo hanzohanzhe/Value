@@ -1,0 +1,462 @@
+{
+ "case": "C9",
+ "child_commit": "given-output",
+ "columns": {
+  "market/market.sqlite::metadata.value": {
+   "alignment": "keyed (key)",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "{\"rule_set_id\": \"native-corrected-v1\", \"rule_set_sha256\": \"f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd",
+     "before": "{\"rule_set_id\": \"native-corrected-v1\", \"rule_set_sha256\": \"1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5b",
+     "label": "[\"market_rule_set\"]"
+    },
+    {
+     "after": "\"6.5.0\"",
+     "before": "\"6.4.0\"",
+     "label": "[\"psm_module_version\"]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 20,
+   "values_before": 20,
+   "zone": "identity"
+  },
+  "market/metadata.json::semantic_metadata.market_rule_set.rule_set_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": ".semantic_metadata.market_rule_set.rule_set_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::semantic_metadata.psm_module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": ".semantic_metadata.psm_module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "8c0c6dfd6f44158aa1545a50734e1a7de6e71e9e39125b3604cdee546d6ebeee",
+     "before": "29396801696af8b8ec37729126f96c0a7b7c990cdb0d17fa6d03b7a70c96df08",
+     "label": ".source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.psm.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": ".module_identities.psm.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_resolution_graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ab5fe200846046701abab4efa26f40140f0aab55f527bd926dc2c6ce10c1dc9d",
+     "before": "79112a24ebcf601d347be76e233ee6d7973b721de91aad94d2ae57389bee34db",
+     "label": ".module_resolution_graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "validation/energy-balance-oracle.json::boundary.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": ".boundary.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "validation/energy-balance-oracle.json::ledger.source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "8c0c6dfd6f44158aa1545a50734e1a7de6e71e9e39125b3604cdee546d6ebeee",
+     "before": "29396801696af8b8ec37729126f96c0a7b7c990cdb0d17fa6d03b7a70c96df08",
+     "label": ".ledger.source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.down_regulation_periods": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 357.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.mean_horizon_hours": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 3.76890756302521,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_basis": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_vre_assets_covered": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 43.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_vre_assets_total": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 43.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.periods_by_segment": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 461.0,
+   "sum_before": 0,
+   "values_after": 9,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.reduced_mwh_by_segment": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 117452.0814543285,
+   "sum_before": 0,
+   "values_after": 9,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.restart_table_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.restart_table_sha256": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.rule": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.semantic_metadata": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": "[0].market.extensions.market_ledger.semantic_metadata.market_rule_set.rule_set_sha256"
+    },
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": "[0].market.extensions.market_ledger.semantic_metadata.psm_module_version"
+    }
+   ],
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 19,
+   "values_before": 19,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "8c0c6dfd6f44158aa1545a50734e1a7de6e71e9e39125b3604cdee546d6ebeee",
+     "before": "29396801696af8b8ec37729126f96c0a7b7c990cdb0d17fa6d03b7a70c96df08",
+     "label": "[0].market.extensions.market_ledger.source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.rule_set_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": "[0].market.extensions.market_rule_set.rule_set_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.rules": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": false,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "values_after": 15,
+   "values_before": 14,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "7a5fa4eb7bda2ebd9a4272b7799e644dc2918f443469388b18449e71c8475bc1",
+     "before": "897eb840da2ce958ea5a62967c5ada73bad66a31ff50361cca1a379e10dc3999",
+     "label": "[0].market.extensions.market_rule_set.runtime_kernel_tree_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.switch_corrections": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": false,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "values_after": 12,
+   "values_before": 11,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": "[0].market.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  }
+ },
+ "digest_sha256": "6ddb73fd619693d19949664ac0aa67369fc61c50de55b7d055effc4ae25f339c",
+ "family": "corrected",
+ "parent_commit": "c9c1cc1",
+ "revision": 2,
+ "schema_version": "value.golden-numeric-report/v2",
+ "summary": {
+  "by_zone": {
+   "identity": 16,
+   "trajectory": 10
+  },
+  "changed_columns": 26,
+  "not_comparable_columns": 2
+ }
+}

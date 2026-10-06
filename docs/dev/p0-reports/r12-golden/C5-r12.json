@@ -1,0 +1,1871 @@
+{
+ "case": "C5",
+ "child_commit": "given-output",
+ "columns": {
+  "ledgers/annual-carbon-ledger.json::years.components_tco2e.direct_operational": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.4292019770366815e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 77727.28968510104,
+   "sum_before": 77727.22812926644,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.intensities.delivered_demand_kgco2e_per_mwh": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0002632050387489926,
+   "max_rel_delta": 1.3312476237272323e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 363.0302936096066,
+   "sum_before": 363.03003040456787,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.intensities.operational_kgco2e_per_mwh": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.000263205038805836,
+   "max_rel_delta": 1.4292019772119402e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 332.3521551562344,
+   "sum_before": 332.3518919511956,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.intensities.overall_kgco2e_per_mwh": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0002632050387489926,
+   "max_rel_delta": 1.3312476237272323e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 363.0302936096066,
+   "sum_before": 363.03003040456787,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.lines.activity_mwh": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277281467,
+   "max_rel_delta": 2.620303972069933e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 468963.4959194411,
+   "sum_before": 468963.4959194411,
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.lines.emissions_tco2e": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.4292019770366815e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 84901.99433969839,
+   "sum_before": 84901.93278386378,
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.operational_emissions_tco2e": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.4292019770366815e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 77727.28968510104,
+   "sum_before": 77727.22812926644,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.json::years.total_carbon_emissions_tco2e": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.3312476238514904e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 84901.9943396984,
+   "sum_before": 84901.9327838638,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::annual_carbon_ledger.ledger_json": {
+   "alignment": "keyed (year)",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "{\"components_tco2e\":{\"asset_embodied\":3169.1333333333337,\"direct_operational\":43070.13534512659},\"embodied_lifecycle_emi",
+     "before": "{\"components_tco2e\":{\"asset_embodied\":3169.1333333333337,\"direct_operational\":43070.07378929198},\"embodied_lifecycle_emi",
+     "label": "[2025]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::annual_carbon_ledger.ledger_sha256": {
+   "alignment": "keyed (year)",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "173e7ee6971f1333cd09512bf3660f8c85a0565df101e520902a73aef188b3f3",
+     "before": "28ce35afcd56febf83b435ef797df81ec851287d27fb2bdd5ee870d657ffa82d",
+     "label": "[2025]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::annual_carbon_ledger.operational_emissions_tco2e": {
+   "alignment": "keyed (year)",
+   "annual_totals": {
+    "2025": [
+     43070.07378929198,
+     43070.13534512659
+    ],
+    "2026": [
+     34657.154339974455,
+     34657.154339974455
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.4292019770366815e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 77727.28968510104,
+   "sum_before": 77727.22812926644,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::annual_carbon_ledger.operational_intensity_kgco2e_per_mwh": {
+   "alignment": "keyed (year)",
+   "annual_totals": {
+    "2025": [
+     184.16224088864706,
+     184.16250409368587
+    ],
+    "2026": [
+     148.18965106254853,
+     148.18965106254853
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.000263205038805836,
+   "max_rel_delta": 1.4292019772119402e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 332.3521551562344,
+   "sum_before": 332.3518919511956,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::annual_carbon_ledger.overall_intensity_kgco2e_per_mwh": {
+   "alignment": "keyed (year)",
+   "annual_totals": {
+    "2025": [
+     197.7130580801114,
+     197.71332128515016
+    ],
+    "2026": [
+     165.31697232445646,
+     165.31697232445646
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0002632050387489926,
+   "max_rel_delta": 1.3312476237272323e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 363.0302936096066,
+   "sum_before": 363.03003040456787,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::annual_carbon_ledger.total_emissions_tco2e": {
+   "alignment": "keyed (year)",
+   "annual_totals": {
+    "2025": [
+     46239.20712262531,
+     46239.26867845992
+    ],
+    "2026": [
+     38662.72566123849,
+     38662.72566123849
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.3312476238514904e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 84901.9943396984,
+   "sum_before": 84901.9327838638,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::carbon_lines.emissions_tco2e": {
+   "alignment": "positional (natural keys identical)",
+   "annual_totals": {
+    "2025": [
+     46239.20712262532,
+     46239.26867845993
+    ],
+    "2026": [
+     38662.725661238495,
+     38662.725661238495
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.061555834610771853,
+   "max_rel_delta": 1.4292019770366815e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 84901.99433969839,
+   "sum_before": 84901.93278386378,
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "accounting"
+  },
+  "ledgers/annual-carbon-ledger.sqlite::carbon_lines.line_json": {
+   "alignment": "positional (natural keys identical)",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "{\"activity_mwh\":59623.87381767387,\"asset_capacity_mw\":null,\"asset_commissioning_year\":null,\"asset_energy_capacity_mwh\":n",
+     "before": "{\"activity_mwh\":59624.03005075664,\"asset_capacity_mw\":null,\"asset_commissioning_year\":null,\"asset_energy_capacity_mwh\":n",
+     "label": "2"
+    },
+    {
+     "after": "{\"activity_mwh\":109315.06432773247,\"asset_capacity_mw\":null,\"asset_commissioning_year\":null,\"asset_energy_capacity_mwh\":",
+     "before": "{\"activity_mwh\":109314.9080946497,\"asset_capacity_mw\":null,\"asset_commissioning_year\":null,\"asset_energy_capacity_mwh\":n",
+     "label": "1"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "accounting"
+  },
+  "ledgers/annual-cost-ledger.json::years.cem_system_cost_gbp": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 7.084597044822984e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 29025978.369809423,
+   "sum_before": 29025967.980325043,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-cost-ledger.json::years.cem_system_cost_gbp_per_mwh_served": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 4.442413391103628e-05,
+   "max_rel_delta": 7.084597045694328e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 124.11144793298428,
+   "sum_before": 124.11140350885037,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "ledgers/annual-cost-ledger.json::years.lines.amount_gbp": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 1.429197370490811e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 29157978.369809423,
+   "sum_before": 29157967.98032504,
+   "values_after": 10,
+   "values_before": 10,
+   "zone": "accounting"
+  },
+  "market/market.sqlite::metadata.value": {
+   "alignment": "keyed (key)",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "{\"rule_set_id\": \"native-corrected-v1\", \"rule_set_sha256\": \"f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd",
+     "before": "{\"rule_set_id\": \"native-corrected-v1\", \"rule_set_sha256\": \"1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5b",
+     "label": "[\"market_rule_set\"]"
+    },
+    {
+     "after": "\"6.5.0\"",
+     "before": "\"6.4.0\"",
+     "label": "[\"psm_module_version\"]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 20,
+   "values_before": 20,
+   "zone": "identity"
+  },
+  "market/market.sqlite::period_summary.clearing_price_gbp_per_mwh": {
+   "alignment": "keyed (year, period, stage)",
+   "annual_totals": {
+    "2025": [
+     489700.91882187803,
+     489700.91882029304
+    ],
+    "2026": [
+     382171.2680396548,
+     382171.2680396548
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5849781038745903e-06,
+   "max_rel_delta": 7.518440322846821e-07,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 1.5849781038745903e-06,
+    "max_rel_group_delta": 7.518083689518943e-07
+   },
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 871872.1868596632,
+   "sum_before": 871872.1868612482,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::period_summary.curtailed_mwh": {
+   "alignment": "keyed (year, period, stage)",
+   "annual_totals": {
+    "2025": [
+     4002.737116978027,
+     4002.8933500608027
+    ],
+    "2026": [
+     24808.83108566645,
+     24808.83108566645
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.22731408244558093,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.15623308277549697,
+    "max_rel_group_delta": 0.02342588040893186
+   },
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 28811.724435727225,
+   "sum_before": 28811.568202644445,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::period_summary.market_payment_gbp": {
+   "alignment": "keyed (year, period, stage)",
+   "annual_totals": {
+    "2025": [
+     7269493.812519119,
+     7269493.812503495
+    ],
+    "2026": [
+     5849508.993031225,
+     5849508.993031225
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5623678102372196e-05,
+   "max_rel_delta": 7.518440323679518e-07,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 1.5623678102372196e-05,
+    "max_rel_group_delta": 7.5180836903516e-07
+   },
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 13119002.805534981,
+   "sum_before": 13119002.805550605,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "accounting"
+  },
+  "market/market.sqlite::period_summary.physical_resource_cost_gbp": {
+   "alignment": "keyed (year, period, stage)",
+   "annual_totals": {
+    "2025": [
+     7269474.435810908,
+     7269474.435795285
+    ],
+    "2026": [
+     5849508.581108687,
+     5849508.581108687
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5623308275536374e-05,
+   "max_rel_delta": 7.518440324347688e-07,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 1.5623308275536374e-05,
+    "max_rel_group_delta": 7.518083691019739e-07
+   },
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 13118983.016904075,
+   "sum_before": 13118983.016919699,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "accounting"
+  },
+  "market/market.sqlite::period_summary.vre_accepted_mwh": {
+   "alignment": "keyed (year, period, stage)",
+   "annual_totals": {
+    "2025": [
+     124994.74480029845,
+     124994.58856721567
+    ],
+    "2026": [
+     146691.5223646574,
+     146691.5223646574
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.015849405863643386,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.15623308277550052,
+    "max_rel_group_delta": 0.007924702931821872
+   },
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 271686.1109318833,
+   "sum_before": 271686.26716496603,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.#rows": {
+   "alignment": "row-count",
+   "identifier": true,
+   "kind": "changed",
+   "rows_after": 92016,
+   "rows_before": 92015,
+   "section": "dispatch",
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.asset_id": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": false,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.balance_component_mwh": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "annual_totals": {
+    "2025": [
+     233870.27428350082,
+     233870.27428350082
+    ],
+    "2026": [
+     233870.27428350656,
+     233870.27428350656
+    ]
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.015849405863643386,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 0,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.0,
+    "max_rel_group_delta": null
+   },
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 467740.54856704624,
+   "sum_before": 467740.54856704624,
+   "totals_by_technology": {
+    "battery_storage": [
+     5206.855540231976,
+     5206.855540231976
+    ],
+    "ccgt": [
+     197277.22875448255,
+     197277.3849875653
+    ],
+    "onshore_wind": [
+     140352.35542097496,
+     140352.35542097496
+    ],
+    "solar": [
+     131333.91174397853,
+     131333.75551089577
+    ],
+    "storage_unallocated": [
+     -6429.802892671682,
+     -6429.802892671682
+    ],
+    "vre_aggregate": [
+     0.0,
+     0.0
+    ]
+   },
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "accounting"
+  },
+  "market/market.sqlite::physical_dispatch.energy_mwh": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "annual_totals": {
+    "2025": [
+     242494.16698498145,
+     242494.3232180642
+    ],
+    "2026": [
+     266917.555570009,
+     266917.555570009
+    ]
+   },
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.22731408244558093,
+   "numeric": true,
+   "period_totals": {
+    "groups": 17520,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.15623308277549341,
+    "max_rel_group_delta": 0.005921416441594403
+   },
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 509411.8787880659,
+   "sum_before": 509411.72255498316,
+   "totals_by_technology": {
+    "battery_storage": [
+     5206.855540231976,
+     5206.855540231976
+    ],
+    "ccgt": [
+     197277.22875448255,
+     197277.3849875653
+    ],
+    "onshore_wind": [
+     140352.35542097496,
+     140352.35542097496
+    ],
+    "solar": [
+     131333.91174397853,
+     131333.75551089577
+    ],
+    "storage_unallocated": [
+     6429.802892671682,
+     6429.802892671682
+    ],
+    "vre_aggregate": [
+     28811.568202644445,
+     28811.724435727225
+    ]
+   },
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.evidence_scope": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "numeric": false,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.flow_type": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": false,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.period": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": true,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.source_stage": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "numeric": false,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.technology": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": false,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/market.sqlite::physical_dispatch.year": {
+   "alignment": "keyed (year, period, asset_id, technology, flow_type)",
+   "changed_values": 0,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": true,
+   "rows_only_after": 1,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 92016,
+   "values_before": 92015,
+   "zone": "trajectory"
+  },
+  "market/metadata.json::rows.physical_dispatch": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.0,
+   "max_rel_delta": 1.0867793294571537e-05,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "sum_after": 92016.0,
+   "sum_before": 92015.0,
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.market_rule_set.rule_set_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": ".semantic_metadata.market_rule_set.rule_set_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::semantic_metadata.psm_module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": ".semantic_metadata.psm_module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "0b599a6a2a8c702c4ee11001d147afc97f34bcffe37294865c1d12e463edfc57",
+     "before": "48d58ef7d5f87b54ff91c77959fe8f2ceaf47d9b49a86f5b80f7b4ff5557d494",
+     "label": ".source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.psm.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": ".module_identities.psm.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_resolution_graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ab5fe200846046701abab4efa26f40140f0aab55f527bd926dc2c6ce10c1dc9d",
+     "before": "79112a24ebcf601d347be76e233ee6d7973b721de91aad94d2ae57389bee34db",
+     "label": ".module_resolution_graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "parity/stage-parity.json::checks.absolute_tolerance": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.0389484380368685e-05,
+   "max_rel_delta": 7.084597044185743e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "sum_after": 29.025978369809422,
+   "sum_before": 29.025967980325042,
+   "values_after": 7,
+   "values_before": 7,
+   "zone": "accounting"
+  },
+  "parity/stage-parity.json::checks.actual": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 7.084597044822984e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "sum_after": 29069120.369809423,
+   "sum_before": 29069109.980325043,
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "accounting"
+  },
+  "parity/stage-parity.json::checks.expected": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 7.084597044822984e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "sum_after": 29069120.369809423,
+   "sum_before": 29069109.980325043,
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "accounting"
+  },
+  "validation/energy-balance-oracle.json::boundary.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": ".boundary.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "validation/energy-balance-oracle.json::ledger.source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "0b599a6a2a8c702c4ee11001d147afc97f34bcffe37294865c1d12e463edfc57",
+     "before": "48d58ef7d5f87b54ff91c77959fe8f2ceaf47d9b49a86f5b80f7b4ff5557d494",
+     "label": ".ledger.source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "validation/energy-balance-oracle.json::metrics.sum_curtailed_mwh": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.1562331000022823,
+   "max_rel_delta": 5.422582308039158e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "sum_after": 28811.7244357,
+   "sum_before": 28811.5682026,
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::expansion_headroom.evidence.leftover_excess_mwh": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277554315,
+   "max_rel_delta": 3.9031562205987574e-05,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 28811.72443572712,
+   "sum_before": 28811.568202644346,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.extensions.a4_net_revenue.thermal_operating_cost_gbp_by_group": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.38950000423938,
+   "max_rel_delta": 1.4292019770555307e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118946.101673147,
+   "sum_before": 13118935.712173142,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.agent_cashflow.assets": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "109315.06432773247",
+     "before": "109314.9080946497",
+     "label": "[0].market.extensions.agent_cashflow.assets.CCGT.generated_mwh"
+    },
+    {
+     "after": "59623.87381767387",
+     "before": "59624.03005075664",
+     "label": "[0].market.extensions.agent_cashflow.assets.solar_Portsmouth.generated_mwh"
+    }
+   ],
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 63,
+   "values_before": 63,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.down_regulation_periods": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 3.0,
+   "sum_before": 0,
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.mean_horizon_hours": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 1.0,
+   "sum_before": 0,
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_basis": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_vre_assets_covered": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 86.0,
+   "sum_before": 0,
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_vre_assets_total": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 86.0,
+   "sum_before": 0,
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.periods_by_segment": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 4.0,
+   "sum_before": 0,
+   "values_after": 18,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.reduced_mwh_by_segment": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 9.374027890172943,
+   "sum_before": 0,
+   "values_after": 18,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.restart_table_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.restart_table_sha256": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.rule": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.rows": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.0,
+   "max_rel_delta": 2.2452232874559376e-05,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 346799.0,
+   "sum_before": 346797.0,
+   "values_after": 44,
+   "values_before": 44,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.semantic_metadata": {
+   "alignment": "json path",
+   "changed_values": 4,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": "[0].market.extensions.market_ledger.semantic_metadata.psm_module_version"
+    },
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": "[1].market.extensions.market_ledger.semantic_metadata.market_rule_set.rule_set_sha256"
+    },
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": "[0].market.extensions.market_ledger.semantic_metadata.market_rule_set.rule_set_sha256"
+    }
+   ],
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 38,
+   "values_before": 38,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "0b599a6a2a8c702c4ee11001d147afc97f34bcffe37294865c1d12e463edfc57",
+     "before": "48d58ef7d5f87b54ff91c77959fe8f2ceaf47d9b49a86f5b80f7b4ff5557d494",
+     "label": "[1].market.extensions.market_ledger.source_artifact_sha256"
+    },
+    {
+     "after": "daced951b154ebdfea8fd53254814c6eefb314663aafec2beffbc224c0774ba2",
+     "before": "b5ca47ca1413c831df5d263b1cf1a2430e52310d5169f6869eefaf921485d08d",
+     "label": "[0].market.extensions.market_ledger.source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.rule_set_sha256": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": "[0].market.extensions.market_rule_set.rule_set_sha256"
+    },
+    {
+     "after": "f20d0d8c0abe1a0dc11197470b35c56b4bd504369b0db453d3395ed5deddd5f7",
+     "before": "1aa351d65a63b11d2fb033bc961c79d87fe26bb19c67e100fc3f1ea61ca5be62",
+     "label": "[1].market.extensions.market_rule_set.rule_set_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.rules": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": false,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "values_after": 30,
+   "values_before": 28,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "7a5fa4eb7bda2ebd9a4272b7799e644dc2918f443469388b18449e71c8475bc1",
+     "before": "897eb840da2ce958ea5a62967c5ada73bad66a31ff50361cca1a379e10dc3999",
+     "label": "[0].market.extensions.market_rule_set.runtime_kernel_tree_sha256"
+    },
+    {
+     "after": "7a5fa4eb7bda2ebd9a4272b7799e644dc2918f443469388b18449e71c8475bc1",
+     "before": "897eb840da2ce958ea5a62967c5ada73bad66a31ff50361cca1a379e10dc3999",
+     "label": "[1].market.extensions.market_rule_set.runtime_kernel_tree_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.switch_corrections": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": false,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "values_after": 24,
+   "values_before": 22,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_settlement_components_gbp.curtailment_payment": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389500004570548,
+   "max_rel_delta": 0.5,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 10.389500004570548,
+   "sum_before": 20.779000009141097,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.market_settlement_components_gbp.generation_offer_payment": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 1.4291974158978296e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118972.627403978,
+   "sum_before": 13118962.237919595,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.market_settlement_components_gbp.retained_period_cost": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5623867511749268e-05,
+   "max_rel_delta": 2.149243064227983e-12,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118983.016903982,
+   "sum_before": 13118983.016919605,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.physical_operating_cost_components_gbp.generation_import_and_reliability": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 1.429197370490811e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118973.270284196,
+   "sum_before": 13118962.880799815,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.physical_operating_cost_detail_gbp.generation_variable": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 1.429197370490811e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118973.270284196,
+   "sum_before": 13118962.880799815,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.physical_operating_cost_detail_gbp.total_gbp": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 1.429197370490811e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118973.270284196,
+   "sum_before": 13118962.880799815,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.extensions.storage_headroom_inputs.leftover_excess_mwh": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 9000,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.15623308277549697,
+    "max_rel_group_delta": 0.02342588040893186
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.22731408244558093,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 28811.724435727225,
+   "sum_before": 28811.568202644445,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.generation_mwh_by_asset.CCGT": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277281467,
+   "max_rel_delta": 1.4292019770765496e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 197277.3849875661,
+   "sum_before": 197277.22875448334,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.generation_mwh_by_asset.solar_Portsmouth": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277281467,
+   "max_rel_delta": 2.620303972069933e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 131333.75551089458,
+   "sum_before": 131333.91174397737,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.module_version": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": "[1].market.module_version"
+    },
+    {
+     "after": "6.5.0",
+     "before": "6.4.0",
+     "label": "[0].market.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.period_summaries.clearing_price_gbp_per_mwh": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 9000,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 1.5849781038745903e-06,
+    "max_rel_group_delta": 7.518083689518943e-07
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5849781038745903e-06,
+   "max_rel_delta": 7.518440322846821e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 871872.1868596632,
+   "sum_before": 871872.1868612482,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.period_summaries.curtailed_mwh": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 9000,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.15623308277549697,
+    "max_rel_group_delta": 0.02342588040893186
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.22731408244558093,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 28811.724435727225,
+   "sum_before": 28811.568202644445,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.period_summaries.market_payment_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 9000,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 1.5623678102372196e-05,
+    "max_rel_group_delta": 7.5180836903516e-07
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5623678102372196e-05,
+   "max_rel_delta": 7.518440323679518e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13119002.805534981,
+   "sum_before": 13119002.805550605,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.period_summaries.physical_resource_cost_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 9000,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 1.5623308275536374e-05,
+    "max_rel_group_delta": 7.518083691019739e-07
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 1.5623308275536374e-05,
+   "max_rel_delta": 7.518440324347688e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118983.016904075,
+   "sum_before": 13118983.016919699,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.period_summaries.vre_accepted_mwh": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 9000,
+    "groups_changed": 1,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.15623308277550052,
+    "max_rel_group_delta": 0.007924702931821872
+   },
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.15623308277549697,
+   "max_rel_delta": 0.015849405863643386,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 271686.1109318833,
+   "sum_before": 271686.26716496603,
+   "values_after": 35040,
+   "values_before": 35040,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.total_operational_cost_gbp": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 1.429197370490811e-06,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 13118973.270284196,
+   "sum_before": 13118962.880799815,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  },
+  "year-results-v2.json::market.total_system_cost_gbp": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 10.389484381303191,
+   "max_rel_delta": 7.052855352939403e-07,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 29157978.369809423,
+   "sum_before": 29157967.980325043,
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "accounting"
+  }
+ },
+ "digest_sha256": "ccb27c55f72dc327e670d569f9d72027c3989ebd8f390c03ea44d05f380cf25e",
+ "family": "corrected",
+ "parent_commit": "c9c1cc1",
+ "parent_reproduction": "gated zones equal to revision 11; identity differs (code identity since that revision)",
+ "revision": 12,
+ "schema_version": "value.golden-numeric-report/v2",
+ "summary": {
+  "by_zone": {
+   "accounting": 41,
+   "identity": 16,
+   "trajectory": 28
+  },
+  "changed_columns": 85,
+  "not_comparable_columns": 2
+ }
+}

@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.4.0",
+      "current_version": "6.5.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -152,6 +152,16 @@
             "fx8.nuclear-in-service-at-start"
           ],
           "reason": "Decision A18: in the corrected profile every nuclear unit counts as running before the first period of each model year, so its first day-ahead offer carries no start-up cost and it runs as baseload at its station availability; the start-up cost (offer adder and physical start-up term) is charged only when a unit restarts after a period in which it was not accepted (refuelling, outage, zero availability or not cleared). Nuclear output, the generation mix, prices, costs, emissions and investment paths of corrected Runs change (method upgrade; GBP1 2025 nuclear about 2 TWh to about 38 TWh), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis rule (every unit off before the first period) bit for bit; its nuclear path dependency is disclosed (A15).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.4.0",
+          "to": "6.5.0",
+          "package": "R1-2",
+          "correction_ids": [
+            "r12.economic-downward-order"
+          ],
+          "reason": "Decisions A19 and A22: in the corrected profile the curtailment-branch down regulation no longer reduces every gas or biomass unit before VRE. A gas or biomass unit is reduced before VRE down to its minimum stable generation (CCGT/OCGT 50 %, biomass 35 % of its accepted output) because that saves its fuel, carbon and variable cost without a restart; below it, shutting units down comes before curtailing VRE only when the net saving c - S(H)/H is positive (restart cost S: CCGT 110/130/150, OCGT 170, biomass 125 GBP/MW; expected downtime H from the day-ahead forecast surplus run, at least the minimum down time 6 h / 0.5 h / 6 h). Curtailment, thermal output, emissions, prices, costs and investment paths of corrected Runs change (method upgrade), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis curtail-cost order bit for bit.",
           "requires_user_opt_in": true
         }
       ]

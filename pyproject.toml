@@ -74,6 +74,7 @@ gridform_core = [
   "data/cem/*.json",
   "data/doctoral_alignment/*.json",
   "data/storage/*.json",
+  "data/thermal/*.json",
   "data/contracts/*.json",
   "data/contracts/*.sql",
   "data/methodology/*.json",

@@ -1,0 +1,49 @@
+{
+  "schema_version": "value.thermal-restart-table/v1",
+  "table_id": "value-thermal-restart-v1",
+  "status": "AUTHOR REVIEWED (DECISIONS A22, 2026-10-07)",
+  "acceptance": "DECISIONS A22: CCGT hot/warm/cold restart GBP 110/130/150 per MW chosen by the expected downtime H (< 12 h hot, 12-48 h warm, > 48 h cold); OCGT GBP 170 per MW (wear plus start-up fuel and carbon, the same basis as the other technologies); biomass GBP 125 per MW; minimum stable generation CCGT 50 %, OCGT 50 %, biomass 35 %; minimum down time 6 h / 0.5 h / 6 h. H = (number of consecutive surplus periods of the day-ahead forecast from the current period) x 0.5 h; a unit may enter the shutdown segment only when H >= its minimum down time.",
+  "applies_to": "value-corrected profile only (correction r12.economic-downward-order, decisions A19 and A22). The doctoral profile keeps the thesis curtail-cost order (Q1).",
+  "compiled_from": "docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md section 4 (unit R1-1; values 4.5, conversion 4.2, per-MWh comparison 4.6)",
+  "access_date": "2026-10-07",
+  "price_basis": "2024 GBP per MW of capacity per start: wear (Kumar et al. 2012 median, lower bound) plus start-up fuel and carbon (Staffell & Green 2015, GB), converted with Bank of England annual exchange rates and the ONS CPI (reference statistics 4.2). The model's money is constant base-year GBP undiscounted (Q4/P4-02); its base year follows each asset's cost source.",
+  "rule": {
+    "running_range": "Output above min_stable_fraction x the asset's online capacity is reduced without a restart: its cost of reduction is minus the avoided short-run cost c (fuel + carbon + unit_time_cost (VOM) + base, i.e. gen_cost), so it is always cheaper than curtailing VRE (cost 0).",
+    "online_capacity": "The aggregate fleet has no commitment state; its online capacity in a period is its accepted day-ahead output of that period (units scheduled day-ahead are online and fully loaded).",
+    "shutdown_segment": "Output below min_stable_fraction x online capacity (down to the ramp floor) needs units to shut down and restart later at S per MW: net saving per MWh a(H) = c - S(H) / H. a > 0: reduced before VRE (in descending a); a <= 0: after VRE; H < min_down_time_h: not allowed while any other down regulation is left (last resort).",
+    "start_class_by_downtime_h": {"hot_below_h": 12.0, "warm_up_to_h": 48.0}
+  },
+  "technologies": {
+    "CCGT": {
+      "asset_match": "GasGenerator whose name does not contain OCGT",
+      "restart_cost_gbp_per_mw": {"hot": 110.0, "warm": 130.0, "cold": 150.0},
+      "min_stable_fraction": 0.5,
+      "min_down_time_h": 6.0,
+      "grades": "restart: R1 wear 31/49/71 [E] + R3 fuel and carbon 80 [E]; min stable: R4/R5 45 %, R6 50 %, Elexon SEL/MEL 47-60 % [V]; min down: Elexon MZT 360 min [V] (literature 1-2 h)"
+    },
+    "OCGT": {
+      "asset_match": "GasGenerator whose name contains OCGT",
+      "restart_cost_gbp_per_mw": {"hot": 170.0, "warm": 170.0, "cold": 170.0},
+      "min_stable_fraction": 0.5,
+      "min_down_time_h": 0.5,
+      "grades": "restart: R1 wear 29 [E] + R3 fuel and carbon 140 [E] (warm/cold [NV], equal to hot); min stable: R6 50 % [E] (R5 20 %, one Elexon unit 90 %); min down: one period (Elexon MZT 20 min [V], R5 0)"
+    },
+    "biomass": {
+      "asset_match": "BiomassGenerator (large GB biomass units are coal conversions; coal used as proxy)",
+      "restart_cost_gbp_per_mw": {"hot": 125.0, "warm": 125.0, "cold": 125.0},
+      "min_stable_fraction": 0.35,
+      "min_down_time_h": 6.0,
+      "grades": "restart: R1 large subcritical coal wear 53 [E] + R3 large coal fuel and carbon 72 [E] (warm/cold [NV], equal to hot); min stable: Drax SEL/MEL 33 % [V], R5 38 %; min down: Elexon MZT 360 min [V] (R5 coal 8 h)"
+    }
+  },
+  "sources": {
+    "R1": "Kumar, Besuner, Lefton, Agan, Hilleman (Intertek APTECH for NREL), Power Plant Cycling Costs, NREL/SR-5500-55433, 2012",
+    "R3": "Staffell & Green, Is There Still Merit in the Merit Order Stack?, IEEE Trans. Power Systems 31(1):43-53, 2016, doi:10.1109/TPWRS.2015.2407613",
+    "R4": "Schroeder et al., Current and Prospective Costs of Electricity Generation until 2050, DIW Data Documentation 68, 2013",
+    "R5": "PyPSA-Eur data/unit_commitment.csv (2026-02-18)",
+    "R6": "Badesa, Teng, Strbac, Simultaneous Scheduling of Multiple Frequency Services in Stochastic Unit Commitment, IEEE Trans. Power Systems 34(5), 2019",
+    "R8": "Elexon Insights Solution (BMRS) API, dynamic data SEL/MZT/MNZT and physical data MEL, snapshot 2026-09-01",
+    "R10": "Bank of England XUAAUSS / XUAAERS annual average spot rates",
+    "R11": "ONS CPI INDEX 00: ALL ITEMS (D7BT, 2015=100)"
+  }
+}

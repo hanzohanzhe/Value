@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "897eb840da2ce958ea5a62967c5ada73bad66a31ff50361cca1a379e10dc3999",
+  "runtime_tree_sha256": "7a5fa4eb7bda2ebd9a4272b7799e644dc2918f443469388b18449e71c8475bc1",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -133,7 +133,7 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "618af6963ef2dc3d71b02296b66445193a1ffd7e6c60cf9bb42538719ea2d123",
+      "sha256": "b67072bb1a1b5229a8cf22e6c4b59b577b5460a093ad5153b8f6530111f51a15",
       "kind": "declared_runtime_edit",
       "correction_ids": [
         "fx4.storage-offer-ledger",
@@ -149,7 +149,8 @@
         "p05.weather-time-convention",
         "p06.native-market-rules",
         "p06.physical-operating-cost",
-        "p06.realise-period"
+        "p06.realise-period",
+        "r12.economic-downward-order"
       ],
       "note": "four-role M-D1: read-only storage offer trace and storage_orders ledger rows (Q12 accounting; dispatch unchanged)",
       "previous_kind": "value_instrumentation"

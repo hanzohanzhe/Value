@@ -33,7 +33,12 @@ A18 adds ``nuclear_initial_state``: the thesis kernel starts every run with no
 unit running, so a nuclear unit adds its start-up cost to its offer until it
 is first accepted; the corrected rule set starts nuclear units in service in
 the first period of the run, so the start-up cost is paid only when a unit
-restarts after a period off (``fx8.nuclear-in-service-at-start``).  ``operating_cost_basis``
+restarts after a period off (``fx8.nuclear-in-service-at-start``).  Decisions
+A19/A22 add ``downward_restart_economics``: the P0-6 corrected stack reduced
+every gas or biomass unit before VRE; the corrected rule set now reduces gas
+and biomass before VRE only down to minimum stable generation and shuts units
+down before curtailing VRE only when the avoided cost over the expected
+downtime exceeds the restart cost (``r12.economic-downward-order``).  ``operating_cost_basis``
 (``dispatch_unit_cost/v1``) is a universal accounting rule (P5-06, plan S4):
 it is the same in both profiles and therefore has no profile switch either.
 """
@@ -71,6 +76,8 @@ FIELD_CORRECTIONS: dict[str, str] = {
     "interconnector_import_stage": "fx6.day-ahead-interconnector-imports",
     # FX8 (A18): method change of the corrected profile.
     "nuclear_initial_state": "fx8.nuclear-in-service-at-start",
+    # R1-2 (A19/A22): method change of the corrected profile.
+    "downward_restart_economics": "r12.economic-downward-order",
 }
 
 # Correction ids whose behaviour has not landed yet.  P0-6 S5-S10 registered
@@ -97,6 +104,7 @@ class NativeMarketRules:
     reliability_voll: str
     interconnector_import_stage: str
     nuclear_initial_state: str
+    downward_restart_economics: str
 
     def definition(self) -> dict[str, str]:
         return {item.name: getattr(self, item.name) for item in fields(self)}
@@ -135,6 +143,9 @@ DOCTORAL = NativeMarketRules(
     # period of a run every gas, biomass and nuclear unit adds its start-up
     # cost to its offer (nuclear 500 GBP/MWh on GBP1) until it is accepted.
     nuclear_initial_state="off_until_accepted",
+    # The thesis kernel (35aadb3) reduces output in ascending curtail_cost and
+    # has no restart cost, minimum stable generation or expected downtime.
+    downward_restart_economics="not_modelled",
 )
 
 CORRECTED = NativeMarketRules(
@@ -159,6 +170,10 @@ CORRECTED = NativeMarketRules(
     # start-up adder then); a unit that was not accepted in a period (outage,
     # refuelling, zero availability or not cleared) pays it on its restart.
     nuclear_initial_state="in_service_at_start",
+    # A19/A22: gas and biomass down regulation is split at minimum stable
+    # generation; the running range is reduced at its avoided cost, the
+    # shutdown segment at its net saving c - S(H)/H, compared with VRE.
+    downward_restart_economics="restart_cost_vs_avoided_cost_v1",
 )
 
 RULE_SETS: dict[str, NativeMarketRules] = {
@@ -187,6 +202,7 @@ def _literal_consultations(methodology: Any) -> dict[str, Any]:
         "p06.voll-chronology-parameter": lambda: methodology.enabled("p06.voll-chronology-parameter"),
         "fx6.day-ahead-interconnector-imports": lambda: methodology.enabled("fx6.day-ahead-interconnector-imports"),
         "fx8.nuclear-in-service-at-start": lambda: methodology.enabled("fx8.nuclear-in-service-at-start"),
+        "r12.economic-downward-order": lambda: methodology.enabled("r12.economic-downward-order"),
     }
 
 
