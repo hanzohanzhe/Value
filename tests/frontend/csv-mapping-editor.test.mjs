@@ -103,7 +103,10 @@ test('an EUR price mapping requires the rate, basis and year before preview and 
     const previewButton = page.getByRole('button', { name: '预览规范样例并校验完整文件' });
     assert.equal(await page.getByLabel('Currency').inputValue(), 'GBP');
     assert.equal(await previewButton.isEnabled(), true);
+    // Spec 11.6 (S-D5): an "eur" column mapped as GBP gets an amber, non-blocking hint.
+    assert.equal(await page.getByText('Column name suggests EUR — confirm the currency.', { exact: true }).count(), 1);
     await page.getByLabel('Currency').selectOption('EUR');
+    assert.equal(await page.getByText('Column name suggests EUR — confirm the currency.', { exact: true }).count(), 0);
     assert.equal(await page.getByLabel('原始单位').inputValue(), 'EUR/MWh');
     assert.equal(await previewButton.isEnabled(), false, 'missing rate, basis and year block the preview');
     assert.equal(await page.getByText(/^GF_MAPPING_FX/).count(), 3);
@@ -119,6 +122,59 @@ test('an EUR price mapping requires the rate, basis and year before preview and 
     assert.deepEqual(previews.at(-1).columns, priceColumns);
     const cells = await page.locator('.csv-mapping-fx-table td').allTextContents();
     assert.deepEqual(cells, ['110', '100']);
+  } finally {
+    await browser?.close();
+    if (server) await new Promise(resolve => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+// Spec 11.6 (S-D4): an optional timestamp column and time zone, checked row by row.
+test('a declared timestamp column is sent with the preview and its problems are listed by row', { timeout: 45000 }, async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'value-csv-ts-ui-'));
+  let server, browser;
+  const role = 'market.france.profile';
+  const timedStage = { ...stage, role, source_columns: ['time', 'flow'], rows: 3 };
+  const timedColumns = [{ source: 'flow', target: 'value', source_unit: 'MW', target_unit: 'MW' }];
+  const timedCatalog = { ...catalog('copy'), roles: [{ role, columns: [{ target: 'value', target_unit: 'MW' }], conversion_pairs: [{ source_unit: 'MW', target_unit: 'MW' }], single_value: true, interval_minutes: 30, timestamp_supported: true, time_zones: ['UTC', 'Europe/London'] }] };
+  const timestamp = { column: 'time', time_zone: 'Europe/London', interval_minutes: 30, rows_checked: 3, problem_count: 1, problems: [{ row: 4, timestamp: '2025-01-01T00:30:00+00:00', problem: 'duplicate of row 3' }] };
+  const timedReview = { ...review, role, rows: 3, columns: timedColumns, valid: false, normalized_sha256: null, validation: null, errors: ['GF_DATA_TIMESTAMPS: 1 timestamp problem(s) in column time (Europe/London); the rows are listed below.'], timestamp };
+  try {
+    await build({ stdin: { contents: `import React from 'react';import{createRoot}from'react-dom/client';import Editor from './app/features/data/CsvMappingEditor';createRoot(document.getElementById('root')).render(<Editor packId="copy" manifestSha256="${sha}" role="${role}" onMapped={()=>{}}/>);`, resolveDir: root, loader: 'tsx' }, bundle: true, format: 'esm', jsx: 'automatic', outfile: path.join(directory, 'harness.js') });
+    await writeFile(path.join(directory, 'index.html'), '<div id="root"></div><script type="module" src="/harness.js"></script>');
+    server = createServer(async (request, response) => { try { const file = request.url === '/harness.js' ? 'harness.js' : 'index.html'; response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : 'text/html'); response.end(await readFile(path.join(directory, file))); } catch { response.writeHead(500).end(); } });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    browser = await chromium.launch(chromiumLaunchOptions());
+    const page = await browser.newPage();
+    const previews = [];
+    await page.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      let payload;
+      if (url.pathname.endsWith('/catalog')) payload = timedCatalog;
+      else if (url.pathname.endsWith('/stages')) payload = timedStage;
+      else if (url.pathname.endsWith('/preview')) { previews.push(route.request().postDataJSON()); payload = timedReview; }
+      else throw new Error(`Unexpected mapping request ${url.pathname}`);
+      await route.fulfill({ json: payload });
+    });
+    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.getByText('选择含标题行的 CSV', { exact: true }).waitFor();
+    await page.locator('input[type=file]').setInputFiles({ name: 'fr.csv', mimeType: 'text/csv', buffer: Buffer.from('t,f\n1,2') }); // 7 bytes, as the stage fixture says
+    await page.getByLabel('CSV 来源列').selectOption('flow');
+    const timeZone = page.getByLabel('Time zone');
+    assert.equal(await timeZone.isDisabled(), true, 'the time zone applies only once a column is chosen');
+    assert.deepEqual(await page.getByLabel('Timestamp column').locator('option').allTextContents(), ['No timestamp column (rows are read in order)', 'time']);
+    const previewButton = page.getByRole('button', { name: '预览规范样例并校验完整文件' });
+    await previewButton.click();
+    await page.getByText('校验未通过，请修改文件或映射', { exact: true }).waitFor();
+    assert.equal(previews.at(-1).timestamp, undefined, 'no timestamp column, no declaration');
+    await page.getByLabel('Timestamp column').selectOption('time');
+    await timeZone.selectOption('Europe/London');
+    assert.equal(await page.getByText('校验未通过，请修改文件或映射', { exact: true }).count(), 0, 'a timestamp change discards the review');
+    await previewButton.click();
+    await page.getByText('duplicate of row 3', { exact: true }).waitFor();
+    assert.deepEqual(previews.at(-1).timestamp, { column: 'time', time_zone: 'Europe/London' });
+    assert.deepEqual(await page.locator('.csv-mapping-timestamp-report td').allTextContents(), ['4', '2025-01-01T00:30:00+00:00', 'duplicate of row 3']);
+    assert.equal(await page.getByRole('button', { name: '确认提交映射后的文件' }).count(), 0);
   } finally {
     await browser?.close();
     if (server) await new Promise(resolve => server.close(resolve));

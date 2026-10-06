@@ -32,3 +32,18 @@ test("GBP needs no rate; EUR needs a positive 4-decimal rate, a basis and a 1990
 test("the converted column states the rate, basis and year", () => {
   assert.equal(fxCaption({ eur_per_gbp: 1.1628, fx_basis: "annual average", price_year: 2022 }), "converted at 1.1628 EUR/GBP (annual average, 2022)");
 });
+
+// Spec 11.6 (S-D5, S-D4).
+import { EUR_COLUMN_HINT, columnSuggestsEur, timestampRequest } from "../../../app/features/data/csvMappingFx.ts";
+test("a column name with eur or € under GBP gets the hint; EUR or other names do not", () => {
+  assert.equal(EUR_COLUMN_HINT, "Column name suggests EUR — confirm the currency.");
+  for (const name of ["eur", "Price_EUR", "price (€/MWh)", "EURO"]) assert.equal(columnSuggestsEur(name, "GBP"), true, name);
+  assert.equal(columnSuggestsEur("eur", "EUR"), false);
+  assert.equal(columnSuggestsEur("gbp_price", "GBP"), false);
+  assert.equal(columnSuggestsEur("", "GBP"), false);
+});
+test("the timestamp declaration is sent only when a column is chosen", () => {
+  assert.equal(timestampRequest({ column: "", timeZone: "Europe/London" }), null);
+  assert.deepEqual(timestampRequest({ column: "time", timeZone: "Europe/London" }), { column: "time", time_zone: "Europe/London" });
+  assert.deepEqual(timestampRequest({ column: "time", timeZone: "" }), { column: "time", time_zone: "UTC" });
+});

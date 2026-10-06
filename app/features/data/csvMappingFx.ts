@@ -46,3 +46,17 @@ export function fxRequest(draft: FxDraft): FxRequest | null {
 export function fxCaption(fx: { eur_per_gbp: number; fx_basis: string; price_year?: number | null }): string {
   return `converted at ${fx.eur_per_gbp} EUR/GBP (${fx.fx_basis}${fx.price_year != null ? `, ${fx.price_year}` : ""})`;
 }
+
+/** Spec 11.6 (S-D5): a column whose name suggests euros while GBP is selected (a non-blocking hint). */
+export const EUR_COLUMN_HINT = "Column name suggests EUR — confirm the currency.";
+export function columnSuggestsEur(columnName: string | null | undefined, currency: Currency): boolean {
+  return currency === "GBP" && /eur|€/i.test(String(columnName ?? ""));
+}
+
+/** Spec 11.6 (S-D4): the optional timestamp declaration of a mapping preview request. */
+export type TimestampDraft = { column: string; timeZone: string };
+export const EMPTY_TIMESTAMP: TimestampDraft = { column: "", timeZone: "UTC" };
+export const TIME_ZONES = ["UTC", "Europe/London"] as const;
+export function timestampRequest(draft: TimestampDraft): { column: string; time_zone: string } | null {
+  return draft.column ? { column: draft.column, time_zone: draft.timeZone || "UTC" } : null;
+}

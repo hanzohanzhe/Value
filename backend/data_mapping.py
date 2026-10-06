@@ -24,6 +24,7 @@ from gridform_core.data_pack_validation import (
     CYCLIC_MARKET_ROLES, DEMAND_ROLES, VRE_PROFILE_ROLES, REQUIRED_CSV_COLUMNS,
     validate_data_pack,
 )
+from gridform_core.data_validation_layers import TIMESTAMP_TIME_ZONES, timestamp_row_problems
 
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 TOKEN = re.compile(r"^[0-9a-f]{32}$")
@@ -42,6 +43,8 @@ MARKET_PROFILE_ROLES = {role for role in CYCLIC_MARKET_ROLES if role.endswith(".
 MARKET_PRICE_ROLES = {role for role in CYCLIC_MARKET_ROLES if role.endswith(".price")}
 # Roles whose MWh/period source converts to MW with the declared 30-minute interval.
 PER_PERIOD_ENERGY_ROLES = DEMAND_ROLES | MARKET_PROFILE_ROLES
+# Single-value time series that may declare a timestamp column (spec 11.6, S-D4).
+TIME_SERIES_ROLES = DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
 
 
 def _fx(value: object) -> dict[str, object] | None:
@@ -60,6 +63,25 @@ def _fx(value: object) -> dict[str, object] | None:
         raise DataMappingError("GF_MAPPING_FX", "price_year must be an integer year.")
     return {"eur_per_gbp": float(value["eur_per_gbp"]), "fx_basis": str(value["fx_basis"]).strip(),
             **({"price_year": year} if year is not None else {})}
+
+
+def _timestamp(value: object, source_columns: Sequence[str], mapped: Sequence[str], role: str) -> dict[str, str] | None:
+    """The declared timestamp column of a mapping request (spec 11.6, S-D4); None when absent."""
+
+    if value is None:
+        return None
+    if role not in TIME_SERIES_ROLES:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", "Only half-hourly or hourly series roles take a timestamp column.")
+    if not isinstance(value, dict) or set(value) != {"column", "time_zone"}:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", "timestamp must be {column, time_zone}.")
+    column, zone = value["column"], value["time_zone"]
+    if not isinstance(column, str) or column not in source_columns:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", "Choose a timestamp column from the uploaded file.")
+    if column in mapped:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", "The timestamp column cannot also be a mapped value column.")
+    if zone not in TIMESTAMP_TIME_ZONES:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", f"time_zone must be one of {', '.join(TIMESTAMP_TIME_ZONES)}.")
+    return {"column": column, "time_zone": zone}
 
 
 class DataMappingError(ValueError):
@@ -168,6 +190,7 @@ class DataMappingService:
                 **({"interval_minutes": 30, "unit_contract": "value.demand-mw-half-hour/v1"} if demand else {}),
                 **({"interval_minutes": 30} if role in MARKET_PROFILE_ROLES else {}),
                 **({"fx_required_for": ["EUR/MWh"]} if price else {}),
+                **({"timestamp_supported": True, "time_zones": list(TIMESTAMP_TIME_ZONES)} if role in TIME_SERIES_ROLES else {}),
                 "conversion_pairs": [{"source_unit": source, "target_unit": target,
                                       **({"requires_fx": True} if (source, target) in FX_CONVERSIONS else {})}
                     for source, target in sorted(set(UNIT_FACTORS) | ({("MWh/period", "MW")} if per_period else set())
@@ -269,7 +292,7 @@ class DataMappingService:
 
     def preview(self, stage_id: str, request: Mapping[str, object]) -> dict[str, object]:
         base_fields = {"schema_version", "source_sha256", "target_manifest_sha256", "columns"}
-        if set(request) not in (base_fields, base_fields | {"fx"}) or request.get("schema_version") != "value.data-mapping-preview-request/v1":
+        if not (base_fields <= set(request) <= base_fields | {"fx", "timestamp"}) or request.get("schema_version") != "value.data-mapping-preview-request/v1":
             raise DataMappingError("GF_MAPPING_REQUEST", "Invalid mapping preview request.")
         fx = _fx(request.get("fx"))
         stage_dir, stage = self._load("stages", stage_id)
@@ -278,6 +301,7 @@ class DataMappingService:
         if _hash(raw) != stage["source_sha256"] or request["source_sha256"] != stage["source_sha256"] or request["target_manifest_sha256"] != stage["target_manifest_sha256"]:
             raise DataMappingError("GF_MAPPING_IDENTITY", "Source or target identity changed; upload again.", 409)
         spec = self._spec(stage["role"], request["columns"], columns, fx)
+        timestamp = _timestamp(request.get("timestamp"), columns, [rule.source for rule in spec.columns], stage["role"])
         with self.lock:
             _, manifest, _ = self._target(stage["pack_id"], stage["target_manifest_sha256"])
             token, directory = self._new("reviews")
@@ -286,6 +310,7 @@ class DataMappingService:
             validation = None
             sample = []
             source_sample: list[dict[str, object]] = []
+            timestamp_report: dict[str, object] | None = None
             digest = None
             size = 0
             try:
@@ -308,6 +333,16 @@ class DataMappingService:
                 ]
                 if result.source_sha256 != stage["source_sha256"]:
                     raise DataMappingError("GF_MAPPING_IDENTITY", "Source changed during normalization.", 409)
+                if timestamp is not None:
+                    # Spec 11.6 (S-D4): the chronology layer checks the declared
+                    # timestamps row by row; any problem blocks the commit.
+                    timestamp_report = {**timestamp_row_problems(
+                        stage_dir / "source.csv", timestamp["column"], spec.interval_minutes,
+                        time_zone=timestamp["time_zone"]), "source_sha256": stage["source_sha256"]}
+                    if timestamp_report["problem_count"]:
+                        errors.append(
+                            f"GF_DATA_TIMESTAMPS: {timestamp_report['problem_count']} timestamp problem(s) in column "
+                            f"{timestamp['column']} ({timestamp['time_zone']}); the rows are listed below.")
             except (ValueError, OSError) as exc:
                 errors = [str(exc)]
             expires = stage["expires_epoch"]
@@ -320,6 +355,7 @@ class DataMappingService:
                       "columns": spec.to_dict()["columns"], "sample_rows": sample, "validation": validation,
                       "source_sample_rows": source_sample, "fx": dict(fx) if fx else None,
                       "interval_minutes": spec.interval_minutes,
+                      "timestamp": timestamp_report,
                       "expires_at": _iso(expires)}
             _write(directory / "metadata.json", {**review, "token": token, "expires_epoch": expires})
             return review
@@ -370,6 +406,16 @@ class DataMappingService:
                 _write(provenance / "spec.json", spec_payload)
                 _write(provenance / "review.json", review)
                 single = review["role"] in DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
+                timestamp = review.get("timestamp")
+                timestamp_metadata = {
+                    "timestamp_column": timestamp["column"],
+                    "timestamp_time_zone": timestamp["time_zone"],
+                    "timestamp_uri": (provenance / "source.csv").relative_to(root).as_posix(),
+                    # The interval the check used; the binding's own interval_minutes is unchanged.
+                    "timestamp_check": {"status": "passed", "rows_checked": timestamp["rows_checked"],
+                                        "interval_minutes": timestamp["interval_minutes"],
+                                        "source_sha256": review["source_sha256"]},
+                } if isinstance(timestamp, dict) else {}
                 metadata = {"unit": self.slots[review["role"]].get("unit"),
                             **({"input_unit_contract": "value.demand-mw-half-hour/v1", "interval_minutes": 30}
                                if review["role"] in DEMAND_ROLES else {}),
@@ -378,6 +424,9 @@ class DataMappingService:
                             **({"interval_minutes": 30} if review["role"] in MARKET_PROFILE_ROLES else {}),
                             **({"currency": "GBP"} if review["role"] in MARKET_PRICE_ROLES else {}),
                             **({"source_currency": "EUR", **dict(spec.source)} if spec.source else {}),
+                            # Spec 11.6 (S-D4): the declared timestamps stay in the retained
+                            # source; the chronology layer re-checks them from there.
+                            **timestamp_metadata,
                             "redistribution_class": "not_declared",
                             "owner_extension": self.slots[review["role"]].get("owner_extension"),
                             "capability": self.slots[review["role"]].get("capability"),

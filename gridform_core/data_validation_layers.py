@@ -144,15 +144,31 @@ def evaluate_layers(pack_root: Path, manifest: Mapping[str, Any], *, periods: in
                 finding="P6-04",
             ))
 
-    # Declared timestamps (a binding's own timestamp_column).
+    # Declared timestamps (a binding's own timestamp_column).  A mapped
+    # binding (spec 11.6, S-D4) keeps its timestamps in the retained source
+    # (timestamp_uri) because the canonical file holds the value column only.
     for role in sorted(bindings):
         binding = _bound(manifest, role)
         if not binding.get("timestamp_column"):
             continue
         path = _path(pack_root, manifest, role)
+        if binding.get("timestamp_uri"):
+            path = _timestamp_source(pack_root, str(binding["timestamp_uri"]))
+            if path is None:
+                # A frozen snapshot copies the canonical file only; the check
+                # passed when the mapping was committed.
+                if dict(binding.get("timestamp_check") or {}).get("status") != "passed":
+                    chronology.append(_finding(
+                        "GF_DATA_TIMESTAMPS", "chronology",
+                        "the declared timestamp source is unavailable and no passed check is recorded", role=role,
+                    ))
+                continue
         if path is not None:
-            chronology.extend(timestamp_findings(path, str(binding["timestamp_column"]),
-                                                 int(binding.get("interval_minutes") or 30), role))
+            interval = binding.get("interval_minutes") or dict(binding.get("timestamp_check") or {}).get("interval_minutes") or 30
+            chronology.extend(timestamp_findings(
+                path, str(binding["timestamp_column"]), int(interval), role,
+                time_zone=str(binding.get("timestamp_time_zone") or "UTC"),
+            ))
 
     # Reading-dependent checks: index columns, forecast lag, magnitudes.
     readings: dict[str, Any] = {}
@@ -347,13 +363,101 @@ def profile_eligibility(manifest: Mapping[str, Any], layers: Mapping[str, Any], 
     return result
 
 
-def timestamp_findings(path: Path, column: str, interval_minutes: int, role: str) -> list[dict[str, Any]]:
+TIMESTAMP_TIME_ZONES = ("UTC", "Europe/London")
+TIMESTAMP_ROW_LIMIT = 50
+
+
+def _timestamp_source(pack_root: Path, uri: str) -> Path | None:
+    """The retained mapping source named by ``timestamp_uri`` (inside the pack), if present."""
+
+    root = Path(pack_root).resolve()
+    try:
+        path = (root / uri).resolve()
+        path.relative_to(root)
+    except (OSError, ValueError):
+        return None
+    return path if path.is_file() else None
+
+
+def parse_declared_timestamps(path: Path, column: str, time_zone: str = "UTC") -> pd.Series:
+    """Declared timestamps as UTC instants; an unreadable cell is NaT.
+
+    ``UTC``: naive stamps are UTC.  ``Europe/London``: naive stamps are local
+    wall-clock time (the repeated autumn hour is resolved by order, a
+    non-existent spring hour is NaT); stamps carrying an offset keep it.
+    """
+
+    if time_zone not in TIMESTAMP_TIME_ZONES:
+        raise ValueError(f"time zone must be one of {', '.join(TIMESTAMP_TIME_ZONES)}")
+    raw = pd.read_csv(path, usecols=[column], encoding="utf-8-sig", dtype=str, keep_default_na=False)[column].str.strip()
+    with_offset = raw.str.contains(r"(?:Z|[+-]\d{2}:?\d{2})$", regex=True)
+    if time_zone == "UTC" or bool(with_offset.all()):
+        return pd.to_datetime(raw, errors="coerce", utc=True, format="mixed")
+    naive = pd.to_datetime(raw.where(~with_offset), errors="coerce", format="mixed")
+    try:
+        local = naive.dt.tz_localize(time_zone, ambiguous="infer", nonexistent="NaT")
+    except (ValueError, TypeError):
+        local = naive.dt.tz_localize(time_zone, ambiguous="NaT", nonexistent="NaT")
+    stamps = local.dt.tz_convert("UTC")
+    if bool(with_offset.any()):
+        stamps = stamps.where(~with_offset, pd.to_datetime(raw.where(with_offset), errors="coerce", utc=True, format="mixed"))
+    return stamps
+
+
+def timestamp_row_problems(
+    path: Path, column: str, interval_minutes: int | None, *, time_zone: str = "UTC", limit: int = TIMESTAMP_ROW_LIMIT,
+) -> dict[str, Any]:
+    """Row-by-row problems of a declared timestamp column (spec 11.6, S-D4).
+
+    Rows are numbered as in the file (the header is row 1).  Each problem
+    row says what is wrong: unreadable, a duplicate of an earlier row, earlier
+    than the previous row, a gap, or an irregular step.  ``interval_minutes``
+    None infers a 30- or 60-minute step from the most common one.
+    """
+
+    stamps = parse_declared_timestamps(path, column, time_zone)
+    minutes = (stamps.diff().dt.total_seconds() / 60.0)
+    if interval_minutes is None:
+        positive = minutes[(minutes > 0)].round()
+        common = positive.mode()
+        interval_minutes = int(common.iloc[0]) if len(common) and int(common.iloc[0]) in (30, 60) else 30
+    seen: dict[Any, int] = {}
+    problems: list[dict[str, Any]] = []
+    for index, (stamp, step) in enumerate(zip(stamps, minutes)):
+        row = index + 2
+        text = None
+        if pd.isna(stamp):
+            text = "unreadable timestamp"
+        elif stamp in seen:
+            text = f"duplicate of row {seen[stamp]}"
+        elif index and not pd.isna(step):
+            if step < 0:
+                text = "earlier than the previous row"
+            elif step > interval_minutes:
+                text = f"gap of {step:g} minutes after the previous row (expected {interval_minutes})"
+            elif step != interval_minutes:
+                text = f"irregular step of {step:g} minutes (expected {interval_minutes})"
+        if not pd.isna(stamp):
+            seen.setdefault(stamp, row)
+        if text:
+            problems.append({"row": row, "timestamp": None if pd.isna(stamp) else stamp.isoformat(), "problem": text})
+    return {
+        "column": column, "time_zone": time_zone, "interval_minutes": interval_minutes,
+        "rows_checked": int(len(stamps)), "problem_count": len(problems), "problems": problems[:limit],
+        "first_utc": None if not len(stamps) or pd.isna(stamps.iloc[0]) else stamps.iloc[0].isoformat(),
+    }
+
+
+def timestamp_findings(path: Path, column: str, interval_minutes: int, role: str, *, time_zone: str = "UTC") -> list[dict[str, Any]]:
     """Monotonic, unique, gap-free declared timestamps (chronology layer)."""
 
     try:
-        stamps = pd.to_datetime(pd.read_csv(path, usecols=[column], encoding="utf-8-sig")[column], utc=True)
+        stamps = parse_declared_timestamps(path, column, time_zone)
     except (ValueError, KeyError, OSError) as exc:
         return [_finding("GF_DATA_TIMESTAMPS", "chronology", f"{path.name}: unreadable timestamps ({exc})", role=role)]
+    if stamps.isna().any():
+        return [_finding("GF_DATA_TIMESTAMPS", "chronology",
+                         f"{path.name}:{column} {int(stamps.isna().sum())} unreadable timestamp(s)", role=role)]
     step = stamps.diff().dropna()
     expected = pd.Timedelta(minutes=interval_minutes)
     problems = []

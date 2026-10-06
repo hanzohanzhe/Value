@@ -202,3 +202,77 @@ class EurPriceMappingTests(DataMappingTests):
         self.assertEqual(float(review["sample_rows"][0]["value"]), 12.0)
         binding = self.commit(review)["binding"]
         self.assertEqual((binding["unit"], binding["interval_minutes"]), ("MW", 30))
+
+    # Spec 11.6 (S-D4): a declared timestamp column is checked row by row by the chronology layer.
+    def _timed(self, rows):
+        return b"time,flow\n" + "".join(f"{stamp},6\n" for stamp in rows).encode()
+
+    def _half_hours(self, count, start="2025-01-01T00:00:00"):
+        import datetime as dt
+        first = dt.datetime.fromisoformat(start)
+        return [(first + dt.timedelta(minutes=30 * index)).strftime("%Y-%m-%d %H:%M") for index in range(count)]
+
+    def test_timestamp_column_is_declared_checked_and_kept(self):
+        roles = {row["role"]: row for row in self.service.catalog(self.pack_id)["roles"]}
+        self.assertTrue(roles["market.france.profile"]["timestamp_supported"])
+        self.assertEqual(roles["market.france.profile"]["time_zones"], ["UTC", "Europe/London"])
+        self.assertNotIn("timestamp_supported", roles["projects.repd"])
+        stage = self.stage(self._timed(self._half_hours(17520)), "market.france.profile")
+        columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]
+        review = self.service.preview(stage["stage_id"], {"schema_version": "value.data-mapping-preview-request/v1",
+            "source_sha256": stage["source_sha256"], "target_manifest_sha256": stage["target_manifest_sha256"],
+            "columns": columns, "timestamp": {"column": "time", "time_zone": "UTC"}})
+        self.assertTrue(review["valid"], review["errors"])
+        self.assertEqual((review["timestamp"]["problem_count"], review["timestamp"]["rows_checked"]), (0, 17520))
+        binding = self.commit(review)["binding"]
+        self.assertEqual((binding["timestamp_column"], binding["timestamp_time_zone"], binding["interval_minutes"]), ("time", "UTC", 30))
+        self.assertTrue((self.pack / binding["timestamp_uri"]).is_file())
+        self.assertEqual(binding["timestamp_check"]["status"], "passed")
+        # The pack's chronology layer re-checks the declared timestamps from the retained source.
+        from gridform_core.data_validation_layers import evaluate_layers
+        manifest = json.loads((self.pack / "manifest.json").read_text())
+        self.assertNotIn("GF_DATA_TIMESTAMPS", [row["code"] for row in evaluate_layers(self.pack, manifest)["chronology"]["findings"]])
+
+    def test_shifted_or_repeated_timestamps_are_listed_by_row_and_block_the_commit(self):
+        stamps = self._half_hours(17520)
+        stamps[3] = stamps[2]           # a repeated stamp (row 5 in the file)
+        stamps[10:] = self._half_hours(17510, start="2025-01-01T06:00:00")  # 04:30 -> 06:00 at row 12
+        stage = self.stage(self._timed(stamps), "market.france.profile")
+        columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]
+        review = self.service.preview(stage["stage_id"], {"schema_version": "value.data-mapping-preview-request/v1",
+            "source_sha256": stage["source_sha256"], "target_manifest_sha256": stage["target_manifest_sha256"],
+            "columns": columns, "timestamp": {"column": "time", "time_zone": "UTC"}})
+        self.assertFalse(review["valid"])
+        self.assertTrue(any(error.startswith("GF_DATA_TIMESTAMPS: ") for error in review["errors"]), review["errors"])
+        rows = {row["row"]: row["problem"] for row in review["timestamp"]["problems"]}
+        self.assertEqual(rows[5], "duplicate of row 4")
+        self.assertEqual(rows[12], "gap of 90 minutes after the previous row (expected 30)")
+        with self.assertRaises(DataMappingError) as refused:
+            self.commit(review)
+        self.assertEqual(refused.exception.code, "GF_MAPPING_NOT_VALIDATED")
+
+    def test_timestamp_declaration_is_validated(self):
+        stage = self.stage(self._timed(self._half_hours(4)), "market.france.profile")
+        columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]
+        base = {"schema_version": "value.data-mapping-preview-request/v1", "source_sha256": stage["source_sha256"],
+                "target_manifest_sha256": stage["target_manifest_sha256"], "columns": columns}
+        for timestamp in ({"column": "missing", "time_zone": "UTC"}, {"column": "flow", "time_zone": "UTC"},
+                          {"column": "time", "time_zone": "Europe/Paris"}, {"column": "time"}):
+            with self.subTest(timestamp=timestamp), self.assertRaises(DataMappingError) as refused:
+                self.service.preview(stage["stage_id"], {**base, "timestamp": timestamp})
+            self.assertEqual(refused.exception.code, "GF_MAPPING_TIMESTAMP")
+        project_stage, _ = self.project_review()
+        with self.assertRaises(DataMappingError) as refused:
+            self.service.preview(project_stage["stage_id"], {"schema_version": "value.data-mapping-preview-request/v1",
+                "source_sha256": project_stage["source_sha256"], "target_manifest_sha256": project_stage["target_manifest_sha256"],
+                "columns": [{"source": "id", "target": "project_id", "source_unit": None, "target_unit": None}],
+                "timestamp": {"column": "status", "time_zone": "UTC"}})
+        self.assertIn(refused.exception.code, {"GF_MAPPING_TIMESTAMP", "GF_MAPPING_COLUMNS"})
+
+    def test_london_wall_clock_across_the_autumn_change_is_regular(self):
+        from gridform_core.data_validation_layers import timestamp_row_problems
+        path = self.root / "london.csv"
+        path.write_text("time,v\n2025-10-26 00:30,1\n2025-10-26 01:00,1\n2025-10-26 01:30,1\n2025-10-26 01:00,1\n2025-10-26 01:30,1\n2025-10-26 02:00,1\n")
+        self.assertEqual(timestamp_row_problems(path, "time", 30, time_zone="Europe/London")["problem_count"], 0)
+        utc = timestamp_row_problems(path, "time", 30, time_zone="UTC")
+        self.assertEqual([row["problem"] for row in utc["problems"]], ["duplicate of row 3", "duplicate of row 4"])

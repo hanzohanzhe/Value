@@ -16,3 +16,13 @@
 .csv-mapping-fx-table { overflow-x:auto; min-width:0; }
 .csv-mapping-fx-table table { min-width:0; font-size:13px; }
 .csv-mapping-fx-table th { font-size:12px; color:var(--muted); text-align:left; }
+/* Spec 11.6 (S-D4, S-D5): timestamp declaration, its row-by-row report and the EUR hint (new elements; tokens only; >= 12px). */
+.csv-mapping-timestamp { min-width:0; display:grid; gap:10px; border:1px solid var(--line); border-radius:6px; }
+.csv-mapping-timestamp label { display:grid; gap:6px; }
+.csv-mapping-timestamp p { margin:0; font-size:12px; color:var(--muted); }
+.csv-mapping-hint { margin:0; padding:4px 8px; border-left:4px solid var(--amber); background:var(--amber-soft); color:var(--ink); font-size:13px; }
+.csv-mapping-timestamp-report { display:grid; gap:6px; min-width:0; overflow-x:auto; }
+.csv-mapping-timestamp-report p { margin:0; font-size:13px; }
+.csv-mapping-timestamp-report table { min-width:0; font-size:13px; }
+.csv-mapping-timestamp-report th { font-size:12px; color:var(--muted); text-align:left; }
+.csv-mapping-timestamp-report small { font-size:12px; color:var(--muted); }
