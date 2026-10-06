@@ -68,3 +68,60 @@ test('CSV mapping requires review confirmation, refreshes only after bound commi
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+// F-P05A-1 (designer ruling 2026-10-06): an EUR price column needs a declared rate, basis and year.
+test('an EUR price mapping requires the rate, basis and year before preview and shows original beside converted', { timeout: 45000 }, async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'value-csv-fx-ui-'));
+  let server, browser;
+  const role = 'market.belgium.price';
+  const priceStage = { ...stage, role, source_columns: ['eur'], rows: 1 };
+  const priceColumns = [{ source: 'eur', target: 'value', source_unit: 'EUR/MWh', target_unit: 'GBP/MWh' }];
+  const priceCatalog = { ...catalog('copy'), roles: [{ role, columns: [{ target: 'value', target_unit: 'GBP/MWh' }], fx_required_for: ['EUR/MWh'], conversion_pairs: [{ source_unit: 'EUR/MWh', target_unit: 'GBP/MWh', requires_fx: true }, { source_unit: 'GBP/MWh', target_unit: 'GBP/MWh' }], single_value: true }] };
+  const fx = { eur_per_gbp: 1.1, fx_basis: 'fixed rate', price_year: 2022 };
+  const priceReview = { ...review, role, columns: priceColumns, sample_rows: [{ value: '100' }], source_sample_rows: [{ eur: '110' }], fx };
+  try {
+    await build({ stdin: { contents: `import React from 'react';import{createRoot}from'react-dom/client';import Editor from './app/features/data/CsvMappingEditor';createRoot(document.getElementById('root')).render(<Editor packId="copy" manifestSha256="${sha}" role="${role}" onMapped={()=>{}}/>);`, resolveDir: root, loader: 'tsx' }, bundle: true, format: 'esm', jsx: 'automatic', outfile: path.join(directory, 'harness.js') });
+    await writeFile(path.join(directory, 'index.html'), '<div id="root"></div><script type="module" src="/harness.js"></script>');
+    server = createServer(async (request, response) => { try { const file = request.url === '/harness.js' ? 'harness.js' : 'index.html'; response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : 'text/html'); response.end(await readFile(path.join(directory, file))); } catch { response.writeHead(500).end(); } });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    browser = await chromium.launch(chromiumLaunchOptions());
+    const page = await browser.newPage();
+    const previews = [];
+    await page.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      let payload;
+      if (url.pathname.endsWith('/catalog')) payload = priceCatalog;
+      else if (url.pathname.endsWith('/stages')) payload = priceStage;
+      else if (url.pathname.endsWith('/preview')) { previews.push(route.request().postDataJSON()); payload = priceReview; }
+      else throw new Error(`Unexpected mapping request ${url.pathname}`);
+      await route.fulfill({ json: payload });
+    });
+    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.getByText('选择含标题行的 CSV', { exact: true }).waitFor();
+    await page.locator('input[type=file]').setInputFiles({ name: 'be.csv', mimeType: 'text/csv', buffer: Buffer.from('eur\n110') });
+    await page.getByLabel('CSV 来源列').selectOption('eur');
+    const previewButton = page.getByRole('button', { name: '预览规范样例并校验完整文件' });
+    assert.equal(await page.getByLabel('Currency').inputValue(), 'GBP');
+    assert.equal(await previewButton.isEnabled(), true);
+    await page.getByLabel('Currency').selectOption('EUR');
+    assert.equal(await page.getByLabel('原始单位').inputValue(), 'EUR/MWh');
+    assert.equal(await previewButton.isEnabled(), false, 'missing rate, basis and year block the preview');
+    assert.equal(await page.getByText(/^GF_MAPPING_FX/).count(), 3);
+    await page.getByLabel('EUR per GBP').fill('1.1');
+    await page.getByLabel('FX basis').selectOption('fixed rate');
+    await page.getByLabel('Price year').fill('1989');
+    assert.equal(await previewButton.isEnabled(), false);
+    await page.getByLabel('Price year').fill('2022');
+    assert.equal(await previewButton.isEnabled(), true);
+    await previewButton.click();
+    await page.getByText('converted at 1.1 EUR/GBP (fixed rate, 2022)', { exact: false }).waitFor();
+    assert.deepEqual(previews.at(-1).fx, fx);
+    assert.deepEqual(previews.at(-1).columns, priceColumns);
+    const cells = await page.locator('.csv-mapping-fx-table td').allTextContents();
+    assert.deepEqual(cells, ['110', '100']);
+  } finally {
+    await browser?.close();
+    if (server) await new Promise(resolve => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+  }
+});

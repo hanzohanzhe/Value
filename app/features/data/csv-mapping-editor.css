@@ -9,3 +9,10 @@
 .csv-mapping-confirm { display:flex; align-items:flex-start; gap:10px; }
 .csv-mapping-confirm input { flex:0 0 16px; width:16px; height:16px; min-height:16px; margin:3px 0 0; padding:0; }
 @media(max-width:640px) { .csv-mapping-columns { grid-template-columns:minmax(0,1fr); } .csv-mapping-editor { padding:12px; } }
+/* F-P05A-1: currency and EUR->GBP rate of a price column (new elements; tokens only; >= 12px). */
+.csv-mapping-fx { display:grid; gap:10px; min-width:0; }
+.csv-mapping-fx label { display:grid; gap:6px; }
+.csv-mapping-fx-error { color:var(--red); font-size:12px; }
+.csv-mapping-fx-table { overflow-x:auto; min-width:0; }
+.csv-mapping-fx-table table { min-width:0; font-size:13px; }
+.csv-mapping-fx-table th { font-size:12px; color:var(--muted); text-align:left; }

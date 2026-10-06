@@ -35,6 +35,7 @@
     "app/features/data-workbench/types.ts",
     "app/features/data/CsvMappingEditor.tsx",
     "app/features/data/csv-mapping-editor.css",
+    "app/features/data/csvMappingFx.ts",
     "app/features/data/csvMappingTypes.ts",
     "app/features/data/research-suite-api.mjs",
     "app/features/evidence/AuditView.tsx",
@@ -1279,6 +1280,7 @@
     "tests/frontend/render/study-methodology.test.mjs",
     "tests/frontend/unit/api-error.test.mjs",
     "tests/frontend/unit/comparison-review.test.mjs",
+    "tests/frontend/unit/csv-mapping-fx.test.mjs",
     "tests/frontend/unit/dispatch-view.test.mjs",
     "tests/frontend/unit/e2e-runner.test.mjs",
     "tests/frontend/unit/format.test.mjs",
@@ -3060,21 +3062,27 @@
     },
     {
       "path": "app/features/data/CsvMappingEditor.tsx",
-      "sha256": "6f970fd9ae3735d97ec0a4eaa32ae9bc5ebc24e655751a9cc89fbf7301d9122f",
-      "bytes": 17296,
+      "sha256": "f5a0224782645ab20757a5f66e6869b7030a717ea8e3c2a8f09c1d6b65006da6",
+      "bytes": 20479,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data/csv-mapping-editor.css",
-      "sha256": "4dd296b875f72651593bcc366e1d01d512e0971d9d814eadaf86ccbfccd7837d",
-      "bytes": 1086,
-      "transform": "byte copy"
+      "sha256": "86b5bde7aa2806de49c5e3aeb11c20bfbe9f5dab63889d2b18bbd43a8cd07eb7",
+      "bytes": 1550,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/data/csvMappingFx.ts",
+      "sha256": "265efcc280ca38a2ba4caef36b86c04998bcdab4154945053b5e7d5606fe33c2",
+      "bytes": 3135,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data/csvMappingTypes.ts",
-      "sha256": "db998a85ebc3a6083383e8804c895fcb97e5979d5dfba0ec972e1bb4f23dc797",
-      "bytes": 1538,
-      "transform": "byte copy"
+      "sha256": "78cc5fa925af4b1d4e6d3828dfa4be26ae1fcf318810cb2da2e00981658249ce",
+      "bytes": 1902,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data/research-suite-api.mjs",
@@ -3714,8 +3722,8 @@
     },
     {
       "path": "backend/data_mapping.py",
-      "sha256": "d9e574f443cfc1e79609b3318ea34c4518cfdae1c5b71256e35877fab11e08e2",
-      "bytes": 24538,
+      "sha256": "8c08c14ea5ae284fe7b53406959f4e77dcd8c24c1a53951c2b67d2abebfb06ca",
+      "bytes": 25132,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10435,8 +10443,8 @@
     },
     {
       "path": "tests/frontend/csv-mapping-editor.test.mjs",
-      "sha256": "34e61f49cc3719fc329d7f1586102ae46ba76b945ec20761bdabf2d2b4fc060c",
-      "bytes": 7408,
+      "sha256": "e8f237f9a5ab79b184ea5c31e8a3643722b327d9e8a6fc2ba0cfb62afa018aa4",
+      "bytes": 11918,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10515,6 +10523,12 @@
       "path": "tests/frontend/unit/comparison-review.test.mjs",
       "sha256": "247289338b3ef7305ed7ec7f7f92a001ce70745fd78654358f4a6955aac1ed37",
       "bytes": 1572,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/csv-mapping-fx.test.mjs",
+      "sha256": "b8f4b3b83f167791026325b88310a273047687de427b029102ce84c17b4be821",
+      "bytes": 2356,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10963,8 +10977,8 @@
     },
     {
       "path": "tests/test_data_mapping.py",
-      "sha256": "90c64b34a1ba60071b79584786cf3d1094eb7dc5b563238253a130094a25cc8e",
-      "bytes": 12603,
+      "sha256": "f2aa08f6e867a00b9f519529b41ece3d8f8a2c6d76f9c3c49691e2b9ee737aea",
+      "bytes": 12889,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

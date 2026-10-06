@@ -187,6 +187,9 @@ class EurPriceMappingTests(DataMappingTests):
         review = self.preview_with(stage, columns, {"eur_per_gbp": 1.1, "fx_basis": "toy fixed rate", "price_year": 2022})
         self.assertTrue(review["valid"], review["errors"])
         self.assertAlmostEqual(float(review["sample_rows"][0]["value"]), 100.0, places=9)
+        # F-P05A-1: the original EUR value is reported beside the converted one, with the rate used.
+        self.assertEqual(review["source_sample_rows"][0], {"eur": "110"})
+        self.assertEqual(review["fx"], {"eur_per_gbp": 1.1, "fx_basis": "toy fixed rate", "price_year": 2022})
         binding = self.commit(review)["binding"]
         self.assertEqual((binding["unit"], binding["currency"], binding["source_currency"]), ("GBP/MWh", "GBP", "EUR"))
         self.assertEqual((binding["eur_per_gbp"], binding["fx_basis"]), (1.1, "toy fixed rate"))

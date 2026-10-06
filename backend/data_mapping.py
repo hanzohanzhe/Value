@@ -285,6 +285,7 @@ class DataMappingService:
             errors = []
             validation = None
             sample = []
+            source_sample: list[dict[str, object]] = []
             digest = None
             size = 0
             try:
@@ -298,6 +299,13 @@ class DataMappingService:
                 validation = report["bindings"][0]
                 errors = list(validation["errors"])
                 sample = list(islice(csv.DictReader(io.StringIO(normalized.decode("utf-8"))), 20))
+                # F-P05A-1: the raw values of the mapped source columns for the same
+                # rows, so the UI shows the original EUR price beside the converted one.
+                mapped = [rule.source for rule in spec.columns]
+                source_sample = [
+                    {name: row.get(name) for name in mapped}
+                    for row in islice(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))), 20)
+                ]
                 if result.source_sha256 != stage["source_sha256"]:
                     raise DataMappingError("GF_MAPPING_IDENTITY", "Source changed during normalization.", 409)
             except (ValueError, OSError) as exc:
@@ -310,6 +318,7 @@ class DataMappingService:
                       "normalized_sha256": digest, "target_manifest_sha256": stage["target_manifest_sha256"],
                       "source_bytes": len(raw), "normalized_bytes": size, "rows": rows,
                       "columns": spec.to_dict()["columns"], "sample_rows": sample, "validation": validation,
+                      "source_sample_rows": source_sample, "fx": dict(fx) if fx else None,
                       "interval_minutes": spec.interval_minutes,
                       "expires_at": _iso(expires)}
             _write(directory / "metadata.json", {**review, "token": token, "expires_epoch": expires})
