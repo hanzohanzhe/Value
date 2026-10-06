@@ -2,7 +2,7 @@
 // The verdict comes from the backend (gridform_core/result_coverage.py); this
 // module only turns it into a pill, a sentence and the publish/withhold rule.
 import { formatNumber, withUnit } from "./format.ts";
-import { valueStateText } from "./valueStates.ts";
+import { valueStateText, type ValueStateKey } from "./valueStates.ts";
 import type { PillTone } from "./Callout.tsx";
 
 export type AnnualStatus = "complete" | "partial" | "non_annual" | "in_progress" | "invalid";
@@ -42,6 +42,34 @@ export function coverageReasonText(coverage: ResultCoverage | null | undefined):
   return COVERAGE_REASON_TEXT[coverage.reason_code] ?? coverage.reason_code.replaceAll("_", " ");
 }
 
+const STOPPED_REASONS = new Set(["run_cancelled_before_full_coverage", "run_failed_before_full_coverage"]);
+
+/** True when the verdict is "partial" because the Run was cancelled or failed. */
+export function isStoppedCoverage(coverage: ResultCoverage | null | undefined): boolean {
+  return coverage?.annual_status === "partial" && STOPPED_REASONS.has(coverage.reason_code);
+}
+
+/**
+ * Designer ruling 2: the state word of a year whose totals are not shown.
+ * "Withheld" is reserved for Q14 (a reproduction run that did not pass its raw
+ * invariants); coverage gaps use their own words.
+ */
+export function coverageStateKey(coverage: ResultCoverage | null | undefined): ValueStateKey {
+  if (!coverage) return "not_recorded";
+  switch (coverage.annual_status) {
+    case "non_annual": return "non_annual";
+    case "in_progress": return "in_progress";
+    case "invalid": return "invalid";
+    default: return isStoppedCoverage(coverage) ? "stopped" : "partial_year";
+  }
+}
+
+/** Coverage percentage of one year (falls back to the Run's percentage). */
+export function yearCoveragePercent(coverage: ResultCoverage | null | undefined, year: number): number | null {
+  const row = coverage?.years?.find((item) => item.year === year);
+  return row ? row.coverage_fraction * 100 : coverage?.coverage_percent ?? null;
+}
+
 /** The coverage pill of a whole Run (or of a result view). */
 export function coveragePill(coverage: ResultCoverage | null | undefined, options: { withheld?: boolean } = {}): CoveragePill {
   const title = coverageReasonText(coverage);
@@ -52,7 +80,7 @@ export function coveragePill(coverage: ResultCoverage | null | undefined, option
     case "non_annual": return { tone: "caution", text: valueStateText("non_annual"), title };
     case "in_progress": return { tone: "info", text: valueStateText("in_progress"), title };
     case "invalid": return { tone: "danger", text: valueStateText("invalid"), title };
-    default: return { tone: "caution", text: valueStateText("partial_year", coverage.coverage_percent), title };
+    default: return { tone: "caution", text: valueStateText(isStoppedCoverage(coverage) ? "stopped" : "partial_year", coverage.coverage_percent), title };
   }
 }
 
@@ -62,7 +90,9 @@ export function yearCoveragePill(coverage: ResultCoverage | null | undefined, ye
   if (coverage.annual_status === "non_annual" || coverage.annual_status === "invalid") return coveragePill(coverage);
   const row = coverage.years?.find((item) => item.year === year);
   if (row?.complete) return { tone: "ok", text: "Complete year", title: COVERAGE_REASON_TEXT.annual_coverage_complete };
-  return { tone: "caution", text: valueStateText("partial_year", row ? row.coverage_fraction * 100 : null), title: coverageReasonText(coverage) };
+  if (coverage.annual_status === "in_progress") return { tone: "info", text: valueStateText("in_progress"), title: coverageReasonText(coverage) };
+  const key = isStoppedCoverage(coverage) ? "stopped" : "partial_year";
+  return { tone: "caution", text: valueStateText(key, row ? row.coverage_fraction * 100 : null), title: coverageReasonText(coverage) };
 }
 
 /** Annual totals are published only for a complete verdict. Without a verdict (older backend) they stay visible under "Coverage not recorded". */

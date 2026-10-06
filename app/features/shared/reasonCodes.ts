@@ -4,12 +4,14 @@
 import { valueStateText, type ValueStateKey } from "./valueStates.ts";
 import { COVERAGE_REASON_TEXT } from "./coverageView.ts";
 
-export type ResultStatusView = { state: ValueStateKey | "reconciled"; tone: "danger" | "caution" | "muted" | "ok"; label: string; message: string; isError: boolean };
+export type ResultStatusView = { state: ValueStateKey | "reconciled"; tone: "danger" | "caution" | "muted" | "ok" | "info"; label: string; message: string; isError: boolean };
 
 const REASON_MESSAGES: Record<string, string> = {
   // Precise annual-coverage codes (gridform_core/result_coverage.py); result
   // queries return these in reason_code and the older wording in legacy_reason_code.
   ...COVERAGE_REASON_TEXT,
+  cancelled_before_year_complete: "The Run was cancelled before every declared year was computed; the missing years have no results.",
+  failed_before_year_complete: "The Run stopped with a failure before every declared year was computed; the missing years have no results.",
   result_artifact_missing: "This Run did not write the result artifact for this query.",
   attribution_evidence_not_recorded: "This Run did not record VRE curtailment attribution (for example, copperplate balancing records none).",
   legacy_contract_did_not_measure_avoided_curtailment: "This older ledger did not measure avoided curtailment.",
@@ -34,12 +36,27 @@ export function reasonMessage(reasonCode: string | null | undefined): string {
   return REASON_MESSAGES[reasonCode] ?? reasonCode.replaceAll("_", " ");
 }
 
-export function resultStatusView(status: string, reasonCode?: string | null): ResultStatusView {
+// Designer ruling 2: a result held back for coverage says why in its own word;
+// "Withheld" stays for Q14 (reproduction runs that did not pass their raw invariants).
+const COVERAGE_STATE_BY_REASON: Readonly<Record<string, { state: ValueStateKey; tone: ResultStatusView["tone"] }>> = {
+  annual_evidence_withheld_for_nonannual_run: { state: "non_annual", tone: "caution" },
+  run_in_progress: { state: "in_progress", tone: "info" },
+  immutable_completed_run_required: { state: "in_progress", tone: "info" },
+  run_cancelled_before_full_coverage: { state: "stopped", tone: "caution" },
+  run_failed_before_full_coverage: { state: "stopped", tone: "caution" },
+  annual_period_boundary_incomplete: { state: "partial_year", tone: "caution" },
+};
+
+export function resultStatusView(status: string, reasonCode?: string | null, coveragePercent?: number | null): ResultStatusView {
   const message = reasonMessage(reasonCode);
   switch (status) {
     case "reconciled": return { state: "reconciled", tone: "ok", label: "Reconciled", message: "", isError: false };
     case "invalid": return { state: "invalid", tone: "danger", label: valueStateText("invalid"), message, isError: true };
-    case "withheld": return { state: "withheld", tone: "caution", label: valueStateText("withheld"), message, isError: false };
+    case "withheld": {
+      const coverage = reasonCode ? COVERAGE_STATE_BY_REASON[reasonCode] : undefined;
+      if (coverage) return { state: coverage.state, tone: coverage.tone, label: valueStateText(coverage.state, coveragePercent), message, isError: false };
+      return { state: "withheld", tone: "caution", label: valueStateText("withheld"), message, isError: false };
+    }
     default: return { state: "unavailable", tone: "muted", label: valueStateText("unavailable"), message, isError: false };
   }
 }

@@ -27,7 +27,9 @@ test("a complete year shows its composition, legend and Not modelled mechanisms,
 test("a partial year withholds its annual totals", async () => {
   const partial = { annual_status: "partial", reason_code: "run_cancelled_before_full_coverage", coverage_fraction: 0.166, coverage_percent: 16.6, years: [{ year: 2025, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false }] };
   const text = textOf(await renderTsx(RESULTS, "AnnualResults", { runId: "r", results: [{ year: 2025, metrics }], coverage: partial }));
-  assert.match(text, /Partial year · 16\.6%/);
+  // Designer ruling 2: a cancelled Run's year reads "Stopped · n%", never "Withheld" (Q14 only).
+  assert.match(text, /Stopped · 16\.6%/);
+  assert.doesNotMatch(text, /Withheld/);
   assert.match(text, /Annual totals are not shown for 2025/);
   assert.doesNotMatch(text, /total system cost/);
   assert.doesNotMatch(text, /£240/);

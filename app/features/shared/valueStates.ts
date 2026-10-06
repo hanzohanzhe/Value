@@ -13,6 +13,7 @@ export type ValueStateKey =
   | "partial_year"
   | "non_annual"
   | "in_progress"
+  | "stopped"
   | "unavailable"
   | "invalid"
   | "withheld"
@@ -32,6 +33,8 @@ export const VALUE_STATES: Readonly<Record<ValueStateKey, ValueStateDefinition>>
   partial_year: { text: "Partial year · {coverage}%", tone: "amber" },
   non_annual: { text: "Non-annual run", tone: "amber" },
   in_progress: { text: "Running", tone: "blue" },
+  // Designer ruling 2 (M2 UI review): a cancelled or stopped Run's coverage; "Withheld" is only Q14.
+  stopped: { text: "Stopped · {coverage}%", tone: "amber" },
   unavailable: { text: "Unavailable", tone: "muted" },
   invalid: { text: "Invalid", tone: "red" },
   withheld: { text: "Withheld", tone: "amber" },
@@ -42,10 +45,10 @@ export function isValueStateKey(value: unknown): value is ValueStateKey {
   return typeof value === "string" && Object.hasOwn(VALUE_STATES, value);
 }
 
-/** Display text of a state word; `partial_year` needs the coverage percentage. */
+/** Display text of a state word; `partial_year` and `stopped` need the coverage percentage. */
 export function valueStateText(key: ValueStateKey, coveragePercent?: number | null): string {
   const text = VALUE_STATES[key].text;
-  if (key !== "partial_year") return text;
+  if (key !== "partial_year" && key !== "stopped") return text;
   const coverage = typeof coveragePercent === "number" && Number.isFinite(coveragePercent)
     ? String(Math.round(coveragePercent * 10) / 10)
     : "?";

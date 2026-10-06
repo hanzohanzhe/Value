@@ -779,7 +779,7 @@ test("partial-year coverage withholds annual totals and full-year events replay 
   });
   await page.goto("/");
   await page.getByRole("button", { name: /Network & redispatch/ }).click();
-  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Partial year · 16.6%");
+  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Stopped · 16.6%");
   await expect(page.getByText("Compact annual read model")).toHaveCount(0);
   await expect(page.getByRole("alert").filter({ hasText: "Annual totals not shown" })).toBeVisible();
   await page.getByRole("tab", { name: "Reliability" }).click();
@@ -826,7 +826,7 @@ test("a complete year of a cancelled Run shows its annual totals on the network 
   });
   await page.goto("/");
   await page.getByRole("button", { name: /Network & redispatch/ }).click();
-  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Partial year · 58.3%");
+  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Stopped · 58.3%");
   await expect(page.getByText("Final physical resource cost").first()).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "Annual totals not shown" })).toHaveCount(0);
 });

@@ -117,6 +117,24 @@ class ResultQueriesTests(unittest.TestCase):
         compact_result = query_vre_curtailment_results(self.root, {'source': 'compact'})
         self.assertEqual((compact_result['status'], compact_result['reason_code']), ('withheld', 'run_cancelled_before_full_coverage'))
 
+    def test_archived_cancelled_run_missing_a_year_is_unavailable_not_invalid(self):
+        # Designer ruling 3 (M2 UI review): one of two declared years computed,
+        # then cancelled and archived -> unavailable (grey), never a red invalid.
+        self.compact()
+        self.status['run_policy']['end_year'] = 2026
+        self.status.update(status='archived', archived_from_status='cancelled')
+        self.write_status()
+        result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        self.assertEqual((result['status'], result['reason_code']), ('unavailable', 'cancelled_before_year_complete'))
+        self.status.update(archived_from_status='failed')
+        self.write_status()
+        result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        self.assertEqual((result['status'], result['reason_code']), ('unavailable', 'failed_before_year_complete'))
+        # A completed Run with a missing year is still self-contradictory.
+        self.status.update(status='completed', archived_from_status=None)
+        self.write_status()
+        self.assertEqual(query_vre_curtailment_results(self.root, {'source': 'sqlite'})['status'], 'invalid')
+
     def test_missing_metadata_run_not_filled_from_container(self):
         database = self.root / 'model-output' / 'market' / 'market.sqlite'
         with sqlite3.connect(database) as conn:

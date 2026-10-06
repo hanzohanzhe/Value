@@ -3,6 +3,7 @@
 // always adds up to the headline total (a reconciliation residual makes up any
 // recorded difference) and a mechanism the method does not model is listed as
 // "Not modelled", never drawn as £0.
+import { formatNumber, withUnit } from "../shared/format.ts";
 
 export type MetricMap = Record<string, number | string | boolean | null | undefined>;
 
@@ -93,4 +94,20 @@ export function costComposition(metrics: MetricMap): CostComposition {
 /** Sum of the bar segments (equals the headline for a reconciled composition). */
 export function segmentTotal(composition: Pick<CostComposition, "segments">): number {
   return composition.segments.reduce((sum, segment) => sum + segment.amount, 0);
+}
+
+/**
+ * Designer ruling 1 (M2 UI review): the denominator of the average-cost figure
+ * follows the recorded cost definition. The CEM ledger divides by demand
+ * served; the legacy total (total_system_cost / total_energy_generated) by
+ * energy generated; an unknown definition says so instead of guessing.
+ */
+export function unitCostText(metrics: MetricMap): string {
+  const value = number(metrics, "cost_per_mwh_gbp");
+  if (value == null) return "Not evaluated";
+  const price = withUnit(formatNumber(value), "/MWh", "", "£");
+  const definitionId = String(metrics.system_cost_definition_id ?? "");
+  if (definitionId === NATIVE_DEFINITION) return `${price} served`;
+  if (definitionId === LEGACY_DEFINITION) return `${price} generated`;
+  return `${price} (basis not recorded)`;
 }

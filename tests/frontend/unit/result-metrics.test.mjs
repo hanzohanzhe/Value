@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { costComposition, segmentTotal } from "../../../app/features/runs/resultMetrics.ts";
+import { costComposition, segmentTotal, unitCostText } from "../../../app/features/runs/resultMetrics.ts";
 
 // P0-9 S9 (F3-04; spec 4.3).
 const native = {
@@ -57,4 +57,12 @@ test("an older Run without the VoLL flag says so", () => {
 test("the VoLL note follows the backend's declared basis (perfect foresight includes it; unknown is not guessed)", () => {
   assert.equal(costComposition({ ...native, system_cost_includes_voll: true }).vollNote, "includes VoLL");
   assert.equal(costComposition({ ...native, system_cost_includes_voll: null }).vollNote, "VoLL basis not recorded");
+});
+
+test("designer ruling 1: the unit-cost label follows the cost definition", () => {
+  assert.equal(unitCostText({ ...native, cost_per_mwh_gbp: 61.234 }), "£61.23/MWh served");
+  assert.equal(unitCostText({ system_cost_definition_id: "legacy_storage_tariff", cost_per_mwh_gbp: 55 }), "£55/MWh generated");
+  assert.equal(unitCostText({ system_cost_definition_id: "something-else", cost_per_mwh_gbp: 55 }), "£55/MWh (basis not recorded)");
+  assert.equal(unitCostText({ cost_per_mwh_gbp: 55 }), "£55/MWh (basis not recorded)");
+  assert.equal(unitCostText({ ...native, cost_per_mwh_gbp: null }), "Not evaluated");
 });

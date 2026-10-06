@@ -17,6 +17,8 @@ export type CurtailmentQueryResponse = {
   reason_code: string | null;
   /** Older wording of an annual-coverage verdict (reason_code carries the precise code). */
   legacy_reason_code?: string | null;
+  /** Shared annual-coverage verdict of annual queries (P0-9 S5). */
+  coverage?: { coverage_percent?: number | null } | null;
   identity: {
     run_id: string; requested_run_id: string; recorded_run_id: string | null;
     study_id: string | null; study_revision: string | null; input_snapshot_id: string | null;

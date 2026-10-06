@@ -10,7 +10,7 @@ from typing import Mapping
 
 from gridform_core.market_ledger import _read_only_connection, market_ledger_capabilities, ATTRIBUTION_SCHEMA_VERSIONS
 from gridform_core.result_advisories import withheld_annual_result
-from gridform_core.result_coverage import REASON_NON_ANNUAL, is_non_annual, legacy_reason, result_coverage, year_bounds_from_rows
+from gridform_core.result_coverage import REASON_CANCELLED, REASON_NON_ANNUAL, is_non_annual, legacy_reason, result_coverage, stopped_reason, year_bounds_from_rows
 from gridform_core.results_summary import validate_vre_curtailment_attribution
 from gridform_core.zonal_results import query_zonal_annual_brief, query_zonal_results
 from gridform_core.vre_curtailment_attribution import ATTRIBUTION_METHOD_ID
@@ -221,6 +221,13 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
                 return result
             brief_years = query_zonal_annual_brief(database)["years"]
             if not expected_years or {item["year"] for item in brief_years} != set(expected_years):
+                # Designer ruling 3 (M2 UI review): a Run that was cancelled (or
+                # failed) before a declared year completed is not self-contradictory;
+                # a missing year is then unavailable, never a red "invalid".
+                stopped = stopped_reason(status)
+                if stopped is not None and expected_years and {item["year"] for item in brief_years} <= set(expected_years):
+                    result.update(status="unavailable", reason_code="cancelled_before_year_complete" if stopped == REASON_CANCELLED else "failed_before_year_complete")
+                    return result
                 result.update(status="invalid", reason_code="vre_curtailment_annual_year_set_invalid")
                 return result
             with _read_only_connection(database) as connection:

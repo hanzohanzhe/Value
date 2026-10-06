@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  annualTotalsPublishable, coveragePill, reliabilityEmptyText, yearCoveragePill, yearTotalsPublishable,
+  annualTotalsPublishable, coveragePill, coverageStateKey, reliabilityEmptyText, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable,
 } from "../../../app/features/shared/coverageView.ts";
+import { valueStateText, valueStateTone } from "../../../app/features/shared/valueStates.ts";
 import { modelTimestamp, reliabilityQuery, reliabilityRow, replayWindowStart } from "../../../app/features/network/reliabilityView.ts";
 import { payload } from "../helpers/fixtures.mjs";
 
@@ -16,12 +17,28 @@ const complete = {
   years: [{ year: 2025, first_period: 0, last_period: 17519, period_count: 17520, coverage_fraction: 1, complete: true }],
 };
 
-test("a cancelled 16.6 % year is a partial year and its totals are not published", () => {
-  assert.deepEqual(coveragePill(partial).text, "Partial year · 16.6%");
+test("a cancelled 16.6 % year reads 'Stopped · 16.6%' and its totals are not published", () => {
+  // Designer ruling 2: cancelled/stopped -> "Stopped · n%"; "Withheld" is only Q14.
+  assert.deepEqual(coveragePill(partial).text, "Stopped · 16.6%");
   assert.equal(coveragePill(partial).tone, "caution");
   assert.equal(annualTotalsPublishable(partial), false);
-  assert.equal(yearCoveragePill(partial, 2025).text, "Partial year · 16.6%");
+  assert.equal(yearCoveragePill(partial, 2025).text, "Stopped · 16.6%");
   assert.equal(yearTotalsPublishable(partial, 2025), false);
+});
+
+test("designer ruling 2: partial, running and stopped years each have their own word", () => {
+  const boundary = { ...partial, reason_code: "annual_period_boundary_incomplete" };
+  assert.equal(coveragePill(boundary).text, "Partial year · 16.6%");
+  assert.equal(coverageStateKey(boundary), "partial_year");
+  assert.equal(coverageStateKey(partial), "stopped");
+  assert.equal(coverageStateKey({ ...partial, reason_code: "run_failed_before_full_coverage" }), "stopped");
+  const running = { ...partial, annual_status: "in_progress", reason_code: "run_in_progress" };
+  assert.deepEqual([yearCoveragePill(running, 2025).text, yearCoveragePill(running, 2025).tone], ["Running", "info"]);
+  assert.equal(coverageStateKey(running), "in_progress");
+  assert.equal(yearCoveragePercent(partial, 2025), 2908 / 17520 * 100);
+  assert.equal(valueStateText("stopped", 16.6), "Stopped · 16.6%");
+  assert.equal(valueStateTone("stopped"), "amber");
+  for (const coverage of [partial, boundary, running]) assert.notEqual(coveragePill(coverage).text, "Withheld");
 });
 
 test("pill texts and tones follow spec 4.2", () => {

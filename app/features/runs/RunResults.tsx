@@ -6,8 +6,8 @@ import { formatOptionalNetworkNumber } from "../network/networkRedispatch";
 import { Badge, formatNumber, formatMoney, withUnit } from "../shared/presentation";
 import { apiUrl, getJson } from "../shared/api";
 import { StatusPill, ValueState } from "../shared/Callout";
-import { coverageReasonText, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
-import { costComposition } from "./resultMetrics.ts";
+import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
+import { costComposition, unitCostText } from "./resultMetrics.ts";
 import type { ResultPublication } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
@@ -15,9 +15,6 @@ import "./run-results.css";
 function metricNumber(result: RunResult, key: string): number | null {
   const value = result.metrics[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-function perMwhServed(value: number | null): string {
-  return value == null ? "Not evaluated" : `${withUnit(formatNumber(value), "/MWh", "", "£")} served`;
 }
 function energyMwh(value: number | null): string {
   return value == null ? "Not evaluated" : `${withUnit(formatNumber(value), "MWh")}`;
@@ -120,13 +117,14 @@ export function AnnualResults({ runId, results, coverage, onOpenInspect, publica
   const latest = sorted.at(-1)!;
   const published = (year: number) => yearTotalsPublishable(coverage, year);
   const maxCost = Math.max(...sorted.filter((item) => published(item.year)).map((item) => metricNumber(item, "total_system_cost_gbp") ?? 0), 1);
-  const withheldNote = (year: number) => <div className="annual-withheld value-new-control"><ValueState state={coverage?.annual_status === "non_annual" ? "non_annual" : "withheld"} /> <span>{coverageReasonText(coverage)} Annual totals are not shown for {year}.</span>{onOpenInspect && <button type="button" className="value-action-link" onClick={onOpenInspect}>Open in Inspect</button>}</div>;
+  // Designer ruling 2: the coverage word (Partial year · n%, Running, Stopped · n%); "Withheld" is only Q14.
+  const withheldNote = (year: number) => <div className="annual-withheld value-new-control"><ValueState state={coverageStateKey(coverage)} coveragePercent={yearCoveragePercent(coverage, year)} /> <span>{coverageReasonText(coverage)} Annual totals are not shown for {year}.</span>{onOpenInspect && <button type="button" className="value-action-link" onClick={onOpenInspect}>Open in Inspect</button>}</div>;
   const latestPill = yearCoveragePill(coverage, latest.year);
   return <div className="results-cockpit">
     <section className="latest-result">
       <div><small>Latest completed year</small><strong>{latest.year}</strong><StatusPill tone={latestPill.tone} title={latestPill.title}>{latestPill.text}</StatusPill>{published(latest.year) ? <span>{formatMoney(metricNumber(latest, "total_system_cost_gbp"))} total system cost</span> : withheldNote(latest.year)}</div>
       {published(latest.year) && <div className="metric-grid">
-        <span><small>Average system cost</small><b>{perMwhServed(metricNumber(latest, "cost_per_mwh_gbp"))}</b></span>
+        <span><small>Average system cost</small><b>{unitCostText(latest.metrics)}</b></span>
         <span><small>Annualised capital</small><b>{formatMoney(metricNumber(latest, "total_levelized_capital_cost_gbp"))}</b></span>
         <span><small>Operating cost</small><b>{formatMoney(metricNumber(latest, "total_operational_cost_gbp"))}</b></span>
         <span><small>Unserved demand</small><b>{energyMwh(metricNumber(latest, "blackout_mwh"))}</b></span>
@@ -149,7 +147,7 @@ export function AnnualResults({ runId, results, coverage, onOpenInspect, publica
         : null;
       const missingCurtailmentReason = unavailableCurtailmentReason(result);
       return <details className="year-record" key={result.year} open={index === 0}>
-        <summary><span><b>{result.year}</b><StatusPill tone={pill.tone} title={pill.title}>{pill.text}</StatusPill><small>{yearPublished ? `${formatMoney(metricNumber(result, "total_system_cost_gbp"))} · ${perMwhServed(metricNumber(result, "cost_per_mwh_gbp"))}` : "Annual totals withheld"}</small></span><em>View year</em></summary>
+        <summary><span><b>{result.year}</b><StatusPill tone={pill.tone} title={pill.title}>{pill.text}</StatusPill><small>{yearPublished ? `${formatMoney(metricNumber(result, "total_system_cost_gbp"))} · ${unitCostText(result.metrics)}` : "Annual totals not shown"}</small></span><em>View year</em></summary>
         {!yearPublished ? withheldNote(result.year) : <>
         <CostComposition result={result} />
         <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${withUnit(formatNumber(metricNumber(result, "total_carbon_emissions_tco2e")), "tCO₂e")}`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>

@@ -40,14 +40,14 @@ test("a missing value breaks the line instead of dropping it to 0", () => {
   assert.deepEqual(segments, ["0,1", "20,3 30,4"]);
 });
 
-test("a partial year of a cancelled annual Run is a partial year, not non-annual (review response, S8)", () => {
+test("a partial year of a cancelled annual Run reads 'Stopped · n%', not non-annual (review response, S8; designer ruling 2)", () => {
   const year = { year: 2025, period_count: 2908, full_chronology: false };
   const cancelled = { annual_status: "partial", reason_code: "run_cancelled_before_full_coverage", coverage_fraction: 2908 / 17520, coverage_percent: 16.6, years: [{ year: 2025, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false }] };
   const coverage = vreYearCoverage(year, cancelled);
-  assert.equal(coverage.line, "2025 · Partial year · 16.6%");
-  assert.equal(coverage.badge, "Partial year · 16.6%");
+  assert.equal(coverage.line, "2025 · Stopped · 16.6%");
+  assert.equal(coverage.badge, "Stopped · 16.6%");
   assert.equal(coverage.tone, "warn");
-  assert.match(coverage.heading, /^Partial year · 16\.6% — not an annual result$/);
+  assert.match(coverage.heading, /^Stopped · 16\.6% — not an annual result$/);
   assert.doesNotMatch(kpiCoverageLine(year, cancelled), /non-annual/);
   // a complete year inside a stopped Run keeps its year label, as on the Runs page
   const twoYears = { ...cancelled, years: [{ year: 2025, first_period: 0, last_period: 17519, period_count: 17520, coverage_fraction: 1, complete: true }] };
