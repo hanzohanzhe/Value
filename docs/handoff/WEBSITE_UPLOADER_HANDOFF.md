@@ -1,5 +1,8 @@
 # VALUE 0.7.0-alpha.1 网站交接文档（给 value.ac 上传员）
 
+> **阅读提示（2026-10-07）：** 本文件可以照常阅读，并开始准备网站文字。但按 DECISIONS A17，**网站上传和发布要等前端整体翻新完成之后**，因为网站截图和界面说明要以翻新后的版本为准。以下内容在下一轮还会变动：修正口径的弃电顺序（A19）、电池扩容上限（A20），以及四类用户测试修复带来的界面细节。
+
+
 - 日期：2026-10-06。分支 `fix/review-2026-10-04`，对照 `main`（35aadb3，即 0.6.0-alpha.2 的源码）。
 - 读者：维护 `website/`（`build.py`、`content.py`、`journey.py`、`site.json`、`methodology_page.py`、`publication.py`、`release_candidate.py`、`static/`）并上传 value.ac 的人。
 - 本文只写交接内容，没有改动 `website/` 下的任何文件。本分支上 `website/` 与 35aadb3 逐字节相同（`git diff 35aadb3 -- website/` 为空），所以文中的行号对两边都适用。

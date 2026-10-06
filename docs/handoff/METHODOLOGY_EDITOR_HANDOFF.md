@@ -1,5 +1,12 @@
 # VALUE 方法学修改员交接文档（方法学 0.4 版次）
 
+> **阅读提示（2026-10-07）：** 本文件可以照常阅读，并开始修改方法学草稿。以下内容在下一轮施工中还会变动，请先不要定稿：
+> - **下调与弃电顺序**（修正口径）：改为比较“火电重启成本 − 省下的燃料、碳和可变成本”与风电弃电代价 0（DECISIONS A19）。重启成本的取值待查证和审核。本文中写着“修正口径先降火电”的地方都会改。
+> - **电池扩容上限**（修正口径）：撤回“三种电池共用一个功率池”，恢复为按类型分别乘 0.2（A20）。
+> - **界面相关的描述**：会随四类用户测试的修复小幅调整。
+> 论文复现口径的内容不受这一轮影响。
+
+
 - 日期：2026-10-06。分支 `fix/review-2026-10-04`（只在本地，未推送），对照 `main`（35aadb3，即 VALUE 0.6.0-alpha.2 的源码）。应用版本 0.7.0-alpha.1。
 - 读者：维护以下文件的人：`docs/methodology/`（`en/`、`zh/`、`VALUE_METHODOLOGY.md`、`README.md`、`edition.json`、`generation.json`、`artifacts.json`）、`docs/MATHEMATICAL_REFERENCE.md`、`docs/SCHEME_C_MODEL_CARD.md`、`docs/VALIDATION_AND_CLAIMS.md`，以及方法学文档构建工具（`scripts/methodology/`、`scripts/build_value_methodology_pdf.py`、`website/sync_methodology.py`）。
 - 交付：DECISIONS“收尾交付”第 2 项。仓库副本为 `docs/handoff/METHODOLOGY_EDITOR_HANDOFF.md`，worktree 根目录副本为 `VALUE_handoff_methodology_editor_2026-10-04.md`。
