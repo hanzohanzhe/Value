@@ -1,0 +1,216 @@
+{
+  "schema_version": "value.vre-cf-disclosure/v1",
+  "table_id": "value-uk-vre-cf-disclosure-v1",
+  "status": "Disclosure only (DECISIONS A9, A13): the model capacity factors are NOT calibrated to DUKES. DUKES values read from the DESNZ xlsx in F1 (docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md 3.4).",
+  "decision_ids": [
+    "A9",
+    "A13",
+    "Q15"
+  ],
+  "model_basis": "Unweighted mean over the pack's representative weather sites of the per-period dispatch availability (capacity factor), 17,520 half-hour periods, before curtailment and before market dispatch; computed by scripts/vre_cf_disclosure.py for each dispatch weather method.",
+  "dukes": {
+    "basis": "DESNZ DUKES 2026 table 6.3, load factor on the standard basis (generation / average of beginning- and end-of-year capacity) [X]; actual generation after curtailment and constraint actions, whole GB fleet.",
+    "source": "DESNZ, Digest of UK Energy Statistics 2026, table 6.3 'Load factors for renewable electricity generation' (xlsx, published 2026-07-30, accessed 2026-10-06)",
+    "technologies": {
+      "onshore": {
+        "by_year": {
+          "2019": 0.2652,
+          "2020": 0.2828,
+          "2021": 0.2344,
+          "2022": 0.2732,
+          "2023": 0.2506,
+          "2024": 0.2498
+        },
+        "mean_2019_2024": 0.259333,
+        "mean_2020_2024": 0.25816
+      },
+      "offshore": {
+        "by_year": {
+          "2019": 0.4054,
+          "2020": 0.4592,
+          "2021": 0.3775,
+          "2022": 0.4129,
+          "2023": 0.3949,
+          "2024": 0.3599
+        },
+        "mean_2019_2024": 0.401633,
+        "mean_2020_2024": 0.40088
+      },
+      "solar": {
+        "by_year": {
+          "2019": 0.1074,
+          "2020": 0.1054,
+          "2021": 0.0993,
+          "2022": 0.1106,
+          "2023": 0.105,
+          "2024": 0.0922
+        },
+        "mean_2019_2024": 0.103317,
+        "mean_2020_2024": 0.1025
+      }
+    },
+    "not_used": "The DUKES 'wind total' row is not used: its 2020 and 2021 standard-basis values disagree with the components (reference statistics 3.4)."
+  },
+  "reasons": [
+    {
+      "id": "era5-wind-speed",
+      "applies_to": [
+        "onshore",
+        "offshore"
+      ],
+      "text": "ERA5 100 m wind speeds are not bias-corrected; uncorrected reanalysis overstates north-west European wind output (Staffell & Pfenninger 2016, Energy 114:1224-1239). The literature loss factors do not remove this bias (A9)."
+    },
+    {
+      "id": "free-stream-power-curve",
+      "applies_to": [
+        "onshore",
+        "offshore"
+      ],
+      "text": "One free-stream single-turbine power curve per site (cut-in 3 m/s, rated 9.7 / 10.5 m/s), without power-curve smoothing over a farm; wake, availability and electrical losses are applied as literature factors only (A9)."
+    },
+    {
+      "id": "pre-curtailment",
+      "applies_to": [
+        "onshore",
+        "offshore",
+        "solar"
+      ],
+      "text": "The model CF is the available output before curtailment; DUKES load factors are actual generation after curtailment and constraint actions."
+    },
+    {
+      "id": "representative-sites",
+      "applies_to": [
+        "onshore",
+        "offshore",
+        "solar"
+      ],
+      "text": "The model CF is an unweighted mean over a few representative sites, not the capacity-weighted GB fleet; site selection may favour good resource (not verified)."
+    },
+    {
+      "id": "climatology",
+      "applies_to": [
+        "onshore",
+        "offshore",
+        "solar"
+      ],
+      "text": "GBP1 weather is an ERA5 2020-2024 average climatology (finding P6-09), not one historical year; for solar it lowers the clearness index, raises the diffuse share and shrinks the plane-of-array gain (A13)."
+    },
+    {
+      "id": "dukes-solar-estimated",
+      "applies_to": [
+        "solar"
+      ],
+      "text": "DUKES solar generation of small installations is estimated with a typical load factor (DUKES 6.2 note 8), so the solar comparison is less precise than wind."
+    },
+    {
+      "id": "synthetic-teaching-data",
+      "applies_to": [
+        "onshore",
+        "offshore",
+        "solar"
+      ],
+      "text": "VALUE 101 weather is synthetic teaching data; its capacity factors are not comparable with DUKES."
+    }
+  ],
+  "model_reference": [
+    {
+      "label": "value-101-baseline-v1",
+      "pack_ids": [
+        "value-101-baseline-v1"
+      ],
+      "object_sha256": {
+        "weather.solar": "ecb5e3728cc8dc9f7019e3892576d967cecbee8065fb84b197025b8a404147d4",
+        "weather.wind": "e8efc1876eaa5c88f946e600d2f6d051e092b24576e2a0095a88cdd738d65681",
+        "fleet.generators": "ba7a13c17b038ad4010e4ed3acbc47d4b0cc8639346a7c1edff8b5b802852cb1"
+      },
+      "representative_sites": {
+        "offshore": 21,
+        "onshore": 11,
+        "solar": 11
+      },
+      "by_method": {
+        "value.doctoral-site-weather/v1": {
+          "offshore": 0.326954,
+          "onshore": 0.413172,
+          "solar": 0.250027
+        },
+        "value.site-weather/v2+clock-v2+losses-v1": {
+          "offshore": 0.266457,
+          "onshore": 0.373123,
+          "solar": 0.207522
+        },
+        "value.site-weather/v2+clock-v2+losses-v1+solar-poa-v1": {
+          "offshore": 0.266457,
+          "onshore": 0.373123,
+          "solar": 0.207522
+        }
+      }
+    },
+    {
+      "label": "value-uk-open-data-pack-v1",
+      "pack_ids": [
+        "value-uk-open-data-pack-v1"
+      ],
+      "object_sha256": {
+        "weather.solar": "634e22afa820b3e972fc8648e7e7d5ce6b9dd1caf025ac71ef30afe7950ec977",
+        "weather.wind": "56ba374ddb9c2142ba5090f4e812e0d05ea6d27f588275ce1e04cbc7b0f5bfee",
+        "fleet.generators": "4fa89eeda8187ac656704ee2a47ec2be73d671ad96e46bb08cba2e19868a9dab"
+      },
+      "representative_sites": {
+        "offshore": 21,
+        "onshore": 11,
+        "solar": 11
+      },
+      "by_method": {
+        "value.doctoral-site-weather/v1": {
+          "offshore": 0.602843,
+          "onshore": 0.445798,
+          "solar": 0.120081
+        },
+        "value.site-weather/v2+clock-v2+losses-v1": {
+          "offshore": 0.491289,
+          "onshore": 0.40257,
+          "solar": 0.099667
+        },
+        "value.site-weather/v2+clock-v2+losses-v1+solar-poa-v1": {
+          "offshore": 0.491289,
+          "onshore": 0.40257,
+          "solar": 0.106529
+        }
+      }
+    },
+    {
+      "label": "value-uk-calendar-vx-trade001",
+      "pack_ids": [
+        "value-uk-calendar-vx-trade001"
+      ],
+      "object_sha256": {
+        "weather.solar": "3320123be4e244e70800cc929425fae7c224d5cf5e5d57e4639fc71ba145d16f",
+        "weather.wind": "e25a37c05239afd805ab85ee61af63b44e2a4b52fd63542f1d8c414ca3d56e8f",
+        "fleet.generators": "4fa89eeda8187ac656704ee2a47ec2be73d671ad96e46bb08cba2e19868a9dab"
+      },
+      "representative_sites": {
+        "offshore": 21,
+        "onshore": 11,
+        "solar": 11
+      },
+      "by_method": {
+        "value.doctoral-site-weather/v1": {
+          "offshore": 0.602895,
+          "onshore": 0.445363,
+          "solar": 0.12003
+        },
+        "value.site-weather/v2+clock-v2+losses-v1": {
+          "offshore": 0.49134,
+          "onshore": 0.402194,
+          "solar": 0.099625
+        },
+        "value.site-weather/v2+clock-v2+losses-v1+solar-poa-v1": {
+          "offshore": 0.49134,
+          "onshore": 0.402194,
+          "solar": 0.099625
+        }
+      }
+    }
+  ]
+}

@@ -224,6 +224,15 @@ def _runtime_fallback_summary(market_dir: Path) -> dict[str, object] | None:
     return guarded_runtime_fallback_audit(market_dir)
 
 
+def _vre_cf_disclosure(run_root: Path, methodology: object) -> dict[str, object] | None:
+    from .vre_cf_disclosure import run_disclosure
+
+    try:
+        return run_disclosure(run_root, methodology if isinstance(methodology, Mapping) else None)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def build_run_summary(run_root: Path) -> dict[str, object]:
     status = _read(run_root / "status.json", {})
     if not isinstance(status, Mapping):
@@ -361,6 +370,10 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         # P0-8 S12: share of each technology placed in a fallback zone;
         # None when the Run is not zonal or predates the audit.
         "zonal_runtime_fallback": _runtime_fallback_summary(output / "market"),
+        # A9/A13: model pre-curtailment wind/solar CF of the Run's weather and
+        # weather method next to DUKES load factors, with the stated reasons.
+        # A methodology disclosure, not an annual result: kept when withheld.
+        "vre_capacity_factor_disclosure": _vre_cf_disclosure(run_root, presented.get("methodology")),
         "terminal": {
             key: terminal.get(key) for key in (
                 "terminal_policy", "outstanding_project_count", "outstanding_capacity_mw",

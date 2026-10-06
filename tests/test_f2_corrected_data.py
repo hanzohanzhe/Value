@@ -344,5 +344,99 @@ class HydroLoadFactorTests(unittest.TestCase):
         np.testing.assert_allclose(kernel["Hydro_natural_flow"], hydro, rtol=0, atol=1e-15)
 
 
+class CapacityFactorDisclosureTests(unittest.TestCase):
+    """A9: model pre-curtailment CF next to DUKES 6.3 load factors, with reasons (results payload)."""
+
+    def _gbp1_shas(self):
+        from gridform_core import vre_cf_disclosure as vd
+
+        row = next(item for item in vd.load_table()["model_reference"]
+                   if "value-uk-open-data-pack-v1" in item["pack_ids"])
+        return dict(row["object_sha256"])
+
+    def test_table_dukes_and_reasons(self):
+        from gridform_core import vre_cf_disclosure as vd
+
+        table = vd.load_table()
+        dukes = table["dukes"]["technologies"]
+        self.assertEqual((dukes["onshore"]["mean_2020_2024"], dukes["offshore"]["mean_2020_2024"],
+                          dukes["solar"]["mean_2020_2024"]), (0.25816, 0.40088, 0.1025))
+        self.assertEqual(dukes["onshore"]["by_year"]["2019"], 0.2652)
+        ids = {item["id"] for item in table["reasons"]}
+        self.assertTrue({"era5-wind-speed", "free-stream-power-curve", "pre-curtailment"} <= ids)
+
+    def test_gbp1_disclosure_under_the_corrected_method(self):
+        from gridform_core import vre_cf_disclosure as vd
+
+        result = vd.disclosure(self._gbp1_shas(), F2_METHOD.method_id)
+        self.assertEqual(result["status"], "tabulated")
+        self.assertTrue(result["disclosure_only"])
+        comparison = result["comparison"]
+        self.assertEqual(comparison["onshore"]["model_pre_curtailment_cf"], 0.40257)
+        self.assertEqual(comparison["offshore"]["model_pre_curtailment_cf"], 0.491289)
+        self.assertEqual(comparison["solar"]["model_pre_curtailment_cf"], 0.106529)
+        self.assertEqual(comparison["onshore"]["ratio_to_dukes_2020_2024"], round(0.40257 / 0.25816, 4))  # 1.5594
+        self.assertEqual(comparison["solar"]["ratio_to_dukes_2020_2024"], round(0.106529 / 0.1025, 4))   # 1.0393
+        doctoral = vd.disclosure(self._gbp1_shas(), sw.FROZEN.method_id)
+        self.assertEqual(doctoral["comparison"]["offshore"]["model_pre_curtailment_cf"], 0.602843)
+        unknown = vd.disclosure({**self._gbp1_shas(), "weather.wind": "0" * 64}, F2_METHOD.method_id)
+        self.assertEqual((unknown["status"], unknown["comparison"]), ("not_tabulated", None))
+        self.assertIn("onshore", unknown["dukes_load_factor"])
+
+    def _run_root(self, temporary: Path, *, profile: str | None, netcdf: bool = True) -> Path:
+        from gridform_core.methodology import resolve_methodology
+
+        root = temporary / "run"
+        (root / "model-output" / "ledgers").mkdir(parents=True)
+        (root / "input-snapshot" / "pack").mkdir(parents=True)
+        manifest = json.loads((PACK_101 / "manifest.json").read_text(encoding="utf-8"))
+        if not netcdf:
+            for role in ("weather.solar", "weather.wind"):
+                manifest["bindings"].pop(role, None)
+        (root / "input-snapshot" / "pack" / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        status = {"id": "run", "mode": "smoke", "status": "completed",
+                  "run_policy": {"periods_per_year": 17520, "start_year": 2025, "end_year": 2025}, "results": []}
+        if profile is not None:
+            status["methodology"] = resolve_methodology(profile).to_dict()
+        (root / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        (root / "model-output" / "ledgers" / "annual-cost-ledger.json").write_text(
+            json.dumps({"definition_id": "cost-v1", "years": []}), encoding="utf-8")
+        return root
+
+    def test_run_summary_carries_the_disclosure(self):
+        import tempfile
+
+        from gridform_core.results_summary import build_run_summary
+
+        with tempfile.TemporaryDirectory() as temporary:
+            corrected = build_run_summary(self._run_root(Path(temporary), profile=CORRECTED))
+        block = corrected["vre_capacity_factor_disclosure"]
+        self.assertEqual((block["status"], block["weather_method_id"]), ("tabulated", F2_METHOD.method_id))
+        self.assertEqual(block["reference_label"], "value-101-baseline-v1")
+        self.assertEqual(block["comparison"]["solar"]["model_pre_curtailment_cf"], 0.207522)
+        with tempfile.TemporaryDirectory() as temporary:
+            doctoral = build_run_summary(self._run_root(Path(temporary), profile=DOCTORAL))
+        block = doctoral["vre_capacity_factor_disclosure"]
+        self.assertEqual((block["status"], block["weather_method_id"]), ("tabulated", sw.WEATHER_V1))
+        self.assertEqual(block["comparison"]["solar"]["model_pre_curtailment_cf"], 0.250027)
+        with tempfile.TemporaryDirectory() as temporary:
+            legacy = build_run_summary(self._run_root(Path(temporary), profile=None))
+        self.assertEqual(legacy["vre_capacity_factor_disclosure"]["status"], "methodology_not_recorded")
+        with tempfile.TemporaryDirectory() as temporary:
+            csv = build_run_summary(self._run_root(Path(temporary), profile=CORRECTED, netcdf=False))
+        self.assertEqual(csv["vre_capacity_factor_disclosure"]["status"], "not_applicable")
+
+    def test_script_check_recomputes_the_value_101_row(self):
+        import contextlib
+        import importlib.util
+        import io
+
+        spec = importlib.util.spec_from_file_location("vre_cf_disclosure_script", ROOT / "scripts" / "vre_cf_disclosure.py")
+        script = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(script)  # type: ignore[union-attr]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(script.main(["--check", "--packs", str(PACK_101)]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
