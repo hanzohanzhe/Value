@@ -206,6 +206,9 @@ class FixtureRunTests(unittest.TestCase):
         # market rules; each one with an advisory is listed (severity order).
         self.assertEqual(ids, [
             "p05.interconnector-clock", "VALUE-ADV-2026-10-04-REVIEW",
+            # FX8 (A18): nuclear started the year off and paid its start-up
+            # cost to enter (high).
+            "fx8.nuclear-in-service-at-start",
             "p06.avoided-cost-downward-order", "p06.d1-surplus-accounting",
             "p06.storage-bid-cycle-only", "p06.storage-net-per-period",
             # P0-7: the run's cost ledger kept the hydro compatibility capital in

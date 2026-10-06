@@ -75,6 +75,7 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "storage_settlement_basis": "thesis_max_bat_price",
             "reliability_voll": "constant_17000",
             "interconnector_import_stage": "balancing_residual_only",
+            "nuclear_initial_state": "off_until_accepted",
         })
         self.assertEqual(CORRECTED.switches(), {
             "surplus_accounting": "rebuilt_available_minus_accepted",
@@ -87,6 +88,7 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "storage_settlement_basis": "uniform_clearing_price",
             "reliability_voll": "chronology_parameter",
             "interconnector_import_stage": "day_ahead_offer_then_balancing_residual",
+            "nuclear_initial_state": "in_service_at_start",
         })
         # A2: P3-01 dispatch is unchanged in both profiles; P5-06 is universal.
         self.assertEqual(DOCTORAL.realisation_basis, "forecast_thesis")
@@ -102,8 +104,8 @@ class RuleSetDefinitionTests(unittest.TestCase):
     def test_switch_ids_follow_the_catalogue_pattern_and_pending_ids_are_unregistered(self):
         for correction_id in FIELD_CORRECTIONS.values():
             self.assertRegex(correction_id, methodology.CORRECTION_ID_PATTERN)
-            # P0-6 switches, plus the FX6 method change of decision A16-2.
-            self.assertTrue(correction_id.startswith(("p06.", "fx6.")), correction_id)
+            # P0-6 switches, plus the FX6 (A16-2) and FX8 (A18) method changes.
+            self.assertTrue(correction_id.startswith(("p06.", "fx6.", "fx8.")), correction_id)
         self.assertEqual(len(set(FIELD_CORRECTIONS.values())), len(FIELD_CORRECTIONS))
         self.assertLessEqual(PENDING_CORRECTION_IDS, set(FIELD_CORRECTIONS.values()))
         registered = set(methodology.load_catalogue().corrections)

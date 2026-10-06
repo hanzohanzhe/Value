@@ -2743,6 +2743,11 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     storage_pool_composition = []
     # selected generators
     accepted_bids = []
+    if _P06_STATE.rule("nuclear_initial_state") == "in_service_at_start":
+        # VALUE FX8 (A18, fx8.nuclear-in-service-at-start): nuclear units are
+        # running before the first period, so their first offer carries no
+        # start-up cost; a later restart after a period off still pays it.
+        accepted_bids = _p06.initial_running_rows(generators)
     # used energy(discharge)
     usage_storage_pool_composition = []
     gen_fees = []

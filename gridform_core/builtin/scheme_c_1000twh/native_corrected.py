@@ -29,6 +29,12 @@ outside ``runtime_compat`` (C18) and work on the kernel's own objects:
   the balancing stage offers only the remaining capacity.  An accepted import
   enters the downward stack at its avoided import price.
 
+* nuclear initial state - A18 (``nuclear_initial_state =
+  in_service_at_start``, ``fx8.nuclear-in-service-at-start``):
+  :func:`initial_running_rows` marks every nuclear unit as running before
+  the first period of the run, so the start-up adder is charged only when a
+  unit restarts after a period in which it was not accepted.
+
 Decision A2: the realisation branch (forecast rule) and therefore every
 hidden shortfall stay as they are; shortfalls are booked as stress events by
 the ledger (P0-4 S6).  Decision Q5 (P0-6): the absorption order of the
@@ -436,6 +442,26 @@ class CorrectedNodeTerms:
 
 
 STARTUP_TYPES = ("GasGenerator", "BiomassGenerator", "NuclearGenerator")
+
+# A18: the unit types that are in service before the first period of a run.
+IN_SERVICE_AT_START_TYPES = ("NuclearGenerator",)
+
+
+def initial_running_rows(generators: Iterable[Any]) -> list:
+    """Accepted-bid rows standing for "running before the first period" (A18).
+
+    The kernel's ``accepted_bids`` of the previous period decides two things
+    only: whether a unit's day-ahead offer carries its ``startup_cost``
+    (``ahead_market_bidding``) and whether its output books a start-up term
+    (:func:`physical_cost_terms`).  Both read the asset of each row and
+    nothing else, and the first clearing replaces the whole list, so these
+    rows (price, energy and curtailment cost 0) change nothing but the
+    start-up state of nuclear units in the first period.  Gas and biomass
+    units keep the thesis rule (off until first accepted).
+    """
+
+    return [[asset, 0.0, 0.0, 0.0] for asset in generators
+            if type(asset).__name__ in IN_SERVICE_AT_START_TYPES]
 
 
 def physical_cost_terms(

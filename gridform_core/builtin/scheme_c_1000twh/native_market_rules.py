@@ -28,7 +28,12 @@ finding S-D3) adds ``interconnector_import_stage``: the thesis kernel offers
 interconnector imports only in the balancing stage, for the residual
 upward requirement after the day-ahead schedule; the corrected rule set also
 offers them to the day-ahead clearing at the period's counterparty price and
-available import capacity (``fx6.day-ahead-interconnector-imports``).  ``operating_cost_basis``
+available import capacity (``fx6.day-ahead-interconnector-imports``).  Decision
+A18 adds ``nuclear_initial_state``: the thesis kernel starts every run with no
+unit running, so a nuclear unit adds its start-up cost to its offer until it
+is first accepted; the corrected rule set starts nuclear units in service in
+the first period of the run, so the start-up cost is paid only when a unit
+restarts after a period off (``fx8.nuclear-in-service-at-start``).  ``operating_cost_basis``
 (``dispatch_unit_cost/v1``) is a universal accounting rule (P5-06, plan S4):
 it is the same in both profiles and therefore has no profile switch either.
 """
@@ -64,6 +69,8 @@ FIELD_CORRECTIONS: dict[str, str] = {
     "reliability_voll": "p06.voll-chronology-parameter",
     # FX6 (A16-2, four-role S-D3): method change of the corrected profile.
     "interconnector_import_stage": "fx6.day-ahead-interconnector-imports",
+    # FX8 (A18): method change of the corrected profile.
+    "nuclear_initial_state": "fx8.nuclear-in-service-at-start",
 }
 
 # Correction ids whose behaviour has not landed yet.  P0-6 S5-S10 registered
@@ -89,6 +96,7 @@ class NativeMarketRules:
     operating_cost_basis: str
     reliability_voll: str
     interconnector_import_stage: str
+    nuclear_initial_state: str
 
     def definition(self) -> dict[str, str]:
         return {item.name: getattr(self, item.name) for item in fields(self)}
@@ -123,6 +131,10 @@ DOCTORAL = NativeMarketRules(
     # offer of the balancing stage only (residual upward requirement after
     # the day-ahead schedule); the day-ahead clearing receives no connection.
     interconnector_import_stage="balancing_residual_only",
+    # The thesis kernel (35aadb3): accepted_bids starts empty, so in the first
+    # period of a run every gas, biomass and nuclear unit adds its start-up
+    # cost to its offer (nuclear 500 GBP/MWh on GBP1) until it is accepted.
+    nuclear_initial_state="off_until_accepted",
 )
 
 CORRECTED = NativeMarketRules(
@@ -143,6 +155,10 @@ CORRECTED = NativeMarketRules(
     # with the available import capacity; the balancing stage offers only the
     # capacity the day-ahead schedule left (no double counting).
     interconnector_import_stage="day_ahead_offer_then_balancing_residual",
+    # A18: nuclear units are running before the first period of the run (no
+    # start-up adder then); a unit that was not accepted in a period (outage,
+    # refuelling, zero availability or not cleared) pays it on its restart.
+    nuclear_initial_state="in_service_at_start",
 )
 
 RULE_SETS: dict[str, NativeMarketRules] = {
@@ -170,6 +186,7 @@ def _literal_consultations(methodology: Any) -> dict[str, Any]:
         "p06.storage-uniform-price-settlement": lambda: methodology.enabled("p06.storage-uniform-price-settlement"),
         "p06.voll-chronology-parameter": lambda: methodology.enabled("p06.voll-chronology-parameter"),
         "fx6.day-ahead-interconnector-imports": lambda: methodology.enabled("fx6.day-ahead-interconnector-imports"),
+        "fx8.nuclear-in-service-at-start": lambda: methodology.enabled("fx8.nuclear-in-service-at-start"),
     }
 
 

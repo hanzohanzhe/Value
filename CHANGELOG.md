@@ -55,6 +55,7 @@ existing installation is upgraded side by side, as described in
 | FX5 (A16-5 VoLL) | `fx5.voll-17000` (doctoral: accounting zone; parameter default for every module that reads `market.voll_gbp_per_mwh`) | — |
 | FX6 (A16-2, four-role S-D3) | — | `fx6.day-ahead-interconnector-imports` (method change, explicit Study confirmation) |
 | FX7 (A16-7, GBP1 public2 local acceptance) | — | `p05.nuclear-stations-public2` (GBP1 public2 only) |
+| FX8 (A18, nuclear in service at start) | — | `fx8.nuclear-in-service-at-start` (method change, explicit Study confirmation) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -82,6 +83,8 @@ unattributed.
 - **Corrected family.** C1–C8 were revised under the correction ids above.
   Trajectory columns that changed since revision 0, by case: C1 34, C2 35,
   C3 50, C4 32, C5 503, C6 490, C7 34, C8 111.
+  C9 (GBP1 public2, corrected, FX8) starts at revision 0 = the code before
+  A18 and has one revision for A18 (trajectory 394 columns).
 
 ### Known issues
 
@@ -96,15 +99,11 @@ unattributed.
   a nuclear unit that has been accepted runs at full power until the end of
   the year. In the GBP1 before/after comparison this is one mechanism behind
   the differences (A15).
-- **Nuclear path dependency also in the corrected profile (FX7).** Under the
-  default PSM a nuclear agent that was not accepted in the previous period
-  offers at its start-up cost (500 GBP/MWh in GBP1) and is the last resource
-  in merit order; once accepted it offers at 0 and stays on. In the local GBP1
-  public2 corrected run (2025) nuclear enters only at period 16593 (12
-  December) and generates 2.0 TWh, against 38.3 TWh that its availability
-  allows and 37.3 TWh supplied in 2023-2024 (Energy Trends 5.1); CCGT fills
-  the gap. Not changed in this round (dispatch rule; needs an author
-  decision). See `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`.
+- ~~Nuclear path dependency also in the corrected profile (FX7).~~ Resolved
+  for the corrected profile by decision A18 (FX8, `fx8.nuclear-in-service-at-start`,
+  see "Nuclear in service at the start of the year" below): GBP1 public2
+  2025 nuclear 2.02 -> 38.26 TWh (+2.5 % against Energy Trends 5.1). The
+  doctoral profile keeps the thesis rule (previous item).
 - **R029 public1 and GBP1 public1 solar profile under the strict corrected
   reader.** Both bind the same hourly `sa.csv` with 8761 values and no
   interval declaration; the declared clock recognises an undeclared hourly
@@ -547,6 +546,36 @@ unattributed.
   (66.5 GBP/MWh with its start-up adder), so it is offered and rejected in
   every period; dispatch, prices and costs of C1–C6 are unchanged, and C1–C4
   gained a revision for the new offer rows.
+
+### Nuclear in service at the start of the year (A18, corrected profile)
+
+- FX7 found that the default PSM starts every model year with no unit
+  running: a nuclear unit adds its start-up cost (500 GBP/MWh on GBP1) to its
+  day-ahead offer until it is first accepted, and then stays on to the year
+  end.  On the local GBP1 public2 corrected run (2025) nuclear entered only
+  on 12 December and generated 2.02 TWh against about 37.3 TWh supplied
+  (Energy Trends 5.1).
+- Corrected profile (`fx8.nuclear-in-service-at-start`, rule-set field
+  `nuclear_initial_state = in_service_at_start`): every nuclear unit counts as
+  running before the first period of each model year, so its first offer
+  carries no start-up cost and it runs as baseload at its station
+  availability.  A unit that was not accepted in a period (refuelling,
+  outage, zero availability or not cleared) pays the start-up cost once, in
+  its offer and in the physical start-up term, when it restarts.  Gas and
+  biomass keep the thesis rule.
+- The doctoral reproduction profile keeps the thesis rule bit for bit
+  (`off_until_accepted`; D1-D5 unchanged).  Doctoral Runs carry the read-time
+  advisory of the correction (severity high), which discloses the nuclear
+  path dependency (A15).
+- `value-bid-at-cost-psm` 6.3.0 → 6.4.0 with `requires_user_opt_in` (Q13).
+- GBP1 public2 (local, not published) 2025, corrected: nuclear 2.02 → 38.26
+  TWh (+2.5 % against Energy Trends 5.1, every period from period 0), CCGT
+  101.4 → 67.5 TWh, curtailment 0.43 → 1.74 TWh, exports 0.41 → 1.51 TWh,
+  mean period price 24.30 → 16.23 GBP/MWh, headline system cost −1,830.7
+  GBP m, emissions −13.0 MtCO2.  New golden case C9 (research pack, tier
+  full) records the run before and after A18; numeric report
+  `docs/dev/p0-reports/fx8-golden/C9-r1.json`.  VALUE 101 has no nuclear, so
+  C1–C8 change only in identity.
 
 ### Scientific validation recomputed and gated (P0-4)
 

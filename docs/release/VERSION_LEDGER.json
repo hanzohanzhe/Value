@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.3.0",
+      "current_version": "6.4.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -142,6 +142,16 @@
             "fx6.day-ahead-interconnector-imports"
           ],
           "reason": "Decision A16-2 (four-role finding S-D3): in the corrected profile every interconnector with a positive transfer constraint offers its available import capacity to the day-ahead clearing at the period's counterparty price (times the bid multiplier), in the merit order with domestic generation; the balancing stage offers only the capacity the day-ahead schedule left, and an accepted day-ahead import can be reduced in the curtailment branch at its avoided import price. Dispatch, imports, prices, costs and investment paths of corrected Runs change (method upgrade), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis rule (imports only in the balancing stage) bit for bit.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.3.0",
+          "to": "6.4.0",
+          "package": "FX8",
+          "correction_ids": [
+            "fx8.nuclear-in-service-at-start"
+          ],
+          "reason": "Decision A18: in the corrected profile every nuclear unit counts as running before the first period of each model year, so its first day-ahead offer carries no start-up cost and it runs as baseload at its station availability; the start-up cost (offer adder and physical start-up term) is charged only when a unit restarts after a period in which it was not accepted (refuelling, outage, zero availability or not cleared). Nuclear output, the generation mix, prices, costs, emissions and investment paths of corrected Runs change (method upgrade; GBP1 2025 nuclear about 2 TWh to about 38 TWh), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis rule (every unit off before the first period) bit for bit; its nuclear path dependency is disclosed (A15).",
           "requires_user_opt_in": true
         }
       ]
