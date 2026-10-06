@@ -156,3 +156,10 @@
 | F-M7-12 | 4.6：fallback 审计 caution Callout 文案 | 标题 `Spatially indicative network results`，逐条列出规格句式 `Spatially indicative: {x}% of {tech} capacity fell back to {zone}.`（多年时句末加年份），另加一句说明与 `Open in Inspect` | 规格只给了句式；按原则 5 给出下一步 | 是（标题与说明句） |
 | F-M7-13 | 9.8：375 px 不引起页面级横向滚动 | 新组件自身不溢出；375 px 下页面级溢出仍来自旧布局（与 F-P09-13 相同） | 做法一不改旧元素样式 | 否（同 F-P09-13） |
 | F-M7-14 | 10：截图 | JPEG（质量 55，整页），来源为 scratch 实例（API 18966、UI 18967）上的真实 Run：修正口径 VALUE 101（一日与两年）、复现口径 VALUE 101（一日与两年，Q14 withheld）、Release R2 预测数据的修正口径新 Run（48 个 stress 时段，exact）、复制的修复前 Release R2 Run（下界）、VALUE 101 网络教学 Run | 控制仓库体积 | 否 |
+
+## 修复轮 F-D2（第 11.5 节：一日范围与扩展；FX2）
+
+| 编号 | 规格 | 实现 | 理由 | 需设计方复核 |
+|---|---|---|---|---|
+| F-FX2-1 | 11.5 只规定预检、范围下拉框和比较页；任务另要求修正 Inspect 的原因文案 | Inspect 的扩展结果面板遇到后端 reason `extensions_not_executed_in_scope` 时，显示 `Extensions did not run in this scope.` 加后端原文（`The one-day lesson runs the market step only, so the recorded extension(s) {ids} did not execute in this Run. Re-run with two-period or a longer scope to obtain extension results.`），不再显示 `year_results_missing` | 四类用户测试报告 4.2 的修复建议；文案沿用 11.5 预检句式 | 是（文案） |
+| F-FX2-2 | 11.5 预检句中的 `{names}` | 填扩展 id（如 `value-toy-audit-extension`），逗号分隔 | 预检阶段扩展清单以 id 为准，名称可能缺失 | 否 |
