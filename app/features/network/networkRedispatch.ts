@@ -474,6 +474,23 @@ export function boundedPeriodQuery(selection: BoundedPeriodSelection): URLSearch
   });
 }
 
+/**
+ * R-D5 (four-role report, round R1-5): how a Run is copperplate. "module" = the
+ * built-in copperplate balancing module; "national" = a Run that selected no
+ * balancing module and cleared one national market; null = a network
+ * balancing module (built-in zonal or third party) or an unrecorded module set.
+ */
+export function copperplateBalancing(modules: Record<string, string> | undefined | null): "module" | "national" | null {
+  if (!modules) return null;
+  if (modules.balancing === "value-copperplate-balancing") return "module";
+  return modules.balancing ? null : "national";
+}
+
+/** R-D5: the market ledger holds zonal rows (a national-only ledger has the tables but no rows or years). */
+export function zonalLedgerRecorded(capabilities: Pick<ZonalCapabilities, "years" | "row_counts">): boolean {
+  return capabilities.years.length > 0 || Object.values(capabilities.row_counts ?? {}).some((count) => Number(count) > 0);
+}
+
 export async function fetchNetworkJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   const payload = await response.json();

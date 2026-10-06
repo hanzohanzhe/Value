@@ -131,9 +131,12 @@ type DetailResponse = {
 type MockNetworkOptions = {
   detailResponse?: (url: URL) => DetailResponse;
   evidenceProbeError?: string;
+  /** R-D5: a national-only ledger (zonal tables, no rows) whose annual brief is withheld (Q14). */
+  nationalWithheldLedger?: boolean;
   frozenProjectResponse?: DetailResponse;
   frozenSolverContract?: unknown;
   onCapabilitiesRequest?: () => void;
+  onAnnualRequest?: () => void;
   onSolverDiagnosticsRequest?: () => void;
   solverDiagnosticsResponse?: (url: URL) => DetailResponse | Promise<DetailResponse>;
   solverSummary?: Record<string, unknown>;
@@ -207,7 +210,11 @@ async function mockNetwork(
       if (options.evidenceProbeError) {
         status = 404;
         body = { error: options.evidenceProbeError, error_code: "GF_ZONAL_RESULTS_UNAVAILABLE" };
-      } else body = {
+      } else if (options.nationalWithheldLedger) body = {
+        trace_level: traceLevel, years: [], network_pack_id: "", data_pack_id: "", available_views: ["period", "reliability"],
+        row_counts: { zonal_period_summary: 0, reliability_event: 0 }, bid_replay_available: false,
+      };
+      else body = {
       trace_level: traceLevel, years: [2025], network_pack_id: "gb-zones-v1", data_pack_id: "fixture",
       available_views: ["period", "zone", "boundary", "resource", "agent", "reliability", "solver", "solver-diagnostics"],
       row_counts: { zonal_period_summary: 2, network_solver_diagnostics: 6 }, bid_replay_available: traceLevel === "full",
@@ -218,7 +225,11 @@ async function mockNetwork(
       };
     }
     else if (url.includes("/network-redispatch/annual")) {
-      if (options.evidenceProbeError) {
+      if (options.nationalWithheldLedger) {
+        options.onAnnualRequest?.();
+        status = 409;
+        body = { status: "withheld", error: "Doctoral reproduction runs publish annual results only when every raw invariant passes; the results remain available in Inspect and exports.", error_code: "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED" };
+      } else if (options.evidenceProbeError) {
         status = 404;
         body = { error: options.evidenceProbeError, error_code: "GF_ZONAL_RESULTS_UNAVAILABLE" };
       } else body = { years: [{
@@ -747,6 +758,24 @@ test("summary trace keeps annual evidence but explains missing bid rows", async 
   await page.getByRole("tab", { name: "Period replay" }).click();
   await expect(page.getByText("Bid rows were not retained")).toBeVisible();
   await expect(page.getByText("Annual scientific totals remain available.", { exact: false })).toBeVisible();
+});
+
+// R-D5 (four-role report, round R1-5): a Run that selected no balancing module
+// cleared one national market; its ledger has the zonal tables but no rows.
+// It is labelled copperplate, the annual brief is not requested, and the
+// withheld reason is not glued to a "no zonal ledger" sentence.
+test("national-only withheld run is copperplate with one reason", async ({ page }) => {
+  const national = { ...baseRun, id: "national-doctoral", modules: { psm: "value-bid-at-cost-psm" } };
+  let annualRequested = false;
+  await mockNetwork(page, national, "full", reconciledCurtailment, { nationalWithheldLedger: true, onAnnualRequest: () => { annualRequested = true; } });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await expect(page.getByText("Copperplate run", { exact: true })).toBeVisible();
+  await expect(page.getByText("selected no network balancing module", { exact: false })).toBeVisible();
+  await expect(page.getByText("Doctoral reproduction runs publish", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("network evidence pending", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open Market replay →" })).toBeVisible();
+  expect(annualRequested).toBe(false);
 });
 
 test("copperplate run shows a truthful empty network workspace", async ({ page }) => {

@@ -27,6 +27,8 @@ import {
   numberValue,
   scaled,
   toNumber,
+  copperplateBalancing,
+  zonalLedgerRecorded,
 } from "./networkRedispatch";
 import { RELIABILITY_PAGE_SIZE, reliabilityQuery, reliabilityRow, replayWindowStart, type ReliabilityEvent } from "./reliabilityView.ts";
 import { Callout, StatusPill } from "../shared/Callout";
@@ -214,7 +216,9 @@ export default function NetworkRedispatchView({
 }) {
   const runId = run?.id ?? "";
   const base = run ? apiUrl(`runs/${run.id}/network-redispatch`) : "";
-  const isKnownCopperplate = run?.modules?.balancing === "value-copperplate-balancing";
+  // R-D5 (round R1-5): a Run without a balancing module cleared one national market (copperplate).
+  const copperplateKind = copperplateBalancing(run?.modules);
+  const isKnownCopperplate = copperplateKind !== null;
   const [capabilities, setCapabilities] = useState<ZonalCapabilities | null>(null);
   const [annual, setAnnual] = useState<AnnualBrief | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -257,6 +261,8 @@ export default function NetworkRedispatchView({
   }>({ selection: "", status: "success", items: [], total: 0, hasMore: false, error: "" });
   const [loading, setLoading] = useState(Boolean(run));
   const [probeError, setProbeError] = useState("");
+  // R-D5: the ledger has the zonal tables but no zonal rows (a national-only Run).
+  const [noZonalRows, setNoZonalRows] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -282,10 +288,11 @@ export default function NetworkRedispatchView({
 
   useEffect(() => {
     if (!run) return;
-    Promise.all([
-      fetchNetworkJson<ZonalCapabilities>(`${base}/capabilities`),
-      fetchNetworkJson<AnnualBrief>(`${base}/annual`),
-    ]).then(([nextCapabilities, nextAnnual]) => {
+    // R-D5: the annual brief is requested only when the ledger holds zonal rows,
+    // so a withheld national Run no longer reports two reasons in one sentence.
+    fetchNetworkJson<ZonalCapabilities>(`${base}/capabilities`).then(async (nextCapabilities) => {
+      if (!zonalLedgerRecorded(nextCapabilities)) { setNoZonalRows(true); setProbeError(""); return; }
+      const nextAnnual = await fetchNetworkJson<AnnualBrief>(`${base}/annual`);
       setCapabilities(nextCapabilities);
       setAnnual(nextAnnual);
       setYear(nextAnnual.years[0]?.year ?? nextCapabilities.years[0] ?? null);
@@ -466,10 +473,10 @@ export default function NetworkRedispatchView({
 
   if (!run) return <div className="page"><Empty><b>No run selected</b><p>Select a completed zonal Study in Runs.</p></Empty></div>;
   if (loading) return <div className="page"><Empty><b>Loading network results…</b></Empty></div>;
-  if (!capabilities) return <div className="page"><div className="page-title"><div><span>Network results</span><h2>Network &amp; redispatch</h2><p>{isKnownCopperplate ? "This run used copperplate balancing. It has no zonal congestion or redispatch ledger." : "No zonal network evidence is available for this run."}</p></div></div><Empty><b>{isKnownCopperplate ? "Copperplate run" : "Zonal evidence unavailable"}</b><p>{isKnownCopperplate ? "The network evidence probe found no zonal ledger, as expected for the built-in copperplate balancing module." : `The selected balancing module did not expose a readable zonal ledger${probeError ? `: ${probeError}` : "."}`}</p></Empty></div>;
+  if (!capabilities) return <div className="page"><div className="page-title"><div><span>Network results</span><h2>Network &amp; redispatch</h2><p>{copperplateKind === "module" ? "This run used copperplate balancing. It has no zonal congestion or redispatch ledger." : copperplateKind === "national" ? "This run cleared one national (copperplate) market and selected no network balancing module. It has no zonal congestion or redispatch ledger." : "No zonal network evidence is available for this run."}</p></div></div><Empty><b>{isKnownCopperplate ? "Copperplate run" : "Zonal evidence unavailable"}</b><p>{copperplateKind === "module" ? "The network evidence probe found no zonal ledger, as expected for the built-in copperplate balancing module." : copperplateKind === "national" ? <>National dispatch, prices and stress events of this Run are in Market replay. <button type="button" className="text-button" onClick={onOpenMarket}>Open Market replay →</button></> : noZonalRows ? "The selected balancing module recorded no zonal periods in this Run's ledger." : `The selected balancing module did not expose a readable zonal ledger${probeError ? `: ${probeError}` : "."}`}</p></Empty></div>;
 
   return <div className="page network-workspace">
-    <div className="page-title"><div><span>Physical delivery after the GB market</span><h2>Network &amp; redispatch</h2><p>Follow the national ahead schedule into final zonal dispatch, congestion, curtailment, storage movement and observed supply shortfalls.</p></div><div className="network-run-id"><small>Run</small><code>{run.id}</code><span>{capabilities?.network_pack_id || "network evidence pending"}</span></div></div>
+    <div className="page-title"><div><span>Physical delivery after the GB market</span><h2>Network &amp; redispatch</h2><p>Follow the national ahead schedule into final zonal dispatch, congestion, curtailment, storage movement and observed supply shortfalls.</p></div><div className="network-run-id"><small>Run</small><code>{run.id}</code><span>{capabilities?.network_pack_id || (["queued", "snapshotting", "running", "cancel_requested"].includes(run.status) ? "network evidence pending" : "network pack not recorded")}</span></div></div>
 
     {capabilities && <section className="network-coverage-banner value-new-control" aria-label="Annual coverage"><StatusPill tone={coverageBadge.tone} title={coverageBadge.title}>{coverageBadge.text}</StatusPill><span>{coverageReasonText(coverage)}</span></section>}
     {capabilities && fallbackAuditSentences(capabilities.runtime_fallback_audit).length > 0 && <div className="network-fallback-audit value-new-control"><Callout tone="caution" title="Spatially indicative network results" actions={onOpenInspect ? <button type="button" className="value-action-primary" onClick={() => onOpenInspect()}>Open in Inspect</button> : undefined}><ul>{fallbackAuditSentences(capabilities.runtime_fallback_audit).map((sentence) => <li key={sentence}>{sentence}</li>)}</ul><p>This capacity was placed in a fallback zone because the network pack does not locate its sites; flows and congestion involving those zones are indicative only.</p></Callout></div>}

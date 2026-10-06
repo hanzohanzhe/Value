@@ -1329,6 +1329,7 @@
     "tests/frontend/unit/format.test.mjs",
     "tests/frontend/unit/frontend-guards.test.mjs",
     "tests/frontend/unit/module-quarantine.test.mjs",
+    "tests/frontend/unit/network-copperplate.test.mjs",
     "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/readiness-groups.test.mjs",
@@ -3392,8 +3393,8 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "ae193b0a236f522f859abf560b9752f5f21c3c3d6dc4e9bc2f08bf4e55ede1e0",
-      "bytes": 52191,
+      "sha256": "072c245a36863218c08f3b69dc4e28dace204bc8de90a5ea70dd5175d232eb13",
+      "bytes": 53397,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3416,8 +3417,8 @@
     },
     {
       "path": "app/features/network/networkRedispatch.ts",
-      "sha256": "eb20aaa9d6122ed6e6c304f016df747497b6a7543588ff50e1a649560158c84f",
-      "bytes": 20892,
+      "sha256": "5371325fc2e7ec54c15cf9f73639134cce672e327fb0bff6df77504430f36b91",
+      "bytes": 21833,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6578,8 +6579,8 @@
     },
     {
       "path": "e2e/network-redispatch.spec.ts",
-      "sha256": "9974ed8995dafc48c396b309744011c4f859703fdad9e0aeac6c0302932196b5",
-      "bytes": 45949,
+      "sha256": "dc462772051790d203cd1157ce2739a9134152594f82022d448342458db58a36",
+      "bytes": 48085,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6590,7 +6591,7 @@
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "27e2012090040e7dfdfe2eca62a795882fbd3b7c8f3a78932fd498cbf54d17b6",
+      "sha256": "6105a141029a2173269c423da3a302047206f83cde2321e1926b1abac08f15db",
       "bytes": 3088,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -10883,6 +10884,12 @@
       "path": "tests/frontend/unit/module-quarantine.test.mjs",
       "sha256": "40f20d75987abadb29431f79022e08118765bdc42ff9f72a905016500d88b78d",
       "bytes": 2978,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/network-copperplate.test.mjs",
+      "sha256": "99f635b7766e504db12ad235959cb552ebe2e2961ba9e41e5c632fc8653b447a",
+      "bytes": 1505,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

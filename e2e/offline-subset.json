@@ -16,7 +16,7 @@
   ],
   "min_passed": {
     "e2e/market-visibility.spec.ts": 2,
-    "e2e/network-redispatch.spec.ts": 22,
+    "e2e/network-redispatch.spec.ts": 23,
     "e2e/expanded-workflows.spec.ts": 1,
     "e2e/result-queries.spec.ts": 2,
     "e2e/comparison-review.spec.ts": 1,
