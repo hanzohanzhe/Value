@@ -116,8 +116,13 @@ class StudyDerivationTests(unittest.TestCase):
         self.assertEqual(result["id"], "independent-study-1234567890")
         for key in ("modules", "parameters", "runtime_options", "solver_contract",
                     "maturity_acknowledgements", "extension_parameters", "selected_extensions",
-                    "market_configuration", "extensions", "purpose", "start_year", "end_year"):
+                    "market_configuration", "purpose", "start_year", "end_year"):
             self.assertEqual(result[key], self.source[key], key)
+        # M-D8: the course origin names this Study's parent; it is metadata,
+        # not revision content, so a reproduction keeps the source revision.
+        self.assertEqual(result["extensions"]["value_101"], {
+            "origin": "teaching", "parent_project_id": "baseline", "changed_dimensions": [],
+            "derivation_intent": "reproduce"})
         self.assertEqual(result["revision_sha256"], self.source["revision_sha256"])
         self.assertIsNone(result["parent_revision_sha256"])
         self.assertEqual(result["derivation"]["source_revision_sha256"], self.source["revision_sha256"])
@@ -132,8 +137,11 @@ class StudyDerivationTests(unittest.TestCase):
         self.assertNotEqual(result["revision_sha256"], self.source["revision_sha256"])
         for key in self.source:
             # fingerprint_basis is revision bookkeeping, like revision_sha256 (X0 S11).
-            if key not in {"id", "name", "data_pack_id", "revision_sha256", "fingerprint_basis", "updated_at", "change_summary"}:
+            if key not in {"id", "name", "data_pack_id", "revision_sha256", "fingerprint_basis", "updated_at", "change_summary",
+                           "extensions"}:
                 self.assertEqual(result[key], self.source[key], key)
+        self.assertEqual(result["extensions"]["value_101"]["changed_dimensions"], ["data_pack_id"])
+        self.assertEqual(result["extensions"]["value_101"]["parent_project_id"], "baseline")
         self.assertEqual((self.projects / "baseline" / "project.json").read_bytes(), self.before)
         for intent, pack in (("data", "baseline-pack"), ("reproduce", "new-pack")):
             with self.subTest(intent=intent), self.assertRaises(StudyDerivationError) as error:
@@ -214,9 +222,11 @@ class StudyDerivationTests(unittest.TestCase):
         self.assertFalse(response["run_started"])
         self.assertEqual(result["modules"], {**self.source["modules"], "psm": "candidate-psm"})
         for key in ("parameters", "runtime_options", "solver_contract", "extension_parameters",
-                    "selected_extensions", "market_configuration", "extensions", "purpose",
+                    "selected_extensions", "market_configuration", "purpose",
                     "start_year", "end_year", "data_pack_id"):
             self.assertEqual(result[key], self.source[key], key)
+        self.assertEqual(result["extensions"]["value_101"]["changed_dimensions"], ["modules.psm"])
+        self.assertEqual(result["extensions"]["value_101"]["derivation_intent"], "edit_module")
         self.assertEqual(result["maturity_acknowledgements"], {
             **self.source["maturity_acknowledgements"], "module:candidate-psm@1.0": "explicit-ack",
         })

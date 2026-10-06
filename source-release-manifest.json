@@ -3974,8 +3974,8 @@
     },
     {
       "path": "backend/study_derivation.py",
-      "sha256": "5bc068fd74ec0cdf605edd31649c54e4b81ae18c4e16a0a10d42c0bd475325ab",
-      "bytes": 18574,
+      "sha256": "0bc3ab335d68cb29dd4ea8b9126fc4837a258cf917d8d405c739a1b65af4a228",
+      "bytes": 19357,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12807,8 +12807,8 @@
     },
     {
       "path": "tests/test_study_derivation.py",
-      "sha256": "20b14d5a512203db509f3c1bc4390b0a0fed1b04598640294d13fe2d5be564da",
-      "bytes": 17160,
+      "sha256": "8a9d4f7ce289accf38ac7b4a66702a3d3da2ab43c9e70007ae98e31edf1985e4",
+      "bytes": 17917,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

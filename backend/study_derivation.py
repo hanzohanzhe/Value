@@ -291,6 +291,23 @@ def derive_study(
         "source_module_graph_sha256": saved_graph["graph_sha256"],
         "created_at": candidate["updated_at"],
     }
+    origin = dict(candidate.get("extensions") or {}).get("value_101")
+    if isinstance(origin, dict):
+        # M-D8: a Study derived from a VALUE 101 Study keeps its course origin
+        # (variant kind, course revision) but names its own parent and what
+        # this derivation changed, instead of the source's "baseline, no
+        # parent" record.
+        candidate["extensions"] = {
+            **dict(candidate["extensions"]),
+            "value_101": {
+                **origin,
+                "parent_project_id": source_id,
+                "changed_dimensions": (
+                    [] if intent == "reproduce" else ["data_pack_id"] if intent == "data" else [f"modules.{slot}"]
+                ),
+                "derivation_intent": intent,
+            },
+        }
     if intent == "edit_module":
         candidate["derivation"]["method_change"] = {
             "slot": slot, "source_module_id": source["modules"][slot],
