@@ -286,6 +286,32 @@ class EurPriceMappingTests(DataMappingTests):
                            "2025-10-26 01:00+00:00,1\n2025-10-26 01:30+00:00,1\n")
         self.assertEqual(timestamp_row_problems(offsets, "time", 30, time_zone="Europe/London")["problem_count"], 0)
 
+    def test_series_shifted_against_the_model_clock_is_warned_not_blocked(self):
+        # N-3: a whole-series shift passes the row checks; the review says so.
+        columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]
+        def review_of(stamps):
+            stage = self.stage(self._timed(stamps), "market.france.profile")
+            return self.service.preview(stage["stage_id"], {"schema_version": "value.data-mapping-preview-request/v1",
+                "source_sha256": stage["source_sha256"], "target_manifest_sha256": stage["target_manifest_sha256"],
+                "columns": columns, "timestamp": {"column": "time", "time_zone": "UTC"}})
+        aligned = review_of(self._half_hours(17520))
+        self.assertEqual(aligned["timestamp"]["origin_offset_minutes"], 0)
+        self.assertEqual((aligned["timestamp"]["first_utc"], aligned["timestamp"]["last_utc"]),
+                         ("2025-01-01T00:00:00+00:00", "2025-12-31T23:30:00+00:00"))
+        self.assertFalse([w for w in aligned["warnings"] if w.startswith("GF_DATA_TIMESTAMP_ORIGIN")])
+        for start, offset, word in (("2025-01-01T00:30:00", 30, "after"), ("2024-12-31T23:30:00", -30, "before")):
+            with self.subTest(start=start):
+                shifted = review_of(self._half_hours(17520, start=start))
+                self.assertTrue(shifted["valid"], shifted["errors"])
+                self.assertEqual(shifted["timestamp"]["origin_offset_minutes"], offset)
+                origin = [w for w in shifted["warnings"] if w.startswith("GF_DATA_TIMESTAMP_ORIGIN")]
+                self.assertEqual(len(origin), 1, shifted["warnings"])
+                self.assertIn(f"30 minutes {word} 1 January 00:00", origin[0])
+        # Another reference year is not a shift: the year is shown, not judged.
+        other_year = review_of(self._half_hours(17520, start="2023-01-01T00:00:00"))
+        self.assertEqual((other_year["timestamp"]["origin_offset_minutes"], other_year["timestamp"]["first_utc"]),
+                         (0, "2023-01-01T00:00:00+00:00"))
+
     def test_timestamp_declaration_is_validated(self):
         stage = self.stage(self._timed(self._half_hours(4)), "market.france.profile")
         columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]

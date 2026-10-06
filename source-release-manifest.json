@@ -3117,8 +3117,8 @@
     },
     {
       "path": "app/features/data/CsvMappingEditor.tsx",
-      "sha256": "a3460aee9b86ae2ac1b936a9989a8e62084ac3c86b1f1e02cf47a2ac68008b0b",
-      "bytes": 23312,
+      "sha256": "bc22baa1e554a2ec2451c8c9d8b145315e52b1d870264993dd3e50cfaca4718b",
+      "bytes": 23497,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3141,8 +3141,8 @@
     },
     {
       "path": "app/features/data/csvMappingTypes.ts",
-      "sha256": "c0bf190e4a7dc4610613a3bbf04f973023c365d74fbcbb6c1d82525af92e4ff7",
-      "bytes": 2415,
+      "sha256": "0e2b533982be52d15922147b681d8d826e5bdd95bbecfeded9c3f69f26aae668",
+      "bytes": 2627,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3837,8 +3837,8 @@
     },
     {
       "path": "backend/data_mapping.py",
-      "sha256": "121043e99d9b52152fd734ac15196cc9ede9eae0115871da5f319f7ecc5ebd0c",
-      "bytes": 28706,
+      "sha256": "b96a6c462b8e5ad6fcf15e3b786d8d4bcb81ab53c10c56d090ac9297cb888106",
+      "bytes": 29506,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7824,8 +7824,8 @@
     },
     {
       "path": "gridform_core/data_validation_layers.py",
-      "sha256": "e5e7a0675ad14ddcdb760c7a154132ac407472832978e76093a2c300cc190c6e",
-      "bytes": 24764,
+      "sha256": "5d207c0d45bc299521f690103a986612da7f220e605f7f63a824e1925bb6f3af",
+      "bytes": 25595,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11284,8 +11284,8 @@
     },
     {
       "path": "tests/test_data_mapping.py",
-      "sha256": "0cc3e6b09e3f61321bf1c6609edd8affb0263f28eaac0c5193518020e23701f5",
-      "bytes": 21450,
+      "sha256": "2ee1e8061c6474b6ce43de28390204df525b9f049cb757c286ceff580dc8f5f3",
+      "bytes": 23544,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -311,6 +311,7 @@ class DataMappingService:
             sample = []
             source_sample: list[dict[str, object]] = []
             timestamp_report: dict[str, object] | None = None
+            timestamp_warnings: list[str] = []
             digest = None
             size = 0
             try:
@@ -343,12 +344,21 @@ class DataMappingService:
                         errors.append(
                             f"GF_DATA_TIMESTAMPS: {timestamp_report['problem_count']} timestamp problem(s) in column "
                             f"{timestamp['column']} ({timestamp['time_zone']}); the rows are listed below.")
+                    # N-3: the model reads row 1 as 1 January 00:00; a shifted series
+                    # passes the row checks, so say so (a warning: the spec's checks
+                    # are monotonicity, gaps and duplicates).
+                    offset = timestamp_report.get("origin_offset_minutes")
+                    if offset:
+                        timestamp_warnings.append(
+                            f"GF_DATA_TIMESTAMP_ORIGIN: the first timestamp {timestamp_report['first_utc']} is "
+                            f"{abs(offset)} minutes {'after' if offset > 0 else 'before'} 1 January 00:00; the model "
+                            "reads row 1 as the first period of the year, so the series would be shifted.")
             except (ValueError, OSError) as exc:
                 errors = [str(exc)]
             expires = stage["expires_epoch"]
             review = {"schema_version": "value.data-mapping-review/v1", "review_id": token, "stage_id": stage_id,
                       "pack_id": stage["pack_id"], "role": stage["role"], "valid": not errors and validation is not None,
-                      "errors": errors, "warnings": list(validation["warnings"]) if validation else [],
+                      "errors": errors, "warnings": (list(validation["warnings"]) if validation else []) + timestamp_warnings,
                       "source_sha256": stage["source_sha256"], "spec_sha256": _hash(_canonical(spec.to_dict())),
                       "normalized_sha256": digest, "target_manifest_sha256": stage["target_manifest_sha256"],
                       "source_bytes": len(raw), "normalized_bytes": size, "rows": rows,

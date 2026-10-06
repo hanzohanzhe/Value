@@ -16,6 +16,8 @@ export type CsvMappingRole = {
 export type CsvTimestampReport = {
   column: string; time_zone: string; interval_minutes: number; rows_checked: number; problem_count: number;
   problems: { row: number; timestamp: string | null; problem: string }[];
+  /** N-3: first and last stamps as UTC instants; minutes from 1 January 00:00 (0 = aligned with the model clock). */
+  first_utc?: string | null; last_utc?: string | null; origin_offset_minutes?: number | null;
 };
 export type CsvMappingCatalog = { schema_version: "value.data-mapping-catalog/v1"; pack_id: string; target_manifest_sha256: string; roles: CsvMappingRole[]; max_upload_bytes: number };
 export type CsvMappingStage = { schema_version: "value.data-mapping-stage/v1"; stage_id: string; pack_id: string; role: string; source_sha256: string; source_bytes: number; source_columns: string[]; rows: number; target_manifest_sha256: string; expires_at: string };

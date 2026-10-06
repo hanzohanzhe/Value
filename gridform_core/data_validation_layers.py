@@ -488,11 +488,26 @@ def timestamp_row_problems(
             seen.setdefault(stamp, row)
         if text:
             problems.append({"row": row, "timestamp": None if pd.isna(stamp) else stamp.isoformat(), "problem": text})
+    first = None if not len(stamps) or pd.isna(stamps.iloc[0]) else stamps.iloc[0]
     return {
         "column": column, "time_zone": time_zone, "interval_minutes": interval_minutes,
         "rows_checked": int(len(stamps)), "problem_count": len(problems), "problems": problems[:limit],
-        "first_utc": None if not len(stamps) or pd.isna(stamps.iloc[0]) else stamps.iloc[0].isoformat(),
+        "first_utc": None if first is None else first.isoformat(),
+        "last_utc": None if not len(stamps) or pd.isna(stamps.iloc[-1]) else stamps.iloc[-1].isoformat(),
+        "origin_offset_minutes": None if first is None else timestamp_origin_offset_minutes(first),
     }
+
+
+def timestamp_origin_offset_minutes(first: pd.Timestamp) -> int:
+    """Minutes from the nearest 1 January 00:00 UTC to the first stamp (N-3).
+
+    The model reads row 1 as the first period of its year, which starts on
+    1 January 00:00 (GMT, so the same instant in UTC and Europe/London).  A
+    non-zero value means the whole series is shifted against that clock.
+    """
+
+    origins = [pd.Timestamp(year=year, month=1, day=1, tz="UTC") for year in (first.year, first.year + 1)]
+    return int(min(((first - origin).total_seconds() / 60.0 for origin in origins), key=abs))
 
 
 def timestamp_findings(path: Path, column: str, interval_minutes: int, role: str, *, time_zone: str = "UTC") -> list[dict[str, Any]]:
