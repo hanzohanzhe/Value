@@ -172,7 +172,7 @@ CORRECTED = NativeMarketRules(
     nuclear_initial_state="in_service_at_start",
     # A19/A22: gas and biomass down regulation is split at minimum stable
     # generation; the running range is reduced at its avoided cost, the
-    # shutdown segment at its net saving c - S(H)/H, compared with VRE.
+    # shutdown segment at its net saving c - S(H)/(m H), compared with VRE.
     downward_restart_economics="restart_cost_vs_avoided_cost_v1",
 )
 

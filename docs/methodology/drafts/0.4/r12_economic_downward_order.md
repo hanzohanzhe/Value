@@ -46,7 +46,8 @@ in period `t`, with accepted output `P_k` and ramp floor
 * `m_k` = minimum stable generation (fraction of online capacity);
 * online capacity = `P_k`: the aggregate fleet has no commitment state, so the
   units scheduled day-ahead are taken as online and fully loaded;
-* `S_k(H)` = restart cost per MW shut down, GBP/MW;
+* `S_k(H)` = restart cost per MW of capacity shut down, GBP/MW (not per MW
+  of output);
 * `MDT_k` = minimum down time, h;
 * `H` = expected downtime of a shutdown decided in period `t`:
 
@@ -68,11 +69,20 @@ The row is split into two segments:
    `c_k > 0` per MWh, so it is ranked by `c_k` like the P0-6 stack and always
    comes before VRE.
 2. **Shutdown segment** `max(min(P_k, m_k P_k) - F_k, 0)` MW: reducing below
-   minimum stable generation needs units to stop and restart later. Shutting
-   1 MW down for `H` hours saves `c_k H` and costs `S_k(H)`, so the net saving
-   per MWh is
+   minimum stable generation needs units to stop and restart later. The
+   running range is always taken first, so when this segment is reached every
+   online unit runs at minimum stable generation, `m_k` MW of output per MW of
+   capacity. Removing `x` MW of output therefore shuts `x / m_k` MW of
+   capacity: over `H` hours it saves `c_k x H` and costs `S_k(H) x / m_k` at
+   restart. The net saving per MWh not generated is
 
-      a_k(H) = c_k - S_k(H) / H.
+      a_k(H) = c_k - S_k(H) / (m_k H).
+
+   (Unit check: `S / m` is GBP per MW of output removed; divided by `H` it is
+   GBP/MWh. Decision A22 wrote `c_k - S_k/H`, which charges the restart per MW
+   of output instead of per MW of capacity and understates it by `1/m_k`;
+   corrected after the R1-2 review, author confirmation pending, see
+   `docs/dev/P0_DECISIONS.md` A22a.)
 
    * `H >= MDT_k` and `a_k(H) > 0`: ranked by `a_k(H)`, before VRE;
    * `H >= MDT_k` and `a_k(H) <= 0`: after VRE (and before nuclear at an equal
@@ -94,15 +104,17 @@ spill (unchanged).
 
 Restart values (A22; 2024 GBP per MW of capacity per start):
 
-| Technology | S hot / warm / cold | Start class by H | m | MDT | Break-even H* = S/c (GBP1 c) |
+| Technology | S hot / warm / cold | Start class by H | m | MDT | Break-even H* = S/(m c) (GBP1 c) |
 |---|---|---|---|---|---|
-| CCGT | 110 / 130 / 150 | hot H < 12 h, warm 12-48 h, cold > 48 h | 50 % | 6 h | 2.0 h (c = 55.07) |
-| OCGT | 170 | - | 50 % | 0.5 h | 2.27 h (c = 74.92) |
-| Biomass | 125 | - | 35 % | 6 h | 1.47 h (c = 85.0) |
+| CCGT | 110 / 130 / 150 | hot H < 12 h, warm 12-48 h, cold > 48 h | 50 % | 6 h | 4.0 h (c = 55.07) |
+| OCGT | 170 | - | 50 % | 0.5 h | 4.54 h (c = 74.92) |
+| Biomass | 125 | - | 35 % | 6 h | 4.2 h (c = 85.0) |
 
 Because `MDT >= H*` for CCGT and biomass, a CCGT or biomass shutdown that is
-allowed at all (`H >= 6 h`) always has `a > 0` and goes before VRE; for OCGT
-the comparison decides (`H >= 2.5 h`, i.e. at least five surplus periods).
+allowed at all (`H >= 6 h`) always has `a > 0` and goes before VRE (at the GBP1
+costs; a cheaper unit with `c < S/(m MDT)`, e.g. CCGT below 36.7 GBP/MWh, would
+still curtail wind first); for OCGT the comparison decides (`H >= 5 h`, i.e.
+at least ten surplus periods).
 
 The restart cost ranks the stack only. The cost accounts are unchanged: the
 physical operating cost keeps its start-up term (thesis `startup_cost` adder
@@ -117,22 +129,27 @@ removed.
 
 * Running range = 400 - 0.5 x 400 = 200 MW at 55.07 GBP/MWh: reduced first in
   every case (saves 200 x 0.5 h x 55.07 = GBP 5,507).
-* The remaining 100 MW must come from the CCGT shutdown segment (200 MW) or
-  from wind:
+* The remaining 100 MW must come from the CCGT shutdown segment (200 MW of
+  output, i.e. all 400 MW of online capacity at 50 %) or from wind. Taking
+  100 MW of output from the CCGT means shutting 100 / 0.5 = 200 MW of
+  capacity: a restart bill of 200 x S against a saving of 100 x 55.07 x H.
 
 | Forecast after `t` | H | Shutdown allowed? | a(H) | Result |
 |---|---|---|---|---|
 | next period not in surplus | 0.5 h | no (H < 6 h) | - | wind curtailed 100 MW; CCGT stays at 200 MW |
-| 5 more surplus periods | 3 h | no (H < 6 h) | (55.07 - 110/3 = 18.4) | wind curtailed 100 MW |
-| 11 more surplus periods | 6 h | yes | 55.07 - 110/6 = 36.7 > 0 | CCGT reduced to 100 MW; no wind curtailed |
-| 27 more surplus periods | 14 h | yes (warm start, S = 130) | 55.07 - 130/14 = 45.8 > 0 | CCGT reduced to 100 MW |
+| 5 more surplus periods | 3 h | no (H < 6 h) | (55.07 - 110/1.5 = -18.3) | wind curtailed 100 MW |
+| 11 more surplus periods | 6 h | yes | 55.07 - 110/3 = 18.4 > 0 (restart GBP 22,000 < saving GBP 33,042) | CCGT reduced to 100 MW; no wind curtailed |
+| 27 more surplus periods | 14 h | yes (warm start, S = 130) | 55.07 - 130/7 = 36.5 > 0 | CCGT reduced to 100 MW |
 
 Under the thesis rule the 300 MW would have come from wind (curtail cost 0);
 under the withdrawn P0-6 rule from the CCGT (400 -> 100 MW) whatever H.
 
-An OCGT example (`c = 74.92`, `S = 170`, `MDT = 0.5 h`): with `H = 0.5 h`,
-`a = 74.92 - 340 = -265` (wind first); with `H = 2 h`, `a = -10.1` (wind
-first); with `H = 3 h`, `a = +18.3` (OCGT shuts down first).
+An OCGT example (`c = 74.92`, `S = 170`, `m = 50 %`, `MDT = 0.5 h`, so the
+restart costs `S/m = 340` GBP per MW of output removed): with `H = 0.5 h`,
+`a = 74.92 - 680 = -605.1` (wind first); with `H = 2 h`, `a = -95.1` (wind
+first); with `H = 3 h`, `a = -38.4` (wind first: shutting 20 MW of capacity to
+remove 10 MW of output costs GBP 3,400 at restart and saves GBP 2,248); with
+`H = 5 h`, `a = +6.9` (OCGT shuts down first).
 
 ## 4 Outputs
 

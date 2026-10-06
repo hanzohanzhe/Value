@@ -593,8 +593,9 @@ unattributed.
   curtailment branch a gas or biomass row is split at minimum stable
   generation (50 % CCGT/OCGT, 35 % biomass, of its accepted output).  The
   running range above it is reduced at its avoided cost before VRE (no
-  restart).  Below it, shutting units down saves `a(H) = c - S(H)/H` per MWh
-  (restart cost S: CCGT 110/130/150 GBP/MW hot/warm/cold, OCGT 170, biomass
+  restart).  Below it, shutting units down saves `a(H) = c - S(H)/(m H)` per MWh
+  (m = minimum stable fraction, since removing 1 MW of output shuts 1/m MW
+  of capacity; restart cost S per MW of capacity: CCGT 110/130/150 GBP/MW hot/warm/cold, OCGT 170, biomass
   125; H = expected downtime from the day-ahead forecast surplus run): before
   VRE when `a > 0`, after VRE otherwise, and only as a last resort when H is
   below the minimum down time (6 h / 0.5 h / 6 h).  Values: reference

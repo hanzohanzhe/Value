@@ -18,7 +18,7 @@ outside ``runtime_compat`` (C18) and work on the kernel's own objects:
   restart_cost_vs_avoided_cost_v1``, ``r12.economic-downward-order``): the
   stack above with gas and biomass split at minimum stable generation; the
   running range keeps its avoided cost, the shutdown segment is ranked by
-  the net saving a(H) = c - S(H)/H against VRE (restart table
+  the net saving a(H) = c - S(H)/(m H) against VRE (restart table
   ``data/thermal/value_thermal_restart_v1.json``, expected downtime H from
   :class:`SurplusOutlook`).  Thermal is never assumed dearer than VRE.
 * :func:`merit_key` - Q8 (``ahead_merit_key``): ``(round(price, 2),
@@ -357,9 +357,30 @@ class RestartParameters:
         return float(self.restart_cost_gbp_per_mw[self.start_class(horizon_h)])
 
     def net_saving(self, avoided_cost: float, horizon_h: float) -> float:
-        """a(H) = c - S(H) / H, GBP per MWh not generated during the shutdown."""
+        """a(H) = c - S(H) / (m H), GBP per MWh not generated during the shutdown.
 
-        return float(avoided_cost) - self.restart_cost(horizon_h) / float(horizon_h)
+        The running range is always taken first, so the shutdown segment
+        starts with every online unit at minimum stable generation ``m x P``.
+        Removing 1 MW of output there shuts ``1/m`` MW of capacity, which
+        costs ``S/m`` at restart, while it saves ``c x H`` over the downtime
+        (A19; A22 clarification, review of R1-2).  ``m = 0`` has no shutdown
+        segment, so the net saving is undefined.
+        """
+
+        if not self.min_stable_fraction > 0.0:
+            raise ValueError(f"{self.technology} has no shutdown segment (minimum stable generation 0)")
+        restart_per_mw_output = self.restart_cost(horizon_h) / self.min_stable_fraction
+        return float(avoided_cost) - restart_per_mw_output / float(horizon_h)
+
+    def break_even_hours(self, avoided_cost: float) -> float:
+        """H* = S / (m c): a shutdown pays back only over a longer downtime
+        (at the start class of H*; CCGT uses its hot cost below 12 h)."""
+
+        cost = float(avoided_cost)
+        if cost <= 0.0:
+            return math.inf
+        guess = self.restart_cost(0.0) / (self.min_stable_fraction * cost)
+        return self.restart_cost(guess) / (self.min_stable_fraction * cost)
 
 
 def restart_technology(asset: Any) -> str | None:
@@ -413,7 +434,7 @@ def economic_segments(accepted_bids: list, previous: Mapping[int, float], horizo
     A gas or biomass row is split at ``min_stable_fraction x`` its accepted
     output (its online capacity): the running range above it costs minus the
     avoided cost c and keeps the P3-03 key; the shutdown segment below it (down
-    to the ramp floor) is keyed by the net saving a(H) = c - S(H)/H when
+    to the ramp floor) is keyed by the net saving a(H) = c - S(H)/(m H) when
     H >= the minimum down time, otherwise it is a last resort.  Every other
     row is one segment with the P3-03 key.  A stable sort keeps the input
     order of equal keys (deterministic ties).

@@ -1387,7 +1387,7 @@ def store_service_corrected(accepted_bids, new_bids, period, need_curtailed_ener
     if _P06_STATE.restart_economics:
         # VALUE R1-2 (A19/A22): gas and biomass are reduced before VRE down to
         # minimum stable generation; below it a shutdown competes with VRE by
-        # its net saving c - S(H)/H over the expected downtime H.
+        # its net saving c - S(H)/(m H) over the expected downtime H.
         horizon_h = (_P06_STATE.outlook.horizon_hours(period) if _P06_STATE.outlook is not None
                      else physical_period_hours())
         remaining, curtailed_fee, curtailed_energy_list = _p06.economic_downward_stack(
