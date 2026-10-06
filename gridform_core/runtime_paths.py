@@ -117,3 +117,25 @@ def purge_source_root(source_root: Path) -> tuple[str, ...]:
     sys.path[:] = [item for item in sys.path if not _same(item)]
     importlib.invalidate_caches()
     return tuple(sorted(purged))
+
+
+def purge_installed_sources(modules_root: Path | None = None) -> tuple[str, ...]:
+    """Forget the loaded code of every installer-owned source root (M-D5).
+
+    An explicit Rescan must re-import installed modules and extension hooks:
+    otherwise a module that is already in ``sys.modules`` keeps its old code
+    and a source that no longer imports (for example a SyntaxError) is only
+    found at the next run or restart.  Only explicit rescans call this; the
+    import side effects of each installed package run again once per rescan.
+    The roots are re-activated by the next catalogue build
+    (:func:`activate_external_module_sources`).  Returns the purged names.
+    """
+
+    root = (modules_root or external_modules_root()).resolve()
+    purged: list[str] = []
+    for folder in ("installed", "installed-extensions"):
+        for record_path in sorted((root / folder).glob("*/*/installation.json")):
+            source = record_path.parent / "src"
+            if source.is_dir() and not source.is_symlink():
+                purged.extend(purge_source_root(source))
+    return tuple(sorted(set(purged)))

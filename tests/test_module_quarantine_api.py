@@ -233,6 +233,27 @@ class ModuleQuarantineApiTests(unittest.TestCase):
         self.assertEqual((status, body["status"], body["cleared"]["imports"]), (200, "ok", 1))
         forget_external_code(self.modules, ("p02_api_missing_dependency",))
 
+    def test_rescan_reimports_a_loaded_module_whose_source_broke(self) -> None:
+        # R1-4 (M-D5): a module already imported by the backend keeps its old
+        # code in sys.modules; Rescan must re-import it and quarantine it.
+        target = write_external_module(self.modules, "p02-api-ok", "p02_api_ok")
+        server.refresh_module_catalog()
+        self.assertEqual(self._request("GET", "/api/health")[1]["status"], "ok")
+        plugin = target / "src" / "p02_api_ok" / "plugin.py"
+        working = plugin.read_text(encoding="utf-8")
+        plugin.write_text("def broken(:\n", encoding="utf-8")
+        server.refresh_module_catalog()
+        self.assertEqual(self._request("GET", "/api/health")[1]["status"], "ok")  # the loaded copy hides the edit
+        status, body = self._request("POST", "/api/modules/rescan", {})
+        self.assertEqual((status, body["status"]), (200, "degraded"), body)
+        self.assertGreaterEqual(body["reloaded_modules"], 1)
+        entry = next(row for row in body["module_quarantine"]["entries"] if row["id"] == "p02-api-ok")
+        self.assertEqual((entry["error_code"], entry["error_type"]), ("GF_MODULE_IMPORT_FAILED", "SyntaxError"))
+        plugin.write_text(working, encoding="utf-8")
+        status, body = self._request("POST", "/api/modules/rescan", {})
+        self.assertEqual((status, body["status"]), (200, "ok"), body)
+        self.assertIn("p02-api-ok", [row["id"] for row in self._request("GET", "/api/modules")[1]["modules"]])
+
 
 class ErrorCodeMappingTests(unittest.TestCase):
     def test_coded_lifecycle_errors_map_to_their_status(self) -> None:

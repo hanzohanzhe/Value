@@ -220,6 +220,7 @@ from gridform_core.runtime_paths import (
     APPLICATION_VERSION,
     SOURCE_ROOT,
     external_modules_root,
+    purge_installed_sources,
     user_data_root,
 )
 from gridform_core.runtime_capabilities import VALUE_NATIVE, capability_matrix
@@ -3961,9 +3962,14 @@ class Handler(BaseHTTPRequestHandler):
             # catalogue; clears a stale catalogue when it succeeds.
             with MODULE_LIFECYCLE_LOCK:
                 cleared = clear_negative_caches()
+                # M-D5: re-import installed code, so a loaded module whose
+                # source no longer imports is quarantined now, not at the
+                # next run or restart.
+                reloaded = purge_installed_sources(external_modules_root())
                 refresh_module_catalog()
             report = module_quarantine_payload()
-            self._json({"ok": True, "cleared": cleared, "status": report["status"], "module_quarantine": report})
+            self._json({"ok": True, "cleared": cleared, "reloaded_modules": len(reloaded),
+                        "status": report["status"], "module_quarantine": report})
         elif route.startswith("/api/projects/") and route.endswith("/clone-storage-policy"):
             base_id = slug(route.strip("/").split("/")[2], "project")
             with STUDY_LIFECYCLE_LOCK:

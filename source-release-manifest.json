@@ -3968,8 +3968,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "103ad98a0661b656be3cf16a50084751efa3b5dbc72328da54618068213fcb60",
-      "bytes": 209117,
+      "sha256": "3dff94d2b04ffa8f97a5a9d75756c9aa547f37bd6f29e5d0ac6bb413bf2a11a4",
+      "bytes": 209475,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8645,8 +8645,8 @@
     },
     {
       "path": "gridform_core/runtime_paths.py",
-      "sha256": "68bb420a85eb61228eafb07b843cdb46829640bb8fc68dba5c5bc97fb6cc7053",
-      "bytes": 4532,
+      "sha256": "08ca3ac9148ad7cef0e5c69bc43ea3306571d292c5fc324667ea1eee33d275a2",
+      "bytes": 5650,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11841,8 +11841,8 @@
     },
     {
       "path": "tests/test_module_quarantine_api.py",
-      "sha256": "bd44cf34b9afe238e99c623ae50ec6b01fbdbfb26e4685036f4e849f774df5a1",
-      "bytes": 18320,
+      "sha256": "1a79020e9c80cc310b7a164a5aa9e85c0c8e003c29bae0fa83fcd9a94b94128b",
+      "bytes": 19818,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
