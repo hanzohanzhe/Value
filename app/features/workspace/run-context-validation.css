@@ -42,3 +42,9 @@
 @media (max-width: 600px) {
   .run-context-statuses > span { min-width: 0; }
 }
+
+/* R-D11 (round R1-5): the advisories that apply to a Run, in a disclosure. */
+.run-context-advisory-details { margin-top: 10px; font-size: 13px; min-width: 0; }
+.run-context-advisory-details summary { color: var(--amber); font-weight: 600; cursor: pointer; }
+.run-context-advisory-details summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.run-context-advisory-severity { color: var(--muted); font-size: 12px; font-weight: 500; }

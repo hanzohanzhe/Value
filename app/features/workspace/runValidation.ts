@@ -440,6 +440,28 @@ export const NOTICE_ACTION_LABELS: Readonly<Record<NoticeAction, string>> = {
   show_stress_events: "Show stress events",
 };
 
+const SEVERITY_ORDER = ["critical", "high", "medium", "low", "info"];
+
+/**
+ * R-D11 (four-role report, round R1-5): the one-line summary of the advisories
+ * that apply to a Run ("11 advisories apply to this Run · 7 high, 3 medium,
+ * 1 info"); null when none apply. The list comes from the Run detail; the
+ * listing row's advisory_summary gives the count while the detail loads.
+ */
+export function advisorySummaryText(run: RunValidationFields | null | undefined): string | null {
+  const advisories = runAdvisories(run);
+  const total = advisories.length || (count(run?.advisory_summary?.count) ?? 0);
+  if (!total) return null;
+  const bySeverity = new Map<string, number>();
+  for (const advisory of advisories) {
+    const severity = text(advisory.severity) ?? "unrated";
+    bySeverity.set(severity, (bySeverity.get(severity) ?? 0) + 1);
+  }
+  const ordered = [...bySeverity.entries()].sort(([a], [b]) => (SEVERITY_ORDER.indexOf(a) + 1 || 99) - (SEVERITY_ORDER.indexOf(b) + 1 || 99));
+  const breakdown = ordered.map(([severity, n]) => `${n} ${severity}`).join(", ");
+  return `${total} ${total === 1 ? "advisory applies" : "advisories apply"} to this Run${breakdown ? ` · ${breakdown}` : ""}`;
+}
+
 /** The advisories of a Run detail; the listing row carries only the count. */
 export function runAdvisories(run: RunValidationFields | null | undefined): RunAdvisory[] {
   return Array.isArray(run?.advisories) ? run.advisories.filter((item): item is RunAdvisory => Boolean(item && typeof item === "object" && text(item.id))) : [];

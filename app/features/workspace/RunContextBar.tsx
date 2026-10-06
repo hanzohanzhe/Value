@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FROZEN_MANIFEST_LABEL, FROZEN_MANIFEST_NOTE, resolveRunContext, type ContextRun, type FrozenRunContext } from "./runContext";
-import { GATE_TEXT, NOTICE_ACTION_LABELS, type CheckField, type NoticeAction, type RunAdvisory, type RunNotice } from "./runValidation.ts";
+import { GATE_TEXT, NOTICE_ACTION_LABELS, advisorySummaryText, type CheckField, type NoticeAction, type RunAdvisory, type RunNotice } from "./runValidation.ts";
 import { Callout, StatusPill } from "../shared/Callout";
 import "./run-context.css";
 import "./run-context-validation.css";
@@ -25,7 +25,7 @@ function AdvisoryList({ advisories, expected }: { advisories: RunAdvisory[]; exp
     return <p className="run-context-advisory-empty">{expected ? "The advisory details are loading with this Run’s record." : "No advisory applies to this Run."}</p>;
   }
   return <ul className="run-context-advisories">{advisories.map((advisory) => <li key={advisory.id}>
-    <b>{advisory.title ?? advisory.id}</b>
+    <b>{advisory.title ?? advisory.id}{advisory.severity && <small className="run-context-advisory-severity"> · {advisory.severity}</small>}</b>
     {advisory.summary && <span>{advisory.summary}</span>}
     {Boolean(advisory.affected_metrics?.length) && <small>Affected: {advisory.affected_metrics?.map((metric) => metric.replaceAll("_", " ")).join(", ")}</small>}
   </li>)}</ul>;
@@ -68,6 +68,9 @@ export default function RunContextBar({ run, frozen, actions = {} }: {
   const label = (value: string) => value.replaceAll("_", " ");
   const identityAvailable = context.kind === "ready" || context.kind === "partial";
   const [primaryNotice, ...otherNotices] = context.notices;
+  // R-D11: advisories apply to more Runs than the pre-fix notice covers (e.g. a
+  // doctoral Run); list them in a disclosure unless that notice already does.
+  const advisorySummary = context.notices.some((notice) => notice.id === "pre_fix") ? null : advisorySummaryText(run);
   return <section className={`run-context-bar run-context-${context.kind}`} aria-label="Selected Run context" aria-busy={context.kind === "loading"}>
     <div className="run-context-heading">
       <div><span className="run-context-eyebrow">Selected Run · read-only source</span>
@@ -93,6 +96,7 @@ export default function RunContextBar({ run, frozen, actions = {} }: {
         {moreOpen && otherNotices.map((notice) => <NoticeCallout key={`${context.runId}:${notice.id}`} notice={notice} advisories={context.advisories} actions={actions} />)}
       </>}
     </div>}
+    {context.runId && advisorySummary && <details className="run-context-advisory-details value-new-control"><summary>{advisorySummary}</summary><AdvisoryList advisories={context.advisories} expected={1} /></details>}
     {context.issue && <p className="run-context-notice" role="status">{context.issue}</p>}
     {context.runId && <p className="run-context-scope"><b>Run scope</b> {context.scope.label}
       {context.scope.configuredPeriods !== undefined && <> · {context.scope.configuredPeriods.toLocaleString("en-GB")} periods configured</>}

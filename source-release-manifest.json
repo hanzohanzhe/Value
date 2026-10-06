@@ -1313,6 +1313,7 @@
     "tests/frontend/render/readiness-issues.test.mjs",
     "tests/frontend/render/readiness-labels.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
+    "tests/frontend/render/run-context-advisories.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
     "tests/frontend/render/run-history.test.mjs",
     "tests/frontend/render/run-scope-extensions.test.mjs",
@@ -3736,8 +3737,8 @@
     },
     {
       "path": "app/features/workspace/RunContextBar.tsx",
-      "sha256": "c11fc83eb767b157ae04a8590b4399e4a4e9c138ded2f7e97f3cba5b865790f0",
-      "bytes": 8562,
+      "sha256": "c95f68f371a52ede2d63cc7067a14d87c50f7a7ac1ea71aaeecf946fec4ff383",
+      "bytes": 9183,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3790,8 +3791,8 @@
     },
     {
       "path": "app/features/workspace/run-context-validation.css",
-      "sha256": "877bbe44885c274b706c917fd1ca668356848e08be210ff663c0b4e13bfb61fe",
-      "bytes": 1773,
+      "sha256": "24b6d6c86b0d6f178d7dbbd0a451f248843a04cc10c356920e43fdf80935f9b6",
+      "bytes": 2234,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3814,8 +3815,8 @@
     },
     {
       "path": "app/features/workspace/runValidation.ts",
-      "sha256": "b473d829b0b4ebdbd04ffaabe65bd175c3658239ce3347e670d58db005b06e44",
-      "bytes": 24905,
+      "sha256": "74853b321b273f122046df996d50991a8e226c4da0e8dda73f5f520daf7a1cd2",
+      "bytes": 26112,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10789,6 +10790,12 @@
       "path": "tests/frontend/render/render-harness.test.mjs",
       "sha256": "e20d5da77f6261348f7c2eadec4884363fc9122a1703987f37d58beaa5671b3a",
       "bytes": 1124,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/render/run-context-advisories.test.mjs",
+      "sha256": "274321f525e0a77ef4464baadb6af6079b51d287459cc5a5c2a218e5ea3f4c1b",
+      "bytes": 2465,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
