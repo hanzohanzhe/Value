@@ -1158,11 +1158,11 @@ for cid in ids:
 | # | 事项 | 为什么重要 | 找谁 |
 |---|---|---|---|
 | 1 | R029 研究（thesis96，`value-doctoral-national-psm`）在 0.7.0 中按哪个口径运行，P0-5b 的天气 v2、损耗系数与核电可用率是否作用于这条路径；第 3 章第 164 行与第 6 章第 271–279 行的 R029 数值是否重算 | 第 5、6 章的口径归属与数值例子 | 代码负责人、作者 |
-| 2 | 逐站核电只对 `NUCLEAR_POLICY_PACK_IDS`（目前只有 GBP1 public1）生效，而 GBP1 public1 在修正口径下不合格；public2 和 R029 上核电取全国回退值 0.723。是否把 public2 加入名单（需要另立 correction id） | 否则正文中的逐站规则在任何合格的修正口径运行中都不会被用到 | 作者 |
+| 2 | 逐站核电只对 `NUCLEAR_POLICY_PACK_IDS`（目前只有 GBP1 public1）生效，而 GBP1 public1 在修正口径下不合格；public2 和 R029 上核电取全国回退值 0.723。是否把 public2 加入名单（需要另立 correction id）。**FX7 更新（A16-7）：** 已加入，`p05.nuclear-stations-public2`（只在修正口径、只对 public2）；public2 已在本地登记为 scientific_reference，未发布 | 否则正文中的逐站规则在任何合格的修正口径运行中都不会被用到 | 作者 |
 | 3 | 修正目录 `corrections/p05.json` 第 243 行 `p05.solar-plane-of-array` 的描述写 “tilted at the site latitude”，与代码（`tilt_rule = jacobson-jadhav-2018`）、参数表、f2 草稿不符；它也出现在生成的 `METHODOLOGY_PROFILES.md` 中。另外 `p05.vre-loss-factors` 的描述仍写 “PENDING AUTHOR REVIEW”，但 A9 已认可 | 描述只是展示字段，不进入方法哈希（`methodology.py` 第 171–179 行），但会被网站和读者引用 | 代码负责人：修目录描述后重新生成表（FX7 已修：两条描述已改正，`METHODOLOGY_PROFILES.md` 已重新生成） |
 | 4 | 23 区 GB 研究的基础数据包是哪个。网络模块只在修正口径下运行，而 GBP1 public1 在修正口径下不合格 | 第 2 章第 9 行、第 7 章第 107 行 | 代码负责人 |
 | 5 | ~~A13 光伏倾斜面换算的模型选择~~（A16-6 已认可），以及 DUKES 对照列 | 0.4 正文是否带 PENDING 标记 | 作者 |
-| 6 | 修正口径下，核电日前接受的路径依赖是否仍然存在、量级多大 | 第 5 章 N-7 能否把这段写进修正口径 | 代码负责人 |
+| 6 | 修正口径下，核电日前接受的路径依赖是否仍然存在、量级多大。**FX7 实测：** 仍然存在，且量级很大。GBP1 public2 修正口径 2025 年，核电到第 16593 期（12 月 12 日）才首次被接受，全年 2.0 TWh；按可用率可发 38.3 TWh，Energy Trends 5.1 的 2023–2024 supplied 约 37.3 TWh。见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` | 第 5 章 N-7 能否把这段写进修正口径 | 代码负责人、作者 |
 | 7 | 起始年不变币值的表述：哪个价格基年、是否承认输入的来源年份混合；以及 R029 年度资本费用中的 5% 利率与“不折现”如何并列表述 | 第 1 章新小节、第 2 章、第 6 章 | 作者 |
 | 8 | 方法学中 “Doctoral” 路径是否改名 | 避免与论文复现口径混淆 | 作者 |
 | 9 | 是否在方法学中加入 GBP1 的勘误说明（A15 说该对比作为论文结果的勘误保留），以及 A15 surplus conservation 失败（471 个时段、最大 991 MWh）在方法学中怎样写：它是待调查的已知问题，不是已声明偏差 | 第 2 章或第 5 章的写法 | 作者 |

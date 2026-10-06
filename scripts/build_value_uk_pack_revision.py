@@ -13,6 +13,11 @@ builder adds the remaining declarations the corrected reader needs:
 * ``interval_minutes`` 30 and ``currency`` GBP (with the R029 ``fx_basis``);
 * ``time_convention`` of the ERA5 weather (ssrd accumulated to the end of the
   hour; 100 m wind instantaneous), used by weather v2 (P6-06);
+* ``interval_minutes`` 60 of the three system-average VRE profiles (hourly
+  ERA5 2022; ``sa.csv`` holds 8761 hourly values, one hour more than a year,
+  which the declared clock recognises as hourly only when declared - FX7,
+  decision A16-7: without it a strict reader refuses the series as short and
+  a lenient one wraps it on the half-hour clock);
 * ``flow_sign``: ``verified:positive_import`` only when an audit evidence of
   ``scripts/audit_boundary_flow_sign.py`` with ``verified: true`` names
   exactly the bound flow files' sha256; otherwise the R029 convention stays
@@ -41,13 +46,15 @@ from pathlib import Path
 from typing import Any, Mapping
 
 PACK_ID = "value-uk-open-data-pack-public2"
-BUILDER = "scripts/build_value_uk_pack_revision.py@v1"
+BUILDER = "scripts/build_value_uk_pack_revision.py@v2"
 COUNTRIES = ("belgium", "france", "ireland", "netherlands", "norway")
 REBOUND_ROLES = ("demand.real", "demand.forecast",
                  *[f"market.{c}.{kind}" for c in COUNTRIES for kind in ("profile", "price")])
 UNVERIFIED_SIGN = "declared_unverified:LEGACY_MODEL_POSITIVE_IMPORT_NEGATIVE_EXPORT_NOT_SOURCE_VERIFIED"
 VERIFIED_SIGN = "verified:positive_import"
 WEATHER_CONVENTIONS = {"weather.solar": "accumulation_end_of_hour", "weather.wind": "instantaneous"}
+# FX7 (A16-7): the hourly VRE investment profiles carry no interval declaration.
+PROFILE_INTERVALS = {"profiles.vre_solar": 60, "profiles.vre_onshore": 60, "profiles.vre_offshore": 60}
 
 
 def sha256(path: Path) -> str:
@@ -116,6 +123,8 @@ def build(base: Path, approved: Path, out: Path, *, link: str = "copy",
         entry["uri"] = place(base, str(binding["uri"]))
         if role in WEATHER_CONVENTIONS:
             entry["time_convention"] = WEATHER_CONVENTIONS[role]
+        if role in PROFILE_INTERVALS:
+            entry["interval_minutes"] = PROFILE_INTERVALS[role]
         bindings[role] = entry
     fx_basis = str(approved_manifest["bindings"]["market.france.price"].get("source_version") or "")
     for role in REBOUND_ROLES:

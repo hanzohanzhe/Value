@@ -54,6 +54,7 @@ existing installation is upgraded side by side, as described in
 | FX4 (post-UAT M-D1) | `fx4.storage-offer-ledger` (accounting zone) | — |
 | FX5 (A16-5 VoLL) | `fx5.voll-17000` (doctoral: accounting zone; parameter default for every module that reads `market.voll_gbp_per_mwh`) | — |
 | FX6 (A16-2, four-role S-D3) | — | `fx6.day-ahead-interconnector-imports` (method change, explicit Study confirmation) |
+| FX7 (A16-7, GBP1 public2 local acceptance) | — | `p05.nuclear-stations-public2` (GBP1 public2 only) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -95,6 +96,22 @@ unattributed.
   a nuclear unit that has been accepted runs at full power until the end of
   the year. In the GBP1 before/after comparison this is one mechanism behind
   the differences (A15).
+- **Nuclear path dependency also in the corrected profile (FX7).** Under the
+  default PSM a nuclear agent that was not accepted in the previous period
+  offers at its start-up cost (500 GBP/MWh in GBP1) and is the last resource
+  in merit order; once accepted it offers at 0 and stays on. In the local GBP1
+  public2 corrected run (2025) nuclear enters only at period 16593 (12
+  December) and generates 2.0 TWh, against 38.3 TWh that its availability
+  allows and 37.3 TWh supplied in 2023-2024 (Energy Trends 5.1); CCGT fills
+  the gap. Not changed in this round (dispatch rule; needs an author
+  decision). See `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`.
+- **R029 public1 and GBP1 public1 solar profile under the strict corrected
+  reader.** Both bind the same hourly `sa.csv` with 8761 values and no
+  interval declaration; the declared clock recognises an undeclared hourly
+  series only at 8760/8784 values, so the strict reader refuses it
+  (`GF_DATA_SHORT_SERIES`) when the default PSM builds its chronology, while
+  the data-pack validation layers report the pack eligible. GBP1 public2
+  declares the interval (FX7); the released packs are unchanged.
 
 ### Migration notes
 
@@ -216,6 +233,25 @@ unattributed.
   load factors with the reasons they differ (A9; disclosure only, no
   calibration). GBP1 corrected / DUKES 2020-2024: onshore 1.56, offshore 1.23,
   solar 1.04.
+
+### GBP1 public2 local registration and station nuclear (FX7, A16-6, A16-7)
+
+- The A13 solar transposition model choices are author-approved (A16-6);
+  values unchanged.
+- GBP1 public2 (`value-uk-open-data-pack-public2`, built locally by
+  `scripts/build_value_uk_pack_revision.py`, not published) is registered in
+  the local pack-class registry as `scientific_reference`, so the corrected
+  profile reads it strictly. The builder (now `@v2`) also declares the
+  three hourly VRE profiles `interval_minutes` 60.
+- Corrected profile only (`p05.nuclear-stations-public2`): GBP1 public2 takes
+  the VALUE-UK nuclear station policy of GBP1 public1 (five EDF stations with
+  their own load factors and month-exact generation ends, Hinkley Point C and
+  Sizewell C as exogenous pipeline projects) instead of one aggregate
+  `Nuclear` asset at the national fallback 0.723.
+- Local one-year acceptance on GBP1 public2: hydro 6.06 TWh (DUKES 6.2
+  2019-2024 mean 5.77 TWh, +5 %); nuclear far below Energy Trends 5.1 (see
+  Known issues); wind and solar CF above DUKES as disclosed under A9.
+  `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`.
 
 ### Result views read what was recorded (P0-9 close)
 

@@ -68,6 +68,9 @@ SUB_REASONS = ("module", "extension", "data_pack", "external_code", "reference_p
 KNOWN_PACK_CLASSES: Mapping[str, str] = {
     "value-uk-open-data-pack-v1": "scientific_reference",      # GBP1
     "value-uk-calendar-vx-trade001": "scientific_reference",   # R029
+    # GBP1 public2: local registration only (decision A16-7); built by
+    # scripts/build_value_uk_pack_revision.py, not published.
+    "value-uk-open-data-pack-public2": "scientific_reference",
     "value-uk-1000twh-reproduction": "scientific_reference",
     "value-synthetic-contract-pack-v1": "synthetic",           # thesis-era contract pack
 }

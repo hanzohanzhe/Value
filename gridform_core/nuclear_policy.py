@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .asset_economics import build_asset_economic_extensions
-from .pack_source_identity import NUCLEAR_POLICY_PACK_IDS
+from .pack_source_identity import NUCLEAR_POLICY_GATED_PACK_IDS, NUCLEAR_POLICY_PACK_IDS
 from .v2.contracts import PlanningProject
 
 
@@ -21,14 +21,35 @@ POLICY_PATH = (
 POLICY_SCHEMA = "value.uk-nuclear-policy/v1"
 
 
-def applies_to_data_pack(manifest: Mapping[str, object]) -> bool:
+def applies_to_data_pack(manifest: Mapping[str, object], methodology: object | None = None) -> bool:
     """Keep the VALUE-UK policy out of the retained doctoral reproduction.
 
     Keyed on the pack id (``pack_source_identity.NUCLEAR_POLICY_PACK_IDS``,
     part of ``ID_KEYED_PACK_IDS``, which frozen-input recovery respects).
+
+    GBP1 public2 (``NUCLEAR_POLICY_GATED_PACK_IDS``) takes the station fleet
+    only under the profile-gated correction ``p05.nuclear-stations-public2``
+    (decision A16-7), asked of ``methodology``, else of the active Run's
+    methodology, else of the catalogue default profile (preflight and
+    previews run outside a Run; public2 is not a doctoral pack, so only the
+    corrected profile can run it).
     """
 
-    return str(manifest.get("id") or "") in NUCLEAR_POLICY_PACK_IDS
+    pack_id = str(manifest.get("id") or "")
+    if pack_id not in NUCLEAR_POLICY_PACK_IDS:
+        return False
+    if pack_id not in NUCLEAR_POLICY_GATED_PACK_IDS:
+        return True
+    return station_fleet_enabled(methodology)
+
+
+def station_fleet_enabled(methodology: object | None = None) -> bool:
+    """Is ``p05.nuclear-stations-public2`` in force (A16-7)?"""
+
+    from .methodology import active_methodology, resolve_methodology
+
+    resolved = methodology or active_methodology() or resolve_methodology(None)
+    return bool(resolved.enabled("p05.nuclear-stations-public2"))  # type: ignore[attr-defined]
 
 
 @lru_cache(maxsize=1)

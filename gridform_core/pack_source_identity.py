@@ -105,9 +105,11 @@ RECOVERY_BINDING_SET_FIELDS = frozenset({"role", "uri", "sha256", "bytes", "bind
 MAX_IDENTITY_DEPTH = 8
 
 # Packs whose id selects model behaviour (the one list): the VALUE-UK nuclear
-# fleet policy applies to GBP1 public1 only (nuclear_policy reads
-# NUCLEAR_POLICY_PACK_IDS), the doctoral site-weather adapter to both VALUE-UK
-# ids.  doctoral_weather.py keeps its own literal set because its bytes are
+# fleet policy applies to GBP1 public1 and, under the corrected-profile
+# correction p05.nuclear-stations-public2 (decision A16-7), to its local
+# revision GBP1 public2 (nuclear_policy reads NUCLEAR_POLICY_PACK_IDS and
+# NUCLEAR_POLICY_GATED_PACK_IDS), the doctoral site-weather adapter to both
+# VALUE-UK ids of the thesis lineage.  doctoral_weather.py keeps its own literal set because its bytes are
 # part of the dispatch weather identity (any edit makes every saved 35aadb3
 # Study with site weather unreconstructable, X0 S11);
 # tests/test_pack_source_identity.py asserts that set equals
@@ -118,7 +120,12 @@ MAX_IDENTITY_DEPTH = 8
 # correction id and a golden check.
 VALUE_UK_OPEN_DATA_PACK_ID = "value-uk-open-data-pack-v1"
 VALUE_UK_REPRODUCTION_PACK_ID = "value-uk-1000twh-reproduction"
-NUCLEAR_POLICY_PACK_IDS = frozenset({VALUE_UK_OPEN_DATA_PACK_ID})
+# GBP1 public2 (scripts/build_value_uk_pack_revision.py, local build only).
+VALUE_UK_OPEN_DATA_PACK_PUBLIC2_ID = "value-uk-open-data-pack-public2"
+NUCLEAR_POLICY_PACK_IDS = frozenset({VALUE_UK_OPEN_DATA_PACK_ID, VALUE_UK_OPEN_DATA_PACK_PUBLIC2_ID})
+# Members of NUCLEAR_POLICY_PACK_IDS whose policy is a profile-gated
+# correction (p05.nuclear-stations-public2), not a property of the pack.
+NUCLEAR_POLICY_GATED_PACK_IDS = frozenset({VALUE_UK_OPEN_DATA_PACK_PUBLIC2_ID})
 DOCTORAL_WEATHER_PACK_IDS = frozenset({VALUE_UK_OPEN_DATA_PACK_ID, VALUE_UK_REPRODUCTION_PACK_ID})
 ID_KEYED_PACK_IDS = NUCLEAR_POLICY_PACK_IDS | DOCTORAL_WEATHER_PACK_IDS
 
