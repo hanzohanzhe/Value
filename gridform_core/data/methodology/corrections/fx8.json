@@ -27,7 +27,7 @@
       "advisory": {
         "severity": "high",
         "title": "Nuclear started the year off and paid its start-up cost to enter",
-        "summary": "In this Run every nuclear unit of the default PSM was off before the first period of each model year (the thesis rule), so its day-ahead offer carried the start-up cost (500 GBP/MWh on GBP1) until it was first accepted, and it then stayed on. Nuclear output therefore depends on when the first scarcity period of the year occurs: on GBP1 2025 nuclear first cleared on 12 December and generated about 2 TWh instead of about 38 TWh at station availability.",
+        "summary": "If this Run has nuclear units, each one was off before the first period of each model year under the thesis rule of the default PSM, so its day-ahead offer carried the start-up cost (500 GBP/MWh on GBP1) until it was first accepted, and it then stayed on. Runs without nuclear units are not affected. Nuclear output therefore depends on when the first scarcity period of the year occurs: on GBP1 2025 nuclear first cleared on 12 December and generated about 2 TWh instead of about 38 TWh at station availability.",
         "affected_metrics": [
           "nuclear_generation",
           "generation_mix",
