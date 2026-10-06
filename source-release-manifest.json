@@ -11464,9 +11464,9 @@
     },
     {
       "path": "tests/test_market_ledger_v6.py",
-      "sha256": "0de5caa7081bfde39e9246f51fc1ec15273c7429f252e6d3334a31d0b421fe0c",
-      "bytes": 9585,
-      "transform": "byte copy"
+      "sha256": "7ed724c6f165425765fe537a16709864eceb3c921c1b2e8238a4c09ec2f40687",
+      "bytes": 11404,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_market_replay.py",
@@ -11896,9 +11896,9 @@
     },
     {
       "path": "tests/test_preflight_documentation.py",
-      "sha256": "e729d29cd09afc9f3c99b84157ce541bb0cc644f9f841862719018feaa7697b2",
-      "bytes": 2998,
-      "transform": "byte copy"
+      "sha256": "5d9b9294122f02fafeaf869aec47f267f376fc0f63420072a4536471ab31673d",
+      "bytes": 3614,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prepare_archived_workspace.py",
@@ -11968,9 +11968,9 @@
     },
     {
       "path": "tests/test_prompt107_production_gate.py",
-      "sha256": "f7f499efca143147334c292b6d83840d547d94e82295ee4e00e60005547b7a7b",
-      "bytes": 59283,
-      "transform": "byte copy"
+      "sha256": "a5383655d075f8724327c3fc57ee0a262b20b00c424da47d303e90f0305a8042",
+      "bytes": 61233,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_prompt109_value_101_identity.py",
@@ -12376,9 +12376,9 @@
     },
     {
       "path": "tests/test_run_reproduction.py",
-      "sha256": "15dea4dd1ac45a7db9cfbb6a4f708af69957396285ad310ac82cbd78f3d86377",
-      "bytes": 1897,
-      "transform": "byte copy"
+      "sha256": "9d91393e00bc31e1317ca42c46da29fd839c5524e4801a0fead997bf80643dfb",
+      "bytes": 3291,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_run_status.py",
@@ -12544,9 +12544,9 @@
     },
     {
       "path": "tests/test_value_methodology.py",
-      "sha256": "b369dd78a2de9e75ded5f7c37010568ef3e2b82d42be9a9f1698ee89c39dc1b4",
-      "bytes": 1371,
-      "transform": "byte copy"
+      "sha256": "a06564f13a856b7259e104bc829ca7040841321376e6ae24b6e866a364c32399",
+      "bytes": 1751,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_verify_local_security_boundary.py",

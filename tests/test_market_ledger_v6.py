@@ -124,7 +124,10 @@ def test_new_ledger_is_v7_and_has_separate_authoritative_tables(
             )
         }
 
-    assert version == "value.market-ledger/v7"
+    # The authoritative writer is v8 (35aadb3); v7 is only the legacy writer.
+    assert version == "value.market-ledger/v8"
+    assert version == market_ledger.SCHEMA_VERSION
+    assert market_ledger.LEGACY_WRITER_SCHEMA_VERSION == "value.market-ledger/v7"
     assert {
         "zonal_period_accounting",
         "vre_curtailment_period",
@@ -172,9 +175,12 @@ def test_v7_batch_writes_copy_authoritative_attribution_without_v5_fillers(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "market.sqlite"
+    # v8 keeps per-asset VRE detail rows in the full trace only; a summary
+    # ledger drops them by design (FULL_ONLY_TABLES), so the copy is checked
+    # on a full trace.
     ledger = market_ledger.SQLiteMarketLedger(
         database,
-        trace_level="summary",
+        trace_level="full",
         batch_size=1,
         semantic_metadata=_semantic_metadata(),
     )
@@ -222,6 +228,46 @@ def test_v7_batch_writes_copy_authoritative_attribution_without_v5_fillers(
     assert metadata["rows"]["vre_curtailment_detail"] == 1
 
 
+def test_v8_summary_ledger_keeps_period_attribution_but_drops_full_only_detail(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "market.sqlite"
+    ledger = market_ledger.SQLiteMarketLedger(
+        database,
+        trace_level="summary",
+        batch_size=1,
+        semantic_metadata=_semantic_metadata(),
+    )
+    attribution = _attribution()
+    ledger.record_zonal_accounting(
+        (market_ledger.ZonalAccountingLedgerRow.from_accounting(_accounting()),)
+    )
+    ledger.record_vre_curtailment_periods(
+        (market_ledger.VRECurtailmentPeriodRow.from_attribution(attribution),)
+    )
+    ledger.record_vre_curtailment_details(
+        market_ledger.VRECurtailmentDetailRow.from_attribution(attribution)
+    )
+    ledger.close()
+
+    with sqlite3.connect(database) as connection:
+        counts = {
+            table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in (
+                "zonal_period_accounting",
+                "vre_curtailment_period",
+                "vre_curtailment_detail",
+            )
+        }
+
+    assert counts == {
+        "zonal_period_accounting": 1,
+        "vre_curtailment_period": 1,
+        "vre_curtailment_detail": 0,
+    }
+    assert market_ledger.validate_market_ledger_file(database)["valid"] is True
+
+
 def test_v7_contract_has_query_indexes_and_validates(tmp_path: Path) -> None:
     database = tmp_path / "market.sqlite"
     market_ledger.SQLiteMarketLedger(
@@ -240,12 +286,11 @@ def test_v7_contract_has_query_indexes_and_validates(tmp_path: Path) -> None:
         "vre_curtailment_detail_zone_technology_year",
         "vre_curtailment_detail_asset_year_period",
     }.issubset(detail_indexes)
-    assert market_ledger.validate_market_ledger_file(database) == {
-        "valid": True,
-        "schema_version": "value.market-ledger/v7",
-        "integrity": "ok",
-        "errors": [],
-    }
+    validation = market_ledger.validate_market_ledger_file(database)
+    assert validation["valid"] is True, validation["errors"]
+    assert validation["schema_version"] == "value.market-ledger/v8"
+    assert validation["integrity"] == "ok"
+    assert validation["errors"] == []
 
 
 @pytest.mark.parametrize(
