@@ -10091,8 +10091,8 @@
     },
     {
       "path": "tests/baselines/release-exclusions.txt",
-      "sha256": "75bd74d40937634c19c4fcec0f4bdce2b11e3798235664acd1837b0e5cb608b9",
-      "bytes": 602,
+      "sha256": "43694fbc37db6471405b2849f99918caa6ff3d4ea7eb7009ca9ef41283f794e6",
+      "bytes": 828,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
