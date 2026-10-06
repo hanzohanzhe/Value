@@ -16,6 +16,8 @@ import "./features/shared/service-status.css";
 import ModuleQuarantinePanel, { type QuarantineRow } from "./features/modules/ModuleQuarantinePanel";
 import { isPendingRunsRefusal, pendingRunsQuestion } from "./features/modules/module-quarantine.mjs";
 import DisabledEntriesPanel, { type EntryError } from "./features/modules/DisabledEntriesPanel";
+import DataPackValidationPanel from "./features/data/DataPackValidationPanel";
+import { inputsPresentSuffix, validationLayers, worstStatus, type DataPackValidationReport } from "./features/data/dataPackValidation.ts";
 import { disabledEntries, lifecyclePath, type DisabledEntry } from "./features/modules/disabledEntries.ts";
 import { formatEnergy, formatEnergyGroup, formatQuantity } from "./features/shared/format.ts";
 import { seriesShapes, vreEventGroups, vreKpis, vreLabels, vreYearCoverage } from "./features/market/vreView.ts";
@@ -731,6 +733,26 @@ export default function Home() {
     : dataContextProject?.selected_extensions ?? [];
   const dataPreview = dataPreviewResult?.contextId === dataContextId && dataPreviewResult.packId === dataContextPackId
     && dataPreviewResult.manifestSha256 === dataManifestSha256 ? dataPreviewResult.preview : null;
+  // Spec 11.2 (S-D2): the three validation layers of the data pack in context.
+  const [packValidationResult, setPackValidationResult] = useState<{ key: string; report: DataPackValidationReport | null; error: string } | null>(null);
+  const [packValidationNonce, setPackValidationNonce] = useState(0);
+  const packValidationPackId = view === "data" && dataContextPack?.manifest_sha256 ? dataContextPack.id : "";
+  const packValidationExtensions = dataContextExtensions.join(",");
+  const packValidationKey = packValidationPackId ? JSON.stringify([packValidationPackId, dataContextPack?.manifest_sha256, packValidationExtensions, packValidationNonce]) : "";
+  const packValidationCurrent = packValidationResult?.key === packValidationKey ? packValidationResult : null;
+  const packValidationLayers = validationLayers(packValidationCurrent?.report, dataContextPack?.plausibility_status);
+  useEffect(() => {
+    if (!packValidationKey) return;
+    const controller = new AbortController();
+    fetch(`${API}/data-packs/${encodeURIComponent(packValidationPackId)}/validation?extensions=${encodeURIComponent(packValidationExtensions)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json() as DataPackValidationReport & { error?: string };
+        if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+        setPackValidationResult({ key: packValidationKey, report: payload, error: "" });
+      })
+      .catch((reason: unknown) => { if (!controller.signal.aborted) setPackValidationResult({ key: packValidationKey, report: null, error: reason instanceof Error ? reason.message : "Validation failed" }); });
+    return () => controller.abort();
+  }, [packValidationKey, packValidationPackId, packValidationExtensions]);
 
   async function previewDataRole(role: string) {
     const packId = dataContextPackId;
@@ -1473,9 +1495,10 @@ export default function Home() {
           {dataContextId !== "draft" && !isJourneyData && !dataContextProject && <option value={dataContextId}>Study unavailable · {dataContextId}</option>}
           {workspace.projects.map((project) => <option value={project.id} key={project.id}>{project.name} · revision {project.revision_number ?? 0}</option>)}
         </select></div>
-        <div><strong>{dataContextResolution ? `${dataContextResolution.data_readiness.available}/${dataContextResolution.data_readiness.required}` : "Not evaluated"}</strong><span>required inputs ready</span></div>
+        <div><strong>{dataContextResolution ? `${dataContextResolution.data_readiness.available}/${dataContextResolution.data_readiness.required}` : "Not evaluated"}</strong><span>{inputsPresentSuffix(worstStatus(packValidationLayers))}</span></div>
         {dataContextPackId && <a className="secondary" href={`${API}/data-packs/${encodeURIComponent(dataContextPackId)}/missing-checklist?extensions=${encodeURIComponent(dataContextExtensions.join(","))}&format=json`}>Download missing-input checklist</a>}
       </section>
+      {dataContextPack && <DataPackValidationPanel key={dataContextPack.id} packId={dataContextPack.id} report={packValidationCurrent?.report} cached={dataContextPack.plausibility_status} loading={Boolean(packValidationKey) && !packValidationCurrent} error={packValidationCurrent?.error} onRetry={() => setPackValidationNonce((value) => value + 1)} />}
       {dataContextId === "draft" && <section className="panel data-context">
         <div><strong>Data pack for this draft</strong><select aria-label="Draft data pack" value={selectedPackId} disabled={copyingDraftPack} onChange={(event) => { setSelectedPackId(event.target.value); setDraftResolution(null); setPreflight(null); setDataPreview(null); }}>
           {workspace.data_packs.filter((pack) => pack.data_pack_type !== "network_overlay").map((pack) => <option key={pack.id} value={pack.id}>{pack.name} · {pack.id}</option>)}

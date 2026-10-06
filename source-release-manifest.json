@@ -34,9 +34,12 @@
     "app/features/data-workbench/overlay-editor.types.ts",
     "app/features/data-workbench/types.ts",
     "app/features/data/CsvMappingEditor.tsx",
+    "app/features/data/DataPackValidationPanel.tsx",
     "app/features/data/csv-mapping-editor.css",
     "app/features/data/csvMappingFx.ts",
     "app/features/data/csvMappingTypes.ts",
+    "app/features/data/data-pack-validation.css",
+    "app/features/data/dataPackValidation.ts",
     "app/features/data/research-suite-api.mjs",
     "app/features/evidence/AuditView.tsx",
     "app/features/evidence/ReadinessEvidence.tsx",
@@ -1289,6 +1292,7 @@
     "tests/frontend/helpers/fixtures.mjs",
     "tests/frontend/helpers/render-tsx.mjs",
     "tests/frontend/render/annual-results.test.mjs",
+    "tests/frontend/render/data-pack-validation.test.mjs",
     "tests/frontend/render/disabled-entries.test.mjs",
     "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/network-tables.test.mjs",
@@ -1302,6 +1306,7 @@
     "tests/frontend/unit/api-error.test.mjs",
     "tests/frontend/unit/comparison-review.test.mjs",
     "tests/frontend/unit/csv-mapping-fx.test.mjs",
+    "tests/frontend/unit/data-pack-validation.test.mjs",
     "tests/frontend/unit/disabled-entries.test.mjs",
     "tests/frontend/unit/dispatch-view.test.mjs",
     "tests/frontend/unit/e2e-runner.test.mjs",
@@ -3103,6 +3108,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/data/DataPackValidationPanel.tsx",
+      "sha256": "2da0ab49120cf6869b2f65ed10dac95231b2cd69612e390fca1f3ba6e4422b14",
+      "bytes": 2771,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/data/csv-mapping-editor.css",
       "sha256": "86b5bde7aa2806de49c5e3aeb11c20bfbe9f5dab63889d2b18bbd43a8cd07eb7",
       "bytes": 1550,
@@ -3118,6 +3129,18 @@
       "path": "app/features/data/csvMappingTypes.ts",
       "sha256": "78cc5fa925af4b1d4e6d3828dfa4be26ae1fcf318810cb2da2e00981658249ce",
       "bytes": 1902,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/data/data-pack-validation.css",
+      "sha256": "cfd6e80160e0b3542ece8ce084638edd41334fddab1531b04ff77507d7ddfe1a",
+      "bytes": 1728,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/data/dataPackValidation.ts",
+      "sha256": "945519bdcca7e9d38ab4a75b8f3d5e049b77cda9b5cae0c049d0aab228d84545",
+      "bytes": 8671,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3620,8 +3643,8 @@
     },
     {
       "path": "app/features/studies/types.ts",
-      "sha256": "de38a4057d86735b1328fa3f676e20e8a24461870bab1a943f33f89c51a367a9",
-      "bytes": 8551,
+      "sha256": "bdf948cc95eadc1b4faaf79411423dabbf7bc8b2aa52030926b0d849370aa800",
+      "bytes": 8691,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3770,8 +3793,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "2288dfae3903b119bebbb021feaebfb69287a940eca13cae62d79b459af6bc6e",
-      "bytes": 169016,
+      "sha256": "88149b324f21eff43701677dc4869a1bf52dd3aaae27a607e54085f5452b0715",
+      "bytes": 171424,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10616,6 +10639,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/data-pack-validation.test.mjs",
+      "sha256": "8b4f5f49f8747cadedf89af21f298f960f620c2ade0d2b27e86518823ea2c7ca",
+      "bytes": 1743,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/disabled-entries.test.mjs",
       "sha256": "3d4eaaab38f2faedf38195b044bb0ab6336ae8476fefed40df07065ae7a8dc10",
       "bytes": 2247,
@@ -10694,6 +10723,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/unit/data-pack-validation.test.mjs",
+      "sha256": "3d9d60b38b13ce81192f455d24c6eb298e1e59b9ec10316d8ca17c81a152e974",
+      "bytes": 5005,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/unit/disabled-entries.test.mjs",
       "sha256": "9a9a04b5d8565761f444a4f2a55a9b917bf7457993ac3b22671275b24bbe88fc",
       "bytes": 2956,
@@ -10725,8 +10760,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "cd76dd854c5a23d16316a8d7c084f23ffe18507a84cfc237b087d4ee5cc62108",
-      "bytes": 6107,
+      "sha256": "2bfa2328ff710a210245052a787a8cac92da281df291d0be5c43ec7a37f6eaf5",
+      "bytes": 6155,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
