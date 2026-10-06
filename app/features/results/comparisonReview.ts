@@ -39,3 +39,38 @@ export function reviewReasonText(reason: ReviewReason): string {
       return `${runPrefix(reason)}${reason.reason.replaceAll("_", " ")}.`;
   }
 }
+
+/** Per changed identity dimension (gridform_core/results_summary.changed_dimension_details). */
+export type DimensionDetail = { label: string; paths: string[]; more_paths: number };
+export type ChangedDimensionRow = { key: string; label: string; detail: string; raw: string | null };
+
+function pathsText(detail: DimensionDetail): string {
+  const listed = detail.paths.join(", ");
+  return detail.more_paths > 0 ? `${listed} and ${detail.more_paths} more` : listed;
+}
+
+/**
+ * R-D7 / S-D9 / F-D5 (four-role report, round R1-5): each changed dimension as
+ * a label and the differing paths the backend names, instead of thousands of
+ * characters of raw JSON. Scalar module changes read "old → new"; the raw
+ * recorded values stay available on request (`raw`).
+ */
+export function changedDimensionRows(changed: Record<string, unknown[]>, details?: Record<string, DimensionDetail> | null): ChangedDimensionRow[] {
+  return Object.entries(changed).map(([key, values]) => {
+    const scalar = values.every((value) => value === null || value === undefined || typeof value !== "object");
+    const raw = scalar ? null : JSON.stringify(values, null, 2);
+    const identity = key.startsWith("identity.") ? details?.[key.slice("identity.".length)] : undefined;
+    if (identity && identity.paths.length) return { key, label: identity.label, detail: `differs at ${pathsText(identity)}`, raw };
+    if (key.startsWith("module.")) {
+      const slot = key.slice("module.".length).replaceAll("_", " ");
+      return { key, label: `module · ${slot}`, detail: scalar ? values.map((value) => String(value ?? "not recorded")).join(" → ") : "recorded values differ", raw };
+    }
+    return { key, label: identity?.label ?? key.replaceAll("_", " "), detail: scalar ? values.map((value) => String(value ?? "not recorded")).join(" → ") : "recorded values differ", raw };
+  });
+}
+
+/** The differing paths of one review dimension, or null when the backend names none. */
+export function dimensionPathsText(details: Record<string, DimensionDetail> | null | undefined, dimension: string): string | null {
+  const detail = details?.[dimension];
+  return detail && detail.paths.length ? pathsText(detail) : null;
+}

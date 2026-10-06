@@ -1,0 +1,8 @@
+/* Round R1-5 (four-role report R-D7, S-D9, F-D5): changed dimensions as
+   labelled paths; the raw recorded values only on request. New elements only;
+   existing tokens only; text >= 12px. */
+.comparison-dimension-paths { margin: 8px 0 0; color: var(--ink); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.comparison-dimensions details.comparison-raw, .module-differences details.comparison-raw { margin-top: 6px; padding: 0; border: 0; background: transparent; }
+.comparison-raw summary { color: var(--muted); font-size: 12px; cursor: pointer; }
+.comparison-raw summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.module-differences .comparison-raw pre { max-height: 240px; overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }

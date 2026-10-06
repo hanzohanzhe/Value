@@ -85,6 +85,7 @@
     "app/features/network/reliabilityView.ts",
     "app/features/results/ComparisonWorkspace.tsx",
     "app/features/results/ResultQueryPanel.tsx",
+    "app/features/results/comparison-details.css",
     "app/features/results/comparison-workspace.css",
     "app/features/results/comparisonReview.ts",
     "app/features/results/result-query.css",
@@ -3429,14 +3430,20 @@
     },
     {
       "path": "app/features/results/ComparisonWorkspace.tsx",
-      "sha256": "bd0a99aeadf949cfa1b41d9a62afbf3f52523b1e1953580815ab6e30783939c6",
-      "bytes": 12153,
+      "sha256": "43ad4227625267a1be6106d60363ca41c00d6ff209393357033b2aadfcfc2951",
+      "bytes": 12792,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/results/ResultQueryPanel.tsx",
       "sha256": "e32b2d76245868fa8e6fa2b9fea122271df7591ab97f61f000fceb5b7619b527",
       "bytes": 12307,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/results/comparison-details.css",
+      "sha256": "23918aa50e9bd3ea18da03af9b280dec21cc005c67a03289a6f3b7833064060f",
+      "bytes": 803,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3447,8 +3454,8 @@
     },
     {
       "path": "app/features/results/comparisonReview.ts",
-      "sha256": "f7fd32156709d9b6f552ae3c7e2b505c88670c5a238bbfbbe8de0360b6258b92",
-      "bytes": 1886,
+      "sha256": "def78c94c2d3effd84111f91a1edd3359e54efb82bc63164b27e70222240277a",
+      "bytes": 4084,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10828,8 +10835,8 @@
     },
     {
       "path": "tests/frontend/unit/comparison-review.test.mjs",
-      "sha256": "247289338b3ef7305ed7ec7f7f92a001ce70745fd78654358f4a6955aac1ed37",
-      "bytes": 1572,
+      "sha256": "d5fee324f43d524a46669c66b0c3d73cf67ac67ee9a3b0508d68eeed7815de2a",
+      "bytes": 3832,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10876,8 +10883,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "29251950bf50b431ccbe2db0d0672e7520c2f8882c386f9c17eb8790890e73a3",
-      "bytes": 6194,
+      "sha256": "c58007b9886896d6bc906c780a3446ead690f418dfcae1fdcf93a4aac676eab3",
+      "bytes": 6243,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
