@@ -132,3 +132,27 @@
   4. 预览表中，原值列和换算后的 £/MWh 列并排显示，表头注明 `converted at {rate} EUR/GBP ({basis}, {year})`。
 
   沿用现有表单样式，新增元素遵守规格 1.3。
+
+## M7「P0-9 收口」（实现 M2 界面审查小问题 1–6、F-P04-1…5、F-P09-5…7、F-P05A-1；stress event 界面；P0-6/P0-7/P0-8b 语义适配）
+
+先前待定条目的处理：
+
+- **已消解**：F-P04-1…5、F-P09-6、F-P09-7、F-P05A-1 按 2026-10-06 裁决实现；F-P08-1、F-P09-8（运行期 fallback 审计 Callout）已实现；F-S12-5（`Show stress events` 的目标）改为跳到 Market replay 中的全年 stress event 列表（见 F-M7-4）；F-P09-4 的旧 Run 下界按 F-P04-1 显示 `≥`。
+- **M2 界面审查小问题 1–6**：全部按裁决实现。实现中与裁决字面不完全一致之处见下表 F-M7-2、F-M7-3。
+
+| # | 规格 / 裁决 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-M7-1 | F-P09-6：Withheld 读取 `publication_blocked`，reason code 以 X0/M4 实际实现为准 | 代码中 Q14 的判定字段是 `result_publication`（`status='withheld'`，`reason_code` 为 `GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED` 或 `GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED`，见 `gridform_core/result_advisories.py`）；`publication_blocked` 只用于 production 口径的 gate 失败（`GF_VALIDATION_GATE_FAILED`，F-P04-4）。界面按此读取，四个码都写入 `reasonCodes.ts`，并导出 `Q14_WITHHELD_REASON_CODES` | 裁决要求“以实际实现为准”，不臆造字段；两种“不发布”分别是 Q14（琥珀 Withheld）与 gate 失败（红色 Annual results not published） | 否 |
+| F-M7-2 | 小问题 3：归档、原状态 cancelled、缺少声明年份 → `unavailable` + `cancelled_before_year_complete` | 同时覆盖原状态 failed：`unavailable` + `failed_before_year_complete` | 失败中止的 Run 缺年份同样不是“自相矛盾”；红框只留给 completed 却缺年份的情形（测试保留该 invalid 用例） | 否 |
+| F-M7-3 | 小问题 4：孤立点画成半径 2.5px 的实心圆点，颜色与序列一致 | `<circle r=1.25>` 加 2.5px 描边（沿用该序列线条的 `stroke` 颜色），视觉上是半径 2.5px 的实心点 | 新样式表只能用已有 token（CSS guard）；序列颜色是旧的十六进制值，用描边继承即可不复制颜色 | 否 |
+| F-M7-4 | 4.4：一个列表同时列出 `stress (supply < demand)` 与 `lost load (network)` | stress event 列表放在 **Market replay**（所有 Run，读新接口 `GET /api/runs/<id>/market/stress-events`，全年分页 50 条、按 start_period 数值排序、每条 Replay →）；Network & redispatch 的可靠性列表仍只列 `lost load (network)`，并加一行说明和跳到 Market replay 列表的按钮 | stress event 来自市场账本 `stress_event` 表，对铜板 Run 也存在，而网络页只对分区 Run 存在；两张表分属不同读模型，合并分页需要跨表排序，超出本轮“只改读模型”的范围 | 是（列表位置） |
+| F-M7-5 | 2.3 规则 4 动作 `Show stress events` 跳到 4.4 列表 | 打开 Market replay 并滚动、聚焦到该列表（一次性，不影响之后的导航） | 回应 F-S12-5 | 否 |
+| F-M7-6 | F-P04-3：`validation_gate.status = failed` 时显示 Callout 1 | 对任何口径都生效（doctoral 的 gate 只有在失败不符合已声明偏差时才是 failed，属于真实缺陷）；没有 `validation_gate` 记录的旧 Run 仍按 F-S12-1（`energy_balance=failed` 且非 doctoral） | 裁决原文未限定口径；doctoral 的已声明偏差不会触发 | 否 |
+| F-M7-7 | F-P04-3：标题 `Validation gate failed: {gate names}`，正文逐条一句话 | gate 名称：Run invariants / Energy balance / Storage limits；每条一句话说明为本实现的文案（`runValidation.ts` 的 `GATE_TEXT`）；列表后一句 `Treat results from this Run as unverified.`，动作 `Open residuals in Inspect` | 裁决只给了标题格式 | 是（逐条文案） |
+| F-M7-8 | F-P04-4：corrected Run 被 gate 门控时的 Callout | 已实现并有 SSR 测试；scratch 实例中没有真实的 gate 失败 corrected Run，因此没有截图 | 当前修正口径的 VALUE 101 Run 全部通过 gate | 否 |
+| F-M7-9 | F-P05A-1：预览表原值列与换算后列并排 | 后端审阅报告新增只读字段 `source_sample_rows`（同一批样例行中被映射来源列的原始值）与 `fx`（所用汇率）；界面并排显示，不在前端反算 EUR。字段错误文案以 `GF_MAPPING_FX：` 开头，语言与该编辑器现有文案（中文）一致；字段标签按裁决用英文 | 原则 9：前端不做推算；编辑器原有文案为中文 | 否 |
+| F-M7-10 | C20（计划 4.9 集成修订）：VRE 事件增加第三种 basis `corrected_unused_vre` | corrected 规则集（账本声明 `curtailment_semantics = vre_available_minus_gross_output`）下：`event_basis=corrected_unused_vre`，只显示 Unused VRE 一组（`excess + curtailment` 在该口径下是“非 VRE spill + VRE 弃电”，不是 VRE 事件口径）；KPI 与定义改称 `Non-VRE spill`、`VRE curtailment`、`Accepted VRE (gross output)`。doctoral 账本不变 | 按 P0-6 声明的列语义读取，不写死 | 是（文案） |
+| F-M7-11 | C30：成本注释读取 `physical_operating_cost_detail_gbp.blackout_reliability` | model_runner 按年读取该明细：native PSM 的 `generation_import_and_reliability` 自 P0-6 S4 起包含“记录缺电 × VoLL”，因此铜板 native Run 现在显示 `includes VoLL`（M2 时显示 excludes，已过时）；悬停提示给出 VoLL 部分的金额与单价（新指标 `operating_cost_voll_gbp`、`voll_gbp_per_mwh`） | 适配 P0-6 的成本口径 | 否 |
+| F-M7-12 | 4.6：fallback 审计 caution Callout 文案 | 标题 `Spatially indicative network results`，逐条列出规格句式 `Spatially indicative: {x}% of {tech} capacity fell back to {zone}.`（多年时句末加年份），另加一句说明与 `Open in Inspect` | 规格只给了句式；按原则 5 给出下一步 | 是（标题与说明句） |
+| F-M7-13 | 9.8：375 px 不引起页面级横向滚动 | 新组件自身不溢出；375 px 下页面级溢出仍来自旧布局（与 F-P09-13 相同） | 做法一不改旧元素样式 | 否（同 F-P09-13） |
+| F-M7-14 | 10：截图 | JPEG（质量 55，整页），来源为 scratch 实例（API 18966、UI 18967）上的真实 Run：修正口径 VALUE 101（一日与两年）、复现口径 VALUE 101（一日与两年，Q14 withheld）、Release R2 预测数据的修正口径新 Run（48 个 stress 时段，exact）、复制的修复前 Release R2 Run（下界）、VALUE 101 网络教学 Run | 控制仓库体积 | 否 |

@@ -74,6 +74,17 @@ Daily and weekly energy values are sums of exact half-hour rows. Display prices
 use a declared demand-weighted mean. Browser code formats these values but does
 not perform scientific attribution or clearing.
 
+Each period price carries its declared basis (`price_basis`): the default PSM's
+value is an average period cost per MWh of demand, not a clearing price.
+Dispatch-timeline buckets report A2 stress (`shortfall_mwh`, `stress_periods`,
+`shortfall_basis`) from the same contract as the energy-balance oracle, and
+`query_stress_events` pages the full year's `stress_event` rows (contiguous
+periods in which accepted supply fell short of demand; dispatch is unchanged and
+the shortfall is booked as unserved energy). The VRE summary reads the column
+semantics the rule set declares: under the corrected rule set `excess_mwh` is
+non-VRE spill and `curtailed_mwh` is VRE availability minus gross output, so its
+unused-VRE events carry the basis `corrected_unused_vre`.
+
 ## Relative writer benchmark
 
 Python 3.10 on Windows, 2,000 synthetic periods, one storage row per period and

@@ -295,9 +295,12 @@ py -3.10 -m gridform_core.bundle_validator <run-directory>
 | --- | --- | --- |
 | `reconciled` | 记录的数值通过了恒等式和身份核对 | 正常阅读 |
 | `unavailable` | 没有记录这类证据（例如铜板 Run 没有弃电归因表） | 不是错误；需要时改用会记录它的方法 |
-| `withheld` | 数值存在，但不在此处发布（非年度或未完成的 Run、部分年份） | 到 Inspect 查看分时段账本 |
+| `Partial year · n%` / `Running` / `Stopped · n%` / `Non-annual run` | Run 只覆盖了年份的一部分（仍在运行、已取消或失败，或者是短运行模式），因此不显示年度合计 | 到 Inspect 查看分时段账本 |
+| `Withheld` | 只用于一条规则（Q14）：论文复现口径的 Run 原始不变量没有全部通过时，年度结果不在结果页发布 | 到 Inspect 查看，或导出账本 |
 | `invalid` | 记录的证据自相矛盾（身份或年份集合对不上） | 把该 Run 的结果视为未经核实，检查账本 |
 | `Not modelled` / `Not computed` / `Not recorded` | 该方法不建模此项 / 实现尚未计算 / 旧 Run 没有记录 | 都不等于 0 |
+
+其他标签都写明口径。平均系统成本：CEM 资源成本账写作 `/MWh served`，遗留口径的总成本写作 `/MWh generated`，口径未知时写作 `(basis not recorded)`。成本构成旁的注记说明头条是否包含失负荷价值（VoLL），悬停可看到记录的 VoLL 金额。修正口径下，VRE 页把账本两列称为 `Non-VRE spill`（非 VRE 弃置）和 `VRE curtailment`（VRE 弃电），只显示一组事件（`Unused VRE`，口径 `corrected_unused_vre`）；没有受影响时段的事件组显示 `No events recorded`。映射以欧元计价的价格 CSV 时，须填写币种、EUR per GBP 汇率、汇率口径和价格年份，预览中原始欧元值与换算后的 £/MWh 并排显示。
 
 ### 科学验证、能量平衡与 stress event
 
@@ -314,6 +317,13 @@ py -3.10 -B -m gridform_core.energy_balance_oracle <run-directory>
 ```
 
 退出码 0 为通过，1 为失败，2 为未评估。这些检查出现之前产生的 Run 在读取时复核，原来的 `passed` 显示为 superseded。
+
+在浏览器中的位置：
+
+- Run 上下文条显示 **Energy balance**（蓝绿色 `● Conformant` 表示论文复现账本闭合，不代表物理验证通过）和 **Stress events**（`None`，或 `● {n} periods · {缺口}`）。精确 stress 记账之前产生的 Run 把缺口显示为下界 `≥ x MWh`，悬停可看到上界。
+- 任一 gate 失败时，红色提示 `Validation gate failed: {gate 名称}` 逐条列出失败的 gate；修正口径下 Runs 页不显示年度合计，改为显示 `Annual results not published`，并给出 Inspect 和导出账本的入口。
+- **Show stress events** 打开 Market replay 中的 **Stress events — full year {year}** 列表：开始时间、时段数、缺口、类型 `stress (supply < demand)`，以及跳到对应窗口的 Replay。窗口卡显示 `Shortfall` 与 stress 时段数，图上用细的琥珀色带标出 stress 时段。分区网络内的失负荷仍在 Network & redispatch 页（类型 `lost load (network)`）。
+- Inspect › Market 显示原始边界检查（边界、原始判定、最大残差、时段数），即缺口记为缺电量之前的证据。
 
 ## 13. 取消、恢复、归档和删除
 

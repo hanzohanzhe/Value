@@ -2,6 +2,34 @@
 
 ## Unreleased — P0 fixes on fix/review-2026-10-04
 
+### Result views read what was recorded (P0-9 close)
+
+- Stress events (decision A2) are visible end to end: the Run context bar's
+  Stress events field and notice, the Market replay window card (`Shortfall`,
+  stress periods) and a 4 px amber band on the dispatch chart, and a new
+  full-year list in Market replay (`GET /api/runs/{run}/market/stress-events`,
+  paged by numeric start period, with Replay). A shortfall of a Run that
+  predates exact stress accounting is shown as a lower bound `≥ x MWh`.
+- Validation gates: any failed gate (run invariants, energy balance, storage
+  limits) raises `Validation gate failed: {gates}`; a corrected Run blocked by
+  a gate shows `Annual results not published` instead of totals;
+  `reproduction_conformant` is a teal `● Conformant`; Inspect shows the raw
+  boundary residuals.
+- State words: `Withheld` is reserved for the Q14 rule on doctoral
+  reproduction runs; partial, running and stopped years read
+  `Partial year · n%`, `Running` and `Stopped · n%`. A Run cancelled or failed
+  before a declared year finished is `unavailable`, not a red `invalid`.
+- Labels state their basis: the average system cost reads `/MWh served` (CEM
+  ledger) or `/MWh generated` (legacy total); the native operating cost now
+  reports that it includes VoLL (P0-6) with the recorded amount; corrected VRE
+  columns read `Non-VRE spill` and `VRE curtailment` with the event basis
+  `corrected_unused_vre`.
+- Network & redispatch shows the run-time fallback audit ("Spatially
+  indicative: …"). Isolated VRE points are drawn as dots; event groups without
+  events say `No events recorded`.
+- CSV mapping accepts EUR prices with an explicit EUR per GBP rate, FX basis
+  and price year, and previews the original value beside the converted one.
+
 ### Corrected-profile weather, VRE losses and firm availability (P0-5b)
 
 - Corrected profile only (the doctoral reproduction keeps 0.6.0-alpha.2

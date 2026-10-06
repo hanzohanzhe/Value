@@ -184,9 +184,21 @@ red frame:
 | --- | --- | --- |
 | `reconciled` | Recorded values passed their identity checks | Read the values |
 | `unavailable` | No evidence of this kind was recorded (for example a copperplate Run has no attribution tables) | Nothing is wrong; choose a method that records it if you need it |
-| `withheld` | Values exist but are not published here (a non-annual or unfinished Run, or a partial year) | Open the Run in Inspect for the period-level ledger |
+| `Partial year · n%` / `Running` / `Stopped · n%` / `Non-annual run` | The Run covers only part of the year (still running, cancelled or failed, or a short mode), so annual totals are not shown | Open the Run in Inspect for the period-level ledger |
+| `Withheld` | Reserved for one rule (Q14): a doctoral reproduction Run whose raw invariants did not all pass publishes no annual results on result pages | Open the Run in Inspect or export the ledger |
 | `invalid` | The recorded evidence contradicts itself (identities or year sets do not match) | Treat the Run's results as unverified and inspect its ledgers |
 | `Not modelled` / `Not computed` / `Not recorded` | The method does not model the quantity / the implementation does not compute it yet / an older Run did not record it | Never read these as zero |
+
+Other labels state their basis. The average system cost reads `/MWh served`
+for the CEM resource-cost ledger and `/MWh generated` for the legacy total; an
+unknown definition says `(basis not recorded)`. The cost-composition note says
+whether the headline includes the value of lost load (VoLL); hover it for the
+recorded VoLL amount. Under the corrected methodology the VRE page calls the
+ledger columns `Non-VRE spill` and `VRE curtailment` and shows one event group
+(`Unused VRE`, basis `corrected_unused_vre`); a group with no affected period
+says `No events recorded`. Mapping an EUR price CSV asks for the currency, the
+EUR per GBP rate, its basis and the price year, and the preview shows the
+original EUR value beside the converted £/MWh.
 
 ### 6.1 Experimental zonal solver controls and evidence
 
@@ -340,6 +352,26 @@ py -3.10 -B -m gridform_core.energy_balance_oracle <run-directory>
 Exit code 0 is passed, 1 failed, 2 not evaluated. Runs produced before these
 checks existed are re-checked when they are read; their old `passed` is shown
 as superseded.
+
+Where to read them in the browser:
+
+- The Run context bar shows **Energy balance** (`● Conformant` in teal is the
+  doctoral ledger closing, not a physical validation) and **Stress events**
+  (`None`, or `● {n} periods · {shortfall}`). A Run produced before exact
+  stress accounting shows the shortfall as a lower bound, `≥ x MWh`, with the
+  upper bound on hover.
+- A failed gate raises a red notice `Validation gate failed: {gates}` listing
+  each failed gate; under the corrected methodology the Runs page then shows
+  `Annual results not published` instead of annual totals, with links to
+  Inspect and the ledger export.
+- **Show stress events** opens Market replay at **Stress events — full year
+  {year}**: start time, periods, shortfall, type `stress (supply < demand)` and
+  a Replay link to the window. The window card shows `Shortfall` and the number
+  of stress periods, and the chart marks stress periods with a thin amber band.
+  Lost load inside a zonal network stays on Network & redispatch (type
+  `lost load (network)`).
+- Inspect › Market shows the raw boundary check (boundary, raw status, largest
+  residual, periods) before shortfalls are booked as unserved energy.
 
 ## 12. Cancellation, recovery and retention
 

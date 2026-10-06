@@ -1484,6 +1484,7 @@
     "tests/test_p08b_network_counterfactual.py",
     "tests/test_p08b_review_minors.py",
     "tests/test_p08b_zonal_unit_cost_table.py",
+    "tests/test_p09_result_view_docs.py",
     "tests/test_p0_5_baseline.py",
     "tests/test_p0_gate.py",
     "tests/test_pack_source_identity.py",
@@ -2902,8 +2903,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "bd4c6ef576afbb38404abe6db5e23c1457c689abf86945bc755ef93da5710696",
-      "bytes": 19183,
+      "sha256": "f18e71532fd7d60a21945412fbbdef45bbdb1d5e47f6b3fd4064db1b90fd9646",
+      "bytes": 20992,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4540,14 +4541,14 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "68e48464b6d9cd6ae504c42f4210dbef58aa50fc6c51443ea14205746ca8ca07",
-      "bytes": 34780,
+      "sha256": "4a4b68b76f86f997d1276e6a0fc61822e4bf22b7fe10f24b5f438850b0e59d71",
+      "bytes": 37054,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/USER_GUIDE_ZH.md",
-      "sha256": "8989982fd6cec18ddc7701cedf0edb7a0d56f33b8505f2dc7f43f032805d4d4f",
-      "bytes": 33554,
+      "sha256": "342d9e834c3664d727f6a5ddca085967b6ec2634af49fbe99bb44f9a718c59a3",
+      "bytes": 35736,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4672,15 +4673,15 @@
     },
     {
       "path": "docs/frontend/EXPANDED_FRONTEND_CONTRACT.md",
-      "sha256": "d9bd5c76c078629793d4131bc5c4ea8682531fe7effaf42239fb260ae8d78680",
-      "bytes": 10510,
-      "transform": "byte copy"
+      "sha256": "37e7b22d93b129869d6e848b608fae1abbe91aab1715cf6681fcfceb52325134",
+      "bytes": 13045,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/frontend/EXPANDED_FRONTEND_FIELD_MAP.md",
-      "sha256": "92e3e2c6161893839b65f9d97ae5082da027d2bf45c330fde6c4cf031f730747",
-      "bytes": 9410,
-      "transform": "byte copy"
+      "sha256": "16063ed6cb48627c21468f2824a4aa52f9f59c52de89cc827be4901d469b4678",
+      "bytes": 13313,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/frontend/EXTENSION_AUTHORING_PHASE5.md",
@@ -6190,8 +6191,8 @@
     },
     {
       "path": "docs/visibility-refactor/MARKET_LEDGER.md",
-      "sha256": "f8037045e1621b87db19a1ce3033d14f011996fb718a1cdb710bbf50d78ee01a",
-      "bytes": 4688,
+      "sha256": "1bbfc3e73c36f66a2071375844638ee9e7e53f29b1e4c91437279677ab9ba7f2",
+      "bytes": 5460,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11749,6 +11750,12 @@
       "path": "tests/test_p08b_zonal_unit_cost_table.py",
       "sha256": "2510735c13a06f4f8dd2e4c0976701ac70843452f6df4e9a2e56f066403892df",
       "bytes": 2820,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_p09_result_view_docs.py",
+      "sha256": "859c16778a4d3e71fe7feccc6864d3365500e812801e59ee8ab0d3413f18f3f0",
+      "bytes": 2597,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

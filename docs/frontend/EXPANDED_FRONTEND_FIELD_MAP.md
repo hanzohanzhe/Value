@@ -115,3 +115,28 @@ editing JSON. The hydrology scientific fixtures and adapter are present, but the
 ordinary annual PSM-to-result-index connection still requires developer work.
 No real-UK network/hydrology pack or national transmission-expansion baseline is
 accepted in this release.
+
+## Result views: displayed value -> API field (P0 fixes, 2026-10)
+
+Every number on a result view is either the recorded value with its basis or a
+state word (`app/features/shared/valueStates.ts`). The browser formats; it never
+subtracts, rescales or fills a missing value with 0
+(`app/features/shared/format.ts`).
+
+| View | Displayed | API field (source) | Missing / special |
+| --- | --- | --- | --- |
+| Run context bar | Methodology pill | `methodology.status`, `methodology.profile_id` (`/api/runs/{run}`) | `Methodology not recorded` (pre-2026-10 or unresolved) |
+| Run context bar | Energy balance | `energy_balance_status` | `reproduction_conformant` → ● Conformant (teal); `reproduction_with_declared_deviations` → ● Declared deviations; `superseded_pre_fix` → ● Superseded |
+| Run context bar | Stress events | `stress.stress_periods`, `stress.shortfall_mwh`, `stress.shortfall_basis`, `stress.shortfall_upper_mwh` | 0 → `None` (muted); `lower_bound` → `≥ x` with the upper bound on hover; absent → `Not recorded` |
+| Run context bar | Notices | `validation_gate.status/gates`, `energy_balance.balance_account`, `result_publication`, `advisories`, `stress` | Priority: gate failed → Q14 withheld → pre-fix → stress |
+| Runs | Annual totals | `results[].metrics` (`total_system_cost_gbp`, `cost_per_mwh_gbp`, …) | Hidden unless `result_coverage` says the year is complete; `result_publication.status=withheld` → Withheld (Q14); `publication_blocked.reason_code=GF_VALIDATION_GATE_FAILED` → `Annual results not published` |
+| Runs | Average system cost | `cost_per_mwh_gbp` labelled by `system_cost_definition_id` | CEM ledger → `/MWh served`; `legacy_storage_tariff` → `/MWh generated`; otherwise `(basis not recorded)` |
+| Runs | Cost composition | `total_levelized_capital_cost_gbp`, `total_operational_cost_gbp`, mechanism costs and statuses, `system_cost_includes_voll`, `operating_cost_voll_gbp`, `voll_gbp_per_mwh`, `ror_hydro_compatibility_capital_gbp` | `Not modelled` mechanisms are listed, never drawn; the memo row is excluded from the headline |
+| Runs | Coverage pill | `result_coverage` | `Complete year`, `Partial year · n%`, `Running`, `Stopped · n%`, `Non-annual run`; `Withheld` only for Q14 |
+| Market replay | Window card | dispatch timeline v2 bucket: `real_demand_mwh`, `accepted_supply_mwh`, `shortfall_mwh`, `stress_periods`, `shortfall_basis`, `shortfall_upper_mwh`, `storage_charge_mwh`, `storage_discharge_mwh`, `price_gbp_per_mwh` + `price_basis` | Shortfall absent → `Not recorded`; price label by basis (Q6) |
+| Market replay | Stress band and legend | bucket `stress_periods > 0` | 4 px amber band; no "shortfall" bar |
+| Market replay | Stress events — full year | `/api/runs/{run}/market/stress-events?year=&limit=&offset=` (`value.stress-events/v1`) | `status=not_recorded` for ledgers without the `stress_event` table; empty text follows the coverage rule |
+| VRE & curtailment | KPIs and events | `/market/vre-summary`: `years[]`, `excess_scope`, `curtailment_semantics`, `event_basis`, `unused_vre_events`, `excess_curtailment_events` | Corrected columns → `Non-VRE spill`, `VRE curtailment`, basis `corrected_unused_vre`; a group with 0 affected periods → `No events recorded` |
+| Network & redispatch | Fallback notice | capabilities `runtime_fallback_audit.spatially_indicative_technologies` | Shown only when a technology-year exceeds the audit threshold |
+| Inspect › Market | Raw boundary check | `energy_balance.boundary_id`, `raw_boundary_status`, `maximum_absolute_boundary_residual_mwh`, `periods` | Raw evidence only; not a status-bar field |
+| Data › CSV mapping | Currency and rate | catalog `fx_required_for`, `conversion_pairs[].requires_fx`; preview request `fx`; review `source_sample_rows`, `fx` | EUR needs EUR per GBP, FX basis and price year (`GF_MAPPING_FX`) |
