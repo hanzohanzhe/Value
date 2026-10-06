@@ -314,6 +314,7 @@
     "docs/frontend/RESEARCH_JOURNEY_PHASE2.md",
     "docs/frontend/RESULT_QUERIES_PHASE3.md",
     "docs/generated/DATA_WORKBENCH_CONTRACT.md",
+    "docs/generated/METHODOLOGY_PROFILES.md",
     "docs/generated/MODULES.md",
     "docs/generated/PARAMETERS.md",
     "docs/generated/SPATIAL_FLEET_AND_WEATHER.md",
@@ -2919,8 +2920,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "e2bf96f74a1d3516b5bf2c7a3ed67da042355dd19ad92a9cc78346dd80c0d1f3",
-      "bytes": 22238,
+      "sha256": "82830fd8a7f5ac3e21537eef362cbd54dfc567ca85959a13e6a7213169691379",
+      "bytes": 34789,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4545,8 +4546,8 @@
     },
     {
       "path": "docs/SCHEME_C_MODEL_CARD.md",
-      "sha256": "40cc5b42c4d06648b6f9ff995d1d9469747cd0a464255e3500acec9ce2c8f98e",
-      "bytes": 5396,
+      "sha256": "8fc2217e4d65e0b6dd066d50a6aa4931ab82e17678357bcb3c77be5a64912277",
+      "bytes": 6670,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4569,8 +4570,8 @@
     },
     {
       "path": "docs/VALIDATION_AND_CLAIMS.md",
-      "sha256": "4659dfc920f80c3417f9fff6dabe27110155f8d287d0210cfb81a17036985e3c",
-      "bytes": 10508,
+      "sha256": "826adbe6f44524b63a7c34cb1948625814d04212c91d82bfdf4d0268da53cb41",
+      "bytes": 14262,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4689,8 +4690,8 @@
     },
     {
       "path": "docs/frontend/EXPANDED_FRONTEND_CONTRACT.md",
-      "sha256": "37e7b22d93b129869d6e848b608fae1abbe91aab1715cf6681fcfceb52325134",
-      "bytes": 13045,
+      "sha256": "c63af313bdafa420bfdb16ca6f75b223b9d2ab5e7ac547283238bd5cc5aa96ee",
+      "bytes": 13283,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4764,6 +4765,12 @@
       "sha256": "a46285bd7845c39e5d37292c740e1db27593f38a5a2e77949f57c04874573047",
       "bytes": 679,
       "transform": "byte copy"
+    },
+    {
+      "path": "docs/generated/METHODOLOGY_PROFILES.md",
+      "sha256": "a1b4c88421d3b9b399eaa197476862a2bd32ca9952044a0d8c267d0845d4d95c",
+      "bytes": 18319,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/generated/MODULES.md",
@@ -9574,9 +9581,9 @@
     },
     {
       "path": "scripts/generate_reference_tables.py",
-      "sha256": "c2a57d077a8e781b9b0a3e698253ee79f4cfb6ea4a858647020b948d34320741",
-      "bytes": 4608,
-      "transform": "byte copy"
+      "sha256": "0235bb402ee604e08c983ba45bcf1c3e47257fa824bf647c9c9f34fa77a504b7",
+      "bytes": 10712,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "scripts/global_mutation_scan.py",

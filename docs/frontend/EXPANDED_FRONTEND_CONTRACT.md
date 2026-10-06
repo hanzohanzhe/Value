@@ -235,3 +235,8 @@ as `—`, `Not recorded`, `Not modelled`, `Not evaluated` or `Not computed`, nev
 as 0. `invalid` (red) is reserved for self-contradictory evidence; `Withheld`
 only for the Q14 rule on doctoral reproduction runs. Field-by-field mapping:
 [`EXPANDED_FRONTEND_FIELD_MAP.md`](EXPANDED_FRONTEND_FIELD_MAP.md#result-views-displayed-value---api-field-p0-fixes-2026-10).
+
+The complete P0 API contract change table, including the breaking changes for
+direct clients (session header, no CORS, error codes and statuses), is in
+[`CHANGELOG.md`](../../CHANGELOG.md), section 0.7.0-alpha.1, "API contract
+changes".

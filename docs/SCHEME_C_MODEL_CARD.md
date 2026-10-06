@@ -12,6 +12,36 @@ in-place Python-object mutation. REPD filtering, policy-support income and
 exogenous pumped-hydro differences are listed in each run's
 `cem-model-identity.json`.
 
+Version and methodology profiles (VALUE 0.7.0-alpha.1). Every Run records
+one of two methodology profiles (`docs/generated/METHODOLOGY_PROFILES.md`):
+
+- the corrected default (`value-corrected`), which applies every correction
+  of the 2026-10 review;
+- the frozen doctoral reproduction (`doctoral-lineage-0.6.0a2`, "as
+  implemented in VALUE 0.6.0-alpha.2"). It is not an exact reproduction of the
+  2026-07-18 retained trajectory. It changes only under the universal
+  corrections: interconnector clock P6-24, GBP1 reading P6-02, P6-03 and
+  P6-04, thermal net revenue A4, stress events A2, and accounting-only
+  corrections.
+
+The paragraphs below say which profile each statement applies to. The bounded
+claims are in `docs/VALIDATION_AND_CLAIMS.md`, section "Scope of the
+0.7.0-alpha.1 claims".
+
+Known simplifications of both profiles:
+
+- the market is energy only, without reserves, unit commitment or ramping;
+- investment is myopic and undiscounted (A6);
+- weather is climatological;
+- the realisation branch follows the forecast, and ahead shortfalls are
+  reported as stress events (A2).
+
+The corrected profile also has these simplifications:
+
+- zero-priced pumped hydro and hydrogen storage dispatch myopically, without
+  a water value;
+- a buy-back does not refund the ahead storage payment.
+
 Physical operating assets and investment owners have separate identities. The
 current FORCE-CEM policy evaluates one owner/technology/region group once per
 year, spends VRE/storage headroom as one technology-wide MW budget and explicitly
@@ -72,7 +102,8 @@ with its time conventions (weather v2), multiplies wind and solar by cited
 literature loss factors (no calibration to statistical load factors), and
 derates nuclear (station load factors, month-exact generation end) and
 natural-flow hydro (annual load factor x monthly shape); the reference values
-are PENDING AUTHOR REVIEW. The kernel receives the same arrays as the
+were PENDING AUTHOR REVIEW at this step (reviewed by the author in A14, see
+below). The kernel receives the same arrays as the
 canonical adapter. The doctoral reproduction profile keeps the 0.6.0-alpha.2
 inputs.
 

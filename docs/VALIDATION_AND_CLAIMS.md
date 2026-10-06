@@ -38,6 +38,12 @@ ten-year evidence to the earlier solver and bounded-integration tests.
 | Staged/zonal redispatch dispatch does not depend on asset names; a decremented fuel unit keeps no windfall | Economic dec pricing and pro-rata ties (P0-8 S7) | `tests/test_network_dec_pricing.py` | passed | Toy staged copperplate and zonal cases; dec prices use declared support and premium parameters |
 | Zonal network constraint cost contains only the network effect | Network-free LP counterfactual with one unit-cost table and VOLL (P0-8 S9) | `tests/test_p08b_network_counterfactual.py` | passed | Single-zone shortfall, period import prices and export arbitrage give 0; network cost and redispatch-added/avoided curtailment recorded before P0-8b must not support research conclusions (derived known defects) |
 | Boundary marginal values are LP duals | Primary-stage duals equal finite differences; VALUE 101 NC boundary 66.5 GBP/MWh (P0-8 S10) | `tests/test_p08b_boundary_duals.py` | passed | Diagnostic, not a zonal price or cash cost; values before P0-8b were never computed and read as not computed |
+| Doctoral reproduction profile keeps the 0.6.0-alpha.2 trajectory bit for bit except for the approved universal corrections | Golden digests per table and column, exact mode | `tests/golden/doctoral/`, `docs/release/P0_GOLDEN_DELTA.md` | passed | D1-D3 (VALUE 101 smoke, two_year_smoke, value_101_day) bit-identical to 35aadb3; D4 and D5 re-baselined once each (A4; A3, A5, A4) with numeric reports; linux-x86_64, CPython 3.10.18, numpy 1.24.4; not the 2026-07-18 retained trajectory |
+| Every golden change since 35aadb3 is attributed to a correction id | Generated delta report with an attribution check | `scripts/golden/delta_report.py`, `tests/test_golden_delta_report.py` | passed | 13 golden cases and 4 doctoral/corrected pairs; lists changed columns, not magnitudes |
+| Corrected default PSM closes the per-period energy identity and storage limits | Read-only energy-balance oracle and validation gates (P0-4, P0-6) | `tests/test_energy_balance_oracle.py`, `tests/test_p04_validation_gate.py`, golden C1-C4 | passed | VALUE 101 value_101_day and two_year_smoke; ahead shortfalls are reported as stress events (A2), not removed |
+| Local API refuses browser-driven, cross-origin and sessionless requests | Truth table, side-effect tests with positive controls, browser E2E (P0-1) | `tests/test_local_api_boundary.py`, `e2e/security-boundary.spec.ts` | passed | Source tree on Linux; single-user host assumed (Q11); an installed 0.7.0-alpha.1 is checked only after reinstalling, with `scripts/verify_local_security_boundary.py` |
+| 0.7.0-alpha.1 installers install, start and pass the post-install acceptance | Not yet built | `docs/release/P0_ACCEPTANCE.md` section 6 | not_evaluated | Windows needs a real-machine smoke before release; macOS is not verified on hardware |
+| Corrected wind and solar capacity factors match statistical load factors | Disclosure next to DUKES 6.3 (A9) | run summary `vre_capacity_factor_disclosure` | not_evaluated | Not calibrated by design; GBP1 wind about 1.2-1.6x DUKES |
 | Reserves, full unit commitment and ramping are represented | No executable module | none | not_evaluated | Unsupported |
 | Owner-controlled code, documentation and synthetic data may be publicly redistributed under the declared licences | Owner decision and per-object rights inventory | `LICENSE`, `docs/LICENSE.md`, `publication/rights-inventory.json` | passed | Does not grant redistribution rights for third-party UK data |
 | The separately assembled UK public-data candidate may be distributed per object | Per-object source terms, attribution, semantic checks and file hashes | `publication/rights-inventory.json`, `publication/force-uk-open-data-pack/prompt46-final-public-artifact-scan.json` | passed | No blanket relicensing; the installed local pack is not automatically covered |
@@ -72,7 +78,8 @@ checked on GBP1 (London centroid 11.97 UTC, 21 December first nonzero
 the resulting annual capacity factors (GBP1 onshore 0.403, offshore 0.491,
 solar 0.100) are reported, not claimed to match DUKES load factors, and
 ERA5's own wind bias is not removed. Nuclear and natural-flow hydro
-availability values are PENDING AUTHOR REVIEW; their acceptance against
+availability values were PENDING AUTHOR REVIEW at this step (reviewed by the
+author in A14, see the F2 update below); their acceptance against
 Energy Trends 5.1 and DUKES is deferred to the author.
 
 F2 update (A9, A13, A14): corrected solar now uses plane-of-array irradiance
@@ -84,3 +91,31 @@ pre-curtailment basis, representative sites, climatology). Natural-flow hydro
 2019-2024 mean of 5.77 TWh (+5.8 %, within the author's +-15 %). The nuclear
 and hydro values were reviewed by the author (A14); the nuclear acceptance run
 against Energy Trends 5.1 on GBP1 has not been made.
+
+## Scope of the 0.7.0-alpha.1 claims
+
+- Reproduction statements are bounded by case, platform and section. Bit
+  identity is claimed only for the trajectory zone (dispatch, flows, prices,
+  state of charge, capacity, investment proposals) of the named doctoral
+  golden cases, compared in exact mode on linux-x86_64 with CPython 3.10.18 and
+  numpy 1.24.4. On other platforms the golden comparison uses values rounded
+  to nine significant digits and supports no bit-identity statement.
+  Accounting and identity columns (residuals, audits, cost ledgers,
+  validation reports, code identity) changed under the correction ids listed
+  in `docs/release/P0_GOLDEN_DELTA.md`.
+- The doctoral reproduction profile reproduces VALUE 0.6.0-alpha.2 as
+  implemented, with the universal corrections P6-24, P6-02, P6-03, P6-04 and
+  the thermal net revenue (A4). The comparison with the retained 2026-07-18
+  trajectory remains failed (row above). Its annual results appear on result
+  pages only when every raw invariant passed (Q14).
+- The GBP1 before/after comparison of the doctoral profile covers one model
+  year (golden D5). Multi-year GBP1 doctoral runs were not repeated after the
+  fixes.
+- Investment decisions are undiscounted ROI and payback tests in constant
+  base-year money (A6). This is a model assumption, not a validated optimum.
+- The corrected profile is a method change. Runs of different profiles are
+  compared as different methods, and a comparison does not attribute their
+  difference to any one input.
+- The network modules (staged copperplate, zonal, DC, AC) run only under the
+  corrected profile (Q3). Their claims are the bounded rows above.
+
