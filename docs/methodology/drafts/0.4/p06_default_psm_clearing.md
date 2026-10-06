@@ -71,6 +71,7 @@ period-cost column, whose thesis storage-fee carry is reported as
 | settlement | every accepted supplier of a stage, storage included, is paid the stage's uniform marginal price | `p06.storage-uniform-price-settlement` | P5-05 (A8) |
 | VoLL | `market.voll_gbp_per_mwh` | `p06.voll-chronology-parameter` | P5-06 (Q7) |
 | interconnector imports | every connection with a positive transfer constraint offers its available import capacity to the day-ahead clearing at the period's counterparty price x bid multiplier; balancing offers only the capacity left; an accepted day-ahead import is reduced at its avoided import price (doctoral: imports only in the balancing stage). See `fx6_day_ahead_imports.md` | `fx6.day-ahead-interconnector-imports` | S-D3 (A16-2) |
+| nuclear initial state | every nuclear unit is running before the first period of each model year (no start-up adder in its first offer; baseload at its availability); a unit that was not accepted in a period pays the start-up adder once, when it restarts (doctoral: every unit is off before the first period, so nuclear offers its start-up cost until first accepted, A15 path dependency). See `fx8_nuclear_in_service.md` | `fx8.nuclear-in-service-at-start` | A18 (A15) |
 
 The `cycle_only` basis applies only to the built-in
 `dynamic-annual-storage-cost` object (2.0.0); the legacy tariff, the user formula
@@ -107,6 +108,12 @@ synthetic golden) and reports its known deviations in
 recorded), `non_vre_double_counted_mwh` (DEV-BAL-04),
 `storage_fee_carry_gbp`, `vre_skim_leak_mwh` and
 `vre_skim_to_electrolysis_mwh`.
+
+Nuclear path dependency (A15, not a diagnostic column): the doctoral rule set
+starts every model year with no unit running, so nuclear offers its start-up
+cost until first accepted and then stays on until the year end; its annual
+output depends on when the first scarcity period falls
+(`fx8_nuclear_in_service.md` section 1, GBP1 example).
 
 ## Known approximations (corrected)
 

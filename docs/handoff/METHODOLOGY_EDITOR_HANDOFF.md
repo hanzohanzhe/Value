@@ -17,7 +17,7 @@
 - **修复轮更新（2026-10-06，A16，HEAD `be30884`）**：四类用户测试后的修复轮对方法学有五处影响，已并入下文：
   1. **VoLL 两个口径都是 17,000 £/MWh**（A16-5，`fx5.voll-17000`，草稿 `fx5_voll_17000.md`）：N-12、R-4、O-2、V-4 已改；注意完全预见 LP 的默认值也随参数改为 17,000（O-2 原写“10,000 不改”，已更正）；
   2. **互联线进口的口径语义**（A16-2，`fx6.day-ahead-interconnector-imports`，草稿 `fx6_day_ahead_imports.md`）：论文复现口径的进口只在平衡分支出现，修正口径的日前出清也接受进口（C25、DS-7、N-8、N-9、N-10）；
-  3. **核电路径依赖**：论文复现口径按 A15 必写（N-7）；修正口径同样存在，FX7 已实测（全年只发 2.02 TWh），作者已在 A18 决定修正口径核电开局在运，**尚未实施**（N-4、N-7、第 9 节第 6 条）；
+  3. **核电路径依赖**：论文复现口径按 A15 必写（N-7）；修正口径原来同样存在，FX7 实测全年只发 2.02 TWh；A18（修正口径核电开局在运）已由 FX8 实施（`fx8.nuclear-in-service-at-start`，草稿 `fx8_nuclear_in_service.md`），重跑后核电 38.26 TWh，对 Energy Trends 5.1 +2.5%（N-4、N-7、第 9 节第 6 条）；
   4. **光伏倾斜面换算的模型选择已由作者认可**（A16-6）：W-3、MC-3、VC-6 去掉 PENDING；
   5. **GBP1 public2 本地登记与逐站核电**（A16-7，`p05.nuclear-stations-public2`）：DS-1、N-4、MC-5 已改；另有两处校验与读取问题要写对（DS-8 的资格判断、R-1 的 R029 光伏严格读取）。
   
@@ -36,7 +36,7 @@
    - 中文部分大多只是摘要，p04 除外。
 3. **以下内容没有草稿，需要你根据本文新写**：
    - 方法学口径总述（第 1 章新增一节）；
-   - A15 核电路径依赖（以及修正口径中同样存在、A18 待实施的部分，见 N-7）；
+   - A15 核电路径依赖（论文复现口径；修正口径已由 A18/FX8 改为核电开局在运，见 N-7）；
    - 修正口径储能余量和电池池的公式；
    - Q6 价格标签；
    - A8 储能投资审核的公式；
@@ -63,7 +63,7 @@
 7. **命名陷阱。** 方法学第 5、6 章里的 “Doctoral” 路径是另一个模块 `value-doctoral-national-psm`（R029 thesis96），**不是**“论文复现口径” `doctoral-lineage-0.6.0a2`。复现口径的 golden（D1–D5）走的是第 5 章的 “Native” 路径，即默认 PSM `value-bid-at-cost-psm`。0.4 必须在第 1、5 章写清这一点（第 2.2 节）。
 8. **写 0.4 之前须确认的事项**见第 9 节，共十一条。修复轮之后最重要的三条：
    - R029 研究在 0.7.0 中按哪个口径运行，哪些修正对 thesis96 路径生效；修复轮又发现 R029 public1 的光伏曲线在修正口径的严格读取下被拒绝（第 9 节第 1、10 条）；
-   - **修正口径的核电规则（A18）尚未实施**：第 5 章修正口径的核电段落要等实施并重跑后再定稿（第 9 节第 6 条）；
+   - **修正口径的核电规则（A18）已实施并重跑（FX8）**：第 5 章修正口径的核电段落按 `fx8_nuclear_in_service.md` 定稿（第 9 节第 6 条）；
    - DUKES 对照列仍标 PENDING（第 9 节第 5 条）。
    
    原来的两条已经解决：逐站核电已由 `p05.nuclear-stations-public2` 扩展到 public2（第 9 节第 2 条）；修正目录中 `p05.solar-plane-of-array` 的倾角描述已改正（第 9 节第 3 条）。
@@ -241,7 +241,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 | U12 | 修复轮：储能报价写进市场账本的核算表 `storage_orders`（每条报价的价格、可报量、接受量、状态），`orders` 不变 | `fx4.storage-offer-ledger`（M-D1） | U | 核算 | ch5 “Data and implementation”（N-15）一句；可选 | 无（`docs/visibility-refactor/MARKET_LEDGER.md` “Storage offers (M-D1)” 一段） |
 | U13 | 修复轮：VoLL 两个口径都是 17,000 £/MWh | `fx5.voll-17000`（A16-5；不在修正目录中，同 `p04.*`） | U | 核算（论文复现口径）；完全预见 LP、DC 网络、分区再调度中是目标系数 | ch5 N-12；ch6 R-4；ch8 O-2；ch4 K-14；`VALUE_METHODOLOGY.md` V-4 | fx5 |
 | C26 | 修复轮：GBP1 public2 本地登记为 scientific_reference，并加入核电分站名单 | `p05.nuclear-stations-public2`（P5-10，A16-7） | C | 轨迹 | ch2 DS-1；ch5 N-4 | 无（FX7 报告、`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`） |
-| （C27） | **已决定、尚未实施**：修正口径核电从第 0 期起在运，按各站可用率作基荷；启动成本只在换料或停运后重启时收取。新规则集版本与 correction id 实施时确定 | 待定（A18） | C | 轨迹 | ch5 N-4、N-7 | 无。实施后由代码负责人补草稿 |
+| C27 | 修复轮（FX8）：修正口径核电在每个模型年开始前视为在运，第一期报价不加启动成本，按各站可用率作基荷；某期未被接受后重启时收取一次启动成本（报价与物理启动项）。规则集字段 `nuclear_initial_state`（修正 `in_service_at_start`，论文 `off_until_accepted`）；value-bid-at-cost-psm 6.4.0 | `fx8.nuclear-in-service-at-start`（A18） | C | 轨迹 | ch5 N-4、N-7 | `fx8_nuclear_in_service.md` |
 | — | 修复轮：扩展 initialize 作为状态链上被校验的一环（`value.extension-initialize-link/v1`） | 无 correction id（F-D1，软件与验证） | U | 验证 | ch1 新小节中 Q14/gate 一句可提；可选 | 无（FX1 报告） |
 | — | 修复轮：一日课程（`value_101_day`）只跑市场步骤，选了扩展时预检阻断；比较时不把未执行的扩展算作方法改变 | 无（F-D2，A16-3） | U | 展示 | ch1 或 ch8 一句；可选 | 无（FX2 报告） |
 | — | 修复轮：原地修改已安装模块的源码被接受，Run 记录新的源码哈希，比较页显示方法已改变 | 无（M-D2，A16-4） | U | 身份 | 不进方法学正文；开发者文档 `MODULE_DEVELOPER_101` 已改 | — |
@@ -704,8 +704,8 @@ $$
 - 验收（修复轮 FX7，本地，public2 未发布；`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`）：
   - 径流水电 6.06 TWh，对 DUKES 6.2 的 5.77 TWh +5.1%，在 ±15% 内，**通过**；
   - 核电按可用率连续运行的上限 38.26 TWh，对 Energy Trends 5.1（2023–2024 supplied 约 37.3 TWh）+2.5%，说明可用率与逐站名单本身是对的；但**实际只发 2.02 TWh（−95%）**，原因是 N-7 的启动路径依赖，不是可用率。
-  - 所以正文写成“机制与参数；水电量级已在本地核对”。核电的验收要等 A18 实施并重跑（N-7、第 9 节第 6 条），在那之前不能写“已验证”。
-- 修正口径的核电开局在运（A18，**已决定、尚未实施**）：实施后本段要补一句：核电从第 0 期起在运，按 \(a^{\mathrm{nuc}}_{N,t}\) 作基荷；启动成本只在换料或停运后重启时收取。规则集版本与 correction id 以实施时为准，不要预写。
+  - 所以正文写成“机制与参数；水电量级已在本地核对”。核电的验收已在 A18 实施后重跑（FX8）：38.26 TWh，对 Energy Trends 5.1 +2.5%，通过；仍是本地、未发布的 public2，写成“local check, pack not published”。
+- 修正口径的核电开局在运（A18，FX8 已实施，`fx8.nuclear-in-service-at-start`）：本段补一句：每个模型年开始前核电视为在运，从第 0 期起按 \(a^{\mathrm{nuc}}_{N,t}\) 作基荷；某期未被接受（换料、停运、可用率为 0 或未出清）之后重启时收取一次启动成本。草稿：`fx8_nuclear_in_service.md` 第 2 节。
 
 **N-5 第 34–44 行，Native 批次与充电**
 - 论文复现口径（D，DEV-STO-01）：保留原文“每个阶段分别构造功率预算”。须补明后果：同一时段可以既充又放，单期放电可达 \(2P_b\Delta\)。
@@ -745,15 +745,15 @@ $$
   - 必发盈余在调度内，先被使用；
   - VRE 盈余被储能、出口或柔性负荷消耗时，计为 VRE 毛出力；
   - 平衡阶段不再重复计入必发盈余（论文复现口径为 DEV-BAL-04）。
-- **核电路径依赖（D 必写，A15）**：第 62 行之后新增一段。草稿：无。事实来源：`GBP1_DOCTORAL_BEFORE_AFTER.md` 第 6 节；`modular_simulation_model.py` 第 1593–1640、1728–1733 行。
+- **核电路径依赖（D 必写，A15）**：第 62 行之后新增一段。草稿：`docs/methodology/drafts/0.4/fx8_nuclear_in_service.md`（第 1 节论文复现口径，第 2 节修正口径，第 3 节 0.3 中英文原句的改法）。事实来源：`GBP1_DOCTORAL_BEFORE_AFTER.md` 第 6 节；`modular_simulation_model.py` 第 1593–1640、1728–1733 行。
   - 机制：内核把核电当作不能降出力的机组，接受量为 \(\max(g_{t-1}-r,L)\)。一旦被接受，下一期的出发点仍是满出力，所以会一直满功率运行到年底。没有被接受的时段，记忆出力 \(g\) 每期乘 0.99。
   - GBP1 实例（第一年）：35aadb3 中，核电从第 16,588 期（约 12 月 12 日 14:00 UTC）开始被接受，此后运行 932 个时段，发电 2.73 TWh；全年 30 个超过 1000 £/MWh 的时段都在这个窗口里。读取修正（A3/A5）之后，核电全年没有被接受，价格尖峰随之消失。
   - 写明两点：这不是针对核电的修正，而是冻结内核对边界输入敏感的表现；复现结果的核电与价格尖峰可能随输入的微小变化而整段出现或消失。
   - 写进机制的还有报价一侧：上一时段没被接受的机组，日前报价要加 `startup_cost`（GBP1 核电 0 + 500 £/MWh），所以没运行的核电排在所有资源之后，只有其他资源（含 CCGT 爬坡上限）都不够时才被接受；被接受后报价回到 0，又受 `alter_limit`（GBP1 核电每期最多降 500 MW）约束，于是运行到年底。
   - **修正口径（修复轮 FX7 已实测）**：修正口径共用同一段日前接受代码，路径依赖同样存在。GBP1 public2 修正口径 2025 年，核电到第 16,593 期（12 月 12 日 16:30 UTC，全年最高价时段）才第一次被接受，此后运行 927 个时段，全年 2.02 TWh；按可用率可发 38.26 TWh。诊断性敏感性运行（临时把核电 `startup_cost` 设为 0）中核电为 38.26 TWh，系统成本 −1,830.7 百万英镑，排放 −13.0 Mt。
-  - **作者决定（A18，尚未实施）**：修正口径中核电从第 0 期起在运，按各站可用率作基荷，启动成本只在换料或停运后重启时收取；论文复现口径不变（Q1）。所以 0.4 的写法分两步：
-    1. 论文复现口径部分现在就可以写（A15 必写，GBP1 前后对比为例）；
-    2. 修正口径部分等 A18 实施并在 GBP1 public2 上重跑（验收：核电对 Energy Trends 5.1 ±10%）之后，按实施时的规则集与 correction id 写；在那之前，若 0.4 必须先出，只能写“修正口径的核电启动规则正在修订”，不得写修正口径的核电数字。
+  - **作者决定（A18），FX8 已实施**：修正口径中每个模型年开始前核电视为在运，从第 0 期起按各站可用率作基荷；某期未被接受（换料、停运、可用率为 0 或未出清）之后重启时收取一次启动成本；燃气、生物质不变；论文复现口径不变（Q1）。correction id `fx8.nuclear-in-service-at-start`，规则集字段 `nuclear_initial_state`（修正 `in_service_at_start`，论文 `off_until_accepted`），value-bid-at-cost-psm 6.4.0（`requires_user_opt_in`）。GBP1 public2 修正口径 2025 年重跑：核电 38.26 TWh（17,520 期全部在运），对 Energy Trends 5.1 +2.5%，通过；CCGT 67.53 TWh，时段均价 16.23 £/MWh，头条系统成本 26,852.1 百万英镑（−1,830.7），排放 27.56 Mt。结果与上面的诊断运行逐位相同，因为核电全年没有停过；规则上的区别是停运后重启仍付启动成本。所以 0.4 两部分都可以写：
+    1. 论文复现口径部分（A15 必写，GBP1 前后对比为例）：草稿第 1 节；
+    2. 修正口径部分：草稿第 2 节与第 4 节，数字注明是本地、未发布的 public2。
 
 **N-8 第 64–80 行（zh 第 64–78 行），伪代码**
 - 按规则集标注以下改动，或者给出两份伪代码：
@@ -1073,7 +1073,7 @@ $$
 |---|---|---|
 | MC-1 | 第 74–80 行 | 第 76 行 `force.cem-system-resource-cost/v1` 是过时 id，代码中是 `value.cem-system-resource-cost/v1`（`cost_ledger.py` 第 15 行）。成本按成本账 v2 写（K-14）：风光储 FOM 是备忘项；径流水电兼容资本在修正口径下不计入头条，在论文复现口径下计入；物理运营成本含“记录的切负荷 × VoLL”。“explicit fixed O&M” 改为只指火电 FOM |
 | MC-2 | 第 58–62 行 | 水电存量值：补 P4-03 按口径的头条处理；补修正口径下的径流水电可用率（N-4） |
-| MC-3 | 第 37–49 行 | 已知简化补：储能只用盈余充电（S7）；DEV-BAL-03；投资侧 CSV 与调度天气不一致（S9）；A13 模型选择已由作者认可（A16-6），只写“文献标准模型”；修正口径的核电启动路径依赖（N-7，A18 待实施） |
+| MC-3 | 第 37–49 行 | 已知简化补：储能只用盈余充电（S7）；DEV-BAL-03；投资侧 CSV 与调度天气不一致（S9）；A13 模型选择已由作者认可（A16-6），只写“文献标准模型”；修正口径的核电启动路径依赖已由 A18 解决（N-7，FX8）；论文复现口径的路径依赖保留并披露（A15） |
 | MC-4 | 第 27–31 行附近 | Q14 写成一般规则，并补 VALUE 101 two_year 论文复现运行因 DEV-STO-01 被扣发的实例 |
 | MC-5 | 新增一段 | 数据资格：GBP1 public1 只用于论文复现口径；修正口径用 R029 public1 或本地 public2（修复轮已在代码中登记，数据包未发布；R029 public1 的光伏严格读取问题见第 9 节第 10 条）；逐站核电只作用于 `NUCLEAR_POLICY_PACK_IDS` 中的包，public2 由 `p05.nuclear-stations-public2` 控制，只在修正口径生效 |
 | MC-6 | 第 74–80 行或成本段 | VoLL 17,000 £/MWh，两个口径相同（A16-5）；修正口径的互联线进口进入日前出清（C25） |
@@ -1089,7 +1089,7 @@ $$
 | VC-3 | 新增行 | A4 火电净收入：`tests/test_p07_investment_corrections.py`，passed，边界为“玩具算例与 D4；电价等于 MC 时既不扩容也不退役” |
 | VC-4 | 新增行 | A2 stress event 记账：`tests/test_p04_balance_boundary.py`、`tests/test_stress_events_query.py`，passed，边界为“调度不变，只记账” |
 | VC-5 | 新增行 | Q14 发布规则：`tests/test_result_advisories.py`、`tests/test_methodology_profiles.py`，passed |
-| VC-6 | 第 85–93 行 | A13 模型选择已由作者认可（A16-6），去掉“待审核”；GBP1 修正口径的本地全年验收（FX7，public2 未发布）：水电对 DUKES +5.1%，passed；核电对 Energy Trends 5.1 −95%，**failed**（启动路径依赖，A18 待实施后重跑）。写成“local check, pack not published”，不要写成公开证据 |
+| VC-6 | 第 85–93 行 | A13 模型选择已由作者认可（A16-6），去掉“待审核”；GBP1 修正口径的本地全年验收（FX7，public2 未发布）：水电对 DUKES +5.1%，passed；核电在 A18 之前对 Energy Trends 5.1 −95%（启动路径依赖），A18 实施后（FX8）+2.5%，passed。写成“local check, pack not published”，不要写成公开证据 |
 | VC-8 | 新增行 | 修复轮：VoLL 17,000 两个口径（`tests/test_fx5_voll.py`）；修正口径日前进口（`tests/test_fx6_ahead_imports.py`）；扩展状态链（`tests/test_run_invariants.py`、`tests/test_prompt65_extension_framework.py`）；储能报价账本（`tests/test_fx4_storage_orders.py`）。都是 passed，边界写清是合成或 VALUE 101 算例 |
 | VC-7 | 第 57–64 行 | “NO-GO for a fresh GitHub checkout because 460 intended source members are not tracked” 已过时（审查 R2-07）。是否删改由作者决定，因为它与源码公开的决定相关 |
 
@@ -1214,7 +1214,7 @@ for cid in ids:
 | 3 | 修正目录 `corrections/p05.json` 第 243 行 `p05.solar-plane-of-array` 的描述写 “tilted at the site latitude”，与代码（`tilt_rule = jacobson-jadhav-2018`）、参数表、f2 草稿不符；它也出现在生成的 `METHODOLOGY_PROFILES.md` 中。另外 `p05.vre-loss-factors` 的描述仍写 “PENDING AUTHOR REVIEW”，但 A9 已认可 | 描述只是展示字段，不进入方法哈希（`methodology.py` 第 171–179 行），但会被网站和读者引用 | 代码负责人：修目录描述后重新生成表（FX7 已修：两条描述已改正，`METHODOLOGY_PROFILES.md` 已重新生成） |
 | 4 | 23 区 GB 研究的基础数据包是哪个。网络模块只在修正口径下运行，而 GBP1 public1 在修正口径下不合格 | 第 2 章第 9 行、第 7 章第 107 行 | 代码负责人 |
 | 5 | ~~A13 光伏倾斜面换算的模型选择~~（A16-6 已认可），以及 DUKES 对照列 | 0.4 正文是否带 PENDING 标记 | 作者 |
-| 6 | 修正口径下，核电日前接受的路径依赖是否仍然存在、量级多大。**FX7 实测：** 仍然存在，且量级很大。GBP1 public2 修正口径 2025 年，核电到第 16593 期（12 月 12 日）才首次被接受，全年 2.0 TWh；按可用率可发 38.3 TWh，Energy Trends 5.1 的 2023–2024 supplied 约 37.3 TWh。见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`。**作者已决定（A18）：** 修正口径核电从第 0 期起在运，启动成本只在换料或停运后收取；论文复现口径不变。**截至 `be30884` 尚未实施。** 剩下的问题：实施后的规则集版本、correction id 和重跑数字 | 第 5 章 N-4、N-7 修正口径部分何时定稿 | 代码负责人（实施与重跑） |
+| 6 | 修正口径下，核电日前接受的路径依赖是否仍然存在、量级多大。**FX7 实测：** 仍然存在，且量级很大。GBP1 public2 修正口径 2025 年，核电到第 16593 期（12 月 12 日）才首次被接受，全年 2.0 TWh；按可用率可发 38.3 TWh，Energy Trends 5.1 的 2023–2024 supplied 约 37.3 TWh。见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`。**作者已决定（A18）：** 修正口径核电从第 0 期起在运，启动成本只在换料或停运后收取；论文复现口径不变。**FX8 已实施：** correction id `fx8.nuclear-in-service-at-start`，规则集字段 `nuclear_initial_state`，value-bid-at-cost-psm 6.4.0；重跑后核电 38.26 TWh（+2.5%），CCGT 67.5 TWh，头条系统成本 −1,830.7 百万英镑（`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` 第 10 节）。已解决 | 第 5 章 N-4、N-7 修正口径部分按 `fx8_nuclear_in_service.md` 定稿 | 已完成（FX8） |
 | 7 | 起始年不变币值的表述：哪个价格基年、是否承认输入的来源年份混合；以及 R029 年度资本费用中的 5% 利率与“不折现”如何并列表述 | 第 1 章新小节、第 2 章、第 6 章 | 作者 |
 | 8 | 方法学中 “Doctoral” 路径是否改名 | 避免与论文复现口径混淆 | 作者 |
 | 9 | 是否在方法学中加入 GBP1 的勘误说明（A15 说该对比作为论文结果的勘误保留），以及 A15 surplus conservation 失败（471 个时段、最大 991 MWh）在方法学中怎样写：它是待调查的已知问题，不是已声明偏差 | 第 2 章或第 5 章的写法 | 作者 |
