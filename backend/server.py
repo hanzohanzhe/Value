@@ -2761,6 +2761,62 @@ class Handler(BaseHTTPRequestHandler):
             return {"catalog_stale": True, "warning": {"error_code": exc.code, "message": str(exc)}}
         return {}
 
+    def _remove_local_entry(self, route: str, body: dict[str, Any]) -> None:
+        """Spec 11.4 (M-D4, F-D3): Remove a disabled or quarantined local entry.
+
+        The files are moved out of the scanned folders, never deleted
+        (gridform_core.module_recovery.remove_installation).  An enabled,
+        working entry must be disabled first; an entry that saved Studies,
+        active runs or (for an extension) retained run history reference
+        is kept.
+        """
+
+        parts = route.strip("/").split("/")
+        if len(parts) != 4:
+            self._json({"error": "invalid lifecycle route"}, 404); return
+        kind = "extension" if parts[1] == "extensions" else "module"
+        entry_id = slug(parts[2], kind)
+        root = external_modules_root()
+        quarantined = entry_id in _quarantined_ids(kind)
+        prefix = "GF_EXTENSION" if kind == "extension" else "GF_MODULE"
+        if kind == "module":
+            records = [row for row in list_module_installations() if row.get("module_id") == entry_id]
+            enabled = any(bool(row.get("enabled")) for row in records)
+            dependents: dict[str, list[str]] = self._module_dependents(entry_id)
+        else:
+            records = [row for row in list_extension_installations(root) if row.get("extension_id") == entry_id]
+            enabled = bool(records) and bool(max(
+                records, key=lambda row: tuple(int(part) if part.isdigit() else -1 for part in str(row.get("version") or "").split("-", 1)[0].split("."))
+            ).get("enabled"))
+            dependents = extension_dependents(entry_id)
+        if enabled and not quarantined:
+            self._json({
+                "error": f"Disable this {kind} before removing it.",
+                "error_code": f"{prefix}_REMOVE_ENABLED",
+            }, 409); return
+        if any(dependents.values()):
+            self._json({
+                "error": f"This {kind} is referenced by saved Studies or runs and is kept; select another one in those Studies first.",
+                "error_code": f"{prefix}_IN_USE",
+                "dependents": dependents,
+            }, 409); return
+        require_no_pending_runs(self._pending_runs_confirmed(body))
+        from gridform_core.module_recovery import remove_installation
+        from gridform_core.runtime_paths import activate_external_module_sources, purge_source_root
+
+        with MODULE_LIFECYCLE_LOCK:
+            folder = root / ("installed" if kind == "module" else "installed-extensions") / entry_id
+            for source in sorted(folder.glob("*/src")) if folder.is_dir() else ():
+                purge_source_root(source)  # no import state of removed code stays behind
+            try:
+                removed = remove_installation(root, kind, entry_id)
+            except LookupError as exc:
+                self._json({"error": str(exc), "error_code": f"{prefix}_NOT_INSTALLED"}, 404); return
+            activate_external_module_sources(root)
+            clear_negative_caches()
+            stale = self._refresh_after_lifecycle_change()
+        self._json({"ok": True, "removed": removed, "module_quarantine": module_quarantine_payload(), **stale})
+
     def _module_dependents(self, module_id: str) -> dict[str, list[str]]:
         projects = []
         for path in sorted(PROJECTS_ROOT.glob("*/project.json")):
@@ -3857,6 +3913,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             require_no_pending_runs(self._pending_runs_confirmed(body))
             with MODULE_LIFECYCLE_LOCK:
+                if enabling:
+                    # Spec 11.4 (M-D4): an Enable reports the result of a
+                    # fresh scan, never a remembered failed import.
+                    clear_negative_caches()
                 installation = set_module_enabled(module_id, enabling)
                 stale = self._refresh_after_lifecycle_change()
             self._json({"ok": True, "installation": installation, "dependents": dependents, **stale})
@@ -3882,11 +3942,15 @@ class Handler(BaseHTTPRequestHandler):
                 }, 409); return
             require_no_pending_runs(self._pending_runs_confirmed(body))
             with MODULE_LIFECYCLE_LOCK:
+                if enabling:
+                    clear_negative_caches()  # spec 11.4: a fresh scan, as for modules
                 installation = set_extension_enabled(
                     extension_id, enabling, modules_root=external_modules_root()
                 )
                 stale = self._refresh_after_lifecycle_change()
             self._json({"ok": True, "installation": installation, "dependents": dependents, **stale})
+        elif route.startswith(("/api/modules/", "/api/extensions/")) and route.endswith("/remove"):
+            self._remove_local_entry(route, body)
         elif route == "/api/modules/rescan":
             # Retry everything the negative caches remember and rebuild the
             # catalogue; clears a stale catalogue when it succeeds.

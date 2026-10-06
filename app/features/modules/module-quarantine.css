@@ -7,3 +7,21 @@
 .module-quarantine-panel pre { max-height: 220px; overflow: auto; white-space: pre-wrap; font-size: 12px; }
 .quarantine-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 6px; }
 .quarantine-help { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Spec 11.4 (M-D4, F-D3): the Disabled and quarantined area and the global Rescan. */
+.disabled-entries { display: grid; gap: 8px; }
+.disabled-entries > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.disabled-entries > header span { font-size: 12px; color: var(--muted); }
+.disabled-entries > header h3 { margin: 2px 0 0; }
+.disabled-entries .quarantine-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.disabled-entries .quarantine-rows li { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: grid; gap: 4px; min-width: 0; }
+.disabled-entries .quarantine-error { margin: 0; font-size: 13px; }
+.disabled-entries .quarantine-actions button { font-size: 13px; min-height: 30px; }
+.disabled-entries .value-action-primary { border: 1px solid var(--line); border-radius: 7px; padding: 4px 12px; background: var(--panel); color: var(--ink); font-weight: 600; }
+.disabled-entries .value-action-link { border: 0; padding: 0; background: transparent; color: var(--blue); text-decoration: underline; }
+.disabled-entries .value-action-link.danger { color: var(--red); }
+.disabled-entry-error { margin: 0; padding: 6px 8px; border-left: 4px solid var(--red); background: var(--red-soft); font-size: 13px; color: var(--ink); overflow-wrap: anywhere; }
+.disabled-entry-error code { font-size: 12px; }
+.disabled-entry-error span { display: block; font-size: 12px; color: var(--muted); }
+.modules-rescan { font-size: 13px; }
+.modules-title-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }

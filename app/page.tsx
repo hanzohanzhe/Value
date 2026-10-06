@@ -15,6 +15,8 @@ import { API_BASE, OFFLINE_AFTER_FAILURES, classifyRefreshFailure, getJson, poll
 import "./features/shared/service-status.css";
 import ModuleQuarantinePanel, { type QuarantineRow } from "./features/modules/ModuleQuarantinePanel";
 import { isPendingRunsRefusal, pendingRunsQuestion } from "./features/modules/module-quarantine.mjs";
+import DisabledEntriesPanel, { type EntryError } from "./features/modules/DisabledEntriesPanel";
+import { disabledEntries, lifecyclePath, type DisabledEntry } from "./features/modules/disabledEntries.ts";
 import { formatEnergy, formatEnergyGroup, formatQuantity } from "./features/shared/format.ts";
 import { seriesShapes, vreEventGroups, vreKpis, vreLabels, vreYearCoverage } from "./features/market/vreView.ts";
 import type { AuctionView, DispatchTimeline, MarketCapability, StoragePeriodRow, VreSummary } from "./features/market/marketTypes.ts";
@@ -375,6 +377,11 @@ function SystemResultsView({ run, onOpenMarket, onOpenNetwork }: { run?: ModelRu
     {capabilities?.capabilities.hydrology && <section className="panel unavailable-domain"><div><span>Natural-flow hydrology</span><h3>{capabilities.capabilities.hydrology.status.replaceAll("_", " ")}</h3><p>{capabilities.capabilities.hydrology.reason ?? "A typed hydrology result index is available."}</p></div><Badge tone={capabilities.capabilities.hydrology.status === "experimental" ? "warn" : "neutral"}>{capabilities.capabilities.hydrology.status.replaceAll("_", " ")}</Badge></section>}
     {capabilities && <p className="provenance-line">Run {String(capabilities.identity.run_id ?? run.id)} · project revision {String(capabilities.identity.project_revision_sha256 ?? "not recorded")} · graph {String(capabilities.identity.graph_sha256 ?? "not recorded")}</p>}
   </div>;
+}
+
+/** An Enable/Remove refusal with its backend code (spec 11.4). */
+class EntryLifecycleError extends Error {
+  constructor(message: string, readonly code?: string) { super(message); }
 }
 
 export default function Home() {
@@ -1055,13 +1062,15 @@ export default function Home() {
   }
 
   const [quarantineBusy, setQuarantineBusy] = useState("");
+  // Spec 11.4 (M-D4): the error of the last Enable attempt per entry; a Rescan clears them.
+  const [entryErrors, setEntryErrors] = useState<Record<string, EntryError>>({});
   async function disableQuarantined(row: QuarantineRow) {
     if (!row.disablePath) return;
     setQuarantineBusy(row.key); setNotice("");
     try {
       const { response, payload } = await lifecycleRequest(`${API}${row.disablePath.replace(/^\/api/, "")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Disabling ${row.id} failed`}`);
-      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.`); await refresh();
+      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Disable failed"); }
     finally { setQuarantineBusy(""); }
   }
@@ -1071,8 +1080,37 @@ export default function Home() {
       const response = await fetch(`${API}/modules/rescan`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const payload = await response.json() as { status?: string; error?: string; error_code?: string };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Rescan failed"}`);
-      setNotice(payload.status === "ok" ? "Rescan complete: no module is quarantined." : "Rescan complete: some modules are still quarantined; see the panel."); await refresh();
+      setNotice(payload.status === "ok" ? "Rescan complete: no module is quarantined." : "Rescan complete: some modules are still quarantined; see the panel."); setEntryErrors({}); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Rescan failed"); }
+    finally { setQuarantineBusy(""); }
+  }
+
+  function recordEntryError(key: string, error: EntryError | null) {
+    setEntryErrors((current) => error ? { ...current, [key]: error } : Object.fromEntries(Object.entries(current).filter(([item]) => item !== key)));
+  }
+  /** Spec 11.4: Enable from the Disabled and quarantined area; a failure stays on its row with Rescan. */
+  async function enableEntry(entry: DisabledEntry) {
+    setQuarantineBusy(`enable:${entry.key}`); setNotice("");
+    try {
+      const { response, payload } = await lifecycleRequest(`${API}${lifecyclePath(entry, "enable")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
+      if (!response.ok) throw new EntryLifecycleError(payload.error || `Enabling ${entry.id} failed`, payload.error_code);
+      recordEntryError(entry.key, null);
+      setNotice(`${entry.id} is enabled. Check readiness again before running a Study that uses it.`); setPreflight(null); await refresh();
+    } catch (reason) { recordEntryError(entry.key, { code: reason instanceof EntryLifecycleError ? reason.code : undefined, message: reason instanceof Error ? reason.message : "Enable failed" }); }
+    finally { setQuarantineBusy(""); }
+  }
+  /** Spec 11.4: Remove (confirmed in the panel) moves the entry's files out of the scanned folders. */
+  async function removeEntry(entry: DisabledEntry) {
+    setQuarantineBusy(`remove:${entry.key}`); setNotice("");
+    try {
+      const { response, payload } = await lifecycleRequest(`${API}${lifecyclePath(entry, "remove")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {}) as { response: Response; payload: { error?: string; error_code?: string; dependents?: Record<string, string[]>; removed?: { destination?: string } } };
+      if (!response.ok) {
+        const dependents = Object.values(payload.dependents ?? {}).flat();
+        throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Removing ${entry.id} failed`}${dependents.length ? ` — ${dependents.join(", ")}` : ""}`);
+      }
+      recordEntryError(entry.key, null);
+      setNotice(`${entry.id} was removed from VALUE. Its files are kept in modules/${payload.removed?.destination ?? "disabled-manifests/removed"}.`); setPreflight(null); await refresh();
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Remove failed"); }
     finally { setQuarantineBusy(""); }
   }
 
@@ -1107,7 +1145,7 @@ export default function Home() {
         const projects = payload.dependents?.projects?.join(", ");
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${projects ? `: ${projects}` : ""}`);
       }
-      setNotice(`${installation.name} is now ${enabled ? "enabled and selectable" : "disabled"}.`); await refresh();
+      setNotice(`${installation.name} is now ${enabled ? "enabled and selectable" : "disabled"}.`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Module state change failed"); }
     finally { setModuleLifecycle(""); }
   }
@@ -1143,7 +1181,7 @@ export default function Home() {
         const dependents = [...(payload.dependents?.projects ?? []), ...(payload.dependents?.runs_and_retained_history ?? [])];
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${dependents.length ? ` — ${dependents.join(", ")}` : ""}`);
       }
-      setNotice(`${installation.extension_id} is now ${enabled ? "enabled" : "disabled"}.`); await refresh();
+      setNotice(`${installation.extension_id} is now ${enabled ? "enabled" : "disabled"}.`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Extension lifecycle change failed"); }
     finally { setExtensionLifecycle(""); }
   }
@@ -1476,7 +1514,7 @@ export default function Home() {
     </div>}
 
     {view === "models" && <div className="page">
-      <div className="page-title"><div><span>VALUE module registry</span><h2>The model is assembled here</h2><p>Each card resolves to one executable Python implementation. Install a reviewed local bundle to replace one part of the model without editing VALUE.</p></div><Badge tone="good">{readyModules} of {workspace.modules.length} ready</Badge></div>
+      <div className="page-title"><div><span>VALUE module registry</span><h2>The model is assembled here</h2><p>Each card resolves to one executable Python implementation. Install a reviewed local bundle to replace one part of the model without editing VALUE.</p></div><div className="modules-title-actions"><Badge tone="good">{readyModules} of {workspace.modules.length} ready</Badge><button type="button" className="secondary modules-rescan value-new-control" disabled={Boolean(quarantineBusy)} onClick={() => void rescanModules()}>{quarantineBusy === "rescan" ? "Rescanning…" : "Rescan modules"}</button></div></div>
       <ModuleQuarantinePanel report={workspace.module_quarantine} busy={quarantineBusy} onDisable={(row) => void disableQuarantined(row)} onRescan={() => void rescanModules()} />
       <div><ModuleAuthorWorkbench modules={workspace.modules} projects={workspace.projects}
         onInstallRequest={() => document.getElementById("module-installer")?.scrollIntoView({ block: "start", behavior: "smooth" })}
@@ -1515,6 +1553,7 @@ export default function Home() {
       </section>
       <section className="extension-catalogue"><header><div><span>One workspace registry</span><h3>Installed and built-in extensions</h3></div><Badge>{workspace.extensions.length}</Badge></header><div>{workspace.extensions.map((extension) => { const installation = workspace.extension_installations.find((item) => item.extension_id === extension.id && item.version === extension.version); const projectReferences = workspace.projects.filter((project) => project.selected_extensions?.includes(extension.id)); return <article key={extension.id}><header><div><b>{extension.name}</b><small>{extension.id} · {extension.version} · {extension.namespace}</small></div><Badge tone={extension.maturity === "ready" ? "good" : "warn"}>{extension.maturity.replaceAll("_", " ")}</Badge></header><p><strong>Provides</strong> {extension.provided_capabilities.join(" · ") || "No capability declared"}</p><p><strong>Requires</strong> {extension.required_capabilities.join(" · ") || "No additional capability"}</p><div><span><small>Conditional data</small><b>{extension.data_roles.filter((role) => role.required).length} required · {extension.data_roles.filter((role) => !role.required).length} optional</b></span><span><small>Composed modules</small><b>{extension.composed_module_ids.join(", ") || "none"}</b></span><span><small>Licence / manifest</small><b>{extension.licence} · {extension.manifest_sha256.slice(0, 12)}…</b></span><span><small>Origin</small><b>{extension.origin.replaceAll("_", " ")} · {extension.enabled ? "enabled" : "disabled"}</b></span></div>{installation && <footer><code>{installation.installation_boundary} · {installation.bundle_sha256.slice(0, 16)}…</code><button className="text-button" disabled={extensionLifecycle === extension.id || (installation.enabled && projectReferences.length > 0)} title={projectReferences.length ? `Used by ${projectReferences.map((project) => project.name).join(", ")}` : ""} onClick={() => void changeExtensionState(installation, !installation.enabled)}>{extensionLifecycle === extension.id ? "Updating…" : installation.enabled ? "Disable" : "Enable"}</button></footer>}{projectReferences.length > 0 && <em>Referenced by {projectReferences.length} saved {projectReferences.length === 1 ? "Study" : "Studies"}; disabling is blocked.</em>}</article>; })}</div></section>
       <div className="module-list">{workspace.modules.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((module, index) => <article className="module-card" key={module.id}><header><div className={`module-mark ${module.kind}`}>{String(index + 1).padStart(2, "0")}</div><div><span>{module.kind.toUpperCase()} · {module.slot.replaceAll("_", " ")} · {module.version}</span><h3>{modelDisplayName(module.name)}</h3></div><Badge tone={module.status === "ready" ? "good" : "warn"}>{module.origin === "local_bundle" ? `local · ${module.status}` : module.status}</Badge></header><p>{modelDisplayName(module.description)}</p><div className="module-id"><span>Implementation</span><code>{module.id}</code><small>Contract {module.contract_version ?? "not recorded"}</small></div>{module.id === "value-bid-at-cost-psm" && <div className="compatibility-note">Live module · bid-at-cost clearing through the v2 orchestrator</div>}<details className="io"><summary>Inputs and outputs</summary><div><span>Inputs</span>{module.inputs.map((input) => <code key={input}>{input}</code>)}</div><i>→</i><div><span>Outputs</span>{module.outputs.map((output) => <code key={output}>{output}</code>)}</div></details></article>)}</div>
+      <DisabledEntriesPanel entries={disabledEntries({ modules: workspace.module_installations, extensions: workspace.extension_installations, quarantine: workspace.module_quarantine })} busy={quarantineBusy} errors={entryErrors} onEnable={(entry) => void enableEntry(entry)} onRescan={() => void rescanModules()} onRemove={(entry) => void removeEntry(entry)} />
     </div>}
 
     {view === "projects" && <div className="page project-page"><div className="page-title"><div><span>Study setup</span><h2>Define the scientific question, then resolve the model</h2><p>The composer connects one data pack, physical domain, optional extensions, model chain and assumptions. Saving creates an immutable revision of exactly the graph shown in Review.</p></div><Badge tone={draftResolution?.valid ? "good" : "warn"}>{draftResolving ? "Resolving" : draftResolution?.valid ? "Draft ready" : "Draft incomplete"}</Badge></div><StudyComposer initialStep={composerInitialStep} workspace={workspace} form={projectForm} selectedPackId={selectedPack?.id ?? selectedPackId} resolution={draftResolution} resolving={draftResolving} resolutionError={draftResolutionError} savedProjects={workspace.projects} studyTrash={workspace.study_trash} selectedProjectId={selectedProjectId} assumptions={<><AdvancedSettings definitions={definitions} values={{ ...parameterValues, ...runtimeValues }} resolvedSources={resolvedSources} onChange={(id, value, runtime) => runtime ? setRuntimeValues((current) => ({ ...current, [id]: value })) : setParameterValues((current) => ({ ...current, [id]: value }))} /><button className="text-button full" onClick={() => void previewParameters()}>Check effective base values</button></>} onForm={(update) => setProjectForm(update)} onPack={setSelectedPackId} onDomain={chooseDomain} onExtension={toggleExtension} onModule={selectStudyModule} onExtensionParameter={(name, value) => setProjectForm((current) => ({ ...current, extension_parameters: { ...current.extension_parameters, [name]: value } }))} onAcknowledgement={(key, value, checked) => setProjectForm((current) => { const maturity_acknowledgements = { ...current.maturity_acknowledgements }; if (checked) maturity_acknowledgements[key] = value; else delete maturity_acknowledgements[key]; return { ...current, maturity_acknowledgements }; })} onSave={() => void saveProject()} onLoad={loadProjectRevision} onOpenRun={(project) => { selectRunProject(project.id); setView("run"); }} onTrash={(project, linkedRunCount) => void moveStudyToTrash(project, linkedRunCount)} onRestore={(entry) => void restoreStudyEntry(entry)} onOpenTrashRuns={(entry) => { const run = workspace.runs.find((item) => item.project_id === entry.study_id); setSelectedProjectId(entry.study_id); setSelectedRunId(run?.id ?? ""); setSelectedRunDetail(null); setView("run"); if (!run) setNotice("No indexed Run is available for this trashed Study; restore it to inspect non-indexed legacy evidence."); }} onOpenData={() => { setDataContextId("draft"); setView("data"); }} traceLevel={(runtimeValues["runtime.market_trace_level"] as TraceProfile | undefined) ?? "summary"} onTraceLevel={(trace) => setRuntimeValues((current) => ({ ...current, "runtime.market_trace_level": trace }))} methodology={{ catalogue: methodologyCatalogue, profileId: selectedProfileId(parameterValues, methodologyCatalogue), error: methodologyError }} onMethodology={chooseMethodology} /></div>}

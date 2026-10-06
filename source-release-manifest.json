@@ -64,9 +64,11 @@
     "app/features/market/marketTypes.ts",
     "app/features/market/stressEventsView.ts",
     "app/features/market/vreView.ts",
+    "app/features/modules/DisabledEntriesPanel.tsx",
     "app/features/modules/ModuleAuthorWorkbench.css",
     "app/features/modules/ModuleAuthorWorkbench.tsx",
     "app/features/modules/ModuleQuarantinePanel.tsx",
+    "app/features/modules/disabledEntries.ts",
     "app/features/modules/module-authoring.types.ts",
     "app/features/modules/module-quarantine.css",
     "app/features/modules/module-quarantine.mjs",
@@ -1287,6 +1289,7 @@
     "tests/frontend/helpers/fixtures.mjs",
     "tests/frontend/helpers/render-tsx.mjs",
     "tests/frontend/render/annual-results.test.mjs",
+    "tests/frontend/render/disabled-entries.test.mjs",
     "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/network-tables.test.mjs",
     "tests/frontend/render/preflight-blocked-run.test.mjs",
@@ -1299,6 +1302,7 @@
     "tests/frontend/unit/api-error.test.mjs",
     "tests/frontend/unit/comparison-review.test.mjs",
     "tests/frontend/unit/csv-mapping-fx.test.mjs",
+    "tests/frontend/unit/disabled-entries.test.mjs",
     "tests/frontend/unit/dispatch-view.test.mjs",
     "tests/frontend/unit/e2e-runner.test.mjs",
     "tests/frontend/unit/fallback-audit-view.test.mjs",
@@ -1458,6 +1462,7 @@
     "tests/test_module_authoring.py",
     "tests/test_module_conformance.py",
     "tests/test_module_developer_examples.py",
+    "tests/test_module_disabled_exits_api.py",
     "tests/test_module_installation.py",
     "tests/test_module_installation_api.py",
     "tests/test_module_manifests_v2.py",
@@ -3278,6 +3283,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/modules/DisabledEntriesPanel.tsx",
+      "sha256": "c636e9292eb1fbfcd6a2b6423f33ac69ecb3cd6260111207e7e92d435d606315",
+      "bytes": 2988,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/modules/ModuleAuthorWorkbench.css",
       "sha256": "45dbf6ea488da1a3235539258f2510dc40be90f78c535132a476bdd0e8af8fd8",
       "bytes": 3059,
@@ -3296,6 +3307,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/modules/disabledEntries.ts",
+      "sha256": "54df4dec8bc698a1941474e22edde1ca05a67cf407fa43c8eaede5fb3aaaf5a8",
+      "bytes": 4089,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/modules/module-authoring.types.ts",
       "sha256": "b90eae590c7e9c751a8bf79beb2d11d5e96715b2ef1c4e6fbfabdc3d877f195a",
       "bytes": 5539,
@@ -3303,8 +3320,8 @@
     },
     {
       "path": "app/features/modules/module-quarantine.css",
-      "sha256": "b764428f3d73cedaffd995f842a3b2e2206b9cc44e6650b3c214833095c5d72e",
-      "bytes": 855,
+      "sha256": "3305145d2e0b31ee85e308b070d369289f00a66d594f036ce6133844ad676093",
+      "bytes": 2523,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3753,8 +3770,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "4a3e0eeab7d5935abd65c61bd18aa39b00f4236eb36367044271d0aa1cae5055",
-      "bytes": 165257,
+      "sha256": "2288dfae3903b119bebbb021feaebfb69287a940eca13cae62d79b459af6bc6e",
+      "bytes": 169016,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3903,8 +3920,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "b2ffef487747f9b3fc81fceb2e21047270fd20488b259136f748bd4f4629853a",
-      "bytes": 205122,
+      "sha256": "e76fa9e65d329e0d94909b2ecaae434af38060bdde23bfd497eeec3198abc6de",
+      "bytes": 208844,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8304,8 +8321,8 @@
     },
     {
       "path": "gridform_core/module_recovery.py",
-      "sha256": "c87d941a0ec81613e0dd7578d8150bd1d4d2e3a4d4f951a7e138e561c5cc99f9",
-      "bytes": 22324,
+      "sha256": "0b92ac103cf4258ab77f9219c9f63b12afd74eb99dc44990bd8df3f7c53b7e4b",
+      "bytes": 23889,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10599,6 +10616,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/disabled-entries.test.mjs",
+      "sha256": "3d4eaaab38f2faedf38195b044bb0ab6336ae8476fefed40df07065ae7a8dc10",
+      "bytes": 2247,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/module-quarantine.test.mjs",
       "sha256": "0fa14ac9aaa44a18158dd8669b323916c72b4d0eabac0b63e9563920671f0f4c",
       "bytes": 1278,
@@ -10668,6 +10691,12 @@
       "path": "tests/frontend/unit/csv-mapping-fx.test.mjs",
       "sha256": "b8f4b3b83f167791026325b88310a273047687de427b029102ce84c17b4be821",
       "bytes": 2356,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/disabled-entries.test.mjs",
+      "sha256": "9a9a04b5d8565761f444a4f2a55a9b917bf7457993ac3b22671275b24bbe88fc",
+      "bytes": 2956,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11623,6 +11652,12 @@
       "sha256": "44d2b13365f92fbdfbb92524ad886763beb0ba3153f8fb5a62587eaffeb79484",
       "bytes": 5470,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_module_disabled_exits_api.py",
+      "sha256": "e466dcae45301bff8ac20efb8fde36856f48ec4d03bf7e5867b8cccb18c1f826",
+      "bytes": 7776,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_module_installation.py",

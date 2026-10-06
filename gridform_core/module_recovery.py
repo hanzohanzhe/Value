@@ -340,6 +340,41 @@ def park_installation(root: Path, kind: str, entry_id: str, version: str | None 
     return result
 
 
+REMOVED = "removed"
+
+
+def remove_installation(root: Path, kind: str, entry_id: str) -> dict[str, object]:
+    """Move every file of one local module or extension out of the scanned folders (spec 11.4).
+
+    The Modules page's Remove: the installer folder (all versions), the
+    active manifest and, for an extension, its retained disabled manifest go
+    to ``disabled-manifests/removed/<kind>s/<id>/<stamp>/``.  Nothing is
+    deleted; VALUE never scans ``disabled-manifests/``.  Built-in entries
+    have no installer files and cannot be removed.
+    """
+
+    folder_name = INSTALLER_FOLDER[kind]
+    entry = Path(entry_id).name
+    if not entry or entry != entry_id:
+        raise ValueError(f"Invalid {kind} id {entry_id!r}")
+    sources = [root / folder_name / entry]
+    if kind == "module":
+        sources.append(root / f"{entry}.json")
+    else:
+        sources += [root / "extensions" / f"{entry}.json", root / "disabled-extensions" / f"{entry}.json"]
+    present = [path for path in sources if path.exists() or path.is_symlink()]
+    if not present:
+        raise LookupError(f"No installed {kind} {entry_id} under {root}")
+    destination = _free_target(root / PARKED / REMOVED / f"{kind}s" / entry, "removed")
+    destination.mkdir(parents=True)
+    moved: list[str] = []
+    for path in present:
+        target = destination / path.name
+        path.replace(target)
+        moved.append(f"{_relative(path, root)} -> {_relative(target, root)}")
+    return {"kind": kind, "id": entry_id, "parked": moved, "destination": _relative(destination, root)}
+
+
 def _guarded(root: Path, force: bool) -> int | None:
     if not force and _backend_running(root):
         print("VALUE is running on this data directory: use the Modules page, or stop VALUE first "
