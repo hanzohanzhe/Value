@@ -1,0 +1,46 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { renderTsx } from "../helpers/render-tsx.mjs";
+
+// Spec 11.1 (S-D1) rendered offline: with 14 issues the last one (a
+// plausibility finding) is visible, and folded groups say how many they hold.
+const issue = (code, severity, scope, message, extra = {}) => ({ code, severity, scope, message, corrective_action: "Review it.", ...extra });
+const warnings = [
+  issue("GF_PREFLIGHT_UNSAVED_REVISION", "warning", "project", "This legacy project has no saved immutable revision identity."),
+  ...Array.from({ length: 10 }, (_, index) => issue("GF_PREFLIGHT_DATA_WARNING", "warning", "data", `market.role${index}.price: unit is not declared; canonical role expects GBP/MWh`)),
+  issue("GF_PREFLIGHT_DATA_WARNING", "warning", "data", "demand.real: Legacy demand label MWh/period is interpreted as raw MW."),
+  issue("GF_DATA_PLAUSIBILITY_PRICE", "warning", "data", "market.france.price: france price range [82, 6087] outside [-500, 5000] GBP/MWh", { layer: "plausibility" }),
+  issue("GF_DATA_PLAUSIBILITY_FLOW", "warning", "data", "market.france.profile: france |flow| 500 MW exceeds 58.62 MW", { layer: "plausibility" }),
+];
+
+test("the last of 14 issues is visible and every group has a header", async () => {
+  const html = await renderTsx("app/features/runs/ReadinessIssues.tsx", "default", { errors: [], warnings });
+  assert.equal(warnings.length, 14);
+  assert.match(html, /france \|flow\| 500 MW exceeds 58\.62 MW/);
+  assert.match(html, /france price range \[82, 6087\]/);
+  assert.match(html, /Data plausibility · 2/);
+  assert.match(html, /Adapter: unit not declared · 10/);
+  assert.match(html, /Other data warnings · 1/);
+  assert.match(html, /Environment and setup · 1/);
+  assert.match(html, />Show 10</);
+  assert.match(html, />Show 1</);
+  // Folded groups do not render their rows; the plausibility group is open.
+  assert.doesNotMatch(html, /unit is not declared/);
+  assert.match(html, /aria-expanded="true"[^>]*>Hide</);
+});
+
+test("errors are listed open without a toggle, in red", async () => {
+  const html = await renderTsx("app/features/runs/ReadinessIssues.tsx", "default", {
+    errors: [issue("GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules", "The Study selects quarantined local code: module demo (GF_MODULE_IMPORT_FAILED)")],
+    warnings: [issue("GF_PREFLIGHT_DATA_WARNING", "warning", "data", "demand.real: unit is not declared; canonical role expects MW"), issue("GF_PREFLIGHT_DATA_WARNING", "warning", "data", "demand.forecast: unit is not declared; canonical role expects MW")],
+  });
+  assert.match(html, /value-pill danger">Errors · 1</);
+  assert.match(html, /The Study selects quarantined local code/);
+  assert.equal((html.match(/readiness-toggle/g) ?? []).length, 1);
+  assert.match(html, /Adapter: unit not declared · 2/);
+});
+
+test("no issues renders nothing", async () => {
+  const html = await renderTsx("app/features/runs/ReadinessIssues.tsx", "default", { errors: [], warnings: [] });
+  assert.equal(html, "");
+});

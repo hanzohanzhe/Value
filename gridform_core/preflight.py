@@ -277,13 +277,16 @@ def data_eligibility_issues(project: Mapping[str, Any], pack_manifest: Mapping[s
         severity = finding_severity(policy, finding)
         if severity == "not_applicable":
             continue
-        issues.append(_issue(
+        issue = _issue(
             str(finding["code"]), severity, "data",
             f"{finding.get('role') or 'data pack'}: {finding['message']}",
             "Use a pack revision that declares this series correctly (or the doctoral reproduction profile, "
             "which reads the known GBP1 public1 defects repaired and records them)."
             if severity == "error" else "Review the data-pack finding before publication.",
-        ))
+        )
+        # Spec 11.1 (S-D1): the readiness card groups findings by their layer.
+        issue["layer"] = str(finding.get("layer") or "")
+        issues.append(issue)
     return issues
 
 

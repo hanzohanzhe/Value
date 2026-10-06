@@ -1,0 +1,32 @@
+/* Spec 11.1 (S-D1): grouped readiness issues. New elements only; tokens only; >= 12px. */
+.readiness-groups { display: grid; gap: 10px; min-width: 0; }
+.readiness-group { display: grid; gap: 6px; min-width: 0; }
+.readiness-group header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.readiness-toggle {
+  border: 0;
+  padding: 0;
+  min-height: 24px;
+  background: transparent;
+  color: var(--blue);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.readiness-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.readiness-group li {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.readiness-row-text { font-size: 13px; color: var(--ink); }
+.readiness-row-text b { font-size: 13px; font-weight: 600; }
+.readiness-count { color: var(--amber); font-weight: 600; }
+.readiness-group.errors .readiness-count { color: var(--red); }
+.readiness-group li small { font-size: 12px; color: var(--muted); }
+.readiness-group li code { font-size: 12px; color: var(--muted); }
+.readiness-run-blocked { margin: 0; font-size: 13px; color: var(--red); }

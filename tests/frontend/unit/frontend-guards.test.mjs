@@ -82,6 +82,7 @@ export const NEW_STYLESHEETS = [
   "app/features/workspace/run-context-validation.css",
   "app/features/studies/methodology-selector.css",
   "app/features/evidence/residual-panel.css",
+  "app/features/runs/readiness-issues.css",
 ];
 
 test("new stylesheets use no font size below 12px and only existing colour tokens", async () => {

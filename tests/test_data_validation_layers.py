@@ -130,6 +130,16 @@ class TamperTests(_PackCopy):
         self.assertTrue(corrected["eligible"])
         self.assertIn("GF_DATA_PLAUSIBILITY_PRICE", corrected["warning_codes"])
 
+    def test_preflight_issues_name_their_layer(self) -> None:
+        # Spec 11.1 (S-D1): the readiness card groups data findings by layer.
+        self._scale_csv("market.france.price", 100.0)
+        issues = data_eligibility_issues({"parameters": {"methodology.profile": CORRECTED}}, self.manifest, self.report())
+        price = [row for row in issues if row["code"] == "GF_DATA_PLAUSIBILITY_PRICE"]
+        self.assertEqual(len(price), 1, issues)
+        self.assertEqual(price[0]["layer"], "plausibility")
+        self.assertEqual(price[0]["scope"], "data")
+        self.assertTrue(price[0]["message"].startswith("market.france.price: "), price[0]["message"])
+
 
 class UnitContractTests(unittest.TestCase):
     def test_market_slots_carry_units(self) -> None:

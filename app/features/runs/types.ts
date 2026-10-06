@@ -36,7 +36,7 @@ export type ModelRun = RunValidationFields & {
   /** P0-3: presentation of the worker lease ("alive", "starting", "lost", "unverifiable", "not_started", "not_active"). */
   worker_liveness?: string;
 };
-export type PreflightIssue = { code: string; severity: "error" | "warning"; scope: string; message: string; corrective_action: string };
+export type PreflightIssue = { code: string; severity: "error" | "warning"; scope: string; message: string; corrective_action: string; /** Data-layer findings only (spec 11.1). */ layer?: string };
 export type DomainMetric = { value: unknown; unit: string; definition_id: string; source_sha256?: unknown; status: string };
 export type DomainSection = { status: string; claim?: string; error?: string; metrics?: Record<string, DomainMetric>; source_sha256?: unknown; [key: string]: unknown };
 export type DomainReadiness = {

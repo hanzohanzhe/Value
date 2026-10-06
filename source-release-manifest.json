@@ -84,9 +84,12 @@
     "app/features/results/result-query.css",
     "app/features/results/result-query.types.ts",
     "app/features/runs/DomainReadinessPanel.tsx",
+    "app/features/runs/ReadinessIssues.tsx",
     "app/features/runs/RunResults.tsx",
     "app/features/runs/RunWorkspace.tsx",
     "app/features/runs/lifecycleView.ts",
+    "app/features/runs/readiness-issues.css",
+    "app/features/runs/readinessGroups.ts",
     "app/features/runs/resultMetrics.ts",
     "app/features/runs/run-results.css",
     "app/features/runs/types.ts",
@@ -1286,6 +1289,7 @@
     "tests/frontend/render/annual-results.test.mjs",
     "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/network-tables.test.mjs",
+    "tests/frontend/render/readiness-issues.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
     "tests/frontend/render/run-scope-extensions.test.mjs",
@@ -1302,6 +1306,7 @@
     "tests/frontend/unit/module-quarantine.test.mjs",
     "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
+    "tests/frontend/unit/readiness-groups.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
     "tests/frontend/unit/run-scope-extensions.test.mjs",
@@ -3390,6 +3395,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/runs/ReadinessIssues.tsx",
+      "sha256": "ade33f18978d7d8b595510f32f836eb90343f3c85d4fe61aa5ffb9760c01d846",
+      "bytes": 1964,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/runs/RunResults.tsx",
       "sha256": "9d16fc130f889498abddc503be562a01dbb2e8cf8ca88c34c17c9118fb405451",
       "bytes": 17935,
@@ -3397,14 +3408,26 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "9b21c8d575bf2d3de569c28c75d6cd21adea6f2dddd7a6f531e6c50914e6e54c",
-      "bytes": 21056,
+      "sha256": "a2358e5056e9feb5db65ecc428ca30f4ecff9bea36ffc9d582a45730cbb8a875",
+      "bytes": 20985,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/lifecycleView.ts",
       "sha256": "dd712be4fd67237ce20e24e4e7f62a7e42522158f156c3bc6245e75fe0eba890",
       "bytes": 2221,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/runs/readiness-issues.css",
+      "sha256": "b584a73bb0282e6eb435c63f5b35e901108dada01a2d8782129cd11594da9e71",
+      "bytes": 1238,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/runs/readinessGroups.ts",
+      "sha256": "7cbe0ec575040994185a467fdc79c7bdbf6379b098ebbc3f761951c7465de7f6",
+      "bytes": 5114,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3421,8 +3444,8 @@
     },
     {
       "path": "app/features/runs/types.ts",
-      "sha256": "113deb895b91a093356d951757457b082bb99ca060782546038de200da48eb50",
-      "bytes": 5651,
+      "sha256": "b338210de1f9b336876d779febc57bb03f2715c8ce989c69fcbc518900cd526f",
+      "bytes": 5712,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8386,8 +8409,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "f94102d907374bad796bea6adfd84e754086c8d137abad9584d0f181a27c28af",
-      "bytes": 40678,
+      "sha256": "5dd84bb35a4492d3dbe6fa89fcbb4329349d6fcd46dfa7c6d41bdf05b64ed52e",
+      "bytes": 40836,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10585,6 +10608,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/readiness-issues.test.mjs",
+      "sha256": "2777b78db2359edc149821484fb81bc25902935c3063f38ccdafaf905cc04ba7",
+      "bytes": 3046,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/render-harness.test.mjs",
       "sha256": "e20d5da77f6261348f7c2eadec4884363fc9122a1703987f37d58beaa5671b3a",
       "bytes": 1124,
@@ -10658,8 +10687,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "ecd11434a75f1ba06479fd0a6458127ae3f73e8a44ed1553839b6d9b4d574f5a",
-      "bytes": 6063,
+      "sha256": "cd76dd854c5a23d16316a8d7c084f23ffe18507a84cfc237b087d4ee5cc62108",
+      "bytes": 6107,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10678,6 +10707,12 @@
       "path": "tests/frontend/unit/offline-ratchet.test.mjs",
       "sha256": "0d6182eeeeaebb6fadff8b0d00cfe918b7db06a09d7c90727b344723e66dd7fd",
       "bytes": 6812,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/readiness-groups.test.mjs",
+      "sha256": "0d07f4ee66468a7e1be020cc8778ae2bad2b4103656edc6a7b419941a9623aec",
+      "bytes": 5096,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11126,8 +11161,8 @@
     },
     {
       "path": "tests/test_data_validation_layers.py",
-      "sha256": "3c1b3f41c06abc5a8c4dc4982c9d360139e0a41f89dbc89004a77cee119da596",
-      "bytes": 9918,
+      "sha256": "3534d0ebdaedb8a5bf7aa11a88aeadc7648d863f9c0df6ac7fe3122994a502e1",
+      "bytes": 10585,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
