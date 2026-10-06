@@ -47,3 +47,7 @@
 .study-migration-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 .study-migration-actions button { font-size: 13px; min-height: 34px; }
 .study-migration-actions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* N-6 (round R1-5): what the saved Study's hash is. Overrides the older 10px
+   monospace rule of .saved-projects small for this new label only. */
+.saved-projects small.saved-study-hash-label { display: block; margin-top: 4px; color: var(--muted); font-family: inherit; font-size: 12px; }

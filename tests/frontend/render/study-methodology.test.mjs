@@ -92,3 +92,20 @@ test("without profile choices or a version the dialog lists only the diff", asyn
   assert.match(textOf(html), /The installed VALUE changes how this Study is computed:/);
   assert.doesNotMatch(html, /migration-methodology/);
 });
+
+// R-D11 / F-D6 and N-6 (four-role report, round R1-5): editing a saved Study
+// says so, and a saved Study's hash is labelled (the model graph excludes the data pack).
+test("editing a saved Study is headed 'Edit study'; a new draft keeps 'New study'", async () => {
+  const editing = await renderTsx(COMPOSER, "default", composerProps("value-corrected", { editingStudyName: "VALUE 101 baseline" }));
+  assert.match(editing, /<span>Edit study · VALUE 101 baseline<\/span>/);
+  assert.doesNotMatch(editing, /<span>New study<\/span>/);
+  assert.match(await renderTsx(COMPOSER, "default", composerProps("value-corrected")), /<span>New study<\/span>/);
+});
+
+test("a saved Study names its data pack and what its SHA-256 identifies", async () => {
+  const saved = { id: "s1", name: "Swap data", data_pack_id: "my-pack", start_year: 2025, end_year: 2025, revision_number: 2, revision_sha256: "r".repeat(64), modules: {}, module_resolution_graph: { graph_sha256: "g".repeat(64) } };
+  const legacy = { ...saved, id: "s2", module_resolution_graph: undefined };
+  const text = textOf(await renderTsx(COMPOSER, "default", composerProps("value-corrected", { savedProjects: [saved, legacy] })));
+  assert.match(text, /2025–2025 · revision 2 · data my-pack Model graph SHA-256 \(modules and extensions; not the data pack\) g{64}/);
+  assert.match(text, /Revision SHA-256 r{64}/);
+});
