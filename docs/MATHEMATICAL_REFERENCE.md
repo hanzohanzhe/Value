@@ -165,9 +165,13 @@ load shedding enter one pay-as-bid LP. Storage retains explicit MW, MWh, SOC and
 efficiency constraints; non-convex bids capable of self-cycling are rejected.
 The hierarchical solution first minimizes signed accepted bid value, then
 absolute deviation from the ahead schedule, physical throughput and a stable
-tie key. Equal-price bids in the same direction, zone and network effect are
-accepted pro rata whatever their resource class (solver contract v4); storage
-keeps its own convex identity. A down bid's forced part, the curtailment its
+tie key. Equal-price up bids in the same direction, zone and network effect
+are accepted pro rata whatever their resource class (solver contract v4); a
+down bid's group also carries its dec class, and the physical tie-break term
+weighs accepted non-storage decs by class (fuel 0, import 0.5, run-of-river 2,
+VRE 3, nuclear 4 per MWh against storage throughput 1), so at an equal price
+storage charging precedes run-of-river, VRE and nuclear reductions within a
+zone; storage keeps its own convex identity. A down bid's forced part, the curtailment its
 asset must take because an upper bound on its final dispatch (realised
 availability, or the import side of its interconnector envelope) is below the
 ahead schedule, is carved out first and only the remaining free volume is shared:
@@ -191,9 +195,13 @@ running cost \(p=SRMC\cdot m_{dec}-s\); an import its period price
 \(p=SRMC\cdot m_{dec}-s-\pi\) (\(\pi=\) GBP 100 by default); storage bids at
 most \(\min(p^{up}\eta_c\eta_d,\ \min_k p^{up}_k)\), so a storage dec never
 pairs with an inc at a profit. \(m_{dec}\le m_{bid}\) is enforced. A
-decremented fuel unit therefore keeps no windfall. Equal-price bids share pro
-rata (zonal LP and copperplate 1.1.0, storage after generation at an equal
-price).
+decremented fuel unit therefore keeps no windfall. Equal-price bids of one
+class share pro rata (zonal LP and copperplate 1.1.0). Up: storage after
+generation at an equal price (Q8). Down: descending dec price rounded to
+GBP 0.01, then the shared class order fuel, import, storage charging,
+run-of-river, VRE, nuclear, then the exact price; storage therefore absorbs a
+surplus before VRE is curtailed even when its dec price is capped at a GBP 0
+VRE inc.
 
 The network cost of a period is
 \(C^{net}=C(\text{zonal})-C(\text{network-free})\). The network-free case is

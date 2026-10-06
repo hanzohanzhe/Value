@@ -39,6 +39,7 @@ from .module_context import (
 from .zonal_demand_alignment import (
     SUPPORTED_ZONAL_DEMAND_MODES,
 )
+from .network_method_rules import bid_dec_rank, physical_dec_weight
 from .zonal_contracts import ZonalNetworkPack
 from .zonal_solver_contract import (
     DEFAULT_ZONAL_SOLVER_SETTINGS,
@@ -575,10 +576,23 @@ def _assemble_problem(
     primary = np.zeros(size, dtype=float)
     secondary = np.zeros(size, dtype=float)
     physical = np.zeros(size, dtype=float)
+    # Down-bid class rank (P0-8b M6 review): at an equal primary price the
+    # physical tie phase reduces fuel units, then imports, then charges
+    # storage (its throughput weight 1), then run-of-river, VRE and nuclear,
+    # the copperplate DEC_CLASSES order.  Up bids keep storage after
+    # generation through the storage throughput term alone (Q8).
+    dec_rank_by_bid: dict[str, int] = {}
     for bid in bids:
         index = bid_index[bid.bid_id]
         primary[index] = bid.price_gbp_per_mwh if bid.direction == "up" else -bid.price_gbp_per_mwh
         secondary[index] = 1.0
+        if bid.direction == "down":
+            rank = bid_dec_rank(
+                bid,
+                str(bid.provenance.get("resource_class") or classes.get(bid.asset_id, "other")),
+            )
+            dec_rank_by_bid[bid.bid_id] = rank
+            physical[index] = physical_dec_weight(rank)
     for index in shedding_index.values():
         primary[index] = model_input.voll_gbp_per_mwh
         secondary[index] = 1.0
@@ -627,9 +641,11 @@ def _assemble_problem(
 
     # Equal-price bids with the same direction and network effect share
     # their *free* acceptance pro rata to their free available energy.  Since
-    # v4 the resource class is not part of the key: two technologies offering
-    # the same price at the same place are economically identical (P2-01
-    # asset-ID shift).  A down bid's forced part -- the curtailment its asset
+    # v4 the resource class is not part of an up bid's key: two technologies
+    # offering the same price at the same place are economically identical
+    # (P2-01 asset-ID shift).  A down bid's key carries its dec class rank
+    # (never its id), so the physical tie phase can apply the shared class
+    # order between classes (P0-8b M6 review).  A down bid's forced part -- the curtailment its asset
     # must take because realised availability is below the ahead schedule,
     # max(schedule - available, 0) -- is not a choice and stays outside the
     # group; otherwise an availability shortfall of one asset would drag
@@ -650,6 +666,7 @@ def _assemble_problem(
                 asset_zones[bid.asset_id],
                 str(bid.network_effect_id).rsplit(":", 1)[-1],
                 bid.price_gbp_per_mwh,
+                dec_rank_by_bid.get(bid.bid_id, -1),
             )
         else:
             key = (
@@ -657,6 +674,7 @@ def _assemble_problem(
                 bid.zone_id,
                 bid.network_effect_id,
                 bid.price_gbp_per_mwh,
+                dec_rank_by_bid.get(bid.bid_id, -1),
             )
         groups[key].append(bid)
     for rows in groups.values():

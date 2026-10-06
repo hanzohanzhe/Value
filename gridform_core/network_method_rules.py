@@ -18,7 +18,11 @@ values are obtained.  Two rule sets exist:
 The down-regulation technology table is shared with the default PSM's
 corrected avoided-cost stack (C15): same nuclear premium, same 0.01 GBP/MWh
 rounding band and the same class order (fuel units, then storage charging,
-then VRE, then nuclear).
+then VRE, then nuclear).  In the down direction the order is applied at an
+equal 0.01-rounded price (:func:`dec_rank`), so storage charging absorbs a
+surplus before run-of-river, VRE or nuclear output is reduced even when the
+storage dec price is capped at a GBP 0 inc (M6 review).  In the up direction
+storage keeps coming after generation at an equal price (Q8).
 """
 
 from __future__ import annotations
@@ -47,6 +51,7 @@ DEFAULT_INFLEXIBLE_PREMIUM_JSON = json.dumps(
 # Dec pricing classes, in the shared table's order (lower is reduced first at
 # an equal rounded price).
 DEC_CLASSES = ("fuel", "import", "storage", "run_of_river", "vre", "nuclear")
+DEC_PRICE_BAND_GBP_PER_MWH = 0.01
 
 
 class NetworkMethodRulesError(ValueError):
@@ -62,6 +67,10 @@ class NetworkMethodRules:
     def definition(self) -> dict[str, object]:
         payload: dict[str, object] = {item.name: getattr(self, item.name) for item in fields(self)}
         payload["downward_table"] = dict(DOWNWARD_TABLE)
+        payload["dec_class_order"] = list(DEC_CLASSES)
+        payload["dec_tie_order"] = (
+            "descending 0.01-rounded dec price, then dec class order, then exact price"
+        )
         return payload
 
     @property
@@ -181,6 +190,69 @@ def dec_class(resource_class: str, technology: str) -> str:
     if "nuclear" in str(technology).lower():
         return "nuclear"
     return "fuel"
+
+
+def dec_rank(
+    *,
+    resource_class: str,
+    technology: str = "",
+    declared_dec_class: object = None,
+) -> int:
+    """Position of a down bid in :data:`DEC_CLASSES` (lower is reduced first).
+
+    Storage bids rank as storage whatever else they declare; a bid's declared
+    ``dec_class`` provenance wins over the derivation from its resource class;
+    interconnector bids in either direction of trade (``import``, ``export``,
+    ``interconnector``) rank as imports.
+    """
+
+    resource = str(resource_class or "")
+    if resource == "storage":
+        return DEC_CLASSES.index("storage")
+    declared = str(declared_dec_class or "")
+    if declared in DEC_CLASSES:
+        return DEC_CLASSES.index(declared)
+    if resource in {"import", "export", "interconnector"}:
+        return DEC_CLASSES.index("import")
+    return DEC_CLASSES.index(dec_class(resource, technology))
+
+
+def bid_dec_rank(bid: object, resource_class: str | None = None) -> int:
+    """:func:`dec_rank` of a :class:`FlexibilityBid`-like object."""
+
+    provenance = getattr(bid, "provenance", None) or {}
+    resource = resource_class
+    if resource is None:
+        resource = str(provenance.get("resource_class") or "")
+    return dec_rank(
+        resource_class=resource,
+        technology=str(getattr(bid, "technology", "") or ""),
+        declared_dec_class=provenance.get("dec_class"),
+    )
+
+
+def dec_price_band(price_gbp_per_mwh: float) -> float:
+    """The 0.01 GBP/MWh rounding band of the shared down-regulation table."""
+
+    return round(float(price_gbp_per_mwh), 2)
+
+
+# Zonal LP (physical tie phase): weight per MWh of an accepted non-storage
+# down bid, so that within one zone the LP reproduces DEC_CLASSES at an equal
+# primary price.  Storage enters the same phase through its charge/discharge
+# throughput at weight 1, between imports (0.5) and run-of-river (2).
+PHYSICAL_DEC_WEIGHT_BY_CLASS = {
+    "fuel": 0.0,
+    "import": 0.5,
+    "storage": 0.0,
+    "run_of_river": 2.0,
+    "vre": 3.0,
+    "nuclear": 4.0,
+}
+
+
+def physical_dec_weight(rank: int) -> float:
+    return PHYSICAL_DEC_WEIGHT_BY_CLASS[DEC_CLASSES[rank]]
 
 
 def _lookup(table: Mapping[str, float], technology: str, fallback_key: str | None = None) -> float:

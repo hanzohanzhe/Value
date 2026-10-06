@@ -21,8 +21,8 @@ it beyond GBP 1 at GB scale. v4 therefore:
    is added (the primary point satisfies it);
 3. locks only the bid-cost terms with the coefficient-aware numerical cap
    below; GBP 1 is only the validated/absolute acceptance ceiling;
-4. accepts equal-price bids pro rata whatever their resource class; a down
-   bid's forced part (schedule above an upper bound on final dispatch, i.e.
+4. accepts equal-price up bids pro rata whatever their resource class (a down
+   bid's group also carries its dec class, see below); a down bid's forced part (schedule above an upper bound on final dispatch, i.e.
    realised availability or an interconnector envelope) stays outside the
    group.
 
@@ -62,7 +62,14 @@ up to 10% is `GO`; above 10% and up to 100% is
 ## Network economics carried by the same solve (P0-8b)
 
 * Dec bids are priced economically by the staged PSM (`network_method_rules`):
-  the solver itself is unchanged, but dispatch no longer depends on asset ids.
+  dispatch no longer depends on asset ids.
+* Down-direction class order (M6 review): a down bid's pro-rata group key
+  carries its dec class, and the physical tie-break objective adds, per MWh of
+  an accepted non-storage down bid, fuel 0, import 0.5, run-of-river 2, VRE 3,
+  nuclear 4 (storage charge/discharge and corridor flow keep weight 1). At an
+  equal primary price storage charging therefore precedes run-of-river, VRE
+  and nuclear reductions within a zone. The phase is still reported as
+  `physical_throughput` with unit MWh; its value is the weighted sum.
 * The network-free counterfactual (`value.network-free-lp/v1`) is this LP
   collapsed to one node with the same settings; network cost is zonal minus
   network-free, and `J_1(zonal) >= J_1(network-free) - tol` is checked per

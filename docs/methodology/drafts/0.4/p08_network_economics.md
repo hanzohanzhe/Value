@@ -34,18 +34,34 @@ same down-regulation table the corrected default PSM uses. With these prices
 the decremented gas unit pays back exactly the running cost it avoided, so its
 profit equals its profit without the dec.
 
-Bids at the same price share the accepted volume in proportion to their
-available energy (zonal LP and the copperplate balancer 1.1.0); at an equal
-price, storage comes after generation. Renaming an asset therefore never moves
-dispatch. (Edit for `transmission.md` 0.3: the pro-rata group is keyed by zone,
-direction, network effect and price; the resource class is no longer part of
-the key since solver contract v4.)
+Bids at the same price and of the same class share the accepted volume in
+proportion to their available energy (zonal LP and the copperplate balancer
+1.1.0), so renaming an asset never moves dispatch. Between classes the order
+depends on the direction:
 
-Limitation: pumped hydro and hydrogen storage bid GBP 0 for discharge in the
-corrected profile, so their dec price is 0 and ties with merchant wind; the
-LP then prefers curtailing wind (lower physical throughput) to charging that
-storage. Batteries, whose cycle cost is positive, charge before wind is
-curtailed.
+* up (more output): ascending price; at an equal price storage comes after
+  generation (decision Q8);
+* down (less output): descending dec price rounded to GBP 0.01, then the
+  shared class order fuel units, imports, storage charging, run-of-river
+  hydro, wind and solar, nuclear, then the exact price.
+
+The storage dec price is capped at the lowest up price of the period, and a
+wind or solar up bid (GBP 0) exists whenever realised renewable output exceeds
+its ahead schedule, so the cap is often GBP 0 and storage ties with merchant
+wind. The class order resolves that tie in favour of charging: storage absorbs
+a surplus before wind is curtailed (review of M6; a battery of 5 MW with 3 MWh
+of surplus and a 5 MWh GBP 0 wind up bid charges 3 MWh and wind keeps its
+schedule). The same holds for pumped hydro and hydrogen storage, whose dec
+price is 0. In the zonal LP the class order is a term of the physical
+tie-break phase (per MWh of non-storage dec: fuel 0, imports 0.5, run-of-river
+2, wind and solar 3, nuclear 4, against storage throughput 1), and a down
+bid's pro-rata group carries its class; within one zone this reproduces the
+copperplate order exactly, across zones the class weight is traded against
+corridor flow MWh. The LP's primary phase uses exact prices, so two decs less
+than GBP 0.01 apart are ordered by price there but by class in copperplate.
+(Edit for `transmission.md` 0.3: the pro-rata group of an up bid is keyed by
+zone, direction, network effect and price, without the resource class since
+solver contract v4; a down bid's key also carries its dec class.)
 
 ## 2. Network constraint cost
 

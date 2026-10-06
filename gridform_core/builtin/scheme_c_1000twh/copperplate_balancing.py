@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Mapping
 
+from ...network_method_rules import bid_dec_rank, dec_price_band
 from ...staged_market_contracts import (
     AcceptedAdjustment,
     AheadMarketResult,
@@ -22,13 +23,22 @@ def _is_storage(bid: FlexibilityBid) -> bool:
 def _price_groups(
     bids: list[FlexibilityBid], *, descending: bool, tie_rule: str
 ) -> list[list[FlexibilityBid]]:
-    """Merit groups of one direction (1.1.0, P0-8 S7).
+    """Merit groups of one direction (1.1.0, P0-8 S7 and its M6 review).
 
-    ``pro_rata_v1``: bids at exactly the same price form one group whose
-    acceptance is shared pro rata to their available energy, so renaming an
-    asset never moves dispatch between equal-price assets (P2-05/P3-04).  As in
-    the zonal LP, storage keeps its own identity: at an equal price it comes
-    after the generators and imports (its throughput is the later tie phase).
+    ``pro_rata_v1``: bids at exactly the same price and of the same class form
+    one group whose acceptance is shared pro rata to their available energy,
+    so renaming an asset never moves dispatch between equal-price assets
+    (P2-05/P3-04).
+
+    * Up (``descending=False``): ascending price; at an equal price storage
+      comes after the generators and imports (Q8, as the zonal LP's physical
+      tie phase).
+    * Down (``descending=True``): descending 0.01-rounded dec price, then the
+      shared dec class order ``network_method_rules.DEC_CLASSES`` (fuel,
+      import, storage, run-of-river, VRE, nuclear; C15), then the exact price.
+      Storage charging therefore absorbs a surplus before VRE is curtailed
+      even when its dec price is capped at a GBP 0 inc of the same period.
+
     ``bid_id_v1`` is the 1.0.0 rule (one bid at a time, ties by bid id).
     """
 
@@ -38,10 +48,18 @@ def _price_groups(
         return [[bid] for bid in ordered]
     if tie_rule != "pro_rata_v1":
         raise ValueError(f"Unknown copperplate tie rule {tie_rule}")
-    groups: dict[tuple[float, bool], list[FlexibilityBid]] = {}
-    for bid in bids:
-        groups.setdefault((float(bid.price_gbp_per_mwh), _is_storage(bid)), []).append(bid)
-    keys = sorted(groups, key=lambda key: (sign * key[0], key[1]))
+    groups: dict[tuple[float, ...], list[FlexibilityBid]] = {}
+    if descending:
+        for bid in bids:
+            price = float(bid.price_gbp_per_mwh)
+            key = (-dec_price_band(price), float(bid_dec_rank(bid)), -price)
+            groups.setdefault(key, []).append(bid)
+        keys = sorted(groups)
+    else:
+        for bid in bids:
+            key = (float(bid.price_gbp_per_mwh), 1.0 if _is_storage(bid) else 0.0)
+            groups.setdefault(key, []).append(bid)
+        keys = sorted(groups)
     return [sorted(groups[key], key=lambda bid: bid.bid_id) for key in keys]
 
 

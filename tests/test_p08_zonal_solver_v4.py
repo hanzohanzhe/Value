@@ -93,19 +93,42 @@ def availability_shortfall_declaration(wind_class: str = "vre"):
 
 
 def partial_forced_declaration():
-    """Wind forced 20 down, then a further 60 MWh free down volume to share."""
+    """Wind forced 20 down, then a further 60 MWh free down volume to share.
+
+    Both units are VRE: since the P0-8b M6 review a down bid's pro-rata group
+    also carries its dec class, so a fuel unit at the same price would be
+    reduced first (shared class order) instead of sharing.
+    """
 
     bids = (
         zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
                   baseline_mwh=100.0, resource_class="vre"),
-        zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
-                  baseline_mwh=100.0, resource_class="thermal"),
+        zonal_bid("solar-down", "solar", "gb", "down", 100.0, 0.0,
+                  baseline_mwh=100.0, resource_class="vre"),
     )
+    return zonal_declaration(
+        {"gb": 120.0},
+        {"wind": 100.0, "solar": 100.0},
+        {"wind": "gb", "solar": "gb"},
+        bids,
+        availability_mwh={"wind": 80.0, "solar": 1_000.0},
+        classes={"wind": "vre", "solar": "vre"},
+    )
+
+
+def partial_forced_mixed_class_declaration():
+    """The same case with a gas unit: gas (fuel) releases the free 60 first."""
+
     return zonal_declaration(
         {"gb": 120.0},
         {"wind": 100.0, "gas": 100.0},
         {"wind": "gb", "gas": "gb"},
-        bids,
+        (
+            zonal_bid("wind-down", "wind", "gb", "down", 100.0, 0.0,
+                      baseline_mwh=100.0, resource_class="vre"),
+            zonal_bid("gas-down", "gas", "gb", "down", 100.0, 0.0,
+                      baseline_mwh=100.0, resource_class="thermal"),
+        ),
         availability_mwh={"wind": 80.0, "gas": 1_000.0},
         classes={"wind": "vre", "gas": "thermal"},
     )
@@ -198,11 +221,15 @@ class BidLockTests(unittest.TestCase):
     def test_free_down_volume_still_shares_pro_rata_after_a_forced_part(self) -> None:
         # Wind forced 20 down (100 -> 80 available) and both units must also
         # release a further 60 MWh at the same price: the free 60 is shared
-        # pro rata to free capacity (wind 80, gas 100 -> 26.67 / 33.33).
+        # pro rata to free capacity (wind 80, solar 100 -> 26.67 / 33.33).
         declaration = partial_forced_declaration()
         dispatch = clear(declaration).final_dispatch_mwh_by_asset
         self.assertAlmostEqual(dispatch["wind"], 80.0 - 60.0 * 80.0 / 180.0, places=6)
-        self.assertAlmostEqual(dispatch["gas"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
+        self.assertAlmostEqual(dispatch["solar"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
+        # A fuel unit at the same price is reduced first (shared class order).
+        mixed = clear(partial_forced_mixed_class_declaration()).final_dispatch_mwh_by_asset
+        self.assertAlmostEqual(mixed["wind"], 80.0, places=6)
+        self.assertAlmostEqual(mixed["gas"], 40.0, places=6)
 
     def test_lock_uses_bid_terms_only_and_the_declared_solver_tolerance(self) -> None:
         declaration = gb_chain_declaration(0, scarce=True)
@@ -404,7 +431,9 @@ class OracleAgreementTests(unittest.TestCase):
         oracle = self._assert_match(partial_forced_declaration())
         dispatch = oracle["final_dispatch_mwh_by_asset"]
         self.assertAlmostEqual(dispatch["wind"], 80.0 - 60.0 * 80.0 / 180.0, places=6)
-        self.assertAlmostEqual(dispatch["gas"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
+        self.assertAlmostEqual(dispatch["solar"], 100.0 - 60.0 * 100.0 / 180.0, places=6)
+        mixed = self._assert_match(partial_forced_mixed_class_declaration())
+        self.assertAlmostEqual(mixed["final_dispatch_mwh_by_asset"]["gas"], 40.0, places=6)
 
 
 class ContractIdentityTests(unittest.TestCase):
