@@ -4857,7 +4857,7 @@
     },
     {
       "path": "docs/generated/METHODOLOGY_PROFILES.md",
-      "sha256": "350b785ddd56043e573122d0048dc27c1609b24de4e0216c8e1afeeb016e5531",
+      "sha256": "7d9404016e1add666f87b4299f5060b98af57dba96a1e404dbeb4246eded8a49",
       "bytes": 20639,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
