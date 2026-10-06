@@ -1,0 +1,4 @@
+/* F-P04-5: Inspect residual panel (new element; tokens only; >= 12px). */
+.residual-panel .residual-table { min-width: 0; font-size: 13px; }
+.residual-panel .residual-table th { font-size: 12px; color: var(--muted); }
+.residual-panel-note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }

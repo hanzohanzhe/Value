@@ -189,8 +189,10 @@ test("stress events: none is muted (never green), a count is amber with the back
   const field = (stress) => resolveRunContext({ run: { ...run, stress }, frozen }).stress;
   assert.deepEqual([field({ stress_periods: 0, shortfall_mwh: 0 }).text, field({ stress_periods: 0 }).tone], ["None", "muted"]);
   const r2 = field({ stress_periods: 48, shortfall_mwh: 570.546171074, shortfall_basis: "lower_bound" });
-  assert.deepEqual([r2.text, r2.tone, r2.dot], ["48 periods · 571 MWh", "caution", true]);
-  assert.match(r2.title, /lower bound/);
+  // F-P04-1 (designer ruling 2026-10-06): a lower bound reads "≥ x" with the upper bound on hover.
+  assert.deepEqual([r2.text, r2.tone, r2.dot], ["48 periods · ≥ 571 MWh", "caution", true]);
+  assert.match(r2.title, /^Lower bound: this Run predates exact stress accounting/);
+  assert.equal(field({ stress_periods: 48, shortfall_mwh: 570.546171074, shortfall_basis: "exact" }).text, "48 periods · 571 MWh");
   assert.equal(field({ stress_periods: 1, shortfall_mwh: null }).text, "1 period");
   assert.equal(field({ shortfall_mwh: 5 }).text, "Not recorded");
   assert.equal(field(null).text, "Not recorded");

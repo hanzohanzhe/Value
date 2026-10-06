@@ -5,10 +5,10 @@ import type { ModelRun, RunResult, PlanningYear } from "./types";
 import { formatOptionalNetworkNumber } from "../network/networkRedispatch";
 import { Badge, formatNumber, formatMoney, withUnit } from "../shared/presentation";
 import { apiUrl, getJson } from "../shared/api";
-import { StatusPill, ValueState } from "../shared/Callout";
+import { Callout, StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
 import { costComposition, unitCostText } from "./resultMetrics.ts";
-import type { ResultPublication } from "../workspace/runValidation.ts";
+import { gateBlockedPublication, gateBlockedText, type ResultPublication, type RunValidationFields } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
 /** A recorded annual metric, or null when the Run did not record it (never 0 for missing). */
@@ -110,8 +110,20 @@ export function WithheldAnnualResults({ publication, withheldYearCount, onOpenIn
   </div>;
 }
 
-export function AnnualResults({ runId, results, coverage, onOpenInspect, publication, withheldYearCount, onExportLedger }: { runId: string; results: RunResult[]; coverage?: ResultCoverage | null; onOpenInspect?: () => void; publication?: ResultPublication | null; withheldYearCount?: number | null; onExportLedger?: () => void }) {
+/** F-P04-4: a corrected (production-policy) Run whose validation gate failed publishes no annual totals. */
+export function GateBlockedAnnualResults({ validation, onOpenInspect, onExportLedger }: { validation: RunValidationFields; onOpenInspect?: () => void; onExportLedger?: () => void }) {
+  const actions = [
+    onOpenInspect && <button key="inspect" type="button" className="value-action-primary" onClick={onOpenInspect}>Open in Inspect</button>,
+    onExportLedger && <button key="export" type="button" className="value-action-link" onClick={onExportLedger}>Export ledger</button>,
+  ].filter(Boolean);
+  return <div className="results-cockpit value-new-control">
+    <Callout tone="danger" title="Annual results not published" actions={actions.length ? actions : undefined}><p>{gateBlockedText(validation)}</p></Callout>
+  </div>;
+}
+
+export function AnnualResults({ runId, results, coverage, onOpenInspect, publication, withheldYearCount, onExportLedger, validation }: { runId: string; results: RunResult[]; coverage?: ResultCoverage | null; onOpenInspect?: () => void; publication?: ResultPublication | null; withheldYearCount?: number | null; onExportLedger?: () => void; validation?: RunValidationFields | null }) {
   if (publication?.status === "withheld") return <WithheldAnnualResults publication={publication} withheldYearCount={withheldYearCount} onOpenInspect={onOpenInspect} onExportLedger={onExportLedger} />;
+  if (validation && gateBlockedPublication(validation)) return <GateBlockedAnnualResults validation={validation} onOpenInspect={onOpenInspect} onExportLedger={onExportLedger} />;
   if (!results.length) return <div className="empty-run"><b>No annual results yet</b><p>Results appear after a full model year completes.</p></div>;
   const sorted = [...results].sort((a, b) => a.year - b.year);
   const latest = sorted.at(-1)!;

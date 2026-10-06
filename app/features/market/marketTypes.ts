@@ -35,6 +35,8 @@ export type DispatchBucket = {
   blackout_mwh: number; compatibility_adjustment_mwh: number; flows: DispatchFlow[];
   /** A2 stress events (recorded by the backend; absent before the M4 backend). */
   shortfall_mwh?: number | null; stress_periods?: number | null;
+  /** exact, or lower_bound for a Run that predates exact stress accounting (F-P04-1). */
+  shortfall_basis?: string | null; shortfall_upper_mwh?: number | null; possible_stress_periods?: number | null;
 };
 
 export type DispatchTimeline = {

@@ -29,6 +29,9 @@
 .run-context-advisories { display: grid; gap: 8px; margin: 8px 0 0; padding: 0 0 0 18px; font-size: 13px; }
 .run-context-advisories li { display: grid; gap: 2px; min-width: 0; }
 .run-context-advisories small { color: var(--muted); font-size: 12px; }
+/* F-P04-3: the failed validation gates, one sentence each. */
+.run-context-gates { display: grid; gap: 6px; margin: 8px 0; padding: 0 0 0 18px; font-size: 13px; }
+.run-context-gates li { min-width: 0; }
 .run-context-advisory-empty { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
 
 .run-context-more:focus-visible {

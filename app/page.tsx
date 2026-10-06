@@ -38,6 +38,7 @@ import ResultQueryPanel from "./features/results/ResultQueryPanel";
 import { ALL_RUN_MODES, runModesForStudy, selectedRunScope } from "./features/workspace/runScope";
 import { preflightKey, preflightMatches } from "./features/workspace/preflightIdentity";
 import RunContextBar from "./features/workspace/RunContextBar";
+import { shortfallDisplay } from "./features/workspace/runValidation.ts";
 import { resolveRunContext } from "./features/workspace/runContext";
 import { readWorkspaceLocation, writeWorkspaceLocation, selectWorkspaceRun, type WorkspaceLocation } from "./features/workspace/workspaceLocation";
 import "./features/workspace/workspace-shell.css";
@@ -171,12 +172,14 @@ function WindowSummary({ bucket, timeline }: { bucket: DispatchTimeline["items"]
   const price = bucketPrice(bucket, timeline);
   const shortfall = bucket.shortfall_mwh;
   const stressPeriods = bucket.stress_periods;
+  // F-P04-1: a lower-bound shortfall reads "≥ x MWh", with the upper bound on hover.
+  const shortfallShown = shortfallDisplay(shortfall, bucket.shortfall_basis, bucket.shortfall_upper_mwh);
   const mwh = (value: number | null | undefined) => value == null ? <ValueState state="not_recorded" /> : `${withUnit(formatNumber(value), "MWh")}`;
   return <div className="selected-period-strip window-summary">
     <span className="window-summary-wide"><small>Window</small><b>{bucket.timestamp_start.replace("T", " ")} → {bucket.timestamp_end.replace("T", " ")}{timeline.timezone ? ` (${timeline.timezone} model time)` : ""}</b></span>
     <span><small>Demand</small><b>{mwh(bucket.real_demand_mwh)}</b></span>
     <span><small>Accepted supply</small><b>{mwh(bucket.accepted_supply_mwh)}</b></span>
-    <span className={typeof shortfall === "number" && shortfall > 0 ? "shortfall-positive" : ""}><small>Shortfall</small><b>{shortfall == null ? <ValueState state="not_recorded" title="This ledger does not record stress events (supply below demand)." /> : `${withUnit(formatNumber(shortfall), "MWh")}`}</b>{typeof stressPeriods === "number" && stressPeriods > 0 && <StatusPill tone="caution">● {stressPeriods} stress {stressPeriods === 1 ? "period" : "periods"}</StatusPill>}</span>
+    <span className={typeof shortfall === "number" && shortfall > 0 ? "shortfall-positive" : ""}><small>Shortfall</small><b title={shortfallShown?.title}>{shortfallShown == null ? <ValueState state="not_recorded" title="This ledger does not record stress events (supply below demand)." /> : shortfallShown.text}</b>{typeof stressPeriods === "number" && stressPeriods > 0 && <StatusPill tone="caution">● {stressPeriods} stress {stressPeriods === 1 ? "period" : "periods"}</StatusPill>}</span>
     <span><small>Storage charge</small><b>{mwh(bucket.storage_charge_mwh)}</b></span>
     <span><small>Storage discharge</small><b>{mwh(bucket.storage_discharge_mwh)}</b></span>
     <span className="window-summary-wide"><small title={price.title}>{price.label}</small><b title={price.title}>{price.value ?? <ValueState state="not_recorded" />}</b></span>

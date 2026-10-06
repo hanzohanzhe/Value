@@ -49,7 +49,8 @@ test("corrected Run with a failed balance: one danger Callout with the residual 
   assert.match(text, /Open residuals in Inspect/);
   assert.match(text, /\+1 more notice/);
   assert.match(html, /class="run-context-check danger"[^>]*><i aria-hidden="true">● <\/i>Failed/);
-  assert.match(text, /Stress events ● 48 periods · 571 MWh/);
+  // F-P04-1: a lower-bound shortfall carries "≥".
+  assert.match(text, /Stress events ● 48 periods · ≥ 571 MWh/);
 });
 
 test("doctoral Run withheld under Q14: caution pill and the withheld Callout with Inspect and ledger export", async () => {
@@ -107,4 +108,58 @@ test("annual results of a withheld reproduction Run show the Withheld pill, neve
   assert.match(text, /Annual results are not published on result pages for this reproduction run \(2 computed years\)\. The full ledger remains available\./);
   assert.match(text, /Open in Inspect Export ledger/);
   assert.doesNotMatch(text, /No annual results yet|£/);
+});
+
+// Designer rulings F-P04-1..5 (2026-10-06).
+test("F-P04-1: a lower-bound shortfall reads '≥ x' with the upper bound on hover; exact has no qualifier", async () => {
+  const lower = await render({ methodology: corrected, energy_balance_status: "passed", stress: { stress_periods: 48, shortfall_mwh: 570.5, shortfall_basis: "lower_bound", shortfall_upper_mwh: 1015.5 } });
+  assert.match(textOf(lower), /Stress events ● 48 periods · ≥ 571 MWh/);
+  assert.match(lower, /title="Lower bound: this Run predates exact stress accounting \(upper bound 1,015\.5 MWh\)"/);
+  assert.match(textOf(lower), /Total shortfall ≥ 571 MWh/);
+  const exact = await render({ methodology: corrected, energy_balance_status: "passed", stress: { stress_periods: 48, shortfall_mwh: 570.5, shortfall_basis: "exact" } });
+  assert.doesNotMatch(textOf(exact), /≥/);
+});
+
+test("F-P04-2: reproduction_conformant is a teal ● Conformant with the ledger-closes tooltip", async () => {
+  const html = await render({ methodology: doctoral, energy_balance_status: "reproduction_conformant", result_publication: { status: "published" } });
+  assert.match(html, /class="run-context-check ok" title="The doctoral reproduction ledger closes\. This does not certify the method as physically validated\."><i aria-hidden="true">● <\/i>Conformant<\/b>/);
+});
+
+test("F-P04-3: any failed gate raises the danger Callout naming the gates; energy balance alone keeps its wording", async () => {
+  const storage = await render({ methodology: corrected, energy_balance_status: "passed", storage_invariant_status: "failed",
+    validation_gate: { policy: "production", status: "failed", gates: { run_invariants: "passed", energy_balance: "passed", storage_invariants: "failed" } } });
+  const text = textOf(storage);
+  assert.match(storage, /value-callout danger/);
+  assert.match(text, /Validation gate failed: Storage limits/);
+  assert.match(text, /Storage limits Storage exceeded its rated power/);
+  assert.match(text, /Open residuals in Inspect/);
+  const two = textOf(await render({ methodology: corrected, validation_gate: { policy: "production", status: "failed", gates: { run_invariants: "failed", energy_balance: "passed", storage_invariants: "failed" } } }));
+  assert.match(two, /Validation gate failed: Run invariants, Storage limits/);
+  const balance = textOf(await render({ methodology: corrected, energy_balance_status: "failed",
+    energy_balance: { balance_account: { open_periods: 3, unexplained_open_periods: 3, max_abs_closing_residual_mwh: 2.5 } },
+    validation_gate: { policy: "production", status: "failed", gates: { run_invariants: "passed", energy_balance: "failed", storage_invariants: "passed" } } }));
+  assert.match(balance, /Energy balance check failed/);
+  assert.match(balance, /found 3 periods where supply and use do not reconcile \(largest residual 2\.5 MWh\)/);
+  assert.doesNotMatch(balance, /Validation gate failed/);
+});
+
+test("F-P04-4: a gate-blocked corrected Run shows 'Annual results not published' and no totals", async () => {
+  const validation = { methodology: corrected, publication_blocked: { reason_code: "GF_VALIDATION_GATE_FAILED" },
+    validation_gate: { policy: "production", status: "failed", gates: { run_invariants: "passed", energy_balance: "passed", storage_invariants: "failed" } } };
+  const html = await renderTsx(RESULTS, "AnnualResults", { runId: "r", results: [], validation, onOpenInspect: () => {}, onExportLedger: () => {} });
+  const text = textOf(html);
+  assert.match(html, /value-callout danger/);
+  assert.match(text, /Annual results not published/);
+  assert.match(text, /This Run failed 1 validation gate: Storage limits\. Results are withheld until the cause is fixed\. The full ledger remains available\./);
+  assert.match(text, /Open in Inspect/);
+  assert.match(text, /Export ledger/);
+  assert.doesNotMatch(text, /No annual results yet/);
+});
+
+test("F-P04-5: Inspect's residual panel lists boundary, raw status, max residual and periods", async () => {
+  const html = await renderTsx("app/features/evidence/ResidualPanel.tsx", "default", { balance: { boundary_id: "native_corrected_full_node_v1", raw_boundary_status: "failed", maximum_absolute_boundary_residual_mwh: 23.25, periods: 48 } });
+  const text = textOf(html);
+  assert.match(text, /Boundary Raw status Max residual Periods/);
+  assert.match(text, /native_corrected_full_node_v1 failed 23\.25 MWh 48/);
+  assert.match(textOf(await renderTsx("app/features/evidence/ResidualPanel.tsx", "default", { balance: null })), /did not record an energy-balance report/);
 });

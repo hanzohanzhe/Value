@@ -86,7 +86,7 @@ test("a pre-fix Run shows the failed balance first, never a green passed, and op
   const bar = page.getByRole("region", { name: "Selected Run context", exact: true });
   await expect(bar).toContainText("Methodology not recorded (pre-2026-10 run)");
   await expect(bar.locator(".run-context-statuses")).toContainText("Energy balance● Failed");
-  await expect(bar.locator(".run-context-statuses")).toContainText("Stress events● 48 periods · 571 MWh");
+  await expect(bar.locator(".run-context-statuses")).toContainText("Stress events● 48 periods · ≥ 571 MWh");
   await expect(bar.locator(".run-context-statuses")).toContainText("Scientific validation● Superseded");
   await expect(bar.locator(".run-context-check.ok")).toHaveCount(0);
   await expect(bar.locator(".value-callout")).toHaveCount(1);

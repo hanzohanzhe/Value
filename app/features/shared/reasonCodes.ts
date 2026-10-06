@@ -29,7 +29,17 @@ const REASON_MESSAGES: Record<string, string> = {
   attribution_source_identity_mismatch: "The evidence's data or module identity differs from this Run's.",
   attribution_method_or_proof_invalid: "The attribution method or its proof is not the one this version accepts.",
   source_changed_during_query: "The source changed while it was being read; reload the page.",
+  // Q14 (gridform_core/result_advisories.py, F-P09-6): the codes of result_publication
+  // when a doctoral reproduction Run's annual results are withheld; and the
+  // production-policy publication block of P0-4 S7 (backend/model_runner.py, F-P04-4).
+  GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED: "A raw invariant of this reproduction Run failed, so its annual results are not published on result pages; Inspect and exports keep them.",
+  GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED: "The raw invariants of this reproduction Run were not evaluated, so its annual results are not published on result pages; Inspect and exports keep them.",
+  GF_VALIDATION_GATE_FAILED: "A validation gate (run invariants, energy balance or storage limits) failed, so annual results are not published.",
+  GF_VALIDATION_CONTRACT_OR_MECHANISM: "A required contract or analytical-invariant check failed, so annual results are not published.",
 };
+
+/** F-P09-6: the reason codes under which a result is "Withheld" in the Q14 sense. */
+export const Q14_WITHHELD_REASON_CODES: readonly string[] = ["GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED", "GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED"];
 
 export function reasonMessage(reasonCode: string | null | undefined): string {
   if (!reasonCode) return "No reason was recorded.";

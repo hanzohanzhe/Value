@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { resolveRunContext, type ContextRun, type FrozenRunContext } from "./runContext";
-import { NOTICE_ACTION_LABELS, type CheckField, type NoticeAction, type RunAdvisory, type RunNotice } from "./runValidation.ts";
+import { GATE_TEXT, NOTICE_ACTION_LABELS, type CheckField, type NoticeAction, type RunAdvisory, type RunNotice } from "./runValidation.ts";
 import { Callout, StatusPill } from "../shared/Callout";
 import "./run-context.css";
 import "./run-context-validation.css";
@@ -50,6 +50,7 @@ function NoticeCallout({ notice, advisories, actions }: { notice: RunNotice; adv
       aria-expanded={action === "view_advisories" ? advisoriesOpen : undefined} onClick={onClick}>{label}</button>];
   });
   return <Callout tone={notice.tone} title={notice.title} actions={buttons.length ? buttons : undefined}>
+    {notice.gates && notice.gates.length > 0 && <ul className="run-context-gates">{notice.gates.map((gate) => <li key={gate}><b>{GATE_TEXT[gate].name}</b> {GATE_TEXT[gate].sentence}</li>)}</ul>}
     <p>{notice.body}</p>
     {notice.id === "pre_fix" && advisoriesOpen && <AdvisoryList advisories={advisories} expected={notice.advisoryCount ?? 0} />}
   </Callout>;

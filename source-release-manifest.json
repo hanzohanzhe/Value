@@ -39,6 +39,8 @@
     "app/features/data/research-suite-api.mjs",
     "app/features/evidence/AuditView.tsx",
     "app/features/evidence/ReadinessEvidence.tsx",
+    "app/features/evidence/ResidualPanel.tsx",
+    "app/features/evidence/residual-panel.css",
     "app/features/evidence/types.ts",
     "app/features/extensions/ExtensionAuthorWorkbench.css",
     "app/features/extensions/ExtensionAuthorWorkbench.tsx",
@@ -3078,8 +3080,8 @@
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
-      "sha256": "a11030ea3fc3807c980c3bfafe847ebbb893142cdd3c4f432f8eda532dcd4e05",
-      "bytes": 14969,
+      "sha256": "c2411f4c63d8859e005ba12d074d523a1d1eddfd3bde026cf9a197b9832390ab",
+      "bytes": 15060,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3087,6 +3089,18 @@
       "sha256": "c6e798e185cd28ec7ea7a05bac4963a3d4729302976997bf7b0125b0bc4758c7",
       "bytes": 4141,
       "transform": "byte copy"
+    },
+    {
+      "path": "app/features/evidence/ResidualPanel.tsx",
+      "sha256": "5fc04c6a69ec17329cc9c2589de36bdadcd08a4cc7894cfade140add2a48e01f",
+      "bytes": 1531,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/evidence/residual-panel.css",
+      "sha256": "597598b33eba80ace2e7e56437dcd9baf7ad3b243b0bf5a9cf988948933f95ef",
+      "bytes": 299,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/evidence/types.ts",
@@ -3198,8 +3212,8 @@
     },
     {
       "path": "app/features/market/marketTypes.ts",
-      "sha256": "736329dbf72ff128b15763a57016af2f14d0fe09e6719e68d91d213fa27556cf",
-      "bytes": 5208,
+      "sha256": "c902dbe501fc268b2b93597ad8f51a9fcdbb330663a522f5aa16dc0f79ed1595",
+      "bytes": 5411,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3324,14 +3338,14 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "77103fb3e2e3b58d9b4c0ecfb0a736e2c741f17b3f980f2c0068c40eb5fd98c0",
-      "bytes": 16755,
+      "sha256": "9342f98055f936e21b0f3066663053a39ff8ae2a10872af5d280ad46aa8f643d",
+      "bytes": 17905,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "3d8031a99d2361029563e07d3d431c54dc19bc9ed7fe5cd7ecd5fd2e015339fb",
-      "bytes": 20990,
+      "sha256": "be9443bed950e2dec45c9e417d2be15ff9c4a8bc5703dfd1a36d35cca0f90a8c",
+      "bytes": 21015,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3426,8 +3440,8 @@
     },
     {
       "path": "app/features/shared/reasonCodes.ts",
-      "sha256": "0aa136f6b1ac1a4ab60a73a2ce7e7d8f70d405f658e8c6dd0fd0033fbba04465",
-      "bytes": 4792,
+      "sha256": "f7789ae58d4e9907c8016f1b3f600008c8837e60e1e994c4740bb730d3b603e4",
+      "bytes": 5966,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3552,8 +3566,8 @@
     },
     {
       "path": "app/features/workspace/RunContextBar.tsx",
-      "sha256": "ef1603c0aa1e9949f697a955d8cb894da552d5635cc4d9198707eb5e5a268452",
-      "bytes": 8132,
+      "sha256": "17f1955416c684d7b6d3fc6c37378d316e249b3c4572196e06f49363052cb8e0",
+      "bytes": 8338,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3606,8 +3620,8 @@
     },
     {
       "path": "app/features/workspace/run-context-validation.css",
-      "sha256": "8c74829946fa6db9f9275d688d34c4b07b39fac7e69bcfb3f8fd3ff21fcfdc73",
-      "bytes": 1569,
+      "sha256": "877bbe44885c274b706c917fd1ca668356848e08be210ff663c0b4e13bfb61fe",
+      "bytes": 1773,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3630,8 +3644,8 @@
     },
     {
       "path": "app/features/workspace/runValidation.ts",
-      "sha256": "d907a38defbf7942d36fef2f5e7c938482d44735d3d40b524ea9ba7a7eae8503",
-      "bytes": 13912,
+      "sha256": "820d4fddd3884e101da9da74fec9dd2805f87bb812a1e0aee5dcadb62dc92cd6",
+      "bytes": 20811,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3660,8 +3674,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "fdc12ccf1ad0d749ae5e03f7fe13df753ff51882c47e7f20a25c6e8c9b13cbbb",
-      "bytes": 163923,
+      "sha256": "08a0b604b1dd99970105a5bcf9f4b2ac6accd3b2a7b2863dd617e625f3af9f34",
+      "bytes": 164202,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6414,8 +6428,8 @@
     },
     {
       "path": "e2e/run-context-methodology.spec.ts",
-      "sha256": "2f336462aa034a628c3bee04208577d56652e079c0d6cc874e2f9a52fde8a390",
-      "bytes": 15528,
+      "sha256": "c6057d2746a39a4e40fb0ec8233310458db5bd99ae59e0a9290b46bb4c88fb7f",
+      "bytes": 15532,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10459,8 +10473,8 @@
     },
     {
       "path": "tests/frontend/render/run-context-bar.test.mjs",
-      "sha256": "5f5edee4ea194fc9328a406e1f08c00dba797d2589374d7495228ab6004486bf",
-      "bytes": 7647,
+      "sha256": "d63531fcf39cd6d8ca9667b4161fe4fd3a06f5d89e9518d91092661e25370f42",
+      "bytes": 12279,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10507,8 +10521,8 @@
     },
     {
       "path": "tests/frontend/unit/frontend-guards.test.mjs",
-      "sha256": "d8eba7849adb6ad03638657540c4a9a24f0bad6b0c26476fde832da36d47a794",
-      "bytes": 6017,
+      "sha256": "ecd11434a75f1ba06479fd0a6458127ae3f73e8a44ed1553839b6d9b4d574f5a",
+      "bytes": 6063,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10807,8 +10821,8 @@
     },
     {
       "path": "tests/run-context.test.mjs",
-      "sha256": "b6e5544123272219c8cca8d7828c697dea71dbac427184842aceb6fbba912dcd",
-      "bytes": 15728,
+      "sha256": "e5ced257c5648bba40e6c68e66bedfd9aa8074255db4d5fe25c38b3482bf7eb1",
+      "bytes": 16011,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
