@@ -11,15 +11,26 @@ station retires for a whole year).  Under ``p05.firm-availability``:
   announced ``YYYY-MM`` generation end it is zero from the next month;
 * natural-flow hydro is derated by an annual load factor times a monthly shape.
 
-The reference values live in ``data/nuclear/value_uk_firm_availability_v1.json``
-and are PENDING AUTHOR REVIEW (DECISIONS: acceptance deferred to the author).
-The doctoral profile keeps the 35aadb3 constant availability.
+Two later refinements are profile-gated corrections of their own:
+
+* ``p05.nuclear-generation-end-month`` (decision A10): stations whose policy
+  record names only the year of generation end (Heysham 2, Torness: "2030")
+  take the announced month from the table's ``generation_end_month_overrides``
+  (reference statistics 1.6: 2030-03), so they also retire by month;
+* ``p05.hydro-dukes-load-factor`` (decision A14): natural-flow hydro uses the
+  DUKES 6.3 2019-2024 mean load factor 0.3487 and the stepped monthly shape
+  derived from Energy Trends 6.1 quarters, instead of the P0-5b 0.334 x flat.
+
+The reference values live in ``data/nuclear/value_uk_firm_availability_v1.json``;
+the author reviewed them in decision A14.  The doctoral profile keeps the
+35aadb3 constant availability.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
@@ -41,9 +52,16 @@ def load_table() -> dict[str, Any]:
     table = json.loads(TABLE_PATH.read_text(encoding="utf-8"))
     if table.get("schema_version") != "value.firm-availability/v1":
         raise ValueError("Unsupported firm availability table")
-    shape = [float(value) for value in table["hydro_natural_flow"]["monthly_shape"]]
-    if len(shape) != 12 or abs(sum(shape) / 12.0 - 1.0) > 1e-9 or min(shape) < 0:
-        raise ValueError("Hydro monthly shape must have 12 non-negative values with mean 1")
+    for block in (table["hydro_natural_flow"], table["hydro_natural_flow"]["p05b_values"]):
+        shape = [float(value) for value in block["monthly_shape"]]
+        if len(shape) != 12 or abs(sum(shape) / 12.0 - 1.0) > 1e-9 or min(shape) < 0:
+            raise ValueError("Hydro monthly shape must have 12 non-negative values with mean 1")
+        if not 0.0 < float(block["load_factor"]) <= 1.0:
+            raise ValueError("Hydro load factor out of range")
+    for station, row in table["nuclear"]["generation_end_month_overrides"].items():
+        announced = str(row["announced_generation_end"])
+        if len(announced) != 7 or announced[4] != "-" or not 1 <= int(announced[5:]) <= 12:
+            raise ValueError(f"Generation end override of {station} must be YYYY-MM")
     for station, row in table["nuclear"]["stations"].items():
         if not 0.0 < float(row["pris_load_factor"]) <= 1.0:
             raise ValueError(f"Nuclear load factor out of range: {station}")
@@ -62,6 +80,39 @@ def enabled_for_profile(profile_id: str | None) -> bool:
     from .methodology import resolve_methodology
 
     return enabled(resolve_methodology(profile_id))
+
+
+@dataclass(frozen=True)
+class FirmMethod:
+    """Which refinements of ``p05.firm-availability`` are in force."""
+
+    generation_end_month_overrides: bool    # p05.nuclear-generation-end-month (A10)
+    hydro_dukes_load_factor: bool           # p05.hydro-dukes-load-factor (A14)
+
+    def to_dict(self) -> dict[str, bool]:
+        return {"generation_end_month_overrides": self.generation_end_month_overrides,
+                "hydro_dukes_load_factor": self.hydro_dukes_load_factor}
+
+
+LATEST = FirmMethod(generation_end_month_overrides=True, hydro_dukes_load_factor=True)
+P05B = FirmMethod(generation_end_month_overrides=False, hydro_dukes_load_factor=False)
+
+
+def method_for(methodology: Any) -> FirmMethod:
+    return FirmMethod(
+        generation_end_month_overrides=bool(methodology.enabled("p05.nuclear-generation-end-month")),
+        hydro_dukes_load_factor=bool(methodology.enabled("p05.hydro-dukes-load-factor")),
+    )
+
+
+def method_for_profile(profile_id: str | None) -> FirmMethod:
+    from .methodology import resolve_methodology
+
+    return method_for(resolve_methodology(profile_id))
+
+
+def table_status() -> str:
+    return str(load_table()["status"])
 
 
 def month_of_period(periods: int) -> np.ndarray:
@@ -112,14 +163,27 @@ def nuclear_load_factor(asset_id: str, capacity_mw: float, extensions: Mapping[s
     return float(table["national_aggregate"]["load_factor"]), {"basis": "national_aggregate"}
 
 
-def generation_end_period(asset_id: str, year: int) -> int | None:
-    """First zero period in ``year`` for a station whose announced end month falls in that year."""
+def announced_generation_end(station_id: str, method: FirmMethod = LATEST) -> str | None:
+    """The station's announced generation end ('YYYY-MM' or 'YYYY'), with the A10 month override."""
 
-    station_id = asset_id.split(":", 1)[1] if asset_id.startswith("nuclear:") else asset_id
     row = _station_records().get(station_id)
     if row is None:
         return None
-    announced = str(row.get("announced_generation_end") or "")
+    if method.generation_end_month_overrides:
+        override = load_table()["nuclear"]["generation_end_month_overrides"].get(station_id)
+        if override is not None:
+            policy_value = str(row.get("announced_generation_end") or "")
+            if not str(override["announced_generation_end"]).startswith(policy_value[:4]):
+                raise ValueError(f"Generation end override of {station_id} disagrees with the policy year {policy_value}")
+            return str(override["announced_generation_end"])
+    return str(row.get("announced_generation_end") or "") or None
+
+
+def generation_end_period(asset_id: str, year: int, method: FirmMethod = LATEST) -> int | None:
+    """First zero period in ``year`` for a station whose announced end month falls in that year."""
+
+    station_id = asset_id.split(":", 1)[1] if asset_id.startswith("nuclear:") else asset_id
+    announced = announced_generation_end(station_id, method) or ""
     if len(announced) != 7 or announced[4] != "-":
         return None
     end_year, end_month = int(announced[:4]), int(announced[5:])
@@ -128,30 +192,38 @@ def generation_end_period(asset_id: str, year: int) -> int | None:
     return first_period_of_month(end_month + 1) if end_month < 12 else 365 * PERIODS_PER_DAY
 
 
+def hydro_values(method: FirmMethod = LATEST) -> Mapping[str, Any]:
+    """The hydro load factor and monthly shape in force (A14 values, or the P0-5b ones)."""
+
+    hydro = load_table()["hydro_natural_flow"]
+    return hydro if method.hydro_dukes_load_factor else hydro["p05b_values"]
+
+
 def asset_availability(*, asset_id: str, technology: str, capacity_mw: float, year: int, periods: int,
-                       extensions: Mapping[str, Any] | None = None) -> tuple[np.ndarray, dict[str, Any]] | None:
+                       extensions: Mapping[str, Any] | None = None, method: FirmMethod = LATEST
+                       ) -> tuple[np.ndarray, dict[str, Any]] | None:
     """Per-period availability (0..1) of a nuclear or natural-flow hydro asset, else None."""
 
     if technology == NUCLEAR:
         factor, evidence = nuclear_load_factor(asset_id, capacity_mw, extensions)
         values = np.full(periods, factor, dtype=float)
-        end = generation_end_period(asset_id, year)
+        end = generation_end_period(asset_id, year, method)
         if end is not None:
             values[np.arange(periods) % (365 * PERIODS_PER_DAY) >= end] = 0.0
             evidence = {**evidence, "generation_end_period": end}
     elif technology == HYDRO:
-        hydro = load_table()["hydro_natural_flow"]
+        hydro = hydro_values(method)
         shape = np.asarray(hydro["monthly_shape"], dtype=float)
         values = float(hydro["load_factor"]) * shape[month_of_period(periods)]
         evidence = {"basis": "annual_load_factor_x_monthly_shape", "load_factor": float(hydro["load_factor"])}
     else:
         return None
     values = np.clip(values, 0.0, 1.0)
-    return values, {"method_id": METHOD_ID, "table_sha256": table_sha256(), "status": "PENDING AUTHOR REVIEW",
-                    "annual_mean": float(np.mean(values)), **evidence}
+    return values, {"method_id": METHOD_ID, "table_sha256": table_sha256(), "status": table_status(),
+                    "firm_method": method.to_dict(), "annual_mean": float(np.mean(values)), **evidence}
 
 
-def kernel_availability(assets: Any, *, year: int, periods: int) -> dict[str, np.ndarray]:
+def kernel_availability(assets: Any, *, year: int, periods: int, method: FirmMethod = LATEST) -> dict[str, np.ndarray]:
     """Capacity-weighted availability of the kernel's single Nuclear / Hydro_natural_flow agents."""
 
     weighted: dict[str, np.ndarray] = {}
@@ -163,7 +235,7 @@ def kernel_availability(assets: Any, *, year: int, periods: int) -> dict[str, np
             continue
         profile = asset_availability(asset_id=asset.asset_id, technology=asset.technology,
                                      capacity_mw=float(asset.capacity_mw), year=year, periods=periods,
-                                     extensions=dict(getattr(asset, "extensions", {}) or {}))
+                                     extensions=dict(getattr(asset, "extensions", {}) or {}), method=method)
         assert profile is not None
         weighted[asset.technology] = weighted.get(asset.technology, np.zeros(periods)) + profile[0] * asset.capacity_mw
         capacity[asset.technology] = capacity.get(asset.technology, 0.0) + float(asset.capacity_mw)

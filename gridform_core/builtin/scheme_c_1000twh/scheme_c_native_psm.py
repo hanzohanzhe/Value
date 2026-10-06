@@ -523,10 +523,12 @@ class SchemeCNativePSM:
                 name: str(item["availability_sha256"]) for name, (_, item) in sorted(profiles.items())}
         firm_cf: dict[str, np.ndarray] = {}
         if firm:
+            firm_method = firm_availability.method_for_profile(profile_id)
             firm_cf = firm_availability.kernel_availability(
-                model_input.operating_state.assets, year=int(model_input.year), periods=periods)
+                model_input.operating_state.assets, year=int(model_input.year), periods=periods, method=firm_method)
             evidence["firm_availability"] = {"method_id": firm_availability.METHOD_ID,
-                                             "table_sha256": firm_availability.table_sha256()}
+                                             "table_sha256": firm_availability.table_sha256(),
+                                             "firm_method": firm_method.to_dict()}
         if not vre_cf and not firm_cf:
             return None
         return KernelSiteInputs(vre_cf, firm_cf, evidence)

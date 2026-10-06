@@ -35,6 +35,8 @@ def weather_execution_identity() -> dict[str, object]:
                      "builtin/scheme_c_1000twh/runtime_compat/map_projects_to_generators_by_location.py",
                      # P0-5b: corrected-profile weather v2, loss factors, firm availability.
                      "site_weather.py", "firm_availability.py",
+                     # F2 (A13): corrected-profile solar plane-of-array irradiance.
+                     "solar_irradiance.py",
                      "data/weather/value_uk_vre_loss_factors_v1.json",
                      "data/nuclear/value_uk_firm_availability_v1.json")
     }}

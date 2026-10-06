@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACK_101 = ROOT / "data-packs" / "value-101-baseline-v1"
 CORRECTED = "value-corrected"
 DOCTORAL = "doctoral-lineage-0.6.0a2"
-CORRECTED_METHOD = sw.SiteWeatherMethod("v2", True)
+CORRECTED_METHOD = sw.SiteWeatherMethod("v2", True, True)  # F2 (A13) added the solar plane-of-array step
 
 
 def _gbp1_root() -> Path | None:
@@ -123,7 +123,7 @@ class WeatherClockTests(unittest.TestCase):
 class LossFactorTests(unittest.TestCase):
     def test_table_multipliers_are_the_product_of_cited_components(self):
         table = sw.load_loss_factors()
-        self.assertEqual(table["status"], "PENDING AUTHOR REVIEW")
+        self.assertTrue(table["status"].startswith("AUTHOR ACCEPTED (DECISIONS A9"))
         for technology in sw.VRE:
             entry = table["technologies"][technology]
             self.assertAlmostEqual(entry["multiplier"], float(np.prod([c["central"] for c in entry["components"]])), 12)
@@ -175,7 +175,7 @@ class FirmAvailabilityTests(unittest.TestCase):
                                                    capacity_mw=1155.0, year=2029, periods=17520)
         self.assertNotIn("generation_end_period", evidence)
         self.assertAlmostEqual(float(before.mean()), expected, 12)
-        self.assertEqual(evidence["status"], "PENDING AUTHOR REVIEW")
+        self.assertEqual(evidence["status"], firm.table_status())
 
     def test_fallbacks(self):
         sizewell, _ = firm.nuclear_load_factor("nuclear:sizewell-b", 1198.0)
@@ -186,8 +186,9 @@ class FirmAvailabilityTests(unittest.TestCase):
         self.assertEqual((national, evidence["basis"]), (0.723, "national_aggregate"))
 
     def test_hydro_annual_mean_and_kernel_identity(self):
+        # P0-5b values (flat shape); the A14 values are tested in tests.test_f2_corrected_data.
         values, evidence = firm.asset_availability(asset_id="Hydro_natural_flow", technology="Hydro_natural_flow",
-                                                   capacity_mw=2000.0, year=2026, periods=17520)
+                                                   capacity_mw=2000.0, year=2026, periods=17520, method=firm.P05B)
         self.assertAlmostEqual(float(values.mean()), 0.334, 12)
         assets = [AssetStateV2("nuclear:heysham-1", "Nuclear", 1155.0), AssetStateV2("nuclear:sizewell-b", "Nuclear", 1198.0),
                   AssetStateV2("Hydro_natural_flow", "Hydro_natural_flow", 2000.0), AssetStateV2("gas", "CCGT", 500.0)]

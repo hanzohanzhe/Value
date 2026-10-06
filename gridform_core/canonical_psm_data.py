@@ -1023,6 +1023,7 @@ def build_chronology(
 
     weather_method = _FROZEN_WEATHER if doctoral_alignment else _weather_method(data_policy.profile_id)
     firm_corrected = not doctoral_alignment and _firm.enabled_for_profile(data_policy.profile_id)
+    firm_method = _firm.method_for_profile(data_policy.profile_id) if firm_corrected else None
     raw_boundary_price = doctoral_alignment or _raw_boundary_price(data_policy.profile_id)
     if doctoral_alignment and not doctoral_weather:
         raise ValueError("Doctoral national profile requires bound doctoral site weather; CSV dispatch fallback is not permitted")
@@ -1128,7 +1129,7 @@ def build_chronology(
         firm_profile = (
             _firm.asset_availability(asset_id=asset.asset_id, technology=technology,
                                      capacity_mw=float(asset.capacity_mw), year=int(state.year),
-                                     periods=periods, extensions=dict(asset.extensions))
+                                     periods=periods, extensions=dict(asset.extensions), method=firm_method)
             if firm_corrected else None
         )
         resources.append(DispatchResource(
@@ -1279,7 +1280,9 @@ def build_chronology(
             **({} if weather_method.frozen or not doctoral_weather
                else {"site_weather_method": weather_method.to_dict()}),
             **({"firm_availability_method": {"method_id": _firm.METHOD_ID, "table_sha256": _firm.table_sha256(),
-                                             "status": "PENDING AUTHOR REVIEW"}} if firm_corrected else {}),
+                                             "status": _firm.table_status(),
+                                             "firm_method": firm_method.to_dict()}}
+               if firm_corrected and firm_method is not None else {}),
             **({"boundary_price_basis": "raw (negative prices kept, p05.raw-boundary-price)"}
                if raw_boundary_price and not doctoral_alignment else {}),
             "vre_expansion_headroom_mw_by_technology": headroom,

@@ -21,6 +21,11 @@ Two method switches, both profile-gated (C15: asked through
   electrical loss factors; solar GHI/1 kW m-2 by a performance ratio.  There is
   no calibration to statistical load factors; the factors and their sources
   are in ``data/weather/value_uk_vre_loss_factors_v1.json``.
+* ``p05.solar-plane-of-array`` (decision A13): before the performance ratio,
+  the per-period horizontal irradiance is decomposed (Erbs 1982) and
+  transposed (Hay-Davies 1980) onto a south-facing plane tilted at the site
+  latitude, with the solar geometry of each half-hour period
+  (``solar_irradiance``); the PR is defined on plane-of-array irradiance.
 
 The doctoral profile keeps v1 and no factors, bit-identical to 35aadb3.
 """
@@ -41,6 +46,7 @@ WEATHER_V1 = "value.doctoral-site-weather/v1"
 WEATHER_V2 = "value.site-weather/v2"
 TIME_CONVENTION_CORRECTION = "p05.weather-time-convention"
 LOSS_FACTOR_CORRECTION = "p05.vre-loss-factors"
+PLANE_OF_ARRAY_CORRECTION = "p05.solar-plane-of-array"
 LOSS_FACTORS_PATH = Path(__file__).resolve().parent / "data" / "weather" / "value_uk_vre_loss_factors_v1.json"
 VRE = ("solar", "onshore", "offshore")
 WIND_UNIT_MW = 20.0
@@ -65,7 +71,16 @@ def load_loss_factors() -> dict[str, Any]:
             product *= value
         if abs(product - float(entry["multiplier"])) > 1e-12:
             raise ValueError(f"Loss multiplier of {technology} is not the product of its components")
+    from .solar_irradiance import PlaneOfArrayParameters
+
+    PlaneOfArrayParameters.from_table(table["solar_plane_of_array"])
     return table
+
+
+def plane_of_array_parameters():
+    from .solar_irradiance import PlaneOfArrayParameters
+
+    return PlaneOfArrayParameters.from_table(load_loss_factors()["solar_plane_of_array"])
 
 
 def loss_factor_table_sha256() -> str:
@@ -78,16 +93,19 @@ class SiteWeatherMethod:
 
     clock: str                      # "v1" (frozen IterLimit) or "v2" (ERA5 conventions)
     loss_factors: bool              # literature loss factors applied
+    plane_of_array: bool = False    # solar GHI -> plane-of-array irradiance before the PR (A13)
 
     @property
     def frozen(self) -> bool:
-        return self.clock == "v1" and not self.loss_factors
+        return self.clock == "v1" and not self.loss_factors and not self.plane_of_array
 
     @property
     def method_id(self) -> str:
         if self.frozen:
             return WEATHER_V1
-        return f"{WEATHER_V2}+clock-{self.clock}+losses-{'v1' if self.loss_factors else 'none'}"
+        # Without the plane-of-array step the id is the P0-5b id (runs made before A13 keep it).
+        return (f"{WEATHER_V2}+clock-{self.clock}+losses-{'v1' if self.loss_factors else 'none'}"
+                + ("+solar-poa-v1" if self.plane_of_array else ""))
 
     def multiplier(self, technology: str) -> float:
         if not self.loss_factors:
@@ -100,6 +118,10 @@ class SiteWeatherMethod:
         if self.loss_factors:
             value["loss_factor_table_sha256"] = loss_factor_table_sha256()
             value["multipliers"] = {technology: self.multiplier(technology) for technology in VRE}
+        if self.plane_of_array:
+            value["plane_of_array"] = True
+            value["loss_factor_table_sha256"] = loss_factor_table_sha256()
+            value["solar_plane_of_array"] = dict(load_loss_factors()["solar_plane_of_array"]["model"])
         return value
 
 
@@ -110,13 +132,44 @@ def method_for(methodology: Any) -> SiteWeatherMethod:
     return SiteWeatherMethod(
         clock="v2" if methodology.enabled("p05.weather-time-convention") else "v1",
         loss_factors=bool(methodology.enabled("p05.vre-loss-factors")),
+        plane_of_array=bool(methodology.enabled("p05.solar-plane-of-array")),
     )
+
+
+def method_for_correction_ids(applied_correction_ids) -> SiteWeatherMethod:
+    """The method a run recorded through its applied correction ids (read-time disclosure)."""
+
+    applied = set(applied_correction_ids or ())
+    return SiteWeatherMethod(clock="v2" if TIME_CONVENTION_CORRECTION in applied else "v1",
+                             loss_factors=LOSS_FACTOR_CORRECTION in applied,
+                             plane_of_array=PLANE_OF_ARRAY_CORRECTION in applied)
 
 
 def method_for_profile(profile_id: str | None) -> SiteWeatherMethod:
     from .methodology import resolve_methodology
 
     return method_for(resolve_methodology(profile_id))
+
+
+def plane_of_array_applies(method: SiteWeatherMethod, convention: str) -> tuple[bool, str]:
+    """Is the A13 transposition applied to a solar source with this time convention?
+
+    A13 converts ERA5 horizontal irradiance: an hourly accumulation
+    (``accumulation_end_of_hour``) served on the v2 clock, whose source hour
+    contains the period midpoint the geometry is evaluated at.  A source
+    without that convention (the VALUE 101 synthetic teaching samples, which
+    are not physical irradiance: about 1 kW m-2 at a December noon at 52 N)
+    keeps the horizontal ratio; the evidence records why.
+    """
+
+    if not method.plane_of_array:
+        return False, "correction p05.solar-plane-of-array not applied"
+    if method.clock != "v2":
+        return False, "the plane-of-array geometry needs the weather v2 clock"
+    if convention != ACCUMULATION_END:
+        return False, (f"solar source time convention is {convention!r}, not an ERA5 hourly accumulation "
+                       f"({ACCUMULATION_END!r}); horizontal irradiance ratio kept")
+    return True, "ERA5 hourly accumulation on the v2 clock"
 
 
 def variable_time_convention(binding: Mapping[str, Any] | None, variable: Any) -> str:
@@ -241,10 +294,27 @@ def site_cf_by_source(*, paths: Mapping[str, Path], hashes: Mapping[str, str],
                 hourly, evidence = hourly_unit_cf(datasets[role], technology, lat, lon, dict(bindings or {}).get(role))
                 index = hour_index(periods, len(hourly), method.clock, evidence["time_convention"])
                 values = hourly[index]
+                poa_applied = False
+                if technology == "solar" and method.plane_of_array:
+                    poa_applied, reason = plane_of_array_applies(method, evidence["time_convention"])
+                    if poa_applied:
+                        from .solar_irradiance import plane_of_array
+
+                        # A13: the per-period GHI goes onto the tilted plane with the geometry
+                        # of the period midpoint (the source hour of v2 contains that midpoint).
+                        values, poa_evidence = plane_of_array(
+                            np.asarray(values, dtype=float), latitude_deg=lat, longitude_deg=lon,
+                            parameters=plane_of_array_parameters())
+                        evidence = {**evidence, "solar_plane_of_array": {"applied": True, **poa_evidence}}
+                    else:
+                        evidence = {**evidence, "solar_plane_of_array": {"applied": False, "reason": reason}}
                 multiplier = method.multiplier(technology)
                 if multiplier != 1.0:
                     values = values * multiplier
                 values = np.asarray(values, dtype=float)
+                if poa_applied:
+                    # Plane-of-array irradiance may exceed 1 kW m-2: output is capped at capacity.
+                    values = np.minimum(values, 1.0)
                 if not np.all(np.isfinite(values)):
                     raise ValueError(f"Non-finite converted weather: {name}")
                 cache[key] = values, {

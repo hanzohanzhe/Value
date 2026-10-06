@@ -198,7 +198,49 @@
       "trigger_fixture": {"test": "tests.test_p05b_corrected_data.FirmAvailabilityTests"},
       "introduced_in": "P0-5b S8",
       "deviation_signature": {"doctoral": "constant availability 1.0; whole-year retirement"},
-      "description": "Nuclear station load factors (PRIS 2019-2024, rescaled to the model capacity) with month-exact generation end, natural-flow hydro annual load factor x monthly shape (data/nuclear/value_uk_firm_availability_v1.json, PENDING AUTHOR REVIEW; acceptance deferred to the author)."
+      "description": "Nuclear station load factors (PRIS 2019-2024, rescaled to the model capacity) with month-exact generation end, natural-flow hydro annual load factor x monthly shape (data/nuclear/value_uk_firm_availability_v1.json; values reviewed by the author in A14, refined by p05.nuclear-generation-end-month and p05.hydro-dukes-load-factor)."
+    },
+    {
+      "id": "p05.nuclear-generation-end-month",
+      "package": "p05",
+      "findings": ["P5-10"],
+      "track": "profile_gated",
+      "scope": "kernel_input",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1"]},
+      "advisory": {"severity": "low", "title": "Heysham 2 and Torness retire for the whole of 2030", "summary": "Corrected runs made before decision A10 keep Heysham 2 and Torness available for all of 2030 because the station policy names only the year; their announced generation end is March 2030.", "affected_metrics": ["nuclear_generation", "prices", "emissions"]},
+      "trigger_fixture": {"test": "tests.test_f2_corrected_data.NuclearGenerationEndTests"},
+      "introduced_in": "F2 (decisions A10, A14)",
+      "deviation_signature": {"doctoral": "constant availability 1.0; whole-year retirement"},
+      "description": "A station whose policy record names only the year of generation end takes the month from generation_end_month_overrides of data/nuclear/value_uk_firm_availability_v1.json (Heysham 2 and Torness: 2030-03, reference statistics 1.6), so it is zero from period 4320 of 2030 like Heysham 1 and Hartlepool."
+    },
+    {
+      "id": "p05.hydro-dukes-load-factor",
+      "package": "p05",
+      "findings": ["P5-09", "P6-10"],
+      "track": "profile_gated",
+      "scope": "kernel_input",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1", "value-uk-1000twh-reproduction", "value-uk-calendar-vx-trade001"]},
+      "advisory": {"severity": "low", "title": "Natural-flow hydro on the provisional P0-5b values", "summary": "Corrected runs made before decision A14 derate natural-flow hydro with the provisional 2023 load factor 0.334 and a flat monthly shape instead of the DUKES 2019-2024 mean 0.3487 with the quarterly-derived seasonal shape.", "affected_metrics": ["hydro_generation", "prices", "storage_dispatch"]},
+      "trigger_fixture": {"test": "tests.test_f2_corrected_data.HydroLoadFactorTests"},
+      "introduced_in": "F2 (decision A14)",
+      "deviation_signature": {"doctoral": "constant availability 1.0"},
+      "description": "Natural-flow hydro availability = 0.3487 (DUKES 6.3 standard basis, 2019-2024 mean) x the stepped monthly shape [1.3851 x3, 0.6582 x3, 0.6776 x3, 1.2791 x3] from Energy Trends 6.1 quarters (data/nuclear/value_uk_firm_availability_v1.json, author-reviewed in A14)."
+    },
+    {
+      "id": "p05.solar-plane-of-array",
+      "package": "p05",
+      "findings": ["P6-08"],
+      "track": "profile_gated",
+      "scope": "data_reading",
+      "affects": ["trajectory", "accounting"],
+      "applies_when": {"data_packs_any": ["value-uk-open-data-pack-v1", "value-uk-1000twh-reproduction", "value-uk-calendar-vx-trade001"]},
+      "advisory": {"severity": "medium", "title": "Solar on the horizontal plane", "summary": "Runs made before decision A13 (and doctoral runs) take solar output from horizontal irradiance (GHI/1 kW m-2, times PR 0.83 for corrected runs) without the gain of a tilted module plane; the PV performance ratio is defined on plane-of-array irradiance, so corrected solar output was low.", "affected_metrics": ["solar_generation", "curtailment", "prices", "investment"]},
+      "trigger_fixture": {"test": "tests.test_f2_corrected_data.PlaneOfArrayTests"},
+      "introduced_in": "F2 (decision A13)",
+      "deviation_signature": {"doctoral": "solar availability is ssrd/3.6e6 on the horizontal plane (no decomposition, no transposition)"},
+      "description": "Per period, ERA5 horizontal irradiance is split into diffuse and beam (Erbs 1982) and transposed (Hay-Davies 1980, albedo 0.2) onto a south-facing plane tilted at the site latitude, with Spencer (1971) solar geometry at the period midpoint; the PV performance ratio 0.83 then applies (data/weather/value_uk_vre_loss_factors_v1.json, solar_plane_of_array)."
     },
     {
       "id": "p05.raw-boundary-price",
