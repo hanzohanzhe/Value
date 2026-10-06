@@ -1,7 +1,7 @@
 # R1-2-economic-curtailment：修正口径的经济下调顺序（DECISIONS A19、A22）
 
 - 分支：`fix/review-2026-10-04`（INTEG），起点 `c9c1cc1`。
-- 授权：A19（撤回"永远先降火电"，火电下调代价由重启成本和省下的燃料、碳、可变成本共同决定，再与风电 0 比较，不得预设火电更贵）；A22（认可参考统计表第 4 节取值；H 取日前预测中连续盈余时段数 × 0.5 h；H ≥ 最短停机时间才允许进入停机段；不停机段先于弃风，停机段 a(H) = c − S/H > 0 先停火电，否则先弃风）。只在修正口径实施，属于方法改动（Q13）；论文复现口径不变（Q1）。
+- 授权：A19（撤回"永远先降火电"，火电下调代价由重启成本和省下的燃料、碳、可变成本共同决定，再与风电 0 比较，不得预设火电更贵）；A22（认可参考统计表第 4 节取值；H 取日前预测中连续盈余时段数 × 0.5 h；H ≥ 最短停机时间才允许进入停机段；不停机段先于弃风，停机段 a(H) = c − S/H > 0 先停火电，否则先弃风；审查后按 A22a 改为 a(H) = c − S/(m·H)，见第 9 节）。只在修正口径实施，属于方法改动（Q13）；论文复现口径不变（Q1）。
 - 提交：
   - `92fc86e` feat(psm): corrected down-regulation weighs restart cost against avoided cost (A19/A22)
   - `56a806d` docs(methodology): economic down-regulation order draft for 0.4; restart-cost table author-reviewed (A19/A22)
@@ -13,7 +13,7 @@
 
 1. **燃气（CCGT、OCGT）与生物质的一行拆成两段**。在线容量取该机组当期日前接受出力 P（聚合机组没有开停机状态，按"日前排了的机组都在线且满载"处理）。
    - **不停机段**：`max(P − max(爬坡下限, m·P), 0)`。仍在最小稳定出力以上，不触发重启，每 MWh 省 c = `gen_cost`（燃料 + 碳 + unit_time_cost + 基数），沿用 P0-6 的排序键，因此总在弃风之前。
-   - **停机段**：`max(min(P, m·P) − 爬坡下限, 0)`。净节省 `a(H) = c − S(H)/H`。H ≥ 最短停机时间且 a > 0 时，按 a 排序，排在弃风之前；a ≤ 0 时排在弃风之后（同一取整值下排在核电之前）；H < 最短停机时间时只作最后手段，放在所有其他资源之后。这样 P0-6 栈原本能消纳的盈余不会留在节点里。
+   - **停机段**：`max(min(P, m·P) − 爬坡下限, 0)`。净节省 `a(H) = c − S(H)/(m·H)`（审查后修正，原为 `c − S(H)/H`，见第 9 节）。H ≥ 最短停机时间且 a > 0 时，按 a 排序，排在弃风之前；a ≤ 0 时排在弃风之后（同一取整值下排在核电之前）；H < 最短停机时间时只作最后手段，放在所有其他资源之后。这样 P0-6 栈原本能消纳的盈余不会留在节点里。
 2. **H（预计停机时长）**：`H = (1 + n_t) × 0.5 h`。n_t 是 t+1、t+2……中连续满足"日前预测盈余"的时段数，盈余定义为预测需求 ≤ 预测 VRE 可用量 + 核电可用量（不需要任何火电）。VRE 与核电的逐时段可用量取自修正口径已有的 site-CF 与 firm-availability 数组（P0-5b，`kernel_site_inputs`）。当前时段计 1，因为下调正是因为它已处于盈余。没有这些数组时（单元测试会话），H 只取当前时段。
 3. **取值**（A22，写入 `gridform_core/data/thermal/value_thermal_restart_v1.json`，附出处与等级）：
 
@@ -46,11 +46,11 @@
 
 ## 3 测试
 
-新增 `tests/test_r12_economic_downward_order.py`（16 个，全部 OK）：
+新增 `tests/test_r12_economic_downward_order.py`（16 个，全部 OK；审查后为 17 个，下列 toy 的数字已按修正式更新）：
 
 - 任务要求的三个 toy：
-  - (a) 省下的燃料成本高于重启成本，先降火电：OCGT 20 MW、风 30 MW、需下调 25 MW、H = 3 h，a = 75 − 170/3 = 18.3 > 0，结果 OCGT 降到 0，风只弃 5 MW。CCGT 在 H = 6 h 时同样成立（a = 36.7）。
-  - (b) 重启成本高于节省，先弃风：同一 OCGT 在 H = 0.5 h 时 a = −265，结果 OCGT 只降不停机段 10 MW，风弃 15 MW。H = 2 h 时 a = −10，风弃完后才进入停机段。CCGT 在 H = 3 h < 6 h 时停机段为最后手段。
+  - (a) 省下的燃料成本高于重启成本，先降火电：OCGT 20 MW、风 30 MW、需下调 25 MW、H = 5 h，a = 75 − 170/(0.5×5) = 7 > 0（停 20 MW 装机重启 £3,400 < 省 £3,750），结果 OCGT 降到 0，风只弃 5 MW。CCGT 在 H = 6 h 时同样成立（a = 55 − 110/3 = 18.3）。
+  - (b) 重启成本高于节省，先弃风：同一 OCGT 在 H = 0.5 h 时 a = −605，结果 OCGT 只降不停机段 10 MW，风弃 15 MW。H = 3 h 时 a = −38.3（审查指出的情形：重启 £3,400 > 省 £2,250），同样先弃风。H = 2 h 时 a = −95，风弃完后才进入停机段。CCGT 在 H = 3 h < 6 h 时停机段为最后手段。
   - (c) 下调在不停机段内，先降火电：CCGT 70 MW 降 20 MW，风全部保留。
 - 论文口径经 `curtailment_market_bidding` 仍是先弃风，且不调用经济栈；修正口径经同一入口先降 CCGT。
 - A22 取值表（热/温/冷边界：11.5 h 热，12 h 温，48 h 温，48.5 h 冷）、技术映射、a = 0 平局归风、爬坡下限截断两段且生物质预算返还、水电/核电/VRE 的分类统计、确定性（同名机组按输入顺序）。
@@ -135,3 +135,48 @@ summary 逐项相同，年度结果只差新 extension。新规则下的统计�
 - 没有启动 HTTP 服务，没有连接 8766/8800，没有向任何进程发信号；18xxx 端口无监听。模型运行是我启动的后台进程，等待其自行结束。
 - 所有 Python 都通过 `vpy` 调用；INTEG 中没有 `__pycache__`。没有下载，没有改 SRC，没有 push。
 - 本地 public2 用硬链接构建。构建前后两个来源目录的清单哈希相同（`dc85a5f8…`）。scratch 中的运行输出、HEAD archive 与 public2 用后已删除，剩余约 144 KB（摘要与门禁报告）。
+
+## 9 审查回应（Review response，2026-10-07）
+
+审查结论 changes_required，只有 1 条 major，没有 blocker。
+
+**Major：停机段净节省的单位错了（a = c − S/H 应为 c − S/(m·H)）。接受，已修。**
+
+- 审查意见成立。S 按"每 MW 装机每次启动"计（取值表、代码 docstring 都这样定义）。不停机段总是先降，所以进入停机段时，在运机组都处在最小稳定出力 m×P。再减 x MW 出力要停 x/m MW 装机，重启成本是 S·x/m，省下的是 c·x·H，所以 a = c − S/(m·H)。原式把重启成本低估 1/m 倍（CCGT、OCGT 2 倍，生物质 2.86 倍）。错误来自参考统计表 4.6 节的推导（把停掉的装机 ΔP 同时当成重启基数和少发的出力），A22 照抄了它。
+- 这次修正符合 A19 的原意（"省下的燃料等成本高于重启成本时先降火电"），只改公式，不改 A22 认可的取值。但 A22 的原文写的是 c − S/H，所以修正式**仍需作者确认**。我在 DECISIONS 新增 **A22a**，明确标注"待作者确认，不是作者决定"。作者如不同意，应在 A22a 记为接受的简化，并回退 `net_saving`（只有一行）。
+- 提交 `4e3bab2`：
+  - `RestartParameters.net_saving` 改为 `c − S(H)/(m·H)`。m = 0 没有停机段，此时调用会报错（`economic_segments` 在 m = 0 时停机段为空，不会调用）。新增 `break_even_hours`，给出 H\* = S/(m·c)。
+  - toy 重新推导：
+    - (a) OCGT 改为 H = 5 h，a = 75 − 68 = 7 > 0，先停 OCGT。
+    - (b) 新增审查指出的 H = 3 h 情形：a = −38.3，先弃风。重启 £3,400，大于节省的 £2,250。
+    - 平局用例改为 H = 4 h（a = 0）。
+    - 爬坡下限用例新增一段：需下调 25 MW 时，生物质停机段（a = 25.5）排在 CCGT 不停机段（55）之后，只停 2 MW。按原式，生物质停机段 a = 64.2，会先停满 7 MW。
+    - 新增 `test_net_saving_charges_restart_per_mw_of_capacity`：逐项核对 a 值和 H\*（3.99 / 4.54 / 4.20 h）；用"S × 停掉的装机"核对单位；核对 m = 0 时报错。r12 测试共 17 个，全部 OK。
+  - 文档：
+    - 参考统计表 4.6 节：推导、表格（新增 m 列；H\* 为 CCGT 3.99 h、OCGT 4.54 h、生物质 4.20 h）、解读，并加勘误说明；4.8 节新增第 5 条（待作者确认）。
+    - 0.4 草稿 `r12_economic_downward_order.md`：§2 的推导与单位核对、H\* 列；§3 算例改为 CCGT a(6 h) = 55.07 − 110/3 = 18.4，重启 £22,000 < 节省 £33,042；OCGT 算例改为 H = 0.5/2/3 h 先弃风，5 h 先停 OCGT。
+    - 同步修改：r12 catalogue 描述、`docs/generated/METHODOLOGY_PROFILES.md`、VERSION_LEDGER 的 R1-2 reason、CHANGELOG、`native_market_rules.py` 注释、内核注释。内核注释改动后已用 `seal_runtime_overlay.py --correction r12.economic-downward-order` 重新封存，并保留原 note；`--verify` 通过。
+  - 规则字段值 `restart_cost_vs_avoided_cost_v1`、PSM 6.5.0 和 VERSION_LEDGER 条目都不变：R1-2 还没有发布，这是同一个方法改动的更正，不另开版本。
+- golden 复核：按审查要求，在 `4e3bab2` 上运行 `capture.py check`：
+  - C5（VALUE 101 two_year，134 s）、C6（130 s）：gated 差异均为 0。
+  - C9（GBP1 public2 2025，本地重建 manifest `f43e0e46…1439`，528 s）：gated 差异为 0。
+  - 三个 case 的 identity 区各有 1 项差异，即代码身份哈希。
+  - 快档 C1–C4 由门禁复核，也不变。
+  - 结论：第 5 节的数字全部不变。两套参考运行都没有用到带价停机段：VALUE 101 那一期 H = 0.5 h，低于 CCGT 的最短停机时间；GBP1 中燃气只在不停机段内下调。
+  - public2 用后已删除。构建前后，两个来源目录的清单哈希相同（`588cbcf3…`）。
+- 修正后的实际影响：CCGT 与生物质的 H\* 仍短于 6 h 最短停机时间。在 GBP1 成本下，允许停机时 a 总为正，判定仍由最短停机时间决定；但如果某机组 c < S/(m·6 h)（例如 CCGT 低于 36.7 £/MWh），结论会翻转。OCGT 在 H 约 2.3–4.5 h 时判定翻转，由先停 OCGT 改为先弃风。
+
+**有意没做的一项（转入遗留问题）：** 取值表 `gridform_core/data/thermal/value_thermal_restart_v1.json` 的 `rule.shutdown_segment` 说明文字仍写着 `a(H) = c - S(H) / H`。这段文字参与 `restart_table_sha256`，而这个哈希是修正族 golden（C1–C6、C9）trajectory 区的一列。只改说明文字，就要给 7 个 case 各追加一次完整修订（每次几千到上万行）。修正式本身还待作者确认，所以我把这处文字留到作者确认 A22a 时，与一次 golden 修订一起改。改法已存成补丁，只改这一句。取值和代码都不受影响，代码与 0.4 草稿以修正式为准。
+
+**本轮门禁与安全核对：**
+
+- `scripts/p0_gate.py quick`（`VALUE_GATE_VENV` 指向 gate venv）在暂存状态下运行：status passed，16 步全部通过，无豁免。
+- r12、native_market_rules、result_advisories、runtime_overlay_seal、methodology_profiles 共 79 个测试 OK。
+- `refresh_source_release_manifest.py --index --check` 未过期。
+- INSTALLED：`find … -newer install-receipt.json …` 只列出原有的现网 `.supervisor.lock`。`diagnose-value` 输出 "Installation integrity and runtime checks passed."（中间那行 vinext "Premature close" 提示与以往相同）。
+- 没有启动服务，18xxx 端口无监听，没有向任何进程发信号，INTEG 中没有 `__pycache__`，没有 push。
+
+**遗留问题补充：**
+
+6. **A22a 待作者确认。** 确认后，把取值表的 `rule.shutdown_segment` 说明文字改为修正式，并对 C1–C6、C9 做一次 golden 修订（只有 `restart_table_sha256` 一列）。如果作者不同意，回退 `net_saving` 和本轮的文档改动，并在 A22a 记为接受的简化。
+7. 交接文档目前没有写停机段公式（已 grep 核对）。补写 R1-2 内容时（第 7 节第 1 条），应以 0.4 草稿的修正式为准。
