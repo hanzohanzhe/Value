@@ -362,6 +362,21 @@ def run_preflight(
             + " quarantined; this Study does not use them.",
             "Open Modules to disable or repair them; the run is unaffected.",
         ))
+    # A16-4 (M-D2, spec 11.7): an installed module whose source was edited in
+    # place is accepted and recorded; preflight says so before the run.
+    from .module_installation import installed_source_changes
+
+    source_changes = installed_source_changes(selected.values())
+    checks["module_source_changes"] = source_changes
+    for change in source_changes:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_SOURCE_CHANGED", "warning", "modules",
+            f"Module {change['module_id']} source changed since install "
+            f"({str(change['installed_sha256'])[:8]}… → {str(change['current_sha256'])[:8]}…). "
+            "Results will record the new source hash.",
+            "No action needed if the edit is intended: Compare shows the module method as changed. "
+            "Reinstall under a new version to keep the installed identity.",
+        ))
     registered_extensions = registry.extension_manifests()
     active_dataset_slots = tuple(dataset_slots) + registry.extension_registry.conditional_dataset_slots(
         tuple(item for item in selected_extensions if item in registered_extensions)

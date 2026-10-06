@@ -1,15 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { StatusPill } from "../shared/Callout";
-import { readinessGroups, rowTitle, type ReadinessGroup, type ReadinessIssue } from "./readinessGroups.ts";
+import { Callout, StatusPill } from "../shared/Callout";
+import { readinessGroups, rowTitle, sourceChangeWarnings, type ReadinessGroup, type ReadinessIssue } from "./readinessGroups.ts";
 import "./readiness-issues.css";
 
 /** Spec 11.1 (S-D1): every readiness issue, grouped by priority; nothing is truncated. */
 export default function ReadinessIssues({ errors, warnings }: { errors?: readonly ReadinessIssue[] | null; warnings?: readonly ReadinessIssue[] | null }) {
   const groups = readinessGroups({ errors, warnings });
   if (!groups.length) return null;
-  return <div className="readiness-groups">{groups.map((group) => <ReadinessGroupView key={group.id} group={group} />)}</div>;
+  const sourceChanges = sourceChangeWarnings(warnings);
+  return <div className="readiness-groups">
+    {sourceChanges.length > 0 && <Callout tone="caution" className="readiness-source-changed" title={sourceChanges.length === 1 ? "Module source changed since install" : `${sourceChanges.length} module sources changed since install`}>
+      {sourceChanges.map((issue) => <p key={issue.message}>{issue.message}</p>)}
+    </Callout>}
+    {groups.map((group) => <ReadinessGroupView key={group.id} group={group} />)}
+  </div>;
 }
 
 function ReadinessGroupView({ group }: { group: ReadinessGroup }) {

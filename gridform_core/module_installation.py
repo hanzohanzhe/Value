@@ -71,6 +71,45 @@ def list_module_installations(modules_root: Path | None = None) -> list[dict[str
     return _records(root)
 
 
+def _implementation_source(record: Mapping[str, object]) -> Path | None:
+    record_path = Path(str(record.get("record_path") or ""))
+    module_name = str(record.get("implementation") or "").split(":", 1)[0]
+    if not module_name or not record_path.name:
+        return None
+    base = record_path.parent / str(record.get("source_root") or "src") / Path(*module_name.split("."))
+    for candidate in (base.with_suffix(".py"), base / "__init__.py"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def installed_source_changes(
+    module_ids: object, *, modules_root: Path | None = None,
+) -> list[dict[str, object]]:
+    """Enabled installed modules whose source changed since install (A16-4, M-D2).
+
+    An in-place source edit of an installed module is accepted and recorded:
+    the run records the new source hash and the comparison shows a method
+    change; this read-only check lets preflight say so.  Reads bytes only and
+    never imports installed code.
+    """
+
+    wanted = {str(item) for item in (module_ids or ()) if item}
+    changes: list[dict[str, object]] = []
+    for record in list_module_installations(modules_root):
+        module_id = str(record.get("module_id") or "")
+        installed = str(record.get("source_sha256") or "").lower()
+        if module_id not in wanted or not record.get("enabled") or not re.fullmatch(r"[0-9a-f]{64}", installed):
+            continue
+        source = _implementation_source(record)
+        if source is None:
+            continue
+        current = hashlib.sha256(source.read_bytes()).hexdigest()
+        if current != installed:
+            changes.append({"module_id": module_id, "installed_sha256": installed, "current_sha256": current})
+    return sorted(changes, key=lambda row: str(row["module_id"]))
+
+
 def _entry_source_exists(source_root: Path, implementation: str) -> bool:
     module_name = implementation.split(":", 1)[0]
     relative = Path(*module_name.split("."))

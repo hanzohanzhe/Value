@@ -1289,6 +1289,7 @@
     "tests/frontend/render/annual-results.test.mjs",
     "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/network-tables.test.mjs",
+    "tests/frontend/render/preflight-blocked-run.test.mjs",
     "tests/frontend/render/readiness-issues.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
@@ -1466,6 +1467,7 @@
     "tests/test_module_recovery.py",
     "tests/test_module_resolution_graph.py",
     "tests/test_module_runtime.py",
+    "tests/test_module_source_changed.py",
     "tests/test_native_application_path.py",
     "tests/test_native_checkpoint_resume.py",
     "tests/test_native_corrected_rules.py",
@@ -3396,8 +3398,8 @@
     },
     {
       "path": "app/features/runs/ReadinessIssues.tsx",
-      "sha256": "ade33f18978d7d8b595510f32f836eb90343f3c85d4fe61aa5ffb9760c01d846",
-      "bytes": 1964,
+      "sha256": "191ffe57d2bdbd264a6c14a7cbc417a7f82c55d96271ae7801c1f314ee7188e4",
+      "bytes": 2391,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3408,8 +3410,8 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "a2358e5056e9feb5db65ecc428ca30f4ecff9bea36ffc9d582a45730cbb8a875",
-      "bytes": 20985,
+      "sha256": "a8b0bf410f0091f5c8b678b31fd66a2ee6d2b67a15d7ecbb30d0843a65d7eb65",
+      "bytes": 21438,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3426,8 +3428,8 @@
     },
     {
       "path": "app/features/runs/readinessGroups.ts",
-      "sha256": "7cbe0ec575040994185a467fdc79c7bdbf6379b098ebbc3f761951c7465de7f6",
-      "bytes": 5114,
+      "sha256": "3abf298438c07d9b6a5a2f392776634249b9d57e599e3fda16a3565cb0987519",
+      "bytes": 5517,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3684,9 +3686,9 @@
     },
     {
       "path": "app/features/workspace/preflightIdentity.ts",
-      "sha256": "3c8e943f8ca70f8e955eb75163417f080d3447df0f3e1030d17908804a52e13e",
-      "bytes": 854,
-      "transform": "byte copy"
+      "sha256": "db65abe418ad4825fe885aaeab9cce083921e752eb75217562137782aa3422df",
+      "bytes": 2045,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/research-journey.css",
@@ -8289,8 +8291,8 @@
     },
     {
       "path": "gridform_core/module_installation.py",
-      "sha256": "917c890fad333e41af6612f193fd484a435669ca088a4686e84ad155216757bc",
-      "bytes": 16514,
+      "sha256": "6e40525fcab730a77f79aa5f5be66cb49869035c48e4014a307f0212ddde8a3a",
+      "bytes": 18355,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8409,8 +8411,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "5dd84bb35a4492d3dbe6fa89fcbb4329349d6fcd46dfa7c6d41bdf05b64ed52e",
-      "bytes": 40836,
+      "sha256": "14f5b48d485c6277ec3ab5388345d0c0235178d6886b79b20d800fbb0757dab4",
+      "bytes": 41740,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10608,9 +10610,15 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/preflight-blocked-run.test.mjs",
+      "sha256": "9f5dea410932006ca9c6caf660177613a4f2af50739499ad7d510135e0b303fb",
+      "bytes": 2956,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/readiness-issues.test.mjs",
-      "sha256": "2777b78db2359edc149821484fb81bc25902935c3063f38ccdafaf905cc04ba7",
-      "bytes": 3046,
+      "sha256": "678c125b7067b41eaacfa23906282d6eaef9465e88adfad954ae0d09f3608a2c",
+      "bytes": 3728,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11005,9 +11013,9 @@
     },
     {
       "path": "tests/preflight-identity.test.mjs",
-      "sha256": "eb0e6b2f6bc5c9cd456b576797572e70c377e145092171c668a1d7e0a6a07458",
-      "bytes": 1185,
-      "transform": "byte copy"
+      "sha256": "b7e0b7e4d2a126f3486deac3d59bbe4d8c47356767e129119025276aa5c88e0e",
+      "bytes": 2704,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/prompt124-ui-contract.test.mjs",
@@ -11668,6 +11676,12 @@
       "sha256": "9c8a787243d8cafaa859f2ee8a6ecf62c1d99d38a5d9d760a78e6c9efcea1491",
       "bytes": 3364,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_module_source_changed.py",
+      "sha256": "3ffd674d982dcc30180b7ed028414104ebd57a233d7f124fe07041465ad3b897",
+      "bytes": 3696,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_native_application_path.py",

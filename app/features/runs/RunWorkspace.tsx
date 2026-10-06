@@ -19,6 +19,7 @@ import { AnnualResults, SmokeDiagnostics } from "./RunResults";
 import { isResultCoverage } from "../shared/coverageView.ts";
 import { Callout } from "../shared/Callout";
 import { lifecycleNotice } from "./lifecycleView.ts";
+import { preflightRunBlockedReason } from "../workspace/preflightIdentity";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -64,6 +65,8 @@ export function PreflightEstimates({ estimates }: { estimates: PreflightReport["
 export default function RunWorkspace({ workspace, selectedProjectId, selectedProject, selectedProjectPack, selectedRun, projectRuns, preflight, effectivePreflightMode, checkingPreflight, zonalPreflight, teachingProject, launching, selectedRunSourceMutable, canRunMode, frozen, actions }: RunWorkspaceProps) {
   const { selectRunProject, onSelectRun, onMode, onNavigate, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost } = actions;
   const notice = selectedRun ? lifecycleNotice(selectedRun) : null;
+  // Spec 11.4 (M-D3): a blocked readiness check disables the Run and says why.
+  const runBlockedReason = preflightRunBlockedReason(preflight);
   const recovery = selectedProject?.extensions?.frozen_recovery;
   const selectedRunContext = { kind: frozen.contextKind };
   const frozenRunSelectionId = frozen.runId;
@@ -88,7 +91,8 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
           {!recovery && selectedProject && selectedProject.modules.psm === "value-bid-at-cost-psm" && <details className="diagnostic-actions"><summary>Clone a storage-pricing experiment</summary><p>Create a controlled study that changes only the storage offer-cost module. Perfect-foresight co-optimisation is a different PSM formulation and is not presented as a tariff.</p>{workspace.modules.filter((module) => module.slot === "storage_cost").map((module) => <button className="text-button full" key={module.id} disabled={Boolean(launching) || selectedProject.modules.storage_cost === module.id} onClick={() => void cloneStoragePolicy(module.id)}>{selectedProject.modules.storage_cost === module.id ? `Current: ${module.name}` : `Clone with ${module.name}`}</button>)}</details>}
           <div className="preflight-card"><div><label><span>Check for</span><select value={effectivePreflightMode ?? ""} disabled={!effectivePreflightMode} onChange={(event) => { onMode(event.target.value as RunMode); }}>{!effectivePreflightMode && <option value="">没有可用范围</option>}{runModesForStudy(selectedProject, selectedProjectPack).map((mode) => <option key={mode} value={mode}>{runScopeOptionLabel(mode, selectedProject)}</option>)}</select></label><button className="secondary" disabled={!selectedProject || checkingPreflight || !effectivePreflightMode} onClick={() => void checkPreflight(effectivePreflightMode ?? undefined)}>{checkingPreflight ? "Checking…" : "Check readiness"}</button></div>{preflight && <section className={preflight.accepted ? "accepted" : "blocked"}><header><b>{preflight.accepted ? "Ready" : "Needs attention"}</b><PreflightEstimates estimates={preflight.estimates} /></header><ReadinessIssues errors={preflight.errors} warnings={preflight.warnings} />{!preflight.errors.length && !preflight.warnings.length && <small>Runtime, modules, data, parameters, disk and selected outputs passed the check.</small>}</section>}{preflight?.resource_readiness && <ReadinessEvidence readiness={preflight.resource_readiness} project={selectedProject} />}{preflight?.checks?.domain_readiness && <DomainReadinessPanel readiness={preflight.checks.domain_readiness} onNavigate={onNavigate} />}</div>
           <div className="primary-run-actions">
-            <button type="button" className="primary full" disabled={!selectedProject || !effectivePreflightMode || Boolean(launching) || !workspace.runtime.compatible || checkingPreflight} onClick={() => { if (effectivePreflightMode) void startRun(effectivePreflightMode); }}>{launching ? "Starting…" : `Run selected scope · ${effectivePreflightMode ? RUN_SCOPE_LABELS[effectivePreflightMode] : "unavailable"}`}</button>
+            <button type="button" className="primary full" disabled={!selectedProject || !effectivePreflightMode || Boolean(launching) || !workspace.runtime.compatible || checkingPreflight || Boolean(runBlockedReason)} aria-describedby={runBlockedReason ? "run-blocked-reason" : undefined} onClick={() => { if (effectivePreflightMode) void startRun(effectivePreflightMode); }}>{launching ? "Starting…" : `Run selected scope · ${effectivePreflightMode ? RUN_SCOPE_LABELS[effectivePreflightMode] : "unavailable"}`}</button>
+            {runBlockedReason && <p id="run-blocked-reason" className="readiness-run-blocked" role="status">{runBlockedReason}</p>}
             <small>The scope selected above is used for both readiness and this Run. Two-period and hand-off checks test wiring; the one-day lesson runs 48 half-hours through the PSM. Full scopes include the annual sequence.</small>
           </div>
           {!workspace.runtime.compatible && <div className="error-box">The VALUE native capability is unavailable. Run the environment doctor for the exact missing interpreter or package.</div>}

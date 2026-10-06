@@ -111,3 +111,9 @@ export function readinessGroups(report: { errors?: readonly ReadinessIssue[] | n
 export function rowTitle(row: ReadinessRow): string | undefined {
   return row.objects.length ? row.objects.join("\n") : undefined;
 }
+
+/** Spec 11.7 (M-D2): installed modules whose source was edited in place; shown as an amber notice above the groups. */
+export const MODULE_SOURCE_CHANGED = "GF_PREFLIGHT_MODULE_SOURCE_CHANGED";
+export function sourceChangeWarnings(warnings: readonly ReadinessIssue[] | null | undefined): ReadinessIssue[] {
+  return (warnings ?? []).filter((issue) => issue && issue.code === MODULE_SOURCE_CHANGED);
+}

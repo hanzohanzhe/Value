@@ -44,3 +44,14 @@ test("no issues renders nothing", async () => {
   const html = await renderTsx("app/features/runs/ReadinessIssues.tsx", "default", { errors: [], warnings: [] });
   assert.equal(html, "");
 });
+
+test("an in-place module source edit is an amber notice above the groups (spec 11.7)", async () => {
+  const message = "Module my-storage-cost source changed since install (bdfb9ab4… → 836d9086…). Results will record the new source hash.";
+  const html = await renderTsx("app/features/runs/ReadinessIssues.tsx", "default", {
+    errors: [], warnings: [issue("GF_PREFLIGHT_MODULE_SOURCE_CHANGED", "warning", "modules", message)],
+  });
+  assert.match(html, /value-callout caution readiness-source-changed" role="alert"/);
+  assert.match(html, /Module source changed since install/);
+  assert.ok(html.includes(message));
+  assert.match(html, /Environment and setup · 1/);
+});
