@@ -3203,8 +3203,8 @@
     },
     {
       "path": "app/features/market/StressEventList.tsx",
-      "sha256": "1989fcf378a36124d3a139679f093f1f742174ffcbd2e0b1d483bb59e83b2fb3",
-      "bytes": 4453,
+      "sha256": "a789b57905e0e2fce036d67f96b7a171f119f4f486bb59369dc1d77454aa11db",
+      "bytes": 4758,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3239,8 +3239,8 @@
     },
     {
       "path": "app/features/market/stressEventsView.ts",
-      "sha256": "31a1f5ca6cc8401c9687a6a34fcd21c9d31b8bccfed7c6f47a44c988c54b16e9",
-      "bytes": 2512,
+      "sha256": "a4ccb2e04ac738dfdf757e5d8fb4d37a3eab7a883e51477cbda605ff729e6a48",
+      "bytes": 2970,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3395,8 +3395,8 @@
     },
     {
       "path": "app/features/runs/run-results.css",
-      "sha256": "a305d06d75ea447a831e57bce248fc8ee4c5157f654b095243456140fadce290",
-      "bytes": 1095,
+      "sha256": "418f318ee05a8138b6e719be9bd4a9693e69c83943ca15a0e19cdb2846de3472",
+      "bytes": 1231,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6419,8 +6419,8 @@
     },
     {
       "path": "e2e/market-visibility.spec.ts",
-      "sha256": "cff6a2c13909529d3a32f203e0c02e0393373e0268afdc45640efe2cd4743f0f",
-      "bytes": 10805,
+      "sha256": "7acfc789c07696453654b24d85733e6611e14dd97ffe5b44a08f05b5f33983d8",
+      "bytes": 11725,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10602,8 +10602,8 @@
     },
     {
       "path": "tests/frontend/unit/stress-events-view.test.mjs",
-      "sha256": "61e74fe92bf630600f744d05c51bc13db14d55edf0a3d599b1f0e41ea5da7cbf",
-      "bytes": 2156,
+      "sha256": "5045994e9d09d131b84812371e2aaedb613523f59f41c41b836cc45627bfcb23",
+      "bytes": 2634,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

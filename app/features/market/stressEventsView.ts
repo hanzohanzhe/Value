@@ -34,6 +34,13 @@ export function stressEventRow(event: StressEvent, periodHours = 0.5): StressEve
   };
 }
 
+/** A response is a stress-event page only with a status, an item array and integer paging fields. */
+export function isStressEventPage(value: unknown): value is StressEventPage {
+  if (!value || typeof value !== "object") return false;
+  const page = value as Partial<StressEventPage>;
+  return typeof page.status === "string" && Array.isArray(page.items) && Number.isInteger(page.total) && Number.isInteger(page.limit) && Number.isInteger(page.offset);
+}
+
 /** One page of the whole year's events: no period window (F3-07, spec 4.4). */
 export function stressEventQuery(year: number, offset: number): URLSearchParams {
   return new URLSearchParams({ year: String(year), limit: String(RELIABILITY_PAGE_SIZE), offset: String(offset) });

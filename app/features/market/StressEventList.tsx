@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { getJson, apiUrl } from "../shared/api";
 import type { ResultCoverage } from "../shared/coverageView.ts";
 import { formatEnergy } from "../shared/format.ts";
-import { stressEventEmptyText, stressEventQuery, stressEventRow, type StressEventPage } from "./stressEventsView.ts";
+import { isStressEventPage, stressEventEmptyText, stressEventQuery, stressEventRow, type StressEventPage } from "./stressEventsView.ts";
 
 type Load = { key: string; status: "loading" | "success" | "error"; page?: StressEventPage; error?: string };
 
@@ -26,7 +26,12 @@ export default function StressEventList({ runId, year, coverage, onReplay, focus
   useEffect(() => {
     const controller = new AbortController();
     void getJson<StressEventPage>(apiUrl(`runs/${runId}/market/stress-events?${stressEventQuery(year, offset)}`), controller.signal)
-      .then((page) => { if (!controller.signal.aborted) setLoad({ key, status: "success", page }); })
+      .then((page) => {
+        if (controller.signal.aborted) return;
+        // An unexpected body (an older or foreign backend) is an error, never an empty list.
+        if (!isStressEventPage(page)) setLoad({ key, status: "error", error: "Stress events unavailable: the service did not return a stress-event page." });
+        else setLoad({ key, status: "success", page });
+      })
       .catch((reason: unknown) => { if (!controller.signal.aborted) setLoad({ key, status: "error", error: reason instanceof Error ? reason.message : "Stress events unavailable" }); });
     return () => controller.abort();
   }, [key, offset, runId, year]);

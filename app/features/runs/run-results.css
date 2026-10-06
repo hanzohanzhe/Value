@@ -2,7 +2,8 @@
 .cost-composition { margin-top: 12px; display: grid; gap: 8px; }
 .cost-composition-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
 .cost-composition-note { margin: 0; font-size: 13px; color: var(--muted); }
-.cost-composition-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* min-width: 0 overrides the global `table { min-width: 800px }`, which pushed the Runs page wider than 1280 px (M7). */
+.cost-composition-table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px; }
 .cost-composition-table th, .cost-composition-table td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; color: var(--ink); }
 .cost-composition-table th { text-align: left; }
 .cost-legend-swatch { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border-radius: 3px; }

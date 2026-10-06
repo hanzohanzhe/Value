@@ -70,6 +70,11 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
       excess_relationship: "separate_prebalancing", excess_scope: "inflexible_mixed", source_artifact_sha256: "a".repeat(64),
     };
     else if (url.includes("/market/vre-timeline")) body = timeline;
+    else if (url.includes("/market/stress-events")) body = {
+      schema_version: "value.stress-events/v1", status: "recorded", year: 2025, total: 1, limit: 50, offset: 0, has_more: false,
+      stress_periods: 2, shortfall_mwh: 3.5, period_hours: 0.5, timezone: "Europe/London",
+      items: [{ year: 2025, event_index: 0, start_period: 2, last_period: 3, periods: 2, shortfall_mwh: 3.5, event_type: "stress" }],
+    };
     else if (url.includes("/market/dispatch")) body = timeline;
     else body = { error: "unmocked API" };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -77,6 +82,12 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
   await page.goto("/");
   await page.getByRole("button", { name: /Market replay/ }).click();
   await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  // Spec 4.4 / A2: the full-year stress-event list with its type and Replay jump.
+  const stressList = page.getByRole("region", { name: "Stress events" });
+  await expect(stressList).toContainText("Stress events — full year 2025");
+  await expect(stressList).toContainText("stress (supply < demand)");
+  await expect(stressList).toContainText("2025-01-01 01:00");
+  await expect(stressList.getByRole("button", { name: "Replay the stress event starting at period 2" })).toBeVisible();
   await expect(page.getByRole("table").getByText("offshore wind")).toBeVisible();
   await expect(page.getByText("£50/MWh").first()).toBeVisible();
   // R3-01 / Q6: the selected-period strip shows the recorded bucket price under
