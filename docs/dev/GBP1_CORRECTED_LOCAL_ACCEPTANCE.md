@@ -226,3 +226,4 @@ python -B scripts/gbp1_doctoral_before_after.py summarise --run after <output> -
 - 新增 golden case **C9**（修正族，tier full，research pack `gbp1-public2-local`）：revision 0 是 `39c5dd7` 的运行（A18 之前），revision 1 是 A18（correction id `fx8.nuclear-in-service-at-start`，finding A18）。revision 1 的差异：trajectory 394 列、accounting 220 列、identity 28 列。
 - 数值前后报告：`docs/dev/p0-reports/fx8-golden/C9-r1.json`（`capture.py numeric-report --before-output/--after-output`）。`tests/golden/reports/` 只放论文复现口径的 trajectory 重基线报告（`capture.py validate` 的规则），所以修正族的报告放在 p0-reports 下。
 - VALUE 101 的 C1–C8 没有核电机组，trajectory 和 accounting 都不变，只有 identity 区变化（模块版本 6.4.0、规则集 sha）；论文复现口径 D1–D3 gated 0，D5 不受影响（论文口径规则不变）。
+- 2026-10-07 补测（交接文档更新时）：在 HEAD `dca470e` 上 `capture.py check --cases C5 C6`（两年算例，full tier），C5（修订 11）、C6（修订 9）都是 A18 之前的修订，结果 gated 0，identity 各 15 列，`passed: true`。A18 对 VALUE 101 two_year 的数值作用为 0。

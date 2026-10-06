@@ -15,6 +15,7 @@
   - **代码核对确认**：读代码确认了问题的成因，没有重跑；
   - **未复核**：只有测试员的证据。
 - **修复轮之后的状态见第 9 节“修复轮复测（2026-10-06）”**（被测 HEAD `cd2d72c`）。第 1–8 节保留首轮（HEAD `a987ca4`）的原始记录，没有改写。
+- **复测之后落地的 A18（修正口径核电开局在运，FX8）见第 9.10 节**：不改界面，四个角色没有为它重测。
 
 ## 1 结论
 
@@ -734,6 +735,17 @@
 - **INSTALLED：** 四个角色结束时，以及本次汇总结束时，都执行了同样两项检查：
   - `find <INSTALLED> -newer install-receipt.json -type f ! -path '*/state/*' ! -path '*/logs/*'` 只列出安装时就有的 `.supervisor.lock`（0 字节，mtime 2026-10-03 05:41:26）；
   - `diagnose-value --prefix <INSTALLED>` 退出码 0，输出 “Installation integrity and runtime checks passed.”（中途的 vinext “Static file stream error … Premature close” 来自诊断探针本身）。
+
+### 9.10 复测之后落地的 A18（2026-10-07 补记）
+
+- **时间顺序：** 复测的被测 HEAD 是 `cd2d72c`。作者在复测之后决定 A18（`6cf98b6`），由 FX8 实施（代码 `7bf170e`，方法学与验收 `6631fc1`，报告 `9af15b8`）。所以第 9 节的结论**不覆盖** A18，四个角色没有为它重测。
+- **改了什么：** 只改修正口径。每个模型年开始前核电视为在运，第一期报价不加启动成本，按各站可用率作基荷；某期未被接受后重启时收取一次启动成本。correction id `fx8.nuclear-in-service-at-start`，value-bid-at-cost-psm 6.3.0 → 6.4.0（`requires_user_opt_in`）。论文复现口径不变（D1–D3 gated 0）。
+- **界面：** 没有改动 `app/`，没有新的界面字符串或组件，只有 UI 合同夹具中的模块版本与规则集 sha 随之更新。用户能看到的差别都走已有机制：
+  - 修正口径 Study 的方法升级确认（Q13，FX5、FX6 升 6.2.0、6.3.0 时已有的同一界面）现在升级到 6.4.0，升级内容多一条 correction；
+  - 没有应用 A18 的默认 PSM Run（论文复现口径 Run 与 FX8 之前的修正口径 Run）在 advisory 列表中多一条 high 级 advisory “Nuclear started the year off and paid its start-up cost to enter”。
+- **对四个角色的数值影响：** 复测用的 VALUE 101 包没有核电。补测：HEAD `dca470e` 上 `capture.py check --cases C5 C6`（两年算例，对 A18 之前的最新修订）gated 0，只有 identity 差异；FX8 的 fast tier 检查中 C1–C4、C7、C8、D1–D3 也是 gated 0。所以复现角色的 golden 对照和重跑结论不变，只是 identity 区的落后列数（R-D10）会再多几列。
+- **数值作用在 GBP1 上：** GBP1 public2 修正口径第一年（本地，未发布）核电 2.02 → 38.26 TWh，对 Energy Trends 5.1 +2.5%，通过；见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` 第 10 节。四个角色都没有用 GBP1 public2，不受影响。
+- 复测之后另有 FX9（N-1、N-2、N-3、F2-N1、M-D1 界面），记录在 `docs/dev/p0-reports/FX9-retest-mediums.md`；本节只记 A18。
 
 ## 附录 A 复核脚本与输出
 

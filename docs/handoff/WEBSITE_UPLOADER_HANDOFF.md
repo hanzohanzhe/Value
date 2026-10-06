@@ -5,6 +5,7 @@
 - 本文只写交接内容，没有改动 `website/` 下的任何文件。本分支上 `website/` 与 35aadb3 逐字节相同（`git diff 35aadb3 -- website/` 为空），所以文中的行号对两边都适用。
 - 依据：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A18），`CHANGELOG.md` 的 0.7.0-alpha.1 一节，`docs/VALIDATION_AND_CLAIMS.md`，`docs/release/P0_ACCEPTANCE.md`，`docs/generated/METHODOLOGY_PROFILES.md`，`docs/handoff/MODEL_CHANGES_BRIEF.md`，`docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 9 节为修复轮复测），设计规格 `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 第 11 节与 `docs/dev/p0-reports/FX3-UI-batch.md`（修复轮界面字符串），以及 `docs/USER_GUIDE.md` / `docs/USER_GUIDE_ZH.md`。两者有出入时，以 DECISIONS 为准。
 - **修复轮更新（2026-10-06，A16，HEAD `be30884`）**：四类用户测试之后的修复轮（FX1–FX7）带来的用户可见变化已并入本文：新增第 2.9 节（逐项列出界面字符串），并更新了 2.2–2.4、2.6、2.7、第 3 节（A17 推送时机）、4.1 S-6、4.2 C-9 与 C-11、4.3 J-3 与 J-7、第 5–7 节和附录 A。`website/` 仍未改动（`git diff 35aadb3 -- website/` 为空）。
+- **FX8 更新（2026-10-06，A18）**：修正口径的核电开局在运已实施（`fx8.nuclear-in-service-at-start`，value-bid-at-cost-psm 6.4.0）。对网站用户可见的只有两处，都沿用已有的界面机制，没有新界面字符串或组件：修正口径 Study 的方法升级确认（2.9 节最后一行，现为 6.4.0），以及 Run 的 advisory 列表多一条（2.9 节新增一行）。模型说明见 2.3 节“修正口径的核电规则”一段；GBP1 public2 的数字仍只在本地（2.7 节、第 7 节第 8 条）。
 
 ---
 
@@ -175,7 +176,7 @@
   - 可以写“0.7.0-alpha.1 的源码修复已完成，安装包尚未构建”。这句话要等作者推送源码之后才能写，见阶段 1。
 - 0.7.0 的 Full 包可用之后：按 `site.json` 的现有结构新增 release 条目，并按 2.5 节更新安装说明和常见问题。
 
-### 2.9 修复轮的界面与行为变化（A16；设计规格第 11 节，FX1–FX7）
+### 2.9 修复轮的界面与行为变化（A16、A18；设计规格第 11 节，FX1–FX8）
 
 以下都是 0.7.0-alpha.1 本地分支上的变化，0.6.0 rc1 中**没有**。网站只在阶段 2（安装包可用）之后写进安装、使用说明和四类用户步骤；阶段 1 最多在“新版本有哪些变化”中概括一句。英文字符串照抄应用界面（`app/`）。
 
@@ -190,9 +191,10 @@
 | Modules 页 | 常驻 `Disabled and quarantined` 区（停用的模块与扩展、隔离的条目），每项 `Enable`、`Rescan`、`Remove`（Remove 先确认；只是移到 `modules/disabled-manifests/removed/`，不删除；被 Study 或 Run 引用时拒绝）；页头全局 `Rescan modules`；Enable 失败时显示本次扫描的错误 | M-D4、F-D3 |
 | 预检（原地改模块源码） | 琥珀色提示 `Module {id} source changed since install ({old8}… → {new8}…). Results will record the new source hash.`；比较页显示模块方法已改变 | M-D2，A16-4 |
 | 成本 | VoLL 默认 17,000 £/MWh（参数 `market.voll_gbp_per_mwh`）；有记录的切负荷时运营成本相应增加 | A16-5 |
-| 修正口径的 Study 迁移 | 默认 PSM 升到 6.3.0（日前进口、VoLL），0.6.0 及修复轮之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13） | A16-2、A16-5 |
+| 修正口径的 Study 迁移 | 默认 PSM 升到 6.4.0（6.2.0 VoLL、6.3.0 日前进口、6.4.0 核电开局在运），0.6.0 及 FX8 之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13）；界面与 6.3.0 时相同，只是升级内容多了一条 correction | A16-2、A16-5、A18 |
+| Run 结果页的 advisory 列表（论文复现口径与旧 Run） | 没有应用 A18 的默认 PSM Run（所有论文复现口径 Run，以及 FX8 之前的修正口径 Run）多一条 high 级 advisory，标题照抄：`Nuclear started the year off and paid its start-up cost to enter`。论文复现口径 Run 和 0.6.0 的旧 Run 原来已有其他 high 级 advisory，所以它们的 `needs_review` 不变；只缺这一条的修正口径 Run（本分支上 FX8 之前跑的，0.6.0 用户手里没有）会因此变为 `needs_review`。结果是否在结果页发布不受影响（Q14 只看 raw invariants）。没有核电的数据包（如 VALUE 101）也会列出这一条，因为它按模块而不是按数据包判断 | A18、A15 |
 
-**注意**：`CHANGELOG.md` 已有 VoLL（A16-5）、日前进口（A16-2）、储能报价账本（M-D1）和 GBP1 public2（FX7）各节；但 FX1–FX3 的界面变化（上表前八行中除数据角色以外的各项）**还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md`**。网站文案在阶段 2 之前须等这两份文档补齐（第 7 节第 7 条），在那之前只能以设计规格第 11 节和 `docs/dev/p0-reports/FX3-UI-batch.md` 为准，而这两份是内部文档，不得上传。
+**注意**：`CHANGELOG.md` 已有 VoLL（A16-5）、日前进口（A16-2）、储能报价账本（M-D1）、GBP1 public2（FX7）和核电开局在运（FX8，“Nuclear in service at the start of the year”）各节；但 FX1–FX3 的界面变化（上表前八行中除数据角色以外的各项）**还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md`**。网站文案在阶段 2 之前须等这两份文档补齐（第 7 节第 7 条），在那之前只能以设计规格第 11 节和 `docs/dev/p0-reports/FX3-UI-batch.md` 为准，而这两份是内部文档，不得上传。
 
 ---
 
