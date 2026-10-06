@@ -40,8 +40,11 @@ behaviour, frozen), the default profile `value-corrected` runs
 * The start-up adder is the thesis offer adder (`startup_cost` per MWh of a
   gas, biomass or nuclear unit that did not run in the previous period),
   reported apart as `startup_adder_resource`.
-* VoLL: the doctoral rule set keeps the thesis constant 8000 GBP/MWh; the
-  corrected rule set reads `market.voll_gbp_per_mwh` (default 10000 GBP/MWh).
+* VoLL (decision A16-5, see `fx5_voll_17000.md`): 17000 GBP/MWh in both
+  profiles. The doctoral rule set uses the constant 17000 GBP/MWh (the thesis
+  constant 8000 was replaced by the universal accounting correction
+  `fx5.voll-17000`); the corrected rule set reads `market.voll_gbp_per_mwh`
+  (default 17000 GBP/MWh; 10000 before A16-5).
   Unserved energy is the recorded blackout (the headline keeps it; hidden
   shortfalls are reported by the stress-event account, appendix P0-6 Q4).
 * Storage bid payments are settlement transfers and already contain the cycle

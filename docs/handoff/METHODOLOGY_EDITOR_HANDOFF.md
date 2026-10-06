@@ -188,7 +188,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 - 出清前把 VRE 分流去电解；储能费跨期结转；
 - 天气 v1 时钟，没有损耗；核电和径流水电 100% 可用；
 - 旧读法（无表头首行、短序列时钟）；
-- VoLL 8000 £/MWh；径流水电兼容资本留在头条；
+- 径流水电兼容资本留在头条（VoLL 原为 8000 £/MWh，A16-5 起两个口径都是 17,000，属于只进成本账的通用修正 `fx5.voll-17000`）；
 - **核电路径依赖（A15）**，见第 4.5 节 N-7。
 
 ### 3.3 修正总表
@@ -616,7 +616,7 @@ $$
 - 第 207/206 行：
   - 旧：“Zonal constraint expenditure is attributed through the difference between zonal and copperplate operation …”
   - 新：网络约束成本 = 分区解 − 无网络反事实。两者是同一个 LP，去掉网络（单节点），使用同一张逐期单价表（C22，见第 7 章 T-4）。
-- 第 209/208 行，可靠性费用：补一句：默认 PSM 的物理运营成本含“记录的切负荷 × VoLL”，论文复现口径的 VoLL 为 8000，修正口径为 `market.voll_gbp_per_mwh`（默认 10000）；在网络成本比较中，两个情形都按 VoLL 计入缺电。
+- 第 209/208 行，可靠性费用：补一句：默认 PSM 的物理运营成本含“记录的切负荷 × VoLL”，两个口径的 VoLL 都是 17,000 £/MWh（A16-5）：论文复现口径为常数 17,000（论文代码原为 8000），修正口径为 `market.voll_gbp_per_mwh`（默认 17,000，原为 10000）；在网络成本比较中，两个情形都按 VoLL 计入缺电。
 
 **K-15 第 222–224/221–223 行，“Data and implementation”**
 - 补 `agent_cashflow.py`、`investment_accounts.py`、`storage_headroom.py`、`cost_ledger.py`（v2）、`network_method_rules.py`。
@@ -771,7 +771,7 @@ $$
   - \(c_i\) 不乘 bid multiplier。
   - 启动加价单列为 `startup_adder_resource`。
   - \(B_t\) 是**记录的**切负荷。stress 缺口不进头条，单独报告。
-  - \(V\)：论文复现口径为 8000；修正口径为 `market.voll_gbp_per_mwh`，默认 10000。
+  - \(V\)：17,000 £/MWh（A16-5）。论文复现口径为常数 17,000（论文代码原为 8000）；修正口径为 `market.voll_gbp_per_mwh`，默认 17,000（原为 10000）。
   - \(W^{\mathrm{cyc}}\) 是储能成本模块报告的当年循环折旧。
   - 储能报价支付（已含循环损耗）作为结算转移单列（`market_settlement_components_gbp`）。修复前它被计入运营成本，循环损耗被重复计入。
 
@@ -826,8 +826,8 @@ $$
 **R-4 第 211/209 行，VoLL**
 - 旧：“unserved energy valued at £8,000/MWh … VoLL supplied by the run configuration”。
 - 新：与 N-12 对齐：
-  - 论文复现规则集为 8000；
-  - 修正口径为 `market.voll_gbp_per_mwh`（默认 10000）；
+  - 论文复现规则集为常数 17,000（A16-5；论文代码原为 8000）；
+  - 修正口径为 `market.voll_gbp_per_mwh`（默认 17,000；原为 10000）；
   - 分区为 17,000；
   - 完全预见默认 10,000。
 
@@ -978,7 +978,7 @@ $$
 | V-1 | 第 3 行 | “edition 0.3” 改为 “edition 0.4” |
 | V-2 | §2（第 24–38 行）之后 | 新增一小节 “Methodology profiles”，内容为第 4.1 节 I-1 的精简版：两个口径、通用修正与口径受控修正、Q14、方法身份 |
 | V-3 | §3 第 42 行 | 把 “The built-in PSM is `value-staged-bid-at-cost-psm`” 改为：默认 PSM 是 `value-bid-at-cost-psm`（两套规则集）；`value-staged-bid-at-cost-psm` 是网络与分区用的分阶段变体。第 48–55 行合同表的 “Configurable parameters” 补上 VoLL 与 dec multiplier |
-| V-4 | §4 第 65–71 行 | 默认 PSM 的 VoLL：论文复现规则集 8000，修正口径为参数（默认 10000）。新增 stress event 一段（A2，第 4.5 节 N-8/N-13）。保留 “£17,000/MWh” |
+| V-4 | §4 第 65–71 行 | 默认 PSM 的 VoLL：两个口径都是 17,000（A16-5；论文复现规则集为常数，修正口径为参数，默认 17,000）。新增 stress event 一段（A2，第 4.5 节 N-8/N-13）。保留 “£17,000/MWh” |
 | V-5 | §5 第 77–97 行 | 净头寸（修正口径）与 DEV-STO-01（论文复现口径）；储能只用盈余充电（S7）；DEV-BAL-03 年末存量 |
 | V-6 | §6 第 99–133 行 | 修正口径的默认 PSM 只报循环折旧，持有回收只用于充足性诊断；A[y] 中的 FOM 只用于报价的年成本，成本账中是备忘项（A7）；staged dwell 披露（P5-15）。保留 “dynamic annual-average” 与 “zero floor reproduces the published thesis-exact rule” |
 | V-7 | §7 第 135–145 行 | 修正口径的储能余量（剩余盈余）与功率电池池；论文复现口径余量为 0（K-9） |
@@ -1139,7 +1139,7 @@ for cid in ids:
    - 损耗系数 0.90307、0.814968、0.83；
    - 核电五站负荷率、退役月份与第 4,320 期；
    - 水电 0.3487 与 12 个形状值；
-   - VoLL 8000 / 10000 / 17000；
+   - VoLL 17,000（A16-5；8000 和 10000 只作为“原值”出现）；
    - 核电下调溢价 100；
    - 类别权重 0 / 0.5 / 2 / 3 / 4；
    - 舍入吸收 \(10^{-9}\)，\(\tau_t\) 的三个数；

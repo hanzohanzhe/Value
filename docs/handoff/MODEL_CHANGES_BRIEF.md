@@ -31,7 +31,7 @@
 | U7 | **缺电 stress 事件（A2）**：在声明的能量平衡边界上，逐期记录缺口 `shortfall_mwh` 和 stress 标志，按年把连续时段分组成事件；能量平衡账把缺口记作“缺电量”，使账目闭合。run status、摘要和 replay 窗口公开 `stress_periods`、`shortfall_mwh`，新增全年事件列表。**调度不变** | P3-01：日前满足不了预测时，内核按 forecast−real 削减，缺电被记为 0，用户看不到 | P3-01；A2；`p04.surplus-routing`、`p04.surplus-node-boundary` | `gridform_core/energy_balance_contract.py`、`energy_balance_oracle.py`、`market_ledger.py`、`data/contracts/market-ledger-energy-balance-v1.schema.sql`（表 `balance_boundary_period`、`stress_event`）、内核中的只读钩子 | 两个口径都是 0 个事件、0 MWh。35aadb3 的账本没有声明边界，只能给出上下界（D4 两年为 0 到约 8 万 MWh，C6 为 0 到约 4.8 万 MWh），现在是精确的 0 | D1–D4 只有 accounting 列；D5：157 个事件、890 个时段、缺口 300,855 MWh |
 | U8 | 能量平衡按声明边界计算：论文口径为 `default_psm_surplus_node_v1`，修正口径为 `native_corrected_full_node_v1`；W_in 作为 `non_vre_spill` 单列；兼容调整只吸收数值噪声；逐资产储能审计 | 原兼容调整没有上限，把原始残差强制归零，所以账本、校验器和 parity 只看到 0；储能充电没有入账 | P7-10/P3-02、P3-14/P5-11；Q7；`p04.surplus-node-boundary`、`p04.storage-energy-audit` | 同上，另有 `builtin/scheme_c_1000twh/native_balance_audit.py` | 原始残差与兼容调整两年都是 0（两个口径） | D1–D4 accounting 36–90 列 |
 | U9 | **验证与发布规则**：stage parity v3、scientific validation v2 都由实际执行的检查重新计算；新增三类 gate，即 run 不变量、能量平衡账、储能吞吐不变量（额定功率、不同期充放、0≤SoC≤E、审计恒等式）。论文口径用已声明偏差解读 gate（DEV-BAL-04、DEV-STO-01），**年度结果只在原始不变量全部通过时才在结果页发布**（Q14），否则只在 Inspect 和导出中提供。修正口径只要有一个 gate 失败，就阻止发布年度经济结果（`GF_VALIDATION_GATE_FAILED`） | P7-01：原生路径的 parity 是硬编码的 passed；P7-10 同上 | P7-01、P7-10；Q14；`p04.validation-v2`、`p04.validation-gate`；`gridform_core/data/methodology/declared_deviations.json` | `scientific_validation.py`、`parity.py`、`run_invariants.py`、`declared_deviations.py`、`result_advisories.py` | 论文口径（D4）：由 v1 的 “passed” 变为 `reproduction_with_declared_deviations`；原始不变量 failed（储能 DEV-STO-01），**年度结果在结果页扣发**。修正口径（C5、C6）：passed，正常发布 | D1–D4 accounting 55–249 列 |
-| U10 | **物理运营成本**：运营成本 = Σ 运行成本 × 出力（不乘 bid multiplier）+ 进口 + 启动加价 + 记录的缺电 × VoLL + 储能循环磨损。储能报价支付改为结算转移单列。VoLL 在论文口径为 8000 £/MWh，修正口径取 `market.voll_gbp_per_mwh`（默认 10000） | 原运营成本把储能报价支付（含 holding 资本回收）算进去，又加一次循环磨损，重复计入；而且不含 VoLL | P5-06；`p06.physical-operating-cost`；value-bid-at-cost-psm 6.0.0 | `scheme_c_native_psm.py`、`runtime_compat/modular_simulation_model.py`、`native_realisation.py` | 论文口径：0 £。修正口径（dynamic 储能）：−19 £，因为旧规则下电池几乎不放电 | D1–D4 accounting 26–35 列；D5：运营成本 −25.28 百万英镑 |
+| U10 | **物理运营成本**：运营成本 = Σ 运行成本 × 出力（不乘 bid multiplier）+ 进口 + 启动加价 + 记录的缺电 × VoLL + 储能循环磨损。储能报价支付改为结算转移单列。VoLL 两个口径都是 17,000 £/MWh（A16-5，`fx5.voll-17000`）：论文口径为常数（论文代码原为 8000），修正口径取 `market.voll_gbp_per_mwh`（默认 17,000，原为 10000） | 原运营成本把储能报价支付（含 holding 资本回收）算进去，又加一次循环磨损，重复计入；而且不含 VoLL | P5-06；`p06.physical-operating-cost`；value-bid-at-cost-psm 6.0.0 | `scheme_c_native_psm.py`、`runtime_compat/modular_simulation_model.py`、`native_realisation.py` | 论文口径：0 £。修正口径（dynamic 储能）：−19 £，因为旧规则下电池几乎不放电 | D1–D4 accounting 26–35 列；D5：运营成本 −25.28 百万英镑 |
 | U11 | **成本账 v2（A7）**：风光储的固定 OPEX 视为已含在平准化 CAPEX 中，移出头条，作为 memo 行列出。完全预见 PSM 的火电 FOM 改读 `annual_fixed_opex_gbp`（原来读的键从未被写入，FOM 恒为 0） | 避免在平准化 CAPEX 之外重复计入风光储 FOM | A7；`p07.cost-ledger-v2` | `gridform_core/cost_ledger.py`、`asset_economics.py`、`application.py`、`backend/model_runner.py`、`perfect_foresight_psm.py` | 两个口径每年 −66,000 £（101 包的储能 FOM 转为 memo） | D1/D2/D4 accounting 20 列，D3 4 列；D5：−56.66 百万英镑 |
 
 ### 2.3 一行说明：软件、安全与界面修正
@@ -68,7 +68,7 @@ P0-1（本地 API 安全边界）、P0-2（外部模块隔离）、P0-3（Run �
 | C13 | 出清前不再从 VRE 分流去电解 | 每个 VRE 代理最多 1 MW 分去电解，容量不足时这部分能量消失 | P3-08；`p06.no-vre-pre-clearing-skim` |
 | C14 | dynamic 储能只报循环折旧：电池报 CAPEX/(E·η_dis·N_max)，抽蓄和氢储能报 0，最老批次先用。holding 回收只用于投资充足性检验 | 报价随存放时长递增，加上 LIFO，电量积压卖不出，1C 电池实际上从不调度 | P5-04；Q8；`p06.storage-bid-cycle-only`；dynamic-annual-storage-cost 2.0.0 |
 | C15 | 统一边际价结算：每个阶段所有被接受的供给（含储能、进口）都按该阶段统一边际价结算；充电按当期电价计成本，用弃电充电成本为 0。报价只决定调度顺序 | 储能按自身最高报价 `max_bat_price` 结算 | P5-05；A8(2)；`p06.storage-uniform-price-settlement` |
-| C16 | VoLL 取参数 `market.voll_gbp_per_mwh`（默认 10000） | 论文常数 8000 | `p06.voll-chronology-parameter` |
+| C16 | VoLL 取参数 `market.voll_gbp_per_mwh`（默认 17,000，A16-5） | 常数 17,000（A16-5 前为论文常数 8000） | `p06.voll-chronology-parameter` |
 
 - **主要文件**：`builtin/scheme_c_1000twh/native_corrected.py`（新）、`native_market_rules.py`（新）、`runtime_compat/storage_cost.py`、`runtime_compat/modular_simulation_model.py`（按规则字段分支）、`scheme_c_native_psm.py`、`gridform_core/storage_recovery.py`、`corrections/p06.json`。
 - **列语义随之改变（C20）**：修正口径的 `vre_accepted` 是 VRE 毛出力，`curtailed` = 可用 − 毛出力（真正的弃风弃光），`excess` 是非 VRE spill。所以两个口径的 VRE 与弃电列不能直接相比。
@@ -117,7 +117,7 @@ VALUE 101 two_year（copperplate 默认，无网络）：0。VALUE 101 网络教
 - 储能报价随存放时长递增并按 LIFO 出售，1C 电池几乎不调度（P5-04）；储能按自身最高报价 `max_bat_price` 结算（P5-05）。
 - 同一时段可以多次充放，单期放电可达 2P（P5-03，已声明偏差 DEV-STO-01）；平衡阶段重复计入核电盈余（DEV-BAL-04）；削减市场先弃风后降燃气（P3-03）；出清前 VRE 分流电解（P3-08）；储能费跨期残留；每年新建电池、年末 SoC 丢弃（DEV-BAL-03）。
 - 天气 v1 时间约定（P6-06）；没有风光损耗（P6-08）；核电和径流水电全年 100% 可用（P5-09、P5-10、P6-10）。核电一旦被接受，就满功率运行到年底（路径依赖，A15：GBP1 上 2.73 TWh 核电在修复后消失，就来自这一点）。
-- 旧的读法：无表头首行（P6-05）、半小时与小时时钟（P6-07）；VoLL 8000 £/MWh；径流水电兼容资本留在头条（P4-03）。
+- 旧的读法：无表头首行（P6-05）、半小时与小时时钟（P6-07）；径流水电兼容资本留在头条（P4-03）。VoLL 原为 8000 £/MWh，A16-5 起两个口径都是 17,000（只进成本账的通用修正 `fx5.voll-17000`）。
 - 参考配置：legacy 储能电价，加 doctoral 碳因子情景（碳账不给物理 tCO2）（Q3）。只允许论文谱系模块和论文期数据包；启用了外部代码时拒绝运行。
 
 ## 5 需要你审核的数据
@@ -148,7 +148,7 @@ VALUE 101 two_year（copperplate 默认，无网络）：0。VALUE 101 网络教
    - AGR 默认值 0.727；
    - 新建 PWR/EPR 用 0.801（取 Sizewell B 均值）。
 5. **施工中按计划附表采用、DECISIONS 中没有逐条列出的数值**，建议过目：
-   - 修正口径 VoLL 默认 10000 £/MWh（论文口径 8000）；
+   - VoLL：作者已在 A16-5 定为 17,000 £/MWh，两个口径相同（原为修正口径默认 10000、论文口径 8000）；
    - 修正口径下调次序中核电的 dec premium 100 £/MWh；
    - 启动加价单列；
    - A4 的舍入吸收：相对 1e-9 以内的净收入按 0 处理；
