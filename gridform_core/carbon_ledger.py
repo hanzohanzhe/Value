@@ -338,7 +338,9 @@ def build_operational_carbon_ledger(
         "total_carbon_emissions_tco2e": total,
         "components_tco2e": {
             name: sum(float(row.emissions_tco2e or 0.0) for row in lines if row.component == name)
-            for name in {row.component for row in lines}
+            # F2-N4: sorted, so the key order does not follow the string hash
+            # seed of the process and identical runs write identical bytes.
+            for name in sorted({row.component for row in lines})
         },
         "storage_carried_carbon_status": storage_status,
         "ending_stored_carbon_inventory_tco2e": ending_inventory,

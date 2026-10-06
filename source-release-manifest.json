@@ -7436,9 +7436,9 @@
     },
     {
       "path": "gridform_core/carbon_ledger.py",
-      "sha256": "83c2dd62f069602c68b3e44897d31b5479a61bcab875439bc73db57318bf09a0",
-      "bytes": 22106,
-      "transform": "byte copy"
+      "sha256": "8c41865daa3ec36dc8ba5af255da4649870f520c22419b2fc2140ccfb8c532b6",
+      "bytes": 22270,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/catalog.py",
@@ -11253,9 +11253,9 @@
     },
     {
       "path": "tests/test_carbon_ledger.py",
-      "sha256": "b7d11efb32872379d92c98effa60293bdc1ab63f4f105e7fff05cd0b14559921",
-      "bytes": 6952,
-      "transform": "byte copy"
+      "sha256": "aff66d7a5cf39441efe7350756016214ea710eba122816c35cf582f838dbec7e",
+      "bytes": 7225,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_catalog_lazy.py",
