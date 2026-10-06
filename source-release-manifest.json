@@ -3853,8 +3853,8 @@
     },
     {
       "path": "backend/extension_results.py",
-      "sha256": "a71f9f4a414a9db1e3187e7c4927cb840a6a33ad4e2af8bcdc55e7fb228e4270",
-      "bytes": 16886,
+      "sha256": "4978256ac095b36202a4ca000738aa0d4542659ddf9e17f8eeff18168c5a9fa1",
+      "bytes": 22865,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11504,8 +11504,8 @@
     },
     {
       "path": "tests/test_extension_results.py",
-      "sha256": "2799282d337922e483be8634421fd39f2bcfef8f1ac69ccd8469ffcfe5a1b2ea",
-      "bytes": 10252,
+      "sha256": "a5e5ad88f1e3119ab7832ab4fb0c07873e6154f67d31a0009418ac2ede7ba33b",
+      "bytes": 12962,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
