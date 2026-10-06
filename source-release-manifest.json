@@ -3457,8 +3457,8 @@
     },
     {
       "path": "app/features/results/comparisonReview.ts",
-      "sha256": "def78c94c2d3effd84111f91a1edd3359e54efb82bc63164b27e70222240277a",
-      "bytes": 4084,
+      "sha256": "d3ebeee112ed328788a90a2b05ade70201fda9bdfa3d7907da1754bbc456db59",
+      "bytes": 4776,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10856,8 +10856,8 @@
     },
     {
       "path": "tests/frontend/unit/comparison-review.test.mjs",
-      "sha256": "d5fee324f43d524a46669c66b0c3d73cf67ac67ee9a3b0508d68eeed7815de2a",
-      "bytes": 3832,
+      "sha256": "9bc2966391acf87a8c65b364e80070a195a911ba6ba973e4ec38b088cf63d66d",
+      "bytes": 4542,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

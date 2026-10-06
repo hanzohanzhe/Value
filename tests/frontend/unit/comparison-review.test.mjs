@@ -44,3 +44,13 @@ test("without backend details an object dimension says the values differ; review
   assert.equal(dimensionPathsText({ data: { label: "data inputs", paths: [], more_paths: 0 } }, "data"), null);
   assert.equal(dimensionPathsText(undefined, "method"), null);
 });
+
+test("a recorded module selection reads as module id and version", () => {
+  const [row] = changedDimensionRows({ "module.storage_cost": [
+    { contract_version: "value.storage-cost/v1", module_id: "dynamic-annual-storage-cost", module_version: "2.0.0", slot: "storage_cost" },
+    { contract_version: "value.storage-cost/v1", module_id: "value-legacy-storage-tariff", module_version: "1.0.0", slot: "storage_cost" },
+  ] }, {});
+  assert.equal(row.detail, "dynamic-annual-storage-cost 2.0.0 → value-legacy-storage-tariff 1.0.0");
+  assert.match(row.raw, /"contract_version"/);
+  assert.equal(changedDimensionRows({ "module.x": [{ other: 1 }, { other: 2 }] }, {})[0].detail, "recorded values differ");
+});

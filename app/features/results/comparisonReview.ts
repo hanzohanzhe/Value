@@ -63,10 +63,20 @@ export function changedDimensionRows(changed: Record<string, unknown[]>, details
     if (identity && identity.paths.length) return { key, label: identity.label, detail: `differs at ${pathsText(identity)}`, raw };
     if (key.startsWith("module.")) {
       const slot = key.slice("module.".length).replaceAll("_", " ");
-      return { key, label: `module · ${slot}`, detail: scalar ? values.map((value) => String(value ?? "not recorded")).join(" → ") : "recorded values differ", raw };
+      const selections = values.map(moduleSelectionText);
+      const named = scalar || selections.every((value) => value !== null);
+      return { key, label: `module · ${slot}`, detail: named ? values.map((value, index) => selections[index] ?? String(value ?? "not recorded")).join(" → ") : "recorded values differ", raw };
     }
     return { key, label: identity?.label ?? key.replaceAll("_", " "), detail: scalar ? values.map((value) => String(value ?? "not recorded")).join(" → ") : "recorded values differ", raw };
   });
+}
+
+/** A recorded module selection ({module_id, module_version, ...}) as "id version"; null for anything else. */
+function moduleSelectionText(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as { module_id?: unknown; module_version?: unknown };
+  if (typeof record.module_id !== "string" || !record.module_id) return null;
+  return typeof record.module_version === "string" && record.module_version ? `${record.module_id} ${record.module_version}` : record.module_id;
 }
 
 /** The differing paths of one review dimension, or null when the backend names none. */
