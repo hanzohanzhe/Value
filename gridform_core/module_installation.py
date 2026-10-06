@@ -110,6 +110,36 @@ def installed_source_changes(
     return sorted(changes, key=lambda row: str(row["module_id"]))
 
 
+def disabled_selections(
+    registry: object, module_ids: object = (), extension_ids: object = (), *, modules_root: Path | None = None,
+) -> list[dict[str, object]]:
+    """Selected local modules/extensions that are installed but disabled (M2-N2).
+
+    A disabled entry is not registered, so the selection check alone says
+    "Module is not registered"; this names the cause.  Reads installation
+    records only; never imports installed code.
+    """
+
+    from .extension_bundle import list_extension_installations
+
+    root = (modules_root or external_modules_root()).resolve()
+    registered_modules = set(getattr(registry, "manifests", lambda: {})())
+    registered_extensions = set(getattr(registry, "extension_manifests", lambda: {})())
+    found: list[dict[str, object]] = []
+    for kind, wanted, registered, records, key in (
+        ("module", module_ids, registered_modules, list_module_installations(root), "module_id"),
+        ("extension", extension_ids, registered_extensions, list_extension_installations(root), "extension_id"),
+    ):
+        for entry_id in dict.fromkeys(str(item) for item in (wanted or ()) if item):
+            if entry_id in registered:
+                continue
+            rows = [row for row in records if str(row.get(key) or "") == entry_id]
+            if rows and not any(row.get("enabled") for row in rows):
+                versions = sorted({str(row.get("module_version" if kind == "module" else "version") or "") for row in rows})
+                found.append({"kind": kind, "id": entry_id, "versions": [item for item in versions if item]})
+    return found
+
+
 def _entry_source_exists(source_root: Path, implementation: str) -> bool:
     module_name = implementation.split(":", 1)[0]
     relative = Path(*module_name.split("."))

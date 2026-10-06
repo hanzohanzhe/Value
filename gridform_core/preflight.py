@@ -107,18 +107,26 @@ def _quota_usage(runs_root: Path | None, run_id: str | None) -> QuotaUsage:
     return quota_usage(Path(runs_root), exclude_run=run_id)
 
 
-def _runtime_observations(runs_root: Path | None, *, mode: str) -> list[float]:
+# F2-N2 (four-role report): the former 0.35 s per period estimated a
+# 35,040-period VALUE 101 run at 3.4 hours; it took about 3 minutes.  Measured
+# on the reference machine: VALUE 101 two-year about 0.005 s per period, GBP1
+# public1 one year about 0.02 s (F3 report, 351 s); 0.03 stays conservative.
+DEFAULT_SECONDS_PER_PERIOD = 0.03
+ANNUAL_RUNTIME_PERIODS = 17_520
+
+
+def _runtime_observations(runs_root: Path | None, *, mode: str | None, minimum_periods: int = 1) -> list[float]:
     values: list[float] = []
     if runs_root is None or not runs_root.is_dir():
         return values
     for status_path in runs_root.glob("*/status.json"):
         try:
             status = json.loads(status_path.read_text(encoding="utf-8"))
-            if status.get("status") != "completed" or status.get("mode") != mode:
+            if status.get("status") != "completed" or (mode is not None and status.get("mode") != mode):
                 continue
             policy = status.get("run_policy") or {}
             periods = int(policy.get("total_periods") or 0)
-            if periods <= 0:
+            if periods <= 0 or periods < minimum_periods:
                 continue
             started = datetime.fromisoformat(str(status["started_at"]))
             finished = datetime.fromisoformat(str(status["finished_at"]))
@@ -232,12 +240,21 @@ def _estimates(
         + periods_per_year * max(1, operating_assets) * (80 if trace == "full" else 48)
     )
     observations = _runtime_observations(runs_root, mode=str(policy["mode"]))
+    if not observations and periods >= ANNUAL_RUNTIME_PERIODS:
+        # F2-N2: a full-year scope without a same-mode run uses the per-period
+        # time of any completed run of at least a year (the per-period cost of
+        # a two-year and a full run is the same; short runs are dominated by
+        # their fixed start-up time and are not used).
+        observations = _runtime_observations(runs_root, mode=None, minimum_periods=ANNUAL_RUNTIME_PERIODS)
     if observations:
         seconds_per_period = sum(observations) / len(observations)
         basis = f"mean of {len(observations)} comparable completed local run(s)"
     else:
-        seconds_per_period = 0.35
-        basis = "conservative initial heuristic; no comparable completed local run"
+        seconds_per_period = DEFAULT_SECONDS_PER_PERIOD
+        basis = (
+            "initial heuristic of 0.03 s per period (measured: VALUE 101 two-year run about 0.005 s, "
+            "GBP1 one-year run about 0.02 s); no comparable completed local run"
+        )
     return {
         "label": "estimate_not_guarantee",
         "periods": periods,
@@ -362,6 +379,22 @@ def run_preflight(
             + " quarantined; this Study does not use them.",
             "Open Modules to disable or repair them; the run is unaffected.",
         ))
+    # M2-N2: a selected local module or extension that is installed but
+    # disabled is named as such (the selection check below would only say
+    # "not registered").
+    from .module_installation import disabled_selections
+
+    disabled = disabled_selections(registry, selected.values(), selected_extensions)
+    checks["module_disabled"] = disabled
+    if disabled:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_DISABLED", "error", "modules",
+            "The Study selects disabled local code: " + ", ".join(
+                f"{row['kind']} {row['id']}" + (f" {', '.join(row['versions'])}" if row["versions"] else "")
+                for row in disabled
+            ) + ".",
+            "Open Modules > Disabled and quarantined and Enable it, or select another module in the Study.",
+        ))
     # A16-4 (M-D2, spec 11.7): an installed module whose source was edited in
     # place is accepted and recorded; preflight says so before the run.
     from .module_installation import installed_source_changes
@@ -416,6 +449,25 @@ def run_preflight(
             "GF_PREFLIGHT_PYTHON_VERSION", "error", "environment",
             f"The selected VALUE native runtime is not validated on Python {sys.version.split()[0]}.",
             str(runtime_capability["corrective_action"]),
+        ))
+    # M-D6: the run entry verifies the sealed runtime kernel and refuses an
+    # unregistered edit (GF_COMPATIBILITY_001) only after the inputs are
+    # frozen; preflight runs the same uncached check so readiness says so.
+    from .builtin.scheme_c_1000twh.runtime_overlay import inspect_runtime_overlay
+
+    try:
+        overlay_errors = [str(item) for item in inspect_runtime_overlay()["errors"]]
+    except Exception as exc:  # a missing or unreadable manifest refuses the run as well
+        overlay_errors = [f"{type(exc).__name__}: {exc}"]
+    checks["runtime_overlay"] = {"passed": not overlay_errors, "errors": overlay_errors[:10]}
+    if overlay_errors:
+        issues.append(_issue(
+            "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED", "error", "environment",
+            "The runtime kernel differs from its sealed manifest (RUNTIME_OVERLAY.json); a run would stop with "
+            "GF_COMPATIBILITY_001 after freezing its inputs: " + "; ".join(overlay_errors[:3]),
+            "Restore the changed kernel files, or record the edit as a method change: raise the module version, "
+            "append docs/release/VERSION_LEDGER.json and run scripts/seal_runtime_overlay.py --correction <id> "
+            "(MODULE_DEVELOPER_101, built-in method upgrades).",
         ))
     missing_imports = list(runtime_capability["missing_imports"])
     checks["scientific_dependencies"] = {"passed": not missing_imports, "missing": missing_imports}
