@@ -3192,8 +3192,8 @@
     },
     {
       "path": "app/features/market/market-replay.css",
-      "sha256": "fec31380f79a787dfcf4053eb6d4f32f551c04871dac6a4ce58d26a6a2631d7e",
-      "bytes": 1599,
+      "sha256": "74a0ec00f7dc09ef1760278f6839095985f1246e336c55a2aeefcee06e1691cb",
+      "bytes": 2076,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3204,8 +3204,8 @@
     },
     {
       "path": "app/features/market/vreView.ts",
-      "sha256": "0bbaa16534fa5800e0f7d84b1316dac48675fb9496135a1669768ccbd6a5504d",
-      "bytes": 5231,
+      "sha256": "48f7a1fa2fa7d87e06d0a382c2ae8b851213e0002551a8b19746e69449bccdde",
+      "bytes": 6705,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3660,8 +3660,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "abd57565c77e4dedadd008ab654fc30e424922930357b8bd0cb6e3e35c5be155",
-      "bytes": 163552,
+      "sha256": "fdc12ccf1ad0d749ae5e03f7fe13df753ff51882c47e7f20a25c6e8c9b13cbbb",
+      "bytes": 163923,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3810,8 +3810,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "4b8ab87cd2696ad6a06fa3f61de6a128888a51d9ec1daa571be8bbb0ec2028dc",
-      "bytes": 204514,
+      "sha256": "d4bd20a64222399e68911ee88c3160f1ec105ce54798e6d1c97a7340afa66383",
+      "bytes": 204516,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10567,8 +10567,8 @@
     },
     {
       "path": "tests/frontend/unit/vre-view.test.mjs",
-      "sha256": "73dff0d014898fb9bb760376b97dbc3b32d9a4c4554bbdad4d65fed1e5276468",
-      "bytes": 4094,
+      "sha256": "c1e255c54fcce3693dd93092a7361b467bbabe3aeb7c0024a73b09da68c6aa47",
+      "bytes": 5373,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

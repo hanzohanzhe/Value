@@ -65,7 +65,15 @@ export function kpiCoverageLine(year: CoverageYear, coverage?: ResultCoverage | 
   return vreYearCoverage(year, coverage).line;
 }
 
-export type VreEventGroup = { key: "unused_vre" | "excess_curtailment"; title: string; basisNote: string; events: VreEventStatistics | null };
+export type VreEventGroup = {
+  key: "unused_vre" | "excess_curtailment"; title: string; basisNote: string; events: VreEventStatistics | null;
+  /** Designer ruling 5: a group with no affected period says "No events recorded", never "Peak event 0 MWh". */
+  noEvents: boolean;
+};
+
+function hasNoEvents(events: VreEventStatistics | null | undefined): boolean {
+  return Boolean(events) && events!.affected_periods === 0;
+}
 
 /** Spec 4.5 / G1-08: unused VRE and excess + curtailment are two event groups, never merged. */
 export function vreEventGroups(year: VreYear): VreEventGroup[] {
@@ -73,12 +81,14 @@ export function vreEventGroups(year: VreYear): VreEventGroup[] {
     key: "unused_vre", title: "Unused VRE",
     basisNote: "Periods where available renewable energy exceeded accepted renewable dispatch.",
     events: year.unused_vre_events ?? null,
+    noEvents: hasNoEvents(year.unused_vre_events),
   }];
   if (year.excess_curtailment_events !== undefined) {
     groups.push({
       key: "excess_curtailment", title: "Excess + curtailment",
       basisNote: "Pre-balancing excess (may include nuclear or natural-flow hydro) plus balancing-stage curtailment; not all of it is VRE.",
       events: year.excess_curtailment_events,
+      noEvents: hasNoEvents(year.excess_curtailment_events),
     });
   }
   return groups;
@@ -97,4 +107,30 @@ export function seriesSegments(items: readonly Partial<DispatchBucket>[], key: S
   });
   if (current.length) segments.push(current);
   return segments.map((points) => points.join(" "));
+}
+
+export type SeriesShapes = {
+  /** Point lists of segments with two or more recorded values. */
+  lines: string[];
+  /** Designer ruling 4: an isolated value (missing on both sides, or a one-bucket view) is drawn as a dot, never as a zero-length line. */
+  dots: { x: number; y: number }[];
+};
+
+/** seriesSegments split into polylines and isolated dots. */
+export function seriesShapes(items: readonly Partial<DispatchBucket>[], key: SeriesKey, x: (index: number) => number, y: (value: number) => number): SeriesShapes {
+  const lines: string[] = [];
+  const dots: { x: number; y: number }[] = [];
+  let current: { x: number; y: number }[] = [];
+  const flush = () => {
+    if (current.length === 1) dots.push(current[0]);
+    else if (current.length > 1) lines.push(current.map((point) => `${point.x},${point.y}`).join(" "));
+    current = [];
+  };
+  items.forEach((item, index) => {
+    const value = item[key];
+    if (typeof value === "number" && Number.isFinite(value)) current.push({ x: x(index), y: y(value) });
+    else flush();
+  });
+  flush();
+  return { lines, dots };
 }

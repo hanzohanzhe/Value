@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { kpiCoverageLine, seriesSegments, vreEventGroups, vreKpis, vreYearCoverage } from "../../../app/features/market/vreView.ts";
+import { kpiCoverageLine, seriesSegments, seriesShapes, vreEventGroups, vreKpis, vreYearCoverage } from "../../../app/features/market/vreView.ts";
 import { payload } from "../helpers/fixtures.mjs";
 
 // P0-9 S8 (R3-21, G1-08; spec 4.1, 4.5).
@@ -56,4 +56,23 @@ test("a partial year of a cancelled annual Run reads 'Stopped · n%', not non-an
   const smoke = { annual_status: "non_annual", reason_code: "annual_evidence_withheld_for_nonannual_run", coverage_fraction: 0, coverage_percent: 0, years: [] };
   assert.equal(kpiCoverageLine({ year: 2025, period_count: 48, full_chronology: false }, smoke), "48 periods · non-annual");
   assert.equal(vreYearCoverage({ year: 2025, period_count: 48, full_chronology: false }, smoke).badge, "Non-annual run");
+});
+
+test("designer ruling 4: an isolated value and a one-bucket view are dots, not zero-length lines", () => {
+  const items = [{ vre_available_mwh: 1 }, { vre_available_mwh: null }, { vre_available_mwh: 3 }, { vre_available_mwh: null }, { vre_available_mwh: 5 }, { vre_available_mwh: 6 }];
+  const shapes = seriesShapes(items, "vre_available_mwh", (index) => index * 10, (value) => value);
+  assert.deepEqual(shapes.lines, ["40,5 50,6"]);
+  assert.deepEqual(shapes.dots, [{ x: 0, y: 1 }, { x: 20, y: 3 }]);
+  // the VALUE 101 daily view has one bucket: every recorded series is one dot
+  const day = payload("value-101-day.vre-timeline-daily").items;
+  assert.equal(day.length, 1);
+  const single = seriesShapes(day, "vre_available_mwh", () => 56, (value) => value);
+  assert.deepEqual([single.lines.length, single.dots.length], [0, 1]);
+});
+
+test("designer ruling 5: a group without events says so instead of a 0 MWh peak", () => {
+  const year = payload("toy-v7.vre-summary").years[0];
+  const quiet = { ...year, unused_vre_events: { ...year.unused_vre_events, affected_periods: 0, peak_event_mwh: 0, peak_event_timestamp: "2025-01-01T00:00" } };
+  const groups = vreEventGroups(quiet);
+  assert.deepEqual(groups.map((group) => group.noEvents), [true, false]);
 });

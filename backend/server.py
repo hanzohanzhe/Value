@@ -1244,6 +1244,7 @@ def run_result_coverage(root: Path, run: Mapping[str, Any]) -> dict[str, Any]:
     coverage["coverage_source"] = source
     return coverage
 
+
 def running_stage_text(run: Mapping[str, Any], completed_years: set[int]) -> str:
     """Spec 5 stage text of a running Run: the next declared year it computes,
     or, once every declared year is finished, that it is finishing outputs
