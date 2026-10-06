@@ -103,3 +103,32 @@
 | F-P04-3 | 2.3 状态条字段 | 新增的 gate `storage_invariant_status`（以及 `storage_invariants`、`validation_gate`、`declared_deviations`）目前不显示。production 口径下储能不变量失败会使 Scientific validation 变为 failed，但状态条上的 Energy balance 仍可能是 Passed | 规格没有储能不变量的字段和 Callout；不臆造 | 是（是否增加 `Storage limits` 字段，或让 Callout 1 覆盖 `validation_gate.status=failed`） |
 | F-P04-4 | 2.3 规则 1 只看 `energy_balance=failed` | production 口径的 gate 失败（任一 gate）时，后端把 `scientific_validation_status` 置为 failed、`annual_economics_eligible=false`，`results` 为空并写 `publication_blocked.reason_code=GF_VALIDATION_GATE_FAILED`；前端目前不读 `publication_blocked`，年度结果区只显示没有结果 | 计划 4.4 第 6 点“生产口径 gate 失败阻止年度结果发布”；规格只为 doctoral 的 withheld 写了文案（且文案专指 reproduction run），不能套用 | 是（corrected Run 被门控时的文案） |
 | F-P04-5 | 2.3 Callout 4 与决策 A2 | 决策 A2 下，能量平衡 gate 是“缺口记为缺电量”之后的账；单纯的缺电（stress）不再使 corrected Run 的 Energy balance 显示 Failed，只出现 Callout 4（不阻断）。原始边界残差的判定在 `energy_balance.raw_boundary_status` 中，前端没有显示 | 与规格中 Callout 1/4 的分工一致（stress 不阻断）；是否在 Inspect 中展示原始残差，由设计方决定 | 否（如需展示 raw 判定再补） |
+
+### 设计方裁决：F-P04-1…5、F-P09-5…7、F-P05A-1（2026-10-06，Claude）——在 M7「P0-9 收口」中实现
+
+- **F-P04-1：** `shortfall_basis='lower_bound'` 时，状态条和 Market replay 窗口卡都显示 `≥ 570.5 MWh`（数值前加 ≥）。悬停提示为：`Lower bound: this Run predates exact stress accounting (upper bound 1,015.5 MWh)`。`exact` 时不加限定。
+- **F-P04-2：** `reproduction_conformant` 显示为 teal `● Conformant`。悬停提示为：`The doctoral reproduction ledger closes. This does not certify the method as physically validated.`
+- **F-P04-3：** 不新增状态条字段。Callout 1 的触发条件推广为 `validation_gate.status = failed`（任一 gate，包括 storage limits）。
+  - 标题：`Validation gate failed: {gate names}`
+  - 正文逐条列出失败的 gate，每条一句话说明。
+  - 只有能量平衡失败时，沿用原有文案。
+- **F-P04-4：** corrected Run 被 `publication_blocked`（`GF_VALIDATION_GATE_FAILED`）时，年度结果区显示 danger Callout：
+  - 标题：`Annual results not published`
+  - 正文：`This Run failed {n} validation gate(s): {list}. Results are withheld until the cause is fixed. The full ledger remains available.`
+  - 动作：`Open in Inspect` · `Export ledger`
+
+  年度合计不显示。
+- **F-P04-5：** 原始边界残差只在 Inspect 的残差面板中显示：一张小表，列为 boundary、raw status、max residual、periods，不进入状态条。
+- **F-P09-5：** 批准（旧后端没有 coverage 时，标签降级为 `Coverage not recorded`，数值照常显示）。
+- **F-P09-6：** Withheld 的触发读取 `publication_blocked`：口径为 doctoral，且 `reason_code` 表示原始不变量未通过（以 X0/M4 实际实现的码为准，实现者在代码中查明后写入 reasonCodes 表）。不得臆造新字段。
+- **F-P09-7：** memo 行接 P0-7 实际输出的兼容资本字段，即成本账 v2 中单列的 `existing_stock_compatibility.annualised_capital`，或 P0-7 报告中的实际键名。文案为 `Memo: run-of-river hydro compatibility capital (excluded from headline)`。
+- **F-P05A-1：CSV 映射的 EUR/汇率输入**
+  1. 价格列映射行增加 `Currency` 下拉框（GBP | EUR），默认 GBP。
+  2. 选 EUR 后，同一行下方展开三个必填项：
+     - `EUR per GBP`：数字输入，> 0，保留 4 位小数；
+     - `FX basis`：下拉框，选项为 annual average / monthly average / fixed rate；
+     - `Price year`：整数，1990–2100。
+  3. 缺任一项或值不合法时，在字段下方显示 `GF_MAPPING_FX` 对应的错误文案，并禁用“预览”。
+  4. 预览表中，原值列和换算后的 £/MWh 列并排显示，表头注明 `converted at {rate} EUR/GBP ({basis}, {year})`。
+
+  沿用现有表单样式，新增元素遵守规格 1.3。
