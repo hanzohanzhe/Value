@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.2.0",
+      "current_version": "6.3.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -132,6 +132,16 @@
             "fx5.voll-17000"
           ],
           "reason": "Decision A16-5: VoLL is 17000 GBP/MWh in both profiles. The doctoral rule set values recorded unserved energy in the physical operating cost at the constant 17000 instead of the thesis constant 8000 (reliability_voll constant_17000; universal accounting correction, dispatch unchanged); the corrected rule set reads market.voll_gbp_per_mwh, whose registry default is now 17000 instead of 10000. Operating and system cost of years with recorded blackout change, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.2.0",
+          "to": "6.3.0",
+          "package": "FX6",
+          "correction_ids": [
+            "fx6.day-ahead-interconnector-imports"
+          ],
+          "reason": "Decision A16-2 (four-role finding S-D3): in the corrected profile every interconnector with a positive transfer constraint offers its available import capacity to the day-ahead clearing at the period's counterparty price (times the bid multiplier), in the merit order with domestic generation; the balancing stage offers only the capacity the day-ahead schedule left, and an accepted day-ahead import can be reduced in the curtailment branch at its avoided import price. Dispatch, imports, prices, costs and investment paths of corrected Runs change (method upgrade), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis rule (imports only in the balancing stage) bit for bit.",
           "requires_user_opt_in": true
         }
       ]

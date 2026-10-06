@@ -21,7 +21,10 @@ ROOT = Path(__file__).resolve().parents[1]
 # constant in the same commit and says so in the message (C27).
 # P0-5a S10: interconnector unit contract (market.*.profile MW/30 min,
 # market.*.price GBP/MWh); 35aadb3 value 4f8c2695cefc6d75...
-DATASET_SLOTS_SHA256 = "1cbb27d6ca0a3f3480de84d2762044efb6c21cb9ac9a0ecd5a7697fae88ec231"
+# FX6 (A16-2, four-role S-D3): market.*.profile labels say "interconnector
+# availability (+ import / - export)" instead of "import availability";
+# P0-5a S10 value 1cbb27d6ca0a3f34...
+DATASET_SLOTS_SHA256 = "7695775c0c37b4449ccb0fa9dfcc699185c6b8b05a0e16a25c8d0e3d2343ce4d"
 
 
 def _python(code: str, data_home: Path) -> subprocess.CompletedProcess:

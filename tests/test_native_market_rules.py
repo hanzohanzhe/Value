@@ -31,21 +31,25 @@ def _catalogue_with(correction_ids):
     temporary = Path(tempfile.mkdtemp(prefix="p06-rules-"))
     root = temporary / "methodology"
     shutil.copytree(methodology.CATALOGUE_ROOT, root)
-    payload = {
-        "schema_version": methodology.CORRECTIONS_SCHEMA,
-        "package": "p06",
-        "notes": ["test copy"],
-        "corrections": [
-            {
-                "id": correction_id, "package": "p06", "findings": [], "track": "profile_gated",
-                "scope": "market", "affects": ["trajectory"], "applies_when": {}, "advisory": None,
-                "trigger_fixture": {"test": "tests/test_native_market_rules.py"},
-                "introduced_in": "test", "deviation_signature": None, "description": "test",
-            }
-            for correction_id in correction_ids
-        ],
-    }
-    (root / "corrections" / "p06.json").write_text(json.dumps(payload), encoding="utf-8")
+    # One file per package (p06 and FX6, decision A16-2): each switch package's
+    # file is replaced by exactly the requested ids of that package.
+    packages = sorted({correction_id.split(".", 1)[0] for correction_id in FIELD_CORRECTIONS.values()})
+    for package in packages:
+        payload = {
+            "schema_version": methodology.CORRECTIONS_SCHEMA,
+            "package": package,
+            "notes": ["test copy"],
+            "corrections": [
+                {
+                    "id": correction_id, "package": package, "findings": [], "track": "profile_gated",
+                    "scope": "market", "affects": ["trajectory"], "applies_when": {}, "advisory": None,
+                    "trigger_fixture": {"test": "tests/test_native_market_rules.py"},
+                    "introduced_in": "test", "deviation_signature": None, "description": "test",
+                }
+                for correction_id in correction_ids if correction_id.split(".", 1)[0] == package
+            ],
+        }
+        (root / "corrections" / f"{package}.json").write_text(json.dumps(payload), encoding="utf-8")
     return temporary, methodology.load_catalogue_from(root)
 
 
@@ -70,6 +74,7 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "storage_bid_basis": "thesis_dwell_linear",
             "storage_settlement_basis": "thesis_max_bat_price",
             "reliability_voll": "constant_17000",
+            "interconnector_import_stage": "balancing_residual_only",
         })
         self.assertEqual(CORRECTED.switches(), {
             "surplus_accounting": "rebuilt_available_minus_accepted",
@@ -81,6 +86,7 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "storage_bid_basis": "cycle_only",
             "storage_settlement_basis": "uniform_clearing_price",
             "reliability_voll": "chronology_parameter",
+            "interconnector_import_stage": "day_ahead_offer_then_balancing_residual",
         })
         # A2: P3-01 dispatch is unchanged in both profiles; P5-06 is universal.
         self.assertEqual(DOCTORAL.realisation_basis, "forecast_thesis")
@@ -96,7 +102,8 @@ class RuleSetDefinitionTests(unittest.TestCase):
     def test_switch_ids_follow_the_catalogue_pattern_and_pending_ids_are_unregistered(self):
         for correction_id in FIELD_CORRECTIONS.values():
             self.assertRegex(correction_id, methodology.CORRECTION_ID_PATTERN)
-            self.assertTrue(correction_id.startswith("p06."))
+            # P0-6 switches, plus the FX6 method change of decision A16-2.
+            self.assertTrue(correction_id.startswith(("p06.", "fx6.")), correction_id)
         self.assertEqual(len(set(FIELD_CORRECTIONS.values())), len(FIELD_CORRECTIONS))
         self.assertLessEqual(PENDING_CORRECTION_IDS, set(FIELD_CORRECTIONS.values()))
         registered = set(methodology.load_catalogue().corrections)

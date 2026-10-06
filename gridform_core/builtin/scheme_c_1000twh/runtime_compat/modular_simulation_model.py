@@ -95,6 +95,7 @@ class _P06State:
         self.rules = rules if rules is not None else _DOCTORAL_RULES
         self.surplus = None          # corrected SurplusBook of the period
         self.diagnostics = {}        # doctoral market_rule_diagnostics of the period (MW / GBP)
+        self.imports = _p06.ImportSchedule()  # FX6 (A16-2): day-ahead imports of the period
 
     def rule(self, field):
         return getattr(self.rules, field)
@@ -102,6 +103,11 @@ class _P06State:
     @property
     def corrected(self):
         return self.rules.surplus_accounting == "rebuilt_available_minus_accepted"
+
+    @property
+    def ahead_imports(self):
+        # VALUE FX6 (A16-2, fx6.day-ahead-interconnector-imports).
+        return self.rules.interconnector_import_stage == "day_ahead_offer_then_balancing_residual"
 
     def diagnose(self, key, value):
         self.diagnostics[key] = self.diagnostics.get(key, 0.0) + float(value)
@@ -1385,8 +1391,13 @@ def store_service_corrected(accepted_bids, new_bids, period, need_curtailed_ener
 # Environment functions
 def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted_bids,  ahead_renewables, ahead_other,
                          ahead_traditional, ahead_nuclear, bidding_factor,
-                         retain_storage_tranche_history=True):
+                         retain_storage_tranche_history=True, connections=()):
     declared_target_power_mw = float(forecast_demand)
+    # VALUE FX6 (A16-2): the corrected rule set offers interconnector imports
+    # to this clearing; the thesis rule set never receives a connection here.
+    _P06_STATE.imports.reset(period)
+    if _P06_STATE.ahead_imports:
+        _P06_STATE.imports.offers = _p06.import_offers(connections, bidding_factor)
     renewable_hy_list = []
     # VALUE P0-6 S9 (P3-08): the corrected rule set has no pre-clearing VRE skim
     # to direct electrolysis; the thesis skim is kept with leak diagnostics.
@@ -1514,6 +1525,11 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
     # annual runs and cannot affect any scientific state, so do not duplicate it.
     
     new_list = bids + storage_pool_list
+    if _P06_STATE.imports.offers:
+        # VALUE FX6 (A16-2): imports after storage in the input order, so the
+        # stable merit key clears generation, then an import, then storage
+        # at an equal 0.01 band and storage offer indices are unchanged.
+        new_list = new_list + list(_P06_STATE.imports.offers)
     _STORAGE_OFFERS.declare("ahead", period, new_list, bidding_factor=bidding_factor, asset_name=_asset_name)
     declared_offers = []
     for offer_index, item in enumerate(new_list):
@@ -1552,6 +1568,18 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 "startup_component_applied": bool(asset not in accepted_bids_name and type(asset) not in (WaterGenerator, ExpensiverenewableGenerator)),
                 "curtailment_price_gbp_per_mwh": float(item[3]),
             })
+        elif _p06.is_import_offer(item):
+            declared_offers.append({
+                "offer_id": f"ahead:i:{offer_index}:{_asset_name(asset)}",
+                "asset_id": _asset_name(asset),
+                "asset_type": asset.__class__.__name__,
+                "resource_kind": "import",
+                "side": "supply",
+                "offer_price_gbp_per_mwh": float(item[1]),
+                "minimum_power_mw": 0.0,
+                "maximum_power_mw": max(float(item[2]), 0.0),
+                "counterparty_price_gbp_per_mwh": float(asset.external_price),
+            })
         else:
             declared_offers.append({
                 "offer_id": f"ahead:s:{offer_index}:{_asset_name(asset)}:{int(item[2])}",
@@ -1565,6 +1593,17 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 "charge_period": int(item[2]),
                 "dwell_periods": int(period - item[2]),
             })
+    _ahead_constraints = {
+        "single_zone": True,
+        "transmission_constraints": False,
+        "storage_offer_power_is_shared_across_tranches": True,
+        "hydro_and_biomass_annual_energy_limits": True,
+        "startup_is_internalised_in_offer_price": True,
+        "realised_demand_known": False,
+    }
+    if _P06_STATE.ahead_imports:
+        # VALUE FX6 (A16-2): declared only by the corrected rule set.
+        _ahead_constraints["imports_in_clearing_offer_set"] = bool(_P06_STATE.imports.offers)
     declared_input = _record_declared_input(
         "ahead",
         period,
@@ -1578,14 +1617,7 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
             "tie_break": "stable ascending offer price then input order",
             "offers": declared_offers,
             "storage_pre_state": _storage_pre_state(batterys),
-            "constraints": {
-                "single_zone": True,
-                "transmission_constraints": False,
-                "storage_offer_power_is_shared_across_tranches": True,
-                "hydro_and_biomass_annual_energy_limits": True,
-                "startup_is_internalised_in_offer_price": True,
-                "realised_demand_known": False,
-            },
+            "constraints": _ahead_constraints,
         },
     )
     # bid
@@ -1706,6 +1738,18 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 else:
                     pass
                 #print(item[0])
+            elif _p06.is_import_offer(item):
+                # VALUE FX6 (A16-2): an import offer (corrected rule set only)
+                # takes up to its available capacity, without ramp limits.
+                energy = min(float(item[2]), forecast_demand)
+                if energy > 0:
+                    accepted_bids_period.append([item[0], item[1], energy, 0.0])
+                    gen_list.append([item[0], energy])
+                    _P06_STATE.imports.schedule(item[0], energy)
+                    forecast_demand -= energy
+                if forecast_demand <= 0:
+                    forecast_demand = 0
+                    break
             # if chose storage pool
             else:
                 requested_output_power = min(item[3], forecast_demand)
@@ -1937,8 +1981,16 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
     #gens = iter(bids)
     # rememmber available generators，namely generation after test_gen(included)
     # use test_gen to the marginal generator,，who has rest availability（generators before used up），from hime to bid
-    if len(accepted_bids) != 0:
-        test_gen = accepted_bids[-1]
+    # VALUE FX6 (A16-2): an accepted day-ahead import is not a generator of
+    # `bids`; the marginal generator is the last accepted generator.
+    _accepted_generation = ([row for row in accepted_bids if type(row[0]) != Connection]
+                            if _P06_STATE.ahead_imports else accepted_bids)
+    if len(_accepted_generation) != 0:
+        test_gen = _accepted_generation[-1]
+    elif _P06_STATE.ahead_imports and accepted_bids:
+        # VALUE FX6: imports alone met the forecast; there is no marginal
+        # generator, so every generator offers from zero below.
+        test_gen = [None, 0.0, 0.0, 0.0, 0]
     # if only use storage，then test-gen is the first generator
     else:
         test_gen = bids[0]
@@ -2084,6 +2136,9 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
         if start_index is not None:
             # from test_gen to loop
             add_bids = bids[start_index:]
+        elif test_gen[0] is None:
+            # VALUE FX6 (corrected rule set): no generator was accepted ahead.
+            add_bids = list(bids)
         # add storage and generator，bid together，note that generators in forms of tuple but storage in forms of list to distinguish
         new_list = add_bids + storage_pool_list
         for item in connections:
@@ -2098,7 +2153,9 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 buable.append((
                     item,
                     item.external_price * bidding_factor,
-                    item.transfer_constraint,
+                    # VALUE FX6 (A16-2): only the capacity the day-ahead
+                    # schedule left (corrected rule set).
+                    _P06_STATE.imports.remaining_mw(item) if _P06_STATE.ahead_imports else item.transfer_constraint,
                     0,
                 ))
         new_list.extend(buable)
@@ -3117,7 +3174,7 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             generators, batterys,
             forecast_demands[period],
             period, accepted_bids, ahead_renewables, ahead_other, ahead_traditional, ahead_nuclear, bidding_factor,
-            retain_storage_tranche_history=retain_storage_tranche_history)
+            retain_storage_tranche_history=retain_storage_tranche_history, connections=connections)
         for key, value in income_dict.items():
             if key in total_income_dict:
                 total_income_dict[key] += value
@@ -3191,6 +3248,11 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         store_electricity.append(store_energy)
         sold_fees.append(realisation.sold_fee)
         purchase_fees.append(realisation.purchase_fee)
+        if _P06_STATE.ahead_imports:
+            # VALUE FX6 (A16-2): the import payment also covers the day-ahead
+            # imports (after any reduction in the curtailment branch).
+            purchase_fees[-1] += sum(float(row[1]) * float(row[2]) for row in accepted_bids
+                                     if type(row[0]) == Connection)
         total_green_hy.append(realisation.green_hy)
         excess_energy_final_dict[period] = excess_energy
         if _P06_STATE.corrected:
@@ -3458,6 +3520,29 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
                     float(getattr(asset, "gen_cost", 0.0) or 0.0) * accepted_mwh,
                     float(avg_price) * accepted_mwh,
                 ))
+            if _P06_STATE.ahead_imports and _P06_STATE.imports.period == period:
+                # VALUE FX6 (A16-2): the day-ahead import offers (accepted
+                # MWh = final import, day-ahead plus balancing residual).
+                for import_index, import_offer in enumerate(_P06_STATE.imports.offers):
+                    asset, offer_price, offered_energy = (
+                        import_offer[0], float(import_offer[1]), float(import_offer[2]))
+                    offered_assets.add(asset)
+                    accepted_energy = float(dispatch_by_asset.get(asset, 0.0))
+                    if accepted_energy <= 1e-12:
+                        status, reason = "rejected", "not_selected_after_merit_and_balance"
+                    elif accepted_energy + 1e-12 < offered_energy:
+                        status, reason = "partially_accepted", "demand_filled"
+                    else:
+                        status, reason = "accepted", "cleared"
+                    accepted_mwh = accepted_energy * period_hours
+                    order_rows.append(OrderLedgerRow(
+                        f"{trace_year}:{period}:ahead:{len(bids) + import_index}", int(trace_year), period,
+                        "ahead_offer", _asset_name(asset), asset.__class__.__name__, "supply",
+                        offer_price, offered_energy * period_hours, accepted_mwh,
+                        status, reason,
+                        float(getattr(asset, "external_price", 0.0) or 0.0) * accepted_mwh,
+                        float(avg_price) * accepted_mwh,
+                    ))
             for asset, accepted_energy in dispatch_by_asset.items():
                 if asset in offered_assets or accepted_energy <= 1e-12:
                     continue

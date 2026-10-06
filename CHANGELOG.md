@@ -53,6 +53,7 @@ existing installation is upgraded side by side, as described in
 | P0-8 | `p08.zonal-solver-v4`, `p08.runtime-fallback-audit`, `p08.dec-economic-pricing`, `p08.pro-rata-ties`, `p08.dec-class-order`, `p08.network-free-counterfactual`, `p08.boundary-primary-dual`, `p08.network-share-expansion` (software fixes; network modules run only under the corrected profile, Q3) | — |
 | FX4 (post-UAT M-D1) | `fx4.storage-offer-ledger` (accounting zone) | — |
 | FX5 (A16-5 VoLL) | `fx5.voll-17000` (doctoral: accounting zone; parameter default for every module that reads `market.voll_gbp_per_mwh`) | — |
+| FX6 (A16-2, four-role S-D3) | — | `fx6.day-ahead-interconnector-imports` (method change, explicit Study confirmation) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -477,6 +478,39 @@ unattributed.
   cost is unchanged; only the VoLL value and its basis label in
   `physical_operating_cost_detail_gbp` change (accounting revisions of
   D1–D5 and C1–C6).
+
+### Interconnector imports in the day-ahead clearing (A16-2, corrected profile)
+
+- Four-role finding S-D3: a positive "import availability" produced no
+  import in a one-day Run.  The retained default PSM offers interconnector
+  imports only in the balancing stage, for the upward requirement left when
+  realised demand exceeds the day-ahead schedule; the day-ahead clearing never
+  receives a connection.  The doctoral reproduction profile keeps this thesis
+  rule bit for bit (it is where the GBP1 doctoral imports, 0.336 TWh in the
+  first model year, come from).
+- Corrected profile (`fx6.day-ahead-interconnector-imports`, rule-set field
+  `interconnector_import_stage`): every connection with a positive transfer
+  constraint offers its available import capacity to the day-ahead clearing
+  at the period's counterparty price (times the bid multiplier), in the same
+  merit order as domestic generation (generation, then an import, then
+  storage at an equal 0.01 GBP/MWh band).  The balancing stage offers only the
+  import capacity the day-ahead schedule left, so no MW is bought twice.  An
+  accepted day-ahead import can be reduced in the curtailment branch at its
+  avoided import price (no curtailment payment).  Exports are unchanged.
+- Ledger: the ahead clearing declarations carry `ahead:i:` import offers
+  (`resource_kind` import, with the counterparty price), and the `orders`
+  table books each import offer as an `ahead_offer` row (offered capacity,
+  accepted import, status) instead of a 0.0-priced `final_dispatch` row; the
+  market replay shows the import in the ahead supply curve.  The import
+  payment diagnostic covers day-ahead and balancing imports.
+- `value-bid-at-cost-psm` 6.2.0 → 6.3.0 with `requires_user_opt_in` (Q13):
+  saved corrected Studies need explicit confirmation.  The data roles
+  `market.<country>.profile` are labelled "interconnector availability
+  (+ import / - export)".
+- VALUE 101: the France offer (12 MW at 82 GBP/MWh) is dearer than the CCGT
+  (66.5 GBP/MWh with its start-up adder), so it is offered and rejected in
+  every period; dispatch, prices and costs of C1–C6 are unchanged, and C1–C4
+  gained a revision for the new offer rows.
 
 ### Scientific validation recomputed and gated (P0-4)
 

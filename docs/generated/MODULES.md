@@ -9,7 +9,7 @@ Generated from `gridform_core/manifests/*.json` by `scripts/generate_reference_t
 | agent-investment | investment | 3.0.0 | value.investment/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
 | reference-transmission-expansion | network_expansion | 1.0.0 | value.network-expansion/v1 | — | experimental | false | gridform_core/network_expansion.py | 38a808faca5d35436a03680dab8696f1ff3c3673b29733bce291addc7a006ffb |
 | planning-pipeline | pipeline | 2.2.0 | value.planning/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
-| value-bid-at-cost-psm | psm | 6.2.0 | value.psm/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
+| value-bid-at-cost-psm | psm | 6.3.0 | value.psm/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
 | value-doctoral-national-psm | psm | 0.3.0 | value.psm/v2 | — | experimental | false | gridform_core/builtin/scheme_c_1000twh/doctoral_national_psm.py | 52ffb6697f22112fe6b7114a0a3fd1a5ed3bfc3fc6b0e947b644f44249abb074 |
 | value-perfect-foresight-lp | psm | 1.1.0 | value.psm/v2 | — | ready | false | gridform_core/perfect_foresight_psm.py | 02d50bb6b2f40695c5f108586420dc6e97c38e21b64c13bcbfe19710fd5057a6 |
 | value-reference-dc-network | psm | 1.2.0 | value.psm/v2 | — | ready | false | gridform_core/network_dc.py | d86b0b5a0dff3303b9436449387a429d1bdb5dc7a2fa3b157289897a2357dda1 |

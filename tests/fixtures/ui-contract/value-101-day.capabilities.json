@@ -32,7 +32,7 @@
   "source_artifact_sha256": "<sqlite-file-sha256>",
   "semantic_metadata": {
    "psm_module_id": "value-bid-at-cost-psm",
-   "psm_module_version": "6.2.0",
+   "psm_module_version": "6.3.0",
    "period_hours": 0.5,
    "timezone": "Europe/London",
    "calendar": "fixed_365_day_local_periods",
@@ -46,7 +46,7 @@
    "vre_accepted_semantics": "gross_vre_output_including_consumed_surplus",
    "leftover_relationship": "excess_plus_curtailed_disjoint",
    "stage_order": ["ahead","curtailment_or_balancing","final_dispatch"],
-   "market_rule_set": {"rule_set_id":"native-corrected-v1","rule_set_sha256":"99ca23e025dc67dff056ae68e7361fb7c240be52914e701067ee2c139cc5c8c2"}
+   "market_rule_set": {"rule_set_id":"native-corrected-v1","rule_set_sha256":"2caf50ce691c430a6a8e7c6201e649635a40d7cd630ec863b7b3346024c8d28d"}
   },
   "missing_reason": null,
   "legacy_staged_market_jsonl": false,

@@ -214,6 +214,8 @@ class FixtureRunTests(unittest.TestCase):
             "GF_VALIDATION_LEGACY_REPORT",
             "p06.no-vre-pre-clearing-skim", "p06.storage-uniform-price-settlement",
             "p07.power-battery-pool",
+            # FX6 (A16-2): imports were not offered to the day-ahead clearing (info).
+            "fx6.day-ahead-interconnector-imports",
         ])
         self.assertEqual(run["result_publication"]["status"], "published")
         self.assertEqual(len(run["results"]), 1)

@@ -22,6 +22,13 @@ outside ``runtime_compat`` (C18) and work on the kernel's own objects:
   battery that discharged buys back before it can charge, and a battery that
   charged offers no discharge in the same period.
 
+* day-ahead imports - A16-2 (``interconnector_import_stage =
+  day_ahead_offer_then_balancing_residual``, ``fx6.day-ahead-interconnector-imports``):
+  :func:`import_offers` builds the day-ahead import offers of the period and
+  :class:`ImportSchedule` remembers what each connection was scheduled, so
+  the balancing stage offers only the remaining capacity.  An accepted import
+  enters the downward stack at its avoided import price.
+
 Decision A2: the realisation branch (forecast rule) and therefore every
 hidden shortfall stay as they are; shortfalls are booked as stress events by
 the ledger (P0-4 S6).  Decision Q5 (P0-6): the absorption order of the
@@ -60,9 +67,17 @@ DOWNWARD_TABLE = {
 
 TOLERANCE_MW = 1e-9
 
+# A16-2: rank of an accepted day-ahead import at an equal rounded avoided cost.
+# Kept outside DOWNWARD_TABLE (whose content is part of the P0-8 method
+# identity); it follows network_method_rules.DEC_CLASSES, where an import is
+# dec'd after fuel and before storage, run-of-river, VRE and nuclear.
+IMPORT_DOWNWARD_CLASS_RANK = 0.5
+
 
 def _kind(asset: Any) -> str:
     name = type(asset).__name__
+    if name == "Connection":
+        return "import"
     if name == "ExpensiverenewableGenerator":
         return "vre"
     if name == "NuclearGenerator":
@@ -189,20 +204,25 @@ def rebuild_surplus(excess_energy: float, excess_energy_list: list, generators: 
 
 
 def avoided_cost(asset: Any) -> float:
+    if _kind(asset) == "import":
+        # A16-2: reducing an accepted import avoids paying its period price.
+        return float(getattr(asset, "external_price", 0.0) or 0.0)
     cost = float(getattr(asset, "gen_cost", 0.0) or 0.0)
     if _kind(asset) == "nuclear":
         cost -= NUCLEAR_DEC_PREMIUM_GBP_PER_MWH
     return cost
 
 
-def downward_key(asset: Any) -> tuple[float, int, str]:
-    return (-round(avoided_cost(asset), 2), DOWNWARD_CLASS_RANK[_kind(asset)], str(getattr(asset, "name", "")))
+def downward_key(asset: Any) -> tuple[float, float, str]:
+    kind = _kind(asset)
+    rank = IMPORT_DOWNWARD_CLASS_RANK if kind == "import" else DOWNWARD_CLASS_RANK[kind]
+    return (-round(avoided_cost(asset), 2), rank, str(getattr(asset, "name", "")))
 
 
 def ramp_floor_mw(asset: Any, previous_mw: float | None) -> float:
     """Lowest output the asset can reach this period (VRE: none)."""
 
-    if _kind(asset) == "vre" or previous_mw is None:
+    if _kind(asset) in ("vre", "import") or previous_mw is None:
         return 0.0
     alter = float(getattr(asset, "alter_limit", 0.0) or 0.0)
     return max(float(previous_mw) - alter, 0.0)
@@ -232,7 +252,8 @@ def downward_stack(accepted_bids: list, last_gen_energy: Iterable[Any], need_mw:
         if take <= 0:
             continue
         item[2] = float(item[2]) - take
-        asset.set_real_gen_energy(item[2])
+        if _kind(asset) != "import":
+            asset.set_real_gen_energy(item[2])
         reduce_output(gen_list, asset, take)
         if _kind(asset) == "hydro_biomass":
             asset.dec_have_gen_energy(take)
@@ -240,6 +261,57 @@ def downward_stack(accepted_bids: list, last_gen_energy: Iterable[Any], need_mw:
         reductions.append([asset, take])
         remaining -= take
     return (remaining if remaining > TOLERANCE_MW else 0.0), fees, reductions
+
+
+# ---------------------------------------------------------------------------
+# A16-2 day-ahead interconnector imports
+# ---------------------------------------------------------------------------
+
+
+def is_import_offer(offer: Any) -> bool:
+    """An import offer of the kernel: ``(connection, price, capacity_mw, 0)`` (a tuple)."""
+
+    return isinstance(offer, tuple) and len(offer) == 4 and _kind(offer[0]) == "import"
+
+
+def import_offers(connections: Iterable[Any], bidding_factor: float) -> list:
+    """Day-ahead import offers of the period, in connection order.
+
+    A connection whose transfer constraint is positive offers that many MW
+    (its available import capacity in the period) at the period's
+    counterparty price times the bid multiplier, the same price the
+    balancing stage has always used.  A negative constraint is export
+    capability and offers nothing here; a zero constraint offers nothing.
+    """
+
+    offers = []
+    for connection in connections:
+        capacity = float(connection.transfer_constraint)
+        if capacity > 0:
+            offers.append((connection, float(connection.external_price) * float(bidding_factor), capacity, 0))
+    return offers
+
+
+@dataclass
+class ImportSchedule:
+    """Day-ahead import of each connection in the current period (MW, by identity)."""
+
+    period: int | None = None
+    offers: list = field(default_factory=list)
+    scheduled_mw: dict = field(default_factory=dict)
+
+    def reset(self, period: int | None = None) -> None:
+        self.period = period
+        self.offers = []
+        self.scheduled_mw = {}
+
+    def schedule(self, connection: Any, power_mw: float) -> None:
+        self.scheduled_mw[id(connection)] = self.scheduled_mw.get(id(connection), 0.0) + float(power_mw)
+
+    def remaining_mw(self, connection: Any) -> float:
+        """Import capacity left for the balancing stage (never below zero)."""
+
+        return max(float(connection.transfer_constraint) - self.scheduled_mw.get(id(connection), 0.0), 0.0)
 
 
 # ---------------------------------------------------------------------------

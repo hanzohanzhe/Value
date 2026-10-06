@@ -7,7 +7,7 @@
   "query": {"limit":50,"offset":0,"year":2025,"period":0}
  },
  "payload": {
-  "total": 44,
+  "total": 45,
   "limit": 50,
   "offset": 0,
   "items": [
@@ -50,6 +50,7 @@
    {"order_id":"2025:0:ahead:41","year":2025,"period":0,"stage":"ahead_offer","asset_id":"solar_Portsmouth","asset_type":"ExpensiverenewableGenerator","side":"supply","offer_price_gbp_per_mwh":0.0001,"offered_mwh":0.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},
    {"order_id":"2025:0:ahead:42","year":2025,"period":0,"stage":"ahead_offer","asset_id":"solar_Sheffield","asset_type":"ExpensiverenewableGenerator","side":"supply","offer_price_gbp_per_mwh":0.0001,"offered_mwh":0.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},
    {"order_id":"2025:0:ahead:43","year":2025,"period":0,"stage":"ahead_offer","asset_id":"CCGT","asset_type":"GasGenerator","side":"supply","offer_price_gbp_per_mwh":66.5,"offered_mwh":25.0,"accepted_mwh":9.273925187795545,"status":"partially_accepted","reason_code":"demand_filled","physical_resource_cost_gbp":616.7160249884038,"market_payment_gbp":413.5765745959035},
+   {"order_id":"2025:0:ahead:44","year":2025,"period":0,"stage":"ahead_offer","asset_id":"Interconnect_France","asset_type":"Connection","side":"supply","offer_price_gbp_per_mwh":82.0,"offered_mwh":6.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},
    {"order_id":"2025:0:ahead:5","year":2025,"period":0,"stage":"ahead_offer","asset_id":"offshore14","asset_type":"ExpensiverenewableGenerator","side":"supply","offer_price_gbp_per_mwh":0.0001,"offered_mwh":0.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},
    {"order_id":"2025:0:ahead:6","year":2025,"period":0,"stage":"ahead_offer","asset_id":"offshore15","asset_type":"ExpensiverenewableGenerator","side":"supply","offer_price_gbp_per_mwh":0.0001,"offered_mwh":0.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},
    {"order_id":"2025:0:ahead:7","year":2025,"period":0,"stage":"ahead_offer","asset_id":"offshore16","asset_type":"ExpensiverenewableGenerator","side":"supply","offer_price_gbp_per_mwh":0.0001,"offered_mwh":0.0,"accepted_mwh":0.0,"status":"rejected","reason_code":"not_selected_after_merit_and_balance","physical_resource_cost_gbp":0.0,"market_payment_gbp":0.0},

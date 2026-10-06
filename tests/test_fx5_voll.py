@@ -113,7 +113,8 @@ class VersionLedgerTests(unittest.TestCase):
             "value-doctoral-national-psm": "0.3.0",
         }
         for module_id, version in expected.items():
-            bump = ledger["modules"][module_id]["bumps"][-1]
+            # The FX5 bump of the module (later packages may bump it again, e.g. FX6).
+            bump = next(item for item in ledger["modules"][module_id]["bumps"] if item["package"] == "FX5")
             self.assertEqual((bump["to"], bump["package"]), (version, "FX5"), module_id)
             self.assertEqual(bump["correction_ids"], ["fx5.voll-17000"])
             self.assertTrue(bump["requires_user_opt_in"], module_id)

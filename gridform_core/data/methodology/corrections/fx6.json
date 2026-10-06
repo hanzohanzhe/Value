@@ -1,0 +1,47 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "fx6",
+  "notes": [
+    "FX6 (post-UAT fix round, decision A16-2; four-role finding S-D3): interconnector imports in the day-ahead clearing of the default PSM. A method change of the corrected profile only (Q13: saved Studies need explicit confirmation); the doctoral reproduction profile keeps the thesis behaviour, where imports are offered only in the balancing stage.",
+    "The switch is one field of NativeMarketRules (gridform_core/builtin/scheme_c_1000twh/native_market_rules.py FIELD_CORRECTIONS, interconnector_import_stage)."
+  ],
+  "corrections": [
+    {
+      "id": "fx6.day-ahead-interconnector-imports",
+      "package": "fx6",
+      "findings": [
+        "S-D3",
+        "A16-2"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ]
+      },
+      "advisory": {
+        "severity": "info",
+        "title": "Interconnector imports cleared only in the balancing stage",
+        "summary": "In this Run the default PSM offered interconnector imports only in the balancing stage, for the upward requirement left when realised demand exceeded the day-ahead schedule (the thesis rule). Imports did not compete with domestic generation in the day-ahead clearing, so a positive import availability changes the results only in periods with such a residual requirement.",
+        "affected_metrics": [
+          "imports",
+          "generation_mix",
+          "prices",
+          "costs",
+          "emissions"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_fx6_ahead_imports.AheadImportOfferTests"
+      },
+      "introduced_in": "FX6 (A16-2)",
+      "deviation_signature": null,
+      "description": "Each interconnector with a positive transfer constraint in the period (available import capacity, MW) offers to the day-ahead clearing at the period's counterparty price times the bid multiplier, in the same merit order as domestic generation (generation before an import before storage at an equal 0.01 GBP/MWh band). The balancing stage offers only the import capacity the day-ahead schedule left, so no MW is sold twice. An accepted day-ahead import can be reduced in the curtailment branch at its avoided import price (no curtailment payment). Exports (negative transfer constraint) are unchanged."
+    }
+  ]
+}

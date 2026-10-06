@@ -23,7 +23,12 @@ the catalogue raises (``UnknownCorrectionError``): typos fail closed.
 Decision A2 cancelled the planned P3-01 dispatch change: ``realisation_basis``
 is ``forecast_thesis`` in both rule sets and has no switch.  Decision A8 adds
 ``storage_settlement_basis`` (corrected storage is paid the period's uniform
-clearing price instead of its own maximum bid).  ``operating_cost_basis``
+clearing price instead of its own maximum bid).  Decision A16-2 (four-role
+finding S-D3) adds ``interconnector_import_stage``: the thesis kernel offers
+interconnector imports only in the balancing stage, for the residual
+upward requirement after the day-ahead schedule; the corrected rule set also
+offers them to the day-ahead clearing at the period's counterparty price and
+available import capacity (``fx6.day-ahead-interconnector-imports``).  ``operating_cost_basis``
 (``dispatch_unit_cost/v1``) is a universal accounting rule (P5-06, plan S4):
 it is the same in both profiles and therefore has no profile switch either.
 """
@@ -57,6 +62,8 @@ FIELD_CORRECTIONS: dict[str, str] = {
     "storage_bid_basis": "p06.storage-bid-cycle-only",
     "storage_settlement_basis": "p06.storage-uniform-price-settlement",
     "reliability_voll": "p06.voll-chronology-parameter",
+    # FX6 (A16-2, four-role S-D3): method change of the corrected profile.
+    "interconnector_import_stage": "fx6.day-ahead-interconnector-imports",
 }
 
 # Correction ids whose behaviour has not landed yet.  P0-6 S5-S10 registered
@@ -81,6 +88,7 @@ class NativeMarketRules:
     storage_settlement_basis: str
     operating_cost_basis: str
     reliability_voll: str
+    interconnector_import_stage: str
 
     def definition(self) -> dict[str, str]:
         return {item.name: getattr(self, item.name) for item in fields(self)}
@@ -111,6 +119,10 @@ DOCTORAL = NativeMarketRules(
     # FX5 (A16-5, universal accounting correction fx5.voll-17000): the thesis
     # cost-ledger constant 8000 GBP/MWh is replaced by the author's 17000.
     reliability_voll="constant_17000",
+    # The thesis kernel (35aadb3): a positive transfer constraint is an import
+    # offer of the balancing stage only (residual upward requirement after
+    # the day-ahead schedule); the day-ahead clearing receives no connection.
+    interconnector_import_stage="balancing_residual_only",
 )
 
 CORRECTED = NativeMarketRules(
@@ -127,6 +139,10 @@ CORRECTED = NativeMarketRules(
     storage_settlement_basis="uniform_clearing_price",
     operating_cost_basis="dispatch_unit_cost/v1",
     reliability_voll="chronology_parameter",
+    # A16-2: imports offer to the day-ahead clearing at the counterparty price
+    # with the available import capacity; the balancing stage offers only the
+    # capacity the day-ahead schedule left (no double counting).
+    interconnector_import_stage="day_ahead_offer_then_balancing_residual",
 )
 
 RULE_SETS: dict[str, NativeMarketRules] = {
@@ -153,6 +169,7 @@ def _literal_consultations(methodology: Any) -> dict[str, Any]:
         "p06.storage-bid-cycle-only": lambda: methodology.enabled("p06.storage-bid-cycle-only"),
         "p06.storage-uniform-price-settlement": lambda: methodology.enabled("p06.storage-uniform-price-settlement"),
         "p06.voll-chronology-parameter": lambda: methodology.enabled("p06.voll-chronology-parameter"),
+        "fx6.day-ahead-interconnector-imports": lambda: methodology.enabled("fx6.day-ahead-interconnector-imports"),
     }
 
 
