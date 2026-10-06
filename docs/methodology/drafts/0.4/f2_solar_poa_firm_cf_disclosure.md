@@ -46,8 +46,8 @@ horizontal ratio, and the site evidence says why:
 
 Parameters and citations are in
 `gridform_core/data/weather/value_uk_vre_loss_factors_v1.json`
-(`solar_plane_of_array`; PENDING AUTHOR REVIEW for the model choices, the PR
-itself was accepted in A9). Code: `gridform_core/solar_irradiance.py`,
+(`solar_plane_of_array`; the author approved the model choices in decision
+A16-6, the PR itself was accepted in A9). Code: `gridform_core/solar_irradiance.py`,
 `site_weather.site_cf_by_source`.
 
 Result on GBP1 public1 (ERA5 2020-2024 climatology, 11 solar sites): annual GHI
@@ -154,7 +154,7 @@ online in F2.
 
 状态：随施工单元 F2 写成（2026-10-06），依据 DECISIONS A9、A10、A13、A14。与 `p05b_corrected_data.md` 第 3、4 节不一致处以本文为准。0.4 版生成时并入 `core_weather.md`、`datasets.md`、`national_alternatives.md`（中英）。以下只适用于修正口径，论文复现口径不变。
 
-1. **光伏倾斜面换算（A13，`p05.solar-plane-of-array`）。** 性能比 PR 0.83 按组件平面辐照度定义，此前乘在水平面 GHI 上。现在逐个半小时时段计算：Spencer（1971）赤纬、时差与日地距离修正，按时段**中点**（365 天 UTC 年，第 `t` 期为第 `t//48+1` 天、UTC `(t mod 48)/2+0.25` 时）和站点经纬度求太阳位置；Erbs 等（1982）由晴空指数 `kt` 分解散射比例；Hay–Davies（1980）换算到朝南倾斜面，地面反照率 0.2；倾角取 Jacobson & Jadhav（2018）按纬度拟合的年最优倾角（GBP1 各站约 35.7–37.7°）；天顶角大于 87° 或 GHI 为 0 时无直射、按各向同性散射处理；CF = min(POA × 0.83, 1)。天气 v2 下第 `t` 期取包含该时段的累积小时（`t//2+1`），时段中点落在该小时内。倾角为 0 时逐期精确返回 GHI（已测试）。只对 v2 时钟下的 ERA5 逐时累积量换算：VALUE 101 合成数据（52°N 十二月正午约 1 kW/m²，非物理值）和 R029 public1（`ssrd` 无 GRIB step type、未声明约定）不换算，证据中写明原因。GBP1 结果：伦敦年 GHI 约 1080 kWh/m²，各站 POA/GHI 1.05–1.10，年散射比例 0.63–0.75，代表站点平均 CF **0.0997 → 0.1065**（+6.9%）。敏感性（未采用）：倾角取纬度时为 0.1012。披露：GBP1 天气是 2020–2024 多年平均气候态（P6-09），平均后晴空指数被抹平（伦敦能量加权 kt 0.47、最大 0.73），散射比例偏高、倾斜增益偏小；同一代码在合成晴空年（51.5°N，所有白天时段 kt 0.65，散射比例 0.34）下增益为 33%（测试区间 15–35%）。只报告，不校正。参数与出处见 `value_uk_vre_loss_factors_v1.json` 的 `solar_plane_of_array`（模型选择待作者审核）。
+1. **光伏倾斜面换算（A13，`p05.solar-plane-of-array`）。** 性能比 PR 0.83 按组件平面辐照度定义，此前乘在水平面 GHI 上。现在逐个半小时时段计算：Spencer（1971）赤纬、时差与日地距离修正，按时段**中点**（365 天 UTC 年，第 `t` 期为第 `t//48+1` 天、UTC `(t mod 48)/2+0.25` 时）和站点经纬度求太阳位置；Erbs 等（1982）由晴空指数 `kt` 分解散射比例；Hay–Davies（1980）换算到朝南倾斜面，地面反照率 0.2；倾角取 Jacobson & Jadhav（2018）按纬度拟合的年最优倾角（GBP1 各站约 35.7–37.7°）；天顶角大于 87° 或 GHI 为 0 时无直射、按各向同性散射处理；CF = min(POA × 0.83, 1)。天气 v2 下第 `t` 期取包含该时段的累积小时（`t//2+1`），时段中点落在该小时内。倾角为 0 时逐期精确返回 GHI（已测试）。只对 v2 时钟下的 ERA5 逐时累积量换算：VALUE 101 合成数据（52°N 十二月正午约 1 kW/m²，非物理值）和 R029 public1（`ssrd` 无 GRIB step type、未声明约定）不换算，证据中写明原因。GBP1 结果：伦敦年 GHI 约 1080 kWh/m²，各站 POA/GHI 1.05–1.10，年散射比例 0.63–0.75，代表站点平均 CF **0.0997 → 0.1065**（+6.9%）。敏感性（未采用）：倾角取纬度时为 0.1012。披露：GBP1 天气是 2020–2024 多年平均气候态（P6-09），平均后晴空指数被抹平（伦敦能量加权 kt 0.47、最大 0.73），散射比例偏高、倾斜增益偏小；同一代码在合成晴空年（51.5°N，所有白天时段 kt 0.65，散射比例 0.34）下增益为 33%（测试区间 15–35%）。只报告，不校正。参数与出处见 `value_uk_vre_loss_factors_v1.json` 的 `solar_plane_of_array`（模型选择已由作者在 A16-6 认可）。
 2. **核电按月退役（A10，`p05.nuclear-generation-end-month`）。** 各站负荷率不变（A14 已认可）。站点政策文件中 Heysham 2、Torness 只写 “2030”，修正口径从参数表 `generation_end_month_overrides` 取 2030-03（参考统计表 1.6 节），因此四座 AGR 都在 2030 年第 4320 期（4 月 1 日 00:00 UTC）起为 0；Sizewell B（“2055”，无月份）全年运行。
 3. **径流水电（A14，`p05.hydro-dukes-load-factor`）。** 可用率 = 0.3487（DUKES 6.3 标准口径 2019–2024 均值）× 由 Energy Trends 6.1 季度数据推出的阶梯月度形状（1–3 月 1.3851，4–6 月 0.6582，7–9 月 0.6776，10–12 月 1.2791；12 个月算术均值为 1）。按 365 天日历的时段加权均值为 0.99883，模型年负荷率为 0.3483。GBP1 的 2000 MW 年发电 6.10 TWh，比 DUKES 6.2 2019–2024 均值 5.77 TWh 高 5.8%，在 A14 的 ±15% 以内。未应用本修正的运行使用 P0-5b 临时值（0.334、平直），参数表以 `p05b_values` 保留。
 4. **风光容量因子与 DUKES 并列披露（A9）。** 运行结果摘要（`GET /api/runs/{run}/summary` 的 `vre_capacity_factor_disclosure` 字段）给出该运行天气与天气方法下的模型弃电前 CF、DUKES 负荷率、比值和原因。GBP1 修正口径：陆上 0.4026（DUKES 2020–2024 均值 0.2582，比值 1.56），海上 0.4913（0.4009，1.23），光伏 0.1065（0.1025，1.04）。偏差原因：ERA5 100 m 风速未做偏差校正（Staffell & Pfenninger 2016）；每站一条单机自由流功率曲线；模型 CF 为弃电前可用出力，DUKES 为扣除弃电和约束调度后的实际发电；代表站点等权平均而非全国装机加权；GBP1 为多年平均气候态；DUKES 小型光伏发电量为估算值。只披露，不标定。

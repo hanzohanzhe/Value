@@ -1,7 +1,7 @@
 {
   "schema_version": "value.vre-loss-factors/v1",
   "table_id": "value-uk-vre-loss-factors-v1",
-  "status": "AUTHOR ACCEPTED (DECISIONS A9, 2026-10-06): the wind loss factors including the offshore total of about 18.5 % and the solar PR 0.83. The solar_plane_of_array model choices (A13) are PENDING AUTHOR REVIEW.",
+  "status": "AUTHOR ACCEPTED (DECISIONS A9, 2026-10-06): the wind loss factors including the offshore total of about 18.5 % and the solar PR 0.83. The solar_plane_of_array model choices (A13) are AUTHOR APPROVED (DECISIONS A16-6, 2026-10-06).",
   "applies_to": "value-corrected profile only (correction p05.vre-loss-factors; decisions Q15 and A1). The doctoral profile applies no factor.",
   "method": "Multiplied after the ERA5 -> single-turbine power-curve conversion (wind) or, for solar, after the per-period plane-of-array irradiance of solar_plane_of_array (A13, correction p05.solar-plane-of-array; runs before A13 multiplied the horizontal ssrd/3.6e6 ratio). Per-period shape stays ERA5; curtailment stays a market outcome. There is NO calibration to statistical load factors (Q15, A9).",
   "compiled_from": "docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md section 3 (central values of table 3.3; every value is a choice inside the cited literature range, not a literature conclusion)",
@@ -39,7 +39,7 @@
     }
   },
   "solar_plane_of_array": {
-    "status": "PENDING AUTHOR REVIEW (model choices made under DECISIONS A13; the approach is the author's decision)",
+    "status": "AUTHOR APPROVED (DECISIONS A16-6, 2026-10-06): the author approved the model choices made under DECISIONS A13 directly (Spencer geometry, Erbs decomposition, Hay-Davies transposition, ground albedo 0.2, Jacobson & Jadhav optimal tilt); values unchanged",
     "applies_to": "value-corrected profile only (correction p05.solar-plane-of-array). The doctoral profile keeps ssrd/3.6e6 on the v1 clock without any factor.",
     "model": {
       "tilt": "south-facing plane at the Jacobson & Jadhav (2018) annual-optimal tilt for the site latitude",
@@ -89,6 +89,6 @@
     "P6": "Loutzenhiser P.G. et al., Empirical validation of models to compute solar irradiance on inclined surfaces for building energy simulation, Solar Energy 81(2):254-267, 2007, doi:10.1016/j.solener.2006.03.009 (comparison of transposition models)",
     "P7": "Iqbal M., An Introduction to Solar Radiation, Academic Press, 1983 (Spencer series for the equation of time)",
     "P8": "Jacobson M.Z., Jadhav V., World estimates of PV optimal tilt angles and ratios of sunlight incident upon tilted and tracked PV panels relative to horizontal panels, Solar Energy 169:55-66, 2018, doi:10.1016/j.solener.2018.04.030",
-    "P_note": "P1-P8 are standard textbook and journal references cited from the literature; their bibliographic details were not re-checked online in this unit (no web access was authorised for F2)."
+    "P_note": "P1-P8 are standard textbook and journal references cited from the literature; their bibliographic details were not re-checked online in this unit (no web access was authorised for F2). The author approved the model choices in DECISIONS A16-6 without asking for an online re-check."
   }
 }

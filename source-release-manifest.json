@@ -1445,6 +1445,7 @@
     "tests/test_fx4_storage_orders.py",
     "tests/test_fx5_voll.py",
     "tests/test_fx6_ahead_imports.py",
+    "tests/test_fx7_gbp1_public2.py",
     "tests/test_get_error_boundary.py",
     "tests/test_global_mutation_allowlist.py",
     "tests/test_golden_corrected.py",
@@ -4844,8 +4845,8 @@
     },
     {
       "path": "docs/generated/METHODOLOGY_PROFILES.md",
-      "sha256": "d9c44dd6fed5b733a5156ca8f6f1ea290bcd5401d16db285c57fd3a3423cea02",
-      "bytes": 19199,
+      "sha256": "00182943b3a564c0f38a3e128bdce51e2cf33aa9aaa38daf17c7e049ec1e9364",
+      "bytes": 19292,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7686,8 +7687,8 @@
     },
     {
       "path": "gridform_core/data/methodology/corrections/p05.json",
-      "sha256": "7dbb277951621394783f5f9a5d60f20b20e84d9821dd519f177a1db6797b2c93",
-      "bytes": 18612,
+      "sha256": "af7f169d61b9f9debccea7bf1fc065764e82934a1a2c5539a895b52cbaf173bc",
+      "bytes": 18705,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7763,8 +7764,8 @@
     },
     {
       "path": "gridform_core/data/weather/value_uk_vre_loss_factors_v1.json",
-      "sha256": "c6e3c580c24fbdbd213c2850166cc99bfec81e08219bc20ec1c0b4655eb9066b",
-      "bytes": 9272,
+      "sha256": "7691bb190adbf3411533c55d2ff0c10886815e9da008aae187b4fdb53a695cb8",
+      "bytes": 9543,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11561,6 +11562,12 @@
       "path": "tests/test_fx6_ahead_imports.py",
       "sha256": "af1d54fa5a4ab3b41b3e73221c2b99c0a6518d975aea783f69ed5e305e71204b",
       "bytes": 16392,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_fx7_gbp1_public2.py",
+      "sha256": "c83bcd5d6399306d15eee34916efe30afe61509573ab32b7dc6d75469d63b91b",
+      "bytes": 2308,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
