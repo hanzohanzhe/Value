@@ -179,6 +179,11 @@ class TutorialRuntimeTests(unittest.TestCase):
             if row["pack_id"] == "value-101-baseline-v1"
         )
         self.assertTrue(baseline["installed"])
+        # M-D9: the missing-pack hint also names the source-checkout command.
+        self.assertIsNone(descriptor["availability"]["corrective_action"])
+        hint = value_101_descriptor(installed_pack_ids=set())["availability"]["corrective_action"]
+        self.assertIn("standard VALUE installer", hint)
+        self.assertIn("scripts/install_synthetic_pack.py --value-101-only", hint)
         with tempfile.TemporaryDirectory(prefix="value-101-api-") as temporary:
             packs = Path(temporary) / "data-packs"
             patches = (

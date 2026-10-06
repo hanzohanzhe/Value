@@ -8783,9 +8783,9 @@
     },
     {
       "path": "gridform_core/value_101.py",
-      "sha256": "380db866679174cc3db38b1006f2ddc2aa470838f600464ac5279b232bcd1a42",
-      "bytes": 4619,
-      "transform": "byte copy"
+      "sha256": "2c48e849cc5841787957258667063e4769cb003d2c5901a7cc45112ebefac01a",
+      "bytes": 4924,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/value_101_lifecycle.py",
@@ -12465,8 +12465,8 @@
     },
     {
       "path": "tests/test_prompt87_tutorial_runtime.py",
-      "sha256": "c51fe64ca56680e63dff5ebcd3e44e610bacbbec213481eaf75b3ad7e8e8f9ab",
-      "bytes": 10023,
+      "sha256": "c2bae0969b5920c84d5199dcf89f64365e2fe2e8f5ce858fdcc12d29908ecc96",
+      "bytes": 10413,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

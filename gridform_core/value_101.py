@@ -89,7 +89,10 @@ def value_101_descriptor(*, installed_pack_ids: set[str]) -> dict[str, object]:
             "corrective_action": (
                 None
                 if all(row["installed"] for row in packs)
-                else "Run the standard VALUE installer to add the bundled VALUE 101 packs."
+                # M-D9: a source checkout has no installer run; name its command too.
+                else "Run the standard VALUE installer to add the bundled VALUE 101 packs. In a source "
+                "checkout, run python scripts/install_synthetic_pack.py --value-101-only from the "
+                "repository root (with VALUE_DATA_HOME set to this instance's data folder), then reload."
             ),
             "optional_network_pack": {
                 "pack_id": VALUE_101_NETWORK_PACK_ID,
