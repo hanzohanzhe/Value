@@ -47,7 +47,19 @@ export function stressEventQuery(year: number, offset: number): URLSearchParams 
 }
 
 /** Spec 4.4: what an empty list says. "No stress events recorded in {year}." only for a complete year. */
-export function stressEventEmptyText(page: Pick<StressEventPage, "status">, coverage: ResultCoverage | null | undefined, year: number): string {
+export function stressEventEmptyText(page: Pick<StressEventPage, "status">, coverage: ResultCoverage | null | undefined, year: number, computedPeriods?: number | null): string {
   if (page.status !== "recorded") return "This Run's ledger does not record stress events (it predates the A2 stress accounting).";
-  return reliabilityEmptyText(coverage, year);
+  return reliabilityEmptyText(coverage, year, computedPeriods);
+}
+
+/** R-D3: the list heading claims a full year only for an annual Run. */
+export function stressEventHeading(coverage: ResultCoverage | null | undefined, year: number): string {
+  return coverage?.annual_status === "non_annual" ? `Stress events — ${year} (non-annual run)` : `Stress events — full year ${year}`;
+}
+
+/** R-D3: the heading summary; a recorded ledger without events says "None" (spec 2.3), not "—". */
+export function stressEventSummary(page: Pick<StressEventPage, "status" | "total" | "stress_periods" | "shortfall_mwh"> | undefined): string {
+  if (page?.status !== "recorded") return "—";
+  if (page.total === 0) return "None";
+  return `${page.total} ${page.total === 1 ? "event" : "events"} · ${page.stress_periods ?? "—"} periods · ${formatEnergy(page.shortfall_mwh) ?? "—"}`;
 }

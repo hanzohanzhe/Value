@@ -106,10 +106,18 @@ export function yearTotalsPublishable(coverage: ResultCoverage | null | undefine
   return Boolean(coverage.years?.find((item) => item.year === year)?.complete);
 }
 
-/** Spec 4.4: the empty-list sentence may claim a whole year only when the year is complete. */
-export function reliabilityEmptyText(coverage: ResultCoverage | null | undefined, year: number): string {
+/**
+ * Spec 4.4: the empty-list sentence may claim a whole year only when the year is complete.
+ * R-D3 (round R1-5): a non-annual Run (smoke, one-day lesson) is not "0% of the
+ * year"; it names the periods it computed when the caller knows them.
+ */
+export function reliabilityEmptyText(coverage: ResultCoverage | null | undefined, year: number, computedPeriods?: number | null): string {
   const row = coverage?.years?.find((item) => item.year === year);
-  if (row?.complete && coverage?.annual_status !== "non_annual") return `No stress events recorded in ${year}.`;
+  if (coverage?.annual_status === "non_annual") {
+    const periods = row?.period_count ?? computedPeriods;
+    return periods ? `No stress events in the ${withUnit(formatNumber(periods, 0), "periods")} of ${year} this non-annual Run computed.` : `No stress events in the periods of ${year} this non-annual Run computed.`;
+  }
+  if (row?.complete) return `No stress events recorded in ${year}.`;
   const percent = row ? row.coverage_fraction * 100 : coverage?.coverage_percent ?? null;
   if (percent == null) return `No stress events recorded in the computed periods of ${year}; this Run does not record its coverage.`;
   return `No stress events in the ${withUnit(formatNumber(percent, 1), "%", "")} of ${year} that has been computed.`;

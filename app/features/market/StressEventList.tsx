@@ -7,13 +7,14 @@
 import { useEffect, useRef, useState } from "react";
 import { getJson, apiUrl } from "../shared/api";
 import type { ResultCoverage } from "../shared/coverageView.ts";
-import { formatEnergy } from "../shared/format.ts";
-import { isStressEventPage, stressEventEmptyText, stressEventQuery, stressEventRow, type StressEventPage } from "./stressEventsView.ts";
+import { isStressEventPage, stressEventEmptyText, stressEventHeading, stressEventQuery, stressEventRow, stressEventSummary, type StressEventPage } from "./stressEventsView.ts";
 
 type Load = { key: string; status: "loading" | "success" | "error"; page?: StressEventPage; error?: string };
 
-export default function StressEventList({ runId, year, coverage, onReplay, focus, onFocused }: {
+export default function StressEventList({ runId, year, coverage, computedPeriods, onReplay, focus, onFocused }: {
   runId: string; year: number; coverage?: ResultCoverage | null;
+  /** Periods a non-annual Run computed (R-D3), when its record says. */
+  computedPeriods?: number | null;
   onReplay: (year: number, periodFrom: number, period: number) => void;
   /** Scroll the list into view once loaded ("Show stress events"). */
   focus?: boolean;
@@ -43,11 +44,9 @@ export default function StressEventList({ runId, year, coverage, onReplay, focus
     section.current?.focus({ preventScroll: true });
     onFocused?.();
   }, [focus, onFocused, page]);
-  const summary = page?.status === "recorded" && page.total > 0
-    ? `${page.total} ${page.total === 1 ? "event" : "events"} · ${page.stress_periods ?? "—"} periods · ${formatEnergy(page.shortfall_mwh) ?? "—"}`
-    : "—";
+  const summary = stressEventSummary(page);
   return <section ref={section} id="stress-events" className="panel evidence-panel stress-event-list value-new-control" aria-label="Stress events" tabIndex={-1}>
-    <div className="panel-head"><div><span>Supply below demand (decision A2)</span><h3>Stress events — full year {year}</h3></div><strong>{summary}</strong></div>
+    <div className="panel-head"><div><span>Supply below demand (decision A2)</span><h3>{stressEventHeading(coverage, year)}</h3></div><strong>{summary}</strong></div>
     <p className="stress-event-note">Periods in which accepted supply fell short of demand. Dispatch was not altered; each shortfall is recorded as unserved energy.</p>
     {current.status === "loading" ? <p className="loading">Loading stress events…</p>
       : current.status === "error" ? <div className="error-box">{current.error}</div>
@@ -55,6 +54,6 @@ export default function StressEventList({ runId, year, coverage, onReplay, focus
         <div className="table-scroll"><table><thead><tr><th>Start (model date &amp; time)</th><th>Periods</th><th>Shortfall</th><th>Type</th><th><span className="visually-hidden">Replay</span></th></tr></thead>
           <tbody>{page.items.map((event) => { const row = stressEventRow(event, page.period_hours); return <tr key={row.key}><td><b>{row.start}</b><small>period {row.startPeriod}</small></td><td>{row.periods}</td><td>{row.shortfall ?? "Not recorded"}</td><td>{row.type}</td><td><button type="button" className="text-button" onClick={() => onReplay(event.year, row.replayFrom, event.start_period)} aria-label={`Replay the stress event starting at period ${event.start_period}`}>Replay →</button></td></tr>; })}</tbody></table></div>
         <div className="bounded-page-controls"><button type="button" className="text-button" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - page.limit))}>Previous events</button><span>Events {offset + 1}–{offset + page.items.length} of {page.total}</span><button type="button" className="text-button" disabled={!page.has_more} onClick={() => setOffset(offset + page.limit)}>Next events</button></div>
-      </> : page ? <p className="stress-event-note">{stressEventEmptyText(page, coverage, year)}</p> : null}
+      </> : page ? <p className="stress-event-note">{stressEventEmptyText(page, coverage, year, computedPeriods)}</p> : null}
   </section>;
 }
