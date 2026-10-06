@@ -347,6 +347,7 @@
     "docs/methodology/zh/optional_modules.md",
     "docs/methodology/zh/r029_cem.md",
     "docs/methodology/zh/transmission.md",
+    "docs/release/P0_ACCEPTANCE.md",
     "docs/release/P0_GOLDEN_DELTA.md",
     "docs/release/VERSION_LEDGER.json",
     "docs/release/installer-source-alignment.json",
@@ -4961,6 +4962,12 @@
       "sha256": "4ca63e23c11a752b28884b556a48f4bcf8fd71a054662fc42220bb27fddbb714",
       "bytes": 15582,
       "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+    },
+    {
+      "path": "docs/release/P0_ACCEPTANCE.md",
+      "sha256": "875f80fbce16509cc02c6ff66c50b12a4ec31b625f1e2f664b8ffb92f19bf306",
+      "bytes": 15640,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/release/P0_GOLDEN_DELTA.md",
