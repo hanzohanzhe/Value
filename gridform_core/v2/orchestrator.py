@@ -311,7 +311,14 @@ class AnnualModelOrchestratorV2:
                 f"{run.start_year}-{run.end_year}"
             )
         state = initial_state
+        # F-D1: the extension initialize step is the first link of the annual
+        # state chain. It is recorded on the first executed year's result as
+        # ``extension_initialize`` (source state -> initialized state) so the
+        # run invariants verify source -> initialize -> annual input instead
+        # of comparing the annual input with the pre-initialize source hash.
+        extension_initialize: dict[str, object] | None = None
         if self.extension_runtime is not None:
+            source_state_sha256 = contract_hash(state)
             self.extension_runtime.invoke(
                 "preflight", {"run_id": run.run_id, "year": initial_state.year}
             )
@@ -331,6 +338,16 @@ class AnnualModelOrchestratorV2:
                 state,
                 extensions={**dict(state.extensions), "extension_state": extension_state},
             )
+            extension_initialize = {
+                "schema_version": "value.extension-initialize-link/v1",
+                "year": initial_state.year,
+                "input_state_sha256": source_state_sha256,
+                "output_state_sha256": contract_hash(state),
+                "extension_ids": [item.id for item in self.extension_runtime.graph.extensions],
+                "initialized_namespaces": sorted(
+                    manifests[str(output.get("owner"))].namespace for output in initialized
+                ),
+            }
         results: list[YearResult] = []
         for year in range(initial_state.year, run.end_year + 1):
             if self.cancellation_check and self.cancellation_check(year, "before_year"):
@@ -341,6 +358,7 @@ class AnnualModelOrchestratorV2:
             network_decision = None
             network_admission = None
             if self.network_expansion is not None:
+                advance_input = state
                 started = time.perf_counter()
                 network_advance = self.network_expansion.advance_year(run, state)
                 elapsed = time.perf_counter() - started
@@ -349,8 +367,7 @@ class AnnualModelOrchestratorV2:
                 state = network_advance.state
                 self._record(
                     run, year, "network_expansion.advance_year", "network_expansion",
-                    self.network_expansion, initial_state if year == initial_state.year else results[-1].next_state,
-                    network_advance, elapsed,
+                    self.network_expansion, advance_input, network_advance, elapsed,
                 )
             annual_input_state_sha256 = contract_hash(state)
             started = time.perf_counter()
@@ -592,6 +609,8 @@ class AnnualModelOrchestratorV2:
             year_extensions: dict[str, object] = {
                 "annual_input_state_sha256": annual_input_state_sha256,
             }
+            if extension_initialize is not None and year == initial_state.year:
+                year_extensions["extension_initialize"] = dict(extension_initialize)
             if self.network_expansion is not None:
                 year_extensions["network_expansion"] = {
                     "advance": network_advance.to_dict(),

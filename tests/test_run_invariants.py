@@ -150,6 +150,118 @@ class StateChainToyTests(unittest.TestCase):
         self.assertEqual(chain["status"], FAILED)
 
 
+def _extension_chain(years=(2025, 2026), *, network=False, initialize_year=None):
+    """F-D1: a typed chain whose first executed year starts from the state the
+    extension initialize hook produced (source state + ``extension_state``)."""
+
+    source = _state(years[0], "initial")
+    initialize_year = years[0] if initialize_year is None else initialize_year
+    previous = source
+    results, events = [], []
+    for year in years:
+        extensions = {}
+        if year == initialize_year:
+            initialized = {**previous, "extensions": {"extension_state": {"value.toy-audit": {"years_seen": []}}}}
+            extensions["extension_initialize"] = {
+                "schema_version": "value.extension-initialize-link/v1", "year": year,
+                "input_state_sha256": contract_hash(previous),
+                "output_state_sha256": contract_hash(initialized),
+            }
+            previous = initialized
+        if network:
+            advanced = _state(year, f"network-{year}")
+            extensions["network_expansion"] = {"advance": {"state": advanced}}
+            events.append({"year": year, "stage": "network_expansion.advance_year",
+                           "input_state_sha256": contract_hash(previous)})
+            annual_input = contract_hash(advanced)
+        else:
+            annual_input = contract_hash(previous)
+        extensions["annual_input_state_sha256"] = annual_input
+        next_state = _state(year + 1, f"after-{year}")
+        events.append({"year": year, "stage": "planning.advance_year", "input_state_sha256": annual_input})
+        events.append({"year": year, "stage": "state_transition.apply",
+                       "output_state_sha256": contract_hash(next_state)})
+        results.append({"year": year, "extensions": extensions, "next_state": next_state, "market": {}})
+        previous = next_state
+    return contract_hash(source), results, events
+
+
+class ExtensionInitializeChainTests(unittest.TestCase):
+    """F-D1: the state chain origin of a run with selected extensions."""
+
+    def _evaluate(self, results, events, initial, *, network=False, years=(2025, 2026), periods=2):
+        with tempfile.TemporaryDirectory() as folder:
+            return evaluate_run_invariants(
+                Path(folder), year_results=results, expected_years=list(years), periods_per_year=periods,
+                initial_state_sha256=initial, network_expansion=network, events=events,
+            )
+
+    def test_source_initialize_annual_input_chain_passes(self):
+        initial, results, events = _extension_chain()
+        chain = _check(self._evaluate(results, events, initial), "run.state_chain")
+        self.assertEqual(chain["status"], PASSED, chain["failed_links"])
+        self.assertEqual(chain["links_checked"], 9)
+
+    def test_without_the_initialize_link_the_pre_fix_mismatch_is_reported(self):
+        initial, results, events = _extension_chain()
+        del results[0]["extensions"]["extension_initialize"]
+        chain = _check(self._evaluate(results, events, initial), "run.state_chain")
+        self.assertEqual(chain["status"], FAILED)
+        self.assertEqual([(row["link"], row["year"]) for row in chain["failed_links"]],
+                         [("previous_state_is_annual_input", 2025)])
+
+    def test_tampered_initialize_input_or_output_fails(self):
+        initial, results, events = _extension_chain()
+        tampered = json.loads(json.dumps(results))
+        tampered[0]["extensions"]["extension_initialize"]["input_state_sha256"] = "a" * 64
+        chain = _check(self._evaluate(tampered, events, initial), "run.state_chain")
+        self.assertEqual([row["link"] for row in chain["failed_links"]],
+                         ["previous_state_is_extension_initialize_input"])
+        tampered = json.loads(json.dumps(results))
+        tampered[0]["extensions"]["extension_initialize"]["output_state_sha256"] = "b" * 64
+        chain = _check(self._evaluate(tampered, events, initial), "run.state_chain")
+        self.assertEqual([row["link"] for row in chain["failed_links"]], ["previous_state_is_annual_input"])
+        tampered = json.loads(json.dumps(results))
+        del tampered[0]["extensions"]["extension_initialize"]["output_state_sha256"]
+        chain = _check(self._evaluate(tampered, events, initial), "run.state_chain")
+        self.assertEqual(chain["status"], FAILED)
+
+    def test_initialize_then_network_expansion_advance(self):
+        initial, results, events = _extension_chain(network=True)
+        chain = _check(self._evaluate(results, events, initial, network=True), "run.state_chain")
+        self.assertEqual(chain["status"], PASSED, chain["failed_links"])
+
+    def test_resumed_run_re_records_initialize_on_the_resumed_year(self):
+        initial, results, events = _extension_chain(years=(2025, 2026, 2027))
+        # The resumed part re-runs initialize on the 2026 checkpoint; a
+        # deterministic initialize leaves the namespace unchanged.
+        checkpoint = contract_hash(results[0]["next_state"])
+        results[1]["extensions"]["extension_initialize"] = {
+            "input_state_sha256": checkpoint, "output_state_sha256": checkpoint,
+        }
+        chain = _check(self._evaluate(results, events, initial, years=(2025, 2026, 2027)), "run.state_chain")
+        self.assertEqual(chain["status"], PASSED, chain["failed_links"])
+
+    def test_full_year_annual_path_over_the_whole_horizon(self):
+        # The annual (17520-period) execution path for 2025-2050 without a
+        # ledger: every other check is not evaluated, the state chain must
+        # pass, and the summary must not be failed.
+        years = tuple(range(2025, 2051))
+        initial, results, events = _extension_chain(years=years)
+        report = self._evaluate(results, events, initial, years=years, periods=17520)
+        self.assertEqual(report["execution_scope"], "annual")
+        self.assertEqual(report["periods_per_year"], 17520)
+        chain = _check(report, "run.state_chain")
+        self.assertEqual(chain["status"], PASSED, chain["failed_links"])
+        self.assertEqual(chain["links_checked"], 4 * len(years) + 1)
+        self.assertNotIn("run.state_chain", report["failed_checks"])
+        self.assertNotEqual(report["status"], FAILED)
+        # Pre-fix origin (application passing the source hash with no link):
+        del results[0]["extensions"]["extension_initialize"]
+        report = self._evaluate(results, events, initial, years=years, periods=17520)
+        self.assertIn("run.state_chain", report["failed_checks"])
+
+
 class LedgerCrossPathTests(unittest.TestCase):
     def _evaluate(self, output: Path, typed: dict) -> dict:
         return evaluate_run_invariants(output, year_results=[typed], expected_years=[2025], periods_per_year=2,

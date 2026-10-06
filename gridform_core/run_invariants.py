@@ -407,6 +407,18 @@ def _check_state_chain(checks: _Checks, typed: Mapping[int, Mapping[str, Any]], 
         annual_input = extensions.get("annual_input_state_sha256")
         next_state = result.get("next_state")
         output = _canonical_hash(next_state) if isinstance(next_state, Mapping) else None
+        # F-D1: a run with selected extensions records the initialize step
+        # (source state -> state carrying ``extension_state``) on its first
+        # executed year. The chain is then source -> initialize -> annual
+        # input; both ends of the initialize link are verified.
+        initialize = extensions.get("extension_initialize")
+        if isinstance(initialize, Mapping):
+            if previous_output is not None:
+                link("previous_state_is_extension_initialize_input", year,
+                     initialize.get("input_state_sha256"), previous_output)
+            previous_output = initialize.get("output_state_sha256")
+            if previous_output is None:
+                link("extension_initialize_output_recorded", year, None, "sha256")
         if network_expansion:
             network = dict(extensions.get("network_expansion") or {})
             advanced_state = dict(network.get("advance") or {}).get("state")
