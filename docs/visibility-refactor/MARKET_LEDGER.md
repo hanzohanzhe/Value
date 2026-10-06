@@ -54,6 +54,25 @@ storage charge/discharge, flexible demand, exports, excess, curtailment and
 blackout; `balance_component_mwh` records the signed public-balance contribution.
 A compatibility adjustment is never written as generation.
 
+**Storage offers (four-role finding M-D1, 2026-10).** In the default PSM a
+battery that discharged appears in `orders` as one `final_dispatch` row with
+reason `accepted_non_generator_offer`, offer price 0.0 and offered equal to
+accepted; that row is the frozen net-dispatch record (doctoral trajectory
+zone), not an offer, and storage offers that were not accepted never appear
+there. From `value-bid-at-cost-psm` 6.1.0 the full trace also writes
+`storage_orders`: one row per storage tranche offer of the ahead and the
+balancing stage, accepted or not, with the storage cost module's bid price
+times the bid multiplier (`offer_price_gbp_per_mwh`, `bidding_factor`,
+`charge_period`, `dwell_periods`), offered and accepted MWh, status and
+reason (`cleared`, `demand_filled`, `no_energy_delivered`,
+`merit_order_not_reached`), `accepted_offer_value_gbp` (price x accepted
+MWh, the storage fee the kernel books) and `clearing_offer_id`, the
+`offer_id` of the same offer in `clearing_inputs`. Under the doctoral rule
+set the accepted MWh of a battery and period sum to its `final_dispatch` row
+and to `storage_energy_audit.discharge_output_mwh`; under the corrected rule
+set the row is net of the same-period buy-back. Accounting zone; dispatch is
+unchanged. Schema: `gridform_core/data/contracts/market-ledger-storage-orders-v1.schema.sql`.
+
 `clearing_inputs` and `clearing_outcomes` retain hashes and JSON envelopes for
 the exact pre-clearing declaration and its result. They are written only where
 the selected PSM and trace policy expose that capability. Perfect-foresight LP

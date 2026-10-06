@@ -47,6 +47,8 @@ EXPECTED = {
 # and existing accounting columns they revise.
 P04_ADDED_TABLES = {"storage_energy_audit", "storage_year_boundary", "surplus_routing"}
 P04_ADDED_TABLES |= {"balance_boundary_period", "stress_event"}
+# Four-role M-D1 (A16-1, Q12 accounting): the real storage offers.
+P04_ADDED_TABLES |= {"storage_orders"}
 P04_REVISED_COLUMNS: set[str] = {
     "period_summary.raw_energy_balance_residual_mwh",
     "period_summary.compatibility_adjustment_mwh",
@@ -142,6 +144,61 @@ class P04VariantFixtures(unittest.TestCase):
         multi = self.ledgers["multi_battery"].resolve().as_uri() + "?mode=ro&immutable=1"
         with closing(sqlite3.connect(multi, uri=True)) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(DISTINCT asset_id) FROM storage_energy_audit").fetchone()[0], 2)
+
+    def test_storage_orders_reconcile_with_the_bid_formula_and_dispatch(self):
+        # Four-role M-D1: every storage tranche offer of both stages is booked
+        # at its declared price, accepted or not.  A storage cost module author
+        # can reconcile the doctoral linear bid (cycle wear + dwell x holding)
+        # per asset and year, and the accepted energy with the dispatch.
+        statuses: set[str] = set()
+        for name, path in sorted(self.ledgers.items()):
+            uri = path.resolve().as_uri() + "?mode=ro&immutable=1"
+            with self.subTest(variant=name), closing(sqlite3.connect(uri, uri=True)) as connection:
+                rows = connection.execute(
+                    "SELECT year, period, clearing_offer_id, asset_id, dwell_periods, bidding_factor, "
+                    "offer_price_gbp_per_mwh, offered_mwh, accepted_mwh, status FROM storage_orders"
+                ).fetchall()
+                self.assertTrue(rows)
+                statuses.update(row[9] for row in rows)
+                declared = {}
+                for year, period, stage, payload in connection.execute(
+                    "SELECT year, period, stage, payload_json FROM clearing_inputs"
+                ):
+                    body = json.loads(payload)["payload"]
+                    for offer in body.get("offers", []):
+                        if offer.get("resource_kind") == "storage_discharge":
+                            declared[(year, period, offer["offer_id"])] = (offer, body["period_hours"])
+                self.assertEqual({(row[0], row[1], row[2]) for row in rows}, set(declared))
+                lines: dict[tuple[int, str], list[tuple[int, float]]] = {}
+                for year, period, offer_id, asset, dwell, factor, price, offered, accepted, _ in rows:
+                    offer, hours = declared[(year, period, offer_id)]
+                    self.assertEqual(price, offer["offer_price_gbp_per_mwh"])
+                    self.assertAlmostEqual(offered, offer["maximum_power_mw"] * hours, places=12)
+                    self.assertLessEqual(accepted, offered + 1e-9)
+                    lines.setdefault((year, asset), []).append((dwell, price / factor))
+                for key, points in lines.items():
+                    dwells = sorted({dwell for dwell, _ in points})
+                    if len(dwells) < 2:
+                        continue
+                    by_dwell = dict(points)
+                    slope = (by_dwell[dwells[-1]] - by_dwell[dwells[0]]) / (dwells[-1] - dwells[0])
+                    for dwell, bid in points:
+                        self.assertAlmostEqual(bid, by_dwell[dwells[0]] + slope * (dwell - dwells[0]),
+                                               places=9, msg=str(key))
+                # Doctoral rule set: the offers' accepted energy is the audited
+                # discharge and the battery's final_dispatch row in orders.
+                mismatches = connection.execute(
+                    "SELECT COUNT(*) FROM (SELECT s.year, s.period, s.asset_id, SUM(s.accepted_mwh) AS offers, "
+                    "(SELECT a.discharge_output_mwh FROM storage_energy_audit a WHERE a.year=s.year "
+                    "AND a.period=s.period AND a.asset_id=s.asset_id) AS audited, "
+                    "(SELECT COALESCE(SUM(o.accepted_mwh), 0) FROM orders o WHERE o.year=s.year "
+                    "AND o.period=s.period AND o.asset_id=s.asset_id AND o.stage='final_dispatch') AS dispatched "
+                    "FROM storage_orders s GROUP BY s.year, s.period, s.asset_id) "
+                    "WHERE ABS(offers - audited) > 1e-9 OR ABS(offers - dispatched) > 1e-9"
+                ).fetchone()[0]
+                self.assertEqual(mismatches, 0)
+        # Offers that were not accepted are booked too (absent before M-D1).
+        self.assertIn("rejected", statuses)
 
     def test_oracle_verdicts(self):
         statuses = {name: report["status"] for name, report in self.reports.items()}

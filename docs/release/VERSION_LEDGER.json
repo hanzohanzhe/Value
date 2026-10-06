@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.0.0",
+      "current_version": "6.1.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -113,6 +113,16 @@
           ],
           "reason": "Default PSM clearing and storage dispatch corrections (plan 4.6 S4-S10, decisions Q8, A2, A8): the kernel runs one of two market rule sets derived from the methodology catalogue. The corrected profile clears with D1-surplus, the storage-after-generation merit key, the avoided-cost down-regulation stack, per-period storage netting, per-period storage fees, no VRE skim, cycle-only dynamic storage bids and uniform-price settlement, so its dispatch, prices, storage state and investment paths change (method upgrade). The doctoral profile keeps the 0.6.0-alpha.2 dispatch bit for bit; both profiles report the P5-06 physical operating cost.",
           "requires_user_opt_in": true
+        },
+        {
+          "from": "6.0.0",
+          "to": "6.1.0",
+          "package": "FX4",
+          "correction_ids": [
+            "fx4.storage-offer-ledger"
+          ],
+          "reason": "Four-role finding M-D1 (decisions A16-1, Q12): the default PSM books every storage discharge offer of the ahead and balancing stages, accepted or not, at its real price in the new accounting table storage_orders (full trace level), with the energy each offer delivered. The battery's orders row (final_dispatch, offer price 0.0) is frozen and unchanged. Dispatch, prices, state of charge, costs and investment paths are unchanged in both profiles (doctoral trajectory bit-identical); only an accounting-zone ledger table is added, so this is a code-identity upgrade without user opt-in (Q13).",
+          "requires_user_opt_in": false
         }
       ]
     },

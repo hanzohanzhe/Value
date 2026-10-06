@@ -47,6 +47,7 @@ from ....market_ledger import (
     BalanceTermsRow,
     OrderLedgerRow,
     PeriodLedgerRow,
+    StorageOrderLedgerRow,
     StorageStateRow,
     active_market_ledger,
 )
@@ -66,12 +67,17 @@ from ..native_balance_audit import (
 )
 
 from .. import native_corrected as _p06
+# VALUE four-role M-D1: observation-only record of the storage offers.
+from ..native_storage_orders import StorageOfferTrace as _StorageOfferTrace
 from ..native_market_rules import DOCTORAL as _DOCTORAL_RULES
 
 _WEATHER_LIMIT_CACHE = None
 # VALUE P0-4 S5: per-period surplus routing by source class (read-only trace of
 # the kernel's excess_energy / need_curtailed_energy at each take point).
 _SURPLUS_TRACE = _SurplusTrace()
+# VALUE four-role M-D1: storage offers of the period and what each delivered
+# (read-only; booked in the ledger's storage_orders table).  Never rebound.
+_STORAGE_OFFERS = _StorageOfferTrace()
 
 
 class _P06State:
@@ -1508,6 +1514,7 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
     # annual runs and cannot affect any scientific state, so do not duplicate it.
     
     new_list = bids + storage_pool_list
+    _STORAGE_OFFERS.declare("ahead", period, new_list, bidding_factor=bidding_factor, asset_name=_asset_name)
     declared_offers = []
     for offer_index, item in enumerate(new_list):
         asset = item[0]
@@ -1705,6 +1712,7 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 delivered_output_power = item[0].discharge(
                     item[2], requested_output_power, period
                 )
+                _STORAGE_OFFERS.deliver(item, delivered_output_power)
                 forecast_demand -= delivered_output_power
                 gen_list.append([item[0], delivered_output_power])
                 add_price_ahead.append(item[1] * delivered_output_power)
@@ -2131,6 +2139,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
         declared_balance_list_start = len(balance_list)
         declared_balancing_fee_start = float(sum(balancing_fee))
         declared_storage_fee_start = float(sum(add_price_balance))
+        _STORAGE_OFFERS.declare("balancing", period, new_list, bidding_factor=bidding_factor, asset_name=_asset_name)
         declared_offers = []
         for offer_index, element in enumerate(new_list):
             asset = element[0]
@@ -2380,6 +2389,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                     delivered_output_power = element[0].discharge(
                         element[2], requested_output_power, period
                     )
+                    _STORAGE_OFFERS.deliver(element, delivered_output_power)
                     max_bat_price = element[1]
                     energy_provided -= delivered_output_power
                     add_price_balance.append(element[1] * delivered_output_power)
@@ -3461,6 +3471,10 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
                     0.0, float(avg_price) * accepted_mwh,
                 ))
             market_ledger.record_orders(order_rows)
+            # VALUE four-role M-D1 (Q12 accounting): the real storage offers,
+            # accepted or not; the final_dispatch rows above stay as frozen.
+            market_ledger.record_storage_orders(_STORAGE_OFFERS.rows(
+                int(trace_year), period, period_hours, StorageOrderLedgerRow))
         market_ledger.record_storage(
             StorageStateRow(
                 int(trace_year), period,

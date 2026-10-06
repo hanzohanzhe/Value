@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "872700d12a4c45ca3e924332318c1ed0aad6e569e4493927bd10ead7fb6dc6b7",
+  "runtime_tree_sha256": "9a942adab146c1a274e439e68ccdf3e0c164309668cc89533dda7a55daa4af43",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -127,9 +127,10 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "debb2eaed45d0844e3ab1e5aa7c084ba3123047e378521ea7287438aa981e206",
+      "sha256": "198f1387cd3116df6ff4bf32b580ccbdf17889b9d8d8ab940e716ff605a67518",
       "kind": "declared_runtime_edit",
       "correction_ids": [
+        "fx4.storage-offer-ledger",
         "p04.storage-energy-audit",
         "p04.surplus-node-boundary",
         "p04.surplus-routing",
@@ -142,7 +143,7 @@
         "p06.physical-operating-cost",
         "p06.realise-period"
       ],
-      "note": "P0-5b S5: keyed weather cache; corrected-profile site CF and firm availability injection (kernel_injection.py)",
+      "note": "four-role M-D1: read-only storage offer trace and storage_orders ledger rows (Q12 accounting; dispatch unchanged)",
       "previous_kind": "value_instrumentation"
     },
     {

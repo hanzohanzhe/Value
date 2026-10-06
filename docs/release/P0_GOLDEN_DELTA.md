@@ -16,7 +16,7 @@ trajectory re-baselines are in `tests/golden/reports/` (`D4-r9.json`, `D5-r1.jso
 |---|---|---|---|---|---|---|---|---|
 | C1 | corrected | fast | dynamic storage smoke | r10 | 34 | 467 | 56 | 0 |
 | C2 | corrected | fast | dynamic storage two_year_smoke | r10 | 35 | 474 | 58 | 0 |
-| C3 | corrected | fast | dynamic storage value_101_day | r11 | 50 | 464 | 42 | 0 |
+| C3 | corrected | fast | dynamic storage value_101_day | r12 | 50 | 483 | 40 | 0 |
 | C4 | corrected | fast | legacy storage smoke | r10 | 32 | 467 | 55 | 0 |
 | C5 | corrected | full | legacy storage two_year | r10 | 503 | 529 | 75 | 0 |
 | C6 | corrected | nightly | dynamic storage two_year | r8 | 490 | 531 | 74 | 0 |
@@ -24,7 +24,7 @@ trajectory re-baselines are in `tests/golden/reports/` (`D4-r9.json`, `D5-r1.jso
 | C8 | corrected | fast | staged zonal redispatch value_101_day | r14 | 111 | 382 | 104 | 0 |
 | D1 | doctoral | fast | legacy storage smoke | r9 | 0 | 420 | 53 | 0 |
 | D2 | doctoral | fast | legacy storage two_year_smoke | r9 | 0 | 427 | 54 | 0 |
-| D3 | doctoral | fast | legacy storage value_101_day | r10 | 0 | 481 | 40 | 0 |
+| D3 | doctoral | fast | legacy storage value_101_day | r11 | 0 | 500 | 40 | 0 |
 | D4 | doctoral | full | legacy storage two_year | r10 | 426 | 496 | 73 | 0 |
 | D5 | doctoral | full | GBP1 public1 legacy storage, first model year (A12) | r1 | 377 | 639 | 64 | 0 |
 
@@ -41,9 +41,10 @@ A column changed by several revisions is counted under each of their correction 
 
 | Correction id | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | D1 | D2 | D3 | D4 | D5 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `p04.storage-energy-audit` | 0/36/5 | 0/36/5 | 0/36/5 | 0/36/5 | 0/36/5 | 0/141/14 |  |  | 0/36/5 | 0/36/5 | 0/36/5 | 0/36/5 | 377/639/64 |
-| `p04.surplus-node-boundary` | 0/69/14 | 0/69/14 | 0/92/12 | 0/69/14 | 0/87/14 | 0/141/14 | 0/0/25 | 0/0/31 | 0/71/14 | 0/71/14 | 0/90/12 | 0/90/14 | 377/639/64 |
-| `p04.surplus-routing` |  |  | 0/15/5 |  | 0/17/5 | 0/141/14 |  |  |  |  | 0/39/5 | 0/40/5 | 377/639/64 |
+| `fx4.storage-offer-ledger` |  |  | 0/20/9 |  |  |  |  |  |  |  | 0/20/11 |  |  |
+| `p04.storage-energy-audit` | 0/36/5 | 0/36/5 | 0/36/3 | 0/36/5 | 0/36/5 | 0/141/14 |  |  | 0/36/5 | 0/36/5 | 0/36/5 | 0/36/5 | 377/639/64 |
+| `p04.surplus-node-boundary` | 0/69/14 | 0/69/14 | 0/92/10 | 0/69/14 | 0/87/14 | 0/141/14 | 0/0/25 | 0/0/31 | 0/71/14 | 0/71/14 | 0/90/12 | 0/90/14 | 377/639/64 |
+| `p04.surplus-routing` |  |  | 0/15/3 |  | 0/17/5 | 0/141/14 |  |  |  |  | 0/39/5 | 0/40/5 | 377/639/64 |
 | `p04.validation-gate` | 0/68/0 | 0/68/0 | 0/78/0 | 0/68/0 | 0/80/0 | 0/80/0 | 0/37/0 | 0/37/0 | 0/55/0 | 0/55/0 | 0/91/0 | 0/92/0 | 377/639/64 |
 | `p04.validation-v2` | 0/227/20 | 0/234/21 | 0/245/12 | 0/227/20 | 0/233/21 | 0/233/21 | 0/221/53 | 0/243/50 | 0/231/20 | 0/238/21 | 0/249/12 | 0/237/21 | 377/639/64 |
 | `p05.belgium-price-currency` |  |  |  |  |  |  |  |  |  |  |  |  | 377/639/64 |
@@ -51,19 +52,19 @@ A column changed by several revisions is counted under each of their correction 
 | `p05.demand-utc-clock` |  |  |  |  |  |  |  |  |  |  |  |  | 377/639/64 |
 | `p05.interconnector-clock` |  |  |  |  |  |  |  |  |  |  |  |  | 377/639/64 |
 | `p05.series-clock` | 8/0/0 | 8/0/0 | 1/0/0 | 8/0/0 |  |  | 11/0/25 | 4/0/31 |  |  |  |  |  |
-| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/76/6 | 15/40/4 | 130/106/7 | 148/127/7 | 13/29/36 | 99/82/39 |  |  |  |  |  |
-| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/76/6 | 15/40/4 | 130/106/7 | 148/127/7 | 13/29/36 | 99/82/39 |  |  |  |  |  |
-| `p06.avoided-cost-downward-order` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.d1-surplus-accounting` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.no-vre-pre-clearing-skim` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/76/4 | 15/40/4 | 130/106/7 | 148/127/7 | 13/29/36 | 99/82/39 |  |  |  |  |  |
+| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/76/4 | 15/40/4 | 130/106/7 | 148/127/7 | 13/29/36 | 99/82/39 |  |  |  |  |  |
+| `p06.avoided-cost-downward-order` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.d1-surplus-accounting` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.no-vre-pre-clearing-skim` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
 | `p06.physical-operating-cost` | 0/26/22 | 0/26/22 | 0/29/22 | 0/26/22 | 0/35/22 | 0/35/22 |  |  | 0/26/22 | 0/26/22 | 0/29/22 | 0/35/22 | 377/639/64 |
 | `p06.staged-dwell-disclosure` |  |  |  |  |  |  | 2/0/33 | 1/0/37 |  |  |  |  |  |
-| `p06.storage-after-generation-merit-key` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.storage-bid-cycle-only` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.storage-fee-per-period` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.storage-net-per-period` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.storage-uniform-price-settlement` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
-| `p06.voll-chronology-parameter` | 17/88/21 | 18/88/22 | 46/123/20 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.storage-after-generation-merit-key` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.storage-bid-cycle-only` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.storage-fee-per-period` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.storage-net-per-period` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.storage-uniform-price-settlement` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
+| `p06.voll-chronology-parameter` | 17/88/21 | 18/88/22 | 46/123/18 | 15/88/20 | 125/171/23 | 345/180/33 | 0/0/28 | 0/0/32 | 0/3/12 | 0/3/12 | 0/3/10 | 0/3/12 |  |
 | `p07.compatibility-capital-out-of-headline` | 9/29/10 | 9/29/10 | 0/10/5 | 9/29/10 | 456/81/29 | 429/81/27 | 9/27/38 | 0/8/39 |  |  |  |  |  |
 | `p07.cost-ledger-v2` | 9/29/10 | 9/29/10 | 0/10/5 | 9/29/10 | 456/81/29 | 429/81/27 | 9/27/38 | 0/8/39 | 0/20/5 | 0/20/5 | 0/4/1 | 0/20/5 | 377/639/64 |
 | `p07.power-battery-pool` | 9/29/10 | 9/29/10 | 0/10/5 | 9/29/10 | 456/81/29 | 429/81/27 | 9/27/38 |  |  |  |  |  |  |
@@ -88,7 +89,7 @@ difference, not a correction.
 |---|---|---|---|---|---|---|
 | D1 | C4 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 32 | 217 | 16 | 0 |
 | D2 | C2 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 35 | 217 | 27 | 0 |
-| D3 | C3 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 50 | 184 | 23 | 0 |
+| D3 | C3 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 50 | 203 | 22 | 0 |
 | D4 | C5 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 144 | 316 | 19 | 0 |
 
 Doctoral cases without a corrected partner on the same pack and mode: D5. (D5 runs the GBP1 research
@@ -99,24 +100,25 @@ document outside the public source.)
 
 | Attribution | D1↔C4 | D2↔C2 | D3↔C3 | D4↔C5 |
 |---|---|---|---|---|
+| `fx4.storage-offer-ledger` |  |  | 0/20/7 |  |
 | `p04.storage-energy-audit` | 0/0/3 | 0/0/3 | 0/16/5 | 0/16/5 |
 | `p04.surplus-node-boundary` | 0/17/7 | 0/17/8 | 0/42/9 | 0/43/9 |
 | `p04.surplus-routing` |  |  | 0/28/5 | 0/28/5 |
 | `p04.validation-gate` | 0/43/0 | 0/43/0 | 0/56/0 | 0/60/0 |
 | `p04.validation-v2` | 0/34/1 | 0/34/2 | 0/44/1 | 0/53/1 |
 | `p05.series-clock` | 8/0/0 | 8/0/0 | 1/0/0 |  |
-| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/75/6 | 124/104/7 |
-| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/75/6 | 124/104/7 |
-| `p06.avoided-cost-downward-order` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.d1-surplus-accounting` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.no-vre-pre-clearing-skim` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.physical-operating-cost` | 0/8/14 | 0/8/16 | 0/13/16 | 0/19/14 |
-| `p06.storage-after-generation-merit-key` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.storage-bid-cycle-only` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.storage-fee-per-period` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.storage-net-per-period` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.storage-uniform-price-settlement` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
-| `p06.voll-chronology-parameter` | 15/91/14 | 18/91/17 | 46/125/16 | 118/178/17 |
+| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/75/5 | 124/104/7 |
+| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/75/5 | 124/104/7 |
+| `p06.avoided-cost-downward-order` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.d1-surplus-accounting` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.no-vre-pre-clearing-skim` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.physical-operating-cost` | 0/8/14 | 0/8/16 | 0/13/15 | 0/19/14 |
+| `p06.storage-after-generation-merit-key` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.storage-bid-cycle-only` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.storage-fee-per-period` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.storage-net-per-period` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.storage-uniform-price-settlement` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
+| `p06.voll-chronology-parameter` | 15/91/14 | 18/91/17 | 46/125/15 | 118/178/17 |
 | `p07.compatibility-capital-out-of-headline` | 9/13/2 | 9/13/3 | 0/3/2 | 97/62/3 |
 | `p07.cost-ledger-v2` | 9/13/2 | 9/13/3 | 0/3/2 | 97/62/3 |
 | `p07.power-battery-pool` | 9/13/2 | 9/13/3 | 0/3/2 | 97/62/3 |
@@ -133,6 +135,7 @@ only as a golden revision reason. Families: the golden families with a revision 
 
 | Correction id | Source | Families | Findings | Module bumps | Description |
 |---|---|---|---|---|---|
+| `fx4.storage-offer-ledger` | VERSION_LEDGER | corrected, doctoral | M-D1 | value-bid-at-cost-psm 6.0.0->6.1.0 | Four-role M-D1 (A16-1, Q12): new accounting table storage_orders books every storage discharge offer of the default PSM (ahead and balancing, accepte… |
 | `p04.storage-energy-audit` | VERSION_LEDGER | corrected, doctoral | — | value-bid-at-cost-psm 5.1.0->5.2.0 | P0-4 S4: per-asset storage energy audit tables (storage_energy_audit, storage_year_boundary) in the default PSM ledger; accounting only (Q12; P3-14,… |
 | `p04.surplus-node-boundary` | VERSION_LEDGER | corrected, doctoral | — | value-bid-at-cost-psm 5.1.0->5.2.0 | P0-4 S6: the doctoral rule set declares default_psm_surplus_node_v1; raw residual on that boundary, compatibility adjustment capped at numerical nois… |
 | `p04.surplus-routing` | VERSION_LEDGER | corrected, doctoral | — | value-bid-at-cost-psm 5.1.0->5.2.0 | P0-4 S5: source-classified surplus routing table (surplus_routing) and its summary; oracle and replay stress become exact (accounting only; Q7, A2) |

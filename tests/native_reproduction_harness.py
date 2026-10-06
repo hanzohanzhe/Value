@@ -719,6 +719,7 @@ class RecordingLedger:
         self.declared: list[dict[str, Any]] = []
         self.storage_audit: list[dict[str, Any]] = []
         self.surplus_routing: list[dict[str, Any]] = []
+        self.storage_orders: list[dict[str, Any]] = []
         self.balance_declarations: list[dict[str, Any]] = []
         self.balance_terms: list[dict[str, Any]] = []
 
@@ -738,6 +739,11 @@ class RecordingLedger:
     def record_surplus_routing(self, rows) -> None:
         # P0-4 S5: source-classified surplus routing (accounting, zones.json).
         self.surplus_routing.extend(dataclasses.asdict(row) for row in rows)
+
+    def record_storage_orders(self, rows) -> None:
+        # Four-role M-D1: real storage offers (accounting, zones.json).  Kept
+        # for inspection; not part of the synthetic golden columns.
+        self.storage_orders.extend(dataclasses.asdict(row) for row in rows)
 
     def declare_balance_boundary(self, boundary_id, *, rule_set=None, strict=None) -> None:
         # P0-4 S6: the boundary the kernel declares for its rule set.

@@ -620,6 +620,40 @@ class OrderLedgerRow:
 
 
 @dataclass(frozen=True)
+class StorageOrderLedgerRow:
+    """One storage discharge offer of the default PSM (four-role M-D1, Q12).
+
+    The kernel offers each stored charge tranche at the storage cost module's
+    bid price (times the bid multiplier) in the ahead stage and, in balancing
+    periods, in the balancing stage.  Every offer is booked, accepted or not,
+    with the power it delivered.  ``clearing_offer_id`` is the ``offer_id``
+    of the same offer in ``clearing_inputs``; ``accepted_offer_value_gbp`` is
+    offer price x accepted MWh (the storage fee the kernel books).  The
+    battery's ``final_dispatch`` row in ``orders`` (offer price 0.0,
+    ``accepted_non_generator_offer``) is the frozen net-dispatch record and
+    is left unchanged; this table carries the real offers (accounting zone).
+    """
+
+    order_id: str
+    year: int
+    period: int
+    stage: str
+    clearing_offer_id: str
+    asset_id: str
+    asset_type: str
+    side: str
+    charge_period: int
+    dwell_periods: int
+    bidding_factor: float
+    offer_price_gbp_per_mwh: float
+    offered_mwh: float
+    accepted_mwh: float
+    status: str
+    reason_code: str
+    accepted_offer_value_gbp: float
+
+
+@dataclass(frozen=True)
 class StorageStateRow:
     year: int
     period: int
@@ -1474,6 +1508,8 @@ OPTIONAL_ENERGY_AUDIT_TABLES: dict[str, tuple[str, int]] = {
     "surplus_routing": ("market-ledger-surplus-routing-v1.schema.sql", 11),
     "balance_boundary_period": ("market-ledger-energy-balance-v1.schema.sql", 20),
     "stress_event": ("market-ledger-energy-balance-v1.schema.sql", 9),
+    # Four-role M-D1 (Q12 accounting): real storage offers, full trace only.
+    "storage_orders": ("market-ledger-storage-orders-v1.schema.sql", 17),
 }
 
 
@@ -1508,6 +1544,7 @@ class MarketLedger(Protocol):
     def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: ...
     def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: ...
     def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None: ...
+    def record_storage_orders(self, rows: Iterable[StorageOrderLedgerRow]) -> None: ...
     def declare_balance_boundary(self, boundary_id: str, *, rule_set: str | None = None, strict: bool | None = None) -> None: ...
     def record_balance_terms(self, row: BalanceTermsRow) -> None: ...
     def close(self) -> dict[str, object]: ...
@@ -1553,6 +1590,7 @@ class NullMarketLedger:
     def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: pass
     def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: pass
     def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None: pass
+    def record_storage_orders(self, rows: Iterable[StorageOrderLedgerRow]) -> None: pass
     def declare_balance_boundary(self, boundary_id: str, *, rule_set: str | None = None, strict: bool | None = None) -> None: pass
     def record_balance_terms(self, row: BalanceTermsRow) -> None: pass
     def close(self) -> dict[str, object]:
@@ -2512,6 +2550,15 @@ class SQLiteMarketLedger:
         """Source-classified surplus routing (P0-4 S5); every trace level."""
 
         self._record_optional("surplus_routing", rows)
+
+    def record_storage_orders(self, rows: Iterable[StorageOrderLedgerRow]) -> None:
+        """Real storage discharge offers, accepted or not (four-role M-D1).
+
+        The default PSM writes them at the ``full`` trace level, next to
+        ``orders``.
+        """
+
+        self._record_optional("storage_orders", rows)
 
     def _flush_optional(self) -> None:
         for table, buffer in self._optional_rows.items():

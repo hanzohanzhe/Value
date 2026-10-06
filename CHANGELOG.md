@@ -49,6 +49,7 @@ existing installation is upgraded side by side, as described in
 | P0-6 | `p06.physical-operating-cost` | `p06.d1-surplus-accounting`, `p06.storage-after-generation-merit-key`, `p06.avoided-cost-downward-order`, `p06.storage-net-per-period`, `p06.storage-fee-per-period`, `p06.no-vre-pre-clearing-skim`, `p06.storage-bid-cycle-only`, `p06.storage-uniform-price-settlement`, `p06.voll-chronology-parameter`, `p06.staged-dwell-disclosure` (staged path) |
 | P0-7 | `p07.thermal-net-revenue`, `p07.cost-ledger-v2` | `p07.storage-leftover-headroom`, `p07.power-battery-pool`, `p07.compatibility-capital-out-of-headline` |
 | P0-8 | `p08.zonal-solver-v4`, `p08.runtime-fallback-audit`, `p08.dec-economic-pricing`, `p08.pro-rata-ties`, `p08.dec-class-order`, `p08.network-free-counterfactual`, `p08.boundary-primary-dual`, `p08.network-share-expansion` (software fixes; network modules run only under the corrected profile, Q3) | — |
+| FX4 (post-UAT M-D1) | `fx4.storage-offer-ledger` (accounting zone) | — |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -435,6 +436,17 @@ unattributed.
   `user-formula-storage-cost` stays 1.0.0; storage recovery adequacy v2.
 - Per-period source flows (RealisationLog) stay in memory only; persisting
   them is deferred to ledger v9 (P1).
+
+### Storage offers in the market ledger (post-UAT M-D1)
+
+- `value-bid-at-cost-psm` 6.1.0 (code identity, no opt-in): the full market
+  trace writes the new accounting table `storage_orders`, one row per storage
+  tranche offer of the ahead and balancing stages, accepted or not, at its
+  real price (storage cost module bid x bid multiplier), with the energy it
+  delivered and a link to the clearing declaration.  The battery's `orders`
+  row (`final_dispatch`, price 0.0) is unchanged.  Dispatch is unchanged in
+  both profiles; golden D3 and C3 gained an accounting revision
+  (`fx4.storage-offer-ledger`).
 
 ### Scientific validation recomputed and gated (P0-4)
 

@@ -358,6 +358,11 @@
    "why": "P0-4 S4 (Q12 audit table; P3-14): opening/closing storage state per operating year and the closing state the default PSM discards (booked, not changed)"
   },
   {
+   "pattern": "market/market.sqlite::storage_orders.*",
+   "zone": "accounting",
+   "why": "four-role M-D1 (A16-1, Q12 accounting table): every storage discharge offer of the default PSM, accepted or not, at its real offer price, with the energy it delivered. Observation only; the frozen orders rows (battery final_dispatch, price 0.0) are unchanged"
+  },
+  {
    "pattern": "market/market.sqlite::surplus_routing.*",
    "zone": "accounting",
    "why": "P0-4 S5 (Q7, Q12 audit table): source-classified pre-balancing surplus routing of the default PSM (U_out, W_in reported as non_vre_spill, re-dispatch, unrealised surplus). Observation only"
