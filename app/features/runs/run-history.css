@@ -3,3 +3,6 @@
    tokens only; helper text >= 12px. */
 .run-launch-note { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .run-status .run-launch-note { display: block; max-width: 60ch; }
+/* M2-N3 / S-D13: blocked physical preview and the frozen-manifest note. */
+.domain-readiness-blocked { display: inline-flex; }
+.readiness-identity-note { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.45; }

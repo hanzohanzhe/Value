@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { resolveRunContext, type ContextRun, type FrozenRunContext } from "./runContext";
+import { FROZEN_MANIFEST_LABEL, FROZEN_MANIFEST_NOTE, resolveRunContext, type ContextRun, type FrozenRunContext } from "./runContext";
 import { GATE_TEXT, NOTICE_ACTION_LABELS, type CheckField, type NoticeAction, type RunAdvisory, type RunNotice } from "./runValidation.ts";
 import { Callout, StatusPill } from "../shared/Callout";
 import "./run-context.css";
@@ -109,14 +109,14 @@ export default function RunContextBar({ run, frozen, actions = {} }: {
         <dl>{[
           ["Study ID", context.studyId],
           ["Study revision SHA-256", context.revisionSha],
-          ["Data pack manifest SHA-256", context.dataPackSha],
+          [FROZEN_MANIFEST_LABEL, context.dataPackSha],
           ["Network manifest SHA-256", context.networkPackSha],
           ["Input snapshot ID", context.snapshotId],
           ["Input tree SHA-256", context.inputTreeSha],
           ["Methodology profile id", context.methodologyProfileId],
           ["Profile catalogue SHA-256", context.profileCatalogueSha],
         ].map(([name, value]) => <div key={name}><dt>{name}</dt><dd><code>{value ?? "Not recorded"}</code></dd></div>)}</dl>
-        <p>These are the identities saved for this Run. Loading them does not establish scientific validation.</p>
+        <p>These are the identities saved for this Run. Loading them does not establish scientific validation. {FROZEN_MANIFEST_NOTE}</p>
       </details>
     </>}
     {context.sourceStudyStatus === "trash" && <p className="run-context-notice">The source Study is in trash. Historical Run evidence remains readable.</p>}

@@ -1309,6 +1309,7 @@
     "tests/frontend/render/network-tables.test.mjs",
     "tests/frontend/render/preflight-blocked-run.test.mjs",
     "tests/frontend/render/readiness-issues.test.mjs",
+    "tests/frontend/render/readiness-labels.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
     "tests/frontend/render/run-context-bar.test.mjs",
     "tests/frontend/render/run-history.test.mjs",
@@ -3180,9 +3181,9 @@
     },
     {
       "path": "app/features/evidence/ReadinessEvidence.tsx",
-      "sha256": "c6e798e185cd28ec7ea7a05bac4963a3d4729302976997bf7b0125b0bc4758c7",
-      "bytes": 4141,
-      "transform": "byte copy"
+      "sha256": "4e517009e5e48d264ea38d5fb11812ea6c19aa008c50ff5fb70896a1b46f3abe",
+      "bytes": 4330,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/evidence/ResidualPanel.tsx",
@@ -3462,8 +3463,8 @@
     },
     {
       "path": "app/features/runs/DomainReadinessPanel.tsx",
-      "sha256": "947d87944178e00949205b56585fa79015430e3f2b59078365568aa1937dc0dd",
-      "bytes": 2388,
+      "sha256": "dec87c7b3378fbc5674892dc9086916d7b70320507c8d4476e0ebbfd7ab4c8bf",
+      "bytes": 2908,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3480,8 +3481,8 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "c8ae072072347e99156d52be578bf5c6821c751aec9396f8ea5f83e24fff22ad",
-      "bytes": 22086,
+      "sha256": "c77aec27aa5a051ac543f02fd999d88d4f63431005f62ab05fe338aced65c3ca",
+      "bytes": 22119,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3510,8 +3511,8 @@
     },
     {
       "path": "app/features/runs/run-history.css",
-      "sha256": "925b5be76819efad8f1200c6da697f37ffe8e3c0335d47ed6874b9ba0f1f0732",
-      "bytes": 348,
+      "sha256": "da385d2cf1b9437ba8b6c21d22c43cfa1872d5c1746b90a9217f79d9e4d3022d",
+      "bytes": 595,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3726,8 +3727,8 @@
     },
     {
       "path": "app/features/workspace/RunContextBar.tsx",
-      "sha256": "9fb06c2db78bcdf7af3a08e3a1120abfcdd25ea9d190ae309e39eac9576c5601",
-      "bytes": 8501,
+      "sha256": "c11fc83eb767b157ae04a8590b4399e4a4e9c138ded2f7e97f3cba5b865790f0",
+      "bytes": 8562,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3792,8 +3793,8 @@
     },
     {
       "path": "app/features/workspace/runContext.ts",
-      "sha256": "0d22cfc88d51521cd440bac702c37fa7ed282319bf4ef93f461c319b7b385452",
-      "bytes": 8041,
+      "sha256": "08d8e8078ea1a7d7a0c734024e2109b0a8972adbec3079c4f8aed589669ec66e",
+      "bytes": 8514,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10761,6 +10762,12 @@
       "path": "tests/frontend/render/readiness-issues.test.mjs",
       "sha256": "678c125b7067b41eaacfa23906282d6eaef9465e88adfad954ae0d09f3608a2c",
       "bytes": 3728,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/render/readiness-labels.test.mjs",
+      "sha256": "a459846b8cbee07d4069364ecedd042e9a8c987c3311d10d1d61668338dd97da",
+      "bytes": 2433,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

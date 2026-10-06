@@ -1,6 +1,7 @@
 import type { Project } from "../studies/types";
 import type { ResourceReadiness, FrozenInputSnapshot } from "../runs/types";
 import { Badge, formatBytes, formatNumber } from "../shared/presentation";
+import { FROZEN_MANIFEST_LABEL, FROZEN_MANIFEST_NOTE } from "../workspace/runContext";
 
 export default function ReadinessEvidence({
   readiness,
@@ -27,7 +28,7 @@ export default function ReadinessEvidence({
     </div>
     <dl className="readiness-identities">
       <div><dt>Data pack ID</dt><dd><code>{project?.data_pack_id ?? "recorded in frozen project"}</code></dd></div>
-      <div><dt>{snapshot?.pack_manifest_sha256 ? "Data pack manifest SHA-256" : "Data fingerprint"}</dt><dd><code>{snapshot?.pack_manifest_sha256 ?? readiness.calibration_key.data_fingerprint ?? "not exposed by this preflight"}</code></dd></div>
+      <div><dt>{snapshot?.pack_manifest_sha256 ? FROZEN_MANIFEST_LABEL : "Data fingerprint"}</dt><dd><code>{snapshot?.pack_manifest_sha256 ?? readiness.calibration_key.data_fingerprint ?? "not exposed by this preflight"}</code>{snapshot?.pack_manifest_sha256 && <small className="readiness-identity-note">{FROZEN_MANIFEST_NOTE}</small>}</dd></div>
       <div><dt>Network pack ID</dt><dd><code>{snapshot?.network_pack_id ?? project?.market_configuration?.network_pack_id ?? "not selected"}</code></dd></div>
       {snapshot?.network_pack_manifest_sha256 && <div><dt>Network pack manifest SHA-256</dt><dd><code>{snapshot.network_pack_manifest_sha256}</code></dd></div>}
       <div><dt>Run context SHA-256</dt><dd><code>{readiness.run_context_sha256}</code></dd></div>

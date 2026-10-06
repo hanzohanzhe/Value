@@ -3,6 +3,13 @@ import {
   type CheckField, type ProfileBadge, type RunAdvisory, type RunNotice, type RunValidationFields,
 } from "./runValidation.ts";
 
+/**
+ * S-D13 (four-role report, round R1-5): the Run records the manifest as frozen,
+ * which is not the source manifest the Data page shows; say which one it is.
+ */
+export const FROZEN_MANIFEST_LABEL = "Frozen data pack manifest SHA-256";
+export const FROZEN_MANIFEST_NOTE = "Freezing rewrites the manifest's file paths and records the snapshot, so this SHA-256 differs from the source manifest SHA-256 shown on the Data page; compare files by their per-role SHA-256.";
+
 /** Presentation of one Run's recorded identity. No mutable workspace input belongs here. */
 export type ContextRun = RunValidationFields & {
   id: string;
