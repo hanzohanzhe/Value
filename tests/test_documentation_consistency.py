@@ -49,7 +49,7 @@ class DocumentationConsistencyTests(unittest.TestCase):
         formula = "max(computed_tolerance, observed_degradation) / validated_ceiling"
         for reference in (
             "docs/MATHEMATICAL_REFERENCE.md",
-            "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V2.md",
+            "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V4.md",  # current contract (P0-8)
         ):
             text = (ROOT / reference).read_text(encoding="utf-8")
             normalized = re.sub(r"\s+", " ", text)

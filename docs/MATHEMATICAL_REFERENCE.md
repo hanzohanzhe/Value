@@ -178,9 +178,51 @@ analysis, N-1 analysis or transmission expansion. Its Prompt 99 analytical
 fixtures do not replace the independent PuLP/CBC validation gate required before
 annual execution.
 
-#### Numerical lexicographic solver contract v2
+#### Network economics of the staged path (P0-8b)
 
-The experimental `value-zonal-redispatch-balancing` module `2.0.0` uses four
+Balancing bids follow the BM convention: an accepted up bid is paid
+\(x\,p\), an accepted down (dec) bid pays \(x\,p\) back, so the objective
+term of a dec is \(-p\,x\) and the highest dec is accepted first. Dec prices
+are economic (`network_method_rules`, rule set `network-economic-v1`, sharing
+the down-regulation table of the default PSM): a fuel unit returns its avoided
+running cost \(p=SRMC\cdot m_{dec}-s\); an import its period price
+\(p_t\,m_{dec}\); VRE and run-of-river hydro lose their output support,
+\(p=-s\); nuclear also asks the inflexibility premium,
+\(p=SRMC\cdot m_{dec}-s-\pi\) (\(\pi=\) GBP 100 by default); storage bids at
+most \(\min(p^{up}\eta_c\eta_d,\ \min_k p^{up}_k)\), so a storage dec never
+pairs with an inc at a profit. \(m_{dec}\le m_{bid}\) is enforced. A
+decremented fuel unit therefore keeps no windfall. Equal-price bids share pro
+rata (zonal LP and copperplate 1.1.0, storage after generation at an equal
+price).
+
+The network cost of a period is
+\(C^{net}=C(\text{zonal})-C(\text{network-free})\). The network-free case is
+the same LP collapsed to one node (no corridors or cut sets) with the same
+bids, export envelopes, storage physics, VOLL-priced shedding, solver and one
+per-period unit-cost table that also prices the zonal case, the resource rows
+and the agents' running cost. Every case therefore includes
+\(VOLL\cdot u\), a national shortfall is never network cost, a time-varying
+import price creates none, and an export arbitrage appears in both cases. Each
+period checks \(J_1(\text{zonal})\ge J_1(\text{network-free})-\text{tol}\) on
+the primary objective, whose difference is also reported
+(`network_constraint_bid_objective_gbp`).
+
+The boundary marginal value is the primary-stage dual
+\(\lambda_b=-\partial J_1/\partial \bar F_b\) of the boundary limit, read only
+from the primary LP (later phases optimise tie-breaks): with HiGHS row
+marginals \(m\le0\), \(\lambda_b=m_b^{rev}-m_b^{fwd}\) in GBP per MWh of
+transfer, positive when the forward limit binds. Status `degenerate_dual`
+marks a boundary at its limit with a zero dual and `shared_member` a binding
+boundary sharing a corridor with another binding one (the split is then not
+unique; the reported value lies between the one-sided derivatives). The annual
+`boundary_congestion_rent_diagnostic_gbp` is
+\(\sum_t\sum_b|\lambda_{b,t}\,F_{b,t}|\), a diagnostic, not a cash cost.
+Ledgers written before P0-8b stored a hard-coded 0.0; they are read as
+`not_computed`.
+
+#### Numerical lexicographic solver contract v4 (formula of v2)
+
+The experimental `value-zonal-redispatch-balancing` module `4.0.0` uses four
 lexicographic objectives: redispatch bid cost (GBP), absolute deviation from the
 national ahead schedule (MWh), physical storage and boundary-flow throughput
 (MWh), and a stable-key objective that selects a reproducible asset-level
@@ -214,9 +256,12 @@ The recorded embedded HiGHS binary is currently a source-registered
 `candidate`, not independently validated execution; default settings must not
 be promoted to an independently validated solver-stack claim.
 
-The validated ceilings per half-hour are `0.01 GBP`, `0.001 MWh` schedule
+Solver contract v4 (Q5) first locks total load shedding after the primary solve
+(fixed at zero when the primary sheds nothing, otherwise
+\(\sum u\le u^*\)) and then applies the cap above only to the bid-cost terms.
+The validated ceilings per half-hour are `1.0 GBP`, `0.001 MWh` schedule
 deviation and `0.001 MWh` throughput. Recorded reference thresholds are
-`0.10 GBP`, `0.01 MWh` and `0.01 MWh` respectively. Classification uses
+`1.0 GBP`, `0.01 MWh` and `0.01 MWh` respectively. Classification uses
 `max(computed_tolerance, observed_degradation) / validated_ceiling`: up to 10%
 is `GO`; above 10% and up to 100% is `GO_WITH_NUMERICAL_WARNING`; above 100%
 is `COMPLETED_WITH_NUMERICAL_WARNING`, including values above the recorded
@@ -403,8 +448,9 @@ run-status payload.
 
 The optional staged zonal path uses three dispatches with the same realised
 inputs. Let \(A_r\) be realised available VRE, \(G_{PF}\) VRE used by the
-perfect-forecast copperplate clear, \(G_{CP}\) VRE used after a forecast schedule
-and realised copperplate balancing, and \(G_Z\) final VRE used after zonal
+perfect-forecast reference clear, \(G_{CP}\) VRE used after a forecast schedule
+and realised reference balancing (since P0-8b both references are the
+network-free LP of section 2.4, not the greedy copperplate), and \(G_Z\) final VRE used after zonal
 redispatch. The authoritative period identity is
 
 \[

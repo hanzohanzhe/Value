@@ -371,6 +371,7 @@
     "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V1.md",
     "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V2.md",
     "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V3_GBP1.md",
+    "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V4.md",
     "docs/scientific-readiness/dynamic-storage-cost-audit.json",
     "docs/scientific-readiness/global-mutation-allowlist.json",
     "docs/scientific-readiness/independent-psm-validation-v1.json",
@@ -4402,8 +4403,8 @@
     },
     {
       "path": "docs/BUILD_YOUR_OWN_MODEL_101.md",
-      "sha256": "13e63ce81b0dfcb2537c16673b739027ac59521ddf4fca128990c96bc907d017",
-      "bytes": 22809,
+      "sha256": "cfda1b6ab18f9c02673616d6db5ef626a012357a0c8694bb8a0a676af639d537",
+      "bytes": 23168,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4450,14 +4451,14 @@
     },
     {
       "path": "docs/MATHEMATICAL_REFERENCE.md",
-      "sha256": "f324ab6e0ef5fe9c201e83dbcd3ba493a46db2e6c553710db21d928773877563",
-      "bytes": 24979,
+      "sha256": "652673510c337c832c4da0ce159f2505d208f79b067d37fbe2b567a86d61cb12",
+      "bytes": 27874,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
-      "sha256": "dc54f911f07daec806a88cd408adb40b010cd1577bd60bd899fe62600d981ea3",
-      "bytes": 23893,
+      "sha256": "8f481072ad20d96b62a0f5467b859eb99f289f1221c04bd1ee82e6a3027d6f0e",
+      "bytes": 24090,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4504,8 +4505,8 @@
     },
     {
       "path": "docs/VALIDATION_AND_CLAIMS.md",
-      "sha256": "97a9cb030dcecbf9a342f3122b4f945d433a5d4cd9a2c8f71c49e04f4cd46206",
-      "bytes": 8795,
+      "sha256": "ad95b1bc92c3ac5ab5931507585b9d7a2d9810e2f31c7f4411b59fcc3e04c8cb",
+      "bytes": 9810,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -5068,15 +5069,21 @@
     },
     {
       "path": "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V2.md",
-      "sha256": "a02dc801459fe718b11087ab311d9ba322f8b68567b26241ac3b29d6d0875db9",
-      "bytes": 3715,
-      "transform": "byte copy"
+      "sha256": "14815ddac71502d134e8da4811206ef88387227adb14630c01444fba4ebc8cac",
+      "bytes": 3807,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V3_GBP1.md",
-      "sha256": "34824573d91e620ab96414cf448ddb51340fd04a04162f40e56a74b0b384ffe1",
-      "bytes": 1684,
-      "transform": "byte copy"
+      "sha256": "a9e4df2d1d598e99bd5ad0f3b77215a973f835b2995e0c866a3608181449d3a2",
+      "bytes": 1882,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "docs/scientific-readiness/ZONAL_SOLVER_CONTRACT_V4.md",
+      "sha256": "2152547eaf118795fb135b1d953a8ad3024c39b0df83711117dd329754bcc45f",
+      "bytes": 4247,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/scientific-readiness/dynamic-storage-cost-audit.json",
@@ -9935,8 +9942,8 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "95833ab0ac8fe9811798fb7dc0a90eebc4855e8e2870ffb20ad3e80cabd0752e",
-      "bytes": 20795,
+      "sha256": "f1441b28908b591cfaac1e2886215fd5dc8e57af5d93b6f05d44c5d425151dd1",
+      "bytes": 20217,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11099,9 +11106,9 @@
     },
     {
       "path": "tests/test_documentation_consistency.py",
-      "sha256": "b34a50aa183555c53bac732f06e51bde76c132cee526e6598019279fab4d9715",
-      "bytes": 27862,
-      "transform": "byte copy"
+      "sha256": "3ad97e7964edcbda4a197a8fa80b013dafc7d7ac6b63e627aed292bc657fabf5",
+      "bytes": 27889,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_dynamic_storage_cost.py",

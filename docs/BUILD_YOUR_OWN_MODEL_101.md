@@ -247,7 +247,9 @@ A zonal balancing replacement must declare `solver_contract` in its
 `gridform.module/v2` manifest, publish the solver identity, numerical
 lexicographic semantics, one-sided objective caps, advanced-setting bounds and
 no-fallback behaviour. The built-in `value-zonal-redispatch-balancing` module is
-`2.0.0`; it uses SciPy `1.8.1` and `highs-ds` by default. Its recorded embedded
+`4.0.0` (solver contract v4: total load shedding is locked after the primary
+solve, then only the bid-cost terms carry a numerical lock; GBP 1 is the
+acceptance ceiling); it uses SciPy `1.8.1` and `highs-ds` by default. Its recorded embedded
 HiGHS binary is source-registered as `candidate`, not independently validated.
 
 The following usable manifest fragment is intentionally identical to the
@@ -257,11 +259,11 @@ third-party solver's declared contract and validation gates.
 ```json
 {
   "solver_contract": {
-    "schema_path": "gridform_core/data/contracts/network-solver-contract-v2.schema.json",
-    "semantics": "four_phase_coefficient_aware_numerical_lexicographic_with_one_sided_caps",
+    "schema_path": "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
+    "semantics": "four_phase_lexicographic_primary_shed_lock_then_numerical_bid_cost_cap_gbp1_acceptance_ceiling_mwh_coefficient_aware",
     "defaults": {
-      "schema_version": "value.network-solver-contract/v2",
-      "contract_version": "value.zonal-lexicographic/v2",
+      "schema_version": "value.network-solver-contract/v4",
+      "contract_version": "value.zonal-lexicographic-shed-lock/v4",
       "method": "highs-ds",
       "presolve": true,
       "primal_feasibility_tolerance": 1e-09,
@@ -269,12 +271,12 @@ third-party solver's declared contract and validation gates.
       "ipm_optimality_tolerance": 1e-09,
       "warning_fraction": 0.1,
       "validated_ceilings": {
-        "primary_bid_cost_gbp": 0.01,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.001,
         "physical_throughput_mwh": 0.001
       },
       "absolute_ceilings": {
-        "primary_bid_cost_gbp": 0.1,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.01,
         "physical_throughput_mwh": 0.01
       },
@@ -282,14 +284,30 @@ third-party solver's declared contract and validation gates.
       "requires_acknowledgement": false
     },
     "ranges": {
-      "method": ["highs-ds", "highs-ipm", "highs"],
-      "primal_feasibility_tolerance": [1e-10, 1e-07],
-      "dual_feasibility_tolerance": [1e-10, 1e-07],
-      "ipm_optimality_tolerance": [1e-12, 1e-07],
-      "warning_fraction": {"exclusive_minimum": 0.0, "maximum": 1.0}
+      "method": [
+        "highs-ds",
+        "highs-ipm",
+        "highs"
+      ],
+      "primal_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "dual_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "ipm_optimality_tolerance": [
+        1e-12,
+        1e-07
+      ],
+      "warning_fraction": {
+        "exclusive_minimum": 0.0,
+        "maximum": 1.0
+      }
     },
     "recorded_reference_thresholds": {
-      "primary_bid_cost_gbp": 0.1,
+      "primary_bid_cost_gbp": 1.0,
       "secondary_schedule_deviation_mwh": 0.01,
       "physical_throughput_mwh": 0.01
     },

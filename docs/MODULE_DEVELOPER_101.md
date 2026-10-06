@@ -346,11 +346,11 @@ uses its own declared version and documented semantics where it differs.
 ```json
 {
   "solver_contract": {
-    "schema_path": "gridform_core/data/contracts/network-solver-contract-v2.schema.json",
-    "semantics": "four_phase_coefficient_aware_numerical_lexicographic_with_one_sided_caps",
+    "schema_path": "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
+    "semantics": "four_phase_lexicographic_primary_shed_lock_then_numerical_bid_cost_cap_gbp1_acceptance_ceiling_mwh_coefficient_aware",
     "defaults": {
-      "schema_version": "value.network-solver-contract/v2",
-      "contract_version": "value.zonal-lexicographic/v2",
+      "schema_version": "value.network-solver-contract/v4",
+      "contract_version": "value.zonal-lexicographic-shed-lock/v4",
       "method": "highs-ds",
       "presolve": true,
       "primal_feasibility_tolerance": 1e-09,
@@ -358,12 +358,12 @@ uses its own declared version and documented semantics where it differs.
       "ipm_optimality_tolerance": 1e-09,
       "warning_fraction": 0.1,
       "validated_ceilings": {
-        "primary_bid_cost_gbp": 0.01,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.001,
         "physical_throughput_mwh": 0.001
       },
       "absolute_ceilings": {
-        "primary_bid_cost_gbp": 0.1,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.01,
         "physical_throughput_mwh": 0.01
       },
@@ -371,14 +371,30 @@ uses its own declared version and documented semantics where it differs.
       "requires_acknowledgement": false
     },
     "ranges": {
-      "method": ["highs-ds", "highs-ipm", "highs"],
-      "primal_feasibility_tolerance": [1e-10, 1e-07],
-      "dual_feasibility_tolerance": [1e-10, 1e-07],
-      "ipm_optimality_tolerance": [1e-12, 1e-07],
-      "warning_fraction": {"exclusive_minimum": 0.0, "maximum": 1.0}
+      "method": [
+        "highs-ds",
+        "highs-ipm",
+        "highs"
+      ],
+      "primal_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "dual_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "ipm_optimality_tolerance": [
+        1e-12,
+        1e-07
+      ],
+      "warning_fraction": {
+        "exclusive_minimum": 0.0,
+        "maximum": 1.0
+      }
     },
     "recorded_reference_thresholds": {
-      "primary_bid_cost_gbp": 0.1,
+      "primary_bid_cost_gbp": 1.0,
       "secondary_schedule_deviation_mwh": 0.01,
       "physical_throughput_mwh": 0.01
     },
