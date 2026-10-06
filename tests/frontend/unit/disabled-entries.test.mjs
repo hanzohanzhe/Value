@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currentExtensionRecords, disabledEntries, lifecyclePath, removeConfirmation } from "../../../app/features/modules/disabledEntries.ts";
+import { currentExtensionRecords, disabledEntries, installedModuleCard, lifecyclePath, removeConfirmation } from "../../../app/features/modules/disabledEntries.ts";
 
 // Spec 11.4 (M-D4, F-D3): every disabled or quarantined local entry stays reachable.
 const modules = [
@@ -45,4 +45,23 @@ test("paths and the Remove confirmation", () => {
   assert.equal(lifecyclePath({ kind: "module", id: "my storage" }, "enable"), "/modules/my%20storage/enable");
   assert.equal(lifecyclePath({ kind: "extension", id: "audit-extension" }, "remove"), "/extensions/audit-extension/remove");
   assert.match(removeConfirmation({ kind: "module", id: "my-storage-cost" }), /^Remove module my-storage-cost\? .*not deleted/);
+});
+
+// M2-N4 / M-D2 (four-role report, round R1-5): the installed module card.
+test("an installed module card names its state; only a healthy enabled module keeps the card toggle", () => {
+  const quarantine = { status: "degraded", entries: [{ kind: "module", id: "broken-mod", version: "1.0.0", error_code: "GF_MODULE_IMPORT_FAILED", message: "SyntaxError: bad" }] };
+  assert.deepEqual(installedModuleCard({ module_id: "ok-mod", enabled: true }, quarantine, []), { state: "enabled", stateText: "Enabled", offerToggle: true, sourceChange: null });
+  const broken = installedModuleCard({ module_id: "broken-mod", enabled: true }, quarantine, []);
+  assert.equal(broken.state, "quarantined");
+  assert.equal(broken.offerToggle, false);
+  assert.match(broken.stateText, /Quarantined — see Disabled and quarantined below/);
+  const off = installedModuleCard({ module_id: "off-mod", enabled: false }, null, null);
+  assert.equal(off.state, "disabled");
+  assert.equal(off.offerToggle, false);
+});
+
+test("an in-place source edit is named on the card with both short hashes (spec 11.7 wording)", () => {
+  const card = installedModuleCard({ module_id: "flat73", enabled: true }, null, [{ module_id: "flat73", installed_sha256: "1f4fee48" + "0".repeat(56), current_sha256: "a88500a2" + "1".repeat(56) }]);
+  assert.equal(card.sourceChange, "Source changed since install (1f4fee48… → a88500a2…). Runs record the new source hash.");
+  assert.equal(installedModuleCard({ module_id: "other", enabled: true }, null, [{ module_id: "flat73", installed_sha256: "a", current_sha256: "b" }]).sourceChange, null);
 });

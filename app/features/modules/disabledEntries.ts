@@ -81,3 +81,28 @@ export function removeConfirmation(entry: Pick<DisabledEntry, "kind" | "id">): s
 export function lifecyclePath(entry: Pick<DisabledEntry, "kind" | "id">, action: "enable" | "remove"): string {
   return `/${entry.kind === "extension" ? "extensions" : "modules"}/${encodeURIComponent(entry.id)}/${action}`;
 }
+
+export type ModuleSourceChange = { module_id: string; installed_sha256: string; current_sha256: string };
+export type InstalledModuleCard = {
+  state: "enabled" | "disabled" | "quarantined";
+  stateText: string;
+  /** M2-N4: the card's own Enable/Disable toggle only for a healthy enabled module; the area below handles the rest. */
+  offerToggle: boolean;
+  /** M-D2: the in-place source edit, if any (spec 11.7 wording). */
+  sourceChange: string | null;
+};
+
+/**
+ * M2-N4 / M-D2 (four-role report, round R1-5): what one installed module's card
+ * says. A quarantined or disabled module does not read "Conformance passed" with
+ * an unrelated toggle; it names its state and points to the Disabled and
+ * quarantined area, which owns Enable, Rescan and Remove.
+ */
+export function installedModuleCard(installation: Pick<ModuleRecord, "module_id" | "enabled">, quarantine: QuarantineReport | null | undefined, sourceChanges: readonly ModuleSourceChange[] | null | undefined): InstalledModuleCard {
+  const quarantined = (quarantineRows(quarantine) as QuarantineRow[]).some((row) => row.kind === "module" && row.id === installation.module_id);
+  const change = (sourceChanges ?? []).find((row) => row.module_id === installation.module_id);
+  const sourceChange = change ? `Source changed since install (${change.installed_sha256.slice(0, 8)}… → ${change.current_sha256.slice(0, 8)}…). Runs record the new source hash.` : null;
+  if (quarantined) return { state: "quarantined", stateText: "Quarantined — see Disabled and quarantined below", offerToggle: false, sourceChange };
+  if (!installation.enabled) return { state: "disabled", stateText: "Disabled — enable it in Disabled and quarantined below", offerToggle: false, sourceChange };
+  return { state: "enabled", stateText: "Enabled", offerToggle: true, sourceChange };
+}

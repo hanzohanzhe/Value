@@ -70,6 +70,7 @@ from gridform_core.research_suite import ResearchSuiteError, install_research_su
 from gridform_core.module_installation import (
     ModuleInstallationError,
     install_module_bundle,
+    installed_source_changes,
     list_module_installations,
     set_module_enabled,
 )
@@ -1779,7 +1780,12 @@ class Handler(BaseHTTPRequestHandler):
                             installation_records=extension_installation_records(),
                         ),
                         "extension_installations": list_extension_installations(external_modules_root()),
-                        "module_installations": list_module_installations(),
+                        "module_installations": (installations := list_module_installations()),
+                        # M-D2 (round R1-5): installed modules whose source was edited in place
+                        # since install (bytes only, no import) so the Modules card can say so.
+                        "module_source_changes": installed_source_changes(
+                            [row.get("module_id") for row in installations]
+                        ),
                         "module_quarantine": module_quarantine_payload(),
                         "data_packs": list_packs(), "projects": list_projects(),
                         "study_trash": list_study_trash(PROJECTS_ROOT, RUNS_ROOT, TRASH_ROOT),

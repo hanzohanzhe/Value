@@ -76,6 +76,23 @@ class ModuleInstallationApiTests(unittest.TestCase):
                     if row["id"] == "example-flat-storage-offer"
                 )
                 self.assertEqual(installed["origin"], "local_bundle")
+                # M-D2 (round R1-5): the workspace names installed modules whose
+                # source was edited in place since install (no import).
+                self.assertEqual(workspace["module_source_changes"], [])
+                record = next(
+                    row for row in workspace["module_installations"]
+                    if row["module_id"] == "example-flat-storage-offer"
+                )
+                sources = sorted((state / "modules").rglob("*.py"))
+                self.assertTrue(sources)
+                edited = next(path for path in sources if path.name != "__init__.py")
+                edited.write_text(edited.read_text(encoding="utf-8") + "\n# edited in place\n", encoding="utf-8")
+                changed = json.loads(
+                    urllib.request.urlopen(origin + "/api/workspace", timeout=10).read()
+                )["module_source_changes"]
+                self.assertEqual([row["module_id"] for row in changed], ["example-flat-storage-offer"])
+                self.assertEqual(changed[0]["installed_sha256"], record["source_sha256"])
+                self.assertNotEqual(changed[0]["current_sha256"], record["source_sha256"])
 
                 project_path = projects / "uses-external" / "project.json"
                 project_path.parent.mkdir(parents=True)

@@ -25,3 +25,14 @@
 .disabled-entry-error span { display: block; font-size: 12px; color: var(--muted); }
 .modules-rescan { font-size: 13px; }
 .modules-title-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+
+/* M2-N4 / M-D2 (round R1-5): the installed module card names its state and an in-place source edit. */
+.installed-modules article[data-state] { grid-template-columns: minmax(190px, 1.3fr) repeat(4, minmax(110px, .8fr)) auto; }
+.installed-modules article b.installed-module-state { font-size: 12px; }
+.installed-module-state.enabled { color: var(--teal); }
+.installed-module-state.disabled { color: var(--muted); }
+.installed-module-state.quarantined { color: var(--amber); }
+@media (max-width: 1120px) { .installed-modules article[data-state] { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .installed-modules article[data-state] { grid-template-columns: 1fr; } }
+.installed-module-note { display: block; margin-top: 4px; font-size: 12px; font-style: normal; line-height: 1.45; overflow-wrap: anywhere; }
+.installed-module-note.caution { color: var(--amber); }
