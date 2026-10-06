@@ -98,6 +98,7 @@ from gridform_core.market_replay import (
     query_legacy_staged_market_jsonl,
     query_vre_curtailment_summary,
     query_vre_curtailment_timeline,
+    query_stress_events,
 )
 from gridform_core.zonal_results import (
     export_zonal_results,
@@ -2176,6 +2177,15 @@ class Handler(BaseHTTPRequestHandler):
                             run_status, run_year_bounds(root, run_status)[0],
                         )
                         self._json(summary); return
+                    if market_resource == "stress-events":
+                        # Row-level A2 events (Inspect-level, like the network reliability
+                        # events): not an annual result, so not gated by Q14.
+                        self._json(query_stress_events(
+                            database,
+                            year=_optional_integer_query(query, "year"),
+                            limit=_integer_query(query, "limit", 50),
+                            offset=_integer_query(query, "offset", 0),
+                        )); return
                     if market_resource == "vre-timeline":
                         year = _optional_integer_query(query, "year")
                         if year is None:

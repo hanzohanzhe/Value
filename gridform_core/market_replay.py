@@ -18,6 +18,7 @@ DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v2"
 REPLAY_CAPABILITIES_SCHEMA = "value.market-replay-capabilities/v1"
 VRE_SUMMARY_SCHEMA = "value.vre-curtailment-summary/v1"
 VRE_TIMELINE_SCHEMA = "value.vre-curtailment-timeline/v1"
+STRESS_EVENTS_SCHEMA = "value.stress-events/v1"
 ZONAL_REPLAY_CAPABILITY = "value.zonal-results-page/v1"
 
 
@@ -1102,3 +1103,84 @@ def query_vre_curtailment_timeline(database: Path, **kwargs: object) -> dict[str
         "dispatch_timeline_schema_version": DISPATCH_TIMELINE_SCHEMA,
         "items": items,
     }
+
+
+STRESS_EVENT_PAGE_LIMIT = 200
+
+
+def query_stress_events(
+    database: Path,
+    *,
+    year: int | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, object]:
+    """A2 stress events of a run, full year, paged and ordered by start period.
+
+    Read-only view of the ledger's ``stress_event`` table (contiguous periods in
+    which accepted supply fell short of demand; the shortfall is booked as
+    unserved energy, dispatch is unchanged).  A ledger written before the
+    table existed returns ``status='not_recorded'`` and no items: the UI then
+    says so instead of "no stress events" (spec 4.4, P0-9 M7).
+    """
+
+    limit = max(1, min(int(limit), STRESS_EVENT_PAGE_LIMIT))
+    offset = max(0, int(offset))
+    semantic = _semantic_metadata(database)
+    period_hours = _period_hours(semantic)
+    result: dict[str, object] = {
+        "schema_version": STRESS_EVENTS_SCHEMA,
+        "status": "not_recorded",
+        "year": year,
+        "items": [],
+        "total": 0,
+        "limit": limit,
+        "offset": offset,
+        "has_more": False,
+        "order": "start_period ascending (numeric)",
+        "event_type": "stress",
+        "event_definition": "contiguous periods in which accepted supply fell short of demand (decision A2)",
+        "shortfall_basis": "exact",
+        "timezone": str(semantic.get("timezone", "Europe/London")),
+        "period_hours": period_hours,
+        "source_artifact_sha256": _artifact_hash(database),
+        "units": {"energy": "MWh"},
+    }
+    with _read_only_connection(database) as connection:
+        if "stress_event" not in _tables(connection):
+            return result
+        where, parameters = ("WHERE year=?", (int(year),)) if year is not None else ("", ())
+        total, periods, shortfall = connection.execute(
+            f"SELECT COUNT(*), COALESCE(SUM(periods), 0), COALESCE(SUM(shortfall_mwh), 0.0) FROM stress_event {where}",
+            parameters,
+        ).fetchone()
+        rows = connection.execute(
+            "SELECT year, event_index, first_period, last_period, periods, shortfall_mwh, "
+            f"recorded_unserved_mwh, hidden_unserved_mwh, boundary_id FROM stress_event {where} "
+            "ORDER BY year, first_period, event_index LIMIT ? OFFSET ?",
+            (*parameters, limit, offset),
+        ).fetchall()
+    result.update(
+        status="recorded",
+        total=int(total),
+        has_more=offset + len(rows) < int(total),
+        stress_periods=int(periods),
+        shortfall_mwh=float(shortfall),
+        items=[
+            {
+                "year": int(row[0]),
+                "event_index": int(row[1]),
+                "start_period": int(row[2]),
+                "last_period": int(row[3]),
+                "periods": int(row[4]),
+                "start_timestamp": _model_timestamp(int(row[0]), int(row[2]), period_hours),
+                "shortfall_mwh": float(row[5]),
+                "recorded_unserved_mwh": float(row[6]),
+                "hidden_unserved_mwh": float(row[7]),
+                "boundary_id": str(row[8]),
+                "event_type": "stress",
+            }
+            for row in rows
+        ],
+    )
+    return result

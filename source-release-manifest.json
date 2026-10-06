@@ -55,11 +55,13 @@
     "app/features/learn/value101-api.mjs",
     "app/features/learn/value101.ts",
     "app/features/market/ReplayExportPanel.tsx",
+    "app/features/market/StressEventList.tsx",
     "app/features/market/TraceCoverageNotice.tsx",
     "app/features/market/contractKeys.ts",
     "app/features/market/dispatchView.ts",
     "app/features/market/market-replay.css",
     "app/features/market/marketTypes.ts",
+    "app/features/market/stressEventsView.ts",
     "app/features/market/vreView.ts",
     "app/features/modules/ModuleAuthorWorkbench.css",
     "app/features/modules/ModuleAuthorWorkbench.tsx",
@@ -1286,6 +1288,7 @@
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
+    "tests/frontend/unit/stress-events-view.test.mjs",
     "tests/frontend/unit/study-methodology.test.mjs",
     "tests/frontend/unit/ts-import-convention.test.mjs",
     "tests/frontend/unit/ui-contract-keys.test.mjs",
@@ -1584,6 +1587,7 @@
     "tests/test_source_release_tree.py",
     "tests/test_staged_psm_runtime_state.py",
     "tests/test_storage_audit.py",
+    "tests/test_stress_events_query.py",
     "tests/test_study_derivation.py",
     "tests/test_study_lifecycle.py",
     "tests/test_study_lifecycle_api.py",
@@ -3187,6 +3191,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/market/StressEventList.tsx",
+      "sha256": "1989fcf378a36124d3a139679f093f1f742174ffcbd2e0b1d483bb59e83b2fb3",
+      "bytes": 4453,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/market/TraceCoverageNotice.tsx",
       "sha256": "5b8342814ef1979207b5eb807a5cff4ca4ca86f67b9b2f2155dd2f9df9b98a87",
       "bytes": 1463,
@@ -3206,14 +3216,20 @@
     },
     {
       "path": "app/features/market/market-replay.css",
-      "sha256": "74a0ec00f7dc09ef1760278f6839095985f1246e336c55a2aeefcee06e1691cb",
-      "bytes": 2076,
+      "sha256": "bfc79b486b9dd7e351e7d6197d4159ff7c4962aa06ab57f91996d7f656259ebf",
+      "bytes": 2401,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/market/marketTypes.ts",
       "sha256": "c902dbe501fc268b2b93597ad8f51a9fcdbb330663a522f5aa16dc0f79ed1595",
       "bytes": 5411,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/market/stressEventsView.ts",
+      "sha256": "31a1f5ca6cc8401c9687a6a34fcd21c9d31b8bccfed7c6f47a44c988c54b16e9",
+      "bytes": 2512,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3266,8 +3282,8 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "e9cc27ce1773ffc866833c7b6f629ca14d7e59ff3a5232411dc7704ff84a2a48",
-      "bytes": 51093,
+      "sha256": "a29f4e10c3d21330c9185b040b438c2d1e356811235c3b2b93ab06639e78dd3a",
+      "bytes": 51444,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3278,8 +3294,8 @@
     },
     {
       "path": "app/features/network/network-coverage.css",
-      "sha256": "c7803c295688553866a38f5b0d01aa8f05de95aa222b8b6b611b9cdba5346d70",
-      "bytes": 609,
+      "sha256": "17c11bc8c8a673187d55c8de5b6f29c52bff5270f881b67e63efadf04f2feb1c",
+      "bytes": 694,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3674,8 +3690,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "08a0b604b1dd99970105a5bcf9f4b2ac6accd3b2a7b2863dd617e625f3af9f34",
-      "bytes": 164202,
+      "sha256": "5b3d81fdfc278eed159cbfee8b368fcfdf8db8769fc7ebc828a0ee20dbcd4313",
+      "bytes": 165173,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3824,8 +3840,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "d4bd20a64222399e68911ee88c3160f1ec105ce54798e6d1c97a7340afa66383",
-      "bytes": 204516,
+      "sha256": "b2ffef487747f9b3fc81fceb2e21047270fd20488b259136f748bd4f4629853a",
+      "bytes": 205122,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8159,8 +8175,8 @@
     },
     {
       "path": "gridform_core/market_replay.py",
-      "sha256": "b80d327e2b94f6fd2939aef7c8cdb2e382ea9be834eb526d5b72a94dab966d39",
-      "bytes": 50625,
+      "sha256": "7c6cd30b24c72d072d987e06983c82410fece2283a22d8a72bf1a3e30063d0a2",
+      "bytes": 53935,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8357,8 +8373,8 @@
     },
     {
       "path": "gridform_core/result_advisories.py",
-      "sha256": "e61295fa78e95612fb8c9d3730eb9c9f92015be2d87f37bf07549fc64e82cba7",
-      "bytes": 27340,
+      "sha256": "8ae02e25f4eb97fda5b82ec8f7296cbe2eff0bd69b8ef62ec86035e7f72248ee",
+      "bytes": 27378,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10556,6 +10572,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/unit/stress-events-view.test.mjs",
+      "sha256": "61e74fe92bf630600f744d05c51bc13db14d55edf0a3d599b1f0e41ea5da7cbf",
+      "bytes": 2156,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/unit/study-methodology.test.mjs",
       "sha256": "804c5c6caf336efebfe0f1bc673f49cc7e7850b0314d72e2e424b7f45ae76daa",
       "bytes": 9444,
@@ -12342,6 +12364,12 @@
       "sha256": "2d835a27d91bf109a8595e7bc52bf9eca77268a80bd5a3c567782548ca4915b3",
       "bytes": 4013,
       "transform": "byte copy"
+    },
+    {
+      "path": "tests/test_stress_events_query.py",
+      "sha256": "28ed1992f10ce5085f391409644dd5cfbc02b83ea3769643d1e5f0ff5199a482",
+      "bytes": 3632,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/test_study_derivation.py",

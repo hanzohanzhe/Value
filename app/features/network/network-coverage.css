@@ -3,3 +3,4 @@
 .reliability-list td small { display: block; font-size: 12px; color: var(--muted); }
 .reliability-list .text-button { font-size: 13px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.reliability-stress-pointer { margin: 8px 0; font-size: 13px; color: var(--muted); }

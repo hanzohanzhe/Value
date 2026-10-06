@@ -444,6 +444,7 @@ INSPECT_LEVEL_UNGATED_RESOURCES = (
     "runs/<id>/market/periods",
     "runs/<id>/market/dispatch",
     "runs/<id>/market/vre-timeline",
+    "runs/<id>/market/stress-events",
     "runs/<id>/results/vre-curtailment?resolution=half_hour",
     "runs/<id>/market/orders|storage|physical",
     "runs/<id>/provenance",

@@ -24,3 +24,7 @@
 /* Designer ruling 4: an isolated point of a VRE series is a solid dot of radius 2.5px in the series
    colour: r=1.25 with a 2.5px stroke inherits the series stroke colour (no new colour values). */
 .evidence-chart circle.series-dot { fill: none; stroke-width: 2.5; stroke-dasharray: none; }
+/* Spec 4.4 (A2): the full-year stress-event list in Market replay. */
+.stress-event-note { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.stress-event-list td small { display: block; font-size: 12px; color: var(--muted); }
+.stress-event-list:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
