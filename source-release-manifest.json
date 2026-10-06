@@ -61,6 +61,7 @@
     "app/features/market/ReplayExportPanel.tsx",
     "app/features/market/StressEventList.tsx",
     "app/features/market/TraceCoverageNotice.tsx",
+    "app/features/market/auctionOffers.ts",
     "app/features/market/contractKeys.ts",
     "app/features/market/dispatchView.ts",
     "app/features/market/market-replay.css",
@@ -1309,6 +1310,7 @@
     "tests/frontend/render/shared-components.test.mjs",
     "tests/frontend/render/study-methodology.test.mjs",
     "tests/frontend/unit/api-error.test.mjs",
+    "tests/frontend/unit/auction-offers.test.mjs",
     "tests/frontend/unit/comparison-review.test.mjs",
     "tests/frontend/unit/csv-mapping-fx.test.mjs",
     "tests/frontend/unit/data-pack-validation.test.mjs",
@@ -3282,6 +3284,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "app/features/market/auctionOffers.ts",
+      "sha256": "24d8f31493a6fe11b6b049ad9efe928bf234ac0b17f0c81d82c2a0dee9e35fa3",
+      "bytes": 2091,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/market/contractKeys.ts",
       "sha256": "f90333de0998ba85215e2a31525468927778fbe2af2ea30a4420b815ee5ab352",
       "bytes": 2283,
@@ -3295,14 +3303,14 @@
     },
     {
       "path": "app/features/market/market-replay.css",
-      "sha256": "bfc79b486b9dd7e351e7d6197d4159ff7c4962aa06ab57f91996d7f656259ebf",
-      "bytes": 2401,
+      "sha256": "c8099db0e31b59a807825e67b061d8572948151f591d7d0a21eeea07de29ba99",
+      "bytes": 2567,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/market/marketTypes.ts",
-      "sha256": "694a856d49200d0aecbe56ae1491d6178cc9f02aed360bf75c92ec3533c7e993",
-      "bytes": 5571,
+      "sha256": "5d0fab8a72b578fb7a2d325cdaa7bdde7807b9d669cadf62a76586edf29b87ec",
+      "bytes": 5726,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3805,8 +3813,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "88149b324f21eff43701677dc4869a1bf52dd3aaae27a607e54085f5452b0715",
-      "bytes": 171424,
+      "sha256": "b679cd4d26b746a728e6049f061090d15b7d6136677f8c8df41d4e09356a3e32",
+      "bytes": 171819,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8338,8 +8346,8 @@
     },
     {
       "path": "gridform_core/market_replay.py",
-      "sha256": "3bf7e2d12d84536f9bdf92a013ec10baef5461439531c7bf41323a25d3e9b66f",
-      "bytes": 54841,
+      "sha256": "601cced4ba1d439bf89543c9a12ea0c5f345f3230e298a7f083801ff10726e01",
+      "bytes": 55903,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10466,14 +10474,14 @@
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v7.auction-ahead.json",
-      "sha256": "d3fe1f154941758a323c0e63db16c75ba54b06be89c79a69a26ade40c8c2cabd",
-      "bytes": 2819,
+      "sha256": "0415de13c0738cbd63992546eaba138f364a7f192fc1cf68e7aaff8934dd442a",
+      "bytes": 2999,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/ui-contract/toy-v7.auction-curtailment.json",
-      "sha256": "6dba1f5feeb56b14971ce4e5fe554dbf04b0484725245e5c5a8e87c3b0ffe5c6",
-      "bytes": 1518,
+      "sha256": "b7baa21fb10e338d5ec347854059ccd92cfaf292f769f9f6c76f09db967341cf",
+      "bytes": 1563,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10568,20 +10576,20 @@
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.auction-ahead.json",
-      "sha256": "fae61fc980aabf0f65df1f529dd5b838b52c729bdcde8945a6a4d186f56a4e31",
-      "bytes": 29966,
+      "sha256": "b784a65e5e6e2cc37689b015c2da7e2adf54a6aae733e4d1f13ceeb97fea3220",
+      "bytes": 31991,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.auction-balancing.json",
-      "sha256": "d425a5f26771395824ccd0856a364d34491b20e1451a94f4f8049592ccb13bf5",
-      "bytes": 4483,
+      "sha256": "e98cf976cf0a8ec9a39e56ed5445c309f7f7062e79d144439219e6f47764ed80",
+      "bytes": 4753,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/fixtures/ui-contract/value-101-day.auction-curtailment.json",
-      "sha256": "37c67442b98793151e341c4e772afe5f1ce2f4d942ffe61ae1a035bb8d373f99",
-      "bytes": 4502,
+      "sha256": "03da0a222a34ff10048cd54f978b90763ca1a301e75a4536975a5848b9bd9d43",
+      "bytes": 4727,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10750,6 +10758,12 @@
       "path": "tests/frontend/unit/api-error.test.mjs",
       "sha256": "95f4053c1bd5f5d1d29048f91dd86ab41ea233d60603b62afbf1e51741a2ca41",
       "bytes": 3540,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/auction-offers.test.mjs",
+      "sha256": "e121e35bb040fc6b870fe32d9fc63cebb402d6613d265e59733a0a1a78887976",
+      "bytes": 2061,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11726,8 +11740,8 @@
     },
     {
       "path": "tests/test_market_replay.py",
-      "sha256": "011e06bdc6096b6297cc3d210dc9bee5fb3db302b1de5841b912d4fccf09355f",
-      "bytes": 19491,
+      "sha256": "98a00a52a44bdabee3aae449fd57a3a9ec611c5d200490432f41b195580b6816",
+      "bytes": 21519,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -17,7 +17,7 @@
   "period_hours": 0.5,
   "requirement_mwh": 1.0,
   "offers": [
-   {"asset_id":"battery-a","asset_type":"Battery","maximum_power_mw":2.0,"offer_id":"charge","offer_price_gbp_per_mwh":1.0,"resource_kind":"storage_charge","input_order":0,"execution_order":0,"technology":"battery_storage","offered_mwh":1.0,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","cumulative_offered_mwh":1.0,"cumulative_exact_accepted_mwh":0.0}
+   {"asset_id":"battery-a","asset_type":"Battery","maximum_power_mw":2.0,"offer_id":"charge","offer_price_gbp_per_mwh":1.0,"resource_kind":"storage_charge","input_order":0,"execution_order":0,"technology":"battery_storage","offered_mwh":1.0,"accepted_mwh":null,"asset_accepted_mwh":null,"acceptance_granularity":"stage_summary","offer_status":null,"offer_reason_code":null,"cumulative_offered_mwh":1.0,"cumulative_exact_accepted_mwh":0.0}
   ],
   "outcome": {"remaining_excess_power_mw":2.0,"storage_charge_power_mw":0.0},
   "pricing_rule": "retained_stage_specific_settlement",

@@ -58,7 +58,7 @@ def _period(index: int, *, curtailment: float = 0.0, excess: float = 0.0) -> Per
 
 
 class MarketReplayTests(unittest.TestCase):
-    def _ledger(self, root: Path) -> Path:
+    def _ledger(self, root: Path, storage_orders=()) -> Path:
         database = root / "market.sqlite"
         ledger = create_market_ledger(
             database,
@@ -126,6 +126,8 @@ class MarketReplayTests(unittest.TestCase):
             curtailment.input_sha256,
             {"storage_charge_power_mw": 1.0, "remaining_excess_power_mw": 1.0},
         ))
+        if storage_orders:
+            ledger.record_storage_orders(storage_orders)
         ledger.close()
         return database
 
@@ -146,6 +148,31 @@ class MarketReplayTests(unittest.TestCase):
         self.assertEqual(auction["offers"][1]["acceptance_granularity"], "asset_aggregate")
         self.assertEqual(auction["offer_acceptance_coverage"], "asset_aggregate_for_multi_tranche_resources")
         self.assertEqual(auction["marginal_offer_price_gbp_per_mwh"], 50.0)
+
+    def test_storage_offer_ledger_gives_each_storage_offer_its_accepted_mwh(self):
+        # M-D1 UI: a battery's tranches no longer show "(asset total)"; the
+        # storage offer ledger (accounting zone) books each offer's own MWh.
+        from gridform_core.market_ledger import StorageOrderLedgerRow
+        def row(offer_id, price, accepted, status, reason):
+            return StorageOrderLedgerRow(
+                order_id=f"so-{offer_id}", year=2025, period=0, stage="ahead_offer", clearing_offer_id=offer_id,
+                asset_id="battery-a", asset_type="Battery", side="sell", charge_period=0, dwell_periods=3,
+                bidding_factor=1.0, offer_price_gbp_per_mwh=price, offered_mwh=1.0, accepted_mwh=accepted,
+                status=status, reason_code=reason, accepted_offer_value_gbp=price * accepted)
+        with tempfile.TemporaryDirectory() as folder:
+            database = self._ledger(Path(folder), storage_orders=[
+                row("battery-1", 20.0, 0.5, "accepted", "cleared"),
+                row("battery-2", 30.0, 0.0, "rejected", "merit_order_not_reached"),
+            ])
+            auction = query_auction_view(database, year=2025, period=0, stage="ahead")
+        offers = {item["offer_id"]: item for item in auction["offers"]}
+        self.assertEqual((offers["battery-1"]["accepted_mwh"], offers["battery-2"]["accepted_mwh"]), (0.5, 0.0))
+        self.assertEqual(offers["battery-1"]["acceptance_granularity"], "storage_offer_ledger")
+        self.assertEqual((offers["battery-2"]["offer_status"], offers["battery-2"]["offer_reason_code"]),
+                         ("rejected", "merit_order_not_reached"))
+        self.assertEqual(offers["battery-1"]["asset_accepted_mwh"], 0.5)   # outcome total stays alongside
+        self.assertIsNone(offers["high"]["offer_status"])
+        self.assertEqual(auction["offer_acceptance_coverage"], "complete")
 
     def test_stage_summary_does_not_invent_per_action_acceptance(self):
         with tempfile.TemporaryDirectory() as folder:

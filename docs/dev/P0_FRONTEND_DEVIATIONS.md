@@ -197,3 +197,10 @@
 - **F-FX3-10** 规格示例中的 “not a thesis-era pack” 取消，改为后端实际给出的阻断码，符合原则 3。配色批准：不可用为琥珀色，结构层失败为红色。
 - **F-FX3-12、F-FX3-13** 多条失败时的句式和名称表批准。名称用 Title case，与现有界面一致。
 - **F-FX3-14** 时间戳有问题时阻断提交，批准。用户已明确声明了时间戳列，就必须保证它可信。
+
+## FX9（四类用户复测的中等问题：N-1、M-D1 界面）
+
+| # | 规格 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-FX9-1 | 11.2 `Doctoral reproduction ● Not eligible — not a thesis-era pack`（F-FX3-10 裁决时因后端无此判定而取消） | 后端 `profile_eligibility` 现在调用与 Study 编辑器、preflight 相同的白名单检查（`methodology.data_pack_violation`），口径行新增 `pack_supported` / `pack_support_reason`，并把 `VALUE_PROFILE_COMBINATION_UNSUPPORTED` 记入 blocking codes。前端在 `pack_supported === false` 时显示 `Not eligible — not a thesis-era pack`（琥珀色，与 F-FX3-10 的配色一致），优先于结构层和发现层的原因；该码不对应任何发现，所以三层的颜色不受影响 | 复测 N-1：面板说 Eligible、编辑器却拒绝。后端已有判定，恢复规格原文案 | 是（原因的优先顺序） |
+| F-FX9-2 | 3.4 Merit order 表的 Accepted 列（规格未涉及储能逐条接受量） | 储能报价有 `storage_orders` 账本行时，Accepted 显示该条报价自己的 MWh（Evidence 列为 `storage offer ledger`），悬停显示 `Storage offer ledger: {status} ({reason})`；不再显示 `(asset total)`。表下方加一行 12px、`--muted` 的说明：`Storage offers show the MWh each offer delivered (storage offer ledger, gross). Where a battery buys energy back in the same period, its net dispatch in the orders ledger is lower.`。没有账本行的旧 Run 保持原来的 `(asset total)` / `Not separately recorded` | 复测 M-D1 界面残留与 M2-N5（修正口径按毛值记，同时段买回不在表中扣减） | 是（说明文案） |

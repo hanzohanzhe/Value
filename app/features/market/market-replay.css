@@ -28,3 +28,5 @@
 .stress-event-note { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
 .stress-event-list td small { display: block; font-size: 12px; color: var(--muted); }
 .stress-event-list:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* Spec 3.4 / M-D1: per-offer storage acceptance note under the merit-order table. */
+.storage-ledger-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }

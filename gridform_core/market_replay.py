@@ -446,7 +446,8 @@ def query_auction_view(
 ) -> dict[str, object]:
     with _read_only_connection(database) as connection:
         connection.row_factory = sqlite3.Row
-        if not {"clearing_inputs", "clearing_outcomes"}.issubset(_tables(connection)):
+        tables = _tables(connection)
+        if not {"clearing_inputs", "clearing_outcomes"}.issubset(tables):
             raise LookupError("This run does not contain declared auction evidence")
         row = connection.execute(
             """
@@ -457,6 +458,16 @@ def query_auction_view(
             """,
             (int(year), int(period), stage),
         ).fetchone()
+        # M-D1: the storage offer ledger books each storage offer's own
+        # accepted MWh (accounting zone), keyed by the clearing offer id.
+        storage_ledger = {
+            str(item["clearing_offer_id"]): item
+            for item in connection.execute(
+                "SELECT clearing_offer_id, accepted_mwh, status, reason_code FROM storage_orders "
+                "WHERE year=? AND period=?",
+                (int(year), int(period)),
+            )
+        } if "storage_orders" in tables else {}
     if row is None:
         raise LookupError("The requested market stage is not available")
     envelope = json.loads(str(row["payload_json"]))
@@ -499,6 +510,9 @@ def query_auction_view(
             if exact_offer_acceptance and outcome_has_order_acceptance
             else None
         )
+        ledger_offer = storage_ledger.get(str(offer.get("offer_id"))) if offer.get("offer_id") is not None else None
+        if ledger_offer is not None:
+            accepted_mwh = float(ledger_offer["accepted_mwh"])
         cumulative_offered += offered_mwh
         if accepted_mwh is not None:
             cumulative_accepted += accepted_mwh
@@ -518,9 +532,12 @@ def query_auction_view(
                 if outcome_has_order_acceptance else None
             ),
             "acceptance_granularity": (
-                "stage_summary" if not outcome_has_order_acceptance
+                "storage_offer_ledger" if ledger_offer is not None
+                else "stage_summary" if not outcome_has_order_acceptance
                 else "offer" if exact_offer_acceptance else "asset_aggregate"
             ),
+            "offer_status": None if ledger_offer is None else str(ledger_offer["status"]),
+            "offer_reason_code": None if ledger_offer is None else str(ledger_offer["reason_code"]),
             "cumulative_offered_mwh": cumulative_offered,
             "cumulative_exact_accepted_mwh": cumulative_accepted,
         })
@@ -558,7 +575,7 @@ def query_auction_view(
         ),
         "offer_acceptance_coverage": (
             "stage_summary_only" if not outcome_has_order_acceptance
-            else "complete" if all(item["acceptance_granularity"] == "offer" for item in result_offers)
+            else "complete" if all(item["acceptance_granularity"] in {"offer", "storage_offer_ledger"} for item in result_offers)
             else "asset_aggregate_for_multi_tranche_resources"
         ),
         "offer_ordering": "ascending offer price; stable input order for ties",

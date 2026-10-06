@@ -52,6 +52,8 @@ export type AuctionOffer = {
   offer_price_gbp_per_mwh: number; offered_mwh: number; accepted_mwh: number | null;
   asset_accepted_mwh: number | null; acceptance_granularity: string; execution_order: number;
   cumulative_offered_mwh: number;
+  /** M-D1: storage offer ledger status / reason of a storage offer; null otherwise. */
+  offer_status?: string | null; offer_reason_code?: string | null;
 };
 
 export type AuctionView = {
