@@ -45,7 +45,7 @@ import { preflightKey, preflightMatches } from "./features/workspace/preflightId
 import RunContextBar from "./features/workspace/RunContextBar";
 import { shortfallDisplay } from "./features/workspace/runValidation.ts";
 import { resolveRunContext } from "./features/workspace/runContext";
-import { readWorkspaceLocation, writeWorkspaceLocation, selectWorkspaceRun, type WorkspaceLocation } from "./features/workspace/workspaceLocation";
+import { journeyFromLocation, readWorkspaceLocation, writeWorkspaceLocation, selectWorkspaceRun, type WorkspaceLocation } from "./features/workspace/workspaceLocation";
 import "./features/workspace/workspace-shell.css";
 import Value101Learn from "./features/learn/Value101Learn";
 import DataWorkbench from "./features/data-workbench/DataWorkbench";
@@ -502,6 +502,9 @@ export default function Home() {
       setSelectedProjectId(location.studyId);
       setSelectedRunId(location.runId);
       setDataContextId(location.dataContextId);
+      // N-5 (round R1-5): a reload of the journey Data page restores its source revision and target pack.
+      const journey = journeyFromLocation(location);
+      if (journey) { setJourneyData(journey); setJourneyTargetPackId(journey.targetPackId); }
       setLocationReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -647,6 +650,8 @@ export default function Home() {
       setSelectedProjectId(location.studyId || linkedRun?.project_id || "");
       setSelectedRunId(location.runId);
       setDataContextId(location.dataContextId);
+      const journey = journeyFromLocation(location);
+      if (journey) { setJourneyData(journey); setJourneyTargetPackId(journey.targetPackId); }
       setReadMeOpen(false);
     };
     window.addEventListener("popstate", restoreLocation);
@@ -658,6 +663,7 @@ export default function Home() {
     const search = writeWorkspaceLocation(window.location.search, {
       view, path: activePath, studyId: selectedProjectId, dataContextId,
       runId: selectedRunId || selectedRunSummary?.id || "",
+      journey: journeyData ? { sourceRevisionSha256: journeyData.sourceRevisionSha256, targetPackId: journeyData.targetPackId } : undefined,
     });
     if (search !== window.location.search) {
       const url = `${window.location.pathname}${search}${window.location.hash}`;
@@ -665,7 +671,7 @@ export default function Home() {
       else window.history.pushState(null, "", url);
     }
     replaceLocation.current = false;
-  }, [activePath, connectionState, dataContextId, locationReady, selectedProjectId, selectedRunId, selectedRunSummary?.id, view]);
+  }, [activePath, connectionState, dataContextId, journeyData, locationReady, selectedProjectId, selectedRunId, selectedRunSummary?.id, view]);
 
   function chooseCommunityPath(path: CommunityPath) {
     setActivePath(path);
@@ -1416,7 +1422,7 @@ export default function Home() {
     ].map((group) => <div className="workspace-nav-group" key={group.label}><p>{group.label}</p>{group.ids.map((id) => views.find((item) => item.id === id)!).map((item) => <button type="button" aria-label={`${item.label}: ${item.note}`} aria-current={view === item.id ? "page" : undefined} key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><i>{item.index}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}</div>)}</nav>
     <div className="rail-foot"><div className={`service ${connectionState === "online" && workspace.runtime.compatible ? "online" : connectionState === "degraded" ? "degraded" : connectionState === "offline" ? "offline" : ""}`} role="status"><i /><span><b>{connectionState === "loading" ? "Connecting to model service…" : connectionState === "online" ? `Python ${workspace.runtime.python}` : connectionState === "degraded" ? "● Backend degraded" : "● Backend offline"}</b><small>{connectionState === "loading" ? "Checking the local API" : connectionState === "online" ? (workspace.runtime.compatible ? `${workspace.runtime.selected_capability ?? "value-native"} ready` : "VALUE native runtime unavailable") : connectionState === "degraded" ? (refreshFailures ? `The last ${refreshFailures === 1 ? "request" : `${refreshFailures} requests`} failed; retrying in ${Math.round(pollDelay(refreshFailures) / 1000)} s` : `Running with reduced capability: ${(health?.degraded_reasons ?? []).map((reason) => reason.code).join(", ") || "see Modules"}`) : `No answer after ${OFFLINE_AFTER_FAILURES} attempts. Start VALUE from its launcher, then retry`}</small></span>{(connectionState === "offline" || (connectionState === "degraded" && refreshFailures > 0)) && <button onClick={() => void refresh()}>Retry</button>}</div><small>Contract {workspace.architecture_version.replace("value.contracts/", "")}</small></div></aside>
     <section className="surface"><header className="topbar"><div><small>VALUE / {views.find((item) => item.id === view)?.index}</small><h1>{views.find((item) => item.id === view)?.label}</h1></div><div className="top-meta">
-      {!isRunView && view !== "journey" && !(view === "data" && isJourneyData) && <><label><span>Draft data pack</span><select aria-label="Selected data pack" value={selectedPack?.id ?? ""} onChange={(event) => setSelectedPackId(event.target.value)} disabled={!online}>{workspace.data_packs.map((pack) => <option value={pack.id} key={pack.id}>{modelDisplayName(pack.name)}</option>)}</select></label><Badge tone={online && selectedPack?.complete ? "good" : "warn"}>{connectionState !== "online" ? "Inputs not loaded" : selectedPack ? `${selectedPack.valid_required_count} of ${selectedPack.required_count} inputs ready` : "No data pack"}</Badge></>}
+      {!isRunView && view !== "journey" && !(view === "data" && isJourneyData) && <><label><span>Draft data pack</span><select aria-label="Selected data pack" value={selectedPack?.id ?? ""} onChange={(event) => setSelectedPackId(event.target.value)} disabled={!online}>{workspace.data_packs.map((pack) => <option value={pack.id} key={pack.id}>{modelDisplayName(pack.name)}</option>)}</select></label><span title="Required base roles of this data pack. A Study's extension roles are counted in the Data page's input contract.">{/* F2-N3 (round R1-5): this count is the pack's base roles only. */}<Badge tone={online && selectedPack?.complete ? "good" : "warn"}>{connectionState !== "online" ? "Inputs not loaded" : selectedPack ? `${selectedPack.valid_required_count} of ${selectedPack.required_count} base inputs ready` : "No data pack"}</Badge></span></>}
       {activeRunCount > 0 && <button type="button" className="background-runs value-new-control" onClick={() => setView("run")}>● {activeRunCount} {activeRunCount === 1 ? "Run" : "Runs"} running in background</button>}
       <button type="button" className="secondary workspace-readme-trigger" onClick={() => setReadMeOpen(true)} aria-haspopup="dialog">Read me</button>
     </div></header>

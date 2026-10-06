@@ -1307,6 +1307,7 @@
     "tests/frontend/render/audit-scope.test.mjs",
     "tests/frontend/render/data-pack-validation.test.mjs",
     "tests/frontend/render/disabled-entries.test.mjs",
+    "tests/frontend/render/journey-data-editor.test.mjs",
     "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/network-tables.test.mjs",
     "tests/frontend/render/preflight-blocked-run.test.mjs",
@@ -3719,8 +3720,8 @@
     },
     {
       "path": "app/features/workspace/JourneyDataEditor.tsx",
-      "sha256": "c0163b2cdf5f327e19ee3b835712aedeed19a99922956c50d2845d5175beb8f5",
-      "bytes": 6728,
+      "sha256": "592e75c6256e45fb05cb7386c1b0bb5bda531ee4f1d0a8f930be958160485c99",
+      "bytes": 8777,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3773,9 +3774,9 @@
     },
     {
       "path": "app/features/workspace/journey-data-editor.css",
-      "sha256": "03c21e77eb4ce0872d70d72dcc071b401a6ec23feb15f0e349ba68479dabe265",
-      "bytes": 1188,
-      "transform": "byte copy"
+      "sha256": "71b2f10094f85913e9ec1b39ba4db6979a3ac13b20ae25cfa5bf7ffb336cf6e7",
+      "bytes": 1519,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/preflightIdentity.ts",
@@ -3827,9 +3828,9 @@
     },
     {
       "path": "app/features/workspace/workspaceLocation.ts",
-      "sha256": "b82486867f8d28a1478a671e5c7ef5056c87c292a8db0ec8310fa8247b688bd8",
-      "bytes": 2054,
-      "transform": "byte copy"
+      "sha256": "ea81c4744a7b971ed32b419d54e5b71df51d756c93b6b30e8e35c17a1b996d48",
+      "bytes": 3232,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/globals.css",
@@ -3845,8 +3846,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "545a8664b611c35f50d49351c35f1c17622bddf4082186ede2306b2eaa8f9f82",
-      "bytes": 174574,
+      "sha256": "a7d0b0e057ef840c5d8fb76e1ad7b43ddb84ac8ac6a18824feced63f82d4be6d",
+      "bytes": 175357,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10757,6 +10758,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/journey-data-editor.test.mjs",
+      "sha256": "a868d88bfd64ab2aca6d76d01e0d9eded51a098c9cdfacf91a3c58755a798d22",
+      "bytes": 1620,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/module-quarantine.test.mjs",
       "sha256": "0fa14ac9aaa44a18158dd8669b323916c72b4d0eabac0b63e9563920671f0f4c",
       "bytes": 1278,
@@ -13020,9 +13027,9 @@
     },
     {
       "path": "tests/workspace-location.test.mjs",
-      "sha256": "e9a9da9bd678556ef90b60dc08dd141e441f8304072b7b8a8621795a6f6c45bc",
-      "bytes": 1701,
-      "transform": "byte copy"
+      "sha256": "2605db4da64f2d4fa8563e17b4e513e106d4bb8da8d2296079392cf023f5d77a",
+      "bytes": 3433,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tsconfig.frontend.json",

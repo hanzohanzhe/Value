@@ -1,7 +1,11 @@
 export const WORKSPACE_VIEWS = ["journey", "learn", "overview", "data", "models", "projects", "run", "marketReplay", "curtailment", "networkRedispatch", "systems", "audit", "extend"] as const;
 export type WorkspaceView = typeof WORKSPACE_VIEWS[number];
 export type WorkspacePath = "reproduce" | "data" | "module" | "function";
-export type WorkspaceLocation = { view: WorkspaceView; path: WorkspacePath | null; studyId: string; runId: string; dataContextId: string };
+export type WorkspaceLocation = {
+  view: WorkspaceView; path: WorkspacePath | null; studyId: string; runId: string; dataContextId: string;
+  /** N-5 (round R1-5): the research-journey data context (source revision and target pack) survives a reload. */
+  journey?: { sourceRevisionSha256: string; targetPackId: string };
+};
 
 const paths: WorkspacePath[] = ["reproduce", "data", "module", "function"];
 const identifier = (value: string | null) => value && value.length <= 256 && !/[\u0000-\u001f\u007f]/.test(value) ? value : "";
@@ -10,18 +14,25 @@ export function readWorkspaceLocation(search: string): WorkspaceLocation {
   const params = new URLSearchParams(search);
   const view = params.get("view");
   const path = params.get("path");
-  return {
+  const location: WorkspaceLocation = {
     view: WORKSPACE_VIEWS.includes(view as WorkspaceView) ? view as WorkspaceView : "overview",
     path: paths.includes(path as WorkspacePath) ? path as WorkspacePath : null,
     studyId: identifier(params.get("study")),
     runId: identifier(params.get("run")),
     dataContextId: identifier(params.get("dataContext")) || "draft",
   };
+  const revision = params.get("journeyRevision") ?? "";
+  const targetPackId = identifier(params.get("journeyPack"));
+  if (location.dataContextId === "journey" && /^[0-9a-f]{64}$/.test(revision) && targetPackId) {
+    location.journey = { sourceRevisionSha256: revision, targetPackId };
+  }
+  return location;
 }
 
 export function writeWorkspaceLocation(search: string, location: WorkspaceLocation): string {
   const params = new URLSearchParams(search);
-  for (const [key, value] of Object.entries({ view: location.view, path: location.path, study: location.studyId, run: location.runId, dataContext: location.dataContextId === "draft" ? null : location.dataContextId })) {
+  const journey = location.dataContextId === "journey" ? location.journey : undefined;
+  for (const [key, value] of Object.entries({ view: location.view, path: location.path, study: location.studyId, run: location.runId, dataContext: location.dataContextId === "draft" ? null : location.dataContextId, journeyRevision: journey?.sourceRevisionSha256, journeyPack: journey?.targetPackId })) {
     if (value) params.set(key, value);
     else params.delete(key);
   }
@@ -33,4 +44,10 @@ export function selectWorkspaceRun<T extends { id: string; project_id: string }>
   return runId
     ? runs.find((run) => run.id === runId && run.project_id === studyId)
     : runs.find((run) => run.project_id === studyId);
+}
+
+/** N-5 (round R1-5): the journey data context a URL restores, or null. */
+export function journeyFromLocation(location: WorkspaceLocation): { sourceStudyId: string; sourceRevisionSha256: string; targetPackId: string } | null {
+  if (location.dataContextId !== "journey" || !location.journey || !location.studyId) return null;
+  return { sourceStudyId: location.studyId, sourceRevisionSha256: location.journey.sourceRevisionSha256, targetPackId: location.journey.targetPackId };
 }
