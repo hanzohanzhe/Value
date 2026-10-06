@@ -2,7 +2,7 @@
 
 > **阅读提示（2026-10-07）：** 本文件可以照常阅读，并开始修改方法学草稿。以下内容在下一轮施工中还会变动，请先不要定稿：
 > - **下调与弃电顺序**（修正口径）：改为比较“火电重启成本 − 省下的燃料、碳和可变成本”与风电弃电代价 0（DECISIONS A19）。重启成本的取值待查证和审核。本文中写着“修正口径先降火电”的地方都会改。
-> - **电池扩容上限**（修正口径）：撤回“三种电池共用一个功率池”，恢复为按类型分别乘 0.2（A20）。
+> - **电池扩容上限**（修正口径）：撤回“三种电池共用一个功率池”，恢复为按类型分别乘 0.2（A20）。**已实施（R1-3，`r13.per-type-battery-caps`，`value-storage-expansion-policy` 5.1.0）**，本文 C18、K-9、V-7、M-5 与草稿 p07 已按此改写，这一项可以定稿。
 > - **界面相关的描述**：会随四类用户测试的修复小幅调整。
 > 论文复现口径的内容不受这一轮影响。
 
@@ -44,7 +44,7 @@
 3. **以下内容没有草稿，需要你根据本文新写**：
    - 方法学口径总述（第 1 章新增一节）；
    - A15 核电路径依赖（论文复现口径；修正口径已由 A18/FX8 改为核电开局在运，见 N-7）；
-   - 修正口径储能余量和电池池的公式；
+   - 修正口径储能余量和按类型电池上限的公式；
    - Q6 价格标签；
    - A8 储能投资审核的公式；
    - DC 网络的份额展开（P1-01）；
@@ -164,7 +164,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 | load factor / capacity factor | 负荷率 / 容量因子 | DUKES 用“负荷率”，模型用“容量因子” |
 | constant base-year money | 起始年不变币值 | |
 | undiscounted | 不折现 | |
-| storage headroom / power-battery pool | 储能扩容余量 / 功率电池共用池 | |
+| storage headroom / per-type power-battery cap | 储能扩容余量 / 按类型的功率电池上限 | A20 之后不再有“共用池” |
 | leftover surplus (after existing charge) | 现有储能充电后的剩余盈余 | |
 
 ## 3 设计假设、已声明偏差与修正
@@ -199,7 +199,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 
 其余冻结行为（Q1，没有单独的偏差号）：
 - 风光储按毛收入判档；
-- 储能扩容余量为 0，三种电池各拿一份上限（合计 3 倍）；
+- 储能扩容余量为 0（三种电池各拿一份上限是论文设计，A20 认可，修正口径相同，不是偏差）；
 - 储能报价随存放时长递增，并按 LIFO 出售；储能按 `max_bat_price` 结算；
 - 削减市场按 `curtail_cost` 升序，先弃风；
 - 出清前把 VRE 分流去电解；储能费跨期结转；
@@ -237,7 +237,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 | C7 | 互联线报价保留负价 | `p05.raw-boundary-price` | C | 轨迹 | ch2 互联线 | p05b §1 |
 | C8–C16 | 默认 PSM 修正规则集 `native-corrected-v1`（九条） | `p06.*`（除 physical-operating-cost） | C | 轨迹/核算 | ch5 Native | p06 |
 | C17 | 储能余量取现有储能充电后的剩余盈余 | `p07.storage-leftover-headroom`（P5-01） | C | 轨迹 | ch4 储能新增上限 | p07（无公式） |
-| C18 | 三种功率电池共用一个池 | `p07.power-battery-pool`（P5-02） | C | 轨迹 | ch4 | p07（无公式） |
+| C18 | 三种功率电池各自的扩容上限 f·B(365)（A20 撤回 P0-7 的共用池） | `r13.per-type-battery-caps`（A20；取代 `p07.power-battery-pool`，P5-02） | C | 轨迹 | ch4 | p07（无公式） |
 | C19 | 径流水电兼容资本移出头条 | `p07.compatibility-capital-out-of-headline`（P4-03） | C | 核算 | ch4 成本 | p07 |
 | C20 | zonal 求解合同 v4 | `p08.zonal-solver-v4`（P2-01，Q5） | 只在修正口径下运行 | 轨迹 | ch7 | MATHEMATICAL_REFERENCE §2.4 |
 | C21 | staged 下调报价的经济价格、同价按比例分配、类别次序 | `p08.dec-economic-pricing`、`p08.pro-rata-ties`、`p08.dec-class-order`（P2-05、P3-04） | 只在修正口径下运行 | 轨迹 | ch4 实际平衡；ch7 | p08 §1 |
@@ -564,8 +564,8 @@ $$
 
 **K-9 第 135–167/134–166 行，“Current storage expansion limit”**
 - 口径：D 与 C。草稿：p07 “Storage expansion headroom”（只有文字，下面的公式需要新写）。
-- **论文复现口径（D，Q1 冻结）**：第 137–141 行原式保留。须补一句：在默认 PSM 中，接纳的 VRE 从不超过需求，所以 \(X_t\equiv0\)，储能余量恒为 0；三种电池各拿 \(0.20B(365)\)，合计 3 倍。
-- **修正口径（C，`p07.storage-leftover-headroom`、`p07.power-battery-pool`，`value-storage-expansion-policy` 5.0.0）**：
+- **论文复现口径（D，Q1 冻结）**：第 137–141 行原式保留。须补一句：在默认 PSM 中，接纳的 VRE 从不超过需求，所以 \(X_t\equiv0\)，储能余量恒为 0。三种电池各拿 \(0.20B(365)\) 是论文设计（A20），与修正口径相同，不写成偏差。
+- **修正口径（C，`p07.storage-leftover-headroom`、`r13.per-type-battery-caps`，`value-storage-expansion-policy` 5.1.0）**：
 
 $$
 X_t=\max(L_t,0),\qquad L_t=XS_t+W^{\mathrm{VRE}}_t,\qquad
@@ -583,12 +583,14 @@ H^{\mathrm{bat}}=f\,B(365),\qquad H^{\mathrm{H_2}}=f\,\max\!\big(B(0)-B(52),0\bi
 $$
 
   - \(B(365)\) 等于代码中的 daily_loop 加 intraday 两段，即 0.3 第 165 行的“日”与“跨日”两段之和。
-  - 1C、0.5C、0.25C 三种电池**共用** \(H^{\mathrm{bat}}\)：先收集各自的请求 \(r_{k}\)，按技术上限 \(H_k\) 缩放，再按池上限缩放（`allocate_capped_requests`）：
+  - 1C、0.5C、0.25C 三种电池**各自**以 \(H^{\mathrm{bat}}\) 为上限（A20，论文设计：三种电池服务时长不同，\(f=0.2\) 本身已是削弱过的比例）：
 
 $$
-r'_{k}=r_{k}\min\!\left(1,\frac{H_k}{\sum_{j\in k}r_{j}}\right),\qquad
-\Delta P_{k}=r'_{k}\min\!\left(1,\frac{H^{\mathrm{bat}}}{\sum_{k'\in\mathrm{pool}}r'_{k'}}\right).
+\Delta P_{k}\le H^{\mathrm{bat}},\qquad k\in\{\mathrm{1C},\mathrm{0.5C},\mathrm{0.25C}\},
 $$
+
+    三者合计最多 \(3H^{\mathrm{bat}}\)。投资步对每种电池分别扣减各自的上限，同一种电池有多个 owner 时按 owner 顺序贪心分配（与 35aadb3 相同）。
+  - P0-7 到 R1-3 之间，修正口径曾让三种电池共用一个池（`p07.power-battery-pool`，P5-02）。A20 撤回了这一读法。目录保留该条，只是为了让那段时间产生的 Run 的身份仍可读；正文**不要**写池公式，也不要把“各拿一份”写成缺陷。在 VALUE 101 与本地 GBP1 public2 第一年上，池上限从未被用满，撤回只改变记录的余量与投资证据，不改变提案和装机。
 
   - 年度时钟不是 17,520 个半小时时，余量为 0，原因记 `partial_year_chronology`。PSM 没有给出序列时，余量为 0，原因记 `leftover_trace_unavailable`。staged、PF、DC 目前不发布这条序列，所以在修正口径下，这些 PSM 的储能扩容关闭，并记录原因（M5-P0-7 偏差 3）。
 
@@ -1042,7 +1044,7 @@ $$
 | V-4 | §4 第 65–71 行 | 默认 PSM 的 VoLL：两个口径都是 17,000（A16-5；论文复现规则集为常数，修正口径为参数，默认 17,000）。新增 stress event 一段（A2，第 4.5 节 N-8/N-13）。保留 “£17,000/MWh” |
 | V-5 | §5 第 77–97 行 | 净头寸（修正口径）与 DEV-STO-01（论文复现口径）；储能只用盈余充电（S7）；DEV-BAL-03 年末存量 |
 | V-6 | §6 第 99–133 行 | 修正口径的默认 PSM 只报循环折旧，持有回收只用于充足性诊断；A[y] 中的 FOM 只用于报价的年成本，成本账中是备忘项（A7）；staged dwell 披露（P5-15）。保留 “dynamic annual-average” 与 “zero floor reproduces the published thesis-exact rule” |
-| V-7 | §7 第 135–145 行 | 修正口径的储能余量（剩余盈余）与功率电池池；论文复现口径余量为 0（K-9） |
+| V-7 | §7 第 135–145 行 | 修正口径的储能余量（剩余盈余）与按类型的功率电池上限（A20）；论文复现口径余量为 0（K-9） |
 | V-8 | §8 第 147–157 行 | A4 火电净收入、A6 不折现、A7 风光储无 OPEX、A8(3)(4) 储能审核（K-10 至 K-12） |
 | V-9 | §11 第 183–195 行 | 头条成本按成本账 v2；备忘项；物理运营成本；网络成本 = 分区 − 无网络反事实（第 189 行 “matched unconstrained” 改写） |
 | V-10 | §12 第 197–207 行 | 第 207 行 “VALUE does not infer hydrology from installed electrical capacity …” 与修正口径的径流水电统计可用率（N-4）表面上矛盾。改写为：默认 PSM 的径流水电在修正口径下使用声明的统计负荷率与季节形状，不是水文推断；水文域仍需流量数据 |
@@ -1072,7 +1074,7 @@ $$
 | M-2 | §2.2（第 74–112 行） | PF 价格标签 “Balance shadow price”；系统成本的 FOM 键（U11） | Q6、A7 |
 | M-3 | §2.3（第 114–132 行） | 份额展开（T-8）；模块 id 改为 `value-reference-dc-network`（P1-01 为 1.1.0，修复轮 VoLL 默认值后为 1.2.0） | C24 |
 | M-4 | §3 与 §3.1（第 310–375 行） | 修正口径只报循环折旧；持有回收只用于充足性诊断；staged dwell 披露；`scheme-c-legacy-storage-tariff` 改为 `value-legacy-storage-tariff` | C14、P5-15 |
-| M-5 | §4（第 377–397 行） | 模块名：`storage-expansion-scheme-c` 改为 `value-storage-expansion-policy` 5.0.0，`scheme-c-state-transition` 改为 `value-annual-state-transition`，agent-investment 3.0.0。加入 A4 净收入式（K-10）、A6 的四档规则与不折现说明、A7、A8(3)(4)、修正口径储能余量与电池池（K-9） | U6、C17、C18 |
+| M-5 | §4（第 377–397 行） | 模块名：`storage-expansion-scheme-c` 改为 `value-storage-expansion-policy` 5.1.0，`scheme-c-state-transition` 改为 `value-annual-state-transition`，agent-investment 3.0.0。加入 A4 净收入式（K-10）、A6 的四档规则与不折现说明、A7、A8(3)(4)、修正口径储能余量与按类型电池上限（K-9） | U6、C17、C18 |
 | M-6 | §5（第 428–456 行） | 头条按成本账 v2 写（K-14）。第 446 行碳情景 id 改为 `value_current_authoritative_v1` / `doctoral_reproduction_2026_07_18`（审查 G3-11，顺带修正）。新增 §5.2 “Energy balance, stress events and validation gates”，内容取自 p04 草稿，含 Q14 | U7–U11、C19 |
 | M-7 | §7（第 531–545 行） | 模块清单按 `docs/generated/MODULES.md` 的真实 id 重写。测试只要求每个模块 id 在本文或 MODULES.md 中出现 | — |
 | M-8 | §8（第 547–563 行） | 补以下“推迟”项：抽蓄和氢储没有水价（修正口径）；储能不能从市场购电；论文源规则版（thesis-source）口径留到下一轮（Q1）；DEV-BAL-03 是否跨年结转（P1）；A15 surplus conservation 的调查；投资侧与调度侧天气的统一（Q15） | — |

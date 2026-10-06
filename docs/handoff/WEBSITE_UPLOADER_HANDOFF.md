@@ -104,7 +104,7 @@
   - ERA5 辐照时间约定修正；
   - 光伏倾斜面换算（A13，文献标准模型，作者已在 A16-6 认可）；
 - 核电逐站负荷率与退役月份，径流水电采用 DUKES 负荷率 0.3487 与季节形状（A10、A14）；
-- 储能扩容余量与电池上限（P5-01、P5-02）；
+- 储能扩容余量（P5-01）与按类型的电池上限（A20：三种电池各拿 0.2 × 功率余量，与论文设计相同；P0-7 的“共用池”已撤回）；
 - 网络模块的经济口径（P0-8，zonal solver contract v4）；
 - **修复轮：互联线进口进入日前出清**（A16-2，`fx6.day-ahead-interconnector-imports`）。论文复现口径中，进口只在实际需求超出日前计划时的平衡环节出现；修正口径中，每条正容量的互联线按当期对侧价格报入日前出清。属于方法改动，0.6.0 保存的修正口径 Study 要在界面确认一次。网站可以写成“修正口径的日前出清接受互联线进口”，不要写成“进口建模已验证”。
 
@@ -196,6 +196,7 @@
 | 成本 | VoLL 默认 17,000 £/MWh（参数 `market.voll_gbp_per_mwh`）；有记录的切负荷时运营成本相应增加 | A16-5 |
 | 修正口径的 Study 迁移 | 默认 PSM 升到 6.4.0（6.2.0 VoLL、6.3.0 日前进口、6.4.0 核电开局在运），0.6.0 及 FX8 之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13）；界面与 6.3.0 时相同，只是升级内容多了一条 correction | A16-2、A16-5、A18 |
 | Run 结果页的 advisory 列表（论文复现口径与旧 Run） | 没有应用 A18 的默认 PSM Run（所有论文复现口径 Run，以及 FX8 之前的修正口径 Run）多一条 high 级 advisory，标题照抄：`Nuclear started the year off and paid its start-up cost to enter`。论文复现口径 Run 和 0.6.0 的旧 Run 原来已有其他 high 级 advisory，所以它们的 `needs_review` 不变；只缺这一条的修正口径 Run（本分支上 FX8 之前跑的，0.6.0 用户手里没有）会因此变为 `needs_review`。结果是否在结果页发布不受影响（Q14 只看 raw invariants）。没有核电的数据包（如 VALUE 101）也会列出这一条，因为它按模块而不是按数据包判断 | A18、A15 |
+| 电池扩容上限（R1-3，A20） | 修正口径的储能扩容策略升到 `value-storage-expansion-policy` 5.1.0（`r13.per-type-battery-caps`）：三种电池各自的上限，撤回 P0-7 的共用池。R1-3 之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13），界面与已有的确认相同。Run 的 advisory 列表**少一条** medium 级 `Power-battery cap counted three times`（论文复现口径 Run 与 0.6.0 旧 Run 原来都有），因为各拿一份上限是论文设计；没有新增 advisory，也没有新界面字符串。网站不要写“三种电池共用一个功率池” | A20、Q13 |
 
 **注意**：`CHANGELOG.md` 已有 VoLL（A16-5）、日前进口（A16-2）、储能报价账本（M-D1）、GBP1 public2（FX7）和核电开局在运（FX8，“Nuclear in service at the start of the year”）各节；但 FX1–FX3 的界面变化（上表前八行中除数据角色以外的各项）**还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md`**。网站文案在阶段 2 之前须等这两份文档补齐（第 7 节第 7 条），在那之前只能以设计规格第 11 节和 `docs/dev/p0-reports/FX3-UI-batch.md` 为准，而这两份是内部文档，不得上传。
 

@@ -4640,8 +4640,8 @@
     },
     {
       "path": "docs/SCHEME_C_MODEL_CARD.md",
-      "sha256": "93a1ddb21f915f0f0b5ec86ac8c35a229903f23cf0cc5694998181d033a9aa2b",
-      "bytes": 7010,
+      "sha256": "cb9c591d57483571a00e7c94b0c9b4074f4256e4172589832170e0da21d82b2b",
+      "bytes": 7057,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

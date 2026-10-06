@@ -53,8 +53,9 @@ discount future revenue in the investment test.
 
 The doctoral profile keeps the 0.6.0-alpha.2 behaviour (decision Q1): the
 surplus is computed as accepted VRE minus demand, which is never positive, so
-storage headroom is zero, and the power cap would be copied to each battery.
-The corrected profile (`p07.storage-leftover-headroom`, `p07.power-battery-pool`):
+storage headroom is zero; the power cap is given to each battery type.
+The corrected profile (`p07.storage-leftover-headroom`,
+`r13.per-type-battery-caps`; `value-storage-expansion-policy` 5.1.0):
 
 * uses the surplus left **after the existing fleet charged**, which the
   default PSM publishes per period from its declared column semantics
@@ -63,12 +64,26 @@ The corrected profile (`p07.storage-leftover-headroom`, `p07.power-battery-pool`
   residual gap after observed discharge; the power-battery room is the daily
   plus intraday band, the hydrogen room the seasonal band, each times
   `expansion.storage_cap_fraction`;
-* gives **one pool** to the 1C, 0.5C and 0.25C batteries together: their
-  requests are collected first, scaled to each technology cap, then to the
-  pool;
+* gives **each** of the 1C, 0.5C and 0.25C batteries its own cap
+  `expansion.storage_cap_fraction x power_room` (0.2 by default), as in the
+  thesis design (decision A20): the three types serve different durations
+  and the fraction is already a reduced share, so together they may add up
+  to three times `0.2 x power_room`. The hydrogen battery has its own cap on
+  the seasonal band. Each type's additions are capped separately in the
+  investment step;
 * gives zero headroom with a recorded reason when the chronology is not one
   full year of 17520 half-hour periods (`partial_year_chronology`) or the PSM
   publishes no trace (`leftover_trace_unavailable`).
+
+Between P0-7 and R1-3 the corrected profile instead made the three power
+batteries share one pool of `0.2 x power_room` (`p07.power-battery-pool`,
+review finding P5-02 read as a defect). Decision A20 withdrew that reading:
+per-type caps are the thesis design, not a triple count. The pool entry stays
+in the catalogue only so that Runs made in that interval keep a readable
+identity; no profile pools any more, and no Run carries an advisory for
+either rule. On VALUE 101 and the local GBP1 public2 first year the pool was
+never binding (battery requests stayed below it), so the revert changes only
+the recorded headroom and investment evidence, not proposals or capacities.
 
 ## Cost ledger v2
 

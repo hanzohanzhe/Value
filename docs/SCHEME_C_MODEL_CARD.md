@@ -89,7 +89,8 @@ tests in constant base-year money (decision A6). Thermal plants net their
 running cost (fuel, carbon, unit-time cost) in both profiles (decision A4);
 VRE and storage keep gross revenue as profit and carry no separate fixed OPEX
 (A7). Only the corrected profile opens storage expansion (post-charge surplus,
-one power-battery pool); the doctoral profile keeps zero storage headroom.
+one cap of 0.2 x power room for each power battery type, decision A20); the
+doctoral profile keeps zero storage headroom.
 
 Default PSM market rule sets (P0-6). The doctoral reproduction profile clears
 with the 0.6.0-alpha.2 rules (`native-doctoral-thesis-v1`) and declares their
