@@ -343,9 +343,24 @@ def finding_severity(policy: Any, finding: Mapping[str, Any]) -> str:
     return "error" if policy.pack_class == "scientific_reference" else "warning"
 
 
-def profile_eligibility(manifest: Mapping[str, Any], layers: Mapping[str, Any], *, structural_valid: bool) -> dict[str, Any]:
+PROFILE_PACK_UNSUPPORTED = "VALUE_PROFILE_COMBINATION_UNSUPPORTED"
+
+
+def profile_eligibility(
+    manifest: Mapping[str, Any], layers: Mapping[str, Any], *, structural_valid: bool,
+    manifest_bytes: bytes | None = None,
+) -> dict[str, Any]:
+    """Per profile: may this pack be used (structure, findings and the profile's pack whitelist)?
+
+    The whitelist is ``methodology.data_pack_violation``, the same check as the
+    Study editor and preflight (N-1); a pack outside it is not eligible and
+    carries the blocking code ``VALUE_PROFILE_COMBINATION_UNSUPPORTED``.
+    ``manifest_bytes`` are the manifest file bytes when ``manifest`` is the
+    pack's own manifest (a whitelist pin may be on the file sha).
+    """
+
     from .data_method import policy_for_profile
-    from .methodology import profile_ids
+    from .methodology import DATA_PACK_NOT_SUPPORTED_REASON, data_pack_violation, profile_ids
 
     result = {}
     findings = [*layers["chronology"]["findings"], *layers["plausibility"]["findings"]]
@@ -353,11 +368,15 @@ def profile_eligibility(manifest: Mapping[str, Any], layers: Mapping[str, Any], 
         policy = policy_for_profile(profile_id, manifest)
         errors = [row for row in findings if finding_severity(policy, row) == "error"]
         warnings = [row for row in findings if finding_severity(policy, row) == "warning"]
+        violation = data_pack_violation(profile_id, manifest, manifest_bytes)
+        blocking = {row["code"] for row in errors} | ({PROFILE_PACK_UNSUPPORTED} if violation else set())
         result[profile_id] = {
-            "eligible": bool(structural_valid) and not errors,
+            "eligible": bool(structural_valid) and not errors and violation is None,
             "pack_class": policy.pack_class,
             "data_method_id": policy.data_method_id,
-            "blocking_codes": sorted({row["code"] for row in errors}),
+            "pack_supported": violation is None,
+            "pack_support_reason": DATA_PACK_NOT_SUPPORTED_REASON if violation else None,
+            "blocking_codes": sorted(blocking),
             "warning_codes": sorted({row["code"] for row in warnings}),
         }
     return result

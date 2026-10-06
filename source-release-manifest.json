@@ -3151,8 +3151,8 @@
     },
     {
       "path": "app/features/data/dataPackValidation.ts",
-      "sha256": "945519bdcca7e9d38ab4a75b8f3d5e049b77cda9b5cae0c049d0aab228d84545",
-      "bytes": 8671,
+      "sha256": "7dd72a9bda8036fb81ac4faa1cb927da835dda8466e92e6b5fc62a30e6fd9da3",
+      "bytes": 9170,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3955,8 +3955,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "e76fa9e65d329e0d94909b2ecaae434af38060bdde23bfd497eeec3198abc6de",
-      "bytes": 208844,
+      "sha256": "103ad98a0661b656be3cf16a50084751efa3b5dbc72328da54618068213fcb60",
+      "bytes": 209117,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7810,14 +7810,14 @@
     },
     {
       "path": "gridform_core/data_pack_validation.py",
-      "sha256": "d0ce4569d63cbf4bde96e4f3d44b1e6756dd73bdc1613708c121e6549baa6975",
-      "bytes": 26337,
+      "sha256": "77f890496387d8c88bf9e810bb341d4fdb65cb32c528fb45482fe5c3cbd48331",
+      "bytes": 26857,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/data_validation_layers.py",
-      "sha256": "f76aac48c56afb28b77ddadbc902769344e6a5c083be02448025f3f682534f06",
-      "bytes": 23793,
+      "sha256": "e5e7a0675ad14ddcdb760c7a154132ac407472832978e76093a2c300cc190c6e",
+      "bytes": 24764,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8344,8 +8344,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "afbe47b4f4044580ca40697f6e6558cea88345e001663e5565821168a424bc27",
-      "bytes": 44574,
+      "sha256": "f7b73e5066fc8332ec3e5606c7a46f71577a219b2dba48eba1f37a8b2deeaf2a",
+      "bytes": 45404,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10766,8 +10766,8 @@
     },
     {
       "path": "tests/frontend/unit/data-pack-validation.test.mjs",
-      "sha256": "3d9d60b38b13ce81192f455d24c6eb298e1e59b9ec10316d8ca17c81a152e974",
-      "bytes": 5005,
+      "sha256": "8355037c822552903da1259884f646fc6b5c3b5b8c5cb16021d398fe67f58a7b",
+      "bytes": 5917,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11288,8 +11288,8 @@
     },
     {
       "path": "tests/test_data_validation_layers.py",
-      "sha256": "3534d0ebdaedb8a5bf7aa11a88aeadc7648d863f9c0df6ac7fe3122994a502e1",
-      "bytes": 10585,
+      "sha256": "930246bad60128217b3ff8178a1a79467dd9dda14340c4d5ad0c68d84d7dba6c",
+      "bytes": 13870,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

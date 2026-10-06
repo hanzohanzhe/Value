@@ -373,6 +373,7 @@ $$
   - 时序层：线路身份、价格币种、无时间戳的本地时间需求、行序缺陷、预测与实测错位；
   - 合理性层：范围检查，见 `value_data_plausibility_v1.json`。
 - `profile_eligibility` 决定哪些发现阻断哪个口径：在修正口径下是 preflight 错误，在论文复现口径下只是警告。所以 GBP1 public1 能安装，但在修正口径下不能运行。
+- `profile_eligibility` 同时套用口径的数据包白名单（与 Study 编辑器、preflight 同一个检查 `methodology.data_pack_violation`，N-1）：论文复现口径没有列出的包（任何用户工作区包、VALUE 101 网络包）对它不可用，阻断码 `VALUE_PROFILE_COMBINATION_UNSUPPORTED`，面板显示 “Not eligible — not a thesis-era pack”。
 - **修复轮须补一句（复测 N-1）**：论文复现口径的资格还有第二道检查，即口径白名单（`methodology.py` 的 `_pack_supported`：只接受论文期数据包，按 id、pack_class 与 manifest sha 比对，否则报 “is not a thesis-era pack”）。目前 Data 页的校验面板只反映第一道（校验层），所以会对用户数据包显示论文复现口径可用，而 Study 编辑器按白名单拒绝。正文按“校验层 + 白名单”两道检查写，不要写成只由校验层决定；面板与编辑器的不一致是待修的软件问题，不写进方法学。
 - **数据包验证层的已知漏检（修复轮 FX7）**：验证层不检查 VRE 曲线的时钟，所以 R029 public1、GBP1 public1 的光伏曲线（8,761 个值、无 interval 声明）能通过三层校验，却在修正口径的严格读取中报 `GF_DATA_SHORT_SERIES`。修法未定（第 9 节第 10 条），正文不要写“三层校验通过即可运行”。
 

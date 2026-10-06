@@ -60,3 +60,16 @@ test("before the report loads the cached summary is used; without either everyth
   assert.equal(inputsPresentSuffix("not_evaluated"), "inputs present · validation not evaluated");
   assert.deepEqual(methodologyUse(null, null).map((row) => [row.label, row.pill.text]), [["Corrected", "Not evaluated"], ["Doctoral reproduction", "Not evaluated"]]);
 });
+
+test("N-1: a pack outside the doctoral whitelist is not eligible for it, with the editor's reason", () => {
+  const report = {
+    ...clean,
+    profile_eligibility: {
+      "value-corrected": eligible({ pack_supported: true, pack_support_reason: null }),
+      "doctoral-lineage-0.6.0a2": { eligible: false, pack_class: "user_workspace", pack_supported: false, pack_support_reason: "not a thesis-era pack", blocking_codes: ["VALUE_PROFILE_COMBINATION_UNSUPPORTED"], warning_codes: [] },
+    },
+  };
+  assert.deepEqual(methodologyUse(report).map((row) => [row.label, row.pill.tone, row.pill.text]), [["Corrected", "ok", "Eligible"], ["Doctoral reproduction", "caution", "Not eligible — not a thesis-era pack"]]);
+  // The whitelist code matches no finding, so the layers keep their own colours.
+  assert.deepEqual(validationLayers(report).map((layer) => layer.pill.text), ["Passed", "Passed", "Passed"]);
+});

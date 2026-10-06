@@ -43,3 +43,8 @@ profile, chronology findings of non-workspace packs and plausibility failures of
 scientific reference packs are preflight errors; under the doctoral profile they
 are warnings. GBP1 public1 is therefore refused by the corrected preflight
 (identity, currency, time) and runs, repaired, under the doctoral profile.
+`profile_eligibility` also applies the profile's data-pack whitelist, the same
+check (`methodology.data_pack_violation`) as Study resolution and preflight: a pack
+the doctoral profile does not name (any user workspace pack, the VALUE 101 network
+overlay) is not eligible for it, with the blocking code
+`VALUE_PROFILE_COMBINATION_UNSUPPORTED` and the reason "not a thesis-era pack".

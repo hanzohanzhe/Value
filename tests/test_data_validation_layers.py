@@ -175,6 +175,57 @@ class ListPacksTests(_PackCopy):
             with patch("netCDF4.Dataset", side_effect=AssertionError("list_packs must not open NetCDF")):
                 rows = server.list_packs()
         self.assertEqual(rows[0]["plausibility_status"]["status"], "passed")
+        # N-1: a v1 summary (before the whitelist joined profile_eligibility) is not trusted.
+        cache_file = next((self.temp / "cache").glob("*.json"))
+        stale = json.loads(cache_file.read_text(encoding="utf-8"))
+        cache_file.write_text(json.dumps({**stale, "schema_version": "value.data-validation-cache/v1"}), encoding="utf-8")
+        with patch.object(server, "PACKS_ROOT", packs), patch.object(server, "VALIDATION_CACHE_ROOT", self.temp / "cache"):
+            self.assertEqual(server.list_packs()[0]["plausibility_status"], {"status": "not_evaluated"})
+
+
+class WhitelistEligibilityTests(_PackCopy):
+    """N-1: the panel's profile eligibility applies the same pack whitelist as the Study editor."""
+
+    def test_a_user_copy_is_not_eligible_for_the_doctoral_profile(self) -> None:
+        from gridform_core.methodology import combination_violations
+
+        self.manifest["id"] = "my-workspace-copy"
+        self.manifest["name"] = "my workspace copy"
+        (self.pack / "manifest.json").write_text(json.dumps(self.manifest), encoding="utf-8")
+        report = self.report()
+        self.assertTrue(report["valid"], report["errors"])
+        doctoral = report["profile_eligibility"][REFERENCE_PROFILE_ID]
+        self.assertFalse(doctoral["eligible"])
+        self.assertFalse(doctoral["pack_supported"])
+        self.assertEqual(doctoral["pack_support_reason"], "not a thesis-era pack")
+        self.assertIn("VALUE_PROFILE_COMBINATION_UNSUPPORTED", doctoral["blocking_codes"])
+        corrected = report["profile_eligibility"][CORRECTED]
+        self.assertTrue(corrected["eligible"] and corrected["pack_supported"])
+        raw = (self.pack / "manifest.json").read_bytes()
+        violations = combination_violations(REFERENCE_PROFILE_ID, data_packs=[(self.manifest, raw)])
+        self.assertEqual([row["sub_reason"] for row in violations], ["data_pack"])
+        self.assertIn("is not a thesis-era pack", violations[0]["message"])
+
+    def test_panel_and_editor_agree_for_every_repository_pack(self) -> None:
+        from gridform_core.methodology import combination_violations, profile_ids, read_pack_manifest
+
+        root = Path(__file__).resolve().parents[1] / "data-packs"
+        packs = sorted(path.parent for path in root.glob("*/manifest.json"))
+        self.assertTrue(packs)
+        for pack in packs:
+            manifest, raw = read_pack_manifest(pack)
+            report = validate_data_pack(pack, manifest, DATASET_SLOTS)
+            for profile_id in profile_ids():
+                with self.subTest(pack=pack.name, profile=profile_id):
+                    refused = any(row["sub_reason"] == "data_pack" for row in
+                                  combination_violations(profile_id, data_packs=[(manifest, raw)]))
+                    row = report["profile_eligibility"][profile_id]
+                    self.assertEqual(row["pack_supported"], not refused)
+                    if refused:
+                        self.assertFalse(row["eligible"])
+        network = json.loads((root / "value-101-network-v1" / "manifest.json").read_text(encoding="utf-8"))
+        self.assertFalse(validate_data_pack(root / "value-101-network-v1", network, DATASET_SLOTS)
+                         ["profile_eligibility"][REFERENCE_PROFILE_ID]["eligible"])
 
 
 class EligibilityTests(unittest.TestCase):

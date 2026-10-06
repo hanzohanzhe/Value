@@ -923,6 +923,11 @@ def resolve_project_draft(project: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+# v2 (N-1): profile_eligibility applies the profile's pack whitelist; a v1 summary
+# could promise the doctoral profile for a pack the Study editor refuses.
+VALIDATION_CACHE_SCHEMA = "value.data-validation-cache/v2"
+
+
 def _validation_cache_path(pack_id: str, manifest_sha256: str) -> Path:
     return VALIDATION_CACHE_ROOT / f"{slug(pack_id, 'pack')}-{manifest_sha256[:16]}.json"
 
@@ -934,7 +939,7 @@ def write_validation_cache(pack_id: str, pack_root: Path, report: dict[str, Any]
         manifest_sha256 = hashlib.sha256((pack_root / "manifest.json").read_bytes()).hexdigest()
         layers = dict(report.get("layers") or {})
         summary = {
-            "schema_version": "value.data-validation-cache/v1",
+            "schema_version": VALIDATION_CACHE_SCHEMA,
             "pack_id": pack_id, "manifest_sha256": manifest_sha256, "valid": bool(report.get("valid")),
             "chronology_codes": list(dict(layers.get("chronology") or {}).get("codes") or []),
             "plausibility_codes": list(dict(layers.get("plausibility") or {}).get("codes") or []),
@@ -950,7 +955,7 @@ def cached_validation_status(pack_id: str, manifest_sha256: str) -> dict[str, An
     """The cached layer summary; never reads the pack's data files (NetCDF)."""
 
     cached = read_json(_validation_cache_path(pack_id, manifest_sha256))
-    if not cached or cached.get("manifest_sha256") != manifest_sha256:
+    if not cached or cached.get("manifest_sha256") != manifest_sha256 or cached.get("schema_version") != VALIDATION_CACHE_SCHEMA:
         return {"status": "not_evaluated"}
     codes = [*cached.get("chronology_codes", []), *cached.get("plausibility_codes", [])]
     return {"status": "findings" if codes else "passed", **cached}

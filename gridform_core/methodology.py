@@ -729,6 +729,36 @@ def extension_supported(profile_id: str, extension_id: str) -> tuple[bool, str |
     return False, f"extension {extension_id} is not part of {profile.label}"
 
 
+DATA_PACK_NOT_SUPPORTED_REASON = "not a thesis-era pack"
+
+
+def data_pack_violation(
+    methodology: ResolvedMethodology | str, manifest: Mapping[str, object], manifest_bytes: bytes | None = None,
+) -> dict[str, object] | None:
+    """The data-pack whitelist check of one pack under one profile; None when admitted.
+
+    The one check used by Study resolution, preflight, the run entry
+    (``combination_violations``) and the data-pack validation panel
+    (``data_validation_layers.profile_eligibility``, N-1), so the panel never
+    promises a profile that the Study editor then refuses.
+    """
+
+    profile_id = methodology if isinstance(methodology, str) else methodology.profile_id
+    profile = load_catalogue().profile(profile_id)
+    identity = pack_source_identity.resolve_pack_identity(manifest, manifest_bytes)
+    if _pack_supported(profile, identity):
+        return None
+    pack_class = classify_data_pack(identity.manifest)
+    return _violation(
+        "data_pack",
+        f"data pack {manifest.get('id')} ({pack_class}) is {DATA_PACK_NOT_SUPPORTED_REASON} of {profile.label}"
+        + _UNVERIFIED_PACK_NOTES.get(identity.unverified or "", ""),
+        data_pack_id=manifest.get("id"), pack_class=pack_class,
+        manifest_sha256=sorted(identity.sha256_candidates),
+        identified_data_pack_id=identity.manifest.get("id"), identity_chain=list(identity.chain),
+    )
+
+
 def combination_violations(
     methodology: ResolvedMethodology | str,
     *,
@@ -757,17 +787,9 @@ def combination_violations(
         if not ok:
             rows.append(_violation("extension", str(reason), extension_id=extension_id))
     for manifest, raw in data_packs:
-        identity = pack_source_identity.resolve_pack_identity(manifest, raw)
-        if not _pack_supported(profile, identity):
-            pack_class = classify_data_pack(identity.manifest)
-            rows.append(_violation(
-                "data_pack",
-                f"data pack {manifest.get('id')} ({pack_class}) is not a thesis-era pack of {profile.label}"
-                + _UNVERIFIED_PACK_NOTES.get(identity.unverified or "", ""),
-                data_pack_id=manifest.get("id"), pack_class=pack_class,
-                manifest_sha256=sorted(identity.sha256_candidates),
-                identified_data_pack_id=identity.manifest.get("id"), identity_chain=list(identity.chain),
-            ))
+        violation = data_pack_violation(profile.id, manifest, raw)
+        if violation is not None:
+            rows.append(violation)
     if profile.external_code_policy == "refuse_when_enabled" and external_code:
         rows.append(_violation(
             "external_code",

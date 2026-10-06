@@ -232,6 +232,16 @@ def _first_numeric_column(path: Path) -> tuple[list[float], int]:
     return max(candidates, key=lambda item: len(item[0]))
 
 
+def _own_manifest_bytes(pack_root: Path, manifest: Mapping[str, object]) -> bytes | None:
+    """The pack's manifest file bytes when ``manifest`` is that file's content (whitelist pins, N-1)."""
+
+    try:
+        raw = (Path(pack_root) / "manifest.json").read_bytes()
+        return raw if json.loads(raw.decode("utf-8")) == dict(manifest) else None
+    except (OSError, ValueError):
+        return None
+
+
 def validate_data_pack(
     pack_root: Path,
     manifest: Mapping[str, object],
@@ -473,7 +483,8 @@ def validate_data_pack(
 
         try:
             layer_report = evaluate_layers(pack_root, manifest, periods=full_year_periods)
-            eligibility = profile_eligibility(manifest, layer_report, structural_valid=not errors)
+            eligibility = profile_eligibility(manifest, layer_report, structural_valid=not errors,
+                                              manifest_bytes=_own_manifest_bytes(pack_root, manifest))
         except Exception as exc:  # noqa: BLE001 - the layers never decide validity
             layer_report = {"status": "not_evaluated", "error": f"{type(exc).__name__}: {exc}"}
     return {

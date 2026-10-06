@@ -6,7 +6,11 @@
 import type { PillTone } from "../shared/Callout.tsx";
 
 export type LayerFinding = { code?: string; layer?: string; role?: string | null; message?: string };
-export type ProfileEligibility = { eligible?: boolean; pack_class?: string; blocking_codes?: string[]; warning_codes?: string[] };
+export type ProfileEligibility = {
+  eligible?: boolean; pack_class?: string; blocking_codes?: string[]; warning_codes?: string[];
+  /** N-1: the profile's data-pack whitelist (the same check as the Study editor); false = not admitted. */
+  pack_supported?: boolean; pack_support_reason?: string | null;
+};
 export type DataPackValidationReport = {
   data_pack_id?: string;
   valid?: boolean;
@@ -139,8 +143,10 @@ export function methodologyUse(report: DataPackValidationReport | null | undefin
       const warnings = list(row.warning_codes);
       return { profileId, label: profileLabel(profileId), pill: { tone: "ok", text: "Eligible", title: warnings.length ? `With warnings: ${warnings.join(", ")}` : undefined } };
     }
-    const blocking = list(row.blocking_codes);
-    const reason = structuralValid === false ? "structural validation failed" : blocking.length ? `blocked by ${blocking.join(", ")}` : "not eligible under this profile's data method";
+    // N-1: a pack outside the profile's whitelist is refused by the Study editor whatever its layers say.
+    const unsupported = row.pack_supported === false ? (row.pack_support_reason || "not a thesis-era pack") : null;
+    const blocking = list(row.blocking_codes).filter((code) => !unsupported || code !== "VALUE_PROFILE_COMBINATION_UNSUPPORTED");
+    const reason = unsupported ?? (structuralValid === false ? "structural validation failed" : blocking.length ? `blocked by ${blocking.join(", ")}` : "not eligible under this profile's data method");
     return { profileId, label: profileLabel(profileId), pill: { tone: "caution", text: `Not eligible — ${reason}` } };
   });
 }
