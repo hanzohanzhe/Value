@@ -5,18 +5,21 @@
   below it, it retires per the HEAD rule (45.625 MW); VRE keeps gross = profit;
   a market without ``agent_cashflow`` fails closed for a thermal group.
 * StorageHeadroomTests - P5-01 (p07.storage-leftover-headroom, corrected only):
-  a 17520-period square wave gives a 400 MW power pool (HEAD/doctoral: 0);
-  a 96-period chronology gives zero with reason partial_year_chronology;
-  no kernel global is rebound.
-* PowerBatteryPoolTests - P5-02 (p07.power-battery-pool, corrected only):
-  pool 400 with requests 300/200/100 accepts 200/133.33/66.67; doctoral keeps
-  per-technology copies (600 in total) and refuses a pooled row.
+  a 17520-period square wave gives a 400 MW cap for each power battery type
+  (per-type since A20; HEAD/doctoral: 0); a 96-period chronology gives zero
+  with reason partial_year_chronology; no kernel global is rebound.
+* PowerBatteryPoolTests - P5-02 (p07.power-battery-pool), withdrawn by A20
+  (r13.per-type-battery-caps, see tests/test_r13_per_type_battery_caps.py):
+  under a pre-A20 corrected methodology (pool in force) pool 400 with
+  requests 300/200/100 accepts 200/133.33/66.67; doctoral keeps
+  per-technology caps (600 in total) and refuses a pooled row.
 """
 from __future__ import annotations
 
 import importlib.util
 import math
 import unittest
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 
@@ -41,6 +44,20 @@ def _recorder():
 
 REC = _recorder()
 PROFILES = (REFERENCE_PROFILE_ID, default_profile_id())
+PER_TYPE_CAPS = "r13.per-type-battery-caps"
+
+
+@contextmanager
+def pre_a20_corrected():
+    """The corrected methodology as it was between P0-7 and R1-3 (shared power-battery pool)."""
+    from gridform_core.methodology import activate, resolve_methodology
+
+    current = resolve_methodology(default_profile_id())
+    assert PER_TYPE_CAPS in current.applied_correction_ids
+    pooled = replace(current, applied_correction_ids=tuple(
+        item for item in current.applied_correction_ids if item != PER_TYPE_CAPS))
+    with activate(pooled):
+        yield pooled
 
 
 def _run(profile_id: str, run_id: str = "p07-toy"):
@@ -167,17 +184,20 @@ class StorageHeadroomTests(unittest.TestCase):
                                                       "expansion.storage_cap_fraction": fraction})
         return _Policy().evaluate(run, OperatingState(YEAR, (), ()), market)
 
-    def test_square_wave_gives_a_400_mw_power_pool_in_the_corrected_profile(self):
+    def test_square_wave_gives_a_400_mw_cap_per_power_battery_in_the_corrected_profile(self):
         before = kernel.CAP_FRACTION
         row = self._evaluate(default_profile_id(), self.full_year)
         self.assertEqual(kernel.CAP_FRACTION, before)
         self.assertIsNone(row.extensions["reason"])
         for tech in sh.POWER_BATTERIES:
             self.assertAlmostEqual(row.allowed_additions_mw[tech], 400.0, delta=1e-6)
-        self.assertAlmostEqual(row.extensions["pools"][sh.POWER_BATTERY_POOL]["cap_mw"], 400.0, delta=1e-6)
+        # A20: per-type caps, no shared pool.
+        self.assertNotIn("pools", row.extensions)
+        self.assertFalse(row.extensions["pooled_power_batteries"])
+        self.assertAlmostEqual(row.evidence["power_cap_mw_per_technology"], 400.0, delta=1e-6)
         self.assertAlmostEqual(row.evidence["power_room_mw"], 2000.0, delta=1e-6)
         self.assertAlmostEqual(row.allowed_additions_mw[sh.HYDROGEN_BATTERY], 0.0, delta=1e-6)
-        self.assertEqual(row.extensions["headroom_semantics"], sh.HEADROOM_SEMANTICS)
+        self.assertEqual(row.extensions["headroom_semantics"], sh.HEADROOM_SEMANTICS_PER_TYPE)
 
     def test_doctoral_profile_keeps_the_head_zero_headroom(self):
         row = self._evaluate(REFERENCE_PROFILE_ID, self.full_year)
@@ -194,6 +214,9 @@ class StorageHeadroomTests(unittest.TestCase):
         row = self._evaluate(default_profile_id(), _storage_market(96))
         self.assertEqual(row.extensions["reason"], "partial_year_chronology")
         self.assertEqual(set(row.allowed_additions_mw.values()), {0.0})
+        self.assertNotIn("pools", row.extensions)
+        with pre_a20_corrected():
+            row = self._evaluate(default_profile_id(), _storage_market(96))
         self.assertEqual(row.extensions["pools"][sh.POWER_BATTERY_POOL]["cap_mw"], 0.0)
 
     def test_missing_trace_gives_zero_with_a_reason(self):
@@ -230,10 +253,11 @@ class PowerBatteryPoolTests(unittest.TestCase):
         return ExpansionHeadroom("h", YEAR, "value-storage-expansion-policy",
                                  {tech: 400.0 for tech in sh.POWER_BATTERIES}, extensions=extensions)
 
-    def test_corrected_pool_scales_requests_proportionally(self):
+    def test_pre_a20_corrected_pool_scales_requests_proportionally(self):
         state, income = self._fleet()
-        decision = SchemeCAgentInvestmentDefinition().decide(
-            _run(default_profile_id()), state, _market(income, {}), (self._row(pooled=True),))
+        with pre_a20_corrected():
+            decision = SchemeCAgentInvestmentDefinition().decide(
+                _run(default_profile_id()), state, _market(income, {}), (self._row(pooled=True),))
         accepted = {p.technology: p.capacity_mw for p in decision.proposals}
         self.assertAlmostEqual(accepted["1c_battery"], 200.0, delta=1e-9)
         self.assertAlmostEqual(accepted["0.5c_battery"], 400.0 / 3.0, delta=1e-9)

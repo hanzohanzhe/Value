@@ -1,8 +1,8 @@
-"""Corrected storage expansion headroom (P0-7 S6/S7, findings P5-01 and P5-02).
+"""Corrected storage expansion headroom (P0-7 S6, finding P5-01; R1-3, decision A20).
 
 Only the value-corrected profile uses this module; the doctoral profile keeps
 the 35aadb3 typed path (zero headroom from accepted VRE minus demand, and the
-same power cap copied to each of the three power batteries), decision Q1.
+same power cap given to each of the three power batteries), decision Q1.
 
 * P5-01: new storage may charge only from the surplus left after the existing
   fleet charged. The PSM publishes that per-period trace
@@ -12,8 +12,14 @@ same power cap copied to each of the three power batteries), decision Q1.
   headroom (reason ``partial_year_chronology``), and a PSM without the trace
   gives none either (reason ``leftover_trace_unavailable``); neither is a
   silent zero.
-* P5-02: the three power batteries share one pool of
-  ``cap_fraction x power_room`` instead of receiving it three times.
+* Power-battery caps (decision A20, ``r13.per-type-battery-caps``): each of
+  the 0.25C, 0.5C and 1C batteries gets its own cap
+  ``cap_fraction x power_room`` (0.2 by default), as in the thesis design: the
+  three serve different durations and the fraction is already a reduced
+  share.  P0-7 S7 had read finding P5-02 as a defect and made the three share
+  one pool (``p07.power-battery-pool``); A20 withdrew that.  The pooled branch
+  is kept only for a methodology that applies ``p07.power-battery-pool``
+  without ``r13.per-type-battery-caps`` (no catalogue profile does).
 * No kernel global is written (the HEAD path rebinds ``CAP_FRACTION``).
 """
 
@@ -25,6 +31,10 @@ from typing import Mapping, Sequence
 HEADROOM_INPUTS_KEY = "storage_headroom_inputs"
 HEADROOM_INPUTS_SCHEMA = "value.storage-headroom-inputs/v1"
 HEADROOM_SEMANTICS = "corrected_leftover_power_pool_v1"
+# A20 (R1-3): per-technology power-battery caps on the same leftover headroom.
+HEADROOM_SEMANTICS_PER_TYPE = "corrected_leftover_per_type_caps_v1"
+POWER_BATTERY_CAP_RULE_PER_TYPE = "per_technology: each power battery cap = cap_fraction x power_room (A20)"
+POWER_BATTERY_CAP_RULE_POOLED = "shared_pool: the three power batteries share cap_fraction x power_room (P5-02, withdrawn by A20)"
 POWER_BATTERY_POOL = "power_battery_pool"
 POWER_BATTERIES = ("0.25c_battery", "0.5c_battery", "1c_battery")
 HYDROGEN_BATTERY = "hydrogen_battery"
@@ -69,8 +79,9 @@ def corrected_storage_headroom(
     periods = len(period_summaries)
     zero = {tech: 0.0 for tech in (*POWER_BATTERIES, HYDROGEN_BATTERY)}
     extensions: dict[str, object] = {
-        "headroom_semantics": HEADROOM_SEMANTICS,
+        "headroom_semantics": HEADROOM_SEMANTICS if pooled else HEADROOM_SEMANTICS_PER_TYPE,
         "pooled_power_batteries": bool(pooled),
+        "power_battery_cap_rule": POWER_BATTERY_CAP_RULE_POOLED if pooled else POWER_BATTERY_CAP_RULE_PER_TYPE,
         "existing_storage_mw_by_technology": dict(sorted(existing_mw_by_technology.items())),
         "kernel_globals_written": False,
     }
@@ -108,7 +119,8 @@ def corrected_storage_headroom(
     allowed = {tech: power_cap for tech in POWER_BATTERIES}
     allowed[HYDROGEN_BATTERY] = hydrogen_cap
     evidence.update({"daily_loop_mw": daily, "intraday_mw": intraday, "seasonal_mw": seasonal,
-                     "power_room_mw": power_room, "power_pool_cap_mw": power_cap,
+                     "power_room_mw": power_room,
+                     ("power_pool_cap_mw" if pooled else "power_cap_mw_per_technology"): power_cap,
                      "leftover_excess_mwh": math.fsum(leftover)})
     extensions.update({"reason": None, "credit_mode": mode,
                        "leftover_excess_basis": inputs.get("leftover_excess_basis"),
@@ -121,8 +133,8 @@ def corrected_storage_headroom(
 def headroom_pools(headroom: Sequence[object], *, pooled: bool) -> dict[str, dict[str, object]]:
     """Shared pools declared by the headroom rows; refused across profiles.
 
-    A doctoral run (per-technology caps, Q1) receiving a pooled corrected row
-    is an error rather than a silent reinterpretation.
+    A run with per-technology caps (doctoral, Q1; corrected since A20)
+    receiving a pooled row is an error rather than a silent reinterpretation.
     """
     pools: dict[str, dict[str, object]] = {}
     for row in headroom:

@@ -17,7 +17,8 @@ existing installation is upgraded side by side, as described in
   (`doctoral-lineage-0.6.0a2`, frozen): this profile is *not an exact
   reproduction of the 2026-07-18 retained trajectory*. It keeps the
   0.6.0-alpha.2 behaviour, including gross-revenue investment for VRE and
-  storage, zero storage headroom and the triple battery cap (decision Q1). It
+  storage and zero storage headroom (decision Q1); its per-type battery caps
+  are the thesis design, which the corrected profile also uses since A20. It
   writes its reference configuration into the Study: the legacy storage
   tariff and the doctoral carbon-factor scenario (Q3). It runs only the
   thesis-lineage modules and data packs and refuses enabled external code.
@@ -57,6 +58,7 @@ existing installation is upgraded side by side, as described in
 | FX7 (A16-7, GBP1 public2 local acceptance) | — | `p05.nuclear-stations-public2` (GBP1 public2 only) |
 | FX8 (A18, nuclear in service at start) | — | `fx8.nuclear-in-service-at-start` (method change, explicit Study confirmation) |
 | R1-2 (A19/A22, economic down-regulation order) | — | `r12.economic-downward-order` (method change, explicit Study confirmation) |
+| R1-3 (A20, per-type battery caps) | — | `r13.per-type-battery-caps` (method change, explicit Study confirmation; supersedes `p07.power-battery-pool`) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -89,6 +91,9 @@ unattributed.
   R1-2 (A19/A22, `r12.economic-downward-order`) revised C1-C6 and C9 once
   (C1-C4, C9: the ten new `downward_restart_economics` columns; C5/C6: one
   2025 period, 28 trajectory and 41/43 accounting columns).
+  R1-3 (A20, `r13.per-type-battery-caps`) revised C1, C2, C4-C7 and C9 once,
+  for the storage headroom and investment evidence columns only (no pool
+  declared, per-type cap evidence); proposals and capacities are unchanged.
 
 ### Known issues
 
@@ -439,7 +444,8 @@ unattributed.
   re-baselined once with a numeric report.
 - Corrected profile: storage headroom from the post-charge surplus (P5-01;
   it was always zero) with a full-year guard, and one shared power-battery
-  pool (P5-02; the cap was counted three times). value-storage-expansion-policy
+  pool (P5-02, read as "the cap was counted three times";
+  withdrawn by decision A20 in R1-3, see below). value-storage-expansion-policy
   5.0.0. The doctoral profile keeps both 0.6.0-alpha.2 behaviours.
 - Cost ledger v2: VRE and storage fixed OPEX is a memo, not part of the
   headline (decision A7, both profiles); the corrected headline excludes the
@@ -618,6 +624,30 @@ unattributed.
   segment is reached.  Golden: C1-C4 and C9 gain the new extension columns
   only; C5/C6 one period; numeric reports
   `docs/dev/p0-reports/r12-golden/`.
+
+### Per-type power-battery expansion caps (A20, corrected profile)
+
+- P0-7 S7 had read finding P5-02 ("each power battery receives the whole
+  0.2 x power room, three times the documented cap") as a defect and made the
+  1C, 0.5C and 0.25C batteries share one pool.  Decision A20 withdrew that:
+  the three types serve different durations, and giving each its own
+  `expansion.storage_cap_fraction x power_room` (0.2) is the thesis design;
+  the fraction is already a reduced share.
+- Corrected profile (`r13.per-type-battery-caps`): the storage headroom row
+  gives each power battery type its own cap and declares no shared pool;
+  agent-investment caps each type separately.  The P5-01 leftover headroom
+  (`p07.storage-leftover-headroom`) is unchanged.  `p07.power-battery-pool`
+  stays in the catalogue, without an advisory, so that Runs made between
+  P0-7 and R1-3 keep a readable identity; no profile pools any more, and a
+  per-type run that receives a pooled headroom row is refused.
+- `value-storage-expansion-policy` 5.0.0 → 5.1.0 with `requires_user_opt_in`
+  (Q13).  The doctoral reproduction profile is unchanged (D1-D5 gated 0);
+  doctoral Runs lose the medium advisory "Power-battery cap counted three
+  times".
+- Effect on the reference runs: none on proposals or capacities.  The pool
+  was never binding on VALUE 101 two_year (C5/C6) or on GBP1 public2 2025
+  (C9), whose battery requests stayed below it; the golden revisions change
+  only the headroom and investment evidence columns.
 
 ### Scientific validation recomputed and gated (P0-4)
 

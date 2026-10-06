@@ -307,7 +307,7 @@
     "value-storage-expansion-policy": {
       "baseline_version": "4.0.0",
       "baseline_scientific_version": "storage-cost-policy-injected-2026.08.04",
-      "current_version": "5.0.0",
+      "current_version": "5.1.0",
       "bumps": [
         {
           "from": "4.0.0",
@@ -318,6 +318,16 @@
             "p07.power-battery-pool"
           ],
           "reason": "value-corrected only (doctoral unchanged, Q1): storage headroom from the post-charge leftover surplus the PSM publishes (P5-01), zero with a recorded reason for a partial-year chronology or a PSM without the trace, one shared power-battery pool instead of three copies of the cap (P5-02), no kernel global rebound. Storage investment opens in corrected Studies, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "5.0.0",
+          "to": "5.1.0",
+          "package": "R1-3",
+          "correction_ids": [
+            "r13.per-type-battery-caps"
+          ],
+          "reason": "Decision A20: in the corrected profile the 0.25C, 0.5C and 1C batteries each get their own expansion cap of expansion.storage_cap_fraction x power_room (0.2 by default), as in the thesis design, instead of sharing one pool (P0-7 S7, p07.power-battery-pool, withdrawn). The P5-01 leftover headroom is unchanged. Storage additions of corrected Runs may now be up to three times the pooled amount when batteries are profitable (method change), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the 35aadb3 per-type caps bit for bit.",
           "requires_user_opt_in": true
         }
       ]

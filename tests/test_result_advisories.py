@@ -212,11 +212,13 @@ class FixtureRunTests(unittest.TestCase):
             "p06.avoided-cost-downward-order", "p06.d1-surplus-accounting",
             "p06.storage-bid-cycle-only", "p06.storage-net-per-period",
             # P0-7: the run's cost ledger kept the hydro compatibility capital in
-            # the headline (P4-03) and its storage policy did not apply P5-01/P5-02.
+            # the headline (P4-03) and its storage policy did not apply P5-01.
+            # (R1-3, A20: per-type power-battery caps are the thesis design, so
+            # neither p07.power-battery-pool nor r13.per-type-battery-caps
+            # carries an advisory.)
             "p07.compatibility-capital-out-of-headline", "p07.storage-leftover-headroom",
             "GF_VALIDATION_LEGACY_REPORT",
             "p06.no-vre-pre-clearing-skim", "p06.storage-uniform-price-settlement",
-            "p07.power-battery-pool",
             # R1-2 (A19/A22): down regulation without restart economics (medium).
             "r12.economic-downward-order",
             # FX6 (A16-2): imports were not offered to the day-ahead clearing (info).

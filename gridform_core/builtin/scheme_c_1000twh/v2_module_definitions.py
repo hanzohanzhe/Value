@@ -82,6 +82,18 @@ def run_methodology(run: ResolvedRun):
     return resolve_methodology(declared)
 
 
+def power_battery_pool_in_force(methodology) -> bool:
+    """Do the three power batteries share one headroom pool?
+
+    P0-7 S7 (``p07.power-battery-pool``, finding P5-02) pooled them; decision
+    A20 (R1-3, ``r13.per-type-battery-caps``) restored the thesis design, one
+    cap of ``cap_fraction x power_room`` per battery type.  The corrected
+    profile applies both, so no catalogue profile pools; the doctoral profile
+    applies neither (per-type caps, Q1).
+    """
+    return methodology.enabled("p07.power-battery-pool") and not methodology.enabled("r13.per-type-battery-caps")
+
+
 class _ExpansionDefinition(_NativeDefinition):
     def evaluate(self, run: ResolvedRun, state: OperatingState, market: MarketYearResult) -> ExpansionHeadroom:
         if self.id == "vre-expansion-cap":
@@ -93,9 +105,10 @@ class _ExpansionDefinition(_NativeDefinition):
             }
             evidence = {"cap_fraction": fraction, "native_typed_execution": 1.0}
         elif run_methodology(run).enabled("p07.storage-leftover-headroom"):
-            # P0-7 S6/S7 (P5-01, P5-02; value-corrected only): post-charge
-            # leftover surplus, full-year guard, one power-battery pool, no
-            # kernel global rebound.  The doctoral profile keeps the branch below.
+            # P0-7 S6 (P5-01; value-corrected only): post-charge leftover
+            # surplus, full-year guard, no kernel global rebound; per-type
+            # power-battery caps since A20 (R1-3).  The doctoral profile keeps
+            # the branch below.
             existing: defaultdict[str, float] = defaultdict(float)
             for asset in state.assets:
                 if asset.capacity_mw > 0 and asset.status != "retired":
@@ -105,7 +118,7 @@ class _ExpansionDefinition(_NativeDefinition):
                 market.extensions,
                 cap_fraction=float(run.scientific_parameters.get("expansion.storage_cap_fraction", 0.20)),
                 period_hours=float(run.scientific_parameters.get("clock.period_hours", 0.5)),
-                pooled=run_methodology(run).enabled("p07.power-battery-pool"),
+                pooled=power_battery_pool_in_force(run_methodology(run)),
                 existing_mw_by_technology={
                     tech: value for tech, value in existing.items()
                     if tech in {"0.25c_battery", "0.5c_battery", "1c_battery", "hydrogen_battery", "pumped_hydro"}
@@ -161,7 +174,7 @@ class SchemeCVREExpansionPolicyDefinition(_ExpansionDefinition):
 
 
 class SchemeCStorageExpansionPolicyDefinition(_ExpansionDefinition):
-    id, version = "storage-expansion-scheme-c", "5.0.0"
+    id, version = "storage-expansion-scheme-c", "5.1.0"
 
 
 class SchemeCAgentInvestmentDefinition(_NativeDefinition):
@@ -180,7 +193,7 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
         a4_costs = cost_rows_for_a4(market.extensions)
         a4_operating: dict[str, float] = {}
         methodology = run_methodology(run)
-        pools = headroom_pools(headroom, pooled=methodology.enabled("p07.power-battery-pool"))
+        pools = headroom_pools(headroom, pooled=power_battery_pool_in_force(methodology))
         pooled_technologies = {tech for spec in pools.values() for tech in spec["technologies"]}
         pending: list[dict[str, object]] = []
         pool_record: dict[str, object] = {}
@@ -345,8 +358,10 @@ class SchemeCAgentInvestmentDefinition(_NativeDefinition):
                 continue
             requested = net / cost_per_mw
             if mode == "headroom_required" and technology in pooled_technologies:
-                # P0-7 S7 (P5-02, corrected): collected, then scaled to the
-                # technology caps and the shared power-battery pool together.
+                # P0-7 S7 (P5-02): collected, then scaled to the technology
+                # caps and the shared power-battery pool together.  Reached
+                # only when the pool is in force (no catalogue profile since
+                # A20, see power_battery_pool_in_force).
                 pending.append({
                     "args": (index, owner, technology, region, members, capacity, cost_per_mw, life,
                              preferred, target_payback, recommendation, mode, roi, payback),
