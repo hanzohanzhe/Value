@@ -223,5 +223,26 @@ class ComparisonIdentityTests(unittest.TestCase):
                     self.assertEqual(result["comparison_review"]["dimensions"]["config"]["status"], "changed")
 
 
+    # R1-4 (S-D9, F-D5): the warning names the changed dimension and the
+    # differing paths instead of a fixed storage-policy sentence.
+    def test_warning_names_the_changed_dimension_and_paths(self):
+        left = build_run_summary(self.fixture("named-left"))
+        data = compare_run_summaries([left, build_run_summary(self.fixture("named-data", data_sha="e" * 64))])
+        self.assertEqual(data["changed_dimension_details"]["data"],
+                         {"label": "data inputs", "paths": ["pack.roles.demand"], "more_paths": 0})
+        self.assertEqual(data["warning"], "Only the data inputs (pack.roles.demand) differ. The comparison describes the "
+                         "effect of this change; it is not a controlled storage-cost experiment.")
+        self.assertNotIn("storage-policy", data["warning"])
+        extension = compare_run_summaries([left, build_run_summary(self.fixture("named-ext", extension=True))])
+        self.assertEqual(extension["changed_dimension_details"]["method"]["paths"], ["extensions"])
+        self.assertIn("model method (modules, extensions, methodology) (extensions)", extension["warning"])
+        both = compare_run_summaries([left, build_run_summary(self.fixture("named-both", parameter=2, year=2026))])
+        self.assertEqual(set(both["changed_dimension_details"]), {"config", "years"})
+        self.assertEqual(both["changed_dimension_details"]["years"]["paths"], ["end_year", "start_year"])
+        self.assertIn("parameters.scientific.parameter", both["warning"])
+        self.assertIn("jointly", both["warning"])
+        same = compare_run_summaries([left, build_run_summary(self.fixture("named-same"))])
+        self.assertEqual(same["changed_dimension_details"], {})
+
 if __name__ == "__main__":
     unittest.main()

@@ -390,6 +390,58 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
     }
 
 
+# S-D9/F-D5 (four-role report): the comparison names what changed instead of
+# a fixed storage-policy sentence.  Depth at which each identity dimension's
+# differences are reported (data: pack directory, roles, role name).
+_DIMENSION_LABELS = {
+    "data": "data inputs",
+    "method": "model method (modules, extensions, methodology)",
+    "config": "parameters and extension configuration",
+    "years": "model years",
+    "scope": "run scope",
+}
+_DIMENSION_DEPTH = {"data": 3, "method": 2, "config": 2, "years": 1, "scope": 1}
+_MAX_LISTED_PATHS = 12
+
+
+def _differing_paths(values: Sequence[object], depth: int, prefix: str = "") -> list[str]:
+    if depth > 0 and values and all(isinstance(value, Mapping) for value in values):
+        keys = sorted({str(key) for value in values for key in value})  # type: ignore[union-attr]
+        paths: list[str] = []
+        for key in keys:
+            children = [value.get(key) for value in values]  # type: ignore[union-attr]
+            if len({json.dumps(child, sort_keys=True, default=str) for child in children}) > 1:
+                paths.extend(_differing_paths(children, depth - 1, f"{prefix}.{key}" if prefix else key))
+        return paths
+    return [prefix or "(value)"]
+
+
+def changed_dimension_details(review: Mapping[str, object]) -> dict[str, dict[str, object]]:
+    """Per changed identity dimension: a label and the differing paths (bounded)."""
+
+    details: dict[str, dict[str, object]] = {}
+    dimensions = review.get("dimensions") if isinstance(review.get("dimensions"), Mapping) else {}
+    for key in review.get("changed_dimensions") or []:  # type: ignore[union-attr]
+        values = list((dimensions.get(key) or {}).get("values") or [])  # type: ignore[union-attr]
+        paths = _differing_paths(values, _DIMENSION_DEPTH.get(str(key), 2))
+        details[str(key)] = {
+            "label": _DIMENSION_LABELS.get(str(key), str(key)),
+            "paths": paths[:_MAX_LISTED_PATHS],
+            "more_paths": max(0, len(paths) - _MAX_LISTED_PATHS),
+        }
+    return details
+
+
+def _change_sentence(details: Mapping[str, Mapping[str, object]]) -> str:
+    parts = []
+    for row in details.values():
+        paths = [str(item) for item in row.get("paths") or []]
+        more = int(row.get("more_paths") or 0)
+        listed = ", ".join(paths) + (f" and {more} more" if more else "")
+        parts.append(f"{row['label']} ({listed})" if listed else str(row["label"]))
+    return "; ".join(parts)
+
+
 def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str, object]:
     if not 2 <= len(summaries) <= 6:
         raise ValueError("A comparison requires 2 to 6 runs")
@@ -425,6 +477,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         if len(set(json.dumps(value, sort_keys=True) for value in values)) > 1:
             dimensions[f"module.{slot}"] = values
     review = review_comparison_identities(summaries)
+    dimension_details = changed_dimension_details(review)
     for key in review["changed_dimensions"]:
         dimensions[f"identity.{key}"] = review["dimensions"][key]["values"]
     non_storage_differences = [key for key in dimensions if key != "module.storage_cost"]
@@ -564,9 +617,20 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             "Recorded configuration matches; no storage-policy change is available for causal attribution."
         )
     elif len(review["changed_dimensions"]) > 1:
-        warning = "Changed dimensions must be interpreted jointly; an isolated storage-policy causal claim is blocked."
+        warning = (
+            "Several recorded dimensions differ: " + _change_sentence(dimension_details)
+            + ". Interpret the differences jointly; no isolated causal claim is made."
+        )
+    elif dimension_details:
+        warning = (
+            "Only the " + _change_sentence(dimension_details) + " differ. The comparison describes the effect of "
+            "this change; it is not a controlled storage-cost experiment."
+        )
     else:
-        warning = "A recorded change is present, but it does not establish an isolated storage-policy causal effect."
+        warning = (
+            "Recorded run fields differ (" + ", ".join(sorted(dimensions)) + "); interpret the differences with "
+            "that in mind - this is not a controlled storage-cost experiment."
+        )
     if review["unknown_dimensions"]:
         warning = review["warning"]
     storage_interpretation = (
@@ -630,6 +694,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         "comparison_review": review,
         "annual_metrics_withheld": annual_metrics_withheld,
         "changed_dimensions": dimensions,
+        "changed_dimension_details": dimension_details,
         "metric_deltas_allowed": deltas_allowed,
         "clean_storage_policy_comparison": causal_storage_comparison,
         "network_comparison": network_comparison,

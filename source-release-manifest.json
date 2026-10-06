@@ -8579,8 +8579,8 @@
     },
     {
       "path": "gridform_core/results_summary.py",
-      "sha256": "9c01bde3e57811090ec65aa8206745654a62c8629f31fa810ba3262a2b7d6012",
-      "bytes": 36915,
+      "sha256": "e7a49cbfc568d9e58d826eb80df51a2fcfe05f3af1fd17d2830133a89502a16b",
+      "bytes": 40006,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11283,8 +11283,8 @@
     },
     {
       "path": "tests/test_comparison_identity.py",
-      "sha256": "0f683234a6de3baca13997710da6a38d9499c4284f6bd718e4ca07bb954c7ed2",
-      "bytes": 14608,
+      "sha256": "acffe1ca6940c427924e2a15879040cc82197245406f3f90196a13e671313837",
+      "bytes": 16344,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
