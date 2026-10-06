@@ -19,6 +19,8 @@ REPLAY_CAPABILITIES_SCHEMA = "value.market-replay-capabilities/v1"
 VRE_SUMMARY_SCHEMA = "value.vre-curtailment-summary/v1"
 VRE_TIMELINE_SCHEMA = "value.vre-curtailment-timeline/v1"
 STRESS_EVENTS_SCHEMA = "value.stress-events/v1"
+# C20: the corrected rule set's declared ``curtailed`` column (native_market_rules.column_semantics).
+CORRECTED_CURTAILMENT_SEMANTICS = "vre_available_minus_gross_output"
 ZONAL_REPLAY_CAPABILITY = "value.zonal-results-page/v1"
 
 
@@ -979,6 +981,12 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
     expected_periods = int(round(8760 / period_hours))
     relationship = str(semantic.get("excess_relationship", "unknown"))
     excess_scope = str(semantic.get("excess_scope", "unknown"))
+    curtailment_semantics = str(semantic.get("curtailment_semantics", "unknown"))
+    # C20 (P0-6 column semantics, P0-9 M7): under the corrected rule set
+    # ``curtailed`` is VRE availability minus gross VRE output and ``excess`` is
+    # the non-VRE spill, so "excess + curtailment" is not a VRE event basis; the
+    # unused-VRE events then carry the third basis ``corrected_unused_vre``.
+    corrected_columns = curtailment_semantics == CORRECTED_CURTAILMENT_SEMANTICS
     with _read_only_connection(database) as connection:
         connection.row_factory = sqlite3.Row
         if "period_summary" not in _tables(connection):
@@ -1019,13 +1027,16 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
             unused_values = [max(
                 float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
             ) for row in rows]
-            unused_vre_events = _event_statistics(unused_values, periods, year, period_hours, "unused_vre")
+            unused_vre_events = _event_statistics(
+                unused_values, periods, year, period_hours,
+                "corrected_unused_vre" if corrected_columns else "unused_vre",
+            )
             excess_curtailment_events = (
                 _event_statistics(
                     [float(row["curtailed_mwh"]) + float(row["excess_mwh"]) for row in rows],
                     periods, year, period_hours, "excess_plus_balancing_curtailment",
                 )
-                if relationship == "separate_prebalancing" else None
+                if relationship == "separate_prebalancing" and not corrected_columns else None
             )
             legacy_events = {
                 key: value
@@ -1067,7 +1078,8 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                     else "partial_semantic_attribution"
                 ),
                 "event_basis": (
-                    "excess_plus_balancing_curtailment"
+                    "corrected_unused_vre" if corrected_columns
+                    else "excess_plus_balancing_curtailment"
                     if relationship == "separate_prebalancing" else "unused_vre"
                 ),
                 "unused_vre_events": unused_vre_events,
@@ -1083,6 +1095,7 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
         "timezone": str(semantic.get("timezone", "Europe/London")),
         "excess_relationship": relationship,
         "excess_scope": excess_scope,
+        "curtailment_semantics": curtailment_semantics,
         "source_artifact_sha256": _artifact_hash(database),
         "units": {"energy": "MWh", "rate": "fraction"},
     }

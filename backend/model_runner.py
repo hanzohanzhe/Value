@@ -322,7 +322,21 @@ VOLL_BASIS_BY_LEDGER_LINE: dict[str, bool | str] = {
 }
 
 
-def _system_cost_includes_voll(ledger: dict | None) -> bool | None:
+def _operating_detail_by_year(exact: dict) -> dict[int, dict]:
+    """P0-6 S4 (C30): each year's physical_operating_cost_detail_gbp, when the PSM wrote one."""
+
+    details: dict[int, dict] = {}
+    for row in exact.get("orchestrator_results") or []:
+        market = row.get("market") if isinstance(row, dict) else None
+        if not isinstance(market, dict):
+            continue
+        detail = (market.get("extensions") or {}).get("physical_operating_cost_detail_gbp")
+        if isinstance(detail, dict) and market.get("year") is not None:
+            details[int(market["year"])] = detail
+    return details
+
+
+def _system_cost_includes_voll(ledger: dict | None, operating_detail: dict | None = None) -> bool | None:
     """Whether the headline system cost contains the value of lost load.
 
     The legacy (doctoral) total adds Lost_Value_of_Electricity.  For a CEM
@@ -336,12 +350,16 @@ def _system_cost_includes_voll(ledger: dict | None) -> bool | None:
         return True
     lines = [line for line in ledger.get("lines") or [] if isinstance(line, dict)]
     zonal = any(str(line.get("id", "")).startswith("zonal.") for line in lines)
+    # P0-6 S4 (C30): the native PSM's operating total books recorded blackout x
+    # VoLL (physical_operating_cost_detail_gbp.blackout_reliability) inside
+    # generation_import_and_reliability, copperplate included.
+    native_reliability = isinstance(operating_detail, dict) and "blackout_reliability" in operating_detail
     bases = []
     for line in lines:
         if not line.get("included_in_cem_system_cost"):
             continue
         basis = VOLL_BASIS_BY_LEDGER_LINE.get(str(line.get("id", "")))
-        bases.append(zonal if basis == ZONAL_VOLL else basis)
+        bases.append((zonal or native_reliability) if basis == ZONAL_VOLL else basis)
     if any(basis is True for basis in bases):
         return True
     if not bases or any(basis is None for basis in bases):
@@ -363,6 +381,7 @@ def _frontend_results(
         int(row["year"]): row for row in exact.get("cem_cost_ledgers", [])
     }
     investments_by_year: dict[int, list[dict]] = {}
+    operating_details = _operating_detail_by_year(exact)
     carbon_by_year = {
         int(row["year"]): row for row in exact.get("carbon_ledgers", [])
     }
@@ -428,7 +447,10 @@ def _frontend_results(
                     "recorded" if cost.get("Decarbonization_Mechanism_Cost_Added_to_System_GBP") is not None else "not_recorded"
                 ),
                 "lost_value_of_electricity_gbp": cost.get("Lost_Value_of_Electricity_GBP"),
-                "system_cost_includes_voll": _system_cost_includes_voll(ledger),
+                "system_cost_includes_voll": _system_cost_includes_voll(ledger, operating_details.get(year)),
+                # C30: the VoLL part of the operating cost and its price, as recorded.
+                "operating_cost_voll_gbp": (operating_details.get(year) or {}).get("blackout_reliability"),
+                "voll_gbp_per_mwh": (operating_details.get(year) or {}).get("voll_gbp_per_mwh"),
                 "blackout_mwh": cost["Total_Energy_Deficit_MWh"],
                 "curtailment_mwh": cost.get("Total_VRE_Curtailed_MWh", cost.get("Total_Excess_Energy_MWh")),
                 "vre_curtailment_mwh": curtailment.get("total_mwh") if curtailment is not None else None,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { kpiCoverageLine, seriesSegments, seriesShapes, vreEventGroups, vreKpis, vreYearCoverage } from "../../../app/features/market/vreView.ts";
+import { kpiCoverageLine, seriesSegments, seriesShapes, vreEventGroups, vreLabels, vreKpis, vreYearCoverage } from "../../../app/features/market/vreView.ts";
 import { payload } from "../helpers/fixtures.mjs";
 
 // P0-9 S8 (R3-21, G1-08; spec 4.1, 4.5).
@@ -75,4 +75,19 @@ test("designer ruling 5: a group without events says so instead of a 0 MWh peak"
   const quiet = { ...year, unused_vre_events: { ...year.unused_vre_events, affected_periods: 0, peak_event_mwh: 0, peak_event_timestamp: "2025-01-01T00:00" } };
   const groups = vreEventGroups(quiet);
   assert.deepEqual(groups.map((group) => group.noEvents), [true, false]);
+});
+
+test("C20: the corrected rule set's columns are named for what they are, with one VRE event group", () => {
+  const year = payload("value-101-day.vre-summary");
+  assert.equal(year.curtailment_semantics, "vre_available_minus_gross_output");
+  const labels = vreLabels(year);
+  assert.deepEqual([labels.excess, labels.curtailment, labels.accepted], ["Non-VRE spill", "VRE curtailment", "Accepted VRE (gross output)"]);
+  const kpis = vreKpis(year.years[0], year).kpis;
+  assert.equal(kpis.find((item) => item.key === "excess").label, "Non-VRE spill");
+  const groups = vreEventGroups(year.years[0]);
+  assert.deepEqual(groups.map((group) => group.key), ["unused_vre"]);
+  assert.equal(groups[0].events.basis, "corrected_unused_vre");
+  assert.match(groups[0].basisNote, /gross renewable output/);
+  // the doctoral columns keep their words
+  assert.deepEqual([vreLabels(payload("toy-v7.vre-summary")).excess, vreLabels(null).curtailment], ["Pre-balancing excess", "Balancing curtailment"]);
 });

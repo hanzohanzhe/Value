@@ -3,7 +3,7 @@
 // always adds up to the headline total (a reconciliation residual makes up any
 // recorded difference) and a mechanism the method does not model is listed as
 // "Not modelled", never drawn as £0.
-import { formatNumber, withUnit } from "../shared/format.ts";
+import { formatMoney as formatMoneyText, formatNumber, withUnit } from "../shared/format.ts";
 
 export type MetricMap = Record<string, number | string | boolean | null | undefined>;
 
@@ -18,6 +18,8 @@ export type CostComposition = {
   /** Every row of the composition table, including not-modelled and memo rows. */
   rows: CostRow[];
   vollNote: "includes VoLL" | "excludes VoLL" | "VoLL basis not recorded";
+  /** C30: the recorded VoLL part of the operating cost, for the note's tooltip. */
+  vollTitle?: string;
   reconciled: boolean;
 };
 
@@ -88,7 +90,13 @@ export function costComposition(metrics: MetricMap): CostComposition {
   const memo = number(metrics, "ror_hydro_compatibility_capital_gbp");
   if (memo != null) rows.push({ key: "memo_ror_hydro", label: "Memo: run-of-river hydro compatibility capital (excluded from headline)", amount: memo, note: "excluded" });
 
-  return { definition, headline, segments, rows, vollNote, reconciled };
+  // C30 (P0-6 S4): the native operating cost books recorded blackout x VoLL; say how much.
+  const vollCost = number(metrics, "operating_cost_voll_gbp");
+  const voll = number(metrics, "voll_gbp_per_mwh");
+  const vollTitle = vollCost != null
+    ? `Operating cost includes ${formatMoneyText(vollCost)} of recorded unserved energy${voll != null ? ` valued at ${withUnit(formatNumber(voll), "/MWh", "", "£")}` : ""}.`
+    : undefined;
+  return { definition, headline, segments, rows, vollNote, vollTitle, reconciled };
 }
 
 /** Sum of the bar segments (equals the headline for a reconciled composition). */

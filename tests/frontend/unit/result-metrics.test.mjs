@@ -66,3 +66,10 @@ test("designer ruling 1: the unit-cost label follows the cost definition", () =>
   assert.equal(unitCostText({ cost_per_mwh_gbp: 55 }), "£55/MWh (basis not recorded)");
   assert.equal(unitCostText({ ...native, cost_per_mwh_gbp: null }), "Not evaluated");
 });
+
+test("C30: the VoLL note carries the recorded VoLL part of the native operating cost", () => {
+  const composition = costComposition({ ...native, system_cost_includes_voll: true, operating_cost_voll_gbp: 50000, voll_gbp_per_mwh: 10000 });
+  assert.equal(composition.vollNote, "includes VoLL");
+  assert.equal(composition.vollTitle, "Operating cost includes £50.00k of recorded unserved energy valued at £10,000/MWh.");
+  assert.equal(costComposition(native).vollTitle, undefined);
+});

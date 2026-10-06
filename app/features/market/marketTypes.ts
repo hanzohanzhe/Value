@@ -71,7 +71,7 @@ export type VreYear = {
   coverage_status: string; marginal_curtailment_status: string; marginal_curtailment_reason: string;
   first_period?: number | null; last_period?: number | null;
   /** G1-08: the basis of the legacy event fields above. */
-  event_basis?: "unused_vre" | "excess_plus_balancing_curtailment";
+  event_basis?: "unused_vre" | "excess_plus_balancing_curtailment" | "corrected_unused_vre";
   unused_vre_events?: VreEventStatistics;
   /** null when the ledger does not separate pre-balancing excess (alias semantics). */
   excess_curtailment_events?: VreEventStatistics | null;
@@ -82,4 +82,8 @@ export type VreEventStatistics = {
   peak_event_mwh: number | null; peak_event_period: number | null; peak_event_timestamp: string | null;
 };
 
-export type VreSummary = { years: VreYear[]; excess_relationship: string; excess_scope: string; source_artifact_sha256?: string | null; coverage?: ResultCoverage | null };
+export type VreSummary = {
+  years: VreYear[]; excess_relationship: string; excess_scope: string; source_artifact_sha256?: string | null; coverage?: ResultCoverage | null;
+  /** C20: the declared meaning of the ledger's curtailed column (absent from older backends). */
+  curtailment_semantics?: string;
+};

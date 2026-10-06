@@ -7,14 +7,45 @@ import type { DispatchBucket, VreEventStatistics, VreYear } from "./marketTypes.
 
 export type VreKpi = { key: string; label: string; value: string | null; exactMwh: number | null; note?: string };
 
+/** C20: the column semantics the ledger declares (vre-summary top level). */
+export type VreSemantics = { excess_scope?: string; curtailment_semantics?: string };
+
+/** The corrected rule set's declared curtailed column (gridform_core/market_replay.CORRECTED_CURTAILMENT_SEMANTICS). */
+export const CORRECTED_CURTAILMENT_SEMANTICS = "vre_available_minus_gross_output";
+
+export type VreLabels = { accepted: string; excess: string; curtailment: string; excessDefinition: string; curtailmentDefinition: string };
+
+/**
+ * C20 (P0-6 column semantics; P0-9 M7): under the corrected rule set the
+ * excess column is the non-VRE spill and the curtailed column is VRE
+ * availability minus gross VRE output; the labels say so instead of reusing
+ * the doctoral "pre-balancing excess" and "balancing curtailment" words.
+ */
+export function vreLabels(semantics?: VreSemantics | null): VreLabels {
+  const corrected = semantics?.curtailment_semantics === CORRECTED_CURTAILMENT_SEMANTICS;
+  const spill = semantics?.excess_scope === "non_vre_spill";
+  return {
+    accepted: corrected ? "Accepted VRE (gross output)" : "Accepted VRE",
+    excess: spill ? "Non-VRE spill" : "Pre-balancing excess",
+    curtailment: corrected ? "VRE curtailment" : "Balancing curtailment",
+    excessDefinition: spill
+      ? "Surplus from non-VRE generation (for example nuclear or natural-flow hydro) that was finally spilled. It is not renewable energy."
+      : "The retained VALUE ahead-stage surplus. It is not assumed to be entirely renewable.",
+    curtailmentDefinition: corrected
+      ? "Available VRE minus gross VRE output, where surplus absorbed by storage, export or flexible demand counts as output."
+      : "Energy removed in the real-time balancing waterfall after forecast error, storage, export and flexible demand are considered.",
+  };
+}
+
 /** The eight KPIs of one year in one unit (the group's largest magnitude). */
-export function vreKpis(year: VreYear): { unit: string; kpis: VreKpi[] } {
+export function vreKpis(year: VreYear, semantics?: VreSemantics | null): { unit: string; kpis: VreKpi[] } {
+  const labels = vreLabels(semantics);
   const values = [
     ["available", "Available VRE", year.available_vre_mwh],
-    ["accepted", "Accepted VRE", year.accepted_vre_mwh],
+    ["accepted", labels.accepted, year.accepted_vre_mwh],
     ["unused", "Unused VRE", year.neutral_unused_vre_mwh],
-    ["excess", "Pre-balancing excess", year.pre_balancing_excess_mwh],
-    ["curtailment", "Balancing curtailment", year.balancing_curtailment_mwh],
+    ["excess", labels.excess, year.pre_balancing_excess_mwh],
+    ["curtailment", labels.curtailment, year.balancing_curtailment_mwh],
     ["storage", "Simultaneous storage charging", year.storage_charge_mwh],
     ["export", "Boundary exports", year.export_mwh],
     ["flexible", "Flexible demand", year.flexible_demand_mwh],
@@ -77,13 +108,17 @@ function hasNoEvents(events: VreEventStatistics | null | undefined): boolean {
 
 /** Spec 4.5 / G1-08: unused VRE and excess + curtailment are two event groups, never merged. */
 export function vreEventGroups(year: VreYear): VreEventGroup[] {
+  const corrected = year.event_basis === "corrected_unused_vre" || year.unused_vre_events?.basis === "corrected_unused_vre";
   const groups: VreEventGroup[] = [{
     key: "unused_vre", title: "Unused VRE",
-    basisNote: "Periods where available renewable energy exceeded accepted renewable dispatch.",
+    basisNote: corrected
+      // C20: the third event basis (corrected rule set); excess + curtailment is not a VRE basis there.
+      ? "Periods where available renewable energy exceeded gross renewable output (corrected rule set: surplus absorbed by storage, export or flexible demand counts as output). Non-VRE spill is not included."
+      : "Periods where available renewable energy exceeded accepted renewable dispatch.",
     events: year.unused_vre_events ?? null,
     noEvents: hasNoEvents(year.unused_vre_events),
   }];
-  if (year.excess_curtailment_events !== undefined) {
+  if (year.excess_curtailment_events !== undefined && !corrected) {
     groups.push({
       key: "excess_curtailment", title: "Excess + curtailment",
       basisNote: "Pre-balancing excess (may include nuclear or natural-flow hydro) plus balancing-stage curtailment; not all of it is VRE.",

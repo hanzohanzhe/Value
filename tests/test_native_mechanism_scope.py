@@ -52,7 +52,11 @@ class NativeMechanismScopeTests(unittest.TestCase):
         self.assertIsNone(metrics["cm_mechanism_cost_gbp"])
         self.assertEqual(metrics["cm_mechanism_cost_status"], "not_modelled")
         self.assertEqual(metrics["decarbonization_mechanism_cost_status"], "not_modelled")
-        self.assertIs(metrics["system_cost_includes_voll"], False)
+        # P0-6 S4 (C30): the native operating total books recorded blackout x VoLL
+        # (physical_operating_cost_detail_gbp.blackout_reliability), so the headline includes VoLL.
+        self.assertIs(metrics["system_cost_includes_voll"], True)
+        self.assertGreater(metrics["voll_gbp_per_mwh"], 0)
+        self.assertGreaterEqual(metrics["operating_cost_voll_gbp"], 0)
         self.assertEqual(report["loaded"], [], "the native path must not import the legacy mechanism-cost loaders")
 
     def test_legacy_rows_keep_their_recorded_mechanisms_and_voll(self) -> None:
@@ -123,6 +127,20 @@ class VollBasisTests(unittest.TestCase):
         self.assertIsNone(_system_cost_includes_voll(_ledger({"generation_import_and_reliability": 25.0, "lost_load_guess": 5.0})))
         # the doctoral (legacy) total has no CEM ledger and adds Lost_Value_of_Electricity
         self.assertIs(_system_cost_includes_voll(None), True)
+
+    def test_native_operating_cost_with_reliability_detail_includes_voll(self) -> None:
+        """P0-6 S4 / C30: the native PSM books blackout x VoLL in its operating total."""
+        from backend.model_runner import _operating_detail_by_year, _system_cost_includes_voll
+
+        native = _ledger({"generation_import_and_reliability": 25.0, "storage_cycle_depreciation": 5.0})
+        detail = {"schema_version": "value.native-operating-cost/v1", "blackout_reliability": 10000.0, "voll_gbp_per_mwh": 10000.0}
+        self.assertIs(_system_cost_includes_voll(native, detail), True)
+        self.assertIs(_system_cost_includes_voll(native, {"generation_variable": 1.0}), False)
+        exact = {"orchestrator_results": [
+            {"market": {"year": 2025, "extensions": {"physical_operating_cost_detail_gbp": detail}}},
+            {"market": {"year": 2026, "extensions": {}}},
+        ]}
+        self.assertEqual(_operating_detail_by_year(exact), {2025: detail})
 
     def test_every_psm_operating_component_is_reviewed(self) -> None:
         import re
