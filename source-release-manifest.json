@@ -7699,8 +7699,8 @@
     },
     {
       "path": "gridform_core/data/methodology/corrections/fx8.json",
-      "sha256": "562e8e42b128e84087ad14e803ababf7e3a4da44189e4327594e2bb18bda1a23",
-      "bytes": 2786,
+      "sha256": "4e3d1363c39de7ba0a88578e8ca30ae463bfab4e956b886ab7771d040e83cda4",
+      "bytes": 2844,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
