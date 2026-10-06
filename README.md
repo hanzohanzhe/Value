@@ -19,6 +19,8 @@ Linux Full 已通过离线安装及四类短任务验收。Windows/macOS 为实�
 
 [中英文方法学](docs/methodology/README.md)为 **0.3（2026-10-04）**，科学依据为 **2026-10-02**；网页、Word、PDF、离线 HTML 从同一套 VALUE 正文生成。真实研究输入由[独立数据发行](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-04)提供，按包内来源和许可使用。
 
+源码应用版本为 **0.7.0-alpha.1**（Python `0.7.0a1`）：2026-10 审查修复，含修正口径（默认）与论文复现口径两套方法学，见 [CHANGELOG](CHANGELOG.md) 与[验收手册](docs/release/P0_ACCEPTANCE.md)。上面的 Full 批次 `2026-10-03-rc1` 仍是 0.6.0-alpha.2，0.7.0-alpha.1 的安装包尚未构建。Application version 0.7.0-alpha.1 (source only; installers not yet built).
+
 开发者查看[源码启动与网站部署](docs/DEPLOYMENT.md)、[项目结构](docs/REPOSITORY_STRUCTURE.md)和[发布计划](docs/PUBLICATION_PLAN.md)。源码版本 `source-2026-10-04` 与 Full 批次 `2026-10-03-rc1` 分别识别，对应关系见[发行映射](docs/release/release-map.json)。
 
 **许可**：软件 Apache-2.0，作者文档 CC BY 4.0，三个合成数据包 CC0；第三方数据保留具体条款。科研、教学和商用均可按软件许可开展，论文引用属于建议。详见 [LICENSING.md](LICENSING.md)。本仓库仅发布 VALUE。

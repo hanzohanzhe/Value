@@ -3,8 +3,16 @@
   "base_commit": "35aadb3",
   "application_version": {
     "baseline": "0.6.0-alpha.2",
-    "current": "0.6.0-alpha.2",
-    "planned": "0.7.0-alpha.1 (X0 S14, after all P0)"
+    "current": "0.7.0-alpha.1",
+    "current_python": "0.7.0a1",
+    "bumps": [
+      {
+        "from": "0.6.0-alpha.2",
+        "to": "0.7.0-alpha.1",
+        "package": "X0 S14",
+        "reason": "All P0 review fixes merged on fix/review-2026-10-04 (decision X0 Q5). One application version for package.json, package-lock.json, pyproject.toml (0.7.0a1), gridform_core/runtime_paths.APPLICATION_VERSION, the Windows pilot product.json and installer DisplayVersion, README and the current-version lines of the user guides, installation guide, mathematical reference, frontend field map and VALIDATION_AND_CLAIMS. Deprecated scheme_c_1000twh routes now name 0.8.0 for removal. Historical records keep 0.6.0-alpha.2: website/content.py, website/static/assets/value-source-CITATION.cff, website/static/assets/value-source-metadata.bib, docs/PUBLICATION_PLAN.md, CHANGELOG sections of earlier versions, scientific-readiness reports and the doctoral profile label. No installer of 0.7.0-alpha.1 has been built or installed (docs/release/P0_ACCEPTANCE.md section 6)."
+      }
+    ]
   },
   "rules": [
     "Every module version change appends one bump {from, to, package, correction_ids, reason, requires_user_opt_in}; 'to' must be greater than 'from' and 'from' must equal the previous current_version (merge against the version current at merge time, C23).",

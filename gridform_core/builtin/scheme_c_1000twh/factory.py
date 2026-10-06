@@ -16,5 +16,5 @@ def build(*args, **kwargs):
         "Call gridform_core.application.run_project_application; select "
         "'scheme-c-psm' through the project module graph. For retained-output "
         "comparison use `python -m gridform_core.reference_comparison`. "
-        "Removal is scheduled for FORCE 0.7.0."
+        "Removal is scheduled for VALUE 0.8.0."
     )

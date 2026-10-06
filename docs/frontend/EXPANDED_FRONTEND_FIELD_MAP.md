@@ -1,6 +1,6 @@
 # Expanded frontend field map
 
-Version: VALUE Network Extensions 0.6.0-alpha.2  
+Version: VALUE Network Extensions 0.7.0-alpha.1  
 Date: 20 August 2026  
 Authority: registry and server contracts; this document is a navigation map
 

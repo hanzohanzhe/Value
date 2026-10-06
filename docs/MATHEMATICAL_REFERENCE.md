@@ -1,7 +1,10 @@
 # VALUE Network Extensions mathematical and algorithmic reference
 
-Version 0.6.0-alpha.2, 22 August 2026. This reference describes the code that is
-executed. It does not turn an intended future architecture into a scientific
+Version 0.7.0-alpha.1, October 2026 (first written for 0.6.0-alpha.2, 22 August
+2026; sections the P0 review fixes did not touch are unchanged). The rules that
+differ between the corrected default and the doctoral reproduction methodology
+profile are listed in `docs/generated/METHODOLOGY_PROFILES.md`. This reference
+describes the code that is executed. It does not turn an intended future architecture into a scientific
 claim.
 
 ## 1. Scope and boundary

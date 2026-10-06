@@ -1,6 +1,6 @@
 # VALUE Network Extensions local test guide
 
-This guide covers VALUE Network Extensions 0.6.0-alpha.2. VALUE means Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution. The browser workbench, API and command line use the same local application service.
+This guide covers VALUE Network Extensions 0.7.0-alpha.1. VALUE means Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution. The browser workbench, API and command line use the same local application service.
 
 A Research project joins a versioned data pack, executable PSM and CEM modules, model years, scientific parameters and output settings. The browser and command line call the same application service and module registry. A project selection does not act as a shortcut to an unrelated fixed script.
 

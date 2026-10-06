@@ -400,7 +400,7 @@ internal static class ValueInstaller
         using (RegistryKey key = Registry.CurrentUser.CreateSubKey(UninstallRegistryPath))
         {
             key.SetValue("DisplayName", Product);
-            key.SetValue("DisplayVersion", "0.6.0-alpha.2");
+            key.SetValue("DisplayVersion", "0.7.0-alpha.1");
             key.SetValue("Publisher", "Hanzhe Xing");
             key.SetValue("InstallLocation", Root);
             key.SetValue("UninstallString", "\"" + uninstaller + "\" --uninstall");

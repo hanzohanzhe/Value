@@ -11,7 +11,7 @@ from ...errors import DeprecatedRouteError
 
 
 REPLACEMENT = "gridform_core.application.run_project_application"
-REMOVAL_VERSION = "0.7.0"
+REMOVAL_VERSION = "0.8.0"
 
 
 class SchemeCPSM:
@@ -26,5 +26,5 @@ class SchemeCPSM:
         raise DeprecatedRouteError(
             "gridform_core.builtin.scheme_c_1000twh.psm.SchemeCPSM is retired. "
             f"Use {REPLACEMENT} with module ID 'scheme-c-psm'. "
-            f"Removal is scheduled for FORCE {REMOVAL_VERSION}."
+            f"Removal is scheduled for VALUE {REMOVAL_VERSION}."
         )

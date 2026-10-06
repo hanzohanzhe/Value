@@ -17,7 +17,6 @@ test_documentation_consistency.DocumentationConsistencyTests.test_prompt_markdow
 test_documentation_consistency.DocumentationConsistencyTests.test_prompt_reports_separate_historical_gate_from_current_revalidation  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_documentation_consistency.DocumentationConsistencyTests.test_user_guide_explains_solver_controls_and_failure_boundary  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_documentation_consistency.DocumentationConsistencyTests.test_v7_curtailment_field_dictionary_matches_executable_schema  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
-test_documentation_consistency.DocumentationConsistencyTests.test_versions_are_consistent  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_force_market_replay_runtime.ForceMarketReplayRuntimeTests.test_native_result_bridge_writes_one_final_physical_layer  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_install_script_policy.InstallScriptPolicyTests.test_current_lock_matches_reviewed_allowlist  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)
 test_legacy_result_adapter.LegacyResultAdapterTests.test_dispatch_shape_income_and_run_identity_are_validated  # 2026-10-04: M0 baseline at 35aadb3 (stale or repo-content failure)

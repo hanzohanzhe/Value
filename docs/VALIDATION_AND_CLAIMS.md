@@ -1,7 +1,9 @@
 # Validation evidence and bounded claims
 
-This matrix states what the VALUE Network Extensions 0.6.0-alpha.2 candidate and
-its separately preserved 0.5.0-beta.1 single-node baseline evidence support.
+This matrix states what the VALUE Network Extensions 0.7.0-alpha.1 source (P0
+review fixes, October 2026; see "Scope of the 0.7.0-alpha.1 claims" below), the
+0.6.0-alpha.2 candidate it supersedes and the separately preserved 0.5.0-beta.1
+single-node baseline evidence support.
 "Passed" applies only to the named scope; it is not a general endorsement of all
 scientific output. Prompts 52-55 add complete post-architecture annual and
 ten-year evidence to the earlier solver and bounded-integration tests.

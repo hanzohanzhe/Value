@@ -2985,9 +2985,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "39a4213c1722f84fad9387a6efdb696753b5b6ff63227fa74a37b57158ea626b",
-      "bytes": 2295,
-      "transform": "VALUE-only methodology 0.3, publication structure and release planning update"
+      "sha256": "e1e410b59bb2edabb9b666b3dde2217d4cea57fb62e7d12087f3a659b79f3eb6",
+      "bytes": 2708,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "README_BILINGUAL.md",
@@ -4503,9 +4503,9 @@
     },
     {
       "path": "docs/INSTALLATION.md",
-      "sha256": "8e5b5856c39c4da1ee1f57c885cac7aeffb4fa9fb2b681586ef26313cd8e78c3",
-      "bytes": 4882,
-      "transform": "byte copy"
+      "sha256": "bc2507846aa205b18abac3ebef34b399e7bca4a011ac63034e0a2dc6b89ecad4",
+      "bytes": 5019,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/LICENSE.md",
@@ -4515,8 +4515,8 @@
     },
     {
       "path": "docs/MATHEMATICAL_REFERENCE.md",
-      "sha256": "cacde031c9a5215e3efab5cb8171532490843ac1cac6608873a2a3df60ea65d2",
-      "bytes": 27953,
+      "sha256": "0848da71c1d09c79dd7dbf0afbf9c5a41974a2030b03661638c0da036e084c0c",
+      "bytes": 28217,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4557,20 +4557,20 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "4a4b68b76f86f997d1276e6a0fc61822e4bf22b7fe10f24b5f438850b0e59d71",
-      "bytes": 37054,
+      "sha256": "67ccfd2f09ee7e0f27fa1f699c49ada8b3e8e14f0ff16c48a99b2b588d0a0324",
+      "bytes": 36549,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/USER_GUIDE_ZH.md",
-      "sha256": "342d9e834c3664d727f6a5ddca085967b6ec2634af49fbe99bb44f9a718c59a3",
-      "bytes": 35736,
+      "sha256": "81406f9e0f56aadac9d6fcd21678c6b3f12a380a570d37768ddefd68587e11bf",
+      "bytes": 35245,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/VALIDATION_AND_CLAIMS.md",
-      "sha256": "8d6d3013444cb36a4811cb31d5771af19c13a8734079c4cbc03c36575379e43d",
-      "bytes": 10473,
+      "sha256": "4659dfc920f80c3417f9fff6dabe27110155f8d287d0210cfb81a17036985e3c",
+      "bytes": 10508,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4695,8 +4695,8 @@
     },
     {
       "path": "docs/frontend/EXPANDED_FRONTEND_FIELD_MAP.md",
-      "sha256": "16063ed6cb48627c21468f2824a4aa52f9f59c52de89cc827be4901d469b4678",
-      "bytes": 13313,
+      "sha256": "4823dc8df710a1d489d51bc4b25819deb9a092b88133476a28be94abe3a7d4b8",
+      "bytes": 13171,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4977,8 +4977,8 @@
     },
     {
       "path": "docs/release/VERSION_LEDGER.json",
-      "sha256": "bf57492787ffb85048cb589a58707f981ef45da6c0ed6e3d9aae7f43906a017c",
-      "bytes": 16132,
+      "sha256": "922ef48ea64a15c07ad0d24b6b147f088d86951b689114563a488468785b9bd7",
+      "bytes": 17123,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7023,9 +7023,9 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/factory.py",
-      "sha256": "ed1c06e873ca79b2ac69828833386b6b6729f600271e7741fdef16ab401cf05c",
-      "bytes": 725,
-      "transform": "byte copy"
+      "sha256": "0b190ea2afddcddbf66496e7663a92b5075f50e17d0d88f8b35ecce0166f0b73",
+      "bytes": 705,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/kernel_boundary.py",
@@ -7083,9 +7083,9 @@
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/psm.py",
-      "sha256": "924689bf1fa39fcf8f869d2ddd6afd5fc33ce77a737c6ce1c5cc23da5ea153d1",
-      "bytes": 1001,
-      "transform": "byte copy"
+      "sha256": "deb4117476dfcea6e838e3e8249eed873a53284b5b3293f4f393e20cec5fe082",
+      "bytes": 971,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/builtin/scheme_c_1000twh/psm_runtime_state.py",
@@ -8502,8 +8502,8 @@
     },
     {
       "path": "gridform_core/runtime_paths.py",
-      "sha256": "fae6b05674a8b6f202541f4036ecae53b16f49eb03c53ddee063dc1cd0553f7c",
-      "bytes": 4645,
+      "sha256": "68bb420a85eb61228eafb07b843cdb46829640bb8fc68dba5c5bc97fb6cc7053",
+      "bytes": 4532,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8814,14 +8814,14 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "0866c6777b4cb3e7836e5fd4aef392d2ce922ac4b978346cd970adc23acb54b3",
-      "bytes": 399223,
-      "transform": "byte copy"
+      "sha256": "b823b50e78a62b2eebeef457240b19b7b4c269419e5ec9373fba3e7fedb5f70b",
+      "bytes": 387702,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "package.json",
-      "sha256": "a02f61a07dae96cefe323095d8928a6bfb7c4a22f77db08c7fbf8334e2d89a6d",
-      "bytes": 2519,
+      "sha256": "c93701378c2e3f525af529a194b3c4a73c5a26747a65c17113f78e0173573f32",
+      "bytes": 2453,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9048,9 +9048,9 @@
     },
     {
       "path": "packaging/windows-pilot/ValueInstaller.cs",
-      "sha256": "1e0d51316f342e10279b00aa3d9d142de2cfc3f64046e48b4862f23f15473de3",
+      "sha256": "4799e7fd59f93c9df6f323b12dd6936bb346f3fa1a9547a464cb23410f745aa8",
       "bytes": 27106,
-      "transform": "byte copy"
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/windows-pilot/ValueInstallerWindow.cs",
@@ -9060,9 +9060,9 @@
     },
     {
       "path": "packaging/windows-pilot/product.json",
-      "sha256": "ae8553c0d8abcd915dd290da933bfebac76529a10358bc3a3fbb07263d1814a2",
+      "sha256": "64d33a9571e8887ce87df818a3de70922178fc4668cf8b8fe07187f2de052075",
       "bytes": 643,
-      "transform": "byte copy"
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "packaging/windows-pilot/runtime-payload-policy.json",
@@ -9196,7 +9196,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "666f023ad5da55820caae32feb5e6c18cc957f0f3fc7c378b4cc66097ad96f3c",
+      "sha256": "9cf7723e3c12375ae79bd8e29f64ad62d884d6b293691d01e8dcb348e4f34481",
       "bytes": 2080,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -10060,8 +10060,8 @@
     },
     {
       "path": "tests/baselines/known-failures-linux-py310.txt",
-      "sha256": "ce89aadeff2f7be7e7a091084805d38bfca4f258053f08101eab763d9bcdf37c",
-      "bytes": 20285,
+      "sha256": "05c3209d7127644f9ad431dad142ee88d89589096f75dc730dcb2dba03ce0208",
+      "bytes": 20125,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11266,8 +11266,8 @@
     },
     {
       "path": "tests/test_documentation_consistency.py",
-      "sha256": "3ad97e7964edcbda4a197a8fa80b013dafc7d7ac6b63e627aed292bc657fabf5",
-      "bytes": 27889,
+      "sha256": "eac5c7faf905fd2be548475f0fd1995a6d1eb5eb46afa47c3933229b4048dc20",
+      "bytes": 30070,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12616,7 +12616,7 @@
     },
     {
       "path": "tests/test_windows_pilot_installer.py",
-      "sha256": "e2021c606b2823347c84e3cbe348f371e55538df2d2a223b1129a70b51d78c18",
+      "sha256": "379c5f26e6032f0704f6997d506bdd4876d6a69b569f1cfe486ff72bd0ff3e97",
       "bytes": 36789,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },

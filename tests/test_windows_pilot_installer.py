@@ -644,7 +644,7 @@ internal static class PrePromotionRollbackHarness
 
     def test_formal_installer_registry_version_matches_manifest(self) -> None:
         installer = BOOTSTRAP.read_text("utf-8")
-        self.assertIn('key.SetValue("DisplayVersion", "0.6.0-alpha.2");', installer)
+        self.assertIn('key.SetValue("DisplayVersion", "0.7.0-alpha.1");', installer)
 
     def test_metadata_snapshot_restores_uninstaller_and_shortcut_files(self) -> None:
         framework = (

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 
-APPLICATION_VERSION = "0.6.0-alpha.2"
+APPLICATION_VERSION = "0.7.0-alpha.1"
 PACKAGE_ROOT = Path(__file__).resolve().parent
 SOURCE_ROOT = PACKAGE_ROOT.parent
 

@@ -1,6 +1,6 @@
 # VALUE Network Extensions 本地测试手册
 
-本手册对应 VALUE Network Extensions 0.6.0-alpha.2。VALUE 的全称是 Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution。本地网页、API 与命令行使用同一个应用服务。
+本手册对应 VALUE Network Extensions 0.7.0-alpha.1。VALUE 的全称是 Variable renewable electricity Allocation, Load-enabled excess-generation Utilisation, and system Evolution。本地网页、API 与命令行使用同一个应用服务。
 
 VALUE 把一次研究保存为一个可复现的 Research project。项目记录数据包、模型模块、年份、科学参数和输出设置。运行时，后端按项目中选定的模块执行真实 PSM 和 CEM，不会调用一个与界面选择无关的固定脚本。
 

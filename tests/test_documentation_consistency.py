@@ -14,6 +14,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Files that record an earlier release on purpose (plan X0 S14 whitelist):
+# they are not bumped with the application version.
+HISTORICAL_VERSION_RECORDS = {
+    "website/content.py": "0.6.0-alpha.2",
+    "website/static/assets/value-source-CITATION.cff": "version: 0.6.0-alpha.2",
+    "website/static/assets/value-source-metadata.bib": "version = {0.6.0-alpha.2}",
+    "docs/PUBLICATION_PLAN.md": "0.6.0-alpha.2",
+}
+
+
 class DocumentationConsistencyTests(unittest.TestCase):
     def test_zonal_solver_contract_fragments_match_executable_manifest(self) -> None:
         manifest = json.loads(
@@ -574,15 +584,47 @@ class DocumentationConsistencyTests(unittest.TestCase):
             self.assertIn(module_id, reference + generated)
 
     def test_versions_are_consistent(self) -> None:
+        # X0 S14: one application version everywhere except historical
+        # records (HISTORICAL_VERSION_RECORDS), which keep the version they
+        # describe.  The ledger is the source.
+        ledger = json.loads((ROOT / "docs" / "release" / "VERSION_LEDGER.json").read_text(encoding="utf-8"))
+        node_expected = ledger["application_version"]["current"]
+        py_expected = ledger["application_version"]["current_python"]
+        self.assertEqual((node_expected, py_expected), ("0.7.0-alpha.1", "0.7.0a1"))
+        self.assertEqual(ledger["application_version"]["bumps"][-1]["to"], node_expected)
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject, flags=re.MULTILINE)
         self.assertIsNotNone(match)
-        py_version = str(match.group(1))
-        node_version = str(json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"])
-        self.assertEqual(py_version, "0.6.0a2")
-        self.assertEqual(node_version, "0.6.0-alpha.2")
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("0.6.0-alpha.2", readme)
+        self.assertEqual(str(match.group(1)), py_expected)
+        self.assertEqual(json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"], node_expected)
+        lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
+        self.assertEqual(lock["version"], node_expected)
+        self.assertEqual(lock["packages"][""]["version"], node_expected)
+        self.assertEqual(
+            json.loads((ROOT / "packaging" / "windows-pilot" / "product.json").read_text(encoding="utf-8"))["version"],
+            node_expected,
+        )
+        from gridform_core.runtime_paths import APPLICATION_VERSION
+        from gridform_core.builtin.scheme_c_1000twh.psm import REMOVAL_VERSION
+
+        self.assertEqual(APPLICATION_VERSION, node_expected)
+        self.assertEqual(REMOVAL_VERSION, "0.8.0")
+        current_lines = {
+            "README.md": node_expected,
+            "docs/USER_GUIDE.md": f"This guide covers VALUE Network Extensions {node_expected}.",
+            "docs/USER_GUIDE_ZH.md": f"本手册对应 VALUE Network Extensions {node_expected}。",
+            "docs/INSTALLATION.md": f"The\nsource tree is now {node_expected}",
+            "docs/MATHEMATICAL_REFERENCE.md": f"Version {node_expected}, October 2026",
+            "docs/VALIDATION_AND_CLAIMS.md": f"VALUE Network Extensions {node_expected} source",
+            "docs/frontend/EXPANDED_FRONTEND_FIELD_MAP.md": f"Version: VALUE Network Extensions {node_expected}",
+            "packaging/windows-pilot/ValueInstaller.cs": f'key.SetValue("DisplayVersion", "{node_expected}");',
+            "gridform_core/builtin/scheme_c_1000twh/factory.py": "Removal is scheduled for VALUE 0.8.0.",
+        }
+        for relative, expected in current_lines.items():
+            self.assertIn(expected, (ROOT / relative).read_text(encoding="utf-8"), relative)
+        # Historical records keep the version they describe (plan X0 S14).
+        for relative, recorded in HISTORICAL_VERSION_RECORDS.items():
+            self.assertIn(recorded, (ROOT / relative).read_text(encoding="utf-8"), relative)
 
     def test_claims_do_not_overstate_validation(self) -> None:
         texts = "\n".join(

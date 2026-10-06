@@ -1,6 +1,9 @@
 # Installing VALUE Network Extensions
 
-This procedure is validated for VALUE Network Extensions 0.6.0-alpha.2.
+This procedure was validated for VALUE Network Extensions 0.6.0-alpha.2. The
+source tree is now 0.7.0-alpha.1 (P0 review fixes); installers of 0.7.0-alpha.1
+have not yet been built or validated, and an existing installation is upgraded
+side by side as described in `docs/release/P0_ACCEPTANCE.md` (section 6).
 Prompt 64 records the clean-checkout, package, browser, synthetic-data and local
 UK-data gates in `publication/prompt64-release-report.md`. The separately
 assembled UK research-data asset remains governed by per-object source terms; no

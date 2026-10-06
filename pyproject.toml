@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "value-network-extensions"
-version = "0.6.0a2"
+version = "0.7.0a1"
 description = "VALUE power-system evolution framework with optional network extensions"
 authors = [{name = "Hanzhe Xing"}]
 license = "Apache-2.0"
