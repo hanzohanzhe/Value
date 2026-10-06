@@ -379,29 +379,57 @@ def _timestamp_source(pack_root: Path, uri: str) -> Path | None:
     return path if path.is_file() else None
 
 
-def parse_declared_timestamps(path: Path, column: str, time_zone: str = "UTC") -> pd.Series:
-    """Declared timestamps as UTC instants; an unreadable cell is NaT.
+try:  # pandas raises pytz's errors, which are not ValueError subclasses (N-2).
+    from pytz.exceptions import InvalidTimeError as _PytzInvalidTime
+except ImportError:  # pragma: no cover - pytz ships with pandas here
+    _PytzInvalidTime = ValueError
 
-    ``UTC``: naive stamps are UTC.  ``Europe/London``: naive stamps are local
-    wall-clock time (the repeated autumn hour is resolved by order, a
-    non-existent spring hour is NaT); stamps carrying an offset keep it.
-    """
+AMBIGUOUS_LOCAL_TIME = (
+    "ambiguous local time (a repeated autumn hour that the row order cannot place; "
+    "give this row an explicit UTC offset)")
+NONEXISTENT_LOCAL_TIME = "non-existent local time (skipped by the spring clock change)"
+
+
+def _parse_declared(path: Path, column: str, time_zone: str) -> tuple[pd.Series, pd.Series]:
+    """UTC instants and, per row, why a readable local stamp could not be placed (else None)."""
 
     if time_zone not in TIMESTAMP_TIME_ZONES:
         raise ValueError(f"time zone must be one of {', '.join(TIMESTAMP_TIME_ZONES)}")
     raw = pd.read_csv(path, usecols=[column], encoding="utf-8-sig", dtype=str, keep_default_na=False)[column].str.strip()
+    reasons = pd.Series([None] * len(raw), index=raw.index, dtype=object)
     with_offset = raw.str.contains(r"(?:Z|[+-]\d{2}:?\d{2})$", regex=True)
     if time_zone == "UTC" or bool(with_offset.all()):
-        return pd.to_datetime(raw, errors="coerce", utc=True, format="mixed")
+        return pd.to_datetime(raw, errors="coerce", utc=True, format="mixed"), reasons
     naive = pd.to_datetime(raw.where(~with_offset), errors="coerce", format="mixed")
     try:
         local = naive.dt.tz_localize(time_zone, ambiguous="infer", nonexistent="NaT")
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, _PytzInvalidTime):
+        # N-2: an autumn hour that cannot be inferred by order (for example the
+        # repeated hour appears only once) becomes NaT and is reported per row.
         local = naive.dt.tz_localize(time_zone, ambiguous="NaT", nonexistent="NaT")
+    unplaced = naive.notna() & local.isna()
+    if bool(unplaced.any()):
+        as_dst = naive.dt.tz_localize(time_zone, ambiguous=True, nonexistent="NaT")
+        as_std = naive.dt.tz_localize(time_zone, ambiguous=False, nonexistent="NaT")
+        ambiguous = unplaced & as_dst.notna() & as_std.notna() & (as_dst != as_std)
+        reasons[ambiguous] = AMBIGUOUS_LOCAL_TIME
+        reasons[unplaced & ~ambiguous & as_dst.isna()] = NONEXISTENT_LOCAL_TIME
     stamps = local.dt.tz_convert("UTC")
     if bool(with_offset.any()):
         stamps = stamps.where(~with_offset, pd.to_datetime(raw.where(with_offset), errors="coerce", utc=True, format="mixed"))
-    return stamps
+    return stamps, reasons
+
+
+def parse_declared_timestamps(path: Path, column: str, time_zone: str = "UTC") -> pd.Series:
+    """Declared timestamps as UTC instants; an unreadable cell is NaT.
+
+    ``UTC``: naive stamps are UTC.  ``Europe/London``: naive stamps are local
+    wall-clock time (the repeated autumn hour is resolved by order; where the
+    order cannot resolve it, or for a non-existent spring hour, the row is
+    NaT); stamps carrying an offset keep it.
+    """
+
+    return _parse_declared(path, column, time_zone)[0]
 
 
 def timestamp_row_problems(
@@ -415,7 +443,7 @@ def timestamp_row_problems(
     None infers a 30- or 60-minute step from the most common one.
     """
 
-    stamps = parse_declared_timestamps(path, column, time_zone)
+    stamps, reasons = _parse_declared(path, column, time_zone)
     minutes = (stamps.diff().dt.total_seconds() / 60.0)
     if interval_minutes is None:
         positive = minutes[(minutes > 0)].round()
@@ -423,11 +451,11 @@ def timestamp_row_problems(
         interval_minutes = int(common.iloc[0]) if len(common) and int(common.iloc[0]) in (30, 60) else 30
     seen: dict[Any, int] = {}
     problems: list[dict[str, Any]] = []
-    for index, (stamp, step) in enumerate(zip(stamps, minutes)):
+    for index, (stamp, step, reason) in enumerate(zip(stamps, minutes, reasons)):
         row = index + 2
         text = None
         if pd.isna(stamp):
-            text = "unreadable timestamp"
+            text = reason or "unreadable timestamp"
         elif stamp in seen:
             text = f"duplicate of row {seen[stamp]}"
         elif index and not pd.isna(step):
@@ -452,12 +480,15 @@ def timestamp_findings(path: Path, column: str, interval_minutes: int, role: str
     """Monotonic, unique, gap-free declared timestamps (chronology layer)."""
 
     try:
-        stamps = parse_declared_timestamps(path, column, time_zone)
-    except (ValueError, KeyError, OSError) as exc:
+        stamps, reasons = _parse_declared(path, column, time_zone)
+    except (ValueError, KeyError, OSError, _PytzInvalidTime) as exc:
         return [_finding("GF_DATA_TIMESTAMPS", "chronology", f"{path.name}: unreadable timestamps ({exc})", role=role)]
     if stamps.isna().any():
-        return [_finding("GF_DATA_TIMESTAMPS", "chronology",
-                         f"{path.name}:{column} {int(stamps.isna().sum())} unreadable timestamp(s)", role=role)]
+        ambiguous = int((reasons == AMBIGUOUS_LOCAL_TIME).sum())
+        detail = f"{int(stamps.isna().sum())} unreadable timestamp(s)"
+        if ambiguous:
+            detail += f", of which {ambiguous} ambiguous local time(s) in the repeated autumn hour"
+        return [_finding("GF_DATA_TIMESTAMPS", "chronology", f"{path.name}:{column} {detail}", role=role)]
     step = stamps.diff().dropna()
     expected = pd.Timedelta(minutes=interval_minutes)
     problems = []

@@ -251,6 +251,41 @@ class EurPriceMappingTests(DataMappingTests):
             self.commit(review)
         self.assertEqual(refused.exception.code, "GF_MAPPING_NOT_VALIDATED")
 
+    def test_london_autumn_hour_seen_once_is_a_row_finding_not_a_runtime_error(self):
+        # N-2: naive London wall-clock stamps written as a continuous 30-minute
+        # sequence show the repeated autumn hour once; pytz's AmbiguousTimeError
+        # used to escape the fallback and the preview failed with HTTP 500.
+        from gridform_core.data_validation_layers import (
+            AMBIGUOUS_LOCAL_TIME, NONEXISTENT_LOCAL_TIME, timestamp_findings, timestamp_row_problems)
+        stage = self.stage(self._timed(self._half_hours(17520)), "market.france.profile")
+        columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]
+        review = self.service.preview(stage["stage_id"], {"schema_version": "value.data-mapping-preview-request/v1",
+            "source_sha256": stage["source_sha256"], "target_manifest_sha256": stage["target_manifest_sha256"],
+            "columns": columns, "timestamp": {"column": "time", "time_zone": "Europe/London"}})
+        self.assertFalse(review["valid"])
+        self.assertTrue(any(error.startswith("GF_DATA_TIMESTAMPS: ") for error in review["errors"]), review["errors"])
+        rows = {row["row"]: row["problem"] for row in review["timestamp"]["problems"]}
+        # 2025-10-26 01:00 and 01:30 are file rows 14308 and 14309 (header is row 1).
+        self.assertEqual(rows[14308], AMBIGUOUS_LOCAL_TIME)
+        self.assertEqual(rows[14309], AMBIGUOUS_LOCAL_TIME)
+        # 2025-03-30 01:00 and 01:30 do not exist in London (file rows 4228 and 4229).
+        self.assertEqual(rows[4228], NONEXISTENT_LOCAL_TIME)
+        self.assertEqual(rows[4229], NONEXISTENT_LOCAL_TIME)
+        self.assertEqual(review["timestamp"]["problem_count"], 4)
+        with self.assertRaises(DataMappingError):
+            self.commit(review)
+        # The same file through the chronology layer: a finding, not an exception.
+        path = self.root / "london-once.csv"
+        path.write_bytes(self._timed(self._half_hours(17520)))
+        findings = timestamp_findings(path, "time", 30, "market.france.profile", time_zone="Europe/London")
+        self.assertEqual([row["code"] for row in findings], ["GF_DATA_TIMESTAMPS"])
+        self.assertIn("2 ambiguous local time(s)", findings[0]["message"])
+        # Autumn stamps carrying their offsets are placed exactly.
+        offsets = self.root / "london-offsets.csv"
+        offsets.write_text("time,v\n2025-10-26 01:00+01:00,1\n2025-10-26 01:30+01:00,1\n"
+                           "2025-10-26 01:00+00:00,1\n2025-10-26 01:30+00:00,1\n")
+        self.assertEqual(timestamp_row_problems(offsets, "time", 30, time_zone="Europe/London")["problem_count"], 0)
+
     def test_timestamp_declaration_is_validated(self):
         stage = self.stage(self._timed(self._half_hours(4)), "market.france.profile")
         columns = [{"source": "flow", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}]
