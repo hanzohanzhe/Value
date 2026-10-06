@@ -73,6 +73,7 @@
     "app/features/network/CurtailmentWaterfall.tsx",
     "app/features/network/NetworkRedispatchView.tsx",
     "app/features/network/NetworkZoneMap.tsx",
+    "app/features/network/fallbackAuditView.ts",
     "app/features/network/network-coverage.css",
     "app/features/network/networkRedispatch.ts",
     "app/features/network/reliabilityView.ts",
@@ -1283,6 +1284,7 @@
     "tests/frontend/unit/csv-mapping-fx.test.mjs",
     "tests/frontend/unit/dispatch-view.test.mjs",
     "tests/frontend/unit/e2e-runner.test.mjs",
+    "tests/frontend/unit/fallback-audit-view.test.mjs",
     "tests/frontend/unit/format.test.mjs",
     "tests/frontend/unit/frontend-guards.test.mjs",
     "tests/frontend/unit/module-quarantine.test.mjs",
@@ -3290,8 +3292,8 @@
     },
     {
       "path": "app/features/network/NetworkRedispatchView.tsx",
-      "sha256": "a29f4e10c3d21330c9185b040b438c2d1e356811235c3b2b93ab06639e78dd3a",
-      "bytes": 51444,
+      "sha256": "ae193b0a236f522f859abf560b9752f5f21c3c3d6dc4e9bc2f08bf4e55ede1e0",
+      "bytes": 52191,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3301,9 +3303,15 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/network/fallbackAuditView.ts",
+      "sha256": "e88d31450d396c2a5c24fe364e85982364dfbe65601733d989106db2186ba072",
+      "bytes": 1229,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/network/network-coverage.css",
-      "sha256": "17c11bc8c8a673187d55c8de5b6f29c52bff5270f881b67e63efadf04f2feb1c",
-      "bytes": 694,
+      "sha256": "0c9f79c85640074beb6d45d777aa0444767ed3fa5d714a7708c9ecbf640acc55",
+      "bytes": 779,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10541,6 +10549,12 @@
       "path": "tests/frontend/unit/e2e-runner.test.mjs",
       "sha256": "e731e77a0eb458f7e7e3bd40c7890edf0cdfad3df618f0149d58a4a87c45925e",
       "bytes": 2357,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/fallback-audit-view.test.mjs",
+      "sha256": "d09fdf894e70123f9465175299b06d92ecc6c77b9a4b8f2b761472296c94c877",
+      "bytes": 1433,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

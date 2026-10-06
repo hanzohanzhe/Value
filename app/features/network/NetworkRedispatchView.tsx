@@ -33,6 +33,7 @@ import { Callout, StatusPill } from "../shared/Callout";
 import { reasonMessage } from "../shared/reasonCodes.ts";
 import { annualTotalsPublishable, coveragePill, coverageReasonText, isResultCoverage, reliabilityEmptyText, yearCoveragePill, yearTotalsPublishable } from "../shared/coverageView.ts";
 import { withUnit } from "../shared/format.ts";
+import { fallbackAuditSentences } from "./fallbackAuditView.ts";
 import "./network-coverage.css";
 
 type Row = Record<string, unknown>;
@@ -471,6 +472,7 @@ export default function NetworkRedispatchView({
     <div className="page-title"><div><span>Physical delivery after the GB market</span><h2>Network &amp; redispatch</h2><p>Follow the national ahead schedule into final zonal dispatch, congestion, curtailment, storage movement and observed supply shortfalls.</p></div><div className="network-run-id"><small>Run</small><code>{run.id}</code><span>{capabilities?.network_pack_id || "network evidence pending"}</span></div></div>
 
     {capabilities && <section className="network-coverage-banner value-new-control" aria-label="Annual coverage"><StatusPill tone={coverageBadge.tone} title={coverageBadge.title}>{coverageBadge.text}</StatusPill><span>{coverageReasonText(coverage)}</span></section>}
+    {capabilities && fallbackAuditSentences(capabilities.runtime_fallback_audit).length > 0 && <div className="network-fallback-audit value-new-control"><Callout tone="caution" title="Spatially indicative network results" actions={onOpenInspect ? <button type="button" className="value-action-primary" onClick={() => onOpenInspect()}>Open in Inspect</button> : undefined}><ul>{fallbackAuditSentences(capabilities.runtime_fallback_audit).map((sentence) => <li key={sentence}>{sentence}</li>)}</ul><p>This capacity was placed in a fallback zone because the network pack does not locate its sites; flows and congestion involving those zones are indicative only.</p></Callout></div>}
     {error && <div className="error-box"><b>Network evidence unavailable: </b>{error}</div>}
     {run.status === "failed" && <section className="panel network-failure"><div><span>Immutable failed run</span><h3>{run.error_code ?? "Solver evidence retained"}</h3><p>{run.error ?? "The declared input and failure artefacts remain attached to this run."}</p><small>{sourceStudyMutable ? "A copperplate fallback is a new run, never a continuation under different physics." : "Restore the source Study before creating a copperplate fallback Run."}</small></div><div><button className="secondary" onClick={onOpenRun}>Open evidence &amp; audit export</button><button className="secondary" disabled={!sourceStudyMutable} onClick={() => void onRerun()}>Rerun as copperplate<br /><small>重新以铜板模式运行</small></button></div></section>}
 

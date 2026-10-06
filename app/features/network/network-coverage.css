@@ -4,3 +4,4 @@
 .reliability-list .text-button { font-size: 13px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .reliability-stress-pointer { margin: 8px 0; font-size: 13px; color: var(--muted); }
+.network-fallback-audit ul { margin: 0 0 6px; padding-left: 18px; font-size: 13px; }
