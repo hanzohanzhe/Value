@@ -17,8 +17,8 @@ project-wide licence covers every local or upstream UK file.
 - a writable local data directory with at least 2 GiB free for installation and short tests.
 
 The website and API bind only to loopback. Research data stays in
-`FORCE_DATA_HOME`. An existing source checkout keeps its `.gridform` directory;
-a clean install defaults to `%LOCALAPPDATA%\FORCE`. Historical run directories
+`VALUE_DATA_HOME`. An existing source checkout keeps its `.gridform` directory;
+a clean install defaults to `%LOCALAPPDATA%\VALUE`. Historical run directories
 are immutable and state migration is additive.
 
 ## Non-programmer path
@@ -88,16 +88,16 @@ be byte-identical.
 .\.venv\Scripts\python scripts\package_policy_scan.py --dist-dir dist
 ```
 
-Use `FORCE_DATA_HOME` for a path containing spaces or non-ASCII characters to
+Use `VALUE_DATA_HOME` for a path containing spaces or non-ASCII characters to
 test relocation. Do not put research data under the Python package.
 
 ## Upgrade and uninstall
 
 Install a newer application over the code directory and point it at the same
-`FORCE_DATA_HOME`. Migrations may add indexes or metadata but never rewrite a
+`VALUE_DATA_HOME`. Migrations may add indexes or metadata but never rewrite a
 completed run. `uninstall-value.cmd` removes only dependencies and build output;
 research data is retained. Data deletion requires `-RemoveResearchData`, an
-explicit `FORCE_DATA_HOME`, and typing the exact resolved path.
+explicit `VALUE_DATA_HOME`, and typing the exact resolved path.
 
 The current local-code, scientific and GitHub decisions are recorded in
 `publication/prompt52-final-test-report.md` and its companion JSON. Installation

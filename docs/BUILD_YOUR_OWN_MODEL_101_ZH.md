@@ -169,23 +169,23 @@ YearState(y)
 
 ### 5.2 `module.zip` 是什么
 
-它是一个 `force.module-bundle/v1` 安装包，至少包括：
+它是一个 `value.module-bundle/v1` 安装包，至少包括：
 
 ```text
 my-module.zip
-  bundle.json              # 精确文件清单和每个文件的 SHA-256
-  module/
-    module.json            # gridform.module/v2 manifest
-    LICENSE
-    METHOD.md              # 推荐：方程、假设和验证边界
+  force-bundle.json        # 构建器生成的精确文件清单和每个文件的 SHA-256
+  value-module.json        # value.module/v2 manifest
+  LICENSE
+  README.md                # 推荐：方程、假设和验证边界
+  src/
     my_package/
       __init__.py
-      implementation.py    # manifest 指向的入口类
+      plugin.py            # manifest 指向的入口类
 ```
 
 安装器验证路径、哈希、manifest、入口、slot/contract 和 callable conformance，
 然后原子安装到本地 module registry。它不执行 `pip`，不下载依赖，也不接受 native
-binary。外部代码仍在 FORCE Python 进程内运行；conformance 证明接线正确，不证明
+binary。外部代码仍在 VALUE Python 进程内运行；conformance 证明接线正确，不证明
 科学方法正确。
 
 精确字段、七类入口模板、打包命令和测试示例见
@@ -304,7 +304,7 @@ force-network-contract-extension
 
 0.6 扩展线已经发布 solver-neutral network contract。这里仍然是两类安装包：
 `force.extension-bundle/v1` 声明数据角色和 capability，
-`force.module-bundle/v1` 提供求解器或生命周期实现。一个普通 module ZIP 不能
+`value.module-bundle/v1` 提供求解器或生命周期实现。一个普通 module ZIP 不能
 暗中发明数据角色或改写核心 contract。
 
 ## 8. 推荐的衍生研究项目目录

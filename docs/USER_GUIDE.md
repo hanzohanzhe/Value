@@ -77,10 +77,10 @@ route. After Castle, continue with the research-data workflow below.
 
 ## 4. Local state and research data
 
-An existing source installation uses `.gridform`. A clean installation defaults to `%LOCALAPPDATA%\FORCE`. Set `FORCE_DATA_HOME` before launch to choose another location:
+An existing source installation uses `.gridform`. A clean installation defaults to `%LOCALAPPDATA%\VALUE`. Set `VALUE_DATA_HOME` before launch to choose another location:
 
 ```powershell
-$env:FORCE_DATA_HOME = "D:\FORCE-Research"
+$env:VALUE_DATA_HOME = "D:\VALUE-Research"
 .\scripts\start-local.ps1
 ```
 
@@ -418,7 +418,7 @@ contract. For the replacement lifecycle, all seven public slots, exact
 ZIP/manifest format, entry templates and the test ladder, use the
 [`Module Developer 101`](MODULE_DEVELOPER_101.md) ([Chinese](MODULE_DEVELOPER_101_ZH.md)).
 
-An external module is an installed Python package with a `gridform.module/v2` manifest. It declares a stable ID, slot, semantic version, contract, typed inputs and outputs, state read/write sets, parameters, capabilities, determinism and artifacts.
+An external module is an installed Python package with a `value.module/v2` manifest. It declares a stable ID, slot, semantic version, contract, typed inputs and outputs, state read/write sets, parameters, capabilities, determinism and artifacts.
 
 Put an exogenous demand profile in a data pack/adapter. Use the matching slots
 for storage cost, expansion, investment, planning and transition algorithms.
@@ -431,7 +431,7 @@ a current slot still requires an explicit extension and platform validation. Do
 not disguise it as another module or add hidden compatibility switches. Install
 and validate external modules before selection.
 
-The Modules page now accepts a reviewed `force.module-bundle/v1` ZIP. The user must acknowledge that it contains executable Python. FORCE then checks the exact SHA-256 inventory, safe paths, manifest, entry point, slot/contract and callable conformance before atomically promoting the package and refreshing Study selectors. Built-in IDs cannot be shadowed. A referenced external module cannot be disabled until its saved Studies are migrated.
+The Modules page now accepts a reviewed `value.module-bundle/v1` ZIP. The user must acknowledge that it contains executable Python. FORCE then checks the exact SHA-256 inventory, safe paths, manifest, entry point, slot/contract and callable conformance before atomically promoting the package and refreshing Study selectors. Built-in IDs cannot be shadowed. A referenced external module cannot be disabled until its saved Studies are migrated.
 
 This installer is offline and self-contained: it does not run `pip`, download dependencies or accept native binaries. Version-scoped source directories are organisational isolation, not an operating-system sandbox; external code executes inside the FORCE Python process. Conformance demonstrates contract wiring, not scientific validity. Build the supplied example with `scripts/build_module_bundle.py`, install it from Modules, then run a two-period wiring check before a full study.
 

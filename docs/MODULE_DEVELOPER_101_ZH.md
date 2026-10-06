@@ -1,11 +1,11 @@
-# FORCE 通用 Module 开发与替换 101
+# VALUE 通用 Module 开发与替换 101
 
 [English version](MODULE_DEVELOPER_101.md)
 
 如果你还没有确定应当换 data pack、Study parameter、module，还是平台 contract，
 先读总教程 [`BUILD_YOUR_OWN_MODEL_101_ZH.md`](BUILD_YOUR_OWN_MODEL_101_ZH.md)。
 
-这份手册对应当前仓库真实运行的 `gridform.module/v2` 与年度
+这份手册对应当前仓库真实运行的 `value.module/v2` 与年度
 orchestrator。它适用于 PSM、储能成本、扩张上限、投资、规划管线和年度
 状态转移，而不是只针对竞价。
 
@@ -43,12 +43,12 @@ orchestrator。它适用于 PSM、储能成本、扩张上限、投资、规划�
 
 ## 2. Module 替代的真实原理
 
-FORCE 不是把用户代码复制进 Scheme C，也不是修改原始函数。替代过程是：
+VALUE 不是把用户代码复制进 Scheme C，也不是修改原始函数。替代过程是：
 
 ```text
 module.zip
   -> 安装器验证文件、manifest、入口和契约
-  -> 原子安装到用户 FORCE_DATA_HOME/modules
+  -> 原子安装到用户 VALUE_DATA_HOME/modules
   -> workspace registry 同时加载内置与外部 module
   -> Study 在每个 slot 保存一个 module ID
   -> 启动运行时冻结 module ID、version、contract 和源码 SHA-256
@@ -298,12 +298,12 @@ capability 只证明形式兼容，不证明科学兼容。具体 module 组合�
 
 ## 7. `module.zip` 的准确格式
 
-它是确定性的 `force.module-bundle/v1`，不是任意 ZIP，也不是 wheel：
+它是确定性的 `value.module-bundle/v1`，不是任意 ZIP，也不是 wheel：
 
 ```text
 my-module.zip
-├── force-bundle.json       # 构建器生成；不要手写
-├── force-module.json       # gridform.module/v2 manifest
+├── force-bundle.json       # 构建器生成的描述文件；不要手写
+├── value-module.json       # value.module/v2 manifest
 ├── LICENSE                 # 必需
 ├── README.md               # 可选，建议包含方法与引用
 └── src/
@@ -311,6 +311,11 @@ my-module.zip
         ├── __init__.py
         └── plugin.py
 ```
+
+描述文件名 `force-bundle.json` 是 VALUE 改名之前留下的兼容名称（见
+[`BRAND_AND_VARIANTS.md`](BRAND_AND_VARIANTS.md)），其 schema 是
+`value.module-bundle/v1`；manifest 文件是 `value-module.json`。`gridform.storage-cost/v1`
+这类 contract ID 也因同样原因保留。
 
 硬性限制：
 
@@ -322,13 +327,13 @@ my-module.zip
 - 安装器离线运行，不执行 `pip`，不下载依赖；
 - 顶层包名不能是 `backend`、`examples`、`gridform_core`、
   `gridform_validation`、`scripts`、`tests`；
-- 外部 Python 在 FORCE 进程内执行，没有 OS 沙箱，只安装可信代码。
+- 外部 Python 在 VALUE 进程内执行，没有 OS 沙箱，只安装可信代码。
 
-## 8. `force-module.json` 怎么写
+## 8. `value-module.json` 怎么写
 
 ```json
 {
-  "schema_version": "gridform.module/v2",
+  "schema_version": "value.module/v2",
   "id": "my-research-module",
   "name": "My research module",
   "version": "1.0.0",
@@ -364,7 +369,7 @@ my-module.zip
 - `scientific_version`：论文方法/算法版本；
 - `slot` 与 `contract_version` 必须匹配；
 - `implementation` 必须是 `src/` 中真实存在的 `package.module:ClassName`；
-- `parameters` 只能声明 FORCE registry 已存在的 ID；
+- `parameters` 只能声明 VALUE 参数注册表中已存在的 ID；
 - `units` 的 key 必须已在 inputs、outputs 或 parameters；
 - `determinism` 只能是 `deterministic`、`seeded` 或 `stochastic`；
 - 外部包必须 `status: ready`、`execution_kind: live_module`。
@@ -390,7 +395,7 @@ my-module.zip
 
 ```powershell
 py -3.10 scripts\build_module_bundle.py `
-  --manifest path\to\force-module.json `
+  --manifest path\to\value-module.json `
   --source-root path\to\src `
   --license path\to\LICENSE `
   --readme path\to\README.md `
@@ -520,7 +525,9 @@ ZIP 在 staging 中通过验证后，才原子保存 module/version、安装记�
 冲突在写盘前就被拒绝；写盘后先在进程内、再在一个与 worker 启动方式相同的新
 Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入失败的结果会被记住，
 点 **Rescan**（Modules 页顶部，以及每个停用或隔离条目上都有）才会重试；
-**Enable** 会先清除记住的失败，所以它报告的总是一次新扫描的结果。
+**Enable** 会先清除记住的失败，所以它报告的总是一次新扫描的结果。**Rescan**
+还会重新导入所有已安装的 module 和扩展，所以原地修改把一个已加载的 module 改坏时，
+它会立即被隔离，而不是等到下一次 Run 或重启。
 
 ### 停用与隔离区
 
@@ -543,6 +550,27 @@ Rescan（按第 2 节记录），也可以先 Remove 再安装修好的 bundle�
 的方式构建注册表。VALUE 正在使用该数据目录时，这些命令会拒绝执行（`--force` 可
 覆盖），请改用 Modules 页。源码检出中运行 `python -B -m gridform_core.module_recovery ...`；
 安装版须用自带解释器，命令见用户指南“离线模块自救（Offline module recovery）”。
+
+### 修改内置 module（方法升级）
+
+内置 module 在 VALUE 源码树中（`gridform_core/`；保留的 Scheme C 内核在
+`gridform_core/builtin/scheme_c_1000twh/runtime_compat/`）。改变内置 module 的计算
+方式属于方法改动，不能原地静默修改：
+
+1. 修改代码。只应在一个方法学口径中生效的改动，要在
+   `gridform_core/data/methodology/corrections/` 中用 correction id 开关；
+   不得修改保留的 `compat/` 目录。
+2. 同时提高 manifest（`gridform_core/manifests/<id>.json`）和实现类中的版本号。
+3. 在 `docs/release/VERSION_LEDGER.json` 追加一条 bump（`from`、`to`、`package`、
+   `correction_ids`、`reason`、`requires_user_opt_in`）。`true` 表示已保存的 Study
+   运行前要在界面中明确确认方法升级，`false` 只用于纯代码改动。用
+   `python -B scripts/check_version_ledger.py` 检查。
+4. 改动 `runtime_compat/` 之后必须登记：
+   `python -B scripts/seal_runtime_overlay.py --correction <id>`。登记之前，
+   Check readiness 以 `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED` 拒绝所有 Run；
+   经 API 启动的 Run 会以 `GF_COMPATIBILITY_001` 停止。
+5. 重新生成 `docs/generated/` 并运行测试；数值变化要在同一 correction id 下修订
+   golden。
 
 ## 13. 常见失败
 

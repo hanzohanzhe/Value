@@ -182,24 +182,24 @@ turn FORCE into an arbitrary-script launcher with unconstrained signatures.
 
 ### 5.2 What is `module.zip`?
 
-It is a `force.module-bundle/v1` installation package containing at least:
+It is a `value.module-bundle/v1` installation package containing at least:
 
 ```text
 my-module.zip
-  bundle.json              # exact file inventory and SHA-256 values
-  module/
-    module.json            # gridform.module/v2 manifest
-    LICENSE
-    METHOD.md              # recommended equations, assumptions and scope
+  force-bundle.json        # generated exact file inventory and SHA-256 values
+  value-module.json        # value.module/v2 manifest
+  LICENSE
+  README.md                # recommended equations, assumptions and scope
+  src/
     my_package/
       __init__.py
-      implementation.py    # entry class named by the manifest
+      plugin.py            # entry class named by the manifest
 ```
 
 The installer checks safe paths, hashes, manifest, entry point, slot/contract
 and callable conformance, then promotes the bundle atomically into the local
 module registry. It does not call `pip`, download dependencies or accept native
-binaries. External code still executes in the FORCE Python process.
+binaries. External code still executes in the VALUE Python process.
 Conformance proves wiring, not scientific validity.
 
 See [`MODULE_DEVELOPER_101.md`](MODULE_DEVELOPER_101.md) for exact fields,
@@ -244,7 +244,7 @@ appropriate to the new module.
 ### 5.5 Alternative zonal solver contract
 
 A zonal balancing replacement must declare `solver_contract` in its
-`gridform.module/v2` manifest, publish the solver identity, numerical
+`value.module/v2` manifest, publish the solver identity, numerical
 lexicographic semantics, one-sided objective caps, advanced-setting bounds and
 no-fallback behaviour. The built-in `value-zonal-redispatch-balancing` module is
 `4.0.0` (solver contract v4: total load shedding is locked after the primary
@@ -448,7 +448,7 @@ force-network-contract-extension
 ```
 
 This is deliberately two package types: a `force.extension-bundle/v1` declares
-the new roles/capabilities, while a `force.module-bundle/v1` supplies executable
+the new roles/capabilities, while a `value.module-bundle/v1` supplies executable
 solver or lifecycle logic. A single module ZIP must not invent hidden data roles
 or mutate the core contract.
 

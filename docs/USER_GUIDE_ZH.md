@@ -84,10 +84,10 @@ PSM 与 CEM、写市场和规划结果，再把系统推进到下一年。网页
 
 ## 4. 数据存放位置
 
-源代码目录中的既有安装默认继续使用 `.gridform`。全新安装默认把本地状态放在 `%LOCALAPPDATA%\FORCE`。也可以在启动前设置 `FORCE_DATA_HOME`：
+源代码目录中的既有安装默认继续使用 `.gridform`。全新安装默认把本地状态放在 `%LOCALAPPDATA%\VALUE`。也可以在启动前设置 `VALUE_DATA_HOME`：
 
 ```powershell
-$env:FORCE_DATA_HOME = "D:\FORCE-Research"
+$env:VALUE_DATA_HOME = "D:\VALUE-Research"
 .\scripts\start-local.ps1
 ```
 
@@ -163,7 +163,7 @@ Overview 显示所选数据包、可用模块、Python runtime 和年度 PSM/CEM
 
 #### 安装别人编写的模块
 
-打开 **Modules** 页面顶部的 **Install a model module**：选择建模者提供的 `force.module-bundle/v1` ZIP，勾选可执行代码信任确认，再点击安装。FORCE 会在临时目录检查文件清单与 SHA-256、路径穿越、manifest、Python entry point、槽位/contract、必需方法和最小 conformance fixture；全部通过后才原子写入模块目录并立即刷新 Studies 下拉框。
+打开 **Modules** 页面顶部的 **Install a model module**：选择建模者提供的 `value.module-bundle/v1` ZIP，勾选可执行代码信任确认，再点击安装。FORCE 会在临时目录检查文件清单与 SHA-256、路径穿越、manifest、Python entry point、槽位/contract、必需方法和最小 conformance fixture；全部通过后才原子写入模块目录并立即刷新 Studies 下拉框。
 
 安装成功不代表科学方法已经验证。先建立新的 Study revision，运行 two-period wiring check，再做完整年度测试。内置模块不能被覆盖或禁用；已被 Saved Study 引用的外部模块也不能直接禁用。外部源码按模块/版本分目录保存，但仍在 FORCE Python 进程内运行。安装器不联网、不运行 `pip`、不接受原生二进制。
 
@@ -372,7 +372,7 @@ weather 和 demand 文件使用数据包内相对路径。运行时通过 worksp
 data/parameter/module/架构的选择方法、七个可替换 slot、module 替代原理、
 `module.zip` 的准确格式、manifest、入口模板和从单元测试到多年运行的分层门槛。
 
-外部模块是安装好的 Python package，包含 `gridform.module/v2` manifest。manifest 至少声明：
+外部模块是安装好的 Python package，包含 `value.module/v2` manifest。manifest 至少声明：
 
 - 稳定 module ID、slot 和 semantic version
 - contract version
@@ -439,7 +439,7 @@ print(urllib.request.urlopen(request).status)
 
 ### 浏览器显示 connection refused
 
-确认地址是 `http://127.0.0.1:8800`，然后运行 `start-value.cmd`。若仍失败，运行 environment doctor，并检查 `.gridform/frontend-error.log` 或 `%LOCALAPPDATA%\FORCE\frontend-error.log`。
+确认地址是 `http://127.0.0.1:8800`，然后运行 `start-value.cmd`。若仍失败，运行 environment doctor，并检查 `.gridform/frontend-error.log` 或 `%LOCALAPPDATA%\VALUE\frontend-error.log`。
 
 ### 页面显示 Open VALUE from its launcher
 

@@ -1,4 +1,4 @@
-# FORCE General Module Authoring and Replacement 101
+# VALUE General Module Authoring and Replacement 101
 
 [中文版](MODULE_DEVELOPER_101_ZH.md)
 
@@ -6,7 +6,7 @@ If you have not yet decided whether the change belongs in a data pack, Study
 parameter, module or platform contract, start with
 [`BUILD_YOUR_OWN_MODEL_101.md`](BUILD_YOUR_OWN_MODEL_101.md).
 
-This handbook describes the live `gridform.module/v2` system used by the local
+This handbook describes the live `value.module/v2` module system used by the local
 website and annual orchestrator. It applies to all seven supported slots. It
 does not require changes to Scheme C or pretend that unsupported extension
 points already exist.
@@ -44,7 +44,7 @@ slot; do not disguise a new lifecycle stage as the wrong module.**
 ```text
 module.zip
   -> validate bundle, manifest, entry point and contract
-  -> atomically install below FORCE_DATA_HOME/modules
+  -> atomically install below VALUE_DATA_HOME/modules
   -> workspace registry loads built-in and external modules
   -> a Study stores one selected module ID per slot
   -> run freezes ID, version, contract and source SHA-256
@@ -215,7 +215,7 @@ attribution v2. Its resolved manifest declares output
 produces `network.zonal-redispatch-result/v1`.
 
 For an external module, those declarations establish manifest compatibility
-only. They do not cause FORCE to install or invoke a generic evidence adapter.
+only. They do not cause VALUE to install or invoke a generic evidence adapter.
 A third-party PSM that needs `results.vre-curtailment-attribution/v2` must supply
 its own execution integration adapter and write complete, reconciled
 `gridform.market-ledger/v6` period/detail evidence. Full end-to-end execution of
@@ -253,7 +253,7 @@ or invalid evidence as a run error. An external adapter must enforce the same
 rule before publishing v2 evidence.
 
 Use the complete payload in
-`examples/external_psm_bundle/README.md` as the schema example. From a FORCE
+`examples/external_psm_bundle/README.md` as the schema example. From a VALUE
 source checkout, the focused static, registry and core-contract check is:
 
 ```powershell
@@ -283,8 +283,8 @@ tests.
 
 ```text
 my-module.zip
-├── force-bundle.json       # generated; do not hand-edit
-├── force-module.json       # gridform.module/v2 manifest
+├── force-bundle.json       # generated descriptor; do not hand-edit
+├── value-module.json       # value.module/v2 manifest
 ├── LICENSE                 # required
 ├── README.md               # optional; strongly recommended
 └── src/
@@ -293,19 +293,26 @@ my-module.zip
         └── plugin.py
 ```
 
-The deterministic `force.module-bundle/v1` limits are 25 MiB compressed,
+`scripts/build_module_bundle.py` writes the descriptor (schema
+`value.module-bundle/v1`). Its file name `force-bundle.json` is a compatibility
+name kept from before the VALUE name (see
+[`BRAND_AND_VARIANTS.md`](BRAND_AND_VARIANTS.md)); the manifest is
+`value-module.json`. Contract IDs such as `gridform.storage-cost/v1` are kept
+for the same reason.
+
+The deterministic `value.module-bundle/v1` limits are 25 MiB compressed,
 100 MiB expanded and 1,000 members. Absolute/traversal paths, duplicates,
 encryption, links and native/executable files are rejected. Accepted source/data
 types are `.py/.pyi/.json/.csv/.txt/.md/.toml/.yaml/.yml`.
 
 The installer is offline, does not call `pip`, and runs external code in the
-FORCE Python process without an OS sandbox. Install trusted code only.
+VALUE Python process without an OS sandbox. Install trusted code only.
 
 ## 8. General manifest
 
 ```json
 {
-  "schema_version": "gridform.module/v2",
+  "schema_version": "value.module/v2",
   "id": "my-research-module",
   "name": "My research module",
   "version": "1.0.0",
@@ -530,6 +537,9 @@ not prove order-level replay.
   either refuses. A failed import is remembered until **Rescan** (at the top
   of the Modules page and on every disabled or quarantined entry); **Enable**
   forgets remembered failures first, so it always reports a fresh scan.
+  **Rescan** also re-imports every installed module and extension, so an
+  in-place edit that breaks a module that is already loaded is quarantined at
+  once instead of at the next Run or restart.
 - **Disabled and quarantined:** the Modules page lists every disabled or
   quarantined local module and extension below the module list, each with
   **Enable**, **Rescan** and **Remove**. Check readiness of a Study that selects
@@ -551,6 +561,31 @@ not prove order-level replay.
   In a source checkout run `python -B -m gridform_core.module_recovery ...`;
   on an installed VALUE use the bundled interpreter as shown in the user
   guide, "Offline module recovery".
+
+### 12.1 Changing a built-in module (method upgrade)
+
+Built-in modules live in the VALUE source tree (`gridform_core/`; the retained
+Scheme C kernel in `gridform_core/builtin/scheme_c_1000twh/runtime_compat/`).
+A change to how a built-in module computes is a method change, not an in-place
+edit:
+
+1. Make the change. Gate it behind a correction id in
+   `gridform_core/data/methodology/corrections/` when only one methodology
+   profile should apply it; never edit the retained `compat/` tree.
+2. Raise the module version in its manifest
+   (`gridform_core/manifests/<id>.json`) and in the implementation class.
+3. Append one bump to `docs/release/VERSION_LEDGER.json`
+   (`from`, `to`, `package`, `correction_ids`, `reason`,
+   `requires_user_opt_in`); `true` makes saved Studies ask for an explicit
+   method-upgrade confirmation before they run, `false` is for code-only
+   changes. `python -B scripts/check_version_ledger.py` checks it.
+4. After any edit under `runtime_compat/`, register it:
+   `python -B scripts/seal_runtime_overlay.py --correction <id>`. Until then
+   Check readiness refuses every Run with
+   `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`, and a Run started through the API
+   stops with `GF_COMPATIBILITY_001`.
+5. Regenerate `docs/generated/` and run the tests; a change of numbers needs a
+   golden revision under the same correction id.
 
 ## 13. Explicit current limitations
 

@@ -40,7 +40,8 @@ adopted. The following are intentionally retained in the 0.x series:
 
 - `force.*` bundle, engine and accounting definition IDs;
 - `gridform.*` public contract IDs and the `gridform_core` Python namespace;
-- `FORCE_DATA_HOME` and `.gridform` local state paths;
+- the `.gridform` local state path of a pre-0.5 source checkout (launchers
+  point `VALUE_DATA_HOME` at it; `FORCE_DATA_HOME` is no longer read);
 - module IDs such as `force-perfect-foresight-lp`;
 - the original `install-force.cmd` and `start-gridform.cmd` launchers.
 
