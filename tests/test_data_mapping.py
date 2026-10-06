@@ -337,3 +337,55 @@ class EurPriceMappingTests(DataMappingTests):
         self.assertEqual(timestamp_row_problems(path, "time", 30, time_zone="Europe/London")["problem_count"], 0)
         utc = timestamp_row_problems(path, "time", 30, time_zone="UTC")
         self.assertEqual([row["problem"] for row in utc["problems"]], ["duplicate of row 3", "duplicate of row 4"])
+
+    # R1-4 (S-D6): the mapping editor rounds converted values to 15 significant
+    # digits, so a conversion factor leaves no binary noise in the canonical file.
+    def test_fx_and_unit_conversions_write_no_binary_noise(self):
+        values = [b"103.5", b"92", b"46", b"34.5"]
+        stage = self.stage(b"hour,eur\n" + b"".join(b"x," + values[index % 4] + b"\n" for index in range(17520)),
+                           "market.belgium.price")
+        columns = [{"source": "eur", "target": "value", "source_unit": "EUR/MWh", "target_unit": "GBP/MWh"}]
+        self.assertEqual(repr(103.5 * (1 / 1.15)), "90.00000000000001")  # the noise this test guards against
+        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.15, "fx_basis": "toy fixed rate"})
+        self.assertTrue(review["valid"], review["errors"])
+        self.assertEqual([row["value"] for row in review["sample_rows"][:4]], ["90.0", "80.0", "40.0", "30.0"])
+        binding = self.commit(review)["binding"]
+        normalized = (self.pack / binding["uri"]).read_text()
+        self.assertEqual(normalized.splitlines()[1:5], ["90.0", "80.0", "40.0", "30.0"])
+        self.assertNotIn("0000000", normalized)
+        self.assertEqual(binding["mapping_provenance"]["converted_value_significant_digits"], 15)
+        stage, review = self.project_review()  # 1000 kW -> 1.0 MW
+        self.assertEqual(review["sample_rows"][0]["capacity_mw"], "1.0")
+        stage = self.stage(b"id,kind,power,status,area\np1,CCGT,1001,Operational,GB\n")
+        review = self.review(stage, [dict(row) for row in review["columns"]])
+        self.assertEqual(repr(1001 * 0.001), "1.0010000000000001")
+        self.assertEqual(review["sample_rows"][0]["capacity_mw"], "1.001")
+
+    # R1-4 (S-D7): bad cells are listed by row and column, all of them (up to a
+    # bound), instead of the first Python exception.
+    def test_bad_cells_are_listed_by_row_and_column(self):
+        rows = [b"x,2"] * 17520
+        rows[5], rows[9], rows[100] = b"x,n/a", b"x,", b"x,inf"
+        source = b"t,load\n" + b"\n".join(rows) + b"\n"
+        converted = self.review(self.stage(source, "demand.forecast"),
+                                [{"source": "load", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}])
+        self.assertFalse(converted["valid"])
+        self.assertEqual(converted["errors"], [
+            "Row 6 (CSV line 7), column load: 'n/a' is not a number",
+            "Row 101 (CSV line 102), column load: 'inf' is not finite after conversion",
+        ])
+        self.assertFalse(any("could not convert" in error for error in converted["errors"]))
+        copied = self.review(self.stage(source, "demand.forecast"),
+                             [{"source": "load", "target": "value", "source_unit": "MW", "target_unit": "MW"}])
+        self.assertFalse(copied["valid"])
+        listed = [error for error in copied["errors"] if error.startswith("Row ")]
+        self.assertEqual(listed, [
+            "Row 6 (CSV line 7), column load: 'n/a' is not a number",
+            "Row 10 (CSV line 11), column load: '' is missing",
+            "Row 101 (CSV line 102), column load: 'inf' is not a finite number",
+        ])
+        many = [b"x,bad"] * 30 + [b"x,2"] * 17490
+        crowded = self.review(self.stage(b"t,load\n" + b"\n".join(many) + b"\n", "demand.forecast"),
+                              [{"source": "load", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}])
+        self.assertEqual(len(crowded["errors"]), 21)
+        self.assertEqual(crowded["errors"][-1], "30 cell(s) could not be converted; the first 20 are listed.")

@@ -96,3 +96,40 @@ class ExecutableDataAdapterTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class AdapterCellProblemTests(unittest.TestCase):
+    """R1-4 (S-D7): cell problems are collected by row and column; no output is written."""
+
+    def test_cell_problems_are_collected_and_spec_errors_still_raise_at_once(self):
+        from gridform_core.data_adapters import AdapterValueError
+
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / "data.csv"
+            source.write_text("value\nbad\n2\nalso-bad\n", encoding="utf-8")
+            specification = AdapterSpec(
+                "cells", "1.0.0", "csv", "demand.real", "csv",
+                (ColumnRule("value", "demand_mw", "GW", "MW"),),
+            )
+            output = Path(folder) / "out.csv"
+            with self.assertRaises(AdapterValueError) as raised:
+                execute_adapter(source, specification, output)
+            self.assertEqual(raised.exception.problem_count, 2)
+            self.assertEqual([(row["row"], row["line"], row["column"]) for row in raised.exception.problems],
+                             [(1, 2, "value"), (3, 4, "value")])
+            self.assertFalse(output.exists())
+            self.assertFalse(output.with_suffix(".csv.tmp").exists())
+            with self.assertRaises(AdapterValueError):
+                preview_csv(source, specification, limit=1)
+            source.write_text("value\n1001\n", encoding="utf-8")
+            kilowatts = AdapterSpec(
+                "cells", "1.0.0", "csv", "demand.real", "csv",
+                (ColumnRule("value", "demand_mw", "kW", "MW"),),
+            )
+            result = execute_adapter(source, kilowatts, output)
+            self.assertEqual(output.read_text(encoding="utf-8").splitlines()[1], "1.0010000000000001")
+            execute_adapter(source, kilowatts, output, significant_digits=15)
+            self.assertEqual(output.read_text(encoding="utf-8").splitlines()[1], "1.001")
+            self.assertEqual(result.rows, 1)
+            with self.assertRaises(ValueError):
+                execute_adapter(source, specification, output, significant_digits=0)

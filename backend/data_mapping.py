@@ -17,7 +17,10 @@ import uuid
 from datetime import datetime, timezone
 
 from backend.data_pack_clone import SAFE_ID, guard_clone_upload
-from gridform_core.data_adapters import AdapterSpec, ColumnRule, FX_CONVERSIONS, UNIT_FACTORS, execute_adapter, fx_factor
+from gridform_core.data_adapters import (
+    AdapterSpec, AdapterValueError, ColumnRule, FX_CONVERSIONS, MAX_LISTED_CELL_PROBLEMS, UNIT_FACTORS,
+    execute_adapter, fx_factor,
+)
 from gridform_core.data_contract_templates import CSV_TEMPLATES, runtime_supported_formats
 from gridform_core.data_import import promote_binding_revision
 from gridform_core.data_pack_validation import (
@@ -88,6 +91,36 @@ class DataMappingError(ValueError):
     def __init__(self, code: str, message: str, status: int = 400):
         self.code, self.status = code, status
         super().__init__(message)
+
+
+# S-D6: converted values are rounded to this many significant digits, so a
+# factor such as 1/1.15 does not write binary noise (90.00000000000001) into
+# the canonical file.  The preview and the commit's rebuild use the same
+# setting; the run snapshot never re-converts a mapped file.
+MAPPED_VALUE_SIGNIFICANT_DIGITS = 15
+
+
+def _cell_problems(normalized: bytes, column: str, source_column: str) -> tuple[list[str], int]:
+    """S-D7: rows of a single-value series whose cell is missing or not a finite number."""
+
+    listed: list[str] = []
+    count = 0
+    reader = csv.DictReader(io.StringIO(normalized.decode("utf-8")))
+    for row_number, row in enumerate(reader, start=1):
+        value = str(row.get(column) or "")
+        try:
+            number = float(value)
+            problem = None if math.isfinite(number) else "not a finite number"
+        except ValueError:
+            problem = "missing" if not value.strip() else "not a number"
+        if problem is None:
+            continue
+        count += 1
+        if len(listed) < MAX_LISTED_CELL_PROBLEMS:
+            listed.append(f"Row {row_number} (CSV line {row_number + 1}), column {source_column}: {value!r} is {problem}")
+    if count > len(listed):
+        listed.append(f"{count} cell(s) are missing or not numbers; the first {len(listed)} are listed.")
+    return listed, count
 
 
 def _hash(data: bytes) -> str:
@@ -315,7 +348,8 @@ class DataMappingService:
             digest = None
             size = 0
             try:
-                result = execute_adapter(stage_dir / "source.csv", spec, directory / "normalized.csv")
+                result = execute_adapter(stage_dir / "source.csv", spec, directory / "normalized.csv",
+                                         significant_digits=MAPPED_VALUE_SIGNIFICANT_DIGITS)
                 normalized = _bytes(directory / "normalized.csv", self.staging_root)
                 _shape(normalized)
                 digest, size = _hash(normalized), len(normalized)
@@ -324,6 +358,9 @@ class DataMappingService:
                 report = validate_data_pack(directory, candidate, [self.slots[stage["role"]]])
                 validation = report["bindings"][0]
                 errors = list(validation["errors"])
+                if errors and [rule.target for rule in spec.columns] == ["value"]:
+                    # S-D7: the whole-file check counts bad cells; name the rows.
+                    errors.extend(_cell_problems(normalized, "value", spec.columns[0].source)[0])
                 sample = list(islice(csv.DictReader(io.StringIO(normalized.decode("utf-8"))), 20))
                 # F-P05A-1: the raw values of the mapped source columns for the same
                 # rows, so the UI shows the original EUR price beside the converted one.
@@ -353,6 +390,10 @@ class DataMappingService:
                             f"GF_DATA_TIMESTAMP_ORIGIN: the first timestamp {timestamp_report['first_utc']} is "
                             f"{abs(offset)} minutes {'after' if offset > 0 else 'before'} 1 January 00:00; the model "
                             "reads row 1 as the first period of the year, so the series would be shifted.")
+            except AdapterValueError as exc:
+                # S-D7: every unconvertible cell by row and column, not the
+                # first Python exception.
+                errors = exc.messages()
             except (ValueError, OSError) as exc:
                 errors = [str(exc)]
             expires = stage["expires_epoch"]
@@ -397,7 +438,8 @@ class DataMappingService:
                 raise DataMappingError("GF_MAPPING_IDENTITY", "Normalized bytes or target identity changed; review again.", 409)
             # Recompute to prove the reviewed bytes still derive from this exact source/spec.
             rebuilt = directory / "rechecked.csv"
-            result = execute_adapter(stage_dir / "source.csv", spec, rebuilt)
+            result = execute_adapter(stage_dir / "source.csv", spec, rebuilt,
+                                     significant_digits=MAPPED_VALUE_SIGNIFICANT_DIGITS)
             if result.normalized_sha256 != review["normalized_sha256"] or result.source_sha256 != review["source_sha256"]:
                 rebuilt.unlink(missing_ok=True)
                 raise DataMappingError("GF_MAPPING_IDENTITY", "Normalization no longer matches the reviewed bytes.", 409)
@@ -445,7 +487,8 @@ class DataMappingService:
                                 "spec_uri": (provenance / "spec.json").relative_to(root).as_posix(),
                                 "review_uri": (provenance / "review.json").relative_to(root).as_posix(),
                                 "source_sha256": review["source_sha256"], "spec_sha256": review["spec_sha256"],
-                                "normalized_sha256": review["normalized_sha256"]}}
+                                "normalized_sha256": review["normalized_sha256"],
+                                "converted_value_significant_digits": MAPPED_VALUE_SIGNIFICANT_DIGITS}}
                 binding, validation = promote_binding_revision(pack_root=root, manifest=manifest,
                     role=review["role"], staged_file=rebuilt, filename="mapped.csv", file_format="csv",
                     dataset_slots=[self.slots[review["role"]]], imported_at=_iso(time.time()), metadata=metadata)

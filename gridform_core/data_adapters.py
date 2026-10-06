@@ -24,6 +24,41 @@ UNIT_FACTORS = {
 # EUR/MWh -> GBP/MWh divides by spec.source["eur_per_gbp"] and records
 # spec.source["fx_basis"]; there is no default rate.
 FX_CONVERSIONS = {("EUR/MWh", "GBP/MWh")}
+# S-D7: cell problems are reported with their row and column, not as the
+# first Python exception; at most this many are listed in full.
+MAX_LISTED_CELL_PROBLEMS = 20
+
+
+class CellConversionError(ValueError):
+    """One source cell cannot be converted (not a spec-level error)."""
+
+
+class AdapterValueError(ValueError):
+    """Source cells that could not be converted, by row and column.
+
+    ``problems`` lists at most :data:`MAX_LISTED_CELL_PROBLEMS` rows of
+    ``{"row", "line", "column", "value", "problem"}``: ``row`` is the 1-based
+    data row (the header is not counted) and ``line`` the CSV line number.
+    ``problem_count`` is the total.  ``messages()`` gives one sentence per
+    listed cell plus a closing count when more were found.
+    """
+
+    def __init__(self, problems: Sequence[Mapping[str, object]], problem_count: int) -> None:
+        self.problems = [dict(row) for row in problems]
+        self.problem_count = int(problem_count)
+        super().__init__("; ".join(self.messages()))
+
+    def messages(self) -> list[str]:
+        lines = [
+            f"Row {row['row']} (CSV line {row['line']}), column {row['column']}: "
+            f"{row['value']!r} is {row['problem']}"
+            for row in self.problems
+        ]
+        if self.problem_count > len(self.problems):
+            lines.append(
+                f"{self.problem_count} cell(s) could not be converted; the first {len(self.problems)} are listed."
+            )
+        return lines
 
 
 @dataclass(frozen=True)
@@ -93,7 +128,8 @@ def fx_factor(source: Mapping[str, object] | None) -> float:
 
 
 def _convert(value: str, rule: ColumnRule, interval_minutes: int | None = None,
-             source: Mapping[str, object] | None = None) -> object:
+             source: Mapping[str, object] | None = None,
+             significant_digits: int | None = None) -> object:
     if not value.strip():
         return None
     if rule.source_unit is None or rule.target_unit is None or rule.source_unit == rule.target_unit:
@@ -109,10 +145,19 @@ def _convert(value: str, rule: ColumnRule, interval_minutes: int | None = None,
         raise ValueError(
             f"Ambiguous unit conversion for {rule.target}: {rule.source_unit} to {rule.target_unit}"
         )
-    number = float(value)
+    try:
+        number = float(value)
+    except ValueError:
+        raise CellConversionError("not a number") from None
     converted = number * factor
     if not math.isfinite(converted):
-        raise ValueError(f"Non-finite value in {rule.source}")
+        raise CellConversionError("not finite after conversion")
+    if significant_digits is not None:
+        # S-D6: a conversion factor such as 1/1.15 leaves binary noise
+        # (103.5 EUR -> 90.00000000000001 GBP); round it away at the
+        # requested precision (15 significant digits changes a value by at
+        # most one part in 10^15).
+        converted = float(f"{converted:.{significant_digits}g}")
     return converted
 
 
@@ -132,13 +177,10 @@ def preview_csv(
             raise ValueError("Missing mapped columns: " + ", ".join(missing))
         rows = []
         for raw in reader:
-            normalized = {rule.target: _convert(str(raw.get(rule.source, "")), rule, spec.interval_minutes, spec.source)
-                          for rule in spec.columns}
-            if spec.technology_column and spec.technology_column in normalized:
-                raw_technology = str(normalized[spec.technology_column])
-                normalized[spec.technology_column] = spec.technology_mapping.get(
-                    raw_technology, raw_technology
-                )
+            problems: list[dict[str, object]] = []
+            normalized = _convert_row(raw, spec, len(rows) + 1, reader.line_num, problems)
+            if problems:
+                raise AdapterValueError(problems, len(problems))
             rows.append(normalized)
             if len(rows) >= limit:
                 break
@@ -153,15 +195,52 @@ def preview_csv(
     }
 
 
-def execute_adapter(source: Path, spec: AdapterSpec, output: Path) -> AdapterResult:
+def _convert_row(raw: Mapping[str, object], spec: AdapterSpec, row_number: int, line: int,
+                 problems: list[dict[str, object]], significant_digits: int | None = None) -> dict[str, object]:
+    """Convert one source row; a cell problem is appended to ``problems`` (S-D7)."""
+
+    normalized: dict[str, object] = {}
+    for rule in spec.columns:
+        value = str(raw.get(rule.source, ""))
+        try:
+            normalized[rule.target] = _convert(value, rule, spec.interval_minutes, spec.source, significant_digits)
+        except CellConversionError as exc:
+            problems.append({"row": row_number, "line": line, "column": rule.source, "value": value,
+                             "problem": str(exc)})
+            normalized[rule.target] = None
+    if spec.technology_column and spec.technology_column in normalized:
+        technology = str(normalized[spec.technology_column])
+        normalized[spec.technology_column] = spec.technology_mapping.get(technology, technology)
+    return normalized
+
+
+def execute_adapter(source: Path, spec: AdapterSpec, output: Path, *,
+                    significant_digits: int | None = None) -> AdapterResult:
+    """Normalize ``source`` into ``output``.
+
+    Spec-level problems (unknown conversion, missing rate or interval) raise
+    at once.  Cell-level problems are collected over the whole file and
+    raised together as :class:`AdapterValueError`, by row and column, and no
+    output is written (S-D7).  ``significant_digits`` rounds converted values
+    (the mapping editor passes 15, S-D6); the run snapshot does not round.
+    """
+
     if spec.schema_version != SCHEMA_VERSION:
         raise ValueError(f"Unsupported adapter schema: {spec.schema_version}")
     if spec.source_format != "csv" or spec.canonical_format != "csv":
         raise ValueError("This release implements explicit CSV-to-CSV normalization only")
-    preview_csv(source, spec, limit=1)
+    if significant_digits is not None and (isinstance(significant_digits, bool) or not isinstance(significant_digits, int)
+                                           or not 1 <= significant_digits <= 17):
+        raise ValueError("significant_digits must be an integer between 1 and 17")
+    try:
+        preview_csv(source, spec, limit=1)
+    except AdapterValueError:
+        pass  # reported with every other cell problem below
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     rows = 0
+    problems: list[dict[str, object]] = []
+    problem_count = 0
     targets = [rule.target for rule in spec.columns]
     if len(set(targets)) != len(targets):
         raise ValueError("Canonical adapter target columns must be unique")
@@ -172,13 +251,15 @@ def execute_adapter(source: Path, spec: AdapterSpec, output: Path) -> AdapterRes
         writer = csv.DictWriter(output_handle, fieldnames=targets, lineterminator="\n")
         writer.writeheader()
         for raw in reader:
-            normalized = {rule.target: _convert(str(raw.get(rule.source, "")), rule, spec.interval_minutes, spec.source)
-                          for rule in spec.columns}
-            if spec.technology_column and spec.technology_column in normalized:
-                technology = str(normalized[spec.technology_column])
-                normalized[spec.technology_column] = spec.technology_mapping.get(technology, technology)
+            found: list[dict[str, object]] = []
+            normalized = _convert_row(raw, spec, rows + 1, reader.line_num, found, significant_digits)
+            problem_count += len(found)
+            problems.extend(found[:max(0, MAX_LISTED_CELL_PROBLEMS - len(problems))])
             writer.writerow(normalized)
             rows += 1
+    if problem_count:
+        temporary.unlink(missing_ok=True)
+        raise AdapterValueError(problems, problem_count)
     temporary.replace(output)
     return AdapterResult(
         sha256_file(source),
