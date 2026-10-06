@@ -5,6 +5,8 @@ Commands::
     capture.py check    [--tier fast|full|nightly] [--cases D1 C1 ...] [--mode exact|tolerance]
     capture.py init     --cases ...                      # write revision 0 (never overwrites)
     capture.py revise   --cases ... --reason TEXT [--correction-id ID ...] [--finding ID ...]
+    (init/revise --from-output DIR [--base-commit SHA]: digest a kept run output of one case
+     instead of running it; used for a case whose revision 0 is a run of the 35aadb3 tree)
     capture.py validate                                  # bookkeeping only, no model runs
     capture.py dump     --cases ... --out-dir DIR        # raw digests for inspection
     capture.py freeze-projects --cases ...               # write tests/golden/projects/<case>.json for NEW cases
@@ -19,6 +21,12 @@ carrying the delta; for the doctoral family a trajectory change is accepted
 only for a finding listed in tests/golden/doctoral_trajectory_rebaselines.json
 and only once per finding and case, and only with a numeric before/after
 report ``tests/golden/reports/<case>-r<k>.json``.
+
+Research-pack cases (``research_pack`` in cases.json, decision A12) run on a
+pack that is not in the repository; it is taken from ``VALUE_P0_5_PACKS``.
+When it is not supplied, ``check`` lists the case under ``unavailable`` and
+does not fail, unless ``VALUE_GOLDEN_REQUIRE_RESEARCH_PACKS=1``; ``init``,
+``revise`` and ``dump`` always fail.
 
 Doctoral re-baseline workflow (one commit): ``revise`` appends revision k
 (its report is pending; earlier reports are checked), then
@@ -97,6 +105,9 @@ def select_cases(cases: dict[str, dict[str, Any]], tier: str | None, names: Sequ
     return sorted(name for name, case in cases.items() if TIER_ORDER[case["tier"]] <= limit)
 
 
+REQUIRE_RESEARCH_PACKS_ENVIRONMENT = "VALUE_GOLDEN_REQUIRE_RESEARCH_PACKS"
+
+
 def run_case_subprocess(case_id: str, python: str = sys.executable, timeout: float = 3600) -> dict[str, Any]:
     runner = _runner_module()
     scratch = Path(tempfile.mkdtemp(prefix=f"value-golden-{case_id}-"))
@@ -116,6 +127,8 @@ def run_case_subprocess(case_id: str, python: str = sys.executable, timeout: flo
         attempts = runner.forbidden_port_attempts(scratch)
         if attempts:
             raise RuntimeError(f"golden case {case_id} tried to reach the live VALUE ports: {attempts}")
+        if completed.returncode == _run_case_module().RESEARCH_PACK_UNAVAILABLE_EXIT:
+            return {"case": case_id, "unavailable": completed.stderr.strip().splitlines()[-1]}
         if completed.returncode != 0:
             raise RuntimeError(f"golden case {case_id} failed (exit {completed.returncode}):\n{completed.stderr[-4000:]}")
         digest = json.loads(completed.stdout.strip().splitlines()[-1])
@@ -139,6 +152,27 @@ def _strip_runtime(digest: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in digest.items() if key not in {"seconds", "case"}}
 
 
+def _require_available(digests: dict[str, dict[str, Any]]) -> None:
+    missing = [digest["unavailable"] for digest in digests.values() if "unavailable" in digest]
+    if missing:
+        raise SystemExit("research pack missing (set VALUE_P0_5_PACKS):\n" + "\n".join(missing))
+
+
+def _digests(arguments: argparse.Namespace, selected: Sequence[str]) -> dict[str, dict[str, Any]]:
+    """Digests of the selected cases: run them, or digest ``--from-output``."""
+
+    if getattr(arguments, "from_output", None) is None:
+        digests = run_cases(selected, arguments.jobs)
+        _require_available(digests)
+        return digests
+    if len(selected) != 1:
+        raise SystemExit("--from-output digests the kept output of exactly one case (--cases X)")
+    output = arguments.from_output.resolve()
+    if not output.is_dir():
+        raise SystemExit(f"--from-output {output} is not a directory")
+    return {selected[0]: golden_lib.digest_run(output, golden_lib.ZoneRules.load(ZONES))}
+
+
 def _git_head() -> str:
     try:
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip()
@@ -151,9 +185,16 @@ def command_check(arguments: argparse.Namespace) -> int:
     selected = select_cases(cases, arguments.tier, arguments.cases)
     mode = arguments.mode or golden_lib.default_mode()
     digests = run_cases(selected, arguments.jobs)
-    report: dict[str, Any] = {"schema_version": "value.golden-check/v1", "mode": mode, "cases": {}, "errors": []}
+    report: dict[str, Any] = {"schema_version": "value.golden-check/v1", "mode": mode, "cases": {}, "errors": [],
+                              "unavailable": {}}
+    require_packs = os.environ.get(REQUIRE_RESEARCH_PACKS_ENVIRONMENT) == "1"
     for case_id in selected:
         family = cases[case_id]["family"]
+        if "unavailable" in digests[case_id]:
+            report["unavailable"][case_id] = digests[case_id]["unavailable"]
+            if require_packs:
+                report["errors"].append(f"{family}/{case_id}: {digests[case_id]['unavailable']}")
+            continue
         path = golden_path(family, case_id)
         if not path.is_file():
             report["errors"].append(f"{family}/{case_id}: no golden file (run capture.py init)")
@@ -188,9 +229,12 @@ def command_init(arguments: argparse.Namespace) -> int:
         # Revision 0 is written exactly once; there is no override.  A changed
         # result is recorded with ``revise`` (p0_gate append_only enforces it).
         raise SystemExit(f"golden file(s) already exist, revision 0 is immutable: {', '.join(existing)}")
-    first = run_cases(selected, arguments.jobs)
+    if arguments.twice and arguments.from_output is not None:
+        raise SystemExit("--twice reruns the cases; it cannot be combined with --from-output")
+    first = _digests(arguments, selected)
     second = run_cases(selected, arguments.jobs) if arguments.twice else first
-    head = _git_head()
+    _require_available(second)
+    head = arguments.base_commit or _git_head()
     for case_id in selected:
         differences = golden_lib.compare_digests(first[case_id], second[case_id], "exact")
         if differences:
@@ -205,9 +249,9 @@ def command_init(arguments: argparse.Namespace) -> int:
 def command_revise(arguments: argparse.Namespace) -> int:
     cases = load_cases()
     selected = select_cases(cases, arguments.tier, arguments.cases)
-    digests = run_cases(selected, arguments.jobs)
+    digests = _digests(arguments, selected)
     allowlist = json.loads(TRAJECTORY_ALLOWLIST.read_text(encoding="utf-8"))
-    head = _git_head()
+    head = arguments.base_commit or _git_head()
     summary = {}
     for case_id in selected:
         family = cases[case_id]["family"]
@@ -349,7 +393,7 @@ def command_numeric_report(arguments: argparse.Namespace) -> int:
     try:
         if arguments.before_output and arguments.after_output:
             before, after = arguments.before_output, arguments.after_output
-            parent, child = arguments.parent or "unknown", "given-output"
+            parent, child = arguments.parent or "unknown", arguments.child or "given-output"
         else:
             before, after = scratch / "before", scratch / "after"
             parent = run_case_at(arguments.case, before, scratch, arguments.parent or "HEAD")
@@ -411,7 +455,9 @@ def command_dump(arguments: argparse.Namespace) -> int:
     cases = load_cases()
     selected = select_cases(cases, arguments.tier, arguments.cases)
     arguments.out_dir.mkdir(parents=True, exist_ok=True)
-    for case_id, digest in run_cases(selected, arguments.jobs).items():
+    digests = run_cases(selected, arguments.jobs)
+    _require_available(digests)
+    for case_id, digest in digests.items():
         (arguments.out_dir / f"{case_id}.json").write_text(json.dumps(digest, indent=1, sort_keys=True), encoding="utf-8")
     return 0
 
@@ -438,6 +484,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             command.add_argument("--revision", type=int, help="golden revision the report documents (default: latest)")
             command.add_argument("--before-output", type=Path, help="kept run output of the parent (skips running it)")
             command.add_argument("--after-output", type=Path, help="kept run output of the child (skips running it)")
+            command.add_argument("--child", help="commit that produced --after-output (recorded; default given-output)")
             command.add_argument("--out", type=Path)
             continue
         command.add_argument("--cases", nargs="*")
@@ -445,6 +492,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         command.add_argument("--jobs", type=int, default=None)
         if name == "check":
             command.add_argument("--mode", choices=("exact", "tolerance"))
+        if name in {"init", "revise"}:
+            command.add_argument("--from-output", type=Path,
+                                 help="digest this kept run output of the one selected case instead of running it")
+            command.add_argument("--base-commit", help="commit the digested behaviour belongs to (default HEAD)")
         if name == "init":
             command.add_argument("--reason", default="revision 0: behaviour of the model code at 35aadb3")
             command.add_argument("--twice", action="store_true", help="capture twice and require identical digests")

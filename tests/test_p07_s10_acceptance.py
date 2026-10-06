@@ -176,9 +176,20 @@ class GoldenAttributionTests(unittest.TestCase):
             if case["family"] != "doctoral":
                 continue
             for row in case["revisions"]:
-                if row["m5"] and row["trajectory_columns"]:
-                    self.assertEqual(row["findings"], ["P4-01-thermal"], f"{case_id} r{row['revision']}")
-                    self.assertEqual(case_id, "D4")
+                if not (row["m5"] and row["trajectory_columns"]):
+                    continue
+                if case_id == "D5":
+                    # A12: the GBP1 case was added after M5 with revision 0 at
+                    # 35aadb3, so its one re-baseline consolidates every
+                    # universal trajectory correction (A3, A5 and A4).
+                    self.assertEqual(row["revision"], 1)
+                    self.assertEqual(
+                        sorted(set(row["findings"]) & {"P6-24", "P6-02", "P6-03", "P6-04", "P4-01-thermal"}),
+                        ["P4-01-thermal", "P6-02", "P6-03", "P6-04", "P6-24"],
+                    )
+                    continue
+                self.assertEqual(row["findings"], ["P4-01-thermal"], f"{case_id} r{row['revision']}")
+                self.assertEqual(case_id, "D4")
 
     def test_missing_correction_id_is_reported(self):
         import shutil

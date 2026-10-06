@@ -24,7 +24,9 @@ _os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import argparse
 import contextlib
 import copy
+import hashlib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -37,6 +39,10 @@ if str(ROOT) not in sys.path:
 
 CASES = ROOT / "tests" / "golden" / "cases.json"
 ZONES = ROOT / "tests" / "golden" / "zones.json"
+RESEARCH_PACKS_ENVIRONMENT = "VALUE_P0_5_PACKS"
+# Exit status of run_case.py when the case's research pack is not supplied;
+# capture.py reports such a case as unavailable instead of failed.
+RESEARCH_PACK_UNAVAILABLE_EXIT = 3
 
 
 def load_cases(path: Path = CASES) -> dict[str, dict[str, Any]]:
@@ -169,6 +175,37 @@ def resolve_from_template(case: Mapping[str, Any]) -> dict[str, Any]:
     return project
 
 
+class ResearchPackUnavailable(RuntimeError):
+    """The case runs on a research pack that is not supplied on this host."""
+
+
+def resolve_pack_root(case: Mapping[str, Any]) -> Path:
+    """The data pack directory of a case.
+
+    Repository packs are named by ``pack`` (a path below the repository).
+    Research packs (GBP1 public1, decision A12) are not in the repository: a
+    case names them by ``research_pack`` = {label, manifest_sha256} and the
+    directory is taken from ``VALUE_P0_5_PACKS`` (os.pathsep separated, as
+    for the P0-5 research-pack tests), only when its ``manifest.json`` has
+    the pinned sha256.  Otherwise :class:`ResearchPackUnavailable`.
+    """
+
+    research = case.get("research_pack")
+    if not research:
+        return (ROOT / str(case["pack"])).resolve()
+    wanted = str(research["manifest_sha256"])
+    for item in os.environ.get(RESEARCH_PACKS_ENVIRONMENT, "").split(os.pathsep):
+        if not item.strip():
+            continue
+        manifest = Path(item) / "manifest.json"
+        if manifest.is_file() and hashlib.sha256(manifest.read_bytes()).hexdigest() == wanted:
+            return Path(item).resolve()
+    raise ResearchPackUnavailable(
+        f"golden case {case.get('id')}: research pack {research.get('label')} (manifest sha256 {wanted}) "
+        f"is not in {RESEARCH_PACKS_ENVIRONMENT}"
+    )
+
+
 def run_case(case_id: str, keep_output: Path | None = None) -> dict[str, Any]:
     from gridform_core.application import run_project_application
     from gridform_validation.golden import ZoneRules, digest_run
@@ -177,8 +214,8 @@ def run_case(case_id: str, keep_output: Path | None = None) -> dict[str, Any]:
     if case_id not in cases:
         raise SystemExit(f"unknown golden case {case_id!r}")
     case = dict(cases[case_id], id=case_id)
+    pack_root = resolve_pack_root(case)
     project = build_project(case)
-    pack_root = (ROOT / case["pack"]).resolve()
     network_pack_root = (ROOT / case["network_pack"]).resolve() if case.get("network_pack") else None
     temporary = Path(tempfile.mkdtemp(prefix=f"value-golden-{case_id}-"))
     output = (keep_output or (temporary / "output")).resolve()
@@ -208,7 +245,11 @@ def main() -> int:
     parser.add_argument("case")
     parser.add_argument("--keep-output", type=Path)
     arguments = parser.parse_args()
-    digest = run_case(arguments.case, arguments.keep_output)
+    try:
+        digest = run_case(arguments.case, arguments.keep_output)
+    except ResearchPackUnavailable as exc:
+        sys.stderr.write(f"{exc}\n")
+        return RESEARCH_PACK_UNAVAILABLE_EXIT
     sys.stdout.write(json.dumps(digest, sort_keys=True) + "\n")
     return 0
 
