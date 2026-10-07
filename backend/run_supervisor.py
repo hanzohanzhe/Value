@@ -22,10 +22,14 @@ Lifecycle of a worker:
    gone and the run becomes ``failed``/``cancelled`` with ``GF_WORKER_LOST``.
    Windows needs two free probes at least 5 s apart (asynchronous lock
    release); a worker spawned less than ``SPAWN_GRACE_SECONDS`` ago that is
-   still starting is given time to take its lease.
+   still starting is given time to take its lease.  A run whose inputs this
+   backend is still freezing (``preparing``, A24-5) has no worker yet and is
+   skipped.
 4. ``reconcile_all`` runs once at start-up, synchronously, before the API
    binds: the same judgement for every active run, repair of runs a pre-P0-3
    delete left in ``deleting``, and nothing slow (no hashing, no tree walks).
+   A run left in ``snapshotting`` without a spawn record was being prepared
+   by a backend that stopped; it fails with ``GF_RUN_PREPARATION_INTERRUPTED``.
    Failed-provenance sealing for runs it settles is queued for the background
    sealer thread, and so is sealing for failed runs a previous backend settled
    but could not seal before it stopped (``worker_outcome`` without
@@ -97,6 +101,8 @@ LIVENESS_LOST = "lost"
 LIVENESS_UNVERIFIABLE = "unverifiable"
 LIVENESS_NOT_STARTED = "not_started"
 LIVENESS_NONE = "not_active"
+# A24-5: the backend stopped while it was freezing a run's inputs.
+PREPARATION_INTERRUPTED = "GF_RUN_PREPARATION_INTERRUPTED"
 
 
 class WorkerSpawnError(RuntimeError):
@@ -229,9 +235,13 @@ class RunSupervisor:
         windows: bool | None = None,
         sealer: Callable[[Path, Mapping[str, Any]], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        preparing: Callable[[str], bool] | None = None,
     ) -> None:
         self.runs_root = Path(runs_root)
         self.run_lock = run_lock
+        # A24-5: runs whose inputs this backend is still freezing have no
+        # worker yet and are left alone by the ticks.
+        self.preparing = preparing or (lambda _run_id: False)
         self.interval = float(interval)
         mode = os.environ.get(RECONCILER_ENV, "") if reconciler_mode is None else reconciler_mode
         self.observe_only = mode.strip().lower() == "observe"
@@ -387,15 +397,26 @@ class RunSupervisor:
             "GF_WORKER_EXITED": "The model worker exited before recording a final state.",
             "GF_WORKER_LOST": "The model worker is no longer running.",
             "GF_WORKER_MARKED_LOST": "The model worker was marked lost after confirmation.",
+            PREPARATION_INTERRUPTED: (
+                "VALUE stopped while it was freezing this Run's inputs, before the model "
+                "worker started. Nothing was computed; start the Run again."
+            ),
         }.get(reason_code, "The model worker stopped.")
 
         def apply(current: dict[str, Any]) -> None:
+            if reason_code == PREPARATION_INTERRUPTED:
+                stage = "Run preparation interrupted" if target == "failed" else "Cancelled before the model worker started"
+            else:
+                stage = "Model worker stopped" if target == "failed" else "Cancelled; the model worker stopped"
             current.update({
                 "execution_status": target,
-                "current_stage": "Model worker stopped" if target == "failed" else "Cancelled; the model worker stopped",
+                "current_stage": stage,
                 "finished_at": now(),
                 "worker_outcome": {"reason_code": reason_code, **dict(details)},
             })
+            preparation = current.get("preparation")
+            if reason_code == PREPARATION_INTERRUPTED and isinstance(preparation, dict):
+                preparation.update({"state": "interrupted", "finished_at": now()})
             if target == "failed":
                 current.update({"error": message, "error_code": reason_code, "error_category": "runtime"})
 
@@ -434,9 +455,16 @@ class RunSupervisor:
             if self.clock() - first < WINDOWS_CONFIRM_SECONDS:
                 return LIVENESS_STARTING
         details = {"liveness": liveness, "lease": lease_state(run_dir), "at_startup": startup}
-        settled = self.settle(run_dir, "GF_WORKER_LOST", details)
+        # A24-5: a run still in snapshotting with no spawn record was being
+        # prepared by a backend that stopped before its worker was spawned.
+        reason_code = (
+            PREPARATION_INTERRUPTED
+            if liveness == LIVENESS_NOT_STARTED and classify(status) == "snapshotting"
+            else "GF_WORKER_LOST"
+        )
+        settled = self.settle(run_dir, reason_code, details)
         if report is not None and (settled is not None or self.observe_only):
-            report.settled.append({"run_id": run_id, "reason_code": "GF_WORKER_LOST", **details})
+            report.settled.append({"run_id": run_id, "reason_code": reason_code, **details})
         return LIVENESS_LOST
 
     def tick(self) -> None:
@@ -444,7 +472,7 @@ class RunSupervisor:
             return
         for run_dir in sorted(path for path in self.runs_root.iterdir() if path.is_dir()):
             run_id = run_dir.name
-            if self.owns(run_id):
+            if self.owns(run_id) or self.preparing(run_id):
                 continue
             if classify(read_status(run_dir)) not in ACTIVE_STATES:
                 self._free_seen.pop(run_id, None)
@@ -453,7 +481,7 @@ class RunSupervisor:
             if not lock.acquire(blocking=False):
                 continue  # a request of this backend is starting or changing it
             try:
-                if not self.owns(run_id):
+                if not self.owns(run_id) and not self.preparing(run_id):
                     self.judge(run_dir, startup=False)
             finally:
                 lock.release()
@@ -520,6 +548,9 @@ class RunSupervisor:
         status = read_status(run_dir)
         if classify(status) not in ACTIVE_STATES:
             return 409, {"error": "Only an active run can be marked lost", "error_code": "GF_RUN_NOT_ACTIVE"}
+        if self.preparing(run_id):
+            return 409, {"error": "VALUE is still freezing this Run's inputs; its worker has not started yet",
+                         "error_code": "GF_RUN_PREPARING"}
         liveness, summary = worker_liveness(run_dir, status)
         if liveness in {LIVENESS_ALIVE, LIVENESS_STARTING}:
             return 409, {"error": "The model worker is alive", "error_code": "GF_WORKER_ALIVE",

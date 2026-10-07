@@ -692,6 +692,8 @@ class MigrationApiTests(unittest.TestCase):
                         status, payload = response.status, json.loads(response.read())
                 except urllib.error.HTTPError as error:
                     status, payload = error.code, json.loads(error.read())
+                # A24-5: the worker is spawned by the background preparation.
+                self.assertTrue(server.wait_for_run_preparation(timeout=120))
             self.assertIn(status, {200, 201, 202}, payload)
             self.assertEqual(len(spawned), 1)
             current = json.loads((study / "project.json").read_text(encoding="utf-8"))

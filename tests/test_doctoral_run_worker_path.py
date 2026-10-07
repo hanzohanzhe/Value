@@ -101,9 +101,13 @@ class DoctoralWorkerPathTests(unittest.TestCase):
                 )
                 try:
                     with urllib.request.urlopen(request, timeout=300) as response:
-                        return response.status, json.loads(response.read())
+                        answer = response.status, json.loads(response.read())
                 except urllib.error.HTTPError as error:
-                    return error.code, json.loads(error.read())
+                    answer = error.code, json.loads(error.read())
+                # A24-5: a start answers before its inputs are frozen; wait
+                # for the background preparation while the stubs apply.
+                server.wait_for_run_preparation(timeout=300)
+                return answer
 
             yield post, spawned
 

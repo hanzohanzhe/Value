@@ -161,6 +161,9 @@ class LocalApi:
                 withdraw_session(self.data_home, int(self.httpd.server_address[1]), str(self.token))
                 self._session_published = False
             self.httpd = None
+        # A24-5: a Run start answers before its inputs are frozen; let the
+        # background preparations finish while this server's patches apply.
+        server.wait_for_run_preparation(timeout=120)
         supervisor = getattr(server, "SUPERVISOR", None)
         if supervisor is not None:
             supervisor.stop()

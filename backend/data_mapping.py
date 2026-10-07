@@ -12,7 +12,7 @@ import re
 import shutil
 import time
 from itertools import islice
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 import uuid
 from datetime import datetime, timezone
 
@@ -198,8 +198,12 @@ def _shape(raw: bytes) -> tuple[list[str], int]:
 class DataMappingService:
     def __init__(self, *, packs_root: Path, staging_root: Path, projects_root: Path,
                  trash_root: Path, dataset_slots: Sequence[Mapping[str, object]],
-                 lifecycle_lock: object, ttl_seconds: int = 1800):
+                 lifecycle_lock: object, ttl_seconds: int = 1800,
+                 busy_packs: Callable[[], frozenset[str]] | None = None):
         self.packs_root, self.staging_root = Path(packs_root).absolute(), Path(staging_root).absolute()
+        # A24-5: packs whose files a Run preparation is copying right now; a
+        # commit to one of them is refused instead of racing the snapshot.
+        self.busy_packs = busy_packs or (lambda: frozenset())
         self.projects_root, self.trash_root = Path(projects_root), Path(trash_root)
         self.slots = {str(slot["role"]): dict(slot) for slot in dataset_slots}
         self.lock, self.ttl_seconds = lifecycle_lock, ttl_seconds
@@ -442,6 +446,8 @@ class DataMappingService:
             for field in expected_fields - {"schema_version"}:
                 if request[field] != review.get(field):
                     raise DataMappingError("GF_MAPPING_IDENTITY", "Reviewed mapping identity changed; review again.", 409)
+            if review.get("pack_id") in self.busy_packs():
+                raise DataMappingError("GF_DATA_PACK_FREEZING", "A Run is freezing this data pack's files right now; commit the mapping after the Run is queued.", 409)
             root, manifest, _ = self._target(review["pack_id"], review["target_manifest_sha256"])
             stage_dir, stage = self._load("stages", review["stage_id"])
             source = _bytes(stage_dir / "source.csv", self.staging_root)

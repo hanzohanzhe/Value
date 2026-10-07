@@ -14,9 +14,12 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import time
 import traceback
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
+from types import SimpleNamespace
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -193,7 +196,7 @@ from backend.lifecycle.run_status import (
     update_status,
 )
 from backend.lifecycle.states import ACTIVE_STATES, DELETABLE_STATES, classify
-from backend.lifecycle.worker_lease import lease_state
+from backend.lifecycle.worker_lease import SPAWN_RECORD, lease_state
 from backend.run_supervisor import SHUTDOWN_SEAL_SECONDS, RunSupervisor, WorkerSpawnError, worker_liveness
 from backend.api_session import new_token, publish_session, withdraw_session
 from backend.api_security import (
@@ -246,11 +249,70 @@ STUDY_LIFECYCLE_LOCK = threading.RLock()
 ORCHESTRATOR_ENGINES = LEGACY_ORCHESTRATOR_ENGINES
 REPLAY_EXPORT_JOBS_LOCK = threading.RLock()
 # Global lock order (P0_CONVENTIONS section 5): .backend.lock ->
-# STUDY_LIFECYCLE_LOCK -> RUN_ACTION_LOCKS[run_id] -> MODULE_LIFECYCLE_LOCK ->
-# <runs>/.reservation.lock -> <run>/status.lock.  Every server-side status
-# change of one run is serialised under its RUN_ACTION_LOCKS entry.
+# STUDY_LIFECYCLE_LOCK -> EXECUTION_CAPTURE_LOCK -> RUN_ACTION_LOCKS[run_id] ->
+# MODULE_LIFECYCLE_LOCK -> <runs>/.reservation.lock -> <run>/status.lock.
+# Every server-side status change of one run is serialised under its
+# RUN_ACTION_LOCKS entry.  STUDY_LIFECYCLE_LOCK guards only short catalogue
+# sections (A24-5, F5-08): a Run start holds it to admit the run and to write
+# its first status, never while it freezes inputs; the freeze runs in a
+# background preparation thread (``_prepare_run``) that holds no lock between
+# its status writes except EXECUTION_CAPTURE_LOCK around the execution
+# archive.  _RUN_PREPARATIONS_GUARD is a leaf lock.
 RUN_ACTION_LOCKS: dict[str, threading.RLock] = {}
 _RUN_ACTION_LOCKS_GUARD = threading.Lock()
+# One execution capture at a time: it activates module import paths and may
+# publish the shared execution archive (gridform_core.execution_archive).
+EXECUTION_CAPTURE_LOCK = threading.Lock()
+# Runs whose inputs this backend is freezing now: run_id -> (thread, pack ids).
+RUN_PREPARATIONS: dict[str, tuple[threading.Thread, frozenset[str]]] = {}
+_RUN_PREPARATIONS_GUARD = threading.Lock()
+RUN_PREPARATION_SCHEMA = "value.run-preparation/v1"
+GF_DATA_PACK_FREEZING = "GF_DATA_PACK_FREEZING"
+DATA_PACK_FREEZING_MESSAGE = (
+    "A Run is freezing this data pack's files right now; replace the role after the Run is queued."
+)
+# The preparation stages after admission, in order (status.json "preparation").
+RUN_PREPARATION_STAGES: tuple[tuple[str, str], ...] = (
+    ("execution", "Recording and archiving the execution environment"),
+    ("snapshot", "Freezing the Study's inputs"),
+    ("resources", "Checking disk space and reserving output space"),
+    ("worker", "Starting the model worker"),
+)
+
+
+def run_is_preparing(run_id: str) -> bool:
+    """Is this backend freezing the run's inputs right now?"""
+
+    with _RUN_PREPARATIONS_GUARD:
+        return run_id in RUN_PREPARATIONS
+
+
+def packs_being_frozen() -> frozenset[str]:
+    """Data packs whose files a run preparation of this backend is copying."""
+
+    with _RUN_PREPARATIONS_GUARD:
+        return frozenset(pack for _thread, packs in RUN_PREPARATIONS.values() for pack in packs)
+
+
+def wait_for_run_preparation(run_id: str | None = None, timeout: float = 120.0) -> bool:
+    """Join one (or every) running preparation; True when none is left.
+
+    For tests and orderly shutdown; the API never waits for a preparation.
+    """
+
+    deadline = time.monotonic() + timeout
+    while True:
+        with _RUN_PREPARATIONS_GUARD:
+            threads = [
+                thread for key, (thread, _packs) in RUN_PREPARATIONS.items()
+                if run_id is None or key == run_id
+            ]
+        if not threads:
+            return True
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        threads[0].join(timeout=remaining)
 
 
 def run_action_lock(run_id: str) -> threading.RLock:
@@ -324,7 +386,10 @@ def run_supervisor() -> RunSupervisor:
     global SUPERVISOR
     with _SUPERVISOR_GUARD:
         if SUPERVISOR is None or SUPERVISOR.runs_root != RUNS_ROOT:
-            SUPERVISOR = RunSupervisor(RUNS_ROOT, run_lock=run_action_lock, sealer=_seal_failed_run)
+            SUPERVISOR = RunSupervisor(
+                RUNS_ROOT, run_lock=run_action_lock, sealer=_seal_failed_run,
+                preparing=run_is_preparing,
+            )
         return SUPERVISOR
 
 
@@ -520,6 +585,392 @@ def _mark_unfinished_start_failed(run_dir: Path) -> None:
             }, "GF_RUN_START_FAILED")
     except (LifecycleError, OSError) as exc:  # the original error is re-raised
         print(f"VALUE: could not record the failed start of {run_dir.name}: {exc}", file=sys.stderr)
+
+
+def _file_sha256(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _preparation_record(started_epoch: float) -> dict[str, Any]:
+    """The initial ``preparation`` block of a new Run's status (A24-5)."""
+
+    stage_id, label = RUN_PREPARATION_STAGES[0]
+    started = datetime.fromtimestamp(started_epoch).astimezone().isoformat(timespec="seconds")
+    return {
+        "schema_version": RUN_PREPARATION_SCHEMA,
+        "state": "preparing",
+        "stage": stage_id,
+        "stage_label": label,
+        "stage_index": 1,
+        "stage_count": len(RUN_PREPARATION_STAGES),
+        "started_at": started,
+        "started_epoch": round(started_epoch, 3),
+        "stage_started_at": started,
+        "stage_started_epoch": round(started_epoch, 3),
+        "stages": [],
+    }
+
+
+def _forget_run_preparation(run_id: str) -> None:
+    with _RUN_PREPARATIONS_GUARD:
+        RUN_PREPARATIONS.pop(run_id, None)
+
+
+def _close_preparation_stage(preparation: dict[str, Any], at_epoch: float) -> None:
+    """Append the stage that just ended to ``preparation["stages"]``."""
+
+    started = float(preparation.get("stage_started_epoch") or at_epoch)
+    stages = preparation.setdefault("stages", [])
+    stages.append({
+        "stage": preparation.get("stage"),
+        "label": preparation.get("stage_label"),
+        "started_at": preparation.get("stage_started_at"),
+        "seconds": round(max(0.0, at_epoch - started), 3),
+    })
+
+
+def _finish_preparation(status: dict[str, Any], state: str) -> None:
+    """Close the preparation block of ``status`` in its final ``state``."""
+
+    preparation = status.get("preparation")
+    if not isinstance(preparation, dict):
+        return
+    at = time.time()
+    if preparation.get("state") == "preparing":
+        _close_preparation_stage(preparation, at)
+    started = float(preparation.get("started_epoch") or at)
+    preparation.update({
+        "state": state,
+        "finished_at": now(),
+        "elapsed_seconds": round(max(0.0, at - started), 3),
+    })
+
+
+@dataclass
+class _RunPreparation:
+    """Everything the background preparation of one admitted Run needs."""
+
+    run_id: str
+    run_dir: Path
+    project: dict[str, Any]
+    project_id: str
+    mode: str
+    policy: Any
+    run_start: int
+    run_end: int
+    preflight: dict[str, Any]
+    pack_root: Path
+    pack_selection: Any
+    teaching_run_extensions: dict[str, object]
+    lineage: dict[str, object] | None
+    registry: Any
+
+
+class _PreparationStopped(Exception):
+    """The preparation recorded a final state and stops (not an error)."""
+
+
+def _preparation_stage(context: _RunPreparation, stage_id: str) -> None:
+    """Enter ``stage_id``; a cancellation requested meanwhile ends the Run.
+
+    Every status write happens under the run's action lock (P0-3), held only
+    for the write itself.
+    """
+
+    index = next(i for i, (key, _label) in enumerate(RUN_PREPARATION_STAGES) if key == stage_id)
+    label = RUN_PREPARATION_STAGES[index][1]
+    run_dir = context.run_dir
+    with run_action_lock(context.run_id):
+        if (run_dir / "cancel-request.json").is_file():
+            def cancelled(status: dict[str, Any]) -> None:
+                _finish_preparation(status, "cancelled")
+                status.update({
+                    "execution_status": "cancelled",
+                    "current_stage": "Cancelled before the model worker started",
+                    "finished_at": now(),
+                })
+
+            update_status(
+                run_dir, mutate=cancelled, transition="cancelled",
+                reason_code="GF_RUN_CANCELLED_BEFORE_WORKER", writer=WRITER_SERVER,
+            )
+            raise _PreparationStopped()
+        if index == 0:
+            return  # the first stage was recorded with the status itself
+
+        def advance(status: dict[str, Any]) -> None:
+            preparation = status.get("preparation")
+            if not isinstance(preparation, dict):
+                preparation = status["preparation"] = _preparation_record(time.time())
+            at = time.time()
+            _close_preparation_stage(preparation, at)
+            stamp = datetime.fromtimestamp(at).astimezone().isoformat(timespec="seconds")
+            preparation.update({
+                "stage": stage_id,
+                "stage_label": label,
+                "stage_index": index + 1,
+                "stage_started_at": stamp,
+                "stage_started_epoch": round(at, 3),
+            })
+            status["current_stage"] = label
+
+        update_status(run_dir, mutate=advance, writer=WRITER_SERVER)
+
+
+def _preparation_failed(run_dir: Path, fields: Mapping[str, Any], reason_code: str) -> dict[str, Any]:
+    """Record a preparation failure (snapshotting -> failed) with its stage."""
+
+    def failed(status: dict[str, Any]) -> None:
+        stage = (status.get("preparation") or {}).get("stage") if isinstance(status.get("preparation"), dict) else None
+        _finish_preparation(status, "failed")
+        status.update({**fields, "execution_status": "failed"})
+        if stage:
+            status["preparation"]["failed_stage"] = stage
+
+    return update_status(
+        run_dir, mutate=failed, transition="failed", reason_code=reason_code, writer=WRITER_SERVER,
+    )
+
+
+def _prepare_run(context: _RunPreparation) -> None:
+    """Background preparation of one admitted Run (A24-5).
+
+    Freezes the execution environment and the inputs, checks the snapshot
+    resources, reserves output space, queues the Run and spawns its worker.
+    Every outcome is recorded in ``status.json``: ``queued`` (and a spawned
+    worker), ``failed`` with an error code and the stage that failed, or
+    ``cancelled`` when the user cancelled before the worker started.  An
+    unexpected error never leaves the Run in ``snapshotting``; if the whole
+    backend stops meanwhile, the next start-up reconciler records
+    ``GF_RUN_PREPARATION_INTERRUPTED``.
+    """
+
+    run_dir = context.run_dir
+    try:
+        with run_action_lock(context.run_id):
+            pass  # wait until the creating request released the run
+        _prepare_run_stages(context)
+    except _PreparationStopped:
+        pass
+    except BaseException as exc:  # noqa: BLE001 - recorded, never raised into the thread runner
+        try:
+            with run_action_lock(context.run_id):
+                current = read_json(run_dir / "status.json", {})
+                if isinstance(current, Mapping) and current.get("status") in {"snapshotting", "queued"} \
+                        and not (run_dir / SPAWN_RECORD).exists():
+                    _preparation_failed(run_dir, {
+                        "current_stage": "Run preparation failed",
+                        "error_code": "GF_RUN_PREPARATION_FAILED",
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "error_category": "runtime",
+                    }, "GF_RUN_PREPARATION_FAILED")
+        except (LifecycleError, OSError) as record_error:
+            print(f"VALUE: could not record the failed preparation of {context.run_id}: {record_error}", file=sys.stderr)
+        print(f"VALUE: preparation of {context.run_id} failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+    finally:
+        _forget_run_preparation(context.run_id)
+
+
+def _prepare_run_stages(context: _RunPreparation) -> None:
+    run_id, run_dir, registry = context.run_id, context.run_dir, context.registry
+    project, preflight, policy = context.project, context.preflight, context.policy
+    pack_selection = context.pack_selection
+    selected = dict(project.get("modules") or {})
+    selected.setdefault("transition", "value-annual-state-transition")
+    psm_manifest = registry.manifest(str(selected["psm"]), expected_slot="psm")
+    if "storage.bid-cost-function" in psm_manifest.requires_capabilities:
+        selected.setdefault("storage_cost", "dynamic-annual-storage-cost")
+    try:
+        _preparation_stage(context, "execution")
+        verify_recovered_inputs(project, context.pack_root, pack_selection.network_pack_root)
+        with EXECUTION_CAPTURE_LOCK:
+            execution_record = current_execution(source_root=PROJECT_ROOT, data_home=STATE_ROOT, archive=True)
+        project = bind_run_execution(project, run_dir, execution_record)
+        _preparation_stage(context, "snapshot")
+        snapshot = create_run_input_snapshot(
+            run_dir=run_dir,
+            project=project,
+            pack_root=context.pack_root,
+            registry=registry,
+            selected=selected,
+            object_root=OBJECTS_ROOT,
+            network_pack_root=pack_selection.network_pack_root,
+        )
+        _preparation_stage(context, "resources")
+        readiness = preflight.get("resource_readiness")
+        if isinstance(readiness, Mapping):
+            snapshot_root = run_dir / "input-snapshot"
+            volume = shutil.disk_usage(RUNS_ROOT)
+            quota_policy = RunQuotaPolicy()
+            snapshot_estimate, snapshot_decision, readiness = (
+                resource_readiness_from_snapshot(
+                    project=project,
+                    policy=policy.to_dict(project),
+                    run_id=run_id,
+                    snapshot_root=snapshot_root,
+                    registry=registry,
+                    calibration_root=STATE_ROOT / "resource-calibration",
+                    selected_output_root=RUNS_ROOT,
+                    free_bytes=volume.free,
+                    target_volume_bytes=volume.total,
+                    quota_policy=quota_policy,
+                    calibration_runner=selected_staged_zonal_calibration_runner(
+                        project=project,
+                        pack_root=snapshot_root / "pack",
+                        network_pack_root=snapshot_root / "network-pack",
+                        registry=registry,
+                    ),
+                    usage=quota_usage(RUNS_ROOT, exclude_run=run_id),
+                )
+            )
+            preflight = {
+                **dict(preflight),
+                "checks": {
+                    **dict(preflight.get("checks") or {}),
+                    "disk": {
+                        "passed": bool(snapshot_decision["accepted"]),
+                        **snapshot_decision,
+                        "estimated_persisted_bytes": (
+                            snapshot_estimate.persisted_bytes
+                        ),
+                        "estimated_temporary_bytes": (
+                            snapshot_estimate.temporary_bytes
+                        ),
+                        "reserve_bytes": snapshot_estimate.reserve_bytes,
+                        "identity_source": "immutable_input_snapshot",
+                    },
+                },
+                "estimates": {
+                    "label": "estimate_not_guarantee",
+                    **snapshot_estimate.to_dict(),
+                    "periods": snapshot_estimate.row_cardinality["periods"],
+                    "ledger_rows": dict(snapshot_estimate.row_cardinality),
+                    "disk_bytes": snapshot_estimate.persisted_bytes,
+                    "context_copies": snapshot_estimate.calibration_basis[
+                        "context_copies"
+                    ],
+                    "persisted_safety_multiplier": (
+                        snapshot_estimate.calibration_basis[
+                            "persisted_safety_multiplier"
+                        ]
+                    ),
+                },
+                "resource_readiness": readiness,
+            }
+            if not snapshot_decision["accepted"]:
+                atomic_json(run_dir / "preflight.json", preflight)
+                with run_action_lock(run_id):
+                    _preparation_failed(run_dir, {
+                        "current_stage": "Snapshot resource gate refused",
+                        "error": "Snapshot-normalized output does not fit quota",
+                        "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
+                        "quota": snapshot_decision,
+                    }, "VALUE_PREFLIGHT_DISK_SPACE")
+                return
+        estimate = output_reservation_bytes(
+            preflight.get("estimates") or {}
+        )
+        reservation = reserve_run_space(RUNS_ROOT, run_id, estimate)
+        if not reservation["accepted"]:
+            with run_action_lock(run_id):
+                _preparation_failed(run_dir, {
+                    "current_stage": "Disk reservation refused",
+                    "error": "Run disk quota or free-space floor was not satisfied",
+                    "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
+                    "quota": reservation,
+                }, "VALUE_PREFLIGHT_DISK_SPACE")
+            return
+        atomic_json(run_dir / "preflight.json", preflight)
+        with run_action_lock(run_id):
+            update_status(
+                run_dir,
+                mutate=lambda status: status.update({"quota": reservation}),
+                writer=WRITER_SERVER,
+            )
+        if isinstance(readiness, Mapping):
+            frozen_readiness = {
+                **dict(readiness),
+                "quota_decision": reservation,
+            }
+            freeze_resource_readiness(
+                run_dir / "input-snapshot", frozen_readiness
+            )
+            snapshot = read_json(
+                run_dir / "input-snapshot" / "snapshot.json", {}
+            )
+    except LockTimeout:
+        with run_action_lock(run_id):
+            _preparation_failed(run_dir, {
+                "current_stage": "Disk reservation lock busy",
+                "error": "VALUE is busy with another change to the same records; start the Run again shortly.",
+                "error_code": "GF_RUN_RESERVATION_LOCK_TIMEOUT",
+            }, "GF_RUN_RESERVATION_LOCK_TIMEOUT")
+        return
+    except (OSError, ValueError, SnapshotError, ResourceSnapshotMismatch) as exc:
+        code = (
+            getattr(exc, "code", None)
+            if isinstance(exc, (ExecutionArchiveError, SnapshotError)) else None
+        )
+        with run_action_lock(run_id):
+            _preparation_failed(run_dir, {
+                "current_stage": "Input snapshot failed",
+                "error_code": code or "GF_INPUT_SNAPSHOT_FAILED",
+                "error": str(exc),
+            }, code or "GF_INPUT_SNAPSHOT_FAILED")
+        return
+    _preparation_stage(context, "worker")
+    initial = {"id": run_id, "project_id": context.project_id, "project_name": project["name"],
+               "mode": context.mode, "current_stage": "Waiting for the model process to start",
+               "execution_engine": "value-annual-orchestrator/v2",
+               "completed_years": 0,
+               "total_years": context.run_end - context.run_start + 1,
+               "run_policy": policy.to_dict(project),
+               "execution_status": "queued",
+               "contract_validation_status": "not_evaluated",
+               "scientific_validation_status": "not_evaluated",
+               "input_snapshot_id": snapshot["snapshot_id"],
+               "input_tree_sha256": snapshot["input_tree_sha256"],
+               "extensions": context.teaching_run_extensions,
+               "results": []}
+    recovery = dict(project.get("extensions") or {}).get("frozen_recovery")
+    if recovery:
+        initial["frozen_recovery"] = recovery
+        atomic_json(run_dir / "frozen-recovery-lineage.json", recovery)
+    initial["execution_identity_sha256"] = execution_record["identity_sha256"]
+    lineage = context.lineage
+    if lineage is not None:
+        initial["comparison_parent_run_id"] = lineage["comparison_parent_run_id"]
+        initial["run_lineage_artifact"] = "run-lineage.json"
+        atomic_json(run_dir / "run-lineage.json", lineage)
+
+    def queue(status: dict[str, Any]) -> None:
+        status.update(initial)
+        _finish_preparation(status, "queued")
+
+    # Queue and spawn under the run's action lock, like every spawn (P0-3).
+    with run_action_lock(run_id):
+        update_status(
+            run_dir,
+            mutate=queue,
+            transition="queued",
+            reason_code="GF_RUN_QUEUED",
+            writer=WRITER_SERVER,
+        )
+        try:
+            run_supervisor().spawn_worker(
+                run_dir=run_dir, run_id=run_id, project_id=context.project_id, mode=context.mode,
+                python=sys.executable, cwd=PROJECT_ROOT, log_mode="w", extra=None,
+            )
+        except WorkerSpawnError as exc:
+            _record_start_failure(run_dir, {
+                "current_stage": "Model worker could not start",
+                "error_code": "GF_WORKER_SPAWN_FAILED",
+                "error": str(exc),
+            }, "GF_WORKER_SPAWN_FAILED")
 
 
 def read_json(path: Path, fallback: Any = None) -> Any:
@@ -1335,6 +1786,18 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
             # the persisted status stays with the worker until it stops.
             run["persisted_status"] = run.get("status")
             run["status"] = "cancel_requested"
+    preparation = run.get("preparation")
+    if isinstance(preparation, dict) and preparation.get("state") == "preparing":
+        # A24-5: how long the background preparation has been running, and
+        # whether this backend is still running it (shown on Runs and Learn).
+        preparation = run["preparation"] = dict(preparation)
+        at = time.time()
+        for key, epoch_key in (("elapsed_seconds", "started_epoch"), ("stage_elapsed_seconds", "stage_started_epoch")):
+            try:
+                preparation[key] = round(max(0.0, at - float(preparation[epoch_key])), 1)
+            except (KeyError, TypeError, ValueError):
+                preparation[key] = None
+        preparation["in_progress"] = bool(run.get("id")) and run_is_preparing(str(run["id"]))
     if run.get("id") and run_root.is_dir():
         liveness, worker = worker_liveness(run_root, run)
         run["worker_liveness"] = liveness
@@ -1636,6 +2099,7 @@ class Handler(BaseHTTPRequestHandler):
             packs_root=PACKS_ROOT, staging_root=IMPORT_STAGING_ROOT / "csv-mapping",
             projects_root=PROJECTS_ROOT, trash_root=TRASH_ROOT,
             dataset_slots=all_registered_dataset_slots(), lifecycle_lock=STUDY_LIFECYCLE_LOCK,
+            busy_packs=packs_being_frozen,
         )
 
     def _small_upload_body(self) -> bytes:
@@ -2463,6 +2927,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             with STUDY_LIFECYCLE_LOCK:
                 manifest = read_json(manifest_path)
+                if pack_id in packs_being_frozen():
+                    raise DataPackCloneError(GF_DATA_PACK_FREEZING, DATA_PACK_FREEZING_MESSAGE)
                 guard_clone_upload(manifest, manifest_path, self.headers.get("X-Expected-Pack-Revision"), PROJECTS_ROOT, TRASH_ROOT)
                 binding, validation = promote_binding_revision(
                     pack_root=PACKS_ROOT / pack_id,
@@ -2850,22 +3316,59 @@ class Handler(BaseHTTPRequestHandler):
         project_override: dict[str, object] | None = None,
         lineage: dict[str, object] | None = None,
     ) -> None:
-        with STUDY_LIFECYCLE_LOCK:
-            self._start_run_locked(
-                project_id,
-                body,
-                project_override=project_override,
-                lineage=lineage,
-            )
+        """Admit a Run, answer 202 at once and freeze its inputs in the background.
 
-    def _start_run_locked(
+        A24-5 (F5-08, P1-11, O-1, N-4, L-4).  Three short phases run in the
+        request: admission under STUDY_LIFECYCLE_LOCK (validation, scope,
+        revision), the readiness check (preflight, no lock; a refusal is still a
+        400 with the preflight report and leaves no Run) and the creation of
+        the Run in ``snapshotting`` under STUDY_LIFECYCLE_LOCK, which first
+        checks that the saved Study did not change meanwhile.  The execution
+        archive, the input snapshot, the disk reservation and the worker spawn
+        then run in a preparation thread (``_prepare_run``) that reports its
+        stage in ``status.json`` ("preparation") and never holds
+        STUDY_LIFECYCLE_LOCK, so saving, cloning, trash and other Studies are
+        not blocked while one Run freezes.
+        """
+
+        with STUDY_LIFECYCLE_LOCK:
+            admission = self._admit_run(project_id, body, project_override=project_override)
+        if admission is None:
+            return
+        preflight = self._preflight_admitted_run(admission)
+        if preflight is None:
+            return
+        with STUDY_LIFECYCLE_LOCK:
+            created = self._create_preparing_run(admission, preflight, lineage=lineage)
+        if created is None:
+            return
+        status, thread = created
+        try:
+            thread.start()
+        except RuntimeError as exc:  # no thread could be started
+            _forget_run_preparation(admission.run_id)
+            failed = _record_start_failure(RUNS_ROOT / admission.run_id, {
+                "current_stage": "Run preparation could not start",
+                "error_code": "GF_RUN_PREPARATION_FAILED",
+                "error": str(exc),
+            }, "GF_RUN_PREPARATION_FAILED")
+            self._json({"error": str(exc), "error_code": "GF_RUN_PREPARATION_FAILED", "run": failed}, 500)
+            return
+        # Outside every failure boundary of the preparation: a client that
+        # disconnects while this answer is sent never fails the Run (review
+        # M1-P0-3 #4).
+        self._json({"ok": True, "run": present_run(dict(status))}, 202)
+
+    def _admit_run(
         self,
         project_id: str,
         body: dict[str, Any],
         *,
         project_override: dict[str, object] | None = None,
-        lineage: dict[str, object] | None = None,
-    ) -> None:
+    ) -> SimpleNamespace | None:
+        """Phase 1 of a start (caller holds STUDY_LIFECYCLE_LOCK); ``None``
+        after an error that has already been answered."""
+
         # One registry for the whole admission: a module lifecycle change that
         # finishes meanwhile must not swap it halfway (C6; P0-2 review).
         registry = MODULE_REGISTRY
@@ -2875,7 +3378,7 @@ class Handler(BaseHTTPRequestHandler):
             else read_json(PROJECTS_ROOT / project_id / "project.json")
         )
         if not project:
-            self._json({"error": "project not found"}, 404); return
+            self._json({"error": "project not found"}, 404); return None
         if CATALOG_STALE:
             raise ModuleQuarantinedError(
                 "GF_MODULE_CATALOG_STALE",
@@ -2893,15 +3396,15 @@ class Handler(BaseHTTPRequestHandler):
                     "error": upgrade_event.get("message", validation["errors"][0]),
                     "error_code": "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED",
                     "validation": validation,
-                }, status_for_code("GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")); return
-            self._json({"error": validation["errors"][0], "validation": validation}, 400); return
+                }, status_for_code("GF_SOLVER_CONTRACT_UPGRADE_REQUIRED")); return None
+            self._json({"error": validation["errors"][0], "validation": validation}, 400); return None
         mode = str(body.get("mode", "smoke"))
         try:
             verify_recovered_configuration(project, mode=mode)
             policy = resolve_run_policy(mode)
             run_start, run_end = policy.years(project)
         except ValueError as exc:
-            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_RUN_REQUEST_INVALID"}, 400); return
+            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_RUN_REQUEST_INVALID"}, 400); return None
         pack_root = PACKS_ROOT / str(project["data_pack_id"])
         pack_manifest = read_json(pack_root / "manifest.json", {})
         try:
@@ -2909,7 +3412,7 @@ class Handler(BaseHTTPRequestHandler):
                 project, base_pack_root=pack_root, data_home=STATE_ROOT
             )
         except ValueError as exc:
-            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_ZONAL_PACK_SELECTION"}, 400); return
+            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_ZONAL_PACK_SELECTION"}, 400); return None
         run_id = bounded_run_id(
             project_id,
             timestamp=datetime.now().strftime("%Y%m%d-%H%M%S"),
@@ -2939,27 +3442,44 @@ class Handler(BaseHTTPRequestHandler):
                         "error": "This Study needs review before it runs: the installed VALUE computes it differently from its saved revision.",
                         "error_code": classification["error_code"],
                         "revision_migration": classification,
-                    }, 409); return
+                    }, 409); return None
             else:
                 project = attach_revision_identity(
                     project, registry, pack_selection.revision_manifest
                 )
         except RevisionMigrationError as exc:
-            self._json({"error": str(exc), "error_code": exc.code, "revision_migration": exc.classification}, 409); return
+            self._json({"error": str(exc), "error_code": exc.code, "revision_migration": exc.classification}, 409); return None
         except ValueError as exc:
-            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_PROJECT_REVISION"}, 409); return
+            self._json({"error": str(exc), "error_code": getattr(exc, "code", None) or "GF_PROJECT_REVISION"}, 409); return None
+        record_path = PROJECTS_ROOT / project_id / "project.json"
+        return SimpleNamespace(
+            registry=registry, project=project, project_id=project_id, mode=mode,
+            policy=policy, run_start=run_start, run_end=run_end, pack_root=pack_root,
+            pack_manifest=pack_manifest, pack_selection=pack_selection, run_id=run_id,
+            teaching_run_extensions=teaching_run_extensions,
+            saved_study=project_override is None,
+            # The saved Study as admitted; the Run is created only if it is
+            # still byte-identical after the unlocked readiness check.
+            study_record_sha256=_file_sha256(record_path) if project_override is None else None,
+        )
+
+    def _preflight_admitted_run(self, admission: SimpleNamespace) -> dict[str, Any] | None:
+        """Phase 2 of a start: the readiness check, outside STUDY_LIFECYCLE_LOCK."""
+
+        project, registry = admission.project, admission.registry
+        pack_root, pack_selection = admission.pack_root, admission.pack_selection
         preflight = run_preflight(
             project,
-            mode=mode,
+            mode=admission.mode,
             pack_root=pack_root,
-            pack_manifest=pack_manifest,
+            pack_manifest=admission.pack_manifest,
             dataset_slots=DATASET_SLOTS,
             registry=registry,
             output_root=RUNS_ROOT,
             runs_root=RUNS_ROOT,
             network_pack_root=pack_selection.network_pack_root,
             resource_calibration_root=STATE_ROOT / "resource-calibration",
-            preflight_run_id=run_id,
+            preflight_run_id=admission.run_id,
             resource_calibration_runner=(
                 selected_staged_zonal_calibration_runner(
                     project=project,
@@ -2977,8 +3497,46 @@ class Handler(BaseHTTPRequestHandler):
         )
         if not preflight["accepted"]:
             first = preflight["errors"][0]
-            self._json({"error": first["message"], "error_code": first.get("code") or "GF_PREFLIGHT_REFUSED", "preflight": preflight}, 400); return
+            self._json({"error": first["message"], "error_code": first.get("code") or "GF_PREFLIGHT_REFUSED", "preflight": preflight}, 400)
+            return None
+        return preflight
+
+    def _create_preparing_run(
+        self,
+        admission: SimpleNamespace,
+        preflight: dict[str, Any],
+        *,
+        lineage: dict[str, object] | None,
+    ) -> tuple[dict[str, Any], threading.Thread] | None:
+        """Phase 3 of a start (caller holds STUDY_LIFECYCLE_LOCK): create the
+        Run in ``snapshotting`` and register its preparation thread (not yet
+        started).  ``None`` after an error that has already been answered."""
+
+        run_id, project, project_id = admission.run_id, admission.project, admission.project_id
+        if admission.saved_study:
+            current = _file_sha256(PROJECTS_ROOT / project_id / "project.json")
+            if current != admission.study_record_sha256:
+                self._json({
+                    "error": "The Study was saved, moved or removed while VALUE checked its readiness; no Run was started. Start it again.",
+                    "error_code": "GF_RUN_START_STUDY_CHANGED",
+                }, 409)
+                return None
         run_dir = RUNS_ROOT / run_id
+        packs = frozenset(
+            path.name for path in (admission.pack_root, admission.pack_selection.network_pack_root)
+            if path is not None
+        )
+        context = _RunPreparation(
+            run_id=run_id, run_dir=run_dir, project=project, project_id=project_id,
+            mode=admission.mode, policy=admission.policy, run_start=admission.run_start,
+            run_end=admission.run_end, preflight=preflight, pack_root=admission.pack_root,
+            pack_selection=admission.pack_selection,
+            teaching_run_extensions=admission.teaching_run_extensions, lineage=lineage,
+            registry=admission.registry,
+        )
+        thread = threading.Thread(
+            target=_prepare_run, args=(context,), name=f"value-run-preparation-{run_id}", daemon=True,
+        )
         # Every server-side status change of the run happens under its action
         # lock from the first write on, so a supervisor tick never judges a run
         # that is still being created (review M1-P0-3 #3).
@@ -2986,229 +3544,31 @@ class Handler(BaseHTTPRequestHandler):
             run_dir.mkdir(parents=True, exist_ok=False)
             # The run is visible from the moment its directory exists (R1-13): a
             # start that fails later leaves a failed status, never an orphan.
-            create_status(run_dir, {
-                "id": run_id, "project_id": project_id,
-                "project_name": project.get("name"), "mode": mode,
-                "status": "snapshotting", "execution_status": "queued",
-                "execution_engine": "value-annual-orchestrator/v2",
-                "current_stage": "Freezing immutable run inputs",
-                "created_at": now(), "results": [],
-                "extensions": teaching_run_extensions,
-                "methodology": methodology_record(project),
-            })
+            # The preparation is registered before the action lock is released,
+            # so a supervisor tick never judges a run that is being prepared.
             try:
-                queued = self._freeze_and_queue_run(
-                    run_id=run_id, run_dir=run_dir, project=project, project_id=project_id,
-                    mode=mode, policy=policy, run_start=run_start, run_end=run_end,
-                    preflight=preflight, pack_root=pack_root, pack_selection=pack_selection,
-                    teaching_run_extensions=teaching_run_extensions, lineage=lineage,
-                    registry=registry,
-                )
+                started_epoch = time.time()
+                status = create_status(run_dir, {
+                    "id": run_id, "project_id": project_id,
+                    "project_name": project.get("name"), "mode": admission.mode,
+                    "status": "snapshotting", "execution_status": "queued",
+                    "execution_engine": "value-annual-orchestrator/v2",
+                    "current_stage": RUN_PREPARATION_STAGES[0][1],
+                    "created_at": now(), "results": [],
+                    "completed_years": 0,
+                    "total_years": admission.run_end - admission.run_start + 1,
+                    "extensions": admission.teaching_run_extensions,
+                    "methodology": methodology_record(project),
+                    "preparation": _preparation_record(started_epoch),
+                })
+                with _RUN_PREPARATIONS_GUARD:
+                    RUN_PREPARATIONS[run_id] = (thread, packs)
             except BaseException:
+                _forget_run_preparation(run_id)
                 _mark_unfinished_start_failed(run_dir)
                 raise
-        if queued is not None:
-            # Outside the start's failure boundary: the worker has been
-            # spawned, and a client that disconnects while this answer is sent
-            # must not fail its run (review M1-P0-3 #4).
-            self._json({"ok": True, "run": queued}, 202)
-
-    def _freeze_and_queue_run(
-        self,
-        *,
-        run_id: str,
-        run_dir: Path,
-        project: dict[str, Any],
-        project_id: str,
-        mode: str,
-        policy: Any,
-        run_start: int,
-        run_end: int,
-        preflight: dict[str, Any],
-        pack_root: Path,
-        pack_selection: Any,
-        teaching_run_extensions: dict[str, object],
-        lineage: dict[str, object] | None,
-        registry: Any,
-    ) -> dict[str, Any] | None:
-        """Freeze inputs, queue the run and spawn its worker.
-
-        Returns the queued status once the worker is spawned; ``None`` after an
-        error that has already been answered.  The caller sends the 202.
-        """
-
-        selected = dict(project.get("modules") or {})
-        selected.setdefault("transition", "value-annual-state-transition")
-        psm_manifest = registry.manifest(str(selected["psm"]), expected_slot="psm")
-        if "storage.bid-cost-function" in psm_manifest.requires_capabilities:
-            selected.setdefault("storage_cost", "dynamic-annual-storage-cost")
-        try:
-            verify_recovered_inputs(project, pack_root, pack_selection.network_pack_root)
-            execution_record = current_execution(source_root=PROJECT_ROOT, data_home=STATE_ROOT, archive=True)
-            project = bind_run_execution(project, run_dir, execution_record)
-            snapshot = create_run_input_snapshot(
-                run_dir=run_dir,
-                project=project,
-                pack_root=pack_root,
-                registry=registry,
-                selected=selected,
-                object_root=OBJECTS_ROOT,
-                network_pack_root=pack_selection.network_pack_root,
-            )
-            readiness = preflight.get("resource_readiness")
-            if isinstance(readiness, Mapping):
-                snapshot_root = run_dir / "input-snapshot"
-                volume = shutil.disk_usage(RUNS_ROOT)
-                quota_policy = RunQuotaPolicy()
-                snapshot_estimate, snapshot_decision, readiness = (
-                    resource_readiness_from_snapshot(
-                        project=project,
-                        policy=policy.to_dict(project),
-                        run_id=run_id,
-                        snapshot_root=snapshot_root,
-                        registry=registry,
-                        calibration_root=STATE_ROOT / "resource-calibration",
-                        selected_output_root=RUNS_ROOT,
-                        free_bytes=volume.free,
-                        target_volume_bytes=volume.total,
-                        quota_policy=quota_policy,
-                        calibration_runner=selected_staged_zonal_calibration_runner(
-                            project=project,
-                            pack_root=snapshot_root / "pack",
-                            network_pack_root=snapshot_root / "network-pack",
-                            registry=registry,
-                        ),
-                        usage=quota_usage(RUNS_ROOT, exclude_run=run_id),
-                    )
-                )
-                preflight = {
-                    **dict(preflight),
-                    "checks": {
-                        **dict(preflight.get("checks") or {}),
-                        "disk": {
-                            "passed": bool(snapshot_decision["accepted"]),
-                            **snapshot_decision,
-                            "estimated_persisted_bytes": (
-                                snapshot_estimate.persisted_bytes
-                            ),
-                            "estimated_temporary_bytes": (
-                                snapshot_estimate.temporary_bytes
-                            ),
-                            "reserve_bytes": snapshot_estimate.reserve_bytes,
-                            "identity_source": "immutable_input_snapshot",
-                        },
-                    },
-                    "estimates": {
-                        "label": "estimate_not_guarantee",
-                        **snapshot_estimate.to_dict(),
-                        "periods": snapshot_estimate.row_cardinality["periods"],
-                        "ledger_rows": dict(snapshot_estimate.row_cardinality),
-                        "disk_bytes": snapshot_estimate.persisted_bytes,
-                        "context_copies": snapshot_estimate.calibration_basis[
-                            "context_copies"
-                        ],
-                        "persisted_safety_multiplier": (
-                            snapshot_estimate.calibration_basis[
-                                "persisted_safety_multiplier"
-                            ]
-                        ),
-                    },
-                    "resource_readiness": readiness,
-                }
-                if not snapshot_decision["accepted"]:
-                    atomic_json(run_dir / "preflight.json", preflight)
-                    failed = _record_start_failure(run_dir, {
-                        "current_stage": "Snapshot resource gate refused",
-                        "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
-                        "quota": snapshot_decision,
-                    }, "VALUE_PREFLIGHT_DISK_SPACE")
-                    self._json({
-                        "error": "Snapshot-normalized output does not fit quota",
-                        "run": failed,
-                    }, 507)
-                    return
-            estimate = output_reservation_bytes(
-                preflight.get("estimates") or {}
-            )
-            reservation = reserve_run_space(RUNS_ROOT, run_id, estimate)
-            if not reservation["accepted"]:
-                failed = _record_start_failure(run_dir, {
-                    "current_stage": "Disk reservation refused",
-                    "error_code": "VALUE_PREFLIGHT_DISK_SPACE",
-                    "quota": reservation,
-                }, "VALUE_PREFLIGHT_DISK_SPACE")
-                self._json({
-                    "error": "Run disk quota or free-space floor was not satisfied",
-                    "run": failed,
-                }, 507)
-                return
-            atomic_json(run_dir / "preflight.json", preflight)
-            update_status(
-                run_dir,
-                mutate=lambda status: status.update({"quota": reservation}),
-                writer=WRITER_SERVER,
-            )
-            if isinstance(readiness, Mapping):
-                frozen_readiness = {
-                    **dict(readiness),
-                    "quota_decision": reservation,
-                }
-                freeze_resource_readiness(
-                    run_dir / "input-snapshot", frozen_readiness
-                )
-                snapshot = read_json(
-                    run_dir / "input-snapshot" / "snapshot.json", {}
-                )
-        except LockTimeout:
-            _record_start_failure(run_dir, {
-                "current_stage": "Disk reservation lock busy",
-                "error_code": "GF_RUN_RESERVATION_LOCK_TIMEOUT",
-            }, "GF_RUN_RESERVATION_LOCK_TIMEOUT")
-            raise
-        except (OSError, ValueError, SnapshotError, ResourceSnapshotMismatch) as exc:
-            code = (
-                getattr(exc, "code", None)
-                if isinstance(exc, (ExecutionArchiveError, SnapshotError)) else None
-            )
-            failed = _record_start_failure(run_dir, {
-                "current_stage": "Input snapshot failed",
-                "error_code": code or "GF_INPUT_SNAPSHOT_FAILED",
-                "error": str(exc),
-            }, code or "GF_INPUT_SNAPSHOT_FAILED")
-            self._json({"error": str(exc), "error_code": code or "GF_INPUT_SNAPSHOT_FAILED", "run": failed}, 409)
-            return
-        initial = {"id": run_id, "project_id": project_id, "project_name": project["name"],
-                   "mode": mode, "current_stage": "Waiting for the model process to start",
-                   "execution_engine": "value-annual-orchestrator/v2",
-                   "completed_years": 0,
-                   "total_years": run_end - run_start + 1,
-                   "run_policy": policy.to_dict(project),
-                   "execution_status": "queued",
-                   "contract_validation_status": "not_evaluated",
-                   "scientific_validation_status": "not_evaluated",
-                   "input_snapshot_id": snapshot["snapshot_id"],
-                   "input_tree_sha256": snapshot["input_tree_sha256"],
-                   "extensions": teaching_run_extensions,
-                   "results": []}
-        recovery = dict(project.get("extensions") or {}).get("frozen_recovery")
-        if recovery:
-            initial["frozen_recovery"] = recovery
-            atomic_json(run_dir / "frozen-recovery-lineage.json", recovery)
-        initial["execution_identity_sha256"] = execution_record["identity_sha256"]
-        if lineage is not None:
-            initial["comparison_parent_run_id"] = lineage["comparison_parent_run_id"]
-            initial["run_lineage_artifact"] = "run-lineage.json"
-            atomic_json(run_dir / "run-lineage.json", lineage)
-        initial = update_status(
-            run_dir,
-            mutate=lambda status: status.update(initial),
-            transition="queued",
-            reason_code="GF_RUN_QUEUED",
-            writer=WRITER_SERVER,
-        )
-        if not self._spawn_or_fail(run_dir, run_id=run_id, project_id=project_id, mode=mode, log_mode="w"):
-            return None
-        return initial
+        status["status"] = "snapshotting"
+        return status, thread
 
     def _spawn_or_fail(self, run_dir: Path, *, run_id: str, project_id: str, mode: str,
                        log_mode: str, extra: Mapping[str, Any] | None = None) -> bool:

@@ -1,7 +1,12 @@
 """Global lock order assertions (C6, P0_CONVENTIONS section 5).
 
-    .backend.lock -> STUDY_LIFECYCLE_LOCK -> RUN_ACTION_LOCKS[run]
-      -> MODULE_LIFECYCLE_LOCK -> <runs>/.reservation.lock -> <run>/status.lock
+    .backend.lock -> STUDY_LIFECYCLE_LOCK -> EXECUTION_CAPTURE_LOCK
+      -> RUN_ACTION_LOCKS[run] -> MODULE_LIFECYCLE_LOCK
+      -> <runs>/.reservation.lock -> <run>/status.lock
+
+A24-5: a Run start holds STUDY_LIFECYCLE_LOCK only to admit the Run and to
+create it; the background preparation that freezes its inputs runs in its own
+thread and is recorded here too (the recorder keeps one stack per thread).
 
 P0-3 lands the run-side part: every acquisition made while starting,
 cancelling, archiving and deleting runs is recorded per thread and must never
@@ -26,7 +31,7 @@ from backend import server
 from backend.lifecycle import file_locks
 from tests.local_api_harness import start_local_api
 
-RANKS = {"backend": 0, "study": 1, "run_action": 2, "module": 3, "reservation": 4, "status": 5}
+RANKS = {"backend": 0, "study": 1, "execution": 2, "run_action": 3, "module": 4, "reservation": 5, "status": 6}
 
 
 class _Recorder:
@@ -123,6 +128,7 @@ class LockOrderTests(unittest.TestCase):
 
         stubs = {
             "STUDY_LIFECYCLE_LOCK": _RecordingRLock(recorder, "study"),
+            "EXECUTION_CAPTURE_LOCK": _RecordingRLock(recorder, "execution"),
             "run_action_lock": run_action_lock,
             "validate_project": lambda project: {"valid": True, "errors": []},
             "verify_recovered_configuration": lambda *a, **k: None,
@@ -157,6 +163,7 @@ class LockOrderTests(unittest.TestCase):
     def test_run_side_acquisitions_follow_the_global_order(self) -> None:
         statuses = [self._post("/api/projects/study/runs", {"mode": "value_101_day"}) for _ in range(3)]
         self.assertEqual(statuses, [202, 202, 202])
+        self.assertTrue(server.wait_for_run_preparation(timeout=30))
         runs = sorted(path.name for path in (self.home / "runs").iterdir() if path.is_dir())
         self.assertEqual(self._post(f"/api/runs/{runs[0]}/cancel", {}), 202)
         from backend.lifecycle.run_status import update_status
@@ -169,8 +176,9 @@ class LockOrderTests(unittest.TestCase):
         for thread in threads:
             thread.join(timeout=30)
             self.assertFalse(thread.is_alive())
+        self.assertTrue(server.wait_for_run_preparation(timeout=30))
         self.assertEqual(self.recorder.violations, [])
-        for name in ("study", "run_action", "reservation", "status"):
+        for name in ("study", "execution", "run_action", "reservation", "status"):
             self.assertIn(name, self.recorder.events)
 
     def _runs(self) -> list[Path]:
@@ -194,6 +202,7 @@ class LockOrderTests(unittest.TestCase):
 
         with patch.object(server, "create_status", create_then_tick):
             self.assertEqual(self._post("/api/projects/study/runs", {"mode": "value_101_day"}), 202)
+        self.assertTrue(server.wait_for_run_preparation(timeout=30))
         self.assertEqual(seen, ["snapshotting"])
         [run_dir] = self._runs()
         status = read_status(run_dir)
@@ -219,6 +228,7 @@ class LockOrderTests(unittest.TestCase):
                 self._post("/api/projects/study/runs", {"mode": "value_101_day"})
             except (OSError, urllib.error.URLError, http.client.HTTPException):
                 pass  # the client sees the dropped connection
+        self.assertTrue(server.wait_for_run_preparation(timeout=30))
         [run_dir] = self._runs()
         status = read_status(run_dir)
         self.assertEqual(status["status"], "queued")
@@ -244,6 +254,7 @@ class LockOrderTests(unittest.TestCase):
         with patch.object(server, "run_preflight", preflight), \
                 patch.object(server, "create_run_input_snapshot", snapshot):
             self.assertEqual(self._post("/api/projects/study/runs", {"mode": "value_101_day"}), 202)
+            self.assertTrue(server.wait_for_run_preparation(timeout=30))
         self.assertEqual(len(seen), 2)
         self.assertIs(seen[0], admitted)
         self.assertIs(seen[1], admitted)
@@ -307,6 +318,7 @@ class LockOrderTests(unittest.TestCase):
         for thread in threads:
             thread.join(timeout=30)
             self.assertFalse(thread.is_alive(), "module lifecycle and run starts deadlocked")
+        self.assertTrue(server.wait_for_run_preparation(timeout=30), "run preparations deadlocked")
         self.assertEqual(outcomes["module"], [200] * 50)
         self.assertEqual(outcomes["run"], [202] * 50)
         self.assertEqual(self.recorder.violations, [])

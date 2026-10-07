@@ -282,48 +282,57 @@ class StartRunQuotaHttpTests(unittest.TestCase):
         self.addCleanup(registry.stop)
 
     def _start(self):
+        """POST a start and wait for its background preparation (A24-5)."""
+
         request = urllib.request.Request(f"{self.origin}/api/projects/study/runs", method="POST",
                                          data=json.dumps({"mode": "value_101_day"}).encode(),
                                          headers={"Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
-                return response.status, json.loads(response.read()), dict(response.headers)
+                answer = response.status, json.loads(response.read()), dict(response.headers)
         except urllib.error.HTTPError as error:
-            return error.code, json.loads(error.read()), dict(error.headers)
+            answer = error.code, json.loads(error.read()), dict(error.headers)
+        self.assertTrue(server.wait_for_run_preparation(timeout=60))
+        return answer
 
     def _only_run(self) -> dict:
         [run_dir] = [path for path in (self.home / "runs").iterdir() if path.is_dir()]
         return read_status(run_dir)
 
-    def test_t6_lock_timeout_answers_503_and_leaves_a_visible_failed_run(self) -> None:
+    # A24-5: these outcomes arise after the 202, in the background
+    # preparation; each leaves a visible failed Run with its code and stage.
+    def test_t6_lock_timeout_leaves_a_visible_failed_run(self) -> None:
         with patch.object(server, "reserve_run_space", side_effect=LockTimeout(self.home / "runs" / ".reservation.lock", 5)):
-            status, payload, headers = self._start()
-        self.assertEqual(status, 503, payload)
-        self.assertEqual(headers.get("Retry-After"), "5")
+            status, payload, _ = self._start()
+        self.assertEqual(status, 202, payload)
+        self.assertEqual(payload["run"]["status"], "snapshotting")
         run = self._only_run()
         self.assertEqual((run["status"], run["error_code"]), ("failed", "GF_RUN_RESERVATION_LOCK_TIMEOUT"))
+        self.assertEqual((run["preparation"]["state"], run["preparation"]["failed_stage"]), ("failed", "resources"))
 
-    def test_refused_reservation_answers_507_with_a_failed_run(self) -> None:
+    def test_refused_reservation_leaves_a_failed_run(self) -> None:
         with patch.object(server, "reserve_run_space", return_value={"accepted": False, "reason_codes": ["global_quota_exceeded"]}):
-            status, payload, _ = self._start()
-        self.assertEqual(status, 507)
-        self.assertEqual(payload["run"]["status"], "failed")
-        self.assertEqual(self._only_run()["error_code"], "VALUE_PREFLIGHT_DISK_SPACE")
-
-    def test_spawn_failure_answers_500_json_with_a_failed_run(self) -> None:
-        with patch.object(server.RunSupervisor, "spawn_worker", side_effect=server.WorkerSpawnError("no exec")):
-            status, payload, _ = self._start()
-        self.assertEqual(status, 500)
-        self.assertEqual(payload["error_code"], "GF_WORKER_SPAWN_FAILED")
+            status, _payload, _ = self._start()
+        self.assertEqual(status, 202)
         run = self._only_run()
-        self.assertEqual(run["status"], "failed")
+        self.assertEqual((run["status"], run["error_code"]), ("failed", "VALUE_PREFLIGHT_DISK_SPACE"))
+        self.assertEqual(run["quota"]["reason_codes"], ["global_quota_exceeded"])
+
+    def test_spawn_failure_leaves_a_failed_run(self) -> None:
+        with patch.object(server.RunSupervisor, "spawn_worker", side_effect=server.WorkerSpawnError("no exec")):
+            status, _payload, _ = self._start()
+        self.assertEqual(status, 202)
+        run = self._only_run()
+        self.assertEqual((run["status"], run["error_code"]), ("failed", "GF_WORKER_SPAWN_FAILED"))
         self.assertEqual([entry["to"] for entry in run["lifecycle_history"]], ["snapshotting", "queued", "failed"])
 
-    def test_unexpected_start_error_never_leaves_snapshotting(self) -> None:
+    def test_unexpected_preparation_error_never_leaves_snapshotting(self) -> None:
         with patch.object(server, "create_run_input_snapshot", side_effect=RuntimeError("boom")):
-            status, payload, _ = self._start()
-        self.assertEqual(status, 500)
-        self.assertEqual(self._only_run()["error_code"], "GF_RUN_START_FAILED")
+            status, _payload, _ = self._start()
+        self.assertEqual(status, 202)
+        run = self._only_run()
+        self.assertEqual((run["status"], run["error_code"]), ("failed", "GF_RUN_PREPARATION_FAILED"))
+        self.assertIn("boom", run["error"])
 
 
 if __name__ == "__main__":

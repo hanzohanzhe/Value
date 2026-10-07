@@ -118,14 +118,18 @@ class Handler(BaseHTTPRequestHandler):
 
 ```
 .backend.lock (进程单例, 文件锁)
-  → STUDY_LIFECYCLE_LOCK (server.py, RLock)
-    → RUN_ACTION_LOCKS[run_id]
-      → MODULE_LIFECYCLE_LOCK
-        → <runs>/.reservation.lock (run_quota._reservation_lock, 文件锁)
-          → <run>/status.lock (status 写入 API 内部)
+  → STUDY_LIFECYCLE_LOCK (server.py, RLock；只用于短的目录区段)
+    → EXECUTION_CAPTURE_LOCK (server.py, Lock；R3-4 新增)
+      → RUN_ACTION_LOCKS[run_id]
+        → MODULE_LIFECYCLE_LOCK
+          → <runs>/.reservation.lock (run_quota._reservation_lock, 文件锁)
+            → <run>/status.lock (status 写入 API 内部)
 ```
 
 - 持有 `MODULE_LIFECYCLE_LOCK` 时不得再申请 `STUDY_LIFECYCLE_LOCK`。
+- **R3-4（A24-5，F5-08 / P1-11）拆分后的约定：** 启动 Run 分三段。第一段在 `STUDY_LIFECYCLE_LOCK` 内完成准入（校验、范围、Study 修订迁移）；第二段 preflight 不持锁；第三段再次持锁，先确认已保存的 Study 文件与准入时逐字节相同（否则 409 `GF_RUN_START_STUDY_CHANGED`，不建 Run），再在 `RUN_ACTION_LOCKS[run_id]` 内建目录、写 `snapshotting` 状态并登记准备线程。随后立即答复 202。执行归档、输入快照、磁盘预留和 worker 启动在后台准备线程 `_prepare_run` 中进行：它**从不持有** `STUDY_LIFECYCLE_LOCK`；只在每次写状态时短暂持有 `RUN_ACTION_LOCKS[run_id]`（排队和 spawn 也在其中，与 P0-3 相同）；执行归档期间持有进程内的 `EXECUTION_CAPTURE_LOCK`（同一时间只做一次执行身份采集和归档，因为它改 `sys.path` 并可能发布共享归档）。
+- 不按 Study 再分锁：准备线程用的是准入时冻结在内存中的 Study 副本；Run 处于 `snapshotting`（活动状态）时，Study 移入回收站、VALUE 101 重置、模块删除都已因“有活动 Run”被拒绝；数据包文件的替换（上传、映射提交）在该包正被冻结时返回 409 `GF_DATA_PACK_FREEZING`。
+- `_RUN_PREPARATIONS_GUARD` 是叶子锁：持有它时不得申请上表任何锁。监督器的 tick 跳过本后端正在准备的 Run；后端在准备途中停止时，下次启动的 reconcile 把仍处于 `snapshotting`、没有 spawn 记录的 Run 记为 failed（`GF_RUN_PREPARATION_INTERRUPTED`）。
 - start-run 在拿预留锁之前取好缓存的模块注册表，不在持锁期间扫描磁盘上的模块。
 - `REPLAY_EXPORT_JOBS_LOCK` 是叶子锁：持有它时不得申请上表任何锁。
 - 断言测试（由先落地的 P0-2/P0-3 提交新增，放在 `tests/test_lock_order.py`）：两个线程交叉执行“启停模块”和“启动 Run”各 50 次，`join(timeout=30)` 不超时；并对 `acquire` 打桩记录顺序，断言符合上表。
