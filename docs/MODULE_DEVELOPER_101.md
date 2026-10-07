@@ -102,7 +102,8 @@ launch a hidden ten-year script.
 `contract_version` in `value-module.json` must be exactly the ID in this table.
 The installer checks it against `SUPPORTED_CONTRACTS` in
 `gridform_core/v2/module_manifest.py` and rejects any other ID, including the
-pre-VALUE `gridform.*` form, for example:
+pre-VALUE `gridform.*` form, with the error code `GF_MODULE_CONTRACT_MISMATCH`
+and, for example, the message
 `Module my-module in slot storage_cost uses gridform.storage-cost/v1; expected value.storage-cost/v1`.
 
 Authoritative definitions are in `gridform_core/v2/interfaces.py`,

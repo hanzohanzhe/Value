@@ -173,9 +173,8 @@ def check_slot_contract(manifest: ModuleManifest) -> None:
                    if str(manifest.contract_version).startswith("gridform.") else "")
         raise ModuleInstallationError(
             "GF_MODULE_CONTRACT_MISMATCH",
-            f"The manifest declares contract {manifest.contract_version!r} for slot {manifest.slot!r}; "
-            f"this VALUE requires {expected!r}. Set contract_version to {expected!r} and rebuild the bundle."
-            + retired,
+            f"Module {manifest.id} in slot {manifest.slot} uses {manifest.contract_version}; expected {expected}. "
+            f"Set contract_version to {expected} in the manifest and rebuild the bundle." + retired,
         )
 
 

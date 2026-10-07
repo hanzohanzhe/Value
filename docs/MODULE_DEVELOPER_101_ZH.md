@@ -111,7 +111,7 @@ orchestrator 拥有年份循环。第三方 module 只实现自己的阶段，�
 
 `value-module.json` 中的 `contract_version` 必须与上表完全一致。安装器按
 `gridform_core/v2/module_manifest.py` 的 `SUPPORTED_CONTRACTS` 核对，其他写法一律拒绝，
-包括改名之前的 `gridform.*` 写法，例如：
+包括改名之前的 `gridform.*` 写法；错误代码为 `GF_MODULE_CONTRACT_MISMATCH`，信息例如：
 `Module my-module in slot storage_cost uses gridform.storage-cost/v1; expected value.storage-cost/v1`。
 
 权威接口定义：
@@ -532,8 +532,8 @@ ZIP 在 staging 中通过验证后，才原子保存 module/version、安装记�
 Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入失败的结果会被记住，
 点 **Rescan**（Modules 页顶部，以及每个停用或隔离条目上都有）才会重试；
 **Enable** 会先清除记住的失败，所以它报告的总是一次新扫描的结果。**Rescan**
-还会重新导入所有已安装的 module 和扩展，所以原地修改把一个已加载的 module 改坏时，
-它会立即被隔离，而不是等到下一次 Run 或重启。
+还会重新导入所有已安装的 module 和每个已启用扩展的钩子，所以原地修改把一个已加载的
+module 或扩展钩子改坏时，它会立即被隔离，而不是等到下一次 Check readiness、Run 或重启。
 
 ### 停用与隔离区
 
@@ -569,10 +569,14 @@ Rescan（按第 2 节记录），也可以先 Remove 再安装修好的 bundle�
 2. 同时提高 manifest（`gridform_core/manifests/<id>.json`）和实现类中的版本号。
 3. 在 `docs/release/VERSION_LEDGER.json` 追加一条 bump（`from`、`to`、`package`、
    `correction_ids`、`reason`、`requires_user_opt_in`）。`true` 表示已保存的 Study
-   运行前要在界面中明确确认方法升级，`false` 只用于纯代码改动。用
-   `python -B scripts/check_version_ledger.py` 检查。
+   运行前要在界面中明确确认方法升级，`false` 只用于纯代码改动。每个 correction id
+   都必须已登记：在 `gridform_core/data/methodology/corrections/` 中，或列在
+   `CHANGELOG.md` 的 “Correction ids” 表中。用
+   `python -B scripts/check_version_ledger.py` 检查；未登记（例如拼错）的 id 会报错，
+   因为它会原样出现在用户看到的确认框里。
 4. 改动 `runtime_compat/` 之后必须登记：
-   `python -B scripts/seal_runtime_overlay.py --correction <id>`。登记之前，
+   `python -B scripts/seal_runtime_overlay.py --correction <id>`（使用该 bump 的 id；
+   未登记的 id 会被拒绝）。登记之前，
    Check readiness 以 `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED` 拒绝所有 Run；
    经 API 启动的 Run 会以 `GF_COMPATIBILITY_001` 停止。
 5. 重新生成 `docs/generated/` 并运行测试；数值变化要在同一 correction id 下修订
