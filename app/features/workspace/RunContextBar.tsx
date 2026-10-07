@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FROZEN_MANIFEST_LABEL, FROZEN_MANIFEST_NOTE, resolveRunContext, type ContextRun, type FrozenRunContext } from "./runContext";
+import { FROZEN_MANIFEST_LABEL, FROZEN_MANIFEST_NOTE, extensionMarkers, resolveRunContext, type ContextRun, type FrozenRunContext } from "./runContext";
 import { GATE_TEXT, NOTICE_ACTION_LABELS, advisorySummaryText, type CheckField, type NoticeAction, type RunAdvisory, type RunNotice } from "./runValidation.ts";
 import { Callout, StatusPill } from "../shared/Callout";
 import "./run-context.css";
@@ -76,7 +76,7 @@ export default function RunContextBar({ run, frozen, actions = {} }: {
       <div><span className="run-context-eyebrow">Selected Run · read-only source</span>
         <strong>{context.studyName ?? context.studyId ?? "No Run selected"}</strong>
         {context.runId && <code>{context.runId}</code>}
-        {context.runId && <span className="run-context-profile value-new-control"><StatusPill tone={context.profile.tone} title={context.profile.title}>{context.profile.text}</StatusPill></span>}
+        {context.runId && <span className="run-context-profile value-new-control"><StatusPill tone={context.profile.tone} title={context.profile.title}>{context.profile.text}</StatusPill>{extensionMarkers(run).map((marker) => <StatusPill key={marker.key} tone={marker.tone} title={marker.title}>{marker.text}</StatusPill>)}</span>}
       </div>
       {context.runId && <div className="run-context-statuses">
         <span><small>Execution</small><b>{label(context.executionStatus)}</b></span>

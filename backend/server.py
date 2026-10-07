@@ -1734,6 +1734,37 @@ def running_stage_text(run: Mapping[str, Any], completed_years: set[int]) -> str
     return f"Computing year {next_year} (period-level progress not reported by this model)"
 
 
+def run_selected_extensions(run_root: Path) -> list[dict[str, Any]]:
+    """The extensions of a Run's frozen Study with their declared maturity (R4 F-低4).
+
+    Read from the Study snapshot the worker writes: version and maturity as
+    its module graph recorded them, else from the catalogue when the
+    extension is still registered, else not recorded.  An empty list for a
+    Run without extensions (or not started).
+    """
+
+    project = read_json(run_root / "project-snapshot.json")
+    if not isinstance(project, dict):
+        return []
+    graph = project.get("module_resolution_graph") if isinstance(project.get("module_resolution_graph"), dict) else {}
+    extension_graph = graph.get("extension_graph") if isinstance(graph.get("extension_graph"), dict) else {}
+    recorded = {str(row.get("id")): row for row in extension_graph.get("extensions") or [] if isinstance(row, dict)}
+    try:
+        registered = MODULE_REGISTRY.extension_manifests()
+    except Exception:  # a stale catalogue never breaks a listing
+        registered = {}
+    rows = []
+    for extension_id in dict.fromkeys(str(item) for item in project.get("selected_extensions") or () if item):
+        manifest = registered.get(extension_id)
+        row = recorded.get(extension_id) or {}
+        rows.append({
+            "id": extension_id,
+            "version": row.get("version") or getattr(manifest, "version", None),
+            "maturity": row.get("maturity") or getattr(manifest, "maturity", None),
+        })
+    return rows
+
+
 def market_ledger_module_evidence(run_root: Path, module_id: str) -> dict[str, Any] | None:
     """Evidence that the PSM priced storage offers with ``module_id`` (R4 M-中1).
 
@@ -1815,6 +1846,10 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                     "severity": "warning",
                     "message": "Module progress evidence is incomplete or unreadable.",
                 })
+        # R4 F-低4: the Run carries the extensions its frozen Study selected,
+        # so the run header can mark experimental local code.
+        if "selected_extensions" not in run:
+            run["selected_extensions"] = run_selected_extensions(run_root)
         # Scientific status presentation lives in one function (X0 S10a, C7):
         # status vocabulary, advisories and the Q14 publication rule (S10b).
         present_scientific_status(run, run_root)

@@ -6,6 +6,7 @@ import { codeIdentityUpdate } from "../../../app/features/studies/studyMigration
 import { derivationNotes } from "../../../app/features/modules/derivationNotes.ts";
 import { environmentBlockers, preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
 import { moduleEvidenceText } from "../../../app/features/runs/runHistoryView.ts";
+import { extensionMarkers } from "../../../app/features/workspace/runContext.ts";
 
 // R4 (DECISIONS A27), four-role report sections 4.3 and 5.3: edit-module and
 // add-feature defects (M-*, F-*).
@@ -100,4 +101,18 @@ test("F-低2: disabled entries name their ID next to a shared display name", () 
 test("F-低5: the pending-runs question names extensions for an extension change", () => {
   assert.match(pendingRunsQuestion("Runs have not finished.", "extensions"), /Change the installed extensions anyway\?$/);
   assert.match(pendingRunsQuestion("Runs have not finished."), /Change the installed modules anyway\?$/);
+});
+
+test("F-低4: extension markers of a Run header", () => {
+  assert.deepEqual(extensionMarkers(null), []);
+  assert.deepEqual(extensionMarkers({ selected_extensions: [] }), []);
+  const [experimental, ready, unknown] = extensionMarkers({ selected_extensions: [
+    { id: "uatf-observer", version: "0.1.0", maturity: "experimental" },
+    { id: "value-zonal-redispatch-extension", version: "2.0.0", maturity: "ready" },
+    { id: "gone-extension", version: null, maturity: null },
+  ] });
+  assert.deepEqual([experimental.text, experimental.tone], ["Experimental extension: uatf-observer 0.1.0", "caution"]);
+  assert.deepEqual([ready.text, ready.tone], ["Extension: value-zonal-redispatch-extension 2.0.0", "muted"]);
+  assert.equal(unknown.text, "Experimental extension: gone-extension");
+  assert.match(unknown.title, /no recorded maturity/);
 });

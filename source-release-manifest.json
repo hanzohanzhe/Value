@@ -3594,8 +3594,8 @@
     },
     {
       "path": "app/features/runs/types.ts",
-      "sha256": "b9b092683a65141f2c2a6045985d5958baaf3f9e301e22ef385a5d98d4eab946",
-      "bytes": 7137,
+      "sha256": "df961eef2dcf52fec2ebddc862b01119844ac194693a3f8e976133ee3708b375",
+      "bytes": 7306,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3822,8 +3822,8 @@
     },
     {
       "path": "app/features/workspace/RunContextBar.tsx",
-      "sha256": "c95f68f371a52ede2d63cc7067a14d87c50f7a7ac1ea71aaeecf946fec4ff383",
-      "bytes": 9183,
+      "sha256": "f7e23e53313908f30300738dee41780c92d219e18689429bb383988b930aeed6",
+      "bytes": 9337,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3876,8 +3876,8 @@
     },
     {
       "path": "app/features/workspace/run-context-validation.css",
-      "sha256": "24b6d6c86b0d6f178d7dbbd0a451f248843a04cc10c356920e43fdf80935f9b6",
-      "bytes": 2234,
+      "sha256": "c0a19b615e57530357655ecbd57263e31528b489e312f7767fa108a686713101",
+      "bytes": 2248,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3888,8 +3888,8 @@
     },
     {
       "path": "app/features/workspace/runContext.ts",
-      "sha256": "fdbb6e578ae00ba9fc7e311a801607920f0d66f96b553c0aee12f900a32df5a3",
-      "bytes": 8656,
+      "sha256": "3dcb84bc2441172f54536771e265f7b1dadc0d5bfcfa39a50be9b7dc6646a9a2",
+      "bytes": 9914,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4086,8 +4086,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "8a24ea6edd487d5834093ecdec3e7f33af252c6f3f797ef2b9ff982a2c6e85b0",
-      "bytes": 233274,
+      "sha256": "9fd14d62d0dda5feb3950f2f25122dd66ebd13f2ccd6e4859d54db670e095557",
+      "bytes": 235058,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10897,8 +10897,8 @@
     },
     {
       "path": "tests/frontend/render/r4-module-extension-panels.test.mjs",
-      "sha256": "b41af9816d4755af3c0666895170b75af640c1d320f6f4f700e77576da26b036",
-      "bytes": 1277,
+      "sha256": "14c2453b676ed23956b1a603c26acdf0a5014bc05ef40d0fc0f7921c8b24d7ae",
+      "bytes": 2395,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11053,8 +11053,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-module-extension-defects.test.mjs",
-      "sha256": "0c1a33e890c6e916140c7947d897025a45c6b1088c4e9ee30d85c4a6a40f7771",
-      "bytes": 7959,
+      "sha256": "85ab70e4a5081cdcad029f1ec3609a1d5f1e965fb2750cf81dcbb54c1b0c67a3",
+      "bytes": 8890,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12865,8 +12865,8 @@
     },
     {
       "path": "tests/test_r4_module_extension_defects.py",
-      "sha256": "636e3fed6e005b6d410c3a1983932888d1cd696056a205954a06705684e05740",
-      "bytes": 42588,
+      "sha256": "c7b707e30f9389c6a5f94403d683b81224d7e3e1386f537c31f74f3d1c9bb517",
+      "bytes": 43820,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

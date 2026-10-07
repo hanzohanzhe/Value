@@ -2,7 +2,7 @@
    and notices of the Run context bar. New elements only; existing tokens only;
    body text >= 13px, helper text >= 12px. */
 
-.run-context-profile { display: flex; flex-wrap: wrap; max-width: 100%; margin-top: 2px; }
+.run-context-profile { display: flex; flex-wrap: wrap; gap: 4px 6px; max-width: 100%; margin-top: 2px; }
 .run-context-profile .value-pill { white-space: normal; }
 
 .run-context-validation-field small { font-size: 12px; }

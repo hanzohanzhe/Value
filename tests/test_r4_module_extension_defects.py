@@ -538,6 +538,26 @@ class StorageCostEvidenceTests(unittest.TestCase):
                          ("market_ledger", 48, [2025]))
         self.assertEqual(run["module_evidence"][PSM]["actions"], 1)
 
+    def test_run_lists_its_frozen_extensions(self) -> None:
+        """F-低4: the Run carries its Study's extensions and their declared maturity."""
+
+        from backend import server
+
+        with tempfile.TemporaryDirectory() as folder:
+            runs = Path(folder)
+            (runs / "r2").mkdir()
+            (runs / "r2" / "project-snapshot.json").write_text(json.dumps({
+                "id": "p", "selected_extensions": ["uatf-observer", "value-toy-audit-extension"],
+                "module_resolution_graph": {"extension_graph": {"extensions": [
+                    {"id": "uatf-observer", "version": "0.1.0", "maturity": "experimental"}]}},
+            }), encoding="utf-8")
+            with patch.object(server, "RUNS_ROOT", runs):
+                rows = server.run_selected_extensions(runs / "r2")
+                self.assertEqual(server.run_selected_extensions(runs / "missing"), [])
+        self.assertEqual(rows[0], {"id": "uatf-observer", "version": "0.1.0", "maturity": "experimental"})
+        builtin = server.MODULE_REGISTRY.extension_manifests()["value-toy-audit-extension"]
+        self.assertEqual(rows[1], {"id": "value-toy-audit-extension", "version": builtin.version, "maturity": builtin.maturity})
+
     def test_no_evidence_is_invented(self) -> None:
         self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger("dynamic-annual-storage-cost")["module_evidence"])
         self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger(None)["module_evidence"])

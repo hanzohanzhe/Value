@@ -25,7 +25,30 @@ export type ContextRun = RunValidationFields & {
   source_study_status?: string;
   run_policy?: { label?: string; total_periods?: number; start_year?: number; end_year?: number };
   diagnostic?: { total_periods?: number; years?: number[] };
+  /** R4 F-低4: extensions of the Run's frozen Study (backend present_run). */
+  selected_extensions?: { id: string; version?: string | null; maturity?: string | null }[];
 };
+
+export type ExtensionMarker = { key: string; text: string; tone: "caution" | "muted"; title: string };
+
+/**
+ * R4 F-低4: a Run that executed extension hooks says so in its header. Any
+ * extension that is not declared "ready" is marked experimental.
+ */
+export function extensionMarkers(run?: Pick<ContextRun, "selected_extensions"> | null): ExtensionMarker[] {
+  return (Array.isArray(run?.selected_extensions) ? run.selected_extensions : [])
+    .filter((row) => row && typeof row.id === "string" && row.id)
+    .map((row) => {
+      const ready = row.maturity === "ready";
+      const label = `${row.id}${row.version ? ` ${row.version}` : ""}`;
+      return {
+        key: row.id,
+        text: `${ready ? "Extension" : "Experimental extension"}: ${label}`,
+        tone: ready ? "muted" : "caution",
+        title: ready ? "This Run executed the hooks of this extension." : `This Run executed the hooks of an extension declared ${row.maturity ? row.maturity.replaceAll("_", " ") : "with no recorded maturity"}; it is not a scientifically validated baseline.`,
+      };
+    });
+}
 
 export type FrozenContextProject = {
   id?: string;

@@ -52,6 +52,8 @@ export type ModelRun = RunValidationFields & {
   recovery?: RecoveryCapability;
   comparison_parent_run_id?: string;
   extensions?: Record<string, unknown>;
+  /** R4 F-低4: extensions of the frozen Study, with declared maturity. */
+  selected_extensions?: { id: string; version?: string | null; maturity?: string | null }[];
   source_study_status?: SourceStudyStatus;
   /** Shared annual-coverage verdict of the Run detail (P0-9 S5). */
   result_coverage?: ResultCoverage | null;

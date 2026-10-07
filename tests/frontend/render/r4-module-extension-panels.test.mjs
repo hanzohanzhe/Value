@@ -17,3 +17,18 @@ test("duplicate-ID rows name their manifest files and the sentence is plural", a
   assert.match(text, /Manifest file: modules\/hx-flat\.json · another manifest uses the same ID; keep one and Rescan/);
   assert.match(text, /Manifest file: modules\/hx-flat-copy\.json/);
 });
+
+// R4 F-低4: a Run with an experimental local extension is marked in its header.
+const BAR = "app/features/workspace/RunContextBar.tsx";
+const run = {
+  id: "run-x", project_id: "study-x", project_name: "Observer study", mode: "smoke", status: "completed",
+  execution_status: "passed", contract_validation_status: "passed", scientific_validation_status: "passed",
+  methodology: { status: "recorded", profile_id: "value-corrected", catalogue_sha256: "c" },
+};
+
+test("the run header names an experimental extension and nothing for a Run without one", async () => {
+  const marked = await renderTsx(BAR, "default", { run: { ...run, selected_extensions: [{ id: "uatf-observer", version: "0.1.0", maturity: "experimental" }] } });
+  assert.match(marked, /<span class="value-pill caution" title="This Run executed the hooks of an extension declared experimental; it is not a scientifically validated baseline\.">Experimental extension: uatf-observer 0\.1\.0<\/span>/);
+  const plain = await renderTsx(BAR, "default", { run: { ...run, selected_extensions: [] } });
+  assert.doesNotMatch(textOf(plain), /extension/i);
+});
