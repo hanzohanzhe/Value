@@ -41,7 +41,7 @@
 |---|---|---|---|---|
 | F-P09-1 | 1.2：`formatNumber` 缺失时返回 `null` | `shared/format.ts` 的 `formatNumber` 返回 `null`；保留签名的 `presentation.tsx` 版本对缺失返回状态词 `—`（`VALUE_STATES.missing`） | 规格要求旧签名不变，旧调用方需要字符串；计划 6.9 的测试写的是 `formatNumber(undefined)='—'`，两者在不同层同时满足 | 否 |
 | F-P09-2 | 1.2：非零小值显示 `<0.01` / `>-0.01`；`formatMoney(999999.9)` 显示 `£1.00m` | 按规格实现（`formatNumber(-0.001)` 为 `>-0.01`，金额 k/m/bn 段保留 2–3 位小数：`£1.00m`、`£12.346bn`、`£1.234k`）。负数写作 `-£1.234k`，亚便士写作 `<£0.01` | 计划 6.9 的手算表写的是 `formatNumber(-0.001)='0'`、`formatMoney(999999.9)='£1m'`，与规格冲突；按规格（设计方）执行 | 是（计划测试表需同步） |
-| F-P09-3 | 3.1：窗口行写 `(UTC)` | 写作 `({timezone} model time)`，取自读模型的 `timezone`（当前为 Europe/London）；网络页事件列表表头为 `Start (model date & time)` | 账本时间戳是固定 365 天日历上的本地模型时间，不是 UTC；标成 UTC 会误导 | 是 |
+| F-P09-3 | 3.1：窗口行写 `(UTC)` | 写作 `({timezone} model time)`，取自读模型的 `timezone`（当前为 Europe/London）；网络页事件列表表头为 `Start (model date & time)` | 账本时间戳是固定 365 天日历上的本地模型时间，不是 UTC；标成 UTC 会误导。**已由 F-R43-1 取代**（R4-3 查明模型时钟是 UTC，原依据不成立） | 是 |
 | F-P09-4 | 3.1/3.3/4.4：shortfall、stress period、stress band、`stress (supply < demand)` 类型 | 窗口卡显示 `Shortfall: Not recorded`；`shortfall_mwh`/`stress_periods` 字段一到即显示数值与 amber pill，图上画 4px amber 带并加图例；可靠性列表目前只有 `lost load (network)` 一类 | A2 的后端字段**已在 M2 落地**（P0-4 S3：run status、summary 与 replay 窗口的 `shortfall_mwh`/`stress_periods`/`shortfall_basis`；M3 起新 Run 为 exact，M4 P0-4 S7 起 corrected 声明边界上也为 exact）；前端不做减法。旧 Run（没有 surplus routing）的 `shortfall_basis='lower_bound'` 在窗口卡上不加限定词，见 F-P04-1 | 否（展示方式见 F-P04-1） |
 | F-P09-5 | 4.2：非 Complete 时不显示年度合计 | 后端给出 coverage 时严格执行；**后端没有给出 coverage（旧后端）时**，合计照常显示，pill 为 `Coverage not recorded`（muted） | 原则 3「不确定就降级」：降级的是标签而不是隐藏数值；同时保持旧 mock 的 e2e 不被整体改写 | 是 |
 | F-P09-6 | 4.2：`Withheld` pill（复现口径未通过不变量，Q14） | `coveragePill(…, { withheld: true })` 已就绪，但当前没有后端字段可读，界面不会出现 Withheld | 复现口径的发布判定由 X0/M4 提供字段；不臆造字段名 | 是（需约定字段） |
@@ -289,3 +289,16 @@
 | F-R42-8 | R-低8 | Readiness 运行时间：没有可比的已完成 Run 时写 `estimated {a} min to {b} min (no comparable completed Run yet)`；有实测时写 `estimated about {n} min`（90 分钟以上用小时、一位小数） | 首次估算单点值与实际相差约 6 倍 | 是（文案） |
 | F-R42-9 | R-低9 | Market replay 导出面板控件下加一行 12px `--muted` 说明（`.replay-export-note`），解释 `physical_resource_cost_gbp` 与年度成本账的口径差别 | 用户对不上两个合计 | 是（文案与位置） |
 | F-R42-10 | R-低10 | 年度结果被扣留的 Run 打开 VRE 页时不再请求年度 VRE 摘要，改为 `Withheld` 状态 pill 加 `info-box`：`Annual VRE results withheld` 与去向说明 | 原来请求得到 409，控制台记为错误 | 否 |
+
+## R4-3（换数据角色的中低缺陷；DECISIONS A27）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R43-1 | S-中1 | **取代 F-P09-3。** 模型时钟统一按一条规则显示：UTC、固定 365 天年（闰年没有 2 月 29 日）、不做夏令时。回放窗口行写 `{start} → {end} (UTC model time)`，时间去掉秒和 `Z`（`2025-07-01 16:00`）；规格 3.1 原写 `(UTC)`，本实现多“model time”两词，提示这是模型时钟。旧 Run 的账本标签为 Europe/London 时，后端按 UTC 报告并给出 `clock_note`，窗口行下方用 12px `--muted` 显示这句说明。Stress 事件表和网络可靠性事件表表头改为 `Start (model date & time, UTC)`；VRE 峰值事件时间后加 ` UTC`。前端统一用 `app/features/shared/modelClock.ts` | 账本时钟一直是 UTC，原标签 Europe/London 让夏令时期间的时间看起来早 1 小时（S-中1） | 是（标签措辞） |
+| F-R43-2 | S-中3 | 映射编辑器 `Timestamp column (optional)` 框内新增 `Date order` 下拉框：`Auto-detect (DD/MM/YYYY unless a row shows MM/DD/YYYY)` / `DD/MM/YYYY (day first)` / `MM/DD/YYYY (month first)`，未选时间戳列时禁用，与 `Time zone` 相同。审阅报告的时间戳段落下加一行 13px 文字：`covers {n} days · data year {y} · dates read as DD/MM/YYYY ({依据})`；缺口多为约一个月时列出提示 | 英国常用的日/月/年被按月/日读出，报 154 条误导性缺口 | 是（选项文案） |
+| F-R43-3 | S-低3 | 时间戳问题表的 `Row` 列拆为 `Data row` 与 `CSV line` 两列（与单元格错误 `Row 51 (CSV line 52)` 同一对编号）；“重复”问题写 `duplicate of data row {n} (CSV line {m})` | 同一面板中 Row 含义不一致 | 否 |
+| F-R43-4 | S-低2 | 序列不满一个模型年（会从开头重复补齐）时，审阅报告给出警告，并在原确认框下多一个确认框：`{覆盖说明} 我知道模型会这样补齐，仍要提交。`；两个都勾选后提交按钮才可用，后端也要求 `acknowledged` | 原来只有泛泛的“循环重复”，可以直接提交 | 是（文案） |
+| F-R43-5 | S-低5 | 换数据角色卡片在时间戳声明下加一行（与时间戳同样的 12px `--muted`）：`原币种 EUR · 汇率 {r} EUR/GBP · 汇率口径 {b} · 价格年份 {y}`；时间戳行在有日月顺序时加 ` · DD/MM/YYYY`。包只读时角色下拉框仍可选择，用于浏览各角色当时的导入方式；上传与映射仍禁用 | 提交后看不到汇率；只读时无法浏览角色 | 否 |
+| F-R43-6 | S-低7(b) | 比较页年度指标中，三个依赖 VRE 弃电证据的指标缺值时写 `Unavailable`（与 Runs 页相同），其他缺值仍写 `Not evaluated` | 同一缺项两页用词不同 | 否 |

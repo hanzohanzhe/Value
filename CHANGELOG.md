@@ -67,6 +67,7 @@ existing installation is upgraded side by side, as described in
 | R1-3 (A20, per-type battery caps) | — | `r13.per-type-battery-caps` (method change, explicit Study confirmation; supersedes `p07.power-battery-pool`) |
 | R3-3 (A24-4, restart costs in 2025 GBP) | — | `r33.restart-cost-price-base-2025` (parameter restatement used by `r12.*` and `r32.*`; recorded on the default PSM 6.6.0 and staged PSM 1.6.0 ledger bumps, explicit Study confirmation) |
 | R4-1 (A26, thesis-kernel errors) | `r41.down-regulation-taken-once`, `r41.must-run-surplus-counted-once`, `p06.storage-net-per-period` (made universal; default PSM 6.7.0, explicit Study confirmation) | — |
+| R4-3 (A27, four-role S-中1, model clock label) | `r43.model-clock-utc-label` (ledger metadata label only, accounting zone; no model value changes) | — |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -128,6 +129,12 @@ unattributed.
   shutdown dec prices (-373.5 -> -388.3 GBP/MWh) and solver-tolerance
   movements of the zonal LP; numeric report
   `docs/dev/p0-reports/r33-golden/C8-r16.json`.
+  R4-3 (A27, `r43.model-clock-utc-label`) revised all fifteen cases (D1-D5,
+  C1-C10) once for two accounting columns, `semantic_metadata.timezone` and
+  `semantic_metadata.calendar` of `market/metadata.json` (now `UTC` and
+  `fixed_365_day_utc_periods`; the staged ledgers of C7 and C8 record them
+  for the first time). Trajectory and every other accounting column are
+  unchanged.
 
 ### Known issues
 
@@ -232,6 +239,8 @@ unattributed.
 | Results summary | New `vre_capacity_factor_disclosure` (wind and solar capacity factors shown next to DUKES). | F2 | additive |
 | Zonal network | Solver contract v4. New `GF_SOLVER_CONTRACT_UPGRADE_REQUIRED` (409) and `GF_RUN_METHOD_SUPERSEDED`. Boundary marginal values use v2 semantics, and older ledgers read as `not_computed`. New run-time fallback audit read model. | P0-8 | changed |
 | Data mapping | Declared CSV columns are read (`GF_DATA_INDEX_COLUMN`, `GF_DATA_AMBIGUOUS_COLUMN`, `GF_DATA_SHORT_SERIES`). EUR prices take an explicit rate, FX basis and price year (`GF_MAPPING_FX`). | P0-5a, P0-9 | changed |
+| Market replay and exports (R4-3, S-中1) | Model times are UTC on the fixed 365-day model year and end in `Z` (`2025-07-01T16:00:00Z`; was a naive local-looking `2025-07-01T16:00:00`); a leap model year skips 29 February. `timezone` is `UTC` and `calendar` `fixed_365_day_utc_periods`; new `clock_rule`, `clock_label_corrected` and, for a ledger written before the fix, `clock_note`. CSV/JSONL replay exports end with a `period_start_utc` column; the ZIP manifest has `model_clock`. | R4-3 (A27) | changed |
+| Data mapping (R4-3) | Preview: optional `timestamp.date_order` (`auto`/`day_first`/`month_first`) and `model_start_year`; the review adds `clock`, `acknowledgements_required`, and in `timestamp` `data_row`/`csv_line` per problem, `date_order`, `date_order_basis`, `hints` and `coverage`; `validation.timestamp_check`. Commit: optional `acknowledged` (409 `GF_MAPPING_ACKNOWLEDGEMENT` without it when the series is shorter than a model year). `fx_basis` must be `annual average`, `monthly average` or `fixed rate`. Semicolon- or tab-separated uploads are refused with an explanation (`GF_MAPPING_CSV`). | R4-3 (A27) | changed |
 | Comparisons | New `metric_delta_gates` ({metric: allowed, reason_code, definitions, reason}) and `withheld_metric_deltas`: annual deltas are gated per metric (AF3-1). `metric_deltas_allowed` still means "every metric". `changed_dimension_details` rows gain `name`. | R2-1 (A23) | additive |
 | Methodology record | `universal_accounting_correction_ids` and `correction_ids_in_force` next to `applied_correction_ids` (R3-N6 / O-3); the method identity is unchanged. Catalogue `applies_when` gains `assets_any` (R3-N7). | R2-1 (A23) | additive |
 | Parameters | New `methodology.profile`, `market.voll_gbp_per_mwh` (corrected VoLL), `market.dec_multiplier`, `market.policy_support_gbp_per_mwh_by_technology` and `network.inflexible_dec_premium_gbp_per_mwh_by_technology`. | X0, P0-6, P0-8 | additive |
@@ -887,6 +896,41 @@ availability, the original data readings) are unchanged.
   module (R3M-5); the mapping editor lists empty, non-finite and negative
   cells in one round and the API takes the editor's price-year range
   (L-1, L-2, L-3, L-5).
+
+### Swap-data fixes: model clock, date order, coverage (R4-3, DECISIONS A27)
+
+- **One model clock (S-中1).** The model always ran on UTC half-hours of a
+  fixed 365-day year; the market ledger labelled that clock
+  `Europe/London`, so replay times in summer looked an hour early against
+  local-time input. The ledger now records `UTC` /
+  `fixed_365_day_utc_periods` (`gridform_core/model_clock.py`), read
+  models and exports write UTC times with `Z` and skip 29 February in a
+  leap model year, and the UI labels them `UTC model time`. A ledger
+  written before the fix is read on the UTC clock with a note, and resumes
+  with its old label.
+- **Clock notes say what the reader does (S-中2).** The pack validation and
+  the mapping review describe the reader's actual branch: hourly values are
+  used for two half-hour periods, 29 February is removed, a series longer
+  than a year is truncated, a shorter one is filled by repeating it from
+  its start (with the number of periods and days). It no longer says
+  "repeats it cyclically" for every length.
+- **Day/month dates (S-中3).** `02/01/2025` is read as 2 January when any
+  row shows a day above 12 (or when the user chooses DD/MM/YYYY); the
+  report names the order and why, and a wrong order is hinted at instead of
+  154 month-long "gaps".
+- **Coverage and data year (S-低2, report 7.3).** The timestamp report
+  gives the span in days and the calendar year of the data; a series
+  shorter than a model year needs an explicit confirmation before commit,
+  and a data year other than the Study's first model year is noted.
+- Low items: semicolon/tab exports get a plain explanation (S-低1); the
+  timestamp table and the cell errors both give the data row and the CSV
+  line (S-低3); the whole-file report includes the timestamp check
+  (S-低4); the role card shows the EUR rate, FX basis and price year, and
+  a read-only pack's roles can still be browsed (S-低5); `fx_basis` is one
+  of the editor's three values and a price year other than the model's
+  2025 price base is noted (S-低6); the single-change comparison sentence
+  no longer mentions a storage-cost experiment, and a missing curtailment
+  metric reads `Unavailable` on Compare as on Runs (S-低7).
 
 ### Scientific validation recomputed and gated (P0-4)
 
