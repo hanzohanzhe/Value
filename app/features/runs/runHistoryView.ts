@@ -49,7 +49,20 @@ export function runHistoryEmpty(runCount: number, launching: boolean): { title: 
   return { title: "No runs yet", body: "Choose a saved study, check its inputs and start with two full years." };
 }
 
-export type StartedRunNotice = { runId: string; mode: RunMode; text: string };
+/**
+ * R4 R-低3: `studyId` and `view` bind the notice to the Study and page that
+ * started the Run; elsewhere it is not shown (the background-runs button stays).
+ * Older callers without them keep the notice everywhere.
+ */
+export type StartedRunNotice = { runId: string; mode: RunMode; text: string; studyId?: string; view?: string };
+
+/** Whether the "has started" notice belongs on the current page and Study (R4 R-低3). */
+export function startedRunNoticeVisible(started: StartedRunNotice | null, current: { view: string; studyId: string }): boolean {
+  if (!started) return false;
+  if (started.studyId !== undefined && started.studyId !== current.studyId) return false;
+  if (started.view !== undefined && started.view !== current.view) return false;
+  return true;
+}
 
 /**
  * S-D12 / M2-N1: the "has started" notice follows its Run. While the Run is

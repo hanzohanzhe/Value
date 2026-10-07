@@ -59,7 +59,7 @@ import NetworkRedispatchView from "./features/network/NetworkRedispatchView";
 import ReplayExportPanel from "./features/market/ReplayExportPanel";
 import StressEventList from "./features/market/StressEventList";
 import { isResultCoverage } from "./features/shared/coverageView.ts";
-import { preparationProgressText, startedRunNoticeText, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
+import { preparationProgressText, startedRunNoticeText, startedRunNoticeVisible, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
 import TraceCoverageNotice, { type TraceProfile } from "./features/market/TraceCoverageNotice";
 import {
   copyDefaultZonalSolverContract,
@@ -1350,8 +1350,9 @@ export default function Home() {
     try {
       const response = await fetch(`${API}/projects/${targetProject.id}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
       const payload = await response.json(); if (!response.ok) { if (preflightMatches(payload.preflight, targetProject, mode)) { setPreflight(payload.preflight); } const migration = migrationFromResponse(payload); if (migration && migration.declared_sha256 === targetProject.revision_sha256) void promptMigration(targetProject, migration); throw new Error(payload.error || "Unable to start the model"); }
+      const noticeView = viewRef.current === launchView ? "run" : viewRef.current;
       if (viewRef.current === launchView) { setSelectedRunId(payload.run.id); setView("run"); }
-      setStartedRun({ runId: payload.run.id, mode, text: mode === "smoke" ? "The two-period wiring verification has started." : mode === "two_year_smoke" ? "The two-year smoke verification has started." : mode === "value_101_day" ? "The one-day VALUE 101 PSM lesson has started." : mode === "two_year" ? "The complete two-year model has started." : "The complete annual model run has started." });
+      setStartedRun({ runId: payload.run.id, mode, studyId: targetProject.id, view: noticeView, text: mode === "smoke" ? "The two-period wiring verification has started." : mode === "two_year_smoke" ? "The two-year smoke verification has started." : mode === "value_101_day" ? "The one-day VALUE 101 PSM lesson has started." : mode === "two_year" ? "The complete two-year model has started." : "The complete annual model run has started." });
       await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Launch failed"); } finally { setLaunching(""); }
   }
@@ -1444,7 +1445,7 @@ export default function Home() {
     {isRunView ? <RunContextBar run={selectedRun} frozen={{ runId: frozenRunSelectionId, status: frozenRunSelectionId === selectedRun?.id ? frozenRunProject ? "ready" : "unavailable" : "loading", project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ onOpenInspect: (tab) => { setInspectTarget(tab ? { tab, nonce: Date.now() } : null); setView("audit"); }, onShowStressEvents: () => { setReplayTarget(null); setStressEventsFocus(Date.now()); setView("marketReplay"); } }} /> : view === "projects" && !editingProjectId ? <div className="workspace-study-context"><span>Independent Study draft</span><b>{projectForm.name}</b><small>Review and save to create a new Study.</small></div> : selectedProject && <div className="workspace-study-context"><span>Selected saved Study</span><b>{selectedProject.name}</b><span>revision {selectedProject.revision_number ?? "not recorded"}</span><small>Editing is saved as a new revision.</small></div>}
     {online && selectedRunId && isRunView && !selectedRun && <div className="notice" role="status">The requested Run is unavailable or belongs to another Study. Choose a Study and Run from Runs; no substitute result has been opened.</div>}
     {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>Close</button></div>}
-    {!notice && startedRun && <div className="notice" role="status"><span>{startedRunNoticeText(startedRun, workspace.runs.find((run) => run.id === startedRun.runId))}</span><button onClick={() => setStartedRun(null)}>Close</button></div>}
+    {!notice && startedRun && startedRunNoticeVisible(startedRun, { view, studyId: selectedProjectId }) && <div className="notice" role="status"><span>{startedRunNoticeText(startedRun, workspace.runs.find((run) => run.id === startedRun.runId))}</span><button onClick={() => setStartedRun(null)}>Close</button></div>}
     {migrationPrompt && <StudyMigrationDialog key={migrationPrompt.nonce} projectId={migrationPrompt.projectId} studyName={migrationPrompt.studyName} migration={migrationPrompt.migration} version={health?.version} apiBase={API}
       onCancel={() => { setMigrationPrompt(null); setNotice("The Study was not changed. It cannot run until the listed changes are confirmed."); }}
       onSaved={(revisionNumber) => { setMigrationPrompt(null); setPreflight(null); setNotice(`Saved as a new revision${revisionNumber ? ` (revision ${revisionNumber})` : ""}. Check readiness again, then start the Run.`); void refresh(); }} />}

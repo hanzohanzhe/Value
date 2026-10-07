@@ -3565,8 +3565,8 @@
     },
     {
       "path": "app/features/runs/runHistoryView.ts",
-      "sha256": "35b9b757b3c2323103003b44d5ddf573b73a7238aae8913e594ec26fd3b6e41b",
-      "bytes": 6969,
+      "sha256": "7f59e623295528df680b4533a2605ef1e6202daf93c2e15dca9c82211698a575",
+      "bytes": 7667,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3895,8 +3895,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "6a5173749e91618d1bd17c2f9eefd2a724685706f95ab169da9a6cb961275a8b",
-      "bytes": 176283,
+      "sha256": "ce55b667a8868d2e0952cdd69c775c17675d91bb67cd34459a749933356ee4eb",
+      "bytes": 176514,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11000,8 +11000,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "f8e016d96ef02653d18e19a8cc9220b892a2c403cff40261e60be8aa8f03786c",
-      "bytes": 4309,
+      "sha256": "99974d655fa55c5d988be124c5643b8456c24800dd3191d34cf8461ac8b32053",
+      "bytes": 5183,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

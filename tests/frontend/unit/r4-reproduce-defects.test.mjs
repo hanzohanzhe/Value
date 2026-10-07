@@ -52,3 +52,14 @@ test("advisory summary of an unfinished Run is provisional", async () => {
   assert.equal(advisorySummaryText({ advisories }), "1 advisory applies to this Run · 1 high");
   assert.equal(advisorySummaryText({ advisories, advisories_provisional: true }), `1 advisory applies to this Run · 1 high · ${ADVISORIES_PROVISIONAL_NOTE}`);
 });
+
+// R-低3: the "has started" notice stays with the Study and page that started the Run.
+test("started-run notice is bound to its Study and page", async () => {
+  const { startedRunNoticeVisible } = await import("../../../app/features/runs/runHistoryView.ts");
+  const started = { runId: "r1", mode: "two_year", text: "The complete two-year model has started.", studyId: "s1", view: "run" };
+  assert.equal(startedRunNoticeVisible(started, { view: "run", studyId: "s1" }), true);
+  assert.equal(startedRunNoticeVisible(started, { view: "projects", studyId: "s1" }), false);
+  assert.equal(startedRunNoticeVisible(started, { view: "run", studyId: "s2" }), false);
+  assert.equal(startedRunNoticeVisible(null, { view: "run", studyId: "s1" }), false);
+  assert.equal(startedRunNoticeVisible({ runId: "r1", mode: "smoke", text: "x" }, { view: "data", studyId: "" }), true);
+});
