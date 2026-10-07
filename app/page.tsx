@@ -59,6 +59,7 @@ import NetworkRedispatchView from "./features/network/NetworkRedispatchView";
 import ReplayExportPanel from "./features/market/ReplayExportPanel";
 import StressEventList from "./features/market/StressEventList";
 import { isResultCoverage } from "./features/shared/coverageView.ts";
+import { defaultDraftPackId } from "./features/studies/draftPack.ts";
 import { preparationProgressText, startedRunNoticeText, startedRunNoticeVisible, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
 import TraceCoverageNotice, { type TraceProfile } from "./features/market/TraceCoverageNotice";
 import {
@@ -533,7 +534,8 @@ export default function Home() {
       setWorkspaceLoaded(true);
       setRefreshFailures(0);
       void getJson<{ status: string; version?: string; degraded_reasons?: { code: string; count: number }[] }>(`${API}/health`).then(setHealth).catch(() => setHealth(null));
-      setSelectedPackId((current) => next.data_packs.some((item) => item.id === current) ? current : (next.data_packs.find((item) => item.complete)?.id ?? next.data_packs[0]?.id ?? ""));
+      // R4 R-低6: a recovered or overlay pack is never the default selection.
+      setSelectedPackId((current) => defaultDraftPackId(next.data_packs, current));
       const requestedRunId = pendingLocation.current?.runId;
       const requestedRun = next.runs.find((run) => run.id === requestedRunId);
       // Keep explicit identities, even when unavailable. Never silently replace a shared Run link.
@@ -614,7 +616,7 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [hasActiveRun, pollTick, refresh, refreshFailures]);
 
-  const selectedPack = useMemo(() => workspace.data_packs.find((pack) => pack.id === selectedPackId) ?? workspace.data_packs[0], [selectedPackId, workspace.data_packs]);
+  const selectedPack = useMemo(() => workspace.data_packs.find((pack) => pack.id === selectedPackId) ?? workspace.data_packs.find((pack) => pack.id === defaultDraftPackId(workspace.data_packs, selectedPackId)), [selectedPackId, workspace.data_packs]);
   const selectedProject = workspace.projects.find((project) => project.id === selectedProjectId);
   const selectedProjectPack = workspace.data_packs.find((pack) => pack.id === selectedProject?.data_pack_id);
   const allowedStudyModes = runModesForStudy(selectedProject, selectedProjectPack);

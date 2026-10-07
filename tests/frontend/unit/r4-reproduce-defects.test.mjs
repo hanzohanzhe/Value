@@ -97,3 +97,19 @@ test("Run context bar reads preparing while the inputs are frozen (T-低1)", asy
   assert.equal(resolveRunContext({ run: { id: "r", status: "snapshotting", execution_status: "queued" } }).executionStatus, "preparing");
   assert.equal(resolveRunContext({ run: { id: "r", status: "queued", execution_status: "queued" } }).executionStatus, "queued");
 });
+
+// R-低6: a pack recovered from frozen inputs is never the default draft pack.
+test("draft pack fallback skips recovered and overlay packs", async () => {
+  const { defaultDraftPackId } = await import("../../../app/features/studies/draftPack.ts");
+  const packs = [
+    { id: "doctoral-101-recovered", complete: true, frozen_recovery_origin: { source_run_id: "ab225ce5" } },
+    { id: "uk-empty", complete: false },
+    { id: "value-101-network", complete: true, data_pack_type: "network_overlay" },
+    { id: "value-101-baseline-v1", complete: true },
+  ];
+  assert.equal(defaultDraftPackId(packs, "value-uk-1000twh-reproduction"), "value-101-baseline-v1");
+  assert.equal(defaultDraftPackId(packs, "doctoral-101-recovered"), "doctoral-101-recovered", "an explicit choice is kept");
+  assert.equal(defaultDraftPackId(packs.slice(0, 2), "gone"), "uk-empty");
+  assert.equal(defaultDraftPackId([packs[0]], "gone"), "doctoral-101-recovered");
+  assert.equal(defaultDraftPackId([], "gone"), "");
+});

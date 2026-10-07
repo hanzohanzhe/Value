@@ -68,6 +68,8 @@ export type DataPack = {
   binding_issues: Record<string, string>; complete: boolean;
   manifest_sha256?: string; data_pack_type?: string;
   copy_origin?: { source_data_pack_id: string; source_manifest_sha256: string; created_at: string };
+  /** A pack recovered from a Run's frozen inputs (backend/frozen_input_recovery.py). */
+  frozen_recovery_origin?: Record<string, unknown> | null;
   teaching_only?: boolean; allowed_run_modes?: RunMode[];
   /** P0-5a S9 cached layer summary (spec 11.2). */
   plausibility_status?: import("../data/dataPackValidation.ts").CachedValidationStatus;

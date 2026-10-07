@@ -126,6 +126,7 @@
     "app/features/studies/SolverSettingsEditor.tsx",
     "app/features/studies/StudyComposer.tsx",
     "app/features/studies/StudyMigrationDialog.tsx",
+    "app/features/studies/draftPack.ts",
     "app/features/studies/methodology-selector.css",
     "app/features/studies/methodologyChoice.ts",
     "app/features/studies/network-overlay-selector.css",
@@ -3715,6 +3716,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/studies/draftPack.ts",
+      "sha256": "032e30da3b3e27c03a60ed25c3870e834a93564a1274d8d51f35faa590a1f878",
+      "bytes": 1112,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/studies/methodology-selector.css",
       "sha256": "ff6d4124f1a4ea6221ae17bbb533e6e846a5dd86692eb5a219efd06912568d40",
       "bytes": 3589,
@@ -3746,8 +3753,8 @@
     },
     {
       "path": "app/features/studies/types.ts",
-      "sha256": "bdf948cc95eadc1b4faaf79411423dabbf7bc8b2aa52030926b0d849370aa800",
-      "bytes": 8691,
+      "sha256": "9aae830c88ef9efa5c5f4df0eb23354fc1bed7f361c77852a4c5d46cffc7b66e",
+      "bytes": 8839,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3902,8 +3909,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "ce55b667a8868d2e0952cdd69c775c17675d91bb67cd34459a749933356ee4eb",
-      "bytes": 176514,
+      "sha256": "45c45f0011be0234fd8030b088b4d726e96184d5d7258ecae101fbbbb38ad75f",
+      "bytes": 176643,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11007,8 +11014,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "bdb42fcca3b23bad7940a3677ca15725c99923b74dca1a869389b0d2c6feface",
-      "bytes": 7712,
+      "sha256": "59578706dc113e8e82ad1e87b960f0f2e639dbd7b708cfb8d4d2bc6ce52a1422",
+      "bytes": 8711,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
