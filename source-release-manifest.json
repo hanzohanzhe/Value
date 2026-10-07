@@ -1094,6 +1094,7 @@
     "scripts/audit_boundary_flow_sign.py",
     "scripts/audit_data_freshness.py",
     "scripts/audit_data_workbench_release.py",
+    "scripts/audit_hourly_solar_profile.py",
     "scripts/audit_local_uk_data_pack.py",
     "scripts/audit_prompt107_vre_attribution.py",
     "scripts/audit_prompt46_release.py",
@@ -1353,6 +1354,7 @@
     "tests/frontend/unit/vre-view.test.mjs",
     "tests/golden/cases.json",
     "tests/golden/corrected/C1.json",
+    "tests/golden/corrected/C10.json",
     "tests/golden/corrected/C2.json",
     "tests/golden/corrected/C3.json",
     "tests/golden/corrected/C4.json",
@@ -1370,6 +1372,7 @@
     "tests/golden/p0_5_baseline.json",
     "tests/golden/p0_5_declaration_coverage.json",
     "tests/golden/projects/C1.json",
+    "tests/golden/projects/C10.json",
     "tests/golden/projects/C2.json",
     "tests/golden/projects/C3.json",
     "tests/golden/projects/C4.json",
@@ -1629,6 +1632,7 @@
     "tests/test_r2_developer_guide_contracts.py",
     "tests/test_r2_methodology_record.py",
     "tests/test_r2_numeric_identity.py",
+    "tests/test_r31_solar_8761.py",
     "tests/test_raw_invariant_failures.py",
     "tests/test_reader_inventory.py",
     "tests/test_recovery_capability.py",
@@ -2979,8 +2983,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "8edeb253952413f20574516be800802dcfb002cf6d01e38385d4a86268186fb1",
-      "bytes": 52660,
+      "sha256": "b2727c984c4301c65e4e9c7ba346570709681273444756777aadc462b5f6e48a",
+      "bytes": 55194,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4917,7 +4921,7 @@
     },
     {
       "path": "docs/generated/METHODOLOGY_PROFILES.md",
-      "sha256": "b844088190ba484c3aa3a5a4efa2e63dd6b21be9466b1be6f3c478221af1ced0",
+      "sha256": "e1c8d82cf1a89a42089a577386996932b09358de2da91a7d1109b349993c962a",
       "bytes": 22722,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -5127,8 +5131,8 @@
     },
     {
       "path": "docs/release/P0_GOLDEN_DELTA.md",
-      "sha256": "b76f4fb67ac0b5f79db66c1ef196a6389d139524cab6cf408bd751d0f36b2bf0",
-      "bytes": 26738,
+      "sha256": "8bc4e9472c71dcf73168496c5abcd0bb67af41b7865601cc04ff22fd6b227531",
+      "bytes": 26992,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7765,8 +7769,8 @@
     },
     {
       "path": "gridform_core/data/methodology/corrections/p05.json",
-      "sha256": "340efac95e3e929ebc061f41b8bee451549bf97ac8f46b58c5edcb0de9436a58",
-      "bytes": 20679,
+      "sha256": "01243841f05573f5582b79ec90b6f035872e888229ca92295894913efe7e6dc2",
+      "bytes": 20966,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8430,8 +8434,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "77b5897a58dca8b21978542bc3bb093d2492b5359a34f56be96a011aca2aa12d",
-      "bytes": 47392,
+      "sha256": "68192d4bb0a3477ed1f4b9bfb9f2f4a8b2d78796f8fe456487355c4861b49ea0",
+      "bytes": 47663,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9495,6 +9499,12 @@
       "transform": "byte copy"
     },
     {
+      "path": "scripts/audit_hourly_solar_profile.py",
+      "sha256": "0ac3656aa18b4b79b92f50791872929910a44fe41e83999bd36fa69e09b6973a",
+      "bytes": 7915,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "scripts/audit_local_uk_data_pack.py",
       "sha256": "4696fd2960ed4d07b8747eddc44775ab35473880703f1d5be549a8c14a8ced25",
       "bytes": 13327,
@@ -9682,8 +9692,8 @@
     },
     {
       "path": "scripts/build_value_uk_pack_revision.py",
-      "sha256": "c0708aa65816abdc51f02b1392634e207468215160c22ff8ccd45faa0c51e259",
-      "bytes": 10149,
+      "sha256": "6ea3867a554decb911dcafe6645c8db9bed4b420279e32b64549abd6b1300eff",
+      "bytes": 18721,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11032,14 +11042,20 @@
     },
     {
       "path": "tests/golden/cases.json",
-      "sha256": "4dd75bcd229a5e96a1774cb6cdf604728d84bb4f382d6e208da596218f54703f",
-      "bytes": 8000,
+      "sha256": "a6aac77fd38f5df17b5d55906245672adc6aa1051d5d9e37733b48241ffaedf9",
+      "bytes": 9331,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "tests/golden/corrected/C1.json",
       "sha256": "b3bcf86806ebaf33d54cc866e104994375c496d0fceb8f96f70afc24a25c6491",
       "bytes": 6041602,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/corrected/C10.json",
+      "sha256": "a2746a2ac5fd57766ae043e3bcd2b11a9c216de39157028e00f0793b57315fbe",
+      "bytes": 491753,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11142,6 +11158,12 @@
       "path": "tests/golden/projects/C1.json",
       "sha256": "b5b61dad4610af1a8fe55beb887a769e8054907e2ea3cdf0146f36ed80193fad",
       "bytes": 989,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/golden/projects/C10.json",
+      "sha256": "4afa085eca0b6a6745d961a822cedf2013079124458a72f67416cc3ab2e27db0",
+      "bytes": 930,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11734,7 +11756,7 @@
     },
     {
       "path": "tests/test_fx7_gbp1_public2.py",
-      "sha256": "0111c0e9c2ceb7be8af08f9386d68dd34ba58518c785f0275cc3a3aecdb85759",
+      "sha256": "7b1253099c4cd4bd075fe21a0646f6913881ee96fa011d89c1b65af25126ad33",
       "bytes": 12817,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -12696,6 +12718,12 @@
       "path": "tests/test_r2_numeric_identity.py",
       "sha256": "3921fe979b9bc822cde17afa1deeb8fe0a76e7ce10cd6a66f0bbc3233f438ec6",
       "bytes": 8139,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_r31_solar_8761.py",
+      "sha256": "97133c516aadd6768fcd45517fd38c52218a00e76f29b48ce2a4417dce9ec9c5",
+      "bytes": 19333,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

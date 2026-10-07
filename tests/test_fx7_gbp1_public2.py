@@ -131,7 +131,7 @@ class Public2ProfileIntervalTests(unittest.TestCase):
             builder.build(base, approved, root / "public2")
             built = json.loads((root / "public2" / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(built["bindings"]["profiles.vre_solar"]["interval_minutes"], 60)
-            self.assertEqual(built["derivation"]["builder"], "scripts/build_value_uk_pack_revision.py@v2")
+            self.assertEqual(built["derivation"]["builder"], "scripts/build_value_uk_pack_revision.py@v3")
             policy = policy_for_profile("value-corrected", built)
             self.assertEqual(policy.strictness, "strict")
             values = read_role(root / "public2", built, "profiles.vre_solar", policy, periods=17520).values

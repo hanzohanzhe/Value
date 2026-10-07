@@ -1,0 +1,160 @@
+{
+  "best_lag": 0,
+  "era5": {
+    "convention": "accumulated over the hour ending at the stamp (ERA5)",
+    "first_stamp": "2022-01-01T00:00:00Z",
+    "gb_box": {
+      "latitude": [
+        59.0,
+        50.0
+      ],
+      "longitude": [
+        -6.0,
+        2.0
+      ]
+    },
+    "hours": 8760,
+    "last_stamp": "2022-12-31T23:00:00Z",
+    "name": "2022solar.nc",
+    "sha256": "ecefe3b7d851b24af7475c8b46079b0c161bcd9688490259154f38d8ea3b4cfd",
+    "variable": "ssrd"
+  },
+  "era5_span": {
+    "domain_max_ssrd_at_last_stamp_j_per_m2": 0.0,
+    "inclusive_slice": "2022-01-01T00:00 .. 2023-01-01T00:00",
+    "inclusive_slice_hours": 8761,
+    "last_stamp": "2023-01-01T00:00:00Z",
+    "name": "2022-2023solar.nc",
+    "sha256": "355a64ab66f76e98596c4f9f6481a43e23f89818fa3068e6e799b2597478fa57",
+    "whole_slice_lag0": {
+      "correlation": 0.95599,
+      "lag": 0,
+      "light_in_the_dark": 0,
+      "n": 8761
+    }
+  },
+  "finding": {
+    "era5_stamp_of_extra_row": "2023-01-01T00:00:00Z",
+    "extra_row_index": 8760,
+    "extra_row_line": 8761,
+    "extra_row_value": "0",
+    "first_row_value": "0",
+    "interval_note": "ERA5 ssrd at a stamp is the hour ending at it, so by interval row 0 covers 2021-12-31T23:00-24:00Z and the last row 2022-12-31T23:00-24:00Z; both are night zeros. Dropping the out-of-year stamp keeps every existing reading of the first 8760 rows unchanged; re-labelling the profile to interval-start hours (one hour earlier, as finding P6-06 does for the NetCDF weather) would be a separate method change.",
+    "statement": "rows 0..8759 match ERA5 stamps 2022-01-01T00:00:00Z .. 2022-12-31T23:00:00Z one to one; the last row is the stamp 2023-01-01T00:00Z, outside the 2022 stamps"
+  },
+  "monthly_correlation_by_lag": {
+    "01": {
+      "-1": 0.85894,
+      "0": 0.94912,
+      "1": 0.84542
+    },
+    "02": {
+      "-1": 0.87185,
+      "0": 0.94193,
+      "1": 0.87782
+    },
+    "03": {
+      "-1": 0.90825,
+      "0": 0.95992,
+      "1": 0.90869
+    },
+    "04": {
+      "-1": 0.92855,
+      "0": 0.96832,
+      "1": 0.92013
+    },
+    "05": {
+      "-1": 0.90117,
+      "0": 0.93821,
+      "1": 0.90054
+    },
+    "06": {
+      "-1": 0.89697,
+      "0": 0.936,
+      "1": 0.90188
+    },
+    "07": {
+      "-1": 0.90487,
+      "0": 0.93791,
+      "1": 0.89665
+    },
+    "08": {
+      "-1": 0.90798,
+      "0": 0.95326,
+      "1": 0.91711
+    },
+    "09": {
+      "-1": 0.89542,
+      "0": 0.95156,
+      "1": 0.90993
+    },
+    "10": {
+      "-1": 0.89681,
+      "0": 0.95644,
+      "1": 0.89264
+    },
+    "11": {
+      "-1": 0.84007,
+      "0": 0.92248,
+      "1": 0.83801
+    },
+    "12": {
+      "-1": 0.82179,
+      "0": 0.93094,
+      "1": 0.81873
+    }
+  },
+  "profile": {
+    "extra_rows": 1,
+    "first_rows": [
+      "0",
+      "0",
+      "0"
+    ],
+    "last_rows": [
+      "0",
+      "0",
+      "0"
+    ],
+    "name": "sa.csv",
+    "rows": 8761,
+    "sha256": "15ef49b3f46d07cad7eabc576d64e7764072a48b6ca4cabedc60149180e9578e"
+  },
+  "schema_version": "value.hourly-solar-profile-audit/v1",
+  "weekly_best_lags": [
+    0
+  ],
+  "weeks": 52,
+  "whole_year_by_lag": [
+    {
+      "correlation": 0.82131,
+      "lag": -2,
+      "light_in_the_dark": 521,
+      "n": 8758
+    },
+    {
+      "correlation": 0.92037,
+      "lag": -1,
+      "light_in_the_dark": 156,
+      "n": 8759
+    },
+    {
+      "correlation": 0.95598,
+      "lag": 0,
+      "light_in_the_dark": 0,
+      "n": 8760
+    },
+    {
+      "correlation": 0.92098,
+      "lag": 1,
+      "light_in_the_dark": 181,
+      "n": 8760
+    },
+    {
+      "correlation": 0.8224,
+      "lag": 2,
+      "light_in_the_dark": 546,
+      "n": 8759
+    }
+  ]
+}

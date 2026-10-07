@@ -98,6 +98,10 @@ unattributed.
   restart table's corrected formula text (`restart_table_sha256`, one
   trajectory column each; numbers unchanged) and synchronised the identity
   zones of C3 (R3-N6) and D3 (R-D10, identity only).
+  R3-1 (A24-1) re-pinned C9 to GBP1 public2 `@v3` (the solar profile
+  without its extra hour; trajectory and accounting unchanged) and added
+  C10: R029 public2 under the corrected profile with the default modules of
+  a new Study, first model year (revision 0).
 
 ### Known issues
 
@@ -122,8 +126,10 @@ unattributed.
   interval declaration; the declared clock recognises an undeclared hourly
   series only at 8760/8784 values, so the strict reader refuses it
   (`GF_DATA_SHORT_SERIES`) when the default PSM builds its chronology, while
-  the data-pack validation layers report the pack eligible. GBP1 public2
-  declares the interval (FX7); the released packs are unchanged.
+  the data-pack validation layers report the pack eligible. The released
+  packs are unchanged. Resolved in the local revisions R029 public2 and GBP1
+  public2 `@v3` (A24-1, see "The extra hour of the hourly solar profile"
+  below); the validation layers still do not check a VRE profile's clock.
 
 ### Migration notes
 
@@ -255,7 +261,7 @@ unattributed.
 - GBP1 public2 (`value-uk-open-data-pack-public2`, built locally by
   `scripts/build_value_uk_pack_revision.py`, not published) is registered in
   the local pack-class registry as `scientific_reference`, so the corrected
-  profile reads it strictly. The builder (now `@v2`) also declares the
+  profile reads it strictly. The builder (`@v2`; `@v3` since A24-1) also declares the
   three hourly VRE profiles `interval_minutes` 60.
 - Corrected profile only (`p05.nuclear-stations-public2`): GBP1 public2 takes
   the VALUE-UK nuclear station policy of GBP1 public1 (five EDF stations with
@@ -266,6 +272,39 @@ unattributed.
   2019-2024 mean 5.77 TWh, +5 %); nuclear far below Energy Trends 5.1 (see
   Known issues); wind and solar CF above DUKES as disclosed under A9.
   `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`.
+
+### The extra hour of the hourly solar profile (A24-1, R3-1)
+
+- **Which hour.** R029 public1 and GBP1 public1 share `sa.csv` (sha256
+  `15ef49b3...578e`, 8761 values, no timestamps). Against ERA5 2022 ssrd
+  (GB mean), rows 0-8759 match the stamps 2022-01-01T00:00Z to
+  2022-12-31T23:00Z one to one: correlation 0.956 at lag 0, 0.920 and
+  0.921 one hour either way, lag 0 best in all 52 weeks, and no daylight
+  row at a dark stamp. The last row (`0`) is the stamp 2023-01-01T00:00Z,
+  which an inclusive `2022-01-01 .. 2023-01-01` slice of an hourly
+  2022-2023 ERA5 file yields as its 8761st hour.
+  `scripts/audit_hourly_solar_profile.py`;
+  evidence `docs/dev/p0-reports/r31-solar/sa_8761_evidence.json`.
+- **Local revisions (not published).** `scripts/build_value_uk_pack_revision.py@v3`
+  writes the first 8760 lines byte for byte (sha256 `ae4b9577...b306`) and
+  records the dropped row in the binding (`row_revision`: source sha256,
+  row 8761, value, ERA5 stamp, reason, evidence). `--pack r029-public2`
+  builds R029 public2 (`value-uk-calendar-vx-trade001-public2`): R029
+  public1 with that object revised and the three VRE profiles declared
+  `interval_minutes` 60; every other file is the public1 file. It is
+  registered locally as `scientific_reference` and named next to R029 in
+  the data corrections' `applies_when`. GBP1 public2 binds the same revised
+  object.
+- **No number changes.** Every existing reading used only the first 8760
+  rows (the doctoral hourly repeat, the declared clock, the kernel's VRE-cap
+  bisection, where the last row is a zero), so the doctoral reading of the
+  public1 packs and the GBP1 public2 results are unchanged. The corrected
+  profile now runs R029 (public2) with the default modules (golden C10).
+- **Not changed.** ERA5 stamps ssrd at the end of the accumulated hour, so
+  by interval the profile still lags the half-hour clock by one hour
+  (finding P6-06 for the CSV profiles, which feed the VRE expansion cap and
+  the dispatch of packs without NetCDF weather). Re-labelling it would be a
+  method change and is left to the author.
 
 ### Result views read what was recorded (P0-9 close)
 
