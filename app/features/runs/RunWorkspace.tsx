@@ -21,6 +21,7 @@ import { Callout } from "../shared/Callout";
 import { lifecycleNotice } from "./lifecycleView.ts";
 import { preflightRunBlockedReason } from "../workspace/preflightIdentity";
 import "./run-history.css";
+import { executionLabel, statusLabel } from "../shared/labels.ts";
 import { RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE, preparationProgressText, runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
 
 export type RunWorkspaceActions = {
@@ -111,9 +112,9 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
           {selectedRun ? <>
             <div className="run-status"><div><Badge tone={selectedRun.status === "completed" ? "good" : selectedRun.status === "failed" ? "warn" : "blue"}>{selectedRun.status}</Badge><b>{selectedRun.current_stage}</b><small>{selectedRun.mode === "smoke" ? "Two-period verification" : selectedRun.mode === "two_year_smoke" ? "Two-year smoke test" : selectedRun.mode === "value_101_day" ? "One-day market lesson" : selectedRun.mode === "two_year" ? "Complete two-year model" : "Complete project"} / {selectedRun.id}</small>{preparationText && <small className="run-preparation-progress value-new-control" role="status">{preparationText}</small>}{(selectedRun.status === "snapshotting" || preparationText) && <small className="run-launch-note value-new-control">{SNAPSHOTTING_NOTE}</small>}</div><strong>{selectedRun.completed_years}<span> / {selectedRun.total_years}</span></strong></div>
             <div className="validation-strip">
-              <span><small>Execution</small><b>{selectedRun.execution_status ?? selectedRun.status}</b></span>
-              <span><small>Contract check</small><b>{selectedRun.contract_validation_status ?? "not evaluated"}</b></span>
-              <span><small>{selectedRun.mode === "value_101_day" ? "Result scope" : selectedRun.retained_comparison_role === "required_reproduction_gate" ? "Reproduction gate" : "Scientific scenario"}</small><b>{selectedRun.mode === "value_101_day" ? "Teaching diagnostic" : selectedRun.scientific_scenario_status ?? selectedRun.scientific_validation_status ?? "not evaluated"}</b></span>
+              <span><small>Execution</small><b>{executionLabel(selectedRun)}</b></span>
+              <span><small>Contract check</small><b>{statusLabel(selectedRun.contract_validation_status)}</b></span>
+              <span><small>{selectedRun.mode === "value_101_day" ? "Result scope" : selectedRun.retained_comparison_role === "required_reproduction_gate" ? "Reproduction gate" : "Scientific scenario"}</small><b>{selectedRun.mode === "value_101_day" ? "Teaching diagnostic" : statusLabel(selectedRun.scientific_scenario_status ?? selectedRun.scientific_validation_status)}</b></span>
             </div>
             {["ready", "partial"].includes(selectedRunContext.kind) && frozenRunSelectionId === selectedRun.id && frozenRunReadiness && <ReadinessEvidence readiness={frozenRunReadiness} project={frozenRunProject ?? undefined} snapshot={frozenInputSnapshot} frozen />}
             {selectedRun.source_study_status === "trash" && <div className="info-box"><b>Source Study in trash</b><br />Results and audit exports remain readable. Restore the Study before resuming, cloning or creating another Run from it.</div>}

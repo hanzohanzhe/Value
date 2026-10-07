@@ -74,8 +74,8 @@ test("annual deltas follow the per-metric gate and a withheld metric states its 
   assert.equal(metricDeltaWithheldText(comparison, "cem_system_cost_gbp"), null);
   assert.equal(metricDeltaWithheldText(comparison, "vre_curtailment_mwh"), `Delta withheld: ${reason}`);
   assert.equal(metricDeltaWithheldText(comparison, "vre_curtailment_rate"), "Delta withheld (module does not provide counterfactual snapshot).");
-  assert.equal(withheldDeltaSummary(comparison), "Deltas are withheld for 2 of 4 metrics (Vre Curtailment Mwh, Vre Curtailment Rate); each states its reason below. The other metrics show their deltas.");
-  assert.equal(metricLabel("total_carbon_emissions_tco2e"), "Total Carbon Emissions Tco2e");
+  assert.equal(withheldDeltaSummary(comparison), "Deltas are withheld for 2 of 4 metrics (VRE curtailment (MWh), VRE curtailment rate); each states its reason below. The other metrics show their deltas.");
+  assert.equal(metricLabel("total_carbon_emissions_tco2e"), "Total carbon emissions (tCO2e)");
 });
 
 test("every-metric, none, teaching and legacy responses", () => {

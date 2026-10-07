@@ -112,6 +112,7 @@
     "app/features/shared/domainConstants.ts",
     "app/features/shared/format.ts",
     "app/features/shared/headerPill.ts",
+    "app/features/shared/labels.ts",
     "app/features/shared/narrow-layout.css",
     "app/features/shared/navigation.ts",
     "app/features/shared/pagination.ts",
@@ -3205,8 +3206,8 @@
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
-      "sha256": "b9355dd32d220e49d84b8f29d0d99a2fdf725b4523d7fa6838080c1763d93317",
-      "bytes": 16223,
+      "sha256": "f18cddd9edb48f08720dcfa10d8e46254837b35457f1375e1afeea48df7b9b65",
+      "bytes": 16365,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3457,8 +3458,8 @@
     },
     {
       "path": "app/features/results/ComparisonWorkspace.tsx",
-      "sha256": "28e01996c8e26a7031d195feeb42d59eb9e7beea508e5f614b9114dc13d7b27b",
-      "bytes": 13699,
+      "sha256": "277547f020623f4cea0348165ba8824087c02ad0e13329da5bdd7929d2a6ff6a",
+      "bytes": 13740,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3481,8 +3482,8 @@
     },
     {
       "path": "app/features/results/comparisonReview.ts",
-      "sha256": "ede60155369c0fcf6da831cab1fcd94462613bfbecc064420ac61e19f9c36e86",
-      "bytes": 10322,
+      "sha256": "2980d96b96ea71e577e0cc1a36e4f663e84549175b3510f698a782fc828246c4",
+      "bytes": 10360,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3511,14 +3512,14 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "d1d4781dd8c7cc41a15145131ef31beba5cfb9050ecb54bab99876fb2bfd2f4d",
-      "bytes": 18036,
+      "sha256": "86d98f2ad7d5870af755e21fe0f8bd1b3226a513a4b002a03668da4bad63c417",
+      "bytes": 18366,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "2da77f76a9fd24009fb322dd7ac002db4bdcd09a30f6d6fcc12c8e66c93e0591",
-      "bytes": 22462,
+      "sha256": "f264f6784cf7e3e659583b6997ffaf3358b86e145c7bc314ee42821d780fa5a4",
+      "bytes": 22494,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3627,6 +3628,12 @@
       "path": "app/features/shared/headerPill.ts",
       "sha256": "40fdbba699ce71bb4f4bea79bf941862acc22d97395bdda8e20af3eaf05d9917",
       "bytes": 807,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/shared/labels.ts",
+      "sha256": "0504f6ec48f00e76ad7966c60f926c793c665bfe8e002743f7a0b9bff963be1a",
+      "bytes": 4100,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3847,8 +3854,8 @@
     },
     {
       "path": "app/features/workspace/runContext.ts",
-      "sha256": "08d8e8078ea1a7d7a0c734024e2109b0a8972adbec3079c4f8aed589669ec66e",
-      "bytes": 8514,
+      "sha256": "fdbb6e578ae00ba9fc7e311a801607920f0d66f96b553c0aee12f900a32df5a3",
+      "bytes": 8656,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6583,8 +6590,8 @@
     },
     {
       "path": "e2e/comparison-review.spec.ts",
-      "sha256": "143a98b43e0f40e4b6f85b066b1c4358dc8ff9919a06f77fd358fb740fe148ba",
-      "bytes": 8416,
+      "sha256": "6cfa727040f52b0f602bd328a6da9b2f3c24935b664e7ff2f88be5b0e0ea64ee",
+      "bytes": 8422,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10916,8 +10923,8 @@
     },
     {
       "path": "tests/frontend/unit/comparison-review.test.mjs",
-      "sha256": "3341ef34c2775108e791a45fa88a7b6d3b116ad721e5a9a5b4f8c126ecc0e8e1",
-      "bytes": 8238,
+      "sha256": "b2539bcf88d40ed60f94e5bf876d5d569a52b93831e61296443a0ef5bb2875de",
+      "bytes": 8242,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11000,8 +11007,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "d3e5743583d8303f97c715bc308b2fc07984ebfb5c8c85045f9409bb7fb066ae",
-      "bytes": 5506,
+      "sha256": "bdb42fcca3b23bad7940a3677ca15725c99923b74dca1a869389b0d2c6feface",
+      "bytes": 7712,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

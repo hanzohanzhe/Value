@@ -69,3 +69,31 @@ test("ledger action is named for what it does", async () => {
   const { NOTICE_ACTION_LABELS } = await import("../../../app/features/workspace/runValidation.ts");
   assert.equal(NOTICE_ACTION_LABELS.export_ledger, "Open ledger files");
 });
+
+// R-低5 / S-低7(c): one label table for metric ids, status words and stage names.
+test("shared label table names metrics, statuses and stages", async () => {
+  const { metricLabel, statusLabel, stageLabel, codePhrase, executionLabel } = await import("../../../app/features/shared/labels.ts");
+  assert.equal(metricLabel("cem_system_cost_gbp_per_mwh_served"), "CEM system cost per MWh served (GBP/MWh)");
+  assert.equal(metricLabel("total_carbon_emissions_tco2e"), "Total carbon emissions (tCO2e)");
+  assert.equal(metricLabel("redispatch_net_impact_mwh"), "Redispatch net impact (MWh)");
+  assert.equal(metricLabel("annual.some_new_metric"), "Some new metric");
+  assert.equal(statusLabel("not_applicable"), "Not applicable");
+  assert.equal(statusLabel("reproduction_with_declared_deviations"), "Reproduction with declared deviations");
+  assert.equal(statusLabel("Reproduction_with_declared_deviations"), "Reproduction with declared deviations");
+  assert.equal(statusLabel(null), "Not evaluated");
+  assert.equal(stageLabel("application_submitted"), "Application submitted");
+  assert.equal(stageLabel("Application Submitted"), "Application submitted");
+  assert.equal(stageLabel("failed_planning"), "Failed planning");
+  assert.equal(codePhrase("matching_recorded_configuration"), "Matching recorded configuration");
+  // T-低1: the Execution cell reads "Preparing" while the inputs are frozen.
+  assert.equal(executionLabel({ status: "snapshotting", execution_status: "queued" }), "Preparing");
+  assert.equal(executionLabel({ status: "queued", execution_status: "queued" }), "Queued");
+  assert.equal(executionLabel({ status: "completed", execution_status: "passed" }), "Passed");
+  assert.equal(executionLabel({}), "Not recorded");
+});
+
+test("Run context bar reads preparing while the inputs are frozen (T-低1)", async () => {
+  const { resolveRunContext } = await import("../../../app/features/workspace/runContext.ts");
+  assert.equal(resolveRunContext({ run: { id: "r", status: "snapshotting", execution_status: "queued" } }).executionStatus, "preparing");
+  assert.equal(resolveRunContext({ run: { id: "r", status: "queued", execution_status: "queued" } }).executionStatus, "queued");
+});

@@ -126,7 +126,8 @@ export function resolveRunContext({ run, frozen }: {
   const base: RunContext = {
     kind: "empty",
     scope: runScope(run ?? undefined),
-    executionStatus: recorded(run?.execution_status) ?? recorded(run?.status) ?? "not_recorded",
+    // R4 T-低1: while the inputs are frozen the recorded execution status is still "queued".
+    executionStatus: run?.status === "snapshotting" ? "preparing" : recorded(run?.execution_status) ?? recorded(run?.status) ?? "not_recorded",
     contractStatus,
     scientificStatus,
     profile: profileBadge(run?.methodology),

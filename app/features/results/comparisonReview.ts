@@ -2,6 +2,7 @@
 // gridform_core/results_summary.compare_run_summaries decides them; this module
 // only states each one in a sentence. An unknown reason is shown by its code.
 import { profileBadge } from "../workspace/runValidation.ts";
+import { metricLabel as sharedMetricLabel } from "../shared/labels.ts";
 
 export type ReviewReason = {
   reason: string;
@@ -85,9 +86,9 @@ export function dimensionPathsText(details: Record<string, DimensionDetail> | nu
   return detail && detail.paths.length ? pathsText(detail) : null;
 }
 
-/** A metric id as a heading: "vre_curtailment_mwh" → "Vre Curtailment Mwh". */
+/** A metric id as a heading from the shared label table (R4 R-低5): "vre_curtailment_mwh" → "VRE curtailment (MWh)". */
 export function metricLabel(id: string): string {
-  return id.split(".").at(-1)?.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase()) ?? id;
+  return sharedMetricLabel(id);
 }
 
 /** One metric's delta gate (gridform_core/results_summary.metric_delta_gate). */

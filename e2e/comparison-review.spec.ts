@@ -75,12 +75,12 @@ test("annual deltas are shown per metric and a withheld metric states its reason
   const panel = page.locator(".comparison-workspace");
   await panel.getByRole("checkbox", { name: /Run A/ }).check();
   await panel.getByRole("checkbox", { name: /Run B/ }).check();
-  await expect(panel.locator(".comparison-withheld-summary")).toContainText("Deltas are withheld for 1 of 2 metrics (Vre Curtailment Mwh)");
+  await expect(panel.locator(".comparison-withheld-summary")).toContainText("Deltas are withheld for 1 of 2 metrics (VRE curtailment (MWh))");
   await panel.locator(".comparison-years summary", { hasText: "2026" }).click();
-  const cost = panel.locator(".comparison-metrics article", { hasText: "Cem System Cost Gbp" });
+  const cost = panel.locator(".comparison-metrics article", { hasText: "CEM system cost (GBP)" });
   await expect(cost.locator("em")).toHaveCount(2);
   await expect(cost).not.toContainText("Delta withheld");
-  const curtailment = panel.locator(".comparison-metrics article", { hasText: "Vre Curtailment Mwh" });
+  const curtailment = panel.locator(".comparison-metrics article", { hasText: "VRE curtailment (MWh)" });
   await expect(curtailment.locator("em")).toHaveCount(0);
   await expect(curtailment.locator(".comparison-metric-withheld")).toHaveText(`Delta withheld: ${curtailmentReason}`);
   await expect(panel).not.toContainText("所需的定义");

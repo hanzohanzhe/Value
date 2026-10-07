@@ -10,6 +10,13 @@ import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoverage
 import { costComposition, unitCostText } from "./resultMetrics.ts";
 import { moduleEvidenceText } from "./runHistoryView.ts";
 import { planningYearFromPayload } from "./planningView.ts";
+import { codePhrase, stageLabel, statusLabel } from "../shared/labels.ts";
+
+/** R4 R-低5: a planning count, or its recorded state word ("Not applicable"), never the raw code. */
+function planningCount(value: unknown, missing = "not_evaluated"): string {
+  if (typeof value === "number") return formatNumber(value, 0);
+  return statusLabel(typeof value === "string" ? value : missing);
+}
 import { gateBlockedPublication, gateBlockedText, type ResultPublication, type RunValidationFields } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
@@ -79,10 +86,10 @@ function PlanningPipelinePanel({ runId, year }: { runId: string; year: number })
     <summary>Planning pipeline</summary>
     {!opened ? null : error ? <p className="inline-error">{error}</p> : !summary ? <p className="loading">Loading planning evidence...</p> : <>
       <div className="pipeline-kpis">{["active", "commissioned", "failed", "filtered", "deferred"].map((key) => <span key={key}>
-        <small>{key.replaceAll("_", " ")}</small><b>{kpis[key]?.projects ?? outcome[key]?.projects ?? "—"} projects</b><em>{withUnit(formatNumber(kpis[key]?.capacity_mw ?? outcome[key]?.capacity_mw), "MW")}</em>
+        <small>{stageLabel(key)}</small><b>{kpis[key]?.projects ?? outcome[key]?.projects ?? "—"} projects</b><em>{withUnit(formatNumber(kpis[key]?.capacity_mw ?? outcome[key]?.capacity_mw), "MW")}</em>
       </span>)}</div>
       <div className="breakdown-row"><div><b>Next completions</b>{Object.entries(completions).map(([key, value]) => <small key={key}>{key}: {value.projects} projects / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div><div><b>Technology</b>{Object.entries(summary.breakdowns.technology ?? {}).slice(0, 5).map(([key, value]) => <small key={key}>{key}: {value.projects} / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div><div><b>Region</b>{Object.entries(summary.breakdowns.region ?? {}).slice(0, 5).map(([key, value]) => <small key={key}>{key}: {value.projects} / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div></div>
-      <div className="breakdown-row"><div><b>Why projects changed</b>{Object.entries(summary.cause_breakdowns?.reason_code ?? {}).slice(0, 8).map(([key, value]) => <small key={key}>{key.replaceAll("_", " ")}: {value.projects} / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div><div><b>Lifecycle events</b>{Object.entries(summary.cause_breakdowns?.event_type ?? {}).slice(0, 8).map(([key, value]) => <small key={key}>{key.replaceAll("_", " ")}: {value.projects} / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div></div>
+      <div className="breakdown-row"><div><b>Why projects changed</b>{Object.entries(summary.cause_breakdowns?.reason_code ?? {}).slice(0, 8).map(([key, value]) => <small key={key}>{codePhrase(key)}: {value.projects} / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div><div><b>Lifecycle events</b>{Object.entries(summary.cause_breakdowns?.event_type ?? {}).slice(0, 8).map(([key, value]) => <small key={key}>{stageLabel(key)}: {value.projects} / {withUnit(formatNumber(value.capacity_mw), "MW")}</small>)}</div></div>
     </>}
   </details>;
 }
@@ -167,7 +174,7 @@ export function AnnualResults({ runId, results, coverage, onOpenInspect, publica
         <CostComposition result={result} />
         <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${withUnit(formatNumber(metricNumber(result, "total_carbon_emissions_tco2e")), "tCO₂e")}`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
         </>}
-        {result.planning && <div className="planning-compact"><b>Planning evolution</b><span>Active: {String(result.planning.active ?? "not evaluated")}</span><span>Commissioned: {String(result.planning.commissioned ?? "not evaluated")}</span><span>Failed: {String(result.planning.failed ?? "not applicable")}</span><span>Deferred: {String(result.planning.deferred ?? "not evaluated")}</span></div>}
+        {result.planning && <div className="planning-compact"><b>Planning evolution</b><span>Active: {planningCount(result.planning.active)}</span><span>Commissioned: {planningCount(result.planning.commissioned)}</span><span>Failed: {planningCount(result.planning.failed, "not_applicable")}</span><span>Deferred: {planningCount(result.planning.deferred)}</span></div>}
         <PlanningPipelinePanel key={`${runId}|${result.year}`} runId={runId} year={result.year} />
         {result.capacity_mw && <details className="capacity-panel"><summary>Capacity used by the PSM</summary><div className="capacity-grid">{Object.entries(result.capacity_mw).map(([tech, value]) => <span key={tech}><small>{tech}</small><b>{withUnit(formatNumber(value), "MW")}</b></span>)}{result.capacity_mwh?.storage != null && <span><small>Storage energy</small><b>{withUnit(formatNumber(result.capacity_mwh.storage), "MWh")}</b></span>}</div></details>}
       </details>;
