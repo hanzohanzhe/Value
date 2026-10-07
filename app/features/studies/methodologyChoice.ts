@@ -109,3 +109,12 @@ export function applyProfileChoice(
   }
   return { parameters, modules };
 }
+
+/**
+ * R4 R-低7: the badge of a step-2 domain card. A formulation the selected
+ * methodology does not admit reads "not available with this methodology"
+ * (as an inadmissible data pack does in step 1), not its maturity "ready".
+ */
+export function domainBadgeText(maturity: string, methodologyAvailable: boolean): string {
+  return methodologyAvailable ? maturity.replaceAll("_", " ") : "not available with this methodology";
+}

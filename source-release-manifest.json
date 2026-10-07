@@ -3705,8 +3705,8 @@
     },
     {
       "path": "app/features/studies/StudyComposer.tsx",
-      "sha256": "88282bded55ebd641099acfcccb00c7c0326b28561214cb26465bb7516f9fce9",
-      "bytes": 26121,
+      "sha256": "e768d75d3bd82329a0838127700caf2f48d388301907190e79b6c4035c811c8e",
+      "bytes": 26186,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3729,8 +3729,8 @@
     },
     {
       "path": "app/features/studies/methodologyChoice.ts",
-      "sha256": "6ce611020618678bf1fb388ce11fb82369864885ddafbe99838db89489a38e07",
-      "bytes": 5909,
+      "sha256": "ae37b8fc8d21707eaf47d4264c5b708eff4f78fa174e9b14f50fed4fcbbbff0f",
+      "bytes": 6340,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11014,8 +11014,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "59578706dc113e8e82ad1e87b960f0f2e639dbd7b708cfb8d4d2bc6ce52a1422",
-      "bytes": 8711,
+      "sha256": "45b45e254eee10d5f38506ac15bf651479d67a07f06ab9d434aaa6192c4eadf6",
+      "bytes": 9182,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

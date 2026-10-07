@@ -113,3 +113,11 @@ test("draft pack fallback skips recovered and overlay packs", async () => {
   assert.equal(defaultDraftPackId([packs[0]], "gone"), "doctoral-101-recovered");
   assert.equal(defaultDraftPackId([], "gone"), "");
 });
+
+// R-低7: a domain the methodology does not admit is not labelled "ready".
+test("domain card badge follows the methodology verdict", async () => {
+  const { domainBadgeText } = await import("../../../app/features/studies/methodologyChoice.ts");
+  assert.equal(domainBadgeText("ready", true), "ready");
+  assert.equal(domainBadgeText("contract_level", true), "contract level");
+  assert.equal(domainBadgeText("ready", false), "not available with this methodology");
+});
