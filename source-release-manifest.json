@@ -95,6 +95,7 @@
     "app/features/runs/RunResults.tsx",
     "app/features/runs/RunWorkspace.tsx",
     "app/features/runs/lifecycleView.ts",
+    "app/features/runs/planningView.ts",
     "app/features/runs/readiness-issues.css",
     "app/features/runs/readinessGroups.ts",
     "app/features/runs/resultMetrics.ts",
@@ -1342,6 +1343,7 @@
     "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
     "tests/frontend/unit/r2-ui-low-items.test.mjs",
+    "tests/frontend/unit/r4-reproduce-defects.test.mjs",
     "tests/frontend/unit/readiness-groups.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
@@ -1641,6 +1643,7 @@
     "tests/test_r33_biomass_disclosure.py",
     "tests/test_r33_restart_price_base.py",
     "tests/test_r41_doctoral_kernel_errors.py",
+    "tests/test_r4_reproduce_defects.py",
     "tests/test_raw_invariant_failures.py",
     "tests/test_reader_inventory.py",
     "tests/test_recovery_capability.py",
@@ -3508,8 +3511,8 @@
     },
     {
       "path": "app/features/runs/RunResults.tsx",
-      "sha256": "7fa25ec8caab77d6944a5622331be2edb401b4751032d8bf2c2c6d8f161a4872",
-      "bytes": 17973,
+      "sha256": "0a95a8df121f7a7177a33516eaf2610250768097bd42ddde9256efd5c52b0cb3",
+      "bytes": 18028,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3522,6 +3525,12 @@
       "path": "app/features/runs/lifecycleView.ts",
       "sha256": "dd712be4fd67237ce20e24e4e7f62a7e42522158f156c3bc6245e75fe0eba890",
       "bytes": 2221,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/runs/planningView.ts",
+      "sha256": "8ebf8c0b8031d34c1568f268a68be38a2226a5ca3a5cf645a54ca82678ca2c9c",
+      "bytes": 1050,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4036,8 +4045,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "849b49f85746d09b0c2d401437b3ed6f71ce19ba112cf74ef9f581cf18489e81",
-      "bytes": 226228,
+      "sha256": "1086a53912487b97af9029878e79b4166c6be8bc34b8d0b96199d232014b6516",
+      "bytes": 226163,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8581,9 +8590,9 @@
     },
     {
       "path": "gridform_core/planning_index.py",
-      "sha256": "f87b7b4c5ffa51a71889bd31e0497debc1ca65df64bf8a86e1aeaabd076e6d9b",
-      "bytes": 14632,
-      "transform": "byte copy"
+      "sha256": "d34ada4e94965ae0c0946740e76e4dee37d069698490804e083089414574c744",
+      "bytes": 17278,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/planning_ledger.py",
@@ -10990,6 +10999,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
+      "sha256": "8a1a205609abcfdfe09738f6d18798110af334a280fa49907bbba3f3d6e09e62",
+      "bytes": 1288,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/unit/readiness-groups.test.mjs",
       "sha256": "9a1aed0dc7d9f63208a1893f0d3597e1ca1d5dc627d8a88a3f84a641ef4fcadd",
       "bytes": 6102,
@@ -12781,6 +12796,12 @@
       "path": "tests/test_r41_doctoral_kernel_errors.py",
       "sha256": "23387097f2ce76b5311e8adc8e734afa905368b4ac369b928e727f0512a2529b",
       "bytes": 23612,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_r4_reproduce_defects.py",
+      "sha256": "a71686b0766ac01af1c5bcc2ab527f76dde237725d4b23fb0d56e9d599e48772",
+      "bytes": 5508,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

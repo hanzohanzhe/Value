@@ -115,7 +115,7 @@ from gridform_core.planning_ledger import query_events, query_projects
 from gridform_core.planning_index import (
     query_index_events,
     query_index_projects,
-    query_index_summary,
+    planning_summary_payload,
 )
 from gridform_core.errors import public_failure
 from gridform_core.run_policy import resolve_run_policy
@@ -2542,12 +2542,11 @@ class Handler(BaseHTTPRequestHandler):
                     withheld = withheld_annual_result(root, "planning/summary")
                     if withheld is not None:
                         self._json(withheld, 409); return
-                    summary = read_json(planning_dir / "summary.json")
-                    if not summary and native_database.is_file():
-                        summary = query_index_summary(native_database)
-                    self._json(summary if summary else {
-                        "schema_version": "value.planning-ledger/v1", "years": []
-                    }); return
+                    # R4 R-中1: the v2 index summary has no years[]; the
+                    # per-year rows come from the project index.
+                    self._json(planning_summary_payload(
+                        read_json(planning_dir / "summary.json"), native_database
+                    )); return
                 database = planning_dir / "pipeline.sqlite"
                 if not database.is_file() and not native_database.is_file():
                     self._json({"error": "planning ledger is not available"}, 404); return

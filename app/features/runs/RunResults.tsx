@@ -9,6 +9,7 @@ import { Callout, StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
 import { costComposition, unitCostText } from "./resultMetrics.ts";
 import { moduleEvidenceText } from "./runHistoryView.ts";
+import { planningYearFromPayload } from "./planningView.ts";
 import { gateBlockedPublication, gateBlockedText, type ResultPublication, type RunValidationFields } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
@@ -59,11 +60,12 @@ function PlanningPipelinePanel({ runId, year }: { runId: string; year: number })
   useEffect(() => {
     if (!opened) return;
     const controller = new AbortController();
-    void getJson<{ years: PlanningYear[] }>(apiUrl(`runs/${runId}/planning/summary`), controller.signal)
+    void getJson<unknown>(apiUrl(`runs/${runId}/planning/summary`), controller.signal)
       .then((payload) => {
         if (controller.signal.aborted) return;
-        const summary = payload.years.find((item) => item.year === year) ?? null;
-        setRecord({ key: requestKey, summary, error: summary ? "" : "Planning evidence is not recorded for this year." });
+        // R4 R-中1: a summary without years[] reads "not recorded", not a JS error.
+        const { summary, error } = planningYearFromPayload(payload, year);
+        setRecord({ key: requestKey, summary, error });
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) setRecord({ key: requestKey, summary: null, error: reason instanceof Error ? reason.message : "Planning evidence unavailable" });

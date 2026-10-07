@@ -101,25 +101,81 @@ def query_index_events(
 
 
 def query_index_summary(path: Path) -> dict[str, object]:
+    """Per-year planning summary (``years[]``) read from the project index.
+
+    R4 R-中1: the Runs page planning panel reads ``years[]``; the v2 index
+    summary.json has none, so the server answers from the index instead.
+    Outcomes are the ``latest_status`` of each project-year row; the cause
+    breakdowns count the events recorded in that year.
+    """
+
+    def grouped(connection: sqlite3.Connection, column: str, year: int) -> dict[str, dict[str, object]]:
+        rows = connection.execute(
+            f"SELECT {column}, COUNT(*), SUM(capacity_mw) FROM project_year WHERE year=? "
+            f"GROUP BY {column} ORDER BY SUM(capacity_mw) DESC, {column}",
+            (year,),
+        ).fetchall()
+        return {
+            str(key): {"projects": int(count), "capacity_mw": float(capacity or 0.0)}
+            for key, count, capacity in rows if key is not None
+        }
+
+    def event_groups(connection: sqlite3.Connection, column: str, year: int) -> dict[str, dict[str, object]]:
+        rows = connection.execute(
+            f"SELECT {column}, COUNT(DISTINCT project_id), SUM(COALESCE(capacity_mw, 0)) FROM event "
+            f"WHERE year=? AND {column} IS NOT NULL GROUP BY {column} ORDER BY COUNT(*) DESC, {column}",
+            (year,),
+        ).fetchall()
+        return {
+            str(key): {"projects": int(count), "capacity_mw": float(capacity or 0.0)}
+            for key, count, capacity in rows
+        }
+
     with sqlite3.connect(path) as connection:
         years = [int(row[0]) for row in connection.execute("SELECT DISTINCT year FROM project_year ORDER BY year")]
         result = []
         for year in years:
-            rows = connection.execute(
-                "SELECT latest_status, COUNT(*), SUM(capacity_mw) FROM project_year WHERE year=? GROUP BY latest_status",
-                (year,),
-            ).fetchall()
-            outcomes = {
-                str(status): {"projects": int(count), "capacity_mw": float(capacity or 0.0)}
-                for status, count, capacity in rows
-            }
-            count = sum(value["projects"] for value in outcomes.values())
+            outcomes = grouped(connection, "latest_status", year)
+            count = sum(int(value["projects"]) for value in outcomes.values())  # type: ignore[arg-type]
             result.append({
                 "year": year, "introduced_projects": count, "accounted_projects": count,
-                "reconciled": True, "breakdowns": {"outcome": outcomes}, "kpis": outcomes,
-                "cause_breakdowns": {"event_type": {}, "reason_code": {}},
+                "reconciled": True,
+                "breakdowns": {
+                    "outcome": outcomes,
+                    "technology": grouped(connection, "technology", year),
+                    "region": grouped(connection, "region", year),
+                    "expected_completion_year": dict(sorted(
+                        grouped(connection, "expected_completion_year", year).items()
+                    )),
+                },
+                "kpis": outcomes,
+                "cause_breakdowns": {
+                    "event_type": event_groups(connection, "event_type", year),
+                    "reason_code": event_groups(connection, "reason_code", year),
+                },
             })
     return {"schema_version": SCHEMA_VERSION, "years": result}
+
+
+def planning_summary_payload(summary: object, index_path: Path) -> dict[str, object]:
+    """The /planning/summary response: a summary with ``years[]`` (R4 R-中1).
+
+    A legacy planning ledger summary already carries ``years[]`` and is
+    returned unchanged.  The v2 index summary (``value.planning-project-index/v2``)
+    has none; the per-year rows then come from the project index, and the
+    index-level fields stay alongside.
+    """
+
+    if isinstance(summary, dict) and isinstance(summary.get("years"), list):
+        return summary
+    if index_path.is_file():
+        per_year = query_index_summary(index_path)
+        if isinstance(summary, dict) and summary:
+            return {**summary, "years": per_year["years"]}
+        return per_year
+    if isinstance(summary, dict) and summary:
+        return {**summary, "years": []}
+    return {"schema_version": "value.planning-ledger/v1", "years": []}
 
 
 def materialize_planning_index(
