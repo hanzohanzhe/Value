@@ -896,11 +896,11 @@ export default function Home() {
     });
   }
 
-  function loadProjectRevision(project: Project) {
-    if (project.extensions?.frozen_recovery) { selectRunProject(project.id); setView("run"); setNotice("冻结输入 Study 的科学配置与范围已锁定。请在 Runs 核对来源和 readiness；不能将其加载为可编辑科学草稿。"); return; }
+  /** The editable form of a saved Study: shared by Edit as new revision and the extension draft (R4 F-中4). */
+  function loadStudyIntoForm(project: Project, name: string) {
     setSelectedPackId(project.data_pack_id);
     setProjectForm({
-      name: project.name,
+      name,
       purpose: project.purpose ?? "",
       start_year: project.start_year,
       end_year: project.end_year,
@@ -919,6 +919,10 @@ export default function Home() {
     });
     setParameterValues({ ...(project.parameters ?? {}) });
     setRuntimeValues({ "runtime.market_trace_level": "summary", ...(project.runtime_options ?? {}) });
+  }
+  function loadProjectRevision(project: Project) {
+    if (project.extensions?.frozen_recovery) { selectRunProject(project.id); setView("run"); setNotice("冻结输入 Study 的科学配置与范围已锁定。请在 Runs 核对来源和 readiness；不能将其加载为可编辑科学草稿。"); return; }
+    loadStudyIntoForm(project, project.name);
     setEditingBaseRevision(project.revision_sha256);
     setEditingProjectId(project.id);
     setPreflight(null);
@@ -1618,10 +1622,16 @@ export default function Home() {
       <ExtensionAuthorWorkbench extensions={workspace.extensions} modules={workspace.modules}
         onInstallRequest={() => document.getElementById("extension-installer")?.scrollIntoView({ block: "start", behavior: "smooth" })}
         onOpenStudies={() => {
+          // R4 F-中4: the draft copies the selected saved Study (years, modules,
+          // parameters, run options), so adding the extension is the only change.
+          const base = selectedProject && !selectedProject.extensions?.frozen_recovery ? selectedProject : undefined;
           setEditingProjectId(undefined); setEditingBaseRevision(undefined); setDataContextId("draft");
-          setProjectForm(current => ({ ...current, name: `${current.name || "New"} · extension study`, maturity_acknowledgements: {} }));
+          if (base) loadStudyIntoForm(base, `${base.name} · extension study`);
+          else setProjectForm(current => ({ ...current, name: `${current.name || "New"} · extension study`, maturity_acknowledgements: {} }));
           setPreflight(null); setView("projects");
-          setNotice("Independent Study draft opened. Choose the installed extension and an independent data pack, bind its inputs in Data, then review and save. No Run has started.");
+          setNotice(base
+            ? `Independent Study draft opened as a copy of ${base.name} (revision ${base.revision_number ?? 0}): its years, modules, parameters and run options are kept. Choose the installed extension and an independent data pack, bind its inputs in Data, then review and save. No Run has started.`
+            : "Independent Study draft opened. No saved Study is selected, so the draft starts from the current editor values. Choose the installed extension and an independent data pack, bind its inputs in Data, then review and save. No Run has started.");
         }} />
       <section className="panel extension-installer" id="extension-installer">
         <div className="module-installer-copy"><span>Capability package</span><h3>Install a model extension</h3><p>An extension adds data roles, parameters, lifecycle hooks or a new model domain through <code>value.extension-bundle/v1</code>. It does not silently replace a module.</p><small>Three levels are supported: data-only contracts, replacement modules installed separately, and new domains composed from both. The browser never runs pip or downloads dependencies.</small></div>

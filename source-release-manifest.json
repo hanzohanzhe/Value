@@ -3935,8 +3935,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "ed601db2741f3af65911ce836eea7a774a478bfb0b3a59fc3e45a378a5d0965b",
-      "bytes": 178041,
+      "sha256": "130925c80af322cf8aa3b87c4708159b1730079bc7f07928fabb6b5b84e1f5ca",
+      "bytes": 179027,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
