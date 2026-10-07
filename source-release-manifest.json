@@ -3269,8 +3269,8 @@
     },
     {
       "path": "app/features/learn/Value101Learn.tsx",
-      "sha256": "d3e43914212a003d84598b50597692e55c244655ac83054dff4bf9dbcbcb789e",
-      "bytes": 13358,
+      "sha256": "a7dd8812a44bcf53a3b6c8aa813d5a8f6d1615a3aa7c6022d1643da5c8889938",
+      "bytes": 13845,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3509,8 +3509,8 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "c77aec27aa5a051ac543f02fd999d88d4f63431005f62ab05fe338aced65c3ca",
-      "bytes": 22119,
+      "sha256": "2da77f76a9fd24009fb322dd7ac002db4bdcd09a30f6d6fcc12c8e66c93e0591",
+      "bytes": 22462,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3539,8 +3539,8 @@
     },
     {
       "path": "app/features/runs/run-history.css",
-      "sha256": "da385d2cf1b9437ba8b6c21d22c43cfa1872d5c1746b90a9217f79d9e4d3022d",
-      "bytes": 595,
+      "sha256": "946fde63c5f363733a9dd9554cd9691c102b207f3c5ebecc057c481e5c1aa81e",
+      "bytes": 921,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3551,14 +3551,14 @@
     },
     {
       "path": "app/features/runs/runHistoryView.ts",
-      "sha256": "c04127b10c8fd828bdd68ca42d9635de015dd8b72fdf5f6fe3a6688f073d2177",
-      "bytes": 5494,
+      "sha256": "35b9b757b3c2323103003b44d5ddf573b73a7238aae8913e594ec26fd3b6e41b",
+      "bytes": 6969,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/runs/types.ts",
-      "sha256": "bd1de4d780bfe3d74863bbbfa537e6bd48c002f3ea0c5d19fb10cbd55ad9560b",
-      "bytes": 5825,
+      "sha256": "b1a982a790185bdcffb64f4dd54bb0b7ea017052f32efd8888e1e36a8b857e7a",
+      "bytes": 6785,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3881,8 +3881,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "e05eba31f85e7cb081e10c6c3a6e8ec37611ebdb94523b4a0a1fe91bb76ba406",
-      "bytes": 175487,
+      "sha256": "6a5173749e91618d1bd17c2f9eefd2a724685706f95ab169da9a6cb961275a8b",
+      "bytes": 176283,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10824,8 +10824,8 @@
     },
     {
       "path": "tests/frontend/render/r2-learn-and-readme.test.mjs",
-      "sha256": "e340af1fea7caf835e102fdc8edd6b71a60e4ba1e989a1b1dadeea034c9413aa",
-      "bytes": 1690,
+      "sha256": "ca21a8b8d63e89f23e2ad6f55f27119365ad2138261ca3d2218e9752589120ef",
+      "bytes": 2450,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10860,8 +10860,8 @@
     },
     {
       "path": "tests/frontend/render/run-history.test.mjs",
-      "sha256": "c9248bc8af945cf3bb3eb410bd0410a719a475cf6134b97373fd5377754de2d9",
-      "bytes": 4643,
+      "sha256": "890193c07104ff830da4b929415ff419e5d75fee5133f5bc48ce4f94dcb9a823",
+      "bytes": 5313,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10974,8 +10974,8 @@
     },
     {
       "path": "tests/frontend/unit/r2-ui-low-items.test.mjs",
-      "sha256": "a1c08952f35a8545cc0beb0f1c5afce77cfbb6bc11bea07ce4c580297a2dc1f4",
-      "bytes": 3201,
+      "sha256": "5387d849978e490cd575849e9404cea9c61d8f2aed50bbfde0bf187627d3fac4",
+      "bytes": 3197,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10998,8 +10998,8 @@
     },
     {
       "path": "tests/frontend/unit/run-history-view.test.mjs",
-      "sha256": "585c265c3bd4b7290037ad262768d0c1932e6108ac1fa06657aa56066022cd3a",
-      "bytes": 3804,
+      "sha256": "aac5488762d31416a68802d5415e46d6b747bcd2fdd9b37ab6d9ec89d635a7ff",
+      "bytes": 5365,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

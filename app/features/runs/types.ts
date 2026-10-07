@@ -12,8 +12,28 @@ export type RecoveryCapability = {
   user_message: string; state_gaps?: string[];
   latest_safe_point?: { available: boolean; year: number | null; artifact: string | null; meaning?: string };
 };
+/**
+ * A24-5: the background preparation of a Run (status.json "preparation"). A
+ * start answers at once; the execution archive, input snapshot, disk
+ * reservation and worker spawn follow while the Run is `snapshotting`.
+ */
+export type RunPreparation = {
+  schema_version?: string;
+  state: "preparing" | "queued" | "failed" | "cancelled" | "interrupted" | string;
+  stage?: string; stage_label?: string; stage_index?: number; stage_count?: number;
+  started_at?: string;
+  /** Seconds since the preparation began / the current stage began (server clock, at the last poll). */
+  elapsed_seconds?: number | null; stage_elapsed_seconds?: number | null;
+  /** True while this backend is still preparing the Run. */
+  in_progress?: boolean;
+  failed_stage?: string;
+  stages?: { stage: string; label?: string; seconds?: number }[];
+};
 /** RunValidationFields: methodology, energy balance, stress, advisories and Q14 publication (X0 S12, P0-9 S11). */
 export type ModelRun = RunValidationFields & {
+  preparation?: RunPreparation;
+  /** The stored state behind a presented `cancel_requested`. */
+  persisted_status?: string;
   /** Q14: number of annual results removed from a withheld Run's record. */
   withheld_result_year_count?: number;
   input_snapshot_id?: string; input_tree_sha256?: string; recorded_project_revision_sha256?: string | null;

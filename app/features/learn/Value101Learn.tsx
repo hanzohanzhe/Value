@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import ModuleChainCard from "./ModuleChainCard";
-import { LEARN_RUN_FREEZE_NOTE } from "../runs/runHistoryView.ts";
+import { LEARN_RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE } from "../runs/runHistoryView.ts";
 import "../runs/run-history.css";
 import Value101NetworkExercise, { type Value101NetworkStudy } from "./Value101NetworkExercise";
 import {
@@ -40,6 +40,8 @@ type Props = {
   onNetworkStudiesCreated: (studies: Value101StudyDraft[]) => void;
   onRunNetworkStudy: (study: Value101NetworkStudy) => void;
   onOpenNetworkRun: (runId: string) => void;
+  /** A24-5: lesson Runs whose inputs are being frozen, with their stage and elapsed time. */
+  preparations?: { id: string; label: string; text: string }[];
 };
 
 const steps: { id: Value101StepId; number: string; title: string; time: string; copy: string }[] = [
@@ -73,7 +75,7 @@ export default function Value101Learn({
   descriptor, modules, loading, error, onRetry, onOpenView, baselineSaved, baselineInTrash,
   dayRunStatus, annualRunStatus, launching, onCreateBaselineStudy, onRunOneDay,
   onRestoreBaselineStudy, onRunFullTwoYear, onOpenDayRun, onOpenAnnualRun, networkStudies, networkRuns,
-  onNetworkStudiesCreated, onRunNetworkStudy, onOpenNetworkRun,
+  onNetworkStudiesCreated, onRunNetworkStudy, onOpenNetworkRun, preparations = [],
 }: Props) {
   const [completed, setCompleted] = useState<Value101StepId[]>([]);
   const [lessonOpen, setLessonOpen] = useState(false);
@@ -128,7 +130,7 @@ export default function Value101Learn({
 
     {lessonOpen && <section ref={lessonRef} className="learn-first-lesson" role="region" tabIndex={-1} aria-labelledby="value101-first-lesson-title"><header><div><span>VALUE 101 · Lesson 1</span><h3 id="value101-first-lesson-title">The five objects you will use</h3></div><button className="text-button" onClick={() => setLessonOpen(false)}>Close</button></header><p className="learn-first-lesson-intro">VALUE separates supplied evidence from model choices and execution records, so another modeller can see exactly what changed.</p><ol>{descriptor.concepts.map((concept, index) => <li key={concept.id}><i>{String(index + 1).padStart(2, "0")}</i><div><h4>{concept.label}</h4><p>{concept.plain_language}</p></div></li>)}</ol><div className="learn-first-lesson-flow" aria-label="VALUE workflow"><b>Data</b><i>+</i><b>Modules</b><i>→</i><b>Study</b><i>→</i><b>Run</b><i>→</i><b>Results</b></div></section>}
 
-    <div className="learn-layout"><section className="learn-course" aria-labelledby="value101-course-title"><header><div><span>Guided model lesson</span><h3 id="value101-course-title">From one market day to two annual states</h3></div></header>{launching && <p className="run-launch-note value-new-control" role="status">{LEARN_RUN_FREEZE_NOTE}</p>}{steps.map((step) => <article key={step.id} className={completed.includes(step.id) ? "complete" : ""}><i>{step.number}</i><div><h4>{step.title}</h4><small>{step.time}</small><p>{step.copy}</p></div><div className="learn-step-action">{action(step.id)}</div></article>)}</section><aside className="learn-concepts"><span>Annual synthetic system</span><h3>What is actually modelled</h3><ul><li>Solar, wind, CCGT, imports and battery storage</li><li>One unconstrained national market in the baseline</li><li>A planning project and annual PSM–investment–planning state transition</li><li>17,520 half-hours per full model year</li><li>Synthetic economics and evolution, not a GB benchmark</li></ul></aside></div>
+    <div className="learn-layout"><section className="learn-course" aria-labelledby="value101-course-title"><header><div><span>Guided model lesson</span><h3 id="value101-course-title">From one market day to two annual states</h3></div></header>{launching && <p className="run-launch-note value-new-control" role="status">{LEARN_RUN_FREEZE_NOTE}</p>}{preparations.length > 0 && <div className="learn-run-preparation" role="status">{preparations.map((item) => <p key={item.id} className="run-preparation-progress value-new-control">{item.label}: {item.text}</p>)}<p className="run-launch-note value-new-control">{SNAPSHOTTING_NOTE}</p></div>}{steps.map((step) => <article key={step.id} className={completed.includes(step.id) ? "complete" : ""}><i>{step.number}</i><div><h4>{step.title}</h4><small>{step.time}</small><p>{step.copy}</p></div><div className="learn-step-action">{action(step.id)}</div></article>)}</section><aside className="learn-concepts"><span>Annual synthetic system</span><h3>What is actually modelled</h3><ul><li>Solar, wind, CCGT, imports and battery storage</li><li>One unconstrained national market in the baseline</li><li>A planning project and annual PSM–investment–planning state transition</li><li>17,520 half-hours per full model year</li><li>Synthetic economics and evolution, not a GB benchmark</li></ul></aside></div>
 
     <section className="value101-experiments" aria-label="Build a research model"><header><span>Build a research model</span><h3>Use the real installation contracts</h3><p>These routes install model inputs or executable code. They do not swap a hidden preset.</p></header><div>
       <article><h4>Replace the data</h4><p>Map your files to the 25 roles with declared formats, units and clocks, validate the bundle, then install it as a selectable Data Pack.</p><button className="secondary" onClick={() => onOpenView("data")}>Open Data and mappings</button></article>

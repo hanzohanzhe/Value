@@ -21,7 +21,7 @@ import { Callout } from "../shared/Callout";
 import { lifecycleNotice } from "./lifecycleView.ts";
 import { preflightRunBlockedReason } from "../workspace/preflightIdentity";
 import "./run-history.css";
-import { RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE, runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
+import { RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE, preparationProgressText, runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -73,6 +73,8 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
   // R-D2 / S-D12: launching holds the scope while a Run is being started.
   const startingRun = Object.hasOwn(RUN_SCOPE_LABELS, launching);
   const emptyHistory = runHistoryEmpty(projectRuns.length, startingRun);
+  // A24-5: the stage and elapsed time while the Run's inputs are frozen.
+  const preparationText = selectedRun ? preparationProgressText(selectedRun) : null;
   const selectedRunContext = { kind: frozen.contextKind };
   const frozenRunSelectionId = frozen.runId;
   const frozenRunReadiness = frozen.readiness;
@@ -107,7 +109,7 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
         <section className="panel run-results">
           <div className="panel-head"><div><span>Run history</span><h3>Progress and results</h3></div><select aria-label="Selected run" value={selectedRun?.id ?? ""} onChange={(event) => onSelectRun(event.target.value)}>{(!selectedRun || !projectRuns.length) && <option value="" disabled={projectRuns.length > 0}>{runSelectPlaceholder(projectRuns.length)}</option>}{projectRuns.map((run) => <option value={run.id} key={run.id} title={run.id}>{runOptionLabel(run)}</option>)}</select></div>
           {selectedRun ? <>
-            <div className="run-status"><div><Badge tone={selectedRun.status === "completed" ? "good" : selectedRun.status === "failed" ? "warn" : "blue"}>{selectedRun.status}</Badge><b>{selectedRun.current_stage}</b><small>{selectedRun.mode === "smoke" ? "Two-period verification" : selectedRun.mode === "two_year_smoke" ? "Two-year smoke test" : selectedRun.mode === "value_101_day" ? "One-day market lesson" : selectedRun.mode === "two_year" ? "Complete two-year model" : "Complete project"} / {selectedRun.id}</small>{selectedRun.status === "snapshotting" && <small className="run-launch-note value-new-control">{SNAPSHOTTING_NOTE}</small>}</div><strong>{selectedRun.completed_years}<span> / {selectedRun.total_years}</span></strong></div>
+            <div className="run-status"><div><Badge tone={selectedRun.status === "completed" ? "good" : selectedRun.status === "failed" ? "warn" : "blue"}>{selectedRun.status}</Badge><b>{selectedRun.current_stage}</b><small>{selectedRun.mode === "smoke" ? "Two-period verification" : selectedRun.mode === "two_year_smoke" ? "Two-year smoke test" : selectedRun.mode === "value_101_day" ? "One-day market lesson" : selectedRun.mode === "two_year" ? "Complete two-year model" : "Complete project"} / {selectedRun.id}</small>{preparationText && <small className="run-preparation-progress value-new-control" role="status">{preparationText}</small>}{(selectedRun.status === "snapshotting" || preparationText) && <small className="run-launch-note value-new-control">{SNAPSHOTTING_NOTE}</small>}</div><strong>{selectedRun.completed_years}<span> / {selectedRun.total_years}</span></strong></div>
             <div className="validation-strip">
               <span><small>Execution</small><b>{selectedRun.execution_status ?? selectedRun.status}</b></span>
               <span><small>Contract check</small><b>{selectedRun.contract_validation_status ?? "not evaluated"}</b></span>
@@ -125,7 +127,7 @@ export default function RunWorkspace({ workspace, selectedProjectId, selectedPro
             {["failed", "cancelled"].includes(selectedRun.status) && <button className="secondary full" disabled={Boolean(launching) || !selectedRunSourceMutable} onClick={() => void resumeRun(selectedRun)}>{launching === "resume" ? "Checking checkpoint..." : "Resume from verified annual checkpoint with the same physics"}</button>}
             {selectedRun.status === "failed" && selectedRun.modules?.balancing === "value-zonal-redispatch-balancing" && <button className="secondary full" disabled={Boolean(launching) || !selectedRunSourceMutable} onClick={() => void rerunAsCopperplate(selectedRun)}>{launching === "rerun-copperplate" ? "Creating a new run…" : "Create a new copperplate fallback run"}</button>}
             <div className="lifecycle-actions">
-              {["queued", "running"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "cancel")}>Request safe cancellation</button>}
+              {["queued", "snapshotting", "running"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "cancel")}>Request safe cancellation</button>}
               {["completed", "failed", "cancelled"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "archive")}>Archive</button>}
               {selectedRun.status === "archived" && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "restore")}>Restore archive</button>}
               {["completed", "failed", "cancelled", "archived"].includes(selectedRun.status) && <button className="secondary" disabled={Boolean(launching)} onClick={() => void lifecycleAction(selectedRun, "export")}>Prepare audit bundle</button>}

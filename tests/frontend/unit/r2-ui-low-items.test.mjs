@@ -29,9 +29,9 @@ test("a Study name already in use is recognised regardless of case and spaces", 
 
 // L-4: Learn explains the wait itself instead of only disabling its buttons.
 test("the Learn launch note explains the freeze and where the Run opens", () => {
-  assert.match(LEARN_RUN_FREEZE_NOTE, /freezing the Study's inputs and execution environment/);
-  assert.match(LEARN_RUN_FREEZE_NOTE, /about 3 minutes/);
-  assert.match(LEARN_RUN_FREEZE_NOTE, /If you stay on this page, the Run opens when it is listed\./);
+  // A24-5: the start no longer waits for the freeze; the note says so.
+  assert.match(LEARN_RUN_FREEZE_NOTE, /freezes its inputs in the background/);
+  assert.match(LEARN_RUN_FREEZE_NOTE, /If you stay on this page, the Run opens when it is listed;/);
 });
 
 // R3-N3 and R3M-7 in app/page.tsx: the Callout's "Open in Inspect" no longer

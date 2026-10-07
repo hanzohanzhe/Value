@@ -44,13 +44,18 @@ test("a Study without Runs keeps 'No runs yet'; a launch in progress says the Ru
   assert.match(starting, /<b>Starting the Run…<\/b>/);
 });
 
-// S-D10 / O-1: starting a Run and a Run in "snapshotting" say why it can take minutes.
-test("a launch in progress and a snapshotting Run explain the one-time runtime archive", async () => {
+// S-D10 / O-1, A24-5: a launch only checks readiness and lists the Run; a Run
+// being prepared shows its stage, elapsed time and the one-time archive note.
+test("a launch in progress and a snapshotting Run explain the background preparation", async () => {
   const starting = await render({ projectRuns: [], selectedRun: undefined, launching: "value_101_day" });
-  assert.match(starting, /class="run-launch-note value-new-control" role="status">VALUE is freezing the Study&#x27;s inputs and execution environment before the Run is listed\. The first Run in a new data folder also archives the Python runtime once \(about 3 minutes\)/);
-  assert.match(starting, /you are not taken back here when it finishes/);
-  const snapshotting = { ...runs[0], status: "snapshotting", current_stage: "Freezing immutable run inputs" };
+  assert.match(starting, /class="run-launch-note value-new-control" role="status">VALUE is checking the Study&#x27;s readiness and creating the Run\. The Run is listed at once; its inputs and execution environment are then frozen in the background, and other pages stay usable\./);
+  const snapshotting = { ...runs[0], status: "snapshotting", current_stage: "Freezing the Study's inputs",
+    preparation: { state: "preparing", stage: "snapshot", stage_label: "Freezing the Study's inputs", stage_index: 2, stage_count: 4, elapsed_seconds: 65.4, in_progress: true } };
   const html = await render({ projectRuns: [snapshotting], selectedRun: snapshotting });
-  assert.match(html, /Freezing immutable run inputs[\s\S]*archives the Python runtime once \(about 3 minutes\); later Runs freeze their inputs in under a minute\./);
-  assert.doesNotMatch(await render({ projectRuns: runs, selectedRun: runs[0] }), /run-launch-note/);
+  assert.match(html, /<small class="run-preparation-progress value-new-control" role="status">Preparing · step 2 of 4: Freezing the Study&#x27;s inputs · 1 min 05 s elapsed<\/small>/);
+  assert.match(html, /archives the Python runtime once \(about 3 minutes\); later Runs freeze their inputs in under a minute\./);
+  assert.match(html, /Request safe cancellation/);
+  const cancelling = { ...snapshotting, status: "cancel_requested", persisted_status: "snapshotting" };
+  assert.match(await render({ projectRuns: [cancelling], selectedRun: cancelling }), /Cancellation requested: the Run stops before its model worker starts\./);
+  assert.doesNotMatch(await render({ projectRuns: runs, selectedRun: runs[0] }), /run-launch-note|run-preparation-progress/);
 });

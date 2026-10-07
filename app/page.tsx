@@ -59,7 +59,7 @@ import NetworkRedispatchView from "./features/network/NetworkRedispatchView";
 import ReplayExportPanel from "./features/market/ReplayExportPanel";
 import StressEventList from "./features/market/StressEventList";
 import { isResultCoverage } from "./features/shared/coverageView.ts";
-import { startedRunNoticeText, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
+import { preparationProgressText, startedRunNoticeText, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
 import TraceCoverageNotice, { type TraceProfile } from "./features/market/TraceCoverageNotice";
 import {
   copyDefaultZonalSolverContract,
@@ -691,6 +691,15 @@ export default function Home() {
   const value101Trash = workspace.study_trash.find((entry) => entry.study_id === "value-101-baseline");
   const value101DayRun = workspace.runs.find((run) => run.project_id === value101Project?.id && run.mode === "value_101_day");
   const value101AnnualRun = workspace.runs.find((run) => run.project_id === value101Project?.id && run.mode === "two_year");
+  // A24-5 / L-4: Learn shows the preparation of its lesson Runs (stage and elapsed time).
+  const value101Preparations = workspace.runs
+    .filter((run) => run.project_id === value101Project?.id || run.project_id === "value-101-network-copperplate" || run.project_id === "value-101-network-constrained")
+    .flatMap((run) => {
+      const text = preparationProgressText(run);
+      if (!text) return [];
+      const label = run.project_id === "value-101-network-copperplate" ? "Copperplate Run" : run.project_id === "value-101-network-constrained" ? "Constrained Run" : run.mode === "value_101_day" ? "One-day Run" : run.mode === "two_year" ? "Two-year Run" : "Lesson Run";
+      return [{ id: run.id, label, text }];
+    });
   const teachingProject = Boolean(selectedProject?.extensions?.value_101);
   const readyModules = workspace.modules.filter((module) => module.status === "ready").length;
 
@@ -1481,6 +1490,7 @@ export default function Home() {
       onOpenAnnualRun={() => { if (value101Project && value101AnnualRun) { selectRunProject(value101Project.id); setSelectedRunId(value101AnnualRun.id); setView("run"); } }}
       networkStudies={workspace.projects.filter((project) => project.id === "value-101-network-copperplate" || project.id === "value-101-network-constrained")}
       networkRuns={workspace.runs.filter((run) => run.project_id === "value-101-network-copperplate" || run.project_id === "value-101-network-constrained")}
+      preparations={value101Preparations}
       onNetworkStudiesCreated={(studies) => { setSelectedProjectId(studies[0]?.id ?? ""); setSelectedRunId(""); setNotice("Created the matched copperplate and fixed-network Studies. No Run has started."); void refresh(); }}
       onRunNetworkStudy={(study) => {
         const saved = workspace.projects.find((project) => project.id === study.id);

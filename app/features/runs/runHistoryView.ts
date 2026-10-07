@@ -44,7 +44,7 @@ export function runSelectPlaceholder(runCount: number): string {
 
 /** R-D2 / S-D12: what the results panel says when no Run is selected. */
 export function runHistoryEmpty(runCount: number, launching: boolean): { title: string; body: string } {
-  if (launching) return { title: "Starting the Run…", body: "VALUE is freezing the Study's inputs and execution environment. The Run appears in Run history as soon as they are frozen." };
+  if (launching) return { title: "Starting the Run…", body: "VALUE is checking the Study's readiness. The Run appears in Run history as soon as it is created; its inputs are then frozen in the background." };
   if (runCount) return { title: `${runCount} ${runCount === 1 ? "Run" : "Runs"} for this Study`, body: "Choose one in Run history to see its progress and results." };
   return { title: "No runs yet", body: "Choose a saved study, check its inputs and start with two full years." };
 }
@@ -78,14 +78,41 @@ export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot:
 }
 
 /**
- * S-D10 / O-1: why starting a Run can take minutes. Starting freezes the
- * Study's inputs and archives the execution environment before the Run is
- * listed; the first Run in a new data folder archives the Python runtime.
+ * S-D10 / O-1, A24-5: what happens while a start request is answered. The
+ * request only checks readiness and creates the Run; the inputs and the
+ * execution environment are frozen afterwards in the background, with their
+ * progress on the Run (preparationProgressText).
  */
-export const RUN_FREEZE_NOTE = "VALUE is freezing the Study's inputs and execution environment before the Run is listed. The first Run in a new data folder also archives the Python runtime once (about 3 minutes); later Runs take under a minute. Other pages stay usable; you are not taken back here when it finishes.";
+export const RUN_FREEZE_NOTE = "VALUE is checking the Study's readiness and creating the Run. The Run is listed at once; its inputs and execution environment are then frozen in the background, and other pages stay usable.";
 /**
- * L-4 (round R2): the same wait seen from VALUE 101. Learn opens the Run when it
- * is listed if the reader is still on Learn (startRun in app/page.tsx).
+ * L-4 (rounds R2, R3): the same start seen from VALUE 101. Learn opens the Run
+ * when it is listed if the reader is still on Learn (startRun in app/page.tsx).
  */
-export const LEARN_RUN_FREEZE_NOTE = "Starting the Run: VALUE is freezing the Study's inputs and execution environment first, so the lesson buttons stay disabled until the Run is listed. The first Run in a new data folder also archives the Python runtime once (about 3 minutes); later Runs take under a minute. If you stay on this page, the Run opens when it is listed.";
+export const LEARN_RUN_FREEZE_NOTE = "Starting the Run: VALUE checks the Study's readiness and lists the Run, then freezes its inputs in the background. If you stay on this page, the Run opens when it is listed; its preparation is also shown here.";
 export const SNAPSHOTTING_NOTE = "The first Run in a new data folder archives the Python runtime once (about 3 minutes); later Runs freeze their inputs in under a minute.";
+
+/** "42 s", "1 min 05 s", "1 h 02 min" (A24-5 elapsed time). */
+export function formatElapsed(seconds: number | null | undefined): string | null {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return null;
+  const whole = Math.floor(seconds);
+  if (whole < 60) return `${whole} s`;
+  if (whole < 3600) return `${Math.floor(whole / 60)} min ${String(whole % 60).padStart(2, "0")} s`;
+  return `${Math.floor(whole / 3600)} h ${String(Math.floor((whole % 3600) / 60)).padStart(2, "0")} min`;
+}
+
+/**
+ * A24-5: the stage and elapsed time of a Run whose inputs are being frozen
+ * ("Preparing · step 2 of 4: Freezing the Study's inputs · 1 min 05 s
+ * elapsed"), or null when the Run is not being prepared.
+ */
+export function preparationProgressText(run: Pick<ModelRun, "status" | "preparation" | "persisted_status">): string | null {
+  const preparation = run.preparation;
+  const stored = run.status === "cancel_requested" ? run.persisted_status : run.status;
+  if (!preparation || preparation.state !== "preparing" || stored !== "snapshotting") return null;
+  const step = preparation.stage_index && preparation.stage_count ? `step ${preparation.stage_index} of ${preparation.stage_count}: ` : "";
+  const elapsed = formatElapsed(preparation.elapsed_seconds);
+  const parts = [`Preparing · ${step}${preparation.stage_label ?? "Freezing the Run's inputs"}`];
+  if (elapsed) parts.push(`${elapsed} elapsed`);
+  const text = parts.join(" · ");
+  return run.status === "cancel_requested" ? `${text}. Cancellation requested: the Run stops before its model worker starts.` : text;
+}

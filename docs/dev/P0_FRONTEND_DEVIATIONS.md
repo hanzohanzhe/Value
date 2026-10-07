@@ -258,3 +258,17 @@
 - **F-R22-6（重名 Study）：** 批准。只给琥珀色提示，不阻止创建，与后端允许重名一致。
 - **其余 F-R22 项：** 按实现批准。
 - **p06 advisory 的严重度：** 维持 high。它只影响显示顺序，而且该提示涉及论文口径下调记账的已知局限，宁可醒目。
+
+## R3-4（Run 异步启动；DECISIONS A24-5：O-1、N-4、L-4、F5-08、P1-11）
+
+后端改为：启动请求只做准入和 preflight，建好 `snapshotting` 状态的 Run 后立即答复 202；冻结在后台进行，进度写在 `status.json` 的 `preparation`（阶段、第几步、已用时间）。规格第 5 节只规定了 worker 状态与年度进度，没有准备阶段的显示，以下按第 0 节原则和第 1.3 节样式（新元素 ≥12px、只用已有 token）实现，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R34-1 | O-1、F5-08 | Runs 页所选 Run 处于准备中时，状态行下加一行 `run-preparation-progress`（13px、600、`--ink`，`role=status`）：`Preparing · step {i} of {n}: {阶段} · {已用时间} elapsed`，阶段为 `Recording and archiving the execution environment` / `Freezing the Study's inputs` / `Checking disk space and reserving output space` / `Starting the model worker`，时间格式 `42 s`、`1 min 05 s`、`1 h 02 min`（随每 2 s 的轮询更新，取服务器时间）。其下保留原 `SNAPSHOTTING_NOTE`（首次归档约 3 分钟） | 规格要求显示阶段与用时；原来只有一句固定说明 | 是（文案与位置） |
+| F-R34-2 | O-1、S-D10 | 取代 F-R15-3 的启动说明：启动请求进行中（通常约 1 s）Run 按钮下改为 `VALUE is checking the Study's readiness and creating the Run. The Run is listed at once; its inputs and execution environment are then frozen in the background, and other pages stay usable.`；结果区空状态改为 `VALUE is checking the Study's readiness. The Run appears in Run history as soon as it is created; its inputs are then frozen in the background.` | 启动不再等快照归档，原文“列出前要冻结”不再成立 | 是（文案） |
+| F-R34-3 | L-4 | 取代 F-R22-10 的 Learn 文案：`Starting the Run: VALUE checks the Study's readiness and lists the Run, then freezes its inputs in the background. If you stay on this page, the Run opens when it is listed; its preparation is also shown here.`。另外，课程的 Run（一日、两年、网络练习的两个 Run）处于准备中时，在课程标题下显示 `learn-run-preparation` 块：每个 Run 一行 `{One-day Run / Two-year Run / Copperplate Run / Constrained Run}: {与 F-R34-1 相同的进度句}`，块末附 `SNAPSHOTTING_NOTE` | 读者从 Runs 返回 Learn 时也能看到准备进度 | 是（位置与标签） |
+| F-R34-4 | O-1 | `snapshotting` 的 Run 也显示 `Request safe cancellation`（原来只有 queued、running）。准备线程在每个阶段开始前读取取消请求，取消后 Run 记为 cancelled（`GF_RUN_CANCELLED_BEFORE_WORKER`），不启动 worker；准备中取消时进度句末尾加 `Cancellation requested: the Run stops before its model worker starts.` | 准备首次可达 3 分钟，原来无法中止 | 是（是否提供该按钮） |
+
+后端出错的显示沿用已有的失败 Run 呈现：准备失败为 `GF_RUN_PREPARATION_FAILED`（`current_stage` 为 `Run preparation failed`，`preparation.failed_stage` 记失败阶段），后端在准备途中停止为 `GF_RUN_PREPARATION_INTERRUPTED`（`Run preparation interrupted`）；磁盘与预留的拒绝保持原错误码，但现在是已建 Run 的 failed 状态，而不是启动请求的 503/507。
+

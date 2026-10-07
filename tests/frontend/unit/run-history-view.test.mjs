@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isActiveRunStatus, moduleEvidenceText, runHistoryEmpty, runIdSuffix, runOptionLabel, runSelectPlaceholder, runStartedText, startedRunNoticeText } from "../../../app/features/runs/runHistoryView.ts";
+import { formatElapsed, isActiveRunStatus, moduleEvidenceText, preparationProgressText, runHistoryEmpty, runIdSuffix, runOptionLabel, runSelectPlaceholder, runStartedText, startedRunNoticeText } from "../../../app/features/runs/runHistoryView.ts";
 
 // Four-role report R-D2, S-D12, M2-N1, R-D12 (round R1-5): the Run history
 // tells Runs of one Study apart and never keeps a stale placeholder or notice.
@@ -48,4 +48,21 @@ test("module evidence: pending only while the Run is active; the one-day lesson 
   assert.equal(moduleEvidenceText(done, "psm", undefined), "No calls recorded");
   assert.equal(moduleEvidenceText({ mode: "smoke", status: "completed" }, "investment", undefined), "No calls recorded");
   assert.equal(moduleEvidenceText({ mode: "value_101_day", status: "running" }, "investment", undefined), "Evidence pending");
+});
+
+// A24-5: the background preparation of a Run, as stage and elapsed time.
+test("formatElapsed and preparationProgressText describe a Run being prepared", () => {
+  assert.equal(formatElapsed(0), "0 s");
+  assert.equal(formatElapsed(42.9), "42 s");
+  assert.equal(formatElapsed(65), "1 min 05 s");
+  assert.equal(formatElapsed(3725), "1 h 02 min");
+  assert.equal(formatElapsed(null), null);
+  assert.equal(formatElapsed(-1), null);
+  const preparing = { status: "snapshotting", preparation: { state: "preparing", stage: "execution", stage_label: "Recording and archiving the execution environment", stage_index: 1, stage_count: 4, elapsed_seconds: 12 } };
+  assert.equal(preparationProgressText(preparing), "Preparing · step 1 of 4: Recording and archiving the execution environment · 12 s elapsed");
+  assert.equal(preparationProgressText({ ...preparing, preparation: { ...preparing.preparation, elapsed_seconds: null } }), "Preparing · step 1 of 4: Recording and archiving the execution environment");
+  assert.match(preparationProgressText({ ...preparing, status: "cancel_requested", persisted_status: "snapshotting" }), /Cancellation requested/);
+  assert.equal(preparationProgressText({ ...preparing, status: "queued", preparation: { ...preparing.preparation, state: "queued" } }), null);
+  assert.equal(preparationProgressText({ status: "snapshotting" }), null);
+  assert.equal(preparationProgressText({ status: "cancel_requested", persisted_status: "running", preparation: preparing.preparation }), null);
 });
