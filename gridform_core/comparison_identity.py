@@ -62,6 +62,32 @@ def _sha(value):
     return isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value.lower())
 
 
+def numeric_canonical(value):
+    """``value`` with every integral finite float written as an int.
+
+    R3-N1 (four-role R1 retest, DECISIONS A23): a configuration value is
+    compared by number, not by its JSON spelling, so ``17000.0`` and
+    ``17000`` are the same VoLL.  Booleans stay booleans; non-integral and
+    non-finite floats are kept as they are.
+    """
+
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else value
+    if isinstance(value, Mapping):
+        return {key: numeric_canonical(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [numeric_canonical(item) for item in value]
+    return value
+
+
+def comparison_key(value) -> str:
+    """The text by which two recorded values are compared (numbers by value)."""
+
+    return json.dumps(numeric_canonical(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+
+
 def build_comparison_identity(root: Path, status: Mapping, resolved: Mapping) -> dict:
     snapshot = _read(root / "input-snapshot/snapshot.json")
     project = _read(root / "input-snapshot/project.json")
@@ -212,7 +238,7 @@ def review_comparison_identities(summaries: Sequence[Mapping]) -> dict:
             record = row.get("comparison_identity")
             dims = record.get("dimensions") if isinstance(record, Mapping) and record.get("schema_version") == "value.comparison-identity/v1" else None
             values.append(dims.get(key) if isinstance(dims, Mapping) else None)
-        state = "unknown" if any(value is None for value in values) else "same" if len({_hash(value) for value in values}) == 1 else "changed"
+        state = "unknown" if any(value is None for value in values) else "same" if len({comparison_key(value) for value in values}) == 1 else "changed"
         dimensions[key] = {"status": state, "values": values}
     changed = [key for key, row in dimensions.items() if row["status"] == "changed"]
     unknown = [key for key, row in dimensions.items() if row["status"] == "unknown"]

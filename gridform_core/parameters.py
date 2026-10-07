@@ -126,6 +126,27 @@ ALIASES = {
 }
 
 
+def normalise_numeric_values(values: Mapping[str, object]) -> dict[str, object]:
+    """``values`` with each float-typed registry parameter written as a float.
+
+    R3-N1 (DECISIONS A23): a Study is saved with its numbers in the registry
+    type, so an editor that sends ``17000`` for ``17000.0`` does not change
+    the saved Study or its revision hash.  Only int values of known float
+    parameters change; every other value (and any invalid one, which
+    validation reports) is kept as given.
+    """
+
+    result = dict(values)
+    for key, value in values.items():
+        definition = REGISTRY.get(ALIASES.get(str(key), str(key)))
+        if (
+            definition is not None and definition.value_type == "float"
+            and isinstance(value, int) and not isinstance(value, bool)
+        ):
+            result[key] = float(value)
+    return result
+
+
 def parameter_schema() -> dict[str, object]:
     return {
         "schema_version": "value.parameter-registry/v1",

@@ -8,7 +8,7 @@ import json
 import math
 from pathlib import Path
 from typing import Mapping, Sequence
-from .comparison_identity import build_comparison_identity, review_comparison_identities
+from .comparison_identity import build_comparison_identity, comparison_key, review_comparison_identities
 from .result_advisories import NEEDS_REVIEW_SEVERITIES, present_scientific_status
 
 from .result_coverage import ANNUAL_PERIODS, NON_ANNUAL_MODES, REASON_NON_ANNUAL, is_non_annual, stopped_reason
@@ -410,7 +410,7 @@ def _differing_paths(values: Sequence[object], depth: int, prefix: str = "") -> 
         paths: list[str] = []
         for key in keys:
             children = [value.get(key) for value in values]  # type: ignore[union-attr]
-            if len({json.dumps(child, sort_keys=True, default=str) for child in children}) > 1:
+            if len({comparison_key(child) for child in children}) > 1:
                 paths.extend(_differing_paths(children, depth - 1, f"{prefix}.{key}" if prefix else key))
         return paths
     return [prefix or "(value)"]
@@ -464,17 +464,17 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
     dimensions = {}
     for key in ("cost", "carbon", "terminal_policy", "currency_base_year"):
         values = [row.get("definitions", {}).get(key) for row in summaries]  # type: ignore[union-attr]
-        if len(set(json.dumps(value, sort_keys=True) for value in values)) > 1:
+        if len({comparison_key(value) for value in values}) > 1:
             dimensions[f"definition.{key}"] = values
     for key in ("periods_per_year", "scientific_status", "mode", "energy_balance_status", "run_invariant_status"):
         values = [row.get("run", {}).get(key) for row in summaries]  # type: ignore[union-attr]
-        if len(set(json.dumps(value, sort_keys=True) for value in values)) > 1:
+        if len({comparison_key(value) for value in values}) > 1:
             dimensions[f"run.{key}"] = values
     module_sets = [dict(row.get("modules", {})) for row in summaries]
     module_slots = sorted(set().union(*(set(value) for value in module_sets)))
     for slot in module_slots:
         values = [modules.get(slot) for modules in module_sets]
-        if len(set(json.dumps(value, sort_keys=True) for value in values)) > 1:
+        if len({comparison_key(value) for value in values}) > 1:
             dimensions[f"module.{slot}"] = values
     review = review_comparison_identities(summaries)
     dimension_details = changed_dimension_details(review)

@@ -73,6 +73,9 @@ def resolve_market_configuration(
         raise ValueError("Explicit market configuration VOLL must be finite and positive")
     if abs(declared_voll - _registry_voll(parameters)) > 1e-12:
         raise ValueError("Explicit market configuration VOLL does not match the parameter registry")
+    # R3-N1 (DECISIONS A23): the VoLL is a float parameter; an editor that
+    # sends 17000 for 17000.0 must not make an unchanged Study a new revision.
+    result["voll_gbp_per_mwh"] = declared_voll
     expected_ledger = str(
         runtime_controls.get("runtime.market_trace_level")
         or runtime_controls.get("market_trace_level")

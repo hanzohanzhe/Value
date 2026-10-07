@@ -796,6 +796,12 @@ def resolve_study_draft(
             scope="modules", detail={"slot": "network_expansion"},
         ))
         market_configuration = dict(project.get("market_configuration") or {})
+    # R3-N1 (DECISIONS A23): numbers are saved in their registry type.
+    from .parameters import normalise_numeric_values
+
+    for key in ("parameters", "parameter_overrides", "runtime_options", "runtime_controls"):
+        if isinstance(project.get(key), Mapping):
+            normalised_project[key] = normalise_numeric_values(project[key])  # type: ignore[arg-type]
     normalised_project.update({
         "modules": modules,
         "selected_extensions": list(selected_extensions),
