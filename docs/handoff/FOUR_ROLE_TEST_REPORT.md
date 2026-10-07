@@ -16,6 +16,7 @@
   - **未复核**：只有测试员的证据。
 - **修复轮之后的状态见第 9 节“修复轮复测（2026-10-06）”**（被测 HEAD `cd2d72c`）。第 1–8 节保留首轮（HEAD `a987ca4`）的原始记录，没有改写。
 - **复测之后落地的 A18（修正口径核电开局在运，FX8）见第 9.10 节**：不改界面，四个角色没有为它重测。
+- **R1 轮（A19–A22a，R1-1 至 R1-5）之后的复测见第 10 节“R1 轮复测（2026-10-07）”**（被测 HEAD `e0ec659`）：四个角色都通过，没有高缺陷，新增 1 项中等缺陷 R3-N1；仍未关闭的项汇总在第 10.7 节。第 9 节保留修复轮的原始记录，没有改写。
 
 ## 1 结论
 
@@ -747,6 +748,298 @@
 - **数值作用在 GBP1 上：** GBP1 public2 修正口径第一年（本地，未发布）核电 2.02 → 38.26 TWh，对 Energy Trends 5.1 +2.5%，通过；见 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` 第 10 节。四个角色都没有用 GBP1 public2，不受影响。
 - 复测之后另有 FX9（N-1、N-2、N-3、F2-N1、M-D1 界面），记录在 `docs/dev/p0-reports/FX9-retest-mediums.md`；本节只记 A18。
 
+## 10 R1 轮复测（2026-10-07）
+
+- **被测版本：** 分支 `fix/review-2026-10-04`，HEAD `e0ec659432818ec64798ddfb23178f86ba79708a`，即 R1 轮（R1-1 至 R1-5）全部提交之后。R1 之前还落地了 FX8（A18）和 FX9（N-1、N-2、N-3、F2-N1、M-D1 界面）。四个角色仍用 `git archive HEAD` 导出到 scratch，INTEG 没有改动。
+- **R1 轮范围（DECISIONS A19–A22a）：**
+  - R1-1：重启成本参考数据（A19、A22）；
+  - R1-2：修正口径按经济顺序下调（A19、A22、A22a）；
+  - R1-3：电池按类型分别设扩容上限（A20）；
+  - R1-4、R1-5：四类用户测试中仍未解决的后端与界面问题（A21：medium 及以上必修，low 改动小时顺带修）。
+- **方法：** 与前两轮相同，每个角色起自己的 API 和 UI 网关，用 Playwright headless（chromium 1243）操作界面，数据包用 `install_synthetic_pack.py --value-101-only` 安装，`vinext build` 4.8–4.9 s。运行环境仍不允许子代理写 `REPORT.md`，四份报告原文只存在于工作流输出中，本节是它们唯一入库的记录。
+
+| 角色 | 实例端口（API/UI） | 主要证据目录 |
+|---|---|---|
+| 复现 | 18850 / 18851 | `$ROLES3/reproduce/`（`shots/` 32 张、`golden-cmp.txt`、`golden_cmp.py`、`repro-correcte-run.json`、`repro-doctoral-run.json`、`pw/runmod.log`） |
+| 换数据 | 18852 / 18853（驱动 18859） | `$ROLES3/swap-data/`（`shots/` 43 张、`evidence/`、`input/`） |
+| 改函数 | 18854 / 18855 | `$ROLES3/edit-module/`（`shots/` 38 张、`evidence/`、`author*/`、`scripts/pill.mjs`） |
+| 加功能 | 18856 / 18857 | `$ROLES3/add-feature/`（`shots/`、`ev/`、`author/`、`pw/`） |
+
+`$ROLES3` = `…/scratchpad/build/roles3`，完整路径见附录 A。
+
+### 10.1 结论
+
+| 角色 | 结论 | 以往缺陷 | 新发现的最高严重度 |
+|---|---|---|---|
+| 复现 | **通过，有问题** | R-D2、R-D3、R-D4（界面）、R-D5、R-D7、R-D8、R-D11、R-D12 已修复；R-D6 大部分修复（残留 N3）；R-D9、R-D10 保留 | **中**（R3-N1） |
+| 换数据 | **通过，有若干低等级问题** | 19 项中 15 项已修复，S-D5、S-D7、S-D10 部分修复（残留都为低），N-4 仍在（已转 P1） | 低（L-1～L-6） |
+| 改函数 | **通过，有问题** | M-D1～M-D6、M-D8、M-D9、M2-N1～M2-N4 已修复；M-D7 部分修复（R3M-1）；M-D10、M2-N5 观察保留 | 低-中（R3M-1，文档） |
+| 加功能 | **通过，有问题** | F-D1～F-D4、F2-N1～F2-N4、G4-01 已修复或未复现；F-D5、F-D6 部分修复 | 低-中（4.1，既有） |
+
+**一句话结论：** 四个角色的主路径都走通；没有高缺陷，所以本轮没有必须独立复核的高缺陷。R1-4、R1-5 处理的界面和后端缺陷绝大多数已在真实实例中确认修复。新出现 1 项中等缺陷 R3-N1（原样保存 Study 后，比较页报告不存在的 VoLL 变化），按 A21 属于必修。R1-2、R1-3、A18 的方法改动对 VALUE 101 一日和两年数值没有影响，与 R1 各报告的结论一致。golden 对照、重跑可重复、INSTALLED 完好这三点保持不变。
+
+另有两项需要 methodology 编辑员注意：R3-N2（p06 的 advisory 仍把“先弃风电”写成缺陷，与 A19 矛盾）和 R3-N7（advisory 不按 Run 中是否有相关资产筛选）。
+
+### 10.2 复现角色
+
+**过程：** 首页 → 复现路径 → VALUE 101 基线 → 复现 Study → corrected 一日 Run、重跑、基线 Run → 在编辑中改为 doctoral 口径，跑一日 Run 并重跑 → 两组比较 → strict 冻结输入复现，并运行复现出的 Study → Market replay、Inspect、Network 页 → 375 px。
+
+**关键证据：**
+
+- **与 golden 对照**（exact 模式，比较各 Run 的 `model-output/`）：
+
+  | UI Run | 参考 | 列数 | trajectory 差异 | identity 差异 |
+  |---|---|---|---|---|
+  | corrected：首跑 8b30d021、重跑 c172207b、基线 01b806b4、原样保存后的 3c12f82f | C3（16 个修订） | 905 / 905 | 只有 `run_id`、`result_id` | 1 列 `market_rule_set.runtime_kernel_tree_sha256`（R3-N6） |
+  | doctoral：首跑 2d58b65a、重跑 5afca2de、冻结恢复 3ee29b93 | D3（13 个修订） | 932 / 932 | 只有 `run_id`、`result_id` | 13 列，同上轮（R-D10） |
+
+- **重跑可重复：** 同口径 market.sqlite 逐字节相同（corrected 4 个 Run `dffb19034337aace`，doctoral 3 个 Run `7ff0796424d56bcf`），energy-balance-oracle、run-invariants、scientific-validation、stage-parity、market/index 同口径也逐字节相同。market.sqlite 哈希与上轮不同（上轮 `c2152bcd…`、`5755489c…`），差异只在 identity 区（`metadata.value`）和 R1-2 新增的 extension 列，数值列不变。Inspect › Artifacts 下载的 market.sqlite 与磁盘文件哈希一致。
+- **窗口卡数值与前两轮完全相同：** corrected 需求 775.49 / Accepted supply 787.02 / Shortfall 0 / 充电 11.53 / 放电 9.34 MWh，£37.06/MWh；doctoral 775.49 / 780.49 / 0 / 48.34 / 39.15，£36.48/MWh。价格标签为 “Demand-weighted average period cost”。
+- **doctoral 年度结果扣发：** 状态条 `Energy balance ● Conformant`、`Raw invariants ● 1 failed`（Storage single direction）、`Stress events None`；Callout 写明 10 行失败、命中 DEV-STO-01；状态条下方新增可展开的 “11 advisories apply to this Run · 7 high, 3 medium, 1 info”。API `result_publication.status=withheld`（`GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED`）；冻结恢复的 Run 同样扣发。
+- **修正 id：** corrected Run 的 `applied_correction_ids` 共 37 个，含 `r12.economic-downward-order`、`r13.per-type-battery-caps`、`fx8.nuclear-in-service-at-start`；doctoral Run 共 10 个，不含这三个，符合 Q1。
+- **派生与冻结复现：** `derivation` 记录 intent、来源 Study 与修订、数据包和模块图 sha；基线 Study 仍是 rev 1。strict 冻结输入核对 21.7 s，verified，25 个规范角色；由此创建的 Study 跑出的 Run 与原 Run 字节相同。
+- VALUE 101 没有核电，也没有带价的停机段，所以 R1-2、R1-3、A18 不改变一日课程的数值。
+
+**以往缺陷逐条状态：**
+
+| ID | 状态 | 本轮证据 |
+|---|---|---|
+| R-D1 | 保持修复 | 见上 |
+| R-D2 | **已修复** | 下拉项为 `One-day market lesson · completed · 2026-10-07 01:05 · 8b30d021`，悬停显示完整 ID；有 Run 时不再出现 “No runs yet”；启动中显示 “Starting the Run… VALUE is freezing the Study's inputs…” |
+| R-D3 | **已修复** | 标题 “Stress events — 2025 (non-annual run) / None”；空列表写 “No stress events in the 48 periods of 2025 this non-annual Run computed.” |
+| R-D4 | **已修复（界面部分）** | 核对时显示 “通常需要约 20 秒”、`aria-busy=true`；创建时提示关闭页面后服务端仍会完成、不要再次创建。实测关闭页面后只产生 1 个 recovered Study。后端持锁部分转 P1（R1-4） |
+| R-D5 | **已修复** | 两个口径都只显示一个原因 “This run cleared one national (copperplate) market…”，并有 “Open Market replay →”；没有 409，也没有 “evidence pending” |
+| R-D6 | **大部分修复** | 一次完整 Run 以及 Market、Inspect、Network 页，HTTP ≥400 为 0 次（`pw/runmod.log`）；从导航进入 Inspect 默认打开 Market，Planning 标签说明本范围没有规划记录。残留 R3-N3 |
+| R-D7 | **已修复** | 变化维度按“标签 + 路径”列出，例如 `module · storage cost: dynamic-annual-storage-cost 2.0.0 → value-legacy-storage-tariff 1.0.0`；原始 JSON 默认折叠 |
+| R-D8 | **已修复** | 375 px 下 7 个视图 scrollWidth 都是 375，没有文字被裁掉 |
+| R-D9 | 仍在（R1-4 保留，信息级） | `market_ledger.uri` 仍是本机绝对路径；8 个 Run 的 `psm_input_sha256` 各不相同 |
+| R-D10 | 仍在（负责人决定，不设门） | D3 的 identity 区落后 13 列 |
+| R-D11 | **已修复** | 编辑时标题 “Edit study · Repro doctoral R3”；advisory 在状态条下方的折叠区列出，每条带严重度 |
+| R-D12 | **已修复** | PSM 以外的 6 个槽位显示 “Not called in this scope” |
+| O-1 | 部分修复 | 新数据目录第一次 Run 的 POST 仍阻塞 173 s，之后约 36 s；界面已有说明。后端部分转 P1（P1-11 / F5-08） |
+| O-2 | 仍在 | 8 个一日 Run 加 1 次冻结核对后 state 588 MB，其中执行归档 500 MB |
+| O-3 | 仍在（负责人决定） | doctoral Run 的 10 个 `applied_correction_ids` 中没有 VoLL 相关 id |
+
+**新发现：**
+
+| ID | 严重度 | 描述 | 本轮复核 |
+|---|---|---|---|
+| R3-N1 | **中** | 原样保存 Study（Edit as new revision，不改任何字段）后，`market_configuration.voll_gbp_per_mwh` 从 `17000.0` 变成 `17000`，并生成 rev 2（sha `8c51c919…` → `d6c76a59…`，`change_summary=[]`）。复现 Run 对基线 Run 比较时，页面写 “Recorded Configuration Changed — Only the parameters and extension configuration (market_configuration.voll_gbp_per_mwh) differ…”，而两个 Run 的 market.sqlite 字节相同（`dffb1903…`）；corrected 对 doctoral 的比较中 `differs at` 也列出这个不存在的差异。比较页是复现路径上最关键的核对，所以记为中。截图 `shots/23-compare-noop-edit-vs-baseline.jpg` | **代码核对确认**，见 10.6 |
+| R3-N2 | 低-中 | doctoral Run 上的 advisory `p06.avoided-cost-downward-order`（high，“Down regulation in curtail-cost order”）正文把 “ascending curtail_cost (VRE first)” 当作缺陷，与 A19 撤回的判断矛盾；同一 Run 上 `r12.economic-downward-order`（medium，“Down regulation without restart economics”）表述准确。两条讲同一件事，严重度不同、结论相反。文字来源 `gridform_core/data/methodology/corrections/p06.json:91-93`（截图 `shots/14-doctoral-advisories.jpg`）。**methodology 编辑员需要知道** | **代码核对确认**：`p06.json` 第 93 行 summary 仍写 “ascending curtail_cost (VRE first)” |
+| R3-N3 | 低 | R-D6 残留：从 Callout 或状态条点 “Open in Inspect” 打开空的 Planning 标签，之后从导航进入 Inspect 也停在 Planning。根因 `app/page.tsx:1432` 中 `setInspectTarget({ tab: tab ?? "planning", … })` 写死默认标签，且 `inspectTarget` 不清除（截图 `shots/29-open-in-inspect-from-callout.jpg`） | **代码核对确认**（第 1432 行如述） |
+| R3-N4 | 低 | 在复现路径创建 Study 后，来源下拉框默认选中刚创建的复现 Study；再点一次“创建复现 Study”得到“复现的复现”，且 Study 允许重名（实例：`repro-corrected-r3-8209b52903` 的来源是 `repro-corrected-r3-0fbaf920cf`，两者都叫 “Repro corrected R3”） | 未复核 |
+| R3-N5 | 信息 | 同一个 Run 在比较选择器中显示完成时间（01:08:25），在 Run history 中显示创建时间（01:05） | 未复核 |
+| R3-N6 | 信息 | golden C3 的 identity 区落后 1 列（`runtime_kernel_tree_sha256`）：C3 最后一次修订是 R1-2 写入的 revision 15（基于 `c9c1cc1`），之后 A22a 改了 `net_saving`。与 R-D10 同类，不设门 | 未复核 |
+| R3-N7 | 信息 | advisory 不按 Run 中是否有相关资产筛选：VALUE 101 没有核电，doctoral Run 仍列出 high 级 “Nuclear started the year off…”，正文自己写着 “Runs without nuclear units are not affected”，high 因此由 6 条变为 7 条。**methodology 编辑员需要知道** | 未复核 |
+| R3-N8 | 观察，未确认 | 冻结恢复的 Study 只有一个范围，readiness 卡片仍显示 “Checking…” 时点 Run，Run 也正常启动并完成。是否允许在核对完成前启动，未进一步确认 | 未复核 |
+
+### 10.3 换数据角色
+
+**过程：** VALUE 101 基线 → 一日 Run → 复制 BASE 包 → 在界面中映射 4 个角色（demand.real、demand.forecast、market.france.profile、EUR 计价的 market.france.price，都声明 UTC 时间戳列）→ 创建换数据 Study → Check readiness → 一日 Run → Market replay → 比较 → 身份详情。另做负向包（价格 6087、流量 500）和多组负向文件。
+
+**关键证据：**
+
+- **数值与第 2 轮逐项相同：**
+
+  | 指标 | 基线 | 换数据 |
+  |---|---:|---:|
+  | 需求（MWh） | 775.49 | 837.53 |
+  | 法国进口（MWh） | 0 | 282.547 |
+  | CCGT（MWh） | 428.13 | 207.17 |
+  | 运行成本（£） | 28,643.41 | 23,820.77 |
+  | 能量平衡最大残差（MWh） | 1.8e-15 | 1.8e-15 |
+
+  结算分项也相同。R1-2 新增的 `downward_restart_economics` 账本已出现：只有 1 个时段走 thermal_running_range，减出力 1.48 MWh。
+- **身份链：** 原文件 `f4e5ba90…` → demand.real 映射 `2d75e7df…` → 规范文件 `a4e767b3…` → Run 快照。快照中 4 个 `mapped.csv` 的 sha256（`a4e767b3…`、`ae94ebed…`、`b4aeba7d…`、`df711c46…`）与绑定记录逐一相同；时间戳声明和 FX 字段（`source_currency=EUR`、`eur_per_gbp=1.15`、annual average、2025）都冻结进了快照。
+- **单位与汇率：** 需求 14.935404 MWh/period → 29.870808 MW；价格 46 / 34.5 EUR → 40.0 / 30.0 £，规范文件、审阅表和 `orders.offer_price_gbp_per_mwh` 中都没有浮点尾差了。
+- **进口与回放：** 法国报价 48 条（35 accepted、6 partially_accepted、7 rejected）；第 0 期回放中有 `Interconnect_France · boundary import · £40/MWh · 7.5/7.5 MWh`，CCGT £66.5 为边际报价；Shortfall 0 MWh，stress 列表为非年度措辞。
+- **其他：** 比较页只有“基础与网络数据”为“已改变”，4 条路径逐条列出，原始 JSON 折叠；被 Study 引用的包返回 409 `GF_DATA_PACK_REFERENCED`；两次 Run 和回放全程网络 4xx/5xx 为 0 次，控制台错误为 0 条。
+- **负向用例全部符合预期：** 不填汇率、rate=0、对 GBP 列填汇率返回 400 `GF_MAPPING_FX`；单位错配 400 `GF_MAPPING_UNITS`；负需求拒绝；17,568 行给 warning 只取前 17,520 行；17,568 行加时间戳 48 处问题拒绝；375 px 下 Data、Runs（含 readiness）、引导页 scrollWidth 都是 375。
+
+**以往缺陷逐条状态：**
+
+| ID | 原严重度 | 状态 | 本轮证据 |
+|---|---|---|---|
+| S-D1 | 高 | 已修复 | 负向包 readiness 中 `Data plausibility · 2` 默认展开，两条完整显示；其余组折叠（shots/25） |
+| S-D2 | 中-高 | 已修复 | 校验面板显示 Structural（映射后 warning 14 → 10）、Chronology、Plausibility、Methodology use（shots/17） |
+| S-D3 | 中 | 已修复（修正口径） | 进口 282.547 MWh 与 orders 一致；角色标签 “(+ import / - export)” |
+| S-D4 | 中 | 已修复 | 重复、缺口、错位逐行拒绝；London 本地时间（含换时）通过；列名错误、时区不支持返回 400 `GF_MAPPING_TIMESTAMP` |
+| S-D5 | 中 | UI 层已修复 | “Column name suggests EUR — confirm the currency.”；按设计 API 和审阅报告仍没有 warning |
+| S-D6 | 低 | 已修复 | 规范文件、审阅表、orders 中都是 40.0、30.0 |
+| S-D7 | 低 | 大部分修复 | 坏单元格按 “Row 6 (CSV line 7), column …: 'n/a' is not a number” 一次列出；残留 L-1、L-2、L-3 |
+| S-D8 | 低 | 已修复 | 提交后角色卡显示 “已提交 demand.real 的映射：规范文件 SHA a4e767b33894…” |
+| S-D9 | 低 | 界面已修复 | 变化维度按路径列出；`transformation_id` 按 R1-4 保留 |
+| S-D10 | 低 | 部分修复 | Runs 页显示冻结说明，不再拉回 Runs；首次快照约 2 分 50 秒，第二次 39 s；残留 L-4 |
+| S-D11 | 低 | 已修复 | 全程 404 为 0 次 |
+| S-D12 | 低 | 已修复 | 完成后显示 “…Run 4acee21b has completed”；下拉项带状态和短 ID；Check for 跟随所选 Run |
+| S-D13 | 低 | 已修复 | 标为 “Frozen data pack manifest SHA-256” 并附说明（shots/24） |
+| N-1 | 中 | 已修复（FX9） | 面板写 “Not eligible — not a thesis-era pack”，API `pack_supported=false`，与 Studies 编辑器一致（shots/28） |
+| N-2 | 中 | 已修复（FX9） | 不带偏移的连续 London 文件不再报 500，逐行列出 4228、4229 行 non-existent，14308、14309 行 ambiguous |
+| N-3 | 中低 | 已修复（只提示，FX9） | 错位 30 分钟出现 warning `GF_DATA_TIMESTAMP_ORIGIN`；2023 年数据只显示首末时间戳（按设计） |
+| N-4 | 低-中 | 仍在（转 P1） | 第二次 Run 冻结期间发出的 clone 阻塞 33.3 s（P1-11 / F5-08） |
+| N-5 | 低 | 已修复 | 引导 Data 页重新加载后上下文保留（shots/10） |
+| N-6 | 低 | 已修复 | 春季不存在时刻有专门文案；角色卡显示时间戳声明；Studies 列表的哈希标为 “Model graph SHA-256 (… not the data pack)” |
+
+**新发现（全部为低或观察）：**
+
+| ID | 严重度 | 描述 |
+|---|---|---|
+| L-1 | 低 | 同一文件既有 `'n/a'`、`'abc'` 又有空单元格、且需要单位换算时，清单漏掉空单元格那一行（第 101 行）：`data_adapters._convert` 把空值当 None 放行，有换算错误时整文件校验不运行，用户要修两轮才看全（`evidence/neg-api.txt`） |
+| L-2 | 低 | 不换算的序列（法国容量 MW）含空值、NaN、inf 时，计数写 “1 non-numeric or missing”，逐行清单却列 3 行；另有误导性 warning “17519 numeric periods … repeats it cyclically”（`evidence/neg-api-blank.txt`） |
+| L-3 | 低 | 负需求只报 “demand contains a negative or non-finite value”，没有行号和列名（S-D7 残留） |
+| L-4 | 低 | 在 Learn 页点 “Run one market day” 后 POST 阻塞约 3 分钟，按钮全部禁用但没有说明；冻结说明只在 Runs 页显示（S-D10 残留，shots/05、05b，对照 06） |
+| L-5 | 低 | API 与 UI 的 FX 规则不一致：界面要求 price_year 在 1990–2100、fx_basis 三选一；API 中 price_year 可省略或为任意整数，fx_basis 可为任意文本，实测 `price_year=1890` 返回 200 valid（`backend/data_mapping.py:55-68`） |
+| L-6 | 低 | 换算失败时，审阅区“完整文件校验报告”下原样显示 `null`（shots/26-ui-badcells） |
+| O-1 | 观察 | 价格 6087 £/MWh 在映射审阅和提交时没有 plausibility 提示，只在提交后的校验面板和 readiness 中出现（符合设计） |
+| O-2 | 观察 | 用负向包跑完的 Run，状态条看不出冻结输入带有 plausibility 发现（shots/31） |
+
+附注：`period_summary.clearing_price_gbp_per_mwh` 第 0 期为 32.91，低于当期被接受的报价（£40、£66.5）。它的含义是需求加权的平均时段成本，界面已按 Q6 正确标注，不是回归；只是直接读 sqlite 时列名容易误导。
+
+### 10.4 改函数角色
+
+**过程：**
+
+1. 按指南第 9 节从 `examples/external_module_bundle` 复制 `uat3-flat73-storage-offer`（报价 42 → 73），构建两次 ZIP 字节相同（`21c776e0…`），示例源码已不再 import `compat`；
+2. UI 安装（conformance passed，State Enabled，安装后文件框清空、信任勾选复位）；
+3. 派生 Study “UAT3 flat73”（`parent_project_id=value-101-baseline`、`changed_dimensions=["modules.storage_cost"]`、`derivation_intent=edit_module`）；
+4. 修正口径一日 Run：基线 `e0c446c4` 报价 18.5185（14 接受、1 部分、25 未接受），flat73 `929bf99f` 报价 73.0（170 条全部未接受）；`storage_orders` 与 `clearing_inputs` 一一对应（40/40、170/170），价格差异 0；
+5. Market replay 基线 P29：四条电池报价 Accepted 列为 0.75、1.26、0.49、0 MWh，与账本一致，Evidence 列为 “storage offer ledger”；
+6. Compare 基线对 flat73：`dynamic-annual-storage-cost 2.0.0 → uat3-flat73-storage-offer 1.0.0`；
+7. 原地改源码 73 → 99：卡片显示 “Source changed since install (66bbf1bf… → 98f06a6c…)”，Readiness Ready 带琥珀提示，Run `c39e4659` 报价 99.0，新哈希写入 `module-resolution.json`、`snapshot.json` 和 `preflight.checks.module_source_changes`；
+8. 坏模块与恢复：SyntaxError 后全局 Rescan 立即隔离、health degraded；Readiness 第一条 `GF_PREFLIGHT_MODULE_QUARANTINED`，徽章 “INPUTS READY · RUN BLOCKED”；Disable 后第一条 `GF_PREFLIGHT_MODULE_DISABLED` 带 Enable 指引；RuntimeError 时 Enable 返回 409 并显示本次扫描的错误；修好后恢复；Remove 二次确认后 409 `GF_MODULE_IN_USE`；
+9. 导入即 `SystemExit` 的包安装返回 400 `GF_MODULE_RESOLUTION`，后端存活；
+10. 未封印的内核改动：Readiness 报 `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`（error），Run 不可点；
+11. 按指南 12.1 做一次内置模块方法升级（cycle_only 报价 +25，2.0.0 → 2.1.0，VERSION_LEDGER `requires_user_opt_in: true`，`seal --correction uat3.cycle-plus-25` 后 `--verify` 通过）：重启后基线 Study 弹出确认框；直接调 API 返回 409 `GF_PREFLIGHT_METHOD_UPGRADE_REQUIRED`；确认后 rev 2 的 Run `212083c3` 报价 18.5185 → 43.5185；还原四个文件后确认框显示 “2.1.0 → 2.0.0 moved backwards”，确认后恢复；
+12. 375 px 下 Modules、Runs 页没有页面级横向滚动。
+
+**以往缺陷逐条状态：**
+
+| ID | 状态 | 本轮证据 |
+|---|---|---|
+| M-D1 | 已修复 | 第 4、5 步。`orders` 电池行价格仍为 0.0，按 FX4 偏差 1 有意不改 |
+| M-D2（含卡片小问题） | 已修复 | 第 7 步 |
+| M-D3 | 已修复 | 截图 `13`、`17` |
+| M-D4 | 已修复 | 截图 `18`、`20`；措辞问题见 R3M-3 |
+| M-D5 | 已修复 | 截图 `11`：全局 Rescan 立即隔离已加载的坏模块 |
+| M-D6 | 已修复 | 截图 `24`；指南 12.1 实际走通 |
+| M-D7 | **部分修复** | 见 R3M-1 |
+| M-D8 | 已修复 | `variant_kind` 仍为 `baseline`，R1-4 说明是有意保留 |
+| M-D9 | 已修复 | 安装后文件框清空；4 个 Run 期间没有 `resource-readiness.json` 404；源码检出的安装提示只做了代码核对（`value_101.py:92-94`） |
+| M-D10 | 观察保留 | 7 个内置模块的 `source_sha256` 都是 `09f66c1e…` |
+| M2-N1 | 已修复 | 结束后显示 “Run e0c446c4 has completed” |
+| M2-N2 | 已修复 | `GF_PREFLIGHT_MODULE_DISABLED`，带 Enable 指引 |
+| M2-N3 | 已修复 | 徽章 “INPUTS READY · RUN BLOCKED” |
+| M2-N4 | 已修复 | 卡片 State 正确；文字残留见 R3M-4 |
+| M2-N5 | 观察保留 | 已有说明句 |
+
+**新发现：**
+
+| ID | 严重度 | 描述 | 本轮复核 |
+|---|---|---|---|
+| R3M-1 | **低-中**（文档，M-D7 残留） | MODULE_DEVELOPER_101 EN/ZH 三处写 `gridform.*` contract ID：第 4 节 slot 表（`gridform.psm/v2`、`gridform.storage-cost/v1` 等，EN:94-98、ZH:104-108）；第 8 节 manifest 示例 `"contract_version": "gridform.investment/v2"`（EN:322、ZH:343）；第 7 节说 “`gridform.storage-cost/v1` 这类 contract ID 保留”（EN:300、ZH:317）。安装器只接受 `value.*`，按文档写的包安装返回 400 “uses gridform.storage-cost/v1; expected value.storage-cost/v1”（`author-gf/gf.zip`）。另有 EN:213 写 `force.vre-counterfactual-snapshot/v1`；`USER_GUIDE_ZH.md:170` 仍写 `force-module.json` 和 “FORCE Python 进程” | **代码核对确认**：文档行号如述；`gridform_core/v2/module_manifest.py:42` 的期望值为 `value.storage-cost/v1` |
+| R3M-2 | 低 | 只要有一个模块被隔离（health degraded），所有页面顶部徽章都显示 “Inputs not loaded”，数据包下拉框也被禁用；恢复后显示 “25 of 25”。`app/page.tsx:1426` 在 `connectionState !== "online"` 时显示这句，而 `serviceState`（`app/features/shared/api.ts:88`）把 degraded 也算非 online（复现脚本 `scripts/pill.mjs`） | **代码核对确认**（两处代码如述） |
+| R3M-3 | 低 | 停用模块点 Enable 失败后提示 “Fix the cause, then Rescan.”；照做后模块仍是 Disabled（“no module is quarantined”），还要再点 Enable（截图 `19`） | 未复核 |
+| R3M-4 | 低 | 经隔离面板停用一个仍被 Study 使用的模块后，卡片 State 为 Disabled，却仍写 “disable is blocked until those configurations are migrated”（截图 `16`）；`USER_GUIDE.md:434` 的说法同样矛盾 | 未复核 |
+| R3M-5 | 低/观察 | 原地改源码的警告出现两次（琥珀提示一次，又计入 “Environment and setup · 1”，`readinessGroups.ts` 的 issueGroup 没有排除这个 code）；模块已隔离时提示仍写 “Results will record the new source hash” | 未复核 |
+| R3M-6 | 低 | 比较同一 Study 原地修改前后的两个 Run（73 对 99，ID 和版本相同）：只写 “differs at modules.storage_cost”，没点出变的是 `source_sha256`；句子 “Only the model method (…) (modules.storage_cost) differ” 别扭；结论写 “not a controlled storage-cost experiment”，换模块时却写 “controlled teaching diagnostic”（`results_summary.py:606/627`，截图 `10`） | 未复核 |
+| R3M-7 | 低（35aadb3 就有，首轮未登记） | 英文界面硬编码中文：“方法对照 Study 已保存…”（`page.tsx:1577`）；Compare 页身份核对块 “比较前身份核对 / 一致 / 已改变”；“正在读取使用说明…”（`ReadMePanel.tsx:162`，常驻 role=status）；Read me 中 “选择基线 Study / 核对新研究” | 未复核 |
+| 观察 | — | 方法升级确认框只显示 correction id，不显示 VERSION_LEDGER 的 `reason` 文字 | — |
+
+### 10.5 加功能角色
+
+**过程（全部在 UI 中完成）：** 生成器生成 `uat3-af-observer`（命名空间 `local.uat3-af`，ZIP `00badd88…2c2705` 与页面 Package identity 一致）→ 作者本地加 `observed_run_id` 字段并改 schema，本地 4 个 unittest 通过，重新打包 `f43f61b8…` → UI 安装 201，文件框清空 → 扩展 Study `uat3-add-feature-observer`（2025–2026，输入合同 26/26）和对照 Study `uat3-add-feature-control`（25/25）→ 四个 Run：
+
+| Run | Study | 范围 | 结果 | 用时 |
+|---|---|---|---|---|
+| `…010633-9263c8b6` | 扩展 | smoke | completed / not_evaluated | 3 分 17 秒（首次快照） |
+| `…011012-6de13778` | 扩展 | **two_year（35,040 时段）** | completed / **passed** | 2 分 59 秒 |
+| `…011332-c01615ad` | 对照 | two_year | completed / passed | 2 分 51 秒 |
+| `…012630-d22b484a` | 扩展 | two_year_smoke（API 重启后） | completed / not_evaluated | 1 分 02 秒 |
+
+**关键证据：**
+
+- 扩展 two_year 的 `run.state_chain` 通过，`failed_links=[]`（扩展 9 条链，对照 8 条，多出 initialize）。三项检查 Passed，年度结果已发布：2026 年 £14.425m、£61.68/MWh；2025 年 £14.70m；碳排放 38,634.86 tCO₂e，Reconciled；Unserved 0 MWh。数值与第 2 轮完全相同，R1-2、R1-3 对这个教学包没有数值影响。
+- 每年 1 个扩展 artifact，`observed_run_id` 等于本次 Run ID；`source_inputs_sha256` 逐年等于同一 Run 中 `psm.run` 的 `input_state_sha256`（2025 `4d00a0b9…`，2026 `5b59d6d9…`）；hook 的 `source_sha256` `5e1ea51a…` 与本地、已安装的 `hooks.py` 三者一致。
+- 输出隔离：两个 two_year Run 规范化 run_id 和路径、剔除扩展键后，`year-results-v2.json`、cost ledger、carbon ledger、energy-balance-oracle 0 处差异，`market.sqlite` 23 张表全部相同。
+- 压力事件：`status.json` 有 `stress` 区（`shortfall_mwh=0`、`stress_periods=0`，按年分列）；Market replay “No stress events recorded”；Inspect 状态条 “Stress events: None”。
+- 单元测试：相关 91 个，90 个通过；唯一的 error `test_carbon_ledger.test_legacy_storage_scalar_is_not_relabelled` 已登记在 `tests/baselines/known-failures-linux-py310.txt`，是既有失败。
+
+**以往缺陷逐条状态：**
+
+| ID | 状态 | 本轮证据 |
+|---|---|---|
+| F-D1 | 已修复 | 真实 two_year Run 中确认，见上 |
+| F-D2 | 已修复 | 扩展 Study 的范围下拉没有一日选项；API 预检 `value_101_day` 返回 `GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS`，`POST …/runs` 返回 400 同一错误码、不创建 Run；`validation_24h` 返回 `GF_PREFLIGHT_TEACHING_RUN_MODE` |
+| F-D3 | 回归通过 | 被引用的扩展不能停用（“Referenced by 1 saved Study; disabling is blocked”）；未被引用的 `uat3-af-nsb` Disable 200 进入 “Disabled and quarantined” 区，Enable 200 回到列表 |
+| F-D4 | 未复现 | 改选数据包后立即 resolve-draft，26/26，Graph SHA 已解析，实验性确认框在 |
+| F-D5 | 部分修复 | 说明文字不再写 storage-policy，变化按路径列出，原始 JSON 默认折叠；残留 AF3-1、AF3-2 |
+| F-D6 | 大部分修复 | 编辑时标题 “Edit study · …”；文件框已清空；没有 `resource-readiness.json`、`snapshot.json`、`project.json` 404；草稿刷新后丢失仍在（AF3-3） |
+| F2-N1 | 已修复（FX9） | 34.5 MB 的两年 year-results，Inspect 扩展面板列出 2025、2026 两条（“Artifacts 1–2 of 2”） |
+| F2-N2 | 已修复（R1-4） | two_year 估算 0.3 h，实际约 3 分钟 |
+| F2-N3 | 已修复 | 页头 “25 of 25 base inputs ready”，输入合同 26/26 |
+| F2-N4 | 已修复 | 两个 two_year Run 的碳账规范化后逐字节相同，键顺序固定 |
+| G4-01 | 回归通过 | 生成器在 Validate 阶段拒绝冲突命名空间；手工冲突包安装 409 `GF_EXTENSION_NAMESPACE_COLLISION`，modules 摘要前后都是 `6ceb2b9f…`；重启 API 后 health ok，新 Run 正常完成 |
+
+**剩余问题（测试员报告第 4 节；本节编号 AF3-1～AF3-3）：**
+
+| ID | 严重度 | 描述 | 本轮复核 |
+|---|---|---|---|
+| AF3-1 | **低-中**（既有，F-D5 残留，需负责人决定） | 比较两个 two_year Run 时只显示 “所需的定义、范围或归因证据不完整。VALUE 暂不展示未获支持的差值。”，2025、2026 都没有差值，尽管两个 Run 的成本和碳完全相同。API：`comparison_review.status=verified`、`annual_metrics_withheld=false`，但 `metric_deltas_allowed=false`，`curtailment_comparison.reason_code=module_does_not_provide_counterfactual_snapshot`。根因：`results_summary.py` 把弃电归因是否可比当成所有成本和碳差值的前提，而内置 copperplate 组合不提供反事实快照，所以**任何 VALUE 101 年度对照都看不到差值**；`ComparisonWorkspace.tsx:110` 只显示通用文案，不用已返回的 reason_code。二选一：只扣发弃电相关指标、成本和碳差值照常显示；或者保留保守设计，但在界面上写明原因 | **代码核对确认**：`gridform_core/results_summary.py:560-564` 中 `deltas_allowed` 要求 `curtailment_comparison["metric_deltas_allowed"]` 为真；`ComparisonWorkspace.tsx` 只对 network_comparison 显示 reason_code |
+| AF3-2 | 低 | 扩展的差异归在“模块方法：已改变”下，同时“参数与扩展配置”显示“一致”，容易让人以为扩展没变；说明文字重复 “Only the model method (modules, extensions, methodology) (extensions) differ”；同一区块中英混排（与 R3M-6、R3M-7 同源） | 未复核 |
+| AF3-3 | 低（R1-5 已转 P1） | 独立草稿填写 Name、Purpose 后整页刷新，Name 回到默认 “VALUE UK transition”，Purpose 变空，没有任何提示 | 未复核 |
+| 观察 | — | 首次快照仍慢（3 分 17 秒，之后约 1 分钟，P1-11 / F5-08，启动时已有说明）；生成第二个扩展时 `POST /api/extensions/authoring/template 200` 后紧跟一条 `GET …/template 404`，下载本身成功，首次生成时没有出现，可能是浏览器下载行为引起，建议顺手查看 | — |
+
+### 10.6 本轮的独立复核
+
+四个角色都没有报告高缺陷，所以没有必须独立复核的项。唯一的中等新缺陷 R3-N1 和几项低-中问题由汇总人做了代码核对。INTEG 只读，Python 经 `vpy` 调用，没有启动服务。
+
+- **R3-N1：代码核对确认，并用最小输入复现了比较逻辑。**
+  - `gridform_core/results_summary.py:407-416` 的 `_differing_paths` 用 `json.dumps(child, sort_keys=True, default=str)` 判断两侧是否不同；同文件第 467–477 行的维度判定也用 `json.dumps`。`json.dumps(17000.0)` 为 `"17000.0"`，`json.dumps(17000)` 为 `"17000"`，所以数值相同、类型不同的 VoLL 被判为不同。
+  - 直接调用：`_differing_paths([{'market_configuration': {'voll_gbp_per_mwh': 17000.0}}, {'market_configuration': {'voll_gbp_per_mwh': 17000}}], 2)` 返回 `['market_configuration.voll_gbp_per_mwh']`。
+  - 问题有两层：编辑器原样保存时把 float 写回成 int（并因此生成一份 `change_summary=[]` 的新修订）；比较和身份哈希不做数值规范化。修复建议：保存时在 `study_market_config` 中把 `voll_gbp_per_mwh`（以及其他浮点参数）统一为 float，**并且**比较前做数值规范化（整数值的 float 与 int 视为相同），避免以后其他参数出同样的问题；无改动的保存最好不产生新修订。补一条单元测试。
+- **R3-N2：代码核对确认。** `gridform_core/data/methodology/corrections/p06.json` 第 91–93 行仍为 high、标题 “Down regulation in curtail-cost order”，summary 以 “ascending curtail_cost (VRE first)” 开头；`r12` 的 advisory（medium，“Down regulation without restart economics”）是按 A19 写的。p06 这条应只保留另外三项（爬坡历史按位置匹配、断开后保留旧要求、预算只返还水电），去掉 “VRE first” 并重新评估严重度，或交负责人决定。属于方法学措辞，修改前应让 methodology 编辑员知道。
+- **R3M-1：代码核对确认。** 文档行号如测试员所述；`gridform_core/v2/module_manifest.py:42` 期望 `value.storage-cost/v1`。按文档写的包必然安装失败，对改函数用户是实际阻碍，建议下一轮修（纯文档改动）。
+- **AF3-1：代码核对确认。** `results_summary.py:560-564` 的 `deltas_allowed` 同时要求 `curtailment_comparison["metric_deltas_allowed"]`；内置 copperplate 组合没有反事实快照，所以 VALUE 101 年度对照一律没有差值。这是设计选择还是过严，需要负责人决定；无论哪种，界面都应显示原因。
+- **R3-N3、R3M-2：代码核对确认**（`app/page.tsx:1432` 写死 `tab ?? "planning"`；`app/page.tsx:1426` 与 `app/features/shared/api.ts:88` 如述）。
+
+### 10.7 缺陷总表：R1 之后仍未关闭的项
+
+按 A21（medium 及以上必修，low 改动小时顺带修）分组：
+
+| 组 | 项目 | 说明 |
+|---|---|---|
+| **必修（中）** | R3-N1 | 原样保存后比较页报告不存在的 VoLL 变化 |
+| **建议本轮修（低-中，改动小）** | R3M-1、R3-N2 | 开发者文档的 contract ID；p06 advisory 与 A19 矛盾（需 methodology 编辑员知晓） |
+| **需负责人决定** | AF3-1、R-D10、R3-N6、O-3、R3-N7 | 年度差值是否因弃电证据缺失而全部扣发；golden D3/C3 identity 区落后（不设门）；VoLL 修正 id 是否写进 Run 记录；advisory 是否按资产筛选 |
+| **顺带修（低，改动小）** | R3-N3、R3-N4、R3M-2、R3M-3、R3M-4、R3M-5、R3M-6、R3M-7、AF3-2、L-1、L-2、L-3、L-5、L-6 | 多为一处判断或一段文案 |
+| **已转 P1** | O-1、R-D4（后端）、S-D10 / L-4、N-4、AF3-3、首次快照慢、O-2（执行归档体积） | 都与 `STUDY_LIFECYCLE_LOCK` 持锁或草稿持久化有关（P1-11 / F5-08） |
+| **保留（信息/观察）** | R-D9、M-D10、M2-N5、R3-N5、R3-N8、O-1/O-2（换数据）、生成器的一次 404 | 不影响结论 |
+
+### 10.8 建议
+
+1. **下一轮小修复（建议命名 R2）：** 必修 R3-N1（含单元测试）；同批修 R3M-1、R3-N2（改 p06 文字前先告知 methodology 编辑员）以及 10.7 中“顺带修”的低项。这些都是局部改动，不涉及方法与 golden。
+2. **复测范围收窄：** 按“不要搞无止境的测试”的要求，R2 之后不再做四角色全量复测；只由对应角色复核 R3-N1（复现路径原样保存 → 比较）和 R3M-1（按文档写的包能装上），其余低项以单元测试和截图核对为准。
+3. **交接：** R1 的方法改动（A19/A22/A22a 经济下调顺序、A20 分类型电池上限）已在 VALUE 101 上验证没有数值副作用，交接文档可以照常给 methodology 编辑员和网页上传员阅读；需要他们注意的只有 R3-N2、R3-N7 两条 advisory 措辞。按 A17，网站上传与发布仍等前端翻新之后。
+4. **负责人决定项** 见 10.7，其中 AF3-1 影响所有 VALUE 101 年度对照的可读性，建议优先决定。
+
+### 10.9 安全与环境核对（R1 复测）
+
+- **进程：** 四个角色都只按自己记录的 PID 停止进程。
+
+  | 角色 | 停止的 PID |
+  |---|---|
+  | 复现 | API 902751、UI 903189 |
+  | 换数据 | API 903022、UI 903220、驱动 903761（SIGTERM 后仍在监听，对同一 PID 补发 SIGKILL，无子进程） |
+  | 改函数 | API 902633、1065284、1088858（两次 `restart-api.sh` 中按 PID 停止），UI 902635 |
+  | 加功能 | API 902791、917669、1093664，UI 902793、917671 |
+
+  端口 18850–18857、18859 都已释放，没有残留 worker。没有连接 8766/8800，没有使用 pkill、killall 或按模式的 kill。
+- **INTEG：** 四个角色都没有改动，`git status` 为空；Python 都通过 `vpy` 调用。改函数角色在导出副本中改过的四个文件已还原到与 HEAD 逐字节相同后再删除。
+- **磁盘：** 各角色已删除 `state/`（556–750 MB，其中执行归档约 500 MB）和 `src/`（152 MB）；保留的截图与证据每个角色 5–23 MB。
+- **INSTALLED：** 四个角色结束时，以及本次汇总结束时，都执行了两项检查：
+  - `find <INSTALLED> -newer install-receipt.json -type f ! -path '*/state/*' ! -path '*/logs/*'` 只列出安装时就有的 `.supervisor.lock`（0 字节，mtime 2026-10-03 05:41:26）；
+  - `diagnose-value --prefix <INSTALLED>` 退出码 0，输出 “Installation integrity and runtime checks passed.”（中途的 vinext “Premature close” 来自诊断探针本身）。
+
 ## 附录 A 复核脚本与输出
 
 `$ROLES` = `/tmp/claude-1000/-home-deepseek--config-Claude-scratch-workspaces-236b67cc-cc11-47c6-901f-9efac7ff2b1f-954fe4c9-9c87-4a98-b62f-216510b0e0f0-scratch-2026-10-04-a946e8/fd56b27b-0c52-4166-89c3-a4a8b5e4ea96/scratchpad/build/roles`。这是会话的 scratch 目录，可能被清理；需要长期保留的证据，请在清理前另行归档。
@@ -760,6 +1053,8 @@
 | `$ROLES2/consolidate/repro_n2.py` | 第 9.6 节 N-2（London 秋季重复时刻只出现一次） | `PYTHONPATH=<INTEG> vpy repro_n2.py <out>`，生成 `n2_naive_london.csv` |
 
 `$ROLES2` = `$ROLES` 的同级目录 `…/scratchpad/build/roles2`，存放修复轮复测的四个角色目录（`reproduce/`、`swap-data/`、`edit-module/`、`add-feature/`）和汇总复核目录 `consolidate/`。同样可能被清理。
+
+`$ROLES3` = `$ROLES` 的同级目录 `…/scratchpad/build/roles3`，存放 R1 轮复测的四个角色目录（`reproduce/`、`swap-data/`、`edit-module/`、`add-feature/`）。第 10.6 节的复核只读代码，另用一行 `vpy -c` 调用 `_differing_paths` 复现 R3-N1 的比较逻辑，没有单独的脚本。同样可能被清理。
 
 ## 附录 B 角色证据位置
 
