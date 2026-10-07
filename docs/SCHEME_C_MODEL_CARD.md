@@ -102,11 +102,15 @@ doctoral profile keeps zero storage headroom.
 Default PSM market rule sets (P0-6). The doctoral reproduction profile clears
 with the 0.6.0-alpha.2 rules (`native-doctoral-thesis-v1`) and declares their
 known deviations: VRE crowded out by zero-priced storage or must-run nuclear is
-not recorded, must-run nuclear surplus used for balancing is counted twice
-(DEV-BAL-04), the last balancing storage fee is carried into later curtailment
+not recorded, the last balancing storage fee is carried into later curtailment
 periods, VRE is skimmed to electrolysis before clearing, storage bids carry a
-linear dwell term and storage is paid its own maximum bid. The corrected profile
-(`native-corrected-v1`) removes these; its zero-priced pumped hydro and hydrogen
+linear dwell term and storage is paid its own maximum bid. Three implementation
+errors of the thesis kernel are corrected in both profiles (R4-1, decision
+A26): curtailment-branch down regulation is taken once, must-run nuclear
+surplus used for balancing is no longer counted twice (formerly DEV-BAL-04),
+and a store keeps one net position per period with its rated power shared by
+the clearing stages (formerly DEV-STO-01). The corrected profile
+(`native-corrected-v1`) removes the remaining thesis behaviours; its zero-priced pumped hydro and hydrogen
 storage dispatch myopically (no water value), a buy-back does not refund the
 ahead storage payment, and the realisation branch still follows the forecast
 (decision A2), so ahead shortfalls are reported as stress events.

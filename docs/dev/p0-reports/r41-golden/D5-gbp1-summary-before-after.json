@@ -1,0 +1,302 @@
+{
+ "after-r41": {
+  "costs": {
+   "cem_system_cost_gbp": 27201452005.59,
+   "cem_system_cost_gbp_per_mwh_served": 116.7892,
+   "cost_ledger_schema": "value.annual-cost-ledger/v2",
+   "headline_capital_gbp": 22914501169.32,
+   "headline_operation_gbp": 4286950836.27,
+   "market_total_levelized_capital_cost_gbp": 22971160753.8,
+   "market_total_operational_cost_gbp": 4286950836.27,
+   "market_total_system_cost_gbp": 27258111590.07,
+   "memo_lines_gbp": {
+    "existing_stock_compatibility.annualised_capital": 10955347097.15,
+    "vre_storage.fixed_opex_in_levelised_capex": 56659584.48
+   },
+   "operating_cost_detail_gbp": {
+    "basis": "dispatch_unit_cost/v1",
+    "blackout_mwh": 0.0,
+    "blackout_reliability": 0.0,
+    "generation_variable": 4270421279.6190324,
+    "import_variable": 8693463.575938169,
+    "schema_version": "value.native-operating-cost/v1",
+    "startup_adder_resource": 7836093.076788034,
+    "storage_cycle_wear": 0.0,
+    "total_gbp": 4286950836.2717586,
+    "voll_basis": "constant_17000",
+    "voll_gbp_per_mwh": 17000.0
+   }
+  },
+  "emissions": {
+   "direct_operational_tco2e": 30684629.3,
+   "direct_operational_tco2e_by_technology": {
+    "CCGT": 29836365.1,
+    "OCGT": 844033.6,
+    "bio_and_waste": 4230.5
+   },
+   "factor_scenario_applied": "value_current_authoritative_v1",
+   "imported_electricity_tco2e": 60282.8,
+   "run_carbon_ledger_reason": "legacy_storage_scalars_have_no_declared_physical_unit",
+   "run_carbon_ledger_status": "not_physically_interpretable"
+  },
+  "investment": {
+   "a4_net_revenue_recorded": true,
+   "admitted_mw_by_technology": {
+    "offshore": 841.94,
+    "onshore": 1337.331,
+    "solar": 849.995
+   },
+   "commissioned_in_year_mw": 0.0,
+   "commissioned_in_year_mw_by_technology": {},
+   "operating_capacity_change_mw": 0.0,
+   "proposal_count": 40,
+   "proposal_count_by_technology": {
+    "offshore": 18,
+    "onshore": 11,
+    "solar": 11
+   },
+   "proposal_expected_completion_years": [
+    2026
+   ],
+   "proposal_mw": 3029.266,
+   "proposal_mw_by_technology": {
+    "offshore": 841.94,
+    "onshore": 1337.331,
+    "solar": 849.995
+   },
+   "retirements_mw": {}
+  },
+  "market": {
+   "boundary": {
+    "export_mwh": 1780287.557,
+    "export_mwh_by_country": {
+     "all (one aggregate export row)": 1780287.557
+    },
+    "import_mwh": 360542.055,
+    "import_mwh_by_country": {
+     "belgium": 55748.305,
+     "france": 26450.253,
+     "ireland": 51972.791,
+     "netherlands": 48484.468,
+     "norway": 177886.238
+    }
+   },
+   "curtailed_mwh": 294434.603,
+   "excess_mwh": 2146066.434,
+   "generation_mwh_by_technology": {
+    "biomass_and_waste": 35254.457,
+    "ccgt": 75726815.004,
+    "natural_flow_hydro": 17245729.184,
+    "ocgt": 1296518.649,
+    "offshore_wind": 78496623.826,
+    "onshore_wind": 48680960.888,
+    "solar": 10535177.059
+   },
+   "periods": 17520,
+   "price_gbp_per_mwh": {
+    "demand_weighted_mean": 18.5876,
+    "max": 50.397,
+    "mean": 18.1736,
+    "min": -3.5008,
+    "p99": 42.7377,
+    "periods_above_100": 0,
+    "periods_above_1000": 0
+   },
+   "real_demand_mwh": 232910596.5,
+   "recorded_blackout_mwh": 0.0,
+   "storage_charge_mwh": 2422798.117,
+   "storage_discharge_mwh": 1749506.246,
+   "vre_accepted_mwh": 137712761.773,
+   "vre_available_mwh": 138007196.376
+  },
+  "stress": {
+   "ledger_stress_event": {
+    "events": 74,
+    "hidden_unserved_mwh": 78810.208,
+    "longest_event_periods": 40,
+    "recorded_unserved_mwh": 0.0,
+    "shortfall_mwh": 78810.208,
+    "stress_periods": 487
+   },
+   "oracle_basis": "exact",
+   "oracle_boundary_id": "default_psm_surplus_node_v1",
+   "oracle_event_count": 74,
+   "oracle_possible_stress_periods": 487,
+   "oracle_reasons": [
+    "GF_ENERGY_BALANCE_RESIDUAL_ABOVE_TOLERANCE"
+   ],
+   "oracle_shortfall_lower_mwh": 78810.208,
+   "oracle_shortfall_upper_mwh": 78810.208,
+   "oracle_status": "failed",
+   "oracle_stress_periods": 487
+  },
+  "validation": {
+   "energy_balance_envelope_lower_violations": 0,
+   "energy_balance_maximum_envelope_violation_mwh": 0.0,
+   "gates": {
+    "energy_balance": "reproduction_conformant",
+    "run_invariants": "passed",
+    "storage_invariants": "reproduction_conformant"
+   },
+   "matched_deviations": [],
+   "raw_invariants_status": "passed",
+   "schema_version": "value.scientific-validation/v2",
+   "scientific_validation_status": "reproduction_conformant",
+   "unexplained_checks": []
+  },
+  "year": 2025
+ },
+ "before-r41": {
+  "costs": {
+   "cem_system_cost_gbp": 27231979948.92,
+   "cem_system_cost_gbp_per_mwh_served": 116.9203,
+   "cost_ledger_schema": "value.annual-cost-ledger/v2",
+   "headline_capital_gbp": 22914501169.32,
+   "headline_operation_gbp": 4317478779.6,
+   "market_total_levelized_capital_cost_gbp": 22971160753.8,
+   "market_total_operational_cost_gbp": 4317478779.6,
+   "market_total_system_cost_gbp": 27288639533.41,
+   "memo_lines_gbp": {
+    "existing_stock_compatibility.annualised_capital": 10955347097.15,
+    "vre_storage.fixed_opex_in_levelised_capex": 56659584.48
+   },
+   "operating_cost_detail_gbp": {
+    "basis": "dispatch_unit_cost/v1",
+    "blackout_mwh": 0.0,
+    "blackout_reliability": 0.0,
+    "generation_variable": 4303063326.059801,
+    "import_variable": 6911474.210006196,
+    "schema_version": "value.native-operating-cost/v1",
+    "startup_adder_resource": 7503979.335027928,
+    "storage_cycle_wear": 0.0,
+    "total_gbp": 4317478779.604835,
+    "voll_basis": "constant_17000",
+    "voll_gbp_per_mwh": 17000.0
+   }
+  },
+  "emissions": {
+   "direct_operational_tco2e": 30914417.3,
+   "direct_operational_tco2e_by_technology": {
+    "CCGT": 30085459.0,
+    "OCGT": 824647.6,
+    "bio_and_waste": 4310.8
+   },
+   "factor_scenario_applied": "value_current_authoritative_v1",
+   "imported_electricity_tco2e": 56127.5,
+   "run_carbon_ledger_reason": "legacy_storage_scalars_have_no_declared_physical_unit",
+   "run_carbon_ledger_status": "not_physically_interpretable"
+  },
+  "investment": {
+   "a4_net_revenue_recorded": true,
+   "admitted_mw_by_technology": {
+    "offshore": 843.283,
+    "onshore": 1341.042,
+    "solar": 852.122
+   },
+   "commissioned_in_year_mw": 0.0,
+   "commissioned_in_year_mw_by_technology": {},
+   "operating_capacity_change_mw": 0.0,
+   "proposal_count": 40,
+   "proposal_count_by_technology": {
+    "offshore": 18,
+    "onshore": 11,
+    "solar": 11
+   },
+   "proposal_expected_completion_years": [
+    2026
+   ],
+   "proposal_mw": 3036.447,
+   "proposal_mw_by_technology": {
+    "offshore": 843.283,
+    "onshore": 1341.042,
+    "solar": 852.122
+   },
+   "retirements_mw": {}
+  },
+  "market": {
+   "boundary": {
+    "export_mwh": 1735288.442,
+    "export_mwh_by_country": {
+     "all (one aggregate export row)": 1735288.442
+    },
+    "import_mwh": 335895.185,
+    "import_mwh_by_country": {
+     "belgium": 52956.388,
+     "france": 25838.753,
+     "ireland": 44495.292,
+     "netherlands": 48409.468,
+     "norway": 164195.283
+    }
+   },
+   "curtailed_mwh": 298482.603,
+   "excess_mwh": 2052441.316,
+   "generation_mwh_by_technology": {
+    "biomass_and_waste": 35923.445,
+    "ccgt": 76359032.936,
+    "natural_flow_hydro": 17243034.77,
+    "ocgt": 1266739.723,
+    "offshore_wind": 78278305.01,
+    "onshore_wind": 48680960.888,
+    "solar": 10535177.059
+   },
+   "periods": 17520,
+   "price_gbp_per_mwh": {
+    "demand_weighted_mean": 18.6456,
+    "max": 50.4106,
+    "mean": 18.2273,
+    "min": -3.5008,
+    "p99": 42.9916,
+    "periods_above_100": 0,
+    "periods_above_1000": 0
+   },
+   "real_demand_mwh": 232910596.5,
+   "recorded_blackout_mwh": 0.0,
+   "storage_charge_mwh": 5049915.187,
+   "storage_discharge_mwh": 3658440.809,
+   "vre_accepted_mwh": 137494442.958,
+   "vre_available_mwh": 137792925.56
+  },
+  "stress": {
+   "ledger_stress_event": {
+    "events": 157,
+    "hidden_unserved_mwh": 300855.088,
+    "longest_event_periods": 40,
+    "recorded_unserved_mwh": 0.0,
+    "shortfall_mwh": 300855.088,
+    "stress_periods": 890
+   },
+   "oracle_basis": "exact",
+   "oracle_boundary_id": "default_psm_surplus_node_v1",
+   "oracle_event_count": 157,
+   "oracle_possible_stress_periods": 890,
+   "oracle_reasons": [
+    "GF_ENERGY_BALANCE_ENVELOPE_VIOLATED",
+    "GF_ENERGY_BALANCE_RESIDUAL_ABOVE_TOLERANCE",
+    "GF_ENERGY_BALANCE_SURPLUS_NOT_CONSERVED"
+   ],
+   "oracle_shortfall_lower_mwh": 300855.088,
+   "oracle_shortfall_upper_mwh": 300855.088,
+   "oracle_status": "failed",
+   "oracle_stress_periods": 890
+  },
+  "validation": {
+   "energy_balance_envelope_lower_violations": 471,
+   "energy_balance_maximum_envelope_violation_mwh": 991.158,
+   "gates": {
+    "energy_balance": "failed",
+    "run_invariants": "passed",
+    "storage_invariants": "reproduction_with_declared_deviations"
+   },
+   "matched_deviations": [
+    "DEV-STO-01"
+   ],
+   "raw_invariants_status": "failed",
+   "schema_version": "value.scientific-validation/v2",
+   "scientific_validation_status": "failed",
+   "unexplained_checks": [
+    "period.surplus_conservation"
+   ]
+  },
+  "year": 2025
+ }
+}

@@ -1,6 +1,8 @@
-# GBP1 论文复现口径：surplus conservation 失败的调查（DECISIONS A15、A24）
+# GBP1 论文复现口径：surplus conservation 失败的调查（DECISIONS A15、A24、A26）
 
 日期：2026-10-07。分支 `fix/review-2026-10-04` @ f7a5f7a。对应 golden case：`D5`（GBP1 public1，2025 年，`doctoral-lineage-0.6.0a2`）。
+
+**结论更新（2026-10-08）：作者选择做法 C（DECISIONS A26），已在 R4-1 中修复，见第 10 节。** 第 1–9 节是修复前的调查记录，保留原文，只在第 8、9 节标注了决定结果。
 
 本调查只读：没有改校验、偏差目录、内核或任何模型代码。为了逐步看清内核行为，在 scratch 里给内核函数 `store_service_three` 套了一层只记录不改值的包装。包装后的运行与正常运行的 golden 摘要逐列相同（2076 列，sha256 全部一致）。
 
@@ -148,6 +150,8 @@ VRE 分支削够后会执行 `need_curtailed_energy = 0` 再 `break`，非 VRE �
 
 ## 8 选项与建议
 
+> **已决定（A26）：做法 C。** 下表与本节建议是修复前的分析，保留作记录；声明偏差（做法 A）没有登记。
+
 | 选项 | 做法 | 对冻结轨迹 | 对校验结论 | 对 Q14 发布 | 评价 |
 |---|---|---|---|---|---|
 | **A 声明偏差（建议）** | 在 `declared_deviations.json` 中为 `doctoral-lineage-0.6.0a2` 增加 DEV-BAL-05，配机器签名（见第 9 节），检查项为 `period.surplus_conservation`；`match_declared_deviations` 增加对应的匹配器；方法学的论文复现部分加一段披露 | 不变 | 能量平衡门由 `failed` 变为 `reproduction_with_declared_deviations`；只有每一行失败都符合签名时才成立，不符合的行仍然失败 | 不变：年度结果仍隐藏（Q14 把 “with declared deviations” 计为未通过，储能门已是这一状态） | 如实说明这是论文内核的已知行为，同时保留严格校验。需要改校验代码，属于下一个施工单元，须作者先认可 |
@@ -156,7 +160,9 @@ VRE 分支削够后会执行 `need_curtailed_energy = 0` 再 `break`，非 VRE �
 
 建议：**先做 A**，在方法学中写明这一行为及其规模；**C 交作者决定**。如果作者选 C，A 就不需要了，但方法学仍应说明论文原始结果含这部分隐藏缺电。修正口径已经没有这个问题，无需改动。
 
-## 9 声明偏差草案（DEV-BAL-05，待作者认可）
+## 9 声明偏差草案（DEV-BAL-05，已撤回）
+
+> **已撤回。** 作者选择做法 C（A26），缺陷已在内核中修复，DEV-BAL-05 从未登记进 `declared_deviations.json`，下面的草案只作历史记录。
 
 **中文说明（方法学用）：**
 
@@ -179,11 +185,55 @@ VRE 分支削够后会执行 `need_curtailed_energy = 0` 再 `break`，非 VRE �
 
 签名的依据：两次削减量相等时 |g| = curtailed/2；第 301 期这类情形 |g| 更小，所以用 ≤。“缺口 ≥ |g|” 保证多削量已在 A2 账中记为未供电量。按本次数据，修复后的 563 行和 35aadb3 轨迹的 737 行全部满足这一签名，没有例外。
 
-## 10 待作者决定
+## 10 作者决定（A26）：做法 C，已修复
 
-1. 是否采纳 A（登记 DEV-BAL-05 并实现匹配器、在方法学中披露）。
-2. 是否采纳 C（在论文复现口径中也修复内核，作为通用修正，D5 重基线一次）。
-3. 本报告更正了此前文档中 “surplus conservation 471 个时段” 的说法：471 是包络越界时段数，surplus conservation 的失败行数是 563。`GBP1_DOCTORAL_BEFORE_AFTER.md` 和交接文档在 A25 重写时应采用本报告的口径。
+作者 2026-10-08 的决定（DECISIONS A26）：网站方法学描述的是网上发布的新模型，不是博士论文；论文复现口径中的真错误一律作为**通用修正**修好（两个口径都生效）。本缺陷选做法 C。同一决定还修了另外两项论文内核错误：DEV-STO-01（储能功率上限按出清阶段重置）和 DEV-BAL-04（平衡阶段把必发核电盈余再计一次）。施工单元 R4-1，报告 `docs/dev/p0-reports/R4-1-doctoral-kernel-errors.md`。
+
+### 10.1 修复内容
+
+| correction id | 修复 | 代码位置 |
+|---|---|---|
+| `r41.down-regulation-taken-once` | 削减分支非 VRE 的 `>=` 分支在 `break` 前把 `need_curtailed_energy` 清零（两个子分支都改），同一笔下调只削一次 | `runtime_compat/modular_simulation_model.py` `store_service_three` |
+| `p06.storage-net-per-period`（改为通用） | 论文规则集也采用每个储能每个时段一个净头寸：各阶段共用额定功率；已放电的储能先减少本时段放电（buy-back），再充电；已充电的储能不再放电 | 同上，`store_service_three`、`balancing_market_bidding`、`run_simulation` 的时段收尾 |
+| `r41.must-run-surplus-counted-once` | 平衡阶段用必发核电盈余满足平衡需求时，不再把这部分电量加到核电出力上，也不再付第二次钱 | 同上，`balancing_market_bidding` |
+
+实际执行的内核只有 `runtime_compat/modular_simulation_model.py`（默认 PSM）。`compat/` 是按哈希钉住的原始源码参考，不被任何口径或模块执行，未改；`runtime_compat/simulation_model.py` 只被非模块化的 `case3.py` 驱动使用，同样没有任何模块调用，未改；实验性的 `value-doctoral-national-psm` 使用 `doctoral_market_kernel.py`，它的削减扫描早已按实际削减量扣减剩余需求（不会重复下调），平衡阶段也早已不重复计核电盈余，无需修改。
+
+### 10.2 修复后的实测（GBP1 public1，2025，`doctoral-lineage-0.6.0a2`，golden D5 r3）
+
+修复前为 D5 r2（父提交 6fecfc6 的运行，轨迹与 f7a5f7a 相同）；修复后为工作树运行，数值报告 `tests/golden/reports/D5-r3.json`。
+
+| 指标 | 修复前 | 修复后 |
+|---|---:|---:|
+| `period.surplus_conservation` | 失败 563 行 | **通过** |
+| `period.envelope` 下界越界 | 471 个时段，合计 186,075 MWh | **0** |
+| A2 缺口（全年未供电量） | 300,855 MWh | **78,810 MWh**（−222,045 MWh） |
+| stress 时段 / 事件 | 890 / 157 | 487 / 74 |
+| 其中“日前预测高于可供给”（DEV-BAL-02）的 stress 时段 | 599 | 412 |
+| `period.balance_account` | 通过 | 通过 |
+| `period.boundary_residual`（只作证据） | 890 个时段 | 487 个时段（就是剩下的 stress 时段） |
+| 储能门 | `reproduction_with_declared_deviations`（DEV-STO-01；单向 15,653 行、超额定功率 448 行） | **`reproduction_conformant`**（四项全过） |
+| 能量平衡门 | `failed` | **`reproduction_conformant`** |
+| 原始不变量（Q14） | `failed`，年度结果隐藏 | **`passed`，年度结果在结果页发布** |
+
+缺口减少 222 GWh，比第 4 节估计的 217 GWh 多约 5 GWh：多削的 217,140 MWh 全部消失，储能按净头寸调度后，同一时段既充又放带来的那部分缺口也一并消失。剩下的 78,810 MWh 是 P3-01 的隐藏缺电（日前预测高于可供给，决策 A2 保留并记为 stress event），不是本缺陷。
+
+全年其他变化（同一份报告）：储能充电 5.05 → 2.42 TWh、放电 3.66 → 1.75 TWh（同一时段既充又放的“空转”不再计入）；CCGT 76.36 → 75.73 TWh；海上风电 78.28 → 78.50 TWh；头条运营成本 £4,317.5 m → £4,287.0 m（−0.7%），系统成本 £27,288.6 m → £27,258.1 m（−0.1%）；直接排放 30.91 → 30.68 MtCO2（统一因子集）；投资提案 3,036.4 → 3,029.3 MW；时段均价不变（18.2 £/MWh）。逐项见 `docs/dev/p0-reports/r41-golden/`。
+
+### 10.3 VALUE 101（论文复现口径）
+
+| case | 修复前 | 修复后 |
+|---|---|---|
+| D3（一天） | 储能门 `reproduction_with_declared_deviations`（单向 10 行，DEV-STO-01），原始不变量 `failed` | 全部 `reproduction_conformant`，原始不变量 `passed` |
+| D4（两年） | 储能门同上（单向 9,343 行），原始不变量 `failed` | 全部 `reproduction_conformant`，原始不变量 `passed` |
+
+VALUE 101 的 surplus conservation 修复前后都通过（本缺陷在 VALUE 101 不触发）。按 Q14，VALUE 101 和 GBP1 的论文复现口径年度结果现在都会在结果页发布。
+
+### 10.4 对第 10 节原问题的回答
+
+1. 做法 A（登记 DEV-BAL-05）：不采纳，草案撤回。
+2. 做法 C：采纳，已实施，D3、D4、D5 按通用修正各重基线一次（finding A15、DEV-BAL-04、DEV-STO-01），D1、D2 只有核算区变化。
+3. “471 个时段”的口径更正仍然有效：471 是包络越界数，surplus conservation 失败数是 563；两者修复后都是 0。
 
 ## 11 复现
 

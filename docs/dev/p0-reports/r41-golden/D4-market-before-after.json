@@ -1,0 +1,232 @@
+{
+ "after": {
+  "declared_deviations_matched": [],
+  "oracle_checks": {
+   "ledger.self_report": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.balance_account": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.boundary_residual": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.envelope": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.surplus_conservation": {
+    "count": null,
+    "status": "passed"
+   },
+   "run.adjustment_share": {
+    "count": null,
+    "status": "passed"
+   }
+  },
+  "oracle_status": "passed",
+  "raw_invariants": "passed",
+  "storage_checks": {
+   "storage.rated_power": {
+    "count": 0,
+    "status": "passed"
+   },
+   "storage.single_direction": {
+    "count": 0,
+    "status": "passed"
+   },
+   "storage.soc_bounds": {
+    "count": 0,
+    "status": "passed"
+   },
+   "storage.soc_identity": {
+    "count": 0,
+    "status": "passed"
+   }
+  },
+  "validation": {
+   "energy_balance_status": "reproduction_conformant",
+   "run_invariant_status": "passed",
+   "scientific_validation_status": "reproduction_conformant",
+   "storage_invariant_status": "reproduction_conformant"
+  },
+  "years": {
+   "2025": {
+    "a2_shortfall_mwh": 2.417621658423741e-12,
+    "accepted_supply_mwh": 233870.27475016666,
+    "curtailed_mwh": 1.9995333333333356,
+    "demand_mwh": 233870.2742835,
+    "excess_mwh": 8256.041951635636,
+    "export_mwh": 0.0,
+    "flexible_demand_mwh": 0.0,
+    "generation_by_technology_mwh": {
+     "battery_storage": 2499.455890225348,
+     "ccgt": 106210.4736089964,
+     "onshore_wind": 63846.9121092667,
+     "solar": 61313.433141678215
+    },
+    "import_mwh": 0.0,
+    "market_payment_gbp": 7063007.632708671,
+    "mean_period_price_gbp_per_mwh": 26.933694512503994,
+    "non_vre_double_counted_mwh": 0.0,
+    "periods": 17520,
+    "physical_resource_cost_gbp": 7063007.629533418,
+    "recorded_blackout_mwh": 0.0,
+    "routing_in_dispatch_curtailed_mwh": 11.999533333333336,
+    "routing_in_dispatch_to_storage_mwh": 0.0004666666666647896,
+    "storage_charge_mwh": 3086.406821732518,
+    "storage_discharge_mwh": 2499.4558902253484,
+    "stress_periods": 0,
+    "vre_accepted_mwh": 125160.34525094491
+   },
+   "2026": {
+    "a2_shortfall_mwh": 2.8137492336099967e-12,
+    "accepted_supply_mwh": 233870.27475016666,
+    "curtailed_mwh": 1.9995333333333338,
+    "demand_mwh": 233870.2742835,
+    "excess_mwh": 36773.22929724709,
+    "export_mwh": 0.0,
+    "flexible_demand_mwh": 0.0,
+    "generation_by_technology_mwh": {
+     "battery_storage": 3410.3390659707534,
+     "ccgt": 86628.89240921957,
+     "onshore_wind": 73779.76322426937,
+     "solar": 70051.28005070698
+    },
+    "import_mwh": 0.0,
+    "market_payment_gbp": 5760833.114470767,
+    "mean_period_price_gbp_per_mwh": 21.47071006574342,
+    "non_vre_double_counted_mwh": 0.0,
+    "periods": 17520,
+    "physical_resource_cost_gbp": 5760833.114470719,
+    "recorded_blackout_mwh": 0.0,
+    "routing_in_dispatch_curtailed_mwh": 11.999533333333334,
+    "routing_in_dispatch_to_storage_mwh": 0.00046666666666676326,
+    "storage_charge_mwh": 4211.560763254532,
+    "storage_discharge_mwh": 3410.3390659707547,
+    "stress_periods": 0,
+    "vre_accepted_mwh": 143831.04327497634
+   }
+  }
+ },
+ "before": {
+  "declared_deviations_matched": [
+   [
+    "DEV-STO-01"
+   ]
+  ],
+  "oracle_checks": {
+   "ledger.self_report": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.balance_account": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.boundary_residual": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.envelope": {
+    "count": null,
+    "status": "passed"
+   },
+   "period.surplus_conservation": {
+    "count": null,
+    "status": "passed"
+   },
+   "run.adjustment_share": {
+    "count": null,
+    "status": "passed"
+   }
+  },
+  "oracle_status": "passed",
+  "raw_invariants": "failed",
+  "storage_checks": {
+   "storage.rated_power": {
+    "count": 0,
+    "status": "passed"
+   },
+   "storage.single_direction": {
+    "count": 9343,
+    "status": "failed"
+   },
+   "storage.soc_bounds": {
+    "count": 0,
+    "status": "passed"
+   },
+   "storage.soc_identity": {
+    "count": 0,
+    "status": "passed"
+   }
+  },
+  "validation": {
+   "energy_balance_status": "reproduction_conformant",
+   "run_invariant_status": "passed",
+   "scientific_validation_status": "reproduction_with_declared_deviations",
+   "storage_invariant_status": "reproduction_with_declared_deviations"
+  },
+  "years": {
+   "2025": {
+    "a2_shortfall_mwh": 2.0481394358284888e-12,
+    "accepted_supply_mwh": 233880.2742835,
+    "curtailed_mwh": 2.0,
+    "demand_mwh": 233870.2742835,
+    "excess_mwh": 7660.574277065198,
+    "export_mwh": 0.0,
+    "flexible_demand_mwh": 0.0,
+    "generation_by_technology_mwh": {
+     "battery_storage": 11607.268475704506,
+     "ccgt": 107751.04901049998,
+     "onshore_wind": 63818.62254342937,
+     "solar": 50703.33425386615
+    },
+    "import_mwh": 0.0,
+    "market_payment_gbp": 7165551.129735023,
+    "mean_period_price_gbp_per_mwh": 27.38095007614238,
+    "non_vre_double_counted_mwh": 0.0,
+    "periods": 17520,
+    "physical_resource_cost_gbp": 7165456.211408405,
+    "recorded_blackout_mwh": 0.0,
+    "routing_in_dispatch_curtailed_mwh": 2.0,
+    "routing_in_dispatch_to_storage_mwh": 10.0,
+    "storage_charge_mwh": 14330.262016619023,
+    "storage_discharge_mwh": 11607.268475704506,
+    "stress_periods": 0,
+    "vre_accepted_mwh": 114521.95679729551
+   },
+   "2026": {
+    "a2_shortfall_mwh": 2.630784479151771e-12,
+    "accepted_supply_mwh": 233880.2742835,
+    "curtailed_mwh": 2.0,
+    "demand_mwh": 233870.2742835,
+    "excess_mwh": 34862.088437962855,
+    "export_mwh": 0.0,
+    "flexible_demand_mwh": 0.0,
+    "generation_by_technology_mwh": {
+     "battery_storage": 22080.799444538872,
+     "ccgt": 88542.6357783079,
+     "onshore_wind": 72695.11400362864,
+     "solar": 50561.725057024596
+    },
+    "import_mwh": 0.0,
+    "market_payment_gbp": 5888097.6060612425,
+    "mean_period_price_gbp_per_mwh": 21.963184908661653,
+    "non_vre_double_counted_mwh": 0.0,
+    "periods": 17520,
+    "physical_resource_cost_gbp": 5888097.604967962,
+    "recorded_blackout_mwh": 0.0,
+    "routing_in_dispatch_curtailed_mwh": 2.0000000000000018,
+    "routing_in_dispatch_to_storage_mwh": 10.0,
+    "storage_charge_mwh": 27260.818705018573,
+    "storage_discharge_mwh": 22080.799444538872,
+    "stress_periods": 0,
+    "vre_accepted_mwh": 123256.83906065323
+   }
+  }
+ }
+}

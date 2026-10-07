@@ -1,6 +1,7 @@
 # Energy balance, stress events and validation gates (P0-4 draft for methodology 0.4)
 
-Status: draft written with the P0-4 S7-S8 construction (2026-10-06).  It replaces
+Status: draft written with the P0-4 S7-S8 construction (2026-10-06); the gate
+reading of the doctoral profile updated for R4-1 (DECISIONS A26, 2026-10-08).  It replaces
 the passage "Native retains both raw supply-demand residuals and compatibility
 adjustments ..." of `national_alternatives.md` (en: the paragraph with
 \(r_t^{raw}\) and \(a_t^{compat}\); zh: the paragraph starting
@@ -21,8 +22,9 @@ validator checked only completeness.  The retained boundary also leaves out
 surplus that left the node outside the accepted supply (VRE surplus charged
 into storage, exported or sent to electrolysis), so a non-zero raw residual
 mixes four things: out-of-dispatch surplus, in-dispatch surplus spilled, a
-hidden shortfall (P3-01) and the doctoral double count of must-run surplus in
-the balancing stage (DEV-BAL-04).
+hidden shortfall (P3-01) and a double count of must-run surplus in the
+balancing stage of the thesis kernel (DEV-BAL-04, corrected in both profiles
+by R4-1).
 
 ### Declared boundary and the raw residual
 
@@ -61,7 +63,7 @@ A period whose only defect is unmet demand closes (\(\text{closing}_t=0\)) and
 is a **stress period**; contiguous stress periods of one year form a stress
 event, and the annual summary reports the event count, stress periods and the
 total shortfall.  A positive closing residual (supply recorded beyond every
-use, for example the DEV-BAL-04 double count) remains an open period.
+use, such as a double count) remains an open period.
 
 ### Validation gates (P0-4 S7)
 
@@ -82,30 +84,38 @@ Under the default (corrected) profile any failed gate makes scientific
 validation `failed` and annual economics are not published.  A stress period
 is reported but is not a gate failure.
 
-The frozen doctoral reproduction profile keeps the thesis behaviour.  Its
-gates are read through declared deviations with falsifiable signatures
-(`gridform_core/data/methodology/declared_deviations.json`):
+The frozen doctoral reproduction profile keeps the thesis settings.  Its
+remaining declared deviations
+(`gridform_core/data/methodology/declared_deviations.json`) are a definition
+and evidence; none of them explains a gate failure:
 
-| Deviation | Behaviour kept | Signature tested on the run's ledger |
+| Deviation | Behaviour kept | Role |
 |---|---|---|
-| DEV-BAL-04 | must-run surplus counted again in balancing | \(0<\text{closing}_t\le\) in-dispatch surplus re-dispatched to balancing \(+\tau_t\) |
-| DEV-STO-01 (P5-03) | power limit reset in each stage; charge and discharge in one period | charge and discharge each \(\le 2\,P\,\Delta+\tau\) |
 | DEV-BAL-02 (P3-01) | hidden shortfall | evidence only (stress events, booked as unserved) |
 | DEV-BAL-03 | stored energy discarded at a year end | evidence only (`storage_year_boundary`) |
 | DEV-BAL-01 | thesis column semantics | definition of the surplus-node boundary |
 
-A gate that passes is `reproduction_conformant`; a failed gate whose every
-failing period or row matches a declared signature is
-`reproduction_with_declared_deviations`; anything else, and every failed run
-invariant, is `failed`.  Annual results of a doctoral run appear on result
-pages only when all raw invariants pass (decision Q14); otherwise they stay in
-Inspect and exports.
+The two thesis-kernel behaviours that used to explain gate failures were
+implementation errors and are corrected in both profiles (R4-1, DECISIONS
+A26; see `r41_kernel_corrections.md`): must-run nuclear surplus is no longer
+counted twice in the balancing stage (`r41.must-run-surplus-counted-once`,
+formerly DEV-BAL-04), and a store keeps one net position per period with its
+rated power shared by the clearing stages (`p06.storage-net-per-period`,
+formerly DEV-STO-01).  The thesis curtailment branch also no longer takes the
+same down regulation twice (`r41.down-regulation-taken-once`), which
+surplus conservation used to report as a failure on GBP1.
+
+A gate that passes is `reproduction_conformant`; a failed gate is `failed`,
+as is every failed run invariant (`reproduction_with_declared_deviations`
+remains readable on reports written before R4-1).  Annual results of a
+doctoral run appear on result pages only when all raw invariants pass
+(decision Q14); otherwise they stay in Inspect and exports.
 
 ## 中文
 
 ### 0.3 版本的表述错在哪里
 
-0.3 版本在保留的需求服务边界上定义原始残差 \(r_t^{raw}=G_t+U_t-d_t-c_t^{accounted}\)，并且只要 \(|r_t^{raw}|>10^{-9}\) MWh 就令兼容调整 \(a_t^{compat}=-r_t^{raw}\)。因此调整后的残差 \(r_t^{raw}+a_t^{compat}\) 按构造恒为 0，不能作为能量平衡的证据；调整量没有上限，官方校验器也只检查完整性。保留边界还漏掉了在接纳供给之外离开节点的盈余（VRE 盈余充入储能、出口或电解），所以非零的原始残差混合了四类量：调度外盈余、调度内盈余的弃置、被隐藏的缺电（P3-01），以及 doctoral 平衡阶段对必发盈余的重复计入（DEV-BAL-04）。
+0.3 版本在保留的需求服务边界上定义原始残差 \(r_t^{raw}=G_t+U_t-d_t-c_t^{accounted}\)，并且只要 \(|r_t^{raw}|>10^{-9}\) MWh 就令兼容调整 \(a_t^{compat}=-r_t^{raw}\)。因此调整后的残差 \(r_t^{raw}+a_t^{compat}\) 按构造恒为 0，不能作为能量平衡的证据；调整量没有上限，官方校验器也只检查完整性。保留边界还漏掉了在接纳供给之外离开节点的盈余（VRE 盈余充入储能、出口或电解），所以非零的原始残差混合了四类量：调度外盈余、调度内盈余的弃置、被隐藏的缺电（P3-01），以及论文内核在平衡阶段对必发盈余的重复计入（DEV-BAL-04，R4-1 已在两个口径中修正）。
 
 ### 声明边界与原始残差
 
@@ -125,7 +135,7 @@ $$
 \text{closing}_t = r_t - B_t + u_t .
 $$
 
-只有需求未满足这一种缺陷的时段闭合（\(\text{closing}_t=0\)），记为 **stress 时段**；同一年内连续的 stress 时段构成一个 stress event，年度汇总给出事件数、stress 时段数和总缺口。closing 为正（记录的供给超过全部用途，例如 DEV-BAL-04 的重复计入）的时段仍是未闭合时段。
+只有需求未满足这一种缺陷的时段闭合（\(\text{closing}_t=0\)），记为 **stress 时段**；同一年内连续的 stress 时段构成一个 stress event，年度汇总给出事件数、stress 时段数和总缺口。closing 为正（记录的供给超过全部用途，例如重复计入）的时段仍是未闭合时段。
 
 ### 验证门控（P0-4 S7）
 
@@ -137,14 +147,14 @@ $$
 
 默认（corrected）口径下，任一 gate 失败，科学验证即为 `failed`，年度经济结果不发布。stress 时段只报告，不算 gate 失败。
 
-冻结的 doctoral 复现口径保留论文行为，其 gate 按带可证伪签名的已声明偏差解读（`gridform_core/data/methodology/declared_deviations.json`）：
+冻结的 doctoral 复现口径保留论文设定。它剩下的已声明偏差（`gridform_core/data/methodology/declared_deviations.json`）只是定义和证据，都不解释 gate 失败：
 
-| 偏差 | 保留的行为 | 在本次运行账本上检验的签名 |
+| 偏差 | 保留的行为 | 作用 |
 |---|---|---|
-| DEV-BAL-04 | 平衡阶段再次计入必发盈余 | \(0<\text{closing}_t\le\) 回用到平衡需求的调度内盈余 \(+\tau_t\) |
-| DEV-STO-01（P5-03） | 每个阶段重置功率上限；同一时段既充又放 | 充电、放电各自 \(\le 2\,P\,\Delta+\tau\) |
 | DEV-BAL-02（P3-01） | 被隐藏的缺电 | 只作证据（stress event，记为缺电量） |
 | DEV-BAL-03 | 年末丢弃储能存量 | 只作证据（`storage_year_boundary`） |
 | DEV-BAL-01 | 论文的列语义 | surplus-node 边界的定义 |
 
-gate 通过记为 `reproduction_conformant`；gate 失败且每个失败时段或行都符合已声明签名，记为 `reproduction_with_declared_deviations`；其他情况以及任何 run 不变量失败，都记为 `failed`。doctoral 运行的年度结果只有在原始不变量全部通过时才在结果页发布（决策 Q14），否则只在 Inspect 和导出中提供。
+过去用来解释 gate 失败的两项论文内核行为是实现错误，已在两个口径中修正（R4-1，决策 A26，见 `r41_kernel_corrections.md`）：平衡阶段不再把必发核电盈余计两次（`r41.must-run-surplus-counted-once`，原 DEV-BAL-04）；每个储能每个时段只有一个净头寸，各出清阶段共用额定功率（`p06.storage-net-per-period`，原 DEV-STO-01）。论文削减分支也不再把同一笔下调削两次（`r41.down-regulation-taken-once`），这一行为过去在 GBP1 上表现为盈余守恒失败。
+
+gate 通过记为 `reproduction_conformant`；gate 失败记为 `failed`，任何 run 不变量失败也记为 `failed`（R4-1 之前写出的报告中的 `reproduction_with_declared_deviations` 仍可读）。doctoral 运行的年度结果只有在原始不变量全部通过时才在结果页发布（决策 Q14），否则只在 Inspect 和导出中提供。

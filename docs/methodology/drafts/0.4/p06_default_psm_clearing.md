@@ -10,8 +10,9 @@ set (`gridform_core/builtin/scheme_c_1000twh/native_market_rules.py`).  The rule
 set is derived only from the methodology catalogue
 (`corrections/p06.json`): the doctoral reproduction profile
 `doctoral-lineage-0.6.0a2` runs `native-doctoral-thesis-v1` (the 0.6.0-alpha.2
-behaviour, frozen), the default profile `value-corrected` runs
-`native-corrected-v1`.  The kernel refuses any other combination.
+behaviour, frozen except for the universal corrections), the default profile
+`value-corrected` runs `native-corrected-v1`.  The kernel refuses any other
+combination.
 
 ## What does not change (both rule sets)
 
@@ -26,6 +27,26 @@ behaviour, frozen), the default profile `value-corrected` runs
   investment tests stay undiscounted (ROI / payback); P4-02 is not a defect.
 * **Absorption order of the curtailment branch (appendix P0-6 Q5).** Storage,
   export, flexible demand, then down regulation, as in the thesis.
+
+## Kernel corrections in both rule sets (R4-1, decision A26)
+
+Three implementation errors of the retained kernel are corrected in both rule
+sets (universal corrections; see `r41_kernel_corrections.md` for the rules,
+examples and the effect on the shipped cases):
+
+* **Down regulation is taken once** (`r41.down-regulation-taken-once`): when a
+  hydro, biomass or thermal unit meets the remaining down-regulation
+  requirement of the curtailment branch, the requirement is cleared and no
+  later offer is reduced again.
+* **Must-run surplus is counted once** (`r41.must-run-surplus-counted-once`):
+  must-run nuclear surplus that serves the balancing requirement is output
+  already in the accepted supply; it is neither generated nor paid a second
+  time.
+* **One storage position per period** (`p06.storage-net-per-period`, now
+  universal): the clearing stages of a period share a store's rated power; a
+  store that discharged reduces that discharge before it can charge, and a
+  store that charged offers no discharge.  `storage_position` is therefore no
+  longer a switch of the rule sets.
 
 ## Physical operating cost (P5-06, universal)
 
@@ -64,7 +85,7 @@ period-cost column, whose thesis storage-fee carry is reported as
 | surplus accounting | D1-surplus: ahead surplus rebuilt per source as availability minus acceptance; must-run surplus (in S) is used before VRE surplus (outside S); consumed VRE surplus is gross VRE output; must-run surplus serving the balancing requirement is not generated or paid twice | `p06.d1-surplus-accounting` | review blocker, DEV-BAL-04 |
 | ahead / balancing merit key | `(round(price, 2), is_storage, price, input order)`: storage clears after generation in the same 0.01 GBP/MWh band | `p06.storage-after-generation-merit-key` | P5-04 (Q8) |
 | down regulation | avoided-cost stack: descending rounded avoided cost (nuclear carries a 100 GBP/MWh dec premium), ties thermal, hydro/biomass, VRE, nuclear, then name; ramp floor `max(previous - alter_limit, 0)` by object identity; hydro/biomass budgets returned; requirement left after the stack is in-dispatch spill. Since A19/A22 a gas or biomass row is split at minimum stable generation: the running range keeps this key (before VRE), the shutdown segment is ranked by the net saving `c - S(H)/(m H)` against VRE (A22a) (only when the expected downtime H reaches the minimum down time; otherwise last resort). See `r12_economic_downward_order.md` | `p06.avoided-cost-downward-order`, `r12.economic-downward-order` | P3-03 (A19, A22) |
-| storage position | one net position per period: stages share the rated power; a store that discharged buys back (need first, then surplus) before it can charge; a store that charged offers no discharge; sales recorded at the net position; `close_period` asserts discharge <= P, no charge with discharge, 0 <= SoC <= E | `p06.storage-net-per-period` | P5-03 |
+| storage position | one net position per period: stages share the rated power; a store that discharged buys back (need first, then surplus) before it can charge; a store that charged offers no discharge; sales recorded at the net position; `close_period` asserts discharge <= P, no charge with discharge, 0 <= SoC <= E. Universal since R4-1 (both rule sets) | `p06.storage-net-per-period` | P5-03 (DEV-STO-01, A26) |
 | storage fee | settled in its own period (no carry) | `p06.storage-fee-per-period` | P5-06 |
 | VRE direct electrolysis | none before clearing (electrolysis only consumes surplus) | `p06.no-vre-pre-clearing-skim` | P3-08 |
 | storage bid | `cycle_only`: batteries bid `CAPEX / (E * eta_dis * N_max)`, pumped hydro and hydrogen bid 0, oldest tranche first; holding recovery only in investment adequacy | `p06.storage-bid-cycle-only` | P5-04 (Q8) |
@@ -102,12 +123,15 @@ declare `default_psm_surplus_node_v1` (P0-4).
 
 ## Doctoral rule set: declared deviations
 
-The doctoral rule set reproduces 0.6.0-alpha.2 dispatch bit for bit (96-period
-synthetic golden) and reports its known deviations in
+The doctoral rule set reproduces 0.6.0-alpha.2 dispatch except for the
+universal corrections (the reading corrections, the thermal net revenue and,
+since R4-1, the three kernel corrections above); the 96-period synthetic
+golden keeps the 0.6.0-alpha.2 columns as revision 0 and the corrected ones in
+its R4-1 revision.  It reports its remaining thesis behaviours in
 `market_rule_diagnostics`: `unrecorded_vre_mwh` (VRE crowded out and not
-recorded), `non_vre_double_counted_mwh` (DEV-BAL-04),
-`storage_fee_carry_gbp`, `vre_skim_leak_mwh` and
-`vre_skim_to_electrolysis_mwh`.
+recorded), `storage_fee_carry_gbp`, `vre_skim_leak_mwh` and
+`vre_skim_to_electrolysis_mwh`; `non_vre_double_counted_mwh` is zero since
+R4-1 (it recorded DEV-BAL-04).
 
 Nuclear path dependency (A15, not a diagnostic column): the doctoral rule set
 starts every model year with no unit running, so nuclear offers its start-up
@@ -119,7 +143,8 @@ output depends on when the first scarcity period falls
 
 * Zero-priced pumped hydro and hydrogen storage dispatch myopically (no water
   value); seasonal value is left to a later round (P2).
-* A buy-back does not refund the ahead storage payment (P1, P3-05).
+* A buy-back does not refund the ahead storage payment (P1, P3-05); since
+  R4-1 this holds in both rule sets.
 * Storage charging cost and the storage investment test are P0-7's
   (`agent_cashflow`, decision A8 (3)).
 * The staged PSM keeps one SoC pool and bids `d = 0`; its storage reports now

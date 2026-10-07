@@ -31,7 +31,8 @@ an energy balance. The raw residual was computed on the retained
 demand-serving boundary, which leaves out surplus routed to storage, export
 and electrolysis outside the accepted supply; it mixes that surplus with
 hidden shortfall (P3-01) and the doctoral double count of must-run surplus
-(DEV-BAL-04). It was not only a "visible legacy-accounting limitation".
+(DEV-BAL-04, corrected in both profiles by R4-1, decision A26). It was not
+only a "visible legacy-accounting limitation".
 
 From P0-4 S6 the default PSM declares its balance boundary in the ledger
 metadata (`energy_balance_boundary`: `default_psm_surplus_node_v1` for the
@@ -67,10 +68,12 @@ times the bid multiplier (`offer_price_gbp_per_mwh`, `bidding_factor`,
 reason (`cleared`, `demand_filled`, `no_energy_delivered`,
 `merit_order_not_reached`), `accepted_offer_value_gbp` (price x accepted
 MWh, the storage fee the kernel books) and `clearing_offer_id`, the
-`offer_id` of the same offer in `clearing_inputs`. Under the doctoral rule
-set the accepted MWh of a battery and period sum to its `final_dispatch` row
-and to `storage_energy_audit.discharge_output_mwh`; under the corrected rule
-set the row is net of the same-period buy-back. Accounting zone; dispatch is
+`offer_id` of the same offer in `clearing_inputs`. The accepted MWh of a
+battery and period are the energy its offers delivered in the stages; its
+`final_dispatch` row and `storage_energy_audit.discharge_output_mwh` are net
+of a same-period buy-back, so they never exceed the accepted MWh. Since R4-1
+(DECISIONS A26) this holds in both rule sets; before it the doctoral rule set
+had no buy-back and the three were equal. Accounting zone; dispatch is
 unchanged. Schema: `gridform_core/data/contracts/market-ledger-storage-orders-v1.schema.sql`.
 
 `clearing_inputs` and `clearing_outcomes` retain hashes and JSON envelopes for

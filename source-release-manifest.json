@@ -4708,8 +4708,8 @@
     },
     {
       "path": "docs/SCHEME_C_MODEL_CARD.md",
-      "sha256": "9d07770734af6778652527dbfb080202a63b511fd5046e5d9c9473086e7c9b8e",
-      "bytes": 7519,
+      "sha256": "0abd29dadf1d42fc4e55ebb49686c0f73918afdc28d807ad04e6dd8862261c3c",
+      "bytes": 7836,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6388,8 +6388,8 @@
     },
     {
       "path": "docs/visibility-refactor/MARKET_LEDGER.md",
-      "sha256": "a1e55e2526fd1893dd75480cd1b47b7ef43584c59b25cc61825907bc088ae93c",
-      "bytes": 6818,
+      "sha256": "66b2c6251a5ddaf3ffbf9821e88a7a48b44e5fe0018e85fc1a0f363d56c4189a",
+      "bytes": 7015,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
