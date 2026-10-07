@@ -89,8 +89,8 @@
       },
       "advisory": {
         "severity": "high",
-        "title": "Down regulation in curtail-cost order",
-        "summary": "Before P0-6 the default PSM reduced output in ascending curtail_cost (VRE first), matched ramp history by list position, kept stale requirements after a break and returned budget only to hydro.",
+        "title": "Down regulation bookkeeping (ramp history, breaks, budgets)",
+        "summary": "This Run's default PSM matched each unit's ramp history by list position, kept stale requirements after a break in the down-regulation stack and returned reduced energy to the budget of hydro units only (not biomass). The order of down regulation itself is not part of this advisory: curtailing VRE first is the thesis rule and is not a defect (A19); how the corrected profile weighs restart costs against VRE curtailment is described by r12.economic-downward-order.",
         "affected_metrics": [
           "curtailment",
           "generation_mix",
