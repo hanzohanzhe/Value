@@ -1230,8 +1230,8 @@ def _native_result_payload(typed_results, ledgers, *, planning_mode: str) -> dic
             "Total_Energy_Deficit_MWh": market.total_blackout_mwh,
             # R5 (S-F-高1/中2): annual demand and the A2 served energy, for the
             # run status and the comparison (demand served, unserved incl. stress).
-            "Total_Demand_MWh": market.total_demand_mwh,
-            "Demand_Served_MWh": ledger.demand_served_mwh,
+            "Total_Demand_MWh": getattr(market, "total_demand_mwh", None),
+            "Demand_Served_MWh": getattr(ledger, "demand_served_mwh", None),
             "Total_Excess_Energy_MWh": market.total_excess_mwh,
             "Total_Imports_MWh": sum(item.import_mwh for item in market.period_summaries),
             "Total_Storage_Charge_MWh": sum(item.storage_charge_mwh for item in market.period_summaries),
