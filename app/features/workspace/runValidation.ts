@@ -437,7 +437,8 @@ export function runNotices(run: RunValidationFields | null | undefined): RunNoti
 export const NOTICE_ACTION_LABELS: Readonly<Record<NoticeAction, string>> = {
   open_residuals: "Open residuals in Inspect",
   open_inspect: "Open in Inspect",
-  export_ledger: "Export ledger",
+  // R4 R-低4: the action opens the ledger files in Inspect; it does not download.
+  export_ledger: "Open ledger files",
   view_advisories: "View advisories",
   show_stress_events: "Show stress events",
 };

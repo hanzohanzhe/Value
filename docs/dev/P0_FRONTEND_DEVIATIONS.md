@@ -272,3 +272,11 @@
 
 后端出错的显示沿用已有的失败 Run 呈现：准备失败为 `GF_RUN_PREPARATION_FAILED`（`current_stage` 为 `Run preparation failed`，`preparation.failed_stage` 记失败阶段），后端在准备途中停止为 `GF_RUN_PREPARATION_INTERRUPTED`（`Run preparation interrupted`）；磁盘与预留的拒绝保持原错误码，但现在是已建 Run 的 failed 状态，而不是启动请求的 503/507。
 
+
+## R4-2（复现角色的中低缺陷；DECISIONS A27）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R42-1 | R-低4 | 规格第 0 节第 5 条和 4.2 节把动作写作 `Export ledger`，但这个动作只是打开 Inspect 的产物列表，并不下载文件。按钮和 Run 上下文条的动作统一改名为 `Open ledger files`，行为不变 | 动作名与行为一致；真正的打包下载已有 Inspect 的 `Prepare audit bundle` | 是（规格中的动作名） |

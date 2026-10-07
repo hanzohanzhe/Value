@@ -63,3 +63,9 @@ test("started-run notice is bound to its Study and page", async () => {
   assert.equal(startedRunNoticeVisible(null, { view: "run", studyId: "s1" }), false);
   assert.equal(startedRunNoticeVisible({ runId: "r1", mode: "smoke", text: "x" }, { view: "data", studyId: "" }), true);
 });
+
+// R-低4: the action that opens Inspect's artifact list is not called an export.
+test("ledger action is named for what it does", async () => {
+  const { NOTICE_ACTION_LABELS } = await import("../../../app/features/workspace/runValidation.ts");
+  assert.equal(NOTICE_ACTION_LABELS.export_ledger, "Open ledger files");
+});

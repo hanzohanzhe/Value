@@ -106,7 +106,7 @@ export function WithheldAnnualResults({ publication, withheldYearCount, onOpenIn
       <div><small>Annual results</small><StatusPill tone="caution" title={publication.message}>Withheld</StatusPill>
         <div className="annual-withheld"><ValueState state="withheld" title={publication.reason_code} /> <span>Annual results are not published on result pages for this reproduction run{years ? ` (${years} computed ${years === 1 ? "year" : "years"})` : ""}. The full ledger remains available.</span>
           {onOpenInspect && <button type="button" className="value-action-link" onClick={onOpenInspect}>Open in Inspect</button>}
-          {onExportLedger && <button type="button" className="value-action-link" onClick={onExportLedger}>Export ledger</button>}
+          {onExportLedger && <button type="button" className="value-action-link" onClick={onExportLedger}>Open ledger files</button>}
         </div>
       </div>
     </section>
@@ -117,7 +117,7 @@ export function WithheldAnnualResults({ publication, withheldYearCount, onOpenIn
 export function GateBlockedAnnualResults({ validation, onOpenInspect, onExportLedger }: { validation: RunValidationFields; onOpenInspect?: () => void; onExportLedger?: () => void }) {
   const actions = [
     onOpenInspect && <button key="inspect" type="button" className="value-action-primary" onClick={onOpenInspect}>Open in Inspect</button>,
-    onExportLedger && <button key="export" type="button" className="value-action-link" onClick={onExportLedger}>Export ledger</button>,
+    onExportLedger && <button key="export" type="button" className="value-action-link" onClick={onExportLedger}>Open ledger files</button>,
   ].filter(Boolean);
   return <div className="results-cockpit value-new-control">
     <Callout tone="danger" title="Annual results not published" actions={actions.length ? actions : undefined}><p>{gateBlockedText(validation)}</p></Callout>

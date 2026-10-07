@@ -114,7 +114,7 @@ test("a withheld doctoral reproduction shows the caution pill, the withheld noti
   await expect(page.locator(".annual-results-withheld")).toContainText("Withheld");
   await expect(page.locator(".annual-results-withheld")).toContainText("(2 computed years)");
   await expect(page.getByText("No annual results yet")).toHaveCount(0);
-  await bar.getByRole("button", { name: "Export ledger" }).click();
+  await bar.getByRole("button", { name: "Open ledger files" }).click();
   await expect(page.getByRole("tab", { name: "Artifacts & provenance" })).toHaveAttribute("aria-selected", "true");
   // Spec 9.8: at 375 px the context bar fits its own width (no horizontal scroll inside it).
   await page.getByRole("button", { name: /Runs: Launch and compare/ }).click();

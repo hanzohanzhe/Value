@@ -64,7 +64,7 @@ test("doctoral Run withheld under Q14: caution pill and the withheld Callout wit
   // Spec 11.3 (R-D1): without recorded failures the notice says what is known, never a generic energy-balance claim.
   assert.match(text, /Annual results withheld for this reproduction run Annual results withheld: a raw invariant failed\. No declared deviation explains it\. The full ledger remains available\./);
   assert.match(text, /Raw invariants ● Failed/);
-  assert.match(text, /Open in Inspect Export ledger/);
+  assert.match(text, /Open in Inspect Open ledger files/);
   assert.match(html, /class="value-callout caution" role="alert"/);
 });
 
@@ -108,7 +108,7 @@ test("annual results of a withheld reproduction Run show the Withheld pill, neve
   const text = textOf(html);
   assert.match(html, /class="value-pill caution"[^>]*>Withheld<\/span>/);
   assert.match(text, /Annual results are not published on result pages for this reproduction run \(2 computed years\)\. The full ledger remains available\./);
-  assert.match(text, /Open in Inspect Export ledger/);
+  assert.match(text, /Open in Inspect Open ledger files/);
   assert.doesNotMatch(text, /No annual results yet|£/);
 });
 
@@ -154,7 +154,7 @@ test("F-P04-4: a gate-blocked corrected Run shows 'Annual results not published'
   assert.match(text, /Annual results not published/);
   assert.match(text, /This Run failed 1 validation gate: Storage limits\. Results are withheld until the cause is fixed\. The full ledger remains available\./);
   assert.match(text, /Open in Inspect/);
-  assert.match(text, /Export ledger/);
+  assert.match(text, /Open ledger files/);
   assert.doesNotMatch(text, /No annual results yet/);
 });
 
