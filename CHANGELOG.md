@@ -241,6 +241,8 @@ unattributed.
 | Data mapping | Declared CSV columns are read (`GF_DATA_INDEX_COLUMN`, `GF_DATA_AMBIGUOUS_COLUMN`, `GF_DATA_SHORT_SERIES`). EUR prices take an explicit rate, FX basis and price year (`GF_MAPPING_FX`). | P0-5a, P0-9 | changed |
 | Market replay and exports (R4-3, S-中1) | Model times are UTC on the fixed 365-day model year and end in `Z` (`2025-07-01T16:00:00Z`; was a naive local-looking `2025-07-01T16:00:00`); a leap model year skips 29 February. `timezone` is `UTC` and `calendar` `fixed_365_day_utc_periods`; new `clock_rule`, `clock_label_corrected` and, for a ledger written before the fix, `clock_note`. CSV/JSONL replay exports end with a `period_start_utc` column; the ZIP manifest has `model_clock`. | R4-3 (A27) | changed |
 | Data mapping (R4-3) | Preview: optional `timestamp.date_order` (`auto`/`day_first`/`month_first`) and `model_start_year`; the review adds `clock`, `acknowledgements_required`, and in `timestamp` `data_row`/`csv_line` per problem, `date_order`, `date_order_basis`, `hints` and `coverage`; `validation.timestamp_check`. Commit: optional `acknowledged` (409 `GF_MAPPING_ACKNOWLEDGEMENT` without it when the series is shorter than a model year). `fx_basis` must be `annual average`, `monthly average` or `fixed rate`. Semicolon- or tab-separated uploads are refused with an explanation (`GF_MAPPING_CSV`). | R4-3 (A27) | changed |
+| Readiness and Study revisions (R4-4) | The preflight report's `project_revision_sha256` is the saved revision it evaluated (was the hash the installed code computes); the computed hash is `calculated_project_revision_sha256`. New warnings `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED` and error `GF_PREFLIGHT_EXTENSION_SOURCE_RELOAD`; `checks.extension_source_changes`; `checks.project_revision.blocked_by`. Derived `GF_PREFLIGHT_MODULE_SELECTION` / `GF_PREFLIGHT_PROJECT_REVISION` errors are no longer added when quarantined or disabled code is reported. New revision reason `source-reidentify`; migration revisions record the current `module_resolution_graph`. A Run start refuses an unsealed kernel (`GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`, 409) before a method confirmation. | R4-4 (A27) | changed |
+| Module and extension lifecycle (R4-4) | `GET /api/workspace` adds `extension_source_changes`. `POST /api/modules/rescan` imports extension hooks and adds `reloaded_extensions`, `quarantined_extensions`. `POST /api/projects/<id>/derive` appends the source's automatic code-only revision first (`source_migration`) and starts from the current module graph when only code identity drifted (`source_graph_drift`, `derivation.source_module_graph_drift`). New install codes `GF_MODULE_CONTRACT_MISMATCH`, `GF_MODULE_SLOT_UNSUPPORTED`. Conflicts are refused before `GF_MODULE_LIFECYCLE_RUNS_PENDING`, whose message names modules or extensions. Run payloads add `selected_extensions` and, for the storage-cost slot, `module_evidence[...].source = market_ledger`. | R4-4 (A27) | changed |
 | Comparisons | New `metric_delta_gates` ({metric: allowed, reason_code, definitions, reason}) and `withheld_metric_deltas`: annual deltas are gated per metric (AF3-1). `metric_deltas_allowed` still means "every metric". `changed_dimension_details` rows gain `name`. | R2-1 (A23) | additive |
 | Methodology record | `universal_accounting_correction_ids` and `correction_ids_in_force` next to `applied_correction_ids` (R3-N6 / O-3); the method identity is unchanged. Catalogue `applies_when` gains `assets_any` (R3-N7). | R2-1 (A23) | additive |
 | Parameters | New `methodology.profile`, `market.voll_gbp_per_mwh` (corrected VoLL), `market.dec_multiplier`, `market.policy_support_gbp_per_mwh_by_technology` and `network.inflexible_dec_premium_gbp_per_mwh_by_technology`. | X0, P0-6, P0-8 | additive |
@@ -931,6 +933,36 @@ availability, the original data readings) are unchanged.
   2025 price base is noted (S-低6); the single-change comparison sentence
   no longer mentions a storage-cost experiment, and a missing curtailment
   metric reads `Unavailable` on Compare as on Runs (S-低7).
+
+### Edit-module and add-feature fixes (R4-4, DECISIONS A27)
+
+- **Readiness after a code-only change (M-中2, F-中1).** A Study whose
+  module was upgraded code-only, or whose installed extension was edited in
+  place, now gets its readiness report: the report names the saved revision
+  it evaluated, and the new hash appended at run start is reported apart.
+- **Extensions edited in place (F-中2).** They are detected like modules
+  (card note, readiness warning); the re-identification says results may
+  change and the appended revision records `source-reidentify`.
+- **Rescan imports extension hooks (F-中3)**, so a broken hook is
+  quarantined at once.
+- **Deriving after a migration or an in-place edit (M-中3).** Migration
+  revisions record the current module graph; derive appends the automatic
+  code-only revision of the source first and, when only code identity
+  drifted, starts from the current graph and records the drift.
+- **Storage-cost evidence (M-中1).** The Run card shows the market-ledger
+  evidence of the storage-cost module the PSM called internally.
+- **Extension Study draft (F-中4)** copies the selected baseline Study.
+- Low items: correction ids must be registered (catalogue or the table
+  above) for the ledger check and the overlay seal (M-低1); an unsealed
+  kernel is reported before a method confirmation and readiness re-runs
+  after the dialog (M-低2); quarantined or disabled code is reported once
+  with the right action (M-低3, F-低3); quarantine and disabled entries show
+  their manifest files and IDs, with plural text (M-低4, F-低2); a wrong
+  contract ID is `GF_MODULE_CONTRACT_MISMATCH` (M-低5); a built-in
+  namespace says "choose another namespace" (F-低1); a Run with an
+  experimental extension is marked in its header (F-低4); install conflicts
+  come before the pending-runs question, which names modules or extensions
+  (F-低5).
 
 ### Scientific validation recomputed and gated (P0-4)
 

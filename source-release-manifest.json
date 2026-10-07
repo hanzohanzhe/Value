@@ -3006,8 +3006,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "91f4a53e2917adc8499ee7d7be5defe815b7fa2ea0b858cac9c0c244be0ff083",
-      "bytes": 69952,
+      "sha256": "677fab001ff29df793477e3a98fd94e1acf60893a3606b63143b539cabb92f92",
+      "bytes": 73435,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

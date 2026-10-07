@@ -302,3 +302,19 @@
 | F-R43-4 | S-低2 | 序列不满一个模型年（会从开头重复补齐）时，审阅报告给出警告，并在原确认框下多一个确认框：`{覆盖说明} 我知道模型会这样补齐，仍要提交。`；两个都勾选后提交按钮才可用，后端也要求 `acknowledged` | 原来只有泛泛的“循环重复”，可以直接提交 | 是（文案） |
 | F-R43-5 | S-低5 | 换数据角色卡片在时间戳声明下加一行（与时间戳同样的 12px `--muted`）：`原币种 EUR · 汇率 {r} EUR/GBP · 汇率口径 {b} · 价格年份 {y}`；时间戳行在有日月顺序时加 ` · DD/MM/YYYY`。包只读时角色下拉框仍可选择，用于浏览各角色当时的导入方式；上传与映射仍禁用 | 提交后看不到汇率；只读时无法浏览角色 | 否 |
 | F-R43-6 | S-低7(b) | 比较页年度指标中，三个依赖 VRE 弃电证据的指标缺值时写 `Unavailable`（与 Runs 页相同），其他缺值仍写 `Not evaluated` | 同一缺项两页用词不同 | 否 |
+
+## R4-4（改函数、加功能角色的中低缺陷；DECISIONS A27）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R44-1 | M-中1 | Runs 页模块证据中，storage cost 槽位在市场账本记录了储能成本模块时写 `Called inside the PSM: the market ledger records its storage offers ({n} storage asset-periods)`；模块对象报告的 id 与清单 id 不同时，句末加 `; its object reports id {id}`。其他槽位不变 | 由 PSM 内部调用的槽位没有阶段事件，原来写 “Not called in this scope” | 是（文案） |
+| F-R44-2 | F-中2 | 扩展目录卡片在已安装扩展原地改源后，footer 上方显示与模块卡片相同样式的 `installed-module-note caution`：`Source changed since install ({模块} {旧哈希8位}… → {新哈希8位}…). Results may change; Runs record the new source hash.`。Studies 卡片对 `source-reidentify` 修订写 `Updated to code identity {12位} (installed local code was edited in place; results may differ)` | 原来扩展改源没有任何提示，修订还写“no change expected” | 否 |
+| F-R44-3 | M-中3 | 派生成功后的页面提示（Modules 页和研究引导）在原句后追加：先为来源 Study 追加的代码级修订（`The source Study was first re-identified as revision {n} (…).`），以及来源模块图已变化的说明（`The source's module code changed since its revision was saved (…). For a one-change comparison, compare with a new Run of the source Study.`） | 后端改为自动追加代码级修订、按当前模块图派生，用户需要知道 | 是（文案） |
+| F-R44-4 | F-中4 | 扩展编写台的 “Open independent Study draft” 复制当前选中的已保存 Study（年份、模块、扩展、确认、市场与求解器设置、参数和运行选项），草稿名 `{Study} · extension study`；提示写 `Independent Study draft opened as a copy of {Study} (revision {n}): its years, modules, parameters and run options are kept. …`。没有选中 Study 时保持原行为并说明 | 原草稿沿用编辑器当前内容，丢参数，无法做单变量对照 | 否 |
+| F-R44-5 | M-低2 | Check readiness 报告中有安装环境错误（scope `environment`，如 kernel 未封存）时，不弹出方法升级确认框，直接显示报告，提示 `Fix the installation errors listed under readiness first. …`；确认框确认或取消后自动重跑 readiness（取消后不再弹框，报告中显示需要确认的错误） | 原来先确认、写入修订，之后才看到封存错误；确认后 readiness 区为空 | 是（流程） |
+| F-R44-6 | M-低4、F-低2 | 隔离面板每行在错误行下加 12px `--muted` 一行 `Manifest file: modules/{file}`（新 class `.quarantine-manifest`），同一 ID 多份清单时追加 ` · another manifest uses the same ID; keep one and Rescan`；面板标题按条目类型写 module / extension / modules and extensions，句子按数量写 it / them。停用区条目标签写 `{名称} · {ID} {版本}`（名称与 ID 相同时只写 ID），隔离条目列出清单文件 | 两行完全相同无法区分；横幅单数不对；同名扩展无法区分 | 否 |
+| F-R44-7 | F-低4 | Run 上下文条（Runs、Inspect 和结果页的头部）在方法学 pill 旁为每个所选扩展加一个 `StatusPill`：未声明 ready 的写 `Experimental extension: {id} {version}`（caution），ready 的写 `Extension: {id} {version}`（muted）；`.run-context-profile` 加 `gap: 4px 6px` | 原来全页找不到实验性扩展的标记 | 是（位置） |
+| F-R44-8 | F-低5 | 有 Run 未结束时的生命周期确认框文案按对象写 `Change the installed extensions anyway?` 或 `… modules anyway?`（后端消息同样区分）；冲突检查先于确认 | 原来扩展也说 modules，且确认后才知道包会被拒 | 否 |
+| F-R44-9 | F-中3 | Rescan 成功后的提示改为 `Rescan complete: modules and extension hooks were imported again; none is quarantined.`，否则 `… some modules or extensions are quarantined; see the panel.` | Rescan 现在也导入扩展钩子 | 否 |
