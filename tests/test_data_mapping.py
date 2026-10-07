@@ -184,15 +184,15 @@ class EurPriceMappingTests(DataMappingTests):
         self.assertEqual(missing.exception.code, "GF_MAPPING_FX")
         with self.assertRaises(DataMappingError):
             self.preview_with(stage, columns, {"eur_per_gbp": 1.1})
-        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.1, "fx_basis": "toy fixed rate", "price_year": 2022})
+        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.1, "fx_basis": "fixed rate", "price_year": 2022})
         self.assertTrue(review["valid"], review["errors"])
         self.assertAlmostEqual(float(review["sample_rows"][0]["value"]), 100.0, places=9)
         # F-P05A-1: the original EUR value is reported beside the converted one, with the rate used.
         self.assertEqual(review["source_sample_rows"][0], {"eur": "110"})
-        self.assertEqual(review["fx"], {"eur_per_gbp": 1.1, "fx_basis": "toy fixed rate", "price_year": 2022})
+        self.assertEqual(review["fx"], {"eur_per_gbp": 1.1, "fx_basis": "fixed rate", "price_year": 2022})
         binding = self.commit(review)["binding"]
         self.assertEqual((binding["unit"], binding["currency"], binding["source_currency"]), ("GBP/MWh", "GBP", "EUR"))
-        self.assertEqual((binding["eur_per_gbp"], binding["fx_basis"]), (1.1, "toy fixed rate"))
+        self.assertEqual((binding["eur_per_gbp"], binding["fx_basis"]), (1.1, "fixed rate"))
         self.assertEqual((binding["csv_column"], binding["csv_header"]), ("value", True))
 
     def test_market_profile_in_mwh_per_period_converts_to_mw(self):
@@ -245,7 +245,7 @@ class EurPriceMappingTests(DataMappingTests):
         self.assertFalse(review["valid"])
         self.assertTrue(any(error.startswith("GF_DATA_TIMESTAMPS: ") for error in review["errors"]), review["errors"])
         rows = {row["row"]: row["problem"] for row in review["timestamp"]["problems"]}
-        self.assertEqual(rows[5], "duplicate of row 4")
+        self.assertEqual(rows[5], "duplicate of data row 3 (CSV line 4)")
         self.assertEqual(rows[12], "gap of 90 minutes after the previous row (expected 30)")
         with self.assertRaises(DataMappingError) as refused:
             self.commit(review)
@@ -336,7 +336,7 @@ class EurPriceMappingTests(DataMappingTests):
         path.write_text("time,v\n2025-10-26 00:30,1\n2025-10-26 01:00,1\n2025-10-26 01:30,1\n2025-10-26 01:00,1\n2025-10-26 01:30,1\n2025-10-26 02:00,1\n")
         self.assertEqual(timestamp_row_problems(path, "time", 30, time_zone="Europe/London")["problem_count"], 0)
         utc = timestamp_row_problems(path, "time", 30, time_zone="UTC")
-        self.assertEqual([row["problem"] for row in utc["problems"]], ["duplicate of row 3", "duplicate of row 4"])
+        self.assertEqual([row["problem"] for row in utc["problems"]], ["duplicate of data row 2 (CSV line 3)", "duplicate of data row 3 (CSV line 4)"])
 
     # R1-4 (S-D6): the mapping editor rounds converted values to 15 significant
     # digits, so a conversion factor leaves no binary noise in the canonical file.
@@ -346,7 +346,7 @@ class EurPriceMappingTests(DataMappingTests):
                            "market.belgium.price")
         columns = [{"source": "eur", "target": "value", "source_unit": "EUR/MWh", "target_unit": "GBP/MWh"}]
         self.assertEqual(repr(103.5 * (1 / 1.15)), "90.00000000000001")  # the noise this test guards against
-        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.15, "fx_basis": "toy fixed rate"})
+        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.15, "fx_basis": "fixed rate"})
         self.assertTrue(review["valid"], review["errors"])
         self.assertEqual([row["value"] for row in review["sample_rows"][:4]], ["90.0", "80.0", "40.0", "30.0"])
         binding = self.commit(review)["binding"]

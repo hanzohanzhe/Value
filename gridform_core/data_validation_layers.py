@@ -14,6 +14,7 @@ be installed and used by the profile that accepts it.  This module adds
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Mapping
@@ -115,7 +116,8 @@ def evaluate_layers(pack_root: Path, manifest: Mapping[str, Any], *, periods: in
         if path is None:
             continue
         try:
-            first = path.open("r", encoding="utf-8-sig").readline()
+            with path.open("r", encoding="utf-8-sig") as handle:
+                first = handle.readline()
         except (OSError, UnicodeDecodeError):
             continue
         declared = str(_bound(manifest, role).get("currency") or "").upper()
@@ -168,6 +170,7 @@ def evaluate_layers(pack_root: Path, manifest: Mapping[str, Any], *, periods: in
             chronology.extend(timestamp_findings(
                 path, str(binding["timestamp_column"]), int(interval), role,
                 time_zone=str(binding.get("timestamp_time_zone") or "UTC"),
+                date_order=str(binding.get("timestamp_date_order") or "auto"),
             ))
 
     # Reading-dependent checks: index columns, forecast lag, magnitudes.
@@ -383,7 +386,16 @@ def profile_eligibility(
 
 
 TIMESTAMP_TIME_ZONES = ("UTC", "Europe/London")
+# S-中3: the order of a numeric day/month date such as 02/01/2025.  "auto"
+# reads day/month when any row has a first field above 12, month/day when
+# any row has a second field above 12, and day/month (the UK convention)
+# when no row decides it; ISO dates (2025-01-02) are never reordered.
+TIMESTAMP_DATE_ORDERS = ("auto", "day_first", "month_first")
 TIMESTAMP_ROW_LIMIT = 50
+_NUMERIC_DATE = re.compile(r"^(\d{1,2})([/.\-])(\d{1,2})\2(\d{4})(.*)$")
+# A gap of 27-32 days between neighbouring rows is what a swapped day/month
+# order produces (02/01 read as 1 February, 03/01 as 1 March ...).
+_MONTH_GAP_MINUTES = (27 * 1440, 32 * 1440)
 
 
 def _timestamp_source(pack_root: Path, uri: str) -> Path | None:
@@ -409,16 +421,77 @@ AMBIGUOUS_LOCAL_TIME = (
 NONEXISTENT_LOCAL_TIME = "non-existent local time (skipped by the spring clock change)"
 
 
-def _parse_declared(path: Path, column: str, time_zone: str) -> tuple[pd.Series, pd.Series]:
-    """UTC instants and, per row, why a readable local stamp could not be placed (else None)."""
+def resolve_date_order(raw: pd.Series, requested: str = "auto") -> dict[str, Any]:
+    """The day/month order of the numeric dates in ``raw`` (S-中3).
+
+    ``order`` is ``iso`` when no row is a numeric day/month date, else
+    ``day_first`` or ``month_first``; ``basis`` says why.
+    """
+
+    if requested not in TIMESTAMP_DATE_ORDERS:
+        raise ValueError(f"date order must be one of {', '.join(TIMESTAMP_DATE_ORDERS)}")
+    first_high = second_high = None
+    numeric = 0
+    for index, text in enumerate(raw):
+        match = _NUMERIC_DATE.match(str(text))
+        if not match:
+            continue
+        numeric += 1
+        if first_high is None and int(match.group(1)) > 12:
+            first_high = index
+        if second_high is None and int(match.group(3)) > 12:
+            second_high = index
+    if not numeric:
+        return {"order": "iso", "basis": "no day/month dates (ISO year-month-day)", "requested": requested}
+    if requested != "auto":
+        return {"order": requested, "basis": "declared", "requested": requested}
+    if first_high is not None and (second_high is None or first_high <= second_high):
+        return {"order": "day_first", "requested": requested,
+                "basis": f"detected: CSV line {first_high + 2} has a first field above 12"}
+    if second_high is not None:
+        return {"order": "month_first", "requested": requested,
+                "basis": f"detected: CSV line {second_high + 2} has a second field above 12"}
+    return {"order": "day_first", "requested": requested,
+            "basis": "assumed day/month (UK order): no field above 12 decides it"}
+
+
+def _reorder_dates(raw: pd.Series, order: str) -> tuple[pd.Series, pd.Series]:
+    """Numeric day/month dates rewritten as ISO; a date impossible in ``order`` is blank with a reason."""
+
+    reasons = pd.Series([None] * len(raw), index=raw.index, dtype=object)
+    if order == "iso":
+        return raw, reasons
+    label = "DD/MM/YYYY" if order == "day_first" else "MM/DD/YYYY"
+    rewritten = raw.copy()
+    for index, text in raw.items():
+        match = _NUMERIC_DATE.match(str(text))
+        if not match:
+            continue
+        first, second, year, rest = int(match.group(1)), int(match.group(3)), match.group(4), match.group(5)
+        day, month = (first, second) if order == "day_first" else (second, first)
+        try:
+            pd.Timestamp(year=int(year), month=month, day=day)
+        except ValueError:
+            rewritten[index] = ""
+            reasons[index] = f"not a valid date in {label} order"
+            continue
+        rewritten[index] = f"{year}-{month:02d}-{day:02d}{rest}"
+    return rewritten, reasons
+
+
+def _parse_declared(
+    path: Path, column: str, time_zone: str, date_order: str = "auto",
+) -> tuple[pd.Series, pd.Series, dict[str, Any]]:
+    """UTC instants, per row why a stamp could not be placed (else None), and the date order used."""
 
     if time_zone not in TIMESTAMP_TIME_ZONES:
         raise ValueError(f"time zone must be one of {', '.join(TIMESTAMP_TIME_ZONES)}")
     raw = pd.read_csv(path, usecols=[column], encoding="utf-8-sig", dtype=str, keep_default_na=False)[column].str.strip()
-    reasons = pd.Series([None] * len(raw), index=raw.index, dtype=object)
+    order = resolve_date_order(raw, date_order)
+    raw, reasons = _reorder_dates(raw, order["order"])
     with_offset = raw.str.contains(r"(?:Z|[+-]\d{2}:?\d{2})$", regex=True)
     if time_zone == "UTC" or bool(with_offset.all()):
-        return pd.to_datetime(raw, errors="coerce", utc=True, format="mixed"), reasons
+        return pd.to_datetime(raw, errors="coerce", utc=True, format="mixed"), reasons, order
     naive = pd.to_datetime(raw.where(~with_offset), errors="coerce", format="mixed")
     try:
         local = naive.dt.tz_localize(time_zone, ambiguous="infer", nonexistent="NaT")
@@ -427,6 +500,7 @@ def _parse_declared(path: Path, column: str, time_zone: str) -> tuple[pd.Series,
         # repeated hour appears only once) becomes NaT and is reported per row.
         local = naive.dt.tz_localize(time_zone, ambiguous="NaT", nonexistent="NaT")
     unplaced = naive.notna() & local.isna()
+    unplaced &= reasons.isna()
     if bool(unplaced.any()):
         as_dst = naive.dt.tz_localize(time_zone, ambiguous=True, nonexistent="NaT")
         as_std = naive.dt.tz_localize(time_zone, ambiguous=False, nonexistent="NaT")
@@ -436,7 +510,7 @@ def _parse_declared(path: Path, column: str, time_zone: str) -> tuple[pd.Series,
     stamps = local.dt.tz_convert("UTC")
     if bool(with_offset.any()):
         stamps = stamps.where(~with_offset, pd.to_datetime(raw.where(with_offset), errors="coerce", utc=True, format="mixed"))
-    return stamps, reasons
+    return stamps, reasons, order
 
 
 def parse_declared_timestamps(path: Path, column: str, time_zone: str = "UTC") -> pd.Series:
@@ -453,16 +527,21 @@ def parse_declared_timestamps(path: Path, column: str, time_zone: str = "UTC") -
 
 def timestamp_row_problems(
     path: Path, column: str, interval_minutes: int | None, *, time_zone: str = "UTC", limit: int = TIMESTAMP_ROW_LIMIT,
+    date_order: str = "auto",
 ) -> dict[str, Any]:
     """Row-by-row problems of a declared timestamp column (spec 11.6, S-D4).
 
-    Rows are numbered as in the file (the header is row 1).  Each problem
-    row says what is wrong: unreadable, a duplicate of an earlier row, earlier
-    than the previous row, a gap, or an irregular step.  ``interval_minutes``
-    None infers a 30- or 60-minute step from the most common one.
+    Each problem names the data row (the first row after the header is data
+    row 1) and the CSV line (the header is line 1), the same pair the cell
+    errors of the mapping review use (S-低3), and says what is wrong:
+    unreadable, a duplicate of an earlier row, earlier than the previous
+    row, a gap, or an irregular step.  ``interval_minutes`` None infers a 30-
+    or 60-minute step from the most common one.  The report also carries
+    the date order used (S-中3) and the coverage of the stamps: first and
+    last instant, span in days and the calendar year of the data (S-低2).
     """
 
-    stamps, reasons = _parse_declared(path, column, time_zone)
+    stamps, reasons, order = _parse_declared(path, column, time_zone, date_order)
     minutes = (stamps.diff().dt.total_seconds() / 60.0)
     if interval_minutes is None:
         positive = minutes[(minutes > 0)].round()
@@ -470,31 +549,61 @@ def timestamp_row_problems(
         interval_minutes = int(common.iloc[0]) if len(common) and int(common.iloc[0]) in (30, 60) else 30
     seen: dict[Any, int] = {}
     problems: list[dict[str, Any]] = []
+    month_gaps = 0
     for index, (stamp, step, reason) in enumerate(zip(stamps, minutes, reasons)):
-        row = index + 2
+        data_row, csv_line = index + 1, index + 2
         text = None
         if pd.isna(stamp):
             text = reason or "unreadable timestamp"
         elif stamp in seen:
-            text = f"duplicate of row {seen[stamp]}"
+            text = f"duplicate of data row {seen[stamp] - 1} (CSV line {seen[stamp]})"
         elif index and not pd.isna(step):
             if step < 0:
                 text = "earlier than the previous row"
             elif step > interval_minutes:
                 text = f"gap of {step:g} minutes after the previous row (expected {interval_minutes})"
+                if _MONTH_GAP_MINUTES[0] <= step <= _MONTH_GAP_MINUTES[1]:
+                    month_gaps += 1
             elif step != interval_minutes:
                 text = f"irregular step of {step:g} minutes (expected {interval_minutes})"
         if not pd.isna(stamp):
-            seen.setdefault(stamp, row)
+            seen.setdefault(stamp, csv_line)
         if text:
-            problems.append({"row": row, "timestamp": None if pd.isna(stamp) else stamp.isoformat(), "problem": text})
+            problems.append({"row": csv_line, "data_row": data_row, "csv_line": csv_line,
+                             "timestamp": None if pd.isna(stamp) else stamp.isoformat(), "problem": text})
     first = None if not len(stamps) or pd.isna(stamps.iloc[0]) else stamps.iloc[0]
+    last = None if not len(stamps) or pd.isna(stamps.iloc[-1]) else stamps.iloc[-1]
+    hints: list[str] = []
+    if month_gaps >= 3 and order["order"] != "iso":
+        other = "MM/DD/YYYY" if order["order"] == "day_first" else "DD/MM/YYYY"
+        hints.append(
+            f"{month_gaps} gaps last about a month: the dates may be in {other} order; choose that date order "
+            "and check again.")
     return {
         "column": column, "time_zone": time_zone, "interval_minutes": interval_minutes,
         "rows_checked": int(len(stamps)), "problem_count": len(problems), "problems": problems[:limit],
+        "row_numbering": "data_row counts data rows from 1 (the header is not counted); csv_line counts the header as line 1",
+        "date_order": order["order"], "date_order_basis": order["basis"], "date_order_requested": order["requested"],
+        "hints": hints,
         "first_utc": None if first is None else first.isoformat(),
-        "last_utc": None if not len(stamps) or pd.isna(stamps.iloc[-1]) else stamps.iloc[-1].isoformat(),
+        "last_utc": None if last is None else last.isoformat(),
+        "coverage": timestamp_coverage(first, last, interval_minutes, int(len(stamps))),
         "origin_offset_minutes": None if first is None else timestamp_origin_offset_minutes(first),
+    }
+
+
+def timestamp_coverage(first: Any, last: Any, interval_minutes: int, rows: int) -> dict[str, Any] | None:
+    """Span of the declared stamps (S-低2): days covered and the calendar year(s) of the data."""
+
+    if first is None or last is None or last < first:
+        return None
+    span_minutes = (last - first).total_seconds() / 60.0 + interval_minutes
+    years = sorted({int(first.year), int(last.year)})
+    return {
+        "span_days": round(span_minutes / 1440.0, 2),
+        "full_year": span_minutes >= 365 * 1440,
+        "data_years": years,
+        "rows": rows,
     }
 
 
@@ -510,11 +619,13 @@ def timestamp_origin_offset_minutes(first: pd.Timestamp) -> int:
     return int(min(((first - origin).total_seconds() / 60.0 for origin in origins), key=abs))
 
 
-def timestamp_findings(path: Path, column: str, interval_minutes: int, role: str, *, time_zone: str = "UTC") -> list[dict[str, Any]]:
+def timestamp_findings(
+    path: Path, column: str, interval_minutes: int, role: str, *, time_zone: str = "UTC", date_order: str = "auto",
+) -> list[dict[str, Any]]:
     """Monotonic, unique, gap-free declared timestamps (chronology layer)."""
 
     try:
-        stamps, reasons = _parse_declared(path, column, time_zone)
+        stamps, reasons, _ = _parse_declared(path, column, time_zone, date_order)
     except (ValueError, KeyError, OSError, _PytzInvalidTime) as exc:
         return [_finding("GF_DATA_TIMESTAMPS", "chronology", f"{path.name}: unreadable timestamps ({exc})", role=role)]
     if stamps.isna().any():

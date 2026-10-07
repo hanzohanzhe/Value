@@ -25,3 +25,13 @@ test("model clock labels and backend timestamps", () => {
   assert.equal(modelTimeText("2025-07-01T16:00:00"), "2025-07-01 16:00");
   assert.equal(modelTimeText(null), "");
 });
+
+// S-中3 / S-低2: the timestamp report names the date order, the span and the data year.
+test("timestamp coverage line and date orders", async () => {
+  const { DATE_ORDERS, timestampCoverageText } = await import("../../../app/features/data/csvMappingFx.ts");
+  assert.deepEqual(DATE_ORDERS.map((item) => item.value), ["auto", "day_first", "month_first"]);
+  assert.equal(timestampCoverageText({ coverage: { span_days: 354.17, data_years: [2023] }, date_order: "day_first", date_order_basis: "detected: CSV line 578 has a first field above 12" }),
+    "covers 354.17 days · data year 2023 · dates read as DD/MM/YYYY (detected: CSV line 578 has a first field above 12)");
+  assert.equal(timestampCoverageText({ coverage: { span_days: 365, data_years: [2025] }, date_order: "iso" }), "covers 365 days · data year 2025");
+  assert.equal(timestampCoverageText(null), "");
+});

@@ -3164,8 +3164,8 @@
     },
     {
       "path": "app/features/data/CsvMappingEditor.tsx",
-      "sha256": "6ec25d0de4ad8a4a2cabded8c533535157a5cee1840275b1649516ddb444bb0f",
-      "bytes": 23679,
+      "sha256": "c0b31bcd024c0c5e1a50ee84fc736545179756bdf2b3c01e2e0ca7e601e74079",
+      "bytes": 25693,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3182,14 +3182,14 @@
     },
     {
       "path": "app/features/data/csvMappingFx.ts",
-      "sha256": "3860876e91e3e52deb2f12c7199e7bf71e0283e42ec4d5222e1012615d894cec",
-      "bytes": 4004,
+      "sha256": "0831e9dcfa6d9274d64ed19da667faada675059413a5dce06067e7f6b67eadac",
+      "bytes": 5327,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/data/csvMappingTypes.ts",
-      "sha256": "0e2b533982be52d15922147b681d8d826e5bdd95bbecfeded9c3f69f26aae668",
-      "bytes": 2627,
+      "sha256": "1318d3ad7019a4c67a9df54e6cb10c15d566825c9594a580e75b848261fb1263",
+      "bytes": 3581,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3794,8 +3794,8 @@
     },
     {
       "path": "app/features/workspace/JourneyDataEditor.tsx",
-      "sha256": "592e75c6256e45fb05cb7386c1b0bb5bda531ee4f1d0a8f930be958160485c99",
-      "bytes": 8777,
+      "sha256": "6f9f8b917fb4951583345ce8b3ef2ffdd532d2ac5a27e9c1741e18a014e258c5",
+      "bytes": 9964,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3848,8 +3848,8 @@
     },
     {
       "path": "app/features/workspace/journey-data-editor.css",
-      "sha256": "71b2f10094f85913e9ec1b39ba4db6979a3ac13b20ae25cfa5bf7ffb336cf6e7",
-      "bytes": 1519,
+      "sha256": "4bbee5eddcd0a8ededbae82e00c10bb9e5858d902c37c3e43a5d62234659a24e",
+      "bytes": 1537,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3926,8 +3926,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "3bea2c7f9dff535ff22407eab97da69b65e40cdeed70217637bf35fad066ea30",
-      "bytes": 177537,
+      "sha256": "3ae116e64ce5f33f7d3b6354623c78001aff02db8d5787664a0423aa221814ce",
+      "bytes": 177580,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3950,8 +3950,8 @@
     },
     {
       "path": "backend/data_mapping.py",
-      "sha256": "4675b278ca30c827925137e6d15f23d9d108152ead7126b8bd09344ca536df15",
-      "bytes": 33073,
+      "sha256": "e3691af5754850ab48cd8e1fc1f33e28b610920ae5ff7248c8d10a00d7496d16",
+      "bytes": 42035,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -7955,14 +7955,14 @@
     },
     {
       "path": "gridform_core/data_pack_validation.py",
-      "sha256": "51fad68cea4bd0c1cd9e861cd65690d7cb4658a400a30fc13aba63939c7fce6d",
-      "bytes": 27573,
+      "sha256": "ddb7854e3f697196d5e963ac7cb928bda3dbcdc57044e781d9e1db5c01d07b63",
+      "bytes": 29374,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/data_validation_layers.py",
-      "sha256": "5d207c0d45bc299521f690103a986612da7f220e605f7f63a824e1925bb6f3af",
-      "bytes": 25595,
+      "sha256": "9196369a7b60c2f98bb209d07687ee824120e6abf1945bcf458e6cf64d6a6ab3",
+      "bytes": 31111,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8783,8 +8783,8 @@
     },
     {
       "path": "gridform_core/series_reader.py",
-      "sha256": "3b5b0a3f46ee2fe7dfcd9799dc3a9e9f568b52f611dccf194d278644d130c06c",
-      "bytes": 20400,
+      "sha256": "3f28c138021c1b9347ddd79a4dd6fced2b3a67f829dff0b2a18bc4ab7a9fb61b",
+      "bytes": 24887,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10803,8 +10803,8 @@
     },
     {
       "path": "tests/frontend/csv-mapping-editor.test.mjs",
-      "sha256": "0a15997f770b45711bff6dd83fa65bf07f1ccf53edf3ae7a65e191860603833e",
-      "bytes": 17120,
+      "sha256": "e953b4c07becdf636d548ca6a777d85be2339464ce15dd9379481ba0ebe9b4e3",
+      "bytes": 17303,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10857,8 +10857,8 @@
     },
     {
       "path": "tests/frontend/render/journey-data-editor.test.mjs",
-      "sha256": "a868d88bfd64ab2aca6d76d01e0d9eded51a098c9cdfacf91a3c58755a798d22",
-      "bytes": 1620,
+      "sha256": "0d5b367cd0cc5c1f24e03d07c5e7ffc3dcf3b04db2a875c9819a1b606f1f8c4b",
+      "bytes": 3004,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10959,8 +10959,8 @@
     },
     {
       "path": "tests/frontend/unit/csv-mapping-fx.test.mjs",
-      "sha256": "5d7fabae1031c507c6393b98ba21a7b0e110d39319bead14936a7e838f9fa40a",
-      "bytes": 3395,
+      "sha256": "16bacf7ac48b783c40bca86b4d613809f79e546f7370af34b228f221b4e6b971",
+      "bytes": 3675,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11043,8 +11043,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-swap-data-defects.test.mjs",
-      "sha256": "c4764b1424aa80a2c2300701872f43bf0cb49da54d05b41d6f6026840a115121",
-      "bytes": 1619,
+      "sha256": "b3121778efde50c413aba44968291595aeabd3eb8043ff224c0356993fec5263",
+      "bytes": 2497,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11529,8 +11529,8 @@
     },
     {
       "path": "tests/test_data_mapping.py",
-      "sha256": "5f55c65cf99bda04a4b6a32eed332c45957daafa658685cb8afca456783d903b",
-      "bytes": 29829,
+      "sha256": "20f948789929d064bee0cf5474573b97c1bc963e8a908176aed0d68dfb65ca78",
+      "bytes": 29867,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12849,8 +12849,8 @@
     },
     {
       "path": "tests/test_r4_swap_data_defects.py",
-      "sha256": "d1b0f5a9b61a81002455679d63eabc15122997ed6d51c96d6b0788feb338ed0e",
-      "bytes": 7427,
+      "sha256": "f2fefdde573afd6474ca52c708691d17ce810c9aaa80d5cd00a0b0150450fb12",
+      "bytes": 24324,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -137,7 +137,7 @@ test('a declared timestamp column is sent with the preview and its problems are 
   const timedStage = { ...stage, role, source_columns: ['time', 'flow'], rows: 3 };
   const timedColumns = [{ source: 'flow', target: 'value', source_unit: 'MW', target_unit: 'MW' }];
   const timedCatalog = { ...catalog('copy'), roles: [{ role, columns: [{ target: 'value', target_unit: 'MW' }], conversion_pairs: [{ source_unit: 'MW', target_unit: 'MW' }], single_value: true, interval_minutes: 30, timestamp_supported: true, time_zones: ['UTC', 'Europe/London'] }] };
-  const timestamp = { column: 'time', time_zone: 'Europe/London', interval_minutes: 30, rows_checked: 3, problem_count: 1, problems: [{ row: 4, timestamp: '2025-01-01T00:30:00+00:00', problem: 'duplicate of row 3' }] };
+  const timestamp = { column: 'time', time_zone: 'Europe/London', interval_minutes: 30, rows_checked: 3, problem_count: 1, problems: [{ row: 4, data_row: 3, csv_line: 4, timestamp: '2025-01-01T00:30:00+00:00', problem: 'duplicate of data row 2 (CSV line 3)' }] };
   const timedReview = { ...review, role, rows: 3, columns: timedColumns, valid: false, normalized_sha256: null, validation: null, errors: ['GF_DATA_TIMESTAMPS: 1 timestamp problem(s) in column time (Europe/London); the rows are listed below.'], timestamp };
   try {
     await build({ stdin: { contents: `import React from 'react';import{createRoot}from'react-dom/client';import Editor from './app/features/data/CsvMappingEditor';createRoot(document.getElementById('root')).render(<Editor packId="copy" manifestSha256="${sha}" role="${role}" onMapped={()=>{}}/>);`, resolveDir: root, loader: 'tsx' }, bundle: true, format: 'esm', jsx: 'automatic', outfile: path.join(directory, 'harness.js') });
@@ -171,9 +171,10 @@ test('a declared timestamp column is sent with the preview and its problems are 
     await timeZone.selectOption('Europe/London');
     assert.equal(await page.getByText('校验未通过，请修改文件或映射', { exact: true }).count(), 0, 'a timestamp change discards the review');
     await previewButton.click();
-    await page.getByText('duplicate of row 3', { exact: true }).waitFor();
-    assert.deepEqual(previews.at(-1).timestamp, { column: 'time', time_zone: 'Europe/London' });
-    assert.deepEqual(await page.locator('.csv-mapping-timestamp-report td').allTextContents(), ['4', '2025-01-01T00:30:00+00:00', 'duplicate of row 3']);
+    await page.getByText('duplicate of data row 2 (CSV line 3)', { exact: true }).waitFor();
+    assert.deepEqual(previews.at(-1).timestamp, { column: 'time', time_zone: 'Europe/London', date_order: 'auto' });
+    // S-低3 (R4, A27): data row and CSV line, the pair the cell errors use.
+    assert.deepEqual(await page.locator('.csv-mapping-timestamp-report td').allTextContents(), ['3', '4', '2025-01-01T00:30:00+00:00', 'duplicate of data row 2 (CSV line 3)']);
     assert.equal(await page.getByRole('button', { name: '确认提交映射后的文件' }).count(), 0);
   } finally {
     await browser?.close();

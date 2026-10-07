@@ -10,6 +10,10 @@ export type JourneyBinding = {
   filename: string; sha256: string; validation?: { status?: string }; mapping_provenance?: { source_sha256: string; spec_sha256: string; normalized_sha256: string };
   /** S-D4 timestamp declaration of a mapped binding (shown on the role card, N-6). */
   timestamp_column?: string; timestamp_time_zone?: string; timestamp_check?: { status?: string; rows_checked?: number };
+  /** S-中3: the day/month order the timestamp check used (absent for ISO dates). */
+  timestamp_date_order?: string;
+  /** P0-5a S10 / S-低5: the EUR->GBP declaration of a mapped price binding. */
+  source_currency?: string; eur_per_gbp?: number; fx_basis?: string; price_year?: number;
 };
 
 /** N-6 (round R1-5): the timestamp declaration a mapped binding recorded, in one line. */
@@ -18,7 +22,14 @@ export function timestampDeclarationText(binding: JourneyBinding | undefined): s
   const check = binding.timestamp_check?.status === "passed"
     ? `已核对${typeof binding.timestamp_check.rows_checked === "number" ? ` ${binding.timestamp_check.rows_checked} 行` : ""}`
     : "未核对";
-  return `时间戳列 ${binding.timestamp_column} · ${binding.timestamp_time_zone ?? "UTC"} · ${check}`;
+  const order = binding.timestamp_date_order === "day_first" ? " · DD/MM/YYYY" : binding.timestamp_date_order === "month_first" ? " · MM/DD/YYYY" : "";
+  return `时间戳列 ${binding.timestamp_column} · ${binding.timestamp_time_zone ?? "UTC"}${order} · ${check}`;
+}
+
+/** S-低5 (R4, A27): the currency conversion a mapped price binding recorded, in one line; null for GBP. */
+export function fxDeclarationText(binding: JourneyBinding | undefined): string | null {
+  if (!binding || binding.source_currency !== "EUR" || typeof binding.eur_per_gbp !== "number") return null;
+  return `原币种 EUR · 汇率 ${binding.eur_per_gbp} EUR/GBP · 汇率口径 ${binding.fx_basis ?? "未记录"} · 价格年份 ${binding.price_year ?? "未记录"}`;
 }
 
 /** S-D8 (round R1-5): the confirmation that survives the editor's reset after a commit changes the manifest. */
@@ -34,6 +45,8 @@ export type JourneyDataEditorProps = {
   slots: JourneyDataSlot[];
   networkPackId?: string;
   readOnlyReason?: string;
+  /** S-低2: first model year of the baseline Study (the mapping review notes a different data year). */
+  modelStartYear?: number;
   busy: boolean;
   onUpload: (role: string, file: File) => Promise<void> | void;
   onPreview: (role: string) => Promise<void> | void;
@@ -41,7 +54,7 @@ export type JourneyDataEditorProps = {
   onMapped?: (result: CsvMappingCommit) => Promise<void> | void;
 };
 
-export default function JourneyDataEditor({ sourceName, sourcePackName, targetPack, sourceBindings, slots, networkPackId, readOnlyReason, busy, onUpload, onPreview, onReturn, onMapped }: JourneyDataEditorProps) {
+export default function JourneyDataEditor({ sourceName, sourcePackName, targetPack, sourceBindings, slots, networkPackId, readOnlyReason, modelStartYear, busy, onUpload, onPreview, onReturn, onMapped }: JourneyDataEditorProps) {
   const id = useId();
   const [selectedRole, setSelectedRole] = useState("");
   // S-D8: the last committed mapping; the editor itself remounts when the manifest changes.
@@ -70,12 +83,12 @@ export default function JourneyDataEditor({ sourceName, sourcePackName, targetPa
     {!targetPack && <p role="status">先返回研究引导，复制基线 BASE 包或选择其他已安装的 BASE 包。</p>}
     {readOnlyReason && <p role="status">{readOnlyReason}</p>}
     {targetPack && <p className="journey-data-count">新增 {added} · SHA 改变 {changed} · 必需角色缺失 {missing}{added + changed === 0 && "。目前沿用原文件，还没有检测到数据变化。"}</p>}
-    <label className="journey-data-role" htmlFor={`${id}-role`}><span>1. 选择文件的语义角色</span><select id={`${id}-role`} value={slot?.role ?? ""} disabled={effectiveBusy || Boolean(readOnlyReason) || !slots.length} onChange={(event) => setSelectedRole(event.target.value)}>{slots.map((item) => <option key={item.role} value={item.role}>{item.label} · {item.role}{item.required ? " · 必需" : ""}</option>)}</select></label>
+    <label className="journey-data-role" htmlFor={`${id}-role`}><span>1. 选择文件的语义角色</span><select id={`${id}-role`} value={slot?.role ?? ""} disabled={effectiveBusy || !slots.length} onChange={(event) => setSelectedRole(event.target.value)}>{slots.map((item) => <option key={item.role} value={item.role}>{item.label} · {item.role}{item.required ? " · 必需" : ""}</option>)}</select></label>
     {slot && <><p><code>{slot.role}</code> · {slot.required ? "必需" : "可选"} · 标准格式 {formats.join(" / ") || "未声明"}{slot.unit && ` · ${slot.unit}`}{slot.time_semantics && ` · ${slot.time_semantics}`}</p>
-      <div className="journey-data-files"><div><b>原文件</b><span>{original?.filename ?? "没有绑定"}</span>{original && <code>SHA {original.sha256}</code>}</div><div><b>目标文件</b><span>{binding?.filename ?? "没有绑定"}</span>{binding && <><code>SHA {binding.sha256}</code><span>校验：{binding.validation?.status ?? "尚未记录"}</span>{binding.mapping_provenance && <><span>映射保留的原始文件</span><code>SHA {binding.mapping_provenance.source_sha256}</code><span>规范文件</span><code>SHA {binding.mapping_provenance.normalized_sha256}</code><span>映射规则</span><code>SHA {binding.mapping_provenance.spec_sha256}</code></>}{timestampDeclarationText(binding) && <span className="journey-data-timestamp">{timestampDeclarationText(binding)}</span>}</>}</div></div>
+      <div className="journey-data-files"><div><b>原文件</b><span>{original?.filename ?? "没有绑定"}</span>{original && <code>SHA {original.sha256}</code>}</div><div><b>目标文件</b><span>{binding?.filename ?? "没有绑定"}</span>{binding && <><code>SHA {binding.sha256}</code><span>校验：{binding.validation?.status ?? "尚未记录"}</span>{binding.mapping_provenance && <><span>映射保留的原始文件</span><code>SHA {binding.mapping_provenance.source_sha256}</code><span>规范文件</span><code>SHA {binding.mapping_provenance.normalized_sha256}</code><span>映射规则</span><code>SHA {binding.mapping_provenance.spec_sha256}</code></>}{timestampDeclarationText(binding) && <span className="journey-data-timestamp">{timestampDeclarationText(binding)}</span>}{fxDeclarationText(binding) && <span className="journey-data-fx">{fxDeclarationText(binding)}</span>}</>}</div></div>
       {lastMapped && lastMapped.packId === targetPack?.id && lastMapped.role === slot.role && binding?.sha256 === lastMapped.sha256 && <p className="journey-data-mapped" role="status">{mappedConfirmationText(slot.role, lastMapped.sha256)}</p>}
       <p>2. 使用角色模板或符合契约的标准格式文件。标准文件可直接校验上传；受支持的 CSV 角色也可先映射列和单位，审阅完整报告后再确认提交。</p>
-      {targetPack?.manifest_sha256 && onMapped ? <CsvMappingEditor key={mappingContext} packId={targetPack.id} manifestSha256={targetPack.manifest_sha256} role={slot.role} disabled={busy} readOnlyReason={readOnlyReason} onMapped={onCommitted} onBusyChange={onMappingBusy} /> : <p>CSV 列映射需要当前目标包版本；请刷新目标包，或使用标准文件上传。</p>}
+      {targetPack?.manifest_sha256 && onMapped ? <CsvMappingEditor key={mappingContext} packId={targetPack.id} manifestSha256={targetPack.manifest_sha256} role={slot.role} disabled={busy} readOnlyReason={readOnlyReason} modelStartYear={modelStartYear} onMapped={onCommitted} onBusyChange={onMappingBusy} /> : <p>CSV 列映射需要当前目标包版本；请刷新目标包，或使用标准文件上传。</p>}
       <div className="journey-data-actions">{slot.template_available && <a className="secondary" href={apiUrl(`data-contracts/${encodeURIComponent(slot.role)}/template`)}>下载模板</a>}{binding && <button type="button" className="secondary" disabled={effectiveBusy} onClick={() => void onPreview(slot.role)}>预览目标文件</button>}<label className="upload">{effectiveBusy ? "正在处理…" : "选择并校验我的文件"}<input type="file" accept={formats.map((format) => `.${format}`).join(",")} disabled={disabled} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file && !disabled) void onUpload(slot.role, file); }} /></label></div>
     </>}
     <p>文件校验和 Study 运行前检查是不同步骤。保存新 Study 后，在 Runs 明确选择 scope 并执行 Check readiness。</p>

@@ -27,7 +27,10 @@ from gridform_core.data_pack_validation import (
     CYCLIC_MARKET_ROLES, DEMAND_ROLES, VRE_PROFILE_ROLES, REQUIRED_CSV_COLUMNS,
     validate_data_pack,
 )
-from gridform_core.data_validation_layers import TIMESTAMP_TIME_ZONES, timestamp_row_problems
+from gridform_core.data_validation_layers import (
+    TIMESTAMP_DATE_ORDERS, TIMESTAMP_TIME_ZONES, timestamp_row_problems,
+)
+from gridform_core.series_reader import LENIENT, SeriesReadError, SeriesSpec, clock_alignment
 
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 TOKEN = re.compile(r"^[0-9a-f]{32}$")
@@ -52,6 +55,19 @@ TIME_SERIES_ROLES = DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
 
 # The price-year range of the mapping editor (app/features/data/csvMappingFx.ts).
 PRICE_YEAR_RANGE = (1990, 2100)
+# S-低6: the FX bases the mapping editor offers (csvMappingFx.ts FX_BASES); the
+# API accepts the same three and nothing else.
+FX_BASES = ("annual average", "monthly average", "fixed rate")
+# S-低6: the price base of the model's cost parameters (constant 2025 GBP,
+# decisions A6 and A24-4; the restart table's price_base.to_year and the
+# storage catalogue's currency_base_year).  A mapped price is converted in
+# currency only, never re-indexed to another year.
+MODEL_PRICE_BASE_YEAR = 2025
+# The model year a mapped series fills (half-hour periods of the 365-day UTC clock).
+MODEL_YEAR_PERIODS = 17_520
+# S-低2: a series shorter than a model year is repeated from its start; the
+# commit needs this acknowledgement.
+SHORT_SERIES_ACKNOWLEDGEMENT = "GF_DATA_SHORT_SERIES_REPEAT"
 
 
 def _fx(value: object) -> dict[str, object] | None:
@@ -65,6 +81,8 @@ def _fx(value: object) -> dict[str, object] | None:
         fx_factor(value)
     except ValueError as exc:
         raise DataMappingError("GF_MAPPING_FX", str(exc)) from exc
+    if str(value["fx_basis"]).strip() not in FX_BASES:
+        raise DataMappingError("GF_MAPPING_FX", f"fx_basis must be one of: {', '.join(FX_BASES)}.")
     year = value.get("price_year")
     if year is not None and (isinstance(year, bool) or not isinstance(year, int)):
         raise DataMappingError("GF_MAPPING_FX", "price_year must be an integer year.")
@@ -78,14 +96,17 @@ def _fx(value: object) -> dict[str, object] | None:
 
 
 def _timestamp(value: object, source_columns: Sequence[str], mapped: Sequence[str], role: str) -> dict[str, str] | None:
-    """The declared timestamp column of a mapping request (spec 11.6, S-D4); None when absent."""
+    """The declared timestamp column of a mapping request (spec 11.6, S-D4); None when absent.
+
+    ``date_order`` (S-中3) is optional: auto, day_first or month_first.
+    """
 
     if value is None:
         return None
     if role not in TIME_SERIES_ROLES:
         raise DataMappingError("GF_MAPPING_TIMESTAMP", "Only half-hourly or hourly series roles take a timestamp column.")
-    if not isinstance(value, dict) or set(value) != {"column", "time_zone"}:
-        raise DataMappingError("GF_MAPPING_TIMESTAMP", "timestamp must be {column, time_zone}.")
+    if not isinstance(value, dict) or not {"column", "time_zone"} <= set(value) <= {"column", "time_zone", "date_order"}:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", "timestamp must be {column, time_zone[, date_order]}.")
     column, zone = value["column"], value["time_zone"]
     if not isinstance(column, str) or column not in source_columns:
         raise DataMappingError("GF_MAPPING_TIMESTAMP", "Choose a timestamp column from the uploaded file.")
@@ -93,7 +114,33 @@ def _timestamp(value: object, source_columns: Sequence[str], mapped: Sequence[st
         raise DataMappingError("GF_MAPPING_TIMESTAMP", "The timestamp column cannot also be a mapped value column.")
     if zone not in TIMESTAMP_TIME_ZONES:
         raise DataMappingError("GF_MAPPING_TIMESTAMP", f"time_zone must be one of {', '.join(TIMESTAMP_TIME_ZONES)}.")
-    return {"column": column, "time_zone": zone}
+    order = value.get("date_order", "auto")
+    if order not in TIMESTAMP_DATE_ORDERS:
+        raise DataMappingError("GF_MAPPING_TIMESTAMP", f"date_order must be one of {', '.join(TIMESTAMP_DATE_ORDERS)}.")
+    return {"column": column, "time_zone": zone, "date_order": order}
+
+
+def _model_start_year(value: object) -> int | None:
+    """The first model year of the Study the mapping is for (optional, S-低2)."""
+
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or not PRICE_YEAR_RANGE[0] <= value <= PRICE_YEAR_RANGE[1]:
+        raise DataMappingError("GF_MAPPING_REQUEST", "model_start_year must be a year.")
+    return value
+
+
+def _clock_plan(role: str, binding: Mapping[str, object], rows: int):
+    """What the corrected reader's clock does with this many rows (S-中2, S-低2); None for non-series roles."""
+
+    if role not in TIME_SERIES_ROLES:
+        return None
+    try:
+        spec = SeriesSpec.from_binding(role, dict(binding))
+    except SeriesReadError:
+        return None
+    return clock_alignment(rows, MODEL_YEAR_PERIODS, spec, strictness=LENIENT,
+                           cyclic_default=role in CYCLIC_MARKET_ROLES)
 
 
 class DataMappingError(ValueError):
@@ -179,6 +226,16 @@ def _shape(raw: bytes) -> tuple[list[str], int]:
         text = raw.decode("utf-8-sig")
         if "\x00" in text:
             raise ValueError("NUL characters are not allowed")
+        first_line = text.split("\n", 1)[0]
+        for delimiter, name in ((";", "semicolon"), ("\t", "tab")):
+            if delimiter in first_line and "," not in first_line:
+                # S-低1: a semicolon export (often with decimal commas) or a
+                # TSV is not read as one wide column or a width error.
+                raise DataMappingError(
+                    "GF_MAPPING_CSV",
+                    f"This file looks {name}-separated: its header has {name}s and no commas. VALUE reads "
+                    "comma-separated CSV with a decimal point (1234.5). Save the file as comma-separated "
+                    "CSV (UTF-8) with decimal points and upload it again.")
         reader = csv.reader(io.StringIO(text, newline=""), strict=True)
         header = next(reader)
         if not header or any(not value.strip() for value in header) or len(set(header)) != len(header):
@@ -191,8 +248,45 @@ def _shape(raw: bytes) -> tuple[list[str], int]:
         if not rows:
             raise ValueError("CSV must contain data rows")
         return header, rows
+    except DataMappingError:
+        raise
     except (UnicodeError, csv.Error, ValueError, StopIteration) as exc:
         raise DataMappingError("GF_MAPPING_CSV", f"Invalid UTF-8 CSV: {exc}") from exc
+
+
+def _reading_metadata(role: str) -> dict[str, object]:
+    """How a mapped canonical file is read: the declarations the commit writes into the binding."""
+
+    single = role in DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
+    return {
+        **({"input_unit_contract": "value.demand-mw-half-hour/v1", "interval_minutes": 30}
+           if role in DEMAND_ROLES else {}),
+        **({"csv_header": True, "csv_column": "value"} if single else {}),
+        **({"interval_minutes": 30} if role in MARKET_PROFILE_ROLES else {}),
+    }
+
+
+def _coverage_warnings(report: Mapping[str, object], clock: Mapping[str, object] | None,
+                       model_start_year: int | None) -> list[str]:
+    """Coverage and data-year notes of a declared timestamp column (S-低2, report section 7.3)."""
+
+    warnings: list[str] = []
+    coverage = report.get("coverage")
+    if not isinstance(coverage, Mapping):
+        return warnings
+    if clock and int(clock.get("wrapped_periods") or 0) > 0:
+        warnings.append(
+            f"GF_DATA_TIMESTAMP_COVERAGE: the timestamps run from {report.get('first_utc')} to "
+            f"{report.get('last_utc')} ({coverage['span_days']} days), less than a model year. "
+            f"{clock.get('note') or ''} Confirm this below before committing.".strip())
+    years = [int(year) for year in coverage.get("data_years") or []]
+    if model_start_year is not None and years and model_start_year not in years:
+        warnings.append(
+            f"GF_DATA_TIMESTAMP_YEAR: the timestamps are in {', '.join(str(year) for year in years)}; the Study's "
+            f"first model year is {model_start_year}. VALUE reads the series in row order as the model year "
+            "(1 January 00:00 UTC onwards) and reuses it for each model year; it does not move dates, weekdays "
+            "or holidays between years.")
+    return warnings
 
 
 class DataMappingService:
@@ -348,9 +442,10 @@ class DataMappingService:
 
     def preview(self, stage_id: str, request: Mapping[str, object]) -> dict[str, object]:
         base_fields = {"schema_version", "source_sha256", "target_manifest_sha256", "columns"}
-        if not (base_fields <= set(request) <= base_fields | {"fx", "timestamp"}) or request.get("schema_version") != "value.data-mapping-preview-request/v1":
+        if not (base_fields <= set(request) <= base_fields | {"fx", "timestamp", "model_start_year"}) or request.get("schema_version") != "value.data-mapping-preview-request/v1":
             raise DataMappingError("GF_MAPPING_REQUEST", "Invalid mapping preview request.")
         fx = _fx(request.get("fx"))
+        model_start_year = _model_start_year(request.get("model_start_year"))
         stage_dir, stage = self._load("stages", stage_id)
         raw = _bytes(stage_dir / "source.csv", self.staging_root)
         columns, rows = _shape(raw)
@@ -368,6 +463,8 @@ class DataMappingService:
             source_sample: list[dict[str, object]] = []
             timestamp_report: dict[str, object] | None = None
             timestamp_warnings: list[str] = []
+            acknowledgements: list[dict[str, str]] = []
+            clock: dict[str, object] | None = None
             digest = None
             size = 0
             try:
@@ -377,9 +474,28 @@ class DataMappingService:
                 _shape(normalized)
                 digest, size = _hash(normalized), len(normalized)
                 candidate = copy.deepcopy(manifest)
-                candidate["bindings"] = {stage["role"]: {"uri": "normalized.csv", "format": "csv", "sha256": digest, "unit": self.slots[stage["role"]].get("unit")}}
+                # S-中2: validate the binding the commit will write (its declared
+                # interval and column), so the clock note matches the run.
+                candidate_binding = {"uri": "normalized.csv", "format": "csv", "sha256": digest,
+                                     "unit": self.slots[stage["role"]].get("unit"),
+                                     **_reading_metadata(stage["role"])}
+                candidate["bindings"] = {stage["role"]: candidate_binding}
                 report = validate_data_pack(directory, candidate, [self.slots[stage["role"]]])
                 validation = report["bindings"][0]
+                plan = _clock_plan(stage["role"], candidate_binding, rows)
+                if plan is not None:
+                    clock = {"source_rows": plan.source_rows, "periods": plan.periods,
+                             "hourly_doubled": plan.hourly_doubled, "leap_day_removed": plan.leap_day_removed,
+                             "ignored_periods": plan.ignored_periods, "wrapped_periods": plan.wrapped_periods,
+                             "note": plan.describe()}
+                    if plan.short_of_a_year:
+                        days = plan.wrapped_periods * plan.period_hours / 24.0
+                        acknowledgements.append({
+                            "code": SHORT_SERIES_ACKNOWLEDGEMENT,
+                            "text": (f"The series covers {plan.used_periods:,} of the {plan.periods:,} half-hour "
+                                     f"periods of a model year; the last {plan.wrapped_periods:,} periods "
+                                     f"({days:.1f} days) will repeat the series from its start."),
+                        })
                 errors = list(validation["errors"])
                 if errors and [rule.target for rule in spec.columns] == ["value"]:
                     # S-D7: the whole-file check counts bad cells; name the rows.
@@ -400,7 +516,8 @@ class DataMappingService:
                     # timestamps row by row; any problem blocks the commit.
                     timestamp_report = {**timestamp_row_problems(
                         stage_dir / "source.csv", timestamp["column"], spec.interval_minutes,
-                        time_zone=timestamp["time_zone"]), "source_sha256": stage["source_sha256"]}
+                        time_zone=timestamp["time_zone"], date_order=timestamp["date_order"]),
+                        "source_sha256": stage["source_sha256"]}
                     if timestamp_report["problem_count"]:
                         errors.append(
                             f"GF_DATA_TIMESTAMPS: {timestamp_report['problem_count']} timestamp problem(s) in column "
@@ -414,12 +531,30 @@ class DataMappingService:
                             f"GF_DATA_TIMESTAMP_ORIGIN: the first timestamp {timestamp_report['first_utc']} is "
                             f"{abs(offset)} minutes {'after' if offset > 0 else 'before'} 1 January 00:00; the model "
                             "reads row 1 as the first period of the year, so the series would be shifted.")
+                    timestamp_warnings.extend(_coverage_warnings(timestamp_report, clock, model_start_year))
             except AdapterValueError as exc:
                 # S-D7: every unconvertible cell by row and column, not the
                 # first Python exception.
                 errors = exc.messages()
             except (ValueError, OSError) as exc:
                 errors = [str(exc)]
+            if fx and fx.get("price_year") is not None and fx["price_year"] != MODEL_PRICE_BASE_YEAR:
+                timestamp_warnings.append(
+                    f"GF_MAPPING_PRICE_YEAR: the prices are declared in {fx['price_year']} money. VALUE converts the "
+                    "currency only; it does not re-index prices to another year. The model's other costs are in "
+                    f"constant {MODEL_PRICE_BASE_YEAR} GBP, so these prices enter the model as {fx['price_year']} "
+                    "prices.")
+            if validation is not None and timestamp_report is not None:
+                # S-低4: the whole-file report includes the timestamp check, so it
+                # never says "passed" beside a failed timestamp check.
+                problems = int(timestamp_report["problem_count"])
+                validation = {**validation, "timestamp_check": {
+                    "status": "failed" if problems else "passed", "problem_count": problems,
+                    "column": timestamp_report["column"], "time_zone": timestamp_report["time_zone"]}}
+                if problems:
+                    validation["status"] = "failed"
+                    validation["errors"] = [*list(validation.get("errors") or []),
+                                            f"GF_DATA_TIMESTAMPS: {problems} timestamp problem(s); see the timestamp table"]
             expires = stage["expires_epoch"]
             review = {"schema_version": "value.data-mapping-review/v1", "review_id": token, "stage_id": stage_id,
                       "pack_id": stage["pack_id"], "role": stage["role"], "valid": not errors and validation is not None,
@@ -431,14 +566,19 @@ class DataMappingService:
                       "source_sample_rows": source_sample, "fx": dict(fx) if fx else None,
                       "interval_minutes": spec.interval_minutes,
                       "timestamp": timestamp_report,
+                      "clock": clock,
+                      "acknowledgements_required": acknowledgements,
                       "expires_at": _iso(expires)}
             _write(directory / "metadata.json", {**review, "token": token, "expires_epoch": expires})
             return review
 
     def commit(self, review_id: str, request: Mapping[str, object]) -> dict[str, object]:
         expected_fields = {"schema_version", "source_sha256", "spec_sha256", "normalized_sha256", "target_manifest_sha256"}
-        if set(request) != expected_fields or request.get("schema_version") != "value.data-mapping-commit-request/v1":
+        if not expected_fields <= set(request) <= expected_fields | {"acknowledged"} or request.get("schema_version") != "value.data-mapping-commit-request/v1":
             raise DataMappingError("GF_MAPPING_REQUEST", "Invalid mapping commit request.")
+        acknowledged = request.get("acknowledged", [])
+        if not isinstance(acknowledged, list) or not all(isinstance(item, str) for item in acknowledged):
+            raise DataMappingError("GF_MAPPING_REQUEST", "acknowledged must be a list of codes.")
         with self.lock:
             directory, review = self._load("reviews", review_id)
             if review.get("valid") is not True or review.get("errors"):
@@ -446,6 +586,14 @@ class DataMappingService:
             for field in expected_fields - {"schema_version"}:
                 if request[field] != review.get(field):
                     raise DataMappingError("GF_MAPPING_IDENTITY", "Reviewed mapping identity changed; review again.", 409)
+            missing = [item["code"] for item in review.get("acknowledgements_required") or []
+                       if item.get("code") not in acknowledged]
+            if missing:
+                # S-低2: a series shorter than a model year is committed only
+                # when the user has confirmed that it will be repeated.
+                raise DataMappingError(
+                    "GF_MAPPING_ACKNOWLEDGEMENT",
+                    "Confirm the coverage note of the review before committing: " + ", ".join(missing) + ".", 409)
             if review.get("pack_id") in self.busy_packs():
                 raise DataMappingError("GF_DATA_PACK_FREEZING", "A Run is freezing this data pack's files right now; commit the mapping after the Run is queued.", 409)
             root, manifest, _ = self._target(review["pack_id"], review["target_manifest_sha256"])
@@ -483,11 +631,13 @@ class DataMappingService:
                 (provenance / "source.csv").write_bytes(source)
                 _write(provenance / "spec.json", spec_payload)
                 _write(provenance / "review.json", review)
-                single = review["role"] in DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
                 timestamp = review.get("timestamp")
                 timestamp_metadata = {
                     "timestamp_column": timestamp["column"],
                     "timestamp_time_zone": timestamp["time_zone"],
+                    # S-中3: the day/month order the check used (omitted for ISO dates).
+                    **({"timestamp_date_order": timestamp["date_order"]}
+                       if timestamp.get("date_order") in ("day_first", "month_first") else {}),
                     "timestamp_uri": (provenance / "source.csv").relative_to(root).as_posix(),
                     # The interval the check used; the binding's own interval_minutes is unchanged.
                     "timestamp_check": {"status": "passed", "rows_checked": timestamp["rows_checked"],
@@ -495,11 +645,9 @@ class DataMappingService:
                                         "source_sha256": review["source_sha256"]},
                 } if isinstance(timestamp, dict) else {}
                 metadata = {"unit": self.slots[review["role"]].get("unit"),
-                            **({"input_unit_contract": "value.demand-mw-half-hour/v1", "interval_minutes": 30}
-                               if review["role"] in DEMAND_ROLES else {}),
-                            # P0-5a S10: the normalized file declares how it is read.
-                            **({"csv_header": True, "csv_column": "value"} if single else {}),
-                            **({"interval_minutes": 30} if review["role"] in MARKET_PROFILE_ROLES else {}),
+                            # P0-5a S10: the normalized file declares how it is read
+                            # (the preview validated the same declarations, S-中2).
+                            **_reading_metadata(review["role"]),
                             **({"currency": "GBP"} if review["role"] in MARKET_PRICE_ROLES else {}),
                             **({"source_currency": "EUR", **dict(spec.source)} if spec.source else {}),
                             # Spec 11.6 (S-D4): the declared timestamps stay in the retained

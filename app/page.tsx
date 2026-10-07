@@ -1533,7 +1533,7 @@ export default function Home() {
         sourceName={journeySource?.name ?? "基线不可用"} sourcePackName={journeySourcePack?.name ?? ""}
         targetPack={dataContextPack} sourceBindings={journeySourcePack?.bindings ?? {}}
         slots={activeDataSlots.filter((slot) => !journeyNetworkPackId || !slot.role.startsWith("value.zonal."))}
-        networkPackId={journeyNetworkPackId}
+        networkPackId={journeyNetworkPackId} modelStartYear={journeySource?.start_year}
         readOnlyReason={journeyReadOnlyReason || (!dataContextResolution ? "正在解析基线方法所需的数据角色…" : "")}
         busy={Boolean(uploading)} onUpload={(role, file) => void upload(role, file)}
         onMapped={async () => { setPreflight(null); setSavedDataResolution(null); await refresh(); }}

@@ -242,6 +242,37 @@ def _first_numeric_column(path: Path) -> tuple[list[float], int]:
     return max(candidates, key=lambda item: len(item[0]))
 
 
+def _clock_note(
+    path: Path, role: str, binding: Mapping[str, object], count: int, periods: int,
+    details: dict[str, object], *, cyclic: bool,
+) -> str | None:
+    """What the corrected methodology's clock does with ``count`` periods (S-中2).
+
+    The same plan the mapping review shows (``series_reader.clock_alignment``);
+    ``details['clock_alignment']`` records it for the report.
+    """
+
+    from .series_reader import LENIENT, SeriesReadError, SeriesSpec, clock_alignment, registry_entry
+
+    try:
+        spec = SeriesSpec.from_binding(role, dict(binding), registry=registry_entry(path, dict(binding)))
+    except (SeriesReadError, OSError, ValueError):
+        return None
+    plan = clock_alignment(count, periods, spec, strictness=LENIENT, cyclic_default=cyclic)
+    details["clock_alignment"] = {
+        "reader": "value-corrected declared clock (UTC, fixed 365-day year)",
+        "source_periods": count,
+        "hourly_doubled": plan.hourly_doubled,
+        "leap_day_removed": plan.leap_day_removed,
+        "ignored_periods": plan.ignored_periods,
+        "wrapped_periods": plan.wrapped_periods,
+    }
+    text = plan.describe()
+    if text is None:
+        return None
+    return "on the model clock (VALUE corrected methodology): " + text[0].lower() + text[1:]
+
+
 def _own_manifest_bytes(pack_root: Path, manifest: Mapping[str, object]) -> bytes | None:
     """The pack's manifest file bytes when ``manifest`` is that file's content (whitelist pins, N-1)."""
 
@@ -339,9 +370,11 @@ def validate_data_pack(
                             f"at least {full_year_periods} are required"
                         )
                     elif len(values) != full_year_periods:
+                        note = _clock_note(path, role, binding, len(values), full_year_periods, details,
+                                           cyclic=False)
                         row_warnings.append(
                             f"source contains {len(values)} numeric periods plus any header; "
-                            f"the VALUE adapter selects the first {full_year_periods} periods"
+                            + (note or f"the VALUE adapter selects the first {full_year_periods} periods")
                         )
                     negative = sum(1 for value in values if value < 0)
                     if negative:
@@ -360,13 +393,17 @@ def validate_data_pack(
                         )
                     if len(values) < 1:
                         row_errors.append("cyclic market series is empty")
-                    # L-2: with bad cells the error above explains the count;
-                    # "repeats it cyclically" would misdescribe the file.
+                    # L-2: with bad cells the error above explains the count.
+                    # S-中2: the note says what the reader does with this length
+                    # (hourly -> two half-hours, 29 February removed, repeated
+                    # from the start, or truncated), not "repeats it cyclically".
                     elif len(values) != full_year_periods and not invalid:
-                        row_warnings.append(
-                            f"source contains {len(values)} numeric periods plus any header; "
-                            "the VALUE interconnector adapter repeats it cyclically"
-                        )
+                        note = _clock_note(path, role, binding, len(values), full_year_periods, details,
+                                           cyclic=True)
+                        if note:
+                            row_warnings.append(
+                                f"source contains {len(values)} numeric periods plus any header; {note}"
+                            )
                 elif role in VRE_PROFILE_ROLES:
                     details["clock_adapter"] = "hourly_or_half_hour_profile"
                     minimum = max(full_year_periods // 2, 1)

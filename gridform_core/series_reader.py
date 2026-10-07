@@ -453,5 +453,106 @@ def align_clock(
     return np.resize(values, periods)
 
 
+@dataclass(frozen=True)
+class ClockAlignment:
+    """What the declared clock (``align_clock`` in ``declared-v2``) does to ``source_rows`` values.
+
+    Four-role test S-中2: the review report and the pack validation describe
+    the branch the reader actually takes, from this one place, instead of
+    saying "repeats it cyclically" for every length.
+    """
+
+    source_rows: int
+    periods: int
+    period_hours: float = 0.5
+    hourly_doubled: bool = False
+    leap_day_removed: bool = False
+    energy_rescaled: bool = False
+    used_periods: int = 0
+    ignored_periods: int = 0
+    wrapped_periods: int = 0
+    refused: str | None = None
+
+    @property
+    def changes_series(self) -> bool:
+        return bool(self.hourly_doubled or self.leap_day_removed or self.ignored_periods
+                    or self.wrapped_periods or self.refused)
+
+    @property
+    def short_of_a_year(self) -> bool:
+        """The reader fills part of the model year by repeating the series (S-低2)."""
+
+        return self.wrapped_periods > 0 and self.refused is None
+
+    def describe(self) -> str | None:
+        """One sentence for the user, or None when the series is used as it is."""
+
+        if self.refused:
+            return self.refused
+        parts: list[str] = []
+        if self.hourly_doubled:
+            parts.append(f"{self.source_rows:,} rows are read as hourly values: each hour is used for two "
+                         "half-hour periods")
+        if self.leap_day_removed:
+            parts.append("the series has 17,568 half-hour periods (a leap year): 29 February is removed"
+                         + (" and the other periods are rescaled to keep the annual energy"
+                            if self.energy_rescaled else ""))
+        if self.ignored_periods:
+            parts.append(f"only the first {self.periods:,} half-hour periods are used; the last "
+                         f"{self.ignored_periods:,} are ignored")
+        if self.wrapped_periods:
+            days = self.wrapped_periods * self.period_hours / 24.0
+            parts.append(f"the series covers {self.used_periods:,} of the {self.periods:,} half-hour periods "
+                         f"of a model year: the last {self.wrapped_periods:,} periods ({days:.1f} days) are "
+                         "filled by repeating the series from its start")
+        if not parts:
+            return None
+        text = "; ".join(parts)
+        return text[0].upper() + text[1:] + "."
+
+
+def clock_alignment(
+    source_rows: int,
+    periods: int,
+    spec: SeriesSpec,
+    *,
+    strictness: str = LENIENT,
+    cyclic_default: bool = False,
+    period_hours: float = 0.5,
+) -> ClockAlignment:
+    """The plan of ``align_clock(..., mode=DECLARED)`` for a series of ``source_rows`` values.
+
+    It follows the declared branch step by step (the hourly expansion of a
+    registry-asserted object in ``read_series`` included); the unit tests
+    check it against ``align_clock`` on the lengths users bring.
+    """
+
+    rows = int(source_rows)
+    if rows <= 0:
+        return ClockAlignment(rows, periods, period_hours, refused="The series is empty.")
+    if spec.interval_minutes not in (None, 30, 60):
+        return ClockAlignment(rows, periods, period_hours,
+                              refused=f"interval_minutes={spec.interval_minutes} is not supported.")
+    length = rows
+    doubled = spec.interval_minutes == 60 or (spec.interval_minutes is None and rows in (8760, 8784))
+    if doubled:
+        length *= 2
+    leap = length == 17_568 and spec.leap_policy != "keep"
+    if leap:
+        length = 17_520
+    if length >= periods:
+        return ClockAlignment(rows, periods, period_hours, doubled, leap, leap and spec.role in DEMAND_ROLES,
+                              used_periods=periods, ignored_periods=length - periods)
+    cyclic = spec.cyclic if spec.cyclic is not None else cyclic_default
+    if not cyclic and strictness == STRICT:
+        return ClockAlignment(
+            rows, periods, period_hours, doubled, leap, leap and spec.role in DEMAND_ROLES, used_periods=length,
+            refused=(f"The series covers {length:,} of the {periods:,} half-hour periods of a model year and is "
+                     "not declared cyclic: the strict reader refuses it (GF_DATA_SHORT_SERIES)."),
+        )
+    return ClockAlignment(rows, periods, period_hours, doubled, leap, leap and spec.role in DEMAND_ROLES,
+                          used_periods=length, wrapped_periods=periods - length)
+
+
 def series_sha256(values: Sequence[float]) -> str:
     return hashlib.sha256(np.asarray(values, dtype="<f8").tobytes()).hexdigest()

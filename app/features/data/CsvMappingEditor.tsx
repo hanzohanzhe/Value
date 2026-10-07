@@ -3,12 +3,14 @@
 import { apiUrl } from "../shared/api";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CsvMappingCatalog, CsvMappingColumn, CsvMappingCommit, CsvMappingReview, CsvMappingStage } from "./csvMappingTypes";
-import { EMPTY_FX, EMPTY_TIMESTAMP, EUR_COLUMN_HINT, FX_BASES, PRICE_YEAR_RANGE, TIME_ZONES, acceptsEur, columnSuggestsEur, fxCaption, fxErrors, fxRequest, sourceUnits, timestampRequest, type Currency, type FxDraft, type TimestampDraft } from "./csvMappingFx.ts";
+import { DATE_ORDERS, EMPTY_FX, EMPTY_TIMESTAMP, EUR_COLUMN_HINT, FX_BASES, PRICE_YEAR_RANGE, TIME_ZONES, acceptsEur, columnSuggestsEur, fxCaption, fxErrors, fxRequest, sourceUnits, timestampCoverageText, timestampRequest, type Currency, type FxDraft, type TimestampDraft } from "./csvMappingFx.ts";
 import "./csv-mapping-editor.css";
 
 export type CsvMappingEditorProps = {
   packId: string; manifestSha256: string; role: string;
   disabled?: boolean; readOnlyReason?: string;
+  /** S-低2: the first model year of the Study the data is for; the review notes a different data year. */
+  modelStartYear?: number;
   onMapped: (result: CsvMappingCommit) => Promise<void> | void;
   onBusyChange?: (busy: boolean) => void;
 };
@@ -28,7 +30,7 @@ async function responseJson(response: Response): Promise<Record<string, unknown>
   return value;
 }
 
-export default function CsvMappingEditor({ packId, manifestSha256, role, disabled = false, readOnlyReason, onMapped, onBusyChange }: CsvMappingEditorProps) {
+export default function CsvMappingEditor({ packId, manifestSha256, role, disabled = false, readOnlyReason, modelStartYear, onMapped, onBusyChange }: CsvMappingEditorProps) {
   const id = useId();
   const contextKey = JSON.stringify([packId, manifestSha256, role]);
   const [catalogState, setCatalog] = useState<Scoped<CsvMappingCatalog> | null>(null);
@@ -38,6 +40,8 @@ export default function CsvMappingEditor({ packId, manifestSha256, role, disable
   const [messageState, setMessage] = useState<Scoped<string> | null>(null);
   const [activity, setActivity] = useState<Scoped<"upload" | "review" | "commit"> | null>(null);
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  // S-低2: a series shorter than a model year needs its own confirmation (review id it was given for).
+  const [acknowledged, setAcknowledged] = useState<string | null>(null);
   const [fxState, setFx] = useState<Scoped<FxDraft> | null>(null);
   const [timestampState, setTimestamp] = useState<Scoped<TimestampDraft> | null>(null);
   const operation = useRef<AbortController | null>(null);
@@ -62,6 +66,8 @@ export default function CsvMappingEditor({ packId, manifestSha256, role, disable
   const busy = activity?.key === contextKey;
   const locked = disabled || Boolean(readOnlyReason) || busy;
   const message = messageState?.key === contextKey ? messageState.value : "";
+  const acknowledgements = review?.acknowledgements_required ?? [];
+  const acknowledgementsGiven = acknowledgements.length === 0 || (review !== null && acknowledged === review.review_id);
 
   useEffect(() => {
     currentContext.current = contextKey;
@@ -79,7 +85,7 @@ export default function CsvMappingEditor({ packId, manifestSha256, role, disable
 
   function invalidateReview() {
     operation.current?.abort(); requestSequence.current += 1;
-    setReview(null); setConfirmed(null); setMessage(null);
+    setReview(null); setConfirmed(null); setAcknowledged(null); setMessage(null);
   }
   function begin(kind: "upload" | "review" | "commit") {
     operation.current?.abort();
@@ -129,7 +135,7 @@ export default function CsvMappingEditor({ packId, manifestSha256, role, disable
     if (!Number.isFinite(Date.parse(stage.expires_at)) || Date.parse(stage.expires_at) <= requestedAt) { setStage(null); setMapping(null); setMessage({ key: contextKey, value: "原始文件暂存已过期，请重新选择文件。" }); return; }
     const { controller, sequence } = begin("review");
     try {
-      const value = await responseJson(await fetch(apiUrl(`data-mapping/stages/${encodeURIComponent(stage.stage_id)}/preview`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-preview-request/v1", source_sha256: stage.source_sha256, target_manifest_sha256: manifestSha256, columns, ...(fx.currency === "EUR" && fxBody ? { fx: fxBody } : {}), ...(timestampBody ? { timestamp: timestampBody } : {}) }), signal: controller.signal }));
+      const value = await responseJson(await fetch(apiUrl(`data-mapping/stages/${encodeURIComponent(stage.stage_id)}/preview`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-preview-request/v1", source_sha256: stage.source_sha256, target_manifest_sha256: manifestSha256, columns, ...(fx.currency === "EUR" && fxBody ? { fx: fxBody } : {}), ...(timestampBody ? { timestamp: timestampBody } : {}), ...(modelStartYear ? { model_start_year: modelStartYear } : {}) }), signal: controller.signal }));
       if (!live(sequence, controller)) return;
       if (value.schema_version !== "value.data-mapping-review/v1" || value.pack_id !== packId || value.role !== role || value.stage_id !== stage.stage_id || value.source_sha256 !== stage.source_sha256 || value.target_manifest_sha256 !== manifestSha256 || !validColumns(value.columns) || columnIdentity(value.columns) !== columnsKey || !token(value.review_id) || typeof value.valid !== "boolean" || !listOfStrings(value.errors) || !listOfStrings(value.warnings) || (!Array.isArray(value.sample_rows) || value.sample_rows.length > 20 || !value.sample_rows.every(record)) || value.source_bytes !== stage.source_bytes || value.rows !== stage.rows || !count(value.normalized_bytes) || !hash(value.spec_sha256) || !(value.normalized_sha256 === null || hash(value.normalized_sha256)) || (value.valid && (!hash(value.normalized_sha256) || !record(value.validation))) || !expiry(value.expires_at)) throw new Error("校验报告与所审阅的文件、映射或包版本不一致，请重新校验。");
       setReview({ key: contextKey, mappingKey, value: value as CsvMappingReview });
@@ -137,14 +143,14 @@ export default function CsvMappingEditor({ packId, manifestSha256, role, disable
     finally { finish(sequence, controller); }
   }
   async function commit(requestedAt: number) {
-    if (!review?.valid || confirmed !== review.review_id || locked) return;
+    if (!review?.valid || confirmed !== review.review_id || !acknowledgementsGiven || locked) return;
     if (!Number.isFinite(Date.parse(review.expires_at)) || Date.parse(review.expires_at) <= requestedAt) { setReview(null); setConfirmed(null); setMessage({ key: contextKey, value: "审阅报告已过期，请重新校验后确认。" }); return; }
     const { controller, sequence } = begin("commit");
     try {
-      const value = await responseJson(await fetch(apiUrl(`data-mapping/reviews/${encodeURIComponent(review.review_id)}/commit`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-commit-request/v1", source_sha256: review.source_sha256, spec_sha256: review.spec_sha256, normalized_sha256: review.normalized_sha256, target_manifest_sha256: manifestSha256 }), signal: controller.signal }));
+      const value = await responseJson(await fetch(apiUrl(`data-mapping/reviews/${encodeURIComponent(review.review_id)}/commit`), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schema_version: "value.data-mapping-commit-request/v1", source_sha256: review.source_sha256, spec_sha256: review.spec_sha256, normalized_sha256: review.normalized_sha256, target_manifest_sha256: manifestSha256, ...(acknowledgements.length ? { acknowledged: acknowledgements.map((item) => item.code) } : {}) }), signal: controller.signal }));
       if (!live(sequence, controller)) return;
       if (value.schema_version !== "value.data-mapping-commit/v1" || value.ok !== true || value.pack_id !== packId || value.role !== role || value.run_started !== false || !hash(value.manifest_sha256) || !record(value.binding) || value.binding.sha256 !== review.normalized_sha256 || !record(value.binding.mapping_provenance) || value.binding.mapping_provenance.source_sha256 !== review.source_sha256 || value.binding.mapping_provenance.spec_sha256 !== review.spec_sha256 || value.binding.mapping_provenance.normalized_sha256 !== review.normalized_sha256) throw new Error("提交回执身份不一致，请刷新目标包核对绑定。");
-      setReview(null); setConfirmed(null); setStage(null); setMapping(null);
+      setReview(null); setConfirmed(null); setAcknowledged(null); setStage(null); setMapping(null);
       setMessage({ key: contextKey, value: "已提交到独立目标包；原始文件与规范文件的身份均已保留。Study 尚未保存或运行。" });
       await onMapped(value as CsvMappingCommit);
     } catch (reason) { if (live(sequence, controller)) setMessage({ key: contextKey, value: reason instanceof Error ? reason.message : "提交失败，请重新校验。" }); }
@@ -167,10 +173,11 @@ export default function CsvMappingEditor({ packId, manifestSha256, role, disable
         {specification.timestamp_supported && <fieldset className="csv-mapping-timestamp" disabled={locked}><legend>Timestamp column (optional)</legend>
           <label><span>Timestamp column</span><select value={timestamp.column} onChange={(event) => changeTimestamp({ column: event.target.value })}><option value="">No timestamp column (rows are read in order)</option>{stage.source_columns.filter((name) => !columns.some((column) => column.source === name)).map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
           <label><span>Time zone</span><select value={timestamp.timeZone} disabled={!timestamp.column} onChange={(event) => changeTimestamp({ timeZone: event.target.value })}>{(specification.time_zones?.length ? specification.time_zones : [...TIME_ZONES]).map((zone) => <option key={zone} value={zone}>{zone}</option>)}</select></label>
-          <p>选定后，时间轴层会逐行检查单调性、缺口和重复；有问题时不能提交。Europe/London 按当地钟点读取，秋季重复的一小时按行序区分。</p>
+          <label><span>Date order</span><select value={timestamp.dateOrder ?? "auto"} disabled={!timestamp.column} onChange={(event) => changeTimestamp({ dateOrder: event.target.value })}>{DATE_ORDERS.map((order) => <option key={order.value} value={order.value}>{order.label}</option>)}</select></label>
+          <p>选定后，时间轴层会逐行检查单调性、缺口和重复；有问题时不能提交。Europe/London 按当地钟点读取，秋季重复的一小时按行序区分。02/01/2025 这类日期按所选顺序读取；ISO 日期（2025-01-02）不受影响。模型时钟为 UTC，全年 365 天。</p>
         </fieldset>}
         <button type="button" className="secondary" disabled={locked || columns.some((column) => !column.source) || fxInvalid} onClick={() => void preview(Date.now())}>预览规范样例并校验完整文件</button></>}
-      {review && <section className="csv-mapping-review" aria-label="映射审阅报告"><h5>{review.valid ? "完整校验通过，等待明确提交" : "校验未通过，请修改文件或映射"}</h5><p>原文件 SHA <code>{review.source_sha256}</code><br />规范文件 SHA <code>{review.normalized_sha256 ?? "尚不可用"}</code><br />映射 SHA <code>{review.spec_sha256}</code></p>{review.errors.length > 0 && <ul>{review.errors.map((error, index) => <li key={index}>{error}</li>)}</ul>}{review.warnings.length > 0 && <ul>{review.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}{review.timestamp && <div className="csv-mapping-timestamp-report"><p><b>Timestamps</b> · column <code>{review.timestamp.column}</code> · {review.timestamp.time_zone} · {review.timestamp.rows_checked} rows checked at {review.timestamp.interval_minutes}-minute steps · {review.timestamp.problem_count ? `${review.timestamp.problem_count} problem(s)` : "no problems"}{review.timestamp.first_utc ? <> · first <code>{review.timestamp.first_utc}</code></> : null}{review.timestamp.last_utc ? <> · last <code>{review.timestamp.last_utc}</code></> : null}</p>{review.timestamp.problems.length > 0 && <table><thead><tr><th scope="col">Row</th><th scope="col">Timestamp (UTC)</th><th scope="col">Problem</th></tr></thead><tbody>{review.timestamp.problems.map((row) => <tr key={row.row}><td>{row.row}</td><td>{row.timestamp ?? "—"}</td><td>{row.problem}</td></tr>)}</tbody></table>}{review.timestamp.problem_count > review.timestamp.problems.length && <small>Showing the first {review.timestamp.problems.length} of {review.timestamp.problem_count} rows.</small>}</div>}{review.fx && review.source_sample_rows && review.source_sample_rows.length > 0 && <div className="csv-mapping-fx-table"><table><thead><tr><th scope="col">Original ({review.columns[0]?.source}, EUR/MWh)</th><th scope="col">£/MWh — {fxCaption(review.fx)}</th></tr></thead><tbody>{review.source_sample_rows.map((row, index) => <tr key={index}><td>{String(row[review.columns[0]?.source] ?? "—")}</td><td>{String(review.sample_rows[index]?.[review.columns[0]?.target] ?? "—")}</td></tr>)}</tbody></table></div>}<details open><summary>规范化样例、单位与映射</summary><pre>{JSON.stringify({ columns: review.columns, rows: review.rows, sample_rows: review.sample_rows }, null, 2)}</pre></details><details open><summary>完整文件校验报告</summary>{review.validation == null ? <p className="csv-mapping-validation-pending">尚未运行：先修正上面列出的映射或换算错误，整份文件的校验才会运行。</p> : <pre>{JSON.stringify(review.validation, null, 2)}</pre>}</details><p>审阅有效期至 {review.expires_at}。修改角色、文件、映射或目标包版本后必须重新校验。</p>{review.valid && <><label className="csv-mapping-confirm"><input type="checkbox" disabled={locked} checked={confirmed === review.review_id} onChange={(event) => setConfirmed(event.target.checked ? review.review_id : null)} /><span>我已核对列、单位、样例和报告，确认只更新此独立目标包的角色绑定。</span></label><button type="button" className="primary" disabled={locked || confirmed !== review.review_id} onClick={() => void commit(Date.now())}>确认提交映射后的文件</button></>}</section>}
+      {review && <section className="csv-mapping-review" aria-label="映射审阅报告"><h5>{review.valid ? "完整校验通过，等待明确提交" : "校验未通过，请修改文件或映射"}</h5><p>原文件 SHA <code>{review.source_sha256}</code><br />规范文件 SHA <code>{review.normalized_sha256 ?? "尚不可用"}</code><br />映射 SHA <code>{review.spec_sha256}</code></p>{review.errors.length > 0 && <ul>{review.errors.map((error, index) => <li key={index}>{error}</li>)}</ul>}{review.warnings.length > 0 && <ul>{review.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}{review.timestamp && <div className="csv-mapping-timestamp-report"><p><b>Timestamps</b> · column <code>{review.timestamp.column}</code> · {review.timestamp.time_zone} · {review.timestamp.rows_checked} rows checked at {review.timestamp.interval_minutes}-minute steps · {review.timestamp.problem_count ? `${review.timestamp.problem_count} problem(s)` : "no problems"}{review.timestamp.first_utc ? <> · first <code>{review.timestamp.first_utc}</code></> : null}{review.timestamp.last_utc ? <> · last <code>{review.timestamp.last_utc}</code></> : null}</p>{timestampCoverageText(review.timestamp) && <p className="csv-mapping-timestamp-coverage">{timestampCoverageText(review.timestamp)}</p>}{(review.timestamp.hints ?? []).length > 0 && <ul className="csv-mapping-timestamp-hints">{(review.timestamp.hints ?? []).map((hint, index) => <li key={index}>{hint}</li>)}</ul>}{review.timestamp.problems.length > 0 && <table><thead><tr><th scope="col">Data row</th><th scope="col">CSV line</th><th scope="col">Timestamp (UTC)</th><th scope="col">Problem</th></tr></thead><tbody>{review.timestamp.problems.map((row) => <tr key={row.row}><td>{row.data_row ?? row.row - 1}</td><td>{row.csv_line ?? row.row}</td><td>{row.timestamp ?? "—"}</td><td>{row.problem}</td></tr>)}</tbody></table>}{review.timestamp.problem_count > review.timestamp.problems.length && <small>Showing the first {review.timestamp.problems.length} of {review.timestamp.problem_count} rows.</small>}</div>}{review.fx && review.source_sample_rows && review.source_sample_rows.length > 0 && <div className="csv-mapping-fx-table"><table><thead><tr><th scope="col">Original ({review.columns[0]?.source}, EUR/MWh)</th><th scope="col">£/MWh — {fxCaption(review.fx)}</th></tr></thead><tbody>{review.source_sample_rows.map((row, index) => <tr key={index}><td>{String(row[review.columns[0]?.source] ?? "—")}</td><td>{String(review.sample_rows[index]?.[review.columns[0]?.target] ?? "—")}</td></tr>)}</tbody></table></div>}<details open><summary>规范化样例、单位与映射</summary><pre>{JSON.stringify({ columns: review.columns, rows: review.rows, sample_rows: review.sample_rows }, null, 2)}</pre></details><details open><summary>完整文件校验报告</summary>{review.validation == null ? <p className="csv-mapping-validation-pending">尚未运行：先修正上面列出的映射或换算错误，整份文件的校验才会运行。</p> : <pre>{JSON.stringify(review.validation, null, 2)}</pre>}</details><p>审阅有效期至 {review.expires_at}。修改角色、文件、映射或目标包版本后必须重新校验。</p>{review.valid && <><label className="csv-mapping-confirm"><input type="checkbox" disabled={locked} checked={confirmed === review.review_id} onChange={(event) => setConfirmed(event.target.checked ? review.review_id : null)} /><span>我已核对列、单位、样例和报告，确认只更新此独立目标包的角色绑定。</span></label>{acknowledgements.map((item) => <label key={item.code} className="csv-mapping-confirm csv-mapping-acknowledge"><input type="checkbox" disabled={locked} checked={acknowledged === review.review_id} onChange={(event) => setAcknowledged(event.target.checked ? review.review_id : null)} /><span>{item.text} 我知道模型会这样补齐，仍要提交。</span></label>)}<button type="button" className="primary" disabled={locked || confirmed !== review.review_id || !acknowledgementsGiven} onClick={() => void commit(Date.now())}>确认提交映射后的文件</button></>}</section>}
     </>}{readOnlyReason && <p role="status">{readOnlyReason}</p>}{message && <p role="status">{message}</p>}
   </section>;
 }

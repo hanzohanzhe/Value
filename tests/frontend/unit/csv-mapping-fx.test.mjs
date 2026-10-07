@@ -44,6 +44,8 @@ test("a column name with eur or € under GBP gets the hint; EUR or other names 
 });
 test("the timestamp declaration is sent only when a column is chosen", () => {
   assert.equal(timestampRequest({ column: "", timeZone: "Europe/London" }), null);
-  assert.deepEqual(timestampRequest({ column: "time", timeZone: "Europe/London" }), { column: "time", time_zone: "Europe/London" });
-  assert.deepEqual(timestampRequest({ column: "time", timeZone: "" }), { column: "time", time_zone: "UTC" });
+  assert.deepEqual(timestampRequest({ column: "time", timeZone: "Europe/London" }), { column: "time", time_zone: "Europe/London", date_order: "auto" });
+  assert.deepEqual(timestampRequest({ column: "time", timeZone: "" }), { column: "time", time_zone: "UTC", date_order: "auto" });
+  // S-中3 (R4, A27): the declared day/month order travels with the request.
+  assert.deepEqual(timestampRequest({ column: "time", timeZone: "UTC", dateOrder: "day_first" }), { column: "time", time_zone: "UTC", date_order: "day_first" });
 });

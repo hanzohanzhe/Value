@@ -54,9 +54,30 @@ export function columnSuggestsEur(columnName: string | null | undefined, currenc
 }
 
 /** Spec 11.6 (S-D4): the optional timestamp declaration of a mapping preview request. */
-export type TimestampDraft = { column: string; timeZone: string };
-export const EMPTY_TIMESTAMP: TimestampDraft = { column: "", timeZone: "UTC" };
+export type TimestampDraft = { column: string; timeZone: string; dateOrder?: string };
+export const EMPTY_TIMESTAMP: TimestampDraft = { column: "", timeZone: "UTC", dateOrder: "auto" };
 export const TIME_ZONES = ["UTC", "Europe/London"] as const;
-export function timestampRequest(draft: TimestampDraft): { column: string; time_zone: string } | null {
-  return draft.column ? { column: draft.column, time_zone: draft.timeZone || "UTC" } : null;
+/** S-中3 (R4, A27): the order of numeric day/month dates such as 02/01/2025 (ISO dates are never reordered). */
+export const DATE_ORDERS = [
+  { value: "auto", label: "Auto-detect (DD/MM/YYYY unless a row shows MM/DD/YYYY)" },
+  { value: "day_first", label: "DD/MM/YYYY (day first)" },
+  { value: "month_first", label: "MM/DD/YYYY (month first)" },
+] as const;
+export function timestampRequest(draft: TimestampDraft): { column: string; time_zone: string; date_order: string } | null {
+  return draft.column ? { column: draft.column, time_zone: draft.timeZone || "UTC", date_order: draft.dateOrder || "auto" } : null;
+}
+
+/** S-低2 / S-中3: the coverage line of the timestamp report ("365 days · data year 2025 · dates DD/MM/YYYY (detected …)"). */
+export function timestampCoverageText(report: { coverage?: { span_days: number; data_years: number[] } | null; date_order?: string; date_order_basis?: string } | null | undefined): string {
+  if (!report) return "";
+  const parts: string[] = [];
+  if (report.coverage) {
+    parts.push(`covers ${report.coverage.span_days} days`);
+    if (report.coverage.data_years.length) parts.push(`data year ${report.coverage.data_years.join("–")}`);
+  }
+  if (report.date_order && report.date_order !== "iso") {
+    const order = report.date_order === "day_first" ? "DD/MM/YYYY" : "MM/DD/YYYY";
+    parts.push(`dates read as ${order}${report.date_order_basis ? ` (${report.date_order_basis})` : ""}`);
+  }
+  return parts.join(" · ");
 }
