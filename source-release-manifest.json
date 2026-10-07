@@ -11142,8 +11142,8 @@
     },
     {
       "path": "tests/golden/doctoral_trajectory_rebaselines.json",
-      "sha256": "35208fc7ad15ec21676c8672ad9fb507f45ce0896a9b1a291be2b4e7ff09ceeb",
-      "bytes": 969,
+      "sha256": "1107c67dbb412f5869351cd59217dd937d361645a2d3d024919d01b90ff54359",
+      "bytes": 1448,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11796,8 +11796,8 @@
     },
     {
       "path": "tests/test_golden_digest.py",
-      "sha256": "f8a52b179758a2c4096dce12675c50f80e8513d4cd7aecc220c969cc1898528b",
-      "bytes": 42274,
+      "sha256": "dd8d12ff4bba68e82f0f6ab8ebe9be5d76121ac992c736bac1b06f69250de592",
+      "bytes": 42539,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

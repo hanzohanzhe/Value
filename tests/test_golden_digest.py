@@ -376,13 +376,16 @@ class GoldenDigestTests(unittest.TestCase):
         """Only the author-approved universal corrections may move doctoral trajectory.
 
         P0_DECISIONS: Q9/A3 (P6-24 interconnector clock), A5 (P6-02/03/04 GBP1
-        reading), A4 (thermal net revenue).  Adding a finding here also needs
+        reading), A4 (thermal net revenue), A26 (R4-1: the three thesis-kernel
+        errors A15, DEV-BAL-04, DEV-STO-01).  Adding a finding here also needs
         an integrator move of p0_gate.APPEND_ONLY_BASE (append_only refuses it).
         """
 
         allowlist = json.loads((ROOT / "tests" / "golden" / "doctoral_trajectory_rebaselines.json").read_text(encoding="utf-8"))
-        self.assertEqual(set(allowlist["findings"]), {"P6-24", "P6-02", "P6-03", "P6-04", "P4-01-thermal"})
-        for finding, decision in (("P6-24", "A3"), ("P6-02", "A5"), ("P6-03", "A5"), ("P6-04", "A5"), ("P4-01-thermal", "A4")):
+        self.assertEqual(set(allowlist["findings"]), {"P6-24", "P6-02", "P6-03", "P6-04", "P4-01-thermal",
+                                                      "A15", "DEV-BAL-04", "DEV-STO-01"})
+        for finding, decision in (("P6-24", "A3"), ("P6-02", "A5"), ("P6-03", "A5"), ("P6-04", "A5"), ("P4-01-thermal", "A4"),
+                                  ("A15", "A26"), ("DEV-BAL-04", "A26"), ("DEV-STO-01", "A26")):
             self.assertIn(decision, allowlist["findings"][finding])
 
     def test_cited_decisions_exist_in_the_construction_record(self) -> None:
