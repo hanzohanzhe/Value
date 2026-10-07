@@ -53,5 +53,19 @@ test("an in-place module source edit is an amber notice above the groups (spec 1
   assert.match(html, /value-callout caution readiness-source-changed" role="alert"/);
   assert.match(html, /Module source changed since install/);
   assert.ok(html.includes(message));
+  // R3M-5 (round R2): shown once, in the notice; it is not counted again in a group.
+  assert.doesNotMatch(html, /Environment and setup/);
+  assert.equal(html.split(message).length - 1, 1);
+});
+
+test("a source-change notice leaves the other warnings in their groups (R3M-5)", async () => {
+  const message = "Module my-storage-cost source changed since install (bdfb9ab4… → 836d9086…). It is quarantined, so no Run can start; once it is repaired, results record the new source hash.";
+  const html = await renderTsx("app/features/runs/ReadinessIssues.tsx", "default", {
+    errors: [issue("GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules", "Module my-storage-cost is quarantined.")],
+    warnings: [issue("GF_PREFLIGHT_MODULE_SOURCE_CHANGED", "warning", "modules", message), issue("GF_PREFLIGHT_SOLVER_NOTE", "warning", "runtime", "Solver note.")],
+  });
+  assert.match(html, /Module source changed since install/);
+  assert.match(html, /Errors · 1/);
   assert.match(html, /Environment and setup · 1/);
+  assert.equal(html.split(message).length - 1, 1);
 });

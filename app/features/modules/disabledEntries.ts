@@ -101,8 +101,35 @@ export type InstalledModuleCard = {
 export function installedModuleCard(installation: Pick<ModuleRecord, "module_id" | "enabled">, quarantine: QuarantineReport | null | undefined, sourceChanges: readonly ModuleSourceChange[] | null | undefined): InstalledModuleCard {
   const quarantined = (quarantineRows(quarantine) as QuarantineRow[]).some((row) => row.kind === "module" && row.id === installation.module_id);
   const change = (sourceChanges ?? []).find((row) => row.module_id === installation.module_id);
-  const sourceChange = change ? `Source changed since install (${change.installed_sha256.slice(0, 8)}… → ${change.current_sha256.slice(0, 8)}…). Runs record the new source hash.` : null;
+  // R3M-5 (round R2): a quarantined module cannot run, so it does not promise a recorded hash yet.
+  const changed = change ? `Source changed since install (${change.installed_sha256.slice(0, 8)}… → ${change.current_sha256.slice(0, 8)}…).` : null;
+  const sourceChange = changed && (quarantined ? `${changed} It is quarantined, so no Run can start; once it is repaired, Runs record the new source hash.` : `${changed} Runs record the new source hash.`);
   if (quarantined) return { state: "quarantined", stateText: "Quarantined — see Disabled and quarantined below", offerToggle: false, sourceChange };
   if (!installation.enabled) return { state: "disabled", stateText: "Disabled — enable it in Disabled and quarantined below", offerToggle: false, sourceChange };
   return { state: "enabled", stateText: "Enabled", offerToggle: true, sourceChange };
+}
+
+/**
+ * R3M-4 (round R2): the card's note about saved Studies that select the module.
+ * Only an enabled module's Disable is blocked by them; a disabled or
+ * quarantined one (the quarantine area may disable it while Studies use it)
+ * instead stops those Studies from running until it is enabled again.
+ */
+export function moduleUsageNote(state: InstalledModuleCard["state"], studyCount: number): string | null {
+  if (studyCount <= 0) return null;
+  const used = `Used by ${studyCount} saved ${studyCount === 1 ? "Study" : "Studies"}`;
+  if (state === "enabled") return `${used}; disable is blocked until those configurations are migrated.`;
+  const they = studyCount === 1 ? "it cannot" : "they cannot";
+  return `${used}; ${they} run until this module is ${state === "quarantined" ? "repaired" : "enabled again"}, or ${studyCount === 1 ? "it selects" : "they select"} another module.`;
+}
+
+/**
+ * R3M-3 (round R2): what to do after a failed Enable. Rescan alone does not
+ * enable a disabled entry; Enable scans afresh, so it is the step to repeat
+ * whenever the entry offers Enable.
+ */
+export function enableFailureHint(entry: Pick<DisabledEntry, "canEnable">): string {
+  return entry.canEnable
+    ? "This is the result of the Enable attempt just made. Fix the cause, then press Enable again (Enable scans afresh; Rescan alone leaves a disabled entry disabled)."
+    : "This is the result of the Enable attempt just made. Fix the cause, then Rescan.";
 }

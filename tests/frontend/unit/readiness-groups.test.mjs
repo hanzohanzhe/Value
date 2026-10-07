@@ -72,3 +72,15 @@ test("the object prefix is split only when it is an identifier", () => {
   assert.equal(foldIssues([]).length, 0);
   assert.deepEqual(readinessGroups(null), []);
 });
+
+// R3M-5 (round R2): a warning the page already shows in its own notice is not
+// counted again; an error with that code would still be listed.
+test("warnings shown elsewhere are left out of the groups; errors never are", () => {
+  const change = issue("GF_PREFLIGHT_MODULE_SOURCE_CHANGED", "warning", "modules", "Module m source changed since install (a → b).");
+  const other = issue("GF_PREFLIGHT_SOLVER_NOTE", "warning", "runtime", "Solver note.");
+  const shown = new Set(["GF_PREFLIGHT_MODULE_SOURCE_CHANGED"]);
+  assert.deepEqual(readinessGroups({ errors: [], warnings: [change, other] }, shown).map((group) => [group.id, group.count]), [["environment", 1]]);
+  assert.deepEqual(readinessGroups({ errors: [], warnings: [change, other] }).map((group) => [group.id, group.count]), [["environment", 2]]);
+  const asError = { ...change, severity: "error" };
+  assert.deepEqual(readinessGroups({ errors: [asError], warnings: [] }, shown).map((group) => [group.id, group.count]), [["errors", 1]]);
+});

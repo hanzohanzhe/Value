@@ -1,7 +1,7 @@
 "use client";
 
 import { StatusPill } from "../shared/Callout";
-import { removeConfirmation, type DisabledEntry } from "./disabledEntries.ts";
+import { enableFailureHint, removeConfirmation, type DisabledEntry } from "./disabledEntries.ts";
 import "./module-quarantine.css";
 
 export type EntryError = { code?: string; message: string };
@@ -33,7 +33,7 @@ export default function DisabledEntriesPanel({ entries, busy, errors, onEnable, 
         </div>
         {entry.message && <p className="quarantine-error">{entry.message}</p>}
         {entry.state === "quarantined" && !entry.canEnable && <p className="quarantine-help">Fix the source, then Rescan. Remove takes it out of the scanned folders.</p>}
-        {error && <p className="disabled-entry-error" role="alert">{error.code && <code>{error.code}</code>} {error.message} <span>This is the result of the Enable attempt just made. Fix the cause, then Rescan.</span></p>}
+        {error && <p className="disabled-entry-error" role="alert">{error.code && <code>{error.code}</code>} {error.message} <span>{enableFailureHint(entry)}</span></p>}
         <div className="quarantine-actions">
           <button type="button" className="value-action-primary" disabled={Boolean(busy) || !entry.canEnable} title={entry.canEnable ? undefined : "Quarantined entries are already enabled: fix the source, then Rescan."} onClick={() => onEnable(entry)}>{busy === `enable:${entry.key}` ? "Enabling…" : "Enable"}</button>
           <button type="button" className="value-action-link" disabled={Boolean(busy)} onClick={onRescan}>{busy === "rescan" ? "Rescanning…" : "Rescan"}</button>

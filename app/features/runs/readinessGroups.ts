@@ -89,12 +89,18 @@ export function foldIssues(issues: readonly ReadinessIssue[]): ReadinessRow[] {
   return [...rows.values()];
 }
 
-/** Spec 11.1: every error and warning of a preflight, grouped by priority; empty groups are left out. */
-export function readinessGroups(report: { errors?: readonly ReadinessIssue[] | null; warnings?: readonly ReadinessIssue[] | null } | null | undefined): ReadinessGroup[] {
+/**
+ * Spec 11.1: every error and warning of a preflight, grouped by priority; empty
+ * groups are left out. `shownElsewhere` names warning codes the caller already
+ * shows in full in its own notice (R3M-5: the module source-change Callout), so
+ * they are not counted a second time; errors are never left out.
+ */
+export function readinessGroups(report: { errors?: readonly ReadinessIssue[] | null; warnings?: readonly ReadinessIssue[] | null } | null | undefined, shownElsewhere: ReadonlySet<string> = new Set()): ReadinessGroup[] {
   if (!report) return [];
   const buckets = new Map<ReadinessGroupId, ReadinessIssue[]>();
   for (const issue of [...(report.errors ?? []), ...(report.warnings ?? [])]) {
     if (!issue || typeof issue !== "object") continue;
+    if (issue.severity !== "error" && shownElsewhere.has(String(issue.code ?? ""))) continue;
     const id = issueGroup(issue);
     buckets.set(id, [...(buckets.get(id) ?? []), issue]);
   }

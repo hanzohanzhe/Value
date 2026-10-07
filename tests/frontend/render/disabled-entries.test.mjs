@@ -25,7 +25,7 @@ test("each entry has Enable, Rescan and Remove; a quarantined one says to fix an
 test("an Enable failure shows that attempt's error with Rescan beside it", async () => {
   const html = await renderTsx(PANEL, "default", props({ errors: { "extension:audit-extension": { code: "GF_EXTENSION_SOURCE_CHANGED", message: "Installed hook source no longer matches its retained identity" } } }));
   assert.match(html, /class="disabled-entry-error" role="alert"><code>GF_EXTENSION_SOURCE_CHANGED<\/code> Installed hook source no longer matches/);
-  assert.match(textOf(html), /This is the result of the Enable attempt just made\. Fix the cause, then Rescan\./);
+  assert.match(textOf(html), /This is the result of the Enable attempt just made\. Fix the cause, then press Enable again \(Enable scans afresh; Rescan alone leaves a disabled entry disabled\)\./);
 });
 
 test("no entries renders nothing", async () => {
