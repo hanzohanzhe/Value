@@ -102,19 +102,46 @@ to VRE ("a > 0" is strict). Hydro and biomass get the reduced energy back into
 their annual budget; requirement left after the whole stack is in-dispatch
 spill (unchanged).
 
-Restart values (A22; 2024 GBP per MW of capacity per start):
+Restart values (A22, restated in the model's 2025 price base by A24-4; GBP
+per MW of capacity per start; section 2a):
 
-| Technology | S hot / warm / cold | Start class by H | m | MDT | Break-even H* = S/(m c) (GBP1 c) |
-|---|---|---|---|---|---|
-| CCGT | 110 / 130 / 150 | hot H < 12 h, warm 12-48 h, cold > 48 h | 50 % | 6 h | 4.0 h (c = 55.07) |
-| OCGT | 170 | - | 50 % | 0.5 h | 4.54 h (c = 74.92) |
-| Biomass | 125 | - | 35 % | 6 h | 4.2 h (c = 85.0) |
+| Technology | S hot / warm / cold (2025 GBP, in use) | A22 value (2024 GBP) | Start class by H | m | MDT | Break-even H* = S/(m c) (GBP1 c) |
+|---|---|---|---|---|---|---|
+| CCGT | 113.7 / 134.4 / 155.0 | 110 / 130 / 150 | hot H < 12 h, warm 12-48 h, cold > 48 h | 50 % | 6 h | 4.13 h (c = 55.07) |
+| OCGT | 175.7 | 170 | - | 50 % | 0.5 h | 4.69 h (c = 74.92) |
+| Biomass | 129.2 | 125 | - | 35 % | 6 h | 4.34 h (c = 85.0) |
 
 Because `MDT >= H*` for CCGT and biomass, a CCGT or biomass shutdown that is
 allowed at all (`H >= 6 h`) always has `a > 0` and goes before VRE (at the GBP1
-costs; a cheaper unit with `c < S/(m MDT)`, e.g. CCGT below 36.7 GBP/MWh, would
+costs; a cheaper unit with `c < S/(m MDT)`, e.g. CCGT below 37.9 GBP/MWh, would
 still curtail wind first); for OCGT the comparison decides (`H >= 5 h`, i.e.
 at least ten surplus periods).
+
+### 2a Price base of the restart costs (decision A24-4)
+
+The restart costs are compared with the avoided cost `c` (fuel, carbon and
+variable cost), so both must be in the same money. VALUE states every amount
+in start-year money (decision A6), and every shipped study starts in 2025
+(R029 2025-2034, VALUE 101 2025-2026, GBP1 2025); the dated cost inputs are
+declared in 2025 GBP (storage technology catalogue `currency_base_year`
+2025, pumped-hydro CAPEX, policy budgets). The fuel and carbon prices carry no
+price year of their own and are therefore 2025 money. The A22 values were
+compiled in 2024 GBP (reference statistics 4.2), so they are restated with the
+UK CPI (ONS D7BT, 2015 = 100, annual averages):
+
+    S_2025 = round(S_2024 x CPI_2025 / CPI_2024, 1),  CPI_2025 / CPI_2024 = 138.4 / 133.9 = 1.0336
+
+(correction `r33.restart-cost-price-base-2025`; default PSM 6.6.0 and staged
+PSM 1.6.0, both opt-in under Q13). The table
+`gridform_core/data/thermal/value_thermal_restart_v1.json` keeps the 2024
+values, the two index values, the factor and the source, and the loader checks
+that the values in use are the restated 2024 values. The 2025 index is the
+mean of the twelve 2025 monthly values as known when the table was revised and
+still has to be checked once against the ONS series (reference statistics
+4.2a); 0.1 index point changes every value by 0.07 %. The conversion moves
+each break-even downtime `H* = S/(m c)` up by 3.4 % (CCGT 3.99 -> 4.13 h,
+OCGT 4.54 -> 4.69 h, biomass 4.20 -> 4.34 h at the GBP1 costs); with
+half-hour periods an OCGT still shuts down first from `H = 5 h`.
 
 The restart cost ranks the stack only. The cost accounts are unchanged: the
 physical operating cost keeps its start-up term (thesis `startup_cost` adder
@@ -122,7 +149,7 @@ of a unit that was not running in the previous period, P5-06).
 
 ## 3 Worked example
 
-GBP1 CCGT parameters (`c = 55.07` GBP/MWh, `m = 50 %`, `S = 110` GBP/MW hot,
+GBP1 CCGT parameters (`c = 55.07` GBP/MWh, `m = 50 %`, `S = 113.7` GBP/MW hot,
 `MDT = 6 h`). Period `t`: CCGT accepted 400 MW (ramp floor 0), wind accepted
 500 MW; after storage, exports and flexible demand 300 MW still has to be
 removed.
@@ -137,19 +164,19 @@ removed.
 | Forecast after `t` | H | Shutdown allowed? | a(H) | Result |
 |---|---|---|---|---|
 | next period not in surplus | 0.5 h | no (H < 6 h) | - | wind curtailed 100 MW; CCGT stays at 200 MW |
-| 5 more surplus periods | 3 h | no (H < 6 h) | (55.07 - 110/1.5 = -18.3) | wind curtailed 100 MW |
-| 11 more surplus periods | 6 h | yes | 55.07 - 110/3 = 18.4 > 0 (restart GBP 22,000 < saving GBP 33,042) | CCGT reduced to 100 MW; no wind curtailed |
-| 27 more surplus periods | 14 h | yes (warm start, S = 130) | 55.07 - 130/7 = 36.5 > 0 | CCGT reduced to 100 MW |
+| 5 more surplus periods | 3 h | no (H < 6 h) | (55.07 - 113.7/1.5 = -20.7) | wind curtailed 100 MW |
+| 11 more surplus periods | 6 h | yes | 55.07 - 113.7/3 = 17.2 > 0 (restart GBP 22,740 < saving GBP 33,042) | CCGT reduced to 100 MW; no wind curtailed |
+| 27 more surplus periods | 14 h | yes (warm start, S = 134.4) | 55.07 - 134.4/7 = 35.9 > 0 | CCGT reduced to 100 MW |
 
 Under the thesis rule the 300 MW would have come from wind (curtail cost 0);
 under the withdrawn P0-6 rule from the CCGT (400 -> 100 MW) whatever H.
 
-An OCGT example (`c = 74.92`, `S = 170`, `m = 50 %`, `MDT = 0.5 h`, so the
-restart costs `S/m = 340` GBP per MW of output removed): with `H = 0.5 h`,
-`a = 74.92 - 680 = -605.1` (wind first); with `H = 2 h`, `a = -95.1` (wind
-first); with `H = 3 h`, `a = -38.4` (wind first: shutting 20 MW of capacity to
-remove 10 MW of output costs GBP 3,400 at restart and saves GBP 2,248); with
-`H = 5 h`, `a = +6.9` (OCGT shuts down first).
+An OCGT example (`c = 74.92`, `S = 175.7`, `m = 50 %`, `MDT = 0.5 h`, so the
+restart costs `S/m = 351.4` GBP per MW of output removed): with `H = 0.5 h`,
+`a = 74.92 - 702.8 = -627.9` (wind first); with `H = 2 h`, `a = -100.8` (wind
+first); with `H = 3 h`, `a = -42.2` (wind first: shutting 20 MW of capacity to
+remove 10 MW of output costs GBP 3,514 at restart and saves GBP 2,248); with
+`H = 5 h`, `a = +4.6` (OCGT shuts down first).
 
 ## 4 Outputs
 
@@ -184,6 +211,12 @@ after = this rule. Golden numeric reports: `docs/dev/p0-reports/r12-golden/`.
 | VALUE 101 two_year (C5), 2025 | 1 | 0.5 h | thermal running range 0.16, VRE 0.84 | CCGT +0.16 MWh, curtailment +0.16 MWh, emissions +0.06 tCO2, system cost +GBP 10.4 (one period) |
 | VALUE 101 two_year (C5), 2026 | 2 | 0.5 h | VRE 8.37 | none |
 | GBP1 public2 2025 (C9, local only) | 357 | 3.77 h | thermal running range 190.7 (2 periods), hydro 91,515, VRE 21,996, import 3,750 | none: curtailment 1.735 TWh, CCGT 67.53 TWh, OCGT 1.47 TWh, emissions 27.56 MtCO2, headline operating cost GBP 3,880.9 m all bit-identical |
+
+R3-3 (A24-4) restated the restart costs in 2025 GBP. The reference runs do not
+change: C1-C6 (VALUE 101), C9 (GBP1 public2 2025) and C10 (R029 public2 2025)
+are bit-identical apart from the restart table sha256, because no shutdown
+segment is priced against VRE in them (golden revisions C1-C4 r16/r16/r17/r16,
+C5 r15, C6 r13, C9 r5, C10 r1).
 
 Why so small: down regulation (realised demand below the forecast after
 storage, exports and flexible demand) occurs almost only in periods whose

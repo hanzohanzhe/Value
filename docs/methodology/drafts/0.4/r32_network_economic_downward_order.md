@@ -49,8 +49,11 @@ online and fully loaded, as in R1-2):
 
 * `c_k = SRMC_k x market.dec_multiplier - support_k` is the P0-8b dec price.
 * `m_k` minimum stable fraction (CCGT 0.50, OCGT 0.50, biomass 0.35),
-  `S_k(H)` restart cost per MW of capacity (CCGT 110 / 130 / 150 GBP/MW hot /
-  warm / cold, hot below 12 h, warm up to 48 h; OCGT 170; biomass 125),
+  `S_k(H)` restart cost per MW of capacity in 2025 GBP (CCGT 113.7 / 134.4 /
+  155.0 GBP/MW hot / warm / cold, hot below 12 h, warm up to 48 h; OCGT 175.7;
+  biomass 129.2; the A22 values 110 / 130 / 150, 170 and 125 in 2024 GBP
+  restated by the CPI factor 1.0336, decision A24-4, R3-3, staged PSM 1.6.0;
+  see `r12_economic_downward_order.md` section 2a),
   `T_k` minimum down time (6 h / 0.5 h / 6 h). Removing 1 MW of output at
   minimum stable generation shuts `1/m_k` MW of capacity, which costs
   `S_k / m_k` at restart and saves `c_k` per hour of downtime (A22a).
@@ -97,13 +100,15 @@ OCGT 20 MWh scheduled at `c = 75`, wind 30 MWh, 25 MWh to reduce:
 
 | H | a(H) | Result |
 | --- | --- | --- |
-| 5 h | 75 - 170 / (0.5 x 5) = 7 | OCGT 20 -> 0, wind 30 -> 25 (restart GBP 1,700 < saving GBP 3,750) |
-| 3 h | 75 - 170 / 1.5 = -38.3 | OCGT 20 -> 10 (running range only), wind 30 -> 15 |
+| 5 h | 75 - 175.7 / (0.5 x 5) = 4.72 | OCGT 20 -> 0, wind 30 -> 25 (restart of the 20 MW shut GBP 3,514 < saving of the 10 MWh x 5 h GBP 3,750) |
+| 3 h | 75 - 175.7 / 1.5 = -42.1 | OCGT 20 -> 10 (running range only), wind 30 -> 15 |
 | P0-8b | — | OCGT 20 -> 0, wind 30 -> 25 regardless of H |
 
 The same numbers hold in a two-zone LP where the north-south boundary forces
 the north down by 25 MWh while a GBP 90 southern unit covers the south, and
-the independent PuLP/CBC oracle finds the same dispatch. A CCGT at `c = 55`
+the independent PuLP/CBC oracle finds the same dispatch (the live staged
+zonal Run of the test file uses a GBP 100 southern unit, see R3-3 report on a
+solver fragility at GBP 90). A CCGT at `c = 55`
 with H = 3 h (< 6 h) reduces its running range, then all wind, and only then
 part of its shutdown segment.
 
@@ -136,6 +141,13 @@ part of its shutdown segment.
   so the bid ledgers gain 40 rows. Dispatch, curtailment and costs move only
   by solver tolerance (at most 1.4e-7 MWh and 9.3e-6 GBP). Numeric reports:
   `docs/dev/p0-reports/r32-golden/`.
+* R3-3 (A24-4, restart costs in 2025 GBP; golden C7 r14, C8 r16): C7 changes
+  only the restart table sha in the rule record and extension. In C8 the
+  CCGT last-resort shutdown dec price moves from -373.5 to -388.3 GBP/MWh
+  (66.5 - 113.7 / 0.25); it is still never accepted, and dispatch, curtailment
+  and costs move only by solver tolerance (at most 2.2e-10 MWh per period and
+  5.3e-7 GBP on the day). Numeric report
+  `docs/dev/p0-reports/r33-golden/C8-r16.json`.
 
 ## 6 Edits for the 0.3 text
 

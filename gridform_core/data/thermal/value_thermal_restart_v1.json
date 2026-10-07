@@ -1,12 +1,25 @@
 {
   "schema_version": "value.thermal-restart-table/v1",
   "table_id": "value-thermal-restart-v1",
-  "status": "AUTHOR REVIEWED (DECISIONS A22, 2026-10-07)",
-  "acceptance": "DECISIONS A22: CCGT hot/warm/cold restart GBP 110/130/150 per MW chosen by the expected downtime H (< 12 h hot, 12-48 h warm, > 48 h cold); OCGT GBP 170 per MW (wear plus start-up fuel and carbon, the same basis as the other technologies); biomass GBP 125 per MW; minimum stable generation CCGT 50 %, OCGT 50 %, biomass 35 %; minimum down time 6 h / 0.5 h / 6 h. H = (number of consecutive surplus periods of the day-ahead forecast from the current period) x 0.5 h; a unit may enter the shutdown segment only when H >= its minimum down time.",
-  "applies_to": "value-corrected profile only (correction r12.economic-downward-order, decisions A19 and A22). The doctoral profile keeps the thesis curtail-cost order (Q1).",
+  "table_revision": "2 (DECISIONS A24-4, correction r33.restart-cost-price-base-2025): restart costs restated from 2024 GBP to the model's 2025 price base",
+  "status": "AUTHOR REVIEWED (DECISIONS A22, 2026-10-07); price base converted per DECISIONS A24-4 (2026-10-07)",
+  "acceptance": "DECISIONS A22: CCGT hot/warm/cold restart GBP 110/130/150 per MW chosen by the expected downtime H (< 12 h hot, 12-48 h warm, > 48 h cold); OCGT GBP 170 per MW (wear plus start-up fuel and carbon, the same basis as the other technologies); biomass GBP 125 per MW; minimum stable generation CCGT 50 %, OCGT 50 %, biomass 35 %; minimum down time 6 h / 0.5 h / 6 h. H = (number of consecutive surplus periods of the day-ahead forecast from the current period) x 0.5 h; a unit may enter the shutdown segment only when H >= its minimum down time. The A22 values are 2024 GBP (restart_cost_gbp2024_per_mw); DECISIONS A24-4 restates them in the price base of the model's cost parameters, the same basis as the fuel and carbon prices (restart_cost_gbp_per_mw, 2025 GBP, price_base).",
+  "applies_to": "value-corrected profile only: the default PSM (correction r12.economic-downward-order, decisions A19, A22, A22a) and the network models' dec order (r32.network-economic-downward-order, decision A24-3). The doctoral profile keeps the thesis curtail-cost order (Q1).",
   "compiled_from": "docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md section 4 (unit R1-1; values 4.5, conversion 4.2, per-MWh comparison 4.6)",
   "access_date": "2026-10-07",
-  "price_basis": "2024 GBP per MW of capacity per start: wear (Kumar et al. 2012 median, lower bound) plus start-up fuel and carbon (Staffell & Green 2015, GB), converted with Bank of England annual exchange rates and the ONS CPI (reference statistics 4.2). The model's money is constant base-year GBP undiscounted (Q4/P4-02); its base year follows each asset's cost source.",
+  "price_basis": "2025 GBP per MW of capacity per start (restart_cost_gbp_per_mw). Built from wear (Kumar et al. 2012 median, lower bound) plus start-up fuel and carbon (Staffell & Green 2015, GB), converted to 2024 GBP with Bank of England annual exchange rates and the ONS CPI (reference statistics 4.2), then to 2025 GBP by price_base.factor (reference statistics 4.2a). The model's money is constant base-year GBP, undiscounted (DECISIONS A6: every amount in start-year money).",
+  "price_base": {
+    "currency": "GBP",
+    "from_year": 2024,
+    "to_year": 2025,
+    "index": "ONS CPI INDEX 00: ALL ITEMS (D7BT, 2015=100), annual average (R11)",
+    "index_from_year": 133.9,
+    "index_to_year": 138.4,
+    "factor": 1.0336,
+    "factor_rule": "factor = index_to_year / index_from_year; restart_cost_gbp_per_mw = round(restart_cost_gbp2024_per_mw x index_to_year / index_from_year, 1)",
+    "base_year_evidence": "2025 is the start year of every shipped study (R029 2025-2034, VALUE 101 2025-2026, GBP1 2025), the year in which DECISIONS A6 states all money, and the declared base year of the model's dated cost inputs (storage_technology_catalogue.json currency_base_year 2025; pumped-hydro CAPEX and the policy budgets in 2025 GBP, methodology core.md and r029_cem.md). The fuel and carbon prices (fleet fuel_cost, carbon_price per MWh) carry no price year of their own and are, by A6, start-year (2025) money.",
+    "verification": "The 2024 annual average (133.9) was read on the ONS series page by unit R1-1 (2026-10-07, [V]). The 2025 annual average (138.4) is the mean of the twelve 2025 monthly D7BT values as known to unit R3-3, which had no web access; it was not re-read online ([NV], reference statistics 4.2a). An error of 0.1 index point moves every value by 0.07 % (under GBP 0.2 per MW)."
+  },
   "rule": {
     "running_range": "Output above min_stable_fraction x the asset's online capacity is reduced without a restart: its cost of reduction is minus the avoided short-run cost c (fuel + carbon + unit_time_cost (VOM) + base, i.e. gen_cost), so it is always cheaper than curtailing VRE (cost 0).",
     "online_capacity": "The aggregate fleet has no commitment state; its online capacity in a period is its accepted day-ahead output of that period (units scheduled day-ahead are online and fully loaded).",
@@ -16,24 +29,27 @@
   "technologies": {
     "CCGT": {
       "asset_match": "GasGenerator whose name does not contain OCGT",
-      "restart_cost_gbp_per_mw": {"hot": 110.0, "warm": 130.0, "cold": 150.0},
+      "restart_cost_gbp_per_mw": {"hot": 113.7, "warm": 134.4, "cold": 155.0},
+      "restart_cost_gbp2024_per_mw": {"hot": 110.0, "warm": 130.0, "cold": 150.0},
       "min_stable_fraction": 0.5,
       "min_down_time_h": 6.0,
-      "grades": "restart: R1 wear 31/49/71 [E] + R3 fuel and carbon 80 [E]; min stable: R4/R5 45 %, R6 50 %, Elexon SEL/MEL 47-60 % [V]; min down: Elexon MZT 360 min [V] (literature 1-2 h)"
+      "grades": "restart: R1 wear 31/49/71 [E] + R3 fuel and carbon 80 [E] (2024 GBP); min stable: R4/R5 45 %, R6 50 %, Elexon SEL/MEL 47-60 % [V]; min down: Elexon MZT 360 min [V] (literature 1-2 h)"
     },
     "OCGT": {
       "asset_match": "GasGenerator whose name contains OCGT",
-      "restart_cost_gbp_per_mw": {"hot": 170.0, "warm": 170.0, "cold": 170.0},
+      "restart_cost_gbp_per_mw": {"hot": 175.7, "warm": 175.7, "cold": 175.7},
+      "restart_cost_gbp2024_per_mw": {"hot": 170.0, "warm": 170.0, "cold": 170.0},
       "min_stable_fraction": 0.5,
       "min_down_time_h": 0.5,
-      "grades": "restart: R1 wear 29 [E] + R3 fuel and carbon 140 [E] (warm/cold [NV], equal to hot); min stable: R6 50 % [E] (R5 20 %, one Elexon unit 90 %); min down: one period (Elexon MZT 20 min [V], R5 0)"
+      "grades": "restart: R1 wear 29 [E] + R3 fuel and carbon 140 [E] (2024 GBP; warm/cold [NV], equal to hot); min stable: R6 50 % [E] (R5 20 %, one Elexon unit 90 %); min down: one period (Elexon MZT 20 min [V], R5 0)"
     },
     "biomass": {
       "asset_match": "BiomassGenerator (large GB biomass units are coal conversions; coal used as proxy)",
-      "restart_cost_gbp_per_mw": {"hot": 125.0, "warm": 125.0, "cold": 125.0},
+      "restart_cost_gbp_per_mw": {"hot": 129.2, "warm": 129.2, "cold": 129.2},
+      "restart_cost_gbp2024_per_mw": {"hot": 125.0, "warm": 125.0, "cold": 125.0},
       "min_stable_fraction": 0.35,
       "min_down_time_h": 6.0,
-      "grades": "restart: R1 large subcritical coal wear 53 [E] + R3 large coal fuel and carbon 72 [E] (warm/cold [NV], equal to hot); min stable: Drax SEL/MEL 33 % [V], R5 38 %; min down: Elexon MZT 360 min [V] (R5 coal 8 h)"
+      "grades": "restart: R1 large subcritical coal wear 53 [E] + R3 large coal fuel and carbon 72 [E] (2024 GBP; warm/cold [NV], equal to hot); min stable: Drax SEL/MEL 33 % [V], R5 38 %; min down: Elexon MZT 360 min [V] (R5 coal 8 h)"
     }
   },
   "sources": {
@@ -44,6 +60,6 @@
     "R6": "Badesa, Teng, Strbac, Simultaneous Scheduling of Multiple Frequency Services in Stochastic Unit Commitment, IEEE Trans. Power Systems 34(5), 2019",
     "R8": "Elexon Insights Solution (BMRS) API, dynamic data SEL/MZT/MNZT and physical data MEL, snapshot 2026-09-01",
     "R10": "Bank of England XUAAUSS / XUAAERS annual average spot rates",
-    "R11": "ONS CPI INDEX 00: ALL ITEMS (D7BT, 2015=100)"
+    "R11": "ONS CPI INDEX 00: ALL ITEMS (D7BT, 2015=100), https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23"
   }
 }

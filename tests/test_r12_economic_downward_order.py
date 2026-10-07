@@ -100,10 +100,11 @@ class EconomicDownwardOrderTests(unittest.TestCase):
     """Trigger fixture of r12.economic-downward-order: the three toys of the task."""
 
     def test_a_fuel_saving_above_restart_cost_reduces_thermal_first(self):
-        # OCGT c = 75, S = 170, m = 0.5, minimum down time 0.5 h; H = 5 h (10
-        # surplus periods): removing the last 10 MW of output shuts 20 MW of
-        # capacity, restart 170 x 20 = 3,400 < saving 75 x 10 x 5 = 3,750;
-        # a = 75 - 170/(0.5 x 5) = 7 > 0, so the shutdown precedes wind.
+        # OCGT c = 75, S = 175.7 (2025 GBP, A24-4), m = 0.5, minimum down time
+        # 0.5 h; H = 5 h (10 surplus periods): removing the last 10 MW of
+        # output shuts 20 MW of capacity, restart 175.7 x 20 = 3,514 < saving
+        # 75 x 10 x 5 = 3,750; a = 75 - 175.7/(0.5 x 5) = 4.72 > 0, so the
+        # shutdown precedes wind.
         ocgt, vre = gas("OCGT", 75.0, 50.0, 50.0, 20.0), wind(30.0)
         tally = corrected.DownwardTally()
         remaining, reductions, gen_list = stack([ocgt, vre], [(ocgt, 20.0), (vre, 30.0)], 25.0, 5.0, tally)
@@ -114,14 +115,14 @@ class EconomicDownwardOrderTests(unittest.TestCase):
         self.assertEqual(tally.power_mw[corrected.SEGMENT_THERMAL_RUNNING], 10.0)
         self.assertEqual(tally.power_mw[corrected.SEGMENT_THERMAL_SHUTDOWN_SAVING], 10.0)
         self.assertEqual(tally.power_mw[corrected.SEGMENT_VRE], 5.0)
-        # CCGT: c = 55, S(6 h) = 110 (hot), m = 0.5, H = 6 h >= minimum down
-        # time 6 h: a = 55 - 110/3 = 18.33 > 0.
+        # CCGT: c = 55, S(6 h) = 113.7 (hot), m = 0.5, H = 6 h >= minimum down
+        # time 6 h: a = 55 - 113.7/3 = 17.1 > 0.
         ccgt, vre = gas("CCGT", 55.0, 100.0, 100.0, 40.0), wind(30.0)
         remaining, reductions, _ = stack([ccgt, vre], [(ccgt, 40.0), (vre, 30.0)], 45.0, 6.0)
         self.assertEqual(reductions, [[ccgt, 40.0], [vre, 5.0]])
 
     def test_b_restart_cost_above_saving_curtails_wind_first(self):
-        # Same OCGT, H = 0.5 h: a = 75 - 170/0.25 = -605 <= 0; the running range
+        # Same OCGT, H = 0.5 h: a = 75 - 175.7/0.25 = -627.8 <= 0; the running range
         # (20 -> 10 MW) still goes first, then wind, the shutdown last.
         ocgt, vre = gas("OCGT", 75.0, 50.0, 50.0, 20.0), wind(30.0)
         tally = corrected.DownwardTally()
@@ -130,9 +131,9 @@ class EconomicDownwardOrderTests(unittest.TestCase):
         self.assertEqual(reductions, [[ocgt, 10.0], [vre, 15.0]])
         self.assertEqual(output(gen_list, ocgt), 10.0)
         self.assertEqual(tally.power_mw[corrected.SEGMENT_THERMAL_SHUTDOWN_SAVING], 0.0)
-        # H = 3 h (the review's case): restart 170 x 20 = 3,400 > saving
-        # 75 x 10 x 3 = 2,250, a = 75 - 170/1.5 = -38.3 <= 0: wind first,
-        # although c x H = 225 > S = 170 per MW (the A22 form c - S/H would
+        # H = 3 h (the review's case): restart 175.7 x 20 = 3,514 > saving
+        # 75 x 10 x 3 = 2,250, a = 75 - 175.7/1.5 = -42.1 <= 0: wind first,
+        # although c x H = 225 > S = 175.7 per MW (the A22 form c - S/H would
         # have shut the OCGT first).
         ocgt, vre = gas("OCGT", 75.0, 50.0, 50.0, 20.0), wind(30.0)
         tally = corrected.DownwardTally()
@@ -140,7 +141,7 @@ class EconomicDownwardOrderTests(unittest.TestCase):
         self.assertEqual(remaining, 0.0)
         self.assertEqual(reductions, [[ocgt, 10.0], [vre, 15.0]])
         self.assertEqual(tally.power_mw[corrected.SEGMENT_THERMAL_SHUTDOWN_SAVING], 0.0)
-        # H = 2 h: a = 75 - 170 = -95, still wind first; once wind is gone the
+        # H = 2 h: a = 75 - 175.7 = -100.7, still wind first; once wind is gone the
         # shutdown follows (after VRE, not refused).
         ocgt, vre = gas("OCGT", 75.0, 50.0, 50.0, 20.0), wind(30.0)
         tally = corrected.DownwardTally()
@@ -148,7 +149,7 @@ class EconomicDownwardOrderTests(unittest.TestCase):
         self.assertEqual(remaining, 0.0)
         self.assertEqual(reductions, [[ocgt, 15.0], [vre, 30.0]])
         self.assertEqual(tally.power_mw[corrected.SEGMENT_THERMAL_SHUTDOWN_AFTER_VRE], 5.0)
-        # CCGT with H = 3 h < minimum down time 6 h (a = 55 - 110/1.5 = -18.3
+        # CCGT with H = 3 h < minimum down time 6 h (a = 55 - 113.7/1.5 = -20.8
         # anyway): it may not shut down while other down regulation is left
         # (last resort after wind).
         ccgt, vre = gas("CCGT", 55.0, 100.0, 100.0, 40.0), wind(30.0)
@@ -192,13 +193,19 @@ class EconomicDownwardOrderTests(unittest.TestCase):
 
 class SegmentRuleTests(unittest.TestCase):
     def test_restart_table_holds_the_a22_values(self):
+        # A22 values (2024 GBP) restated in 2025 GBP (A24-4, factor 138.4 / 133.9).
         parameters = corrected.restart_parameters()
         self.assertEqual(set(parameters), {"CCGT", "OCGT", "biomass"})
         ccgt, ocgt, bio = parameters["CCGT"], parameters["OCGT"], parameters["biomass"]
         self.assertEqual([ccgt.restart_cost(h) for h in (0.5, 11.5, 12.0, 48.0, 48.5)],
-                         [110.0, 110.0, 130.0, 130.0, 150.0])
-        self.assertEqual([ocgt.restart_cost(h) for h in (0.5, 60.0)], [170.0, 170.0])
-        self.assertEqual([bio.restart_cost(h) for h in (0.5, 60.0)], [125.0, 125.0])
+                         [113.7, 113.7, 134.4, 134.4, 155.0])
+        self.assertEqual([ocgt.restart_cost(h) for h in (0.5, 60.0)], [175.7, 175.7])
+        self.assertEqual([bio.restart_cost(h) for h in (0.5, 60.0)], [129.2, 129.2])
+        a22 = {name: row["restart_cost_gbp2024_per_mw"]
+               for name, row in corrected.restart_table()["technologies"].items()}
+        self.assertEqual(a22, {"CCGT": {"hot": 110.0, "warm": 130.0, "cold": 150.0},
+                               "OCGT": {"hot": 170.0, "warm": 170.0, "cold": 170.0},
+                               "biomass": {"hot": 125.0, "warm": 125.0, "cold": 125.0}})
         self.assertEqual((ccgt.min_stable_fraction, ocgt.min_stable_fraction, bio.min_stable_fraction),
                          (0.5, 0.5, 0.35))
         self.assertEqual((ccgt.min_down_time_h, ocgt.min_down_time_h, bio.min_down_time_h), (6.0, 0.5, 6.0))
@@ -211,21 +218,21 @@ class SegmentRuleTests(unittest.TestCase):
         # minimum stable generation is 1/m MW of capacity.
         parameters = corrected.restart_parameters()
         ccgt, ocgt, bio = parameters["CCGT"], parameters["OCGT"], parameters["biomass"]
-        self.assertAlmostEqual(ccgt.net_saving(55.07, 6.0), 55.07 - 110.0 / 3.0)
-        self.assertAlmostEqual(ccgt.net_saving(55.07, 14.0), 55.07 - 130.0 / 7.0)
-        self.assertAlmostEqual(ocgt.net_saving(75.0, 3.0), 75.0 - 340.0 / 3.0)
-        self.assertAlmostEqual(ocgt.net_saving(75.0, 5.0), 7.0)
-        self.assertAlmostEqual(bio.net_saving(85.0, 6.0), 85.0 - 125.0 / (0.35 * 6.0))
-        # Break-even downtimes of reference statistics 4.6 (GBP1 costs).
-        self.assertAlmostEqual(ccgt.break_even_hours(55.07), 3.99, places=2)
-        self.assertAlmostEqual(ocgt.break_even_hours(74.92), 4.54, places=2)
-        self.assertAlmostEqual(bio.break_even_hours(85.0), 4.20, places=2)
+        self.assertAlmostEqual(ccgt.net_saving(55.07, 6.0), 55.07 - 113.7 / 3.0)
+        self.assertAlmostEqual(ccgt.net_saving(55.07, 14.0), 55.07 - 134.4 / 7.0)
+        self.assertAlmostEqual(ocgt.net_saving(75.0, 3.0), 75.0 - 351.4 / 3.0)
+        self.assertAlmostEqual(ocgt.net_saving(75.0, 5.0), 4.72)
+        self.assertAlmostEqual(bio.net_saving(85.0, 6.0), 85.0 - 129.2 / (0.35 * 6.0))
+        # Break-even downtimes of reference statistics 4.6 (GBP1 costs, 2025 GBP).
+        self.assertAlmostEqual(ccgt.break_even_hours(55.07), 4.13, places=2)
+        self.assertAlmostEqual(ocgt.break_even_hours(74.92), 4.69, places=2)
+        self.assertAlmostEqual(bio.break_even_hours(85.0), 4.34, places=2)
         self.assertEqual(ocgt.break_even_hours(0.0), float("inf"))
         # Restart cost of the output actually removed equals S x capacity shut.
         removed_mw, horizon = 10.0, 3.0
         capacity_shut = removed_mw / ocgt.min_stable_fraction
         self.assertAlmostEqual(ocgt.net_saving(75.0, horizon) * removed_mw * horizon,
-                               75.0 * removed_mw * horizon - 170.0 * capacity_shut)
+                               75.0 * removed_mw * horizon - 175.7 * capacity_shut)
         zero = corrected.RestartParameters("x", {"hot": 1.0, "warm": 1.0, "cold": 1.0}, 0.0, 1.0, 12.0, 48.0)
         with self.assertRaises(ValueError):
             zero.net_saving(50.0, 6.0)
@@ -238,8 +245,9 @@ class SegmentRuleTests(unittest.TestCase):
         self.assertIsNone(corrected.restart_technology(kernel.NuclearGenerator("Nuclear", 0, 0, 0, 1, 1, 0, 0, 0)))
 
     def test_zero_net_saving_ties_go_to_vre(self):
-        # OCGT c = 85, H = 4 h: a = 85 - 170/(0.5 x 4) = 0 -> not > 0, wind first.
-        ocgt, vre = gas("OCGT", 85.0, 50.0, 50.0, 20.0), wind(30.0)
+        # OCGT c = 87.85, H = 4 h: a = 87.85 - 175.7/(0.5 x 4) = 0 -> not > 0, wind first.
+        ocgt, vre = gas("OCGT", 87.85, 50.0, 50.0, 20.0), wind(30.0)
+        self.assertEqual(corrected.restart_parameters()["OCGT"].net_saving(87.85, 4.0), 0.0)
         _, reductions, _ = stack([ocgt, vre], [(ocgt, 20.0), (vre, 30.0)], 25.0, 4.0)
         self.assertEqual(reductions, [[ocgt, 10.0], [vre, 15.0]])
 
@@ -254,15 +262,15 @@ class SegmentRuleTests(unittest.TestCase):
         remaining, reductions, _ = stack([ccgt, unit, vre], [(ccgt, 40.0), (unit, 20.0), (vre, 5.0)], 40.0, 6.0,
                                          tally)
         # Biomass running 13 (c = 85), CCGT running 10 (c = 55), biomass
-        # shutdown 7 (a = 85 - 125/(0.35 x 6) = 25.5), then wind 5; 5 MW are
+        # shutdown 7 (a = 85 - 129.2/(0.35 x 6) = 23.5), then wind 5; 5 MW are
         # left (spill).
         self.assertEqual(reductions, [[unit, 20.0], [ccgt, 10.0], [vre, 5.0]])
         self.assertAlmostEqual(remaining, 5.0)
         self.assertAlmostEqual(unit.have_gen_energy, 10.0)
         self.assertAlmostEqual(tally.power_mw[corrected.SEGMENT_THERMAL_SHUTDOWN_SAVING], 7.0)
         # 25 MW to remove: the CCGT running range (55) now ranks above the
-        # biomass shutdown (25.5), so the biomass stops only 2 MW (with the
-        # A22 form 85 - 125/6 = 64.2 it would have stopped all 7 MW first).
+        # biomass shutdown (23.5), so the biomass stops only 2 MW (with the
+        # A22 form 85 - 129.2/6 = 63.5 it would have stopped all 7 MW first).
         ccgt = gas("CCGT", 55.0, 100.0, 10.0, 40.0)
         unit = biomass(20.0, 20.0, 20.0)
         unit.have_gen_energy = 30.0

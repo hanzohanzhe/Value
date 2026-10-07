@@ -330,7 +330,25 @@ def restart_table() -> dict[str, Any]:
             raise ValueError(f"Minimum stable generation of {technology} out of range")
         if float(row["min_down_time_h"]) <= 0:
             raise ValueError(f"Minimum down time of {technology} must be positive")
+        _check_price_base(table, technology, row)
     return table
+
+
+def _check_price_base(table: Mapping[str, Any], technology: str, row: Mapping[str, Any]) -> None:
+    """A24-4: the costs in use are the author-reviewed 2024 GBP values restated
+    in the model's price base by the declared CPI ratio (rounded to 0.1 GBP)."""
+
+    base = table.get("price_base")
+    if base is None:
+        return
+    ratio = float(base["index_to_year"]) / float(base["index_from_year"])
+    if abs(round(ratio, 4) - float(base["factor"])) > 1e-12:
+        raise ValueError("Restart table price_base factor does not match its index ratio")
+    original = row[f"restart_cost_gbp{int(base['from_year'])}_per_mw"]
+    for key, value in row["restart_cost_gbp_per_mw"].items():
+        if abs(round(float(original[key]) * ratio, 1) - float(value)) > 1e-9:
+            raise ValueError(f"Restart cost of {technology} ({key}) is not its "
+                             f"{int(base['from_year'])} value in {int(base['to_year'])} GBP")
 
 
 def restart_table_sha256() -> str:

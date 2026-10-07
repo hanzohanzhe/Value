@@ -60,6 +60,7 @@ existing installation is upgraded side by side, as described in
 | R1-2 (A19/A22, economic down-regulation order) | — | `r12.economic-downward-order` (method change, explicit Study confirmation) |
 | R3-2 (A24-3, economic down-regulation order of the network models) | — | `r32.network-economic-downward-order` (staged / zonal path, which runs only under the corrected profile, Q3; method change, explicit Study confirmation) |
 | R1-3 (A20, per-type battery caps) | — | `r13.per-type-battery-caps` (method change, explicit Study confirmation; supersedes `p07.power-battery-pool`) |
+| R3-3 (A24-4, restart costs in 2025 GBP) | — | `r33.restart-cost-price-base-2025` (parameter restatement used by `r12.*` and `r32.*`; recorded on the default PSM 6.6.0 and staged PSM 1.6.0 ledger bumps, explicit Study confirmation) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -108,6 +109,14 @@ unattributed.
   each CCGT dec becomes two bids, 40 more bid-ledger rows; dispatch, curtailment
   and costs move only by solver tolerance, at most 1.4e-7 MWh); numeric
   reports `docs/dev/p0-reports/r32-golden/`.
+  R3-3 (A24-4, `r33.restart-cost-price-base-2025`) revised C1-C10 once for
+  the restart costs in 2025 GBP: C1-C6, C9 and C10 change only the
+  `restart_table_sha256` column (no priced shutdown segment is reached, so
+  dispatch, curtailment and costs are bit-identical, GBP1 and R029 2025
+  included); C7 the rule record and extension sha; C8 the CCGT last-resort
+  shutdown dec prices (-373.5 -> -388.3 GBP/MWh) and solver-tolerance
+  movements of the zonal LP; numeric report
+  `docs/dev/p0-reports/r33-golden/C8-r16.json`.
 
 ### Known issues
 
@@ -136,6 +145,18 @@ unattributed.
   packs are unchanged. Resolved in the local revisions R029 public2 and GBP1
   public2 `@v3` (A24-1, see "The extra hour of the hourly solar profile"
   below); the validation layers still do not check a VRE profile's clock.
+
+- **Zonal LP numerical fragility (found in R3-3).** For some coefficient
+  combinations the zonal redispatch LP (HiGHS dual simplex through SciPy
+  1.8.1, tolerances 1e-9) stops in the `physical_throughput` phase with
+  "optimal for the scaled model, NOTSET in the unscaled model"
+  (`GF_ZONAL_SOLVER_FAILURE`). In the two-zone live toy of
+  `tests/test_r32_network_economic_dec.py` it happens with an OCGT restart
+  cost of 173-178 GBP/MW and a GBP 90 southern unit, and with other price
+  pairs (OCGT 80 / CCGT 95). The rule is not involved; the zonal module
+  (4.0.0) and solver contract v4 are unchanged in R3-3. A retry policy or a
+  scaling fix belongs to the network owner; the live toy now uses a GBP 100
+  southern unit (documented in the test).
 
 ### Migration notes
 
@@ -711,6 +732,29 @@ unattributed.
   against the CBC oracle, a live staged zonal Run) reproduce the R1-2
   examples: OCGT at H = 5 h shuts before wind, at H = 3 h wind is curtailed
   first.
+
+### Restart costs in the model's price base (A24-4, corrected profile)
+
+- A24-4 (corrected profile, `r33.restart-cost-price-base-2025`): the restart
+  costs of `gridform_core/data/thermal/value_thermal_restart_v1.json` were
+  author-reviewed in 2024 GBP (A22). They are compared with fuel, carbon and
+  variable costs, which are start-year money (A6); every shipped study starts
+  in 2025, and the dated cost inputs are declared in 2025 GBP (storage
+  catalogue `currency_base_year`, pumped-hydro CAPEX, policy budgets). The
+  table now uses the A22 values restated by the UK CPI (ONS D7BT annual
+  averages 138.4 / 133.9 = 1.0336, rounded to GBP 0.1): CCGT 113.7 / 134.4 /
+  155.0 GBP/MW hot / warm / cold, OCGT 175.7, biomass 129.2. It keeps the
+  2024 values, the index values, the factor and the source (`price_base`),
+  and the loader refuses a table whose values do not match them. The 2025
+  index value still has to be checked once against the ONS series (reference
+  statistics 4.2a). Minimum stable generation, minimum down times and the
+  rule are unchanged; break-even downtimes rise by 3.4 % (CCGT 4.13 h, OCGT
+  4.69 h, biomass 4.34 h at the thesis costs).
+- `value-bid-at-cost-psm` 6.5.0 → 6.6.0 and `value-staged-bid-at-cost-psm`
+  1.5.0 → 1.6.0, both with `requires_user_opt_in` (Q13). The doctoral profile
+  does not use the table.
+- Effect: none on the reference runs except C8 (the CCGT last-resort dec
+  price), because no priced shutdown segment is reached in them.
 
 ### Per-type power-battery expansion caps (A20, corrected profile)
 

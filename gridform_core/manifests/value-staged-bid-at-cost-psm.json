@@ -2,7 +2,7 @@
   "schema_version": "value.module/v2",
   "id": "value-staged-bid-at-cost-psm",
   "name": "VALUE staged national bid-at-cost PSM",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "scientific_version": "value-staged-network-restart-economics-2026.10.07",
   "slot": "psm",
   "implementation": "gridform_core.builtin.value_modules:ValueStagedBidAtCostPSM",

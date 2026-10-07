@@ -689,7 +689,7 @@ class StagedBidAtCostPSM:
     """Sequential forecast-only scheduling followed by realised balancing."""
 
     id = "force-staged-bid-at-cost-psm"
-    version = "1.5.0"
+    version = "1.6.0"
     execution_kind = "live_module"
 
     def __init__(

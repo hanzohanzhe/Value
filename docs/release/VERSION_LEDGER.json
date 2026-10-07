@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.5.0",
+      "current_version": "6.6.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -162,6 +162,16 @@
             "r12.economic-downward-order"
           ],
           "reason": "Decisions A19 and A22: in the corrected profile the curtailment-branch down regulation no longer reduces every gas or biomass unit before VRE. A gas or biomass unit is reduced before VRE down to its minimum stable generation (CCGT/OCGT 50 %, biomass 35 % of its accepted output) because that saves its fuel, carbon and variable cost without a restart; below it, shutting units down comes before curtailing VRE only when the net saving c - S(H)/(m H) is positive (m: minimum stable fraction; restart cost S per MW of capacity: CCGT 110/130/150, OCGT 170, biomass 125 GBP/MW; expected downtime H from the day-ahead forecast surplus run, at least the minimum down time 6 h / 0.5 h / 6 h). Curtailment, thermal output, emissions, prices, costs and investment paths of corrected Runs change (method upgrade), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis curtail-cost order bit for bit.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.5.0",
+          "to": "6.6.0",
+          "package": "R3-3",
+          "correction_ids": [
+            "r33.restart-cost-price-base-2025"
+          ],
+          "reason": "Decision A24-4: the restart costs of the thermal restart table (gridform_core/data/thermal/value_thermal_restart_v1.json, author-reviewed in A22 in 2024 GBP) are restated in the price base of the model's cost parameters, 2025 GBP, the same basis as the fuel and carbon prices (DECISIONS A6: start-year money; every shipped study starts in 2025): factor 1.0336 = ONS CPI D7BT annual average 2025 / 2024 = 138.4 / 133.9, so S = CCGT 113.7/134.4/155.0 GBP/MW hot/warm/cold, OCGT 175.7, biomass 129.2 (from 110/130/150, 170, 125). Minimum stable generation, minimum down times and the rule are unchanged. In the default PSM's economic down-regulation stack (r12.economic-downward-order) the net saving a(H) = c - S(H)/(m H) of a shutdown segment falls by 3.4 % of its restart term, so a shutdown that was just profitable can move after VRE (break-even downtime H* = S/(m c): CCGT 3.99 -> 4.13 h, OCGT 4.54 -> 4.69 h, biomass 4.20 -> 4.34 h at the thesis costs); curtailment, thermal output and costs of corrected Runs can change (method change), so saved Studies need explicit confirmation (Q13). The doctoral profile does not use the table.",
           "requires_user_opt_in": true
         }
       ]
@@ -266,7 +276,7 @@
     "value-staged-bid-at-cost-psm": {
       "baseline_version": "1.1.0",
       "baseline_scientific_version": "value-staged-national-market-2026.08.21",
-      "current_version": "1.5.0",
+      "current_version": "1.6.0",
       "bumps": [
         {
           "from": "1.1.0",
@@ -310,6 +320,16 @@
             "r32.network-economic-downward-order"
           ],
           "reason": "Decisions A19, A22, A22a and A24-3: in the network models (staged copperplate and zonal redispatch balancing, corrected profile only, Q3) a gas (CCGT, OCGT) or biomass unit is no longer reduced in one block before VRE. Rule set network-economic-v2 (network_method_rules ECONOMIC, thermal_shutdown = restart_cost_vs_avoided_cost_v1) splits its dec bid at minimum stable generation (CCGT/OCGT 50 %, biomass 35 % of its ahead schedule, the restart table of R1-2): the running range keeps the dec price c (SRMC x market.dec_multiplier - support) and is reduced before VRE; the shutdown segment (bid ...:down-shutdown:<asset>, dec class fuel_shutdown) is priced at the net saving a(H) = c - S(H)/(m H) (S: CCGT 110/130/150 GBP/MW hot/warm/cold by H, OCGT 170, biomass 125) and competes with VRE on price, after VRE at an equal band; when the expected downtime H is below the minimum down time (6 h / 0.5 h / 6 h) it is a last resort (class fuel_shutdown_last_resort, priced 0.01 below every other dec of the period). H = (1 + consecutive later periods whose forecast demand is covered by the declared VRE and nuclear availability) x period hours. Each staged market year records extensions.downward_restart_economics (value.network-downward-restart-economics/v1). Balancing dispatch, curtailment, settlement and investment income of staged Runs can change, so saved Studies need explicit confirmation (Q13). The copperplate (1.1.0) and zonal (4.0.0) balancing modules read the two new classes from the shared table without a version change: their clearing rule (price, then the shared class order) is unchanged. Scientific version value-staged-network-restart-economics-2026.10.07.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.5.0",
+          "to": "1.6.0",
+          "package": "R3-3",
+          "correction_ids": [
+            "r33.restart-cost-price-base-2025"
+          ],
+          "reason": "Decision A24-4: the restart costs of the thermal restart table (gridform_core/data/thermal/value_thermal_restart_v1.json, author-reviewed in A22 in 2024 GBP) are restated in the price base of the model's cost parameters, 2025 GBP, the same basis as the fuel and carbon prices (DECISIONS A6: start-year money; every shipped study starts in 2025): factor 1.0336 = ONS CPI D7BT annual average 2025 / 2024 = 138.4 / 133.9, so S = CCGT 113.7/134.4/155.0 GBP/MW hot/warm/cold, OCGT 175.7, biomass 129.2 (from 110/130/150, 170, 125). Minimum stable generation, minimum down times and the rule are unchanged. In the network models' dec order (r32.network-economic-downward-order, rule set network-economic-v2, whose record carries the table sha256) the shutdown-segment dec price a(H) = c - S(H)/(m H) changes accordingly, so balancing dispatch, curtailment and settlement of staged Runs can change (method change); saved Studies need explicit confirmation (Q13). Copperplate 1.1.0 and zonal 4.0.0 are unchanged.",
           "requires_user_opt_in": true
         }
       ]
