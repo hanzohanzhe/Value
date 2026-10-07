@@ -386,9 +386,16 @@ def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str
     methodology = recorded_methodology(run, run_root)
     applied = set(methodology.get("applied_correction_ids") or []) if methodology else set()
     descriptor = _run_descriptor(run, run_root)
+    # R4 R-低2: before a Run's inputs are frozen its fleet cannot be read; an
+    # unfinished Run does not show fleet-filtered advisories as if they applied
+    # (a generic biomass note on a pack without biomass).  They are evaluated
+    # once the frozen fleet is readable; advisories_provisional says so.
+    unknown_fleet_while_active = advisories_provisional(run) and descriptor.get("assets") is None
     rows: list[dict[str, Any]] = []
     for correction in load_catalogue().corrections.values():
         if correction.advisory is None or correction.id in applied:
+            continue
+        if unknown_fleet_while_active and "assets_any" in correction.applies_when:
             continue
         if not _applies(correction.applies_when, descriptor):
             continue
@@ -412,7 +419,7 @@ def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str
     }
     for advisory in generic_advisories():
         if advisory["applies_to"] == "fleet_assets":
-            if not _applies(advisory["applies_when"], descriptor):
+            if unknown_fleet_while_active or not _applies(advisory["applies_when"], descriptor):
                 continue
         elif not predicates.get(str(advisory["applies_to"])):
             continue
@@ -430,6 +437,16 @@ def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str
         })
     rank = {severity: index for index, severity in enumerate(SEVERITIES)}
     return sorted(rows, key=lambda row: (-rank[row["severity"]], row["id"]))
+
+
+def advisories_provisional(run: Mapping[str, Any]) -> bool:
+    """True while a Run is unfinished: its advisories are re-evaluated on completion (R4 R-低2).
+
+    Until a Run completes, its frozen fleet, resolved modules and data pack
+    may not be recorded yet, so the list can still grow or shrink.
+    """
+
+    return str(run.get("status") or "") in ACTIVE_STATUSES
 
 
 def advisory_summary(advisories: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -729,6 +746,7 @@ def present_scientific_status(run: MutableMapping[str, Any], run_root: Path) -> 
     advisories = evaluate_advisories(run, run_root)
     run["advisories"] = advisories
     run["advisory_summary"] = advisory_summary(advisories)
+    run["advisories_provisional"] = advisories_provisional(run)
     run["result_publication"] = result_publication(run, run_root, methodology, evidence)
     run["raw_invariant_failures"] = raw_invariant_failures(evidence)
     return run

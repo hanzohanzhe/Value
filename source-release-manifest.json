@@ -3859,8 +3859,8 @@
     },
     {
       "path": "app/features/workspace/runValidation.ts",
-      "sha256": "74853b321b273f122046df996d50991a8e226c4da0e8dda73f5f520daf7a1cd2",
-      "bytes": 26112,
+      "sha256": "dbfb0ebd2f1658b034a825d2a711cf03d56d6597423f18bc825992e7ed41b06a",
+      "bytes": 26597,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8650,8 +8650,8 @@
     },
     {
       "path": "gridform_core/result_advisories.py",
-      "sha256": "9b57cf62b5eeb73a32a4b8c7f3dd7d81f8ba74db11fbf5e4d024c90b10a45886",
-      "bytes": 36221,
+      "sha256": "3691cf3590848d5451b8d31220654ef962d72c747e8c554d0a3baff30c0f603c",
+      "bytes": 37199,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11000,8 +11000,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "dd6cd6bdd6feb907cecd54c521b3d8805dec4f7674a5c281cf6335fad38199e7",
-      "bytes": 3719,
+      "sha256": "f8e016d96ef02653d18e19a8cc9220b892a2c403cff40261e60be8aa8f03786c",
+      "bytes": 4309,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12800,8 +12800,8 @@
     },
     {
       "path": "tests/test_r4_reproduce_defects.py",
-      "sha256": "d2d80daa690b8a44710245855ef700ba9362e9dc558f8bc2d42c50f758f8af71",
-      "bytes": 10605,
+      "sha256": "cfbb0e128ed86838358b9c77f75ca9c43c8ff85fd72d9519e26c960c2214a172",
+      "bytes": 12087,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

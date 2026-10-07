@@ -44,3 +44,11 @@ test("planning table title counts project-year records", async () => {
   assert.equal(planningRecordsTitle(legacy), "3 durable project records");
   assert.equal(planningRowsPerYear(legacy), false);
 });
+
+// R-低2: an unfinished Run's advisory count is marked provisional.
+test("advisory summary of an unfinished Run is provisional", async () => {
+  const { advisorySummaryText, ADVISORIES_PROVISIONAL_NOTE } = await import("../../../app/features/workspace/runValidation.ts");
+  const advisories = [{ id: "a", severity: "high" }];
+  assert.equal(advisorySummaryText({ advisories }), "1 advisory applies to this Run · 1 high");
+  assert.equal(advisorySummaryText({ advisories, advisories_provisional: true }), `1 advisory applies to this Run · 1 high · ${ADVISORIES_PROVISIONAL_NOTE}`);
+});

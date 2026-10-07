@@ -101,6 +101,8 @@ export type RunValidationFields = {
   stress?: StressRecord | null;
   advisories?: RunAdvisory[] | null;
   advisory_summary?: { count?: number; max_severity?: string | null; needs_review?: boolean } | null;
+  /** R4 R-低2: true while the Run is unfinished; the list is re-evaluated on completion. */
+  advisories_provisional?: boolean | null;
   result_publication?: ResultPublication | null;
   validation_gate?: ValidationGateRecord | null;
   publication_blocked?: PublicationBlocked | null;
@@ -452,6 +454,8 @@ export function advisorySummaryText(run: RunValidationFields | null | undefined)
   const advisories = runAdvisories(run);
   const total = advisories.length || (count(run?.advisory_summary?.count) ?? 0);
   if (!total) return null;
+  // R4 R-低2: an unfinished Run's list is re-evaluated against its frozen fleet and modules.
+  const provisional = run?.advisories_provisional === true ? ` · ${ADVISORIES_PROVISIONAL_NOTE}` : "";
   const bySeverity = new Map<string, number>();
   for (const advisory of advisories) {
     const severity = text(advisory.severity) ?? "unrated";
@@ -459,8 +463,10 @@ export function advisorySummaryText(run: RunValidationFields | null | undefined)
   }
   const ordered = [...bySeverity.entries()].sort(([a], [b]) => (SEVERITY_ORDER.indexOf(a) + 1 || 99) - (SEVERITY_ORDER.indexOf(b) + 1 || 99));
   const breakdown = ordered.map(([severity, n]) => `${n} ${severity}`).join(", ");
-  return `${total} ${total === 1 ? "advisory applies" : "advisories apply"} to this Run${breakdown ? ` · ${breakdown}` : ""}`;
+  return `${total} ${total === 1 ? "advisory applies" : "advisories apply"} to this Run${breakdown ? ` · ${breakdown}` : ""}${provisional}`;
 }
+
+export const ADVISORIES_PROVISIONAL_NOTE = "provisional: re-evaluated against this Run's frozen fleet and modules when it completes";
 
 /** The advisories of a Run detail; the listing row carries only the count. */
 export function runAdvisories(run: RunValidationFields | null | undefined): RunAdvisory[] {

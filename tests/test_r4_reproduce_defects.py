@@ -197,3 +197,31 @@ class PlanningProjectYearRowsTests(unittest.TestCase):
         self.assertEqual(page["total"], 2)
         self.assertEqual([(row["project_id"], row["year"], row["status"]) for row in page["items"]],
                          [("p1", 2026, "commissioned"), ("p1", 2025, "active")])
+
+
+class ProvisionalAdvisoryTests(unittest.TestCase):
+    """R-低2: an unfinished Run does not show fleet-filtered advisories it cannot evaluate yet."""
+
+    BIOMASS = "VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED"
+
+    def _run(self, folder: Path, status: str) -> tuple[dict, Path]:
+        root = folder / status
+        shutil.copytree(FIXTURES / "doctoral-no-invariants", root)
+        run = json.loads((root / "status.json").read_text(encoding="utf-8"))
+        run["status"] = status
+        return run, root
+
+    def test_running_run_without_frozen_fleet(self):
+        from gridform_core.result_advisories import evaluate_advisories, present_scientific_status
+
+        with tempfile.TemporaryDirectory() as folder:
+            for status in ("snapshotting", "queued", "running"):
+                with self.subTest(status):
+                    run, root = self._run(Path(folder), status)
+                    ids = {row["id"] for row in evaluate_advisories(run, root)}
+                    self.assertNotIn(self.BIOMASS, ids)
+                    self.assertTrue(present_scientific_status(dict(run), root)["advisories_provisional"])
+            # A completed Run whose fleet cannot be read keeps the disclosure (unchanged rule).
+            run, root = self._run(Path(folder), "completed")
+            self.assertIn(self.BIOMASS, {row["id"] for row in evaluate_advisories(run, root)})
+            self.assertFalse(present_scientific_status(dict(run), root)["advisories_provisional"])
