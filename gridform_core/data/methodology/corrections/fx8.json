@@ -22,6 +22,9 @@
       "applies_when": {
         "modules_any": [
           "value-bid-at-cost-psm"
+        ],
+        "assets_any": [
+          "nuclear"
         ]
       },
       "advisory": {

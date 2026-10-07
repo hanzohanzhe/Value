@@ -1621,6 +1621,7 @@
     "tests/test_public_uk_distribution.py",
     "tests/test_r12_economic_downward_order.py",
     "tests/test_r13_per_type_battery_caps.py",
+    "tests/test_r2_advisory_assets.py",
     "tests/test_r2_methodology_record.py",
     "tests/test_r2_numeric_identity.py",
     "tests/test_raw_invariant_failures.py",
@@ -4899,7 +4900,7 @@
     },
     {
       "path": "docs/generated/METHODOLOGY_PROFILES.md",
-      "sha256": "682b578efb9d146159c62ca8caf93deec76ed018d0f82e4b14f8ab4baf02df42",
+      "sha256": "41b2644009d6b7eb086383b299f98a0b11e81dbeb4680acf860c840d151c1e88",
       "bytes": 22722,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -7741,14 +7742,14 @@
     },
     {
       "path": "gridform_core/data/methodology/corrections/fx8.json",
-      "sha256": "4e3d1363c39de7ba0a88578e8ca30ae463bfab4e956b886ab7771d040e83cda4",
-      "bytes": 2844,
+      "sha256": "f8caefb0c682b9786da3ca5c6cbc6f3795efbcea3d60a539512fd049a178b6a3",
+      "bytes": 2899,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "gridform_core/data/methodology/corrections/p05.json",
-      "sha256": "73f76a4430c318ddd0cb155af87c7f0d2847a5b4857c5ad693fef1ef75e5df23",
-      "bytes": 20538,
+      "sha256": "340efac95e3e929ebc061f41b8bee451549bf97ac8f46b58c5edcb0de9436a58",
+      "bytes": 20679,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8412,8 +8413,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "a80a16a81aa3486e1c48d559e87fbdc726b260051d6f00c380e7cf56b023d169",
-      "bytes": 47179,
+      "sha256": "77b5897a58dca8b21978542bc3bb093d2492b5359a34f56be96a011aca2aa12d",
+      "bytes": 47392,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8604,8 +8605,8 @@
     },
     {
       "path": "gridform_core/result_advisories.py",
-      "sha256": "127a9369c9f16bbb420c5df797d4616ea967cc7dd2b5fe9c1cd9d1da8b3a748f",
-      "bytes": 32033,
+      "sha256": "7a22b8b631d9bb9d144d7686de61ea0b7f2b5200d6b3339f0990122f03a2018d",
+      "bytes": 34097,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12642,6 +12643,12 @@
       "path": "tests/test_r13_per_type_battery_caps.py",
       "sha256": "0dd6e81ceb5bb3741d229f303fb05f1fab8c74d0ef27ad8232d171d0d2b284b9",
       "bytes": 9926,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_r2_advisory_assets.py",
+      "sha256": "dce4b256e9e6c2a758f6c1ce4d8acd1199b1f05073a20876e98f1f6b6acd5a71",
+      "bytes": 3390,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

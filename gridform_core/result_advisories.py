@@ -141,6 +141,53 @@ def recorded_methodology(run: Mapping[str, Any], run_root: Path) -> dict[str, An
     return None
 
 
+_ASSET_CACHE: "OrderedDict[tuple, frozenset[str] | None]" = OrderedDict()
+_ASSET_CACHE_LOCK = threading.Lock()
+
+
+def run_asset_classes(run_root: Path) -> frozenset[str] | None:
+    """Asset classes of a Run's frozen fleet, or None when it cannot be read.
+
+    R3-N7 (DECISIONS A23): the evidence for ``applies_when.assets_any``.  The
+    fleet is the ``fleet.generators`` role of the Run's input snapshot
+    (generators, batteries, interconnectors), grouped with
+    ``market_replay.canonical_technology``; cached per file identity.
+    """
+
+    from .market_replay import canonical_technology
+
+    pack = Path(run_root) / "input-snapshot" / "pack"
+    binding = dict(_read_object(pack / "manifest.json").get("bindings") or {}).get("fleet.generators")
+    if not isinstance(binding, Mapping) or not binding.get("uri"):
+        return None
+    path = pack / str(binding["uri"])
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns, stat.st_ino)
+    with _ASSET_CACHE_LOCK:
+        if key in _ASSET_CACHE:
+            _ASSET_CACHE.move_to_end(key)
+            return _ASSET_CACHE[key]
+    fleet = _read_object(path)
+    classes: frozenset[str] | None
+    if not isinstance(fleet.get("generators"), Mapping):
+        classes = None
+    else:
+        found = {canonical_technology(str(name)) for name in fleet["generators"]}
+        if fleet.get("batteries"):
+            found.add("battery_storage")
+        if fleet.get("connections"):
+            found.add("boundary_import")
+        classes = frozenset(found)
+    with _ASSET_CACHE_LOCK:
+        _ASSET_CACHE[key] = classes
+        while len(_ASSET_CACHE) > READ_TIME_ORACLE_CACHE_SIZE:
+            _ASSET_CACHE.popitem(last=False)
+    return classes
+
+
 def _run_descriptor(run: Mapping[str, Any], run_root: Path) -> dict[str, Any]:
     resolved = _read_object(run_root / "model-output" / "resolved-run.json")
     modules: set[str] = set()
@@ -158,6 +205,7 @@ def _run_descriptor(run: Mapping[str, Any], run_root: Path) -> dict[str, Any]:
         "mode": str(run.get("mode") or ""),
         "data_pack": str(data_pack or ""),
         "engine": normalize_engine(run.get("execution_engine") or ""),
+        "assets": run_asset_classes(run_root),
     }
 
 
@@ -171,6 +219,9 @@ def _applies(applies_when: Mapping[str, Sequence[str]], descriptor: Mapping[str,
         if key == "data_packs_any" and descriptor["data_pack"] not in wanted:
             return False
         if key == "engines_any" and descriptor["engine"] not in wanted:
+            return False
+        # Unknown fleet evidence keeps the advisory (fail towards disclosure).
+        if key == "assets_any" and descriptor.get("assets") is not None and not wanted.intersection(descriptor["assets"]):
             return False
     return True
 

@@ -54,7 +54,10 @@ PROFILE_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.-]*[a-z0-9]$")
 TRACKS = ("universal", "profile_gated")
 SEVERITIES = ("info", "low", "medium", "high", "critical")
 AFFECTS = ("trajectory", "accounting", "identity", "presentation")
-APPLIES_WHEN_KEYS = ("modules_any", "modes_any", "data_packs_any", "engines_any")
+# assets_any (R3-N7, DECISIONS A23): the Run's frozen fleet has an asset of one
+# of these classes (market_replay.canonical_technology groups); a Run whose
+# fleet cannot be read keeps the advisory.
+APPLIES_WHEN_KEYS = ("modules_any", "modes_any", "data_packs_any", "engines_any", "assets_any")
 EXTERNAL_CODE_POLICIES = ("allow", "refuse_when_enabled")
 PUBLICATION_RULES = ("standard", "raw_invariants_must_pass")
 PACK_CLASSES = ("scientific_reference", "teaching", "synthetic", "user_workspace")
