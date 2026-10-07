@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { changedDimensionRows, dimensionPathsText, reviewReasonText } from "../../../app/features/results/comparisonReview.ts";
+import { changedDimensionRows, dimensionPathsText, metricDeltaShown, metricDeltaWithheldText, metricLabel, reviewReasonText, withheldDeltaSummary } from "../../../app/features/results/comparisonReview.ts";
 
 // P0-9 S11 / X0 S10b comparison gate: each review reason in a sentence.
 test("comparison review reasons are stated in sentences; an unknown reason keeps its code", () => {
@@ -53,4 +53,45 @@ test("a recorded module selection reads as module id and version", () => {
   assert.equal(row.detail, "dynamic-annual-storage-cost 2.0.0 → value-legacy-storage-tariff 1.0.0");
   assert.match(row.raw, /"contract_version"/);
   assert.equal(changedDimensionRows({ "module.x": [{ other: 1 }, { other: 2 }] }, {})[0].detail, "recorded values differ");
+});
+
+// AF3-1 (DECISIONS A23, round R2): annual deltas are gated per metric; each
+// withheld metric states its reason; old responses keep the all-or-nothing flag.
+test("annual deltas follow the per-metric gate and a withheld metric states its reason", () => {
+  const reason = "VRE-curtailment differences need matching, reconciled curtailment-attribution evidence in every Run (module does not provide counterfactual snapshot).";
+  const comparison = {
+    metric_deltas_allowed: false, annual_metrics_withheld: false,
+    metric_delta_gates: {
+      cem_system_cost_gbp: { allowed: true, reason_code: null, definitions: [], reason: null },
+      total_carbon_emissions_tco2e: { allowed: true, reason_code: null, definitions: [], reason: null },
+      vre_curtailment_mwh: { allowed: false, reason_code: "module_does_not_provide_counterfactual_snapshot", definitions: [], reason },
+      vre_curtailment_rate: { allowed: false, reason_code: "module_does_not_provide_counterfactual_snapshot", definitions: [] },
+    },
+    withheld_metric_deltas: ["vre_curtailment_mwh", "vre_curtailment_rate"],
+  };
+  assert.equal(metricDeltaShown(comparison, "cem_system_cost_gbp"), true);
+  assert.equal(metricDeltaShown(comparison, "vre_curtailment_mwh"), false);
+  assert.equal(metricDeltaWithheldText(comparison, "cem_system_cost_gbp"), null);
+  assert.equal(metricDeltaWithheldText(comparison, "vre_curtailment_mwh"), `Delta withheld: ${reason}`);
+  assert.equal(metricDeltaWithheldText(comparison, "vre_curtailment_rate"), "Delta withheld (module does not provide counterfactual snapshot).");
+  assert.equal(withheldDeltaSummary(comparison), "Deltas are withheld for 2 of 4 metrics (Vre Curtailment Mwh, Vre Curtailment Rate); each states its reason below. The other metrics show their deltas.");
+  assert.equal(metricLabel("total_carbon_emissions_tco2e"), "Total Carbon Emissions Tco2e");
+});
+
+test("every-metric, none, teaching and legacy responses", () => {
+  const gate = (allowed) => ({ allowed, reason_code: allowed ? null : "metric_definition_differs", definitions: allowed ? [] : ["cost"], reason: allowed ? null : "The Runs compute this metric under different cost definitions." });
+  const all = { metric_deltas_allowed: false, annual_metrics_withheld: false, metric_delta_gates: { a: gate(false), b: gate(false) }, withheld_metric_deltas: ["a", "b"] };
+  assert.equal(withheldDeltaSummary(all), "Annual deltas are withheld for every metric; each metric states its reason below.");
+  const none = { metric_deltas_allowed: true, annual_metrics_withheld: false, metric_delta_gates: { a: gate(true) }, withheld_metric_deltas: [] };
+  assert.equal(withheldDeltaSummary(none), null);
+  assert.equal(metricDeltaShown(none, "a"), true);
+  const teaching = { metric_deltas_allowed: false, annual_metrics_withheld: true, metric_delta_gates: {}, withheld_metric_deltas: [] };
+  assert.equal(withheldDeltaSummary(teaching), null);
+  assert.equal(metricDeltaWithheldText(teaching, "a"), null);
+  const legacy = { metric_deltas_allowed: false, annual_metrics_withheld: false };
+  assert.equal(metricDeltaShown(legacy, "a"), false);
+  assert.equal(withheldDeltaSummary(legacy), "Annual deltas are withheld: the required definitions, scope or attribution evidence are incomplete.");
+  assert.equal(metricDeltaShown({ metric_deltas_allowed: true, annual_metrics_withheld: false }, "a"), true);
+  // The summary never shows Chinese text on the English Compare page (R3M-7).
+  for (const text of [withheldDeltaSummary(all), withheldDeltaSummary(legacy), metricDeltaWithheldText(legacy, "a")]) assert.doesNotMatch(text, /[一-鿿]/);
 });

@@ -41,7 +41,7 @@ export function reviewReasonText(reason: ReviewReason): string {
 }
 
 /** Per changed identity dimension (gridform_core/results_summary.changed_dimension_details). */
-export type DimensionDetail = { label: string; paths: string[]; more_paths: number };
+export type DimensionDetail = { label: string; name?: string; paths: string[]; more_paths: number };
 export type ChangedDimensionRow = { key: string; label: string; detail: string; raw: string | null };
 
 function pathsText(detail: DimensionDetail): string {
@@ -83,4 +83,51 @@ function moduleSelectionText(value: unknown): string | null {
 export function dimensionPathsText(details: Record<string, DimensionDetail> | null | undefined, dimension: string): string | null {
   const detail = details?.[dimension];
   return detail && detail.paths.length ? pathsText(detail) : null;
+}
+
+/** A metric id as a heading: "vre_curtailment_mwh" → "Vre Curtailment Mwh". */
+export function metricLabel(id: string): string {
+  return id.split(".").at(-1)?.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase()) ?? id;
+}
+
+/** One metric's delta gate (gridform_core/results_summary.metric_delta_gate). */
+export type MetricDeltaGate = { allowed: boolean; reason_code?: string | null; definitions?: string[]; reason?: string | null };
+export type MetricDeltaFields = {
+  metric_deltas_allowed: boolean;
+  annual_metrics_withheld: boolean;
+  metric_delta_gates?: Record<string, MetricDeltaGate> | null;
+  withheld_metric_deltas?: string[] | null;
+};
+
+/**
+ * AF3-1 (DECISIONS A23): annual deltas are gated per metric. A response
+ * without per-metric gates keeps the earlier all-or-nothing flag.
+ */
+export function metricDeltaShown(comparison: MetricDeltaFields, metricId: string): boolean {
+  if (comparison.annual_metrics_withheld) return false;
+  const gate = comparison.metric_delta_gates?.[metricId];
+  return gate ? gate.allowed === true : comparison.metric_deltas_allowed;
+}
+
+/** Why one metric's delta is withheld, in a sentence; null when it is shown. */
+export function metricDeltaWithheldText(comparison: MetricDeltaFields, metricId: string): string | null {
+  if (comparison.annual_metrics_withheld || metricDeltaShown(comparison, metricId)) return null;
+  const gate = comparison.metric_delta_gates?.[metricId];
+  if (!gate) return "Delta withheld: the required definitions, scope or attribution evidence are incomplete.";
+  if (gate.reason) return `Delta withheld: ${gate.reason}`;
+  return `Delta withheld (${(gate.reason_code ?? "reason not recorded").replaceAll("_", " ")}).`;
+}
+
+/** One sentence above the annual tables; null when every delta is shown or the teaching boundary applies. */
+export function withheldDeltaSummary(comparison: MetricDeltaFields): string | null {
+  if (comparison.annual_metrics_withheld) return null;
+  const gates = comparison.metric_delta_gates;
+  if (!gates || !Object.keys(gates).length) {
+    return comparison.metric_deltas_allowed ? null : "Annual deltas are withheld: the required definitions, scope or attribution evidence are incomplete.";
+  }
+  const ids = Object.keys(gates);
+  const withheld = comparison.withheld_metric_deltas?.length ? comparison.withheld_metric_deltas.filter((id) => id in gates) : ids.filter((id) => !gates[id].allowed);
+  if (!withheld.length) return null;
+  if (withheld.length === ids.length) return "Annual deltas are withheld for every metric; each metric states its reason below.";
+  return `Deltas are withheld for ${withheld.length} of ${ids.length} metrics (${withheld.map(metricLabel).join(", ")}); each states its reason below. The other metrics show their deltas.`;
 }

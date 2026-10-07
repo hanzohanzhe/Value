@@ -6,3 +6,6 @@
 .comparison-raw summary { color: var(--muted); font-size: 12px; cursor: pointer; }
 .comparison-raw summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .module-differences .comparison-raw pre { max-height: 240px; overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Round R2 (AF3-1, DECISIONS A23): a metric whose annual delta is withheld
+   states its own reason under its values. */
+.comparison-metric-withheld { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }

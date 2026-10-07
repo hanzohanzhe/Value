@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { formatNumber, withUnit } from "../shared/presentation";
 import { Callout } from "../shared/Callout";
 import { profileBadge, type MethodologyRecord } from "../workspace/runValidation.ts";
-import { changedDimensionRows, dimensionPathsText, reviewReasonText, type DimensionDetail, type ReviewReason } from "./comparisonReview.ts";
+import { changedDimensionRows, dimensionPathsText, metricDeltaShown, metricDeltaWithheldText, metricLabel, reviewReasonText, withheldDeltaSummary, type DimensionDetail, type MetricDeltaGate, type ReviewReason } from "./comparisonReview.ts";
 import "./comparison-workspace.css";
 import "./comparison-details.css";
 
@@ -22,6 +22,8 @@ type RunComparison = {
   /** R-D7 / S-D9: label and differing paths per changed identity dimension. */
   changed_dimension_details?: Record<string, DimensionDetail>;
   metric_deltas_allowed: boolean; clean_storage_policy_comparison: boolean;
+  /** AF3-1 (DECISIONS A23): per-metric delta gates and the withheld metric ids. */
+  metric_delta_gates?: Record<string, MetricDeltaGate>; withheld_metric_deltas?: string[];
   comparison_scope: "annual_scientific" | "teaching_diagnostic" | "mixed_tutorial_and_annual";
   annual_metrics_withheld: boolean; storage_pricing_interpretation: string;
   causal_claim_allowed: boolean; warning?: string;
@@ -30,16 +32,18 @@ type RunComparison = {
   annual_comparison: { year: number; metrics: Record<string, ComparisonMetricValue[]> }[];
 };
 
-function labelFor(id: string) { return id.split(".").at(-1)?.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase()) ?? id; }
 function ComparisonReview({ review, details }: { review?: Review; details?: Record<string, DimensionDetail> }) {
-  const labels: Record<string, string> = { data: "基础与网络数据", method: "模块方法", config: "参数与扩展配置", years: "执行年份", scope: "运行范围" };
-  return <section className="comparison-review" aria-label="比较前身份核对">
-    <h4>比较前身份核对</h4>
-    <p>{review?.evidence_complete ? "以下差异来自保存的 Run 输入与执行记录。差异描述不自动构成因果归因。" : "冻结身份记录不完整，无法确认其他条件相同；结果只能并列查看。"}</p>
+  // R3M-7 / AF3-2 (round R2): English like the rest of Compare; the method
+  // label says that the extension selection belongs to it, the config label
+  // that only parameters and extension settings do.
+  const labels: Record<string, string> = { data: "Base and network data", method: "Model method (modules, extension selection, methodology)", config: "Parameters and extension settings", years: "Execution years", scope: "Run scope" };
+  return <section className="comparison-review" aria-label="Identity check before comparison">
+    <h4>Identity check before comparison</h4>
+    <p>{review?.evidence_complete ? "The differences below come from the saved Run inputs and execution records. A difference is not by itself a causal attribution." : "The frozen identity records are incomplete, so VALUE cannot confirm that everything else is the same; view the results side by side only."}</p>
     <div className="comparison-dimensions">{Object.entries(labels).map(([id, label]) => {
       const dimension = review?.dimensions[id]; const status = dimension?.status ?? "unknown";
       const paths = status === "changed" ? dimensionPathsText(details, id) : null;
-      return <details key={id} data-state={status}><summary><b>{label}</b><span>{status === "same" ? "一致" : status === "changed" ? "已改变" : "无法核实"}</span></summary>{paths && <p className="comparison-dimension-paths">Differs at: {paths}</p>}<details className="comparison-raw"><summary>Recorded values (JSON)</summary><pre>{JSON.stringify(dimension?.values ?? null, null, 2)}</pre></details></details>;
+      return <details key={id} data-state={status}><summary><b>{label}</b><span>{status === "same" ? "Same" : status === "changed" ? "Changed" : "Cannot verify"}</span></summary>{paths && <p className="comparison-dimension-paths">Differs at: {paths}</p>}<details className="comparison-raw"><summary>Recorded values (JSON)</summary><pre>{JSON.stringify(dimension?.values ?? null, null, 2)}</pre></details></details>;
     })}</div>
     {review?.warning && <p>{review.warning}</p>}
   </section>;
@@ -74,7 +78,7 @@ export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] })
     if (ids.length < 2) return;
     const controller = new AbortController();
     void fetch(apiUrl(`comparisons?runs=${encodeURIComponent(ids.join(","))}`), { cache: "no-store", signal: controller.signal })
-      .then(async (res) => { const payload: unknown = await res.json(); if (!res.ok) throw new Error((payload as {error?:string}).error || "Comparison unavailable"); if (!isComparison(payload, ids)) throw new Error("比较响应与所选 Run 身份不一致，请重新选择。"); return payload; })
+      .then(async (res) => { const payload: unknown = await res.json(); if (!res.ok) throw new Error((payload as {error?:string}).error || "Comparison unavailable"); if (!isComparison(payload, ids)) throw new Error("The comparison response does not match the selected Runs; select them again."); return payload; })
       .then((value) => { if (!controller.signal.aborted) setResponse({key, value}); })
       .catch((reason: Error) => { if (!controller.signal.aborted) setResponse({key, error:reason.message}); });
     return () => controller.abort();
@@ -95,7 +99,7 @@ export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] })
   return <section className="comparison-workspace" aria-labelledby="comparison-title">
     <div className="comparison-heading"><div><small>Scenario comparison</small><h3 id="comparison-title">Compare completed runs</h3><p>Select two to six annual runs, or two VALUE 101 teaching runs. Tutorial pairs compare model identity; their annual cost and carbon deltas are withheld.</p></div><div className="comparison-actions"><button className="secondary" disabled={!comparison} onClick={() => onExport("csv")}>Export CSV</button><button className="secondary" disabled={!comparison} onClick={() => onExport("json")}>Export JSON</button></div></div>
     <div className="comparison-picker">{eligible.map((run) => <label key={run.id}><input type="checkbox" checked={selected.includes(run.id)} disabled={!selected.includes(run.id) && selected.length >= 6} onChange={() => onToggle(run.id)} /><span><b>{run.project_name}</b><small>{run.mode} · {run.updated_at ?? "timestamp pending"} · {profileBadge(run.methodology).text}</small><code>{run.id}</code></span></label>)}</div>
-    {error && <div className="error-box">{error}</div>}{loading && <p role="status">正在核对所选 Runs 的冻结身份…</p>}
+    {error && <div className="error-box">{error}</div>}{loading && <p role="status">Checking the frozen identities of the selected Runs…</p>}
     {selected.length < 2 && <div className="comparison-empty">Choose at least two completed runs of the same scope.</div>}
     {comparison && <>
       {comparison.attribution_status === "needs_review" && <Callout tone="caution" className="value-new-control" title="This comparison needs review">
@@ -107,8 +111,8 @@ export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] })
       {!comparison.network_cost_attribution_allowed && comparison.network_comparison.reason_code !== "comparison_eligibility_artifact_missing" && <div className="info-box"><b>Network-cost attribution blocked</b><br />{comparison.network_comparison.reason_code.replaceAll("_", " ")}. Side-by-side results remain available, but the difference is not labelled as a network effect.</div>}
       <div className="module-differences"><b>Changed dimensions</b>{Object.keys(comparison.changed_dimensions).length ? changedDimensionRows(comparison.changed_dimensions, comparison.changed_dimension_details).map((row) => <span key={row.key} title={row.key}><code>{row.label}</code><small>{row.detail}</small>{row.raw && <details className="comparison-raw"><summary>Recorded values (JSON)</summary><pre>{row.raw}</pre></details>}</span>) : <small>No differences found in available records; check unknown dimensions above.</small>}</div>
       {comparison.annual_metrics_withheld && <div className="info-box"><b>Teaching boundary</b><br />Annual cost and carbon deltas are withheld because these runs contain one 48-period market day. The export contains identities and changed dimensions, not annual metrics.</div>}
-      {!comparison.metric_deltas_allowed && !comparison.annual_metrics_withheld && <div className="error-box">所需的定义、范围或归因证据不完整。VALUE 暂不展示未获支持的差值。</div>}
-      {!comparison.annual_metrics_withheld && <div className="comparison-years">{comparison.annual_comparison.map((year) => <details key={year.year}><summary>{year.year}</summary><div className="comparison-metrics">{Object.entries(year.metrics).map(([metricId, values]) => <article key={metricId}><header><b>{labelFor(metricId)}</b><code>{values[0]?.definition_id ?? "definition not evaluated"}</code></header>{values.map((value) => <span key={value.run_id}><small>{value.run_id}</small><b>{value.value == null ? "Not evaluated" : `${formatNumber(value.value)} ${value.unit ?? ""}`}</b>{comparison.metric_deltas_allowed && value.delta_from_base != null && <em>{value.delta_from_base >= 0 ? "+" : ""}{formatNumber(value.delta_from_base)} · {value.percentage_delta_from_base == null ? "n/a" : `${withUnit(formatNumber(value.percentage_delta_from_base), "%", "")}`}</em>}</span>)}</article>)}</div></details>)}</div>}
+      {withheldDeltaSummary(comparison) && <div className="info-box comparison-withheld-summary value-new-control"><b>Deltas withheld</b><br />{withheldDeltaSummary(comparison)}</div>}
+      {!comparison.annual_metrics_withheld && <div className="comparison-years">{comparison.annual_comparison.map((year) => <details key={year.year}><summary>{year.year}</summary><div className="comparison-metrics">{Object.entries(year.metrics).map(([metricId, values]) => <article key={metricId}><header><b>{metricLabel(metricId)}</b><code>{values[0]?.definition_id ?? "definition not evaluated"}</code></header>{values.map((value) => <span key={value.run_id}><small>{value.run_id}</small><b>{value.value == null ? "Not evaluated" : `${formatNumber(value.value)} ${value.unit ?? ""}`}</b>{metricDeltaShown(comparison, metricId) && value.delta_from_base != null && <em>{value.delta_from_base >= 0 ? "+" : ""}{formatNumber(value.delta_from_base)} · {value.percentage_delta_from_base == null ? "n/a" : `${withUnit(formatNumber(value.percentage_delta_from_base), "%", "")}`}</em>}</span>)}{metricDeltaWithheldText(comparison, metricId) && <p className="comparison-metric-withheld value-new-control">{metricDeltaWithheldText(comparison, metricId)}</p>}</article>)}</div></details>)}</div>}
     </>}
   </section>;
 }

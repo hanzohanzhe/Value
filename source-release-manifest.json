@@ -3437,8 +3437,8 @@
     },
     {
       "path": "app/features/results/ComparisonWorkspace.tsx",
-      "sha256": "43ad4227625267a1be6106d60363ca41c00d6ff209393357033b2aadfcfc2951",
-      "bytes": 12792,
+      "sha256": "18fd2353f58396d3bff80d22d42adca2917571216449054eaa1385ddb8da2acf",
+      "bytes": 13455,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3449,8 +3449,8 @@
     },
     {
       "path": "app/features/results/comparison-details.css",
-      "sha256": "23918aa50e9bd3ea18da03af9b280dec21cc005c67a03289a6f3b7833064060f",
-      "bytes": 803,
+      "sha256": "86dfad78a248d66f3c3430185afa8ed7131b97c495bb43637f4ba0f59b23248b",
+      "bytes": 1056,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3461,8 +3461,8 @@
     },
     {
       "path": "app/features/results/comparisonReview.ts",
-      "sha256": "d3ebeee112ed328788a90a2b05ade70201fda9bdfa3d7907da1754bbc456db59",
-      "bytes": 4776,
+      "sha256": "57c5810d65469d2b0e4123343e744c3dd1d44cc04994bc887eb54769f842b479",
+      "bytes": 7570,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -6545,9 +6545,9 @@
     },
     {
       "path": "e2e/comparison-review.spec.ts",
-      "sha256": "29a231aa72ddaca78ad0eeb380e80a99dc1bdab4d5f5caebc67cc86b01d37661",
-      "bytes": 3826,
-      "transform": "byte copy"
+      "sha256": "143a98b43e0f40e4b6f85b066b1c4358dc8ff9919a06f77fd358fb740fe148ba",
+      "bytes": 8416,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "e2e/data-workbench.spec.ts",
@@ -6611,7 +6611,7 @@
     },
     {
       "path": "e2e/offline-subset.json",
-      "sha256": "6105a141029a2173269c423da3a302047206f83cde2321e1926b1abac08f15db",
+      "sha256": "49eb094c78a5f5eab4073adea66ec13d321a3129cc3d048ef0fd906b1fb919f4",
       "bytes": 3088,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -10860,8 +10860,8 @@
     },
     {
       "path": "tests/frontend/unit/comparison-review.test.mjs",
-      "sha256": "9bc2966391acf87a8c65b364e80070a195a911ba6ba973e4ec38b088cf63d66d",
-      "bytes": 4542,
+      "sha256": "3341ef34c2775108e791a45fa88a7b6d3b116ad721e5a9a5b4f8c126ecc0e8e1",
+      "bytes": 8238,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

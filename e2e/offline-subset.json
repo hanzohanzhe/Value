@@ -19,7 +19,7 @@
     "e2e/network-redispatch.spec.ts": 23,
     "e2e/expanded-workflows.spec.ts": 1,
     "e2e/result-queries.spec.ts": 2,
-    "e2e/comparison-review.spec.ts": 1,
+    "e2e/comparison-review.spec.ts": 2,
     "e2e/evidence-isolation.spec.ts": 1,
     "e2e/service-status.spec.ts": 4,
     "e2e/run-context-methodology.spec.ts": 4
