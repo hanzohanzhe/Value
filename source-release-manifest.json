@@ -4733,8 +4733,8 @@
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
-      "sha256": "f34444f3b4a29cebec6c9b6fe02856c8c064551c1a1169be2a6ed722742e3c37",
-      "bytes": 27793,
+      "sha256": "97f946cf954870283c892ad7489558e1f3b5d9ba8f99bae44aa9af7444a52bdf",
+      "bytes": 28155,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -9810,8 +9810,8 @@
     },
     {
       "path": "scripts/check_version_ledger.py",
-      "sha256": "91d449d288196879e13cbf1da0aab06df95e0798f8cec0bdeaccd7f155fbbdd8",
-      "bytes": 5144,
+      "sha256": "9dafce41c807422ec14e584fb4a6a978ee0e9d5310cb10a7c9d2ffc5e81389cb",
+      "bytes": 6988,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10158,8 +10158,8 @@
     },
     {
       "path": "scripts/seal_runtime_overlay.py",
-      "sha256": "35805a3f4cc0ab3ec67bae98a9bd132973e07b0c0fd2355abed1302f13b4d660",
-      "bytes": 8834,
+      "sha256": "7510c51fd11da83fffcd5e4cadc65f31e752b1e9f46a1b70c8f5cbb5502faaa7",
+      "bytes": 10756,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12858,8 +12858,8 @@
     },
     {
       "path": "tests/test_r4_module_extension_defects.py",
-      "sha256": "b68cedb17e9e7a7c6d102bd1dcb3b9f91c2c5b753ea4b69aa7b6a23d366ac1a9",
-      "bytes": 31438,
+      "sha256": "e62a6d2a5cc3498bb922ff571ec1d090d96c700e2101793d7d037c9e16352bcb",
+      "bytes": 35274,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -13200,8 +13200,8 @@
     },
     {
       "path": "tests/test_version_ledger.py",
-      "sha256": "aa1f16bb14f389218cde03b279ee6bf3228b760677a70dab52421883786df427",
-      "bytes": 2746,
+      "sha256": "e1ab35088ce6dfdfc7b69b737bc2792eb2fabdcd7f427dd5d908eca5a6fd5a01",
+      "bytes": 2838,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -33,7 +33,8 @@ class VersionLedgerTests(unittest.TestCase):
         manifests = copy.deepcopy(self.manifests)
         entry = ledger["modules"]["value-bid-at-cost-psm"]
         current = entry["current_version"]
-        record = {"from": current, "to": _next_minor(current), "package": "P0-x", "correction_ids": ["p0-x.y"],
+        # A registered id (R4 M-低1: unregistered ids fail the check).
+        record = {"from": current, "to": _next_minor(current), "package": "P0-x", "correction_ids": ["p06.storage-net-per-period"],
                   "reason": "test", "requires_user_opt_in": False, **bump}
         entry["bumps"].append(record)
         entry["current_version"] = record["to"]

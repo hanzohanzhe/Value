@@ -586,9 +586,15 @@ edit:
    (`from`, `to`, `package`, `correction_ids`, `reason`,
    `requires_user_opt_in`); `true` makes saved Studies ask for an explicit
    method-upgrade confirmation before they run, `false` is for code-only
-   changes. `python -B scripts/check_version_ledger.py` checks it.
+   changes. Every correction id must be registered: a correction in
+   `gridform_core/data/methodology/corrections/`, or a row of the
+   "Correction ids" table in `CHANGELOG.md`. `python -B
+   scripts/check_version_ledger.py` checks the chain and fails on an
+   unregistered (for example misspelt) id, because the id is shown in the
+   confirmation users read.
 4. After any edit under `runtime_compat/`, register it:
-   `python -B scripts/seal_runtime_overlay.py --correction <id>`. Until then
+   `python -B scripts/seal_runtime_overlay.py --correction <id>` (the id of
+   the ledger bump; an unregistered id is refused). Until then
    Check readiness refuses every Run with
    `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`, and a Run started through the API
    stops with `GF_COMPATIBILITY_001`.

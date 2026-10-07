@@ -543,5 +543,74 @@ class StorageCostEvidenceTests(unittest.TestCase):
         self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger(None)["module_evidence"])
 
 
+class CorrectionIdRegistryTests(unittest.TestCase):
+    """M-低1: an unregistered correction id fails the ledger check and the overlay seal."""
+
+    @staticmethod
+    def _script(name: str):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        return module
+
+    def test_committed_ledger_ids_are_registered_and_a_typo_is_not(self) -> None:
+        check = self._script("check_version_ledger")
+        ledger = json.loads(check.LEDGER.read_text(encoding="utf-8"))
+        manifests = check.load_manifests()
+        self.assertEqual(check.check(ledger, manifests, import_classes=False), [])
+        registered = check.registered_correction_ids()
+        self.assertIn("p08.pro-rata-ties", registered)  # CHANGELOG Correction ids table only
+        self.assertIn("r41.down-regulation-taken-once", registered)  # methodology catalogue
+        entry = ledger["modules"][PSM]
+        current = entry["current_version"]
+        major, minor, _patch = (int(part) for part in current.split("."))
+        bumped = f"{major}.{minor + 1}.0"
+        entry["bumps"].append({"from": current, "to": bumped, "package": "UAT", "reason": "test",
+                               "correction_ids": ["x0.uat-edit-module-optin"], "requires_user_opt_in": True})
+        entry["current_version"] = bumped
+        manifests[PSM]["version"] = bumped
+        errors = check.check(ledger, manifests, import_classes=False)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("'x0.uat-edit-module-optin' is not registered", errors[0])
+
+    def test_changelog_table_is_parsed_from_its_section_only(self) -> None:
+        check = self._script("check_version_ledger")
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "CHANGELOG.md"
+            path.write_text("# Changelog\n\n### Notes\n`a1.outside`\n\n### Correction ids\n\n"
+                            "| P | `b2.inside-one`, `b2.inside-two` | `market.voll_gbp_per_mwh` |\n\n## Next\n`c3.after`\n",
+                            encoding="utf-8")
+            self.assertEqual(check.changelog_correction_ids(path), {"b2.inside-one", "b2.inside-two"})
+
+    def test_seal_refuses_an_unregistered_id(self) -> None:
+        import contextlib
+        import io
+        import shutil
+
+        from gridform_core.builtin.scheme_c_1000twh import runtime_overlay as overlay
+
+        seal = self._script("seal_runtime_overlay")
+        self.assertIn("p08.pro-rata-ties", seal.known_correction_ids())
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "scheme_c"
+            root.mkdir()
+            for name in ("compat", "runtime_compat"):
+                shutil.copytree(overlay.ROOT / name, root / name, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copy2(overlay.ROOT / "RUNTIME_OVERLAY.json", root / "RUNTIME_OVERLAY.json")
+            before = (root / "RUNTIME_OVERLAY.json").read_bytes()
+            kernel = root / "runtime_compat" / "storage_cost.py"
+            kernel.write_bytes(kernel.read_bytes() + b"\n# uat edit\n")
+            with self.assertRaises(SystemExit) as refused, contextlib.redirect_stdout(io.StringIO()):
+                seal.main(["--root", str(root), "--correction", "x0.uat-edit-module-optin"])
+            self.assertIn("not registered", str(refused.exception))
+            self.assertEqual((root / "RUNTIME_OVERLAY.json").read_bytes(), before)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(seal.main(["--root", str(root), "--correction", "p06.storage-net-per-period"]), 0)
+        overlay.clear_runtime_overlay_cache()
+
+
 if __name__ == "__main__":
     unittest.main()

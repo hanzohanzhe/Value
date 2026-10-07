@@ -3,7 +3,11 @@
 * every built-in manifest has a ledger entry and vice versa;
 * ledger current_version == manifest version == implementation class version;
 * bumps form a chain from baseline_version to current_version, each strictly
-  increasing, each naming package, correction ids, reason and opt-in flag.
+  increasing, each naming package, correction ids, reason and opt-in flag;
+* every correction id is registered (R4 M-低1): a correction of the
+  methodology catalogue (gridform_core/data/methodology/corrections/) or a row
+  of the "Correction ids" table of CHANGELOG.md, so a misspelt id never
+  reaches the method-upgrade confirmation users read.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ _os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import argparse
 import importlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -29,6 +34,35 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 LEDGER = ROOT / "docs" / "release" / "VERSION_LEDGER.json"
 MANIFESTS = ROOT / "gridform_core" / "manifests"
+CHANGELOG = ROOT / "CHANGELOG.md"
+CORRECTION_ID = re.compile(r"^[a-z0-9]+(\.[a-z0-9-]+)+$")
+_BACKTICKED = re.compile(r"`([^`]+)`")
+
+
+def changelog_correction_ids(path: Path = CHANGELOG) -> set[str]:
+    """Correction ids listed in the "Correction ids" sections of CHANGELOG.md."""
+
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+    found: set[str] = set()
+    inside = False
+    for line in lines:
+        if line.startswith("#"):
+            inside = "correction ids" in line.lower()
+            continue
+        if inside:
+            found.update(token for token in _BACKTICKED.findall(line) if CORRECTION_ID.fullmatch(token))
+    return found
+
+
+def registered_correction_ids(*, changelog: Path = CHANGELOG) -> set[str]:
+    """Catalogue corrections plus the CHANGELOG "Correction ids" table."""
+
+    from gridform_core.methodology import load_catalogue
+
+    return set(load_catalogue().corrections) | changelog_correction_ids(changelog)
 
 
 def parse_version(text: str) -> tuple[int, ...]:
@@ -46,8 +80,10 @@ def implementation_version(manifest: dict[str, Any]) -> str | None:
     return str(version) if version is not None else None
 
 
-def check(ledger: dict[str, Any], manifests: dict[str, dict[str, Any]], *, import_classes: bool = True) -> list[str]:
+def check(ledger: dict[str, Any], manifests: dict[str, dict[str, Any]], *, import_classes: bool = True,
+          registered: set[str] | None = None) -> list[str]:
     errors: list[str] = []
+    known = registered_correction_ids() if registered is None else set(registered)
     entries = ledger.get("modules") or {}
     for module_id in sorted(set(manifests) - set(entries)):
         errors.append(f"{module_id}: manifest has no VERSION_LEDGER entry")
@@ -74,6 +110,13 @@ def check(ledger: dict[str, Any], manifests: dict[str, dict[str, Any]], *, impor
                     errors.append(f"{label}: missing {field}")
             if not isinstance(bump.get("correction_ids"), list) or not bump.get("correction_ids"):
                 errors.append(f"{label}: needs correction_ids")
+            else:
+                for correction_id in bump["correction_ids"]:
+                    if str(correction_id) not in known:
+                        errors.append(
+                            f"{label}: correction id {correction_id!r} is not registered (add it to "
+                            "gridform_core/data/methodology/corrections/ or to the Correction ids table of CHANGELOG.md)"
+                        )
             if not isinstance(bump.get("requires_user_opt_in"), bool):
                 errors.append(f"{label}: requires_user_opt_in must be true or false")
             if bump.get("from") != previous:

@@ -10,7 +10,11 @@ Usage::
 ``declared_runtime_edit`` carrying the correction id (appended to its list),
 registers new ``.py`` files as ``value_added_module`` and new data files as
 ``data``, and refuses removals unless ``--allow-remove`` is given.  It never
-touches the retained ``compat/`` tree.
+touches the retained ``compat/`` tree.  The correction id must be registered
+(R4 M-低1): a methodology catalogue correction, a row of the CHANGELOG.md
+"Correction ids" table, a correction id of a docs/release/VERSION_LEDGER.json
+bump (MODULE_DEVELOPER_101 12.1 appends the bump before sealing), or an id the
+overlay manifest already records.
 """
 
 from __future__ import annotations
@@ -109,9 +113,43 @@ def migrate_v1(root: Path) -> dict[str, Any]:
     return {"migrated": True, "files": len(rows), "kinds": sorted({row["kind"] for row in rows})}
 
 
-def seal(root: Path, correction_id: str, note: str | None, allow_remove: bool) -> dict[str, Any]:
+def known_correction_ids() -> set[str]:
+    """Registered ids (check_version_ledger) plus every VERSION_LEDGER bump's ids."""
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("check_version_ledger", Path(__file__).resolve().parent / "check_version_ledger.py")
+    assert spec is not None and spec.loader is not None
+    ledger_check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ledger_check)
+    known = ledger_check.registered_correction_ids()
+    try:
+        ledger = json.loads(ledger_check.LEDGER.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        ledger = {}
+    for entry in dict(ledger.get("modules") or {}).values():
+        for bump in entry.get("bumps") or []:
+            known.update(str(item) for item in bump.get("correction_ids") or [])
+    return known
+
+
+def seal(root: Path, correction_id: str, note: str | None, allow_remove: bool,
+         *, known: set[str] | None = None) -> dict[str, Any]:
     if not CORRECTION_ID.match(correction_id):
         raise SystemExit(f"correction id {correction_id!r} does not match {CORRECTION_ID.pattern}")
+    if known is None:
+        known = known_correction_ids()
+        try:
+            recorded = json.loads((root / "RUNTIME_OVERLAY.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            recorded = {}
+        known.update(str(item) for row in recorded.get("runtime_files") or [] for item in row.get("correction_ids") or [])
+    if correction_id not in known:
+        raise SystemExit(
+            f"correction id {correction_id!r} is not registered: add it to the methodology catalogue "
+            "(gridform_core/data/methodology/corrections/), to the Correction ids table of CHANGELOG.md, or "
+            "to the docs/release/VERSION_LEDGER.json bump of this change, then seal again"
+        )
     manifest_path = root / "RUNTIME_OVERLAY.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != overlay.SCHEMA_V2:
