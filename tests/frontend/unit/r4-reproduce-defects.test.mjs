@@ -131,3 +131,12 @@ test("runtime estimate text", async () => {
   assert.equal(runtimeEstimateText({ runtime_range_seconds: [60, 60] }), "estimated about 1 min (no comparable completed Run yet)");
   assert.equal(runtimeEstimateText({}), "Runtime estimate not available");
 });
+
+// R-低10: the VRE page does not request the annual summary of a withheld Run.
+test("withheld Run is recognised before annual requests", async () => {
+  const { annualResultsWithheld, VRE_WITHHELD_TEXT } = await import("../../../app/features/workspace/runValidation.ts");
+  assert.equal(annualResultsWithheld({ result_publication: { status: "withheld" } }), true);
+  assert.equal(annualResultsWithheld({ result_publication: { status: "published" } }), false);
+  assert.equal(annualResultsWithheld(undefined), false);
+  assert.match(VRE_WITHHELD_TEXT, /Market replay and Inspect/);
+});

@@ -492,3 +492,10 @@ export function rawResidualRows(balance: EnergyBalanceRecord | null | undefined)
     periods: periodCount === undefined ? null : formatNumber(periodCount, 0),
   }];
 }
+
+/** R4 R-低10: Q14 withholds this Run's annual results (its annual resources answer 409). */
+export function annualResultsWithheld(run: RunValidationFields | null | undefined): boolean {
+  return run?.result_publication?.status === "withheld";
+}
+
+export const VRE_WITHHELD_TEXT = "Annual results are not published on result pages for this reproduction run, so its annual VRE summary is not shown. The half-hour VRE and market evidence stays available in Market replay and Inspect.";

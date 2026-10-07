@@ -44,7 +44,7 @@ import ResultQueryPanel from "./features/results/ResultQueryPanel";
 import { ALL_RUN_MODES, runModesForStudy, selectedRunScope } from "./features/workspace/runScope";
 import { preflightKey, preflightMatches } from "./features/workspace/preflightIdentity";
 import RunContextBar from "./features/workspace/RunContextBar";
-import { shortfallDisplay } from "./features/workspace/runValidation.ts";
+import { annualResultsWithheld, shortfallDisplay, VRE_WITHHELD_TEXT } from "./features/workspace/runValidation.ts";
 import { resolveRunContext } from "./features/workspace/runContext";
 import { journeyFromLocation, readWorkspaceLocation, writeWorkspaceLocation, selectWorkspaceRun, type WorkspaceLocation } from "./features/workspace/workspaceLocation";
 import "./features/workspace/workspace-shell.css";
@@ -259,9 +259,13 @@ function VreTimelineChart({ timeline, excessLabel = "Pre-balancing excess" }: { 
 function CurtailmentView({ run }: { run?: ModelRun }) {
   const [summary, setSummary] = useState<VreSummary | null>(null); const [timeline, setTimeline] = useState<DispatchTimeline | null>(null);
   const [year, setYear] = useState(0); const [resolution, setResolution] = useState("daily"); const [error, setError] = useState("");
-  useEffect(() => { if (!run) return; let active = true; void getJson<VreSummary>(`${API}/runs/${run.id}/market/vre-summary`).then((payload) => { if (!active) return; setSummary(payload); setYear(payload.years[0]?.year ?? 0); setError(""); }).catch((reason: Error) => { if (active) setError(reason.message); }); return () => { active = false; }; }, [run]);
+  // R4 R-低10: a Run whose annual results Q14 withholds is not asked for its
+  // annual VRE summary (the server answers 409, which the browser logs as an error).
+  const vreWithheld = annualResultsWithheld(run);
+  useEffect(() => { if (!run || vreWithheld) return; let active = true; void getJson<VreSummary>(`${API}/runs/${run.id}/market/vre-summary`).then((payload) => { if (!active) return; setSummary(payload); setYear(payload.years[0]?.year ?? 0); setError(""); }).catch((reason: Error) => { if (active) setError(reason.message); }); return () => { active = false; }; }, [run, vreWithheld]);
   useEffect(() => { if (!run || !year) return; let active = true; void getJson<DispatchTimeline>(`${API}/runs/${run.id}/market/vre-timeline?year=${year}&resolution=${resolution}&limit=500`).then((payload) => { if (active) setTimeline(payload); }).catch((reason: Error) => { if (active) setError(reason.message); }); return () => { active = false; }; }, [resolution, run, year]);
   if (!run) return <div className="page"><div className="empty-run"><b>No run selected</b><p>Select a run in Runs before reviewing renewable-energy outcomes.</p></div></div>;
+  if (vreWithheld) return <div className="page evidence-page"><div className="page-title"><div><span>Renewable-energy evidence</span><h2>See how much VRE was available, used and left unused</h2></div><StatusPill tone="caution" title={run.result_publication?.message ?? undefined}>Withheld</StatusPill></div><div className="info-box value-new-control"><b>Annual VRE results withheld</b><br />{VRE_WITHHELD_TEXT}</div></div>;
   const selected = summary?.years.find((item) => item.year === year);
   const maximum = Math.max(1, ...(summary?.years.map((item) => Math.max(item.available_vre_mwh, item.accepted_vre_mwh + (item.pre_balancing_excess_mwh ?? 0))) ?? [1]));
   // R3-21: one unit per KPI group, chosen from the group's largest magnitude.
