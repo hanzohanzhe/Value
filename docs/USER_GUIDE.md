@@ -433,7 +433,7 @@ and validate external modules before selection.
 
 The Modules page now accepts a reviewed `value.module-bundle/v1` ZIP. The user must acknowledge that it contains executable Python. FORCE then checks the exact SHA-256 inventory, safe paths, manifest, entry point, slot/contract and callable conformance before atomically promoting the package and refreshing Study selectors. Built-in IDs cannot be shadowed. A referenced external module cannot be disabled until its saved Studies are migrated.
 
-This installer is offline and self-contained: it does not run `pip`, download dependencies or accept native binaries. Version-scoped source directories are organisational isolation, not an operating-system sandbox; external code executes inside the FORCE Python process. Conformance demonstrates contract wiring, not scientific validity. Build the supplied example with `scripts/build_module_bundle.py`, install it from Modules, then run a two-period wiring check before a full study.
+This installer is offline and self-contained: it does not run `pip`, download dependencies or accept native binaries. Version-scoped source directories are organisational isolation, not an operating-system sandbox; external code executes inside the VALUE Python process. Conformance demonstrates contract wiring, not scientific validity. Build the supplied example with `scripts/build_module_bundle.py`, install it from Modules, then run a two-period wiring check before a full study.
 
 ## 16. Command-line execution
 

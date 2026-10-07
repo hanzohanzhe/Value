@@ -101,13 +101,18 @@ orchestrator 拥有年份循环。第三方 module 只实现自己的阶段，�
 
 | Slot | Contract | 必须提供的方法 | 接收 | 返回 |
 | --- | --- | --- | --- | --- |
-| `psm` | `gridform.psm/v2` | `run(model_input)` | `PSMInput` | `MarketYearResult` |
+| `psm` | `value.psm/v2` | `run(model_input)` | `PSMInput` | `MarketYearResult` |
 | `storage_cost` | `value.storage-cost/v1` | `create(**parameters)` | 技术和运行参数 | 年度储能报价对象 |
-| `vre_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | 运行、在运系统、市场结果 | `ExpansionHeadroom` |
-| `storage_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | 同上 | `ExpansionHeadroom` |
-| `investment` | `gridform.investment/v2` | `decide(run, state, market, headroom)` | 市场收入、资产、扩张空间 | `InvestmentDecision` |
-| `pipeline` | `gridform.planning/v2` | `advance_year(...)`, `admit_projects(...)` | 年度状态和投资提案 | `PlanningAdvanceResult`、`PlanningAdmissionResult` |
-| `transition` | `gridform.state-transition/v2` | `apply(run, current_state, planning, investment)` | 本年资产、规划和退出 | 下一年 `YearState` |
+| `vre_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | 运行、在运系统、市场结果 | `ExpansionHeadroom` |
+| `storage_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | 同上 | `ExpansionHeadroom` |
+| `investment` | `value.investment/v2` | `decide(run, state, market, headroom)` | 市场收入、资产、扩张空间 | `InvestmentDecision` |
+| `pipeline` | `value.planning/v2` | `advance_year(...)`, `admit_projects(...)` | 年度状态和投资提案 | `PlanningAdvanceResult`、`PlanningAdmissionResult` |
+| `transition` | `value.state-transition/v2` | `apply(run, current_state, planning, investment)` | 本年资产、规划和退出 | 下一年 `YearState` |
+
+`value-module.json` 中的 `contract_version` 必须与上表完全一致。安装器按
+`gridform_core/v2/module_manifest.py` 的 `SUPPORTED_CONTRACTS` 核对，其他写法一律拒绝，
+包括改名之前的 `gridform.*` 写法，例如：
+`Module my-module in slot storage_cost uses gridform.storage-cost/v1; expected value.storage-cost/v1`。
 
 权威接口定义：
 
@@ -314,8 +319,9 @@ my-module.zip
 
 描述文件名 `force-bundle.json` 是 VALUE 改名之前留下的兼容名称（见
 [`BRAND_AND_VARIANTS.md`](BRAND_AND_VARIANTS.md)），其 schema 是
-`value.module-bundle/v1`；manifest 文件是 `value-module.json`。`gridform.storage-cost/v1`
-这类 contract ID 也因同样原因保留。
+`value.module-bundle/v1`；manifest 文件是 `value-module.json`。slot 的 contract ID
+**没有**沿用旧名：请使用第 4 节表中的 `value.*` ID（例如 `value.storage-cost/v1`），
+写成 `gridform.*` 的包在安装时会被拒绝。
 
 硬性限制：
 
@@ -340,7 +346,7 @@ my-module.zip
   "scientific_version": "paper-method-2026-01",
   "slot": "investment",
   "implementation": "my_unique_package.plugin:MyInvestment",
-  "contract_version": "gridform.investment/v2",
+  "contract_version": "value.investment/v2",
   "inputs": ["market.year-result", "expansion.headroom"],
   "outputs": ["investment.proposals", "investment.retirements"],
   "parameters": [],

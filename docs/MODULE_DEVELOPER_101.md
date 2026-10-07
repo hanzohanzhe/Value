@@ -91,13 +91,19 @@ launch a hidden ten-year script.
 
 | Slot | Contract | Required callable | Returns |
 | --- | --- | --- | --- |
-| `psm` | `gridform.psm/v2` | `run(model_input)` | `MarketYearResult` |
-| `storage_cost` | `gridform.storage-cost/v1` | `create(**parameters)` | annual storage-offer object |
-| `vre_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
-| `storage_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
-| `investment` | `gridform.investment/v2` | `decide(run, state, market, headroom)` | `InvestmentDecision` |
-| `pipeline` | `gridform.planning/v2` | `advance_year(...)`, `admit_projects(...)` | planning results |
-| `transition` | `gridform.state-transition/v2` | `apply(run, current_state, planning, investment)` | next `YearState` |
+| `psm` | `value.psm/v2` | `run(model_input)` | `MarketYearResult` |
+| `storage_cost` | `value.storage-cost/v1` | `create(**parameters)` | annual storage-offer object |
+| `vre_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
+| `storage_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
+| `investment` | `value.investment/v2` | `decide(run, state, market, headroom)` | `InvestmentDecision` |
+| `pipeline` | `value.planning/v2` | `advance_year(...)`, `admit_projects(...)` | planning results |
+| `transition` | `value.state-transition/v2` | `apply(run, current_state, planning, investment)` | next `YearState` |
+
+`contract_version` in `value-module.json` must be exactly the ID in this table.
+The installer checks it against `SUPPORTED_CONTRACTS` in
+`gridform_core/v2/module_manifest.py` and rejects any other ID, including the
+pre-VALUE `gridform.*` form, for example:
+`Module my-module in slot storage_cost uses gridform.storage-cost/v1; expected value.storage-cost/v1`.
 
 Authoritative definitions are in `gridform_core/v2/interfaces.py`,
 `gridform_core/v2/contracts.py` and `gridform_core/v2/orchestrator.py`. Do not
@@ -210,7 +216,7 @@ cannot be negative, and physical/economic records must scale together.
 The built-in `StagedBidAtCostPSM` adapter is currently the only integration that
 automatically captures the three dispatch cases and writes VRE curtailment
 attribution v2. Its resolved manifest declares output
-`force.vre-counterfactual-snapshot/v1` and capability
+`value.vre-counterfactual-snapshot/v1` and capability
 `evidence.vre-counterfactual-snapshot/v1`; the selected balancing component also
 produces `network.zonal-redispatch-result/v1`.
 
@@ -218,7 +224,7 @@ For an external module, those declarations establish manifest compatibility
 only. They do not cause VALUE to install or invoke a generic evidence adapter.
 A third-party PSM that needs `results.vre-curtailment-attribution/v2` must supply
 its own execution integration adapter and write complete, reconciled
-`gridform.market-ledger/v6` period/detail evidence. Full end-to-end execution of
+`value.market-ledger/v8` period/detail evidence. Full end-to-end execution of
 that external path has not yet been verified.
 
 One snapshot has `run_id`, `year`, `period`, `period_id`, one lowercase
@@ -297,8 +303,9 @@ my-module.zip
 `value.module-bundle/v1`). Its file name `force-bundle.json` is a compatibility
 name kept from before the VALUE name (see
 [`BRAND_AND_VARIANTS.md`](BRAND_AND_VARIANTS.md)); the manifest is
-`value-module.json`. Contract IDs such as `gridform.storage-cost/v1` are kept
-for the same reason.
+`value-module.json`. Slot contract IDs are not kept from that period: use the
+`value.*` IDs of section 4 (for example `value.storage-cost/v1`); a
+`gridform.*` contract ID is rejected at install.
 
 The deterministic `value.module-bundle/v1` limits are 25 MiB compressed,
 100 MiB expanded and 1,000 members. Absolute/traversal paths, duplicates,
@@ -319,7 +326,7 @@ VALUE Python process without an OS sandbox. Install trusted code only.
   "scientific_version": "paper-method-2026-01",
   "slot": "investment",
   "implementation": "my_unique_package.plugin:MyInvestment",
-  "contract_version": "gridform.investment/v2",
+  "contract_version": "value.investment/v2",
   "inputs": ["market.year-result", "expansion.headroom"],
   "outputs": ["investment.proposals", "investment.retirements"],
   "parameters": [],

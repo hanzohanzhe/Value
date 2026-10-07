@@ -165,9 +165,9 @@ Overview 显示所选数据包、可用模块、Python runtime 和年度 PSM/CEM
 
 打开 **Modules** 页面顶部的 **Install a model module**：选择建模者提供的 `value.module-bundle/v1` ZIP，勾选可执行代码信任确认，再点击安装。FORCE 会在临时目录检查文件清单与 SHA-256、路径穿越、manifest、Python entry point、槽位/contract、必需方法和最小 conformance fixture；全部通过后才原子写入模块目录并立即刷新 Studies 下拉框。
 
-安装成功不代表科学方法已经验证。先建立新的 Study revision，运行 two-period wiring check，再做完整年度测试。内置模块不能被覆盖或禁用；已被 Saved Study 引用的外部模块也不能直接禁用。外部源码按模块/版本分目录保存，但仍在 FORCE Python 进程内运行。安装器不联网、不运行 `pip`、不接受原生二进制。
+安装成功不代表科学方法已经验证。先建立新的 Study revision，运行 two-period wiring check，再做完整年度测试。内置模块不能被覆盖或禁用；已被 Saved Study 引用的外部模块也不能直接禁用。外部源码按模块/版本分目录保存，但仍在 VALUE Python 进程内运行。安装器不联网、不运行 `pip`、不接受原生二进制。
 
-开发者从 `examples/external_module_bundle` 复制模板，并用 `scripts/build_module_bundle.py` 构建确定性的 ZIP。每个包必须包含 `force-bundle.json`、`force-module.json`、`src/`、`LICENSE`，可选 `README.md`。
+开发者从 `examples/external_module_bundle` 复制模板，并用 `scripts/build_module_bundle.py` 构建确定性的 ZIP。每个包必须包含 `force-bundle.json`、`value-module.json`、`src/`、`LICENSE`，可选 `README.md`。描述文件 `force-bundle.json` 由构建脚本写入，文件名是改名前留下的兼容名称；`value-module.json` 中的 `contract_version` 必须是 `value.*` 形式（例如 `value.storage-cost/v1`），见 `MODULE_DEVELOPER_101_ZH.md` 第 4 节。
 
 ### Research projects
 

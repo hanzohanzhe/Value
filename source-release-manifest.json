@@ -1622,6 +1622,7 @@
     "tests/test_r12_economic_downward_order.py",
     "tests/test_r13_per_type_battery_caps.py",
     "tests/test_r2_advisory_assets.py",
+    "tests/test_r2_developer_guide_contracts.py",
     "tests/test_r2_methodology_record.py",
     "tests/test_r2_numeric_identity.py",
     "tests/test_raw_invariant_failures.py",
@@ -4594,8 +4595,8 @@
     },
     {
       "path": "docs/BRAND_AND_VARIANTS.md",
-      "sha256": "0c73283636d335066019aaf5c0c1e5f49eaa422ed7b4510f8a74f265bc673161",
-      "bytes": 2438,
+      "sha256": "2fb982a16d315beb2d38774ac8f52a0a84f2467e913d0b91ccbd06b7456d0ae0",
+      "bytes": 2568,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4654,14 +4655,14 @@
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
-      "sha256": "b66c097867dd662f43bd704f4aeb5adb9b4d9e83152c23e7947bf0bf743da96f",
-      "bytes": 27288,
+      "sha256": "dd2116649cbf7a79dfc8a918d8c68548a48686d88acdca02df26e5ee86767f1e",
+      "bytes": 27725,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/MODULE_DEVELOPER_101_ZH.md",
-      "sha256": "aee44bff67de4c5395636ca5317efbb7e8f46920edfaea51eb7dcdb97720df3a",
-      "bytes": 28363,
+      "sha256": "cb1b45df9dc15498b79e7a38c1a74a61fa3d1f6e5875fd3a0761de9cdb4a1849",
+      "bytes": 28804,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4690,14 +4691,14 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "b5ac275d0a795f4947da84efb4eea3c528abf21bf0c5fb47260041272dee35e6",
+      "sha256": "ca55ab8b21bfd22ac1f8cd33fa6f5d3674391d8f6acbacc3bc4a79a25741493a",
       "bytes": 36546,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/USER_GUIDE_ZH.md",
-      "sha256": "87e07d0ff000e269c1dfffe885e56ddbfad90cbd02b141e951b123cb69f62e14",
-      "bytes": 35242,
+      "sha256": "6f3496c1f186b5f34f92b87abbe363dbb4ba5adf7749d2dc6ea8d50cca395882",
+      "bytes": 35500,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12649,6 +12650,12 @@
       "path": "tests/test_r2_advisory_assets.py",
       "sha256": "dce4b256e9e6c2a758f6c1ce4d8acd1199b1f05073a20876e98f1f6b6acd5a71",
       "bytes": 3390,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_r2_developer_guide_contracts.py",
+      "sha256": "a0f6124bfc48a34b10210f95e9b6f3c817bbc9b9516415d546112ec610a9170f",
+      "bytes": 6384,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
