@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { extensionSourceChangeNote } from "../../../app/features/modules/disabledEntries.ts";
 import { codeIdentityUpdate } from "../../../app/features/studies/studyMigration.ts";
+import { derivationNotes } from "../../../app/features/modules/derivationNotes.ts";
 import { preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
 
 // R4 (DECISIONS A27), four-role report sections 4.3 and 5.3: edit-module and
@@ -30,4 +31,16 @@ test("F-中2: a source-reidentify revision is not described as 'no change expect
   const text = codeIdentityUpdate({ revision_reason: "source-reidentify", revision_sha256: "0123456789abcdef0123" });
   assert.equal(text, "Updated to code identity 0123456789ab (installed local code was edited in place; results may differ)");
   assert.match(codeIdentityUpdate({ revision_reason: "code-identity-upgrade", revision_sha256: "0123456789abcdef0123" }), /no change to methods or results expected/);
+});
+
+test("M-中3: a derivation says when it re-identified the source or started from a newer module graph", () => {
+  assert.deepEqual(derivationNotes({ ok: true, project: { id: "x" } }), []);
+  assert.deepEqual(derivationNotes(null), []);
+  const notes = derivationNotes({
+    source_migration: { revision_number: 3, revision_reason: "code-identity-upgrade" },
+    source_graph_drift: { differences: [{ slot: "storage_cost", module_id: "hx-flat", field: "source_sha256" }, { slot: "storage_cost", module_id: "hx-flat", field: "module_version" }] },
+  });
+  assert.equal(notes[0], "The source Study was first re-identified as revision 3 (code-only change, no confirmation needed).");
+  assert.equal(notes[1], "The source's module code changed since its revision was saved (storage_cost hx-flat). For a one-change comparison, compare with a new Run of the source Study.");
+  assert.match(derivationNotes({ source_migration: { revision_reason: "source-reidentify" } })[0], /installed local code was edited in place/);
 });

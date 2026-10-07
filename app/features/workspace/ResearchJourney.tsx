@@ -4,6 +4,7 @@ import { apiUrl } from "../shared/api";
 import { useId, useRef, useState, type FormEvent } from "react";
 import "./research-journey.css";
 import { studyNameTaken } from "./studyNames.ts";
+import { derivationNotes } from "../modules/derivationNotes.ts";
 
 export type JourneyStudy = {
   id: string;
@@ -33,7 +34,7 @@ export type ResearchJourneyProps = {
   packs: JourneyPack[];
   initialStudyId: string;
   online: boolean;
-  onCreated: (studyId: string) => Promise<void> | void;
+  onCreated: (studyId: string, notes?: string[]) => Promise<void> | void;
   targetPackId: string;
   onTargetPackChange: (id: string) => void;
   onPackCreated: () => Promise<void>;
@@ -131,7 +132,7 @@ export default function ResearchJourney({
       // second click does not reproduce the new copy under the same name.
       setSourceId(source.id);
       setNewName("");
-      await onCreated(payload.project.id);
+      await onCreated(payload.project.id, derivationNotes(payload));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "暂时无法创建 Study，请稍后重试。");
     } finally {

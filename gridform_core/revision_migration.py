@@ -653,6 +653,26 @@ def migration_candidate(project: Mapping[str, Any], registry: ModuleRegistryV2, 
     return candidate
 
 
+def current_module_graph(project: Mapping[str, Any], registry: ModuleRegistryV2,
+                         data_pack_manifest: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The module resolution graph of a Study under the installed registry, or None if it does not resolve.
+
+    Resolved as Study derivation verifies it: the Study's own module
+    selection, extensions and extension parameters against the bound roles
+    of its revision manifest.
+    """
+
+    try:
+        return registry.resolve_selection(
+            dict(project.get("modules") or {}),
+            selected_extensions=tuple(str(item) for item in project.get("selected_extensions") or ()),
+            extension_parameters=dict(project.get("extension_parameters") or {}),
+            available_data_roles=tuple(sorted(str(role) for role in dict(data_pack_manifest.get("bindings") or {}))),
+        ).to_dict()
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def migrate_project_revision(
     project_dir: Path,
     registry: ModuleRegistryV2,
@@ -700,6 +720,12 @@ def migrate_project_revision(
         candidate = migration_candidate(project, registry, profile_id=classification.get("selected_profile_id"))
     else:
         candidate = json.loads(json.dumps(project))
+    # R4 M-中3: the appended revision records the module graph the installed
+    # code resolves (versions and source hashes), not the one stored with the
+    # previous revision; derivation and the Studies card read it.
+    graph = current_module_graph(candidate, registry, data_pack_manifest)
+    if graph is not None:
+        candidate["module_resolution_graph"] = graph
     saved = save_project_revision(
         project_dir, candidate, registry, data_pack_manifest,
         expected_base_revision=str(project.get("revision_sha256") or "") or None,

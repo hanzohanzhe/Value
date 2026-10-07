@@ -381,5 +381,131 @@ class DerivedReadinessErrorTests(unittest.TestCase):
         self.assertIn("Rescan modules", issue["corrective_action"])
 
 
+class GraphShiftRegistry(VersionedRegistry):
+    """A simulated code-only upgrade: the PSM version and its resolved graph move together."""
+
+    def resolve_selection(self, modules, **kwargs):
+        graph = self.base.resolve_selection(modules, **kwargs).to_dict()
+        for row in graph["modules"].values():
+            if row.get("module_id") in self.versions:
+                row["module_version"] = self.versions[row["module_id"]]
+        graph["graph_sha256"] = "1" * 64
+        return SimpleNamespace(to_dict=lambda: json.loads(json.dumps(graph)))
+
+
+class MigrationGraphTests(SavedStudyCase):
+    """M-中3 (a): a migration revision records the current module graph."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        import shutil
+
+        project = {key: value for key, value in self.project().items()
+                   if key not in {"revision_sha256", "revision_number", "parent_revision_sha256", "fingerprint_basis",
+                                  "revision_reason", "change_summary"}}
+        project["module_resolution_graph"] = revision_migration.current_module_graph(project, self.registry, self.manifest)
+        shutil.rmtree(self.study)  # saved as validation normalises it: with its module graph
+        self.saved = save_project_revision(self.study, project, self.registry, self.manifest)
+
+    def test_code_only_migration_refreshes_the_stored_graph(self) -> None:
+        stored = self.project()["module_resolution_graph"]
+        self.assertEqual(stored["modules"]["psm"]["module_version"], SHIPPED)
+        upgraded = GraphShiftRegistry(self.registry, {PSM: UPGRADED})
+        with patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=False)):
+            saved, classification = revision_migration.migrate_project_revision(self.study, upgraded, self.manifest)
+        self.assertEqual(classification["classification"], "code_identity_upgrade")
+        self.assertEqual(saved["revision_number"], self.saved["revision_number"] + 1)
+        self.assertEqual(saved["module_resolution_graph"]["modules"]["psm"]["module_version"], UPGRADED)
+        record = json.loads((self.study / "revisions" / f"{saved['revision_sha256']}.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["module_resolution_graph"], saved["module_resolution_graph"])
+        self.assertIn("module_resolution_graph", saved["change_summary"])
+
+
+class DerivationGraphDriftTests(unittest.TestCase):
+    """M-中3 (b): a source whose stored graph is stale (code-level only) can be derived from."""
+
+    def setUp(self) -> None:
+        from tests.test_study_derivation import StudyDerivationTests
+
+        self.case = StudyDerivationTests("test_reproduction_preserves_configuration_and_source")
+        self.case.setUp()
+        self.addCleanup(self.case.tearDown)
+        case = self.case
+        # A Study without extensions: the module graph is evidence, not part of the revision hash.
+        source = json.loads((case.projects / "baseline" / "project.json").read_text())
+        for key in ("revision_sha256", "revision_number", "parent_revision_sha256", "fingerprint_basis",
+                    "revision_reason", "change_summary"):
+            source.pop(key, None)
+        source["selected_extensions"], source["extension_parameters"] = [], {}
+        source["module_resolution_graph"] = case.graph(source)
+        import shutil
+
+        shutil.rmtree(case.projects / "baseline")
+        case.source = save_project_revision(case.projects / "baseline", source, case.registry, case.pack("baseline-pack"))
+        case.before = (case.projects / "baseline" / "project.json").read_bytes()
+
+    def test_code_level_drift_is_recorded_not_refused(self) -> None:
+        case = self.case
+        recorded = case.source["module_resolution_graph"]["graph_sha256"]
+        case.registry.source_sha = "b" * 64  # a module source edited in place (A16-4)
+        response = case.derive()
+        derivation = response["project"]["derivation"]
+        drift = derivation["source_module_graph_drift"]
+        self.assertEqual(drift["recorded_graph_sha256"], recorded)
+        self.assertEqual(drift["current_graph_sha256"], derivation["source_module_graph_sha256"])
+        self.assertNotEqual(drift["current_graph_sha256"], recorded)
+        self.assertIn(("psm", "source_sha256"), {(row["slot"], row["field"]) for row in drift["differences"]})
+        self.assertEqual(response["source_graph_drift"], drift)
+        self.assertEqual((case.projects / "baseline" / "project.json").read_bytes(), case.before)
+
+    def test_method_variant_derives_from_the_current_graph(self) -> None:
+        case = self.case
+        case.registry.source_sha = "b" * 64
+        with patch("backend.study_derivation.module_candidate_identity", return_value="c" * 64):
+            response = case.derive("edit_module", request=case.method_request())
+        self.assertEqual(response["project"]["modules"]["psm"], "candidate-psm")
+        self.assertIn("source_module_graph_drift", response["project"]["derivation"])
+
+    def test_unchanged_source_records_no_drift(self) -> None:
+        response = self.case.derive()
+        self.assertNotIn("source_module_graph_drift", response["project"]["derivation"])
+        self.assertNotIn("source_graph_drift", response)
+
+
+class DeriveSourceMigrationTests(SavedStudyCase):
+    """M-中3 (c): the derive API appends a code-only revision of the source first (Q13)."""
+
+    def test_automatic_change_is_appended_and_the_request_follows_it(self) -> None:
+        from backend import server
+
+        projects = self.study.parent
+        packs = Path(self.folder.name) / "data-packs"
+        packs.mkdir()
+        import shutil
+
+        shutil.copytree(PACK_ROOT, packs / self.manifest["id"])
+        upgraded = GraphShiftRegistry(self.registry, {PSM: UPGRADED})
+        body = {"intent": "reproduce", "name": "Copy", "data_pack_id": self.manifest["id"],
+                "source_revision_sha256": self.saved["revision_sha256"]}
+        with patch.object(server, "PROJECTS_ROOT", projects), patch.object(server, "PACKS_ROOT", packs), \
+                patch.object(server, "MODULE_REGISTRY", upgraded), \
+                patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=False)):
+            stale = server.Handler._migrate_derivation_source(None, "study", {**body, "source_revision_sha256": "0" * 64})
+            self.assertEqual(stale, ({**body, "source_revision_sha256": "0" * 64}, None))
+            request, migration = server.Handler._migrate_derivation_source(None, "study", body)
+        current = self.project()
+        self.assertEqual(migration["from_revision_sha256"], self.saved["revision_sha256"])
+        self.assertEqual(migration["to_revision_sha256"], current["revision_sha256"])
+        self.assertEqual(migration["revision_reason"], "code-identity-upgrade")
+        self.assertEqual(request["source_revision_sha256"], current["revision_sha256"])
+        # A method change is never appended here: it needs the user's confirmation.
+        with patch.object(server, "PROJECTS_ROOT", projects), patch.object(server, "PACKS_ROOT", packs), \
+                patch.object(server, "MODULE_REGISTRY", GraphShiftRegistry(self.registry, {PSM: "99.0.0"})), \
+                patch.object(revision_migration, "_ledger", return_value=_ledger(opt_in=True)):
+            body = {**body, "source_revision_sha256": current["revision_sha256"]}
+            self.assertEqual(server.Handler._migrate_derivation_source(None, "study", body), (body, None))
+        self.assertEqual(self.project()["revision_sha256"], current["revision_sha256"])
+
+
 if __name__ == "__main__":
     unittest.main()

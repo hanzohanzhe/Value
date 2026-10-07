@@ -110,6 +110,25 @@ def _verify_method_graph(saved: Mapping[str, object], graph: object,
         )
 
 
+def graph_drift(saved: Mapping[str, object], current: Mapping[str, object]) -> list[dict[str, object]]:
+    """What differs between a stored module resolution graph and the current one (R4 M-中3)."""
+
+    rows: list[dict[str, object]] = []
+    before = saved.get("modules") if isinstance(saved.get("modules"), Mapping) else {}
+    after = current.get("modules") if isinstance(current.get("modules"), Mapping) else {}
+    for slot in sorted(set(before) | set(after)):  # type: ignore[arg-type]
+        old = before.get(slot) if isinstance(before.get(slot), Mapping) else {}  # type: ignore[union-attr]
+        new = after.get(slot) if isinstance(after.get(slot), Mapping) else {}  # type: ignore[union-attr]
+        for field in sorted(set(old) | set(new)):  # type: ignore[arg-type]
+            if old.get(field) != new.get(field):  # type: ignore[union-attr]
+                rows.append({"slot": slot, "module_id": new.get("module_id") or old.get("module_id"),  # type: ignore[union-attr]
+                             "field": field, "saved": old.get(field), "current": new.get(field)})  # type: ignore[union-attr]
+    for key in sorted((set(saved) | set(current)) - {"modules", "graph_sha256"}):
+        if saved.get(key) != current.get(key):
+            rows.append({"slot": None, "module_id": None, "field": key, "saved": None, "current": None})
+    return rows
+
+
 def _read(path: Path, label: str) -> dict[str, object]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -214,10 +233,15 @@ def derive_study(
             # revision migration (X0 S11, Q13), not a content conflict.
             classification = classify_revision_mismatch(source, registry, source_manifest)  # type: ignore[arg-type]
             if classification.get("classification") not in {"content_changed", "none", "unsaved"}:
+                # R4 M-中3: a code-only change is migrated by the API before
+                # this point; what is left needs the user's confirmation, which
+                # Check readiness of the source Study opens.
                 raise StudyDerivationError(
                     "GF_STUDY_REVISION_MIGRATION_REQUIRED",
-                    "The source Study was saved by an earlier VALUE version or method; review its revision "
-                    f"migration (/api/projects/{source_id}/revision-migration), then derive from the new revision.",
+                    "The source Study was saved by an earlier VALUE version or method and needs your "
+                    "confirmation first: open Runs, select the source Study and press Check readiness to review "
+                    "and confirm the listed changes, then create this Study again "
+                    f"(API: /api/projects/{source_id}/revision-migration).",
                     revision_migration=classification,
                 )
             raise StudyDerivationError(
@@ -236,11 +260,22 @@ def derive_study(
             extension_parameters=dict(record.get("extension_parameters") or {}),
             available_data_roles=tuple(sorted(dict(source_manifest.get("bindings") or {}))),
         ).to_dict()
+        drift: list[dict[str, object]] = []
+        recorded_graph_sha256 = saved_graph.get("graph_sha256")
         if current_graph != saved_graph or source.get("module_resolution_graph") != saved_graph:
-            raise StudyDerivationError(
-                "GF_STUDY_DERIVATION_METHOD_DRIFT",
-                "Current module identities differ from the source revision; review and save a new revision first.",
-            )
+            # R4 M-中3: the revision identity was verified above (the installed
+            # code computes the saved hash), so every difference left is code
+            # identity the hash does not cover: a module source edited in place
+            # (A16-4) or a graph stored before a code-only migration refreshed
+            # it.  The derivation starts from the current graph and records
+            # the difference instead of refusing with no way forward.
+            if not isinstance(current_graph, dict) or not current_graph.get("graph_sha256"):
+                raise StudyDerivationError(
+                    "GF_STUDY_DERIVATION_EVIDENCE_MISSING",
+                    "The current module identities cannot be resolved for the source Study.",
+                )
+            drift = graph_drift(saved_graph, current_graph)
+            saved_graph = current_graph
         _verify_bound_inputs(source_manifest, packs_root / source_pack_id)
     except StudyDerivationError:
         raise
@@ -291,6 +326,12 @@ def derive_study(
         "source_module_graph_sha256": saved_graph["graph_sha256"],
         "created_at": candidate["updated_at"],
     }
+    if drift:
+        candidate["derivation"]["source_module_graph_drift"] = {
+            "recorded_graph_sha256": recorded_graph_sha256,
+            "current_graph_sha256": saved_graph["graph_sha256"],
+            "differences": drift,
+        }
     origin = dict(candidate.get("extensions") or {}).get("value_101")
     if isinstance(origin, dict):
         # M-D8: a Study derived from a VALUE 101 Study keeps its course origin
@@ -355,4 +396,7 @@ def derive_study(
         if isinstance(exc, StudyDerivationError):
             raise
         raise StudyDerivationError("GF_STUDY_DERIVATION_SAVE_FAILED", f"The derived Study was not saved: {exc}") from exc
-    return {"ok": True, "project": saved, "validation": validation, "run_started": False}
+    result: dict[str, object] = {"ok": True, "project": saved, "validation": validation, "run_started": False}
+    if drift:
+        result["source_graph_drift"] = candidate["derivation"]["source_module_graph_drift"]
+    return result

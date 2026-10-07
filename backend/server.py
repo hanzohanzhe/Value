@@ -29,7 +29,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from backend.data_mapping import DataMappingService, DataMappingError, MAX_UPLOAD_BYTES as MAX_MAPPING_UPLOAD_BYTES
 from backend.data_pack_clone import DataPackCloneError, clone_data_pack, guard_clone_upload, manifest_sha256
 from backend.data_workbench_api import BASE as DATA_WORKBENCH_API_BASE, DataWorkbenchApi
-from backend.study_derivation import StudyDerivationError, derive_study
+from backend.study_derivation import SAFE_ID as SAFE_STUDY_ID, StudyDerivationError, derive_study
 from backend.module_authoring import module_authoring_detail, module_authoring_template
 from backend.extension_authoring import validate_extension_proposal, extension_proposal_template
 from backend.extension_results import query_extension_artifacts
@@ -3225,6 +3225,40 @@ class Handler(BaseHTTPRequestHandler):
             **stale,
         }, 201)
 
+    def _migrate_derivation_source(self, source_id: str, body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        """Append the automatic (code-only) revision of a derivation source; caller holds the Study lock.
+
+        Only when the request names the source's current saved revision and
+        the installed code classifies the difference as automatic (Q13).
+        Returns the request naming the new revision, and what was appended.
+        """
+
+        if not isinstance(body, dict) or not SAFE_STUDY_ID.fullmatch(source_id):
+            return body, None
+        context = _study_revision_context(source_id)
+        if context is None:
+            return body, None
+        project, manifest = context
+        declared = project.get("revision_sha256")
+        if not declared or body.get("source_revision_sha256") != declared:
+            return body, None
+        try:
+            whitelist = _study_whitelist_packs(project)
+            classification = classify_revision_mismatch(project, MODULE_REGISTRY, manifest, whitelist_packs=whitelist)
+            if not classification.get("automatic"):
+                return body, None
+            saved, classification = migrate_project_revision(
+                PROJECTS_ROOT / source_id, MODULE_REGISTRY, manifest, whitelist_packs=whitelist,
+            )
+        except (RevisionMigrationError, KeyError, TypeError, ValueError):
+            return body, None  # derive_study reports the source as it stands
+        migration = {
+            "from_revision_sha256": declared, "to_revision_sha256": saved.get("revision_sha256"),
+            "revision_number": saved.get("revision_number"), "revision_reason": saved.get("revision_reason"),
+            "classification": classification.get("classification"),
+        }
+        return {**body, "source_revision_sha256": saved.get("revision_sha256")}, migration
+
     def _pending_runs_confirmed(self, body: Mapping[str, Any] | None = None) -> bool:
         """Explicit confirmation to change modules while runs are pending:
         ``{"confirm_pending_runs": true}`` in a JSON body, or the header
@@ -4084,8 +4118,14 @@ class Handler(BaseHTTPRequestHandler):
             parts = route.strip("/").split("/")
             if len(parts) != 4:
                 self._json({"error": "invalid Study derivation route"}, 404); return
+            source_migration = None
             try:
                 with STUDY_LIFECYCLE_LOCK:
+                    # R4 M-中3 (Q13): a code-only change of the source Study is
+                    # appended automatically, as a Run start does, before it is
+                    # derived from; a method or data change still needs the
+                    # user's confirmation and is refused by derive_study.
+                    body, source_migration = self._migrate_derivation_source(unquote(parts[2]), body)
                     result = derive_study(
                         unquote(parts[2]), body,
                         projects_root=PROJECTS_ROOT,
@@ -4104,7 +4144,11 @@ class Handler(BaseHTTPRequestHandler):
                     payload["validation"] = exc.validation
                 if exc.revision_migration is not None:
                     payload["revision_migration"] = exc.revision_migration
+                if source_migration is not None:
+                    payload["source_migration"] = source_migration
                 self._json(payload, exc.status); return
+            if source_migration is not None:
+                result = {**result, "source_migration": source_migration}
             self._json(result, 201)
         elif route == "/api/projects":
             project_id = slug(str(body.get("id") or body.get("name") or "project"), "project")

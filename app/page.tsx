@@ -1462,9 +1462,9 @@ export default function Home() {
         initialStudyId={selectedProjectId} online={online}
         targetPackId={journeyTargetPackId} onTargetPackChange={setJourneyTargetPackId}
         onPackCreated={async () => { if (!await refresh()) throw new Error("工作区列表刷新失败，请恢复服务连接后重新加载。"); }}
-        onCreated={async (studyId) => {
+        onCreated={async (studyId, notes) => {
           await refresh(); setSelectedProjectId(studyId); setSelectedRunId(""); setPreflight(null); setView("run");
-          setNotice("新的独立 Study 已保存。请选择运行范围并检查条件；尚未启动 Run。");
+          setNotice("新的独立 Study 已保存。请选择运行范围并检查条件；尚未启动 Run。" + (notes?.length ? ` ${notes.join(" ")}` : ""));
         }}
         onOpenData={(context) => {
           setJourneyData(context); setJourneyTargetPackId(context.targetPackId);
@@ -1592,10 +1592,11 @@ export default function Home() {
       <ModuleQuarantinePanel report={workspace.module_quarantine} busy={quarantineBusy} onDisable={(row) => void disableQuarantined(row)} onRescan={() => void rescanModules()} />
       <div><ModuleAuthorWorkbench modules={workspace.modules} projects={workspace.projects}
         onInstallRequest={() => document.getElementById("module-installer")?.scrollIntoView({ block: "start", behavior: "smooth" })}
-        onCreated={async ({ id }) => {
+        onCreated={async ({ id, notes }) => {
           const refreshed = await refresh();
           setSelectedProjectId(id); setSelectedRunId(""); setPreflight(null); setView("run");
-          setNotice(refreshed ? "Method-comparison Study saved. Data and all other settings are unchanged; no Run has started." : "Method-comparison Study saved, but the workspace did not refresh. Continue in Runs once the connection is back; no Run has started.");
+          const extra = notes?.length ? ` ${notes.join(" ")}` : "";
+          setNotice((refreshed ? "Method-comparison Study saved. Data and all other settings are unchanged; no Run has started." : "Method-comparison Study saved, but the workspace did not refresh. Continue in Runs once the connection is back; no Run has started.") + extra);
         }} /></div>
       <section className="panel module-installer" id="module-installer">
         <div className="module-installer-copy"><span>Local extension</span><h3>Install a model module</h3><p>A modeller prepares one signed-off ZIP containing a manifest, licence and self-contained Python source. VALUE verifies its inventory, public contract and callable shape before it enters the registry.</p><small>Structural conformance is not scientific validation. Installed Python runs inside the local VALUE process.</small></div>

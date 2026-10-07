@@ -3,6 +3,7 @@
 import { apiUrl } from "../shared/api";
 import { useEffect, useRef, useState } from "react";
 import { isAuthorDraftResolution, isAuthoringDetail, record, type AuthorDraftResolution, type AuthoringDetail, type AuthorModule, type AuthorStudy } from "./module-authoring.types";
+import { derivationNotes } from "./derivationNotes.ts";
 import "./ModuleAuthorWorkbench.css";
 
 function failure(body: unknown, fallback: string): string {
@@ -55,7 +56,7 @@ function ModuleDetails({ detail }: { detail: AuthoringDetail }) {
 
 export default function ModuleAuthorWorkbench({ modules, projects, onCreated, onInstallRequest }: {
   modules: AuthorModule[]; projects: AuthorStudy[];
-  onCreated: (project: { id: string }) => void; onInstallRequest: () => void;
+  onCreated: (project: { id: string; notes?: string[] }) => void; onInstallRequest: () => void;
 }) {
   const [slotSelection, setSlotSelection] = useState("");
   const [moduleSelection, setModuleSelection] = useState("");
@@ -161,7 +162,7 @@ export default function ModuleAuthorWorkbench({ modules, projects, onCreated, on
       if (!record(body) || body.ok !== true || body.run_started !== false || !record(body.project)
         || typeof body.project.id !== "string" || !body.project.id || body.project.id === source.id)
         throw new Error("The response did not confirm a new independent Study with no Run started. Refresh the workspace before retrying.");
-      if (!abort.signal.aborted) { setSaved({ key: draftKey, id: body.project.id }); onCreated({ id: body.project.id }); }
+      if (!abort.signal.aborted) { setSaved({ key: draftKey, id: body.project.id }); onCreated({ id: body.project.id, notes: derivationNotes(body) }); }
     } catch (error) {
       if (!abort.signal.aborted) setSaved({ key: draftKey, error: error instanceof Error ? error.message : "Cannot save the Study." });
     } finally { if (!abort.signal.aborted) setSavingKey(""); }
