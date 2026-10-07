@@ -3205,8 +3205,8 @@
     },
     {
       "path": "app/features/evidence/AuditView.tsx",
-      "sha256": "842f811cad0bf48954c5817ac581ba7128574f78e66554338e7d745083839d37",
-      "bytes": 15843,
+      "sha256": "b9355dd32d220e49d84b8f29d0d99a2fdf725b4523d7fa6838080c1763d93317",
+      "bytes": 16223,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3229,9 +3229,9 @@
     },
     {
       "path": "app/features/evidence/types.ts",
-      "sha256": "5bff57d29d0a3054032042b59f62ab8ae9b228cdb1470638a10a05577feb49bf",
-      "bytes": 1267,
-      "transform": "byte copy"
+      "sha256": "5106b8520f534e8920c32fa6e800efc85b7cd0bb5d5720701b970efab9468e7e",
+      "bytes": 1381,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/extensions/ExtensionAuthorWorkbench.css",
@@ -3529,8 +3529,8 @@
     },
     {
       "path": "app/features/runs/planningView.ts",
-      "sha256": "8ebf8c0b8031d34c1568f268a68be38a2226a5ca3a5cf645a54ca82678ca2c9c",
-      "bytes": 1050,
+      "sha256": "c408812e59735bfa9ada4cef918aa6f229eb61dd3a1a979ceda5ae47f38f33b8",
+      "bytes": 1925,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8590,8 +8590,8 @@
     },
     {
       "path": "gridform_core/planning_index.py",
-      "sha256": "d34ada4e94965ae0c0946740e76e4dee37d069698490804e083089414574c744",
-      "bytes": 17278,
+      "sha256": "9ed0446de7d94fa6c0eb76e2b02dfca027591e43680551714138a7a1b5cf3248",
+      "bytes": 17506,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11000,8 +11000,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "0e02da36447a5853f3513810ba6690d05cd52c893e436ae1e0dd21e1bbf9115b",
-      "bytes": 3060,
+      "sha256": "dd6cd6bdd6feb907cecd54c521b3d8805dec4f7674a5c281cf6335fad38199e7",
+      "bytes": 3719,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12800,8 +12800,8 @@
     },
     {
       "path": "tests/test_r4_reproduce_defects.py",
-      "sha256": "17990ee4fb875d97ec38cebc96225bce2304034c120188dbc726d49ab9341457",
-      "bytes": 9964,
+      "sha256": "d2d80daa690b8a44710245855ef700ba9362e9dc558f8bc2d42c50f758f8af71",
+      "bytes": 10605,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

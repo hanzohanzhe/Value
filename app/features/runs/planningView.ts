@@ -13,3 +13,20 @@ export function planningYearFromPayload(payload: unknown, year: number): { summa
   const summary = years.find((item): item is PlanningYear => Boolean(item) && typeof item === "object" && (item as PlanningYear).year === year) ?? null;
   return { summary, error: summary ? "" : PLANNING_YEAR_NOT_RECORDED };
 }
+
+/**
+ * R4 R-低1: the Inspect planning table title. The project index has one row
+ * per project and model year (record_unit "project_year"), so a project shows
+ * once per year; a legacy planning ledger has one durable row per project.
+ */
+type PlanningPage = { total: number; record_unit?: string | null; items: { year?: number | null }[] };
+
+export function planningRowsPerYear(page: PlanningPage): boolean {
+  return page.record_unit === "project_year" || page.items.some((item) => typeof item.year === "number");
+}
+
+export function planningRecordsTitle(page: PlanningPage): string {
+  return planningRowsPerYear(page) ? `${page.total} project-year records` : `${page.total} durable project records`;
+}
+
+export const PLANNING_PROJECT_YEAR_NOTE = "One row per project and model year: a project appears once for each year it is in the pipeline, with that year's status.";

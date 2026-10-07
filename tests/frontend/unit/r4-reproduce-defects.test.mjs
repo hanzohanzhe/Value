@@ -33,3 +33,14 @@ test("annual withholding notice follows the recorded reason", async () => {
   assert.equal(q14.lines[1], "No annual deltas are shown. The export lists the published annual values of 9749a2a3 without deltas.");
   assert.ok(!q14.lines.join(" ").includes("48-period"));
 });
+
+// R-低1: Inspect planning rows are project-years with a Year column.
+test("planning table title counts project-year records", async () => {
+  const { planningRecordsTitle, planningRowsPerYear } = await import("../../../app/features/runs/planningView.ts");
+  const index = { total: 8, record_unit: "project_year", items: [{ year: 2026 }, { year: 2025 }] };
+  assert.equal(planningRecordsTitle(index), "8 project-year records");
+  assert.equal(planningRowsPerYear(index), true);
+  const legacy = { total: 3, items: [{}, {}] };
+  assert.equal(planningRecordsTitle(legacy), "3 durable project records");
+  assert.equal(planningRowsPerYear(legacy), false);
+});

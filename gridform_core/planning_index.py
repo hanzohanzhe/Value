@@ -44,12 +44,15 @@ def query_index_projects(
         total = int(connection.execute("SELECT COUNT(*) FROM project_year" + where, values).fetchone()[0])
         rows = connection.execute(
             "SELECT project_id, source, technology, capacity_mw, region, latitude, longitude, "
-            "development_stage, latest_status, expected_completion_year, realised_outcome, failure_reason_code "
+            "development_stage, latest_status, expected_completion_year, realised_outcome, failure_reason_code, year "
             "FROM project_year" + where + " ORDER BY year DESC, project_id LIMIT ? OFFSET ?",
             [*values, bounded, max(offset, 0)],
         ).fetchall()
+    # R4 R-低1: each row is one project in one model year; the same project
+    # appears once per year (for example active, then commissioned).
     return {
         "total": total, "limit": bounded, "offset": max(offset, 0),
+        "record_unit": "project_year",
         "items": [
             {
                 "project_id": row[0], "name": row[0], "source": row[1],
@@ -57,6 +60,7 @@ def query_index_projects(
                 "latitude": row[5], "longitude": row[6], "development_stage": row[7],
                 "status": row[8], "expected_completion_year": row[9],
                 "outcome": row[10] or row[8], "failure_reason_code": row[11],
+                "year": row[12],
             }
             for row in rows
         ],

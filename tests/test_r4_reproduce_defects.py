@@ -184,3 +184,16 @@ class ComparisonWithholdingReasonTests(unittest.TestCase):
         self.assertEqual(comparison["annual_withholding"], [])
         self.assertEqual(comparison["comparison_scope"], "annual_scientific")
         self.assertIn("annual_metrics_withheld,false", comparison_csv(comparison))
+
+
+class PlanningProjectYearRowsTests(unittest.TestCase):
+    """R-低1: the Inspect planning rows are project-years and say which year."""
+
+    def test_rows_carry_their_year(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path, _summary = _two_year_index(Path(folder))
+            page = query_index_projects(path, search="p1")
+        self.assertEqual(page["record_unit"], "project_year")
+        self.assertEqual(page["total"], 2)
+        self.assertEqual([(row["project_id"], row["year"], row["status"]) for row in page["items"]],
+                         [("p1", 2026, "commissioned"), ("p1", 2025, "active")])
