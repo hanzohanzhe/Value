@@ -231,3 +231,23 @@
 | F-R15-17 | R-D12 | 已结束 Run 的模块证据：有调用记录写调用次数；一日课程中 PSM 以外的槽位写 `Not called in this scope`；其他范围没有记录写 `No calls recorded`；`Evidence pending` 只用于进行中的 Run | 已完成的 Run 写 pending 不准确 | 是（文案） |
 
 未实现（理由见 `docs/dev/p0-reports/R1-5-ui-defects.md` 第 2 节）：F-D6 草稿只在内存中（整页刷新丢失，需要决定存放位置，属于设计问题）；N-4（快照期间 clone 被 `STUDY_LIFECYCLE_LOCK` 阻塞，后端 P1-11）；R-D9、R-D10、O-3（信息级，后端或负责人决定）。
+
+## R2-2（R1 复测遗留的界面与文档项；DECISIONS A23）
+
+规格没有覆盖这些项。以下实现沿用第 0 节原则和第 1.3 节样式约定（新元素 ≥12px、只用已有 token），需要设计方复核文案或做法。截图：`docs/dev/p0-ui-screens/r2-*.jpg`（scratch 实例 API 18960 / UI 18961；模块安装、隔离和页头 pill 是真实实例，比较页、停用卡片、Enable 失败、研究引导和 Learn 的启动等待用 Playwright 拦截 `/api/workspace` 和被测请求，比较响应由后端 `compare_run_summaries` 实际生成）。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R22-1 | AF3-1 | 年度差值按后端 `metric_delta_gates[指标].allowed` 逐指标显示。被扣发的指标在数值下方加一行 12px、`--muted`：`Delta withheld: {reason}`（后端给的英文句子；没有句子时写 reason_code）。年份列表上方的总括改为 `info-box`：标题 `Deltas withheld`，正文 `Deltas are withheld for {n} of {m} metrics ({名称}); each states its reason below. The other metrics show their deltas.`，全部扣发时写 `Annual deltas are withheld for every metric; each metric states its reason below.`。原来的红框中文句子删除。没有 `metric_delta_gates` 的旧响应仍按 `metric_deltas_allowed` 全有或全无，总括用英文的原句意 | A23 裁决：只扣发依赖弃电证据的指标，并注明原因。红框按规格第 4 节只用于 invalid，扣发不是 invalid | 是（总括与逐指标文案、改用 info-box） |
+| F-R22-2 | AF3-2、R3M-7 | 比较页的身份核对块改为英文：标题 `Identity check before comparison`；五行标签 `Base and network data`、`Model method (modules, extension selection, methodology)`、`Parameters and extension settings`、`Execution years`、`Run scope`；状态 `Same` / `Changed` / `Cannot verify`；说明句与加载提示、响应不一致的错误也改为英文 | 比较页其余部分都是英文；“扩展的选择属于方法、扩展的参数属于配置”是后端原设计，标签把这一点写明，避免“配置一致”被读成扩展没变 | 是（标签文字） |
+| F-R22-3 | R3M-7（范围） | 只改英文界面中夹杂的中文：比较页身份块、方法对照 Study 保存后的提示（`Method-comparison Study saved. Data and all other settings are unchanged; no Run has started.`）。Read me 对话框的“正在读取使用说明…”保留中文（对话框内容是中文 README），但只在读取中出现，关闭或空闲时不再常驻 `role=status` | 研究引导页（含“选择基线 Study / 核对新研究”）、Read me、数据映射编辑器、冻结输入恢复面板整页都是中文，逐页翻译不是“小改动”，也涉及界面语言策略 | **是**：界面是否统一为一种语言，由设计方决定 |
+| F-R22-4 | R3-N3 | Run 上下文条的 “Open in Inspect” 不带标签时不再强制 Planning，由 Inspect 按范围选默认标签（一日课程为 Market）；侧栏导航、Runs 页的链接和网络页的 “Open in Inspect” 都会清除之前请求的标签 | 原来写死 `tab ?? "planning"`，且请求的标签不清除 | 否 |
+| F-R22-5 | R3M-2 | 页头 pill 只在工作区本身读不到时写 `Inputs not loaded`；`/api/health` 为 degraded（例如一个模块被隔离）时照常显示 `{n} of {m} base inputs ready`。侧栏的 `● Backend degraded` 不变 | 工作区已正常读取，pill 的计数仍然有效 | 否 |
+| F-R22-6 | R3-N4 | 研究引导创建 Study 成功后，基线下拉框保持原基线，名称框清空；输入的名称与已有 Study 重名（忽略大小写和首尾空格）时，在名称框下显示琥珀色提示 `已有同名 Study。名称可以重复，但列表和比较页中容易混淆，建议换一个名称。`，**不阻止**创建（后端允许重名） | 原来创建后下拉框落到新建的复现 Study，再点一次得到“复现的复现”，且同名 | **是**：重名是否应阻止创建 |
+| F-R22-7 | R3M-3 | Enable 失败后的说明按该条目能否 Enable 区分：能 Enable 时写 `Fix the cause, then press Enable again (Enable scans afresh; Rescan alone leaves a disabled entry disabled).`；不能时保留 `Fix the cause, then Rescan.` | 照原提示 Rescan 后模块仍是 Disabled | 是（文案） |
+| F-R22-8 | R3M-4 | 已安装模块卡片的引用说明按状态区分：Enabled 时保留 `Used by n saved Studies; disable is blocked until those configurations are migrated.`；Disabled 或 Quarantined 时写 `Used by n saved Studies; they cannot run until this module is enabled again (隔离时为 repaired), or they select another module.`。`USER_GUIDE` 中英文同步写明隔离面板可以停用仍被引用的模块 | 卡片已是 Disabled 却说“停用被阻止” | 是（文案） |
+| F-R22-9 | R3M-5 | Readiness 中模块源码变更的 warning 只在琥珀色 Callout 中出现一次，不再计入 `Environment and setup`（errors 从不排除）；已隔离模块的卡片写 `… It is quarantined, so no Run can start; once it is repaired, Runs record the new source hash.`（与后端 d1ad608 同义） | 同一警告出现两次；隔离时承诺“记录新哈希”不成立 | 否 |
+| F-R22-10 | L-4 | Learn 页启动 Run 期间，在课程标题下显示一行 `run-launch-note`（与 Runs 页同样式）：`Starting the Run: VALUE is freezing the Study's inputs and execution environment first, so the lesson buttons stay disabled until the Run is listed. The first Run in a new data folder also archives the Python runtime once (about 3 minutes); later Runs take under a minute. If you stay on this page, the Run opens when it is listed.` | 原来按钮全部禁用但没有说明；POST 阻塞本身属于 P1-11 / F5-08，未改 | 是（位置与文案） |
+| F-R22-11 | L-6 | 映射审阅中 “完整文件校验报告” 在报告为空时写 `尚未运行：先修正上面列出的映射或换算错误，整份文件的校验才会运行。`（12px、`--muted`），不再显示 `null` | 原样显示 `null` | 是（文案） |
+
+未实现：R3-N3 的截图（需要带 Callout 的真实 Run，改动由源码契约测试 `r2-ui-low-items` 覆盖）；L-6 的截图（需要真实换算失败的映射，未做）。
