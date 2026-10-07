@@ -64,6 +64,18 @@ class InstalledSourceChangeTests(_QuarantineHome):
         self.assertNotIn("GF_PREFLIGHT_MODULE_SOURCE_CHANGED", {row["code"] for row in report["errors"]})
         self.assertEqual(report["checks"]["module_source_changes"][0]["current_sha256"], current)
 
+    def test_quarantined_edited_module_does_not_promise_a_recorded_hash(self) -> None:
+        # R3M-5 (four-role R1 retest): an edit that breaks the module
+        # quarantines it, so no Run starts and nothing is recorded yet.
+        self.plugin.write_text("def broken(:\n", encoding="utf-8")
+        with patch.dict(os.environ, {"VALUE_DATA_HOME": str(self.home)}):
+            report = self._run(workspace_registry(self.modules), self.project_with_module)
+        self.assertIn("GF_PREFLIGHT_MODULE_QUARANTINED", {row["code"] for row in report["errors"]})
+        rows = [row for row in report["warnings"] if row["code"] == "GF_PREFLIGHT_MODULE_SOURCE_CHANGED"]
+        self.assertEqual(len(rows), 1, report["warnings"])
+        self.assertIn("quarantined, so no Run can start", rows[0]["message"])
+        self.assertNotIn("Results will record", rows[0]["message"])
+
     def test_preflight_without_an_edit_has_no_source_warning(self) -> None:
         with patch.dict(os.environ, {"VALUE_DATA_HOME": str(self.home)}):
             report = self._run(workspace_registry(self.modules), self.project_with_module)

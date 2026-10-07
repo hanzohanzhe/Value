@@ -401,12 +401,21 @@ def run_preflight(
 
     source_changes = installed_source_changes(selected.values())
     checks["module_source_changes"] = source_changes
+    # R3M-5: a quarantined module cannot run, so no result records anything yet.
+    quarantined_modules = {
+        str(row.get("id")) for row in quarantine["blockers"] if str(row.get("kind")) == "module"
+    }
     for change in source_changes:
+        recorded = (
+            "It is quarantined, so no Run can start; once it is repaired, results record the new source hash."
+            if str(change["module_id"]) in quarantined_modules
+            else "Results will record the new source hash."
+        )
         issues.append(_issue(
             "GF_PREFLIGHT_MODULE_SOURCE_CHANGED", "warning", "modules",
             f"Module {change['module_id']} source changed since install "
             f"({str(change['installed_sha256'])[:8]}… → {str(change['current_sha256'])[:8]}…). "
-            "Results will record the new source hash.",
+            + recorded,
             "No action needed if the edit is intended: Compare shows the module method as changed. "
             "Reinstall under a new version to keep the installed identity.",
         ))
