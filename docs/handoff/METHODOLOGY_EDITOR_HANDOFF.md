@@ -1,30 +1,30 @@
 # VALUE 方法学修改员交接文档（方法学 0.4 版次）
 
-> **阅读提示（2026-10-07，R1 轮之后，分支 HEAD `1eec6e6`；取代同日较早的阅读提示）：** 本文件可以照常阅读，并按下文修改方法学草稿与 0.4 正文。R1 轮（DECISIONS A19–A22a，单元 R1-1 至 R1-5）已经并入。
+> **阅读提示（2026-10-07，R2 轮之后，代码状态 HEAD `71cd564`；取代 R1 轮之后的阅读提示）：** 本文件可以照常阅读，并按下文修改方法学草稿与 0.4 正文。R1 轮（DECISIONS A19–A22a）与 R2 轮（A23，单元 R2-1、R2-2）都已并入。R2 不改变方法学的内容和任何数值，只改了几处措辞和记录字段，见下面的“R2 轮更新”。
 > - **可以定稿：**
->   - **下调与弃电顺序**（修正口径，C28，`r12.economic-downward-order`，value-bid-at-cost-psm 6.5.0）：已实施。燃气、生物质分为不停机段和停机段，停机段净节省 a = c − S/(m·H) 与弃风代价 0 比较。重启成本取值作者已在 A22 认可，公式已在 A22a 确认。写法见 N-9 与草稿 `r12_economic_downward_order.md`。草稿中有两处旧说法要改：r12 草稿 §2 括号里的 “author confirmation pending”（A22a 已确认）；p06 草稿规则表 “down regulation” 一行的 `c - S(H)/H`（应为 `c - S(H)/(m H)`）。见第 6 节；
+>   - **下调与弃电顺序**（修正口径，C28，`r12.economic-downward-order`，value-bid-at-cost-psm 6.5.0）：已实施。燃气、生物质分为不停机段和停机段，停机段净节省 a = c − S/(m·H) 与弃风代价 0 比较。重启成本取值作者已在 A22 认可，公式已在 A22a 确认；R2 已把参数表 `value_thermal_restart_v1.json` 的说明文字和 p06 草稿规则表 “down regulation” 一行都改为 `c - S(H)/(m H)`。写法见 N-9 与草稿 `r12_economic_downward_order.md`。r12 草稿 §2 括号里的 “author confirmation pending” 仍要你改（A22a 已确认），见第 6 节；
 >   - **电池扩容上限**（修正口径，C18，`r13.per-type-battery-caps`，`value-storage-expansion-policy` 5.1.0）：已实施，C18、K-9、V-7、M-5 与草稿 p07 已改写；
 >   - **参考统计表**：第 1–3 节全部作者已审核（A21），第 4 节作者已审核（A22）。0.4 正文不再带任何 PENDING 标记，DUKES 对照列也一样（W-4、第 8.2 节第 5 条）；
->   - 论文复现口径的内容不受 R1 轮影响，但“先弃风”不要再写成缺陷（第 3.2 节）。
+>   - **advisory 措辞（R2，R3-N2）**：`p06.avoided-cost-downward-order` 已改为 “Down regulation bookkeeping (ramp history, breaks, budgets)”，正文只讲三项记账缺陷，并写明先弃风是论文规则、不是缺陷（A19）。方法学正文若列论文复现口径的已知问题，与这一措辞一致（第 9 节第 13 条）；
+>   - 论文复现口径的内容不受 R1、R2 轮影响，但“先弃风”不要再写成缺陷（第 3.2 节）。
 > - **仍待定（写的时候留出位置，或先不写）：**
->   - 重启成本参数表 `value_thermal_restart_v1.json` 的说明文字仍写旧式 c − S/H，下一轮随一次 golden 修订改正。正文以 r12 草稿的修正式为准，不要引用参数表里的这句；
 >   - 分区再调度（ch7、K-3、C21）的下调类别次序（燃料在 VRE 之前）是否也按 A19 处理，作者未定（第 9 节第 12 条）。作者决定之前，ch7 按现行代码写，并注明它是阻塞管理的报价规则，不是默认 PSM 的系统削减顺序；
->   - advisory `p06.avoided-cost-downward-order` 的措辞仍把“先弃风”写成缺陷（复测 R3-N2），下一轮改。正文不要引用这条 advisory 的文字（第 9 节第 13 条）；
+>   - p06 那条 advisory 的严重度仍为 high，是否降为 medium 由负责人决定；正文不写 advisory 的严重度；
 >   - 价格基年（重启成本按 2024 年英镑；第 9 节第 7 条）；
->   - **界面相关的描述**：R1-5 改了一批界面文案；按 A17 前端还要整体翻新，所以引用界面字符串的句子要等翻新后再核对。
+>   - **界面相关的描述**：R1-5、R2-2 改了一批界面文案；按 A17 前端还要整体翻新，所以引用界面字符串的句子要等翻新后再核对。
 
 
 - 日期：2026-10-06；R1 轮更新 2026-10-07。分支 `fix/review-2026-10-04`（只在本地，未推送），对照 `main`（35aadb3，即 VALUE 0.6.0-alpha.2 的源码）。应用版本 0.7.0-alpha.1。
 - 读者：维护以下文件的人：`docs/methodology/`（`en/`、`zh/`、`VALUE_METHODOLOGY.md`、`README.md`、`edition.json`、`generation.json`、`artifacts.json`）、`docs/MATHEMATICAL_REFERENCE.md`、`docs/SCHEME_C_MODEL_CARD.md`、`docs/VALIDATION_AND_CLAIMS.md`，以及方法学文档构建工具（`scripts/methodology/`、`scripts/build_value_methodology_pdf.py`、`website/sync_methodology.py`）。
 - 交付：DECISIONS“收尾交付”第 2 项。仓库副本为 `docs/handoff/METHODOLOGY_EDITOR_HANDOFF.md`，worktree 根目录副本为 `VALUE_handoff_methodology_editor_2026-10-04.md`。
 - 事实来源（按权威排序）：
-  1. `docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A22a）；
+  1. `docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A23）；
   2. 修正目录 `gridform_core/data/methodology/{profiles.json,corrections/*.json,declared_deviations.json}`，以及由它生成的 `docs/generated/METHODOLOGY_PROFILES.md`；
   3. `docs/release/VERSION_LEDGER.json`、`docs/release/P0_GOLDEN_DELTA.md`；
   4. 草稿 `docs/methodology/drafts/0.4/*.md`；
   5. `docs/handoff/MODEL_CHANGES_BRIEF.md`（下文的 U1–U11、C1–C24 编号沿用该简报）；
   6. `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`、`docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`、`docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；
-  7. `docs/dev/p0-reports/*.md`（修复轮为 FX1–FX9；FX8 为 A18；R1 轮为 R1-1 至 R1-5，其中 R1-1 为重启成本数据，R1-2 为经济下调顺序，R1-3 为按类型电池上限）。
+  7. `docs/dev/p0-reports/*.md`（修复轮为 FX1–FX9；FX8 为 A18；R1 轮为 R1-1 至 R1-5，其中 R1-1 为重启成本数据，R1-2 为经济下调顺序，R1-3 为按类型电池上限；R2 轮为 R2-1 后端、R2-2 界面与文档）。
   
   文中凡是“代码中”的描述，都在本分支的源码上核对过，行号以本分支 HEAD 为准。
 - 本文只写**改哪里、改成什么**。本单元没有改动任何方法学文档。P0 各包已经写好的内容见第 1 节。
@@ -42,6 +42,13 @@
   3. **参考统计表全部审核**（A21、A22）：W-4、第 6 节 p05b 一行、第 8.2 节第 5 条、第 9 节第 5 条去掉 PENDING。
   
   R1-4、R1-5 修的是四角色测试剩余的后端与界面缺陷，不改变方法学。R1-4 改了开发者文档 `docs/MODULE_DEVELOPER_101(_ZH).md`、`docs/BUILD_YOUR_OWN_MODEL_101(_ZH).md`、`docs/USER_GUIDE(_ZH).md`、`docs/INSTALLATION.md`、`docs/BRAND_AND_VARIANTS.md` 中与代码不符的名称（`value-module.json`、`value.module/v2`、`VALUE_DATA_HOME` 等），方法学正文如引用这些名称，按新名称写。
+- **R2 轮更新（2026-10-07，A23，HEAD `71cd564`）**：关闭 R1 复测的遗留项，不改方法学内容和数值，没有新的 correction id。与方法学有关的有四处：
+  1. **停机段公式的文字**（A22a 收尾）：参数表 `gridform_core/data/thermal/value_thermal_restart_v1.json` 的 `rule.shutdown_segment` 已改为 “net saving per MWh a(H) = c - S(H) / (m H)”，取值不变；草稿 `p06_default_psm_clearing.md` 规则表中的 `c - S(H)/H` 已改为 `c - S(H)/(m H)`。修正族 golden 随之修订一次（C1–C6、C9），只有 `restart_table_sha256` 一列变化。N-9 与第 6 节已据此改写；
+  2. **p06 advisory 措辞**（R3-N2）：见阅读提示，第 9 节第 13 条已关闭；
+  3. **advisory 按资产筛选**（R3-N7）：核电、径流水电相关的 advisory 只用于冻结机组中有该资产的 Run（修正目录 `applies_when.assets_any`，展示字段，不进方法身份）。第 9 节第 14 条已关闭；
+  4. **Run 记录写入生效的通用核算修正**（R3-N6 / O-3）：方法记录新增 `universal_accounting_correction_ids` 与 `correction_ids_in_force`，列出 `fx5.voll-17000`、`p04.*`、`p06.physical-operating-cost`、`p07.cost-ledger-v2`、`fx4.storage-offer-ledger` 等不在修正目录中的修正。方法身份 `applied_corrections_sha256` 不变。正文若写“Run 记录哪些修正”，按这两个字段写（U13 一行）。
+
+  R2 的其他改动（比较页按数值比较、年度差值按指标门控、界面低项）不改变方法学。R2-2 把开发者指南 `docs/MODULE_DEVELOPER_101(_ZH).md` 的 slot contract ID 改为安装器接受的 `value.*`（例如 `value.storage-cost/v1`），方法学正文如引用 contract ID，按 `value.*` 写，不写 `gridform.*`。
 
 ## 0 先读这一段
 
@@ -267,7 +274,7 @@ P0-8 的 id 在 CHANGELOG 中列在“两个口径”栏。但论文复现口径
 | C24 | DC 网络的份额展开 | `p08.network-share-expansion`（P1-01） | 只在修正口径下运行 | 轨迹 | ch7 DC | **无** |
 | C25 | 互联线进口进入日前出清（按当期对侧价格和可用进口量报价；平衡环节只报剩余容量；下调按进口避免成本）。论文复现口径保留“只在平衡环节进口” | `fx6.day-ahead-interconnector-imports`（S-D3，A16-2） | C | 轨迹 | ch5 Native 伪代码与新段落（N-8）；ch2 互联线一句 | fx6 |
 | U12 | 修复轮：储能报价写进市场账本的核算表 `storage_orders`（每条报价的价格、可报量、接受量、状态），`orders` 不变 | `fx4.storage-offer-ledger`（M-D1） | U | 核算 | ch5 “Data and implementation”（N-15）一句；可选 | 无（`docs/visibility-refactor/MARKET_LEDGER.md` “Storage offers (M-D1)” 一段） |
-| U13 | 修复轮：VoLL 两个口径都是 17,000 £/MWh | `fx5.voll-17000`（A16-5；不在修正目录中，同 `p04.*`） | U | 核算（论文复现口径）；完全预见 LP、DC 网络、分区再调度中是目标系数 | ch5 N-12；ch6 R-4；ch8 O-2；ch4 K-14；`VALUE_METHODOLOGY.md` V-4 | fx5 |
+| U13 | 修复轮：VoLL 两个口径都是 17,000 £/MWh | `fx5.voll-17000`（A16-5；不在修正目录中，同 `p04.*`；R2 起 Run 的方法记录在 `universal_accounting_correction_ids` 中列出） | U | 核算（论文复现口径）；完全预见 LP、DC 网络、分区再调度中是目标系数 | ch5 N-12；ch6 R-4；ch8 O-2；ch4 K-14；`VALUE_METHODOLOGY.md` V-4 | fx5 |
 | C26 | 修复轮：GBP1 public2 本地登记为 scientific_reference，并加入核电分站名单 | `p05.nuclear-stations-public2`（P5-10，A16-7） | C | 轨迹 | ch2 DS-1；ch5 N-4 | 无（FX7 报告、`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`） |
 | C27 | 修复轮（FX8）：修正口径核电在每个模型年开始前视为在运，第一期报价不加启动成本，按各站可用率作基荷；某期未被接受后重启时收取一次启动成本（报价与物理启动项）。规则集字段 `nuclear_initial_state`（修正 `in_service_at_start`，论文 `off_until_accepted`）；value-bid-at-cost-psm 6.4.0 | `fx8.nuclear-in-service-at-start`（A18） | C | 轨迹 | ch5 N-4、N-7 | `fx8_nuclear_in_service.md` |
 | C28 | R1 轮（R1-2）：修正口径的经济下调顺序。燃气、生物质拆成不停机段（按 c，在弃风之前）和停机段（净节省 \(a=c-S/(m\,H)\)；\(H\) 不短于最短停机时间且 \(a>0\) 时在弃风之前，\(a\le0\) 时在弃风之后，\(H\) 不足时为最后手段）。重启成本只用于排序，不进成本账。规则集字段 `downward_restart_economics`（修正 `restart_cost_vs_avoided_cost_v1`，论文 `not_modelled`）；value-bid-at-cost-psm 6.5.0；参数表 `value_thermal_restart_v1.json` | `r12.economic-downward-order`（A19、A22、A22a；P3-03） | C | 轨迹/核算 | ch5 N-8、N-9 | `r12_economic_downward_order.md` |
@@ -837,7 +844,7 @@ $$
   - 取值表（A22，2024 年英镑；草稿 §2 的表可直接用）：CCGT 热/温/冷 £110/£130/£150 每 MW（\(H<12\) h 热，12–48 h 温，\(>48\) h 冷），50%，6 h；OCGT £170，50%，0.5 h；生物质 £125，35%，6 h。盈亏平衡时长 \(H^\*=S/(m\,c)\)：GBP1 成本下 CCGT 4.0 h、OCGT 4.54 h、生物质 4.2 h。出处引用参考统计表第 4 节列出的文献（Kumar 等 2012、Staffell & Green 2015 等），不要写内部文件路径。
   - 重启成本只用于排序，物理运营成本仍按 N-12 的启动加价（论文 `startup_cost`），这一点要写明，避免读者以为成本账含 \(S\)。
   - 数字（草稿 §6，修正口径）：VALUE 101 two_year 只有 2025 年 1 个时段受影响（\(H=0.5\) h 短于 6 h，改为弃 0.16 MWh 光伏，系统成本 +£10.4）；GBP1 public2 2025 年逐位不变（357 个下调时段，平均 \(H=3.77\) h，燃气只在不停机段内下调）。引用 GBP1 数字时注明“本地运行、数据包未发布”。草稿 §6 末段“为什么影响这么小”可以直接用。
-  - 论文复现口径没有这条规则，Run 上有一条 medium advisory “Down regulation without restart economics”。另一条 high advisory `p06.avoided-cost-downward-order` 的文字与 A19 矛盾（复测 R3-N2，第 9 节第 13 条），正文不要引用。
+  - 论文复现口径没有这条规则，Run 上有一条 medium advisory “Down regulation without restart economics”。另一条 high advisory `p06.avoided-cost-downward-order` 原来的文字与 A19 矛盾（复测 R3-N2）；R2 已改为 “Down regulation bookkeeping (ramp history, breaks, budgets)”，只讲记账缺陷，并写明先弃风是论文规则（第 9 节第 13 条）。正文仍不必引用 advisory 文字。
 
 **N-10 第 86/84 行，结算**
 - 论文复现口径：保留原文。发电与储能分别统一定价；储能按自身最高报价 `max_bat_price` 结算；没有发电机被接受时，收入函数返回空映射。
@@ -1157,7 +1164,7 @@ $$
 |---|---|---|---|
 | `p05a_data_reading.md` | ch2 | 无 | — |
 | `p05b_corrected_data.md` | ch3、ch2、ch5 | ① 状态段 “Every numeric reference value named here is PENDING AUTHOR REVIEW”：作者已在 A9 认可损耗系数、在 A14 审核核电与水电、在 A16-6 认可 A13 的模型选择，DUKES 对照列也已在 A21 审核（参考统计表第 1–3 节全部作者已审核），正文不带 PENDING。② §3 两条披露：海上约 18.5% 已在 A9 接受；“PV 乘水平 GHI、缺倾角增益”已由 A13 解决。③ §3 GBP1 光伏修正口径 CF 0.0997，现在是 0.1065。④ §4 只写 Heysham 1 按月停发，现在四座 AGR 都是 2030-03。⑤ §4 水电 0.334 乘平直占位形状，现在是 0.3487 乘季节形状。⑥ §3 “the author reads the values from the DUKES 6.3 workbook”：f2 已给出数值 | f2 草稿；DECISIONS A9、A13、A14 |
-| `p06_default_psm_clearing.md` | ch5、ch4 | ① “Known approximations” 中 “Storage charging cost and the storage investment test are P0-7's”：P0-7 已按 A8(3) 维持现规则，改写为 K-12。② 修正规则表 “down regulation” 一行（R1-2 加的）写停机段净节省为 `c - S(H)/H`，是 A22a 之前的式子，应为 `c - S(H)/(m H)` | M5-P0-7、M5-P0-7-S10 报告；r12 草稿 §2；DECISIONS A22a |
+| `p06_default_psm_clearing.md` | ch5、ch4 | ① “Known approximations” 中 “Storage charging cost and the storage investment test are P0-7's”：P0-7 已按 A8(3) 维持现规则，改写为 K-12。② ~~修正规则表 “down regulation” 一行（R1-2 加的）写停机段净节省为 `c - S(H)/H`~~：R2-1（`a89b1f4`）已改为 `c - S(H)/(m H)`，不需要再改 | M5-P0-7、M5-P0-7-S10 报告；r12 草稿 §2；DECISIONS A22a |
 | `p07_investment.md` | ch4 | 储能余量一节只有文字，公式按 K-9 补写 | 本文 K-9 |
 | `p04_energy_balance_validation.md` | ch5（替换残差段） | 无。它说替换 “Native retains both raw supply-demand residuals …” 一段，位置是 en 第 97–108 行、zh 第 95–106 行 | — |
 | `p08_network_economics.md` | ch7、ch4 | 中文只有摘要，中文正文须按英文全文译写。§1 末尾括号中 “(Edit for `transmission.md` 0.3 …)” 是给你的编辑说明，不要并入正文 | — |
@@ -1282,8 +1289,8 @@ for cid in ids:
 | 10 | 修复轮新发现：R029 public1 与 GBP1 public1 绑定同一份逐时光伏曲线 `sa.csv`（8,761 个值、无 interval 声明），修正口径严格读取报 `GF_DATA_SHORT_SERIES`；数据包验证层没有发现。修法三选一：给数据包补声明；在真相登记中断言逐时（会同时改变论文复现口径的读取，须另立修正）；扩展验证层 | 第 2 章 DS-1、DS-8，第 6 章 R-1：R029 能否写成修正口径的默认包 | 代码负责人、作者 |
 | 11 | 修复轮新发现：GBP1 public2 修正口径 2025 年生物质 4,762 MW 只发 0.05 TWh（CF 0.1%），因为报价只用 `gen_cost`（0.2，高于 CCGT 的 0.1），不含燃料成本。是否属于论文方法的预期行为 | 第 5 章 N-1 的报价式是否要加说明 | 作者 |
 | 12 | R1 轮：分区再调度（staged/zonal 平衡，C21）的下调类别次序是燃料、进口、储能充电、径流水电、风光、核电（`network_method_rules.DEC_CLASSES`），燃料总在风光之前。它是阻塞管理的报价规则，R1-2 没有改（R1-2 报告第 7 节第 2 条）。是否也按 A19 引入重启成本 | 第 4 章 K-3、第 7 章；若作者决定要改，会是新的方法改动和新的 correction id | 作者 |
-| 13 | R1 轮复测 R3-N2：advisory `p06.avoided-cost-downward-order`（high，“Down regulation in curtail-cost order”）的 summary 仍以 “ascending curtail_cost (VRE first)” 开头，把论文设定写成缺陷，与 A19 和 `r12.economic-downward-order` 的 advisory（medium）矛盾。建议下一轮只保留另外三项（爬坡历史按位置匹配、断开后保留旧要求、预算只返还水电），并重新评估严重度。advisory 文字不进方法身份 | 方法学正文不引用 advisory 文字，但第 1 章口径总述若列出论文复现口径的已知问题，要与改后的措辞一致 | 代码负责人（改目录文字），作者知会 |
-| 14 | R1 轮复测 R3-N7：advisory 按模块而不是按 Run 中的资产判断，所以没有核电的 VALUE 101 Run 也列出核电那条 | 第 1 章若描述 advisory 的适用规则，按现行行为写 | 负责人 |
+| 13 | R1 轮复测 R3-N2：advisory `p06.avoided-cost-downward-order`（high，“Down regulation in curtail-cost order”）的 summary 仍以 “ascending curtail_cost (VRE first)” 开头，把论文设定写成缺陷，与 A19 和 `r12.economic-downward-order` 的 advisory（medium）矛盾。建议下一轮只保留另外三项（爬坡历史按位置匹配、断开后保留旧要求、预算只返还水电），并重新评估严重度。advisory 文字不进方法身份。**R2 已处理（A23，`e05bea3`）**：标题改为 “Down regulation bookkeeping (ramp history, breaks, budgets)”，正文只讲这三项，并写明先弃风是论文规则、不是缺陷；严重度仍为 high，是否降级由负责人决定 | 方法学正文不引用 advisory 文字，但第 1 章口径总述若列出论文复现口径的已知问题，要与改后的措辞一致 | 措辞已关闭；严重度：负责人 |
+| 14 | R1 轮复测 R3-N7：advisory 按模块而不是按 Run 中的资产判断，所以没有核电的 VALUE 101 Run 也列出核电那条。**R2 已处理（A23，`fad02ae`）**：核电、径流水电相关的 advisory 按 Run 冻结输入中的机组筛选（`applies_when.assets_any`），读不到机组时保留 advisory | 第 1 章若描述 advisory 的适用规则，按现行行为写 | 已关闭 |
 
 ## 10 顺带发现、不属于 P0 的过时表述（可以在 0.4 一并改，也可以不改）
 

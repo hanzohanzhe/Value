@@ -1,22 +1,22 @@
 # VALUE 0.7.0-alpha.1 模型实质设定改动简报（给作者）
 
-> **阅读提示（2026-10-07，R1 轮之后，分支 HEAD `1eec6e6`）：** 本简报已并入 R1 轮（DECISIONS A19–A22a，单元 R1-1 至 R1-5），可以照常阅读。
+> **阅读提示（2026-10-07，R2 轮之后，代码状态 HEAD `71cd564`；取代 R1 轮之后的阅读提示）：** 本简报已并入 R1 轮（DECISIONS A19–A22a）和 R2 轮（A23，单元 R2-1、R2-2），可以照常阅读。R2 没有改变任何模型数值。
 > - **已定稿：**
->   - 修正口径的经济下调顺序（A19、A22、A22a；R1-2，`r12.economic-downward-order`，value-bid-at-cost-psm 6.5.0），见 3.6 节（C28）。重启成本取值你已在 A22 认可，停机段公式 a = c − S/(m·H) 你已在 A22a 确认；
+>   - 修正口径的经济下调顺序（A19、A22、A22a；R1-2，`r12.economic-downward-order`，value-bid-at-cost-psm 6.5.0），见 3.6 节（C28）。重启成本取值你已在 A22 认可，停机段公式 a = c − S/(m·H) 你已在 A22a 确认；**R2 已把参数表的规则说明文字改为这一式**，修正族 golden 随之修订一次，只变 `restart_table_sha256` 一列；
 >   - 按类型的电池扩容上限（A20；R1-3，`r13.per-type-battery-caps`），见 C18；
 >   - 参考统计表第 1–3 节全部为作者已审核（A21），第 4 节（重启成本）为作者已审核（A22）。第 5 节已据此改写，参考统计表中没有待审核的数值了；
->   - R1-4、R1-5 修的四角色缺陷都不改模型数值（2.3 节末段）。
+>   - R1-4、R1-5 与 R2 修的四角色缺陷都不改模型数值（2.3 节末两段）。R2 按 A23 关闭了 R1 复测的遗留项：R3-N1（原样保存后比较页的假 VoLL 变化）、AF3-1（年度差值按指标门控）、R3-N2（p06 advisory 措辞）、R3-N7（advisory 按资产筛选）、R3-N6 / O-3（Run 记录写入生效的 correction id，含 `fx5.voll-17000`）。R2 之后只做定向复核（`FOUR_ROLE_TEST_REPORT.md` 第 11 节），不做四角色全量复测。
 > - **仍待处理（都不改变本简报的数字）：**
->   - 重启成本参数表 `gridform_core/data/thermal/value_thermal_restart_v1.json` 中的规则说明文字仍写旧式 c − S/H。代码和方法学草稿已按 A22a 的修正式实现。这段文字要在下一轮随一次修正族 golden 修订一起改，只变 `restart_table_sha256` 一列（3.6 节）；
 >   - 重启成本的价格基年（参考统计表 4.8 节第 4 条，现按 2024 年英镑）你没有单独表态；分区再调度的下调报价次序是否也按 A19 处理，也要你决定（5.3 节）；
->   - R1 轮复测剩下的问题（R3-N1 中等必修，以及 R3-N2 等低项）放在下一轮小修复（建议命名 R2），不改模型数值；
+>   - p06 advisory 改了措辞，严重度仍为 high，是否降为 medium 由负责人决定（5.3 节）；
 >   - 网站上传与发布按 A17 等前端整体翻新完成之后。
 
 - 日期：2026-10-06；R1 轮更新 2026-10-07。分支 `fix/review-2026-10-04`，对照 `main`（35aadb3，即 0.6.0-alpha.2 的源码）。
 - 范围：只写**改变模型数值或模型设定**的改动。纯软件、安全和界面修正只在 2.3 节用一行带过。
-- 依据：`git log/diff main..fix/review-2026-10-04`；`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A22a）；`docs/release/P0_GOLDEN_DELTA.md`；golden 数值报告 `tests/golden/reports/D4-r9.json`、`D5-r1.json`，以及 `docs/dev/p0-reports/r12-golden/`（R1-2）；`docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`；`docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`；`docs/dev/p0-reports/` 中的各单元报告（修复轮为 FX1–FX9，R1 轮为 R1-1 至 R1-5）；`docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；`docs/handoff/FOUR_ROLE_TEST_REPORT.md` 第 9 节（修复轮复测）与第 10 节（R1 轮复测）。第 6 节的 VALUE 101 数字是为本简报新跑的，跑法见 6.5 节。
+- 依据：`git log/diff main..fix/review-2026-10-04`；`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A23）；`docs/release/P0_GOLDEN_DELTA.md`；golden 数值报告 `tests/golden/reports/D4-r9.json`、`D5-r1.json`，以及 `docs/dev/p0-reports/r12-golden/`（R1-2）；`docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`；`docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`；`docs/dev/p0-reports/` 中的各单元报告（修复轮为 FX1–FX9，R1 轮为 R1-1 至 R1-5，R2 轮为 R2-1、R2-2）；`docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；`docs/handoff/FOUR_ROLE_TEST_REPORT.md` 第 9 节（修复轮复测）、第 10 节（R1 轮复测）与第 11 节（R2 定向复核）。第 6 节的 VALUE 101 数字是为本简报新跑的，跑法见 6.5 节。
 - **修复轮更新（2026-10-06，A16）**：四类用户测试之后的修复轮（FX1–FX7，HEAD 至 `be30884`）新增的实质改动已并入下文，用“修复轮”标出：U12、U13（2.2 节）、2.3 节末段、C25–C26（第 3 节）、3.5 节（A18）、4.2 节核电路径依赖、第 5 节、6.6 节（GBP1 修正口径本地全年验收）。VALUE 101 two_year 的数值在修复轮中不变（6.2 节说明 5）。
 - **FX8 更新（2026-10-06，A18 已实施）**：修正口径的核电开局在运已实施（correction id `fx8.nuclear-in-service-at-start`，value-bid-at-cost-psm 6.4.0），GBP1 public2 修正口径第一年重跑，核电 38.26 TWh，对 Energy Trends 5.1 +2.5%，通过。VALUE 101 two_year 不变（C5、C6 重跑 gated 0，3.5 节）。改动见 3.5 节、5.3 节与 6.6 节；新增 golden case C9。
+- **R2 更新（2026-10-07，A23，单元 R2-1、R2-2，HEAD `71cd564`）**：只关闭 R1 复测的遗留项，不改模型数值，没有新的 correction id。改动见 2.3 节末段（R3-N1、AF3-1、R3-N6 / O-3、R3-N7、开发者文档 contract ID）、3.6 节（A22a 参数表文字与一次修正族 golden 修订）与 5.3 节（O-3、R3-N2、R3-N7、AF3-1 已按 A23 处理）。
 - **R1 更新（2026-10-07，A19–A22a）**：R1-2 实施修正口径的经济下调顺序（新增 3.6 节，C28；C10 一行加注；4.2、5.1、5.2、5.3、6.1、6.2 说明 6、6.6 节随之更新）；R1-3 把电池扩容上限恢复为按类型分别设定（C18，上一版已并入）；R1-1 编制的重启成本数据经 A22 认可，参考统计表第 1–3 节经 A21 全部审核（第 5 节）；R1-4、R1-5 修四角色测试剩余的后端与界面缺陷，不改数值（2.3 节末段）。VALUE 101 two_year 上 R1-2 只改变 2025 年的 1 个时段（系统成本 +£10.4），GBP1 public2 修正口径第一年逐位不变。
 - 两个口径：**论文复现口径** `doctoral-lineage-0.6.0a2`（界面标签 “Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)”）；**修正口径** `value-corrected`（新 Study 的默认口径）。下文的 finding 编号（P4-01 等）取自审查报告 `VALUE_review_2026-10-04.md`，correction id（`p07.thermal-net-revenue` 等）取自方法学目录 `gridform_core/data/methodology/corrections/*.json` 与 `docs/release/VERSION_LEDGER.json`。
 
@@ -68,6 +68,15 @@ P0-1（本地 API 安全边界）、P0-2（外部模块隔离）、P0-3（Run �
 - 复测（`FOUR_ROLE_TEST_REPORT.md` 第 9 节）：四类用户都通过，没有剩下高严重度缺陷。当时剩下的三个中等问题 N-1（校验面板与 Study 编辑器对论文复现口径资格的判断不一致）、N-2（Europe/London 秋季重复小时只出现一次时映射预览报 500）、F2-N1（全年范围的扩展结果超过 16 MiB，Inspect 看不到）已由 FX9 修复，R1 轮复测确认。
 
 **R1 轮中不改数值的修正**（R1-4 后端 8 个提交、R1-5 界面 13 个提交，A21：medium 及以上必修，low 改动小时顺带修）：映射编辑器换算值去掉二进制尾差、坏单元格按行列列出；比较页按“标签 + 路径”列出变化维度；预检点名停用的模块、检查内核封印；Rescan 重新导入已安装代码；派生的 VALUE 101 Study 记录自己的来源；Run history、stress 列表、网络页、模块卡片、375 px 布局等界面文案与状态。没有 correction id，没有 golden 修订。R1 轮复测（`FOUR_ROLE_TEST_REPORT.md` 第 10 节，被测 HEAD `e0ec659`）：四个角色都通过，没有高缺陷；新发现 1 项中等缺陷 R3-N1（原样保存 Study 后，比较页报告不存在的 VoLL 变化，原因是 17000.0 与 17000 被当作不同值；两个 Run 的 market.sqlite 逐字节相同），按 A21 属于必修，留在下一轮小修复。
+
+**R2 轮中不改数值的修正**（DECISIONS A23；R2-1 后端 9 个提交、R2-2 界面与文档 5 个提交；定向复核见 `FOUR_ROLE_TEST_REPORT.md` 第 11 节）：
+- **R3-N1 已修**：保存 Study 时，注册表中为浮点的参数（含 VoLL）统一写成 float，原样保存不再生成新修订；比较与 identity 审查把整数值的 float 与 int 当作同一值。修订哈希算法不变，已保存修订的身份不变；
+- **AF3-1 按 A23 改为逐指标门控**：比较页的年度差值只扣发依赖弃电归因证据的三个弃电指标，成本、碳各按自身定义是否一致显示差值，被扣发的指标写明原因。VALUE 101 的年度对照（内置铜板组合没有反事实快照）现在能看到成本与碳的差值；
+- **R3-N6 / O-3**：Run 的方法记录新增 `universal_accounting_correction_ids` 与 `correction_ids_in_force`，列出不在修正目录中的通用核算修正（含 `fx5.voll-17000`）。方法身份 `applied_corrections_sha256` 不变，已保存的 Study 不需要确认；
+- **R3-N7**：核电、径流水电相关的 advisory 只用于冻结机组中有该资产的 Run，VALUE 101 的论文复现口径 Run 不再列出核电 advisory；
+- **R3-N2**：p06 advisory 改名为 “Down regulation bookkeeping (ramp history, breaks, budgets)”，只讲三项记账缺陷，并写明先弃风是论文规则、不是缺陷；
+- 开发者指南（`docs/MODULE_DEVELOPER_101(_ZH).md`）的 slot contract ID 改为安装器接受的 `value.*`（R3M-1）；另有一批界面低项（比较页身份块改英文、模块卡片与停用区文案、Learn 页启动说明等）。
+- golden：修正族 C1–C6、C9 各修订一次，只有 `restart_table_sha256` 一列（A22a 参数表文字，3.6 节）；论文族 D3 只同步 identity 区（R-D10）。
 
 ## 3 只改修正口径（profile-gated 修正）
 
@@ -156,15 +165,15 @@ VALUE 101 two_year（copperplate 默认，无网络）：0。VALUE 101 网络教
 | H 的取法（A22） | H = (1 + n) × 0.5 h，n 是之后连续满足“预测需求 ≤ 预测 VRE + 核电可用量”的时段数；当前时段计 1。水电、进口、储能不计入，所以 H 偏短，偏向先弃风 |
 | 取值（A22，2024 年英镑） | CCGT：S 热/温/冷 £110/£130/£150 每 MW（H < 12 h 热，12–48 h 温，> 48 h 冷），m 50%，最短停机 6 h；OCGT：£170，50%，0.5 h；生物质：£125，35%，6 h。参数表 `gridform_core/data/thermal/value_thermal_restart_v1.json`，出处见参考统计表第 4 节 |
 | 盈亏平衡时长 H\* = S/(m·c)（GBP1 成本） | CCGT 4.0 h（c = 55.07），OCGT 4.54 h（c = 74.92），生物质 4.2 h（c = 85.0）。CCGT 和生物质的 H\* 短于 6 h 最短停机时间，所以只要允许停机，a 就为正（但 c < S/(m·6 h) 的便宜机组，例如 CCGT 低于 36.7 £/MWh，仍先弃风）；OCGT 由比较决定，H ≥ 5 h 才先停 |
-| A22a（公式勘误，你已确认） | A22 原写 a = c − S/H，把每 MW 装机的重启成本当成每 MW 出力，少算 1/m 倍（CCGT、OCGT 2 倍，生物质 2.86 倍）。实现按 c − S/(m·H)。两套参考运行都没有用到带价停机段，golden 数值不变 |
+| A22a（公式勘误，你已确认） | A22 原写 a = c − S/H，把每 MW 装机的重启成本当成每 MW 出力，少算 1/m 倍（CCGT、OCGT 2 倍，生物质 2.86 倍）。实现按 c − S/(m·H)。两套参考运行都没有用到带价停机段，golden 数值不变。**R2 收尾（A23）**：参数表 `rule.shutdown_segment` 的说明文字已改为 “a(H) = c - S(H) / (m H)”，取值不变，文件 sha256 `d4a5695a…` → `446b1df5…`（R2-1，`a89b1f4`） |
 | 重启成本的用途 | 只用于排序。成本账不变：物理运营成本的启动项仍是论文的 `startup_cost` 加价（U10）。把 S 记入成本账会与它重复，属于另一项方法决定，未做 |
 | 身份与确认 | correction id `r12.economic-downward-order`（`corrections/r12.json`，advisory medium “Down regulation without restart economics”）；规则集字段 `downward_restart_economics`（修正 `restart_cost_vs_avoided_cost_v1`，论文 `not_modelled`）；value-bid-at-cost-psm 6.4.0 → 6.5.0，`requires_user_opt_in`，旧的修正口径 Study 须在界面确认（Q13）。新输出 `market.extensions.downward_restart_economics`：下调时段数、平均 H、按段统计的 MWh |
 | 论文复现口径 | 不变（Q1）：按 `curtail_cost` 升序，先弃风。A19 之后这不再写成缺陷，而是“没有重启经济学”的论文设定；D1–D5 gated 0 |
 | VALUE 101 two_year（实测） | 2025 年 1 个下调时段（H = 0.5 h）：原规则把 CCGT 降到最小稳定出力以下，新规则因 H 短于 6 h 改为弃 0.16 MWh 光伏。CCGT +0.16 MWh，弃电 +0.16 MWh，排放 +0.06 tCO2，系统成本 +£10.4（C5 14,730,891 → 14,730,901）；投资提案不变。2026 年 2 个下调时段，都只弃 VRE，不变。C5、C6 dynamic 结果相同 |
 | GBP1 public2 修正口径 2025（本地，C9） | 逐位不变：弃电 1.735 TWh，CCGT 67.53 TWh，OCGT 1.47 TWh，核电 38.26 TWh，排放 27.56 MtCO2，头条运营成本 £3,880.9 m。357 个下调时段，平均 H = 3.77 h；各段下调量：水电 91,515 MWh、VRE 21,996 MWh、进口 3,750 MWh、燃气不停机段 190.7 MWh（2 个时段），没有用到停机段 |
 | 为什么影响这么小 | 下调几乎只出现在日前没有排燃气的时段；有燃气时，需要的下调量也在不停机段之内，新旧规则都先降这一段。两条规则只在必须降到最小稳定出力以下时才有差别。想看规则在其他情景下的作用（VRE 更多、预测误差更大），需要另行安排敏感性运行 |
-| golden | C1–C4 各一次修订（只多新 extension 列，出力不变）；C5（r12）、C6（r10）一次修订（2025 年第 8766 期）；C9（r2）只多新 extension 列。数值报告 `docs/dev/p0-reports/r12-golden/` |
-| 仍待处理 | ① 参数表的规则说明文字仍写 c − S/H，参与 `restart_table_sha256`（修正族 golden 的一列），下一轮随一次 C1–C6、C9 修订改为修正式，数值不变；② 价格基年（参考统计表 4.8 节第 4 条）你未单独表态，参数表按 2024 年英镑注明；③ 分区再调度（P0-8，C21）的下调报价次序是燃料在 VRE 之前，它是阻塞管理的报价规则，不是系统削减顺序，R1-2 没有改，是否也按 A19 处理由你决定（5.3 节） |
+| golden | C1–C4 各一次修订（只多新 extension 列，出力不变）；C5（r12）、C6（r10）一次修订（2025 年第 8766 期）；C9（r2）只多新 extension 列。数值报告 `docs/dev/p0-reports/r12-golden/`。R2（A22a 参数表文字）：C1、C2、C4 r15，C3 r16，C5 r14，C6 r12，C9 r4，各只有 `restart_table_sha256` 一列变化，数值列全部不变 |
+| 仍待处理 | ① ~~参数表的规则说明文字仍写 c − S/H~~：R2 已改为修正式，并随一次 C1–C6、C9 修订更新 `restart_table_sha256`，数值不变；② 价格基年（参考统计表 4.8 节第 4 条）你未单独表态，参数表按 2024 年英镑注明；③ 分区再调度（P0-8，C21）的下调报价次序是燃料在 VRE 之前，它是阻塞管理的报价规则，不是系统削减顺序，R1-2 没有改，是否也按 A19 处理由你决定（5.3 节） |
 
 ## 4 明确没有改（论文设定）
 
@@ -229,14 +238,14 @@ VALUE 101 two_year（copperplate 默认，无网络）：0。VALUE 101 网络教
   1. **R029 public1 与 GBP1 public1 的光伏曲线不能被严格读取**：两个包绑定同一份逐时 `sa.csv`，有 8,761 个值（多一小时）且没有 interval 声明，修正口径的严格读取报 `GF_DATA_SHORT_SERIES`。R029 public1 是修正口径的默认国家级数据包（Q4），所以在修正口径下用默认 PSM 跑 R029 会在构建时间序列时失败（FX7 用 `data_method.read_role` 实测，没有跑完整 R029）。数据包验证层没有发现它。修法三选一：给数据包补声明；在真相登记中断言 `sa.csv` 为逐时（会同时改变论文口径的读取，须另立修正）；扩展验证层。public2 的构建器已声明，已发布的包没有改。
   2. **生物质几乎不运行**：GBP1 public2 修正口径 2025 年 4,762 MW 只发 0.05 TWh（CF 0.1%）。报价只用 `gen_cost`（生物质 0.2，CCGT 0.1），排在 CCGT 之后。是否属于论文方法的预期行为，需要判断。
   3. ~~校验面板与 Study 编辑器对论文复现口径资格的判断不一致（复测 N-1）~~：FX9 已修，两处共用同一个白名单检查（`methodology.data_pack_violation`），R1 轮复测确认。
-  4. **Run 的方法学记录中看不到 VoLL 改动**（复测 O-3）：`fx5.voll-17000` 是通用核算修正，不进修正目录，所以 doctoral Run 的 `applied_correction_ids` 中没有它，`switch_corrections.reliability_voll` 仍写 `p06.voll-chronology-parameter`。是否在 Run 来源记录中点名，由负责人决定（R1 轮复测仍在）。
+  4. **Run 的方法学记录中看不到 VoLL 改动**（复测 O-3）：`fx5.voll-17000` 是通用核算修正，不进修正目录，所以 doctoral Run 的 `applied_correction_ids` 中没有它，`switch_corrections.reliability_voll` 仍写 `p06.voll-chronology-parameter`。是否在 Run 来源记录中点名，由负责人决定（R1 轮复测仍在）。**R2 已按 A23 处理**：Run 的方法记录新增 `universal_accounting_correction_ids` 与 `correction_ids_in_force`，doctoral Run 能看到 `fx5.voll-17000`；`applied_correction_ids` 与方法身份不变。
 - 把 public2 的 `flow_sign` 标为 verified，需要你提供年度参考表 `boundary_flow_reference_2022.json`。
 - **R1 轮新出现、需要你或负责人决定的事项：**
   1. **分区再调度的下调报价次序是否也按 A19 处理**：P0-8 的 staged/zonal 平衡（C21）中，下调报价的类别次序是燃料、进口、储能充电、径流水电、VRE、核电，燃料在 VRE 之前（`network_method_rules.DEC_CLASSES`）。它是阻塞管理的报价规则，不是默认 PSM 的系统削减顺序，R1-2 没有改。网络模块只在修正口径下运行。
   2. **重启成本的价格基年**（5.2 节第 3 条）。
-  3. **advisory 措辞（R3-N2）**：论文复现口径 Run 上有两条讲同一件事的 advisory，结论相反：`p06.avoided-cost-downward-order`（high，“Down regulation in curtail-cost order”）仍把“先弃风”写成缺陷，与 A19 矛盾；`r12.economic-downward-order`（medium，“Down regulation without restart economics”）是按 A19 写的。建议下一轮把 p06 这条的 summary 去掉“VRE first”，只留另外三项（爬坡历史按位置匹配、断开后保留旧要求、预算只返还水电），并重新评估严重度。只改展示文字，不进方法身份。
-  4. **advisory 是否按 Run 中是否有相关资产筛选**（R3-N7）：现在按模块判断，没有核电的 VALUE 101 Run 也列出核电那条。由负责人决定。
-  5. **VALUE 101 年度对照的差值一律不显示**（AF3-1）：内置铜板组合没有反事实快照，`deltas_allowed` 恒为 false。是设计选择还是过严，由负责人决定；无论哪种，界面都应写出原因。
+  3. **advisory 措辞（R3-N2）**：论文复现口径 Run 上有两条讲同一件事的 advisory，结论相反：`p06.avoided-cost-downward-order`（high，“Down regulation in curtail-cost order”）仍把“先弃风”写成缺陷，与 A19 矛盾；`r12.economic-downward-order`（medium，“Down regulation without restart economics”）是按 A19 写的。建议下一轮把 p06 这条的 summary 去掉“VRE first”，只留另外三项（爬坡历史按位置匹配、断开后保留旧要求、预算只返还水电），并重新评估严重度。只改展示文字，不进方法身份。**R2 已改措辞（A23）**：标题改为 “Down regulation bookkeeping (ramp history, breaks, budgets)”，正文只讲这三项，并写明先弃风是论文规则（A19）；严重度仍为 high，是否降为 medium 由负责人决定。
+  4. **advisory 是否按 Run 中是否有相关资产筛选**（R3-N7）：现在按模块判断，没有核电的 VALUE 101 Run 也列出核电那条。由负责人决定。**R2 已按 A23 处理**：按 Run 冻结输入中的机组筛选，VALUE 101 不再列出核电 advisory。
+  5. **VALUE 101 年度对照的差值一律不显示**（AF3-1）：内置铜板组合没有反事实快照，`deltas_allowed` 恒为 false。是设计选择还是过严，由负责人决定；无论哪种，界面都应写出原因。**R2 已按 A23 处理**：改为逐指标门控，只扣发三个弃电指标并写明原因，成本与碳照常显示差值。
 
 ## 6 预期的结果变化
 

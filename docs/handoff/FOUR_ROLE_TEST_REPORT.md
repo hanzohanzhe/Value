@@ -17,6 +17,7 @@
 - **修复轮之后的状态见第 9 节“修复轮复测（2026-10-06）”**（被测 HEAD `cd2d72c`）。第 1–8 节保留首轮（HEAD `a987ca4`）的原始记录，没有改写。
 - **复测之后落地的 A18（修正口径核电开局在运，FX8）见第 9.10 节**：不改界面，四个角色没有为它重测。
 - **R1 轮（A19–A22a，R1-1 至 R1-5）之后的复测见第 10 节“R1 轮复测（2026-10-07）”**（被测 HEAD `e0ec659`）：四个角色都通过，没有高缺陷，新增 1 项中等缺陷 R3-N1；仍未关闭的项汇总在第 10.7 节。第 9 节保留修复轮的原始记录，没有改写。
+- **R2 轮（DECISIONS A23，单元 R2-1、R2-2）之后只做了定向复核，见第 11 节“R2 定向复核（2026-10-07）”**（代码状态 HEAD `71cd564`）：按作者“不要无止境测试”的要求和 A23，没有做四角色全量复测；A23 列出的各项都已处理，逐项写明状态与证据。第 10 节保留 R1 复测的原始记录，没有改写。
 
 ## 1 结论
 
@@ -1039,6 +1040,66 @@
 - **INSTALLED：** 四个角色结束时，以及本次汇总结束时，都执行了两项检查：
   - `find <INSTALLED> -newer install-receipt.json -type f ! -path '*/state/*' ! -path '*/logs/*'` 只列出安装时就有的 `.supervisor.lock`（0 字节，mtime 2026-10-03 05:41:26）；
   - `diagnose-value --prefix <INSTALLED>` 退出码 0，输出 “Installation integrity and runtime checks passed.”（中途的 vinext “Premature close” 来自诊断探针本身）。
+
+## 11 R2 定向复核（2026-10-07）
+
+- **范围：** DECISIONS A23（负责人对 R1 复测遗留项的裁决）列出的各项，以及第 10.7 节“顺带修”的低项。A23 写明“本轮之后只做定向复核，不做四角色全量复测”，作者也要求“不要无止境测试”，所以本节**没有**重新起四个角色，也没有在真实实例上重跑 Run。
+- **代码状态：** 分支 `fix/review-2026-10-04`，HEAD `71cd564`（R2-1 提交 `16b9ef2`…`a89b1f4`、报告 `d6046df`；R2-2 提交 `7d7cd57`…`431af90`、报告 `71cd564`）。
+- **证据来源：**
+  1. R2 收尾时在 INTEG 上重跑的单元测试（经 `vpy`，`unittest`）：`tests.test_r2_numeric_identity`、`tests.test_r2_methodology_record`、`tests.test_r2_advisory_assets`、`tests.test_r2_developer_guide_contracts` 共 18 个，全部通过；`tests.test_results_summary`、`tests.test_comparison_identity`、`tests.test_module_source_changed` 共 46 个，全部通过；
+  2. R2 收尾时的直接核对：第 10.6 节复现 R3-N1 的原始调用；p06 advisory 的目录文字；重启成本参数表的规则文字与 sha256；`methodology.UNIVERSAL_ACCOUNTING_CORRECTIONS` 的内容；
+  3. R2-1、R2-2 两份工作报告（`docs/dev/p0-reports/R2-1-backend.md`、`R2-2-ui-docs.md`）中的测试、golden 检查和截图（`docs/dev/p0-ui-screens/r2-*.jpg`，20 张；其中模块安装、隔离和页头 pill 来自 scratch 真实实例，其余由 Playwright 拦截请求生成，比较响应由后端 `compare_run_summaries` 实际生成）。
+- 第 10.8 节第 2 条原建议由对应角色复核 R3-N1 和 R3M-1。本轮改用单元测试复核：R3-N1 的测试经本地 API 原样保存两次（第二次 VoLL 为 int），只生成 1 个修订，比较结果为 same；R3M-1 的测试按指南表中的 contract ID 构建并安装示例包。R2-2 另在 scratch 实例中按指南命令构建并经 Modules 页安装成功。两项都没有由角色测试员在界面上重走一遍。
+
+### 11.1 A23 各项的状态
+
+| 项目 | A23 裁决 | 状态 | 提交 | 证据 |
+|---|---|---|---|---|
+| R3-N1（中，必修） | 保存时数值规范化，比较时按数值比较 | **已修，已复核** | `16b9ef2` | 第 10.6 节的原始调用 `_differing_paths([{… 17000.0}], [{… 17000}])` 修复前返回 `['market_configuration.voll_gbp_per_mwh']`，R2 收尾时重跑返回 `[]`。原样保存不再生成新修订（哈希相同时返回原记录），修订哈希算法不变。`tests/test_r2_numeric_identity.py` 7 个通过，其中包括经本地 API 保存两次只有 1 个修订文件、identity 审查为 same、真实数值变化仍会报告 |
+| AF3-1（低-中） | 年度差值按指标门控，只扣发依赖弃电证据的指标，注明原因 | **已修，已复核** | `0d0bc98`（后端）、`cbfca6a`（界面） | 后端新增 `metric_delta_gates`（每个指标 `allowed`、`reason_code`、`reason`）与 `withheld_metric_deltas`；`metric_deltas_allowed` 含义不变（全部指标可比时才为真）。界面逐指标显示差值，被扣发的指标写 `Delta withheld: {reason}`，总括用 info-box `Deltas withheld`。VALUE 101 无反事实快照时，成本和碳显示差值，三个弃电指标扣发并写原因。`tests/test_results_summary.py` 通过；截图 `r2-compare-per-metric-deltas`、`r2-compare-withheld-summary`；离线 e2e `comparison-review.spec.ts` 2 个通过（R2-2 报告） |
+| R-D10（信息） | golden D3/C3 identity 区本轮同步 | **已修** | `a89b1f4` | D3 revision 13（只有 identity 13 列）；C3 revision 16 同时同步 identity 1 列。`capture.py check --tier fast` 之后 C3、D3 identity 差异为 0（R2-1 报告第 3 节）。D1、D2、C8 的 identity 区不在 A23 范围内，仍落后（不设门） |
+| R3-N6 / O-3（信息） | Run 记录写入实际生效的 correction id，含 `fx5.voll-17000` | **已修，已复核** | `3609f06` | 方法记录（status.json、resolved-run.json、provenance 共用）新增 `universal_accounting_correction_ids` 与 `correction_ids_in_force`。R2 收尾时核对 `UNIVERSAL_ACCOUNTING_CORRECTIONS` 共 9 项，含 `fx5.voll-17000`。方法身份 `applied_corrections_sha256` 不变，已保存的 Study 不需要确认。`tests/test_r2_methodology_record.py` 3 个通过 |
+| R3-N7（信息） | advisory 按资产是否存在筛选 | **已修，已复核** | `fad02ae` | 修正目录 `applies_when.assets_any`（展示字段，不进方法身份），按 Run 冻结输入中的机组判断，读不到机组时保留 advisory。VALUE 101 的 doctoral Run 不再列出核电 advisory（high 由 7 条回到 6 条）；GBP1 有核电与径流水电，不受影响。`tests/test_r2_advisory_assets.py` 3 个通过 |
+| R3M-1（低-中） | 本轮修 | **已修，已复核** | `7d7cd57` | `MODULE_DEVELOPER_101.md` / `_ZH.md` 的 slot 表、第 7 节说明与第 8 节 manifest 示例都改为安装器接受的 `value.*` ID（`value.psm/v2`、`value.storage-cost/v1`、`value.investment/v2` 等，与 `gridform_core/v2/module_manifest.py` 的 `SUPPORTED_CONTRACTS` 一致），并引用安装器拒绝 `gridform.*` 的原文。`tests/test_r2_developer_guide_contracts.py` 5 个通过（按指南 ID 构建的包安装成功，`gridform.storage-cost/v1` 的包按引用原文被拒绝）。R2-2 在 scratch 实例中经 Modules 页安装成功（截图 `r2-guide-module-installed`、`r2-guide-gridform-refused`） |
+| R3-N2（低-中） | p06 advisory 与 A19 冲突的措辞改掉，并告知 methodology 编辑员 | **已修（措辞），已复核** | `e05bea3` | R2 收尾时读取目录：标题为 “Down regulation bookkeeping (ramp history, breaks, budgets)”，正文只讲三项记账缺陷，并写明先弃风是论文规则、不是缺陷（A19）。严重度仍为 high（R2-1 偏差 3：A23 只要求改措辞，是否降级由负责人定）。`docs/generated/METHODOLOGY_PROFILES.md` 已重新生成；methodology 交接文档已同步（第 0 节阅读提示、N-9、第 9 节第 13 条） |
+| A22a 收尾 | 取值表公式文字改为 a = c − S/(m·H)，修正族 golden 修订一次 | **已修，已复核** | `a89b1f4` | R2 收尾时读取 `gridform_core/data/thermal/value_thermal_restart_v1.json`：`rule.shutdown_segment` 为 “… net saving per MWh a(H) = c - S(H) / (m H) (DECISIONS A22a)”，sha256 `446b1df5…`（原 `d4a5695a…`），取值不变。C1–C6、C9 各修订一次，只有 `restart_table_sha256` 一列变化，数值列全部不变。0.4 草稿 `p06_default_psm_clearing.md` 的旧式一并改正 |
+
+### 11.2 第 10.7 节“顺带修”低项的状态
+
+| 项目 | 状态 | 提交 | 证据 / 说明 |
+|---|---|---|---|
+| R3-N3 | 已修 | `fe87166` | “Open in Inspect” 不再写死 Planning，导航清除之前请求的标签；源码契约测试 `r2-ui-low-items` 覆盖（需要带 Callout 的真实 Run 才能截图，没有截图） |
+| R3-N4 | 已修（重名只提示） | `fe87166` | 创建后基线不变、名称清空；重名给琥珀色提示，不阻止（F-R22-6，待设计方定）。截图 `r2-journey-duplicate-name` |
+| R3M-2 | 已修 | `fe87166` | health degraded 时页头 pill 照常显示计数（真实实例截图 `r2-pill-degraded-health`） |
+| R3M-3 | 已修 | `930faf0` | Enable 失败后提示修好后再点 Enable（截图 `r2-enable-failure-hint`） |
+| R3M-4 | 已修 | `930faf0` | 卡片引用说明按状态区分；用户指南中英文同步（截图 `r2-disabled-card-usage-note`） |
+| R3M-5 | 已修 | `d1ad608`（后端）、`930faf0`（界面） | 已隔离模块不再承诺记录新哈希；readiness 不再重复计数（真实实例截图 `r2-quarantined-card-source-change`） |
+| R3M-6 | 已修 | `c2ed529` | 原地改源码的模块按字段点名（`modules.storage_cost.source_sha256`），教学范围与年度范围结论一致 |
+| R3M-7 | 部分修 | `cbfca6a`、`fe87166` | 英文界面中夹杂的中文已改；研究引导页、Read me、映射编辑器、冻结输入恢复面板整页中文未翻译（F-R22-3，界面语言策略交设计方） |
+| AF3-2 | 已修 | `c2ed529`、`cbfca6a` | 去掉双重括号；身份块标签写明扩展的选择属于方法维度 |
+| L-1、L-2、L-3 | 已修 | `a27e1b6` | 坏单元格一次列全（空值、非有限值、负需求），`tests/test_data_mapping.py` 新增用例 |
+| L-5 | 部分修 | `a27e1b6` | API 的 `price_year` 若给出须在 1990–2100；`price_year` 仍可省略、`fx_basis` 仍为自由文本（R2-1 偏差 4，不改 API 合同） |
+| L-4 | 界面已修 | `fe87166`、`431af90` | Learn 页说明启动等待（截图 `r2-learn-launch-note`）；POST 持锁归档仍属 P1-11 / F5-08 |
+| L-6 | 已修 | `fe87166` | 报告为空时不再显示 `null`（没有截图） |
+
+### 11.3 测试与门禁（R2 两个单元的记录）
+
+- R2-1：每个提交前跑相关模块的后端测试（`scripts/run_backend_tests.py --modules …`），全部 `new_failures: []`；`p0_gate.py quick` passed；A22a 提交之后 `capture.py check --tier fast` passed，C1–C4、C7、C8、D1–D3 gated 差异为 0。
+- R2-2：每个提交前 `p0_gate.py quick` passed（16 步，无豁免）；UI unit 163、render 67、source-contracts 66 全部通过；离线 e2e 39 passed、5 个已登记的已知失败、0 个新失败。
+- R2 收尾：见本节开头的单元测试与直接核对；交接文档更新后 `p0_gate.py quick` 一次，结果见收尾报告 `docs/dev/p0-reports/R2-handoff-update.md`。
+
+### 11.4 仍未关闭、但不阻塞本轮的项
+
+| 项目 | 去向 |
+|---|---|
+| R3-N2 的严重度（仍为 high） | 负责人决定是否降为 medium |
+| F-R22-3（界面是否统一为一种语言）、F-R22-6（Study 重名是否阻止），以及 F-R22-1…11 的文案 | 设计方复核；按 A17 前端整体翻新时一并处理 |
+| L-4 后端部分、O-1、R-D4（后端）、S-D10、N-4、AF3-3、O-2 | 已转 P1（`STUDY_LIFECYCLE_LOCK` 持锁与草稿持久化，P1-11 / F5-08） |
+| D1、D2、C8 的 golden identity 区落后 | 不设门，A23 只要求 D3/C3 |
+| 重启成本的价格基年；分区再调度的下调次序是否按 A19 处理 | 作者决定（`MODEL_CHANGES_BRIEF.md` 5.3 节） |
+| 指南第 13 节“只有七个 slot 可替换”与 `SUPPORTED_CONTRACTS` 另外三个 slot 的关系 | 未核对，留 P1（R2-2 报告第 6 节） |
+
+**结论：** A23 列出的各项都已处理；必修项 R3-N1 已修并经单元测试复核。没有新发现的中等及以上缺陷。R2 没有改变任何模型数值：修正族 golden 只有 `restart_table_sha256` 一列变化，论文族只同步了 D3 的 identity 区。按 A23，R2 之后不再做四角色全量复测。
 
 ## 附录 A 复核脚本与输出
 
