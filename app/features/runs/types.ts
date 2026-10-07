@@ -29,6 +29,8 @@ export type RunPreparation = {
   failed_stage?: string;
   stages?: { stage: string; label?: string; seconds?: number }[];
 };
+/** Evidence that a selected module ran: stage events, or (R4 M-中1) the market ledger for the storage-cost slot the PSM calls. */
+export type ModuleEvidence = { version: string | null; actions: number | null; years: number[]; source?: "market_ledger"; storage_asset_periods?: number | null };
 /** RunValidationFields: methodology, energy balance, stress, advisories and Q14 publication (X0 S12, P0-9 S11). */
 export type ModelRun = RunValidationFields & {
   preparation?: RunPreparation;
@@ -41,7 +43,7 @@ export type ModelRun = RunValidationFields & {
   status: "queued" | "snapshotting" | "running" | "cancel_requested" | "cancelled" | "completed" | "failed" | "archived" | "deleting"; current_stage: string;
   completed_years: number; total_years: number; updated_at: string; error?: string; error_code?: string;
   results: RunResult[]; modules?: Record<string, string>;
-  module_evidence?: Record<string, { version: string; actions: number; years: number[] }>;
+  module_evidence?: Record<string, ModuleEvidence>;
   diagnostic?: { periods_per_year?: number; total_periods?: number; years?: number[]; purpose?: string; annual_economics_published?: boolean; scientific_results_published?: boolean; warning?: string };
   execution_status?: string; contract_validation_status?: string; scientific_validation_status?: string;
   scientific_scenario_status?: string; retained_comparison_role?: string;

@@ -507,5 +507,41 @@ class DeriveSourceMigrationTests(SavedStudyCase):
         self.assertEqual(self.project()["revision_sha256"], current["revision_sha256"])
 
 
+class StorageCostEvidenceTests(unittest.TestCase):
+    """M-中1: the storage-cost slot shows the market-ledger evidence of the PSM's internal calls."""
+
+    def run_with_ledger(self, ledger_module: str | None) -> dict:
+        from backend import server
+
+        with tempfile.TemporaryDirectory() as folder:
+            runs = Path(folder)
+            output = runs / "r1" / "model-output"
+            (output / "market").mkdir(parents=True)
+            (output / "orchestrator-events.jsonl").write_text(json.dumps({
+                "sequence": 1, "run_id": "r1", "year": 2025, "stage": "psm.run", "module_slot": "psm",
+                "module_id": PSM, "module_version": SHIPPED,
+            }) + "\n", encoding="utf-8")
+            if ledger_module is not None:
+                (output / "market" / "index.json").write_text(json.dumps({
+                    "years": [2025], "storage_cost_module_id": ledger_module,
+                    "rows": {"storage_state": 48, "orders": 2115},
+                }), encoding="utf-8")
+            run = {"id": "r1", "project_id": "p", "mode": "value_101_day", "status": "completed",
+                   "modules": {"psm": PSM, "storage_cost": "hx-flat-storage-offer-73"}, "results": []}
+            with patch.object(server, "RUNS_ROOT", runs):
+                return server.present_run(run)
+
+    def test_ledger_names_the_storage_cost_module(self) -> None:
+        run = self.run_with_ledger("hx-flat-storage-offer-73")
+        evidence = run["module_evidence"]["hx-flat-storage-offer-73"]
+        self.assertEqual((evidence["source"], evidence["storage_asset_periods"], evidence["years"]),
+                         ("market_ledger", 48, [2025]))
+        self.assertEqual(run["module_evidence"][PSM]["actions"], 1)
+
+    def test_no_evidence_is_invented(self) -> None:
+        self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger("dynamic-annual-storage-cost")["module_evidence"])
+        self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger(None)["module_evidence"])
+
+
 if __name__ == "__main__":
     unittest.main()

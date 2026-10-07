@@ -4,6 +4,7 @@ import { extensionSourceChangeNote } from "../../../app/features/modules/disable
 import { codeIdentityUpdate } from "../../../app/features/studies/studyMigration.ts";
 import { derivationNotes } from "../../../app/features/modules/derivationNotes.ts";
 import { preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
+import { moduleEvidenceText } from "../../../app/features/runs/runHistoryView.ts";
 
 // R4 (DECISIONS A27), four-role report sections 4.3 and 5.3: edit-module and
 // add-feature defects (M-*, F-*).
@@ -43,4 +44,14 @@ test("M-中3: a derivation says when it re-identified the source or started from
   assert.equal(notes[0], "The source Study was first re-identified as revision 3 (code-only change, no confirmation needed).");
   assert.equal(notes[1], "The source's module code changed since its revision was saved (storage_cost hx-flat). For a one-change comparison, compare with a new Run of the source Study.");
   assert.match(derivationNotes({ source_migration: { revision_reason: "source-reidentify" } })[0], /installed local code was edited in place/);
+});
+
+test("M-中1: the storage-cost slot reads the market-ledger evidence, not 'Not called'", () => {
+  const lesson = { mode: "value_101_day", status: "completed" };
+  const ledger = { version: null, actions: null, years: [2025], source: "market_ledger", storage_asset_periods: 17520 };
+  assert.equal(moduleEvidenceText(lesson, "storage_cost", ledger.actions, ledger), "Called inside the PSM: the market ledger records its storage offers (17,520 storage asset-periods)");
+  assert.equal(moduleEvidenceText({ mode: "smoke", status: "completed" }, "storage_cost", null, { ...ledger, storage_asset_periods: null }), "Called inside the PSM: the market ledger records its storage offers");
+  // Without evidence the old wording stays; stage events still count calls.
+  assert.equal(moduleEvidenceText(lesson, "storage_cost", undefined), "Not called in this scope");
+  assert.equal(moduleEvidenceText(lesson, "psm", 1, { version: "6.7.0", actions: 1, years: [2025] }), "1 recorded calls");
 });

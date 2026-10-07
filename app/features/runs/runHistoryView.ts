@@ -1,7 +1,7 @@
 // Run history presentation (four-role report R-D2, S-D12, M2-N1, R-D12;
 // round R1-5). Pure view logic: every value comes from the Run record.
 import { RUN_SCOPE_LABELS } from "../workspace/runScope.ts";
-import type { ModelRun, RunMode } from "./types";
+import type { ModelRun, ModuleEvidence, RunMode } from "./types";
 
 type HistoryRun = Pick<ModelRun, "id" | "mode" | "status"> & { created_at?: string; error_code?: string };
 
@@ -83,8 +83,14 @@ export function startedRunNoticeText(started: StartedRunNotice, run: HistoryRun 
  * call does not say "pending"; the one-day lesson clears the market only, so
  * its other slots were not called in this scope.
  */
-export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot: string, actions: number | undefined): string {
-  if (actions !== undefined) return `${actions} recorded calls`;
+export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot: string, actions: number | null | undefined, evidence?: ModuleEvidence): string {
+  if (typeof actions === "number") return `${actions} recorded calls`;
+  // R4 M-中1: the PSM calls the storage-cost module internally; the market
+  // ledger, not a stage event, shows that it priced the storage offers.
+  if (evidence?.source === "market_ledger") {
+    const rows = typeof evidence.storage_asset_periods === "number" ? ` (${evidence.storage_asset_periods.toLocaleString("en-GB")} storage asset-periods)` : "";
+    return `Called inside the PSM: the market ledger records its storage offers${rows}`;
+  }
   if (isActiveRunStatus(run.status)) return "Evidence pending";
   if (run.mode === "value_101_day" && slot !== "psm") return "Not called in this scope";
   return "No calls recorded";

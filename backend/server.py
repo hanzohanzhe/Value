@@ -1719,6 +1719,27 @@ def running_stage_text(run: Mapping[str, Any], completed_years: set[int]) -> str
     return f"Computing year {next_year} (period-level progress not reported by this model)"
 
 
+def market_ledger_module_evidence(run_root: Path, module_id: str) -> dict[str, Any] | None:
+    """Evidence that the PSM priced storage offers with ``module_id`` (R4 M-中1).
+
+    The storage-cost module is called inside the PSM, not as an orchestrator
+    stage, so it has no stage event.  The market ledger index records the
+    storage-cost module the PSM used and its storage rows; nothing is
+    inferred when the ledger names another module or is absent.
+    """
+
+    index = read_json(run_root / "model-output" / "market" / "index.json")
+    if not isinstance(index, dict) or index.get("storage_cost_module_id") != module_id:
+        return None
+    rows = index.get("rows") if isinstance(index.get("rows"), dict) else {}
+    storage_rows = rows.get("storage_state")
+    years = [year for year in index.get("years") or [] if isinstance(year, int) and not isinstance(year, bool)]
+    return {
+        "version": None, "actions": None, "years": sorted(years), "source": "market_ledger",
+        "storage_asset_periods": storage_rows if isinstance(storage_rows, int) and not isinstance(storage_rows, bool) else None,
+    }
+
+
 def present_run(run: dict[str, Any]) -> dict[str, Any]:
     """Add UI-compatible aliases without rewriting persisted research results."""
     if run.get("id"):
@@ -1759,6 +1780,13 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
                     }
                     for module_id, row in evidence.items()
                 }
+                # R4 M-中1: the PSM calls the storage-cost module internally,
+                # so it leaves no stage event; the market ledger names it.
+                storage_module = str(dict(run.get("modules") or {}).get("storage_cost") or "")
+                if storage_module and storage_module not in run["module_evidence"]:
+                    ledger_evidence = market_ledger_module_evidence(run_root, storage_module)
+                    if ledger_evidence is not None:
+                        run["module_evidence"][storage_module] = ledger_evidence
                 if completed_years and run.get("status") == "running":
                     run["completed_years"] = len(completed_years)
                     # Spec 5: say what is being computed and that this model
