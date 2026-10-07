@@ -3,7 +3,7 @@ import test from "node:test";
 import { extensionSourceChangeNote } from "../../../app/features/modules/disabledEntries.ts";
 import { codeIdentityUpdate } from "../../../app/features/studies/studyMigration.ts";
 import { derivationNotes } from "../../../app/features/modules/derivationNotes.ts";
-import { preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
+import { environmentBlockers, preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
 import { moduleEvidenceText } from "../../../app/features/runs/runHistoryView.ts";
 
 // R4 (DECISIONS A27), four-role report sections 4.3 and 5.3: edit-module and
@@ -54,4 +54,13 @@ test("M-中1: the storage-cost slot reads the market-ledger evidence, not 'Not c
   // Without evidence the old wording stays; stage events still count calls.
   assert.equal(moduleEvidenceText(lesson, "storage_cost", undefined), "Not called in this scope");
   assert.equal(moduleEvidenceText(lesson, "psm", 1, { version: "6.7.0", actions: 1, years: [2025] }), "1 recorded calls");
+});
+
+test("M-低2: installation errors are found so the method confirmation waits for them", () => {
+  assert.deepEqual(environmentBlockers(null), []);
+  assert.deepEqual(environmentBlockers({ errors: [
+    { scope: "project", code: "GF_PREFLIGHT_METHOD_UPGRADE_REQUIRED" },
+    { scope: "environment", code: "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED" },
+  ] }), ["GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED"]);
+  assert.deepEqual(environmentBlockers({ errors: [{ scope: "modules", code: "GF_PREFLIGHT_MODULE_QUARANTINED" }] }), []);
 });

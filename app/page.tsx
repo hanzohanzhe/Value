@@ -43,7 +43,7 @@ import ResearchJourney from "./features/workspace/ResearchJourney";
 import JourneyDataEditor from "./features/workspace/JourneyDataEditor";
 import ResultQueryPanel from "./features/results/ResultQueryPanel";
 import { ALL_RUN_MODES, runModesForStudy, selectedRunScope } from "./features/workspace/runScope";
-import { preflightKey, preflightMatches } from "./features/workspace/preflightIdentity";
+import { environmentBlockers, preflightKey, preflightMatches } from "./features/workspace/preflightIdentity";
 import RunContextBar from "./features/workspace/RunContextBar";
 import { annualResultsWithheld, shortfallDisplay, VRE_WITHHELD_TEXT } from "./features/workspace/runValidation.ts";
 import { resolveRunContext } from "./features/workspace/runContext";
@@ -870,6 +870,13 @@ export default function Home() {
     setProjectForm((current) => ({ ...current, modules: next.modules }));
   }
   /** Spec 7: a method or data change of the saved Study opens the confirmation dialog; nothing runs until it is confirmed. */
+  /** R4 M-低2: after the confirmation dialog closes, readiness is checked again for the Study as it now is. */
+  async function recheckAfterMigration(projectId: string, saved: boolean) {
+    const next = saved ? await refresh() : workspace;
+    const project = next?.projects.find((item) => item.id === projectId);
+    if (!project || project.id !== selectedProjectId || !effectivePreflightMode) return;
+    await checkPreflight(effectivePreflightMode, { project, askMigration: false });
+  }
   async function promptMigration(project: Project, migration: RevisionMigration) {
     const opening = await openingMigration(API, project.id, migration);
     setMigrationPrompt({ projectId: project.id, studyName: project.name, migration: opening, nonce: Date.now() });
@@ -1326,11 +1333,11 @@ export default function Home() {
     setPreflight(null); setPreflightMode(mode as RunMode); setView("run");
     setNotice("已保存独立 Study，尚未启动。核对锁定范围，Check readiness 后再明确运行。");
   }
-  async function checkPreflight(mode = effectivePreflightMode) {
+  async function checkPreflight(mode = effectivePreflightMode, options: { project?: Project; askMigration?: boolean } = {}) {
     if (!mode || !canRunMode(mode)) { setNotice("此 Study 的锁定范围与数据包允许范围不相容，不能执行 readiness 或启动。"); return; }
-    if (!selectedProject) { setNotice("Save and select a research project first."); return; }
+    const target = options.project ?? selectedProject;
+    if (!target) { setNotice("Save and select a research project first."); return; }
     const requestId = ++preflightRequest.current;
-    const target = selectedProject;
     setPendingPreflightKey(preflightKey(target, mode)); setPreflight(null); setNotice("");
     try {
       const response = await fetch(`${API}/projects/${encodeURIComponent(target.id)}/preflight`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
@@ -1338,8 +1345,11 @@ export default function Home() {
       if (requestId !== preflightRequest.current) return;
       if (!response.ok) throw new Error(payload.error || "Preflight failed");
       // Spec 7: a method or data change is reported against the declared revision; it opens the confirmation dialog.
+      // R4 M-低2: not while the installation itself blocks every Run (fix that first), and not
+      // when readiness is re-checked after the user cancelled the confirmation.
       const migration = migrationFromResponse(payload);
-      if (migration && payload.project_id === target.id && migration.declared_sha256 === target.revision_sha256) {
+      const environment = environmentBlockers(payload);
+      if (migration && !environment.length && options.askMigration !== false && payload.project_id === target.id && migration.declared_sha256 === target.revision_sha256) {
         setNotice("The installed VALUE computes this Study differently from its saved revision. Review the changes before it runs.");
         void promptMigration(target, migration);
         return;
@@ -1347,6 +1357,7 @@ export default function Home() {
       if (!preflightMatches(payload, target, mode)) throw new Error("Preflight identity changed. Refresh the saved Study and check it again.");
       // Rendering also matches the current selection, so an old Study response cannot appear on a new one.
       setPreflight(payload);
+      if (migration && environment.length) setNotice("Fix the installation errors listed under readiness first. VALUE then asks you to confirm this Study's method changes; nothing has been saved.");
     } catch (reason) { if (requestId === preflightRequest.current) setNotice(reason instanceof Error ? reason.message : "Preflight failed"); }
     finally { if (requestId === preflightRequest.current) setPendingPreflightKey(null); }
   }
@@ -1458,8 +1469,8 @@ export default function Home() {
     {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>Close</button></div>}
     {!notice && startedRun && startedRunNoticeVisible(startedRun, { view, studyId: selectedProjectId }) && <div className="notice" role="status"><span>{startedRunNoticeText(startedRun, workspace.runs.find((run) => run.id === startedRun.runId))}</span><button onClick={() => setStartedRun(null)}>Close</button></div>}
     {migrationPrompt && <StudyMigrationDialog key={migrationPrompt.nonce} projectId={migrationPrompt.projectId} studyName={migrationPrompt.studyName} migration={migrationPrompt.migration} version={health?.version} apiBase={API}
-      onCancel={() => { setMigrationPrompt(null); setNotice("The Study was not changed. It cannot run until the listed changes are confirmed."); }}
-      onSaved={(revisionNumber) => { setMigrationPrompt(null); setPreflight(null); setNotice(`Saved as a new revision${revisionNumber ? ` (revision ${revisionNumber})` : ""}. Check readiness again, then start the Run.`); void refresh(); }} />}
+      onCancel={() => { const projectId = migrationPrompt.projectId; setMigrationPrompt(null); setNotice("The Study was not changed. It cannot run until the listed changes are confirmed."); void recheckAfterMigration(projectId, false); }}
+      onSaved={(revisionNumber) => { const projectId = migrationPrompt.projectId; setMigrationPrompt(null); setPreflight(null); setNotice(`Saved as a new revision${revisionNumber ? ` (revision ${revisionNumber})` : ""}. Readiness is checked again below; then start the Run.`); void recheckAfterMigration(projectId, true); }} />}
 
     <div hidden={view !== "journey"} className="page">
       <ResearchJourney intent={activePath === "data" ? "data" : "reproduce"} studies={workspace.projects} packs={workspace.data_packs}

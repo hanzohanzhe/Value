@@ -3863,8 +3863,8 @@
     },
     {
       "path": "app/features/workspace/preflightIdentity.ts",
-      "sha256": "db65abe418ad4825fe885aaeab9cce083921e752eb75217562137782aa3422df",
-      "bytes": 2045,
+      "sha256": "9f6870872ea52eec78f6eeef3a8dc9a01fd208ab883c8b30500a039f472e5172",
+      "bytes": 2639,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3935,8 +3935,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "130925c80af322cf8aa3b87c4708159b1730079bc7f07928fabb6b5b84e1f5ca",
-      "bytes": 179027,
+      "sha256": "011814bf111d79c2a655b20c31f03080a250ab8ca68142598250513bf9927112",
+      "bytes": 180282,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4085,8 +4085,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "728eac677345b9b734344b7f86b825b9c757dde774fa034f30a7e297a3e0f546",
-      "bytes": 231290,
+      "sha256": "7dc3c90add90a2df39a09987be9d20384f10a2845deee6b5e95e6b0858fd6fb0",
+      "bytes": 232461,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11046,8 +11046,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-module-extension-defects.test.mjs",
-      "sha256": "95eaca963f171486a47e004c0c2ce2bb48b2413c6943d039eada79900b04570a",
-      "bytes": 4495,
+      "sha256": "f782321fe7f452795ab8720bc8ca4890857bbe84ba935a69330501851416b3fd",
+      "bytes": 5042,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12858,8 +12858,8 @@
     },
     {
       "path": "tests/test_r4_module_extension_defects.py",
-      "sha256": "e62a6d2a5cc3498bb922ff571ec1d090d96c700e2101793d7d037c9e16352bcb",
-      "bytes": 35274,
+      "sha256": "b702a26b5db63382be9a208112b95521f6c62519e112957abf6da7f4cf64bfaf",
+      "bytes": 37528,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

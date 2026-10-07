@@ -25,6 +25,18 @@ export function preflightMatches(report: ReportIdentity | null | undefined, proj
     && report.mode === mode);
 }
 
+/**
+ * R4 M-低2: errors of the installation itself (an unsealed runtime kernel, an
+ * unsupported Python, missing scientific packages). While one is reported no
+ * Study can run, so the Study's method-upgrade confirmation waits until it is
+ * fixed instead of writing a revision first.
+ */
+export function environmentBlockers(report: { errors?: { scope?: string; code?: string }[] } | null | undefined): string[] {
+  return (Array.isArray(report?.errors) ? report.errors : [])
+    .filter((issue) => issue?.scope === "environment")
+    .map((issue) => String(issue.code ?? "environment"));
+}
+
 /** Spec 11.4: why the Run button is disabled after a blocked preflight, or null. */
 export function preflightRunBlockedReason(report: { accepted?: boolean; errors?: { message?: string }[] } | null | undefined): string | null {
   if (!report || report.accepted !== false) return null;

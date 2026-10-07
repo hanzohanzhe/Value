@@ -1518,6 +1518,17 @@ def _revision_manifest(
     return selection.revision_manifest
 
 
+def _runtime_overlay_errors() -> list[str]:
+    """The sealed-kernel check readiness runs (M-D6), for the Run admission (R4 M-低2)."""
+
+    from gridform_core.builtin.scheme_c_1000twh.runtime_overlay import inspect_runtime_overlay
+
+    try:
+        return [str(item) for item in inspect_runtime_overlay()["errors"]]
+    except Exception as exc:  # an unreadable manifest refuses the run as well
+        return [f"{type(exc).__name__}: {exc}"]
+
+
 def _study_revision_context(project_id: str) -> tuple[dict[str, Any], dict[str, object]] | None:
     """A saved Study and the manifest its revision identity is computed against."""
 
@@ -3505,6 +3516,16 @@ class Handler(BaseHTTPRequestHandler):
                         whitelist_packs=whitelist_packs,
                     )
                 elif classification["classification"] != "none":
+                    # R4 M-低2: an unsealed runtime kernel refuses every Run, so
+                    # it is reported before the Study's confirmation is asked
+                    # (a confirmed revision could not run anyway).
+                    overlay_errors = _runtime_overlay_errors()
+                    if overlay_errors:
+                        self._json({
+                            "error": "The runtime kernel differs from its sealed manifest; fix or seal it before this "
+                                     "Study's method changes are confirmed: " + "; ".join(overlay_errors[:3]),
+                            "error_code": "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED",
+                        }, 409); return None
                     self._json({
                         "error": "This Study needs review before it runs: the installed VALUE computes it differently from its saved revision.",
                         "error_code": classification["error_code"],

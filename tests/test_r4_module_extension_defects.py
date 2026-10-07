@@ -612,5 +612,45 @@ class CorrectionIdRegistryTests(unittest.TestCase):
         overlay.clear_runtime_overlay_cache()
 
 
+class OverlayBeforeConfirmationTests(unittest.TestCase):
+    """M-低2: an unsealed runtime kernel is reported before a Study's method confirmation is asked."""
+
+    def test_run_start_reports_the_kernel_first(self) -> None:
+        import shutil
+        import urllib.error
+        import urllib.request
+
+        from backend import server
+        from tests.local_api_harness import start_local_api
+
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            shutil.copytree(PACK_ROOT, home / "data-packs" / "value-101-baseline-v1")
+            study = home / "projects" / "golden-study"
+            study.mkdir(parents=True)
+            shutil.copyfile(ROOT / "tests" / "fixtures" / "studies-35aadb3" / "D1.project.json", study / "project.json")
+            before = (study / "project.json").read_bytes()
+
+            def start(origin: str) -> tuple[int, dict]:
+                request = urllib.request.Request(origin + "/api/projects/golden-study/runs", method="POST",
+                                                 data=json.dumps({"mode": "smoke"}).encode("utf-8"),
+                                                 headers={"Content-Type": "application/json"})
+                try:
+                    with urllib.request.urlopen(request, timeout=60) as response:
+                        return response.status, json.loads(response.read())
+                except urllib.error.HTTPError as error:
+                    return error.code, json.loads(error.read())
+
+            with start_local_api(data_home=home) as (_httpd, origin, _token):
+                with patch.object(server, "_runtime_overlay_errors", return_value=["storage_cost.py: sha256 differs"]):
+                    status, payload = start(origin)
+                self.assertEqual((status, payload["error_code"]), (409, "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED"), payload)
+                self.assertNotIn("revision_migration", payload)
+                status, payload = start(origin)
+                self.assertEqual((status, payload["error_code"]), (409, "GF_PREFLIGHT_METHOD_UPGRADE_REQUIRED"), payload)
+                self.assertIn("revision_migration", payload)
+            self.assertEqual((study / "project.json").read_bytes(), before)
+
+
 if __name__ == "__main__":
     unittest.main()
