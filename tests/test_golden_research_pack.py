@@ -128,11 +128,14 @@ class D5DefinitionTests(unittest.TestCase):
         revisions = self.golden["revisions"]
         self.assertEqual(revisions[0]["base_commit"], COMMIT_35AADB3)
         self.assertGreaterEqual(len(revisions), 2)
-        # Later revisions are accounting/identity only (e.g. FX5 fx5.voll-17000):
-        # the trajectory rebaseline of D5 happens once, in revision 1.
-        for later in revisions[2:]:
-            self.assertEqual(later["delta"]["by_zone"].get("trajectory", 0), 0, later["revision"])
         allowlist = json.loads((GOLDEN / "doctoral_trajectory_rebaselines.json").read_text(encoding="utf-8"))["findings"]
+        # Later revisions are accounting/identity only (e.g. FX5 fx5.voll-17000),
+        # except the one A26 re-baseline of the thesis-kernel corrections
+        # (R4-1, revision 3, its own numeric report).
+        for later in revisions[2:]:
+            if later["delta"]["by_zone"].get("trajectory", 0):
+                self.assertEqual(sorted(set(later["findings"]) & set(allowlist)), ["A15", "DEV-BAL-04", "DEV-STO-01"])
+                self.assertTrue((GOLDEN / "reports" / f"D5-r{later['revision']}.json").is_file())
         trajectory_findings = sorted(set(revisions[1]["findings"]) & set(allowlist))
         self.assertEqual(trajectory_findings, A3_A5_A4)
         self.assertGreater(revisions[1]["delta"]["by_zone"]["trajectory"], 0)

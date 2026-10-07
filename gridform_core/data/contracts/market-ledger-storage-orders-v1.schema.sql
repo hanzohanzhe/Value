@@ -17,9 +17,10 @@
 -- rejected / merit_order_not_reached (the stage was filled before the offer).
 -- The battery's `orders` row (stage final_dispatch, offer price 0.0, reason
 -- accepted_non_generator_offer) is the frozen net-dispatch record and is not
--- an offer; read the offers here.  In the doctoral profile the accepted MWh
--- of a battery and period sum to that row; in the corrected profile the row
--- is net of same-period buy-back.  Observation only: dispatch is unchanged.
+-- an offer; read the offers here.  The row is net of a same-period
+-- buy-back (both profiles since R4-1, DECISIONS A26; before it the doctoral
+-- accepted MWh of a battery and period summed to that row), so the accepted
+-- MWh are at least the row.  Observation only: dispatch is unchanged.
 CREATE TABLE IF NOT EXISTS storage_orders(
     order_id TEXT PRIMARY KEY,
     year INTEGER NOT NULL,

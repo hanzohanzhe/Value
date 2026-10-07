@@ -81,7 +81,7 @@
     "value-bid-at-cost-psm": {
       "baseline_version": "5.1.0",
       "baseline_scientific_version": "live-state-coupling-2026.08.09",
-      "current_version": "6.6.0",
+      "current_version": "6.7.0",
       "bumps": [
         {
           "from": "5.1.0",
@@ -172,6 +172,18 @@
             "r33.restart-cost-price-base-2025"
           ],
           "reason": "Decision A24-4: the restart costs of the thermal restart table (gridform_core/data/thermal/value_thermal_restart_v1.json, author-reviewed in A22 in 2024 GBP) are restated in the price base of the model's cost parameters, 2025 GBP, the same basis as the fuel and carbon prices (DECISIONS A6: start-year money; every shipped study starts in 2025): factor 1.0336 = ONS CPI D7BT annual average 2025 / 2024 = 138.4 / 133.9, so S = CCGT 113.7/134.4/155.0 GBP/MW hot/warm/cold, OCGT 175.7, biomass 129.2 (from 110/130/150, 170, 125). Minimum stable generation, minimum down times and the rule are unchanged. In the default PSM's economic down-regulation stack (r12.economic-downward-order) the net saving a(H) = c - S(H)/(m H) of a shutdown segment falls by 3.4 % of its restart term, so a shutdown that was just profitable can move after VRE (break-even downtime H* = S/(m c): CCGT 3.99 -> 4.13 h, OCGT 4.54 -> 4.69 h, biomass 4.20 -> 4.34 h at the thesis costs); curtailment, thermal output and costs of corrected Runs can change (method change), so saved Studies need explicit confirmation (Q13). The doctoral profile does not use the table.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.6.0",
+          "to": "6.7.0",
+          "package": "R4-1",
+          "correction_ids": [
+            "r41.down-regulation-taken-once",
+            "r41.must-run-surplus-counted-once",
+            "p06.storage-net-per-period"
+          ],
+          "reason": "Decision A26: three implementation errors of the retained thesis kernel are corrected in both methodology profiles (universal corrections; the website methodology describes the published VALUE model, not the thesis). (1) A15: in the curtailment branch a hydro, biomass or thermal unit that met the remaining down-regulation requirement left the requirement unchanged, so the same amount was taken again from later offers (usually wind); it is now taken once (r41.down-regulation-taken-once). (2) DEV-STO-01: every clearing stage reset a store's power limit, so a store could discharge up to twice its rating and charge and discharge in one period; the thesis rule set now keeps one net position per store and period, as the corrected rule set already did (p06.storage-net-per-period, now universal; storage_position is no longer a switch). (3) DEV-BAL-04: the balancing stage added must-run nuclear surplus that served the balancing requirement to nuclear output already in the accepted supply and paid it again; it is now used up without a second generation or payment (r41.must-run-surplus-counted-once). Thesis bids, prices, merit order and settlement are otherwise unchanged. Dispatch, storage, curtailment, unserved energy, prices and costs of doctoral Runs change (the doctoral golden family is re-baselined once); corrected Runs ran the corrected behaviour already, but the applied-corrections identity of both profiles changes, so saved Studies need explicit confirmation (Q13).",
           "requires_user_opt_in": true
         }
       ]

@@ -4,7 +4,8 @@
   "notes": [
     "P0-6 default PSM clearing and storage dispatch (plan 4.6 S5-S10). Each profile_gated correction is one field of NativeMarketRules (gridform_core/builtin/scheme_c_1000twh/native_market_rules.py FIELD_CORRECTIONS); the kernel runs only the complete doctoral or complete corrected rule set (require_supported_rules), so these switches are registered together.",
     "Decision A2: P3-01 (forecast realisation rule, hidden shortfall) is not a switch; both profiles keep the thesis branch and book shortfalls as stress events (P0-4 S6). Decision A6: P4-02 is out of scope.",
-    "P5-06 (physical operating cost) is a universal accounting correction (p06.physical-operating-cost, golden accounting zone only) and, like the P0-4 accounting corrections, is not listed here so that it does not change the applied-corrections hash of either profile; only its VoLL value is profile gated (p06.voll-chronology-parameter)."
+    "P5-06 (physical operating cost) is a universal accounting correction (p06.physical-operating-cost, golden accounting zone only) and, like the P0-4 accounting corrections, is not listed here so that it does not change the applied-corrections hash of either profile; only its VoLL value is profile gated (p06.voll-chronology-parameter).",
+    "Decision A26 (R4-1) made p06.storage-net-per-period universal (track universal, both profiles): the thesis kernel's per-stage storage power reset (DEV-STO-01) is an implementation error, and the corrected rule (one net position per store and period) is the same physics, so the doctoral rule set reuses it. storage_position is therefore no longer a switch of NativeMarketRules; the entry keeps its id so that the identity of earlier Runs stays readable."
   ],
   "corrections": [
     {
@@ -28,7 +29,7 @@
       "advisory": {
         "severity": "high",
         "title": "VRE surplus not recorded by the default PSM",
-        "summary": "Before P0-6 the default PSM recorded VRE surplus only when a VRE offer was partially accepted: VRE crowded out by zero-priced storage or must-run nuclear vanished from the ledger, and must-run nuclear surplus used for balancing was counted a second time (DEV-BAL-04).",
+        "summary": "Before P0-6 (and still in the thesis rule set of the doctoral reproduction profile) the default PSM recorded VRE surplus only when a VRE offer was partially accepted: VRE crowded out by zero-priced storage or must-run nuclear vanished from the ledger. Must-run nuclear surplus used for balancing was also counted a second time (DEV-BAL-04) until R4-1 corrected that in both profiles (r41.must-run-surplus-counted-once).",
         "affected_metrics": [
           "curtailment",
           "excess",
@@ -109,9 +110,11 @@
       "id": "p06.storage-net-per-period",
       "package": "p06",
       "findings": [
-        "P5-03"
+        "P5-03",
+        "DEV-STO-01",
+        "A26"
       ],
-      "track": "profile_gated",
+      "track": "universal",
       "scope": "market_clearing",
       "affects": [
         "trajectory",
@@ -125,19 +128,20 @@
       "advisory": {
         "severity": "high",
         "title": "Storage above rated power or charging and discharging in one period",
-        "summary": "Before P0-6 each stage reset a store's power limit (up to twice the rating in one period) and the curtailment branch could discharge and charge the same store in the same period.",
+        "summary": "Before P0-6 (corrected profile) and before R4-1 (doctoral reproduction profile) each clearing stage of the default PSM reset a store's power limit, so a store could discharge up to twice its rating in one period, and the curtailment and balancing stages could charge a store that had discharged in the same period (DEV-STO-01). On GBP1 public1 2025 (doctoral profile) 15,653 store-periods charged and discharged in the same period and 448 discharged above rated power.",
         "affected_metrics": [
           "storage_dispatch",
           "storage_revenue",
-          "prices"
+          "prices",
+          "energy_balance"
         ]
       },
       "trigger_fixture": {
-        "test": "tests.test_native_corrected_rules.NettingTests"
+        "test": "tests.test_r41_doctoral_kernel_errors.StoragePeriodPowerBudgetTests"
       },
-      "introduced_in": "P0-6 S8",
+      "introduced_in": "P0-6 S8 (corrected profile); R4-1 (A26) universal",
       "deviation_signature": null,
-      "description": "One storage position per period: stages share the rated power, a store that discharged buys back (need before surplus) before it can charge, a store that charged offers no discharge; sales are recorded at the period's net position and close_period asserts discharge <= P, no charge with discharge, 0 <= SoC <= E."
+      "description": "One storage position per period, in both rule sets since R4-1 (A26): the clearing stages share the rated power, a store that discharged buys back (need before surplus) before it can charge, a store that charged offers no discharge; sales are recorded at the period's net position and close_period asserts discharge <= P, no charge with discharge, 0 <= SoC <= E. In the thesis rule set the curtailment-branch and balancing-stage absorption (store_service_three, balancing excess) nets against the store's discharge of the period in the same way; the absorbed surplus stays booked as surplus_routing.to_storage. Bids, prices and settlement of each rule set are unchanged."
     },
     {
       "id": "p06.storage-fee-per-period",

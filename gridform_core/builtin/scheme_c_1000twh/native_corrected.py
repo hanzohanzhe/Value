@@ -697,6 +697,9 @@ class StoragePeriodBook:
     draws: list = field(default_factory=list)  # [charge_period, output MW]
     charged_mw: float = 0.0
     bought_back_mw: float = 0.0
+    # R4-1: the period's net sales were recorded (Battery.close_period is
+    # idempotent, so a harness may close a period the loop already closed).
+    closed: bool = False
 
     @property
     def discharged_mw(self) -> float:

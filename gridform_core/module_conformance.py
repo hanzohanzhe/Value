@@ -69,8 +69,12 @@ def check_storage_lifecycle(model) -> None:
     finite_nonnegative(battery.storage_fee)
     finite_nonnegative(battery.per_storage_fee)
     battery.charge(0, 1.0)
+    battery.close_period(0)
     finite_nonnegative(battery.storage_bid_price(2, 0))
     output = battery.discharge(0, 0.4, 2)
+    # R4-1 (A26): both market rule sets keep one storage position per period
+    # and record its sales when the period closes, as the kernel loop does.
+    battery.close_period(2)
     first = report(2025)
     if output <= 0 or abs(float(first["current_year_sold_mwh"]) - output * period_hours) > 1e-9:
         raise ValueError("report must observe actual non-zero Battery discharge")

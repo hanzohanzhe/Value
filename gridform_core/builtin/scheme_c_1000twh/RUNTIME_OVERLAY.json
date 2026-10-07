@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "06aa7ec52451e3fba3c09dc127d0a78160a7e695c97313af3abc1f41d64ebaf7",
+  "runtime_tree_sha256": "fa86624ef63c26ae06bdcdfbd3b333d1a2e59556dab8561c2229a0480567362f",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -133,7 +133,7 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "d9059c309730e6a17e2d609f1cd7a7a5e4419d28a49605b30a1a8ff57762ceb6",
+      "sha256": "e58d727cc3dc4f201d738fa2e8a3bec45c0d2b3c89c9c8a7f9fba20fe6605566",
       "kind": "declared_runtime_edit",
       "correction_ids": [
         "fx4.storage-offer-ledger",
@@ -150,9 +150,12 @@
         "p06.native-market-rules",
         "p06.physical-operating-cost",
         "p06.realise-period",
-        "r12.economic-downward-order"
+        "p06.storage-net-per-period",
+        "r12.economic-downward-order",
+        "r41.down-regulation-taken-once",
+        "r41.must-run-surplus-counted-once"
       ],
-      "note": "four-role M-D1: read-only storage offer trace and storage_orders ledger rows (Q12 accounting; dispatch unchanged); R1-2 A22a: comment of the shutdown net saving c - S(H)/(m H)",
+      "note": "R4-1 (A26): A15 down regulation taken once (r41.down-regulation-taken-once); DEV-BAL-04 must-run surplus counted once (r41.must-run-surplus-counted-once); DEV-STO-01 one storage position per period in the thesis rule set (p06.storage-net-per-period, now universal; buy-back before charge, close_period records sales once)",
       "previous_kind": "value_instrumentation"
     },
     {

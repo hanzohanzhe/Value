@@ -132,6 +132,8 @@ class SurplusTrace:
     routing: dict[str, dict[str, float]] = field(default_factory=lambda: {
         IN_DISPATCH: _routing(), OUT_OF_DISPATCH: _routing(),
     })
+    # In-dispatch output the kernel adds to S a second time (DEV-BAL-04 before
+    # R4-1).  No rule set does so since R4-1, so nothing adds to it.
     double_counted_mw: float = 0.0
 
     def begin(self, period: int, excess_mw: float, excess_class: str | None, sources: tuple[str, ...] = ()) -> None:
@@ -250,7 +252,11 @@ def node_terms(
         period_hours=hours,
         in_dispatch_claimed_spill_mwh=claimed,
         in_dispatch_unrealised_mwh=claimed - w_in,
-        non_vre_double_counted_mwh=in_row["to_dispatch"] * hours,
+        # R4-1 (A26, DEV-BAL-04): in-dispatch surplus re-dispatched to the
+        # balancing requirement (routing to_dispatch) is no longer added to S
+        # again in either rule set; the column records what the kernel counts
+        # twice (SurplusTrace.double_counted_mw), which is zero.
+        non_vre_double_counted_mwh=trace.double_counted_mw * hours,
     )
     return terms, rows
 

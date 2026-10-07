@@ -193,15 +193,58 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(harness.gated_zones(revised, "live"), ("trajectory", "accounting"))
 
     def test_scenario_exercises_every_situation_named_by_the_plan(self):
+        # The situations are 35aadb3 (HEAD) behaviour: revision 0 is the HEAD
+        # capture.  R4-1 (A26) removed the storage power reset, so the latest
+        # revision has every situation but the reset's two.
+        head = harness.latest_columns(_revision_zero(self.golden))
         latest = harness.latest_columns(self.golden)
+        removed_by_r41 = {"storage_discharge_above_rated_power", "storage_fee_carry_into_curtailment"}
         for variant in harness.VARIANTS:
-            facts = harness.coverage_facts(latest[variant], self.golden["scenario"])
+            facts = harness.coverage_facts(head[variant], self.golden["scenario"])
             missing = [name for name in REQUIRED_SITUATIONS if not facts[name]]
             self.assertEqual([], missing, variant)
             self.assertTrue(set(facts["p3_01_toy_f120_r28"]) & set(facts["hidden_shortage_in_curtailment_branch"]))
+            facts = harness.coverage_facts(latest[variant], self.golden["scenario"])
+            missing = [name for name in REQUIRED_SITUATIONS if not facts[name] and name not in removed_by_r41]
+            self.assertEqual([], missing, variant)
+            self.assertEqual(facts["storage_discharge_above_rated_power"], [], variant)
+
+    def test_r41_corrections_are_pinned_in_the_latest_revision(self):
+        # DECISIONS A26 (R4-1): the trajectory re-baseline names the three
+        # kernel corrections; in its columns no store discharges above its
+        # rating or charges and discharges in one period, and the must-run
+        # nuclear surplus that served the balancing requirement is not
+        # counted twice (HEAD: +1.5 and +0.5 MWh in periods 19 and 21).
+        rebaselines = [item for item in self.golden["revisions"] if item.get("trajectory_rebaseline")]
+        self.assertEqual(len(rebaselines), 1)
+        self.assertEqual(set(rebaselines[0]["correction_ids"]), set(harness.TRAJECTORY_REBASELINE_CORRECTIONS))
+        head = harness.latest_columns(_revision_zero(self.golden))
+        latest = harness.latest_columns(self.golden)
+        summary = "market/market.sqlite::period_summary."
+        state = "market/market.sqlite::storage_state."
+        for variant in harness.VARIANTS:
+            columns = latest[variant]
+            facts = harness.coverage_facts(columns, self.golden["scenario"])
+            batteries = sorted({key[len(state):].rsplit(".", 1)[0] for key in columns
+                                if key.startswith(state) and key.endswith(".power_capacity_mw")})
+            self.assertTrue(batteries)
+            for name in batteries:
+                charge = columns[f"{state}{name}.charge_mwh"]
+                discharge = columns[f"{state}{name}.discharge_mwh"]
+                power = columns[f"{state}{name}.power_capacity_mw"]
+                for period in range(harness.PERIODS):
+                    self.assertLessEqual(discharge[period], power[period] * harness.PERIOD_HOURS + 1e-9,
+                                         (variant, name, period))
+                    self.assertFalse(charge[period] > 1e-9 and discharge[period] > 1e-9, (variant, name, period))
+            self.assertEqual([head[variant][summary + "raw_energy_balance_residual_mwh"][p] for p in (19, 21)],
+                             [1.5, 0.5])
+            for period in facts["nuclear_surplus_in_balancing"]:
+                self.assertEqual(columns[summary + "raw_energy_balance_residual_mwh"][period], 0.0, (variant, period))
 
     def test_head_semantics_are_pinned_in_the_golden(self):
-        latest = harness.latest_columns(self.golden)["dynamic"]
+        # The 35aadb3 (HEAD) semantics are those of revision 0; R4-1 (A26)
+        # re-baselined the trajectory once (test above).
+        latest = harness.latest_columns(_revision_zero(self.golden))["dynamic"]
         summary = "market/market.sqlite::period_summary."
         facts = harness.coverage_facts(latest, self.golden["scenario"])
         # P3-01: the curtailment branch reports no blackout although the ahead
@@ -278,12 +321,12 @@ class SyntheticGoldenTests(unittest.TestCase):
         # cases and revision 0.  Appended revisions have their own budget.
         self.assertLess(harness.revision_zero_bytes(self.golden), harness.REVISION_ZERO_BUDGET_BYTES)
         for revision in self.golden["revisions"][1:]:
-            self.assertLessEqual(harness.revision_bytes(revision), harness.APPENDED_REVISION_BUDGET_BYTES)
+            self.assertLessEqual(harness.revision_bytes(revision), harness.revision_budget_bytes(revision))
         self.assertEqual(harness.GOLDEN_PATH.read_text(encoding="utf-8"), harness.dump_golden(self.golden))
 
     def test_revision_patches_are_dumped_one_column_per_line(self):
         observed = copy.deepcopy(self.observed)
-        golden = _revision_zero(self.golden)
+        golden = _frozen_base(self.golden, self.observed)
         accounting = [key for key, zone in harness.pinned_zones(golden).items()
                       if zone == "accounting" and isinstance(observed["dynamic"][key], list)]
         self.assertGreater(len(accounting), 10)
@@ -310,7 +353,7 @@ class SyntheticGoldenTests(unittest.TestCase):
         revision_start = lines.index("  {", lines.index(' "revisions": ['))
         self.assertTrue(all(len(line) < 4096 for line in lines[revision_start:patch_start]),
                         "revision metadata and delta stay one short entry per line")
-        self.assertEqual(harness.revision_zero_bytes(revised), harness.revision_zero_bytes(self.golden))
+        self.assertEqual(harness.revision_zero_bytes(revised), harness.revision_zero_bytes(golden))
 
     def test_an_oversized_revision_is_refused(self):
         observed = copy.deepcopy(self.observed)
@@ -390,7 +433,7 @@ class SyntheticGoldenTests(unittest.TestCase):
         self.assertEqual(harness.zone_of("kernel/declared::ahead.unserved_target_mw"), "accounting")
 
     def test_revision_accepts_accounting_and_refuses_trajectory_changes(self):
-        golden = _revision_zero(self.golden)
+        golden = _frozen_base(self.golden, self.observed)
         observed = copy.deepcopy(self.observed)
         residual = "market/market.sqlite::period_summary.raw_energy_balance_residual_mwh"
         observed["dynamic"][residual][0] = 123.0
@@ -408,6 +451,19 @@ class SyntheticGoldenTests(unittest.TestCase):
         trajectory["legacy_tariff"]["market/market.sqlite::period_summary.accepted_supply_mwh"][5] += 1.0
         with self.assertRaisesRegex(ValueError, "frozen"):
             harness.append_revision(golden, trajectory, reason="x", correction_ids=["p06.x"], base_commit="t")
+        # DECISIONS A26: only the kernel corrections may re-baseline the
+        # trajectory, with trajectory=True, once each.
+        with self.assertRaisesRegex(ValueError, "not A26 kernel corrections"):
+            harness.append_revision(golden, trajectory, reason="x", correction_ids=["p06.x"], base_commit="t",
+                                    trajectory=True)
+        rebased = harness.append_revision(golden, trajectory, reason="x", correction_ids=["r41.down-regulation-taken-once"],
+                                          base_commit="t", trajectory=True)
+        self.assertTrue(rebased["revisions"][1]["trajectory_rebaseline"])
+        again = copy.deepcopy(trajectory)
+        again["legacy_tariff"]["market/market.sqlite::period_summary.accepted_supply_mwh"][5] += 1.0
+        with self.assertRaisesRegex(ValueError, "already re-baselined"):
+            harness.append_revision(rebased, again, reason="x", correction_ids=["r41.down-regulation-taken-once"],
+                                    base_commit="t", trajectory=True)
         with self.assertRaisesRegex(ValueError, "live loop"):
             harness.append_revision(golden, observed, reason="x", correction_ids=["p06.x"], base_commit="t", loop="frozen")
         self.assertEqual(revised["revisions"][1]["loop"], "live")
@@ -422,17 +478,33 @@ class SyntheticGoldenTests(unittest.TestCase):
             columns["market/market.sqlite::orders.accounting_row_sha"][3] = "000000000000"
             columns["kernel/storage_cost_report"]["li_battery"]["recovery_adequacy"] = {"version": 2}
         revised = harness.append_revision(
-            _revision_zero(self.golden), observed, reason="toy", correction_ids=["p04.storage-charge-audit"], base_commit="t",
+            _frozen_base(self.golden, self.observed), observed, reason="toy", correction_ids=["p04.storage-charge-audit"],
+            base_commit="t",
         )
         self.assertEqual(len(revised["revisions"][1]["delta"]), 6)
 
 
 def _revision_zero(golden):
-    """The golden with revision 0 only: the frozen-loop observation reproduces
-    it, whatever accounting revisions (P0-4 S4 and later) were appended."""
+    """The golden with revision 0 only (the 35aadb3 capture)."""
 
     copied = copy.deepcopy(golden)
     copied["revisions"] = copied["revisions"][:1]
+    return copied
+
+
+def _frozen_base(golden, observed):
+    """A one-revision golden that the frozen-loop observation reproduces in every zone.
+
+    Before R4-1 this was revision 0; the A26 trajectory re-baseline changed
+    the dispatch, so the frozen loop (HEAD ledger boundary) now reproduces
+    neither revision 0 nor the latest accounting columns.  The revision tests
+    only need a base their own injected changes are the sole differences from.
+    """
+
+    copied = _revision_zero(golden)
+    observed_keys = {key for columns in observed.values() for key in columns}
+    copied["zones"] = {key: zone for key, zone in harness.pinned_zones(golden).items() if key in observed_keys}
+    copied["cases"] = {case: {"columns": copy.deepcopy(dict(columns))} for case, columns in observed.items()}
     return copied
 
 

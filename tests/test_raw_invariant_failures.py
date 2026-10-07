@@ -6,8 +6,9 @@ import unittest
 
 from gridform_core.result_advisories import compact_validation_fields, raw_invariant_failures
 
-# The four-role report's doctoral VALUE 101 day: the energy balance is
-# conformant; storage single direction failed in 10 rows, explained by DEV-STO-01.
+# The four-role report's doctoral VALUE 101 day (before R4-1): the energy
+# balance is conformant; storage single direction failed in 10 rows, explained
+# by DEV-STO-01, which R4-1 (A26) corrected and withdrew.
 DOCTORAL_DAY = {
     "run_invariant_status": "passed",
     "energy_balance_status": "reproduction_conformant",
@@ -37,9 +38,10 @@ class RawInvariantFailureTests(unittest.TestCase):
         self.assertEqual((failure["count"], failure["unit"]), (10, "rows"))
         self.assertEqual(failure["deviation_ids"], ["DEV-STO-01"])
         summary = failure["deviations"][0]["summary"]
-        self.assertTrue(summary.startswith("The doctoral default PSM resets a store's power limit"), summary)
+        # R4-1 (A26): the withdrawn entry keeps the evidence of earlier Runs readable.
+        self.assertTrue(summary.startswith("Before R4-1 the doctoral default PSM reset a store's power limit"), summary)
         self.assertTrue(summary.endswith("."))
-        self.assertNotIn("The corrected profile", summary)  # one sentence only
+        self.assertNotIn("Corrected in both profiles", summary)  # one sentence only
 
     def test_unexplained_failure_has_no_deviation(self):
         evidence = {

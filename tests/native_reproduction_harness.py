@@ -112,6 +112,21 @@ CORRECTION_ID_PATTERN = r"^[a-z0-9]+(\.[a-z0-9-]+)+$"
 # a reason).
 REVISION_ZERO_BUDGET_BYTES = 300 * 1024
 APPENDED_REVISION_BUDGET_BYTES = 160 * 1024
+# DECISIONS A26 (R4-1): universal corrections of the thesis kernel itself.
+# The data-reader corrections (A3, A5) cannot reach this golden (synthetic
+# inputs bypass the readers), but these three change the market functions it
+# runs, so each may re-baseline its trajectory zone once, through a revision
+# that names it (append_revision(..., trajectory=True)); the revision keeps
+# the 35aadb3 behaviour readable as revision 0.
+TRAJECTORY_REBASELINE_CORRECTIONS = frozenset({
+    "r41.down-regulation-taken-once",
+    "r41.must-run-surplus-counted-once",
+    "p06.storage-net-per-period",
+})
+# A trajectory re-baseline patches every changed trajectory and accounting
+# column of both variants (the A26 one measures about 264 KiB), so it has its
+# own budget.
+TRAJECTORY_REVISION_BUDGET_BYTES = 320 * 1024
 SHORT_HASH = 12
 
 # Environment of the frozen loop: half-hour periods, no CSV trace files (the
@@ -830,12 +845,31 @@ class SyntheticDriver:
         snapshot["electrolyzer"] = _asset_state(electrolyzer)
         return snapshot
 
+    @staticmethod
+    def _close_storage_positions(batterys, period: int) -> None:
+        """R4-1 (A26): close each store's net position of ``period`` if the loop did not.
+
+        Since R4-1 both rule sets keep one storage position per period and
+        record its sales when the loop closes the period (Battery.close_period,
+        idempotent).  The live loop does so; the verbatim 35aadb3 loop has no
+        such call, so the driver closes the period here, before the
+        end-of-period snapshot.
+        """
+
+        from gridform_core.builtin.scheme_c_1000twh.native_corrected import BOOK_ATTRIBUTE
+
+        for battery in batterys:
+            book = getattr(battery, "__dict__", {}).get(BOOK_ATTRIBUTE)
+            if book is not None and book.period == int(period) and not book.closed:
+                battery.close_period(int(period))
+
     def begin_period(self, period, generators, batterys, connections, electrolyzer) -> None:
         period = int(period)
         expected = 0 if self._previous is None else self._previous + 1
         if period != expected:
             raise AssertionError(f"driver saw period {period}, expected {expected}")
         if self._previous is not None:
+            self._close_storage_positions(batterys, self._previous)
             self.snapshots.append(self._snapshot(generators, batterys, connections, electrolyzer))
         self._previous = period
         by_name = {str(asset.name): asset for asset in generators}
@@ -847,6 +881,8 @@ class SyntheticDriver:
             connection_by_name[name].external_price = series["external_price_gbp_per_mwh"][period]
 
     def finish(self, generators, batterys, connections, electrolyzer) -> None:
+        if self._previous is not None:
+            self._close_storage_positions(batterys, self._previous)
         self.snapshots.append(self._snapshot(generators, batterys, connections, electrolyzer))
 
 
@@ -1389,12 +1425,18 @@ def new_golden(observed: Mapping[str, Mapping[str, Any]], *, base_commit: str, s
 
 
 def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, Any]], *, reason: str,
-                    correction_ids: Sequence[str], base_commit: str, loop: str = "live") -> dict[str, Any]:
+                    correction_ids: Sequence[str], base_commit: str, loop: str = "live",
+                    trajectory: bool = False) -> dict[str, Any]:
     """Append an accounting-only revision; trajectory changes are refused.
 
     ``observed`` must come from the live loop (or a replacement driver of the
     current kernel, recorded as ``loop``); the frozen loop cannot carry a
     correction of the ledger boundary.
+
+    ``trajectory=True`` (DECISIONS A26) also accepts trajectory changes, only
+    when every correction id is in :data:`TRAJECTORY_REBASELINE_CORRECTIONS`
+    and none of them re-baselined the trajectory before (once per
+    correction); the revision is marked ``trajectory_rebaseline``.
     """
 
     import re
@@ -1410,10 +1452,18 @@ def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, 
     if not differences:
         raise ValueError("no differences: nothing to revise")
     frozen = [item for item in differences if item.zone == "trajectory"]
-    if frozen:
+    if frozen and trajectory:
+        unknown = sorted(set(correction_ids) - TRAJECTORY_REBASELINE_CORRECTIONS)
+        if unknown:
+            raise ValueError(f"trajectory re-baseline refused: {unknown} are not A26 kernel corrections")
+        used = {item for revision in golden.get("revisions", []) if revision.get("trajectory_rebaseline")
+                for item in revision.get("correction_ids", [])}
+        if used & set(correction_ids):
+            raise ValueError(f"trajectory re-baseline refused: {sorted(used & set(correction_ids))} already re-baselined it")
+    elif frozen:
         raise ValueError(
             "doctoral trajectory columns are frozen (decision Q1/Q12); synthetic inputs bypass the data readers, "
-            "so no approved universal correction can change them:\n  "
+            "so only the DECISIONS A26 kernel corrections can change them (trajectory=True):\n  "
             + "\n  ".join(item.describe() for item in frozen[:20])
         )
     if any(item.key == "<case>" for item in differences):
@@ -1434,11 +1484,15 @@ def append_revision(golden: dict[str, Any], observed: Mapping[str, Mapping[str, 
         "zones": zones,
         "patch": patch,
     }
+    if frozen:
+        revision["trajectory_rebaseline"] = True
     size = revision_bytes(revision)
-    if size > APPENDED_REVISION_BUDGET_BYTES:
+    budget = revision_budget_bytes(revision)
+    if size > budget:
+        name = "TRAJECTORY_REVISION_BUDGET_BYTES" if frozen else "APPENDED_REVISION_BUDGET_BYTES"
         raise ValueError(
             f"revision {revision['index']} is {size} bytes, above the appended-revision budget of "
-            f"{APPENDED_REVISION_BUDGET_BYTES} bytes (APPENDED_REVISION_BUDGET_BYTES)"
+            f"{budget} bytes ({name})"
         )
     revised = copy.deepcopy(golden)
     revised["revisions"].append(revision)
@@ -1520,6 +1574,12 @@ def revision_zero_bytes(golden: Mapping[str, Any]) -> int:
     base = dict(golden)
     base["revisions"] = list(golden["revisions"][:1])
     return len(dump_golden(base).encode("utf-8"))
+
+
+def revision_budget_bytes(revision: Mapping[str, Any]) -> int:
+    """Size budget of one appended revision (A26 trajectory re-baselines have their own)."""
+
+    return TRAJECTORY_REVISION_BUDGET_BYTES if revision.get("trajectory_rebaseline") else APPENDED_REVISION_BUDGET_BYTES
 
 
 def revision_bytes(revision: Mapping[str, Any]) -> int:

@@ -134,7 +134,10 @@ class StorageOfferTraceTests(_Environment):
         self.assertTrue(all(row.dwell_periods >= 2 for row in balancing))
         self.assertAlmostEqual(sum(row.accepted_mwh for row in balancing), 15.0 * PERIOD_HOURS, places=9)
 
-        # The battery's own sales book is what the offers delivered.
+        # The battery's own sales book is what the offers delivered.  Since
+        # R4-1 (A26) both rule sets record a period's sales when the loop
+        # closes the store's net position.
+        battery.close_period(period)
         delivered = sum(mwh for mwh, _ in battery.cost_recovery.sales)
         self.assertAlmostEqual(delivered, sum(row.accepted_mwh for row in rows), places=12)
 
@@ -235,8 +238,16 @@ class LiveKernelLoopTests(_Environment):
                             # The frozen battery row: price 0.0, not an offer.
                             self.assertEqual(order["offer_price_gbp_per_mwh"], 0.0)
                             dispatched[(order["period"], order["asset_id"])] += order["accepted_mwh"]
+                # R4-1 (A26): the doctoral rule set nets a same-period
+                # buy-back too, so the battery row (net) never exceeds the
+                # offers' delivered energy (gross); without a buy-back they
+                # are equal.
+                bought = 0
                 for key in set(offers) | set(dispatched):
-                    self.assertAlmostEqual(offers.get(key, 0.0), dispatched.get(key, 0.0), places=9, msg=str(key))
+                    self.assertLessEqual(dispatched.get(key, 0.0), offers.get(key, 0.0) + 1e-9, msg=str(key))
+                    bought += dispatched.get(key, 0.0) < offers.get(key, 0.0) - 1e-9
+                self.assertGreater(bought, 0)
+                self.assertLess(bought, len(offers))
 
 
     def test_corrected_rules_book_offers_gross_of_the_buy_back(self):

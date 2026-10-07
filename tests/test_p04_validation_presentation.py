@@ -115,7 +115,11 @@ class LegacyRunPresentationTests(unittest.TestCase):
         self.assertEqual(run["energy_balance"]["source"], "read_time_oracle")
         self.assertEqual(run["energy_balance"]["compatibility_adjustment_periods"], 48)
         self.assertEqual(run["stress"]["stress_periods"], 48)
-        self.assertAlmostEqual(run["stress"]["shortfall_mwh"], 570.546171074, places=6)
+        # Lower bound max(D - S, 0) of the downgraded ledger (no routing).  R4-1
+        # (A26): the doctoral store nets the absorbed need against its own
+        # discharge instead of charging, so S is lower and the bound higher
+        # (570.546171074 before R4-1); the exact shortfall stays 810.546.
+        self.assertAlmostEqual(run["stress"]["shortfall_mwh"], 760.890307058, places=6)
         self.assertEqual(run["stress"]["shortfall_basis"], "lower_bound")
         self.assertEqual(run["run_invariant_status"], "not_evaluated")
         codes = {row["code"] for row in run["validation_warnings"]}

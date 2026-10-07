@@ -4,8 +4,9 @@ Commands::
 
     capture_native_reproduction_golden.py capture          # write the 96-period synthetic golden (never overwrites)
     capture_native_reproduction_golden.py check            # compare the frozen and the live loop with the synthetic golden
-    capture_native_reproduction_golden.py revise --reason TEXT --correction-id ID [...]
-                                                           # append an accounting-only revision (live loop)
+    capture_native_reproduction_golden.py revise --reason TEXT --correction-id ID [...] [--trajectory]
+                                                           # append an accounting-only revision (live loop);
+                                                           # --trajectory: A26 kernel corrections, once each
     capture_native_reproduction_golden.py write-head-copy  # regenerate the frozen 35aadb3 loop copy
     capture_native_reproduction_golden.py capture-e2e      # write the VALUE 101 48-period market.sqlite baseline
     capture_native_reproduction_golden.py check-e2e        # compare a fresh 48-period run with that baseline
@@ -289,6 +290,7 @@ def command_revise(arguments) -> int:
     revised = harness.append_revision(
         golden, harness.observe(loop="live"), reason=arguments.reason,
         correction_ids=arguments.correction_id, base_commit=head_commit(), loop="live",
+        trajectory=arguments.trajectory,
     )
     harness.GOLDEN_PATH.write_text(harness.dump_golden(revised), encoding="utf-8")
     revision = revised["revisions"][-1]
@@ -508,6 +510,8 @@ def main(argv: list[str] | None = None) -> int:
     revise = commands.add_parser("revise")
     revise.add_argument("--reason", required=True)
     revise.add_argument("--correction-id", action="append", required=True)
+    revise.add_argument("--trajectory", action="store_true",
+                        help="also accept trajectory changes (DECISIONS A26 kernel corrections only, once each)")
     revise.set_defaults(handler=command_revise)
     commands.add_parser("write-head-copy").set_defaults(handler=command_write_head_copy)
     capture_e2e = commands.add_parser("capture-e2e")

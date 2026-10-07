@@ -106,7 +106,8 @@ SURPLUS_ROUTING_COLUMNS = (
 )
 # Written by the default PSM from P0-4 S5 on; read as 0 when absent.
 # to_dispatch: surplus re-dispatched to the balancing requirement (for the
-# in-dispatch class this is the DEV-BAL-04 double count); curtailed:
+# in-dispatch class it is output already in S; before R4-1 the thesis kernel
+# added it to S again, DEV-BAL-04); curtailed:
 # down-regulation taken out of S; unrealised: in-dispatch surplus the kernel
 # routed or spilled that S never contained (P3-01).
 SURPLUS_ROUTING_OPTIONAL_COLUMNS = ("to_dispatch_mwh", "curtailed_mwh", "unrealised_mwh")
@@ -565,7 +566,7 @@ class BalanceBooking:
     ``unserved_mwh`` (the shortfall) replaces the recorded blackout on the
     supply side, so ``closing_residual_mwh = raw - B + unserved`` is zero for
     a period whose only defect is unmet demand and keeps any excess (for
-    example the DEV-BAL-04 double count) visible.
+    example a double count such as DEV-BAL-04 before R4-1) visible.
     """
 
     boundary_id: str

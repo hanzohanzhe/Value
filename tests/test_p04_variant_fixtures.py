@@ -9,6 +9,11 @@ each), then
 * runs the read-only oracle and checks the M0 gate verdicts: overshoot and
   nuclear_balancing ``failed``, baseline/export/nuclear_curtail (and the other
   fixtures) ``not_evaluated``, nothing ``passed``, ledger sha256 unchanged.
+
+R4-1 (DECISIONS A26) corrected three thesis-kernel errors in both profiles:
+the fixture was re-captured once (scripts/p04_capture_trajectory_golden.py),
+nuclear_balancing no longer counts the must-run surplus twice (it passes),
+and the overshoot day's hidden shortage fell from 810.546 to 772.012 MWh.
 """
 
 from __future__ import annotations
@@ -38,7 +43,8 @@ EXPECTED = {
     "export": oracle.PASSED,
     "export_electrolyser": oracle.PASSED,
     "nuclear_curtail": oracle.PASSED,
-    "nuclear_balancing": oracle.FAILED,
+    # R4-1 (A26, DEV-BAL-04 corrected): was FAILED (+3.000 MWh per period).
+    "nuclear_balancing": oracle.PASSED,
     "multi_battery": oracle.PASSED,
 }
 
@@ -185,8 +191,10 @@ class P04VariantFixtures(unittest.TestCase):
                     for dwell, bid in points:
                         self.assertAlmostEqual(bid, by_dwell[dwells[0]] + slope * (dwell - dwells[0]),
                                                places=9, msg=str(key))
-                # Doctoral rule set: the offers' accepted energy is the audited
-                # discharge and the battery's final_dispatch row in orders.
+                # Doctoral rule set: the audited discharge is the battery's
+                # final_dispatch row in orders; both are net of a same-period
+                # buy-back (R4-1, A26), so they never exceed the offers'
+                # accepted energy.
                 mismatches = connection.execute(
                     "SELECT COUNT(*) FROM (SELECT s.year, s.period, s.asset_id, SUM(s.accepted_mwh) AS offers, "
                     "(SELECT a.discharge_output_mwh FROM storage_energy_audit a WHERE a.year=s.year "
@@ -194,7 +202,7 @@ class P04VariantFixtures(unittest.TestCase):
                     "(SELECT COALESCE(SUM(o.accepted_mwh), 0) FROM orders o WHERE o.year=s.year "
                     "AND o.period=s.period AND o.asset_id=s.asset_id AND o.stage='final_dispatch') AS dispatched "
                     "FROM storage_orders s GROUP BY s.year, s.period, s.asset_id) "
-                    "WHERE ABS(offers - audited) > 1e-9 OR ABS(offers - dispatched) > 1e-9"
+                    "WHERE audited > offers + 1e-9 OR ABS(audited - dispatched) > 1e-9"
                 ).fetchone()[0]
                 self.assertEqual(mismatches, 0)
         # Offers that were not accepted are booked too (absent before M-D1).
@@ -213,8 +221,8 @@ class P04VariantFixtures(unittest.TestCase):
                 self.assertEqual(report["metrics"]["self_report"]["raw_residual_basis"], "default_psm_surplus_node_v1")
                 # S6: the compatibility adjustment absorbs numerical noise only.
                 self.assertEqual(report["metrics"]["reported"]["adjusted_periods"], 0)
-        for name in ("overshoot", "nuclear_balancing"):
-            self.assertIn(oracle.R_BOUNDARY_RESIDUAL, self.reports[name]["reasons"])
+        self.assertIn(oracle.R_BOUNDARY_RESIDUAL, self.reports["overshoot"]["reasons"])
+        self.assertNotIn(oracle.R_BOUNDARY_RESIDUAL, self.reports["nuclear_balancing"]["reasons"])
 
     def test_ledgers_are_never_modified(self):
         for name, path in self.ledgers.items():
@@ -254,10 +262,12 @@ class P04VariantFixtures(unittest.TestCase):
         reported = report["metrics"]["reported"]
         # HEAD closed every period with sum |adj| = 810.546 MWh (more than the
         # day's demand of 775.491 MWh); since S6 nothing is adjusted and the
-        # raw residual is the declared boundary's.
+        # raw residual is the declared boundary's.  R4-1 (A26): the
+        # curtailment branch no longer takes down regulation twice and the
+        # store nets instead of charging, so the day's shortage is 772.012.
         self.assertAlmostEqual(report["metrics"]["sum_demand_mwh"], 775.491, places=3)
         self.assertEqual(reported["adjusted_periods"], 0)
-        self.assertAlmostEqual(reported["sum_abs_raw_residual_mwh"], 810.546, places=3)
+        self.assertAlmostEqual(reported["sum_abs_raw_residual_mwh"], 772.012, places=3)
         # A2: the ledger books the shortfall as unserved energy, so its
         # energy-balance account closes, and records one 48-period event.
         uri = self.ledgers["overshoot"].resolve().as_uri() + "?mode=ro&immutable=1"
@@ -268,17 +278,17 @@ class P04VariantFixtures(unittest.TestCase):
             events = connection.execute(
                 "SELECT first_period, last_period, periods, shortfall_mwh, hidden_unserved_mwh FROM stress_event"
             ).fetchall()
-        self.assertAlmostEqual(shortfall, 810.546, places=3)
+        self.assertAlmostEqual(shortfall, 772.012, places=3)
         self.assertLessEqual(closing_max, 1e-9)
         self.assertEqual(flagged, 48)
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0][:3], (0, 47, 48))
-        self.assertAlmostEqual(events[0][3], 810.546, places=3)
-        self.assertAlmostEqual(events[0][4], 810.546, places=3)  # recorded blackout is 0
+        self.assertAlmostEqual(events[0][3], 772.012, places=3)
+        self.assertAlmostEqual(events[0][4], 772.012, places=3)  # recorded blackout is 0
         summary = json.loads((self.outputs["overshoot"] / "market" / "metadata.json").read_text(encoding="utf-8"))
         year = summary["energy_balance"]["by_year"][0]
         self.assertEqual((year["stress_periods"], year["stress_event_count"]), (48, 1))
-        self.assertAlmostEqual(year["shortfall_mwh"], 810.546, places=3)
+        self.assertAlmostEqual(year["shortfall_mwh"], 772.012, places=3)
         stress = report["stress"]
         self.assertEqual((stress["stress_periods"], stress["event_count"]), (48, 1))
         self.assertEqual(stress["events"][0]["first_period"], 0)
@@ -286,19 +296,19 @@ class P04VariantFixtures(unittest.TestCase):
         self.assertEqual(stress["recorded_unserved_mwh"], 0.0)
         # Exact (routing recorded): the whole hidden shortage of the day.
         self.assertEqual(stress["basis"], "exact")
-        self.assertAlmostEqual(stress["shortfall_lower_mwh"], 810.546, places=3)
+        self.assertAlmostEqual(stress["shortfall_lower_mwh"], 772.012, places=3)
         self.assertAlmostEqual(stress["shortfall_upper_mwh"], stress["shortfall_lower_mwh"], places=9)
 
-    def test_nuclear_balancing_double_count_breaks_the_upper_envelope(self):
+    def test_nuclear_balancing_counts_the_must_run_surplus_once(self):
         report = self.reports["nuclear_balancing"]
         envelope = report["metrics"]["envelope"]
         self.assertEqual(envelope["lower_violations"], 0)
-        # DEV-BAL-04 (review pack_nucbal): 29 MW nuclear = 14.5 MWh, forecast 6 MW = 3.0 MWh
-        # below real demand.  The balancing branch adds the 3.0 MWh balancing volume to the
-        # in-dispatch nuclear output again, so nuclear is recorded as 17.5 instead of 14.5.
-        # Period 0 by hand: S = 17.5, D = 13.829, C = 0.671 (the real surplus 14.5 - 13.829
-        # charges the battery), XS = K = 0 -> full node = 17.5 - 13.829 - 0.671 = +3.000 with
-        # an upper envelope bound of 0.
+        # Review pack_nucbal: 29 MW nuclear = 14.5 MWh, forecast 6 MW = 3.0 MWh below real
+        # demand.  Before R4-1 the balancing branch added the 3.0 MWh balancing volume to the
+        # in-dispatch nuclear output again (DEV-BAL-04): nuclear 17.5, full node +3.000 in 35
+        # periods.  R4-1 (A26, r41.must-run-surplus-counted-once): the surplus already in S
+        # serves the requirement once.  Period 0 by hand: S = 14.5, D = 13.829, C = 0.671
+        # (the rest of the surplus charges the battery), XS = K = 0 -> full node = 0.
         uri = self.ledgers["nuclear_balancing"].resolve().as_uri() + "?mode=ro&immutable=1"
         with closing(sqlite3.connect(uri, uri=True)) as connection:
             row = connection.execute(
@@ -309,20 +319,19 @@ class P04VariantFixtures(unittest.TestCase):
                 "SELECT SUM(energy_mwh) FROM physical_dispatch WHERE period=0 AND technology='nuclear' "
                 "AND flow_type='generation'"
             ).fetchone()[0]
-        self.assertAlmostEqual(nuclear, 17.5, places=9)
+        self.assertAlmostEqual(nuclear, 14.5, places=9)
+        self.assertAlmostEqual(row[1], 14.5, places=9)
         self.assertAlmostEqual(row[0] + row[2], 14.5, places=9)
         flows = contract.PeriodFlows(2025, 0, demand_mwh=row[0], supply_mwh=row[1], storage_charge_mwh=row[2],
                                      export_mwh=row[3], flexible_demand_mwh=row[4], blackout_mwh=row[5],
                                      excess_mwh=row[6], curtailed_mwh=row[7])
         result = contract.check_envelope(contract.UNKNOWN_BOUNDARY, flows, contract.EXACT_ARITHMETIC)
-        self.assertAlmostEqual(result.full_node_residual_mwh, 3.0, places=9)
-        self.assertAlmostEqual(result.upper_violation_mwh, 3.0, places=9)
-        # Wherever the nuclear surplus covers the balancing volume the violation is exactly 3.0.
-        self.assertEqual(envelope["upper_violations"], 35)
-        self.assertAlmostEqual(envelope["max_upper_violation_mwh"], 3.0, places=9)
+        self.assertAlmostEqual(result.full_node_residual_mwh, 0.0, places=9)
+        self.assertEqual(result.upper_violation_mwh, 0.0)
+        self.assertEqual(envelope["upper_violations"], 0)
         self.assertEqual(report["metrics"]["reported"]["adjusted_periods"], 0)
-        # A double count is an excess, not a shortfall: no certain stress period.
         self.assertEqual(report["stress"]["stress_periods"], 0)
+        self.assertEqual(report["status"], oracle.PASSED)
 
     def test_closing_fixtures_exercise_their_flows(self):
         metrics = {name: report["metrics"] for name, report in self.reports.items()}
@@ -359,9 +368,11 @@ class P04VariantFixtures(unittest.TestCase):
         return residuals, gaps, shortfalls
 
     def test_surplus_node_boundary(self):
-        # M3 gate (2): physically closing fixtures <= 1e-9, overshoot -18.829,
-        # nuclear_balancing +3.000; per-source surplus conservation <= 1e-9.
-        for name in ("baseline", "export", "export_electrolyser", "nuclear_curtail", "multi_battery"):
+        # M3 gate (2): physically closing fixtures <= 1e-9, overshoot -18.829;
+        # per-source surplus conservation <= 1e-9.  R4-1 (A26): nuclear_balancing
+        # (+3.000 before, DEV-BAL-04) closes too.
+        for name in ("baseline", "export", "export_electrolyser", "nuclear_curtail", "multi_battery",
+                     "nuclear_balancing"):
             with self.subTest(variant=name):
                 residuals, gaps, shortfalls = self._surplus_node(name)
                 self.assertLessEqual(max(abs(value) for value in residuals), 1e-9)
@@ -373,21 +384,18 @@ class P04VariantFixtures(unittest.TestCase):
         self.assertLessEqual(max(gaps), 1e-9)
         # A2 exact shortfall: the whole hidden shortage of the day (it equals
         # the compatibility adjustment HEAD used to hide it).
-        self.assertAlmostEqual(sum(item.lower_mwh for item in shortfalls), 810.546, places=3)
-        residuals, gaps, shortfalls = self._surplus_node("nuclear_balancing")
-        self.assertAlmostEqual(residuals[0], 3.0, places=9)
-        self.assertAlmostEqual(max(residuals), 3.0, places=9)
-        self.assertEqual(sum(1 for value in residuals if value > 1e-9), 35)
-        self.assertLessEqual(max(gaps), 1e-9)
-        self.assertEqual(sum(1 for item in shortfalls if item.lower_mwh > 1e-9), 0)
+        self.assertAlmostEqual(sum(item.lower_mwh for item in shortfalls), 772.012, places=3)
         # The in-dispatch (nuclear) surplus re-dispatched in the balancing
-        # branch is the DEV-BAL-04 double count.
+        # branch is still routed to the requirement (3.0 MWh), but since
+        # R4-1 it is not counted twice.
         uri = self.ledgers["nuclear_balancing"].resolve().as_uri() + "?mode=ro&immutable=1"
         with closing(sqlite3.connect(uri, uri=True)) as connection:
-            double = connection.execute(
+            redispatched = connection.execute(
                 "SELECT to_dispatch_mwh FROM surplus_routing WHERE period=0 AND source_class='in_dispatch'"
             ).fetchone()[0]
-        self.assertAlmostEqual(double, 3.0, places=9)
+            double = connection.execute("SELECT MAX(non_vre_double_counted_mwh) FROM balance_boundary_period").fetchone()[0]
+        self.assertAlmostEqual(redispatched, 3.0, places=9)
+        self.assertEqual(double, 0.0)
         # nuclear_curtail: the booked down-regulation that nuclear could not
         # take out of S is the in-dispatch spill W_in (non_vre_spill).
         uri = self.ledgers["nuclear_curtail"].resolve().as_uri() + "?mode=ro&immutable=1"

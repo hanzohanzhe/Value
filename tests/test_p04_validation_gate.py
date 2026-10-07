@@ -6,6 +6,12 @@ each): the doctoral market rule set for ``baseline``, ``nuclear_balancing``
 and ``overshoot`` (the 0.6.0-alpha.2 kernel defects), and the Study's own
 corrected rule set for ``baseline`` and ``overshoot``.  Their ledgers are then
 read under both gate policies.
+
+R4-1 (DECISIONS A26) corrected the two kernel defects these runs exercised
+(DEV-BAL-04 in ``nuclear_balancing``, DEV-STO-01 in the doctoral storage
+dispatch) in both profiles and withdrew their declared deviations, so the
+doctoral runs now pass both gates and no declared deviation explains a gate
+failure; tampered ledgers show that a failure stays ``failed``.
 """
 
 from __future__ import annotations
@@ -121,16 +127,23 @@ class ValidationGateTests(unittest.TestCase):
         # kernel's booked unserved energy (it used to report a lower bound).
         self.assertAlmostEqual(overshoot["stress"]["shortfall_mwh"], booked, places=6)
 
-    def test_production_gate_fails_kernel_defects(self):
+    def test_production_gate_after_the_r41_kernel_corrections(self):
+        # Before R4-1: energy balance failed (DEV-BAL-04 +3.000 MWh) and the
+        # storage gate failed (P5-03); both defects are corrected (A26).
         balancing = _annual_report(self.reports[("nuclear_balancing", "doctoral")], policy="production")
-        self.assertEqual(balancing["energy_balance_status"], FAILED)  # DEV-BAL-04 +3.000 MWh
-        self.assertEqual(balancing["energy_balance"]["gate_failed_checks"], ["period.balance_account"])
-        self.assertEqual(balancing["scientific_validation_status"], FAILED)
-        self.assertFalse(balancing["annual_economics_eligible"])
+        self.assertEqual(balancing["energy_balance_status"], PASSED)
+        self.assertEqual(balancing["energy_balance"]["gate_failed_checks"], [])
+        self.assertEqual(balancing["storage_invariant_status"], PASSED)
+        self.assertEqual(balancing["scientific_validation_status"], PASSED)
         overshoot = _annual_report(self.reports[("overshoot", "doctoral")], policy="production")
         self.assertEqual(overshoot["energy_balance_status"], PASSED)  # A2: booked as unserved
-        self.assertEqual(overshoot["storage_invariant_status"], FAILED)  # P5-03 in the doctoral kernel
-        self.assertEqual(overshoot["scientific_validation_status"], FAILED)
+        self.assertEqual(overshoot["storage_invariant_status"], PASSED)
+        tampered = oracle.evaluate_ledger(self._tampered_balance())
+        failed = _annual_report(tampered, policy="production")
+        self.assertEqual(failed["energy_balance_status"], FAILED)
+        self.assertIn("period.balance_account", failed["energy_balance"]["gate_failed_checks"])
+        self.assertEqual(failed["scientific_validation_status"], FAILED)
+        self.assertFalse(failed["annual_economics_eligible"])
         failed_invariants = _annual_report(self.reports[("baseline", "profile")], policy="production",
                                            invariants_status="failed")
         self.assertEqual(failed_invariants["scientific_validation_status"], FAILED)
@@ -140,19 +153,20 @@ class ValidationGateTests(unittest.TestCase):
 
     # --- doctoral policy ---------------------------------------------------
 
-    def test_doctoral_signatures_match_declared_deviations(self):
+    def test_doctoral_runs_are_conformant_after_r41(self):
+        # Before R4-1 nuclear_balancing matched DEV-BAL-04 and the doctoral
+        # baseline DEV-STO-01 (reproduction_with_declared_deviations, Q14
+        # withheld); both are corrected and withdrawn (A26).
         balancing = _annual_report(self.reports[("nuclear_balancing", "doctoral")], policy="declared_deviations")
-        self.assertEqual(balancing["energy_balance_status"], DECLARED)
+        self.assertEqual(balancing["energy_balance_status"], CONFORMANT)
         self.assertEqual(balancing["storage_invariant_status"], CONFORMANT)
-        self.assertEqual(balancing["scientific_validation_status"], DECLARED)
-        self.assertEqual(balancing["raw_invariants"]["status"], FAILED)  # Q14: withheld
-        self.assertTrue(balancing["annual_economics_eligible"])  # kept for Inspect and export
-        matched = {row["matcher"] for row in balancing["declared_deviations"]["matched"]}
-        self.assertEqual(matched, {"in_dispatch_double_count"})
+        self.assertEqual(balancing["scientific_validation_status"], CONFORMANT)
+        self.assertEqual(balancing["raw_invariants"]["status"], PASSED)  # Q14: published
+        self.assertEqual(balancing["declared_deviations"]["matched"], [])
         baseline = _annual_report(self.reports[("baseline", "doctoral")], policy="declared_deviations")
         self.assertEqual(baseline["energy_balance_status"], CONFORMANT)
-        self.assertEqual(baseline["storage_invariant_status"], DECLARED)  # DEV-STO-01 (P5-03)
-        self.assertEqual(baseline["scientific_validation_status"], DECLARED)
+        self.assertEqual(baseline["storage_invariant_status"], CONFORMANT)
+        self.assertEqual(baseline["scientific_validation_status"], CONFORMANT)
         overshoot = _annual_report(self.reports[("overshoot", "doctoral")], policy="declared_deviations")
         self.assertEqual(overshoot["energy_balance_status"], CONFORMANT)  # A2: stress, not a deviation
         self.assertEqual(overshoot["stress"]["stress_periods"], 48)
@@ -167,12 +181,25 @@ class ValidationGateTests(unittest.TestCase):
                                 invariants_status="failed")
         self.assertEqual(failed["scientific_validation_status"], FAILED)  # run invariants are never declared
 
+    def _tampered_balance(self) -> Path:
+        """The doctoral nuclear_balancing ledger with 3 MWh of supply added in period 0."""
+
+        ledger = self._ledger_copy(("nuclear_balancing", "doctoral"), "double-count")
+        with closing(sqlite3.connect(ledger)) as db:
+            db.execute("UPDATE period_summary SET accepted_supply_mwh = accepted_supply_mwh + 3.0 WHERE period = 0")
+            db.commit()
+        return ledger
+
     def test_undeclared_or_misshapen_failures_stay_failed(self):
-        report = self.reports[("nuclear_balancing", "doctoral")]
-        verdict = oracle.match_declared_deviations(report, [])
-        self.assertEqual(verdict["energy_balance_status"], FAILED)
-        self.assertEqual(verdict["unexplained_checks"], ["period.balance_account"])
-        # A storage row beyond two stages' rated energy is not P5-03.
+        # No declared deviation explains a gate failure since R4-1 (A26),
+        # under either catalogue reading.
+        tampered = oracle.evaluate_ledger(self._tampered_balance())
+        for declared in ([], declared_deviations.gating(declared_deviations.for_profile(REFERENCE_PROFILE_ID))):
+            verdict = oracle.match_declared_deviations(tampered, declared)
+            self.assertEqual(verdict["energy_balance_status"], FAILED)
+            self.assertIn("period.balance_account", verdict["unexplained_checks"])
+            self.assertEqual(verdict["matched"], [])
+        # A store above its rated power (the former P5-03 shape) fails.
         ledger = self._ledger_copy(("baseline", "doctoral"), "over-reset")
         with closing(sqlite3.connect(ledger)) as db:
             db.execute(
@@ -202,16 +229,20 @@ class ValidationGateTests(unittest.TestCase):
 
     def test_q14_publication_follows_the_doctoral_verdict(self):
         doctoral = resolve_methodology(REFERENCE_PROFILE_ID).to_dict()
+        # R4-1 (A26): the doctoral nuclear_balancing day now publishes (it was
+        # withheld for DEV-BAL-04); a tampered balance is withheld.
         cases = (
-            (("nuclear_balancing", "doctoral"), "withheld", FAILED),
-            (("baseline", "profile"), "published", PASSED),
+            ("nuclear_balancing-doctoral", self.reports[("nuclear_balancing", "doctoral")], "published", PASSED),
+            ("baseline-doctoral", self.reports[("baseline", "doctoral")], "published", PASSED),
+            ("baseline-profile", self.reports[("baseline", "profile")], "published", PASSED),
+            ("tampered", oracle.evaluate_ledger(self._tampered_balance()), "withheld", FAILED),
         )
-        for run, status, verdict in cases:
-            with self.subTest(run=run):
-                root = Path(self._tmp.name) / "q14" / "-".join(run)
+        for name, report, status, verdict in cases:
+            with self.subTest(run=name):
+                root = Path(self._tmp.name) / "q14" / name
                 path = root / "model-output" / "validation" / "scientific-validation.json"
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(_annual_report(self.reports[run], policy="declared_deviations")),
+                path.write_text(json.dumps(_annual_report(report, policy="declared_deviations")),
                                 encoding="utf-8")
                 publication = result_publication({"methodology": doctoral, "status": "completed"}, root)
                 self.assertEqual((publication["status"], publication["raw_invariants_status"]), (status, verdict))
@@ -227,7 +258,9 @@ class ValidationGateTests(unittest.TestCase):
         copy = Path(self._tmp.name) / "bundle-copy"
         shutil.copytree(output, copy)
         path = copy / "validation" / "scientific-validation.json"
-        for field, value in (("raw_invariants", {"status": "passed"}), ("storage_invariant_status", PASSED),
+        # R4-1 (A26): the doctoral overshoot day passes both gates, so each
+        # copied field is set to a verdict the evidence does not support.
+        for field, value in (("raw_invariants", {"status": "failed"}), ("storage_invariant_status", FAILED),
                              ("validation_gate", {"policy": "declared_deviations",
                                                   "profile_id": REFERENCE_PROFILE_ID, "status": DECLARED})):
             with self.subTest(field=field):
@@ -257,9 +290,12 @@ class ValidationGateTests(unittest.TestCase):
 class DeclaredDeviationCatalogueTests(unittest.TestCase):
     def test_profiles_declare_their_deviations(self):
         doctoral = {row["id"]: row for row in declared_deviations.for_profile(REFERENCE_PROFILE_ID)}
-        self.assertEqual(set(doctoral), {"DEV-BAL-01", "DEV-BAL-02", "DEV-BAL-03", "DEV-BAL-04", "DEV-STO-01"})
-        self.assertEqual({row["id"] for row in declared_deviations.gating(list(doctoral.values()))},
-                         {"DEV-BAL-04", "DEV-STO-01"})
+        # R4-1 (A26): DEV-BAL-04 and DEV-STO-01 were corrected and withdrawn.
+        self.assertEqual(set(doctoral), {"DEV-BAL-01", "DEV-BAL-02", "DEV-BAL-03"})
+        self.assertEqual(declared_deviations.gating(list(doctoral.values())), [])
+        self.assertEqual({row["id"]: row["withdrawn_by"] for row in declared_deviations.withdrawn()},
+                         {"DEV-BAL-04": ["r41.must-run-surplus-counted-once"],
+                          "DEV-STO-01": ["p06.storage-net-per-period"]})
         corrected = declared_deviations.for_profile("value-corrected")
         self.assertEqual(declared_deviations.gating(corrected), [])  # A2 evidence only
         self.assertEqual(declared_deviations.gate_policy(resolve_methodology(REFERENCE_PROFILE_ID).to_dict()),
@@ -270,9 +306,11 @@ class DeclaredDeviationCatalogueTests(unittest.TestCase):
     def test_loader_rejects_malformed_entries(self):
         base = json.loads(declared_deviations.CATALOGUE_PATH.read_text(encoding="utf-8"))
         broken = [
-            lambda rows: rows[3].update(gate_effect="maybe"),
-            lambda rows: rows[3]["signature"].update(matcher="unknown"),
-            lambda rows: rows[3]["signature"].update(checks=[]),
+            lambda rows: rows[1].update(gate_effect="maybe"),
+            lambda rows: rows[1]["signature"].update(matcher="unknown"),
+            # R4-1 (A26): the withdrawn gate matchers are unknown.
+            lambda rows: rows[1]["signature"].update(matcher="stage_power_reset"),
+            lambda rows: rows[1].update(gate_effect="explains_gate_failure"),
             lambda rows: rows[1]["signature"].update(checks=["period.balance_account"]),
             lambda rows: rows[0].update(profiles=[]),
             lambda rows: rows.append(dict(rows[0])),

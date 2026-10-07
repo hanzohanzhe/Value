@@ -16,11 +16,17 @@ and uses the ``%.9g`` hashes elsewhere.
 
 Usage::
 
-    python -B scripts/p04_capture_trajectory_golden.py capture   # writes the fixture (reference platform only)
+    python -B scripts/p04_capture_trajectory_golden.py capture [--plan-step TEXT]
+                                                                 # writes the fixture (reference platform only)
     python -B scripts/p04_capture_trajectory_golden.py check     # exit 1 on any difference
     python -B scripts/p04_capture_trajectory_golden.py digest RUN_DIR
 
 Each variant runs in its own interpreter (P7-02 process-global weather cache).
+
+R4-1 (DECISIONS A26) re-captured the fixture once: the three thesis-kernel
+corrections change the doctoral dispatch of every variant, so the M0 HEAD
+capture (commit 56460e1, kept in git history) was replaced by a capture at
+R4-1 (``plan_step`` says which).
 """
 
 from __future__ import annotations
@@ -104,7 +110,7 @@ def run_variants(names: Sequence[str], workdir: Path, *, workers: int = 4) -> di
         return dict(pool.map(one, names))
 
 
-def capture(names: Sequence[str], workers: int) -> dict[str, Any]:
+def capture(names: Sequence[str], workers: int, plan_step: str = "P0-4 S1 (M0 HEAD capture)") -> dict[str, Any]:
     zones = zone_rules()
     with tempfile.TemporaryDirectory(prefix="value-p04-golden-") as scratch:
         outputs = run_variants(names, Path(scratch), workers=workers)
@@ -112,7 +118,7 @@ def capture(names: Sequence[str], workers: int) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "digest_schema_version": golden.SCHEMA_VERSION,
-        "plan_step": "P0-4 S1 (M0 HEAD capture)",
+        "plan_step": plan_step,
         "captured_at_commit": head_commit(),
         "platform": golden.reference_platform(),
         "reference_platform": golden.REFERENCE_PLATFORM,
@@ -143,6 +149,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         item.add_argument("--variants", nargs="*", default=sorted(p04_variants.VARIANTS))
         item.add_argument("--workers", type=int, default=4)
         item.add_argument("--fixture", type=Path, default=FIXTURE)
+        if command == "capture":
+            item.add_argument("--plan-step", default="P0-4 S1 (M0 HEAD capture)")
     digest = sub.add_parser("digest")
     digest.add_argument("output_dir", type=Path)
     arguments = parser.parse_args(argv)
@@ -154,7 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if golden.default_mode() != "exact":
             sys.stderr.write(f"refusing to capture off the reference platform: {golden.reference_platform()}\n")
             return 2
-        payload = capture(arguments.variants, arguments.workers)
+        payload = capture(arguments.variants, arguments.workers, arguments.plan_step)
         arguments.fixture.parent.mkdir(parents=True, exist_ok=True)
         arguments.fixture.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {arguments.fixture} ({len(payload['variants'])} variants)")

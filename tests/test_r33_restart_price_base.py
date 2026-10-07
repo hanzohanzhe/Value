@@ -125,16 +125,15 @@ class MethodChangeTests(unittest.TestCase):
         ):
             with self.subTest(module=module_id):
                 entry = ledger["modules"][module_id]
-                bump = entry["bumps"][-1]
+                # Later packages (R4-1) may bump again: find the R3-3 bump.
+                bump = next(item for item in entry["bumps"] if item["package"] == "R3-3")
                 self.assertEqual((bump["from"], bump["to"]), versions)
-                self.assertEqual(bump["package"], "R3-3")
                 self.assertEqual(bump["correction_ids"], [CORRECTION_ID])
                 self.assertTrue(bump["requires_user_opt_in"])
-                self.assertEqual(entry["current_version"], versions[1])
-                self.assertEqual(implementation.version, versions[1])
                 manifest = json.loads((ROOT / "gridform_core" / "manifests" / f"{module_id}.json")
                                       .read_text(encoding="utf-8"))
-                self.assertEqual(manifest["version"], versions[1])
+                self.assertEqual(implementation.version, entry["current_version"])
+                self.assertEqual(manifest["version"], entry["current_version"])
                 kind, reason = revision_migration._module_change_kind(module_id, *versions)
                 self.assertEqual(kind, "method_upgrade_required")
                 self.assertIn(CORRECTION_ID, reason)

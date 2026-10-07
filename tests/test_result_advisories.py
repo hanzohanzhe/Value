@@ -217,6 +217,9 @@ class FixtureRunTests(unittest.TestCase):
             # neither p07.power-battery-pool nor r13.per-type-battery-caps
             # carries an advisory.)
             "p07.compatibility-capital-out-of-headline", "p07.storage-leftover-headroom",
+            # R4-1 (A26): the thesis kernel errors fixed as universal
+            # corrections; a pre-profile Run ran the thesis kernel (high).
+            "r41.down-regulation-taken-once",
             "GF_VALIDATION_LEGACY_REPORT",
             # R3-3 (A24-2): biomass has no support revenue (medium); this
             # fixture has no frozen fleet, so the asset filter keeps it.
@@ -224,6 +227,9 @@ class FixtureRunTests(unittest.TestCase):
             "p06.no-vre-pre-clearing-skim", "p06.storage-uniform-price-settlement",
             # R1-2 (A19/A22): down regulation without restart economics (medium).
             "r12.economic-downward-order",
+            # R4-1 (A26): must-run nuclear surplus counted twice (medium; the
+            # fixture has no frozen fleet, so the nuclear filter keeps it).
+            "r41.must-run-surplus-counted-once",
             # FX6 (A16-2): imports were not offered to the day-ahead clearing (info).
             "fx6.day-ahead-interconnector-imports",
         ])

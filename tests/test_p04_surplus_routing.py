@@ -58,14 +58,23 @@ class SurplusTraceTests(unittest.TestCase):
             "to_dispatch_mwh", "curtailed_mwh", "unrealised_mwh")))
         self.assertEqual(routed.conservation_gap_mwh(), 0.0)
 
-    def test_in_dispatch_redispatch_is_reported_as_double_count(self):
+    def test_in_dispatch_redispatch_is_not_a_double_count(self):
+        # R4-1 (A26, DEV-BAL-04): in-dispatch surplus re-dispatched to the
+        # balancing requirement is output already in S; the kernel no longer
+        # adds it again, so the double-count column records only what the
+        # trace says was counted twice (nothing).  Before R4-1 this toy
+        # (pack_nucbal) reported 3.0 MWh.
         trace = audit.SurplusTrace()
         trace.begin(0, 7.342, "in_dispatch")
         trace.excess("to_dispatch", 7.342, 1.342)
         trace.add("in_dispatch", "to_storage", 1.342)
-        terms, _ = audit.node_terms(trace, 0.5, supply_mwh=17.5, blackout_mwh=0.0, demand_mwh=13.829, loads_mwh=0.671)
-        self.assertAlmostEqual(terms.non_vre_double_counted_mwh, 3.0, places=12)
+        terms, rows = audit.node_terms(trace, 0.5, supply_mwh=14.5, blackout_mwh=0.0, demand_mwh=13.829, loads_mwh=0.671)
+        self.assertEqual(terms.non_vre_double_counted_mwh, 0.0)
         self.assertEqual(terms.w_in_mwh, 0.0)
+        self.assertAlmostEqual(rows[0]["to_dispatch_mwh"], 3.0, places=12)
+        trace.double_counted_mw = 6.0
+        terms, _ = audit.node_terms(trace, 0.5, supply_mwh=17.5, blackout_mwh=0.0, demand_mwh=13.829, loads_mwh=0.671)
+        self.assertEqual(terms.non_vre_double_counted_mwh, 3.0)
 
     def test_routing_rows_without_new_columns_still_conserve(self):
         legacy = contract.SurplusRoutingRow(2025, 0, "in_dispatch", 1.0, 0.4, 0.0, 0.0, 0.6)

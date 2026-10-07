@@ -22,9 +22,11 @@ and never changes a run's status: it only produces a report.
   otherwise as lower/upper bounds.
 * P0-4 S7 evidence: the A2 energy-balance account (``balance_account``: the
   shortfall booked as unserved energy, closing residual per period), the
-  storage throughput invariants (``storage``, from the per-asset audit) and,
-  per failing period or row, whether it has the shape of a declared
-  deviation signature.  The oracle's own ``status`` stays the raw boundary
+  storage throughput invariants (``storage``, from the per-asset audit).
+  Since R4-1 (DECISIONS A26) no declared deviation explains a gate failure
+  (the thesis-kernel errors DEV-BAL-04 and DEV-STO-01 were corrected in both
+  profiles), so the oracle records no gate signatures; the report-only
+  signatures (DEV-BAL-02, DEV-BAL-03) stay evidence.  The oracle's own ``status`` stays the raw boundary
   verdict; :func:`energy_balance_gate`, :func:`storage_gate` and
   :func:`match_declared_deviations` give the gated verdicts that
   :mod:`gridform_core.scientific_validation` applies.
@@ -81,15 +83,15 @@ R_STORAGE_INVARIANT = "GF_STORAGE_INVARIANT_VIOLATED"
 
 # Machine signatures of declared deviations (P0-4 S7).  The catalogue
 # (data/methodology/declared_deviations.json) names which profile declares
-# which signature; the oracle only records, per failing period or row,
-# whether the evidence has the signature's shape.
-SIGNATURE_IN_DISPATCH_DOUBLE_COUNT = "in_dispatch_double_count"
-SIGNATURE_STAGE_POWER_RESET = "stage_power_reset"
+# which signature.  R4-1 (DECISIONS A26) removed the two gate signatures
+# (in_dispatch_double_count of DEV-BAL-04, stage_power_reset of DEV-STO-01)
+# with the behaviour they described; the remaining ones are report-only.
 SIGNATURE_FORECAST_ABOVE_SUPPLY = "forecast_above_supply_shortfall"
 SIGNATURE_NEW_BATTERY_EACH_YEAR = "new_battery_each_year"
-# P5-03: each clearing stage reset a store's power limit, so one period can
-# carry up to two stages' worth of rated energy on each side.
-STAGE_POWER_RESET_FACTOR = 2.0
+# The withdrawn gate signatures keep their (always zero) match counts in the
+# report so that its shape, and every golden digest of it, stays stable.
+WITHDRAWN_BALANCE_SIGNATURE = "in_dispatch_double_count"
+WITHDRAWN_STORAGE_SIGNATURE = "stage_power_reset"
 # Checks of the energy-balance gate (decision A2: the raw boundary residual
 # and the envelope are evidence; the account that books the shortfall as
 # unserved energy is the gate).
@@ -623,40 +625,35 @@ def _storage_invariants(connection: sqlite3.Connection) -> dict[str, Any]:
     both: list[dict[str, Any]] = []
     soc: list[dict[str, Any]] = []
     identity: list[dict[str, Any]] = []
-    reset_matches = 0
     for year, period, asset, charge, discharge, residual, power, state, energy in rows:
         rated = float(power) * hours
         tol = contract.tolerance(tier, rated)
         charge, discharge = float(charge), float(discharge)
         key = {"year": int(year), "period": int(period), "asset_id": str(asset)}
-        within_reset = max(charge, discharge) <= STAGE_POWER_RESET_FACTOR * rated + tol
         if charge > rated + tol or discharge > rated + tol:
             over_power.append({**key, "charge_mwh": _round(charge), "discharge_mwh": _round(discharge),
-                               "rated_energy_mwh": _round(rated),
-                               "signature": SIGNATURE_STAGE_POWER_RESET if within_reset else None})
+                               "rated_energy_mwh": _round(rated)})
         if charge > tol and discharge > tol:
-            both.append({**key, "charge_mwh": _round(charge), "discharge_mwh": _round(discharge),
-                         "signature": SIGNATURE_STAGE_POWER_RESET if within_reset else None})
+            both.append({**key, "charge_mwh": _round(charge), "discharge_mwh": _round(discharge)})
         soc_tol = contract.tolerance(tier, float(energy))
         if float(state) < -soc_tol or float(state) > float(energy) + soc_tol:
             soc.append({**key, "state_of_charge_mwh": _round(float(state)), "energy_capacity_mwh": _round(float(energy))})
         if abs(float(residual)) > soc_tol:
             identity.append({**key, "identity_residual_mwh": _round(float(residual))})
-    for check_id, check_class, found, signed in (
-        ("storage.rated_power", "independent", over_power, True),
-        ("storage.single_direction", "independent", both, True),
-        ("storage.soc_bounds", "independent", soc, False),
-        ("storage.soc_identity", "integrity", identity, False),
+    for check_id, check_class, found in (
+        ("storage.rated_power", "independent", over_power),
+        ("storage.single_direction", "independent", both),
+        ("storage.soc_bounds", "independent", soc),
+        ("storage.soc_identity", "integrity", identity),
     ):
-        matched = sum(1 for row in found if signed and row.get("signature"))
-        reset_matches += matched
         detail: dict[str, Any] = {"count": len(found)}
         if found:
             detail["rows"] = found[:WORST_PERIODS]
-            detail["unexplained"] = len(found) - matched
+            # No declared deviation explains a storage failure (R4-1).
+            detail["unexplained"] = len(found)
         result["checks"].append({"id": check_id, "class": check_class,
                                  "status": FAILED if found else PASSED, **detail})
-    result["signature_matches"] = {SIGNATURE_STAGE_POWER_RESET: reset_matches}
+    result["signature_matches"] = {WITHDRAWN_STORAGE_SIGNATURE: 0}
     if audited != len(rows):
         # An audit row without its storage_state row cannot be checked.
         result["checks"].append({"id": "storage.audit_coverage", "class": "integrity", "status": FAILED,
@@ -738,70 +735,49 @@ def match_declared_deviations(
     that matcher's shape is ``reproduction_with_declared_deviations``; any
     other failure stays ``failed``.  ``not_evaluated``/``not_applicable``
     stay as they are.
+
+    R4-1 (DECISIONS A26): the two gate matchers (``in_dispatch_double_count``
+    for DEV-BAL-04, ``stage_power_reset`` for DEV-STO-01) were removed with the
+    kernel behaviour they described, so no matcher explains a gate check any
+    more and every gate failure is ``failed``.  ``reproduction_with_declared_
+    deviations`` remains in the vocabulary for reports written before R4-1.
     """
 
     matchers: dict[str, set[str]] = defaultdict(set)
-    ids_by_matcher: dict[str, list[str]] = defaultdict(list)
     for row in declared:
         signature = row.get("signature") if isinstance(row, Mapping) else None
         if not isinstance(signature, Mapping) or not signature.get("matcher"):
             continue
-        matcher = str(signature["matcher"])
-        matchers[matcher].update(str(item) for item in signature.get("checks") or [])
-        ids_by_matcher[matcher].append(str(row.get("id")))
+        matchers[str(signature["matcher"])].update(str(item) for item in signature.get("checks") or [])
 
     def covering(check_id: str) -> list[str]:
         return sorted(name for name, check_ids in matchers.items() if check_id in check_ids)
 
     matched: list[dict[str, Any]] = []
     unexplained: list[str] = []
+    # Gate matchers known to this oracle (none since R4-1); a catalogue that
+    # names another matcher for a gate check explains nothing.
+    gate_matchers: frozenset[str] = frozenset()
 
     balance = energy_balance_gate(report)
     balance_verdict = balance["status"]
     if balance_verdict == PASSED:
         balance_verdict = REPRODUCTION_CONFORMANT
     elif balance_verdict == FAILED:
-        account = dict((report or {}).get("balance_account") or {})
-        explained = True
         for check_id in balance["failed_checks"]:
-            names = covering(check_id)
-            if check_id != "period.balance_account" or SIGNATURE_IN_DISPATCH_DOUBLE_COUNT not in names:
-                explained = False
+            if not gate_matchers.intersection(covering(check_id)):
                 unexplained.append(check_id)
-                continue
-            if int(account.get("unexplained_open_periods") or 0) > 0:
-                explained = False
-                unexplained.append(check_id)
-                continue
-            matched.append({
-                "check": check_id, "matcher": SIGNATURE_IN_DISPATCH_DOUBLE_COUNT,
-                "deviation_ids": ids_by_matcher[SIGNATURE_IN_DISPATCH_DOUBLE_COUNT],
-                "periods": int(account.get("open_periods") or 0),
-            })
-        if balance["basis"] != "a2_balance_account":
-            explained = False
-        balance_verdict = REPRODUCTION_WITH_DECLARED_DEVIATIONS if explained and balance["failed_checks"] else FAILED
+        balance_verdict = FAILED
 
     storage = storage_gate(report)
     storage_verdict = storage["status"]
     if storage_verdict == PASSED:
         storage_verdict = REPRODUCTION_CONFORMANT
     elif storage_verdict == FAILED:
-        rows = {row.get("id"): row for row in (report or {}).get("storage", {}).get("checks") or [] if isinstance(row, Mapping)}
-        explained = True
         for check_id in storage["failed_checks"]:
-            names = covering(check_id)
-            row = rows.get(check_id) or {}
-            if SIGNATURE_STAGE_POWER_RESET not in names or int(row.get("unexplained", 1)) > 0:
-                explained = False
+            if not gate_matchers.intersection(covering(check_id)):
                 unexplained.append(check_id)
-                continue
-            matched.append({
-                "check": check_id, "matcher": SIGNATURE_STAGE_POWER_RESET,
-                "deviation_ids": ids_by_matcher[SIGNATURE_STAGE_POWER_RESET],
-                "rows": int(row.get("count") or 0),
-            })
-        storage_verdict = REPRODUCTION_WITH_DECLARED_DEVIATIONS if explained else FAILED
+        storage_verdict = FAILED
 
     return {
         "energy_balance_status": balance_verdict,
@@ -836,14 +812,14 @@ def _balance_account(
 ) -> dict[str, Any]:
     """Closing residuals of the A2 energy-balance account on an evaluable boundary.
 
-    Each open period also carries the evidence the declared-deviation
-    signatures are tested against (:func:`match_declared_deviations`): the
-    in-dispatch surplus the kernel re-dispatched to the balancing requirement
-    (``surplus_routing.to_dispatch_mwh`` of the ``in_dispatch`` class).
+    Each open period also carries, as evidence, the in-dispatch surplus the
+    kernel re-dispatched to the balancing requirement
+    (``surplus_routing.to_dispatch_mwh`` of the ``in_dispatch`` class); before
+    R4-1 the thesis kernel counted it twice (DEV-BAL-04).  No declared
+    deviation explains an open period (R4-1).
     """
 
     open_rows: list[dict[str, Any]] = []
-    matched = 0
     sum_abs = 0.0
     maximum = 0.0
     for item in flows_list:
@@ -858,17 +834,10 @@ def _balance_account(
             row.to_dispatch_mwh for row in (routing or {}).get((item.year, item.period), [])
             if row.source_class == "in_dispatch"
         )
-        signature = (
-            SIGNATURE_IN_DISPATCH_DOUBLE_COUNT
-            if redispatched > tol and tol < closing <= redispatched + tol
-            else None
-        )
-        matched += signature is not None
         open_rows.append({
             "year": item.year, "period": item.period,
             "closing_residual_mwh": _round(closing),
             "in_dispatch_redispatched_mwh": _round(redispatched),
-            "signature": signature,
         })
     open_rows.sort(key=lambda row: (-abs(row["closing_residual_mwh"]), row["year"], row["period"]))
     return {
@@ -879,8 +848,8 @@ def _balance_account(
         "open_periods": len(open_rows),
         "max_abs_closing_residual_mwh": _round(maximum),
         "sum_abs_closing_residual_mwh": _round(sum_abs),
-        "signature_matches": {SIGNATURE_IN_DISPATCH_DOUBLE_COUNT: matched},
-        "unexplained_open_periods": len(open_rows) - matched,
+        "signature_matches": {WITHDRAWN_BALANCE_SIGNATURE: 0},
+        "unexplained_open_periods": len(open_rows),
         "worst_periods": open_rows[:WORST_PERIODS],
     }
 

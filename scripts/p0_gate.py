@@ -75,7 +75,10 @@ ESLINT_SCHEMA = "value.eslint-ratchet/v2"
 # Anchor of the append-only rules (plan 3.9): the M0 commit that fixed golden
 # revision 0, the frozen golden projects and the ratchet baselines.  Moving it
 # is an integrator decision recorded in the commit message, never a lane's.
-APPEND_ONLY_BASE = "8336d1881680678917c02ca32f4fce5a9c036f5f"
+# Moved once (R4-1, DECISIONS A26) from the M0 commit 8336d18 to the commit
+# that records the A26 doctoral trajectory exceptions (A15, DEV-BAL-04,
+# DEV-STO-01); every append-only rule now reads against it.
+APPEND_ONLY_BASE = "03e39ed957994876722b7302192449b21e33dce1"
 GOLDEN_FAMILY_DIRS = ("tests/golden/doctoral", "tests/golden/corrected")
 GOLDEN_PROJECT_DIR = "tests/golden/projects"
 RATCHET_BASELINE_FILES = (

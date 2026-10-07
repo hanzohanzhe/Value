@@ -226,6 +226,8 @@ def _run_descriptor(run: Mapping[str, Any], run_root: Path) -> dict[str, Any]:
         "data_pack": str(data_pack or ""),
         "engine": normalize_engine(run.get("execution_engine") or ""),
         "assets": run_asset_classes(run_root),
+        # R4-1 (A26): the recorded methodology profile (None before X0 S9).
+        "profile": (recorded_methodology(run, run_root) or {}).get("profile_id"),
     }
 
 
@@ -242,6 +244,9 @@ def _applies(applies_when: Mapping[str, Sequence[str]], descriptor: Mapping[str,
             return False
         # Unknown fleet evidence keeps the advisory (fail towards disclosure).
         if key == "assets_any" and descriptor.get("assets") is not None and not wanted.intersection(descriptor["assets"]):
+            return False
+        # R4-1 (A26): a Run without a recorded profile (pre-profile) keeps the advisory.
+        if key == "profiles_any" and descriptor.get("profile") and descriptor["profile"] not in wanted:
             return False
     return True
 
@@ -507,9 +512,12 @@ def raw_invariant_failures(evidence: Mapping[str, Any]) -> list[dict[str, Any]]:
     report.  A gate without check detail is listed under its own name.
     """
 
-    from .declared_deviations import catalogue
+    from .declared_deviations import catalogue, withdrawn
 
-    summaries = {str(row["id"]): _first_sentence(str(row.get("description") or "")) for row in catalogue()}
+    # R4-1 (A26): a Run made before a deviation was corrected keeps its
+    # matched id; the withdrawn entry still names what it was.
+    summaries = {str(row["id"]): _first_sentence(str(row.get("description") or ""))
+                 for row in (*withdrawn(), *catalogue())}
     declared = evidence.get("declared_deviations")
     matched: dict[str, Mapping[str, Any]] = {}
     if isinstance(declared, Mapping):

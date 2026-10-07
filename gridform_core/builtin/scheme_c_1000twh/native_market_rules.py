@@ -41,6 +41,12 @@ down before curtailing VRE only when the avoided cost over the expected
 downtime exceeds the restart cost (``r12.economic-downward-order``).  ``operating_cost_basis``
 (``dispatch_unit_cost/v1``) is a universal accounting rule (P5-06, plan S4):
 it is the same in both profiles and therefore has no profile switch either.
+Decision A26 (R4-1) made ``storage_position = net_per_period`` universal
+(``p06.storage-net-per-period``, finding DEV-STO-01): the thesis kernel reset
+a store's power limit in every clearing stage, so one store could discharge
+up to twice its rating and charge and discharge in the same period.  Both
+rule sets now keep one net position per store and period, so the field is
+no longer a switch.
 """
 
 from __future__ import annotations
@@ -66,7 +72,7 @@ FIELD_CORRECTIONS: dict[str, str] = {
     "surplus_accounting": "p06.d1-surplus-accounting",
     "ahead_merit_key": "p06.storage-after-generation-merit-key",
     "downward_order": "p06.avoided-cost-downward-order",
-    "storage_position": "p06.storage-net-per-period",
+    # storage_position: universal since R4-1 (A26), no switch.
     "storage_fee_carry": "p06.storage-fee-per-period",
     "vre_direct_electrolysis": "p06.no-vre-pre-clearing-skim",
     "storage_bid_basis": "p06.storage-bid-cycle-only",
@@ -126,7 +132,11 @@ DOCTORAL = NativeMarketRules(
     surplus_accounting="thesis_marginal_vre_only",
     ahead_merit_key="thesis_stable_price",
     downward_order="curtail_cost_thesis",
-    storage_position="per_stage_thesis",
+    # R4-1 (A26, DEV-STO-01, p06.storage-net-per-period universal): one net
+    # position per store and period, shared rated power across the stages.
+    # The thesis kernel (35aadb3) reset the power limit in every stage
+    # ("per_stage_thesis").
+    storage_position="net_per_period",
     storage_fee_carry="thesis_carry_last_balancing",
     vre_direct_electrolysis="thesis_pre_clearing_skim",
     storage_bid_basis="thesis_dwell_linear",
@@ -194,7 +204,6 @@ def _literal_consultations(methodology: Any) -> dict[str, Any]:
         "p06.d1-surplus-accounting": lambda: methodology.enabled("p06.d1-surplus-accounting"),
         "p06.storage-after-generation-merit-key": lambda: methodology.enabled("p06.storage-after-generation-merit-key"),
         "p06.avoided-cost-downward-order": lambda: methodology.enabled("p06.avoided-cost-downward-order"),
-        "p06.storage-net-per-period": lambda: methodology.enabled("p06.storage-net-per-period"),
         "p06.storage-fee-per-period": lambda: methodology.enabled("p06.storage-fee-per-period"),
         "p06.no-vre-pre-clearing-skim": lambda: methodology.enabled("p06.no-vre-pre-clearing-skim"),
         "p06.storage-bid-cycle-only": lambda: methodology.enabled("p06.storage-bid-cycle-only"),

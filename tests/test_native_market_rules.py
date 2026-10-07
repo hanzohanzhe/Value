@@ -68,7 +68,6 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "surplus_accounting": "thesis_marginal_vre_only",
             "ahead_merit_key": "thesis_stable_price",
             "downward_order": "curtail_cost_thesis",
-            "storage_position": "per_stage_thesis",
             "storage_fee_carry": "thesis_carry_last_balancing",
             "vre_direct_electrolysis": "thesis_pre_clearing_skim",
             "storage_bid_basis": "thesis_dwell_linear",
@@ -82,7 +81,6 @@ class RuleSetDefinitionTests(unittest.TestCase):
             "surplus_accounting": "rebuilt_available_minus_accepted",
             "ahead_merit_key": "rounded_price_generation_before_storage",
             "downward_order": "avoided_cost",
-            "storage_position": "net_per_period",
             "storage_fee_carry": "per_period",
             "vre_direct_electrolysis": "disabled",
             "storage_bid_basis": "cycle_only",
@@ -96,6 +94,10 @@ class RuleSetDefinitionTests(unittest.TestCase):
         self.assertEqual(DOCTORAL.realisation_basis, "forecast_thesis")
         self.assertEqual(CORRECTED.realisation_basis, "forecast_thesis")
         self.assertEqual(DOCTORAL.operating_cost_basis, CORRECTED.operating_cost_basis)
+        # A26 (R4-1): one storage position per period is universal
+        # (p06.storage-net-per-period), so storage_position is not a switch.
+        self.assertEqual(DOCTORAL.storage_position, "net_per_period")
+        self.assertEqual(CORRECTED.storage_position, "net_per_period")
         # Every field that differs has a switch.
         differing = {
             name for name, value in DOCTORAL.definition().items()

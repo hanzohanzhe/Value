@@ -36,6 +36,11 @@ existing installation is upgraded side by side, as described in
   - stress events (A2);
   - value of lost load 17,000 GBP/MWh (A16-5; the thesis code's 8,000 entered
     only the cost accounts);
+  - three implementation errors of the thesis kernel (A26, R4-1): down
+    regulation in the curtailment branch is taken once, must-run nuclear
+    surplus is not counted twice in balancing, and a store keeps one net
+    position per period (see "Three thesis-kernel errors corrected in both
+    profiles" below);
   - corrections in the accounting zone only (residuals, audits, cost ledger,
     validation; Q12).
 - The investment rule stays undiscounted, in constant base-year money (A6).
@@ -61,6 +66,7 @@ existing installation is upgraded side by side, as described in
 | R3-2 (A24-3, economic down-regulation order of the network models) | — | `r32.network-economic-downward-order` (staged / zonal path, which runs only under the corrected profile, Q3; method change, explicit Study confirmation) |
 | R1-3 (A20, per-type battery caps) | — | `r13.per-type-battery-caps` (method change, explicit Study confirmation; supersedes `p07.power-battery-pool`) |
 | R3-3 (A24-4, restart costs in 2025 GBP) | — | `r33.restart-cost-price-base-2025` (parameter restatement used by `r12.*` and `r32.*`; recorded on the default PSM 6.6.0 and staged PSM 1.6.0 ledger bumps, explicit Study confirmation) |
+| R4-1 (A26, thesis-kernel errors) | `r41.down-regulation-taken-once`, `r41.must-run-surplus-counted-once`, `p06.storage-net-per-period` (made universal; default PSM 6.7.0, explicit Study confirmation) | — |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -83,8 +89,13 @@ unattributed.
   and the author accepted it as the new reference (A15): imports fall by
   78 %, price spikes disappear, system cost falls by 3.2 %, the CCGT proposal
   is dropped and emissions rise by 3.4 %.
-  Numeric reports: `tests/golden/reports/D4-r9.json` and `D5-r1.json`. All
-  other doctoral changes are in the accounting and identity zones.
+  Numeric reports: `tests/golden/reports/D4-r9.json` and `D5-r1.json`.
+  R4-1 (A26) re-baselined D3 (r14), D4 (r12) and D5 (r3) once for the three
+  thesis-kernel corrections (findings A15, DEV-BAL-04, DEV-STO-01; numeric
+  reports `D3-r14.json`, `D4-r12.json`, `D5-r3.json`, summary in
+  `docs/dev/p0-reports/r41-golden/`); D1 and D2 (r11) change only the list
+  of declared deviations in the validation report. All other doctoral
+  changes are in the accounting and identity zones.
 - **Corrected family.** C1–C8 were revised under the correction ids above.
   Trajectory columns that changed since revision 0, by case: C1 34, C2 35,
   C3 50, C4 32, C5 503, C6 490, C7 34, C8 111.
@@ -120,13 +131,13 @@ unattributed.
 
 ### Known issues
 
-- **GBP1 doctoral run fails surplus conservation (decision A15).** The GBP1
-  doctoral run (golden D5, one model year) fails the surplus-conservation
-  invariant in 471 periods, by up to 991 MWh. The 35aadb3 code fails it as
-  well. It is recorded as a known issue under investigation: it is not
-  registered as a declared deviation and the check is not changed. The next
-  round decides whether it is a kernel bookkeeping boundary or a real
-  imbalance. Until then that run's annual results stay withheld (Q14).
+- ~~**GBP1 doctoral run fails surplus conservation (decision A15).**~~
+  Resolved by decision A26 (R4-1, `r41.down-regulation-taken-once`): the
+  failure (563 routing rows, not 471 periods; 471 was the envelope count)
+  was a real double down regulation in the thesis kernel
+  (`docs/dev/GBP1_SURPLUS_CONSERVATION_INVESTIGATION.md`). After R4-1 the
+  GBP1 doctoral run passes every raw invariant and its annual results are
+  published (Q14).
 - **Nuclear path dependency in the doctoral profile.** In the frozen kernel,
   a nuclear unit that has been accepted runs at full power until the end of
   the year. In the GBP1 before/after comparison this is one mechanism behind
@@ -794,6 +805,55 @@ unattributed.
   was never binding on VALUE 101 two_year (C5/C6) or on GBP1 public2 2025
   (C9), whose battery requests stayed below it; the golden revisions change
   only the headroom and investment evidence columns.
+
+### Three thesis-kernel errors corrected in both profiles (A26, R4-1)
+
+The website methodology describes the published VALUE model, not the
+thesis, so three implementation errors of the retained thesis kernel are
+corrected in both profiles (universal corrections). The thesis settings
+(wind curtailed first at zero cost, bid rules, no loss factors, full
+availability, the original data readings) are unchanged.
+
+- **Down regulation taken once** (`r41.down-regulation-taken-once`, A15): a
+  hydro, biomass or thermal unit that met the remaining down-regulation
+  requirement of the curtailment branch did not clear it, so the same amount
+  was reduced again from later offers (usually wind); it is now cleared.
+- **One storage position per period** (`p06.storage-net-per-period`, now
+  universal; formerly declared deviation DEV-STO-01): the clearing stages
+  share a store's rated power; a store that discharged reduces that discharge
+  before it can charge; a store that charged offers no discharge. The
+  absorbed surplus is booked as curtailed (forecast surplus) or re-dispatched
+  (must-run or VRE surplus, VRE then entering S as VRE output).
+  `storage_position` is no longer a switch of the market rule sets.
+- **Must-run surplus counted once** (`r41.must-run-surplus-counted-once`,
+  formerly DEV-BAL-04): must-run nuclear surplus that serves the balancing
+  requirement is neither generated nor paid a second time;
+  `non_vre_double_counted_mwh` is zero.
+- **Declared deviations.** DEV-BAL-04 and DEV-STO-01 and their gate matchers
+  are withdrawn (`declared_deviations.json` keeps them under `withdrawn` so
+  the evidence of earlier Runs stays readable); the drafted DEV-BAL-05 was
+  never registered. No remaining declared deviation explains a gate failure.
+- **Advisories.** Runs of the doctoral profile made before R4-1 (and Runs
+  without a recorded profile) carry the new advisories; `applies_when` has a
+  new key `profiles_any`. Corrected Runs never ran the old behaviour and get
+  none.
+- **Numbers (golden D3-D5).** GBP1 public1 2025, doctoral: surplus
+  conservation passes (563 failing rows before), the storage gate passes
+  (15,653 store-periods charged and discharged before), unserved energy
+  300,855 -> 78,810 MWh, stress periods 890 -> 487, storage charge/discharge
+  5.05/3.66 -> 2.42/1.75 TWh, operating cost GBP 4,317.5 m -> 4,287.0 m,
+  direct emissions 30.91 -> 30.68 MtCO2. VALUE 101 day and two years: the
+  storage gate passes (10 and 9,343 store-periods before). All three now
+  publish annual results (Q14). Corrected golden cases are unchanged in the
+  gated zones.
+- **Saved Studies.** `value-bid-at-cost-psm` 6.6.0 -> 6.7.0 with
+  `requires_user_opt_in`; the applied-corrections identity of both profiles
+  changes, so every saved Study asks for confirmation (Q13).
+- **Golden tooling.** The 96-period synthetic reproduction golden may
+  re-baseline its trajectory once for the A26 kernel corrections
+  (`capture_native_reproduction_golden.py revise --trajectory`, revision 4;
+  revision 0 keeps the 0.6.0-alpha.2 columns); the P0-4 per-table fixture
+  was re-captured once.
 
 ### R1 retest fixes, backend (R2-1, DECISIONS A23)
 

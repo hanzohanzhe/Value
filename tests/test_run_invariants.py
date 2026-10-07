@@ -481,19 +481,20 @@ class ApplicationValidationIntegrationTests(unittest.TestCase):
         self.assertEqual(validation["execution_scope"], "psm_only")
         self.assertEqual(validation["contract_validation_status"], "passed")
         self.assertEqual(validation["analytical_mechanism_status"], "not_evaluated")
-        # P0-4 S7 (production policy): the doctoral kernel charges and
-        # discharges a store in one period (P5-03), which fails the storage
-        # gate and with it the run; the energy balance closes (A2).
+        # P0-4 S7 (production policy): before R4-1 the doctoral kernel charged
+        # and discharged a store in one period (P5-03), which failed the
+        # storage gate and with it the run.  R4-1 (A26) keeps one storage
+        # position per period in both rule sets, so both gates pass; the
+        # energy balance closes (A2).
         self.assertEqual(validation["energy_balance_status"], "passed")
-        self.assertEqual(validation["storage_invariant_status"], "failed")
-        self.assertIn("storage.single_direction", validation["storage_invariants"]["failed_checks"])
-        self.assertEqual(validation["validation_gate"]["status"], "failed")
-        self.assertEqual(validation["scientific_validation_status"], "failed")
-        self.assertFalse(validation["annual_economics_eligible"])
-        self.assertIn("GF_VALIDATION_GATE_FAILED", {row["code"] for row in validation["validation_warnings"]})
+        self.assertEqual(validation["storage_invariant_status"], "passed")
+        self.assertEqual(validation["storage_invariants"]["failed_checks"], [])
+        self.assertEqual(validation["validation_gate"]["status"], "passed")
+        self.assertNotIn("GF_VALIDATION_GATE_FAILED", {row["code"] for row in validation["validation_warnings"]})
         self.assertFalse(validation["cem_stages_executed"])
         self.assertEqual(validation["stress"]["stress_periods"], 48)
-        self.assertAlmostEqual(validation["stress"]["shortfall_mwh"], 810.546171074, places=6)
+        # R4-1 (A26): 810.546171074 before the thesis-kernel corrections.
+        self.assertAlmostEqual(validation["stress"]["shortfall_mwh"], 772.012233167, places=6)
         self.assertEqual(validation["energy_balance"]["compatibility_adjustment_periods"], 0)  # P0-4 S6
         invariants = _read(output / "validation" / "run-invariants.json")
         self.assertEqual(invariants["status"], "passed")

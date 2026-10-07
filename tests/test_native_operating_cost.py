@@ -130,13 +130,18 @@ class OperatingAccountTests(unittest.TestCase):
 class SyntheticAccountTests(unittest.TestCase):
     """The 96-period synthetic scenario through the live loop (both rule sets)."""
 
-    def _run(self, rules):
+    def _run(self, rules, variant="dynamic"):
         log = RealisationLog()
-        harness.run_case("dynamic", loop="live", runtime_attributes={"market_rules": rules, "realisation_log": log})
+        harness.run_case(variant, loop="live", runtime_attributes={"market_rules": rules, "realisation_log": log})
         return log
 
     def test_storage_fee_carry_is_diagnosed_and_settled_per_period(self):
-        log = self._run(DOCTORAL)
+        # R4-1 (A26, DEV-STO-01): with one storage position per period the
+        # dynamic variant no longer discharges a store in the balancing stage
+        # after the ahead stage, so the thesis carry is shown on the legacy
+        # tariff variant (the doctoral reference configuration, Q3).
+        self.assertEqual(float(np.sum(self._run(DOCTORAL).storage_fee_carry_gbp_per_h)), 0.0)
+        log = self._run(DOCTORAL, "legacy_tariff")
         carry = float(np.sum(log.storage_fee_carry_gbp_per_h)) * 0.5
         residual = float(np.sum(log.storage_fee_retained_gbp - log.storage_offer_payment_gbp))
         self.assertGreater(carry, 0.0)

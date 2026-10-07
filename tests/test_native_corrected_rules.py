@@ -190,7 +190,12 @@ class DownwardOrderTests(unittest.TestCase):
 
 
 class NettingTests(unittest.TestCase):
-    """p06.storage-net-per-period (P5-03)."""
+    """p06.storage-net-per-period (P5-03); universal since R4-1 (A26, DEV-STO-01).
+
+    The thesis kernel reset a store's power limit in every stage; since R4-1
+    the doctoral rule set keeps the same net position as the corrected one,
+    so both rule sets give the corrected values below.
+    """
 
     def _balancing_discharge(self, rules):
         with rules_scope(rules):
@@ -209,8 +214,9 @@ class NettingTests(unittest.TestCase):
 
     def test_stages_share_the_rated_power(self):
         thesis_storage, thesis_peaker = self._balancing_discharge(DOCTORAL)
-        self.assertEqual(thesis_storage, 300.0)  # 200 ahead + 100 again in balancing
-        self.assertEqual(thesis_peaker, 50.0)
+        # Before R4-1: 300 (200 ahead + 100 again in balancing) and 50.
+        self.assertEqual(thesis_storage, 200.0)
+        self.assertEqual(thesis_peaker, 150.0)
         fixed_storage, fixed_peaker = self._balancing_discharge(CORRECTED)
         self.assertEqual(fixed_storage, 200.0)
         self.assertEqual(fixed_peaker, 150.0)
@@ -225,18 +231,18 @@ class NettingTests(unittest.TestCase):
                 10, 60.0, 100.0, state["accepted_bids"], state["last_gen_energy"], state["excess"],
                 state["gen_list"], [], electrolyzer(), [unit],
             )
-            if rules is CORRECTED:
-                unit.close_period(10)
+            unit.close_period(10)
             return before, sum(unit.stored_energy.values()), result[1], output(result[4], unit)
 
     def test_curtailment_buys_back_instead_of_charging(self):
-        before, after, charged, delivered = self._curtailment_after_discharge(DOCTORAL)
-        self.assertGreater(charged, 0.0)  # discharged 100 then charged 40 in one period
-        before, after, charged, delivered = self._curtailment_after_discharge(CORRECTED)
-        self.assertEqual(charged, 0.0)
-        self.assertAlmostEqual(delivered, 60.0)
+        # Before R4-1 the doctoral rule set discharged 100 then charged 40 in
+        # one period; both rule sets now buy back.
         decay = 0.000021
-        self.assertAlmostEqual(after, before * (1 - decay) - 60.0 * 0.5, places=9)
+        for rules in (DOCTORAL, CORRECTED):
+            before, after, charged, delivered = self._curtailment_after_discharge(rules)
+            self.assertEqual(charged, 0.0)
+            self.assertAlmostEqual(delivered, 60.0)
+            self.assertAlmostEqual(after, before * (1 - decay) - 60.0 * 0.5, places=9)
 
     def test_close_period_rejects_charge_and_discharge(self):
         with rules_scope(CORRECTED):
