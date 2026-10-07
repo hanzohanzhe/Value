@@ -131,3 +131,40 @@ export function withheldDeltaSummary(comparison: MetricDeltaFields): string | nu
   if (withheld.length === ids.length) return "Annual deltas are withheld for every metric; each metric states its reason below.";
   return `Deltas are withheld for ${withheld.length} of ${ids.length} metrics (${withheld.map(metricLabel).join(", ")}); each states its reason below. The other metrics show their deltas.`;
 }
+
+/** One cause of withheld annual deltas (gridform_core/results_summary.annual_withholding_reasons). */
+export type AnnualWithholdingReason = { reason_code: string; run_ids?: (string | null)[]; text?: string | null };
+export type AnnualWithholdingFields = {
+  annual_metrics_withheld: boolean;
+  comparison_scope?: string;
+  annual_withholding?: AnnualWithholdingReason[] | null;
+  run_ids?: string[];
+};
+
+const TEACHING_WITHHOLDING = "Annual cost and carbon deltas are withheld because these runs contain one 48-period market day. The export contains identities and changed dimensions, not annual metrics.";
+
+/**
+ * R4 R-中2 (four-role report): the box above the annual tables names the
+ * actual reason annual deltas are withheld - the VALUE 101 teaching boundary,
+ * or a reproduction Run whose annual results Q14 withholds - instead of
+ * always the teaching text. Null when annual deltas are not withheld.
+ */
+export function annualWithholdingNotice(comparison: AnnualWithholdingFields): { title: string; lines: string[] } | null {
+  if (!comparison.annual_metrics_withheld) return null;
+  const reasons = comparison.annual_withholding ?? [];
+  const teaching = reasons.some((reason) => reason.reason_code === "teaching_run")
+    || (!reasons.length && ["teaching_diagnostic", "mixed_tutorial_and_annual"].includes(comparison.comparison_scope ?? ""));
+  const publication = reasons.filter((reason) => reason.reason_code === "result_publication_withheld");
+  if (teaching && !publication.length) return { title: "Teaching boundary", lines: [TEACHING_WITHHOLDING] };
+  if (!publication.length) {
+    return { title: "Annual deltas withheld", lines: [reasons.length ? reasons.map((reason) => `${(reason.run_ids ?? []).filter(Boolean).join(", ")} ${reason.text ?? reason.reason_code.replaceAll("_", " ")}.`.trim()).join(" ") : "Annual cost and carbon deltas are withheld for this comparison."] };
+  }
+  const withheldIds = new Set(publication.flatMap((reason) => reason.run_ids ?? []).filter(Boolean));
+  const lines = publication.map((reason) => `${(reason.run_ids ?? []).filter(Boolean).join(", ")} ${reason.text ?? "is a reproduction Run whose annual results are withheld (Q14)"}. Its full ledger stays available in Inspect.`);
+  if (teaching) lines.push("The selection also contains a VALUE 101 one-day lesson, which has no annual economics.");
+  const published = (comparison.run_ids ?? []).filter((id) => !withheldIds.has(id));
+  lines.push(teaching || !published.length
+    ? "No annual deltas are shown. The export contains identities and changed dimensions."
+    : `No annual deltas are shown. The export lists the published annual values of ${published.join(", ")} without deltas.`);
+  return { title: "Annual results withheld", lines };
+}

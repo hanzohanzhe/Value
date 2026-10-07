@@ -354,6 +354,12 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
             **publication,
             "withheld_annual_rows": withheld_annual_rows,
             "withheld_fields": withheld_fields,
+            # R4 R-中2: the comparison states which raw invariants withheld it.
+            "raw_invariant_failures": [
+                {key: row.get(key) for key in ("gate", "check", "name", "count", "unit", "deviation_ids")}
+                for row in (presented.get("raw_invariant_failures") or [])[:10]
+                if isinstance(row, Mapping)
+            ] if publication_withheld else [],
         },
         "annual": annual,
         "planning": planning,
@@ -543,11 +549,15 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         and row["result_publication"].get("status") == "withheld"  # type: ignore[index]
     ]
     annual_metrics_withheld = tutorial_count > 0 or bool(publication_withheld)
+    # R4 R-中2: an annual comparison withheld by Q14 is not an annual
+    # scientific comparison, and the page states the actual reason.
     comparison_scope = (
         "teaching_diagnostic" if tutorial_count == len(summaries)
         else "mixed_tutorial_and_annual" if tutorial_count
+        else "annual_publication_withheld" if publication_withheld
         else "annual_scientific"
     )
+    annual_withholding = annual_withholding_reasons(summaries, run_modes)
     dimensions = {}
     for key in ("cost", "carbon", "terminal_policy", "currency_base_year"):
         values = [row.get("definitions", {}).get(key) for row in summaries]  # type: ignore[union-attr]
@@ -699,7 +709,10 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
     public_summaries = []
     for summary in summaries:
         public_summary = json.loads(json.dumps(summary))
-        if annual_metrics_withheld:
+        # A teaching comparison carries no annual metrics.  Under Q14 only the
+        # withheld Run has none (build_run_summary removed them); a published
+        # Run keeps its own annual values for the export, without deltas.
+        if tutorial_count:
             public_summary["annual"] = []
         public_summaries.append(public_summary)
     if comparison_scope == "teaching_diagnostic" and causal_storage_comparison:
@@ -713,7 +726,10 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
     elif not dimensions:
         warning = (
             "Recorded configuration matches. These short teaching runs do not establish annual economics or a storage-policy causal effect; annual deltas are withheld."
-            if annual_metrics_withheld else
+            if tutorial_count else
+            "Recorded configuration matches; annual deltas are withheld because the annual results of "
+            + ", ".join(str(run_id) for run_id in publication_withheld) + " are withheld (Q14)."
+            if publication_withheld else
             "Recorded configuration matches; no storage-policy change is available for causal attribution."
         )
     elif len(review["changed_dimensions"]) > 1:
@@ -738,7 +754,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         "not_applicable_different_psm_formulation" if formulation_changed else
         "controlled_teaching_configuration" if causal_storage_comparison and comparison_scope == "teaching_diagnostic" else
         "controlled_storage_cost_module_change" if causal_storage_comparison else
-        "matching_teaching_configuration" if not dimensions and annual_metrics_withheld else
+        "matching_teaching_configuration" if not dimensions and tutorial_count else
         "matching_recorded_configuration" if not dimensions else
         "multiple_dimensions_changed" if len(review["changed_dimensions"]) > 1 else
         "recorded_configuration_changed"
@@ -793,6 +809,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         "comparison_scope": comparison_scope,
         "comparison_review": review,
         "annual_metrics_withheld": annual_metrics_withheld,
+        "annual_withholding": annual_withholding,
         "changed_dimensions": dimensions,
         "changed_dimension_details": dimension_details,
         "metric_deltas_allowed": deltas_allowed,
@@ -815,10 +832,65 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
     }
 
 
+def annual_withholding_reasons(
+    summaries: Sequence[Mapping[str, object]], run_modes: Sequence[str]
+) -> list[dict[str, object]]:
+    """Why annual deltas are withheld, one row per cause (R4 R-中2).
+
+    ``teaching_run``: the one-day lesson has no annual economics.
+    ``result_publication_withheld``: Q14 withholds a Run's annual results;
+    the row names the raw invariants that failed (or that none was evaluated).
+    """
+
+    reasons: list[dict[str, object]] = []
+    run_ids = [(row.get("run") or {}).get("run_id") if isinstance(row.get("run"), Mapping) else None for row in summaries]
+    teaching = [run_id for run_id, mode in zip(run_ids, run_modes) if mode in {"tutorial", "value_101_day"}]
+    if teaching:
+        reasons.append({
+            "reason_code": "teaching_run",
+            "run_ids": teaching,
+            "text": "contains one 48-period VALUE 101 market day, which has no annual economics",
+        })
+    for run_id, row in zip(run_ids, summaries):
+        publication = row.get("result_publication")
+        if not isinstance(publication, Mapping) or publication.get("status") != "withheld":
+            continue
+        failures = [item for item in publication.get("raw_invariant_failures") or [] if isinstance(item, Mapping)]
+        methodology = row.get("methodology") if isinstance(row.get("methodology"), Mapping) else {}
+        if failures:
+            checks = ", ".join(
+                str(item.get("check") or item.get("name"))
+                + (f" ({item.get('count')} {item.get('unit') or 'rows'})" if item.get("count") is not None else "")
+                for item in failures
+            )
+            text = f"is a reproduction Run whose annual results are withheld (Q14): raw invariant {checks} failed"
+        else:
+            text = "is a reproduction Run whose annual results are withheld (Q14): its raw invariants were not evaluated"
+        reasons.append({
+            "reason_code": "result_publication_withheld",
+            "run_ids": [run_id],
+            "decision": publication.get("decision", "Q14"),
+            "publication_reason_code": publication.get("reason_code"),
+            "profile_id": methodology.get("profile_id"),  # type: ignore[union-attr]
+            "raw_invariant_failures": [dict(item) for item in failures],
+            "text": text,
+        })
+    return reasons
+
+
 def comparison_csv(comparison: Mapping[str, object]) -> str:
     output = io.StringIO(newline="")
     writer = csv.writer(output)
     writer.writerow(["schema_version", comparison.get("schema_version")])
+    # R4 R-中2: an export without annual rows says why.
+    writer.writerow(["comparison_scope", comparison.get("comparison_scope")])
+    writer.writerow(["annual_metrics_withheld", "true" if comparison.get("annual_metrics_withheld") else "false"])
+    for reason in comparison.get("annual_withholding") or []:  # type: ignore[union-attr]
+        if isinstance(reason, Mapping):
+            writer.writerow([
+                "annual_withheld_reason", reason.get("reason_code"),
+                ";".join(str(item) for item in reason.get("run_ids") or []), reason.get("text"),
+            ])
     writer.writerow(["run_id", "year", "metric_id", "value", "unit", "definition_id", "denominator", "source"])
     for summary in comparison.get("runs", []):
         for annual in summary.get("annual", []):

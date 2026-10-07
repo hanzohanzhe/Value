@@ -3457,8 +3457,8 @@
     },
     {
       "path": "app/features/results/ComparisonWorkspace.tsx",
-      "sha256": "18fd2353f58396d3bff80d22d42adca2917571216449054eaa1385ddb8da2acf",
-      "bytes": 13455,
+      "sha256": "28e01996c8e26a7031d195feeb42d59eb9e7beea508e5f614b9114dc13d7b27b",
+      "bytes": 13699,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3481,8 +3481,8 @@
     },
     {
       "path": "app/features/results/comparisonReview.ts",
-      "sha256": "57c5810d65469d2b0e4123343e744c3dd1d44cc04994bc887eb54769f842b479",
-      "bytes": 7570,
+      "sha256": "ede60155369c0fcf6da831cab1fcd94462613bfbecc064420ac61e19f9c36e86",
+      "bytes": 10322,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8662,8 +8662,8 @@
     },
     {
       "path": "gridform_core/results_summary.py",
-      "sha256": "1934d5fc2508509dd46e17d6fc22f3ce24adf583bf2f58cf9e86a2d9c0bbc136",
-      "bytes": 44909,
+      "sha256": "525810d0ff5a4bb052af867bd6cbd6866842b59fc7123731fba118968e5fabec",
+      "bytes": 49103,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11000,8 +11000,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "8a1a205609abcfdfe09738f6d18798110af334a280fa49907bbba3f3d6e09e62",
-      "bytes": 1288,
+      "sha256": "0e02da36447a5853f3513810ba6690d05cd52c893e436ae1e0dd21e1bbf9115b",
+      "bytes": 3060,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12800,8 +12800,8 @@
     },
     {
       "path": "tests/test_r4_reproduce_defects.py",
-      "sha256": "a71686b0766ac01af1c5bcc2ab527f76dde237725d4b23fb0d56e9d599e48772",
-      "bytes": 5508,
+      "sha256": "17990ee4fb875d97ec38cebc96225bce2304034c120188dbc726d49ab9341457",
+      "bytes": 9964,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

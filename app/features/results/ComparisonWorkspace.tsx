@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { formatNumber, withUnit } from "../shared/presentation";
 import { Callout } from "../shared/Callout";
 import { profileBadge, type MethodologyRecord } from "../workspace/runValidation.ts";
-import { changedDimensionRows, dimensionPathsText, metricDeltaShown, metricDeltaWithheldText, metricLabel, reviewReasonText, withheldDeltaSummary, type DimensionDetail, type MetricDeltaGate, type ReviewReason } from "./comparisonReview.ts";
+import { annualWithholdingNotice, type AnnualWithholdingReason, changedDimensionRows, dimensionPathsText, metricDeltaShown, metricDeltaWithheldText, metricLabel, reviewReasonText, withheldDeltaSummary, type DimensionDetail, type MetricDeltaGate, type ReviewReason } from "./comparisonReview.ts";
 import "./comparison-workspace.css";
 import "./comparison-details.css";
 
@@ -24,8 +24,10 @@ type RunComparison = {
   metric_deltas_allowed: boolean; clean_storage_policy_comparison: boolean;
   /** AF3-1 (DECISIONS A23): per-metric delta gates and the withheld metric ids. */
   metric_delta_gates?: Record<string, MetricDeltaGate>; withheld_metric_deltas?: string[];
-  comparison_scope: "annual_scientific" | "teaching_diagnostic" | "mixed_tutorial_and_annual";
+  comparison_scope: "annual_scientific" | "annual_publication_withheld" | "teaching_diagnostic" | "mixed_tutorial_and_annual";
   annual_metrics_withheld: boolean; storage_pricing_interpretation: string;
+  /** R4 R-中2: why annual deltas are withheld (teaching run, Q14 publication), one row per cause. */
+  annual_withholding?: AnnualWithholdingReason[];
   causal_claim_allowed: boolean; warning?: string;
   network_cost_attribution_allowed: boolean;
   network_comparison: { reason_code: string; demand_authority_modes: string[]; matched_input_identity_sha256?: string | null };
@@ -94,6 +96,7 @@ export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] })
     link.href = url; link.download = "value-comparison.json"; link.click(); URL.revokeObjectURL(url);
   }
   const selectedRuns = runs.filter((run) => selected.includes(run.id));
+  const withholdingNotice = comparison ? annualWithholdingNotice(comparison) : null;
   const selectedClass = selectedRuns.length ? (selectedRuns[0].mode === "value_101_day" ? "tutorial" : "annual") : null;
   const eligible = runs.filter((run) => run.status === "completed" && ["full", "two_year", "value_101_day"].includes(run.mode) && (!selectedClass || (run.mode === "value_101_day" ? "tutorial" : "annual") === selectedClass));
   return <section className="comparison-workspace" aria-labelledby="comparison-title">
@@ -110,7 +113,7 @@ export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] })
       <div className={`comparison-gate ${comparison.clean_storage_policy_comparison || comparison.network_cost_attribution_allowed ? "clean" : "changed"}`}><b>{comparison.network_cost_attribution_allowed ? "Controlled copperplate–zonal network comparison" : comparison.comparison_scope === "teaching_diagnostic" && comparison.clean_storage_policy_comparison ? "Controlled teaching configuration" : comparison.clean_storage_policy_comparison ? "Controlled storage-policy comparison" : comparison.storage_pricing_interpretation.replaceAll("_", " ")}</b><small>{comparison.network_cost_attribution_allowed ? "Demand, initial state, weather availability, years and non-network modules have matching machine-readable identities." : comparison.warning ?? "Data, years, non-storage modules and scientific definitions are controlled."}</small></div>
       {!comparison.network_cost_attribution_allowed && comparison.network_comparison.reason_code !== "comparison_eligibility_artifact_missing" && <div className="info-box"><b>Network-cost attribution blocked</b><br />{comparison.network_comparison.reason_code.replaceAll("_", " ")}. Side-by-side results remain available, but the difference is not labelled as a network effect.</div>}
       <div className="module-differences"><b>Changed dimensions</b>{Object.keys(comparison.changed_dimensions).length ? changedDimensionRows(comparison.changed_dimensions, comparison.changed_dimension_details).map((row) => <span key={row.key} title={row.key}><code>{row.label}</code><small>{row.detail}</small>{row.raw && <details className="comparison-raw"><summary>Recorded values (JSON)</summary><pre>{row.raw}</pre></details>}</span>) : <small>No differences found in available records; check unknown dimensions above.</small>}</div>
-      {comparison.annual_metrics_withheld && <div className="info-box"><b>Teaching boundary</b><br />Annual cost and carbon deltas are withheld because these runs contain one 48-period market day. The export contains identities and changed dimensions, not annual metrics.</div>}
+      {withholdingNotice && <div className="info-box comparison-annual-withheld"><b>{withholdingNotice.title}</b>{withholdingNotice.lines.map((line) => <span key={line}><br />{line}</span>)}</div>}
       {withheldDeltaSummary(comparison) && <div className="info-box comparison-withheld-summary value-new-control"><b>Deltas withheld</b><br />{withheldDeltaSummary(comparison)}</div>}
       {!comparison.annual_metrics_withheld && <div className="comparison-years">{comparison.annual_comparison.map((year) => <details key={year.year}><summary>{year.year}</summary><div className="comparison-metrics">{Object.entries(year.metrics).map(([metricId, values]) => <article key={metricId}><header><b>{metricLabel(metricId)}</b><code>{values[0]?.definition_id ?? "definition not evaluated"}</code></header>{values.map((value) => <span key={value.run_id}><small>{value.run_id}</small><b>{value.value == null ? "Not evaluated" : `${formatNumber(value.value)} ${value.unit ?? ""}`}</b>{metricDeltaShown(comparison, metricId) && value.delta_from_base != null && <em>{value.delta_from_base >= 0 ? "+" : ""}{formatNumber(value.delta_from_base)} · {value.percentage_delta_from_base == null ? "n/a" : `${withUnit(formatNumber(value.percentage_delta_from_base), "%", "")}`}</em>}</span>)}{metricDeltaWithheldText(comparison, metricId) && <p className="comparison-metric-withheld value-new-control">{metricDeltaWithheldText(comparison, metricId)}</p>}</article>)}</div></details>)}</div>}
     </>}

@@ -111,3 +111,76 @@ class PlanningSummaryYearsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ComparisonWithholdingReasonTests(unittest.TestCase):
+    """R-中2: the comparison names why annual deltas are withheld, and the export says so."""
+
+    def _pair(self):
+        from gridform_core.results_summary import build_run_summary
+
+        published = build_run_summary(FIXTURES / "pre-fix-dynamic-full")
+        published["annual"] = [{"year": 2025, "metrics": {"cem_system_cost_gbp": {
+            "value": 14699553.0, "unit": "GBP", "definition_id": "d", "denominator": None, "source": "s"}}}]
+        withheld = build_run_summary(FIXTURES / "doctoral-no-invariants")
+        return published, withheld
+
+    def test_q14_withholding_is_not_the_teaching_boundary(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        published, withheld = self._pair()
+        self.assertEqual(withheld["result_publication"]["status"], "withheld")
+        comparison = compare_run_summaries([published, withheld])
+        self.assertTrue(comparison["annual_metrics_withheld"])
+        self.assertEqual(comparison["comparison_scope"], "annual_publication_withheld")
+        self.assertEqual(comparison["annual_comparison"], [])
+        reasons = comparison["annual_withholding"]
+        self.assertEqual([row["reason_code"] for row in reasons], ["result_publication_withheld"])
+        self.assertEqual(reasons[0]["run_ids"], ["doctoral-no-invariants"])
+        self.assertIn("not evaluated", reasons[0]["text"])
+        self.assertNotIn("teaching", json.dumps(reasons))
+        self.assertNotIn("teaching", comparison["storage_pricing_interpretation"])
+        # The published Run keeps its own annual values in the export, without deltas.
+        runs = {row["run"]["run_id"]: row for row in comparison["runs"]}
+        self.assertEqual(len(runs["pre-fix-dynamic-full"]["annual"]), 1)
+        self.assertEqual(runs["doctoral-no-invariants"]["annual"], [])
+        text = comparison_csv(comparison)
+        self.assertIn("comparison_scope,annual_publication_withheld", text)
+        self.assertIn("annual_metrics_withheld,true", text)
+        self.assertIn("annual_withheld_reason,result_publication_withheld,doctoral-no-invariants,", text)
+        self.assertIn("pre-fix-dynamic-full,2025,cem_system_cost_gbp,14699553.0", text)
+        self.assertNotIn("doctoral-no-invariants,2025", text)
+
+    def test_failed_raw_invariant_is_named(self):
+        from gridform_core.results_summary import compare_run_summaries
+
+        published, withheld = self._pair()
+        withheld["result_publication"]["raw_invariant_failures"] = [{
+            "gate": "storage_invariants", "check": "storage.single_direction", "name": "Storage single direction",
+            "count": 9343, "unit": "rows", "deviation_ids": ["DEV-STO-01"]}]
+        reason = compare_run_summaries([published, withheld])["annual_withholding"][0]
+        self.assertIn("storage.single_direction (9343 rows) failed", reason["text"])
+        self.assertEqual(reason["raw_invariant_failures"][0]["deviation_ids"], ["DEV-STO-01"])
+
+    def test_teaching_runs_keep_the_teaching_reason_and_scope(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        published, _withheld = self._pair()
+        first = json.loads(json.dumps(published)); first["run"]["mode"] = "value_101_day"
+        second = json.loads(json.dumps(first)); second["run"]["run_id"] = "lesson-2"
+        comparison = compare_run_summaries([first, second])
+        self.assertEqual(comparison["comparison_scope"], "teaching_diagnostic")
+        self.assertEqual([row["reason_code"] for row in comparison["annual_withholding"]], ["teaching_run"])
+        self.assertTrue(all(row["annual"] == [] for row in comparison["runs"]))
+        self.assertIn("annual_withheld_reason,teaching_run", comparison_csv(comparison))
+
+    def test_published_pair_has_no_withholding(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        published, _withheld = self._pair()
+        other = json.loads(json.dumps(published)); other["run"]["run_id"] = "rerun"
+        comparison = compare_run_summaries([published, other])
+        self.assertFalse(comparison["annual_metrics_withheld"])
+        self.assertEqual(comparison["annual_withholding"], [])
+        self.assertEqual(comparison["comparison_scope"], "annual_scientific")
+        self.assertIn("annual_metrics_withheld,false", comparison_csv(comparison))
