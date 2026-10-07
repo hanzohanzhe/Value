@@ -4976,7 +4976,7 @@
     },
     {
       "path": "docs/generated/MODULES.md",
-      "sha256": "2e1bb7b66e9acb3e7d5c02365fd8d050fdc30d3c31593bf61db3fa343a96e0dd",
+      "sha256": "6818c4a2a66760908d7918b1435794f859259c5b150d1117b844ede4701197f5",
       "bytes": 4102,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -13095,8 +13095,8 @@
     },
     {
       "path": "tests/test_stress_events_query.py",
-      "sha256": "28ed1992f10ce5085f391409644dd5cfbc02b83ea3769643d1e5f0ff5199a482",
-      "bytes": 3632,
+      "sha256": "e9355824110eed8329aedfe8ca70aa848f092ca086e3759a0fbf46642ddbc1d2",
+      "bytes": 3660,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

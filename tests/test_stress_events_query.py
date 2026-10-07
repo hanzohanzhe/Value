@@ -42,7 +42,7 @@ class StressEventsQueryTests(unittest.TestCase):
             self.assertEqual(page["stress_periods"], 7)
             self.assertAlmostEqual(page["shortfall_mwh"], 43.75)
             first = page["items"][0]
-            self.assertEqual(first["start_timestamp"], "2025-01-01T01:00:00")
+            self.assertEqual(first["start_timestamp"], "2025-01-01T01:00:00Z")  # S-中1: UTC model clock
             self.assertEqual((first["periods"], first["event_type"]), (1, "stress"))
             second = query_stress_events(database, year=2025, limit=2, offset=2)
             self.assertEqual([item["start_period"] for item in second["items"]], [100])
