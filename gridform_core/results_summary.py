@@ -442,6 +442,61 @@ def _change_sentence(details: Mapping[str, Mapping[str, object]]) -> str:
     return "; ".join(parts)
 
 
+# AF3-1 (DECISIONS A23): annual deltas are gated per metric.  A metric's delta
+# is withheld only for a reason that concerns that metric: a definition it is
+# computed under differs, or (curtailment metrics only) the Runs lack matching
+# reconciled VRE-curtailment attribution evidence.
+_DEFINITION_KEYS = ("cost", "carbon", "terminal_policy", "currency_base_year")
+_COST_DEFINITIONS = ("cost", "terminal_policy", "currency_base_year")
+_METRIC_DEFINITIONS: dict[str, tuple[str, ...]] = {
+    "cem_system_cost_gbp": _COST_DEFINITIONS,
+    "cem_system_cost_gbp_per_mwh_served": _COST_DEFINITIONS,
+    "annualised_capital_gbp": _COST_DEFINITIONS,
+    "operating_resource_cost_gbp": _COST_DEFINITIONS,
+    "total_carbon_emissions_tco2e": ("carbon",),
+    "unserved_energy_mwh": (),
+    "vre_curtailment_mwh": (),
+    "vre_curtailment_rate": (),
+    "redispatch_net_impact_mwh": (),
+}
+CURTAILMENT_EVIDENCE_METRICS = frozenset({
+    "vre_curtailment_mwh", "vre_curtailment_rate", "redispatch_net_impact_mwh",
+})
+
+
+def metric_delta_gate(
+    metric_id: str,
+    differing_definitions: Sequence[str],
+    curtailment_comparison: Mapping[str, object],
+) -> dict[str, object]:
+    """Whether one metric's annual deltas are shown, and why not (AF3-1).
+
+    A metric this function does not know depends on every definition
+    (conservative).  The reason is a code plus a sentence for the page.
+    """
+
+    needed = _METRIC_DEFINITIONS.get(metric_id, _DEFINITION_KEYS)
+    blocking = [key for key in differing_definitions if key in needed]
+    if blocking:
+        return {
+            "allowed": False,
+            "reason_code": "metric_definition_differs",
+            "definitions": blocking,
+            "reason": "The Runs compute this metric under different "
+            + ", ".join(key.replace("_", " ") for key in blocking) + " definitions.",
+        }
+    if metric_id in CURTAILMENT_EVIDENCE_METRICS and not curtailment_comparison.get("metric_deltas_allowed"):
+        code = str(curtailment_comparison.get("reason_code") or "curtailment_evidence_unavailable")
+        return {
+            "allowed": False,
+            "reason_code": code,
+            "definitions": [],
+            "reason": "VRE-curtailment differences need matching, reconciled curtailment-attribution "
+            "evidence in every Run (" + code.replace("_", " ") + ").",
+        }
+    return {"allowed": True, "reason_code": None, "definitions": [], "reason": None}
+
+
 def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str, object]:
     if not 2 <= len(summaries) <= 6:
         raise ValueError("A comparison requires 2 to 6 runs")
@@ -557,11 +612,16 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             "reason_code": failed_evidence["reason_code"],
         }
     formulation_changed = "module.psm" in dimensions
+    differing_definitions = [key.split(".", 1)[1] for key in dimensions if key.startswith("definition.")]
+    # metric_deltas_allowed keeps its meaning: every metric's delta is shown.
+    # metric_delta_gates says, per metric, which ones are and why the others
+    # are withheld (AF3-1).
     deltas_allowed = (
-        not any(key.startswith("definition.") for key in dimensions)
+        not differing_definitions
         and not annual_metrics_withheld
         and bool(curtailment_comparison["metric_deltas_allowed"])
     )
+    metric_delta_gates: dict[str, dict[str, object]] = {}
     base = summaries[0]
     base_annual = {int(row["year"]): row for row in base.get("annual", [])}  # type: ignore[index]
     annual_comparison = []
@@ -576,6 +636,9 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         )))
         metrics = {}
         for metric_id in metric_ids:
+            gate = metric_delta_gates.setdefault(
+                metric_id, metric_delta_gate(metric_id, differing_definitions, curtailment_comparison)
+            )
             values = []
             for summary in summaries:
                 annual = next((row for row in summary.get("annual", []) if int(row["year"]) == year), None)  # type: ignore[index]
@@ -588,7 +651,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             base_value = values[0]["value"]
             for item in values:
                 value = item["value"]
-                if deltas_allowed and isinstance(value, (int, float)) and isinstance(base_value, (int, float)):
+                if gate["allowed"] and isinstance(value, (int, float)) and isinstance(base_value, (int, float)):
                     item["delta_from_base"] = float(value) - float(base_value)
                     item["percentage_delta_from_base"] = ((float(value) - float(base_value)) / float(base_value) * 100.0) if base_value else None
                 else:
@@ -696,6 +759,8 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         "changed_dimensions": dimensions,
         "changed_dimension_details": dimension_details,
         "metric_deltas_allowed": deltas_allowed,
+        "metric_delta_gates": metric_delta_gates,
+        "withheld_metric_deltas": sorted(key for key, gate in metric_delta_gates.items() if not gate["allowed"]),
         "clean_storage_policy_comparison": causal_storage_comparison,
         "network_comparison": network_comparison,
         "curtailment_comparison": curtailment_comparison,
