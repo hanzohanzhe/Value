@@ -81,3 +81,11 @@ export function timestampCoverageText(report: { coverage?: { span_days: number; 
   }
   return parts.join(" · ");
 }
+
+/** S-F-低6 (R5): a review's expiry in local time to the minute ("2026-10-07 23:05 local time"), not a raw ISO string. */
+export function reviewExpiryText(iso: string): string {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return iso;
+  const two = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())} local time`;
+}

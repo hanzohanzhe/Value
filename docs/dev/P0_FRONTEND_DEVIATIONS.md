@@ -318,3 +318,15 @@
 | F-R44-7 | F-低4 | Run 上下文条（Runs、Inspect 和结果页的头部）在方法学 pill 旁为每个所选扩展加一个 `StatusPill`：未声明 ready 的写 `Experimental extension: {id} {version}`（caution），ready 的写 `Extension: {id} {version}`（muted）；`.run-context-profile` 加 `gap: 4px 6px` | 原来全页找不到实验性扩展的标记 | 是（位置） |
 | F-R44-8 | F-低5 | 有 Run 未结束时的生命周期确认框文案按对象写 `Change the installed extensions anyway?` 或 `… modules anyway?`（后端消息同样区分）；冲突检查先于确认 | 原来扩展也说 modules，且确认后才知道包会被拒 | 否 |
 | F-R44-9 | F-中3 | Rescan 成功后的提示改为 `Rescan complete: modules and extension hooks were imported again; none is quarantined.`，否则 `… some modules or extensions are quarantined; see the panel.` | Rescan 现在也导入扩展钩子 | 否 |
+
+## R5-1（换数据角色最终验收的缺陷；DECISIONS A28）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R51-1 | S-F-高1 | 换数据角色卡片中，旧标签需求文件（VALUE 101 的两份需求文件：表头 `mwh`、包内标签 `MWh/period`、实际按 MW 读取）在原文件和目标文件下各加一行，样式与时间戳、汇率行相同（12px `--muted`，新 class `.journey-data-unit`）：`单位：按 MW 读取（每半小时平均功率）。文件表头写作 mwh、包内标签为 MWh/period，这是已知误标；…映射中请选择 MW。`。映射编辑器需求说明下用已有的 `.csv-mapping-hint`（amber 左边框）重复这句。后端在工作区数据包的绑定上给出 `runtime_unit_interpretation`（登记表重标，文件字节和 manifest 不变） | 用户按基线标签换算会把需求放大一倍，界面原来没有任何提示 | 是（文案、提示色） |
+| F-R51-2 | S-F-高1、S-F-中2 | 比较页年度指标新增 `Annual demand (MWh)`、`Demand served (MWh)`、`Unserved energy recorded by the PSM (MWh)`；原 `Unserved energy (MWh)` 改为 `Unserved energy incl. stress shortfall (MWh)`（A2 账：PSM 记录的缺电加 stress 缺口），沿用现有指标卡片。Runs 页年度卡片 `Unserved demand` 改显示同一 A2 总量，下方用卡片已有的 `small` 样式写 `incl. stress shortfall · {x} MWh recorded by the PSM`；没有 A2 数值的旧 Run 仍显示 PSM 记录值，不加说明。前端不做减法，两个数都来自后端 | 顶部横幅说缺口记为未供电量，卡片和比较却只显示 PSM 记录的小数 | 是（标签措辞） |
+| F-R51-3 | S-F-低5 | 比较页年度表格上方加一行（`.comparison-reference`，正文样式）：`Deltas (+ and %) are measured against {Study 名} ({run id}), the first Run ticked. To measure against another Run, clear the selection and tick that Run first.`。参照仍是第一个勾选的 Run，不新增选择控件 | 原来不说明参照；新增选择控件超出规格 | 是（是否要参照选择器） |
+| F-R51-4 | S-F-低1、S-F-低6、S-F-低3 | 映射审阅中 `映射 SHA` 改为 `列与单位映射 SHA`，下方 `small` 一行说明时间戳声明不在此 SHA 内、记录在时间戳报告和绑定中；审阅有效期显示为本地时间到分钟（`2026-10-08 00:50 local time`）；包只读时映射编辑器不再显示“正在核对当前包的映射目录…”，改为“当前不能映射 CSV，原因见下方。” | 同一文件两种日期读法得到同一 SHA 易误解；原始 ISO 串带微秒；只读时像在加载 | 否 |
+| F-R51-5 | S-F-中3 | 映射编辑器需求说明句末加：`逐时数据（8,760 或 8,784 行，或时间戳间隔 60 分钟）的每个小时用于两个半小时，MWh/period 按每小时电量换算。` 审阅报告的警告列表中出现 `GF_MAPPING_HOURLY_DEMAND` 一条 | 需求原来不接受逐时数据，报告互相矛盾 | 否 |

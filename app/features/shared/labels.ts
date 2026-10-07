@@ -12,7 +12,12 @@ export const METRIC_LABELS: Readonly<Record<string, string>> = {
   annualised_capital_gbp: "Annualised capital (GBP)",
   operating_resource_cost_gbp: "Operating resource cost (GBP)",
   total_carbon_emissions_tco2e: "Total carbon emissions (tCO2e)",
-  unserved_energy_mwh: "Unserved energy (MWh)",
+  // R5 (S-F-高1/中2): all unserved energy of the A2 account (PSM-recorded plus
+  // stress shortfall), the PSM-recorded part, annual demand and demand served.
+  unserved_energy_mwh: "Unserved energy incl. stress shortfall (MWh)",
+  recorded_unserved_energy_mwh: "Unserved energy recorded by the PSM (MWh)",
+  demand_mwh: "Annual demand (MWh)",
+  demand_served_mwh: "Demand served (MWh)",
   vre_curtailment_mwh: "VRE curtailment (MWh)",
   vre_curtailment_rate: "VRE curtailment rate",
   redispatch_net_impact_mwh: "Redispatch net impact (MWh)",

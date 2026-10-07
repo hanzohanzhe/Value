@@ -119,3 +119,19 @@ export function unitCostText(metrics: MetricMap): string {
   if (definitionId === LEGACY_DEFINITION) return `${price} generated`;
   return `${price} (basis not recorded)`;
 }
+
+/**
+ * S-F-中2 (R5): the annual card's unserved demand is all unserved energy of
+ * the A2 account (the PSM-recorded blackout plus the stress shortfall that the
+ * energy-balance ledger books as unserved), the same quantity the cost per MWh
+ * served deducts; the PSM-recorded part is named beside it. Both values come
+ * from the backend; the page does not subtract. A Run without the A2 value
+ * shows the recorded blackout with no note.
+ */
+export function unservedDemandText(metrics: MetricMap): { value: string; note: string | null } {
+  const energy = (value: number | null) => value == null ? "Not evaluated" : withUnit(formatNumber(value), "MWh");
+  const total = number(metrics, "unserved_energy_a2_mwh");
+  const recorded = number(metrics, "blackout_mwh");
+  if (total == null) return { value: energy(recorded), note: null };
+  return { value: energy(total), note: `incl. stress shortfall · ${energy(recorded)} recorded by the PSM` };
+}

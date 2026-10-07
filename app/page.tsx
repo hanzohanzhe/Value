@@ -61,6 +61,7 @@ import ReplayExportPanel from "./features/market/ReplayExportPanel";
 import StressEventList from "./features/market/StressEventList";
 import { isResultCoverage } from "./features/shared/coverageView.ts";
 import { defaultDraftPackId } from "./features/studies/draftPack.ts";
+import { studyResolutionKey } from "./features/studies/studyResolutionKey.ts";
 import { preparationProgressText, startedRunNoticeText, startedRunNoticeVisible, type StartedRunNotice } from "./features/runs/runHistoryView.ts";
 import TraceCoverageNotice, { type TraceProfile } from "./features/market/TraceCoverageNotice";
 import {
@@ -483,7 +484,10 @@ export default function Home() {
   const [journeyTargetPackId, setJourneyTargetPackId] = useState("");
   const [journeyData, setJourneyData] = useState<{ sourceStudyId: string; sourceRevisionSha256: string; targetPackId: string } | null>(null);
   const dataPreviewRequest = useRef(0);
-  const [savedDataResolution, setSavedDataResolution] = useState<{ project: Project; manifestSha256?: string; resolution: DraftResolution } | null>(null);
+  // S-F-中1 (R5): keyed by the Study's content, not its object identity, so a
+  // workspace poll during a Run (new objects, same Study) keeps the resolution
+  // and the mapping editor's staged file.
+  const [savedDataResolution, setSavedDataResolution] = useState<{ key: string; manifestSha256?: string; resolution: DraftResolution } | null>(null);
   const [dataPreviewResult, setDataPreview] = useState<{ contextId: string; packId: string; manifestSha256?: string; preview: DataPreview } | null>(null);
   const [dataPreviewLoading, setDataPreviewLoading] = useState("");
   const [domainExtensionIds, setDomainExtensionIds] = useState<string[]>([]);
@@ -759,22 +763,23 @@ export default function Home() {
       ? "该数据包已被保存的 Study 引用。请再次复制后编辑，保留已有研究的输入。"
     : !dataManifestSha256 ? "未取得目标数据包版本，请刷新工作区后重试。" : "";
 
+  const dataContextKey = useMemo(() => studyResolutionKey(dataContextProject), [dataContextProject]);
   useEffect(() => {
-    if (!dataContextProject) return;
+    if (!dataContextKey) return;
     let active = true;
     void fetch(`${API}/projects/resolve-draft`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataContextProject),
+      body: dataContextKey,
     }).then(async (response) => {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Study data resolution failed");
-      if (active) setSavedDataResolution({ project: dataContextProject, manifestSha256: dataManifestSha256, resolution: payload as DraftResolution });
+      if (active) setSavedDataResolution({ key: dataContextKey, manifestSha256: dataManifestSha256, resolution: payload as DraftResolution });
     }).catch((reason: Error) => { if (active) { setSavedDataResolution(null); setNotice(reason.message); } });
     return () => { active = false; };
-  }, [dataContextProject, dataManifestSha256]);
+  }, [dataContextKey, dataManifestSha256]);
 
   const dataContextResolution = dataContextId === "draft" ? draftResolution
-    : savedDataResolution?.project === dataContextProject && savedDataResolution?.manifestSha256 === dataManifestSha256 ? savedDataResolution?.resolution : null;
+    : dataContextKey && savedDataResolution?.key === dataContextKey && savedDataResolution?.manifestSha256 === dataManifestSha256 ? savedDataResolution?.resolution : null;
   const activeDataSlots = dataContextResolution?.active_dataset_slots ?? workspace.dataset_slots;
   const dataGroups = [...new Set(activeDataSlots.map((slot) => slot.group))];
   const dataContextExtensions = dataContextId === "draft" ? projectForm.selected_extensions

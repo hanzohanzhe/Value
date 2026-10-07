@@ -7,7 +7,7 @@ import { Badge, formatNumber, formatMoney, withUnit } from "../shared/presentati
 import { apiUrl, getJson } from "../shared/api";
 import { Callout, StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
-import { costComposition, unitCostText } from "./resultMetrics.ts";
+import { costComposition, unitCostText, unservedDemandText } from "./resultMetrics.ts";
 import { moduleEvidenceText } from "./runHistoryView.ts";
 import { planningYearFromPayload } from "./planningView.ts";
 import { codePhrase, stageLabel, statusLabel } from "../shared/labels.ts";
@@ -149,7 +149,7 @@ export function AnnualResults({ runId, results, coverage, onOpenInspect, publica
         <span><small>Average system cost</small><b>{unitCostText(latest.metrics)}</b></span>
         <span><small>Annualised capital</small><b>{formatMoney(metricNumber(latest, "total_levelized_capital_cost_gbp"))}</b></span>
         <span><small>Operating cost</small><b>{formatMoney(metricNumber(latest, "total_operational_cost_gbp"))}</b></span>
-        <span><small>Unserved demand</small><b>{energyMwh(metricNumber(latest, "blackout_mwh"))}</b></span>
+        <span><small>Unserved demand</small><b>{unservedDemandText(latest.metrics).value}</b>{unservedDemandText(latest.metrics).note && <small className="metric-note">{unservedDemandText(latest.metrics).note}</small>}</span>
       </div>}
     </section>
     {sorted.length > 1 && <section className="cost-trend" aria-label="Annual system cost trend">

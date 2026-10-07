@@ -91,6 +91,11 @@ export function metricLabel(id: string): string {
   return sharedMetricLabel(id);
 }
 
+/** S-F-低5 (R5): which Run the annual deltas are measured against (the first Run ticked). */
+export function deltaReferenceText(runId: string, name?: string | null): string {
+  return `Deltas (+ and %) are measured against ${name ? `${name} (${runId})` : runId}, the first Run ticked. To measure against another Run, clear the selection and tick that Run first.`;
+}
+
 /** One metric's delta gate (gridform_core/results_summary.metric_delta_gate). */
 export type MetricDeltaGate = { allowed: boolean; reason_code?: string | null; definitions?: string[]; reason?: string | null };
 export type MetricDeltaFields = {

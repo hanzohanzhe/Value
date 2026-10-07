@@ -5,6 +5,7 @@ import { useCallback, useId, useState } from "react";
 import "./journey-data-editor.css";
 import CsvMappingEditor from "../data/CsvMappingEditor";
 import type { CsvMappingCommit } from "../data/csvMappingTypes";
+import { demandUnitText, type DemandUnitInterpretation } from "./demandUnit.ts";
 
 export type JourneyBinding = {
   filename: string; sha256: string; validation?: { status?: string }; mapping_provenance?: { source_sha256: string; spec_sha256: string; normalized_sha256: string };
@@ -14,7 +15,10 @@ export type JourneyBinding = {
   timestamp_date_order?: string;
   /** P0-5a S10 / S-低5: the EUR->GBP declaration of a mapped price binding. */
   source_currency?: string; eur_per_gbp?: number; fx_basis?: string; price_year?: number;
+  /** S-F-高1 (R5): the declared unit and, for legacy-labelled demand bytes, the unit they are read in. */
+  unit?: string | null; runtime_unit_interpretation?: DemandUnitInterpretation;
 };
+
 
 /** N-6 (round R1-5): the timestamp declaration a mapped binding recorded, in one line. */
 export function timestampDeclarationText(binding: JourneyBinding | undefined): string | null {
@@ -85,10 +89,10 @@ export default function JourneyDataEditor({ sourceName, sourcePackName, targetPa
     {targetPack && <p className="journey-data-count">新增 {added} · SHA 改变 {changed} · 必需角色缺失 {missing}{added + changed === 0 && "。目前沿用原文件，还没有检测到数据变化。"}</p>}
     <label className="journey-data-role" htmlFor={`${id}-role`}><span>1. 选择文件的语义角色</span><select id={`${id}-role`} value={slot?.role ?? ""} disabled={effectiveBusy || !slots.length} onChange={(event) => setSelectedRole(event.target.value)}>{slots.map((item) => <option key={item.role} value={item.role}>{item.label} · {item.role}{item.required ? " · 必需" : ""}</option>)}</select></label>
     {slot && <><p><code>{slot.role}</code> · {slot.required ? "必需" : "可选"} · 标准格式 {formats.join(" / ") || "未声明"}{slot.unit && ` · ${slot.unit}`}{slot.time_semantics && ` · ${slot.time_semantics}`}</p>
-      <div className="journey-data-files"><div><b>原文件</b><span>{original?.filename ?? "没有绑定"}</span>{original && <code>SHA {original.sha256}</code>}</div><div><b>目标文件</b><span>{binding?.filename ?? "没有绑定"}</span>{binding && <><code>SHA {binding.sha256}</code><span>校验：{binding.validation?.status ?? "尚未记录"}</span>{binding.mapping_provenance && <><span>映射保留的原始文件</span><code>SHA {binding.mapping_provenance.source_sha256}</code><span>规范文件</span><code>SHA {binding.mapping_provenance.normalized_sha256}</code><span>映射规则</span><code>SHA {binding.mapping_provenance.spec_sha256}</code></>}{timestampDeclarationText(binding) && <span className="journey-data-timestamp">{timestampDeclarationText(binding)}</span>}{fxDeclarationText(binding) && <span className="journey-data-fx">{fxDeclarationText(binding)}</span>}</>}</div></div>
+      <div className="journey-data-files"><div><b>原文件</b><span>{original?.filename ?? "没有绑定"}</span>{original && <code>SHA {original.sha256}</code>}{demandUnitText(original) && <span className="journey-data-unit">{demandUnitText(original)}</span>}</div><div><b>目标文件</b><span>{binding?.filename ?? "没有绑定"}</span>{binding && <><code>SHA {binding.sha256}</code><span>校验：{binding.validation?.status ?? "尚未记录"}</span>{binding.mapping_provenance && <><span>映射保留的原始文件</span><code>SHA {binding.mapping_provenance.source_sha256}</code><span>规范文件</span><code>SHA {binding.mapping_provenance.normalized_sha256}</code><span>映射规则</span><code>SHA {binding.mapping_provenance.spec_sha256}</code></>}{demandUnitText(binding) && <span className="journey-data-unit">{demandUnitText(binding)}</span>}{timestampDeclarationText(binding) && <span className="journey-data-timestamp">{timestampDeclarationText(binding)}</span>}{fxDeclarationText(binding) && <span className="journey-data-fx">{fxDeclarationText(binding)}</span>}</>}</div></div>
       {lastMapped && lastMapped.packId === targetPack?.id && lastMapped.role === slot.role && binding?.sha256 === lastMapped.sha256 && <p className="journey-data-mapped" role="status">{mappedConfirmationText(slot.role, lastMapped.sha256)}</p>}
       <p>2. 使用角色模板或符合契约的标准格式文件。标准文件可直接校验上传；受支持的 CSV 角色也可先映射列和单位，审阅完整报告后再确认提交。</p>
-      {targetPack?.manifest_sha256 && onMapped ? <CsvMappingEditor key={mappingContext} packId={targetPack.id} manifestSha256={targetPack.manifest_sha256} role={slot.role} disabled={busy} readOnlyReason={readOnlyReason} modelStartYear={modelStartYear} onMapped={onCommitted} onBusyChange={onMappingBusy} /> : <p>CSV 列映射需要当前目标包版本；请刷新目标包，或使用标准文件上传。</p>}
+      {targetPack?.manifest_sha256 && onMapped ? <CsvMappingEditor key={mappingContext} packId={targetPack.id} manifestSha256={targetPack.manifest_sha256} role={slot.role} disabled={busy} readOnlyReason={readOnlyReason} modelStartYear={modelStartYear} currentUnitNote={demandUnitText(binding) ?? demandUnitText(original)} onMapped={onCommitted} onBusyChange={onMappingBusy} /> : <p>CSV 列映射需要当前目标包版本；请刷新目标包，或使用标准文件上传。</p>}
       <div className="journey-data-actions">{slot.template_available && <a className="secondary" href={apiUrl(`data-contracts/${encodeURIComponent(slot.role)}/template`)}>下载模板</a>}{binding && <button type="button" className="secondary" disabled={effectiveBusy} onClick={() => void onPreview(slot.role)}>预览目标文件</button>}<label className="upload">{effectiveBusy ? "正在处理…" : "选择并校验我的文件"}<input type="file" accept={formats.map((format) => `.${format}`).join(",")} disabled={disabled} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file && !disabled) void onUpload(slot.role, file); }} /></label></div>
     </>}
     <p>文件校验和 Study 运行前检查是不同步骤。保存新 Study 后，在 Runs 明确选择 scope 并执行 Check readiness。</p>

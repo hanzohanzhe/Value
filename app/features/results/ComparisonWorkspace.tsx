@@ -6,7 +6,7 @@ import { formatNumber, withUnit } from "../shared/presentation";
 import { Callout } from "../shared/Callout";
 import { codePhrase } from "../shared/labels.ts";
 import { profileBadge, type MethodologyRecord } from "../workspace/runValidation.ts";
-import { annualWithholdingNotice, type AnnualWithholdingReason, changedDimensionRows, dimensionPathsText, metricDeltaShown, metricDeltaWithheldText, metricLabel, missingMetricValueText, reviewReasonText, withheldDeltaSummary, type DimensionDetail, type MetricDeltaGate, type ReviewReason } from "./comparisonReview.ts";
+import { annualWithholdingNotice, type AnnualWithholdingReason, changedDimensionRows, deltaReferenceText, dimensionPathsText, metricDeltaShown, metricDeltaWithheldText, metricLabel, missingMetricValueText, reviewReasonText, withheldDeltaSummary, type DimensionDetail, type MetricDeltaGate, type ReviewReason } from "./comparisonReview.ts";
 import "./comparison-workspace.css";
 import "./comparison-details.css";
 
@@ -116,6 +116,7 @@ export default function ComparisonWorkspace({ runs }: { runs: ComparisonRun[] })
       <div className="module-differences"><b>Changed dimensions</b>{Object.keys(comparison.changed_dimensions).length ? changedDimensionRows(comparison.changed_dimensions, comparison.changed_dimension_details).map((row) => <span key={row.key} title={row.key}><code>{row.label}</code><small>{row.detail}</small>{row.raw && <details className="comparison-raw"><summary>Recorded values (JSON)</summary><pre>{row.raw}</pre></details>}</span>) : <small>No differences found in available records; check unknown dimensions above.</small>}</div>
       {withholdingNotice && <div className="info-box comparison-annual-withheld"><b>{withholdingNotice.title}</b>{withholdingNotice.lines.map((line) => <span key={line}><br />{line}</span>)}</div>}
       {withheldDeltaSummary(comparison) && <div className="info-box comparison-withheld-summary value-new-control"><b>Deltas withheld</b><br />{withheldDeltaSummary(comparison)}</div>}
+      {!comparison.annual_metrics_withheld && comparison.run_ids[0] && <p className="comparison-reference value-new-control">{deltaReferenceText(comparison.run_ids[0], runs.find((run) => run.id === comparison.run_ids[0])?.project_name)}</p>}
       {!comparison.annual_metrics_withheld && <div className="comparison-years">{comparison.annual_comparison.map((year) => <details key={year.year}><summary>{year.year}</summary><div className="comparison-metrics">{Object.entries(year.metrics).map(([metricId, values]) => <article key={metricId}><header><b>{metricLabel(metricId)}</b><code>{values[0]?.definition_id ?? "definition not evaluated"}</code></header>{values.map((value) => <span key={value.run_id}><small>{value.run_id}</small><b>{value.value == null ? missingMetricValueText(metricId) : `${formatNumber(value.value)} ${value.unit ?? ""}`}</b>{metricDeltaShown(comparison, metricId) && value.delta_from_base != null && <em>{value.delta_from_base >= 0 ? "+" : ""}{formatNumber(value.delta_from_base)} · {value.percentage_delta_from_base == null ? "n/a" : `${withUnit(formatNumber(value.percentage_delta_from_base), "%", "")}`}</em>}</span>)}{metricDeltaWithheldText(comparison, metricId) && <p className="comparison-metric-withheld value-new-control">{metricDeltaWithheldText(comparison, metricId)}</p>}</article>)}</div></details>)}</div>}
     </>}
   </section>;
