@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import defaultdict
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Mapping
 
 from .market_ledger import _read_only_connection
+from .model_clock import ledger_clock, period_start_iso
 
 
 AUCTION_VIEW_SCHEMA = "value.market-auction-view/v1"
@@ -594,7 +594,8 @@ def _period_hours(semantic: Mapping[str, object]) -> float:
 
 
 def _model_timestamp(year: int, period: int, period_hours: float) -> str:
-    return (datetime(year, 1, 1) + timedelta(hours=period * period_hours)).isoformat()
+    # S-中1: the model clock is UTC on a fixed 365-day year (gridform_core.model_clock).
+    return period_start_iso(year, period, period_hours)
 
 
 def query_dispatch_timeline(
@@ -828,8 +829,7 @@ def query_dispatch_timeline(
         "year": int(year),
         "resolution": resolution,
         "period_hours": period_hours,
-        "timezone": str(semantic.get("timezone", "Europe/London")),
-        "calendar": str(semantic.get("calendar", "fixed_365_day_local_periods")),
+        **ledger_clock(semantic),
         "total": total_buckets,
         "limit": limit,
         "offset": offset,
@@ -1109,7 +1109,7 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
         "definition_id": "value.vre-excess-curtailment-accounting/v1",
         "years": results,
         "period_hours": period_hours,
-        "timezone": str(semantic.get("timezone", "Europe/London")),
+        **ledger_clock(semantic),
         "excess_relationship": relationship,
         "excess_scope": excess_scope,
         "curtailment_semantics": curtailment_semantics,
@@ -1171,7 +1171,7 @@ def query_stress_events(
         "event_type": "stress",
         "event_definition": "contiguous periods in which accepted supply fell short of demand (decision A2)",
         "shortfall_basis": "exact",
-        "timezone": str(semantic.get("timezone", "Europe/London")),
+        **ledger_clock(semantic),
         "period_hours": period_hours,
         "source_artifact_sha256": _artifact_hash(database),
         "units": {"energy": "MWh"},

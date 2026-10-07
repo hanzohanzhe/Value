@@ -119,8 +119,9 @@ V7_SUPPLY_FLOW_TYPES = frozenset({"generation", "import", "storage_discharge"})
 V8_SUPPLY_STAGE = "final_dispatch"
 SEMANTIC_METADATA = {
     "period_hours": 0.5,
-    "timezone": "Europe/London",
-    "calendar": "fixed_365_day_local_periods",
+    # S-中1: the ledger stamps the model clock itself (UTC, fixed 365-day year).
+    "timezone": "UTC",
+    "calendar": "fixed_365_day_utc_periods",
     "excess_scope": "inflexible_mixed",
     "excess_relationship": "separate_prebalancing",
 }

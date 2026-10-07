@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Iterator, Mapping
 
 from .market_ledger import _read_only_connection, public_boundary_row, validate_market_ledger_file
+from .model_clock import ledger_clock, period_start_iso
 from .module_context import RunStaticContext, YearContext, canonical_context_sha256
 from .run_policy import resolve_run_policy
 from .run_snapshot import SnapshotError, verify_run_input_snapshot
@@ -103,6 +104,21 @@ def _tables(connection: sqlite3.Connection) -> set[str]:
         str(row[0])
         for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
     }
+
+
+def _period_hours(metadata: Mapping[str, object]) -> float:
+    try:
+        value = float(metadata.get("period_hours", 0.5))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.5
+    return value if value > 0 else 0.5
+
+
+def _model_clock(metadata: Mapping[str, object]) -> dict[str, object]:
+    """S-中1: the export states the model clock its period_start_utc column uses."""
+
+    clock = ledger_clock(metadata)
+    return {**clock, "period_hours": _period_hours(metadata), "period_start_column": "period_start_utc"}
 
 
 def _metadata(connection: sqlite3.Connection) -> dict[str, object]:
@@ -842,6 +858,7 @@ def _write_zip(
                 "output_format": request.output_format,
             },
             "ledger_schema_version": metadata.get("schema_version"),
+            "model_clock": _model_clock(metadata),
             "trace_level": trace_level,
             "period_count": period_count,
             "portability": portability,
@@ -863,6 +880,7 @@ def _write_flat(
     with _read_only_connection(database) as connection, temporary.open(
         "w", encoding="utf-8", newline=""
     ) as handle:
+        period_hours = _period_hours(_metadata(connection))
         connection.row_factory = sqlite3.Row
         cursor = connection.execute(
             "SELECT * FROM period_summary" + where + " ORDER BY year, period, stage",
@@ -871,6 +889,8 @@ def _write_flat(
         writer: csv.DictWriter[str] | None = None
         for row in cursor:
             payload = dict(row)
+            # S-中1: the UTC start of the period on the model clock (last column).
+            payload["period_start_utc"] = period_start_iso(int(row["year"]), int(row["period"]), period_hours)
             if output_format == "jsonl":
                 handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
             else:

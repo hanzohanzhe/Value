@@ -7,10 +7,13 @@
   "schema_version": "value.vre-curtailment-summary/v1",
   "definition_id": "value.vre-excess-curtailment-accounting/v1",
   "years": [
-   {"year":2025,"period_count":48,"first_period":0,"last_period":47,"full_chronology":false,"available_vre_mwh":349.5564208181179,"accepted_vre_mwh":349.5564208181179,"neutral_unused_vre_mwh":0.0,"pre_balancing_excess_mwh":0.0,"pre_balancing_excess_scope":"non_vre_spill","balancing_curtailment_mwh":0.0,"reported_excess_mwh":0.0,"reported_balancing_curtailment_mwh":0.0,"vre_utilisation_fraction":1.0,"average_unused_vre_fraction":0.0,"affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00","storage_charge_mwh":11.531282451591508,"export_mwh":0.0,"flexible_demand_mwh":0.0,"vre_identity_residual_mwh":0.0,"coverage_status":"partial_semantic_attribution","event_basis":"corrected_unused_vre","unused_vre_events":{"basis":"corrected_unused_vre","affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00"},"excess_curtailment_events":null,"marginal_curtailment_status":"not_evaluated","marginal_curtailment_reason":"No versioned marginal-capacity experiment artifact is attached to this run."}
+   {"year":2025,"period_count":48,"first_period":0,"last_period":47,"full_chronology":false,"available_vre_mwh":349.5564208181179,"accepted_vre_mwh":349.5564208181179,"neutral_unused_vre_mwh":0.0,"pre_balancing_excess_mwh":0.0,"pre_balancing_excess_scope":"non_vre_spill","balancing_curtailment_mwh":0.0,"reported_excess_mwh":0.0,"reported_balancing_curtailment_mwh":0.0,"vre_utilisation_fraction":1.0,"average_unused_vre_fraction":0.0,"affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00Z","storage_charge_mwh":11.531282451591508,"export_mwh":0.0,"flexible_demand_mwh":0.0,"vre_identity_residual_mwh":0.0,"coverage_status":"partial_semantic_attribution","event_basis":"corrected_unused_vre","unused_vre_events":{"basis":"corrected_unused_vre","affected_periods":0,"longest_event_periods":0,"longest_event_hours":0.0,"peak_event_mwh":0.0,"peak_event_period":0,"peak_event_timestamp":"2025-01-01T00:00:00Z"},"excess_curtailment_events":null,"marginal_curtailment_status":"not_evaluated","marginal_curtailment_reason":"No versioned marginal-capacity experiment artifact is attached to this run."}
   ],
   "period_hours": 0.5,
-  "timezone": "Europe/London",
+  "timezone": "UTC",
+  "calendar": "fixed_365_day_utc_periods",
+  "clock_rule": "Half-hour periods in UTC on a fixed 365-day year: period p of model year Y starts at 00:00 UTC of model day p // periods_per_day (29 February is never a model day) plus the period's offset within the day. No daylight saving.",
+  "clock_label_corrected": false,
   "excess_relationship": "separate_prebalancing",
   "excess_scope": "non_vre_spill",
   "curtailment_semantics": "vre_available_minus_gross_output",

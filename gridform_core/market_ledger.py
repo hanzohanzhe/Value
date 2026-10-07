@@ -43,6 +43,7 @@ from .market_integrity import (
     seal_year,
 )
 from .market_ownership import MarketLedgerOwnershipLease
+from .model_clock import is_legacy_clock_label, ledger_clock_metadata
 from .subannual_checkpoint import LedgerPrefixIdentity
 from .v2.contracts import JsonContract
 from .vre_curtailment_attribution import VRECurtailmentAttribution
@@ -1650,6 +1651,25 @@ def _declared_schema_version(database: Path) -> str | None:
     return str(row[0]) if row else None
 
 
+def _existing_legacy_clock(database: Path) -> dict[str, str]:
+    """The pre-S-中1 clock label of an existing ledger (``{}`` when it has none)."""
+
+    with _read_only_connection(database) as connection:
+        stored = {
+            str(key): str(value)
+            for key, value in connection.execute(
+                "SELECT key, value FROM metadata WHERE key IN ('timezone', 'calendar')"
+            )
+        }
+    try:
+        label = {key: json.loads(value) for key, value in stored.items()}
+    except ValueError:
+        return {}
+    if not is_legacy_clock_label(label):
+        return {}
+    return {str(key): str(value) for key, value in label.items()}
+
+
 def market_ledger_capabilities(database: Path) -> dict[str, object]:
     """Inspect readable market-ledger versions without opening a writer."""
 
@@ -1730,7 +1750,17 @@ class SQLiteMarketLedger:
                 raise ValueError(
                     f"Unsupported market ledger schema {existing_schema_version}"
                 )
-            supplied_semantic_metadata = dict(semantic_metadata or {})
+            # S-中1: the ledger records the model clock (UTC, fixed 365-day
+            # year); it is not a PSM choice, so a supplied label is replaced.
+            supplied_semantic_metadata = {
+                **dict(semantic_metadata or {}), **ledger_clock_metadata()
+            }
+            if self._authoritative_v8 and existing_schema_version == SCHEMA_VERSION:
+                legacy_clock = _existing_legacy_clock(self.path)
+                if legacy_clock:
+                    # A ledger created before S-中1 resumes with its own
+                    # (immutable) label; the read models correct it.
+                    supplied_semantic_metadata.update(legacy_clock)
             persistent_semantic_metadata = {
                 str(key): value
                 for key, value in supplied_semantic_metadata.items()

@@ -468,8 +468,8 @@ class PerfectForesightPSM:
                     "psm_module_id": self.id,
                     "psm_module_version": self.version,
                     "period_hours": float(model_input.period_hours),
-                    "timezone": "Europe/London",
-                    "calendar": "fixed_365_day_local_periods",
+                    # The ledger stamps the model clock (UTC, fixed 365-day year;
+                    # gridform_core.model_clock, four-role test S-M1).
                     "requested_trace_level": requested_trace_level,
                     "dispatch_formulation": FORMULATION_ID,
                     "pricing_rule": "lp_balance_dual",

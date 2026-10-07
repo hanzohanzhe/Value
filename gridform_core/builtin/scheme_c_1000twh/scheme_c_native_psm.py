@@ -661,8 +661,8 @@ class SchemeCNativePSM:
                 "psm_module_id": self.id,
                 "psm_module_version": self.version,
                 "period_hours": period_hours,
-                "timezone": "Europe/London",
-                "calendar": "fixed_365_day_local_periods",
+                # The ledger stamps the model clock (UTC, fixed 365-day year;
+                # gridform_core.model_clock, four-role test S-M1).
                 "requested_trace_level": trace_level,
                 "dispatch_formulation": "bid_at_cost_continuous_no_commitment",
                 "pricing_rule": "retained_bid_at_cost_pay_as_clear_agent_income",

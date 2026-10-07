@@ -1,5 +1,9 @@
 // Full-year stress / lost-load list (spec 4.4; P0-9 S6, F3-07). Pure view logic.
 import { formatEnergy } from "../shared/format.ts";
+import { modelTimestamp } from "../shared/modelClock.ts";
+
+/** S-中1: the model clock (UTC, fixed 365-day year) lives in shared/modelClock.ts. */
+export { modelTimestamp };
 
 export const RELIABILITY_PAGE_SIZE = 50;
 /** A Replay jump opens Market replay a few periods before the event starts. */
@@ -14,12 +18,6 @@ export type ReliabilityEvent = {
 export type ReliabilityRow = {
   key: string; start: string; startPeriod: number; periods: number; shortfall: string | null; type: string; zones: string;
 };
-
-/** Model clock (fixed 365-day local calendar of the ledger), as "YYYY-MM-DD HH:MM". */
-export function modelTimestamp(year: number, period: number, periodHours = 0.5): string {
-  const start = Date.UTC(year, 0, 1) + period * periodHours * 3_600_000;
-  return new Date(start).toISOString().slice(0, 16).replace("T", " ");
-}
 
 function zones(raw: string | undefined): string {
   if (!raw) return "—";

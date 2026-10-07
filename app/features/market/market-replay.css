@@ -5,6 +5,7 @@
 .selected-period-strip.window-summary small { font-size: 12px; color: var(--muted); }
 .selected-period-strip.window-summary b { font-size: 13px; font-weight: 600; color: var(--ink); }
 .selected-period-strip.window-summary .window-summary-wide { grid-column: span 2; }
+.selected-period-strip.window-summary .window-clock-note { display: block; font-size: 12px; font-style: normal; color: var(--muted); }
 .selected-period-strip.window-summary .shortfall-positive b { color: var(--amber); }
 .selected-period-strip.window-summary .value-pill { align-self: flex-start; }
 @media (max-width: 600px) {

@@ -42,7 +42,7 @@ export type DispatchBucket = {
 export type DispatchTimeline = {
   schema_version?: string;
   year: number; resolution: string; total: number; limit: number; offset: number; source_artifact_sha256?: string | null;
-  period_hours?: number; timezone?: string; calendar?: string; price_aggregation?: string; dispatch_source?: string; dispatch_summary_available?: boolean;
+  period_hours?: number; timezone?: string; calendar?: string; clock_label_corrected?: boolean; clock_note?: string; price_aggregation?: string; dispatch_source?: string; dispatch_summary_available?: boolean;
   price_basis?: PriceBasis; price_basis_source?: PriceBasisSource;
   items: DispatchBucket[];
 };
