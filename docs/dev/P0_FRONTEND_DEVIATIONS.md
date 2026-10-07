@@ -280,3 +280,12 @@
 | # | 缺陷 | 实现 | 原因 | 待确认 |
 |---|---|---|---|---|
 | F-R42-1 | R-低4 | 规格第 0 节第 5 条和 4.2 节把动作写作 `Export ledger`，但这个动作只是打开 Inspect 的产物列表，并不下载文件。按钮和 Run 上下文条的动作统一改名为 `Open ledger files`，行为不变 | 动作名与行为一致；真正的打包下载已有 Inspect 的 `Prepare audit bundle` | 是（规格中的动作名） |
+| F-R42-2 | R-中2 | 比较页原来的 `Teaching boundary` 信息框改为按后端 `annual_withholding` 生成：教学课仍写 `Teaching boundary` 原文；Q14 扣留写 `Annual results withheld`，每个被扣留的 Run 一行（`{run} is a reproduction Run whose annual results are withheld (Q14): raw invariant {check} ({n} rows) failed. Its full ledger stays available in Inspect.`），末行说明导出里有哪些已发布 Run 的年度值、没有差值。沿用原 `info-box`，不并排显示已发布 Run 的年度值（只进导出） | 原文案与事实不符；并排显示需要新的表格布局，规格未覆盖 | 是（是否在页面上并排显示已发布 Run 的年度值） |
+| F-R42-3 | R-低2 | 未完成 Run 的提示摘要末尾加 ` · provisional: re-evaluated against this Run's frozen fleet and modules when it completes`；冻结输入之前不列出按资产筛选的提示 | 提示条数在完成前后变化，且列出了与本数据包无关的提示 | 是（文案） |
+| F-R42-4 | R-低3 | “has started” 提示只在发起它的 Study 的 Runs 页显示；换页或换 Study 时不显示，回到原处仍显示。后台运行按钮不变 | 提示跟着用户到了无关页面 | 否 |
+| F-R42-5 | R-低5、S-低7(c)、T-低1 | 新建 `app/features/shared/labels.ts` 作为指标名、状态词和阶段名的唯一标签表（如 `CEM system cost per MWh served (GBP/MWh)`、`Reproduction with declared deviations`、`Application submitted`），未知代码按首字母大写的短语显示。Runs 的校验条改为首字母大写的状态词，准备期间 Execution 写 `Preparing`；Run 上下文条沿用小写风格，准备期间写 `preparing` | 原来直接由字段名拼出标题，同一阶段两种写法 | 是（个别标签的措辞） |
+| F-R42-6 | R-低1 | Inspect 规划表标题改为 `{n} project-year records`，下面一行说明 `One row per project and model year: …`，第一列加 `Year` | 表格行实为“项目×年份” | 否 |
+| F-R42-7 | R-低7 | Composer 第 2 步中，当前口径不接受的计算域卡片徽章写 `not available with this methodology`（warn 色），与第 1 步数据包的禁用写法一致 | 原来同时显示绿色 `ready` 和“不属于论文谱系” | 否 |
+| F-R42-8 | R-低8 | Readiness 运行时间：没有可比的已完成 Run 时写 `estimated {a} min to {b} min (no comparable completed Run yet)`；有实测时写 `estimated about {n} min`（90 分钟以上用小时、一位小数） | 首次估算单点值与实际相差约 6 倍 | 是（文案） |
+| F-R42-9 | R-低9 | Market replay 导出面板控件下加一行 12px `--muted` 说明（`.replay-export-note`），解释 `physical_resource_cost_gbp` 与年度成本账的口径差别 | 用户对不上两个合计 | 是（文案与位置） |
+| F-R42-10 | R-低10 | 年度结果被扣留的 Run 打开 VRE 页时不再请求年度 VRE 摘要，改为 `Withheld` 状态 pill 加 `info-box`：`Annual VRE results withheld` 与去向说明 | 原来请求得到 409，控制台记为错误 | 否 |
