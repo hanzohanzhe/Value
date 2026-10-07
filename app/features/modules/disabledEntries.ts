@@ -21,7 +21,15 @@ export type DisabledEntry = {
   /** Enable is offered only for a disabled entry; a quarantined one needs a fix and Rescan. */
   canEnable: boolean;
   canRemove: boolean;
+  /** R4 M-低4: the manifest files behind a quarantined entry (relative to modules/). */
+  manifestFiles?: string[];
 };
+
+/** R4 F-低2: an entry names its ID, since two installed entries may share a display name. */
+export function entryLabel(name: string | undefined, id: string, version: string): string {
+  const shown = name && name !== id ? `${name} · ${id}` : id;
+  return `${shown} ${version}`.trim();
+}
 
 const VERSION = /^(\d+)\.(\d+)\.(\d+)/;
 function versionKey(value: string): number[] {
@@ -54,21 +62,23 @@ export function disabledEntries({ modules, extensions, quarantine }: {
   for (const record of modules ?? []) {
     if (!record?.module_id || record.enabled) continue;
     const key = `module:${record.module_id}`;
-    rows.set(key, { key, kind: "module", id: record.module_id, label: `${record.name ?? record.module_id} ${record.module_version}`.trim(), state: "disabled", canEnable: true, canRemove: true });
+    rows.set(key, { key, kind: "module", id: record.module_id, label: entryLabel(record.name, record.module_id, record.module_version), state: "disabled", canEnable: true, canRemove: true });
   }
   for (const record of currentExtensionRecords(extensions)) {
     if (record.enabled) continue;
     const key = `extension:${record.extension_id}`;
-    rows.set(key, { key, kind: "extension", id: record.extension_id, label: `${record.name ?? record.extension_id} ${record.version}`.trim(), state: "disabled", canEnable: true, canRemove: true });
+    rows.set(key, { key, kind: "extension", id: record.extension_id, label: entryLabel(record.name, record.extension_id, record.version), state: "disabled", canEnable: true, canRemove: true });
   }
   for (const row of quarantineRows(quarantine) as QuarantineRow[]) {
     if (!row.id) continue;
     const key = `${row.kind}:${row.id}`;
     const existing = rows.get(key);
+    const manifestFiles = [...(existing?.manifestFiles ?? []), ...(row.manifestFile ? [row.manifestFile] : [])];
     rows.set(key, {
       key, kind: row.kind, id: row.id, label: existing?.label ?? row.label, state: "quarantined",
       errorCode: row.errorCode, message: sanitizeMessage(row.firstLine),
       canEnable: Boolean(existing?.canEnable), canRemove: true,
+      ...(manifestFiles.length ? { manifestFiles } : {}),
     });
   }
   return [...rows.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));

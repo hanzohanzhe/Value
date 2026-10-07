@@ -1,6 +1,7 @@
 // Run history presentation (four-role report R-D2, S-D12, M2-N1, R-D12;
 // round R1-5). Pure view logic: every value comes from the Run record.
 import { RUN_SCOPE_LABELS } from "../workspace/runScope.ts";
+import { formatNumber } from "../shared/format.ts";
 import type { ModelRun, ModuleEvidence, RunMode } from "./types";
 
 type HistoryRun = Pick<ModelRun, "id" | "mode" | "status"> & { created_at?: string; error_code?: string };
@@ -88,7 +89,8 @@ export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot:
   // R4 M-中1: the PSM calls the storage-cost module internally; the market
   // ledger, not a stage event, shows that it priced the storage offers.
   if (evidence?.source === "market_ledger") {
-    const rows = typeof evidence.storage_asset_periods === "number" ? ` (${evidence.storage_asset_periods.toLocaleString("en-GB")} storage asset-periods)` : "";
+    const count = formatNumber(evidence.storage_asset_periods, 0);
+    const rows = count ? ` (${count} storage asset-periods)` : "";
     return `Called inside the PSM: the market ledger records its storage offers${rows}`;
   }
   if (isActiveRunStatus(run.status)) return "Evidence pending";

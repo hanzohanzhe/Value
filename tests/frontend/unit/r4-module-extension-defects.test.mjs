@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { extensionSourceChangeNote } from "../../../app/features/modules/disabledEntries.ts";
+import { disabledEntries, entryLabel, extensionSourceChangeNote } from "../../../app/features/modules/disabledEntries.ts";
+import { quarantineIntro, quarantineRows, quarantineTitle } from "../../../app/features/modules/module-quarantine.mjs";
 import { codeIdentityUpdate } from "../../../app/features/studies/studyMigration.ts";
 import { derivationNotes } from "../../../app/features/modules/derivationNotes.ts";
 import { environmentBlockers, preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
@@ -63,4 +64,35 @@ test("M-低2: installation errors are found so the method confirmation waits for
     { scope: "environment", code: "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED" },
   ] }), ["GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED"]);
   assert.deepEqual(environmentBlockers({ errors: [{ scope: "modules", code: "GF_PREFLIGHT_MODULE_QUARANTINED" }] }), []);
+});
+
+test("M-低4: two manifests with one ID are two distinguishable rows; the text agrees with the count", () => {
+  const report = { status: "degraded", entries: [
+    { kind: "module", id: "hx-flat", version: "1.1.0", manifest_file: "hx-flat.json", error_code: "GF_MODULE_ID_DUPLICATE", message: "Module ID hx-flat is declared by 2 local manifests" },
+    { kind: "module", id: "hx-flat", version: "1.1.0", manifest_file: "hx-flat-copy.json", error_code: "GF_MODULE_ID_DUPLICATE", message: "Module ID hx-flat is declared by 2 local manifests" },
+  ] };
+  const rows = quarantineRows(report);
+  assert.equal(new Set(rows.map((row) => row.rowKey)).size, 2);
+  assert.deepEqual(rows.map((row) => row.manifestFile), ["hx-flat.json", "hx-flat-copy.json"]);
+  assert.deepEqual(rows.map((row) => row.sharedId), [true, true]);
+  assert.equal(quarantineTitle(2, rows), "2 external modules quarantined");
+  assert.equal(quarantineIntro(2), "VALUE started without them. Runs that need them cannot start until they are fixed or disabled.");
+  assert.equal(quarantineIntro(1), "VALUE started without it. Runs that need it cannot start until it is fixed or disabled.");
+  assert.equal(quarantineTitle(1, [{ kind: "extension" }]), "1 external extension quarantined");
+  assert.equal(quarantineTitle(2, [{ kind: "extension" }, { kind: "module" }]), "2 external modules and extensions quarantined");
+  assert.equal(quarantineTitle(2), "2 external modules quarantined");
+  const merged = disabledEntries({ quarantine: report });
+  assert.equal(merged.length, 1);
+  assert.deepEqual(merged[0].manifestFiles, ["hx-flat.json", "hx-flat-copy.json"]);
+});
+
+test("F-低2: disabled entries name their ID next to a shared display name", () => {
+  assert.equal(entryLabel("UATF final observer", "uatf-second", "0.1.0"), "UATF final observer · uatf-second 0.1.0");
+  assert.equal(entryLabel(undefined, "uatf-observer", "0.1.0"), "uatf-observer 0.1.0");
+  assert.equal(entryLabel("uatf-observer", "uatf-observer", "0.1.0"), "uatf-observer 0.1.0");
+  const rows = disabledEntries({ extensions: [
+    { extension_id: "uatf-observer", name: "UATF final observer", version: "0.1.0", enabled: false },
+    { extension_id: "uatf-second", name: "UATF final observer", version: "0.1.0", enabled: false },
+  ] });
+  assert.deepEqual(rows.map((row) => row.label), ["UATF final observer · uatf-observer 0.1.0", "UATF final observer · uatf-second 0.1.0"]);
 });

@@ -36,3 +36,6 @@
 @media (max-width: 760px) { .installed-modules article[data-state] { grid-template-columns: 1fr; } }
 .installed-module-note { display: block; margin-top: 4px; font-size: 12px; font-style: normal; line-height: 1.45; overflow-wrap: anywhere; }
 .installed-module-note.caution { color: var(--amber); }
+/* R4 M-低4: which manifest file a quarantined row comes from. */
+.quarantine-manifest { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.quarantine-manifest code { font-size: 12px; }

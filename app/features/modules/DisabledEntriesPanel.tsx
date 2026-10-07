@@ -32,6 +32,7 @@ export default function DisabledEntriesPanel({ entries, busy, errors, onEnable, 
           {entry.errorCode && <code>{entry.errorCode}</code>}
         </div>
         {entry.message && <p className="quarantine-error">{entry.message}</p>}
+        {entry.manifestFiles && entry.manifestFiles.length > 0 && <p className="quarantine-manifest">{entry.manifestFiles.length === 1 ? "Manifest file" : "Manifest files"}: {entry.manifestFiles.map((file, index) => <span key={file}>{index > 0 && ", "}<code>modules/{file}</code></span>)}</p>}
         {entry.state === "quarantined" && !entry.canEnable && <p className="quarantine-help">Fix the source, then Rescan. Remove takes it out of the scanned folders.</p>}
         {error && <p className="disabled-entry-error" role="alert">{error.code && <code>{error.code}</code>} {error.message} <span>{enableFailureHint(entry)}</span></p>}
         <div className="quarantine-actions">

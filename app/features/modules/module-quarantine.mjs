@@ -12,21 +12,44 @@ export function sanitizeMessage(text) {
   return String(text ?? "").replace(ABSOLUTE_PATH, "<path>");
 }
 
-export function quarantineTitle(count) {
-  return count === 1 ? "1 external module quarantined" : `${count} external modules quarantined`;
+export function quarantineTitle(count, rows) {
+  // R4 M-低4: an extension-only quarantine is not called a module.
+  const kinds = new Set((rows ?? []).map((row) => row.kind));
+  const noun = kinds.size === 1 && kinds.has("extension")
+    ? (count === 1 ? "extension" : "extensions")
+    : kinds.size > 1 ? (count === 1 ? "module or extension" : "modules and extensions")
+      : (count === 1 ? "module" : "modules");
+  return `${count} external ${noun} quarantined`;
+}
+
+/** R4 M-低4: the panel sentence agrees with the number of entries. */
+export function quarantineIntro(count) {
+  return count === 1
+    ? "VALUE started without it. Runs that need it cannot start until it is fixed or disabled."
+    : "VALUE started without them. Runs that need them cannot start until they are fixed or disabled.";
 }
 
 /** Rows of the panel from the backend's value.module-quarantine/v1 report. */
 export function quarantineRows(report) {
   const entries = Array.isArray(report?.entries) ? report.entries : [];
+  const seen = new Map();
+  for (const entry of entries) {
+    const key = `${entry?.kind === "extension" ? "extension" : "module"}:${entry?.id ?? ""}`;
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
   return entries.map((entry, index) => {
     const message = sanitizeMessage(entry.message || entry.error_type || entry.error_code || "Quarantined");
     const [firstLine, ...rest] = message.split(/\r?\n/);
     const kind = entry.kind === "extension" ? "extension" : "module";
     const id = typeof entry.id === "string" && entry.id ? entry.id : null;
     const canDisable = Boolean(id) && entry.error_code !== INSTALL_RECORD_INVALID;
+    const manifestFile = entry.manifest_file ? sanitizeMessage(entry.manifest_file) : null;
     return {
       key: `${kind}:${id ?? entry.manifest_file ?? index}`,
+      // R4 M-低4: two manifests with one ID are two rows, told apart by their file.
+      rowKey: `${kind}:${id ?? ""}:${entry.manifest_file ?? index}`,
+      manifestFile,
+      sharedId: Boolean(id) && (seen.get(`${kind}:${id}`) ?? 0) > 1,
       kind,
       id,
       label: [id ?? sanitizeMessage(entry.manifest_file ?? "unnamed manifest"), entry.version].filter(Boolean).join(" "),

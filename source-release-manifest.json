@@ -1324,6 +1324,7 @@
     "tests/frontend/render/network-tables.test.mjs",
     "tests/frontend/render/preflight-blocked-run.test.mjs",
     "tests/frontend/render/r2-learn-and-readme.test.mjs",
+    "tests/frontend/render/r4-module-extension-panels.test.mjs",
     "tests/frontend/render/readiness-issues.test.mjs",
     "tests/frontend/render/readiness-labels.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
@@ -3383,8 +3384,8 @@
     },
     {
       "path": "app/features/modules/DisabledEntriesPanel.tsx",
-      "sha256": "489eccc64897400efd1f240c587ff487a0b5ef3db3a928e5bf07f4ab15ac2c51",
-      "bytes": 2954,
+      "sha256": "89358d013cf72bd9b9d67371ed433d09df4839469ee4e36be120c1645009c233",
+      "bytes": 3248,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3401,8 +3402,8 @@
     },
     {
       "path": "app/features/modules/ModuleQuarantinePanel.tsx",
-      "sha256": "037331b6fec931ec242257a3d58063be5c9b2d4db21f8b6ce559caf24ea64693",
-      "bytes": 2970,
+      "sha256": "967d34c3568fd3fe4ae73c5a6001b5d1ea4d6dfe9d5a7948b3ed5541bd96b4d8",
+      "bytes": 3201,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3413,8 +3414,8 @@
     },
     {
       "path": "app/features/modules/disabledEntries.ts",
-      "sha256": "2ecf3273e057db1524cee0c79a5b618627a57cf903e315af9ade7bc90b4defc6",
-      "bytes": 8477,
+      "sha256": "7303415aca18e33dfaa7fe2d99c4668d2962788d91c1a3fcc33815171fb37ae5",
+      "bytes": 9050,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3425,14 +3426,14 @@
     },
     {
       "path": "app/features/modules/module-quarantine.css",
-      "sha256": "b2ffb79ff4ee3074b0d5b60225a19b5f595b9011e8ba14975d209ec2282084db",
-      "bytes": 3404,
+      "sha256": "365fb9b5561e9d8320f533f9e79757a0f590588614738dada6ba99a01a548eef",
+      "bytes": 3642,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/modules/module-quarantine.mjs",
-      "sha256": "a80d54d63a2862f0b00a6679cf173ba6916002ea00713be42f36907a574edec2",
-      "bytes": 2447,
+      "sha256": "87660daf741a3e94ab163beddf5edda7c9526561c04930cc35f48b49372bf0a1",
+      "bytes": 3652,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3587,8 +3588,8 @@
     },
     {
       "path": "app/features/runs/runHistoryView.ts",
-      "sha256": "b16556f376958596bfda0aa93d9a8a458ca672f59fbd5429ff3382d2dd0e74fa",
-      "bytes": 9492,
+      "sha256": "7db71d022f4f1d4e8f9abac4fbcdb088fe3b33aafa56319ed43e0db1eb04621b",
+      "bytes": 9517,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10895,6 +10896,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/r4-module-extension-panels.test.mjs",
+      "sha256": "b41af9816d4755af3c0666895170b75af640c1d320f6f4f700e77576da26b036",
+      "bytes": 1277,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/readiness-issues.test.mjs",
       "sha256": "05d16fd7f57a42b549ae12aa6544ecf213159414a087e38be706a52d273d9dc7",
       "bytes": 4743,
@@ -11046,8 +11053,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-module-extension-defects.test.mjs",
-      "sha256": "f782321fe7f452795ab8720bc8ca4890857bbe84ba935a69330501851416b3fd",
-      "bytes": 5042,
+      "sha256": "f084dbc1ab2430e18d8ca0413c8a0cf9c8d6ee631d412c94c6a3d8413dea03af",
+      "bytes": 7613,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

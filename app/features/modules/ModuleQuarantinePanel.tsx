@@ -1,7 +1,7 @@
 "use client";
 
 import { Callout } from "../shared/Callout";
-import { disableConfirmation, quarantineRows, quarantineTitle } from "./module-quarantine.mjs";
+import { disableConfirmation, quarantineIntro, quarantineRows, quarantineTitle } from "./module-quarantine.mjs";
 import "./module-quarantine.css";
 
 export type QuarantineEntry = {
@@ -11,7 +11,8 @@ export type QuarantineEntry = {
 export type QuarantineReport = { schema_version?: string; status: string; entries: QuarantineEntry[]; catalog_stale?: boolean };
 /** One panel row as module-quarantine.mjs builds it. */
 export type QuarantineRow = {
-  key: string; kind: "module" | "extension"; id: string | null; label: string; errorCode: string;
+  key: string; rowKey: string; manifestFile: string | null; sharedId: boolean;
+  kind: "module" | "extension"; id: string | null; label: string; errorCode: string;
   firstLine: string; details: string; canDisable: boolean; correctiveAction: string; disablePath: string | null;
 };
 
@@ -24,10 +25,11 @@ export default function ModuleQuarantinePanel({ report, busy, onDisable, onResca
 }) {
   const rows = quarantineRows(report) as QuarantineRow[];
   if (!rows.length && !report?.catalog_stale) return null;
-  return <Callout tone="caution" className="module-quarantine-panel" title={rows.length ? quarantineTitle(rows.length) : "The module catalogue is out of date"}>
-    <p>{rows.length ? "VALUE started without it. Runs that need it cannot start until it is fixed or disabled." : "A module change could not be applied; new Runs are paused until a rescan succeeds."}</p>
-    <ul className="quarantine-rows">{rows.map((row) => <li key={row.key} className="value-new-control">
+  return <Callout tone="caution" className="module-quarantine-panel" title={rows.length ? quarantineTitle(rows.length, rows) : "The module catalogue is out of date"}>
+    <p>{rows.length ? quarantineIntro(rows.length) : "A module change could not be applied; new Runs are paused until a rescan succeeds."}</p>
+    <ul className="quarantine-rows">{rows.map((row) => <li key={row.rowKey} className="value-new-control">
       <div className="quarantine-row-head"><b>{row.label}</b><span className="quarantine-error">{row.firstLine}</span><code>{row.errorCode}</code></div>
+      {row.manifestFile && <p className="quarantine-manifest">Manifest file: <code>modules/{row.manifestFile}</code>{row.sharedId && " · another manifest uses the same ID; keep one and Rescan"}</p>}
       {row.details && <details><summary>Full error</summary><pre>{row.details}</pre></details>}
       {!row.canDisable && row.correctiveAction && <p className="quarantine-help">{row.correctiveAction}</p>}
       <div className="quarantine-actions">
