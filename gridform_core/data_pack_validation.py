@@ -139,8 +139,15 @@ def _series_cells(path: Path, binding: Mapping[str, object]) -> tuple[list[float
     invalid = 0
     for row in reader:
         try:
-            values.append(float(str(row.get(column) or "").strip()))
+            value = float(str(row.get(column) or "").strip())
         except ValueError:
+            invalid += 1
+            continue
+        # L-2 (four-role R1 retest): NaN and infinity are counted with the
+        # missing and non-numeric cells, as the mapping editor's row list does.
+        if math.isfinite(value):
+            values.append(value)
+        else:
             invalid += 1
     return values, invalid
 
@@ -226,6 +233,9 @@ def _first_numeric_column(path: Path) -> tuple[list[float], int]:
                     # Only the first physical row may be an optional header.
                     continue
                 invalid += 1
+                continue
+            if not math.isfinite(value):
+                invalid += 1  # L-2: NaN and infinity count as bad cells
                 continue
             values.append(value)
         candidates.append((values, invalid))
@@ -320,7 +330,7 @@ def validate_data_pack(
                     details["non_numeric_or_missing_cells"] = invalid
                     if invalid:
                         row_errors.append(
-                            f"demand contains {invalid} non-numeric or missing data cells "
+                            f"demand contains {invalid} non-numeric, non-finite or missing data cells "
                             "after the optional header"
                         )
                     if len(values) < full_year_periods:
@@ -333,8 +343,10 @@ def validate_data_pack(
                             f"source contains {len(values)} numeric periods plus any header; "
                             f"the VALUE adapter selects the first {full_year_periods} periods"
                         )
-                    if any(not math.isfinite(value) or value < 0 for value in values):
-                        row_errors.append("demand contains a negative or non-finite value")
+                    negative = sum(1 for value in values if value < 0)
+                    if negative:
+                        # L-3: how many; the mapping editor lists the rows.
+                        row_errors.append(f"demand contains {negative} negative value(s)")
                 elif role in CYCLIC_MARKET_ROLES:
                     details["clock_adapter"] = "cyclic_repeat"
                     values, invalid = _series_cells(path, binding)
@@ -343,12 +355,14 @@ def validate_data_pack(
                     details["non_numeric_or_missing_cells"] = invalid
                     if invalid:
                         row_errors.append(
-                            f"cyclic market series contains {invalid} non-numeric or missing "
+                            f"cyclic market series contains {invalid} non-numeric, non-finite or missing "
                             "data cells after the optional header"
                         )
                     if len(values) < 1:
                         row_errors.append("cyclic market series is empty")
-                    elif len(values) != full_year_periods:
+                    # L-2: with bad cells the error above explains the count;
+                    # "repeats it cyclically" would misdescribe the file.
+                    elif len(values) != full_year_periods and not invalid:
                         row_warnings.append(
                             f"source contains {len(values)} numeric periods plus any header; "
                             "the VALUE interconnector adapter repeats it cyclically"
@@ -367,7 +381,7 @@ def validate_data_pack(
                         )
                     if invalid:
                         row_errors.append(
-                            f"VRE profile contains {invalid} non-numeric or missing data cells "
+                            f"VRE profile contains {invalid} non-numeric, non-finite or missing data cells "
                             "after the optional header"
                         )
                     if any(not math.isfinite(value) or value < 0 or value > 1 for value in values):

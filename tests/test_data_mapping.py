@@ -361,6 +361,42 @@ class EurPriceMappingTests(DataMappingTests):
         self.assertEqual(repr(1001 * 0.001), "1.0010000000000001")
         self.assertEqual(review["sample_rows"][0]["capacity_mw"], "1.001")
 
+    # L-2 (R1 retest): the whole-file count includes NaN and infinity, as the
+    # row list does, and a series with bad cells is not described as "repeated
+    # cyclically".
+    def test_whole_file_count_matches_the_listed_rows(self):
+        rows = [b"x,2"] * 17520
+        rows[3], rows[7], rows[11] = b"x,", b"x,nan", b"x,inf"
+        review = self.review(self.stage(b"t,mw\n" + b"\n".join(rows) + b"\n", "market.france.profile"),
+                             [{"source": "mw", "target": "value", "source_unit": "MW", "target_unit": "MW"}])
+        self.assertFalse(review["valid"])
+        self.assertIn("cyclic market series contains 3 non-numeric, non-finite or missing data cells after the optional header",
+                      review["errors"])
+        self.assertEqual(len([error for error in review["errors"] if error.startswith("Row ")]), 3)
+        self.assertFalse(any("cyclically" in warning for warning in review["validation"]["warnings"]))
+
+    # L-3 (R1 retest): negative demand is reported with its rows.
+    def test_negative_demand_rows_are_listed(self):
+        rows = [b"x,2"] * 17520
+        rows[4], rows[8] = b"x,-1", b"x,-3.5"
+        review = self.review(self.stage(b"t,load\n" + b"\n".join(rows) + b"\n", "demand.forecast"),
+                             [{"source": "load", "target": "value", "source_unit": "MW", "target_unit": "MW"}])
+        self.assertFalse(review["valid"])
+        self.assertIn("demand contains 2 negative value(s)", review["errors"])
+        self.assertIn("Row 5 (CSV line 6), column load: '-1' is negative", review["errors"])
+        self.assertIn("Row 9 (CSV line 10), column load: '-3.5' is negative", review["errors"])
+
+    # L-5 (R1 retest): the API takes the editor's price-year range.
+    def test_price_year_outside_the_editor_range_is_refused(self):
+        stage = self.stage(b"hour,eur\n" + b"x,46\n" * 17520, "market.belgium.price")
+        columns = [{"source": "eur", "target": "value", "source_unit": "EUR/MWh", "target_unit": "GBP/MWh"}]
+        for year in (1890, 2101):
+            with self.subTest(year=year), self.assertRaises(DataMappingError) as raised:
+                self.preview_with(stage, columns, {"eur_per_gbp": 1.15, "fx_basis": "annual average", "price_year": year})
+            self.assertEqual(raised.exception.code, "GF_MAPPING_FX")
+        review = self.preview_with(stage, columns, {"eur_per_gbp": 1.15, "fx_basis": "annual average", "price_year": 2025})
+        self.assertTrue(review["valid"], review["errors"])
+
     # R1-4 (S-D7): bad cells are listed by row and column, all of them (up to a
     # bound), instead of the first Python exception.
     def test_bad_cells_are_listed_by_row_and_column(self):
@@ -370,8 +406,10 @@ class EurPriceMappingTests(DataMappingTests):
         converted = self.review(self.stage(source, "demand.forecast"),
                                 [{"source": "load", "target": "value", "source_unit": "MWh/period", "target_unit": "MW"}])
         self.assertFalse(converted["valid"])
+        # L-1 (R1 retest): the empty cell of row 10 is listed in the same round.
         self.assertEqual(converted["errors"], [
             "Row 6 (CSV line 7), column load: 'n/a' is not a number",
+            "Row 10 (CSV line 11), column load: '' is missing",
             "Row 101 (CSV line 102), column load: 'inf' is not finite after conversion",
         ])
         self.assertFalse(any("could not convert" in error for error in converted["errors"]))

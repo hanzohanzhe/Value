@@ -50,6 +50,10 @@ PER_PERIOD_ENERGY_ROLES = DEMAND_ROLES | MARKET_PROFILE_ROLES
 TIME_SERIES_ROLES = DEMAND_ROLES | CYCLIC_MARKET_ROLES | VRE_PROFILE_ROLES
 
 
+# The price-year range of the mapping editor (app/features/data/csvMappingFx.ts).
+PRICE_YEAR_RANGE = (1990, 2100)
+
+
 def _fx(value: object) -> dict[str, object] | None:
     """The explicit EUR->GBP rate of a mapping request (P0-5a S10); None when absent."""
 
@@ -64,6 +68,11 @@ def _fx(value: object) -> dict[str, object] | None:
     year = value.get("price_year")
     if year is not None and (isinstance(year, bool) or not isinstance(year, int)):
         raise DataMappingError("GF_MAPPING_FX", "price_year must be an integer year.")
+    # L-5 (four-role R1 retest): the same range the mapping editor enforces.
+    if year is not None and not PRICE_YEAR_RANGE[0] <= year <= PRICE_YEAR_RANGE[1]:
+        raise DataMappingError(
+            "GF_MAPPING_FX", f"price_year must be between {PRICE_YEAR_RANGE[0]} and {PRICE_YEAR_RANGE[1]}."
+        )
     return {"eur_per_gbp": float(value["eur_per_gbp"]), "fx_basis": str(value["fx_basis"]).strip(),
             **({"price_year": year} if year is not None else {})}
 
@@ -100,8 +109,12 @@ class DataMappingError(ValueError):
 MAPPED_VALUE_SIGNIFICANT_DIGITS = 15
 
 
-def _cell_problems(normalized: bytes, column: str, source_column: str) -> tuple[list[str], int]:
-    """S-D7: rows of a single-value series whose cell is missing or not a finite number."""
+def _cell_problems(normalized: bytes, column: str, source_column: str, *,
+                   negative_invalid: bool = False) -> tuple[list[str], int]:
+    """S-D7: rows of a single-value series whose cell is missing or not a finite number.
+
+    With ``negative_invalid`` (demand roles, L-3) negative values are listed too.
+    """
 
     listed: list[str] = []
     count = 0
@@ -110,7 +123,11 @@ def _cell_problems(normalized: bytes, column: str, source_column: str) -> tuple[
         value = str(row.get(column) or "")
         try:
             number = float(value)
-            problem = None if math.isfinite(number) else "not a finite number"
+            problem = (
+                "not a finite number" if not math.isfinite(number)
+                else "negative" if negative_invalid and number < 0
+                else None
+            )
         except ValueError:
             problem = "missing" if not value.strip() else "not a number"
         if problem is None:
@@ -119,7 +136,9 @@ def _cell_problems(normalized: bytes, column: str, source_column: str) -> tuple[
         if len(listed) < MAX_LISTED_CELL_PROBLEMS:
             listed.append(f"Row {row_number} (CSV line {row_number + 1}), column {source_column}: {value!r} is {problem}")
     if count > len(listed):
-        listed.append(f"{count} cell(s) are missing or not numbers; the first {len(listed)} are listed.")
+        listed.append(f"{count} cell(s) are missing or not numbers"
+                      + (" or negative" if negative_invalid else "")
+                      + f"; the first {len(listed)} are listed.")
     return listed, count
 
 
@@ -360,7 +379,8 @@ class DataMappingService:
                 errors = list(validation["errors"])
                 if errors and [rule.target for rule in spec.columns] == ["value"]:
                     # S-D7: the whole-file check counts bad cells; name the rows.
-                    errors.extend(_cell_problems(normalized, "value", spec.columns[0].source)[0])
+                    errors.extend(_cell_problems(normalized, "value", spec.columns[0].source,
+                                                 negative_invalid=stage["role"] in DEMAND_ROLES)[0])
                 sample = list(islice(csv.DictReader(io.StringIO(normalized.decode("utf-8"))), 20))
                 # F-P05A-1: the raw values of the mapped source columns for the same
                 # rows, so the UI shows the original EUR price beside the converted one.

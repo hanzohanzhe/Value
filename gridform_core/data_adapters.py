@@ -195,13 +195,26 @@ def preview_csv(
     }
 
 
+def _converts(rule: ColumnRule) -> bool:
+    return rule.source_unit is not None and rule.target_unit is not None and rule.source_unit != rule.target_unit
+
+
 def _convert_row(raw: Mapping[str, object], spec: AdapterSpec, row_number: int, line: int,
-                 problems: list[dict[str, object]], significant_digits: int | None = None) -> dict[str, object]:
-    """Convert one source row; a cell problem is appended to ``problems`` (S-D7)."""
+                 problems: list[dict[str, object]], significant_digits: int | None = None,
+                 blanks: list[dict[str, object]] | None = None) -> dict[str, object]:
+    """Convert one source row; a cell problem is appended to ``problems`` (S-D7).
+
+    An empty cell of a converted column passes through as empty (the whole-file
+    validation reports it); with ``blanks`` it is also noted there, so a file
+    rejected for other cells lists it in the same report (L-1).
+    """
 
     normalized: dict[str, object] = {}
     for rule in spec.columns:
         value = str(raw.get(rule.source, ""))
+        if blanks is not None and not value.strip() and _converts(rule):
+            blanks.append({"row": row_number, "line": line, "column": rule.source, "value": value,
+                           "problem": "missing"})
         try:
             normalized[rule.target] = _convert(value, rule, spec.interval_minutes, spec.source, significant_digits)
         except CellConversionError as exc:
@@ -241,6 +254,10 @@ def execute_adapter(source: Path, spec: AdapterSpec, output: Path, *,
     rows = 0
     problems: list[dict[str, object]] = []
     problem_count = 0
+    # L-1 (four-role R1 retest): empty cells of converted columns, listed with
+    # the other cell problems when the file is rejected for those.
+    blanks: list[dict[str, object]] = []
+    blank_count = 0
     targets = [rule.target for rule in spec.columns]
     if len(set(targets)) != len(targets):
         raise ValueError("Canonical adapter target columns must be unique")
@@ -252,14 +269,18 @@ def execute_adapter(source: Path, spec: AdapterSpec, output: Path, *,
         writer.writeheader()
         for raw in reader:
             found: list[dict[str, object]] = []
-            normalized = _convert_row(raw, spec, rows + 1, reader.line_num, found, significant_digits)
+            empty: list[dict[str, object]] = []
+            normalized = _convert_row(raw, spec, rows + 1, reader.line_num, found, significant_digits, empty)
             problem_count += len(found)
+            blank_count += len(empty)
             problems.extend(found[:max(0, MAX_LISTED_CELL_PROBLEMS - len(problems))])
+            blanks.extend(empty[:max(0, MAX_LISTED_CELL_PROBLEMS - len(blanks))])
             writer.writerow(normalized)
             rows += 1
     if problem_count:
         temporary.unlink(missing_ok=True)
-        raise AdapterValueError(problems, problem_count)
+        listed = sorted(problems + blanks, key=lambda item: (int(item["row"]), str(item["column"])))
+        raise AdapterValueError(listed[:MAX_LISTED_CELL_PROBLEMS], problem_count + blank_count)
     temporary.replace(output)
     return AdapterResult(
         sha256_file(source),
