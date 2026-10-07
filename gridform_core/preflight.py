@@ -373,13 +373,18 @@ def run_preflight(
     quarantine = quarantine_check(registry, selected.values(), selected_extensions)
     checks["module_quarantine"] = quarantine
     checks["external_code"] = external_code_evidence(registry, selected.values(), selected_extensions)
+    # R4 M-低3 / F-低3: once quarantined, disabled or stale local code is
+    # reported with its own code, the selection and revision checks that fail
+    # only because of it add no further (misleading) errors.
+    code_blocked = bool(quarantine["blockers"])
     if quarantine["blockers"]:
         issues.append(_issue(
             "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules",
             "The Study selects quarantined local code: " + ", ".join(
                 f"{row['kind']} {row['id']} ({row['error_code']})" for row in quarantine["blockers"]
             ),
-            "Open Modules: disable or repair the quarantined entry, then select a working module.",
+            "Open Modules: repair the quarantined entry's source and press Rescan, or disable it and "
+            "select another module in the Study.",
         ))
     elif quarantine["entries"]:
         issues.append(_issue(
@@ -396,6 +401,7 @@ def run_preflight(
 
     disabled = disabled_selections(registry, selected.values(), selected_extensions)
     checks["module_disabled"] = disabled
+    code_blocked = code_blocked or bool(disabled)
     if disabled:
         issues.append(_issue(
             "GF_PREFLIGHT_MODULE_DISABLED", "error", "modules",
@@ -562,11 +568,21 @@ def run_preflight(
             # resolution: it is runtime-quarantined now, so the code is the
             # same as on every later preflight (P0-2 review).
             checks["module_quarantine"] = quarantine_check(registry, selected.values(), selected_extensions)
+            if not code_blocked:  # R4 F-低3: reported once
+                issues.append(_issue(
+                    "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules", str(exc),
+                    "Open Modules: repair the extension's source and press Rescan, or disable the entry.",
+                ))
+            code_blocked = True
+        elif getattr(exc, "code", None) == "GF_EXTENSION_SOURCE_RELOAD_REQUIRED":
+            # R4 F-低3: the hook file was edited after VALUE imported it.
             issues.append(_issue(
-                "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules", str(exc),
-                "Open Modules: disable or repair the quarantined entry, then select a working module.",
+                "GF_PREFLIGHT_EXTENSION_SOURCE_RELOAD", "error", "modules", str(exc),
+                "Open Modules and press Rescan modules so VALUE imports the edited source (a broken edit "
+                "is quarantined there), then check readiness again.",
             ))
-        else:
+            code_blocked = True
+        elif not code_blocked:
             issues.append(_issue(
                 "GF_PREFLIGHT_MODULE_SELECTION", "error", "modules", str(exc),
                 "Select one compatible registered module for every required model slot.",
@@ -674,7 +690,12 @@ def run_preflight(
             ))
     except (ValueError, KeyError) as exc:
         checks["project_revision"] = {"passed": False, "error": str(exc)}
-        issues.append(_issue("GF_PREFLIGHT_PROJECT_REVISION", "error", "project", str(exc), "Correct the project modules and save a new revision."))
+        if code_blocked:
+            # R4 M-低3: the revision cannot be computed only because the local
+            # code reported above cannot be resolved; fixing it is the action.
+            checks["project_revision"]["blocked_by"] = "local_code"
+        else:
+            issues.append(_issue("GF_PREFLIGHT_PROJECT_REVISION", "error", "project", str(exc), "Correct the project modules and save a new revision."))
 
     zonal_roles = {
         str(row.get("role")) for row in active_dataset_slots

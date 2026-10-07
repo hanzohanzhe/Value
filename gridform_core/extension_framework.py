@@ -37,6 +37,17 @@ HOOKS = (
 SAFE_JSON_TYPES = {"boolean", "integer", "number", "string"}
 
 
+class ExtensionSourceReloadRequired(ValueError):
+    """A hook's source file changed after this process imported it (R4 F-低3).
+
+    The loaded code is no longer the file on disk, so its identity cannot be
+    recorded; Rescan re-imports it.  Coded, so readiness can say that instead
+    of asking the user to select another module.
+    """
+
+    code = "GF_EXTENSION_SOURCE_RELOAD_REQUIRED"
+
+
 def canonical_hash(value: object) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
@@ -296,7 +307,7 @@ def hook_source_identity(hook: HookDeclaration, *, extension_id: str | None = No
     digest = hashlib.sha256(Path(filename).read_bytes()).hexdigest()
     loaded_hash = getattr(module, "__value_extension_source_sha256__", digest)
     if loaded_hash != digest:
-        raise ValueError("Extension source changed after module load: " + hook.implementation)
+        raise ExtensionSourceReloadRequired("Extension source changed after module load: " + hook.implementation)
     module.__value_extension_source_sha256__ = digest
     return {"hook": hook.hook, "implementation": hook.implementation, "source_sha256": digest, "distribution": "workspace-source" if Path(filename).resolve().is_relative_to(Path(__file__).resolve().parent) else "installed-source"}
 

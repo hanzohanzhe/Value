@@ -290,5 +290,96 @@ class ExtensionRescanApiTests(LifecycleApiCase):
         self.assertEqual(self.request("GET", "/api/health")[1]["status"], "ok")
 
 
+class DerivedReadinessErrorTests(unittest.TestCase):
+    """M-低3 / F-低3: quarantined, disabled or stale local code is reported once, with the right action."""
+
+    PACKAGES = ("r44_broken_offer", "r44_bad_hook", "r44_edit_hook")
+
+    def setUp(self) -> None:
+        from gridform_core.module_quarantine import clear_negative_caches
+        from tests.module_lifecycle_fixtures import forget_external_code
+
+        self.folder = tempfile.TemporaryDirectory(prefix="value-r44-ready-")
+        self.addCleanup(self.folder.cleanup)
+        self.modules = Path(self.folder.name) / "modules"
+        clear_negative_caches()
+        self.addCleanup(clear_negative_caches)
+        self.addCleanup(forget_external_code, self.modules, self.PACKAGES)
+        self.project = {
+            "schema_version": "value.project/v1", "id": "project", "name": "Project", "data_pack_id": "pack",
+            "start_year": 2025, "end_year": 2034, "parameters": {}, "runtime_options": {},
+            "modules": {"psm": PSM, "investment": "agent-investment", "pipeline": "planning-pipeline",
+                        "vre_cap": "vre-expansion-cap", "storage_cap": "value-storage-expansion-policy",
+                        "storage_cost": "dynamic-annual-storage-cost"},
+            "revision_sha256": "0" * 64,
+        }
+
+    def run_preflight(self, project: dict) -> dict:
+        from tests.test_preflight import PINNED_DISK_USAGE, ResolvedFixture
+
+        with tempfile.TemporaryDirectory() as folder, \
+                patch("gridform_core.preflight.validate_data_pack", return_value={
+                    "schema_version": "value.data-pack-validation/v1", "valid": True, "errors": [],
+                    "warnings": [], "bindings": [], "summary": {"passed": 0, "failed": 0, "total": 0},
+                }), \
+                patch("gridform_core.preflight.resolve_scheme_c_parameters", return_value=ResolvedFixture()), \
+                patch("gridform_core.preflight.shutil.disk_usage", return_value=PINNED_DISK_USAGE):
+            return run_preflight(
+                project, mode="full", pack_root=Path(folder),
+                pack_manifest={"schema_version": "value.data-pack/v1", "id": "pack", "bindings": {}},
+                dataset_slots=[], registry=workspace_registry(self.modules), output_root=Path(folder),
+            )
+
+    def test_quarantined_module_gives_one_error(self) -> None:
+        from tests.module_lifecycle_fixtures import write_external_module
+
+        write_external_module(self.modules, "r44-broken-offer", "r44_broken_offer",
+                              prefix="raise RuntimeError('broken offer')\n")
+        project = {**self.project, "modules": {**self.project["modules"], "storage_cost": "r44-broken-offer"}}
+        report = self.run_preflight(project)
+        self.assertFalse(report["accepted"])
+        codes = [row["code"] for row in report["errors"]]
+        self.assertEqual(codes.count("GF_PREFLIGHT_MODULE_QUARANTINED"), 1, codes)
+        self.assertNotIn("GF_PREFLIGHT_MODULE_SELECTION", codes)
+        self.assertNotIn("GF_PREFLIGHT_PROJECT_REVISION", codes)
+        self.assertEqual(report["checks"]["project_revision"].get("blocked_by"), "local_code")
+        issue = next(row for row in report["errors"] if row["code"] == "GF_PREFLIGHT_MODULE_QUARANTINED")
+        self.assertIn("Rescan", issue["corrective_action"])
+
+    def test_quarantined_extension_hook_is_reported_once(self) -> None:
+        from tests.module_lifecycle_fixtures import write_external_extension
+
+        write_external_extension(self.modules, "r44-bad-hook", "local.r44-bad-hook",
+                                 hook_package="r44_bad_hook", hook_prefix="raise ImportError('hook gone')\n")
+        project = {**self.project, "selected_extensions": ["r44-bad-hook"]}
+        for attempt in ("first", "second"):  # first: found during resolution; second: already quarantined
+            with self.subTest(attempt=attempt):
+                report = self.run_preflight(project)
+                codes = [row["code"] for row in report["errors"]]
+                self.assertEqual(codes.count("GF_PREFLIGHT_MODULE_QUARANTINED"), 1, codes)
+                self.assertNotIn("GF_PREFLIGHT_MODULE_SELECTION", codes)
+                self.assertNotIn("GF_PREFLIGHT_PROJECT_REVISION", codes)
+
+    def test_hook_edited_after_load_asks_for_rescan(self) -> None:
+        from gridform_core.extension_framework import ExtensionSourceReloadRequired
+        from tests.module_lifecycle_fixtures import write_external_extension
+
+        target = write_external_extension(self.modules, "r44-edit-hook", "local.r44-edit-hook", hook_package="r44_edit_hook")
+        project = {**self.project, "selected_extensions": ["r44-edit-hook"]}
+        registry = workspace_registry(self.modules)
+        registry.extension_registry.resolve(("r44-edit-hook",))  # the hook is now loaded
+        hooks = target / "src" / "r44_edit_hook" / "hooks.py"
+        hooks.write_text(hooks.read_text(encoding="utf-8") + "# edited after load\n", encoding="utf-8")
+        with self.assertRaises(ExtensionSourceReloadRequired):
+            registry.extension_registry.resolve(("r44-edit-hook",))
+        report = self.run_preflight(project)
+        codes = [row["code"] for row in report["errors"]]
+        self.assertIn("GF_PREFLIGHT_EXTENSION_SOURCE_RELOAD", codes)
+        self.assertNotIn("GF_PREFLIGHT_MODULE_SELECTION", codes)
+        self.assertNotIn("GF_PREFLIGHT_PROJECT_REVISION", codes)
+        issue = next(row for row in report["errors"] if row["code"] == "GF_PREFLIGHT_EXTENSION_SOURCE_RELOAD")
+        self.assertIn("Rescan modules", issue["corrective_action"])
+
+
 if __name__ == "__main__":
     unittest.main()

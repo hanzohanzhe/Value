@@ -232,7 +232,10 @@ class R14PreflightTests(unittest.TestCase):
         self.assertFalse(report["accepted"])
         codes = [row["code"] for row in report["errors"]]
         self.assertIn("GF_PREFLIGHT_MODULE_DISABLED", codes)
-        self.assertLess(codes.index("GF_PREFLIGHT_MODULE_DISABLED"), codes.index("GF_PREFLIGHT_MODULE_SELECTION"))
+        # R4 M-低3: the selection and revision errors caused only by the
+        # disabled module are not repeated with misleading advice.
+        self.assertNotIn("GF_PREFLIGHT_MODULE_SELECTION", codes)
+        self.assertNotIn("GF_PREFLIGHT_PROJECT_REVISION", codes)
         issue = next(row for row in report["errors"] if row["code"] == "GF_PREFLIGHT_MODULE_DISABLED")
         self.assertIn("module uat-disabled-offer 0.1.0", issue["message"])
         self.assertIn("Enable", issue["corrective_action"])
