@@ -738,14 +738,16 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             + ". Interpret the differences jointly; no isolated causal claim is made."
         )
     elif dimension_details:
+        # S-低7(a): the sentence names the change that was made; it no longer
+        # calls every single-dimension change "not a storage-cost experiment".
         warning = (
             "Only one recorded dimension differs - " + _change_sentence(dimension_details) + ". The comparison "
-            "describes the effect of this change; it is not a controlled storage-cost experiment."
+            "describes the effect of this one change."
         )
     else:
         warning = (
             "Recorded run fields differ (" + ", ".join(sorted(dimensions)) + "); interpret the differences with "
-            "that in mind - this is not a controlled storage-cost experiment."
+            "that in mind."
         )
     if review["unknown_dimensions"]:
         warning = review["warning"]

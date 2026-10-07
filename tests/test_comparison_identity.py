@@ -231,8 +231,10 @@ class ComparisonIdentityTests(unittest.TestCase):
         self.assertEqual(data["changed_dimension_details"]["data"],
                          {"label": "data inputs", "name": "data inputs", "paths": ["pack.roles.demand"], "more_paths": 0})
         self.assertEqual(data["warning"], "Only one recorded dimension differs - data inputs: pack.roles.demand. The comparison "
-                         "describes the effect of this change; it is not a controlled storage-cost experiment.")
+                         "describes the effect of this one change.")
         self.assertNotIn("storage-policy", data["warning"])
+        # S-低7(a) (R4, A27): a data change is not described as a storage-cost experiment.
+        self.assertNotIn("storage-cost", data["warning"])
         extension = compare_run_summaries([left, build_run_summary(self.fixture("named-ext", extension=True))])
         self.assertEqual(extension["changed_dimension_details"]["method"]["paths"], ["extensions"])
         # AF3-2: no doubled parenthesis ("... methodology) (extensions)").

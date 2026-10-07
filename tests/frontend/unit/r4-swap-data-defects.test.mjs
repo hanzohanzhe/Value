@@ -35,3 +35,10 @@ test("timestamp coverage line and date orders", async () => {
   assert.equal(timestampCoverageText({ coverage: { span_days: 365, data_years: [2025] }, date_order: "iso" }), "covers 365 days · data year 2025");
   assert.equal(timestampCoverageText(null), "");
 });
+
+// S-低7(b): a missing curtailment metric reads "Unavailable" on Compare, as on Runs.
+test("missing metric wording matches the Runs page", async () => {
+  const { missingMetricValueText } = await import("../../../app/features/results/comparisonReview.ts");
+  for (const metric of ["vre_curtailment_mwh", "vre_curtailment_rate", "redispatch_net_impact_mwh"]) assert.equal(missingMetricValueText(metric), "Unavailable");
+  assert.equal(missingMetricValueText("total_carbon_emissions_tco2e"), "Not evaluated");
+});

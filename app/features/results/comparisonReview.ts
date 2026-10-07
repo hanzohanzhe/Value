@@ -110,6 +110,16 @@ export function metricDeltaShown(comparison: MetricDeltaFields, metricId: string
   return gate ? gate.allowed === true : comparison.metric_deltas_allowed;
 }
 
+/**
+ * S-低7(b) (R4, A27): the word for a missing value, the same as on the Runs page.
+ * The three metrics built from VRE-curtailment evidence read "Unavailable" there
+ * (RunResults), so they do here; other missing values stay "Not evaluated".
+ */
+export const CURTAILMENT_EVIDENCE_METRICS: readonly string[] = ["vre_curtailment_mwh", "vre_curtailment_rate", "redispatch_net_impact_mwh"];
+export function missingMetricValueText(metricId: string): string {
+  return CURTAILMENT_EVIDENCE_METRICS.includes(metricId) ? "Unavailable" : "Not evaluated";
+}
+
 /** Why one metric's delta is withheld, in a sentence; null when it is shown. */
 export function metricDeltaWithheldText(comparison: MetricDeltaFields, metricId: string): string | null {
   if (comparison.annual_metrics_withheld || metricDeltaShown(comparison, metricId)) return null;
