@@ -1,14 +1,24 @@
 # VALUE 0.7.0-alpha.1 网站交接文档（给 value.ac 上传员）
 
-> **阅读提示（2026-10-07）：** 本文件可以照常阅读，并开始准备网站文字。但按 DECISIONS A17，**网站上传和发布要等前端整体翻新完成之后**，因为网站截图和界面说明要以翻新后的版本为准。以下内容在下一轮还会变动：修正口径的弃电顺序（A19）、电池扩容上限（A20），以及四类用户测试修复带来的界面细节。
+> **阅读提示（2026-10-07，R1 轮之后，分支 HEAD `1eec6e6`；取代同日较早的阅读提示）：** 本文件可以照常阅读，并开始准备网站文字。**按 DECISIONS A17，网站上传和发布仍要等前端整体翻新完成之后**：网站截图和界面说明要以翻新后的版本为准，推送源码（阶段 1）也在翻新之后。
+> - **已定稿（可以据此写文案草稿）：**
+>   - 修正口径的下调与弃电顺序（A19、A22、A22a；R1-2，`r12.economic-downward-order`，默认 PSM 6.5.0）：燃气、生物质先降到最小稳定出力，再往下是否停机，由重启成本与省下的燃料、碳和可变成本比较决定，不预设火电比风电贵。见 2.3 节与 2.9 节；
+>   - 电池扩容上限按类型分别设定（A20；R1-3），见 2.3 节与 2.9 节；
+>   - 参考统计表全部经作者审核（A21、A22），第 6 节第 3 条已改写；但它仍是内部文档，不上传；
+>   - 模型层面的声明范围（2.7 节）与分阶段门槛（第 3 节）。
+> - **仍待定：**
+>   - **界面字符串**：R1-5 改了一批界面文案（2.9 节新增几行），前端整体翻新还会再改。2.9 节与附录 A.3、A.6 的字符串，在翻新完成后要逐条重新核对；
+>   - **R1 轮复测剩下的问题**（`FOUR_ROLE_TEST_REPORT.md` 第 10 节）：中等缺陷 R3-N1（原样保存 Study 后，比较页报告不存在的 VoLL 变化）放在下一轮小修复。附录 A.2 的四类用户一行按复测结果写，上线前按最新复测再核对一次；
+>   - 第 7 节各项仍由作者决定。
 
 
-- 日期：2026-10-06。分支 `fix/review-2026-10-04`，对照 `main`（35aadb3，即 0.6.0-alpha.2 的源码）。
+- 日期：2026-10-06；R1 轮更新 2026-10-07。分支 `fix/review-2026-10-04`，对照 `main`（35aadb3，即 0.6.0-alpha.2 的源码）。
 - 读者：维护 `website/`（`build.py`、`content.py`、`journey.py`、`site.json`、`methodology_page.py`、`publication.py`、`release_candidate.py`、`static/`）并上传 value.ac 的人。
 - 本文只写交接内容，没有改动 `website/` 下的任何文件。本分支上 `website/` 与 35aadb3 逐字节相同（`git diff 35aadb3 -- website/` 为空），所以文中的行号对两边都适用。
-- 依据：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A18），`CHANGELOG.md` 的 0.7.0-alpha.1 一节，`docs/VALIDATION_AND_CLAIMS.md`，`docs/release/P0_ACCEPTANCE.md`，`docs/generated/METHODOLOGY_PROFILES.md`，`docs/handoff/MODEL_CHANGES_BRIEF.md`，`docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 9 节为修复轮复测），设计规格 `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 第 11 节与 `docs/dev/p0-reports/FX3-UI-batch.md`（修复轮界面字符串），以及 `docs/USER_GUIDE.md` / `docs/USER_GUIDE_ZH.md`。两者有出入时，以 DECISIONS 为准。
+- 依据：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A22a），`CHANGELOG.md` 的 0.7.0-alpha.1 一节，`docs/VALIDATION_AND_CLAIMS.md`，`docs/release/P0_ACCEPTANCE.md`，`docs/generated/METHODOLOGY_PROFILES.md`，`docs/handoff/MODEL_CHANGES_BRIEF.md`，`docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 9 节为修复轮复测，第 10 节为 R1 轮复测），设计规格 `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 第 11 节与 `docs/dev/p0-reports/FX3-UI-batch.md`（修复轮界面字符串），以及 `docs/USER_GUIDE.md` / `docs/USER_GUIDE_ZH.md`。两者有出入时，以 DECISIONS 为准。
 - **修复轮更新（2026-10-06，A16，HEAD `be30884`）**：四类用户测试之后的修复轮（FX1–FX7）带来的用户可见变化已并入本文：新增第 2.9 节（逐项列出界面字符串），并更新了 2.2–2.4、2.6、2.7、第 3 节（A17 推送时机）、4.1 S-6、4.2 C-9 与 C-11、4.3 J-3 与 J-7、第 5–7 节和附录 A。`website/` 仍未改动（`git diff 35aadb3 -- website/` 为空）。
 - **FX8 更新（2026-10-06，A18）**：修正口径的核电开局在运已实施（`fx8.nuclear-in-service-at-start`，value-bid-at-cost-psm 6.4.0）。对网站用户可见的只有两处，都沿用已有的界面机制，没有新界面字符串或组件：修正口径 Study 的方法升级确认（2.9 节最后一行，现为 6.4.0），以及 Run 的 advisory 列表多一条（2.9 节新增一行）。模型说明见 2.3 节“修正口径的核电规则”一段；GBP1 public2 的数字仍只在本地（2.7 节、第 7 节第 8 条）。
+- **R1 轮更新（2026-10-07，A19–A22a，单元 R1-1 至 R1-5；FX9 也在此一并补记）**：修正口径的经济下调顺序（R1-2）与按类型电池上限（R1-3）写进 2.3 节；2.6、2.7、2.9 节、第 5–7 节和附录 A.1、A.2 按 FX9、R1-4、R1-5 与 R1 轮复测更新。用户可见的变化都沿用已有的界面机制：两次方法升级确认（默认 PSM 6.5.0、储能扩容策略 5.1.0）、advisory 列表一增一减，以及 R1-4、R1-5 的一批小文案。`website/` 仍未改动（`git diff 35aadb3 -- website/` 为空）。
 
 ---
 
@@ -27,7 +37,7 @@
 5. **不得上传的内容**见第 6 节：
    - 0.7.0 安装包（尚未构建）；
    - 重装结果（重装须作者逐步批准）；
-   - 待审核的参考统计；
+   - 参考统计表（已全部审核，但属于内部文档）；
    - `docs/dev/` 与 `docs/handoff/` 下的内部文档；
    - GBP1 public2；
    - 方法学 0.4 草稿。
@@ -90,7 +100,7 @@
 - 只改核算区：残差、审计、成本账、验证；
 - 修复轮新增两项，也只改核算区：
   - **VoLL（缺电价值）两个口径都是 17,000 £/MWh**（A16-5，`fx5.voll-17000`）。论文代码原为 8,000，参数默认原为 10,000。它只给“记录的切负荷”计价，不改变调度；VALUE 101 和 GBP1 的参考运行都没有记录切负荷，所以头条成本不变。网站若写 VoLL，只写 17,000 £/MWh，旧值只作为“原为”出现；
-  - **储能报价写进市场账本**（`storage_orders` 核算表，`fx4.storage-offer-ledger`）：每条储能报价的价格、可报量与接受量都可以从导出的账本中核对。界面上还看不到逐条接受量（复测 M-D1 残留），网站不要写“界面显示储能逐条报价的接受量”。
+  - **储能报价写进市场账本**（`storage_orders` 核算表，`fx4.storage-offer-ledger`）：每条储能报价的价格、可报量与接受量都可以从导出的账本中核对。FX9 之后，Market replay 的拍卖视图也显示每条储能报价的接受量和状态（2.9 节）。
 
 **对网站的含义**：凡在 0.6.0-alpha.2 及更早版本上用 GBP1 public1 做的结果，都受 P6-02/03/04 和 P6-24 影响。在 GBP1 第一年的论文口径对比中，进口 −78%，价格尖峰消失，系统成本 −3.2%，CCGT 提案取消，排放 +3.4%（A15）。这份对比是否作为勘误在网站公开，由作者决定（第 7 节）。
 
@@ -107,6 +117,7 @@
 - 储能扩容余量（P5-01）与按类型的电池上限（A20：三种电池各拿 0.2 × 功率余量，与论文设计相同；P0-7 的“共用池”已撤回）；
 - 网络模块的经济口径（P0-8，zonal solver contract v4）；
 - **修复轮：互联线进口进入日前出清**（A16-2，`fx6.day-ahead-interconnector-imports`）。论文复现口径中，进口只在实际需求超出日前计划时的平衡环节出现；修正口径中，每条正容量的互联线按当期对侧价格报入日前出清。属于方法改动，0.6.0 保存的修正口径 Study 要在界面确认一次。网站可以写成“修正口径的日前出清接受互联线进口”，不要写成“进口建模已验证”。
+- **R1 轮：下调与弃电的经济顺序**（A19、A22、A22a，`r12.economic-downward-order`，默认 PSM 6.5.0）。实际需求低于预测、需要从已排的出力中往下调时，修正口径先把燃气、生物质降到最小稳定出力（这一段不需要停机，总在弃风之前）；再往下要停机，只有当预计停机时长内省下的燃料、碳和可变成本超过重启成本时，才先停火电，否则先弃风。重启成本取文献与英国 BM 申报数据（CCGT 每 MW 装机 £110–150，OCGT £170，生物质 £125），经作者审核。论文复现口径保持论文的“先弃风”。网站可以写成“修正口径按重启成本与省下的成本决定先降火电还是先弃风”，**不要**写成“修正口径总是先降火电”（这是 R1 之前的说法，已撤回），也不要写成“论文的顺序是错的”。在 VALUE 101 和本地 GBP1 public2 的参考运行中，这条规则几乎不起作用（VALUE 101 两年只有 1 个时段变化），网站不要暗示它对结果有明显影响。
 
 **修正口径的核电规则（A18，FX8 已实施）**：默认 PSM 原来每年从“没有机组在运”开始，核电在未运行时报价要加启动成本，在 GBP1 第一年几乎全年不被接受（本地验收只发 2.02 TWh，统计约 37.3 TWh）。修正口径现在让核电开局在运，按各站可用率作基荷，启动成本只在停运后重启时收取（correction id `fx8.nuclear-in-service-at-start`，value-bid-at-cost-psm 6.4.0，旧的修正口径 Study 须确认）；论文复现口径不变，其路径依赖在方法学中披露（A15）。网站如介绍默认 PSM，可以写这条规则；GBP1 public2 上的数字仍只在本地（见下文第 162 行一段与第 8 条），是否公开由作者决定。
 
@@ -151,7 +162,7 @@
 | 改模块 | 外部模块只能在修正口径下运行，论文复现口径会拒绝已启用的外部代码。模块版本升级若属于方法变化（`requires_user_opt_in`），已保存的 Study 要在界面确认。损坏的模块被隔离，不再阻止 VALUE 启动。修正口径下，内置储能对象只报循环损耗；用户公式和外部模块的报价不变。修复轮新增：Modules 页常驻 “Disabled and quarantined” 区，每项有 Enable、Rescan、Remove，页头有 “Rescan modules”；**原地修改已安装模块的源码是允许的**，预检给琥珀色提示，Run 记录新的源码哈希，比较页显示模块方法已改变（A16-4）；储能报价可从导出账本的 `storage_orders` 表核对 | Q3、Q13、P0-2、`p06.storage-bid-cycle-only`、A16-4 |
 | 加功能 | 扩展规则同上：只在修正口径下运行，冲突时隔离，修复后 Rescan，也可离线自救。直接调用 API 的脚本要带会话头。修复轮新增：**一日课程（`value_101_day`）只跑市场步骤，选了扩展时预检阻断**，要改用两时段或更长范围；带扩展的全年 Run 验证正常、年度结果正常发布 | P0-1、P0-2、A16-3 |
 
-**0.7.0 上的四角色测试与修复轮复测已经完成**：报告在 `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 1–8 节为首轮，第 9 节为修复轮复测；worktree 根目录副本 `VALUE_four_role_test_report_2026-10-04.md`）。复测结论：四类用户在本地源码分支上都通过，首轮的三项高缺陷（F-D1、F-D2、S-D1）都已修复，没有剩下高缺陷；仍有中等问题 N-1（校验面板与 Study 编辑器对论文复现口径资格的判断不一致）、N-2（Europe/London 时间戳的秋季重复小时只出现一次时映射预览报错）和 F2-N1（全年范围的扩展结果超过 16 MiB，Inspect 看不到，可从 Artifacts 下载）。**测试对象是 Linux 源码树（`git archive` 导出），不是安装包。** 网站 “VALUE four user paths” 的 0.7.0 一行按第 4 节 C-9 与附录 A.2 写，只能在阶段 1 之后上线；原 2026-10-02 / rc1 一行保留并标注版本。
+**0.7.0 上的四角色测试、修复轮复测与 R1 轮复测已经完成**：报告在 `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 1–8 节为首轮，第 9 节为修复轮复测，第 10 节为 R1 轮复测；worktree 根目录副本 `VALUE_four_role_test_report_2026-10-04.md`）。修复轮复测之后剩下的中等问题 N-1（校验面板与 Study 编辑器对论文复现口径资格的判断不一致）、N-2（Europe/London 秋季重复小时只出现一次时映射预览报错）和 F2-N1（全年范围的扩展结果超过 16 MiB，Inspect 看不到）已由 FX9 修复；R1-4、R1-5 又修了一批低等级问题。R1 轮复测（被测 HEAD `e0ec659`）结论：四类用户在本地源码分支上都通过，没有高缺陷；新发现 1 项中等缺陷 R3-N1（原样保存 Study、不改任何字段后，比较页报告不存在的 VoLL 变化；两个 Run 的结果字节相同），排在下一轮小修复中。**测试对象是 Linux 源码树（`git archive` 导出），不是安装包。** 网站 “VALUE four user paths” 的 0.7.0 一行按第 4 节 C-9 与附录 A.2 写，只能在阶段 1 之后上线；原 2026-10-02 / rc1 一行保留并标注版本。
 
 ### 2.7 声明范围（`docs/VALIDATION_AND_CLAIMS.md` “Scope of the 0.7.0-alpha.1 claims”）
 
@@ -167,7 +178,8 @@
 - **R029 public1 在修正口径下的已知问题**（修复轮发现）：它的逐时光伏曲线 `sa.csv` 有 8,761 个值且没有 interval 声明，修正口径的严格读取会拒绝它（`GF_DATA_SHORT_SERIES`），修法待负责人决定。网站不得写“R029 可用于修正口径”。
 - VoLL：两个口径都是 17,000 £/MWh（A16-5）。网站上出现 8,000 或 10,000 的地方，只能作为 0.6.0 的历史值。
 - 修正口径的互联线日前进口（A16-2）只在 VALUE 101（进口全部被拒绝，数值不变）和本地 GBP1 public2 上跑过，属于方法改动，不是经过验证的进口模型。
-- 四角色复测只覆盖 Linux 源码树上的一日、smoke 和 two_year 范围，不覆盖安装包、Windows 或 macOS。
+- 四角色复测（含 R1 轮复测）只覆盖 Linux 源码树上的一日、smoke 和 two_year 范围，不覆盖安装包、Windows 或 macOS。
+- 修正口径的经济下调顺序（R1-2）：单元测试的玩具算例覆盖了三种情形（省下的成本高于重启成本时先停火电、低于时先弃风、只需在最小稳定出力以上下调时先降火电）；VALUE 101 两年只有 1 个时段受影响，本地 GBP1 public2 第一年没有用到停机段。所以网站不得写“经济下调顺序已在 GB 系统上验证”；它是有文献取值的方法设定。
 - 本地 API 安全边界只在 Linux 源码树上验证过。已安装的 0.7.0 要重装后才能检查（`scripts/verify_local_security_boundary.py`）。Windows 发布前需要实机 smoke 测试，macOS 没有实机验证。
 - 禁用措辞（与 `tests/test_documentation_consistency.py::test_claims_do_not_overstate_validation` 一致）：“globally optimal CEM”，“exact reproduction … passed/proven”，“public release decision is GO”，“smoke test proves annual economics”。
 
@@ -186,8 +198,8 @@
 | 位置 | 用户看到的变化（英文原文照抄） | 依据 |
 |---|---|---|
 | Run 页 Readiness 卡片 | 不再只显示前 6 条：问题按六组列出（Errors 始终展开；Data plausibility 默认展开；Chronology、Other data warnings、Adapter: unit not declared、Environment and setup 默认折叠，按钮 `Show {n}`）；组头 `{组名} · {n}`；同一 code 合并为一行并注明 `×n`，悬停列出全部对象。预检有 error 时 Run 按钮禁用，旁边写明原因 | S-D1、M-D3 |
-| Data 页数据包校验面板 | 每个数据包一张：`Validation`（Structural / Chronology / Plausibility）与 `Methodology use`（Corrected / Doctoral reproduction），`Show details ▾` 逐层列出发现；原 `required inputs ready` 改为 `inputs present · validation {最差状态}`。**已知问题 N-1**：对用户数据包，面板可能显示 Doctoral reproduction 可用，而 Study 编辑器按论文期白名单拒绝；以编辑器为准 | S-D2 |
-| 映射编辑器 | 可选字段组 `Timestamp column (optional)`：`Timestamp column`、`Time zone`（UTC / Europe/London）；逐行列出不可读、重复、倒序、缺口和步长不规则，有问题不能提交。列名含 `eur` 或 `€` 而 Currency 选 GBP 时，琥珀色提示 `Column name suggests EUR — confirm the currency.`（不阻断）。**已知问题 N-2**：Europe/London 的秋季重复小时只出现一次时，预览报 “Model execution failed”，改用 UTC 或带偏移的时间戳可以避开 | S-D4、S-D5 |
+| Data 页数据包校验面板 | 每个数据包一张：`Validation`（Structural / Chronology / Plausibility）与 `Methodology use`（Corrected / Doctoral reproduction），`Show details ▾` 逐层列出发现；原 `required inputs ready` 改为 `inputs present · validation {最差状态}`。原已知问题 N-1（面板与 Study 编辑器对论文复现口径资格的判断不一致）已由 FX9 修复：两处共用同一个白名单检查，非论文期的用户包在面板上显示 `Not eligible — not a thesis-era pack` | S-D2、N-1（FX9） |
+| 映射编辑器 | 可选字段组 `Timestamp column (optional)`：`Timestamp column`、`Time zone`（UTC / Europe/London）；逐行列出不可读、重复、倒序、缺口和步长不规则，有问题不能提交。列名含 `eur` 或 `€` 而 Currency 选 GBP 时，琥珀色提示 `Column name suggests EUR — confirm the currency.`（不阻断）。原已知问题 N-2（Europe/London 的秋季重复小时只出现一次时预览报错）已由 FX9 修复：现在逐行报为时间戳问题；序列整体相对模型时钟错开时给不阻断的 warning（代码 `GF_DATA_TIMESTAMP_ORIGIN`） | S-D4、S-D5、N-2、N-3（FX9） |
 | Data 页数据角色 | 五个互联线角色改名为 “<Country> interconnector availability (+ import / - export)”（正值为进口能力，负值为出口能力） | A16-2 |
 | Run 范围下拉框与预检 | Study 选了扩展时，一日选项显示 `One-day market lesson (extensions do not run)`；选它会被阻断：`The one-day lesson runs the market step only, so the selected extension(s) {names} would not execute. Choose two-period or a longer scope, or deselect the extension(s).` | F-D2，A16-3 |
 | Run 上下文条与 Callout（论文复现口径） | `Raw invariants` 字段；扣发说明写明失败的原始不变量与声明偏差（第 2.4 节） | R-D1 |
@@ -197,8 +209,16 @@
 | 修正口径的 Study 迁移 | 默认 PSM 升到 6.4.0（6.2.0 VoLL、6.3.0 日前进口、6.4.0 核电开局在运），0.6.0 及 FX8 之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13）；界面与 6.3.0 时相同，只是升级内容多了一条 correction | A16-2、A16-5、A18 |
 | Run 结果页的 advisory 列表（论文复现口径与旧 Run） | 没有应用 A18 的默认 PSM Run（所有论文复现口径 Run，以及 FX8 之前的修正口径 Run）多一条 high 级 advisory，标题照抄：`Nuclear started the year off and paid its start-up cost to enter`。论文复现口径 Run 和 0.6.0 的旧 Run 原来已有其他 high 级 advisory，所以它们的 `needs_review` 不变；只缺这一条的修正口径 Run（本分支上 FX8 之前跑的，0.6.0 用户手里没有）会因此变为 `needs_review`。结果是否在结果页发布不受影响（Q14 只看 raw invariants）。没有核电的数据包（如 VALUE 101）也会列出这一条，因为它按模块而不是按数据包判断 | A18、A15 |
 | 电池扩容上限（R1-3，A20） | 修正口径的储能扩容策略升到 `value-storage-expansion-policy` 5.1.0（`r13.per-type-battery-caps`）：三种电池各自的上限，撤回 P0-7 的共用池。R1-3 之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13），界面与已有的确认相同。Run 的 advisory 列表**少一条** medium 级 `Power-battery cap counted three times`（论文复现口径 Run 与 0.6.0 旧 Run 原来都有），因为各拿一份上限是论文设计；没有新增 advisory，也没有新界面字符串。网站不要写“三种电池共用一个功率池” | A20、Q13 |
+| 经济下调顺序（R1-2，A19/A22/A22a） | 默认 PSM 升到 6.5.0（`r12.economic-downward-order`）。R1-2 之前保存的修正口径 Study 首次运行前要在界面确认一次方法升级（Q13），界面与已有的确认相同。没有应用这条修正的默认 PSM Run（所有论文复现口径 Run，以及 R1-2 之前的修正口径 Run）在 advisory 列表中多一条 medium 级 advisory，标题照抄：`Down regulation without restart economics`。没有新界面字符串。另一条 high 级 advisory `Down regulation in curtail-cost order` 的正文仍把“先弃风”写成缺陷（复测 R3-N2），下一轮改措辞；网站**不要**引用它 | A19、A22、A22a、Q13 |
+| Market replay 储能报价（FX9，M-D1 界面） | 拍卖视图中每条储能报价带自己的接受量和状态（来自 `storage_orders` 账本），表下有一句说明（同时段回购时，报价接受量之和可以大于电池净放电）。2.2 节“界面上还看不到逐条接受量”一句随之过时，改为“界面与导出账本都能核对” | M-D1、FX9 |
+| Inspect 扩展结果（FX9） | 全年范围的扩展结果超过 16 MiB 时，Inspect 仍能列出各年的扩展产物（原已知问题 F2-N1） | F2-N1、FX9 |
+| 预检（R1-4） | 新的 readiness 代码：选了已停用的模块时报 `GF_PREFLIGHT_MODULE_DISABLED`，提示到 Modules 的 Disabled and quarantined 区启用；内核没有封印时报 `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`。运行时间估算改为实测量级（两年 Run 约 0.3 h，原来写约 3.4 h） | M2-N2、M-D6、F2-N2 |
+| Modules 页（R1-4、R1-5） | 全局 Rescan 会重新导入已安装的代码，源码改坏的已加载模块会立即被隔离（响应新增 `reloaded_modules`）；已安装模块卡片新增 State（Enabled / Disabled / Quarantined），停用或隔离时卡片不再提供开关，改指向 Disabled and quarantined 区；原地改过源码的卡片写 `Source changed since install ({old8}… → {new8}…). Runs record the new source hash.` | M-D5、M2-N4、M-D2 |
+| Runs 页（R1-5） | Run history 下拉项写成 `范围 · 状态 · 创建时间 · ID 后缀`（例如 `One-day market lesson · completed · 2026-10-06 23:17 · fc41b4c7`）；有 Run 但未选中时为 `Choose a Run (n)`；启动中写 `Starting the Run…`，并说明首次 Run 要先归档运行环境（约 3 分钟）；预检有错误时物理预览徽章为琥珀色 `inputs ready · Run blocked`；冻结 manifest 标为 `Frozen data pack manifest SHA-256` | R-D2、S-D12、S-D10、M2-N3、S-D13 |
+| 结果、网络与比较（R1-5） | 非年度 Run 的 stress 标题为 `Stress events — 2025 (non-annual run)`；只有全国市场的 Run 在网络页按铜板处理，只给一个原因和 `Open Market replay →`；比较页按“标签 + 路径”列出变化维度（例如 `module · storage cost: dynamic-annual-storage-cost 2.0.0 → value-legacy-storage-tariff 1.0.0`），原始 JSON 折叠；任何 Run 的 advisory 都在上下文条下方的折叠区列出；PSM 以外未调用的槽位写 `Not called in this scope` | R-D3、R-D5、R-D7、R-D11、R-D12 |
+| Studies、Data 页与窄屏（R1-5） | 编辑已保存 Study 时标题为 `Edit study · {名称}`；Studies 列表的哈希注明 `Model graph SHA-256 (modules and extensions; not the data pack)`；页头 pill 为 `25 of 25 base inputs ready`；角色卡显示时间戳声明；375 px 下不再整页横向滚动 | R-D11、N-6、F2-N3、R-D8 |
 
-**注意**：`CHANGELOG.md` 已有 VoLL（A16-5）、日前进口（A16-2）、储能报价账本（M-D1）、GBP1 public2（FX7）和核电开局在运（FX8，“Nuclear in service at the start of the year”）各节；但 FX1–FX3 的界面变化（上表前八行中除数据角色以外的各项）**还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md`**。网站文案在阶段 2 之前须等这两份文档补齐（第 7 节第 7 条），在那之前只能以设计规格第 11 节和 `docs/dev/p0-reports/FX3-UI-batch.md` 为准，而这两份是内部文档，不得上传。
+**注意**：`CHANGELOG.md` 已有 VoLL（A16-5）、日前进口（A16-2）、储能报价账本（M-D1）、GBP1 public2（FX7）、核电开局在运（FX8，“Nuclear in service at the start of the year”）、经济下调顺序（R1-2，“Economic down-regulation order: restart cost against avoided cost”）和按类型电池上限（R1-3，“Per-type power-battery expansion caps”）各节；但 FX1–FX3、FX9 与 R1-5 的界面变化（上表中除数据角色、方法升级与 advisory 以外的各项）**还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md`**。R1-4 改了模块指南与用户指南中与代码不符的名称（`value-module.json`、`value.module/v2`、`VALUE_DATA_HOME` 等），并新增“修改内置 module（方法升级）”一节；网站上如有这些文档的副本或摘录，阶段 1 时同步。网站文案在阶段 2 之前须等这两份文档补齐（第 7 节第 7 条），在那之前只能以设计规格第 11 节和 `docs/dev/p0-reports/FX3-UI-batch.md` 为准，而这两份是内部文档，不得上传。
 
 ---
 
@@ -315,11 +335,11 @@
 | 用户可见行为（标签、状态词、启动器、常见问题） | `docs/USER_GUIDE.md`、`docs/USER_GUIDE_ZH.md`（第 2、12、13、19 节）；`SECURITY.md` |
 | 模型设定改动（给作者的简报，可作背景） | `docs/handoff/MODEL_CHANGES_BRIEF.md`（内部，不发布） |
 | GBP1 前后对比 | `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`（内部；是否公开由作者决定） |
-| 参考统计（核电、水电、风光损耗） | `docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`（内部，部分仍待审核） |
+| 参考统计（核电、水电、风光损耗、火电重启成本） | `docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`（内部；第 1–3 节 A21、第 4 节 A22 已由作者审核） |
 | 方法学 0.4 源稿 | `docs/methodology/drafts/0.4/*.md`（未审阅，发布时排除） |
 | methodology 修改员的交接 | `docs/handoff/METHODOLOGY_EDITOR_HANDOFF.md`（worktree 根目录副本 `VALUE_handoff_methodology_editor_2026-10-04.md`） |
-| 0.7.0 四角色测试与修复轮复测 | `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 9 节为复测；worktree 根目录副本 `VALUE_four_role_test_report_2026-10-04.md`；内部，不发布） |
-| 修复轮界面字符串（在 CHANGELOG 与用户指南补齐之前） | `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 第 11 节、`docs/dev/p0-reports/FX3-UI-batch.md`、`docs/dev/P0_FRONTEND_DEVIATIONS.md`（F-FX2、F-FX3 两节）；都是内部文档，只用来核对字符串 |
+| 0.7.0 四角色测试与复测 | `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（第 9 节为修复轮复测，第 10 节为 R1 轮复测；worktree 根目录副本 `VALUE_four_role_test_report_2026-10-04.md`；内部，不发布） |
+| 修复轮与 R1 轮界面字符串（在 CHANGELOG 与用户指南补齐之前） | `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 第 11 节、`docs/dev/p0-reports/FX3-UI-batch.md`、`FX9-retest-mediums.md`、`R1-5-ui-defects.md`、`docs/dev/P0_FRONTEND_DEVIATIONS.md`（F-FX2、F-FX3、F-FX9、F-R15 各节）；都是内部文档，只用来核对字符串。F-R15 中有两处待设计方确认（F-R15-13 卡片不再提供开关，F-R15-16 窄屏样式），前端翻新时可能改 |
 | GBP1 修正口径本地验收 | `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`（内部；作者要求不发布；第 10 节为 A18 之后的重跑，核电通过） |
 
 ---
@@ -328,12 +348,7 @@
 
 1. **0.7.0 安装包与下载链接**：没有构建。`site.json` 中不能出现 0.7.0 条目，也不能出现猜测的 URL、大小或 SHA256。
 2. **“已升级、已重装”之类的表述**：作者本机的安装仍是 0.6.0-alpha.2。重装（`P0_ACCEPTANCE.md` 第 6 节）每一步都要作者批准，目前没有执行。
-3. **待审核的参考统计**：
-   - ~~光伏倾斜面换算的模型选择（A13）仍为 PENDING AUTHOR REVIEW~~（A16-6 更新：作者已直接认可这些文献模型；网站可写“采用文献标准模型，作者认可”，但不得写“已校准”）；
-   - DUKES 对照列（参考统计表第 3.4 节）仍标为 PENDING，只用于披露；
-   - 回退值（全国核电 0.723、AGR 0.727、新建 PWR/EPR 0.801）没有逐条审核。
-
-   网站不得把这些说成“经审核”或“已校准”。核电逐站负荷率和水电 0.3487 已审核（A14），风光损耗系数已认可（A9），但网站最多写“文献取值，未对统计负荷率标定”。
+3. **参考统计表本身**（R1 轮更新）：参考统计表第 1–3 节已在 A21、第 4 节（火电重启成本）已在 A22 由作者审核，没有待审核的数值了；光伏倾斜面的模型选择也已在 A16-6 认可。但参考统计表是内部文档（`docs/dev/`），**不上传，也不整表引用**。网站可以写“取值来自公开统计与文献，经作者审核”，**不得**写“已校准”“与 DUKES 一致”：风光损耗系数是文献取值，CF 只与 DUKES 并列披露（A9）；重启成本是文献与 BM 申报数据的换算值，不是机组实测。
 4. **内部文档**：`docs/dev/`、`docs/handoff/`（包括本文）、worktree 根目录的 `VALUE_*.md` 都不进入网站，也不进入公开源码（`tests/baselines/release-exclusions.txt`）。
 5. **GBP1 public2**：数据包只在本地构建，没有发布（CHANGELOG “Nothing is uploaded”）。修复轮（FX7）在代码中把它的 id 登记为 scientific_reference，并加入核电分站名单，但这只是让本地构建的包能按修正口径运行，**不等于发布**。不得列入 `data_assets`，也不得引用本地验收运行的数字（2.7 节）。
 6. **方法学 0.4 草稿**：不得导入 `website/methodology/`，也不得作为下载提供。
@@ -356,7 +371,8 @@
 5. **网站上口径的中文译名**：本文建议用“修正口径（默认）”和“论文复现口径”，应用界面本身只有英文。
 6. **推送时机（A17，已决定）**：前端整体翻新完成后才推送。上传员不需要决定，只需知道阶段 1 要等到那时。翻新会改界面，第 2.9 节和附录 A.3、A.6 的界面字符串届时要按翻新后的版本重新核对。
 7. **修复轮界面变化写进 `CHANGELOG.md` 与用户指南**（代码负责人做，作者批准）：FX1–FX3 的界面变化（第 2.9 节）目前只在内部文档中。阶段 2 之前须补齐，否则网站文案没有可公开引用的依据。
-8. **修正口径在 GBP1 上的结果何时可以公开**：A18 已实施并在本地重跑，核电对 Energy Trends +2.5%，验收通过；public2 仍未发布。是否公开、写在哪页，由作者决定。
+8. **修正口径在 GBP1 上的结果何时可以公开**：A18 已实施并在本地重跑，核电对 Energy Trends +2.5%，验收通过；R1-2 之后重跑结果逐位不变；public2 仍未发布。是否公开、写在哪页，由作者决定。
+9. **网站是否介绍修正口径的经济下调顺序**（R1 轮）：它是方法设定，参考运行中几乎不起作用。若介绍，按 2.3 节的措辞；分区再调度的下调次序是否也按 A19 处理，作者尚未决定，网站不要写网络模块的下调顺序已按重启成本处理。
 
 ---
 
@@ -402,7 +418,7 @@ A.1 `models/value` 新增一节 “Two methodology profiles / 两种方法学口
 
 | Label（英文照抄） | What it is / 含义 | Boundary / 边界 |
 |---|---|---|
-| `Corrected methodology (default)` | EN: Current default for new Studies and Runs, with the October 2026 review fixes (market clearing and storage rules, interconnector imports in the day-ahead clearing, literature wind and solar losses, nuclear and hydro availability, storage headroom, network economics). ZH：新 Study 与 Run 的默认口径，包含 2026 年 10 月的审查修复（出清与储能规则、互联线进口进入日前出清、风光文献损耗、核电与水电可用率、储能扩容余量、网络经济口径）。 | EN: A method change; compare it with other profiles as a different method. Wind and solar capacity factors are disclosed next to DUKES, not calibrated to it. ZH：属于方法变化，与其他口径比较时按不同方法对待；风光容量因子与 DUKES 并列披露，不对其标定。 |
+| `Corrected methodology (default)` | EN: Current default for new Studies and Runs, with the October 2026 review fixes (market clearing and storage rules, interconnector imports in the day-ahead clearing, down regulation that weighs restart cost against the fuel, carbon and variable cost avoided, literature wind and solar losses, nuclear and hydro availability, storage headroom with one cap per battery type, network economics). ZH：新 Study 与 Run 的默认口径，包含 2026 年 10 月的审查修复（出清与储能规则、互联线进口进入日前出清、按重启成本与省下的燃料、碳和可变成本决定下调顺序、风光文献损耗、核电与水电可用率、储能扩容余量及按电池类型的上限、网络经济口径）。 | EN: A method change; compare it with other profiles as a different method. Wind and solar capacity factors are disclosed next to DUKES, not calibrated to it. ZH：属于方法变化，与其他口径比较时按不同方法对待；风光容量因子与 DUKES 并列披露，不对其标定。 |
 | `Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)` — not an exact reproduction of the 2026-07-18 retained trajectory | EN: Keeps the 0.6.0-alpha.2 behaviour, except corrections applied to both profiles: interconnector series on the run clock, three GBP1 reading errors, thermal investment net of running cost, stress-event and accounting corrections. Thesis-lineage modules and data packs only; refuses enabled external code. ZH：保留 0.6.0-alpha.2 的行为；只有两个口径共同的修正例外：互联线序列按运行时钟对齐、GBP1 的三个读取错误、火电投资扣除运行成本、stress event 与核算修正。只运行论文谱系模块和数据包；已启用外部代码时拒绝运行。 | EN: Annual results appear on result pages only when every raw invariant passed; otherwise use Inspect or the export. ZH：原始不变量全部通过时，年度结果才在结果页发布；否则到 Inspect 或导出中查看。 |
 
 A.2 验证页新增五行（C-11，阶段 1）：
@@ -412,7 +428,7 @@ A.2 验证页新增五行（C-11，阶段 1）：
 - “Stress events (both profiles)” | EN: per-period shortfall recorded and grouped into events; dispatch and prices unchanged | EN: runs made before 0.7.0 did not record shortfalls. ZH 同义。
 - “GBP1 doctoral run, first model year” | EN: before/after comparison of the reading corrections | EN: known issue: surplus conservation fails in 471 periods (max 991 MWh), also before the fixes; annual results withheld; under investigation. ZH 同义。
 - “0.7.0-alpha.1 installers” | EN: not yet built | EN: `not_evaluated`. ZH：尚未构建，`not_evaluated`。
-- （修复轮）“VALUE four user paths, 0.7.0-alpha.1 source” | EN: reproduce, adapt data, edit a module and add a function passed on the source tree after the October 2026 fix round; no high-severity defect remains | EN: Linux source tree, not an installer; one-day, smoke and two-year scopes; open medium issues in data-pack eligibility display, Europe/London timestamps and extension results of full-year runs. ZH：“VALUE 四类用户路径，0.7.0-alpha.1 源码” | 2026 年 10 月修复轮之后，复现、换数据、改模块、加功能四条路径在源码树上通过，没有剩下高严重度缺陷 | 只在 Linux 源码树上测试，不是安装包；覆盖一日、smoke 和两年范围；数据包资格显示、Europe/London 时间戳和全年 Run 的扩展结果三处仍有中等问题。
+- （修复轮，R1 轮更新）“VALUE four user paths, 0.7.0-alpha.1 source” | EN: reproduce, adapt data, edit a module and add a function passed on the source tree after the October 2026 fix rounds; no high-severity defect remains | EN: Linux source tree, not an installer; one-day, smoke and two-year scopes; one open medium issue: after a Study is re-saved unchanged, Compare can report a VoLL change that did not happen. ZH：“VALUE 四类用户路径，0.7.0-alpha.1 源码” | 2026 年 10 月各轮修复之后，复现、换数据、改模块、加功能四条路径在源码树上通过，没有剩下高严重度缺陷 | 只在 Linux 源码树上测试，不是安装包；覆盖一日、smoke 和两年范围；仍有一项中等问题：Study 原样重新保存后，比较页可能报告并未发生的 VoLL 变化。（这一项排在下一轮小修复中；若上线前已修复并复核，边界列删去这句。）
 - VoLL 不单独成行；若作者希望写，放在 “Corrected default PSM energy identity” 一行的边界列：EN: “Recorded unserved energy is valued at £17,000/MWh in both profiles.” ZH：“两个口径的记录切负荷都按 17,000 £/MWh 计价。”
 
 A.3 四类用户步骤（J-3，阶段 2）：
