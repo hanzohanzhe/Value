@@ -1621,6 +1621,7 @@
     "tests/test_public_uk_distribution.py",
     "tests/test_r12_economic_downward_order.py",
     "tests/test_r13_per_type_battery_caps.py",
+    "tests/test_r2_methodology_record.py",
     "tests/test_r2_numeric_identity.py",
     "tests/test_raw_invariant_failures.py",
     "tests/test_reader_inventory.py",
@@ -8411,8 +8412,8 @@
     },
     {
       "path": "gridform_core/methodology.py",
-      "sha256": "f7b73e5066fc8332ec3e5606c7a46f71577a219b2dba48eba1f37a8b2deeaf2a",
-      "bytes": 45404,
+      "sha256": "a80a16a81aa3486e1c48d559e87fbdc726b260051d6f00c380e7cf56b023d169",
+      "bytes": 47179,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12641,6 +12642,12 @@
       "path": "tests/test_r13_per_type_battery_caps.py",
       "sha256": "0dd6e81ceb5bb3741d229f303fb05f1fab8c74d0ef27ad8232d171d0d2b284b9",
       "bytes": 9926,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_r2_methodology_record.py",
+      "sha256": "fad3f44ce6f749c19431e347010686f198c25045ffcca5a947bb02a567332ab8",
+      "bytes": 2158,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

@@ -60,6 +60,27 @@ PUBLICATION_RULES = ("standard", "raw_invariants_must_pass")
 PACK_CLASSES = ("scientific_reference", "teaching", "synthetic", "user_workspace")
 SUB_REASONS = ("module", "extension", "data_pack", "external_code", "reference_path")
 
+# R3-N6 / O-3 (four-role R1 retest, DECISIONS A23): universal corrections that
+# are in force in every Run of either profile but are deliberately not in the
+# catalogue, because they change only the accounting zone, validation or the
+# ledgers (Q12) and must not change the method identity
+# (applied_corrections_sha256) of saved Studies and Runs (FX5 report,
+# deviation 5).  The Run record names them next to the catalogue ids so that,
+# for example, the VoLL change 8000 -> 17000 GBP/MWh is visible in a doctoral
+# Run.  The network-model software fixes (p08.*) are not listed: they are
+# carried by the network modules' versions and run only where those run.
+UNIVERSAL_ACCOUNTING_CORRECTIONS: tuple[tuple[str, str], ...] = (
+    ("fx4.storage-offer-ledger", "four-role M-D1: storage offer ledger (accounting zone)"),
+    ("fx5.voll-17000", "A16-5: value of lost load 17000 GBP/MWh in the cost accounts"),
+    ("p04.storage-energy-audit", "P0-4: storage energy audit"),
+    ("p04.surplus-node-boundary", "P0-4: source-classified node boundary (Q7)"),
+    ("p04.surplus-routing", "P0-4: surplus routing ledger"),
+    ("p04.validation-gate", "P0-4: validation gate (Q14)"),
+    ("p04.validation-v2", "P0-4: recomputed validation report v2"),
+    ("p06.physical-operating-cost", "P0-6: physical operating cost"),
+    ("p07.cost-ledger-v2", "P0-7: annual cost ledger v2"),
+)
+
 # Packs whose class is known without a manifest field (P0-5 "truth registry";
 # P0-5 S3 owns the full data-method policy and extends this table).
 # ``synthetic`` is never inferred from a manifest field (``country:
@@ -491,6 +512,12 @@ class ResolvedMethodology:
             "note": self.note,
             "frozen": self.frozen,
             "applied_correction_ids": list(self.applied_correction_ids),
+            # R3-N6 / O-3: presentation of the record only; neither list is
+            # part of the method identity above.
+            "universal_accounting_correction_ids": [item[0] for item in UNIVERSAL_ACCOUNTING_CORRECTIONS],
+            "correction_ids_in_force": sorted(
+                set(self.applied_correction_ids) | {item[0] for item in UNIVERSAL_ACCOUNTING_CORRECTIONS}
+            ),
             "catalogue_sha256": self.catalogue_sha256,
             "external_code_policy": self.external_code_policy,
             "reference_configuration": copy.deepcopy(dict(self.reference_configuration)),
