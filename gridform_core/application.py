@@ -1228,6 +1228,10 @@ def _native_result_payload(typed_results, ledgers, *, planning_mode: str) -> dic
             "Decarbonization_Mechanism_Cost_Added_to_System_GBP": None,
             "Decarbonization_Mechanism_Cost_Status": "not_modelled",
             "Total_Energy_Deficit_MWh": market.total_blackout_mwh,
+            # R5 (S-F-高1/中2): annual demand and the A2 served energy, for the
+            # run status and the comparison (demand served, unserved incl. stress).
+            "Total_Demand_MWh": market.total_demand_mwh,
+            "Demand_Served_MWh": ledger.demand_served_mwh,
             "Total_Excess_Energy_MWh": market.total_excess_mwh,
             "Total_Imports_MWh": sum(item.import_mwh for item in market.period_summaries),
             "Total_Storage_Charge_MWh": sum(item.storage_charge_mwh for item in market.period_summaries),
@@ -2060,6 +2064,7 @@ def _run_native_project(
     cost_ledger_path = write_cost_ledgers(
         output_dir / "ledgers" / "annual-cost-ledger.json", ledgers
     )
+    served_by_year = {ledger.year: ledger.demand_served_mwh for ledger in ledgers}
     carbon_scenario = str(
         resolved.scientific_parameters.get(
             "carbon.factor_scenario", "value_current_authoritative_v1"
@@ -2082,9 +2087,9 @@ def _run_native_project(
             scenario_id=carbon_scenario,
             generation_mwh_by_asset=result.market.generation_mwh_by_asset,
             technology_by_asset=technology_by_asset,
-            delivered_demand_mwh=max(
-                result.market.total_demand_mwh - result.market.total_blackout_mwh, 0.0
-            ),
+            # R5 (r5.served-energy-net-of-stress-shortfall): the same served
+            # energy as the cost ledger (demand less all A2 unserved energy).
+            delivered_demand_mwh=served_by_year[result.year],
             import_country_by_asset=import_countries,
             asset_states=result.planning_advance.operating_state.assets,
         )

@@ -85,6 +85,12 @@ UNIVERSAL_ACCOUNTING_CORRECTIONS: tuple[tuple[str, str], ...] = (
     ("p04.validation-v2", "P0-4: recomputed validation report v2"),
     ("p06.physical-operating-cost", "P0-6: physical operating cost"),
     ("p07.cost-ledger-v2", "P0-7: annual cost ledger v2"),
+    # R5 (A28, four-role S-F-中2): the cost per MWh served and the carbon
+    # intensity per MWh delivered divide by demand less all A2 unserved
+    # energy (recorded blackout plus stress shortfall), not by demand less
+    # the recorded blackout alone.  Ledger numbers only; dispatch unchanged.
+    ("r5.served-energy-net-of-stress-shortfall",
+     "R5 (A28): energy served = demand less recorded and stress-shortfall unserved energy (per-MWh denominators)"),
 )
 
 # Packs whose class is known without a manifest field (P0-5 "truth registry";

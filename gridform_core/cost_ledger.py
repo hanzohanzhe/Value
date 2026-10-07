@@ -71,6 +71,31 @@ def _finite(value: object, field_name: str) -> float:
     return number
 
 
+def a2_hidden_unserved_mwh(market: MarketYearResult) -> float:
+    """Stress shortfall of the year booked by the A2 energy-balance ledger beyond the recorded blackout.
+
+    extensions.market_ledger.energy_balance.by_year[*].hidden_unserved_mwh
+    of market.year (the ledger books shortfall = recorded + hidden as
+    unserved energy); 0.0 when the PSM declares no balance boundary or the
+    year is absent (older results), so the served energy is then demand
+    less the recorded blackout, as before.  A year without a stress period
+    (``stress_periods`` 0) has only sub-tolerance numerical noise in that
+    account (about 1e-8 MWh on GBP1), which is not unserved energy: 0.0.
+    """
+
+    ledger = market.extensions.get("market_ledger")
+    balance = ledger.get("energy_balance") if isinstance(ledger, Mapping) else None
+    rows = balance.get("by_year") if isinstance(balance, Mapping) else None
+    if not isinstance(rows, (list, tuple)):
+        return 0.0
+    for row in rows:
+        if isinstance(row, Mapping) and row.get("year") is not None and int(row["year"]) == int(market.year):
+            if row.get("stress_periods") is not None and int(row["stress_periods"]) == 0:
+                return 0.0
+            return _finite_nonnegative(row.get("hidden_unserved_mwh") or 0.0, "hidden_unserved_mwh")
+    return 0.0
+
+
 def build_cem_cost_ledger(
     market: MarketYearResult,
     *,
@@ -97,7 +122,12 @@ def build_cem_cost_ledger(
     demand = _finite_nonnegative(market.total_demand_mwh, "total_demand_mwh")
     blackout = _finite_nonnegative(market.total_blackout_mwh, "total_blackout_mwh")
     generation = _finite_nonnegative(market.total_generation_mwh, "total_generation_mwh")
-    served = max(demand - blackout, 0.0)
+    # R5 (S-F-中2, correction r5.served-energy-net-of-stress-shortfall): the
+    # energy served is demand less ALL unserved energy of the A2 account - the
+    # PSM's recorded blackout plus the stress shortfall the energy-balance
+    # ledger books as hidden unserved energy - not demand less the recorded
+    # blackout alone.  Accounting only; dispatch is unchanged.
+    served = max(demand - blackout - a2_hidden_unserved_mwh(market), 0.0)
 
     network_costs = market.extensions.get("network_resource_costs_gbp")
     network_capex = network_fom = network_policy = 0.0

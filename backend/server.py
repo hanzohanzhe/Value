@@ -149,7 +149,7 @@ from gridform_core.study_lifecycle import (
     restore_study,
     study_id_is_reserved,
 )
-from gridform_core.data_pack_validation import validate_data_pack
+from gridform_core.data_pack_validation import legacy_demand_unit, validate_data_pack
 from gridform_core.preflight import run_preflight
 from gridform_core.preflight_resources import (
     resource_readiness_from_snapshot,
@@ -1442,6 +1442,12 @@ def list_packs() -> list[dict[str, Any]]:
             if (issue := binding_issue(pack["id"], role, bindings[role]))
         }
         pack["binding_issues"] = issues
+        # S-F-高1 (R5): a legacy-labelled demand binding says the unit it is
+        # read in (registry relabel; the manifest file is unchanged).
+        for role, binding in bindings.items() if isinstance(bindings, dict) else ():
+            relabel = legacy_demand_unit(role, binding)
+            if relabel and isinstance(binding, dict):
+                binding["runtime_unit_interpretation"] = relabel
         pack["valid_required_count"] = sum(
             role in bindings and role not in issues for role in required
         )

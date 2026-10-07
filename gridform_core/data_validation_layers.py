@@ -167,7 +167,13 @@ def evaluate_layers(pack_root: Path, manifest: Mapping[str, Any], *, periods: in
                     ))
                 continue
         if path is not None:
-            interval = binding.get("interval_minutes") or dict(binding.get("timestamp_check") or {}).get("interval_minutes") or 30
+            check_interval = dict(binding.get("timestamp_check") or {}).get("interval_minutes")
+            # S-F-中3 (R5): a retained source keeps its own period (an hourly
+            # demand source of a half-hourly canonical file), which its
+            # recorded check used; the binding's interval describes the
+            # canonical file.
+            interval = ((check_interval if binding.get("timestamp_uri") else None)
+                        or binding.get("interval_minutes") or check_interval or 30)
             chronology.extend(timestamp_findings(
                 path, str(binding["timestamp_column"]), int(interval), role,
                 time_zone=str(binding.get("timestamp_time_zone") or "UTC"),

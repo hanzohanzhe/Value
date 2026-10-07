@@ -501,14 +501,26 @@ class ClockAlignment:
             parts.append(f"only the first {self.periods:,} half-hour periods are used; the last "
                          f"{self.ignored_periods:,} are ignored")
         if self.wrapped_periods:
-            days = self.wrapped_periods * self.period_hours / 24.0
             parts.append(f"the series covers {self.used_periods:,} of the {self.periods:,} half-hour periods "
-                         f"of a model year: the last {self.wrapped_periods:,} periods ({days:.1f} days) are "
-                         "filled by repeating the series from its start")
+                         f"of a model year: the last {period_span_text(self.wrapped_periods, self.period_hours)} "
+                         f"{'is' if self.wrapped_periods == 1 else 'are'} filled by repeating the series from its start")
         if not parts:
             return None
         text = "; ".join(parts)
         return text[0].upper() + text[1:] + "."
+
+
+def period_span_text(periods: int, period_hours: float = 0.5) -> str:
+    """S-F-低4 (R5): "1 period (30 minutes)", "3 periods (1.5 hours)", "520 periods (10.8 days)"."""
+
+    hours = periods * period_hours
+    if hours >= 24:
+        span = f"{hours / 24.0:.1f} days"
+    elif hours >= 1:
+        span = f"{hours:g} hour" + ("" if hours == 1 else "s")
+    else:
+        span = f"{hours * 60:g} minutes"
+    return f"{periods:,} period{'' if periods == 1 else 's'} ({span})"
 
 
 def clock_alignment(

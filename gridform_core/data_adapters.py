@@ -85,6 +85,11 @@ class AdapterSpec:
     interval_minutes: int | None = None
     source: Mapping[str, object] = field(default_factory=dict)
     schema_version: str = SCHEMA_VERSION
+    # S-F-中3 (R5): each source row is written this many times (2 expands an
+    # hourly demand series to half-hours: each hour is used for two half-hour
+    # periods at the same MW).  Omitted from to_dict() when 1, so every spec
+    # (and its hash) without the expansion is unchanged.
+    repeat_rows: int = 1
 
     @classmethod
     def from_dict(cls, value: Mapping[str, object]) -> "AdapterSpec":
@@ -94,7 +99,10 @@ class AdapterSpec:
         return cls(**payload)  # type: ignore[arg-type]
 
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        payload = asdict(self)
+        if payload.get("repeat_rows") == 1:
+            payload.pop("repeat_rows")
+        return payload
 
 
 @dataclass(frozen=True)
@@ -245,6 +253,8 @@ def execute_adapter(source: Path, spec: AdapterSpec, output: Path, *,
     if significant_digits is not None and (isinstance(significant_digits, bool) or not isinstance(significant_digits, int)
                                            or not 1 <= significant_digits <= 17):
         raise ValueError("significant_digits must be an integer between 1 and 17")
+    if isinstance(spec.repeat_rows, bool) or spec.repeat_rows not in (1, 2):
+        raise ValueError("repeat_rows must be 1 or 2")
     try:
         preview_csv(source, spec, limit=1)
     except AdapterValueError:
@@ -275,7 +285,8 @@ def execute_adapter(source: Path, spec: AdapterSpec, output: Path, *,
             blank_count += len(empty)
             problems.extend(found[:max(0, MAX_LISTED_CELL_PROBLEMS - len(problems))])
             blanks.extend(empty[:max(0, MAX_LISTED_CELL_PROBLEMS - len(blanks))])
-            writer.writerow(normalized)
+            for _ in range(spec.repeat_rows):
+                writer.writerow(normalized)
             rows += 1
     if problem_count:
         temporary.unlink(missing_ok=True)

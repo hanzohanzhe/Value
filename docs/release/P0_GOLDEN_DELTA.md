@@ -28,7 +28,7 @@ trajectory re-baselines are in `tests/golden/reports/` (`D4-r9.json`, `D5-r1.jso
 | D2 | doctoral | fast | legacy storage two_year_smoke | r12 | 0 | 429 | 54 | 0 |
 | D3 | doctoral | fast | legacy storage value_101_day | r15 | 48 | 505 | 40 | 0 |
 | D4 | doctoral | full | legacy storage two_year | r13 | 476 | 509 | 73 | 0 |
-| D5 | doctoral | full | GBP1 public1 legacy storage, first model year (A12) | r4 | 377 | 615 | 64 | 0 |
+| D5 | doctoral | full | GBP1 public1 legacy storage, first model year (A12) | r5 | 377 | 615 | 64 | 0 |
 
 Doctoral trajectory columns change only under the universal corrections the author approved
 (`tests/golden/doctoral_trajectory_rebaselines.json`: P6-24, P6-02, P6-03, P6-04 and
@@ -88,6 +88,7 @@ A column changed by several revisions is counted under each of their correction 
 | `r41.down-regulation-taken-once` |  |  |  |  |  |  |  |  |  |  |  |  | 48/123/15 | 110/147/19 | 99/330/18 |
 | `r41.must-run-surplus-counted-once` |  |  |  |  |  |  |  |  |  |  | 0/3/16 | 0/3/16 | 48/123/15 | 110/147/19 | 99/330/18 |
 | `r43.model-clock-utc-label` | 0/2/12 | 0/2/12 | 0/2/12 | 0/2/10 | 0/2/12 | 0/2/12 | 0/2/12 | 0/2/8 | 0/2/8 | 0/2/12 | 0/2/5 | 0/2/5 | 0/2/5 | 0/2/5 | 0/2/5 |
+| `r5.served-energy-net-of-stress-shortfall` |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 0/2/0 |
 
 ## 2 Dual-profile delta (doctoral vs corrected, latest revisions)
 
@@ -213,6 +214,7 @@ only as a golden revision reason. Families: the golden families with a revision 
 | `r41.down-regulation-taken-once` | catalogue (universal) | doctoral | A15, A26 | value-bid-at-cost-psm 6.6.0->6.7.0 | Curtailment branch of the thesis rule set (store_service_three, both sub-branches): when a non-VRE unit can give at least the remaining down-regulati… |
 | `r41.must-run-surplus-counted-once` | catalogue (universal) | doctoral | A26, DEV-BAL-04, P5-04 | value-bid-at-cost-psm 6.6.0->6.7.0 | Balancing stage of the thesis rule set: a non-VRE (must-run nuclear) surplus row of the ahead stage is output already in the accepted supply S and se… |
 | `r43.model-clock-utc-label` | golden revision | corrected, doctoral | S-中1 | — | R4-3 (DECISIONS A27, four-role report S-中1): the market ledger records the model clock it always used, UTC on a fixed 365-day year (semantic_metadata… |
+| `r5.served-energy-net-of-stress-shortfall` | golden revision | doctoral | S-F-中2 | — | R5-1 (A28, four-role S-F-中2): energy served = demand less recorded and A2 stress-shortfall unserved energy; cost per MWh served 116.789242 -> 116.828… |
 | `x0.methodology-identity` | catalogue (universal) | — | — | — | Runs record their methodology profile (id, version, definition and applied-correction hashes) in resolved-run.json, provenance and status; comparison… |
 | `x0.study-revision-migration` | catalogue (universal) | — | — | — | A saved Study whose revision no longer matches the installed code is classified (code identity, method upgrade, content change, unverifiable) instead… |
 

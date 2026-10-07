@@ -32,6 +32,28 @@ def _read(path: Path, fallback: object) -> object:
         return fallback
 
 
+def _a2_balance_by_year(path: Path) -> dict[int, dict[str, float]]:
+    """Annual demand and A2 unserved energy (recorded + stress shortfall) from the market metadata (R5)."""
+
+    metadata = _read(path, {})
+    balance = metadata.get("energy_balance") if isinstance(metadata, Mapping) else None
+    rows = balance.get("by_year") if isinstance(balance, Mapping) else None
+    result: dict[int, dict[str, float]] = {}
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, Mapping) or row.get("year") is None:
+            continue
+        demand = _finite_number(row.get("demand_mwh"))
+        recorded = _finite_number(row.get("recorded_unserved_mwh"))
+        hidden = _finite_number(row.get("hidden_unserved_mwh"))
+        if hidden is not None and row.get("stress_periods") == 0:
+            hidden = 0.0  # sub-tolerance noise only (cost_ledger.a2_hidden_unserved_mwh)
+        result[int(row["year"])] = {
+            **({"demand_mwh": demand} if demand is not None else {}),
+            **({"unserved_mwh": recorded + hidden} if recorded is not None and hidden is not None else {}),
+        }
+    return result
+
+
 def _unavailable_attribution(reason_code: str, *, status: str = "unavailable") -> dict[str, object]:
     return {"status": status, "reason_code": reason_code, "annual_by_year": {}}
 
@@ -264,6 +286,7 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         run_status=status,
     )
     curtailment_by_year = curtailment_validation["annual_by_year"]
+    balance_by_year = _a2_balance_by_year(output / "market" / "metadata.json")
     annual = []
     for row in cost_years:
         if not isinstance(row, Mapping):
@@ -287,7 +310,14 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
                 "annualised_capital_gbp": {"value": lines.get("commissioned_fleet.annualised_capital"), "unit": "GBP", "definition_id": row.get("definition_id"), "denominator": None, "source": "ledgers/annual-cost-ledger.json"},
                 "operating_resource_cost_gbp": {"value": sum(float(value or 0.0) for key, value in lines.items() if key.startswith("operation.")), "unit": "GBP", "definition_id": row.get("definition_id"), "denominator": None, "source": "ledgers/annual-cost-ledger.json"},
                 "total_carbon_emissions_tco2e": {"value": carbon_row.get("total_carbon_emissions_tco2e"), "unit": "tCO2e", "definition_id": (carbon_row.get("scenario") or {}).get("scenario_id") if isinstance(carbon_row.get("scenario"), Mapping) else None, "denominator": None, "source": "ledgers/annual-carbon-ledger.json", "status": carbon_row.get("status", "not_evaluated")},
-                "unserved_energy_mwh": {"value": None, "unit": "MWh", "definition_id": "value.adequacy-unserved-energy/v1", "denominator": None, "source": "status.results"},
+                # R5 (S-F-高1/中2): annual demand, the served energy the per-MWh
+                # cost divides by, all unserved energy of the A2 account
+                # (recorded blackout plus stress shortfall) and the
+                # PSM-recorded part on its own.
+                "demand_mwh": {"value": (balance_by_year.get(year) or {}).get("demand_mwh"), "unit": "MWh", "definition_id": "value.annual-demand/v1", "denominator": None, "source": "market/metadata.json"},
+                "demand_served_mwh": {"value": row.get("demand_served_mwh"), "unit": "MWh", "definition_id": row.get("definition_id"), "denominator": None, "source": "ledgers/annual-cost-ledger.json"},
+                "unserved_energy_mwh": {"value": (balance_by_year.get(year) or {}).get("unserved_mwh"), "unit": "MWh", "definition_id": "value.adequacy-unserved-energy/v2", "denominator": None, "source": "market/metadata.json"},
+                "recorded_unserved_energy_mwh": {"value": None, "unit": "MWh", "definition_id": "value.adequacy-unserved-energy/v1", "denominator": None, "source": "status.results"},
                 "vre_curtailment_mwh": {"value": vre_curtailment_mwh, "unit": "MWh", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": None, "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
                 "vre_curtailment_rate": {"value": vre_curtailment_rate, "unit": "fraction", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": "realised_available_vre_mwh", "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
                 "redispatch_net_impact_mwh": {"value": redispatch_net_impact_mwh, "unit": "MWh", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": None, "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
@@ -297,7 +327,17 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
     for row in annual:
         source = status_results.get(int(row["year"]), {})
         metrics = source.get("metrics", {}) if isinstance(source, Mapping) else {}
-        row["metrics"]["unserved_energy_mwh"]["value"] = metrics.get("blackout_mwh") if isinstance(metrics, Mapping) else None
+        row["metrics"]["recorded_unserved_energy_mwh"]["value"] = metrics.get("blackout_mwh") if isinstance(metrics, Mapping) else None
+        if row["metrics"]["demand_mwh"]["value"] is None and isinstance(metrics, Mapping):
+            row["metrics"]["demand_mwh"]["value"] = metrics.get("demand_mwh")
+            row["metrics"]["demand_mwh"]["source"] = "status.results"
+        if row["metrics"]["unserved_energy_mwh"]["value"] is None and isinstance(metrics, Mapping):
+            # A Run without the A2 account: the recorded blackout is all there is.
+            row["metrics"]["unserved_energy_mwh"].update({
+                "value": metrics.get("unserved_energy_a2_mwh", metrics.get("blackout_mwh")),
+                "definition_id": "value.adequacy-unserved-energy/v2" if metrics.get("unserved_energy_a2_mwh") is not None
+                else "value.adequacy-unserved-energy/v1",
+                "source": "status.results"})
         row["capacity_mw"] = source.get("capacity_mw", {}) if isinstance(source, Mapping) else {}
     modules = resolved.get("modules", status.get("modules", {})) if isinstance(resolved, Mapping) else status.get("modules", {})
     scientific = resolved.get("scientific_parameters", {}) if isinstance(resolved, Mapping) else {}
@@ -493,6 +533,9 @@ _METRIC_DEFINITIONS: dict[str, tuple[str, ...]] = {
     "operating_resource_cost_gbp": _COST_DEFINITIONS,
     "total_carbon_emissions_tco2e": ("carbon",),
     "unserved_energy_mwh": (),
+    "recorded_unserved_energy_mwh": (),
+    "demand_mwh": (),
+    "demand_served_mwh": (),
     "vre_curtailment_mwh": (),
     "vre_curtailment_rate": (),
     "redispatch_net_impact_mwh": (),

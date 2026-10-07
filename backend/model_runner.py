@@ -336,6 +336,14 @@ def _operating_detail_by_year(exact: dict) -> dict[int, dict]:
     return details
 
 
+def _a2_unserved(demand: object, served: object) -> float | None:
+    """Demand less the served energy of the cost ledger (R5): every unserved MWh of the A2 account."""
+
+    if isinstance(demand, bool) or isinstance(served, bool) or not isinstance(demand, (int, float)) or not isinstance(served, (int, float)):
+        return None
+    return max(float(demand) - float(served), 0.0)
+
+
 def _system_cost_includes_voll(ledger: dict | None, operating_detail: dict | None = None) -> bool | None:
     """Whether the headline system cost contains the value of lost load.
 
@@ -429,7 +437,12 @@ def _frontend_results(
                 ),
                 "legacy_system_cost_gbp": cost["Total_System_Cost_GBP"],
                 "legacy_cost_per_mwh_generated": cost["Cost_per_MWh_GBP"],
-                "demand_served_mwh": ledger.get("demand_served_mwh") if ledger else None,
+                "demand_served_mwh": ledger.get("demand_served_mwh") if ledger else cost.get("Demand_Served_MWh"),
+                # R5 (S-F-高1/中2): annual demand, and all unserved energy of the A2
+                # account (recorded blackout plus stress shortfall) next to the
+                # PSM-recorded part (blackout_mwh below).
+                "demand_mwh": cost.get("Total_Demand_MWh"),
+                "unserved_energy_a2_mwh": _a2_unserved(cost.get("Total_Demand_MWh"), ledger.get("demand_served_mwh") if ledger else cost.get("Demand_Served_MWh")),
                 "total_energy_generated_mwh": cost["Total_Energy_Generated_MWh"],
                 "total_levelized_capital_cost_gbp": cost["Total_Levelized_Capital_Cost_GBP"],
                 # P0-7 S8 (P4-03): memo of the capital kept out of the headline (corrected).

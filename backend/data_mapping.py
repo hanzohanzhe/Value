@@ -25,12 +25,12 @@ from gridform_core.data_contract_templates import CSV_TEMPLATES, runtime_support
 from gridform_core.data_import import promote_binding_revision
 from gridform_core.data_pack_validation import (
     CYCLIC_MARKET_ROLES, DEMAND_ROLES, VRE_PROFILE_ROLES, REQUIRED_CSV_COLUMNS,
-    validate_data_pack,
+    demand_annual_energy_mwh, demand_scale_warning, legacy_demand_unit, validate_data_pack,
 )
 from gridform_core.data_validation_layers import (
     TIMESTAMP_DATE_ORDERS, TIMESTAMP_TIME_ZONES, timestamp_row_problems,
 )
-from gridform_core.series_reader import LENIENT, SeriesReadError, SeriesSpec, clock_alignment
+from gridform_core.series_reader import LENIENT, SeriesReadError, SeriesSpec, clock_alignment, period_span_text
 
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 TOKEN = re.compile(r"^[0-9a-f]{32}$")
@@ -68,6 +68,9 @@ MODEL_YEAR_PERIODS = 17_520
 # S-低2: a series shorter than a model year is repeated from its start; the
 # commit needs this acknowledgement.
 SHORT_SERIES_ACKNOWLEDGEMENT = "GF_DATA_SHORT_SERIES_REPEAT"
+# S-F-中3 (R5): row counts of an hourly year without timestamps (the same rule
+# the series reader applies to an undeclared interval).
+HOURLY_YEAR_ROWS = (8760, 8784)
 
 
 def _fx(value: object) -> dict[str, object] | None:
@@ -120,6 +123,46 @@ def _timestamp(value: object, source_columns: Sequence[str], mapped: Sequence[st
     return {"column": column, "time_zone": zone, "date_order": order}
 
 
+def _demand_source_interval(role: str, source: Path, rows: int, timestamp: Mapping[str, str] | None) -> int:
+    """30 or 60: the period of a demand source (S-F-中3); other roles are never expanded.
+
+    With a declared timestamp column the most common step decides (the same
+    inference as the timestamp check); without one an hourly year is 8,760
+    or 8,784 rows.
+    """
+
+    if role not in DEMAND_ROLES:
+        return 30
+    if timestamp is not None:
+        try:
+            report = timestamp_row_problems(source, timestamp["column"], None, time_zone=timestamp["time_zone"],
+                                            date_order=timestamp["date_order"], limit=1)
+        except (ValueError, OSError, KeyError):
+            return 30
+        return 60 if report.get("interval_minutes") == 60 else 30
+    return 60 if rows in HOURLY_YEAR_ROWS else 30
+
+
+def _replaced_demand_warning(target_root: Path, manifest: Mapping[str, object], role: str,
+                             normalized: Path, binding: Mapping[str, object]) -> list[str]:
+    """GF_DATA_DEMAND_SCALE of a mapped demand series against the target pack's current file (S-F-高1)."""
+
+    current = (manifest.get("bindings") or {}).get(role) if isinstance(manifest.get("bindings"), Mapping) else None
+    if not isinstance(current, Mapping) or not current.get("uri"):
+        return []
+    path = (target_root / str(current["uri"])).resolve()
+    try:
+        path.relative_to(target_root.resolve())
+    except ValueError:
+        return []
+    relabel = legacy_demand_unit(role, current)
+    reference = "the file it replaces in this pack" + (
+        ", which is read as MW although its header says mwh and its label MWh/period" if relabel else "")
+    warning = demand_scale_warning(role, demand_annual_energy_mwh(normalized, binding),
+                                   demand_annual_energy_mwh(path, current), reference)
+    return [warning] if warning else []
+
+
 def _model_start_year(value: object) -> int | None:
     """The first model year of the Study the mapping is for (optional, S-低2)."""
 
@@ -157,7 +200,7 @@ MAPPED_VALUE_SIGNIFICANT_DIGITS = 15
 
 
 def _cell_problems(normalized: bytes, column: str, source_column: str, *,
-                   negative_invalid: bool = False) -> tuple[list[str], int]:
+                   negative_invalid: bool = False, repeat_rows: int = 1) -> tuple[list[str], int]:
     """S-D7: rows of a single-value series whose cell is missing or not a finite number.
 
     With ``negative_invalid`` (demand roles, L-3) negative values are listed too.
@@ -166,7 +209,10 @@ def _cell_problems(normalized: bytes, column: str, source_column: str, *,
     listed: list[str] = []
     count = 0
     reader = csv.DictReader(io.StringIO(normalized.decode("utf-8")))
-    for row_number, row in enumerate(reader, start=1):
+    for index, row in enumerate(reader):
+        if index % repeat_rows:
+            continue  # S-F-中3: a repeated (hourly -> half-hour) copy of the row above
+        row_number = index // repeat_rows + 1
         value = str(row.get(column) or "")
         try:
             number = float(value)
@@ -407,7 +453,9 @@ class DataMappingService:
             return report
 
     def _spec(self, role: str, columns: object, source_columns: list[str],
-              fx: Mapping[str, object] | None = None) -> AdapterSpec:
+              fx: Mapping[str, object] | None = None, source_interval_minutes: int = 30) -> AdapterSpec:
+        if source_interval_minutes not in (30, 60) or (source_interval_minutes == 60 and role not in DEMAND_ROLES):
+            raise DataMappingError("GF_MAPPING_INTERVAL", "Only demand series are expanded from hourly to half-hourly rows.")
         contract = self._role(role)
         targets = {column["target"]: column["target_unit"] for column in contract["columns"]}
         if not isinstance(columns, list) or len(columns) != len(targets):
@@ -435,10 +483,14 @@ class DataMappingService:
         uses_fx = any((rule.source_unit, rule.target_unit) in FX_CONVERSIONS for rule in rules.values())
         if fx is not None and not uses_fx:
             raise DataMappingError("GF_MAPPING_FX", "fx is only accepted for an EUR/MWh price column.")
+        # S-F-中3 (R5): an hourly demand series converts MWh/period with the
+        # 60-minute source period and is written as two half-hour rows per
+        # hour (the same MW), so the canonical file is half-hourly.
+        hourly = source_interval_minutes == 60
         return AdapterSpec("value.explicit-column-mapping", "2" if role in DEMAND_ROLES else "1", "csv", role, "csv",
                            tuple(rules[column["target"]] for column in contract["columns"]),
-                           interval_minutes=30 if role in PER_PERIOD_ENERGY_ROLES else None,
-                           source=dict(fx or {}))
+                           interval_minutes=(60 if hourly else 30) if role in PER_PERIOD_ENERGY_ROLES else None,
+                           source=dict(fx or {}), repeat_rows=2 if hourly else 1)
 
     def preview(self, stage_id: str, request: Mapping[str, object]) -> dict[str, object]:
         base_fields = {"schema_version", "source_sha256", "target_manifest_sha256", "columns"}
@@ -453,8 +505,10 @@ class DataMappingService:
             raise DataMappingError("GF_MAPPING_IDENTITY", "Source or target identity changed; upload again.", 409)
         spec = self._spec(stage["role"], request["columns"], columns, fx)
         timestamp = _timestamp(request.get("timestamp"), columns, [rule.source for rule in spec.columns], stage["role"])
+        if _demand_source_interval(stage["role"], stage_dir / "source.csv", rows, timestamp) == 60:
+            spec = self._spec(stage["role"], request["columns"], columns, fx, source_interval_minutes=60)
         with self.lock:
-            _, manifest, _ = self._target(stage["pack_id"], stage["target_manifest_sha256"])
+            target_root, manifest, _ = self._target(stage["pack_id"], stage["target_manifest_sha256"])
             token, directory = self._new("reviews")
             _write(directory / "spec.json", spec.to_dict())
             errors = []
@@ -482,25 +536,37 @@ class DataMappingService:
                 candidate["bindings"] = {stage["role"]: candidate_binding}
                 report = validate_data_pack(directory, candidate, [self.slots[stage["role"]]])
                 validation = report["bindings"][0]
-                plan = _clock_plan(stage["role"], candidate_binding, rows)
+                plan = _clock_plan(stage["role"], candidate_binding, rows * spec.repeat_rows)
+                if spec.repeat_rows == 2:
+                    timestamp_warnings.append(
+                        f"GF_MAPPING_HOURLY_DEMAND: the file has hourly rows ({rows:,} hours). Each hour's demand is "
+                        f"used for two half-hour periods at the same MW, giving {rows * 2:,} half-hour periods"
+                        + ("; MWh/period values are per hour and are converted to MW with a 60-minute period"
+                           if any(rule.source_unit == "MWh/period" for rule in spec.columns) else "")
+                        + ". The original hourly file is kept with the mapping.")
                 if plan is not None:
                     clock = {"source_rows": plan.source_rows, "periods": plan.periods,
                              "hourly_doubled": plan.hourly_doubled, "leap_day_removed": plan.leap_day_removed,
                              "ignored_periods": plan.ignored_periods, "wrapped_periods": plan.wrapped_periods,
                              "note": plan.describe()}
                     if plan.short_of_a_year:
-                        days = plan.wrapped_periods * plan.period_hours / 24.0
                         acknowledgements.append({
                             "code": SHORT_SERIES_ACKNOWLEDGEMENT,
                             "text": (f"The series covers {plan.used_periods:,} of the {plan.periods:,} half-hour "
-                                     f"periods of a model year; the last {plan.wrapped_periods:,} periods "
-                                     f"({days:.1f} days) will repeat the series from its start."),
+                                     f"periods of a model year; the last "
+                                     f"{period_span_text(plan.wrapped_periods, plan.period_hours)} will repeat "
+                                     "the series from its start."),
                         })
                 errors = list(validation["errors"])
+                if not errors and stage["role"] in DEMAND_ROLES:
+                    # S-F-高1 (R5): compare the annual energy with the file it replaces.
+                    timestamp_warnings.extend(_replaced_demand_warning(
+                        target_root, manifest, stage["role"], directory / "normalized.csv", candidate_binding))
                 if errors and [rule.target for rule in spec.columns] == ["value"]:
                     # S-D7: the whole-file check counts bad cells; name the rows.
                     errors.extend(_cell_problems(normalized, "value", spec.columns[0].source,
-                                                 negative_invalid=stage["role"] in DEMAND_ROLES)[0])
+                                                 negative_invalid=stage["role"] in DEMAND_ROLES,
+                                                 repeat_rows=spec.repeat_rows)[0])
                 sample = list(islice(csv.DictReader(io.StringIO(normalized.decode("utf-8"))), 20))
                 # F-P05A-1: the raw values of the mapped source columns for the same
                 # rows, so the UI shows the original EUR price beside the converted one.
@@ -565,6 +631,7 @@ class DataMappingService:
                       "columns": spec.to_dict()["columns"], "sample_rows": sample, "validation": validation,
                       "source_sample_rows": source_sample, "fx": dict(fx) if fx else None,
                       "interval_minutes": spec.interval_minutes,
+                      "source_interval_minutes": 60 if spec.repeat_rows == 2 else None,
                       "timestamp": timestamp_report,
                       "clock": clock,
                       "acknowledgements_required": acknowledgements,
@@ -604,7 +671,8 @@ class DataMappingService:
             if not isinstance(spec_payload, dict):
                 raise DataMappingError("GF_MAPPING_IDENTITY", "Mapping specification is corrupt; review again.", 409)
             spec = self._spec(review["role"], spec_payload.get("columns"), headers,
-                              _fx(spec_payload.get("source") or None))
+                              _fx(spec_payload.get("source") or None),
+                              source_interval_minutes=60 if spec_payload.get("repeat_rows") == 2 else 30)
             if _canonical(spec_payload) != _canonical(spec.to_dict()) or _hash(_canonical(spec_payload)) != review["spec_sha256"] or _hash(source) != review["source_sha256"]:
                 raise DataMappingError("GF_MAPPING_IDENTITY", "Source or mapping specification changed; review again.", 409)
             normalized = _bytes(directory / "normalized.csv", self.staging_root)
@@ -650,6 +718,9 @@ class DataMappingService:
                             **_reading_metadata(review["role"]),
                             **({"currency": "GBP"} if review["role"] in MARKET_PRICE_ROLES else {}),
                             **({"source_currency": "EUR", **dict(spec.source)} if spec.source else {}),
+                            # S-F-中3: the retained source is hourly; the canonical file is half-hourly.
+                            **({"source_interval_minutes": 60, "source_expansion": "each hour used for two half-hour periods"}
+                               if spec.repeat_rows == 2 else {}),
                             # Spec 11.6 (S-D4): the declared timestamps stay in the retained
                             # source; the chronology layer re-checks them from there.
                             **timestamp_metadata,

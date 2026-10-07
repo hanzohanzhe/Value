@@ -37,6 +37,32 @@ LEGACY_DEMAND_MW_SHA256 = {
     "demand.real": {"75b5f11d2c5603802cf49f07af48547da9cb3f4fca4539f7f90db24c3870e77b", "fcdb98f9a0d3bd7d8d75db9aea05153164b2ad88128ea7085dd9897162c626a3"},
 }
 VRE_PROFILE_ROLES = {"profiles.vre_solar", "profiles.vre_onshore", "profiles.vre_offshore"}
+# S-F-高1 (R5, A28): the registry relabel of the bytes above.  Their values are
+# half-hour average power in MW (the VALUE 101 files' header says "mwh" and the
+# manifest "MWh/period"); every page that shows such a binding states the unit
+# it is read in.  Bytes, manifests and both profiles' reading are unchanged.
+LEGACY_DEMAND_UNIT_NOTE = (
+    "Read as MW (half-hour average power). The file header says mwh and the pack labels it MWh/period; "
+    "that label is a known mislabel of these bytes, which VALUE has always read as MW. "
+    "Energy per half hour = MW x 0.5 h."
+)
+
+
+def legacy_demand_unit(role: str, binding: Mapping[str, object] | None) -> dict[str, str] | None:
+    """The unit a legacy-labelled demand binding is read in (S-F-高1 registry relabel); None otherwise.
+
+    Content-bound like the validation rule: only the audited bytes of
+    ``LEGACY_DEMAND_MW_SHA256`` declared ``MWh/period`` without an explicit
+    unit contract.
+    """
+
+    if role not in DEMAND_ROLES or not isinstance(binding, Mapping):
+        return None
+    if (binding.get("unit") == "MWh/period" and not binding.get("input_unit_contract")
+            and str(binding.get("sha256") or "").lower() in LEGACY_DEMAND_MW_SHA256[role]):
+        return {"declared_unit": "MWh/period", "runtime_unit": "MW", "note": LEGACY_DEMAND_UNIT_NOTE,
+                "definition_id": "value.legacy-demand-label/v1"}
+    return None
 CYCLIC_MARKET_ROLES = CLOCK_ROLES.difference(DEMAND_ROLES | VRE_PROFILE_ROLES)
 REQUIRED_JSON_KEYS = {
     "fleet.generators": {"generators", "batteries", "connections"},
@@ -209,6 +235,62 @@ def _netcdf_structure(dataset: object, role: str, np: object) -> tuple[list[str]
     return errors, warnings, details
 
 
+# S-F-高1 (R5, A28): a replacement demand series whose annual energy is far
+# from the series it replaces is flagged with both annual energies (a unit
+# slip such as MWh/period read as MW doubles demand).  A warning only.
+DEMAND_SCALE_LIMITS = (1.0 / 1.5, 1.5)
+HOURS_PER_MODEL_YEAR = 8760.0
+
+
+def demand_annual_energy_mwh(path: Path, binding: Mapping[str, object]) -> float | None:
+    """Annual energy of a demand file read as MW: mean MW x 8,760 h (None when unreadable or empty)."""
+
+    try:
+        values, _invalid = _series_cells(path, binding)
+    except (OSError, UnicodeError, ValueError, csv.Error):
+        return None
+    if not values:
+        return None
+    return sum(values) / len(values) * HOURS_PER_MODEL_YEAR
+
+
+def demand_scale_warning(role: str, energy_mwh: float | None, reference_mwh: float | None,
+                         reference: str) -> str | None:
+    """GF_DATA_DEMAND_SCALE when ``energy_mwh`` / ``reference_mwh`` is outside DEMAND_SCALE_LIMITS."""
+
+    if energy_mwh is None or reference_mwh is None or reference_mwh <= 0:
+        return None
+    ratio = energy_mwh / reference_mwh
+    if DEMAND_SCALE_LIMITS[0] <= ratio <= DEMAND_SCALE_LIMITS[1]:
+        return None
+    return (f"GF_DATA_DEMAND_SCALE: {role} implies about {energy_mwh:,.0f} MWh per model year "
+            f"(mean MW x 8,760 h), {ratio:.2f} times {reference} (about {reference_mwh:,.0f} MWh per year). "
+            "Check the source unit: demand is read as MW, the average power of each half hour; "
+            "a MWh/period value is energy per period (MW x 0.5 h for a half-hour period).")
+
+
+def _origin_demand_warning(pack_root: Path, manifest: Mapping[str, object], role: str,
+                           binding: Mapping[str, object], path: Path) -> str | None:
+    """The scale check of a copied pack's demand against the pack it was copied from (S-F-高1)."""
+
+    origin = manifest.get("copy_origin")
+    source_id = origin.get("source_data_pack_id") if isinstance(origin, Mapping) else None
+    if not isinstance(source_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", source_id):
+        return None
+    source_root = Path(pack_root).parent / source_id
+    try:
+        source_manifest = json.loads((source_root / "manifest.json").read_text(encoding="utf-8"))
+        source_binding = dict(source_manifest["bindings"][role])
+        if str(source_binding.get("sha256") or "").lower() == str(binding.get("sha256") or "").lower():
+            return None
+        source_path = _resolve(source_root, str(source_binding.get("uri") or ""))
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return demand_scale_warning(role, demand_annual_energy_mwh(path, binding),
+                                demand_annual_energy_mwh(source_path, source_binding),
+                                f"the same role in the pack it was copied from ({source_id})")
+
+
 def _first_numeric_column(path: Path) -> tuple[list[float], int]:
     text, _encoding = _csv_text(path)
     rows = list(csv.reader(io.StringIO(text)))
@@ -271,6 +353,25 @@ def _clock_note(
     if text is None:
         return None
     return "on the model clock (VALUE corrected methodology): " + text[0].lower() + text[1:]
+
+
+def _clock_adapter_label(details: Mapping[str, object], periods: int) -> str:
+    """S-F-低2 (R5): the clock step the reader takes, from the same plan as ``clock_alignment``.
+
+    ``as_is`` for exactly one model year; otherwise the steps joined by ``+``
+    (hourly_to_half_hour, leap_day_removed, first_periods_used,
+    repeated_from_start).  Without a plan the earlier generic label stays.
+    """
+
+    plan = details.get("clock_alignment")
+    if isinstance(plan, Mapping):
+        steps = [name for name, key in (("hourly_to_half_hour", "hourly_doubled"), ("leap_day_removed", "leap_day_removed"),
+                                        ("first_periods_used", "ignored_periods"), ("repeated_from_start", "wrapped_periods"))
+                 if plan.get(key)]
+        return "+".join(steps) or "as_is"
+    if details.get("numeric_values") == periods:
+        return "as_is"
+    return str(details.get("clock_adapter"))
 
 
 def _own_manifest_bytes(pack_root: Path, manifest: Mapping[str, object]) -> bytes | None:
@@ -376,6 +477,10 @@ def validate_data_pack(
                             f"source contains {len(values)} numeric periods plus any header; "
                             + (note or f"the VALUE adapter selects the first {full_year_periods} periods")
                         )
+                    if not invalid and values:
+                        scale = _origin_demand_warning(pack_root, manifest, role, binding, path)
+                        if scale:
+                            row_warnings.append(scale)
                     negative = sum(1 for value in values if value < 0)
                     if negative:
                         # L-3: how many; the mapping editor lists the rows.
@@ -490,6 +595,8 @@ def validate_data_pack(
                 details["validation_level"] = "container_only"
                 row_warnings.append("Zarr deep chunk validation requires the optional zarr capability")
 
+            if details.get("clock_adapter") in ("take_first_required_periods", "cyclic_repeat"):
+                details["clock_adapter"] = _clock_adapter_label(details, full_year_periods)
             expected_unit = slot.get("unit")
             declared_unit = binding.get("unit")
             if role in DEMAND_ROLES and expected_unit == "MW":
