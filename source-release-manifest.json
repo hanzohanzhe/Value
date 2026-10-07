@@ -8529,8 +8529,8 @@
     },
     {
       "path": "gridform_core/module_installation.py",
-      "sha256": "7d15bdda1f8aeb00999efbf3c4a713a37905bf2263367d5b14e9a7221b8ec688",
-      "bytes": 19995,
+      "sha256": "9eb6678168f6aca46e93f68c0c18e8778c248075c361d4ec3936535b625401ac",
+      "bytes": 21174,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12865,8 +12865,8 @@
     },
     {
       "path": "tests/test_r4_module_extension_defects.py",
-      "sha256": "b702a26b5db63382be9a208112b95521f6c62519e112957abf6da7f4cf64bfaf",
-      "bytes": 37528,
+      "sha256": "0f9e2e6f698bffa1a7955deaeb633e68ed9a3a85e23c0a00055f216e5a20edd7",
+      "bytes": 39632,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

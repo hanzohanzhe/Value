@@ -652,5 +652,35 @@ class OverlayBeforeConfirmationTests(unittest.TestCase):
             self.assertEqual((study / "project.json").read_bytes(), before)
 
 
+class ContractMismatchTests(unittest.TestCase):
+    """M-低5: a wrong contract ID is reported as such, not as 'could not be loaded'."""
+
+    def test_retired_gridform_contract_is_a_contract_mismatch(self) -> None:
+        from gridform_core.module_bundle import build_module_bundle
+        from gridform_core.module_installation import ModuleInstallationError, install_module_bundle
+        from tests.module_lifecycle_fixtures import copy_example_bundle_inputs, forget_external_code
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            modules = root / "modules"
+            self.addCleanup(forget_external_code, modules, ("r44_contract",))
+            manifest_path, source = copy_example_bundle_inputs(root / "inputs", "r44-contract", "r44_contract")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            for contract, code in (("gridform.storage-cost/v1", "GF_MODULE_CONTRACT_MISMATCH"),
+                                   ("value.storage-cost/v9", "GF_MODULE_CONTRACT_MISMATCH")):
+                with self.subTest(contract=contract):
+                    manifest_path.write_text(json.dumps({**manifest, "contract_version": contract}), encoding="utf-8")
+                    bundle = root / "bundle.zip"
+                    build_module_bundle(manifest_path=manifest_path, source_root=source,
+                                        license_path=ROOT / "LICENSE", destination=bundle)
+                    with self.assertRaises(ModuleInstallationError) as caught:
+                        install_module_bundle(bundle, trust_acknowledged=True, modules_root=modules)
+                    self.assertEqual(caught.exception.code, code)
+                    self.assertIn("value.storage-cost/v1", str(caught.exception))
+                    self.assertNotIn("could not be loaded", str(caught.exception))
+                    self.assertEqual("retired" in str(caught.exception), contract.startswith("gridform."))
+                    self.assertFalse((modules / "installed").exists() and any((modules / "installed").iterdir()))
+
+
 if __name__ == "__main__":
     unittest.main()

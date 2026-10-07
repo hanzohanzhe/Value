@@ -23,7 +23,7 @@ from .module_conformance import check_manifest
 from . import module_quarantine
 from .module_quarantine import MODULE_LIFECYCLE_LOCK, ExternalImportError, ModuleQuarantinedError, quarantine_keys
 from .runtime_paths import activate_external_module_sources, external_modules_root, purge_source_root
-from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, builtin_registry, workspace_registry
+from .v2.module_manifest import SUPPORTED_CONTRACTS, ModuleManifest, ModuleRegistryV2, builtin_registry, workspace_registry
 
 
 INSTALLATION_SCHEMA = "value.module-installation/v1"
@@ -158,6 +158,27 @@ def _active_package_names(root: Path) -> set[str]:
     }
 
 
+def check_slot_contract(manifest: ModuleManifest) -> None:
+    """The slot and contract a module declares, checked before any code is loaded (R4 M-低5)."""
+
+    expected = SUPPORTED_CONTRACTS.get(manifest.slot)
+    if expected is None:
+        raise ModuleInstallationError(
+            "GF_MODULE_SLOT_UNSUPPORTED",
+            f"Slot {manifest.slot!r} is not a replaceable VALUE module slot; use one of "
+            + ", ".join(sorted(SUPPORTED_CONTRACTS)) + ".",
+        )
+    if manifest.contract_version != expected:
+        retired = (" Contract IDs beginning with 'gridform.' are the retired names; VALUE uses 'value.*' contracts."
+                   if str(manifest.contract_version).startswith("gridform.") else "")
+        raise ModuleInstallationError(
+            "GF_MODULE_CONTRACT_MISMATCH",
+            f"The manifest declares contract {manifest.contract_version!r} for slot {manifest.slot!r}; "
+            f"this VALUE requires {expected!r}. Set contract_version to {expected!r} and rebuild the bundle."
+            + retired,
+        )
+
+
 def _validate_manifest_for_install(
     payload: Mapping[str, object], source_root: Path, modules_root: Path
 ) -> tuple[ModuleManifest, dict[str, object]]:
@@ -165,6 +186,7 @@ def _validate_manifest_for_install(
         manifest = ModuleManifest.from_dict(payload)
     except (TypeError, ValueError) as exc:
         raise ModuleInstallationError("GF_MODULE_MANIFEST", f"Module manifest fields are invalid: {exc}") from exc
+    check_slot_contract(manifest)
     if not MODULE_ID.fullmatch(manifest.id):
         raise ModuleInstallationError(
             "GF_MODULE_ID", "Module ID must use 3-64 lowercase letters, numbers or hyphens"
@@ -377,6 +399,7 @@ def _set_module_enabled(
             manifest = ModuleManifest.from_dict(
                 json.loads((record_path.parent / str(record["manifest_path"])).read_text(encoding="utf-8"))
             )
+            check_slot_contract(manifest)
             existing = workspace_registry(root)
             before_keys = quarantine_keys(existing)
             # workspace_registry re-activates only enabled sources; the source
