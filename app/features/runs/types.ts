@@ -69,7 +69,7 @@ export type PreflightReport = {
   accepted: boolean; mode: RunMode;
   errors: PreflightIssue[]; warnings: PreflightIssue[];
   checks?: { domain_readiness?: DomainReadiness; [key: string]: unknown };
-  estimates: { periods?: number; disk_bytes?: number; runtime_seconds?: number; runtime_basis?: string; peak_memory_bytes?: number; memory_basis?: string; data_scale?: { operating_assets?: number; planning_projects?: number } };
+  estimates: { periods?: number; disk_bytes?: number; runtime_seconds?: number; runtime_basis?: string; runtime_basis_kind?: "observed" | "heuristic"; runtime_range_seconds?: [number, number] | null; peak_memory_bytes?: number; memory_basis?: string; data_scale?: { operating_assets?: number; planning_projects?: number } };
   resource_readiness?: ResourceReadiness | null;
 };
 export type ResourceReadiness = {

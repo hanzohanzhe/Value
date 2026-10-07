@@ -41,6 +41,6 @@ test("the preflight card says when no runtime estimate exists (R3-03)", async ()
   const missing = textOf(await renderTsx(RUNS, "PreflightEstimates", { estimates: { periods: 17520, disk_bytes: 2 * 1024 ** 3, peak_memory_bytes: 512 * 1024 ** 2 } }));
   assert.equal(missing, "17,520 periods · about 2.00 GB disk · about 512.0 MB peak memory · Runtime estimate not available");
   const estimated = textOf(await renderTsx(RUNS, "PreflightEstimates", { estimates: { periods: 48, disk_bytes: 1024, peak_memory_bytes: 1024, runtime_seconds: 5400 } }));
-  assert.match(estimated, /estimated 1\.5 hours$/);
+  assert.match(estimated, /estimated about 1\.5 hours$/);
   assert.doesNotMatch(textOf(await renderTsx(RUNS, "PreflightEstimates", { estimates: {} })), /— periods|0 hours/);
 });

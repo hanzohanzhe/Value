@@ -225,3 +225,27 @@ class ProvisionalAdvisoryTests(unittest.TestCase):
             run, root = self._run(Path(folder), "completed")
             self.assertIn(self.BIOMASS, {row["id"] for row in evaluate_advisories(run, root)})
             self.assertFalse(present_scientific_status(dict(run), root)["advisories_provisional"])
+
+
+class RuntimeEstimateRangeTests(unittest.TestCase):
+    """R-低8: without a comparable completed Run the runtime estimate is a range."""
+
+    def test_heuristic_range_then_observed_value(self):
+        from gridform_core.preflight import HEURISTIC_SECONDS_PER_PERIOD_RANGE, _estimates
+
+        project = {"id": "p", "data_pack_id": "x", "modules": {}, "start_year": 2025, "end_year": 2026}
+        policy = {"total_periods": 35_040, "years": 2, "mode": "two_year", "periods_per_year": 17_520}
+        with tempfile.TemporaryDirectory() as folder:
+            runs = Path(folder)
+            first = _estimates(project, policy, {}, runs, {})
+            self.assertEqual(first["runtime_basis_kind"], "heuristic")
+            self.assertEqual(first["runtime_range_seconds"], [35_040 * value for value in HEURISTIC_SECONDS_PER_PERIOD_RANGE])
+            self.assertLessEqual(first["runtime_range_seconds"][0], 200)  # VALUE 101 two-year: about 3 minutes
+            (runs / "done").mkdir()
+            (runs / "done" / "status.json").write_text(json.dumps({
+                "status": "completed", "mode": "two_year", "run_policy": {"total_periods": 35_040},
+                "started_at": "2026-10-06T10:00:00", "finished_at": "2026-10-06T10:02:00"}), encoding="utf-8")
+            observed = _estimates(project, policy, {}, runs, {})
+            self.assertEqual(observed["runtime_basis_kind"], "observed")
+            self.assertIsNone(observed["runtime_range_seconds"])
+            self.assertAlmostEqual(observed["runtime_seconds"], 120.0)

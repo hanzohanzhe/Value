@@ -112,6 +112,12 @@ def _quota_usage(runs_root: Path | None, run_id: str | None) -> QuotaUsage:
 # on the reference machine: VALUE 101 two-year about 0.005 s per period, GBP1
 # public1 one year about 0.02 s (F3 report, 351 s); 0.03 stays conservative.
 DEFAULT_SECONDS_PER_PERIOD = 0.03
+# R4 R-低8: without a comparable completed local run the estimate is a range
+# between the measured per-period times of the smallest and the largest
+# shipped scales (VALUE 101 two-year run about 0.005 s, GBP1 one-year run
+# about 0.02-0.03 s), not one point that is off by a factor of six for one
+# of them.
+HEURISTIC_SECONDS_PER_PERIOD_RANGE = (0.005, DEFAULT_SECONDS_PER_PERIOD)
 ANNUAL_RUNTIME_PERIODS = 17_520
 
 
@@ -246,10 +252,12 @@ def _estimates(
         # a two-year and a full run is the same; short runs are dominated by
         # their fixed start-up time and are not used).
         observations = _runtime_observations(runs_root, mode=None, minimum_periods=ANNUAL_RUNTIME_PERIODS)
+    runtime_range: list[float] | None = None
     if observations:
         seconds_per_period = sum(observations) / len(observations)
         basis = f"mean of {len(observations)} comparable completed local run(s)"
     else:
+        runtime_range = [max(60.0, periods * value) for value in HEURISTIC_SECONDS_PER_PERIOD_RANGE]
         seconds_per_period = DEFAULT_SECONDS_PER_PERIOD
         basis = (
             "initial heuristic of 0.03 s per period (measured: VALUE 101 two-year run about 0.005 s, "
@@ -262,6 +270,8 @@ def _estimates(
         "disk_bytes": estimated_bytes,
         "runtime_seconds": max(60.0, periods * seconds_per_period),
         "runtime_basis": basis,
+        "runtime_basis_kind": "observed" if observations else "heuristic",
+        "runtime_range_seconds": runtime_range,
         "peak_memory_bytes": estimated_peak_memory,
         "peak_memory_warning_bytes": max(4 * 1024 * 1024 * 1024, estimated_peak_memory * 2),
         "memory_basis": "bounded structural heuristic from pack asset/project counts and selected audit level; not a universal promise",

@@ -129,3 +129,25 @@ export function preparationProgressText(run: Pick<ModelRun, "status" | "preparat
   const text = parts.join(" · ");
   return run.status === "cancel_requested" ? `${text}. Cancellation requested: the Run stops before its model worker starts.` : text;
 }
+
+/** A duration estimate in minutes below 90 minutes, otherwise in hours (R4 R-低8). */
+function durationText(seconds: number): string {
+  if (seconds < 90 * 60) return `${Math.max(1, Math.round(seconds / 60))} min`;
+  return `${(Math.round(seconds / 360) / 10).toFixed(1)} hours`;
+}
+
+/**
+ * R4 R-低8: the readiness runtime estimate. Measured local runs give one
+ * value; without them the backend gives a range (smallest to largest shipped
+ * scale) and the page says it is a first estimate.
+ */
+export function runtimeEstimateText(estimates: { runtime_seconds?: number | null; runtime_range_seconds?: [number, number] | null }): string {
+  const range = estimates.runtime_range_seconds;
+  if (Array.isArray(range) && range.length === 2 && range.every((value) => typeof value === "number" && Number.isFinite(value))) {
+    const [low, high] = range;
+    const lowText = durationText(low); const highText = durationText(high);
+    return lowText === highText ? `estimated about ${lowText} (no comparable completed Run yet)` : `estimated ${lowText} to ${highText} (no comparable completed Run yet)`;
+  }
+  if (typeof estimates.runtime_seconds !== "number" || !Number.isFinite(estimates.runtime_seconds)) return "Runtime estimate not available";
+  return `estimated about ${durationText(estimates.runtime_seconds)}`;
+}

@@ -22,7 +22,7 @@ import { lifecycleNotice } from "./lifecycleView.ts";
 import { preflightRunBlockedReason } from "../workspace/preflightIdentity";
 import "./run-history.css";
 import { executionLabel, statusLabel } from "../shared/labels.ts";
-import { RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE, preparationProgressText, runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
+import { RUN_FREEZE_NOTE, SNAPSHOTTING_NOTE, preparationProgressText, runtimeEstimateText, runHistoryEmpty, runOptionLabel, runSelectPlaceholder } from "./runHistoryView.ts";
 
 export type RunWorkspaceActions = {
   onRecoveredStudyCreated: (projectId: string, mode: string) => Promise<void>;
@@ -62,7 +62,7 @@ type RunWorkspaceProps = {
 
 /** Preflight resource estimates (R3-03): a missing runtime says so instead of "0 hours" or "— hours". */
 export function PreflightEstimates({ estimates }: { estimates: PreflightReport["estimates"] }) {
-  return <small>{withUnit(formatNumber(estimates.periods, 0), "periods")} · about {formatBytes(estimates.disk_bytes)} disk · about {formatBytes(estimates.peak_memory_bytes)} peak memory · {estimates.runtime_seconds == null ? "Runtime estimate not available" : `estimated ${withUnit(formatNumber(estimates.runtime_seconds / 3600, 1), "hours")}`}</small>;
+  return <small>{withUnit(formatNumber(estimates.periods, 0), "periods")} · about {formatBytes(estimates.disk_bytes)} disk · about {formatBytes(estimates.peak_memory_bytes)} peak memory · {runtimeEstimateText(estimates)}</small>;
 }
 
 export default function RunWorkspace({ workspace, selectedProjectId, selectedProject, selectedProjectPack, selectedRun, projectRuns, preflight, effectivePreflightMode, checkingPreflight, zonalPreflight, teachingProject, launching, selectedRunSourceMutable, canRunMode, frozen, actions }: RunWorkspaceProps) {

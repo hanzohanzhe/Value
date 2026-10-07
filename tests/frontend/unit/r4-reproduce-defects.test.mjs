@@ -121,3 +121,13 @@ test("domain card badge follows the methodology verdict", async () => {
   assert.equal(domainBadgeText("contract_level", true), "contract level");
   assert.equal(domainBadgeText("ready", false), "not available with this methodology");
 });
+
+// R-低8: a first estimate is a range; a measured one is a single value in minutes or hours.
+test("runtime estimate text", async () => {
+  const { runtimeEstimateText } = await import("../../../app/features/runs/runHistoryView.ts");
+  assert.equal(runtimeEstimateText({ runtime_seconds: 1051, runtime_range_seconds: [175.2, 1051.2] }), "estimated 3 min to 18 min (no comparable completed Run yet)");
+  assert.equal(runtimeEstimateText({ runtime_seconds: 120 }), "estimated about 2 min");
+  assert.equal(runtimeEstimateText({ runtime_seconds: 5400 }), "estimated about 1.5 hours");
+  assert.equal(runtimeEstimateText({ runtime_range_seconds: [60, 60] }), "estimated about 1 min (no comparable completed Run yet)");
+  assert.equal(runtimeEstimateText({}), "Runtime estimate not available");
+});
