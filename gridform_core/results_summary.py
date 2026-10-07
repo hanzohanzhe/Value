@@ -400,6 +400,15 @@ _DIMENSION_LABELS = {
     "years": "model years",
     "scope": "run scope",
 }
+# The name a dimension has inside a sentence (AF3-2: the long label already
+# carries a parenthesis, so "label (paths)" read "... methodology) (extensions)").
+_DIMENSION_NAMES = {
+    "data": "data inputs",
+    "method": "model method",
+    "config": "parameters and extension configuration",
+    "years": "model years",
+    "scope": "run scope",
+}
 _DIMENSION_DEPTH = {"data": 3, "method": 2, "config": 2, "years": 1, "scope": 1}
 _MAX_LISTED_PATHS = 12
 
@@ -416,6 +425,25 @@ def _differing_paths(values: Sequence[object], depth: int, prefix: str = "") -> 
     return [prefix or "(value)"]
 
 
+def _module_field_paths(values: Sequence[object], path: str) -> list[str]:
+    """R3M-6: a module slot whose id and version are the same in every Run is
+    named by the fields that differ (``modules.storage_cost.source_sha256``
+    for a module edited in place), not by the bare slot."""
+
+    parts = path.split(".")
+    if len(parts) != 2 or parts[0] != "modules":
+        return [path]
+    rows = [
+        (value.get("modules") or {}).get(parts[1]) if isinstance(value, Mapping) else None  # type: ignore[union-attr]
+        for value in values
+    ]
+    if not all(isinstance(row, Mapping) for row in rows):
+        return [path]
+    if len({(row.get("module_id"), row.get("module_version")) for row in rows}) != 1:  # type: ignore[union-attr]
+        return [path]
+    return _differing_paths(rows, 1, path)
+
+
 def changed_dimension_details(review: Mapping[str, object]) -> dict[str, dict[str, object]]:
     """Per changed identity dimension: a label and the differing paths (bounded)."""
 
@@ -424,8 +452,11 @@ def changed_dimension_details(review: Mapping[str, object]) -> dict[str, dict[st
     for key in review.get("changed_dimensions") or []:  # type: ignore[union-attr]
         values = list((dimensions.get(key) or {}).get("values") or [])  # type: ignore[union-attr]
         paths = _differing_paths(values, _DIMENSION_DEPTH.get(str(key), 2))
+        if key == "method":
+            paths = [item for path in paths for item in _module_field_paths(values, path)]
         details[str(key)] = {
             "label": _DIMENSION_LABELS.get(str(key), str(key)),
+            "name": _DIMENSION_NAMES.get(str(key), str(key)),
             "paths": paths[:_MAX_LISTED_PATHS],
             "more_paths": max(0, len(paths) - _MAX_LISTED_PATHS),
         }
@@ -438,7 +469,8 @@ def _change_sentence(details: Mapping[str, Mapping[str, object]]) -> str:
         paths = [str(item) for item in row.get("paths") or []]
         more = int(row.get("more_paths") or 0)
         listed = ", ".join(paths) + (f" and {more} more" if more else "")
-        parts.append(f"{row['label']} ({listed})" if listed else str(row["label"]))
+        name = str(row.get("name") or row["label"])
+        parts.append(f"{name}: {listed}" if listed else name)
     return "; ".join(parts)
 
 
@@ -549,11 +581,16 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
             == {slot: row for slot, row in base_method.get("modules", {}).items() if slot != "storage_cost"}
             for value in method_values[1:]
         )
+    # R3M-6: a storage-cost module edited in place (same id and version, new
+    # source) is the same controlled storage-cost change as a module swap.
+    storage_identity_changed = bool(review["evidence_complete"]) and len({
+        comparison_key((value.get("modules") or {}).get("storage_cost")) for value in method_values
+    }) > 1
     causal_storage_comparison = (
         review["evidence_complete"] and storage_only_method
         and review["changed_dimensions"] == ["method"]
         and not [key for key in non_storage_differences if key != "identity.method"]
-        and "module.storage_cost" in dimensions
+        and ("module.storage_cost" in dimensions or storage_identity_changed)
     )
     eligibility_artifacts = [
         row.get("comparison_eligibility")
@@ -681,13 +718,13 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         )
     elif len(review["changed_dimensions"]) > 1:
         warning = (
-            "Several recorded dimensions differ: " + _change_sentence(dimension_details)
+            "Several recorded dimensions differ - " + _change_sentence(dimension_details)
             + ". Interpret the differences jointly; no isolated causal claim is made."
         )
     elif dimension_details:
         warning = (
-            "Only the " + _change_sentence(dimension_details) + " differ. The comparison describes the effect of "
-            "this change; it is not a controlled storage-cost experiment."
+            "Only one recorded dimension differs - " + _change_sentence(dimension_details) + ". The comparison "
+            "describes the effect of this change; it is not a controlled storage-cost experiment."
         )
     else:
         warning = (
