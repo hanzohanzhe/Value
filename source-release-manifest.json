@@ -1649,6 +1649,7 @@
     "tests/test_r33_biomass_disclosure.py",
     "tests/test_r33_restart_price_base.py",
     "tests/test_r41_doctoral_kernel_errors.py",
+    "tests/test_r4_module_extension_defects.py",
     "tests/test_r4_reproduce_defects.py",
     "tests/test_r4_swap_data_defects.py",
     "tests/test_raw_invariant_failures.py",
@@ -7961,8 +7962,8 @@
     },
     {
       "path": "gridform_core/data_validation_layers.py",
-      "sha256": "9196369a7b60c2f98bb209d07687ee824120e6abf1945bcf458e6cf64d6a6ab3",
-      "bytes": 31111,
+      "sha256": "da3e2d273ee691804be829b58facefd699769305f34d1ae3fc9d4cdb78040c57",
+      "bytes": 31150,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8639,8 +8640,8 @@
     },
     {
       "path": "gridform_core/preflight.py",
-      "sha256": "04b78b8a5c1c06ff085600e47cee3a6afde7045975c8d559c1a88f406abbe75a",
-      "bytes": 46077,
+      "sha256": "be5311d65ef7c5f9813ff493cdfc8ce0b8a83c2af385bc24323e41ccb3a780fe",
+      "bytes": 46758,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12839,6 +12840,12 @@
       "path": "tests/test_r41_doctoral_kernel_errors.py",
       "sha256": "23387097f2ce76b5311e8adc8e734afa905368b4ac369b928e727f0512a2529b",
       "bytes": 23612,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/test_r4_module_extension_defects.py",
+      "sha256": "dd5a5b6a6c7c8410510ec4a594912bbe97bf8bc84deaea1319058733d74635c9",
+      "bytes": 5006,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

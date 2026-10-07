@@ -136,7 +136,8 @@ def evaluate_layers(pack_root: Path, manifest: Mapping[str, Any], *, periods: in
             continue
         binding = _bound(manifest, role)
         try:
-            rows = sum(1 for _ in path.open("rb"))
+            with path.open("rb") as handle:
+                rows = sum(1 for _ in handle)
         except OSError:
             continue
         if timezone.upper() != "UTC" and not binding.get("timestamp_column") and rows > periods + 1:

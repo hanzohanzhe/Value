@@ -892,7 +892,15 @@ def run_preflight(
         "accepted": not errors,
         "mode": mode,
         "project_id": project.get("id"),
-        "project_revision_sha256": checks.get("project_revision", {}).get("calculated_sha256") if isinstance(checks.get("project_revision"), Mapping) else None,
+        # R4 M-中2 / F-中1: the report identifies the saved revision it
+        # evaluated (the declared hash), so a code-only re-identification is
+        # still evidence for that Study revision; the hash the installed code
+        # computes is reported separately.
+        "project_revision_sha256": _report_revision(checks.get("project_revision")),
+        "calculated_project_revision_sha256": (
+            checks["project_revision"].get("calculated_sha256")
+            if isinstance(checks.get("project_revision"), Mapping) else None
+        ),
         "data_pack_id": pack_manifest.get("id"),
         "runtime_capability": VALUE_NATIVE,
         "checks": checks,
@@ -902,6 +910,14 @@ def run_preflight(
         "estimates": estimates,
         "resource_readiness": resource_readiness,
     }
+
+
+def _report_revision(check: object) -> object:
+    """The saved revision a report evaluated: declared, else calculated (unsaved)."""
+
+    if not isinstance(check, Mapping):
+        return None
+    return check.get("declared_sha256") or check.get("calculated_sha256")
 
 
 def main() -> None:
