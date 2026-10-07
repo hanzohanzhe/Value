@@ -140,3 +140,13 @@ test("withheld Run is recognised before annual requests", async () => {
   assert.equal(annualResultsWithheld(undefined), false);
   assert.match(VRE_WITHHELD_TEXT, /Market replay and Inspect/);
 });
+
+// R-低9: the replay export says what physical_resource_cost_gbp means against the annual ledger.
+test("replay export explains the period cost column", async () => {
+  const { replayExportNote, PERIOD_COST_COLUMN_NOTE } = await import("../../../app/features/market/replayExportNotes.ts");
+  assert.equal(replayExportNote("csv"), PERIOD_COST_COLUMN_NOTE);
+  assert.equal(replayExportNote("jsonl"), PERIOD_COST_COLUMN_NOTE);
+  assert.equal(replayExportNote("zip"), PERIOD_COST_COLUMN_NOTE);
+  assert.match(PERIOD_COST_COLUMN_NOTE, /retained period cost/);
+  assert.match(PERIOD_COST_COLUMN_NOTE, /cycle wear/);
+});

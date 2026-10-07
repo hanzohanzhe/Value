@@ -1033,6 +1033,8 @@ td code { font-size: 9px; }
 .replay-export-panel { margin-top: 14px; }
 .replay-export-controls { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)) auto; gap: 10px; align-items: end; }
 .replay-export-controls label { display: grid; gap: 5px; }
+/* R4 R-低9: what the period cost column means against the annual ledger. */
+.replay-export-note { display: block; margin-top: 8px; font-size: 12px; line-height: 1.45; color: var(--muted); }
 .export-job-status { padding: 12px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--surface-soft); }
 
 @media (max-width: 1120px) {

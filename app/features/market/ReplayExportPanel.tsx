@@ -2,6 +2,7 @@
 
 import { apiUrl } from "../shared/api";
 import { useEffect, useState } from "react";
+import { replayExportNote } from "./replayExportNotes.ts";
 
 type ExportRange = "" | "period" | "24_hours" | "168_hours" | "year" | "complete";
 type ExportFormat = "zip" | "jsonl" | "csv";
@@ -105,6 +106,7 @@ export default function ReplayExportPanel({
       <label><span>Format</span><select value={rangeKind === "complete" ? "zip" : outputFormat} disabled={controlsLocked || rangeKind === "complete"} onChange={(event) => { resetJobEvidence(); setOutputFormat(event.target.value as ExportFormat); }}><option value="zip">Replay ZIP</option><option value="jsonl">Bounded JSONL</option><option value="csv">Bounded CSV</option></select></label>
       <button className="secondary" disabled={controlsLocked || !rangeKind} onClick={() => void startExport().catch((reason: Error) => setError(reason.message))}>Start export job</button>
     </div>
+    {replayExportNote(rangeKind === "complete" ? "zip" : outputFormat) && <small className="replay-export-note value-new-control">{replayExportNote(rangeKind === "complete" ? "zip" : outputFormat)}</small>}
     {job && <div className="export-job-status" role="status"><span>Job <code>{job.job_id}</code></span><b>{job.status}</b>{job.status === "completed" && job.download_url && <a className="secondary" href={job.download_url}>Download completed artifact</a>}{job.status === "failed" && <small>{job.error || "Export failed"}</small>}</div>}
     {error && <div className="error-box" role="alert">{error}</div>}
   </section>;

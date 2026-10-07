@@ -66,6 +66,7 @@
     "app/features/market/dispatchView.ts",
     "app/features/market/market-replay.css",
     "app/features/market/marketTypes.ts",
+    "app/features/market/replayExportNotes.ts",
     "app/features/market/stressEventsView.ts",
     "app/features/market/vreView.ts",
     "app/features/modules/DisabledEntriesPanel.tsx",
@@ -3309,8 +3310,8 @@
     },
     {
       "path": "app/features/market/ReplayExportPanel.tsx",
-      "sha256": "ee9fa495b13fdf1dffafbc43c47d78e4439f7ca9a502fee08a449928e371ff4d",
-      "bytes": 5899,
+      "sha256": "443bf41e8d22af302aa064d4fa638b629059da146364b14431eb16935dbf5f1a",
+      "bytes": 6165,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3353,6 +3354,12 @@
       "path": "app/features/market/marketTypes.ts",
       "sha256": "5d0fab8a72b578fb7a2d325cdaa7bdde7807b9d669cadf62a76586edf29b87ec",
       "bytes": 5726,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/market/replayExportNotes.ts",
+      "sha256": "ea6b971a8f00498bfa0c58e0fe90c3bf62c7c67eb03534a7d7e3053a45af859b",
+      "bytes": 1526,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3897,8 +3904,8 @@
     },
     {
       "path": "app/globals.css",
-      "sha256": "a7163192fb36725b0d00f6b9ec8e9564b5b264e5863139b660b9f074045f115f",
-      "bytes": 107220,
+      "sha256": "a5d97187b2887fb0a9ecc11999854889478bbd5a10fbb6a452755909784e7110",
+      "bytes": 107412,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11014,8 +11021,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-reproduce-defects.test.mjs",
-      "sha256": "cf24554164a0482cf7f991090375ac103044d7795be8614d5c64b63ad36470b1",
-      "bytes": 10564,
+      "sha256": "a62be864debfa79939720839bf615357358e613114198b0b768de908e7e41c51",
+      "bytes": 11179,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
