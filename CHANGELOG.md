@@ -68,6 +68,7 @@ existing installation is upgraded side by side, as described in
 | R3-3 (A24-4, restart costs in 2025 GBP) | — | `r33.restart-cost-price-base-2025` (parameter restatement used by `r12.*` and `r32.*`; recorded on the default PSM 6.6.0 and staged PSM 1.6.0 ledger bumps, explicit Study confirmation) |
 | R4-1 (A26, thesis-kernel errors) | `r41.down-regulation-taken-once`, `r41.must-run-surplus-counted-once`, `p06.storage-net-per-period` (made universal; default PSM 6.7.0, explicit Study confirmation) | — |
 | R4-3 (A27, four-role S-中1, model clock label) | `r43.model-clock-utc-label` (ledger metadata label only, accounting zone; no model value changes) | — |
+| R5-1 (A28, four-role S-F-中2, energy served) | `r5.served-energy-net-of-stress-shortfall` (cost per MWh served and carbon intensity per MWh delivered; accounting zone, dispatch unchanged; not in the method identity, like `fx5.voll-17000`) | — |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -963,6 +964,52 @@ availability, the original data readings) are unchanged.
   experimental extension is marked in its header (F-低4); install conflicts
   come before the pending-runs question, which names modules or extensions
   (F-低5).
+
+### Swap-data final fixes: demand unit, energy served, hourly demand (R5-1, DECISIONS A28)
+
+- **VALUE 101 demand unit (S-F-高1).** The two VALUE 101 demand files say
+  `mwh` in their header and `MWh/period` in the pack, but VALUE has always
+  read them as MW (half-hour average power). This is now a registry
+  relabel: bytes, manifests and both profiles' reading are unchanged, and
+  the workspace marks such a binding with `runtime_unit_interpretation`.
+  The swap-data role card and the CSV mapping editor say "read as MW" and
+  that a user who rewrites these numbers should map them as MW.
+- **Demand scale check (S-F-高1).** A mapped demand series whose annual
+  energy (mean MW x 8,760 h) is above 1.5 or below 0.67 times the file it
+  replaces gets a `GF_DATA_DEMAND_SCALE` warning with both annual energies;
+  the pack validation of a copied pack compares each changed demand file
+  with the pack it was copied from in the same way. Warnings only.
+- **Energy served (S-F-中2).** The cost per MWh served and the carbon
+  intensity per MWh delivered now divide by demand less all unserved
+  energy of the A2 account (the PSM's recorded blackout plus the stress
+  shortfall the energy-balance ledger books as hidden unserved energy), not
+  by demand less the recorded blackout alone. A year without a stress
+  period is unchanged (its A2 remainder is sub-tolerance noise). Universal
+  accounting correction `r5.served-energy-net-of-stress-shortfall` (both
+  profiles, accounting zone, no dispatch change). Golden: doctoral D5 r5
+  (accounting zone only: GBP1 2025 served 232,910,596.5 ->
+  232,831,786.3 MWh, cost per MWh served 116.789242 -> 116.828773 GBP/MWh);
+  no other case changes.
+- **Annual demand on Runs and Compare (S-F-高1, S-F-中2).** The run status
+  records `demand_mwh` and `unserved_energy_a2_mwh`; the annual card's
+  "Unserved demand" is the A2 total with the PSM-recorded part named
+  beside it; Compare lists annual demand, demand served, unserved energy
+  including the stress shortfall (`value.adequacy-unserved-energy/v2`) and
+  the PSM-recorded part, and names the Run the deltas are measured against.
+- **Hourly demand (S-F-中3).** A demand CSV with hourly rows (8,760 or 8,784
+  rows, or a declared timestamp column with 60-minute steps) is mapped like
+  hourly prices: each hour is used for two half-hour periods at the same MW
+  (MWh/period is then energy per hour). The canonical file is half-hourly;
+  the retained hourly source is re-checked at its own 60-minute period.
+- **Mapping editor stays put during a Run (S-F-中1).** The Data page keys the
+  Study's data-role resolution by content, so a workspace poll no longer
+  resets it and the staged CSV, column choices and review survive.
+- Low items: the column-mapping SHA is labelled as covering columns, units
+  and FX only (S-F-低1); `clock_adapter` in the validation details names the
+  reader's step (`as_is`, `hourly_to_half_hour`, `leap_day_removed`, …)
+  (S-F-低2); a read-only editor no longer says it is loading (S-F-低3);
+  "1 period (30 minutes)" instead of "1 periods (0.0 days)" (S-F-低4); the
+  review expiry is local time to the minute (S-F-低6).
 
 ### Scientific validation recomputed and gated (P0-4)
 
