@@ -18,7 +18,7 @@ not burn (review P2-05, P3-04).
 
 | Resource | Dec price (GBP/MWh) |
 | --- | --- |
-| fuel units (gas, coal, biomass, oil) | `SRMC x m_dec - support` |
+| fuel units (gas, coal, biomass, oil) | `SRMC x m_dec - support` (gas and biomass: two segments since R3-2, see below) |
 | imports | `period price x m_dec` |
 | wind, solar, run-of-river hydro | `-support` |
 | nuclear | `SRMC x m_dec - support - premium` (premium GBP 100 by default) |
@@ -62,6 +62,19 @@ than GBP 0.01 apart are ordered by price there but by class in copperplate.
 (Edit for `transmission.md` 0.3: the pro-rata group of an up bid is keyed by
 zone, direction, network effect and price, without the resource class since
 solver contract v4; a down bid's key also carries its dec class.)
+
+**R3-2 amendment (A19/A22/A22a/A24-3, rule set `network-economic-v2`,
+`r32.network-economic-downward-order`).** A gas (CCGT, OCGT) or biomass dec
+is split at minimum stable generation: the running range above it keeps the
+price `c` above; the shutdown segment is priced at the net saving
+`a(H) = c - S(H)/(m H)` (dec class `fuel_shutdown`, after VRE and before
+nuclear at an equal band; physical tie weight 3.5) or, when the expected
+downtime H is below the minimum down time, is a last resort
+(`fuel_shutdown_last_resort`, priced 0.01 below every other dec of the
+period; weight 5). The order above becomes fuel units, imports, storage
+charging, run-of-river hydro, wind and solar, gas/biomass shutdown, nuclear,
+shutdown below the minimum down time. Details, H and numbers:
+`r32_network_economic_downward_order.md`.
 
 ## 2. Network constraint cost
 
@@ -120,6 +133,7 @@ metadata: `p08.staged-dec-zero-pricing` (P2-05/P3-04),
 
 ## 中文摘要
 
+- R3-2 修订：燃气、生物质的 dec 在最小稳定出力处拆为不停机段（价 c）和停机段（价 a(H) = c − S(H)/(m·H)，同价排在风光之后、核电之前；H 小于最短停机时间时为最后手段），见 `r32_network_economic_downward_order.md`。
 - 下调（dec）报价：燃料机组为 SRMC×m_dec−补贴，进口为当期价×m_dec，风光与径流水电为 −补贴，核电再减去不灵活溢价（默认 100 英镑/MWh），储能为 min(自身上调价×充放效率, 当期最低上调价)。被下调的燃气机组退回其节省的运行成本，不再获得横财；同价资产按可用电量比例分配，改名不改变调度。
 - 网络约束成本 = 分区解 − 无网络解。无网络解是同一个线性规划去掉网络（单节点），报价、出口、储能、VOLL、求解器和逐期单价表完全相同，因此全国性缺电、逐期进口价、出口套利都不再计为网络成本；每期检查 primary 目标的顺序不变式。
 - 边界边际价值取自 primary 阶段的对偶值，按正向取符号，单位为英镑/MWh；退化或共享成员时带状态标注。年度键改为 boundary_congestion_rent_diagnostic_gbp（诊断量，不是现金成本）。P0-8b 之前的账本值从未计算，显示为“未计算”。

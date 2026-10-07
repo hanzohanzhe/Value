@@ -68,7 +68,10 @@ up to 10% is `GO`; above 10% and up to 100% is
   an accepted non-storage down bid, fuel 0, import 0.5, run-of-river 2, VRE 3,
   nuclear 4 (storage charge/discharge and corridor flow keep weight 1). At an
   equal primary price storage charging therefore precedes run-of-river, VRE
-  and nuclear reductions within a zone. The phase is still reported as
+  and nuclear reductions within a zone. R3-2 (A24-3) adds two classes that
+  the staged PSM declares for a gas or biomass shutdown segment:
+  `fuel_shutdown` 3.5 (after VRE) and `fuel_shutdown_last_resort` 5; the
+  formulation, phases and locks are unchanged. The phase is still reported as
   `physical_throughput` with unit MWh; its value is the weighted sum.
 * The network-free counterfactual (`value.network-free-lp/v1`) is this LP
   collapsed to one node with the same settings; network cost is zonal minus

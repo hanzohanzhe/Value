@@ -1,0 +1,1167 @@
+{
+ "case": "C7",
+ "child_commit": "R3-2 working tree on 1724b8d",
+ "columns": {
+  "market/context/run-context.json::module_graph.graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1b0e7c48372b318dbb6fbf34aa2a1cbb95451297e30f5361886ef5e341941506",
+     "before": "e59e6c0e936d9e5a5480dfb9480614911932974a749020e1be1719cf04ac65ff",
+     "label": ".module_graph.graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/context/run-context.json::module_graph.modules.psm.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1.5.0",
+     "before": "1.4.0",
+     "label": ".module_graph.modules.psm.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/context/run-context.json::module_graph.modules.psm.scientific_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "value-staged-network-restart-economics-2026.10.07",
+     "before": "value-staged-network-economics-2026.10.06",
+     "label": ".module_graph.modules.psm.scientific_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/context/year-2025.json::run_context_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "efdb17e17378c49cd96a437ccf4a038b6e12287af4229259d4cfbae4fe74d2e9",
+     "before": "46818dca47714f3614fc7372c4d157065d03af15cfbdb93771aa155f527bd320",
+     "label": ".run_context_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/market.sqlite::context_registry.sha256": {
+   "alignment": "keyed (year)",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "592403017de76dd4836619de7b90dad2115cb05ef50ea368559e695cc88d5735",
+     "before": "a502e7c16c9689168562d698c578593f7f1f1ffd5bdd30ed4d58dae7f5e44e07",
+     "label": "[2025]"
+    },
+    {
+     "after": "efdb17e17378c49cd96a437ccf4a038b6e12287af4229259d4cfbae4fe74d2e9",
+     "before": "46818dca47714f3614fc7372c4d157065d03af15cfbdb93771aa155f527bd320",
+     "label": "[-1]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/market.sqlite::metadata.value": {
+   "alignment": "keyed (key)",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "{\"rule_set_id\": \"network-economic-v2\", \"rule_set_sha256\": \"3a0cfbf304b1da69ec949b93e9f8ef4a972dbd8dad852842efb0e72b710eb",
+     "before": "{\"rule_set_id\": \"network-economic-v1\", \"rule_set_sha256\": \"3f858ac96dea3d17ecc019b14635fdf06dd17efc1818f42b25206e8d5c7e9",
+     "label": "[\"network_method_rules\"]"
+    },
+    {
+     "after": "[\"1.5.0\", \"1.1.0\"]",
+     "before": "[\"1.4.0\", \"1.1.0\"]",
+     "label": "[\"module_versions\"]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 17,
+   "values_before": 17,
+   "zone": "identity"
+  },
+  "market/market.sqlite::period_integrity.evidence_hash": {
+   "alignment": "keyed (year, period)",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ea061115b66199dfaa78e025a3eb7a621be37d22ddd5e386b52462a6d6513fc7",
+     "before": "f9da1d34a6e4c9c38d3ca848dc7828eb29b80c1e0ba140deb978bc37f548e1e7",
+     "label": "[2025, 0]"
+    },
+    {
+     "after": "3d83be91e4417002c449140a50582bc12274fa32c1071dcff5b6530a9d3badfa",
+     "before": "5faed5f8f21ef692b293c01a0c6157a753746962abc54f9a926ce9ea61c6a6c8",
+     "label": "[2025, 1]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/market.sqlite::period_integrity.previous_evidence_hash": {
+   "alignment": "keyed (year, period)",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "a1771f6f96a045e44f49d208c710c4699a037e5e8201554e5f0c59a26a668270",
+     "before": "f61e751d3cf1c40db44430bd40ff47c32dfe33cd59b80654d8a6e3e429e9bb70",
+     "label": "[2025, 0]"
+    },
+    {
+     "after": "ea061115b66199dfaa78e025a3eb7a621be37d22ddd5e386b52462a6d6513fc7",
+     "before": "f9da1d34a6e4c9c38d3ca848dc7828eb29b80c1e0ba140deb978bc37f548e1e7",
+     "label": "[2025, 1]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/market.sqlite::period_integrity.previous_science_hash": {
+   "alignment": "keyed (year, period)",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "6430b17ea32507ab7f65acc9c7624efa3bc6c9604fc2758737b107e233226f71",
+     "before": "b28e74cd6acf68097bc983b8fa2b6d48d65cc44c74cb768008ab3d6b40ab7b06",
+     "label": "[2025, 0]"
+    },
+    {
+     "after": "b6fa157818e5657648fd4ad687390945a60c5fc70d2a90d3fd88aa399083e387",
+     "before": "3d26dd38a55fd7364cf932c8bdbd91b36d0289580c571c1f957ac6d6b32b79bf",
+     "label": "[2025, 1]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/market.sqlite::period_integrity.science_hash": {
+   "alignment": "keyed (year, period)",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "b6fa157818e5657648fd4ad687390945a60c5fc70d2a90d3fd88aa399083e387",
+     "before": "3d26dd38a55fd7364cf932c8bdbd91b36d0289580c571c1f957ac6d6b32b79bf",
+     "label": "[2025, 0]"
+    },
+    {
+     "after": "19a65224ac5638c3a8649cdec8f499391dbca4247521920af36902b0d21f3b55",
+     "before": "2fb55f300d917d71a9a5bddfee2505ad793c56917e3d9b8e4de4cf8507202284",
+     "label": "[2025, 1]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/market.sqlite::year_integrity.evidence_root": {
+   "alignment": "keyed (year)",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "770267341261b848a40a8f84cf998615bcf568dcdef7acb753bbf33277a1cb9c",
+     "before": "c6976582be444689542c3eced165e559471a4317fd9817546b6d3b7e629a2a74",
+     "label": "[2025]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/market.sqlite::year_integrity.run_context_sha256": {
+   "alignment": "keyed (year)",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "efdb17e17378c49cd96a437ccf4a038b6e12287af4229259d4cfbae4fe74d2e9",
+     "before": "46818dca47714f3614fc7372c4d157065d03af15cfbdb93771aa155f527bd320",
+     "label": "[2025]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/market.sqlite::year_integrity.science_root": {
+   "alignment": "keyed (year)",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "19a65224ac5638c3a8649cdec8f499391dbca4247521920af36902b0d21f3b55",
+     "before": "2fb55f300d917d71a9a5bddfee2505ad793c56917e3d9b8e4de4cf8507202284",
+     "label": "[2025]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/market.sqlite::year_integrity.year_context_sha256": {
+   "alignment": "keyed (year)",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "592403017de76dd4836619de7b90dad2115cb05ef50ea368559e695cc88d5735",
+     "before": "a502e7c16c9689168562d698c578593f7f1f1ffd5bdd30ed4d58dae7f5e44e07",
+     "label": "[2025]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::context_hashes.run_context_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "efdb17e17378c49cd96a437ccf4a038b6e12287af4229259d4cfbae4fe74d2e9",
+     "before": "46818dca47714f3614fc7372c4d157065d03af15cfbdb93771aa155f527bd320",
+     "label": ".context_hashes.run_context_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::context_hashes.year_context_sha256_by_year.{}": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "592403017de76dd4836619de7b90dad2115cb05ef50ea368559e695cc88d5735",
+     "before": "a502e7c16c9689168562d698c578593f7f1f1ffd5bdd30ed4d58dae7f5e44e07",
+     "label": ".context_hashes.year_context_sha256_by_year.2025"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::evidence_root_by_year.{}": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "770267341261b848a40a8f84cf998615bcf568dcdef7acb753bbf33277a1cb9c",
+     "before": "c6976582be444689542c3eced165e559471a4317fd9817546b6d3b7e629a2a74",
+     "label": ".evidence_root_by_year.2025"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::science_root_by_year.{}": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "19a65224ac5638c3a8649cdec8f499391dbca4247521920af36902b0d21f3b55",
+     "before": "2fb55f300d917d71a9a5bddfee2505ad793c56917e3d9b8e4de4cf8507202284",
+     "label": ".science_root_by_year.2025"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::semantic_metadata.module_versions": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "1.5.0",
+     "before": "1.4.0",
+     "label": ".semantic_metadata.module_versions[0]"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rule_set_id": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "network-economic-v2",
+     "before": "network-economic-v1",
+     "label": ".semantic_metadata.network_method_rules.rule_set_id"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rule_set_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "3a0cfbf304b1da69ec949b93e9f8ef4a972dbd8dad852842efb0e72b710ebff2",
+     "before": "3f858ac96dea3d17ecc019b14635fdf06dd17efc1818f42b25206e8d5c7e922f",
+     "label": ".semantic_metadata.network_method_rules.rule_set_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rules.dec_class_order": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": false,
+   "per_value": "not comparable (rows shifted)",
+   "section": "reporting",
+   "values_after": 8,
+   "values_before": 6,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rules.restart_table": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "reporting",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rules.rule_set_id": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "network-economic-v2",
+     "before": "network-economic-v1",
+     "label": ".semantic_metadata.network_method_rules.rules.rule_set_id"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rules.shutdown_horizon": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rules.thermal_shutdown": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.network_method_rules.rules.thermal_shutdown_rule": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "accounting"
+  },
+  "market/metadata.json::semantic_metadata.run_context_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "efdb17e17378c49cd96a437ccf4a038b6e12287af4229259d4cfbae4fe74d2e9",
+     "before": "46818dca47714f3614fc7372c4d157065d03af15cfbdb93771aa155f527bd320",
+     "label": ".semantic_metadata.run_context_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::semantic_metadata.year_context_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "592403017de76dd4836619de7b90dad2115cb05ef50ea368559e695cc88d5735",
+     "before": "a502e7c16c9689168562d698c578593f7f1f1ffd5bdd30ed4d58dae7f5e44e07",
+     "label": ".semantic_metadata.year_context_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/metadata.json::source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ae6022b24ce41a06097337203c619023bdaaef367d0b8cd4569d501c75ace12d",
+     "before": "04d16b374a453712f2c793549fe35bd50de38d72055c258239ba6729a05ac8e1",
+     "label": ".source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "market/staged-market-year-2025.json::balancing_result_sha256_by_period.{}": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "74faf83f3a56c6811e2c896f5ebb49de600e69cfc52e67e7bfb9ea585b49711e",
+     "before": "7f0efbc772040734cc5a26281410f69313fda415bcd54aa2173efaf240cda457",
+     "label": ".balancing_result_sha256_by_period.2025:0"
+    },
+    {
+     "after": "5c14a9a40c48b79a0e717f8fefd590a0e7f5799cace9e66db2f80cdb1053c767",
+     "before": "7a0fa5e31fed10265d953b80eb66ade4e479e77cbb7f2cafaea93ddb23cf667e",
+     "label": ".balancing_result_sha256_by_period.2025:1"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "market/staged-market-year-2025.json::psm_module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1.5.0",
+     "before": "1.4.0",
+     "label": ".psm_module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.psm.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1.5.0",
+     "before": "1.4.0",
+     "label": ".module_identities.psm.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.psm.scientific_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "value-staged-network-restart-economics-2026.10.07",
+     "before": "value-staged-network-economics-2026.10.06",
+     "label": ".module_identities.psm.scientific_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_resolution_graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1b0e7c48372b318dbb6fbf34aa2a1cbb95451297e30f5361886ef5e341941506",
+     "before": "e59e6c0e936d9e5a5480dfb9480614911932974a749020e1be1719cf04ac65ff",
+     "label": ".module_resolution_graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "validation/energy-balance-oracle.json::ledger.source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ae6022b24ce41a06097337203c619023bdaaef367d0b8cd4569d501c75ace12d",
+     "before": "04d16b374a453712f2c793549fe35bd50de38d72055c258239ba6729a05ac8e1",
+     "label": ".ledger.source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.artifacts.checksum_sha256": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ae6022b24ce41a06097337203c619023bdaaef367d0b8cd4569d501c75ace12d",
+     "before": "04d16b374a453712f2c793549fe35bd50de38d72055c258239ba6729a05ac8e1",
+     "label": "[0].market.artifacts[1].checksum_sha256"
+    },
+    {
+     "after": "176f3cd7ad0cc2c769115b27e77cccbf4335b54994ecb004da5ca877ac9f4fce",
+     "before": "b5c5d9543171e2b16503e20d9dcae7eacd88cfa7fb083c653da4db4902a6622f",
+     "label": "[0].market.artifacts[0].checksum_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.down_regulation_periods": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.mean_horizon_hours": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.mean_horizon_hours_all_periods": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0.5,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.outlook_basis": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.periods_by_segment": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0.0,
+   "sum_before": 0,
+   "values_after": 10,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.reduced_mwh_by_segment": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0.0,
+   "sum_before": 0,
+   "values_after": 10,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.restart_table_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.restart_table_sha256": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.rule": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.downward_restart_economics.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.context_hashes": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "592403017de76dd4836619de7b90dad2115cb05ef50ea368559e695cc88d5735",
+     "before": "a502e7c16c9689168562d698c578593f7f1f1ffd5bdd30ed4d58dae7f5e44e07",
+     "label": "[0].market.extensions.market_ledger.context_hashes.year_context_sha256_by_year.2025"
+    },
+    {
+     "after": "efdb17e17378c49cd96a437ccf4a038b6e12287af4229259d4cfbae4fe74d2e9",
+     "before": "46818dca47714f3614fc7372c4d157065d03af15cfbdb93771aa155f527bd320",
+     "label": "[0].market.extensions.market_ledger.context_hashes.run_context_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.evidence_root_by_year": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "770267341261b848a40a8f84cf998615bcf568dcdef7acb753bbf33277a1cb9c",
+     "before": "c6976582be444689542c3eced165e559471a4317fd9817546b6d3b7e629a2a74",
+     "label": "[0].market.extensions.market_ledger.evidence_root_by_year.2025"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.science_root_by_year": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "19a65224ac5638c3a8649cdec8f499391dbca4247521920af36902b0d21f3b55",
+     "before": "2fb55f300d917d71a9a5bddfee2505ad793c56917e3d9b8e4de4cf8507202284",
+     "label": "[0].market.extensions.market_ledger.science_root_by_year.2025"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.semantic_metadata": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "values_after": 49,
+   "values_before": 42,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_ledger.source_artifact_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ae6022b24ce41a06097337203c619023bdaaef367d0b8cd4569d501c75ace12d",
+     "before": "04d16b374a453712f2c793549fe35bd50de38d72055c258239ba6729a05ac8e1",
+     "label": "[0].market.extensions.market_ledger.source_artifact_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.network_method_rules.rule_set_id": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "network-economic-v2",
+     "before": "network-economic-v1",
+     "label": "[0].market.extensions.network_method_rules.rule_set_id"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.network_method_rules.rule_set_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "3a0cfbf304b1da69ec949b93e9f8ef4a972dbd8dad852842efb0e72b710ebff2",
+     "before": "3f858ac96dea3d17ecc019b14635fdf06dd17efc1818f42b25206e8d5c7e922f",
+     "label": "[0].market.extensions.network_method_rules.rule_set_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.network_method_rules.rules": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": true,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "values_after": 25,
+   "values_before": 18,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.staged_market_year_result.balancing_result_sha256_by_period": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "5c14a9a40c48b79a0e717f8fefd590a0e7f5799cace9e66db2f80cdb1053c767",
+     "before": "7a0fa5e31fed10265d953b80eb66ade4e479e77cbb7f2cafaea93ddb23cf667e",
+     "label": "[0].market.extensions.staged_market_year_result.balancing_result_sha256_by_period.2025:1"
+    },
+    {
+     "after": "74faf83f3a56c6811e2c896f5ebb49de600e69cfc52e67e7bfb9ea585b49711e",
+     "before": "7f0efbc772040734cc5a26281410f69313fda415bcd54aa2173efaf240cda457",
+     "label": "[0].market.extensions.staged_market_year_result.balancing_result_sha256_by_period.2025:0"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.staged_market_year_result.psm_module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1.5.0",
+     "before": "1.4.0",
+     "label": "[0].market.extensions.staged_market_year_result.psm_module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1.5.0",
+     "before": "1.4.0",
+     "label": "[0].market.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  }
+ },
+ "digest_sha256": "e19582f0ca9597250f75cc7292b6c322f9cf0e39a25f0b3686e34652bced1682",
+ "family": "corrected",
+ "parent_commit": "HEAD",
+ "revision": 13,
+ "schema_version": "value.golden-numeric-report/v2",
+ "summary": {
+  "by_zone": {
+   "accounting": 8,
+   "identity": 41,
+   "trajectory": 9
+  },
+  "changed_columns": 58,
+  "not_comparable_columns": 3
+ }
+}

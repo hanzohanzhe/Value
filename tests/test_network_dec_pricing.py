@@ -77,7 +77,7 @@ def psm_input(
 
 
 def run_staged(model_input: PSMInput, rules=ECONOMIC):
-    tie_rule = "pro_rata_v1" if rules is ECONOMIC else "bid_id_v1"
+    tie_rule = "bid_id_v1" if rules is LEGACY else "pro_rata_v1"
     balancing = CopperplateBalancing(tie_rule=tie_rule)
     module = StagedBidAtCostPSM(network_rules=rules)
     with tempfile.TemporaryDirectory() as temporary:
@@ -150,9 +150,21 @@ class EconomicDecPricingTests(unittest.TestCase):
 
     def test_nuclear_is_decremented_last(self) -> None:
         nuclear = DispatchResource("nuclear", "Nuclear", "thermal", 10.0, 10.0, (1.0,))
-        result = run_staged(psm_input((wind("wind"), nuclear, gas(capacity=2.0)), forecast=22.0, actual=15.0))
+        model_input = psm_input((wind("wind"), nuclear, gas(capacity=2.0)), forecast=22.0, actual=15.0)
+        result = run_staged(model_input)
         dispatch = result.extensions["final_dispatch_mwh_by_physical_asset"]
-        # Surplus 7: gas (GBP 80) first, then wind (GBP 0); nuclear (10-100) untouched.
+        # Surplus 7 (R3-2, network-economic-v2): the gas running range above
+        # minimum stable generation (1 MWh at GBP 80) first, then wind
+        # (GBP 0); the expected downtime (1 h) is below the CCGT minimum down
+        # time, so the gas shutdown segment is a last resort; nuclear (10-100)
+        # untouched.
+        self.assertAlmostEqual(dispatch.get("gas", 0.0), 1.0)
+        self.assertAlmostEqual(dispatch["wind"], 4.0)
+        self.assertAlmostEqual(dispatch["nuclear"], 10.0)
+        # P0-8b rules: gas (GBP 80) in one block first, then wind.
+        dispatch = run_staged(model_input, network_method_rules.ECONOMIC_P08).extensions[
+            "final_dispatch_mwh_by_physical_asset"
+        ]
         self.assertAlmostEqual(dispatch.get("gas", 0.0), 0.0)
         self.assertAlmostEqual(dispatch["wind"], 5.0)
         self.assertAlmostEqual(dispatch["nuclear"], 10.0)

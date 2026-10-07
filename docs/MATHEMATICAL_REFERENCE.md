@@ -172,7 +172,8 @@ tie key. Equal-price up bids in the same direction, zone and network effect
 are accepted pro rata whatever their resource class (solver contract v4); a
 down bid's group also carries its dec class, and the physical tie-break term
 weighs accepted non-storage decs by class (fuel 0, import 0.5, run-of-river 2,
-VRE 3, nuclear 4 per MWh against storage throughput 1), so at an equal price
+VRE 3, gas/biomass shutdown 3.5, nuclear 4, shutdown below the minimum down
+time 5 per MWh against storage throughput 1), so at an equal price
 storage charging precedes run-of-river, VRE and nuclear reductions within a
 zone; storage keeps its own convex identity. A down bid's forced part, the curtailment its
 asset must take because an upper bound on its final dispatch (realised
@@ -190,7 +191,8 @@ annual execution.
 Balancing bids follow the BM convention: an accepted up bid is paid
 \(x\,p\), an accepted down (dec) bid pays \(x\,p\) back, so the objective
 term of a dec is \(-p\,x\) and the highest dec is accepted first. Dec prices
-are economic (`network_method_rules`, rule set `network-economic-v1`, sharing
+are economic (`network_method_rules`, rule set `network-economic-v2` since
+R3-2, `network-economic-v1` in P0-8b, sharing
 the down-regulation table of the default PSM): a fuel unit returns its avoided
 running cost \(p=SRMC\cdot m_{dec}-s\); an import its period price
 \(p_t\,m_{dec}\); VRE and run-of-river hydro lose their output support,
@@ -205,6 +207,20 @@ GBP 0.01, then the shared class order fuel, import, storage charging,
 run-of-river, VRE, nuclear, then the exact price; storage therefore absorbs a
 surplus before VRE is curtailed even when its dec price is capped at a GBP 0
 VRE inc.
+
+Since R3-2 (decisions A19, A22, A22a, A24-3) a gas or biomass dec is split at
+minimum stable generation \(m_k\) of its ahead schedule \(P_k\): the running
+range \((1-m_k)P_k\) keeps \(p=c_k=SRMC\cdot m_{dec}-s\); the shutdown segment
+\(m_kP_k\) is priced at the net saving
+\(a_k(H)=c_k-S_k(H)/(m_kH)\) (restart cost \(S_k\) per MW of capacity,
+expected downtime \(H=(1+n_t)\,\Delta t\) with \(n_t\) the consecutive later
+periods whose forecast demand is covered by declared VRE and nuclear
+availability) and ranks after VRE and before nuclear at an equal band; when
+\(H\) is below the minimum down time it is a last resort priced
+\(\min(a_k,\ \min_{j
+e k}\mathrm{round}(p_j,2)-0.01)\) over the period's other
+decs. Since \(a_k<c_k\), a unit's shutdown is never accepted before its own
+running range.
 
 The network cost of a period is
 \(C^{net}=C(\text{zonal})-C(\text{network-free})\). The network-free case is

@@ -21,8 +21,8 @@ trajectory re-baselines are in `tests/golden/reports/` (`D4-r9.json`, `D5-r1.jso
 | C4 | corrected | fast | legacy storage smoke | r15 | 53 | 468 | 56 | 0 |
 | C5 | corrected | full | legacy storage two_year | r14 | 513 | 529 | 76 | 0 |
 | C6 | corrected | nightly | dynamic storage two_year | r12 | 494 | 531 | 75 | 0 |
-| C7 | corrected | fast | staged copperplate smoke | r12 | 34 | 309 | 104 | 0 |
-| C8 | corrected | fast | staged zonal redispatch value_101_day | r14 | 111 | 382 | 104 | 0 |
+| C7 | corrected | fast | staged copperplate smoke | r13 | 43 | 313 | 105 | 0 |
+| C8 | corrected | fast | staged zonal redispatch value_101_day | r15 | 124 | 390 | 107 | 0 |
 | C9 | corrected | full | GBP1 public2 corrected profile, first model year (A16-7, A18) | r4 | 410 | 220 | 30 | 0 |
 | D1 | doctoral | fast | legacy storage smoke | r10 | 0 | 420 | 53 | 0 |
 | D2 | doctoral | fast | legacy storage two_year_smoke | r10 | 0 | 427 | 54 | 0 |
@@ -83,6 +83,7 @@ A column changed by several revisions is counted under each of their correction 
 | `p08.zonal-solver-v4` |  |  |  |  |  |  |  |  | 72/62/50 |  |  |  |  |  |  |
 | `r12.economic-downward-order` | 10/0/16 |  | 10/0/16 | 10/0/14 | 10/0/16 | 28/41/16 | 28/43/16 |  |  | 10/0/16 |  |  |  |  |  |
 | `r13.per-type-battery-caps` | 3/0/3 |  | 3/0/3 |  | 3/0/3 | 4/0/3 | 4/0/3 | 3/0/46 |  | 12/0/3 |  |  |  |  |  |
+| `r32.network-economic-downward-order` |  |  |  |  |  |  |  | 9/8/41 | 94/81/58 |  |  |  |  |  |  |
 
 ## 2 Dual-profile delta (doctoral vs corrected, latest revisions)
 
@@ -199,6 +200,7 @@ only as a golden revision reason. Families: the golden families with a revision 
 | `p08.zonal-solver-v4` | VERSION_LEDGER | corrected | P2-01 | value-zonal-redispatch-balancing 3.0.0->4.0.0 | P0-8 S4 zonal solver contract v4: shed lock then numerical bid-cost lock (GBP 1 only an acceptance ceiling); removes the GBP 1-funded spurious sheddi… |
 | `r12.economic-downward-order` | catalogue (profile_gated) | corrected | A19, A22, P3-03 | value-bid-at-cost-psm 6.4.0->6.5.0 | Economic down-regulation stack of the curtailment branch. A gas (CCGT, OCGT) or biomass row is split at min_stable_fraction x its accepted day-ahead… |
 | `r13.per-type-battery-caps` | catalogue (profile_gated) | corrected | A20, P5-02 | value-storage-expansion-policy 5.0.0->5.1.0 | value-corrected: on the post-charge leftover headroom (p07.storage-leftover-headroom) each power battery type (0.25C, 0.5C, 1C) has its own cap of ca… |
+| `r32.network-economic-downward-order` | VERSION_LEDGER | corrected | A19, A22, A24-3 | value-staged-bid-at-cost-psm 1.4.0->1.5.0 | R3-2 (DECISIONS A19/A22/A22a/A24-3, r32.network-economic-downward-order): staged rule set network-economic-v2 splits gas/biomass dec bids at minimum… |
 | `x0.methodology-identity` | catalogue (universal) | — | — | — | Runs record their methodology profile (id, version, definition and applied-correction hashes) in resolved-run.json, provenance and status; comparison… |
 | `x0.study-revision-migration` | catalogue (universal) | — | — | — | A saved Study whose revision no longer matches the installed code is classified (code identity, method upgrade, content change, unverifiable) instead… |
 

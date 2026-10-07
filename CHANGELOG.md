@@ -58,6 +58,7 @@ existing installation is upgraded side by side, as described in
 | FX7 (A16-7, GBP1 public2 local acceptance) | — | `p05.nuclear-stations-public2` (GBP1 public2 only) |
 | FX8 (A18, nuclear in service at start) | — | `fx8.nuclear-in-service-at-start` (method change, explicit Study confirmation) |
 | R1-2 (A19/A22, economic down-regulation order) | — | `r12.economic-downward-order` (method change, explicit Study confirmation) |
+| R3-2 (A24-3, economic down-regulation order of the network models) | — | `r32.network-economic-downward-order` (staged / zonal path, which runs only under the corrected profile, Q3; method change, explicit Study confirmation) |
 | R1-3 (A20, per-type battery caps) | — | `r13.per-type-battery-caps` (method change, explicit Study confirmation; supersedes `p07.power-battery-pool`) |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
@@ -102,6 +103,11 @@ unattributed.
   without its extra hour; trajectory and accounting unchanged) and added
   C10: R029 public2 under the corrected profile with the default modules of
   a new Study, first model year (revision 0).
+  R3-2 (A24-3, `r32.network-economic-downward-order`) revised C7 (r13: rule
+  record and the new `downward_restart_economics` extension) and C8 (r15:
+  each CCGT dec becomes two bids, 40 more bid-ledger rows; dispatch, curtailment
+  and costs move only by solver tolerance, at most 1.4e-7 MWh); numeric
+  reports `docs/dev/p0-reports/r32-golden/`.
 
 ### Known issues
 
@@ -669,6 +675,42 @@ unattributed.
   segment is reached.  Golden: C1-C4 and C9 gain the new extension columns
   only; C5/C6 one period; numeric reports
   `docs/dev/p0-reports/r12-golden/`.
+
+### Economic down-regulation order in the network models (A24-3, corrected profile)
+
+- The staged / zonal balancing (P0-8b rule set `network-economic-v1`)
+  offered a gas or biomass unit's whole ahead schedule as one dec at its
+  avoided cost `c > 0`, so every such unit was reduced to zero before any
+  merchant VRE (dec price 0) was curtailed: the "fuel before VRE" order that
+  A19 withdrew for the default PSM.  Decision A24 item (3) applies A19, A22
+  and A22a to the network models.
+- Rule set `network-economic-v2` (`r32.network-economic-downward-order`): a
+  gas (CCGT, OCGT) or biomass dec is split at minimum stable generation (50 /
+  50 / 35 % of its ahead schedule).  The running range keeps the price `c`
+  and is reduced before VRE.  The shutdown segment (bid
+  `...:down-shutdown:<asset>`) is priced at the net saving
+  `a(H) = c - S(H)/(m H)` (same restart table as R1-2) and competes with VRE
+  on price, after VRE at an equal band; when the expected downtime H is below
+  the minimum down time (6 h / 0.5 h / 6 h) it is a last resort, priced 0.01
+  below every other dec of the period.  H = (1 + consecutive later periods
+  whose forecast demand is covered by declared VRE and nuclear availability) x
+  period hours.  Two dec classes join the shared order (`fuel_shutdown` after
+  VRE, `fuel_shutdown_last_resort` last; physical tie weights 3.5 and 5 in the
+  zonal LP and in the PuLP/CBC oracle).
+- Every staged market year records `extensions.downward_restart_economics`
+  (`value.network-downward-restart-economics/v1`: down-regulation periods,
+  mean H, dec MWh and periods by segment).
+- `value-staged-bid-at-cost-psm` 1.4.0 → 1.5.0 with `requires_user_opt_in`
+  (Q13); copperplate 1.1.0 and zonal 4.0.0 unchanged (they read the classes
+  from the shared table).  The doctoral profile cannot select these modules
+  (Q3).
+- Effect on the reference cases: C7 (copperplate smoke) has no balancing dec;
+  in C8 (zonal day) the 42 down-regulation periods all curtail VRE and the
+  CCGT is never balanced down, as before, so dispatch and costs move only by
+  solver tolerance.  Toy cases (staged copperplate, a two-zone LP checked
+  against the CBC oracle, a live staged zonal Run) reproduce the R1-2
+  examples: OCGT at H = 5 h shuts before wind, at H = 3 h wind is curtailed
+  first.
 
 ### Per-type power-battery expansion caps (A20, corrected profile)
 

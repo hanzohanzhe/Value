@@ -22,13 +22,18 @@ EPSILON = 1e-8
 # (network_method_rules.DEC_CLASSES, P0-8b M6 review): at an equal primary
 # price the physical tie phase reduces fuel units (0), imports (0.5), charges
 # storage (throughput weight 1), then run-of-river (2), VRE (3), nuclear (4).
+# R3-2 (A19/A22/A24-3): a gas or biomass shutdown segment declares
+# fuel_shutdown (3.5, after VRE, before nuclear) or, below its minimum down
+# time, fuel_shutdown_last_resort (5, last).
 _DEC_WEIGHT = {
     "fuel": 0.0,
     "import": 0.5,
     "storage": 0.0,
     "run_of_river": 2.0,
     "vre": 3.0,
+    "fuel_shutdown": 3.5,
     "nuclear": 4.0,
+    "fuel_shutdown_last_resort": 5.0,
 }
 
 

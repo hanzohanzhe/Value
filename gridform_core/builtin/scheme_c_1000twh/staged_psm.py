@@ -616,6 +616,71 @@ def _adapter_failure_payload(
     }
 
 
+# R3-2: annual totals of the restart-economics dec order, kept as prefixed keys
+# of the free zonal_account_totals mapping (like the C22 agent costs) so that
+# StagedPSMRuntimeState carries them unchanged across sub-annual restores.
+DOWNWARD_RESTART_PREFIX = "downward_restart_economics::"
+
+
+def _tally_downward_restart_economics(
+    totals: defaultdict[str, float],
+    bids: Sequence[FlexibilityBid],
+    accepted_adjustments: Sequence[AcceptedAdjustment],
+    horizon_h: float,
+) -> None:
+    bid_by_id = {bid.bid_id: bid for bid in bids}
+    taken: defaultdict[str, float] = defaultdict(float)
+    for accepted in accepted_adjustments:
+        bid = bid_by_id.get(str(accepted.bid_id))
+        if bid is None or bid.direction != "down":
+            continue
+        volume = -float(accepted.accepted_delta_mwh)
+        # Below the zonal LP's energy tolerance an acceptance is solver noise.
+        if volume > 1e-6:
+            taken[network_method_rules.dec_segment_label(bid)] += volume
+    if not taken:
+        return
+    totals[DOWNWARD_RESTART_PREFIX + "down_periods"] += 1.0
+    totals[DOWNWARD_RESTART_PREFIX + "horizon_hours_sum"] += float(horizon_h)
+    for label, volume in taken.items():
+        totals[DOWNWARD_RESTART_PREFIX + "mwh::" + label] += volume
+        totals[DOWNWARD_RESTART_PREFIX + "periods::" + label] += 1.0
+
+
+def _downward_restart_summary(
+    totals: Mapping[str, float], horizon_h: Sequence[float]
+) -> dict[str, object]:
+    """``value.network-downward-restart-economics/v1``: the year's dec volumes by segment."""
+
+    def total(key: str) -> float:
+        return float(totals.get(DOWNWARD_RESTART_PREFIX + key, 0.0))
+
+    down_periods = int(round(total("down_periods")))
+    table = network_method_rules.restart_table()
+    return {
+        "schema_version": network_method_rules.DOWNWARD_RESTART_SCHEMA,
+        "rule": network_method_rules.THERMAL_SHUTDOWN_RESTART_ECONOMICS,
+        "restart_table_id": str(table["table_id"]),
+        "restart_table_sha256": network_method_rules.restart_table_sha256(),
+        "outlook_basis": network_method_rules.SHUTDOWN_HORIZON_BASIS,
+        "mean_horizon_hours_all_periods": (
+            math.fsum(horizon_h) / len(horizon_h) if horizon_h else 0.0
+        ),
+        "down_regulation_periods": down_periods,
+        "mean_horizon_hours": (
+            total("horizon_hours_sum") / down_periods if down_periods else 0.0
+        ),
+        "reduced_mwh_by_segment": {
+            label: total("mwh::" + label)
+            for label in network_method_rules.DOWNWARD_SEGMENTS
+        },
+        "periods_by_segment": {
+            label: int(round(total("periods::" + label)))
+            for label in network_method_rules.DOWNWARD_SEGMENTS
+        },
+    }
+
+
 # P0-6 S10 (P5-15): how the staged PSM knows a stored MWh's dwell (it does not).
 STAGED_DWELL_SOURCE = "not_tracked_staged_single_pool"
 
@@ -624,7 +689,7 @@ class StagedBidAtCostPSM:
     """Sequential forecast-only scheduling followed by realised balancing."""
 
     id = "force-staged-bid-at-cost-psm"
-    version = "1.4.0"
+    version = "1.5.0"
     execution_kind = "live_module"
 
     def __init__(
@@ -1249,6 +1314,7 @@ class StagedBidAtCostPSM:
         ahead: AheadMarketResult,
         soc: Mapping[str, float],
         storage_models: Mapping[str, object],
+        horizon_h: float | None = None,
     ) -> tuple[FlexibilityBid, ...]:
         """Balancing bids of one period (P0-8 S7 economic dec pricing).
 
@@ -1260,6 +1326,14 @@ class StagedBidAtCostPSM:
         inflexibility premium, and storage bids at most min(own up x round-trip
         efficiency, the period's lowest inc price).  A dec'd thermal unit
         therefore keeps no windfall (review P2-05).
+
+        R3-2 (A19/A22/A22a/A24-3, rule set network-economic-v2): a gas or
+        biomass unit's dec is split at minimum stable generation.  The running
+        range keeps the bid id ``...:down:<asset>`` and the price c; the
+        shutdown segment ``...:down-shutdown:<asset>`` is priced at the net
+        saving a(H) = c - S(H)/(m H), with ``horizon_h`` the expected downtime
+        H (the current period alone when not given), or, below the minimum
+        down time, 0.01 below every other dec of the period (last resort).
         """
 
         assert model_input.chronology is not None
@@ -1312,6 +1386,24 @@ class StagedBidAtCostPSM:
                         resource.extensions.get("curtailment_cost_gbp_per_mwh", 0.0) or 0.0
                     ),
                 )
+                segments = network_method_rules.thermal_dec_segments(
+                    rules,
+                    resource_class=resource_class,
+                    technology=resource.technology,
+                    asset_id=resource.asset_id,
+                    scheduled_mwh=scheduled,
+                    dec_price_gbp_per_mwh=dec_price,
+                    expected_downtime_h=(
+                        float(horizon_h) if horizon_h is not None
+                        else float(model_input.period_hours)
+                    ),
+                )
+                if segments is not None:
+                    bids.extend(self._thermal_dec_bids(
+                        model_input, period, period_id, resource, agent_id, zone_id,
+                        resource_class, scheduled, marginal, segments,
+                    ))
+                    continue
                 bids.append(FlexibilityBid(
                     f"balance:{model_input.year}:{period}:down:{resource.asset_id}",
                     agent_id,
@@ -1433,6 +1525,104 @@ class StagedBidAtCostPSM:
                 {"resource_class": "export", "priority": 1},
                 extensions={"available_mwh": envelope_mwh},
             ))
+        return self._price_last_resort_shutdowns(bids)
+
+    @staticmethod
+    def _thermal_dec_bids(
+        model_input: PSMInput,
+        period: int,
+        period_id: str,
+        resource: DispatchResource,
+        agent_id: str,
+        zone_id: str,
+        resource_class: str,
+        scheduled: float,
+        marginal: float,
+        segments: network_method_rules.ThermalDecSegments,
+    ) -> list[FlexibilityBid]:
+        """R3-2: the running-range and shutdown dec bids of one fuel unit."""
+
+        hours = model_input.period_hours
+        rows: list[FlexibilityBid] = []
+        common = {
+            "resource_class": resource_class,
+            "curtailment_class": "",
+            "restart_technology": segments.technology,
+        }
+        if segments.running_mwh > 1e-12:
+            rows.append(FlexibilityBid(
+                f"balance:{model_input.year}:{period}:down:{resource.asset_id}",
+                agent_id,
+                resource.asset_id,
+                resource.technology,
+                zone_id,
+                period_id,
+                "down",
+                segments.running_mwh / hours,
+                segments.running_price_gbp_per_mwh,
+                scheduled / hours,
+                marginal,
+                f"{zone_id}:injection",
+                {
+                    **common,
+                    "dec_class": "fuel",
+                    "dec_segment": network_method_rules.SEGMENT_THERMAL_RUNNING,
+                },
+                extensions={"available_mwh": segments.running_mwh},
+            ))
+        if segments.shutdown_mwh > 1e-12:
+            rows.append(FlexibilityBid(
+                f"balance:{model_input.year}:{period}:down-shutdown:{resource.asset_id}",
+                agent_id,
+                resource.asset_id,
+                resource.technology,
+                zone_id,
+                period_id,
+                "down",
+                segments.shutdown_mwh / hours,
+                segments.net_saving_gbp_per_mwh,
+                scheduled / hours,
+                marginal,
+                f"{zone_id}:injection",
+                {
+                    **common,
+                    "dec_class": segments.shutdown_class,
+                    "dec_segment": segments.shutdown_segment,
+                    "net_saving_gbp_per_mwh": segments.net_saving_gbp_per_mwh,
+                    "expected_downtime_h": segments.expected_downtime_h,
+                    "start_class": segments.start_class,
+                    "restart_cost_gbp_per_mw": segments.restart_cost_gbp_per_mw,
+                    "min_stable_fraction": segments.min_stable_fraction,
+                    "min_down_time_h": segments.min_down_time_h,
+                },
+                extensions={"available_mwh": segments.shutdown_mwh},
+            ))
+        return rows
+
+    @staticmethod
+    def _price_last_resort_shutdowns(bids: list[FlexibilityBid]) -> tuple[FlexibilityBid, ...]:
+        """R3-2: a shutdown below its minimum down time is priced one 0.01 band
+        below every other dec of the period (its net saving if that is lower)."""
+
+        last_resort = {
+            index for index, bid in enumerate(bids)
+            if bid.direction == "down"
+            and bid.provenance.get("dec_class") == "fuel_shutdown_last_resort"
+        }
+        if not last_resort:
+            return tuple(bids)
+        others = [
+            bid.price_gbp_per_mwh for index, bid in enumerate(bids)
+            if bid.direction == "down" and index not in last_resort
+        ]
+        for index in sorted(last_resort):
+            bid = bids[index]
+            bids[index] = replace(
+                bid,
+                price_gbp_per_mwh=network_method_rules.last_resort_price(
+                    float(bid.provenance["net_saving_gbp_per_mwh"]), others
+                ),
+            )
         return tuple(bids)
 
     @methodology_scoped
@@ -1506,6 +1696,30 @@ class StagedBidAtCostPSM:
             data_method_id=dict(dict(chronology.extensions.get("data_method") or {}).get("method_ids") or {}).get(
                 "data_method"),
         )
+
+        # R3-2 (A22): expected downtime H of a shutdown decided in each period,
+        # from the (aligned) forecast demand and the declared VRE and nuclear
+        # availability; only the restart-economics rule set reads it.
+        shutdown_horizon_h: tuple[float, ...] | None = None
+        if self._network_rules.restart_economics:
+            must_take = [0.0] * len(chronology.period_ids)
+            for resource in chronology.resources:
+                if not (
+                    resource.resource_type == "vre"
+                    or network_method_rules.dec_class(
+                        _resource_class(resource), resource.technology
+                    ) == "nuclear"
+                ):
+                    continue
+                for period in range(len(chronology.period_ids)):
+                    must_take[period] += (
+                        float(resource.capacity_mw)
+                        * max(_period_value(resource.availability, period), 0.0)
+                        * float(model_input.period_hours)
+                    )
+            shutdown_horizon_h = network_method_rules.shutdown_horizon_hours(
+                forecast, must_take, model_input.period_hours
+            )
 
         storage_models, soc = self._storage_models(model_input)
         if self._network_pack is not None:
@@ -1948,7 +2162,12 @@ class StagedBidAtCostPSM:
                 resource.asset_id: resource.discharge_power_mw
                 for resource in chronology.storage
             })
-            bids = self._flexibility_bids(model_input, period, ahead, soc, storage_models)
+            period_horizon_h = (
+                shutdown_horizon_h[period] if shutdown_horizon_h is not None else None
+            )
+            bids = self._flexibility_bids(
+                model_input, period, ahead, soc, storage_models, period_horizon_h
+            )
             interconnector_envelopes: dict[str, dict[str, float]] = {}
             for resource in chronology.resources:
                 if resource.resource_type != "import":
@@ -2081,6 +2300,11 @@ class StagedBidAtCostPSM:
                 domain_payload=domain_payload,
             )
             balancing: BalancingResult = self._balancing.clear(balancing_input)
+            if period_horizon_h is not None:
+                _tally_downward_restart_economics(
+                    zonal_account_totals, bids, balancing.accepted_adjustments,
+                    period_horizon_h,
+                )
             period_solver_rows: tuple[NetworkSolverDiagnosticRow, ...] = ()
             if self._network_pack is not None:
                 period_solver_rows = _network_solver_diagnostic_rows(
@@ -2110,7 +2334,8 @@ class StagedBidAtCostPSM:
                     self.clear_ahead(perfect_ahead_input), chronology.resources
                 )
                 perfect_bids = self._flexibility_bids(
-                    model_input, period, perfect_ahead, period_initial_soc, storage_models
+                    model_input, period, perfect_ahead, period_initial_soc, storage_models,
+                    period_horizon_h,
                 )
                 perfect_copperplate_input = BalancingInput(
                     model_input.run_id,
@@ -3208,6 +3433,14 @@ class StagedBidAtCostPSM:
                 ),
                 "market_ledger": ledger_metadata,
                 "network_method_rules": self._network_rules.record(),
+                **(
+                    {
+                        "downward_restart_economics": _downward_restart_summary(
+                            zonal_account_totals, shutdown_horizon_h
+                        )
+                    }
+                    if shutdown_horizon_h is not None else {}
+                ),
                 "solver_validation_summary": solver_validation_summary,
                 "vre_expansion_headroom_mw_by_technology": dict(
                     chronology.extensions.get("vre_expansion_headroom_mw_by_technology") or {}

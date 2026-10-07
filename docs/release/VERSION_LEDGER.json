@@ -266,7 +266,7 @@
     "value-staged-bid-at-cost-psm": {
       "baseline_version": "1.1.0",
       "baseline_scientific_version": "value-staged-national-market-2026.08.21",
-      "current_version": "1.4.0",
+      "current_version": "1.5.0",
       "bumps": [
         {
           "from": "1.1.0",
@@ -300,6 +300,16 @@
             "fx5.voll-17000"
           ],
           "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The staged chronology carries it to copperplate balancing (an up bid above VoLL is never accepted) and to zonal redispatch (VoLL x shed in the primary objective, the network-free counterfactual and the redispatch accounting), so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). The zonal balancing module keeps 4.0.0 (its code and solver contract are unchanged; the VALUE UK study already pinned 17000).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.4.0",
+          "to": "1.5.0",
+          "package": "R3-2",
+          "correction_ids": [
+            "r32.network-economic-downward-order"
+          ],
+          "reason": "Decisions A19, A22, A22a and A24-3: in the network models (staged copperplate and zonal redispatch balancing, corrected profile only, Q3) a gas (CCGT, OCGT) or biomass unit is no longer reduced in one block before VRE. Rule set network-economic-v2 (network_method_rules ECONOMIC, thermal_shutdown = restart_cost_vs_avoided_cost_v1) splits its dec bid at minimum stable generation (CCGT/OCGT 50 %, biomass 35 % of its ahead schedule, the restart table of R1-2): the running range keeps the dec price c (SRMC x market.dec_multiplier - support) and is reduced before VRE; the shutdown segment (bid ...:down-shutdown:<asset>, dec class fuel_shutdown) is priced at the net saving a(H) = c - S(H)/(m H) (S: CCGT 110/130/150 GBP/MW hot/warm/cold by H, OCGT 170, biomass 125) and competes with VRE on price, after VRE at an equal band; when the expected downtime H is below the minimum down time (6 h / 0.5 h / 6 h) it is a last resort (class fuel_shutdown_last_resort, priced 0.01 below every other dec of the period). H = (1 + consecutive later periods whose forecast demand is covered by the declared VRE and nuclear availability) x period hours. Each staged market year records extensions.downward_restart_economics (value.network-downward-restart-economics/v1). Balancing dispatch, curtailment, settlement and investment income of staged Runs can change, so saved Studies need explicit confirmation (Q13). The copperplate (1.1.0) and zonal (4.0.0) balancing modules read the two new classes from the shared table without a version change: their clearing rule (price, then the shared class order) is unchanged. Scientific version value-staged-network-restart-economics-2026.10.07.",
           "requires_user_opt_in": true
         }
       ]

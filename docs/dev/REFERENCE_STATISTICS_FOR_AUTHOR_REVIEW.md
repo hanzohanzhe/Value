@@ -584,6 +584,7 @@ R1 数字的核实情况：
 3. ~~决定是否采用两段下调~~ **已决定（A22）**：采用；不停机段先于弃风，停机段按净节省 a(H) 与弃风比较（A22 原写 c − S/H，A22a 更正为 c − S/(m·H)，见第 5 条）。
 4. 决定价格基年（本节用 2024 年英镑）。
 5. ~~待作者确认（A22a，R1-2 审查提出）~~ **已确认（A22a，作者 2026-10-07）**：第 3 条的式子漏了 1/m（见 4.6 节勘误），实现按 a(H) = c − S/(m·H)。参数表 `value_thermal_restart_v1.json` 的 `rule.shutdown_segment` 说明文字已在 R2-1（DECISIONS A23）改为 a(H) = c − S(H)/(m·H)，修正族 golden 随之修订一次（只变 `restart_table_sha256`，数值不变）。
+6. （R3-2，DECISIONS A24-3，记录）分区再调度的下调次序也使用本节取值：网络模型（staged copperplate 与 zonal redispatch，只在修正口径可用，Q3）的燃气、生物质下调报价在最小稳定出力处拆成两段，不停机段按 c 报价，停机段按 a(H) = c − S(H)/(m·H) 报价、与风电下调价（0 或 −补贴）比较，H 小于最短停机时间时为最后手段（`r32.network-economic-downward-order`，规则集 `network-economic-v2`）。取值与参数表文件都不变。
 
 ---
 

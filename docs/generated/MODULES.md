@@ -13,7 +13,7 @@ Generated from `gridform_core/manifests/*.json` by `scripts/generate_reference_t
 | value-doctoral-national-psm | psm | 0.3.0 | value.psm/v2 | — | experimental | false | gridform_core/builtin/scheme_c_1000twh/doctoral_national_psm.py | 52ffb6697f22112fe6b7114a0a3fd1a5ed3bfc3fc6b0e947b644f44249abb074 |
 | value-perfect-foresight-lp | psm | 1.1.0 | value.psm/v2 | — | ready | false | gridform_core/perfect_foresight_psm.py | 02d50bb6b2f40695c5f108586420dc6e97c38e21b64c13bcbfe19710fd5057a6 |
 | value-reference-dc-network | psm | 1.2.0 | value.psm/v2 | — | ready | false | gridform_core/network_dc.py | d86b0b5a0dff3303b9436449387a429d1bdb5dc7a2fa3b157289897a2357dda1 |
-| value-staged-bid-at-cost-psm | psm | 1.4.0 | value.psm/v2 | — | ready | false | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
+| value-staged-bid-at-cost-psm | psm | 1.5.0 | value.psm/v2 | — | ready | false | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
 | value-storage-expansion-policy | storage_cap | 5.1.0 | value.expansion-policy/v2 | — | ready | true | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
 | dynamic-annual-storage-cost | storage_cost | 2.0.0 | value.storage-cost/v1 | — | ready | false | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
 | user-formula-storage-cost | storage_cost | 1.0.0 | value.storage-cost/v1 | — | ready | false | gridform_core/builtin/value_modules.py | 09f66c1e745bbdc4d94bc58a06ee73b4080513d08c1bd716c0633e9925f35ac6 |
