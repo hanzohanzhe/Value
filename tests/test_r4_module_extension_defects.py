@@ -202,5 +202,93 @@ class SourceReidentifyPreflightTests(SavedStudyCase):
         self.assertEqual(report["project_revision_sha256"], self.saved["revision_sha256"])
 
 
+class LifecycleApiCase(unittest.TestCase):
+    """A local API on a scratch data home (the quarantine API test harness)."""
+
+    PACKAGES: tuple[str, ...] = ()
+
+    def setUp(self) -> None:
+        import os
+        import urllib.error
+        import urllib.request
+
+        from backend import server
+        from gridform_core import catalog
+        from gridform_core.module_quarantine import clear_negative_caches
+        from tests.local_api_harness import start_local_api
+        from tests.module_lifecycle_fixtures import forget_external_code
+
+        self.server, self.urllib_request, self.urllib_error = server, urllib.request, urllib.error
+        self.folder = tempfile.TemporaryDirectory(prefix="value-r44-api-")
+        self.addCleanup(self.folder.cleanup)
+        self.home = Path(self.folder.name) / "state"
+        self.modules = self.home / "modules"
+        names = ("MODULE_REGISTRY", "MODULES", "MODULE_SLOT_BY_ID", "REQUIRED_MODULE_SLOTS", "CATALOG_STALE")
+        patches = [patch.dict(os.environ, {"VALUE_DATA_HOME": str(self.home)}), patch.object(catalog, "_SNAPSHOT", None)]
+        patches += [patch.object(server, name, getattr(server, name)) for name in names]
+        for item in patches:
+            item.start()
+            self.addCleanup(item.stop)
+        clear_negative_caches()
+        self.addCleanup(clear_negative_caches)
+        self.addCleanup(forget_external_code, self.modules, self.PACKAGES)
+        context = start_local_api(data_home=self.home)
+        self.httpd, self.origin, self.token = context.__enter__()
+        self.addCleanup(context.__exit__, None, None, None)
+
+    def request(self, method: str, route: str, body: object = None, headers: dict | None = None):
+        data, merged = None, dict(headers or {})
+        if isinstance(body, (bytes, bytearray)):
+            data = bytes(body)
+        elif body is not None:
+            data = json.dumps(body).encode("utf-8")
+            merged.setdefault("Content-Type", "application/json")
+        request = self.urllib_request.Request(self.origin + route, data=data, method=method, headers=merged)
+        try:
+            with self.urllib_request.urlopen(request, timeout=120) as response:
+                return response.status, json.loads(response.read() or b"null")
+        except self.urllib_error.HTTPError as error:
+            return error.code, json.loads(error.read() or b"null")
+
+    def install_extension(self, extension_id: str, namespace: str, **options) -> tuple[int, dict]:
+        from tests.module_lifecycle_fixtures import build_extension_bundle
+
+        bundle = build_extension_bundle(Path(self.folder.name) / f"{extension_id}.zip", extension_id, namespace, **options)
+        return self.request("POST", "/api/extensions/install", bundle.read_bytes(), {
+            "Content-Type": "application/zip", "X-Filename": bundle.name, "X-VALUE-Executable-Trust": "acknowledged",
+        })
+
+
+class ExtensionRescanApiTests(LifecycleApiCase):
+    """F-中3 (Rescan re-imports extension hooks) and F-中2 over HTTP."""
+
+    PACKAGES = ("r44_hook",)
+
+    def test_rescan_quarantines_a_broken_hook_and_restores_a_repaired_one(self) -> None:
+        status, body = self.install_extension("r44-observer", "local.r44-observer", hook_package="r44_hook")
+        self.assertEqual(status, 201, body)
+        hooks = self.modules / "installed-extensions" / "r44-observer" / "0.1.0" / "src" / "r44_hook" / "hooks.py"
+        working = hooks.read_text(encoding="utf-8")
+        status, body = self.request("POST", "/api/modules/rescan", {})
+        self.assertEqual((status, body["status"], body["quarantined_extensions"]), (200, "ok", []), body)
+        self.assertGreaterEqual(body["reloaded_extensions"], 1)
+        self.assertEqual(self.request("GET", "/api/workspace")[1]["extension_source_changes"], [])
+        # A behaviour edit in place is reported (F-中2) ...
+        hooks.write_text(working.replace("return {}", "return {'edited': 10}"), encoding="utf-8")
+        changes = self.request("GET", "/api/workspace")[1]["extension_source_changes"]
+        self.assertEqual([(row["extension_id"], row["implementation"]) for row in changes], [("r44-observer", "r44_hook.hooks")])
+        # ... and a hook that no longer imports is quarantined by Rescan (F-中3).
+        hooks.write_text(working + "raise RuntimeError('broken after load')\n", encoding="utf-8")
+        status, body = self.request("POST", "/api/modules/rescan", {})
+        self.assertEqual((status, body["status"], body["quarantined_extensions"]), (200, "degraded", ["r44-observer"]), body)
+        entry = next(row for row in body["module_quarantine"]["entries"] if row["id"] == "r44-observer")
+        self.assertEqual((entry["kind"], entry["error_code"]), ("extension", "GF_EXTENSION_HOOK_IMPORT"))
+        self.assertEqual(self.request("GET", "/api/health")[1]["status"], "degraded")
+        hooks.write_text(working, encoding="utf-8")
+        status, body = self.request("POST", "/api/modules/rescan", {})
+        self.assertEqual((status, body["status"], body["quarantined_extensions"]), (200, "ok", []), body)
+        self.assertEqual(self.request("GET", "/api/health")[1]["status"], "ok")
+
+
 if __name__ == "__main__":
     unittest.main()

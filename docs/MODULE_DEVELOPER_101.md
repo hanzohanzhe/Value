@@ -544,9 +544,10 @@ not prove order-level replay.
   either refuses. A failed import is remembered until **Rescan** (at the top
   of the Modules page and on every disabled or quarantined entry); **Enable**
   forgets remembered failures first, so it always reports a fresh scan.
-  **Rescan** also re-imports every installed module and extension, so an
-  in-place edit that breaks a module that is already loaded is quarantined at
-  once instead of at the next Run or restart.
+  **Rescan** also re-imports every installed module and the hooks of every
+  enabled extension, so an in-place edit that breaks a module or an extension
+  hook that is already loaded is quarantined at once instead of at the next
+  Check readiness, Run or restart.
 - **Disabled and quarantined:** the Modules page lists every disabled or
   quarantined local module and extension below the module list, each with
   **Enable**, **Rescan** and **Remove**. Check readiness of a Study that selects

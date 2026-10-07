@@ -1150,7 +1150,7 @@ export default function Home() {
       const response = await fetch(`${API}/modules/rescan`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const payload = await response.json() as { status?: string; error?: string; error_code?: string };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Rescan failed"}`);
-      setNotice(payload.status === "ok" ? "Rescan complete: no module is quarantined." : "Rescan complete: some modules are still quarantined; see the panel."); setEntryErrors({}); setPreflight(null); await refresh();
+      setNotice(payload.status === "ok" ? "Rescan complete: modules and extension hooks were imported again; none is quarantined." : "Rescan complete: some modules or extensions are quarantined; see the panel."); setEntryErrors({}); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Rescan failed"); }
     finally { setQuarantineBusy(""); }
   }

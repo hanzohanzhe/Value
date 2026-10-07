@@ -301,6 +301,33 @@ def hook_source_identity(hook: HookDeclaration, *, extension_id: str | None = No
     return {"hook": hook.hook, "implementation": hook.implementation, "source_sha256": digest, "distribution": "workspace-source" if Path(filename).resolve().is_relative_to(Path(__file__).resolve().parent) else "installed-source"}
 
 
+def probe_extension_hooks(manifests: Mapping[str, ExtensionManifest]) -> dict[str, list[str]]:
+    """Import every hook of the given registered extensions now (R4 F-中3).
+
+    Rescan calls this after it purged the installed sources and rebuilt the
+    catalogue, so an extension whose hook no longer imports is quarantined at
+    once (``hook_source_identity`` records the runtime hook quarantine), as a
+    broken module is, instead of at the next Study resolution.  Returns the
+    extension ids whose hooks imported and those that were quarantined.
+    """
+
+    imported: list[str] = []
+    quarantined: list[str] = []
+    for extension_id, manifest in sorted(manifests.items()):
+        try:
+            for hook in manifest.hooks:
+                hook_source_identity(hook, extension_id=extension_id)
+        except ExtensionHookImportError:
+            quarantined.append(extension_id)
+        except ValueError:
+            # Not an import failure (for example a hook that is not callable):
+            # Study resolution reports it with its own message.
+            imported.append(extension_id)
+        else:
+            imported.append(extension_id)
+    return {"imported": imported, "quarantined": quarantined}
+
+
 def _hook_order(manifests: Sequence[ExtensionManifest]) -> dict[str, tuple[str, ...]]:
     result: dict[str, tuple[str, ...]] = {}
     by_id = {item.id: item for item in manifests}

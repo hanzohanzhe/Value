@@ -58,6 +58,7 @@ from gridform_core.module_quarantine import (
     status_for_code,
 )
 from gridform_core.module_bundle import MAX_BUNDLE_BYTES
+from gridform_core.extension_framework import probe_extension_hooks
 from gridform_core.extension_bundle import (
     ExtensionBundleError,
     install_extension_bundle,
@@ -4337,8 +4338,13 @@ class Handler(BaseHTTPRequestHandler):
                 # next run or restart.
                 reloaded = purge_installed_sources(external_modules_root())
                 refresh_module_catalog()
+                # R4 F-中3: extension hooks are imported only when a Study is
+                # resolved; import them now so a broken one is quarantined.
+                hooks = probe_extension_hooks(MODULE_REGISTRY.extension_manifests())
             report = module_quarantine_payload()
             self._json({"ok": True, "cleared": cleared, "reloaded_modules": len(reloaded),
+                        "reloaded_extensions": len(hooks["imported"]) + len(hooks["quarantined"]),
+                        "quarantined_extensions": hooks["quarantined"],
                         "status": report["status"], "module_quarantine": report})
         elif route.startswith("/api/projects/") and route.endswith("/clone-storage-policy"):
             base_id = slug(route.strip("/").split("/")[2], "project")
