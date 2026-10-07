@@ -1138,7 +1138,7 @@ export default function Home() {
     };
     const first = await send(false);
     if (!isPendingRunsRefusal(first.response.status, first.payload.error_code)) return first;
-    if (!window.confirm(pendingRunsQuestion(first.payload.error))) return first;
+    if (!window.confirm(pendingRunsQuestion(first.payload.error, url.includes("/extensions/") ? "extensions" : "modules"))) return first;
     return send(true);
   }
 

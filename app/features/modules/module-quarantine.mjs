@@ -72,6 +72,7 @@ export function isPendingRunsRefusal(status, code) {
   return status === 409 && code === RUNS_PENDING;
 }
 
-export function pendingRunsQuestion(message) {
-  return `${message || "Runs have not finished."}\n\nChange the installed modules anyway?`;
+export function pendingRunsQuestion(message, noun = "modules") {
+  // R4 F-低5: an extension change is not called a module change.
+  return `${message || "Runs have not finished."}\n\nChange the installed ${noun} anyway?`;
 }

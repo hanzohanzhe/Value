@@ -682,5 +682,49 @@ class ContractMismatchTests(unittest.TestCase):
                     self.assertFalse((modules / "installed").exists() and any((modules / "installed").iterdir()))
 
 
+class InstallConflictOrderTests(LifecycleApiCase):
+    """F-低1 (built-in namespace message) and F-低5 (conflicts before the pending-runs confirmation)."""
+
+    PACKAGES = ("r44_ns_hook", "r44_mod_pkg")
+
+    def pending_run(self) -> None:
+        run = self.home / "runs" / "r44-pending"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "status.json").write_text(json.dumps({"id": "r44-pending", "status": "running"}), encoding="utf-8")
+
+    def install_module(self, module_id: str, package: str) -> tuple[int, dict]:
+        from gridform_core.module_bundle import build_module_bundle
+        from tests.module_lifecycle_fixtures import copy_example_bundle_inputs
+
+        manifest_path, source = copy_example_bundle_inputs(Path(self.folder.name) / module_id, module_id, package)
+        bundle = Path(self.folder.name) / f"{module_id}.zip"
+        build_module_bundle(manifest_path=manifest_path, source_root=source, license_path=ROOT / "LICENSE", destination=bundle)
+        return self.request("POST", "/api/modules/install", bundle.read_bytes(), {
+            "Content-Type": "application/zip", "X-Filename": bundle.name, "X-VALUE-Executable-Trust": "acknowledged",
+        })
+
+    def test_builtin_namespace_says_choose_another_namespace(self) -> None:
+        status, body = self.install_extension("r44-builtin-ns", "value.toy-audit")
+        self.assertEqual((status, body["error_code"]), (409, "GF_EXTENSION_NAMESPACE_COLLISION"), body)
+        self.assertIn("built-in extension value-toy-audit-extension, which cannot be disabled", body["error"])
+        self.assertIn("give r44-builtin-ns its own namespace", body["error"])
+        self.assertNotIn("disable value-toy-audit-extension before", body["error"])
+
+    def test_conflicts_are_reported_before_the_pending_runs_question(self) -> None:
+        self.pending_run()
+        status, body = self.install_extension("r44-builtin-ns", "value.toy-audit")
+        self.assertEqual((status, body["error_code"]), (409, "GF_EXTENSION_NAMESPACE_COLLISION"), body)
+        status, body = self.install_module("dynamic-annual-storage-cost", "r44_mod_pkg")
+        self.assertEqual((status, body["error_code"]), (409, "GF_MODULE_BUILTIN_COLLISION"), body)
+        # A bundle without conflicts is asked about, naming what it changes.
+        status, body = self.install_extension("r44-clean-ns", "local.r44-clean", hook_package="r44_ns_hook")
+        self.assertEqual((status, body["error_code"]), (409, "GF_MODULE_LIFECYCLE_RUNS_PENDING"), body)
+        self.assertIn("Confirm to change installed extensions anyway", body["error"])
+        self.assertFalse((self.modules / "installed-extensions" / "r44-clean-ns").exists())
+        status, body = self.install_module("r44-clean-module", "r44_mod_pkg")
+        self.assertEqual((status, body["error_code"]), (409, "GF_MODULE_LIFECYCLE_RUNS_PENDING"), body)
+        self.assertIn("Confirm to change installed modules anyway", body["error"])
+
+
 if __name__ == "__main__":
     unittest.main()

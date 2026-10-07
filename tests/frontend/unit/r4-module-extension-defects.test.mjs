@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { disabledEntries, entryLabel, extensionSourceChangeNote } from "../../../app/features/modules/disabledEntries.ts";
-import { quarantineIntro, quarantineRows, quarantineTitle } from "../../../app/features/modules/module-quarantine.mjs";
+import { pendingRunsQuestion, quarantineIntro, quarantineRows, quarantineTitle } from "../../../app/features/modules/module-quarantine.mjs";
 import { codeIdentityUpdate } from "../../../app/features/studies/studyMigration.ts";
 import { derivationNotes } from "../../../app/features/modules/derivationNotes.ts";
 import { environmentBlockers, preflightMatches } from "../../../app/features/workspace/preflightIdentity.ts";
@@ -95,4 +95,9 @@ test("F-低2: disabled entries name their ID next to a shared display name", () 
     { extension_id: "uatf-second", name: "UATF final observer", version: "0.1.0", enabled: false },
   ] });
   assert.deepEqual(rows.map((row) => row.label), ["UATF final observer · uatf-observer 0.1.0", "UATF final observer · uatf-second 0.1.0"]);
+});
+
+test("F-低5: the pending-runs question names extensions for an extension change", () => {
+  assert.match(pendingRunsQuestion("Runs have not finished.", "extensions"), /Change the installed extensions anyway\?$/);
+  assert.match(pendingRunsQuestion("Runs have not finished."), /Change the installed modules anyway\?$/);
 });

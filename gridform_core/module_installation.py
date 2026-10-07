@@ -180,8 +180,9 @@ def check_slot_contract(manifest: ModuleManifest) -> None:
 
 
 def _validate_manifest_for_install(
-    payload: Mapping[str, object], source_root: Path, modules_root: Path
+    payload: Mapping[str, object], source_root: Path | None, modules_root: Path
 ) -> tuple[ModuleManifest, dict[str, object]]:
+    """``source_root`` None: only the checks that need no extracted or imported code (precheck)."""
     try:
         manifest = ModuleManifest.from_dict(payload)
     except (TypeError, ValueError) as exc:
@@ -193,7 +194,7 @@ def _validate_manifest_for_install(
         )
     if manifest.status not in {"ready", "experimental", "not_evaluated"}:
         raise ModuleInstallationError("GF_MODULE_STATUS", "Installable modules must declare ready, experimental or not_evaluated maturity; unfinished placeholders are not installable")
-    if not _entry_source_exists(source_root, manifest.implementation):
+    if source_root is not None and not _entry_source_exists(source_root, manifest.implementation):
         raise ModuleInstallationError(
             "GF_MODULE_ENTRY_POINT",
             "The declared implementation is not provided by this bundle's src/ package",
@@ -222,6 +223,8 @@ def _validate_manifest_for_install(
         raise ModuleInstallationError(
             "GF_MODULE_PACKAGE_COLLISION", "The bundle's top-level Python package is already installed"
         )
+    if source_root is None:
+        return manifest, {}
     source_text = str(source_root.resolve())
     sys.path.insert(0, source_text)
     importlib.invalidate_caches()
@@ -239,6 +242,20 @@ def _validate_manifest_for_install(
             "; ".join(str(item) for item in conformance.get("errors") or ["Module conformance failed"]),
         )
     return manifest, conformance
+
+
+def precheck_module_bundle(bundle_path: Path, *, modules_root: Path | None = None) -> None:
+    """The install refusals that need no extraction or import; writes nothing (R4 F-低5).
+
+    Run before a pending-runs confirmation is asked, so a bundle that would be
+    refused anyway is refused first.
+    """
+
+    try:
+        validated = validate_module_bundle(bundle_path)
+    except ModuleBundleError as exc:
+        raise ModuleInstallationError(exc.code, str(exc)) from exc
+    _validate_manifest_for_install(validated.manifest, None, (modules_root or external_modules_root()).resolve())
 
 
 def install_module_bundle(

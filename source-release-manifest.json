@@ -3432,8 +3432,8 @@
     },
     {
       "path": "app/features/modules/module-quarantine.mjs",
-      "sha256": "87660daf741a3e94ab163beddf5edda7c9526561c04930cc35f48b49372bf0a1",
-      "bytes": 3652,
+      "sha256": "334235547dff3f043de616e53aea398a487d3e5c4b445c2c60c3cfca14aa196d",
+      "bytes": 3737,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3936,8 +3936,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "011814bf111d79c2a655b20c31f03080a250ab8ca68142598250513bf9927112",
-      "bytes": 180282,
+      "sha256": "57fa5926717b01688d15b7410b2d1b957372b0cdc78caebbc78b1b365cdcdc51",
+      "bytes": 180339,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4086,8 +4086,8 @@
     },
     {
       "path": "backend/server.py",
-      "sha256": "7dc3c90add90a2df39a09987be9d20384f10a2845deee6b5e95e6b0858fd6fb0",
-      "bytes": 232461,
+      "sha256": "8a24ea6edd487d5834093ecdec3e7f33af252c6f3f797ef2b9ff982a2c6e85b0",
+      "bytes": 233274,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8253,8 +8253,8 @@
     },
     {
       "path": "gridform_core/extension_bundle.py",
-      "sha256": "8fa7019fcd6809c36643c71473747684ef9623127b07b0bae5323d81fb4dcaf9",
-      "bytes": 32218,
+      "sha256": "34919ca36edcd4f1fb06859dad83f8c980d0ddcf4d73eef0c7465908bf4b66f3",
+      "bytes": 34276,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8529,8 +8529,8 @@
     },
     {
       "path": "gridform_core/module_installation.py",
-      "sha256": "9eb6678168f6aca46e93f68c0c18e8778c248075c361d4ec3936535b625401ac",
-      "bytes": 21174,
+      "sha256": "0d9bc0f1ccb5d48994132d1be3ce231125c4788c18ed35a9f564d0b946ec24f1",
+      "bytes": 21976,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11053,8 +11053,8 @@
     },
     {
       "path": "tests/frontend/unit/r4-module-extension-defects.test.mjs",
-      "sha256": "f084dbc1ab2430e18d8ca0413c8a0cf9c8d6ee631d412c94c6a3d8413dea03af",
-      "bytes": 7613,
+      "sha256": "0c1a33e890c6e916140c7947d897025a45c6b1088c4e9ee30d85c4a6a40f7771",
+      "bytes": 7959,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12865,8 +12865,8 @@
     },
     {
       "path": "tests/test_r4_module_extension_defects.py",
-      "sha256": "0f9e2e6f698bffa1a7955deaeb633e68ed9a3a85e23c0a00055f216e5a20edd7",
-      "bytes": 39632,
+      "sha256": "636e3fed6e005b6d410c3a1983932888d1cd696056a205954a06705684e05740",
+      "bytes": 42588,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

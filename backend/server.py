@@ -63,6 +63,7 @@ from gridform_core.extension_bundle import (
     ExtensionBundleError,
     install_extension_bundle,
     installed_extension_source_changes,
+    precheck_extension_bundle,
     list_extension_installations,
     set_extension_enabled,
 )
@@ -76,6 +77,7 @@ from gridform_core.module_installation import (
     ModuleInstallationError,
     install_module_bundle,
     installed_source_changes,
+    precheck_module_bundle,
     list_module_installations,
     set_module_enabled,
 )
@@ -471,7 +473,9 @@ def pending_runs() -> list[str]:
     return list(pending_run_statuses())
 
 
-def require_no_pending_runs(confirmed: bool) -> None:
+def require_no_pending_runs(confirmed: bool, *, noun: str = "modules") -> None:
+    """``noun`` names what the change affects ("modules" or "extensions", R4 F-低5)."""
+
     statuses = pending_run_statuses()
     if not statuses or confirmed:
         return
@@ -488,7 +492,7 @@ def require_no_pending_runs(confirmed: bool) -> None:
                      + ") keep their code but could not be resumed after the change")
     raise ModuleQuarantinedError(
         "GF_MODULE_LIFECYCLE_RUNS_PENDING",
-        "Runs have not finished: " + "; ".join(parts) + ". Confirm to change installed modules anyway.",
+        "Runs have not finished: " + "; ".join(parts) + f". Confirm to change installed {noun} anyway.",
     )
 
 
@@ -3188,7 +3192,12 @@ class Handler(BaseHTTPRequestHandler):
                 handle.write(chunk)
                 remaining -= len(chunk)
         try:
-            require_no_pending_runs(self._pending_runs_confirmed())
+            confirmed = self._pending_runs_confirmed()
+            if not confirmed and pending_run_statuses():
+                # R4 F-低5: a bundle that would be refused is refused before
+                # the user is asked to confirm a change during pending Runs.
+                precheck_module_bundle(staged)
+            require_no_pending_runs(confirmed, noun="modules")
             with MODULE_LIFECYCLE_LOCK:
                 installation = install_module_bundle(staged, trust_acknowledged=True)
                 stale = self._refresh_after_lifecycle_change()
@@ -3241,7 +3250,11 @@ class Handler(BaseHTTPRequestHandler):
                 handle.write(chunk)
                 remaining -= len(chunk)
         try:
-            require_no_pending_runs(self._pending_runs_confirmed())
+            confirmed = self._pending_runs_confirmed()
+            if not confirmed and pending_run_statuses():
+                # R4 F-低5: conflicts first, then the pending-runs confirmation.
+                precheck_extension_bundle(staged, modules_root=external_modules_root())
+            require_no_pending_runs(confirmed, noun="extensions")
             with MODULE_LIFECYCLE_LOCK:
                 installation = install_extension_bundle(
                     staged,
@@ -3356,7 +3369,7 @@ class Handler(BaseHTTPRequestHandler):
                 "error_code": f"{prefix}_IN_USE",
                 "dependents": dependents,
             }, 409); return
-        require_no_pending_runs(self._pending_runs_confirmed(body))
+        require_no_pending_runs(self._pending_runs_confirmed(body), noun=f"{kind}s")
         from gridform_core.module_recovery import remove_installation
         from gridform_core.runtime_paths import activate_external_module_sources, purge_source_root
 
@@ -4410,7 +4423,7 @@ class Handler(BaseHTTPRequestHandler):
                     "error_code": "GF_EXTENSION_IN_USE",
                     "dependents": dependents,
                 }, 409); return
-            require_no_pending_runs(self._pending_runs_confirmed(body))
+            require_no_pending_runs(self._pending_runs_confirmed(body), noun="extensions")
             with MODULE_LIFECYCLE_LOCK:
                 if enabling:
                     clear_negative_caches()  # spec 11.4: a fresh scan, as for modules

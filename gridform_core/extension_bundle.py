@@ -185,6 +185,20 @@ def _namespace_owner(modules_root: Path, extension_id: str, namespace: str) -> s
     return ", ".join(sorted(owners)) or None
 
 
+def _namespace_collision_message(namespace: str, owner: str, extension_id: str, action: str) -> str:
+    """What to do about a namespace held by another extension (R4 F-低1).
+
+    A built-in extension cannot be disabled, so its namespace can only be
+    avoided; an enabled local owner can be disabled first.
+    """
+
+    if any(manifest.id == owner for manifest in _builtin_extensions()):
+        return (f"Extension namespace {namespace} belongs to the built-in extension {owner}, which cannot be "
+                f"disabled; give {extension_id} its own namespace and rebuild the bundle")
+    return (f"Extension namespace {namespace} is owned by enabled extension {owner}; "
+            f"disable {owner} before {action} {extension_id}, or give {extension_id} its own namespace")
+
+
 def _source_packages(modules_root: Path, extension_id: str) -> set[str]:
     """Top-level hook packages shipped by any installed version of an extension."""
 
@@ -361,6 +375,100 @@ def _check_hooks(manifest: ExtensionManifest, source: Path | None) -> list[dict[
         importlib.invalidate_caches()
 
 
+def _check_install_conflicts(
+    validated: ValidatedExtensionBundle, root: Path, current: object,
+) -> tuple[dict[str, object] | None, dict[str, object] | None]:
+    """Every refusal of an extension install that needs no file to be written.
+
+    Returns (current installation of the same ID, idempotent result).  Used
+    by the install and, before a pending-runs confirmation is asked, by
+    :func:`precheck_extension_bundle` (R4 F-低5).
+    """
+
+    if any(item.id == validated.manifest.id for item in _builtin_extensions()):
+        raise ExtensionBundleError(
+            "GF_EXTENSION_BUILTIN_COLLISION",
+            "A retained built-in extension cannot be overwritten",
+        )
+    existing_installation = _current_local_installation(root, validated.manifest.id)
+    if existing_installation is not None:
+        current_version = str(existing_installation["version"])
+        if validated.manifest.version == current_version:
+            if validated.bundle_sha256 == existing_installation.get("bundle_sha256"):
+                listed = next((
+                    row for row in list_extension_installations(root)
+                    if row.get("extension_id") == validated.manifest.id and row.get("version") == current_version
+                ), None)
+                return existing_installation, {**(listed or _public_record(existing_installation)), "idempotent": True}
+            raise ExtensionBundleError(
+                "GF_EXTENSION_VERSION_COLLISION",
+                "The same extension version already exists with different bytes",
+            )
+        if _semver_tuple(validated.manifest.version) < _semver_tuple(current_version):
+            raise ExtensionBundleError(
+                "GF_EXTENSION_DOWNGRADE",
+                f"Refusing downgrade from {current_version} to {validated.manifest.version}",
+            )
+        migration = validated.manifest.state_migrations.get(current_version)
+        # The retained manifest is read as raw JSON: a quarantined or
+        # schema-drifted current version must not bypass this check.
+        retained_manifest = existing_installation.get("raw_manifest")
+        if not isinstance(retained_manifest, Mapping):
+            raise ExtensionBundleError(
+                "GF_EXTENSION_INSTALL_STATE",
+                f"The installed {current_version} manifest is unreadable; disable that version before upgrading",
+            )
+        if retained_manifest.get("state_schema_version") and not migration:
+            raise ExtensionBundleError(
+                "GF_EXTENSION_MIGRATION_REQUIRED",
+                f"Upgrade from {current_version} must declare a state migration",
+            )
+    owner = _namespace_owner(root, validated.manifest.id, validated.manifest.namespace)
+    if owner:
+        raise ExtensionBundleError(
+            "GF_EXTENSION_NAMESPACE_COLLISION",
+            _namespace_collision_message(validated.manifest.namespace, owner, validated.manifest.id, "installing"),
+        )
+    combined = tuple(
+        manifest for extension_id, manifest in current.extension_manifests().items()
+        if extension_id != validated.manifest.id
+    ) + (validated.manifest,)
+    try:
+        ExtensionRegistry(combined)
+    except ValueError as exc:
+        raise ExtensionBundleError("GF_EXTENSION_REGISTRY_CONFLICT", str(exc)) from exc
+    available_modules = set(current.manifests())
+    embedded = {
+        str(item)
+        for item in validated.manifest.composed_module_ids
+        if str(item) in available_modules
+    }
+    missing = sorted(set(validated.manifest.composed_module_ids).difference(embedded))
+    if missing:
+        raise ExtensionBundleError(
+            "GF_EXTENSION_COMPOSED_MODULE",
+            "Install and validate composed module bundles first: " + ", ".join(missing),
+        )
+    target = root / "installed-extensions" / validated.manifest.id / validated.manifest.version
+    if target.exists():
+        raise ExtensionBundleError("GF_EXTENSION_VERSION_COLLISION", "Extension version already installed")
+    source_members = [name for name in validated.members if name.startswith("src/")]
+    if source_members:
+        _check_source_collisions(_packages(validated.manifest), root)
+    return existing_installation, None
+
+
+def precheck_extension_bundle(path: Path, *, modules_root: Path) -> dict[str, object] | None:
+    """Validate a bundle and its conflicts with the installed state; writes nothing (R4 F-低5).
+
+    Returns the idempotent result when exactly this bundle is installed already.
+    """
+
+    validated = validate_extension_bundle(path)
+    root = modules_root.resolve()
+    return _check_install_conflicts(validated, root, workspace_registry(root))[1]
+
+
 def install_extension_bundle(
     path: Path, *, trust_acknowledged: bool, modules_root: Path
 ) -> dict[str, object]:
@@ -383,77 +491,11 @@ def _install_extension_bundle(
     root.mkdir(parents=True, exist_ok=True)
     current = workspace_registry(root)
     before_keys = quarantine_keys(current)
-    if any(item.id == validated.manifest.id for item in _builtin_extensions()):
-        raise ExtensionBundleError(
-            "GF_EXTENSION_BUILTIN_COLLISION",
-            "A retained built-in extension cannot be overwritten",
-        )
-    existing_installation = _current_local_installation(root, validated.manifest.id)
-    if existing_installation is not None:
-        current_version = str(existing_installation["version"])
-        if validated.manifest.version == current_version:
-            if validated.bundle_sha256 == existing_installation.get("bundle_sha256"):
-                listed = next((
-                    row for row in list_extension_installations(root)
-                    if row.get("extension_id") == validated.manifest.id and row.get("version") == current_version
-                ), None)
-                return {**(listed or _public_record(existing_installation)), "idempotent": True}
-            raise ExtensionBundleError(
-                "GF_EXTENSION_VERSION_COLLISION",
-                "The same extension version already exists with different bytes",
-            )
-        if _semver_tuple(validated.manifest.version) < _semver_tuple(current_version):
-            raise ExtensionBundleError(
-                "GF_EXTENSION_DOWNGRADE",
-                f"Refusing downgrade from {current_version} to {validated.manifest.version}",
-            )
-        migration = validated.manifest.state_migrations.get(current_version)
-        # The retained manifest is read as raw JSON: a quarantined or
-        # schema-drifted current version must not bypass this check.
-        retained_manifest = existing_installation.get("raw_manifest")
-        if not isinstance(retained_manifest, Mapping):
-            raise ExtensionBundleError(
-                "GF_EXTENSION_INSTALL_STATE",
-                f"The installed {current_version} manifest is unreadable; disable that version before upgrading",
-            )
-        if retained_manifest.get("state_schema_version") and not migration:
-            raise ExtensionBundleError(
-                "GF_EXTENSION_MIGRATION_REQUIRED",
-                f"Upgrade from {current_version} must declare a state migration",
-            )
-    owner = _namespace_owner(root, validated.manifest.id, validated.manifest.namespace)
-    if owner:
-        raise ExtensionBundleError(
-            "GF_EXTENSION_NAMESPACE_COLLISION",
-            f"Extension namespace {validated.manifest.namespace} is owned by enabled extension {owner}; "
-            f"disable {owner} before installing {validated.manifest.id}",
-        )
-    combined = tuple(
-        manifest for extension_id, manifest in current.extension_manifests().items()
-        if extension_id != validated.manifest.id
-    ) + (validated.manifest,)
-    try:
-        ExtensionRegistry(combined)
-    except ValueError as exc:
-        raise ExtensionBundleError("GF_EXTENSION_REGISTRY_CONFLICT", str(exc)) from exc
-    available_modules = set(current.manifests())
-    embedded = {
-        str(item)
-        for item in validated.manifest.composed_module_ids
-        if str(item) in available_modules
-    }
-    missing = sorted(set(validated.manifest.composed_module_ids).difference(embedded))
-    if missing:
-        raise ExtensionBundleError(
-            "GF_EXTENSION_COMPOSED_MODULE",
-            "Install and validate composed module bundles first: " + ", ".join(missing),
-        )
+    existing_installation, idempotent = _check_install_conflicts(validated, root, current)
+    if idempotent is not None:
+        return idempotent
     target = root / "installed-extensions" / validated.manifest.id / validated.manifest.version
-    if target.exists():
-        raise ExtensionBundleError("GF_EXTENSION_VERSION_COLLISION", "Extension version already installed")
     source_members = [name for name in validated.members if name.startswith("src/")]
-    if source_members:
-        _check_source_collisions(_packages(validated.manifest), root)
     staging_parent = root / ".staging"
     staging_parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix="extension-", dir=staging_parent))
@@ -575,8 +617,7 @@ def _set_extension_enabled(
         if owner:
             raise ExtensionBundleError(
                 "GF_EXTENSION_NAMESPACE_COLLISION",
-                f"Extension namespace {manifest.namespace} is owned by enabled extension {owner}; "
-                f"disable {owner} before enabling {extension_id}",
+                _namespace_collision_message(manifest.namespace, owner, extension_id, "enabling"),
             )
     before_keys = quarantine_keys(workspace_registry(root)) if enabled else frozenset()
     if enabled and stored.get("source_root") == "src":
