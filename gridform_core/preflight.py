@@ -429,6 +429,26 @@ def run_preflight(
             "No action needed if the edit is intended: Compare shows the module method as changed. "
             "Reinstall under a new version to keep the installed identity.",
         ))
+    # R4 F-中2: the same rule for installed extensions edited in place.
+    from .extension_bundle import installed_extension_source_changes
+    from .runtime_paths import external_modules_root
+
+    try:
+        extension_changes = installed_extension_source_changes(
+            selected_extensions, modules_root=external_modules_root(),
+        )
+    except OSError:
+        extension_changes = []
+    checks["extension_source_changes"] = extension_changes
+    for change in extension_changes:
+        issues.append(_issue(
+            "GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED", "warning", "modules",
+            f"Extension {change['extension_id']} source {change['implementation']} changed since install "
+            f"({str(change['installed_sha256'])[:8]}… → {str(change['current_sha256'])[:8]}…). "
+            "Results may change; the Run records the new source hash.",
+            "No action needed if the edit is intended: Compare shows the extension source as changed. "
+            "Reinstall under a new version to keep the installed identity.",
+        ))
     registered_extensions = registry.extension_manifests()
     active_dataset_slots = tuple(dataset_slots) + registry.extension_registry.conditional_dataset_slots(
         tuple(item for item in selected_extensions if item in registered_extensions)
@@ -618,11 +638,26 @@ def run_preflight(
                 "Save the project once before using its output as a published scientific result.",
             ))
         elif classification is not None and classification["automatic"]:
+            # R4 F-中2: an in-place edit of installed local code is code-only
+            # for the revision rules (A16-4: accepted and recorded) but may
+            # change results; say so instead of "no change expected".
+            edited = sorted({
+                f"{row.get('kind')} {row.get('id')}"
+                for difference in classification.get("differences") or ()
+                for row in difference.get("source_changes") or ()
+            })
             issues.append(_issue(
                 str(classification["error_code"]), "warning", "project",
-                "Only the code identity of this Study changed (no change to methods or results expected); "
-                "a new revision is appended when the run starts.",
-                "No action needed.",
+                (
+                    "The source code of installed local code changed in place since this Study revision was "
+                    "saved (" + ", ".join(edited) + "); results may change. A new revision recording the new "
+                    "source hashes is appended when the run starts."
+                ) if edited else (
+                    "Only the code identity of this Study changed (no change to methods or results expected); "
+                    "a new revision is appended when the run starts."
+                ),
+                "No action needed if the edit is intended; Compare shows the changed source."
+                if edited else "No action needed.",
             ))
         elif kind == "content_changed":
             issues.append(_issue(

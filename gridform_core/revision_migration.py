@@ -64,6 +64,9 @@ WhitelistPacks = Sequence["tuple[Mapping[str, object], bytes | None] | None"]
 CLASSIFICATION_SCHEMA = "value.revision-classification/v1"
 LEDGER_PATH = Path(__file__).resolve().parents[1] / "docs" / "release" / "VERSION_LEDGER.json"
 AUTOMATIC = {"code_identity_upgrade": "code-identity-upgrade", "environment_reidentify": "environment-reidentify"}
+# R4 F-中2: a code-only revision appended because installed local code was
+# edited in place (A16-4); it may change results, unlike a ledger code-only bump.
+SOURCE_REIDENTIFY = "source-reidentify"
 CONFIRMABLE = {
     "method_upgrade_required": "method-upgrade-confirmed",
     "data_changed": "data-change-confirmed",
@@ -411,10 +414,19 @@ def _differences(old_basis: Mapping[str, Any], current: Mapping[str, Any], proje
             rows_ = ext.get("extensions") if isinstance(ext, Mapping) else None
             return sorted((str(row.get("id")), str(row.get("version"))) for row in rows_ or [] if isinstance(row, Mapping))
         same_extensions = extensions(old_graph) == extensions(new_graph)
-        rows.append({"dimension": "module", "key": "module_resolution_graph", "old": None, "new": None,
-                     "classification": "code_identity_upgrade" if same_extensions else "method_upgrade_required",
-                     "effect": ("Module source identities changed." if same_extensions
-                                else "Extension versions changed.")})
+        edited = installed_source_changes(old_graph, new_graph)
+        row = {"dimension": "module", "key": "module_resolution_graph", "old": None, "new": None,
+               "classification": "code_identity_upgrade" if same_extensions else "method_upgrade_required",
+               "effect": ("Module source identities changed." if same_extensions
+                          else "Extension versions changed.")}
+        if edited and same_extensions:
+            # R4 F-中2 (A16-4): installed local code edited in place is
+            # accepted and recorded, but it is not "no change expected".
+            row["source_changes"] = edited
+            row["effect"] = ("Installed local code was edited in place ("
+                             + ", ".join(f"{item['kind']} {item['id']}" for item in edited)
+                             + "); results may change. The new source hashes are recorded.")
+        rows.append(row)
     rows.extend(_methodology_differences(old_basis, current, project))
     known = {"schema_version", "data_pack", "modules", "dispatch_weather_identity", "solver_contract",
              "module_resolution_graph", "methodology", *CONTENT_KEYS}
@@ -423,6 +435,47 @@ def _differences(old_basis: Mapping[str, Any], current: Mapping[str, Any], proje
             rows.append({"dimension": "other", "key": key, "old": old.get(key), "new": current.get(key),
                          "classification": "method_upgrade_required", "effect": "An unclassified identity field changed."})
     return rows
+
+
+def installed_source_changes(old_graph: object, new_graph: object) -> list[dict[str, Any]]:
+    """Installed (local) modules and extension hooks whose source hash differs between two graphs.
+
+    Only code installed from a local bundle counts (``distribution``
+    ``installed-source``): a built-in source change ships with a VALUE
+    release and its version bumps are classified by VERSION_LEDGER.
+    """
+
+    def module_rows(graph: object) -> dict[str, Mapping[str, Any]]:
+        modules = graph.get("modules") if isinstance(graph, Mapping) else None
+        return {str(slot): row for slot, row in dict(modules or {}).items() if isinstance(row, Mapping)}
+
+    def hook_rows(graph: object) -> dict[str, list[Mapping[str, Any]]]:
+        ext = (graph.get("extension_graph") or graph.get("$extensions") or {}) if isinstance(graph, Mapping) else {}
+        identities = ext.get("hook_source_identities") if isinstance(ext, Mapping) else None
+        return {str(key): [item for item in value if isinstance(item, Mapping)]
+                for key, value in dict(identities or {}).items() if isinstance(value, list)}
+
+    found: list[dict[str, Any]] = []
+    old_modules, new_modules = module_rows(old_graph), module_rows(new_graph)
+    for slot in sorted(set(old_modules) & set(new_modules)):
+        before, after = old_modules[slot], new_modules[slot]
+        if (before.get("module_id") == after.get("module_id")
+                and "installed-source" in {before.get("distribution"), after.get("distribution")}
+                and before.get("source_sha256") != after.get("source_sha256")):
+            found.append({"kind": "module", "id": after.get("module_id"), "slot": slot,
+                          "old_sha256": before.get("source_sha256"), "new_sha256": after.get("source_sha256")})
+    old_hooks, new_hooks = hook_rows(old_graph), hook_rows(new_graph)
+    for extension_id in sorted(set(old_hooks) & set(new_hooks)):
+        before = {str(item.get("implementation")): item for item in old_hooks[extension_id]}
+        after = {str(item.get("implementation")): item for item in new_hooks[extension_id]}
+        changed = [key for key in sorted(set(before) & set(after))
+                   if "installed-source" in {before[key].get("distribution"), after[key].get("distribution")}
+                   and before[key].get("source_sha256") != after[key].get("source_sha256")]
+        if changed:
+            found.append({"kind": "extension", "id": extension_id, "hooks": changed,
+                          "old_sha256": before[changed[0]].get("source_sha256"),
+                          "new_sha256": after[changed[0]].get("source_sha256")})
+    return found
 
 
 def _profile_choices(project: Mapping[str, Any], registry: ModuleRegistryV2,
@@ -511,6 +564,9 @@ def _finish(record: dict[str, Any]) -> dict[str, Any]:
     record["automatic"] = classification in AUTOMATIC
     record["confirmable"] = classification in CONFIRMABLE
     record["revision_reason"] = AUTOMATIC.get(classification) or CONFIRMABLE.get(classification)
+    if record["automatic"] and any(row.get("source_changes") for row in record.get("differences", [])):
+        # R4 F-中2: the appended revision says it records an in-place edit.
+        record["revision_reason"] = SOURCE_REIDENTIFY
     record["diff_sha256"] = hashlib.sha256(_canonical_bytes({
         key: record.get(key) for key in ("classification", "declared_sha256", "calculated_sha256", "differences",
                                          "selected_profile_id")

@@ -69,6 +69,57 @@ def list_extension_installations(modules_root: Path) -> list[dict[str, object]]:
     return sorted(rows, key=lambda item: (str(item.get("extension_id")), str(item.get("version"))))
 
 
+def _hook_source_file(version_folder: Path, source_root: object, implementation: str) -> Path | None:
+    module_name = str(implementation).split(":", 1)[0]
+    if not module_name or not source_root:
+        return None
+    base = version_folder / str(source_root) / Path(*module_name.split("."))
+    for candidate in (base.with_suffix(".py"), base / "__init__.py"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def installed_extension_source_changes(
+    extension_ids: object = None, *, modules_root: Path,
+) -> list[dict[str, object]]:
+    """Enabled installed extensions whose hook source changed since install (R4 F-中2).
+
+    The extension counterpart of ``module_installation.installed_source_changes``
+    (A16-4): an in-place edit of an installed extension's hook source is
+    accepted and recorded (the run freezes the new source hash); this
+    read-only check lets the Modules page and readiness say so.  Reads bytes
+    only and never imports installed code.  ``extension_ids`` None means every
+    enabled installed extension.
+    """
+
+    wanted = None if extension_ids is None else {str(item) for item in extension_ids or () if item}
+    changes: list[dict[str, object]] = []
+    for row in _raw_extension_records(modules_root):
+        extension_id = str(row.get("extension_id") or "")
+        if not row.get("enabled") or (wanted is not None and extension_id not in wanted):
+            continue
+        folder = Path(row["record_path"]).parent  # type: ignore[arg-type]
+        seen: set[str] = set()
+        for identity in row.get("hook_source_identities") or ():
+            if not isinstance(identity, Mapping):
+                continue
+            installed = str(identity.get("source_sha256") or "").lower()
+            implementation = str(identity.get("implementation") or "")
+            source = _hook_source_file(folder, row.get("source_root"), implementation)
+            if source is None or not re.fullmatch(r"[0-9a-f]{64}", installed) or str(source) in seen:
+                continue
+            seen.add(str(source))
+            current = hashlib.sha256(source.read_bytes()).hexdigest()
+            if current != installed:
+                changes.append({
+                    "extension_id": extension_id, "version": row.get("version"),
+                    "implementation": implementation.split(":", 1)[0],
+                    "installed_sha256": installed, "current_sha256": current,
+                })
+    return sorted(changes, key=lambda item: (str(item["extension_id"]), str(item["implementation"])))
+
+
 def _read_json_object(path: Path) -> dict[str, object] | None:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))

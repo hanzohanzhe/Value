@@ -109,6 +109,19 @@ export function installedModuleCard(installation: Pick<ModuleRecord, "module_id"
   return { state: "enabled", stateText: "Enabled", offerToggle: true, sourceChange };
 }
 
+export type ExtensionSourceChange = { extension_id: string; implementation: string; installed_sha256: string; current_sha256: string };
+
+/**
+ * R4 F-中2: an installed extension edited in place says so on its card, as a
+ * module does (A16-4: accepted and recorded). Null when its source is unchanged.
+ */
+export function extensionSourceChangeNote(extensionId: string, changes: readonly ExtensionSourceChange[] | null | undefined): string | null {
+  const rows = (changes ?? []).filter((row) => row.extension_id === extensionId);
+  if (!rows.length) return null;
+  const files = rows.map((row) => `${row.implementation} ${row.installed_sha256.slice(0, 8)}… → ${row.current_sha256.slice(0, 8)}…`).join("; ");
+  return `Source changed since install (${files}). Results may change; Runs record the new source hash.`;
+}
+
 /**
  * R3M-4 (round R2): the card's note about saved Studies that select the module.
  * Only an enabled module's Disable is blocked by them; a disabled or

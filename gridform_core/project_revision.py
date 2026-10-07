@@ -30,6 +30,7 @@ REVISION_REASONS = (
     "user-save",
     "code-identity-upgrade",
     "environment-reidentify",
+    "source-reidentify",
     "method-upgrade-confirmed",
     "data-change-confirmed",
     "basis-reestablished-confirmed",

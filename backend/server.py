@@ -61,6 +61,7 @@ from gridform_core.module_bundle import MAX_BUNDLE_BYTES
 from gridform_core.extension_bundle import (
     ExtensionBundleError,
     install_extension_bundle,
+    installed_extension_source_changes,
     list_extension_installations,
     set_extension_enabled,
 )
@@ -2249,6 +2250,10 @@ class Handler(BaseHTTPRequestHandler):
                         # since install (bytes only, no import) so the Modules card can say so.
                         "module_source_changes": installed_source_changes(
                             [row.get("module_id") for row in installations]
+                        ),
+                        # R4 F-中2: the same for installed extensions edited in place.
+                        "extension_source_changes": installed_extension_source_changes(
+                            modules_root=external_modules_root()
                         ),
                         "module_quarantine": module_quarantine_payload(),
                         "data_packs": list_packs(), "projects": list_projects(),

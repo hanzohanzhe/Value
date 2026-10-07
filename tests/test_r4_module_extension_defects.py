@@ -109,5 +109,98 @@ class PreflightIdentityTests(SavedStudyCase):
         self.assertTrue(report["project_revision_sha256"])
 
 
+def _graph(module_sha: str, hook_sha: str) -> dict:
+    return {
+        "schema_version": "value.module-resolution/v1", "graph_sha256": module_sha[:8] + hook_sha[:8],
+        "modules": {
+            "psm": {"module_id": PSM, "source_sha256": "a" * 64, "distribution": "workspace-source"},
+            "storage_cost": {"module_id": "hx-flat", "source_sha256": module_sha, "distribution": "installed-source"},
+        },
+        "extension_graph": {"extensions": [{"id": "obs", "version": "0.1.0"}], "hook_source_identities": {
+            "obs": [{"hook": "after_psm", "implementation": "pkg.hooks:Hook", "source_sha256": hook_sha,
+                     "distribution": "installed-source"}],
+        }},
+    }
+
+
+class ExtensionSourceChangeTests(unittest.TestCase):
+    """F-中2: an extension edited in place is detected and never called "no change expected"."""
+
+    def test_installed_extension_source_change_is_detected_without_import(self) -> None:
+        from gridform_core.extension_bundle import installed_extension_source_changes
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            version = root / "installed-extensions" / "obs" / "0.1.0"
+            (version / "src" / "pkg").mkdir(parents=True)
+            hooks = version / "src" / "pkg" / "hooks.py"
+            hooks.write_text("raise SystemExit('never imported')\n", encoding="utf-8")
+            import hashlib
+
+            installed = hashlib.sha256(hooks.read_bytes()).hexdigest()
+            record = {"schema_version": "value.extension-installation/v1", "extension_id": "obs", "version": "0.1.0",
+                      "enabled": True, "source_root": "src", "hook_source_identities": [
+                          {"hook": "after_psm", "implementation": "pkg.hooks:Hook", "source_sha256": installed}]}
+            (version / "installation.json").write_text(json.dumps(record), encoding="utf-8")
+            self.assertEqual(installed_extension_source_changes(modules_root=root), [])
+            hooks.write_text("raise SystemExit('edited, still never imported')\n", encoding="utf-8")
+            changes = installed_extension_source_changes(modules_root=root)
+            self.assertEqual([(row["extension_id"], row["implementation"], row["installed_sha256"]) for row in changes],
+                             [("obs", "pkg.hooks", installed)])
+            self.assertEqual(installed_extension_source_changes(["other"], modules_root=root), [])
+            record["enabled"] = False
+            (version / "installation.json").write_text(json.dumps(record), encoding="utf-8")
+            self.assertEqual(installed_extension_source_changes(modules_root=root), [])
+
+    def test_graph_rows_name_installed_code_edited_in_place(self) -> None:
+        old, new = _graph("b" * 64, "c" * 64), _graph("b" * 64, "d" * 64)
+        rows = revision_migration.installed_source_changes(old, new)
+        self.assertEqual([(row["kind"], row["id"]) for row in rows], [("extension", "obs")])
+        both = revision_migration.installed_source_changes(old, _graph("e" * 64, "d" * 64))
+        self.assertEqual([(row["kind"], row["id"]) for row in both], [("module", "hx-flat"), ("extension", "obs")])
+        # A built-in (workspace-source) source change ships with a release: not listed.
+        builtin = _graph("b" * 64, "c" * 64)
+        builtin["modules"]["psm"]["source_sha256"] = "f" * 64
+        self.assertEqual(revision_migration.installed_source_changes(old, builtin), [])
+        methodology = {"profile_id": "value-corrected"}
+        basis = {"payload": {"module_resolution_graph": old, "methodology": methodology}}
+        current = {"module_resolution_graph": new, "methodology": methodology}
+        differences = revision_migration._differences(basis, current, {})
+        graph_row = next(row for row in differences if row["key"] == "module_resolution_graph")
+        self.assertEqual(graph_row["classification"], "code_identity_upgrade")
+        self.assertIn("results may change", graph_row["effect"])
+        record = revision_migration._finish({"classification": "code_identity_upgrade", "differences": differences})
+        self.assertTrue(record["automatic"])
+        self.assertEqual(record["revision_reason"], "source-reidentify")
+        plain = revision_migration._finish({"classification": "code_identity_upgrade", "differences": []})
+        self.assertEqual(plain["revision_reason"], "code-identity-upgrade")
+
+    def test_source_reidentify_is_a_known_revision_reason(self) -> None:
+        from gridform_core.project_revision import REVISION_REASONS
+
+        self.assertIn("source-reidentify", REVISION_REASONS)
+
+
+class SourceReidentifyPreflightTests(SavedStudyCase):
+    def test_readiness_wording_says_results_may_change(self) -> None:
+        old, new = _graph("b" * 64, "c" * 64), _graph("b" * 64, "d" * 64)
+        methodology = {"profile_id": "value-corrected"}
+        differences = revision_migration._differences(
+            {"payload": {"module_resolution_graph": old, "methodology": methodology}},
+            {"module_resolution_graph": new, "methodology": methodology}, {})
+        classification = revision_migration._finish({
+            "classification": "code_identity_upgrade", "declared_sha256": self.saved["revision_sha256"],
+            "calculated_sha256": "9" * 64, "differences": differences,
+        })
+        with patch("gridform_core.preflight.classify_revision_mismatch", return_value=classification):
+            report = self.preflight()
+        warning = next(row for row in report["warnings"] if row["code"] == "GF_PREFLIGHT_REVISION_REIDENTIFY")
+        self.assertIn("extension obs", warning["message"])
+        self.assertIn("results may change", warning["message"])
+        self.assertNotIn("no change to methods or results expected", warning["message"])
+        self.assertTrue(report["accepted"])
+        self.assertEqual(report["project_revision_sha256"], self.saved["revision_sha256"])
+
+
 if __name__ == "__main__":
     unittest.main()

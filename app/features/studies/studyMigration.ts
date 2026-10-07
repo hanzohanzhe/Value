@@ -41,7 +41,7 @@ export type RevisionMigration = {
   selected_profile_id?: string;
 };
 
-export const CODE_ONLY_REASONS = new Set(["code-identity-upgrade", "environment-reidentify"]);
+export const CODE_ONLY_REASONS = new Set(["code-identity-upgrade", "environment-reidentify", "source-reidentify"]);
 
 export function isRevisionMigration(value: unknown): value is RevisionMigration {
   if (!value || typeof value !== "object") return false;
@@ -65,6 +65,8 @@ export function migrationFromResponse(payload: unknown): RevisionMigration | nul
 /** Spec 7: the info line of a Study whose latest revision only re-identified the code. */
 export function codeIdentityUpdate(project: { revision_reason?: string; revision_sha256?: string }): string | null {
   if (!project.revision_reason || !CODE_ONLY_REASONS.has(project.revision_reason) || !project.revision_sha256) return null;
+  // R4 F-中2: installed local code edited in place is recorded, not "no change".
+  if (project.revision_reason === "source-reidentify") return `Updated to code identity ${project.revision_sha256.slice(0, 12)} (installed local code was edited in place; results may differ)`;
   return `Updated to code identity ${project.revision_sha256.slice(0, 12)} (no change to methods or results expected)`;
 }
 
