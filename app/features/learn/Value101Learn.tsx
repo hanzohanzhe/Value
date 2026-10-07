@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import ModuleChainCard from "./ModuleChainCard";
+import { LEARN_RUN_FREEZE_NOTE } from "../runs/runHistoryView.ts";
+import "../runs/run-history.css";
 import Value101NetworkExercise, { type Value101NetworkStudy } from "./Value101NetworkExercise";
 import {
   VALUE_101_PROGRESS_KEY,
@@ -122,6 +124,7 @@ export default function Value101Learn({
     </section>
 
     <section className="teaching-boundary" aria-label="Scientific boundary"><div><span>Two clocks, one annual pack</span><b>{descriptor.scientific_boundary.label}</b></div><p>The short lesson reads the first {descriptor.scientific_boundary.one_day_periods} half-hours and runs only the PSM. The complete route runs {descriptor.scientific_boundary.periods_per_year.toLocaleString()} half-hours in each of two years and includes the CEM chain.</p></section>
+    {launching && <p className="run-launch-note value-new-control" role="status">{LEARN_RUN_FREEZE_NOTE}</p>}
     {(error || (!loading && !descriptor.availability.all_packs_installed)) && <section className="learn-blocked" role="alert"><div><span>Teaching inputs are not ready</span><h3>VALUE 101 cannot start yet</h3><p>{error || descriptor.availability.corrective_action}</p></div><button className="secondary" onClick={onRetry}>Check again</button></section>}
 
     {lessonOpen && <section ref={lessonRef} className="learn-first-lesson" role="region" tabIndex={-1} aria-labelledby="value101-first-lesson-title"><header><div><span>VALUE 101 · Lesson 1</span><h3 id="value101-first-lesson-title">The five objects you will use</h3></div><button className="text-button" onClick={() => setLessonOpen(false)}>Close</button></header><p className="learn-first-lesson-intro">VALUE separates supplied evidence from model choices and execution records, so another modeller can see exactly what changed.</p><ol>{descriptor.concepts.map((concept, index) => <li key={concept.id}><i>{String(index + 1).padStart(2, "0")}</i><div><h4>{concept.label}</h4><p>{concept.plain_language}</p></div></li>)}</ol><div className="learn-first-lesson-flow" aria-label="VALUE workflow"><b>Data</b><i>+</i><b>Modules</b><i>→</i><b>Study</b><i>→</i><b>Run</b><i>→</i><b>Results</b></div></section>}

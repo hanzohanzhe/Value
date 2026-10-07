@@ -110,6 +110,7 @@
     "app/features/shared/coverageView.ts",
     "app/features/shared/domainConstants.ts",
     "app/features/shared/format.ts",
+    "app/features/shared/headerPill.ts",
     "app/features/shared/narrow-layout.css",
     "app/features/shared/navigation.ts",
     "app/features/shared/pagination.ts",
@@ -149,6 +150,7 @@
     "app/features/workspace/runContext.ts",
     "app/features/workspace/runScope.ts",
     "app/features/workspace/runValidation.ts",
+    "app/features/workspace/studyNames.ts",
     "app/features/workspace/workspace-shell.css",
     "app/features/workspace/workspaceLocation.ts",
     "app/globals.css",
@@ -1312,6 +1314,7 @@
     "tests/frontend/render/module-quarantine.test.mjs",
     "tests/frontend/render/network-tables.test.mjs",
     "tests/frontend/render/preflight-blocked-run.test.mjs",
+    "tests/frontend/render/r2-learn-and-readme.test.mjs",
     "tests/frontend/render/readiness-issues.test.mjs",
     "tests/frontend/render/readiness-labels.test.mjs",
     "tests/frontend/render/render-harness.test.mjs",
@@ -1336,6 +1339,7 @@
     "tests/frontend/unit/network-copperplate.test.mjs",
     "tests/frontend/unit/network-coverage.test.mjs",
     "tests/frontend/unit/offline-ratchet.test.mjs",
+    "tests/frontend/unit/r2-ui-low-items.test.mjs",
     "tests/frontend/unit/readiness-groups.test.mjs",
     "tests/frontend/unit/reason-codes.test.mjs",
     "tests/frontend/unit/result-metrics.test.mjs",
@@ -3137,8 +3141,8 @@
     },
     {
       "path": "app/features/data/CsvMappingEditor.tsx",
-      "sha256": "bc22baa1e554a2ec2451c8c9d8b145315e52b1d870264993dd3e50cfaca4718b",
-      "bytes": 23497,
+      "sha256": "6ec25d0de4ad8a4a2cabded8c533535157a5cee1840275b1649516ddb444bb0f",
+      "bytes": 23679,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3149,8 +3153,8 @@
     },
     {
       "path": "app/features/data/csv-mapping-editor.css",
-      "sha256": "146586db87cf59eac85a9313d740560a76ad5e45bc16a6cfa84f4cee824cab2a",
-      "bytes": 2457,
+      "sha256": "de6cf9e4182b796329e2d630a92d9fcac6f03d5f5a34f46437dab0fbb32ad8db",
+      "bytes": 2661,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3257,9 +3261,9 @@
     },
     {
       "path": "app/features/learn/Value101Learn.tsx",
-      "sha256": "bcda778441ca99da84ae0fe544b9d23c9ddb220d2ac04005859dcbc251e7c047",
-      "bytes": 13152,
-      "transform": "byte copy"
+      "sha256": "273821cf72ffc6e336cd0b434f016342d95df69f944650f094bcd675b31f12ba",
+      "bytes": 13363,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/learn/Value101NetworkExercise.tsx",
@@ -3539,8 +3543,8 @@
     },
     {
       "path": "app/features/runs/runHistoryView.ts",
-      "sha256": "9063677ac8bf0e639d335a401ea46a267118e28c2d8b29e1b331b15fe28d5470",
-      "bytes": 4959,
+      "sha256": "c04127b10c8fd828bdd68ca42d9635de015dd8b72fdf5f6fe3a6688f073d2177",
+      "bytes": 5494,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3595,6 +3599,12 @@
       "path": "app/features/shared/format.ts",
       "sha256": "bf1b6be4739c9f7d9b9288468cf5dd77a66bc17dc15abe7ea625b008ee7a898c",
       "bytes": 10037,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "app/features/shared/headerPill.ts",
+      "sha256": "40fdbba699ce71bb4f4bea79bf941862acc22d97395bdda8e20af3eaf05d9917",
+      "bytes": 807,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3737,14 +3747,14 @@
     },
     {
       "path": "app/features/workspace/ReadMePanel.tsx",
-      "sha256": "74f19ffb5fbe6f72e277ca76d1d3c30cafb80e68a390d7a82d35126937c50e25",
-      "bytes": 6679,
-      "transform": "byte copy"
+      "sha256": "e8ccdc1d26125b22b19402520542f62147c4078bc6d5e4173749a74020311d5f",
+      "bytes": 6768,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "app/features/workspace/ResearchJourney.tsx",
-      "sha256": "3bb448ca356090b24b91951e2419d4867b575f6d2e3107c6cdaa7e4c60838a90",
-      "bytes": 15442,
+      "sha256": "62e1b518c9aad083642d89bae687f7d179f45c1374ee2050b8e90009d5ba6f6f",
+      "bytes": 16051,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3832,6 +3842,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "app/features/workspace/studyNames.ts",
+      "sha256": "16c869815865ddbd9ad1db39b6683d8816df8bfd083ece41815aeec9c2bf0ae0",
+      "bytes": 482,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "app/features/workspace/workspace-shell.css",
       "sha256": "9f60c8aea5f7577689ca2eaad4d603fe4986d740ade5e357f7ac840738a8e716",
       "bytes": 3542,
@@ -3857,8 +3873,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "0936dfcc7ee01153b095f58382206842203d4c05b31fe489aa40a5e769bed3ce",
-      "bytes": 175344,
+      "sha256": "e05eba31f85e7cb081e10c6c3a6e8ec37611ebdb94523b4a0a1fe91bb76ba406",
+      "bytes": 175487,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -10793,6 +10809,12 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
+      "path": "tests/frontend/render/r2-learn-and-readme.test.mjs",
+      "sha256": "e340af1fea7caf835e102fdc8edd6b71a60e4ba1e989a1b1dadeea034c9413aa",
+      "bytes": 1690,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
       "path": "tests/frontend/render/readiness-issues.test.mjs",
       "sha256": "05d16fd7f57a42b549ae12aa6544ecf213159414a087e38be706a52d273d9dc7",
       "bytes": 4743,
@@ -10934,6 +10956,12 @@
       "path": "tests/frontend/unit/offline-ratchet.test.mjs",
       "sha256": "0d6182eeeeaebb6fadff8b0d00cfe918b7db06a09d7c90727b344723e66dd7fd",
       "bytes": 6812,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/r2-ui-low-items.test.mjs",
+      "sha256": "a1c08952f35a8545cc0beb0f1c5afce77cfbb6bc11bea07ce4c580297a2dc1f4",
+      "bytes": 3201,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

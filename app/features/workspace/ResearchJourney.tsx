@@ -3,6 +3,7 @@
 import { apiUrl } from "../shared/api";
 import { useId, useRef, useState, type FormEvent } from "react";
 import "./research-journey.css";
+import { studyNameTaken } from "./studyNames.ts";
 
 export type JourneyStudy = {
   id: string;
@@ -66,6 +67,8 @@ export default function ResearchJourney({
   const hasRevision = Boolean(source?.revision_sha256?.trim());
   const dataSelected = !changingData || Boolean(targetPack && !targetUnavailable && targetPack.id !== source?.data_pack_id);
   const canCreate = Boolean(online && source && hasRevision && dataSelected && newName.trim() && !busy);
+  // R3-N4 (round R2): saved Studies may share a name; say so before a second one is created.
+  const duplicateName = studyNameTaken(studies, newName);
   const createLabel = changingData ? "创建换数据 Study" : "创建复现 Study";
   const reviewStep = changingData ? 3 : 2;
 
@@ -124,6 +127,10 @@ export default function ResearchJourney({
       if (typeof payload.project?.id !== "string" || !payload.project.id) {
         throw new Error("创建结果缺少 Study 信息，请刷新研究列表后确认。");
       }
+      // R3-N4 (round R2): the baseline stays selected and the name is cleared, so a
+      // second click does not reproduce the new copy under the same name.
+      setSourceId(source.id);
+      setNewName("");
       await onCreated(payload.project.id);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "暂时无法创建 Study，请稍后重试。");
@@ -199,6 +206,7 @@ export default function ResearchJourney({
                 placeholder={changingData ? "例如：新数据对照研究" : "例如：基线复现研究"}
                 onChange={(event) => { setNewName(event.target.value); setError(""); }} />
             </label>
+            {duplicateName && <p className="research-journey-warning" role="status">已有同名 Study。名称可以重复，但列表和比较页中容易混淆，建议换一个名称。</p>}
             {source ? <>
               <dl className="research-journey-review">
                 <div><dt>基线</dt><dd>{source.name}</dd></div>

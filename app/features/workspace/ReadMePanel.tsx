@@ -159,7 +159,8 @@ export function ReadMePanel({ open, onClose }: ReadMePanelProps) {
         <button type="button" className="value-readme-close" onClick={onClose} aria-label="关闭 Read me">关闭</button>
       </header>
       <div className="value-readme-body">
-        {(content.status === "idle" || content.status === "loading") && <p role="status">正在读取使用说明…</p>}
+        {/* R3M-7 (round R2): the status line exists only while the Read me (Chinese, like its text) is being read. */}
+        {content.status === "loading" && <p role="status">正在读取使用说明…</p>}
         {content.status === "error" && <div className="value-readme-error" role="alert">
           <p>暂时无法读取使用说明。请重试，或打开说明原文。</p>
           <button type="button" className="secondary" onClick={() => {

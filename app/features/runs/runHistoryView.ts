@@ -83,4 +83,9 @@ export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot:
  * listed; the first Run in a new data folder archives the Python runtime.
  */
 export const RUN_FREEZE_NOTE = "VALUE is freezing the Study's inputs and execution environment before the Run is listed. The first Run in a new data folder also archives the Python runtime once (about 3 minutes); later Runs take under a minute. Other pages stay usable; you are not taken back here when it finishes.";
+/**
+ * L-4 (round R2): the same wait seen from VALUE 101. Learn opens the Run when it
+ * is listed if the reader is still on Learn (startRun in app/page.tsx).
+ */
+export const LEARN_RUN_FREEZE_NOTE = "Starting the Run: VALUE is freezing the Study's inputs and execution environment first, so the lesson buttons stay disabled until the Run is listed. The first Run in a new data folder also archives the Python runtime once (about 3 minutes); later Runs take under a minute. If you stay on this page, the Run opens when it is listed.";
 export const SNAPSHOTTING_NOTE = "The first Run in a new data folder archives the Python runtime once (about 3 minutes); later Runs freeze their inputs in under a minute.";
