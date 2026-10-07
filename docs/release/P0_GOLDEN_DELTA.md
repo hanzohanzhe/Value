@@ -14,18 +14,18 @@ trajectory re-baselines are in `tests/golden/reports/` (`D4-r9.json`, `D5-r1.jso
 
 | Case | Family | Tier | Title | Latest revision | Trajectory | Accounting | Identity | Unattributed |
 |---|---|---|---|---|---|---|---|---|
-| C1 | corrected | fast | dynamic storage smoke | r14 | 55 | 468 | 57 | 0 |
-| C2 | corrected | fast | dynamic storage two_year_smoke | r14 | 56 | 475 | 59 | 0 |
-| C3 | corrected | fast | dynamic storage value_101_day | r15 | 60 | 483 | 43 | 0 |
-| C4 | corrected | fast | legacy storage smoke | r14 | 53 | 468 | 56 | 0 |
-| C5 | corrected | full | legacy storage two_year | r13 | 513 | 529 | 76 | 0 |
-| C6 | corrected | nightly | dynamic storage two_year | r11 | 494 | 531 | 75 | 0 |
+| C1 | corrected | fast | dynamic storage smoke | r15 | 55 | 468 | 57 | 0 |
+| C2 | corrected | fast | dynamic storage two_year_smoke | r15 | 56 | 475 | 59 | 0 |
+| C3 | corrected | fast | dynamic storage value_101_day | r16 | 60 | 483 | 43 | 0 |
+| C4 | corrected | fast | legacy storage smoke | r15 | 53 | 468 | 56 | 0 |
+| C5 | corrected | full | legacy storage two_year | r14 | 513 | 529 | 76 | 0 |
+| C6 | corrected | nightly | dynamic storage two_year | r12 | 494 | 531 | 75 | 0 |
 | C7 | corrected | fast | staged copperplate smoke | r12 | 34 | 309 | 104 | 0 |
 | C8 | corrected | fast | staged zonal redispatch value_101_day | r14 | 111 | 382 | 104 | 0 |
-| C9 | corrected | full | GBP1 public2 corrected profile, first model year (A16-7, A18) | r3 | 410 | 220 | 30 | 0 |
+| C9 | corrected | full | GBP1 public2 corrected profile, first model year (A16-7, A18) | r4 | 410 | 220 | 30 | 0 |
 | D1 | doctoral | fast | legacy storage smoke | r10 | 0 | 420 | 53 | 0 |
 | D2 | doctoral | fast | legacy storage two_year_smoke | r10 | 0 | 427 | 54 | 0 |
-| D3 | doctoral | fast | legacy storage value_101_day | r12 | 0 | 500 | 40 | 0 |
+| D3 | doctoral | fast | legacy storage value_101_day | r13 | 0 | 500 | 40 | 0 |
 | D4 | doctoral | full | legacy storage two_year | r11 | 426 | 496 | 73 | 0 |
 | D5 | doctoral | full | GBP1 public1 legacy storage, first model year (A12) | r2 | 377 | 639 | 64 | 0 |
 
@@ -95,7 +95,7 @@ difference, not a correction.
 |---|---|---|---|---|---|---|
 | D1 | C4 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 53 | 218 | 23 | 0 |
 | D2 | C2 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 56 | 218 | 33 | 0 |
-| D3 | C3 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 60 | 202 | 27 | 0 |
+| D3 | C3 | storage_cost: `value-legacy-storage-tariff` vs —; carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 60 | 202 | 22 | 0 |
 | D4 | C5 | carbon.factor_scenario: `doctoral_reproduction_2026_07_18` vs —; methodology.profile: `doctoral-lineage-0.6.0a2` vs — | 154 | 315 | 26 | 0 |
 
 Doctoral cases without a corrected partner on the same pack and mode: D5. (D5 runs the GBP1 research
@@ -106,34 +106,34 @@ document outside the public source.)
 
 | Attribution | D1↔C4 | D2↔C2 | D3↔C3 | D4↔C5 |
 |---|---|---|---|---|
-| `fx4.storage-offer-ledger` |  |  | 0/20/11 |  |
-| `fx5.voll-17000` | 0/1/14 | 0/1/14 | 0/1/12 | 0/1/14 |
-| `fx6.day-ahead-interconnector-imports` | 16/4/15 | 16/4/15 | 16/4/15 |  |
+| `fx4.storage-offer-ledger` |  |  | 0/20/7 |  |
+| `fx5.voll-17000` | 0/1/14 | 0/1/14 | 0/1/8 | 0/1/14 |
+| `fx6.day-ahead-interconnector-imports` | 16/4/15 | 16/4/15 | 16/4/10 |  |
 | `p04.storage-energy-audit` | 0/1/3 | 0/1/3 | 0/16/5 | 0/16/5 |
-| `p04.surplus-node-boundary` | 0/18/12 | 0/18/12 | 0/42/12 | 0/43/14 |
+| `p04.surplus-node-boundary` | 0/18/12 | 0/18/12 | 0/42/9 | 0/43/14 |
 | `p04.surplus-routing` |  |  | 0/28/5 | 0/28/5 |
 | `p04.validation-gate` | 0/43/0 | 0/43/0 | 0/56/0 | 0/60/0 |
-| `p04.validation-v2` | 0/34/3 | 0/34/3 | 0/44/2 | 0/53/3 |
+| `p04.validation-v2` | 0/34/3 | 0/34/3 | 0/44/1 | 0/53/3 |
 | `p05.series-clock` | 8/0/0 | 8/0/0 | 1/0/0 |  |
-| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/75/6 | 124/104/7 |
-| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/75/6 | 124/104/7 |
-| `p06.avoided-cost-downward-order` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.d1-surplus-accounting` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.no-vre-pre-clearing-skim` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.physical-operating-cost` | 0/7/14 | 0/7/16 | 0/12/16 | 0/18/14 |
-| `p06.storage-after-generation-merit-key` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.storage-bid-cycle-only` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.storage-fee-per-period` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.storage-net-per-period` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.storage-uniform-price-settlement` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
-| `p06.voll-chronology-parameter` | 15/90/18 | 18/90/20 | 46/124/18 | 118/177/21 |
+| `p05.vre-loss-factors` | 15/40/4 | 15/40/4 | 47/75/5 | 124/104/7 |
+| `p05.weather-time-convention` | 15/40/4 | 15/40/4 | 47/75/5 | 124/104/7 |
+| `p06.avoided-cost-downward-order` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.d1-surplus-accounting` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.no-vre-pre-clearing-skim` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.physical-operating-cost` | 0/7/14 | 0/7/16 | 0/12/14 | 0/18/14 |
+| `p06.storage-after-generation-merit-key` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.storage-bid-cycle-only` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.storage-fee-per-period` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.storage-net-per-period` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.storage-uniform-price-settlement` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
+| `p06.voll-chronology-parameter` | 15/90/18 | 18/90/20 | 46/124/14 | 118/177/21 |
 | `p07.compatibility-capital-out-of-headline` | 8/13/4 | 8/13/4 | 0/3/2 | 95/62/5 |
 | `p07.cost-ledger-v2` | 8/13/4 | 8/13/4 | 0/3/2 | 95/62/5 |
 | `p07.power-battery-pool` | 8/13/4 | 8/13/4 | 0/3/2 | 95/62/5 |
 | `p07.storage-leftover-headroom` | 8/13/4 | 8/13/4 | 0/3/2 | 95/62/5 |
 | `p07.thermal-net-revenue` | 8/13/4 | 8/13/4 | 0/3/2 | 95/62/5 |
 | `profile.reference-configuration` | 0/96/0 | 3/96/8 | 48/23/7 | 0/96/0 |
-| `r12.economic-downward-order` | 10/0/16 | 10/0/16 | 10/0/14 | 28/41/16 |
+| `r12.economic-downward-order` | 10/0/16 | 10/0/16 | 10/0/9 | 28/41/16 |
 | `r13.per-type-battery-caps` | 3/0/3 | 3/0/3 |  | 4/0/3 |
 
 ## 3 Correction ids

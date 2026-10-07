@@ -10,7 +10,7 @@
   "rule": {
     "running_range": "Output above min_stable_fraction x the asset's online capacity is reduced without a restart: its cost of reduction is minus the avoided short-run cost c (fuel + carbon + unit_time_cost (VOM) + base, i.e. gen_cost), so it is always cheaper than curtailing VRE (cost 0).",
     "online_capacity": "The aggregate fleet has no commitment state; its online capacity in a period is its accepted day-ahead output of that period (units scheduled day-ahead are online and fully loaded).",
-    "shutdown_segment": "Output below min_stable_fraction x online capacity (down to the ramp floor) needs units to shut down and restart later at S per MW: net saving per MWh a(H) = c - S(H) / H. a > 0: reduced before VRE (in descending a); a <= 0: after VRE; H < min_down_time_h: not allowed while any other down regulation is left (last resort).",
+    "shutdown_segment": "Output below min_stable_fraction x online capacity (down to the ramp floor) needs units to shut down and restart later at S per MW of capacity; at minimum stable generation m, removing 1 MW of output shuts 1/m MW of capacity: net saving per MWh a(H) = c - S(H) / (m H) (DECISIONS A22a). a > 0: reduced before VRE (in descending a); a <= 0: after VRE; H < min_down_time_h: not allowed while any other down regulation is left (last resort).",
     "start_class_by_downtime_h": {"hot_below_h": 12.0, "warm_up_to_h": 48.0}
   },
   "technologies": {

@@ -94,6 +94,10 @@ unattributed.
   R1-3 (A20, `r13.per-type-battery-caps`) revised C1, C2, C4-C7 and C9 once,
   for the storage headroom and investment evidence columns only (no pool
   declared, per-type cap evidence); proposals and capacities are unchanged.
+  R2-1 (A22a closure, DECISIONS A23) revised C1-C6 and C9 once for the
+  restart table's corrected formula text (`restart_table_sha256`, one
+  trajectory column each; numbers unchanged) and synchronised the identity
+  zones of C3 (R3-N6) and D3 (R-D10, identity only).
 
 ### Known issues
 
@@ -176,6 +180,8 @@ unattributed.
 | Results summary | New `vre_capacity_factor_disclosure` (wind and solar capacity factors shown next to DUKES). | F2 | additive |
 | Zonal network | Solver contract v4. New `GF_SOLVER_CONTRACT_UPGRADE_REQUIRED` (409) and `GF_RUN_METHOD_SUPERSEDED`. Boundary marginal values use v2 semantics, and older ledgers read as `not_computed`. New run-time fallback audit read model. | P0-8 | changed |
 | Data mapping | Declared CSV columns are read (`GF_DATA_INDEX_COLUMN`, `GF_DATA_AMBIGUOUS_COLUMN`, `GF_DATA_SHORT_SERIES`). EUR prices take an explicit rate, FX basis and price year (`GF_MAPPING_FX`). | P0-5a, P0-9 | changed |
+| Comparisons | New `metric_delta_gates` ({metric: allowed, reason_code, definitions, reason}) and `withheld_metric_deltas`: annual deltas are gated per metric (AF3-1). `metric_deltas_allowed` still means "every metric". `changed_dimension_details` rows gain `name`. | R2-1 (A23) | additive |
+| Methodology record | `universal_accounting_correction_ids` and `correction_ids_in_force` next to `applied_correction_ids` (R3-N6 / O-3); the method identity is unchanged. Catalogue `applies_when` gains `assets_any` (R3-N7). | R2-1 (A23) | additive |
 | Parameters | New `methodology.profile`, `market.voll_gbp_per_mwh` (corrected VoLL), `market.dec_multiplier`, `market.policy_support_gbp_per_mwh_by_technology` and `network.inflexible_dec_premium_gbp_per_mwh_by_technology`. | X0, P0-6, P0-8 | additive |
 
 ### Methodology profiles, read-time advisories and Study migration (X0)
@@ -648,6 +654,39 @@ unattributed.
   was never binding on VALUE 101 two_year (C5/C6) or on GBP1 public2 2025
   (C9), whose battery requests stayed below it; the golden revisions change
   only the headroom and investment evidence columns.
+
+### R1 retest fixes, backend (R2-1, DECISIONS A23)
+
+- **Unchanged saves stay unchanged (R3-N1).** A Study is saved with its
+  numbers in the registry type (the VoLL of `market_configuration` and
+  float-typed parameters as floats), so an editor that sends `17000` for
+  `17000.0` appends no revision; comparisons compare recorded values by
+  number, so `17000.0` and `17000` are no configuration change.
+- **Annual deltas per metric (AF3-1).** A comparison withholds only the
+  deltas whose own evidence is missing: the three VRE-curtailment metrics
+  need matching reconciled curtailment attribution, cost metrics matching
+  cost definitions, carbon its carbon definition. VALUE 101 annual
+  comparisons (copperplate modules, no counterfactual snapshot) now show
+  cost and carbon differences.
+- **Corrections in force in the Run record (R3-N6 / O-3).** The Run's
+  methodology record lists the universal accounting corrections that are
+  not in the catalogue (`fx5.voll-17000`, `fx4.*`, `p04.*`,
+  `p06.physical-operating-cost`, `p07.cost-ledger-v2`) and the union with
+  the catalogue ids.
+- **Advisories by asset presence (R3-N7).** Advisories about nuclear or
+  natural-flow hydro apply only to Runs whose frozen fleet has such an
+  asset; a VALUE 101 Run no longer lists the nuclear advisories.
+- **p06 advisory wording (R3-N2).** The advisory of
+  `p06.avoided-cost-downward-order` names only the bookkeeping defects;
+  curtailing VRE first is the thesis rule, not a defect (A19).
+- **Restart table text (A22a).** `rule.shutdown_segment` states
+  `a(H) = c - S(H)/(m H)`, as the code computes since R1-2.
+- Low items: an in-place module edit is named by its source hash and is a
+  controlled storage-cost change (R3M-6); no doubled parenthesis in the
+  comparison sentence (AF3-2); the source-change warning of a quarantined
+  module (R3M-5); the mapping editor lists empty, non-finite and negative
+  cells in one round and the API takes the editor's price-year range
+  (L-1, L-2, L-3, L-5).
 
 ### Scientific validation recomputed and gated (P0-4)
 
