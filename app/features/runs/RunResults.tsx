@@ -53,7 +53,7 @@ export function SmokeDiagnostics({ run }: { run: ModelRun }) {
     {run.diagnostic?.warning && <small>{run.diagnostic.warning}</small>}
     <div className="smoke-modules">{Object.entries(run.modules ?? {}).map(([slot, moduleId]) => {
       const evidence = run.module_evidence?.[moduleId];
-      return <span key={slot}><small>{slot.replaceAll("_", " ")}</small><b>{moduleId}</b><em>{moduleEvidenceText(run, slot, evidence?.actions, evidence)}</em></span>;
+      return <span key={slot}><small>{slot.replaceAll("_", " ")}</small><b>{moduleId}</b><em>{moduleEvidenceText(run, slot, evidence?.actions, evidence, moduleId)}</em></span>;
     })}</div>
   </div>;
 }

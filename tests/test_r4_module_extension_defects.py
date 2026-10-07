@@ -558,9 +558,16 @@ class StorageCostEvidenceTests(unittest.TestCase):
         builtin = server.MODULE_REGISTRY.extension_manifests()["value-toy-audit-extension"]
         self.assertEqual(rows[1], {"id": "value-toy-audit-extension", "version": builtin.version, "maturity": builtin.maturity})
 
+    def test_the_object_id_the_ledger_reports_is_kept(self) -> None:
+        # A local module may keep its template class id (seen on the scratch
+        # instance: example-flat-storage-offer); the PSM was still built with it.
+        evidence = self.run_with_ledger("example-flat-storage-offer")["module_evidence"]["hx-flat-storage-offer-73"]
+        self.assertEqual((evidence["source"], evidence["ledger_module_id"]), ("market_ledger", "example-flat-storage-offer"))
+
     def test_no_evidence_is_invented(self) -> None:
-        self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger("dynamic-annual-storage-cost")["module_evidence"])
-        self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger(None)["module_evidence"])
+        for ledger in (None, "unknown", "not_applicable"):
+            with self.subTest(ledger=ledger):
+                self.assertNotIn("hx-flat-storage-offer-73", self.run_with_ledger(ledger)["module_evidence"])
 
 
 class CorrectionIdRegistryTests(unittest.TestCase):

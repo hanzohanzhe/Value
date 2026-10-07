@@ -84,14 +84,15 @@ export function startedRunNoticeText(started: StartedRunNotice, run: HistoryRun 
  * call does not say "pending"; the one-day lesson clears the market only, so
  * its other slots were not called in this scope.
  */
-export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot: string, actions: number | null | undefined, evidence?: ModuleEvidence): string {
+export function moduleEvidenceText(run: Pick<ModelRun, "mode" | "status">, slot: string, actions: number | null | undefined, evidence?: ModuleEvidence, moduleId?: string): string {
   if (typeof actions === "number") return `${actions} recorded calls`;
   // R4 M-中1: the PSM calls the storage-cost module internally; the market
   // ledger, not a stage event, shows that it priced the storage offers.
   if (evidence?.source === "market_ledger") {
     const count = formatNumber(evidence.storage_asset_periods, 0);
     const rows = count ? ` (${count} storage asset-periods)` : "";
-    return `Called inside the PSM: the market ledger records its storage offers${rows}`;
+    const named = evidence.ledger_module_id && moduleId && evidence.ledger_module_id !== moduleId ? `; its object reports id ${evidence.ledger_module_id}` : "";
+    return `Called inside the PSM: the market ledger records its storage offers${rows}${named}`;
   }
   if (isActiveRunStatus(run.status)) return "Evidence pending";
   if (run.mode === "value_101_day" && slot !== "psm") return "Not called in this scope";

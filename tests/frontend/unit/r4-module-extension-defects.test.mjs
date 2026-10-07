@@ -53,6 +53,8 @@ test("M-中1: the storage-cost slot reads the market-ledger evidence, not 'Not c
   const ledger = { version: null, actions: null, years: [2025], source: "market_ledger", storage_asset_periods: 17520 };
   assert.equal(moduleEvidenceText(lesson, "storage_cost", ledger.actions, ledger), "Called inside the PSM: the market ledger records its storage offers (17,520 storage asset-periods)");
   assert.equal(moduleEvidenceText({ mode: "smoke", status: "completed" }, "storage_cost", null, { ...ledger, storage_asset_periods: null }), "Called inside the PSM: the market ledger records its storage offers");
+  assert.equal(moduleEvidenceText(lesson, "storage_cost", null, { ...ledger, ledger_module_id: "example-flat-storage-offer" }, "hx-flat"), "Called inside the PSM: the market ledger records its storage offers (17,520 storage asset-periods); its object reports id example-flat-storage-offer");
+  assert.equal(moduleEvidenceText(lesson, "storage_cost", null, { ...ledger, ledger_module_id: "hx-flat" }, "hx-flat"), "Called inside the PSM: the market ledger records its storage offers (17,520 storage asset-periods)");
   // Without evidence the old wording stays; stage events still count calls.
   assert.equal(moduleEvidenceText(lesson, "storage_cost", undefined), "Not called in this scope");
   assert.equal(moduleEvidenceText(lesson, "psm", 1, { version: "6.7.0", actions: 1, years: [2025] }), "1 recorded calls");

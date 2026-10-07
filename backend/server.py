@@ -1769,19 +1769,26 @@ def market_ledger_module_evidence(run_root: Path, module_id: str) -> dict[str, A
     """Evidence that the PSM priced storage offers with ``module_id`` (R4 M-中1).
 
     The storage-cost module is called inside the PSM, not as an orchestrator
-    stage, so it has no stage event.  The market ledger index records the
-    storage-cost module the PSM used and its storage rows; nothing is
-    inferred when the ledger names another module or is absent.
+    stage, so it has no stage event.  The PSM is built with the Run's selected
+    storage-cost module, and the market ledger index records the id that
+    module's object reports (its class ``id``, which a local module may not
+    have renamed with its manifest) and the storage rows.  Nothing is inferred
+    when the ledger is absent or records no storage-cost module
+    (``unknown``, ``not_applicable``).
     """
 
     index = read_json(run_root / "model-output" / "market" / "index.json")
-    if not isinstance(index, dict) or index.get("storage_cost_module_id") != module_id:
+    if not isinstance(index, dict):
+        return None
+    ledger_module = str(index.get("storage_cost_module_id") or "")
+    if not ledger_module or ledger_module in {"unknown", "not_applicable"}:
         return None
     rows = index.get("rows") if isinstance(index.get("rows"), dict) else {}
     storage_rows = rows.get("storage_state")
     years = [year for year in index.get("years") or [] if isinstance(year, int) and not isinstance(year, bool)]
     return {
         "version": None, "actions": None, "years": sorted(years), "source": "market_ledger",
+        "ledger_module_id": ledger_module,
         "storage_asset_periods": storage_rows if isinstance(storage_rows, int) and not isinstance(storage_rows, bool) else None,
     }
 

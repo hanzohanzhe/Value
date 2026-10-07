@@ -30,7 +30,7 @@ export type RunPreparation = {
   stages?: { stage: string; label?: string; seconds?: number }[];
 };
 /** Evidence that a selected module ran: stage events, or (R4 M-中1) the market ledger for the storage-cost slot the PSM calls. */
-export type ModuleEvidence = { version: string | null; actions: number | null; years: number[]; source?: "market_ledger"; storage_asset_periods?: number | null };
+export type ModuleEvidence = { version: string | null; actions: number | null; years: number[]; source?: "market_ledger"; ledger_module_id?: string; storage_asset_periods?: number | null };
 /** RunValidationFields: methodology, energy balance, stress, advisories and Q14 publication (X0 S12, P0-9 S11). */
 export type ModelRun = RunValidationFields & {
   preparation?: RunPreparation;
