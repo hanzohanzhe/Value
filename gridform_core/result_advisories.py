@@ -14,7 +14,9 @@ annotated when read.
   ``recorded_*``.  ``failed`` and ``not_evaluated`` stay and gain advisories.
 * **Advisories**: one per catalogue correction the run did not apply whose
   ``applies_when`` matches the run, plus the generic advisories of
-  ``data/methodology/advisories.json``.  Legacy module ids are normalised first.
+  ``data/methodology/advisories.json`` (whose ``fleet_assets`` rows, A24-2,
+  disclose a limitation of every profile for Runs with a given asset class).
+  Legacy module ids are normalised first.
 * **Result publication** (Q14): a profile whose rule is
   ``raw_invariants_must_pass`` (the frozen doctoral reproduction) publishes
   annual results on result pages only when the run's raw invariants all
@@ -52,7 +54,11 @@ from .methodology import CATALOGUE_ROOT, SEVERITIES, MethodologyCatalogError, lo
 
 ADVISORY_SCHEMA = "value.result-advisory/v1"
 ADVISORIES_FILE_SCHEMA = "value.methodology-advisories/v1"
-GENERIC_PREDICATES = ("pre_profile_run", "legacy_validation_report")
+GENERIC_PREDICATES = ("pre_profile_run", "legacy_validation_report", "fleet_assets")
+# A24-2: ``fleet_assets`` advisories are disclosures of a model limitation that
+# holds in every profile; they carry ``applies_when`` with ``assets_any`` only
+# and use the same fleet evidence as the asset-filtered correction advisories.
+GENERIC_APPLIES_WHEN_KEYS = ("assets_any",)
 LEGACY_VALIDATION_SCHEMA = "value.scientific-validation/v1"
 VALIDATION_SCHEMA = "value.scientific-validation/v2"
 # Evidence fields a v2 report carries (and model_runner copies onto status).
@@ -110,6 +116,17 @@ def load_generic_advisories_from(path: Path) -> tuple[dict[str, Any], ...]:
         seen.add(row["id"])
         if row.get("applies_to") not in GENERIC_PREDICATES:
             raise MethodologyCatalogError(f"{where}: applies_to must be one of {GENERIC_PREDICATES}")
+        applies_when = row.get("applies_when")
+        if row["applies_to"] == "fleet_assets":
+            if (not isinstance(applies_when, Mapping) or not applies_when
+                    or set(applies_when) - set(GENERIC_APPLIES_WHEN_KEYS)
+                    or not all(isinstance(values, list) and values
+                               and all(isinstance(item, str) and item for item in values)
+                               for values in applies_when.values())):
+                raise MethodologyCatalogError(
+                    f"{where}: fleet_assets needs applies_when with a non-empty assets_any list")
+        elif applies_when is not None:
+            raise MethodologyCatalogError(f"{where}: applies_when is only allowed with applies_to fleet_assets")
         if row.get("severity") not in SEVERITIES:
             raise MethodologyCatalogError(f"{where}: severity must be one of {SEVERITIES}")
         for key in ("title", "summary"):
@@ -118,6 +135,9 @@ def load_generic_advisories_from(path: Path) -> tuple[dict[str, Any], ...]:
         metrics = row.get("affected_metrics", [])
         if not isinstance(metrics, list) or not all(isinstance(item, str) for item in metrics):
             raise MethodologyCatalogError(f"{where}: affected_metrics must be a list of strings")
+        findings = row.get("findings", [])
+        if not isinstance(findings, list) or not all(isinstance(item, str) for item in findings):
+            raise MethodologyCatalogError(f"{where}: findings must be a list of strings")
         result.append(copy.deepcopy(dict(row)))
     return tuple(result)
 
@@ -386,19 +406,23 @@ def evaluate_advisories(run: Mapping[str, Any], run_root: Path) -> list[dict[str
         "legacy_validation_report": legacy_validation_report(report),
     }
     for advisory in generic_advisories():
-        if predicates.get(str(advisory["applies_to"])):
-            rows.append({
-                "schema_version": ADVISORY_SCHEMA,
-                "id": advisory["id"],
-                "source": "generic",
-                "correction_id": None,
-                "findings": [],
-                "track": None,
-                "severity": advisory["severity"],
-                "title": advisory["title"],
-                "summary": advisory["summary"],
-                "affected_metrics": list(advisory.get("affected_metrics") or []),
-            })
+        if advisory["applies_to"] == "fleet_assets":
+            if not _applies(advisory["applies_when"], descriptor):
+                continue
+        elif not predicates.get(str(advisory["applies_to"])):
+            continue
+        rows.append({
+            "schema_version": ADVISORY_SCHEMA,
+            "id": advisory["id"],
+            "source": "generic",
+            "correction_id": None,
+            "findings": list(advisory.get("findings") or []),
+            "track": None,
+            "severity": advisory["severity"],
+            "title": advisory["title"],
+            "summary": advisory["summary"],
+            "affected_metrics": list(advisory.get("affected_metrics") or []),
+        })
     rank = {severity: index for index, severity in enumerate(SEVERITIES)}
     return sorted(rows, key=lambda row: (-rank[row["severity"]], row["id"]))
 

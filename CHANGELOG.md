@@ -157,6 +157,14 @@ unattributed.
   (4.0.0) and solver contract v4 are unchanged in R3-3. A retry policy or a
   scaling fix belongs to the network owner; the live toy now uses a GBP 100
   southern unit (documented in the test).
+- **Biomass is rarely dispatched (A24-2, disclosure).** VALUE has no CfD or
+  ROC support revenue for biomass (P4-07, next round). Biomass offers at its
+  full fuel and carbon cost (85 GBP/MWh in the shipped GB parameters, above
+  CCGT 55.07 and OCGT 74.92) and generates about 0.01 TWh from 4,762 MW in
+  the 2025 GBP1 and R029 corrected runs. Both profiles behave this way and
+  are unchanged; Runs with biomass carry the advisory
+  `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED` (see "Restart costs in the model's
+  price base; biomass disclosure" below).
 
 ### Migration notes
 
@@ -733,7 +741,7 @@ unattributed.
   examples: OCGT at H = 5 h shuts before wind, at H = 3 h wind is curtailed
   first.
 
-### Restart costs in the model's price base (A24-4, corrected profile)
+### Restart costs in the model's price base; biomass disclosure (A24-4, A24-2)
 
 - A24-4 (corrected profile, `r33.restart-cost-price-base-2025`): the restart
   costs of `gridform_core/data/thermal/value_thermal_restart_v1.json` were
@@ -755,6 +763,13 @@ unattributed.
   does not use the table.
 - Effect: none on the reference runs except C8 (the CCGT last-resort dec
   price), because no priced shutdown segment is reached in them.
+- A24-2 (both profiles, disclosure only): Runs whose frozen fleet contains
+  biomass carry the read-time advisory `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED`
+  (severity medium, generic predicate `fleet_assets`): biomass has no CfD/ROC
+  support revenue, offers at its full fuel and carbon cost and is rarely
+  dispatched. Behaviour and results are unchanged. Methodology draft
+  `docs/methodology/drafts/0.4/r33_biomass_support_disclosure.md`; model card
+  limitation list.
 
 ### Per-type power-battery expansion caps (A20, corrected profile)
 

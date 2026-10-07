@@ -114,3 +114,4 @@ ledger (`gridform_core/data/methodology/declared_deviations.json`).
 |---|---|---|---|
 | VALUE-ADV-2026-10-04-REVIEW | pre_profile_run | high | Produced before the 2026-10 review fixes |
 | GF_VALIDATION_LEGACY_REPORT | legacy_validation_report | medium | Validation report not independently verified |
+| VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED | fleet_assets | medium | Biomass without support revenue |

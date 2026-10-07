@@ -218,6 +218,9 @@ class FixtureRunTests(unittest.TestCase):
             # carries an advisory.)
             "p07.compatibility-capital-out-of-headline", "p07.storage-leftover-headroom",
             "GF_VALIDATION_LEGACY_REPORT",
+            # R3-3 (A24-2): biomass has no support revenue (medium); this
+            # fixture has no frozen fleet, so the asset filter keeps it.
+            "VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED",
             "p06.no-vre-pre-clearing-skim", "p06.storage-uniform-price-settlement",
             # R1-2 (A19/A22): down regulation without restart economics (medium).
             "r12.economic-downward-order",

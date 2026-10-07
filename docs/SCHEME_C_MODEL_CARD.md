@@ -40,7 +40,14 @@ Known simplifications of both profiles:
 - investment is myopic and undiscounted (A6);
 - weather is climatological;
 - the realisation branch follows the forecast, and ahead shortfalls are
-  reported as stress events (A2).
+  reported as stress events (A2);
+- there is no support revenue for biomass (no CfD top-up, no ROCs; review
+  finding P4-07, next round). Biomass offers at its full fuel and carbon cost
+  (85 GBP/MWh in the shipped GB parameters, above CCGT 55.07 and OCGT 74.92),
+  so it is rarely dispatched: about 0.01 TWh from 4,762 MW in the 2025 GBP1
+  and R029 corrected runs. Runs with biomass carry the advisory
+  `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED` (A24-2; disclosure only, no
+  behaviour change).
 
 The corrected profile also has these simplifications:
 
