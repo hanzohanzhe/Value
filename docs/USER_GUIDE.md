@@ -94,9 +94,9 @@ Install the CC0 synthetic contract pack if no pack is available:
 py -3.10 scripts\install_synthetic_pack.py
 ```
 
-Alternatively, open **Data**, choose **Install a FORCE data pack**, select a
-reviewed `force.data-bundle/v1` ZIP, acknowledge its licence and attribution,
-and install. FORCE streams it to local staging, verifies its exact inventory and
+Alternatively, open **Data**, choose **Install a VALUE data pack**, select a
+reviewed `value.data-bundle/v1` ZIP, acknowledge its licence and attribution,
+and install. VALUE streams it to local staging, verifies its exact inventory and
 25 semantic roles, and only then promotes it atomically. A cancelled upload or
 failed check leaves existing packs unchanged. The selected file is not retained
 as a second copy. A different revision must use a new versioned pack ID.
@@ -431,7 +431,7 @@ a current slot still requires an explicit extension and platform validation. Do
 not disguise it as another module or add hidden compatibility switches. Install
 and validate external modules before selection.
 
-The Modules page now accepts a reviewed `value.module-bundle/v1` ZIP. The user must acknowledge that it contains executable Python. FORCE then checks the exact SHA-256 inventory, safe paths, manifest, entry point, slot/contract and callable conformance before atomically promoting the package and refreshing Study selectors. Built-in IDs cannot be shadowed. A referenced external module cannot be disabled from its card until its saved Studies are migrated. A quarantined module can be disabled from the quarantine panel even while saved Studies select it; those Studies then cannot run until the module is repaired and enabled again, or they select another module.
+The Modules page now accepts a reviewed `value.module-bundle/v1` ZIP. The user must acknowledge that it contains executable Python. VALUE then checks the exact SHA-256 inventory, safe paths, manifest, entry point, slot/contract and callable conformance before atomically promoting the package and refreshing Study selectors. Built-in IDs cannot be shadowed. A referenced external module cannot be disabled from its card until its saved Studies are migrated. A quarantined module can be disabled from the quarantine panel even while saved Studies select it; those Studies then cannot run until the module is repaired and enabled again, or they select another module.
 
 This installer is offline and self-contained: it does not run `pip`, download dependencies or accept native binaries. Version-scoped source directories are organisational isolation, not an operating-system sandbox; external code executes inside the VALUE Python process. Conformance demonstrates contract wiring, not scientific validity. Build the supplied example with `scripts/build_module_bundle.py`, install it from Modules, then run a two-period wiring check before a full study.
 
@@ -466,7 +466,7 @@ Without the session only a reduced `GET /api/health` answers. Request bodies nee
 
 ## 17. Troubleshooting
 
-Connection refused usually means the packaged services are not running or the browser is on the development port. Start GridForm and use port 8800. A Python 3.12 warning means an older incompatible backend may still own the API port. Stop the managed services and restart with Python 3.10.
+Connection refused usually means the packaged services are not running or the browser is on the development port. Start VALUE and use port 8800. A Python 3.12 warning means an older incompatible backend may still own the API port. Stop the managed services and restart with Python 3.10.
 
 **Open VALUE from its launcher** (or an HTTP 421/403 answer) means the page was not opened through the launcher: another host name, a bookmark from another installation, or a page server that reads a different data directory than the API. Stop VALUE and start it again with its launcher. `python -B scripts/verify_local_security_boundary.py` checks a running installation and prints PASS when every cross-site, rebinding and session-less probe is refused.
 

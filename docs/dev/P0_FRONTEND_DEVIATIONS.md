@@ -349,3 +349,14 @@
 | F-R52-10 | R-低11 | 研究路径创建按钮因名称为空而禁用时，按钮下方加一行 13px `--muted`：`先在第 {n} 步填写新 Study 名称，才能创建。`（按钮 `aria-describedby` 指向它）；不自动填默认名称 | 按钮变灰没有原因 | 否 |
 | F-R52-11 | R-低13 | Runs 空状态正文改为 `Choose a scope under Check for, check readiness, then run it. Wiring checks are quick; full scopes compute every model year.` | 原文“start with two full years”与默认 scope 不符 | 否 |
 | F-R52-12 | R-中2 复审 | 比较页标签表新增 `pre_balancing_excess_mwh`：`Pre-balancing excess, reported separately (MWh)`；该指标无值时写 `Not applicable`（只有论文口径账本有独立的预平衡阶段）。跨口径比较时 unused VRE 两项与该项的差值不显示，沿用现有 `comparison-metric-withheld` 段落写后端给出的原因（`Delta withheld: Unused VRE is measured at different PSM boundaries (...); the doctoral pre-balancing excess is reported separately.`）。无新组件 | 复审指出两种口径在不同边界测 accepted VRE，差值不是同一量 | 否 |
+
+## R5-3（改函数角色最终验收的缺陷；DECISIONS A28）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R53-1 | 中2 | 隔离面板 Disable 后的提示条在原句后加一句：`Its other manifest was moved out of the scanned folder: modules/disabled-manifests/modules/{文件}.`（多份时用复数）。面板、按钮、确认框不变；后端在停用时把同一 ID 的其他清单移到 `disabled-manifests/modules/` | 原来点副本行的 Disable 会留下副本，界面无法恢复 | 否 |
+| F-R53-2 | 低1 | 方法升级确认保存后，“Saved as a new revision (revision N)…” 提示不再被随后的 readiness 复查清掉；readiness 的修复建议改为 `Press Check readiness again: VALUE lists the changes for your confirmation and saves them as a new revision of this Study.`，不再给出 API 路径 | 原建议指向不存在的入口，确认后看不到已保存修订 | 否 |
+| F-R53-3 | 低2 | 起止年份相同的 Study，Runs 页 Check for 下拉框不列出 `Two-year hand-off check` 与 `Two full model years`（冻结恢复要求的范围除外） | 选了必然被 readiness 拒绝 | 否 |
+| F-R53-4 | 低6 | Modules 页标题徽标改为 `{ready} of {total} ready · {n} experimental`（有实验性模块时） | 实验性模块计入分母却从不算 ready，原来没有说明 | 是（措辞） |

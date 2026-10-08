@@ -110,8 +110,8 @@ $env:VALUE_DATA_HOME = "D:\VALUE-Research"
 py -3.10 scripts\install_synthetic_pack.py
 ```
 
-也可以打开 **Data** 页面，在 **Install a FORCE data pack** 中选择数据维护者
-提供的 `force.data-bundle/v1` ZIP，阅读并确认其中的许可与署名记录后安装。
+也可以打开 **Data** 页面，在 **Install a VALUE data pack** 中选择数据维护者
+提供的 `value.data-bundle/v1` ZIP，阅读并确认其中的许可与署名记录后安装。
 浏览器只把文件流式传给本地服务；后端在同一磁盘的临时目录检查安全路径、
 解压上限、逐对象 SHA-256、manifest、权利记录和 25 个语义接口，全部通过后
 才原子写入。上传阶段取消或任一检查失败，都不会改变已有数据包，临时文件会
@@ -163,7 +163,7 @@ Overview 显示所选数据包、可用模块、Python runtime 和年度 PSM/CEM
 
 #### 安装别人编写的模块
 
-打开 **Modules** 页面顶部的 **Install a model module**：选择建模者提供的 `value.module-bundle/v1` ZIP，勾选可执行代码信任确认，再点击安装。FORCE 会在临时目录检查文件清单与 SHA-256、路径穿越、manifest、Python entry point、槽位/contract、必需方法和最小 conformance fixture；全部通过后才原子写入模块目录并立即刷新 Studies 下拉框。
+打开 **Modules** 页面顶部的 **Install a model module**：选择建模者提供的 `value.module-bundle/v1` ZIP，勾选可执行代码信任确认，再点击安装。VALUE 会在临时目录检查文件清单与 SHA-256、路径穿越、manifest、Python entry point、槽位/contract、必需方法和最小 conformance fixture；全部通过后才原子写入模块目录并立即刷新 Studies 下拉框。
 
 安装成功不代表科学方法已经验证。先建立新的 Study revision，运行 two-period wiring check，再做完整年度测试。内置模块不能被覆盖或禁用；已被 Saved Study 引用的外部模块不能在模块卡片上直接停用。已隔离的模块可以在隔离面板中停用，即使仍有 Study 引用它；此后这些 Study 在模块修好并重新启用、或改选其他模块之前不能运行。外部源码按模块/版本分目录保存，但仍在 VALUE Python 进程内运行。安装器不联网、不运行 `pip`、不接受原生二进制。
 

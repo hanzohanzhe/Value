@@ -720,6 +720,8 @@ export default function Home() {
     });
   const teachingProject = Boolean(selectedProject?.extensions?.value_101);
   const readyModules = workspace.modules.filter((module) => module.status === "ready").length;
+  // R5-3 低6: experimental modules are counted in the total but are never "ready"; the badge says so.
+  const experimentalModules = workspace.modules.filter((module) => module.status === "experimental").length;
 
   const draftPackManifest = selectedPack?.manifest_sha256;
   useEffect(() => {
@@ -887,7 +889,7 @@ export default function Home() {
     const next = saved ? await refresh() : workspace;
     const project = next?.projects.find((item) => item.id === projectId);
     if (!project || project.id !== selectedProjectId || !effectivePreflightMode) return;
-    await checkPreflight(effectivePreflightMode, { project, askMigration: false });
+    await checkPreflight(effectivePreflightMode, { project, askMigration: false, keepNotice: saved });
   }
   async function promptMigration(project: Project, migration: RevisionMigration) {
     const opening = await openingMigration(API, project.id, migration);
@@ -1163,7 +1165,8 @@ export default function Home() {
     try {
       const { response, payload } = await lifecycleRequest(`${API}${row.disablePath.replace(/^\/api/, "")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Disabling ${row.id} failed`}`);
-      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.`); setPreflight(null); await refresh();
+      const parkedCopies = (payload as { installation?: { parked_manifests?: string[] } }).installation?.parked_manifests ?? [];
+      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.${parkedCopies.length ? ` Its other manifest${parkedCopies.length === 1 ? " was" : "s were"} moved out of the scanned folder: ${parkedCopies.map((file) => `modules/${file}`).join(", ")}.` : ""}`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Disable failed"); }
     finally { setQuarantineBusy(""); }
   }
@@ -1345,12 +1348,12 @@ export default function Home() {
     setPreflight(null); setPreflightMode(mode as RunMode); setView("run");
     setNotice("已保存独立 Study，尚未启动。核对锁定范围，Check readiness 后再明确运行。");
   }
-  async function checkPreflight(mode = effectivePreflightMode, options: { project?: Project; askMigration?: boolean } = {}) {
+  async function checkPreflight(mode = effectivePreflightMode, options: { project?: Project; askMigration?: boolean; keepNotice?: boolean } = {}) {
     if (!mode || !canRunMode(mode)) { setNotice("此 Study 的锁定范围与数据包允许范围不相容，不能执行 readiness 或启动。"); return; }
     const target = options.project ?? selectedProject;
     if (!target) { setNotice("Save and select a research project first."); return; }
     const requestId = ++preflightRequest.current;
-    setPendingPreflightKey(preflightKey(target, mode)); setPreflight(null); setNotice("");
+    setPendingPreflightKey(preflightKey(target, mode)); setPreflight(null); if (!options.keepNotice) setNotice("");
     try {
       const response = await fetch(`${API}/projects/${encodeURIComponent(target.id)}/preflight`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
       const payload = await response.json();
@@ -1615,7 +1618,7 @@ export default function Home() {
     </div>}
 
     {view === "models" && <div className="page">
-      <div className="page-title"><div><span>VALUE module registry</span><h2>The model is assembled here</h2><p>Each card resolves to one executable Python implementation. Install a reviewed local bundle to replace one part of the model without editing VALUE.</p></div><div className="modules-title-actions"><Badge tone="good">{readyModules} of {workspace.modules.length} ready</Badge><button type="button" className="secondary modules-rescan value-new-control" disabled={Boolean(quarantineBusy)} onClick={() => void rescanModules()}>{quarantineBusy === "rescan" ? "Rescanning…" : "Rescan modules"}</button></div></div>
+      <div className="page-title"><div><span>VALUE module registry</span><h2>The model is assembled here</h2><p>Each card resolves to one executable Python implementation. Install a reviewed local bundle to replace one part of the model without editing VALUE.</p></div><div className="modules-title-actions"><Badge tone="good">{readyModules} of {workspace.modules.length} ready{experimentalModules ? ` · ${experimentalModules} experimental` : ""}</Badge><button type="button" className="secondary modules-rescan value-new-control" disabled={Boolean(quarantineBusy)} onClick={() => void rescanModules()}>{quarantineBusy === "rescan" ? "Rescanning…" : "Rescan modules"}</button></div></div>
       <ModuleQuarantinePanel report={workspace.module_quarantine} busy={quarantineBusy} onDisable={(row) => void disableQuarantined(row)} onRescan={() => void rescanModules()} />
       <div><ModuleAuthorWorkbench modules={workspace.modules} projects={workspace.projects}
         onInstallRequest={() => document.getElementById("module-installer")?.scrollIntoView({ block: "start", behavior: "smooth" })}

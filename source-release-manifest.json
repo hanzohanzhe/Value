@@ -1356,6 +1356,7 @@
     "tests/frontend/unit/r4-module-extension-defects.test.mjs",
     "tests/frontend/unit/r4-reproduce-defects.test.mjs",
     "tests/frontend/unit/r4-swap-data-defects.test.mjs",
+    "tests/frontend/unit/r5-edit-module-defects.test.mjs",
     "tests/frontend/unit/r5-reproduce-defects.test.mjs",
     "tests/frontend/unit/r5-swap-data-defects.test.mjs",
     "tests/frontend/unit/readiness-groups.test.mjs",
@@ -3920,8 +3921,8 @@
     },
     {
       "path": "app/features/workspace/runScope.ts",
-      "sha256": "26722da2790ce3b645710ee6be881e029b8005bc7528b9f51d5c9b29b8c43eb2",
-      "bytes": 2201,
+      "sha256": "30b09a1db30206ad7e5c3a3be947ff4959f69a3a7eba28b3f385c059d4af010a",
+      "bytes": 2845,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3962,8 +3963,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "3e66e3bf8b06fe170fa3e9973196c71165c783de21b57cee652451b74d77eeea",
-      "bytes": 180908,
+      "sha256": "e63ed4198f890031b9b450df19c932e3a43ec6fce8a7d4bb92e08150d0e1df74",
+      "bytes": 181579,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4796,13 +4797,13 @@
     },
     {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "dbb1ad515ba820824a17c3d2dc4e7319c39099bd03df54dc4fc710a90f371f79",
-      "bytes": 36768,
+      "sha256": "c274bcbb28c80be9b04039ea211df5cc1844c6642ecf0cfe5f7a7cd4686c381f",
+      "bytes": 36765,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/USER_GUIDE_ZH.md",
-      "sha256": "ea667ae8f9b6f429398ab2a9de77670db40227a1c1e36c873f6205ae7a796965",
+      "sha256": "3eb5f8da5b078ad2cca7fff2e7b2d7257024130debc7352ba04a1a0216f5f84d",
       "bytes": 35691,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
@@ -11093,6 +11094,12 @@
       "path": "tests/frontend/unit/r4-swap-data-defects.test.mjs",
       "sha256": "681390867dade18481570f2ba77bc50508a18e1296e967ae9bd806bac921ed4a",
       "bytes": 3011,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+    },
+    {
+      "path": "tests/frontend/unit/r5-edit-module-defects.test.mjs",
+      "sha256": "d4400fe50a899db39977feb82571f3559a53f7e7c8de0374a63ba1219b8380ca",
+      "bytes": 2047,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
