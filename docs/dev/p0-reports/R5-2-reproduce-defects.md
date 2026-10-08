@@ -133,6 +133,27 @@ Run 处于 queued / snapshotting / running / cancel_requested 时，不渲染 �
 
 比较 CSV 新增 4 列：`value_status`、`value_reason_code`、`delta_shown`、`delta_withheld_reason`。指标表头前缀不变，原有断言仍成立。
 
+## 复审回应（Review response）
+
+独立复审结论为 changes_required，一项 major，其余为 minor（按任务要求留待办）。
+
+### major：比较页把不同边界测得的 unused VRE 当作同一量求差（已修）
+
+- 复审意见成立。论文口径账本（`excess_relationship = separate_prebalancing`，`curtailment_semantics` 为平衡阶段下调）在 S 之外先把预平衡盈余分给储能、出口或溢出，再测 accepted VRE；修正口径（`curtailment_semantics = vre_available_minus_gross_output`）在全节点按可用减总出力测。上表的 −25,024.5 MWh 因此不是同一量的差。
+- 修复（不改任何调度、投资或成本账本的数，只改读出和比较门控）：
+  - `results_summary.vre_measurement_boundary` 按 `query_vre_curtailment_summary` 读的同一组语义元数据给出边界：`full_node_gross_vre_output`（修正）、`after_separate_prebalancing_excess`（论文）、`unsplit_unused_vre`（perfect foresight）、`not_recorded`（旧账本无元数据）。
+  - `annual_unused_vre` 每年附上 `vre_boundary`；论文口径账本另给 `pre_balancing_excess_mwh`（`excess_mwh` 年合计，与 VRE 页 G1-08 的 pre-balancing excess 一致；修正口径下 `excess` 是非 VRE 溢出，所以为 None）。
+  - Run 摘要的 `unused_vre_mwh`、`unused_vre_share_percent` 带 `vre_boundary`；新增年度指标 `pre_balancing_excess_mwh`（`value.pre-balancing-excess/v1`；非论文口径为 `not_applicable`、`ledger_does_not_separate_prebalancing_excess`）。
+  - `metric_delta_gate` 新增参数 `vre_boundaries`：这三项指标在各 Run 边界不同时不给差值，`reason_code = unused_vre_boundary_differs`，原因句写明两个边界并说明论文口径的预平衡盈余单独列出。各 Run 的数值照常显示；比较值附 `vre_boundary`。同口径比较照常给差值。CSV 的 `delta_shown` 为 false，`delta_withheld_reason` 为上述原因句（CSV 列不变）。
+  - 前端：标签表加 `pre_balancing_excess_mwh`，无值时写 `Not applicable`（F-R52-12）。差值隐藏与原因句沿用现有逐指标门控的渲染，无新组件。
+- 测试：`tests/test_r5_reproduce_defects.py::UnusedVreBoundaryTests`（3 项：边界与预平衡盈余的读出；论文 vs 修正比较三项差值被隐藏、原因码正确、各 Run 数值保留、成本差值仍显示、CSV `delta_shown=false`；同口径保留差值）；`tests/frontend/unit/r5-reproduce-defects.test.mjs` 新增 1 项（原因句显示、标签、`Not applicable`）。
+- 上文“比较页给出差值 −25,024.5 MWh”的说法由此作废：跨口径比较现在只并列两种口径的数值和论文口径的预平衡盈余，不给差值。
+- 页面核对：本次只改后端数据和标签表；比较页隐藏差值与显示原因走的是已经过 Playwright 核对的同一渲染路径（AF3-1 逐指标门控），按 A28“不无止境测试”没有再起 scratch 实例做浏览器复测，改用单元测试覆盖。
+
+### minor（留待办，不在本轮修）
+
+- 整文件换行符归一化带来的 diff 噪声；导出压力查询中较大的 IN 列表；unused VRE 求和对 stage 的处理（与 VRE 页相同）。R-低8（`annual_input_state_sha256` 含 Run id）同意列为待办。
+
 ## 3 偏差
 
 - R-中1 只显示口径，不在研究路径中加选择控件（F-R52-1，待设计方确认）。
