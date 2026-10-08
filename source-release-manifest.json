@@ -3013,8 +3013,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "c79717648f1ceb2b1e94637e082ac087efb99723f1d2d4683b93b4dd1160e8b7",
-      "bytes": 76853,
+      "sha256": "5d7d01894d213e4e268c4d277a1681858b3e5d6f0b8f36360d126e5f6f5ba48c",
+      "bytes": 77908,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
