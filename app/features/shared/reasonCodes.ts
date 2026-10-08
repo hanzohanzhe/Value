@@ -33,6 +33,7 @@ const REASON_MESSAGES: Record<string, string> = {
   // when a doctoral reproduction Run's annual results are withheld; and the
   // production-policy publication block of P0-4 S7 (backend/model_runner.py, F-P04-4).
   GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED: "A raw invariant of this reproduction Run failed, so its annual results are not published on result pages; Inspect and exports keep them.",
+  GF_RESULTS_PENDING_RAW_INVARIANTS: "This reproduction Run is still running; its raw invariants are checked when it finishes, and annual results are published only if every one passes.",
   GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED: "The raw invariants of this reproduction Run were not evaluated, so its annual results are not published on result pages; Inspect and exports keep them.",
   GF_VALIDATION_GATE_FAILED: "A validation gate (run invariants, energy balance or storage limits) failed, so annual results are not published.",
   GF_VALIDATION_CONTRACT_OR_MECHANISM: "A required contract or analytical-invariant check failed, so annual results are not published.",
@@ -52,6 +53,8 @@ const COVERAGE_STATE_BY_REASON: Readonly<Record<string, { state: ValueStateKey; 
   annual_evidence_withheld_for_nonannual_run: { state: "non_annual", tone: "caution" },
   run_in_progress: { state: "in_progress", tone: "info" },
   immutable_completed_run_required: { state: "in_progress", tone: "info" },
+  // R5 R-低2: a reproduction Run that is still running awaits its raw-invariant check.
+  GF_RESULTS_PENDING_RAW_INVARIANTS: { state: "in_progress", tone: "info" },
   run_cancelled_before_full_coverage: { state: "stopped", tone: "caution" },
   run_failed_before_full_coverage: { state: "stopped", tone: "caution" },
   annual_period_boundary_incomplete: { state: "partial_year", tone: "caution" },

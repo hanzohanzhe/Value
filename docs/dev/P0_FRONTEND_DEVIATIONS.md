@@ -330,3 +330,21 @@
 | F-R51-3 | S-F-低5 | 比较页年度表格上方加一行（`.comparison-reference`，正文样式）：`Deltas (+ and %) are measured against {Study 名} ({run id}), the first Run ticked. To measure against another Run, clear the selection and tick that Run first.`。参照仍是第一个勾选的 Run，不新增选择控件 | 原来不说明参照；新增选择控件超出规格 | 是（是否要参照选择器） |
 | F-R51-4 | S-F-低1、S-F-低6、S-F-低3 | 映射审阅中 `映射 SHA` 改为 `列与单位映射 SHA`，下方 `small` 一行说明时间戳声明不在此 SHA 内、记录在时间戳报告和绑定中；审阅有效期显示为本地时间到分钟（`2026-10-08 00:50 local time`）；包只读时映射编辑器不再显示“正在核对当前包的映射目录…”，改为“当前不能映射 CSV，原因见下方。” | 同一文件两种日期读法得到同一 SHA 易误解；原始 ISO 串带微秒；只读时像在加载 | 否 |
 | F-R51-5 | S-F-中3 | 映射编辑器需求说明句末加：`逐时数据（8,760 或 8,784 行，或时间戳间隔 60 分钟）的每个小时用于两个半小时，MWh/period 按每小时电量换算。` 审阅报告的警告列表中出现 `GF_MAPPING_HOURLY_DEMAND` 一条 | 需求原来不接受逐时数据，报告互相矛盾 | 否 |
+
+## R5-2（复现角色最终验收的缺陷；DECISIONS A28）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R52-1 | R-中1 | 研究路径第 2 步“核对新研究”的 `dl` 中新增一项 `方法学口径`：口径名（Studies 编辑器单选项的同一文案 `Corrected (default)` / `Doctoral reproduction`）、下一行 profile id（`code`），再下一行 12px `--muted` 说明：`沿用基线 Study 的口径。要换用另一口径，请选一项该口径的基线，或在创建后到 Studies 编辑器的 Methodology 中更改并保存新版本。`。Runs 页 “What will run” 的 `project-summary` 在 Data pack 后新增 `Methodology` 一格（同一文案，悬停为 profile id）。研究路径**不加**口径选择控件 | 原来创建前、启动前都看不到口径；规格第 7 节把口径选择放在 StudyComposer，研究路径另加选择会绕过编辑器的白名单检查 | 是（是否要在研究路径中直接选择口径） |
+| F-R52-2 | R-中2 | Runs 年度卡片 `result-domain-grid` 在 `Storage charge / discharge` 后新增 `Unused VRE (PSM boundary)`：`{x} MWh · {y}% of available`（与 VRE 页同一定义：各时段 max(可用 VRE − 接受 VRE, 0) 之和）；旧 Run 无此字段时写 `Not recorded`。比较页年度指标新增 `Unused VRE at the PSM boundary (MWh)` 与 `Unused VRE share of available VRE (%)`（沿用现有指标卡片），不受弃电归因证据门控。原三项 v2 归因指标保持 `Unavailable` | 比较页和卡片原来没有可用的物理弃电量，两口径最大的差异看不到 | 是（标签措辞） |
+| F-R52-3 | R-低2 | 论文复现口径的 Run 未结束时：上下文条 `Raw invariants` 写 `Pending`（muted，悬停说明）；Callout 改为 info 色 `Annual results pending the raw-invariant check`，正文 `This reproduction Run is still running. …`，无按钮；年度结果区 pill 写 `Pending`，状态词用 `in_progress`；VRE 页 pill 与信息框写 `Pending` / `Annual VRE results pending`；结果查询面板的状态词为 `Running`（info）。后端 `result_publication` 仍为 `withheld`（年度资源照旧门控），`raw_invariants_status: "pending"`、`reason_code: GF_RESULTS_PENDING_RAW_INVARIANTS` | 准备阶段原来写“raw invariants were not evaluated”和 Withheld，像是结论 | 否 |
+| F-R52-4 | R-低3 | Run 处于 queued / snapshotting / running / cancel_requested 时，Runs 页不显示“历史复现条件检查”和“从此 Run 的冻结输入创建独立 Study”两块面板（原来只是禁用） | 两块面板只对已结束的 Run 有意义 | 否 |
+| F-R52-5 | R-低1 | Market replay、VRE、Network & redispatch、Network & water 页按 Run 的 id、状态和已完成年数重新加载证据，不再随每次轮询重载；Run 尚在冻结输入（queued / snapshotting）时，Market replay 显示 `The Run is still preparing` 空状态，Inspect 的 planning / market 页签显示同义 info-box，均不发请求 | 准备期间每 2 s 一个 404 | 否 |
+| F-R52-6 | R-低4 | 年度卡片 Planning evolution 的 `Active` 改为 `Active before admission`，其后新增 `Admitted this year: {n}`；整行悬停说明 Inspect 的年末 Active = 两者之和 | 卡片与 Inspect 的 Active 口径不同（规划步骤后 vs 年末），原来没有说明 | 是（标签措辞） |
+| F-R52-7 | R-低6 | Inspect 规划表的 Project 列在名称等于 ID 时只显示一次；生命周期事件表在本页没有任何阶段转换记录时（v2 项目索引不记录 from/to）不显示 Transition 列 | 同一 ID 显示两次；整列 “- -> -” | 否 |
+| F-R52-8 | R-低7 | Artifacts 页签中，未选择任何扩展的 Run 只显示一句 `This Run selected no optional extensions, so it has no extension results.`，不再列出 “Not recorded” 的身份格；VRE 页 v2 归因查询面板在结果 `unavailable` 或 Run 未结束时不显示来源身份格，只显示状态说明 | 原来把“没有扩展/没有归因来源”显示成证据缺失 | 否 |
+| F-R52-9 | R-低10 | Market replay 窗口卡的 `Accepted supply` 数值下加一行（沿用 `.window-clock-note`）：修正口径 `Full node: covers demand plus storage charge, exports and flexible load.`，论文口径 `Source-classified node: storage charged from pre-balancing surplus is outside this figure.`，未知 `Balance boundary not recorded.`；悬停为边界公式。后端 dispatch timeline 新增 `accepted_supply_boundary` | 同一标签在两口径下统计边界不同，原来没有说明 | 是（文案） |
+| F-R52-10 | R-低11 | 研究路径创建按钮因名称为空而禁用时，按钮下方加一行 13px `--muted`：`先在第 {n} 步填写新 Study 名称，才能创建。`（按钮 `aria-describedby` 指向它）；不自动填默认名称 | 按钮变灰没有原因 | 否 |
+| F-R52-11 | R-低13 | Runs 空状态正文改为 `Choose a scope under Check for, check readiness, then run it. Wiring checks are quick; full scopes compute every model year.` | 原文“start with two full years”与默认 scope 不符 | 否 |

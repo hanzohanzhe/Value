@@ -128,6 +128,19 @@ export function unitCostText(metrics: MetricMap): string {
  * from the backend; the page does not subtract. A Run without the A2 value
  * shows the recorded blackout with no note.
  */
+/**
+ * R5 R-中2: unused VRE at the PSM boundary (available minus accepted VRE, the
+ * VRE page's figure) with its share of available VRE. Every PSM records it;
+ * the v2 curtailment attribution needs matched counterfactual snapshots.
+ */
+export function unusedVreText(metrics: MetricMap): string {
+  const unused = number(metrics, "unused_vre_mwh");
+  if (unused == null) return "Not recorded";
+  const available = number(metrics, "available_vre_mwh");
+  const share = available != null && available > 0 ? ` · ${withUnit(formatNumber(100 * unused / available, 1), "%", "")} of available` : "";
+  return `${withUnit(formatNumber(unused), "MWh")}${share}`;
+}
+
 export function unservedDemandText(metrics: MetricMap): { value: string; note: string | null } {
   const energy = (value: number | null) => value == null ? "Not evaluated" : withUnit(formatNumber(value), "MWh");
   const total = number(metrics, "unserved_energy_a2_mwh");

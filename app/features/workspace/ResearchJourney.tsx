@@ -5,6 +5,7 @@ import { useId, useRef, useState, type FormEvent } from "react";
 import "./research-journey.css";
 import { studyNameTaken } from "./studyNames.ts";
 import { derivationNotes } from "../modules/derivationNotes.ts";
+import { studyMethodologyText, type MethodologyCatalogue } from "../studies/methodologyChoice.ts";
 
 export type JourneyStudy = {
   id: string;
@@ -15,6 +16,7 @@ export type JourneyStudy = {
   start_year: number;
   end_year: number;
   modules: Record<string, string>;
+  parameters?: Record<string, unknown>;
 };
 
 export type JourneyPack = {
@@ -42,12 +44,14 @@ export type ResearchJourneyProps = {
   onOpenLearn: () => void;
   onOpenRuns: (studyId: string) => void;
   onReviewSource: (studyId: string) => void;
+  /** R5 R-中1: the methodology catalogue, to name the profile the new Study inherits. */
+  methodologyCatalogue?: MethodologyCatalogue | null;
 };
 
 type DeriveResponse = { project?: { id?: string }; error?: string; detail?: string };
 
 export default function ResearchJourney({
-  intent, studies, packs, initialStudyId, online,
+  intent, studies, packs, initialStudyId, online, methodologyCatalogue,
   onCreated, onOpenData, onOpenLearn, onOpenRuns, onReviewSource, targetPackId, onTargetPackChange, onPackCreated,
 }: ResearchJourneyProps) {
   const fieldId = useId();
@@ -72,6 +76,7 @@ export default function ResearchJourney({
   const duplicateName = studyNameTaken(studies, newName);
   const createLabel = changingData ? "创建换数据 Study" : "创建复现 Study";
   const reviewStep = changingData ? 3 : 2;
+  const methodology = source ? studyMethodologyText(source.parameters, methodologyCatalogue) : null;
 
   function openData(packId = targetPackId) {
     if (!source) return;
@@ -212,6 +217,8 @@ export default function ResearchJourney({
               <dl className="research-journey-review">
                 <div><dt>基线</dt><dd>{source.name}</dd></div>
                 <div><dt>年份</dt><dd>{source.start_year} – {source.end_year}</dd></div>
+                {methodology && <div><dt>方法学口径</dt><dd>{methodology.label}{methodology.profileId && <code>{methodology.profileId}</code>}
+                  <span className="research-journey-hint">沿用基线 Study 的口径。要换用另一口径，请选一项该口径的基线，或在创建后到 Studies 编辑器的 Methodology 中更改并保存新版本。</span></dd></div>}
                 <div><dt>基线保存版本</dt><dd>{source.revision_number !== undefined ? `Revision ${source.revision_number}` : "版本编号未记录"}
                   {hasRevision ? <code title={source.revision_sha256}>{source.revision_sha256}</code> : <span className="research-journey-warning">缺少版本标识，暂不能创建</span>}</dd></div>
                 <div><dt>原数据包</dt><dd>{originalPack?.name ?? source.data_pack_id}<code>{source.data_pack_id}</code></dd></div>
@@ -240,7 +247,8 @@ export default function ResearchJourney({
               <p className="research-journey-error" role="alert">{error}</p>
               <p className="research-journey-hint">若基线版本、数据或模块已改变，请检查基线并保存新版本后重试。</p>
             </>}
-            <button className="research-journey-primary" type="submit" disabled={!canCreate}>{busy ? "正在创建 Study…" : createLabel}</button>
+            <button className="research-journey-primary" type="submit" disabled={!canCreate} aria-describedby={source && hasRevision && !newName.trim() ? `${fieldId}-name-needed` : undefined}>{busy ? "正在创建 Study…" : createLabel}</button>
+            {source && hasRevision && !newName.trim() && <p id={`${fieldId}-name-needed`} className="research-journey-hint" role="status">先在第 {reviewStep} 步填写新 Study 名称，才能创建。</p>}
           </li>
         </ol>
       </form>

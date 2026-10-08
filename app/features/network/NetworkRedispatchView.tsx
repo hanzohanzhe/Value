@@ -37,6 +37,7 @@ import { annualTotalsPublishable, coveragePill, coverageReasonText, isResultCove
 import { withUnit } from "../shared/format.ts";
 import { fallbackAuditSentences } from "./fallbackAuditView.ts";
 import "./network-coverage.css";
+import { useStableRun } from "../shared/stableRun.ts";
 
 type Row = Record<string, unknown>;
 type Tab = "overview" | "period" | "reliability" | "evidence";
@@ -195,7 +196,7 @@ const SETTLEMENT_COLUMNS: Column[] = [["agent_id", "Agent", (value) => String(va
 export function SettlementTable({ rows }: { rows: Row[] }) { return <DataTable rows={rows} columns={SETTLEMENT_COLUMNS} />; }
 
 export default function NetworkRedispatchView({
-  run,
+  run: liveRun,
   onOpenMarket,
   onCreateFullReplayRevision,
   onOpenRun,
@@ -214,6 +215,8 @@ export default function NetworkRedispatchView({
   onRerun: () => Promise<void>;
   sourceStudyMutable: boolean;
 }) {
+  // R5 R-低1: reload on the Run's identity, status or years, not on every poll.
+  const run = useStableRun(liveRun);
   const runId = run?.id ?? "";
   const base = run ? apiUrl(`runs/${run.id}/network-redispatch`) : "";
   // R-D5 (round R1-5): a Run without a balancing module cleared one national market (copperplate).

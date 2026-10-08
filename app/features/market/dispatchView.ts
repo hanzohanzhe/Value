@@ -8,6 +8,19 @@ export function bucketPrice(bucket: Pick<DispatchBucket, "price_gbp_per_mwh" | "
   return formatPrice(bucket.price_gbp_per_mwh, timeline.price_basis, { aggregated: bucket.period_count > 1 });
 }
 
+/**
+ * R5 R-低10: what "Accepted supply" covers. The corrected PSM records supply at
+ * the full node; the doctoral PSM at its source-classified node, where storage
+ * charged from pre-balancing surplus is outside accepted supply. The two
+ * figures are therefore not the same quantity across methodologies.
+ */
+export function acceptedSupplyNote(timeline: Pick<DispatchTimeline, "accepted_supply_boundary">): string {
+  const id = timeline.accepted_supply_boundary?.boundary_id ?? "";
+  if (id === "native_corrected_full_node_v1" || id === "full_node_v1") return "Full node: covers demand plus storage charge, exports and flexible load.";
+  if (id === "default_psm_surplus_node_v1") return "Source-classified node: storage charged from pre-balancing surplus is outside this figure.";
+  return "Balance boundary not recorded.";
+}
+
 // ---------------------------------------------------------------- dispatch stack (S4)
 
 /** Fallback for a backend without flow roles (dispatch timeline v1): the v4-v7

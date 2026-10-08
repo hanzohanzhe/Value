@@ -47,7 +47,7 @@ export function runSelectPlaceholder(runCount: number): string {
 export function runHistoryEmpty(runCount: number, launching: boolean): { title: string; body: string } {
   if (launching) return { title: "Starting the Run…", body: "VALUE is checking the Study's readiness. The Run appears in Run history as soon as it is created; its inputs are then frozen in the background." };
   if (runCount) return { title: `${runCount} ${runCount === 1 ? "Run" : "Runs"} for this Study`, body: "Choose one in Run history to see its progress and results." };
-  return { title: "No runs yet", body: "Choose a saved study, check its inputs and start with two full years." };
+  return { title: "No runs yet", body: "Choose a scope under Check for, check readiness, then run it. Wiring checks are quick; full scopes compute every model year." };
 }
 
 /**

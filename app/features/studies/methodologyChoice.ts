@@ -118,3 +118,16 @@ export function applyProfileChoice(
 export function domainBadgeText(maturity: string, methodologyAvailable: boolean): string {
   return methodologyAvailable ? maturity.replaceAll("_", " ") : "not available with this methodology";
 }
+
+/**
+ * R5 R-中1: the methodology a saved Study runs under, for pages that show a
+ * Study before it runs (research journey, Runs "What will run"). The label is
+ * the composer's option label; without the catalogue the recorded id is shown,
+ * and a Study without an explicit choice uses the default profile.
+ */
+export function studyMethodologyText(parameters: Record<string, unknown> | null | undefined, catalogue: MethodologyCatalogue | null | undefined): { label: string; profileId: string | null; frozen: boolean } {
+  const profileId = selectedProfileId(parameters ?? {}, catalogue);
+  const profile = findProfile(catalogue, profileId);
+  if (profile) return { label: profileOptionLabel(profile), profileId, frozen: profile.frozen };
+  return { label: profileId ?? "Default methodology", profileId, frozen: false };
+}

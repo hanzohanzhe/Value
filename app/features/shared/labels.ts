@@ -18,6 +18,9 @@ export const METRIC_LABELS: Readonly<Record<string, string>> = {
   recorded_unserved_energy_mwh: "Unserved energy recorded by the PSM (MWh)",
   demand_mwh: "Annual demand (MWh)",
   demand_served_mwh: "Demand served (MWh)",
+  // R5 R-中2: the physical unused VRE every PSM records (VRE page definition).
+  unused_vre_mwh: "Unused VRE at the PSM boundary (MWh)",
+  unused_vre_share_percent: "Unused VRE share of available VRE (%)",
   vre_curtailment_mwh: "VRE curtailment (MWh)",
   vre_curtailment_rate: "VRE curtailment rate",
   redispatch_net_impact_mwh: "Redispatch net impact (MWh)",

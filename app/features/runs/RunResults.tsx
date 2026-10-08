@@ -7,7 +7,7 @@ import { Badge, formatNumber, formatMoney, withUnit } from "../shared/presentati
 import { apiUrl, getJson } from "../shared/api";
 import { Callout, StatusPill, ValueState } from "../shared/Callout";
 import { coverageReasonText, coverageStateKey, yearCoveragePercent, yearCoveragePill, yearTotalsPublishable, type ResultCoverage } from "../shared/coverageView.ts";
-import { costComposition, unitCostText, unservedDemandText } from "./resultMetrics.ts";
+import { costComposition, unitCostText, unservedDemandText, unusedVreText } from "./resultMetrics.ts";
 import { moduleEvidenceText } from "./runHistoryView.ts";
 import { planningYearFromPayload } from "./planningView.ts";
 import { codePhrase, stageLabel, statusLabel } from "../shared/labels.ts";
@@ -17,7 +17,7 @@ function planningCount(value: unknown, missing = "not_evaluated"): string {
   if (typeof value === "number") return formatNumber(value, 0);
   return statusLabel(typeof value === "string" ? value : missing);
 }
-import { gateBlockedPublication, gateBlockedText, type ResultPublication, type RunValidationFields } from "../workspace/runValidation.ts";
+import { gateBlockedPublication, gateBlockedText, publicationPending, type ResultPublication, type RunValidationFields } from "../workspace/runValidation.ts";
 import "./run-results.css";
 
 /** A recorded annual metric, or null when the Run did not record it (never 0 for missing). */
@@ -108,6 +108,14 @@ export function CostComposition({ result }: { result: RunResult }) {
 /** Q14 / spec 4.2: a withheld reproduction Run shows the state word, one line and the way to the full ledger, never totals. */
 export function WithheldAnnualResults({ publication, withheldYearCount, onOpenInspect, onExportLedger }: { publication: ResultPublication; withheldYearCount?: number | null; onOpenInspect?: () => void; onExportLedger?: () => void }) {
   const years = typeof withheldYearCount === "number" && withheldYearCount > 0 ? withheldYearCount : null;
+  // R5 R-低2: an unfinished reproduction Run is pending, not withheld.
+  if (publicationPending(publication)) return <div className="results-cockpit">
+    <section className="latest-result annual-results-withheld value-new-control">
+      <div><small>Annual results</small><StatusPill tone="muted" title={publication.message}>Pending</StatusPill>
+        <div className="annual-withheld"><ValueState state="in_progress" title={publication.reason_code} /> <span>Annual results of this reproduction run appear after it finishes, once every raw invariant has passed.</span></div>
+      </div>
+    </section>
+  </div>;
   return <div className="results-cockpit">
     <section className="latest-result annual-results-withheld value-new-control">
       <div><small>Annual results</small><StatusPill tone="caution" title={publication.message}>Withheld</StatusPill>
@@ -130,6 +138,13 @@ export function GateBlockedAnnualResults({ validation, onOpenInspect, onExportLe
     <Callout tone="danger" title="Annual results not published" actions={actions.length ? actions : undefined}><p>{gateBlockedText(validation)}</p></Callout>
   </div>;
 }
+
+/**
+ * R5 R-低4: the annual card counts the planning step (projects still active
+ * after it, before this year's admissions) and the admissions separately;
+ * Inspect lists project-year records at year end, where active = both.
+ */
+export const PLANNING_COMPACT_NOTE = "Counts from the year's planning step: projects still active after it, then the projects admitted this year. Inspect lists each project at year end, so its Active count is the sum of the two.";
 
 export function AnnualResults({ runId, results, coverage, onOpenInspect, publication, withheldYearCount, onExportLedger, validation }: { runId: string; results: RunResult[]; coverage?: ResultCoverage | null; onOpenInspect?: () => void; publication?: ResultPublication | null; withheldYearCount?: number | null; onExportLedger?: () => void; validation?: RunValidationFields | null }) {
   if (publication?.status === "withheld") return <WithheldAnnualResults publication={publication} withheldYearCount={withheldYearCount} onOpenInspect={onOpenInspect} onExportLedger={onExportLedger} />;
@@ -172,9 +187,9 @@ export function AnnualResults({ runId, results, coverage, onOpenInspect, publica
         <summary><span><b>{result.year}</b><StatusPill tone={pill.tone} title={pill.title}>{pill.text}</StatusPill><small>{yearPublished ? `${formatMoney(metricNumber(result, "total_system_cost_gbp"))} · ${unitCostText(result.metrics)}` : "Annual totals not shown"}</small></span><em>View year</em></summary>
         {!yearPublished ? withheldNote(result.year) : <>
         <CostComposition result={result} />
-        <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${withUnit(formatNumber(metricNumber(result, "total_carbon_emissions_tco2e")), "tCO₂e")}`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
+        <div className="result-domain-grid"><span><small>Imports</small><b>{result.metrics.imports_mwh == null ? "Not evaluated" : energyMwh(metricNumber(result, "imports_mwh"))}</b></span><span><small>Storage charge / discharge</small><b>{result.metrics.storage_charge_mwh == null ? "Not evaluated" : `${formatNumber(metricNumber(result, "storage_charge_mwh"))} / ${energyMwh(metricNumber(result, "storage_discharge_mwh"))}`}</b></span><span><small>Unused VRE (PSM boundary)</small><b>{unusedVreText(result.metrics)}</b></span><span><small>Final VRE curtailment</small><b>{finalCurtailment == null ? `Unavailable — ${missingCurtailmentReason}` : `${finalCurtailment} MWh`}</b></span><span><small>VRE curtailment rate</small><b>{curtailmentRate == null ? `Unavailable — ${missingCurtailmentReason}` : `${curtailmentRate}%`}</b></span><span><small>Redispatch net impact</small><b>{redispatchNet == null || typeof redispatchNetValue !== "number" ? `Unavailable — ${missingCurtailmentReason}` : `${redispatchNetValue < 0 ? "−" : redispatchNetValue > 0 ? "+" : ""}${redispatchNet} MWh`}</b></span><span><small>Total carbon</small><b>{result.metrics.total_carbon_emissions_tco2e == null ? "Not evaluated" : `${withUnit(formatNumber(metricNumber(result, "total_carbon_emissions_tco2e")), "tCO₂e")}`}</b><em>{String(result.metrics.carbon_status ?? "not_evaluated").replaceAll("_", " ")}</em></span></div>
         </>}
-        {result.planning && <div className="planning-compact"><b>Planning evolution</b><span>Active: {planningCount(result.planning.active)}</span><span>Commissioned: {planningCount(result.planning.commissioned)}</span><span>Failed: {planningCount(result.planning.failed, "not_applicable")}</span><span>Deferred: {planningCount(result.planning.deferred)}</span></div>}
+        {result.planning && <div className="planning-compact" title={PLANNING_COMPACT_NOTE}><b>Planning evolution</b><span>Active before admission: {planningCount(result.planning.active)}</span>{result.planning.admitted != null && <span>Admitted this year: {planningCount(result.planning.admitted)}</span>}<span>Commissioned: {planningCount(result.planning.commissioned)}</span><span>Failed: {planningCount(result.planning.failed, "not_applicable")}</span><span>Deferred: {planningCount(result.planning.deferred)}</span></div>}
         <PlanningPipelinePanel key={`${runId}|${result.year}`} runId={runId} year={result.year} />
         {result.capacity_mw && <details className="capacity-panel"><summary>Capacity used by the PSM</summary><div className="capacity-grid">{Object.entries(result.capacity_mw).map(([tech, value]) => <span key={tech}><small>{tech}</small><b>{withUnit(formatNumber(value), "MW")}</b></span>)}{result.capacity_mwh?.storage != null && <span><small>Storage energy</small><b>{withUnit(formatNumber(result.capacity_mwh.storage), "MWh")}</b></span>}</div></details>}
       </details>;

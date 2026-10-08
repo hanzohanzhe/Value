@@ -243,9 +243,16 @@ export function rawInvariantFailures(run: RunValidationFields | null | undefined
   return Array.isArray(run?.raw_invariant_failures) ? run.raw_invariant_failures.filter((row): row is RawInvariantFailure => Boolean(row && typeof row === "object")) : [];
 }
 
+/** R5 R-低2: a reproduction Run that is still running has not reached its raw-invariant check yet. */
+export function publicationPending(publication: ResultPublication | null | undefined): boolean {
+  return publication?.status === "withheld" && (publication.raw_invariants_status === "pending" || publication.reason_code === "GF_RESULTS_PENDING_RAW_INVARIANTS");
+}
+
 /** passed | failed | not_evaluated as recorded (detail, publication record or its reason code); undefined when absent. */
 function rawInvariantStatus(run: RunValidationFields): string | undefined {
   const reason = text(run.result_publication?.reason_code);
+  // R5 R-低2: an unfinished Run's check is pending, whatever partial record it has.
+  if (publicationPending(run.result_publication)) return "pending";
   return text(run.raw_invariants?.status) ?? text(run.result_publication?.raw_invariants_status)
     ?? (reason === "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED" ? "failed" : reason === "GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED" ? "not_evaluated" : undefined);
 }
@@ -266,6 +273,7 @@ export function rawInvariantsField(run: RunValidationFields | null | undefined):
     case "passed": return { tone: "ok", dot: true, text: "Passed", title: "Every raw invariant passed; annual results are published." };
     case "failed": return { tone: "caution", dot: true, text: "Failed", title: "A raw invariant failed; the backend recorded no detail." };
     case "not_evaluated": return { tone: "muted", dot: false, text: "Not evaluated" };
+    case "pending": return { tone: "muted", dot: false, text: "Pending", title: "Checked when the Run finishes; annual results are published only if every raw invariant passes." };
     default: return { tone: "muted", dot: false, text: "Not recorded" };
   }
 }
@@ -310,7 +318,7 @@ export type NoticeId = "energy_balance_failed" | "validation_gate_failed" | "res
 export type NoticeAction = "open_residuals" | "open_inspect" | "export_ledger" | "view_advisories" | "show_stress_events";
 export type RunNotice = {
   id: NoticeId;
-  tone: "danger" | "caution";
+  tone: "danger" | "caution" | "info";
   title: string;
   body: string;
   actions: NoticeAction[];
@@ -404,7 +412,13 @@ export function runNotices(run: RunValidationFields | null | undefined): RunNoti
     notices.push(energyBalanceNotice());
   }
   // 2. Q14: annual results of a reproduction Run that did not pass its raw invariants.
-  if (run.result_publication?.status === "withheld") {
+  if (publicationPending(run.result_publication)) {
+    notices.push({
+      id: "results_withheld", tone: "info", title: "Annual results pending the raw-invariant check",
+      body: "This reproduction Run is still running. Its raw invariants are checked when it finishes; annual results are published only if every one passes.",
+      actions: [],
+    });
+  } else if (run.result_publication?.status === "withheld") {
     notices.push({
       id: "results_withheld", tone: "caution", title: "Annual results withheld for this reproduction run",
       // Spec 11.3 (R-D1): the raw invariant that actually failed, not a generic energy-balance claim.
@@ -498,4 +512,6 @@ export function annualResultsWithheld(run: RunValidationFields | null | undefine
   return run?.result_publication?.status === "withheld";
 }
 
+/** R5 R-低2: the VRE page of a reproduction Run that is still running. */
+export const VRE_PENDING_TEXT = "This reproduction Run is still running. Its annual VRE summary appears after it finishes, once every raw invariant has passed.";
 export const VRE_WITHHELD_TEXT = "Annual results are not published on result pages for this reproduction run, so its annual VRE summary is not shown. The half-hour VRE and market evidence stays available in Market replay and Inspect.";

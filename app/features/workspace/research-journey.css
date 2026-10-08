@@ -28,6 +28,7 @@
 .research-journey-review dd { margin: 0; min-width: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .research-journey-review code { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .research-journey-review .research-journey-warning { display: block; }
+.research-journey-review .research-journey-hint { display: block; margin-top: 4px; font-size: 12px; line-height: 1.5; }
 .research-journey-modules { min-width: 0; }
 .research-journey-modules summary { min-height: 44px; padding: 12px 0; color: var(--blue-dark); font-weight: 650; cursor: pointer; }
 .research-journey-modules summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }

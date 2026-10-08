@@ -44,6 +44,8 @@ export type DispatchTimeline = {
   year: number; resolution: string; total: number; limit: number; offset: number; source_artifact_sha256?: string | null;
   period_hours?: number; timezone?: string; calendar?: string; clock_label_corrected?: boolean; clock_note?: string; price_aggregation?: string; dispatch_source?: string; dispatch_summary_available?: boolean;
   price_basis?: PriceBasis; price_basis_source?: PriceBasisSource;
+  /** R5 R-低10: the energy-balance boundary accepted_supply_mwh is recorded at. */
+  accepted_supply_boundary?: { boundary_id?: string | null; formula?: string | null; description?: string | null } | null;
   items: DispatchBucket[];
 };
 
