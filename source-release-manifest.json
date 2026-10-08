@@ -3013,8 +3013,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "5d7d01894d213e4e268c4d277a1681858b3e5d6f0b8f36360d126e5f6f5ba48c",
-      "bytes": 77908,
+      "sha256": "938f4bf08ce01529313c23cc213545839dc7865fc6e39cb41b40f7599b4eeedd",
+      "bytes": 78394,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3511,8 +3511,8 @@
     },
     {
       "path": "app/features/results/comparisonReview.ts",
-      "sha256": "fe0f4ff79b04a0eb4401036fe5aff6aa84cc0a3e4155c8c75e23c6cf98305aa3",
-      "bytes": 11283,
+      "sha256": "529c3dba04817502783ca4ef0c05cbb530954410f943b76212bf0c6a8e5938c0",
+      "bytes": 11454,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3661,8 +3661,8 @@
     },
     {
       "path": "app/features/shared/labels.ts",
-      "sha256": "333974ac5e0672fc4cd07ccd855a37514303f6ada84258c0110c116c1565f35b",
-      "bytes": 4651,
+      "sha256": "ba4a0525c373936f617d0f85509434dac41f6505197a325ba7e35b9cbde72c1a",
+      "bytes": 4831,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -8734,8 +8734,8 @@
     },
     {
       "path": "gridform_core/results_summary.py",
-      "sha256": "e762a67acf88c9df38bf6e087c39661e1be9958b93c1b118614d19733512e3d2",
-      "bytes": 55493,
+      "sha256": "6ad4eefba7570f9ce7c92ba0d58db3f4b6ffe17b76687051a6a2ba9e7bc21ab7",
+      "bytes": 60034,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11096,8 +11096,8 @@
     },
     {
       "path": "tests/frontend/unit/r5-reproduce-defects.test.mjs",
-      "sha256": "86104000b4c378e50dad840be1d42c5058ebd6dfa2be6503f9e66bc194aba495",
-      "bytes": 4922,
+      "sha256": "bfbd4d42559d9db14301e025df15104f21b968d25f8a5fb0fc2cbb81a60e4469",
+      "bytes": 5950,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12920,8 +12920,8 @@
     },
     {
       "path": "tests/test_r5_reproduce_defects.py",
-      "sha256": "409e1bc4154614fc112b6013264480a645890b27852e5b93bd233875e35f38e6",
-      "bytes": 14728,
+      "sha256": "6e2d9c13a5f568d5a5beeee3f32236a7735e673e8e326d4cdb85f80205a522b6",
+      "bytes": 20335,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

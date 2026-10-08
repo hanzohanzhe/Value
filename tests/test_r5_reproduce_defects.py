@@ -179,6 +179,99 @@ class UnusedVreComparisonTests(unittest.TestCase):
         self.assertIn("unused_vre_by_year=annual_unused_vre(", source)
 
 
+def _semantic_ledger(folder: Path, semantic_extra: dict, *, unused: float, excess: float) -> Path:
+    """A four-half-hour ledger with the given VRE semantic metadata."""
+
+    from tests.test_market_replay import _period as period_row
+
+    database = folder / "model-output" / "market" / "market.sqlite"
+    ledger = create_market_ledger(database, "full", semantic_metadata={"period_hours": 0.5, **semantic_extra})
+    for period in range(4):
+        ledger.record_period(period_row(period, curtailment=unused, excess=excess))
+    ledger.close()
+    return database
+
+
+DOCTORAL_SEMANTIC = {
+    "excess_scope": "inflexible_mixed", "excess_relationship": "separate_prebalancing",
+    "curtailment_semantics": "balancing_stage_down_regulation_after_storage_export_and_flexible_demand",
+}
+CORRECTED_SEMANTIC = {
+    "excess_scope": "non_vre", "excess_relationship": "separate_prebalancing",
+    "curtailment_semantics": "vre_available_minus_gross_output",
+}
+
+
+class UnusedVreBoundaryTests(unittest.TestCase):
+    """R5-2 review (major): unused VRE at different PSM boundaries is not compared as one quantity."""
+
+    def _summary(self, folder: Path, semantic: dict, run_id: str, *, unused: float, excess: float) -> dict:
+        from gridform_core.results_summary import build_run_summary
+
+        root = folder / run_id
+        shutil.copytree(FIXTURES / "pre-fix-dynamic-full", root)
+        _semantic_ledger(root, semantic, unused=unused, excess=excess)
+        ledgers = root / "model-output" / "ledgers"
+        ledgers.mkdir(parents=True, exist_ok=True)
+        (ledgers / "annual-cost-ledger.json").write_text(json.dumps(
+            {"years": [{"year": 2025, "cem_system_cost_gbp": 1.0, "lines": []}]}), encoding="utf-8")
+        summary = build_run_summary(root)
+        summary["run"]["run_id"] = run_id
+        return summary
+
+    def test_boundary_and_pre_balancing_excess_are_recorded(self):
+        from gridform_core.results_summary import annual_unused_vre
+
+        with tempfile.TemporaryDirectory() as folder:
+            doctoral = annual_unused_vre(_semantic_ledger(Path(folder) / "d", DOCTORAL_SEMANTIC, unused=0.5, excess=2.0))
+            corrected = annual_unused_vre(_semantic_ledger(Path(folder) / "c", CORRECTED_SEMANTIC, unused=1.0, excess=2.0))
+        self.assertEqual(doctoral[2025]["vre_boundary"], "after_separate_prebalancing_excess")
+        self.assertEqual(doctoral[2025]["pre_balancing_excess_mwh"], 8.0)
+        self.assertEqual(corrected[2025]["vre_boundary"], "full_node_gross_vre_output")
+        # Under the corrected rules ``excess`` is non-VRE spill, not pre-balancing excess.
+        self.assertIsNone(corrected[2025]["pre_balancing_excess_mwh"])
+
+    def test_cross_boundary_delta_is_withheld_in_compare_and_csv(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        with tempfile.TemporaryDirectory() as folder:
+            doctoral = self._summary(Path(folder), DOCTORAL_SEMANTIC, "doctoral", unused=0.5, excess=2.0)
+            corrected = self._summary(Path(folder), CORRECTED_SEMANTIC, "corrected", unused=1.0, excess=2.0)
+        metrics = doctoral["annual"][0]["metrics"]
+        self.assertEqual(metrics["unused_vre_mwh"]["vre_boundary"], "after_separate_prebalancing_excess")
+        self.assertEqual(metrics["pre_balancing_excess_mwh"]["value"], 8.0)
+        self.assertEqual(corrected["annual"][0]["metrics"]["pre_balancing_excess_mwh"]["status"], "not_applicable")
+        comparison = compare_run_summaries([doctoral, corrected])
+        for metric_id in ("unused_vre_mwh", "unused_vre_share_percent", "pre_balancing_excess_mwh"):
+            gate = comparison["metric_delta_gates"][metric_id]
+            self.assertFalse(gate["allowed"], metric_id)
+            self.assertEqual(gate["reason_code"], "unused_vre_boundary_differs")
+            self.assertIn("pre-balancing excess is reported separately", gate["reason"])
+        values = comparison["annual_comparison"][0]["metrics"]["unused_vre_mwh"]
+        self.assertEqual([item["value"] for item in values], [2.0, 4.0])  # per-Run figures stay
+        self.assertTrue(all(item.get("delta_from_base") is None for item in values))
+        self.assertEqual(values[1]["vre_boundary"], "full_node_gross_vre_output")
+        # A metric unrelated to the VRE boundary keeps its delta.
+        self.assertTrue(comparison["metric_delta_gates"]["cem_system_cost_gbp"]["allowed"])
+        rows = list(csv.reader(comparison_csv(comparison).splitlines()))
+        header = next(row for row in rows if row[:3] == ["run_id", "year", "metric_id"])
+        records = [dict(zip(header, row)) for row in rows[rows.index(header) + 1:]]
+        unused_rows = [row for row in records if row["metric_id"] == "unused_vre_mwh"]
+        self.assertEqual({row["delta_shown"] for row in unused_rows}, {"false"})
+        self.assertIn("different PSM boundaries", unused_rows[0]["delta_withheld_reason"])
+
+    def test_same_boundary_keeps_its_delta(self):
+        from gridform_core.results_summary import compare_run_summaries
+
+        with tempfile.TemporaryDirectory() as folder:
+            first = self._summary(Path(folder), CORRECTED_SEMANTIC, "first", unused=1.0, excess=0.0)
+            second = self._summary(Path(folder), CORRECTED_SEMANTIC, "second", unused=0.5, excess=0.0)
+        comparison = compare_run_summaries([first, second])
+        self.assertTrue(comparison["metric_delta_gates"]["unused_vre_mwh"]["allowed"])
+        values = comparison["annual_comparison"][0]["metrics"]["unused_vre_mwh"]
+        self.assertEqual(values[1]["delta_from_base"], -2.0)
+
+
 class ComparisonCsvReasonTests(unittest.TestCase):
     """R-低12: the comparison CSV says why a value is empty or a delta is withheld."""
 

@@ -122,6 +122,8 @@ export function metricDeltaShown(comparison: MetricDeltaFields, metricId: string
  */
 export const CURTAILMENT_EVIDENCE_METRICS: readonly string[] = ["vre_curtailment_mwh", "vre_curtailment_rate", "redispatch_net_impact_mwh"];
 export function missingMetricValueText(metricId: string): string {
+  // R5-2 review: only a ledger with a separate pre-balancing stage (doctoral rules) records this.
+  if (metricId === "pre_balancing_excess_mwh") return "Not applicable";
   return CURTAILMENT_EVIDENCE_METRICS.includes(metricId) ? "Unavailable" : "Not evaluated";
 }
 

@@ -55,42 +55,88 @@ def _a2_balance_by_year(path: Path) -> dict[int, dict[str, float]]:
 
 
 UNUSED_VRE_DEFINITION = "value.unused-vre/v1"
+PRE_BALANCING_EXCESS_DEFINITION = "value.pre-balancing-excess/v1"
+
+# R5-2 review: where a ledger measures accepted VRE, from its semantic metadata
+# (the same fields market_replay.query_vre_curtailment_summary reads).  Unused
+# VRE measured at different boundaries is not one quantity across Runs.
+VRE_BOUNDARY_FULL_NODE = "full_node_gross_vre_output"
+VRE_BOUNDARY_AFTER_PREBALANCING = "after_separate_prebalancing_excess"
+VRE_BOUNDARY_UNSPLIT = "unsplit_unused_vre"
+VRE_BOUNDARY_UNKNOWN = "not_recorded"
+VRE_BOUNDARY_METRICS = frozenset({
+    "unused_vre_mwh", "unused_vre_share_percent", "pre_balancing_excess_mwh",
+})
 
 
-def annual_unused_vre(database: Path) -> dict[int, dict[str, float]]:
+def vre_measurement_boundary(semantic: Mapping[str, object]) -> str:
+    """The PSM boundary at which a ledger records accepted VRE."""
+
+    from .market_replay import CORRECTED_CURTAILMENT_SEMANTICS
+
+    if str(semantic.get("curtailment_semantics")) == CORRECTED_CURTAILMENT_SEMANTICS:
+        return VRE_BOUNDARY_FULL_NODE
+    relationship = str(semantic.get("excess_relationship", ""))
+    if relationship == "separate_prebalancing":
+        return VRE_BOUNDARY_AFTER_PREBALANCING
+    if relationship == "alias_of_unused_vre":
+        return VRE_BOUNDARY_UNSPLIT
+    return VRE_BOUNDARY_UNKNOWN
+
+
+def annual_unused_vre(database: Path) -> dict[int, dict[str, object]]:
     """Annual unused VRE at the PSM boundary, as the VRE page reports it (R5 R-中2).
 
     Unused VRE is the sum over periods of max(available VRE - accepted VRE, 0)
     (``market_replay.query_vre_curtailment_summary``).  It is recorded by
     every market ledger with VRE columns, unlike the v2 curtailment
     attribution, which needs matched counterfactual snapshots (zonal PSM).
+    Each year also carries ``vre_boundary`` (where accepted VRE is measured)
+    and, for a ledger that separates pre-balancing excess from the balancing
+    stage (doctoral rules), that excess as ``pre_balancing_excess_mwh``
+    (None otherwise), as the VRE page reports them (G1-08).
     {} when the ledger or its columns are missing.
     """
 
     import sqlite3
 
     from .market_ledger import _read_only_connection
+    from .market_replay import _semantic_metadata
 
     if not database.is_file():
         return {}
+    try:
+        semantic = _semantic_metadata(database)
+    except (OSError, ValueError, sqlite3.Error):
+        semantic = {}
+    boundary = vre_measurement_boundary(semantic)
     try:
         with _read_only_connection(database) as connection:
             columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(period_summary)")}
             if not {"year", "vre_available_mwh", "vre_accepted_mwh"}.issubset(columns):
                 return {}
+            excess_sql = "SUM(excess_mwh)" if "excess_mwh" in columns else "NULL"
             rows = connection.execute(
                 "SELECT year, SUM(vre_available_mwh), "
-                "SUM(MAX(vre_available_mwh - vre_accepted_mwh, 0.0)) "
+                "SUM(MAX(vre_available_mwh - vre_accepted_mwh, 0.0)), "
+                f"{excess_sql} "
                 "FROM period_summary GROUP BY year ORDER BY year"
             ).fetchall()
     except sqlite3.Error:
         return {}
-    result: dict[int, dict[str, float]] = {}
-    for year, available, unused in rows:
+    result: dict[int, dict[str, object]] = {}
+    for year, available, unused, excess in rows:
         available_value, unused_value = _finite_number(available), _finite_number(unused)
         if available_value is None or unused_value is None:
             continue
-        result[int(year)] = {"available_vre_mwh": available_value, "unused_vre_mwh": unused_value}
+        result[int(year)] = {
+            "available_vre_mwh": available_value,
+            "unused_vre_mwh": unused_value,
+            "vre_boundary": boundary,
+            "pre_balancing_excess_mwh": (
+                _finite_number(excess) if boundary == VRE_BOUNDARY_AFTER_PREBALANCING else None
+            ),
+        }
     return result
 
 
@@ -343,6 +389,7 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         curtailment_reason = str(curtailment_validation["reason_code"])
         carbon_row = carbon_by_year.get(year, {})
         unused_vre = unused_vre_by_year.get(year) or {}
+        vre_boundary = unused_vre.get("vre_boundary") or VRE_BOUNDARY_UNKNOWN
         unused_share = (
             100.0 * unused_vre["unused_vre_mwh"] / unused_vre["available_vre_mwh"]
             if unused_vre and unused_vre["available_vre_mwh"] > 0 else None
@@ -367,8 +414,14 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
                 # R5 R-中2: the physical unused VRE of the VRE page, which every
                 # PSM records; the three v2 attribution metrics below need
                 # matched counterfactual snapshots (zonal PSM only).
-                "unused_vre_mwh": {"value": unused_vre.get("unused_vre_mwh"), "unit": "MWh", "definition_id": UNUSED_VRE_DEFINITION, "denominator": None, "source": "market/market.sqlite period_summary"},
-                "unused_vre_share_percent": {"value": unused_share, "unit": "%", "definition_id": UNUSED_VRE_DEFINITION, "denominator": "available_vre_mwh", "source": "market/market.sqlite period_summary"},
+                # R5-2 review: vre_boundary says where accepted VRE is measured;
+                # Compare withholds deltas between different boundaries.
+                "unused_vre_mwh": {"value": unused_vre.get("unused_vre_mwh"), "unit": "MWh", "definition_id": UNUSED_VRE_DEFINITION, "denominator": None, "source": "market/market.sqlite period_summary", "vre_boundary": vre_boundary},
+                "unused_vre_share_percent": {"value": unused_share, "unit": "%", "definition_id": UNUSED_VRE_DEFINITION, "denominator": "available_vre_mwh", "source": "market/market.sqlite period_summary", "vre_boundary": vre_boundary},
+                # The doctoral ledger routes pre-balancing surplus (VRE and
+                # inflexible supply) to storage, export or spill before accepted
+                # VRE is measured; it is reported on its own, as on the VRE page.
+                "pre_balancing_excess_mwh": {"value": unused_vre.get("pre_balancing_excess_mwh"), "unit": "MWh", "definition_id": PRE_BALANCING_EXCESS_DEFINITION, "denominator": None, "source": "market/market.sqlite period_summary", "vre_boundary": vre_boundary, **({} if vre_boundary == VRE_BOUNDARY_AFTER_PREBALANCING else {"status": "not_applicable", "reason_code": "ledger_does_not_separate_prebalancing_excess"})},
                 "vre_curtailment_mwh": {"value": vre_curtailment_mwh, "unit": "MWh", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": None, "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
                 "vre_curtailment_rate": {"value": vre_curtailment_rate, "unit": "fraction", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": "realised_available_vre_mwh", "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
                 "redispatch_net_impact_mwh": {"value": redispatch_net_impact_mwh, "unit": "MWh", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": None, "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
@@ -589,6 +642,7 @@ _METRIC_DEFINITIONS: dict[str, tuple[str, ...]] = {
     "demand_served_mwh": (),
     "unused_vre_mwh": (),
     "unused_vre_share_percent": (),
+    "pre_balancing_excess_mwh": (),
     "vre_curtailment_mwh": (),
     "vre_curtailment_rate": (),
     "redispatch_net_impact_mwh": (),
@@ -602,6 +656,7 @@ def metric_delta_gate(
     metric_id: str,
     differing_definitions: Sequence[str],
     curtailment_comparison: Mapping[str, object],
+    vre_boundaries: Sequence[object] = (),
 ) -> dict[str, object]:
     """Whether one metric's annual deltas are shown, and why not (AF3-1).
 
@@ -619,6 +674,18 @@ def metric_delta_gate(
             "reason": "The Runs compute this metric under different "
             + ", ".join(key.replace("_", " ") for key in blocking) + " definitions.",
         }
+    # R5-2 review: unused VRE measured at different PSM boundaries (doctoral
+    # after separate pre-balancing excess, corrected at the full node) is not
+    # one quantity; its delta is withheld, the per-Run values stay.
+    if metric_id in VRE_BOUNDARY_METRICS and len({str(value) for value in vre_boundaries}) > 1:
+        return {
+            "allowed": False,
+            "reason_code": "unused_vre_boundary_differs",
+            "definitions": [],
+            "reason": "Unused VRE is measured at different PSM boundaries ("
+            + ", ".join(sorted({str(value).replace("_", " ") for value in vre_boundaries}))
+            + "); the doctoral pre-balancing excess is reported separately.",
+        }
     if metric_id in CURTAILMENT_EVIDENCE_METRICS and not curtailment_comparison.get("metric_deltas_allowed"):
         code = str(curtailment_comparison.get("reason_code") or "curtailment_evidence_unavailable")
         return {
@@ -629,6 +696,16 @@ def metric_delta_gate(
             "evidence in every Run (" + code.replace("_", " ") + ").",
         }
     return {"allowed": True, "reason_code": None, "definitions": [], "reason": None}
+
+
+def _summary_vre_boundary(summary: Mapping[str, object]) -> str:
+    """The VRE measurement boundary a Run summary records (R5-2 review)."""
+
+    for row in summary.get("annual", []) or []:  # type: ignore[union-attr]
+        metric = (row.get("metrics") or {}).get("unused_vre_mwh") if isinstance(row, Mapping) else None
+        if isinstance(metric, Mapping) and metric.get("vre_boundary"):
+            return str(metric["vre_boundary"])
+    return VRE_BOUNDARY_UNKNOWN
 
 
 def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str, object]:
@@ -765,6 +842,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         and bool(curtailment_comparison["metric_deltas_allowed"])
     )
     metric_delta_gates: dict[str, dict[str, object]] = {}
+    vre_boundaries = [_summary_vre_boundary(summary) for summary in summaries]
     base = summaries[0]
     base_annual = {int(row["year"]): row for row in base.get("annual", [])}  # type: ignore[index]
     annual_comparison = []
@@ -780,7 +858,9 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
         metrics = {}
         for metric_id in metric_ids:
             gate = metric_delta_gates.setdefault(
-                metric_id, metric_delta_gate(metric_id, differing_definitions, curtailment_comparison)
+                metric_id, metric_delta_gate(
+                    metric_id, differing_definitions, curtailment_comparison, vre_boundaries,
+                )
             )
             values = []
             for summary in summaries:
@@ -790,6 +870,7 @@ def compare_run_summaries(summaries: Sequence[Mapping[str, object]]) -> dict[str
                     "run_id": summary.get("run", {}).get("run_id"),  # type: ignore[union-attr]
                     "value": metric.get("value"), "unit": metric.get("unit"),
                     "definition_id": metric.get("definition_id"), "denominator": metric.get("denominator"),
+                    **({"vre_boundary": metric["vre_boundary"]} if metric.get("vre_boundary") else {}),
                 })
             base_value = values[0]["value"]
             for item in values:

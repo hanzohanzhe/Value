@@ -75,3 +75,15 @@ test("R-低13: the empty Run history does not promise two full years", () => {
   assert.doesNotMatch(body, /two full years/);
   assert.match(body, /Check for/);
 });
+
+test("R5-2 review: a cross-boundary unused-VRE delta shows the gate reason; pre-balancing excess is labelled", async () => {
+  const { metricDeltaShown, metricDeltaWithheldText, missingMetricValueText } = await import("../../../app/features/results/comparisonReview.ts");
+  const comparison = {
+    metric_deltas_allowed: true, annual_metrics_withheld: false,
+    metric_delta_gates: { unused_vre_mwh: { allowed: false, reason_code: "unused_vre_boundary_differs", reason: "Unused VRE is measured at different PSM boundaries (after separate prebalancing excess, full node gross vre output); the doctoral pre-balancing excess is reported separately." } },
+  };
+  assert.equal(metricDeltaShown(comparison, "unused_vre_mwh"), false);
+  assert.match(metricDeltaWithheldText(comparison, "unused_vre_mwh"), /different PSM boundaries/);
+  assert.equal(metricLabel("pre_balancing_excess_mwh"), "Pre-balancing excess, reported separately (MWh)");
+  assert.equal(missingMetricValueText("pre_balancing_excess_mwh"), "Not applicable");
+});
