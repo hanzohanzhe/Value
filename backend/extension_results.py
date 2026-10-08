@@ -245,6 +245,21 @@ def _frozen(graph: Mapping) -> tuple[dict[str, ExtensionManifest], list[dict]]:
     return parsed, metadata
 
 
+def _no_extensions_selected(run_root: Path) -> bool:
+    """True when the Run's frozen Study selected no extensions (R5 R-低7).
+
+    A Run without extensions records no extension graph by design; only when
+    the frozen Study lists extensions is a missing graph an evidence gap.
+    """
+
+    try:
+        snapshot = json.loads((run_root / "project-snapshot.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    selected = snapshot.get("selected_extensions") if isinstance(snapshot, dict) else None
+    return isinstance(selected, list) and not selected
+
+
 def query_extension_artifacts(run_root: Path, query: Mapping) -> dict:
     """Read a bounded page of declared scalar summaries; never load hook code."""
     if set(query) - {"extension_id", "year", "limit", "offset"}:
@@ -276,9 +291,14 @@ def query_extension_artifacts(run_root: Path, query: Mapping) -> dict:
         graph_path = run_root / result["source"]["module_resolution"]["path"]
         graph, digest, stamp = _read(graph_path, run_root, "module_resolution")
         snapshots.append((graph_path, stamp)); result["source"]["module_resolution"]["sha256"] = digest
+        if isinstance(graph, dict):
+            # R5 R-低7: the module graph is recorded whether or not extensions were selected.
+            result["identity"]["frozen_module_graph_sha256"] = graph.get("graph_sha256")
         if not isinstance(graph, dict) or not isinstance(graph.get("extension_graph"), dict):
+            if _no_extensions_selected(run_root):
+                raise EvidenceError("unavailable", "no_extensions_selected",
+                                    "This Run selected no optional extensions, so it has no extension results.")
             raise EvidenceError("unavailable", "frozen_extension_graph_missing", "This Run has no frozen extension graph.")
-        result["identity"]["frozen_module_graph_sha256"] = graph.get("graph_sha256")
         result["identity"]["frozen_extension_graph_sha256"] = graph["extension_graph"].get("graph_sha256")
         manifests, identities = _frozen(graph["extension_graph"])
         result["capabilities"]["extensions"] = identities

@@ -30,6 +30,7 @@
   "price_basis_source": "semantics",
   "residual_aggregation": "sum_of_absolute_period_values",
   "stress_recorded": true,
+  "accepted_supply_boundary": {"boundary_id":"native_corrected_full_node_v1","formula":"S + B - D - C - E - X - XS","description":"corrected default PSM: gross source output (VRE incl. consumed surplus) + imports + discharge + shortfall = demand + charge + export + flexible load + non-VRE spill"},
   "units": {"energy":"MWh","price":"GBP/MWh"},
   "dispatch_timeline_schema_version": "value.dispatch-timeline/v2"
  }

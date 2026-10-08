@@ -54,6 +54,46 @@ def _a2_balance_by_year(path: Path) -> dict[int, dict[str, float]]:
     return result
 
 
+UNUSED_VRE_DEFINITION = "value.unused-vre/v1"
+
+
+def annual_unused_vre(database: Path) -> dict[int, dict[str, float]]:
+    """Annual unused VRE at the PSM boundary, as the VRE page reports it (R5 R-中2).
+
+    Unused VRE is the sum over periods of max(available VRE - accepted VRE, 0)
+    (``market_replay.query_vre_curtailment_summary``).  It is recorded by
+    every market ledger with VRE columns, unlike the v2 curtailment
+    attribution, which needs matched counterfactual snapshots (zonal PSM).
+    {} when the ledger or its columns are missing.
+    """
+
+    import sqlite3
+
+    from .market_ledger import _read_only_connection
+
+    if not database.is_file():
+        return {}
+    try:
+        with _read_only_connection(database) as connection:
+            columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(period_summary)")}
+            if not {"year", "vre_available_mwh", "vre_accepted_mwh"}.issubset(columns):
+                return {}
+            rows = connection.execute(
+                "SELECT year, SUM(vre_available_mwh), "
+                "SUM(MAX(vre_available_mwh - vre_accepted_mwh, 0.0)) "
+                "FROM period_summary GROUP BY year ORDER BY year"
+            ).fetchall()
+    except sqlite3.Error:
+        return {}
+    result: dict[int, dict[str, float]] = {}
+    for year, available, unused in rows:
+        available_value, unused_value = _finite_number(available), _finite_number(unused)
+        if available_value is None or unused_value is None:
+            continue
+        result[int(year)] = {"available_vre_mwh": available_value, "unused_vre_mwh": unused_value}
+    return result
+
+
 def _unavailable_attribution(reason_code: str, *, status: str = "unavailable") -> dict[str, object]:
     return {"status": status, "reason_code": reason_code, "annual_by_year": {}}
 
@@ -287,6 +327,7 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
     )
     curtailment_by_year = curtailment_validation["annual_by_year"]
     balance_by_year = _a2_balance_by_year(output / "market" / "metadata.json")
+    unused_vre_by_year = annual_unused_vre(output / "market" / "market.sqlite")
     annual = []
     for row in cost_years:
         if not isinstance(row, Mapping):
@@ -301,6 +342,11 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
         curtailment_status = str(curtailment_validation["status"])
         curtailment_reason = str(curtailment_validation["reason_code"])
         carbon_row = carbon_by_year.get(year, {})
+        unused_vre = unused_vre_by_year.get(year) or {}
+        unused_share = (
+            100.0 * unused_vre["unused_vre_mwh"] / unused_vre["available_vre_mwh"]
+            if unused_vre and unused_vre["available_vre_mwh"] > 0 else None
+        )
         lines = {str(item.get("id")): item.get("amount_gbp") for item in row.get("lines", []) if isinstance(item, Mapping)}
         annual.append({
             "year": year,
@@ -318,6 +364,11 @@ def build_run_summary(run_root: Path) -> dict[str, object]:
                 "demand_served_mwh": {"value": row.get("demand_served_mwh"), "unit": "MWh", "definition_id": row.get("definition_id"), "denominator": None, "source": "ledgers/annual-cost-ledger.json"},
                 "unserved_energy_mwh": {"value": (balance_by_year.get(year) or {}).get("unserved_mwh"), "unit": "MWh", "definition_id": "value.adequacy-unserved-energy/v2", "denominator": None, "source": "market/metadata.json"},
                 "recorded_unserved_energy_mwh": {"value": None, "unit": "MWh", "definition_id": "value.adequacy-unserved-energy/v1", "denominator": None, "source": "status.results"},
+                # R5 R-中2: the physical unused VRE of the VRE page, which every
+                # PSM records; the three v2 attribution metrics below need
+                # matched counterfactual snapshots (zonal PSM only).
+                "unused_vre_mwh": {"value": unused_vre.get("unused_vre_mwh"), "unit": "MWh", "definition_id": UNUSED_VRE_DEFINITION, "denominator": None, "source": "market/market.sqlite period_summary"},
+                "unused_vre_share_percent": {"value": unused_share, "unit": "%", "definition_id": UNUSED_VRE_DEFINITION, "denominator": "available_vre_mwh", "source": "market/market.sqlite period_summary"},
                 "vre_curtailment_mwh": {"value": vre_curtailment_mwh, "unit": "MWh", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": None, "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
                 "vre_curtailment_rate": {"value": vre_curtailment_rate, "unit": "fraction", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": "realised_available_vre_mwh", "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
                 "redispatch_net_impact_mwh": {"value": redispatch_net_impact_mwh, "unit": "MWh", "definition_id": "value.vre-curtailment-attribution/v2", "denominator": None, "source": "network/vre-curtailment-attribution.json", "status": curtailment_status, "reason_code": curtailment_reason},
@@ -536,6 +587,8 @@ _METRIC_DEFINITIONS: dict[str, tuple[str, ...]] = {
     "recorded_unserved_energy_mwh": (),
     "demand_mwh": (),
     "demand_served_mwh": (),
+    "unused_vre_mwh": (),
+    "unused_vre_share_percent": (),
     "vre_curtailment_mwh": (),
     "vre_curtailment_rate": (),
     "redispatch_net_impact_mwh": (),
@@ -909,6 +962,8 @@ def annual_withholding_reasons(
                 for item in failures
             )
             text = f"is a reproduction Run whose annual results are withheld (Q14): raw invariant {checks} failed"
+        elif publication.get("raw_invariants_status") == "pending":
+            text = "is a reproduction Run that is still running; its raw invariants are checked when it finishes (Q14)"
         else:
             text = "is a reproduction Run whose annual results are withheld (Q14): its raw invariants were not evaluated"
         reasons.append({
@@ -936,9 +991,27 @@ def comparison_csv(comparison: Mapping[str, object]) -> str:
                 "annual_withheld_reason", reason.get("reason_code"),
                 ";".join(str(item) for item in reason.get("run_ids") or []), reason.get("text"),
             ])
-    writer.writerow(["run_id", "year", "metric_id", "value", "unit", "definition_id", "denominator", "source"])
+    # R5 R-低12: an empty value or a withheld delta says why, as the page does:
+    # value_status/value_reason_code for the value, delta_shown and
+    # delta_withheld_reason for the per-metric delta gate (AF3-1).
+    writer.writerow(["run_id", "year", "metric_id", "value", "unit", "definition_id", "denominator", "source",
+                     "value_status", "value_reason_code", "delta_shown", "delta_withheld_reason"])
+    gates = comparison.get("metric_delta_gates") if isinstance(comparison.get("metric_delta_gates"), Mapping) else {}
+    annual_withheld = bool(comparison.get("annual_metrics_withheld"))
     for summary in comparison.get("runs", []):
         for annual in summary.get("annual", []):
             for metric_id, metric in annual.get("metrics", {}).items():
-                writer.writerow([summary["run"]["run_id"], annual["year"], metric_id, metric.get("value"), metric.get("unit"), metric.get("definition_id"), metric.get("denominator"), metric.get("source")])
+                value = metric.get("value")
+                status = metric.get("status") or ("recorded" if value is not None else "not_recorded")
+                gate = gates.get(metric_id) if isinstance(gates, Mapping) else None  # type: ignore[union-attr]
+                if annual_withheld:
+                    delta_shown, delta_reason = "false", "annual_metrics_withheld"
+                elif isinstance(gate, Mapping):
+                    delta_shown = "true" if gate.get("allowed") else "false"
+                    delta_reason = None if gate.get("allowed") else (gate.get("reason") or gate.get("reason_code"))
+                else:
+                    delta_shown, delta_reason = None, None
+                writer.writerow([summary["run"]["run_id"], annual["year"], metric_id, value, metric.get("unit"),
+                                 metric.get("definition_id"), metric.get("denominator"), metric.get("source"),
+                                 status, metric.get("reason_code"), delta_shown, delta_reason])
     return output.getvalue()

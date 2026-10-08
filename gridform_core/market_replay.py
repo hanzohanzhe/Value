@@ -655,6 +655,7 @@ def query_dispatch_timeline(
         ).fetchone() if "metadata" in tables else None
         ledger_schema_version = str(schema_row[0]) if schema_row else "unknown"
         price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
+        supply_boundary = accepted_supply_boundary(connection)
         if ledger_schema_version == "value.market-ledger/v8":
             dispatch_source = "dispatch_summary"
         elif ledger_schema_version in {
@@ -844,6 +845,7 @@ def query_dispatch_timeline(
         # a +2 and a -2 in one window show 4, not a cancelled 0.
         "residual_aggregation": "sum_of_absolute_period_values",
         "stress_recorded": stress_by_bucket is not None,
+        "accepted_supply_boundary": supply_boundary,
         "units": {"energy": "MWh", "price": "GBP/MWh"},
     }
 
@@ -859,6 +861,31 @@ def _empty_stress(basis: str) -> dict[str, object]:
     return {
         "shortfall_mwh": 0.0, "shortfall_upper_mwh": 0.0, "shortfall_basis": basis,
         "stress_periods": 0, "possible_stress_periods": 0,
+    }
+
+
+def accepted_supply_boundary(connection: sqlite3.Connection) -> dict[str, object]:
+    """The energy-balance boundary ``accepted_supply_mwh`` is recorded at (R5 R-低10).
+
+    The corrected PSM records gross supply at the full node (it covers demand
+    plus storage charge, export and flexible load); the doctoral PSM records
+    supply at its source-classified node, where storage charged from
+    pre-balancing surplus is routed outside accepted supply.  The UI states
+    the boundary next to the "Accepted supply" figure.
+    """
+
+    from . import energy_balance_contract as balance
+    from .energy_balance_oracle import read_metadata, resolve_boundary
+
+    try:
+        boundary = resolve_boundary(read_metadata(connection))
+    except (sqlite3.Error, ValueError, TypeError):
+        return {"boundary_id": balance.UNKNOWN_BOUNDARY, "formula": None, "description": None}
+    definition = balance.BOUNDARIES.get(str(boundary.get("boundary_id")))
+    return {
+        "boundary_id": str(boundary.get("boundary_id")),
+        "formula": definition.formula if definition else None,
+        "description": definition.description if definition else None,
     }
 
 

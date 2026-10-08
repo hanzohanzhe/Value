@@ -44,7 +44,7 @@ from gridform_core.run_input_snapshot import (
 from gridform_core.v2.orchestrator import CancellationRequested
 from gridform_core.run_lifecycle import cancellation_requested
 from gridform_core.runtime_paths import user_data_root
-from gridform_core.results_summary import validate_vre_curtailment_attribution
+from gridform_core.results_summary import annual_unused_vre, validate_vre_curtailment_attribution
 from gridform_core.zonal_pack_selection import resolve_zonal_pack_selection
 from gridform_core.failure_evidence import (
     RECOVERY_AUTHORIZATION_SCHEMA_VERSION,
@@ -383,6 +383,7 @@ def _frontend_results(
     mode: str,
     periods_per_year: int,
     expected_years: tuple[int, ...],
+    unused_vre_by_year: dict[int, dict[str, float]] | None = None,
 ) -> list[dict]:
     capacities_by_year = {int(row["Year"]): row for row in exact["capacity_history"]}
     cost_ledgers_by_year = {
@@ -466,6 +467,11 @@ def _frontend_results(
                 "voll_gbp_per_mwh": (operating_details.get(year) or {}).get("voll_gbp_per_mwh"),
                 "blackout_mwh": cost["Total_Energy_Deficit_MWh"],
                 "curtailment_mwh": cost.get("Total_VRE_Curtailed_MWh", cost.get("Total_Excess_Energy_MWh")),
+                # R5 R-中2: unused VRE at the PSM boundary (the VRE page's figure),
+                # recorded by every market ledger; the v2 attribution below needs
+                # matched counterfactual snapshots.
+                "unused_vre_mwh": ((unused_vre_by_year or {}).get(year) or {}).get("unused_vre_mwh"),
+                "available_vre_mwh": ((unused_vre_by_year or {}).get(year) or {}).get("available_vre_mwh"),
                 "vre_curtailment_mwh": curtailment.get("total_mwh") if curtailment is not None else None,
                 "vre_curtailment_rate": curtailment.get("rate") if curtailment is not None else None,
                 "redispatch_net_impact_mwh": curtailment.get("redispatch_net_mwh") if curtailment is not None else None,
@@ -774,6 +780,7 @@ def run(project_id: str, run_id: str, mode: str) -> None:
             mode=mode,
             periods_per_year=periods,
             expected_years=tuple(range(start_year, end_year + 1)),
+            unused_vre_by_year=annual_unused_vre(run_dir / "model-output" / "market" / "market.sqlite"),
         )
         final["completed_years"] = len(final["results"])
     else:

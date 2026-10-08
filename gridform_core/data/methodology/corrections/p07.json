@@ -114,7 +114,11 @@
         "accounting",
         "presentation"
       ],
-      "applies_when": {},
+      "applies_when": {
+        "assets_any": [
+          "natural_flow_hydro"
+        ]
+      },
       "advisory": {
         "severity": "high",
         "title": "Headline cost included run-of-river hydro compatibility capital",

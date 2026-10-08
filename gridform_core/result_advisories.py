@@ -88,6 +88,10 @@ RAW_INVARIANT_COMPONENTS = ("run_invariant_status", "energy_balance_status", "st
 NEEDS_REVIEW_SEVERITIES = {"high", "critical"}
 WITHHELD_FAILED = "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED"
 WITHHELD_NOT_EVALUATED = "GF_RESULTS_WITHHELD_RAW_INVARIANTS_NOT_EVALUATED"
+# R5 R-低2: an unfinished reproduction Run has not reached its raw-invariant
+# check yet; its annual results stay off result pages, but as pending, not as
+# "not evaluated".
+WITHHELD_PENDING = "GF_RESULTS_PENDING_RAW_INVARIANTS"
 
 
 def _read_object(path: Path) -> dict[str, Any]:
@@ -591,6 +595,19 @@ def result_publication(run: Mapping[str, Any], run_root: Path, methodology: Mapp
     verdict = raw_invariants_status(run, run_root, evidence)
     if verdict == "passed":
         return {"status": "published", "rule": rule, "raw_invariants_status": verdict}
+    if verdict == "not_evaluated" and str(run.get("status") or "") in ACTIVE_STATUSES:
+        return {
+            "status": "withheld",
+            "rule": rule,
+            "decision": "Q14",
+            "raw_invariants_status": "pending",
+            "reason_code": WITHHELD_PENDING,
+            "message": (
+                "This reproduction Run is still running. Its raw invariants are checked when it finishes; "
+                "annual results are published only if every one passes."
+            ),
+            "available_in": ["inspect", "export"],
+        }
     return {
         "status": "withheld",
         "rule": rule,

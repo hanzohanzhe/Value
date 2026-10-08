@@ -30,6 +30,7 @@
   "price_basis_source": "inferred_from_writer",
   "residual_aggregation": "sum_of_absolute_period_values",
   "stress_recorded": true,
+  "accepted_supply_boundary": {"boundary_id":"unknown","formula":null,"description":null},
   "units": {"energy":"MWh","price":"GBP/MWh"},
   "dispatch_timeline_schema_version": "value.dispatch-timeline/v2"
  }
