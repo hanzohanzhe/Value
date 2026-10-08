@@ -1,7 +1,7 @@
 # VALUE 0.7.0-alpha.1 网站交接文档（给 value.ac 上传员）
 
 - 日期：2026-10-08。
-- 依据的代码状态：分支 `fix/review-2026-10-04`，HEAD `6560189`（此后的提交只改交付文档）；对照 `main` 的 `35aadb3`，即 0.6.0-alpha.2 的源码。本文只描述这一状态下的规则和事实，施工经过见 git 历史与 `docs/dev/p0-reports/`。
+- 依据的代码状态：分支 `fix/review-2026-10-04`，代码状态 `6014421`（此后的提交只改文档）；对照 `main` 的 `35aadb3`，即 0.6.0-alpha.2 的源码。本文只描述这一状态下的规则和事实，施工经过见 git 历史与 `docs/dev/p0-reports/`。
 - 读者：维护 `website/` 并上传 value.ac 的人。`website/` 包括 `build.py`、`content.py`、`journey.py`、`site.json`、`methodology_page.py`、`publication.py`、`release_candidate.py`、`check_site.py`、`sync_methodology.py` 和 `static/`。
 - 本文只写交接内容，不改 `website/` 下的任何文件。本分支的 `website/` 与 35aadb3 逐字节相同（`git diff 35aadb3 -- website/` 为空），文中的行号对两边都适用。
 - 依据的优先次序：`docs/dev/P0_DECISIONS.md` 最高（同一事项有多条时，以编号靠后的为准），其次是代码，再次是 `CHANGELOG.md` 等公开文档，最后是本文。各项内容的出处见第 5 节。
@@ -273,16 +273,12 @@
 |---|---|---|
 | 复现 | 在 Study composer 第 1 步选择方法学口径；`Research guide` 页和 Runs 页 `What will run` 都显示 Study 当前的口径（研究路径只显示，不提供切换）。“对照参考结果”必须对照**同一版本、同一口径**的参考，0.6.0 rc1 的参考不能对照 0.7.0。0.6.0 保存的 Study 首次运行前，界面显示 `This Study needs your confirmation before it runs`，确认后另存为新修订（`Review and save as new revision`）。启动后 Run 立即列出并显示准备进度（2.8 节）。论文复现口径的年度结果若被扣发，在 Inspect 或账本文件中查看。年度卡片和比较页列出未利用的 VRE；跨口径比较只并列数值，不给差值（2.6 节） | Q2、Q13、Q14、A24-5 |
 | 换数据 | 映射 CSV 时要声明列，隐式整数序号列会被拒绝（`GF_DATA_INDEX_COLUMN`）。**需求**至少覆盖一个模型年：半小时数据至少 17,520 个值；逐时数据（8,760 或 8,784 行，或声明的时间戳步长为 60 分钟）在映射时每小时用于两个半小时，审阅中给出 `GF_MAPPING_HOURLY_DEMAND` 说明。**VALUE 101 的需求文件**表头写 mwh、包内标为 MWh/period，但 VALUE 按 MW（半小时平均功率）读取；角色卡和映射编辑器写明这一点，按这些数值改写需求时映射中选 MW。新需求序列的年电量与被替换的文件相比超过 1.5 倍或低于 0.67 倍时，给出 `GF_DATA_DEMAND_SCALE` 警告（不阻止提交）。逐时的价格和可用量，每个值用于两个半小时；需求以外的序列不满一个模型年时从开头重复补齐，提交前要另行确认。可以声明时间戳列（UTC 或 Europe/London）和日期顺序（自动识别、DD/MM/YYYY 或 MM/DD/YYYY），系统逐行检查重复、缺口、倒序和步长，有问题不能提交；Europe/London 时间在映射时换成 UTC。EUR 价格必须填 EUR per GBP 汇率、汇率口径（年均、月均或固定汇率）和价格年份；价格年份不是 2025 时给出提示（VALUE 只换算币种，不按年份折算）。CSV 须为逗号分隔。Data 页每个数据包有校验面板：三层校验（Structural、Chronology、Plausibility），以及两个口径的资格。Study composer 把不符合所选口径的数据包标为 `not available with this methodology`。互联线数据角色写作 “{Country} interconnector availability (+ import / - export)”：正值为进口能力，负值为出口能力。用户映射的数据包只能用于修正口径；发布版 GBP1 public1 只能用于论文复现口径。正在被 Run 冻结的数据包不能替换文件；有 Run 在准备或运行时，映射编辑器中暂存的文件和列选择保留不变 | P0-5a、A16-1、A16-2、A24-5、A27、A28 |
-| 改模块 | 外部模块只能在修正口径下运行；论文复现口径拒绝已启用的外部代码。属于方法变化的模块升级（`requires_user_opt_in`），已保存的 Study 要在界面确认；纯代码身份的变化自动追加修订。损坏的模块被隔离，不会阻止 VALUE 启动；合同 ID 不匹配时安装或启用直接报 `GF_MODULE_CONTRACT_MISMATCH`。Modules 页常驻 `Disabled and quarantined` 区，每项有 `Enable`、`Rescan`、`Remove`，并显示清单文件和 ID；页头有 `Rescan modules`；模块计数写作 `{n} of {m} ready · {k} experimental`。同一模块 ID 有两份清单时两份都被隔离（`GF_MODULE_ID_DUPLICATE`）：在任一行点 Disable 会停用该模块，并把另一份清单移到 `modules/disabled-manifests/modules/`；仍有副本时 Enable 被拒（`GF_MODULE_ID_COLLISION`，提示写出副本文件名）。允许原地修改已安装模块的源码：预检给出琥珀色提示，Run 记录新的源码哈希，比较页显示模块方法已改变；之后仍可从该 Study 派生对照 Study。修正口径下，内置储能对象只报循环损耗；用户公式和外部模块的报价不变。储能报价可以在导出账本的 `storage_orders` 表和 Market replay 中核对；Runs 页的 storage cost 槽位显示 PSM 内部调用该模块的账本证据。完整市场回放选了非内置储能成本模块时，readiness 给出 `GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE` 警告：运行时间和磁盘占用可能超出估算，建议先跑短范围，长运行改用 Summary 追踪 | Q3、Q13、P0-2、A16-4、A27、A28 |
-| 加功能 | 扩展规则与改模块相同：只在修正口径下运行，冲突时被隔离，修复后 Rescan（Rescan 重新导入扩展钩子），也可以离线自救。扩展编写台的 `Open independent Study draft` 复制当前选中的 Study，草稿名与已有 Study 重名时自动加序号（例如 `… · extension study 2`）。**Run 只记录 `initialize` 钩子的状态和 `after_psm` 钩子返回的产物**；其他钩子返回声明产物（带 `artifact_type`）时 Run 失败，并在诊断中写明应从 `after_psm` 返回。原地修改已启用扩展的源码同样被检测和记录；但扩展停用之后，只有钩子文件与安装时一致才能重新启用（`GF_EXTENSION_SOURCE_CHANGED`），否则要恢复原文件，或改版本号和包名后作为新包安装（这条规则待作者决定，第 7 节第 10 条）。含实验性扩展的 Run 在上下文条显示 `Experimental extension: {id} {version}`。直接调用 API 的脚本要带会话头（2.7 节），并按 2.8 节处理异步启动。一日课程（`value_101_day`）只运行市场步骤：选了扩展时，范围选项写作 `One-day market lesson (extensions do not run)`，选它会被预检阻断（`GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS`）；要运行扩展，改用两时段或更长的范围 | P0-1、P0-2、A16-3、A24-5、A27、A28 |
+| 改模块 | 外部模块只能在修正口径下运行；论文复现口径拒绝已启用的外部代码。属于方法变化的模块升级（`requires_user_opt_in`），已保存的 Study 要在界面确认；纯代码身份的变化自动追加修订。损坏的模块被隔离，不会阻止 VALUE 启动；合同 ID 不匹配时安装或启用直接报 `GF_MODULE_CONTRACT_MISMATCH`。Modules 页常驻 `Disabled and quarantined` 区，每项有 `Enable`、`Rescan`、`Remove`，并显示清单文件和 ID；页头有 `Rescan modules`；模块计数写作 `{n} of {m} ready · {k} experimental`。同一模块 ID 有两份清单时两份都被隔离（`GF_MODULE_ID_DUPLICATE`）：在任一行点 Disable 会停用该模块，并把另一份清单移到 `modules/disabled-manifests/modules/`；仍有副本时 Enable 被拒（`GF_MODULE_ID_COLLISION`，提示写出副本文件名）。允许原地修改已安装模块的源码：预检给出琥珀色提示，Run 记录新的源码哈希，比较页显示模块方法已改变；之后仍可从该 Study 派生对照 Study。Run 排队时记录已安装的代码，不会用别的代码启动：有 Run 排队或在准备时安装、启用、停用或移除模块或扩展，确认框写明尚未开始的 Run 不会启动；确认后它们以 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 停止，Runs 页提供 `Resubmit with current code`，用同一 Study 和范围新建 Run；已在运行的 Run 保持原代码，但变更后不能再 Resume。修正口径下，内置储能对象只报循环损耗；用户公式和外部模块的报价不变。储能报价可以在导出账本的 `storage_orders` 表和 Market replay 中核对；Runs 页的 storage cost 槽位显示 PSM 内部调用该模块的账本证据。完整市场回放选了非内置储能成本模块时，readiness 给出 `GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE` 警告：运行时间和磁盘占用可能超出估算，建议先跑短范围，长运行改用 Summary 追踪 | Q3、Q13、P0-2、A16-4、A27、A28、A29 |
+| 加功能 | 扩展规则与改模块相同：只在修正口径下运行，冲突时被隔离，修复后 Rescan（Rescan 重新导入扩展钩子），也可以离线自救。扩展编写台的 `Open independent Study draft` 复制当前选中的 Study，草稿名与已有 Study 重名时自动加序号（例如 `… · extension study 2`）。**Run 只记录 `initialize` 钩子的状态和 `after_psm` 钩子返回的产物**；其他钩子返回声明产物（带 `artifact_type`）时 Run 失败（`GF_EXTENSION_OUTPUT_REJECTED`），Runs 页在错误下方写明扩展、钩子和应从 `after_psm` 返回。原地修改已安装扩展的钩子源码与模块规则相同：启用中修改，或停用后修好再 Enable，都被接受，安装记录追加 `accepted_source_edits`，预检给出琥珀色提示（`GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`），Run 记录新的钩子源码哈希，比较页显示方法已改变；钩子无法导入（`GF_EXTENSION_HOOK`），或已安装清单声明的钩子与安装时不同（`GF_EXTENSION_SOURCE_CHANGED`）时，Enable 仍被拒绝。含实验性扩展的 Run 在上下文条显示 `Experimental extension: {id} {version}`。直接调用 API 的脚本要带会话头（2.7 节），并按 2.8 节处理异步启动。一日课程（`value_101_day`）只运行市场步骤：选了扩展时，范围选项写作 `One-day market lesson (extensions do not run)`，选它会被预检阻断（`GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS`）；要运行扩展，改用两时段或更长的范围 | P0-1、P0-2、A16-3、A24-5、A27、A28、A29 |
 
 - 0.7.0 的四角色测试记录在 `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（内部，不发布）。它依据四个角色在源码树导出上的完整走查，以及在当前代码上对每项修复的定向验证和两个口径的两整年冒烟 Run（A28）；测试对象不是安装包。
 - 网站验证页 “VALUE four user paths” 的 0.7.0 一行（附录 A.2 第 8 行），结论和范围只能取自这份报告，并且只能在阶段 1 之后上线。报告中有未关闭的高等缺陷时，这一行不上线。
-- 报告的现状：四条路径都能从头走通，0 个高等、2 个中等、6 个低等缺陷，没有发现算错的结果。两个中等缺陷都不影响模型结果：
-  - EM-中1：有 Run 排队时安装、启用、停用或移除模块或扩展，确认框说排队的 Run 会用新代码启动，实际它们会以笼统的 `GF_CONTRACT_001` 失败，需要重新启动；
-  - AF-中1：原地改过钩子源码的扩展停用后不能直接重新启用，待作者决定（第 7 节第 10 条）。
-
-  低等缺陷包括独立 Study 草稿在页面刷新后丢失、界面中英混排、比较页没有选择参照 Run 的控件（年度表上方写明差值以第一个勾选的 Run 为参照）等。
+- 报告的现状：四条路径都能从头走通，结论都是“通过”；0 个高等、0 个中等、6 个低等缺陷，没有发现算错的结果。低等缺陷都不影响模型结果，包括独立 Study 草稿在页面刷新后丢失、界面中英混排、比较页没有选择参照 Run 的控件（年度表上方写明差值以第一个勾选的 Run 为参照）、Run 开始准备的头几秒内停用模块时 Run 以笼统的 `GF_INPUT_SNAPSHOT_FAILED` 失败等。
 - 原有的 2026-10-02 / rc1 一行保留，并标注版本。
 
 ### 2.10 声明范围
@@ -337,7 +333,7 @@
 
 ### 2.12 界面字符串（翻新前的现状，翻新后要逐条重新核对）
 
-下表是 HEAD `6560189` 的应用界面（`app/`）中，网站步骤和常见问题可能引用的英文字符串，网站照抄。这些字符串多数还没有写进 `CHANGELOG.md` 和用户指南（第 7 节第 7 条），前端整体翻新还会改界面。阶段 2 之前，网站只在“新版本有哪些变化”中概括一句，不逐条引用。
+下表是代码状态 `6014421` 的应用界面（`app/`）中，网站步骤和常见问题可能引用的英文字符串，网站照抄。这些字符串多数还没有写进 `CHANGELOG.md` 和用户指南（第 7 节第 7 条），前端整体翻新还会改界面。阶段 2 之前，网站只在“新版本有哪些变化”中概括一句，不逐条引用。
 
 | 位置 | 字符串（英文原文） |
 |---|---|
@@ -355,6 +351,9 @@
 | 映射编辑器 | `Timestamp column (optional)`：`Timestamp column`、`Time zone`（UTC / Europe/London）、`Date order`（`Auto-detect (DD/MM/YYYY unless a row shows MM/DD/YYYY)` / `DD/MM/YYYY (day first)` / `MM/DD/YYYY (month first)`）；`Column name suggests EUR — confirm the currency.`。编辑器的说明文字目前是中文，翻新时统一界面语言 |
 | Modules 页 | 计数徽章 `{n} of {m} ready · {k} experimental`；`Disabled and quarantined` 区，每项 `Enable`、`Rescan`、`Remove`；页头 `Rescan modules`。Remove 前先确认：文件移到 `modules/disabled-manifests/removed/`，不删除；仍被 Study 或 Run 引用时拒绝。Enable 失败后提示 `Fix the cause, then press Enable again (Enable scans afresh; Rescan alone leaves a disabled entry disabled).`；原地改过源码的卡片写 `Source changed since install ({old8}… → {new8}…).` |
 | 预检（原地改模块源码） | `Module {id} source changed since install ({old8}… → {new8}…). Results will record the new source hash.`；模块已被隔离时，后一句为 `It is quarantined, so no Run can start; once it is repaired, results record the new source hash.` |
+| 预检（原地改扩展钩子源码） | `Extension {id} source {implementation} changed since install ({old8}… → {new8}…). Results may change; the Run records the new source hash.`；扩展停用后修好再 Enable 成功时提示 `{id} is enabled. Check readiness again before running a Study that uses it.` |
+| Modules 页（有 Run 未结束时更改模块或扩展） | 确认框：`Runs have not finished: {n} run(s) not started yet ({ids}) will not start: the change alters the code they recorded, so VALUE stops them with GF_RUN_EXECUTION_IDENTITY_CHANGED and you resubmit them from the Runs page (Resubmit with current code); {n} run(s) already running ({ids}) keep their code but could not be resumed after the change. Confirm to change installed modules anyway.`（只出现适用的分句；改扩展时末尾为 `extensions`）；服务器当场停下了 Run 时，成功提示后追加 `{n} Run(s) that had not started was/were stopped because the installed code changed (GF_RUN_EXECUTION_IDENTITY_CHANGED): {ids}. Resubmit it/them with the current code from the Runs page.` |
+| Runs 页（失败的 Run） | 错误框 `{error_code}: {说明}`，契约类和执行身份类失败在下一行显示诊断首行；`GF_RUN_EXECUTION_IDENTITY_CHANGED` 的说明为 `The installed modules, extensions or VALUE code changed after this Run was queued, so it did not start. Resubmit it to run with the current code.`，下方按钮 `Resubmit with current code`；`GF_EXTENSION_OUTPUT_REJECTED` 的说明为 `An extension hook returned an output that VALUE does not accept; the detail below names the extension, the hook and the rule.` |
 | 比较页 | `Identity check before comparison`，每个维度标为 `Same` / `Changed` / `Cannot verify`；年度表上方 `Deltas (+ and %) are measured against {Study} ({run id}), the first Run ticked. To measure against another Run, clear the selection and tick that Run first.`；年度差值按指标分别显示，被扣发的指标写 `Delta withheld: {reason}`，年份列表上方有 `Deltas withheld` 提示；新指标名见 2.6 节 |
 | 页头 | `{n} of {m} base inputs ready`；工作区读不到时为 `Inputs not loaded` |
 | 任意页面 | `Open VALUE from its launcher` |
@@ -482,7 +481,7 @@
 | golden 变化 | `docs/release/P0_GOLDEN_DELTA.md`（生成文件，与代码一致）；`tests/golden/reports/` 的数值报告 |
 | 验收与重装步骤 | `docs/release/P0_ACCEPTANCE.md`（第 6 节的重装**未执行**） |
 | 版本号 | `docs/release/VERSION_LEDGER.json`、`package.json`、`pyproject.toml` |
-| 用户可见行为（标签、状态词、启动器、常见问题） | `docs/USER_GUIDE.md`、`docs/USER_GUIDE_ZH.md`（第 2、12、13、19 节）；`docs/MODULE_DEVELOPER_101.md`（扩展钩子输出的记录范围）；`SECURITY.md`；随安装包分发的各平台说明（`packaging/full-local/linux/README-LINUX.md`、`packaging/full-local/windows/README-WINDOWS.md`、`packaging/desktop-local/macos/README-MACOS.md`） |
+| 用户可见行为（标签、状态词、启动器、常见问题） | `docs/USER_GUIDE.md`、`docs/USER_GUIDE_ZH.md`（第 2、12、13、19 节）；`docs/MODULE_DEVELOPER_101.md`（扩展钩子输出的记录范围、扩展原地改源的规则）；`SECURITY.md`；随安装包分发的各平台说明（`packaging/full-local/linux/README-LINUX.md`、`packaging/full-local/windows/README-WINDOWS.md`、`packaging/desktop-local/macos/README-MACOS.md`） |
 | 界面字符串（在 CHANGELOG 和用户指南补齐之前） | 应用源码 `app/features/`；设计规格 `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 与 `docs/dev/P0_FRONTEND_DEVIATIONS.md`（内部，只用来核对）。前端翻新会再改这些字符串 |
 | 模型设定改动（作者简报，可作背景） | `docs/handoff/MODEL_CHANGES_BRIEF.md`（内部，不发布） |
 | GBP1 论文复现口径的数值 | golden D5 的数值报告（`tests/golden/reports/D5-*.json`）；`docs/dev/p0-reports/r41-golden/` 的摘要（内部） |
@@ -538,7 +537,7 @@
 5. **0.7.0 安装包的构建和发布**（阶段 2 的门槛）：包括哪些平台，是否先只发 Linux。
 6. **网站上口径的中文名。** 本文建议用“修正口径（默认）”和“论文复现口径”。翻新加入中英切换后，以应用的中文为准。
 7. **公开文档在阶段 1 之前要同步的内容**（代码负责人做，作者批准）。网站文案没有可公开引用的依据时，不能上线：
-   - (a) 还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md` 的行为：Run 的异步启动（2.8 节，含 API 行为）；2.12 节的界面字符串；新建 Study 同名时的 409 `GF_STUDY_ID_EXISTS`、扩展钩子输出的记录范围（目前只写在 `docs/MODULE_DEVELOPER_101.md`）；用户指南也还没有写逐时需求的映射和 VALUE 101 需求文件按 MW 读取（这两项 `CHANGELOG.md` 已有）；
+   - (a) 还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md` 的行为：Run 的异步启动（2.8 节，含 API 行为）；2.12 节的界面字符串；新建 Study 同名时的 409 `GF_STUDY_ID_EXISTS`、扩展钩子输出的记录范围和扩展原地改源后停用再启用的规则（A29；这两项目前只写在 `docs/MODULE_DEVELOPER_101.md`）；用户指南也还没有写逐时需求的映射和 VALUE 101 需求文件按 MW 读取（这两项 `CHANGELOG.md` 已有）；有 Run 未结束时更改模块或扩展的处理（`GF_RUN_EXECUTION_IDENTITY_CHANGED`、`Resubmit with current code`）用户指南已写，`CHANGELOG.md` 还没有；
    - (b) `docs/VALIDATION_AND_CLAIMS.md` 有几处与当前代码不一致，网站不照抄：
      - 论文复现口径一行的边界列，写的逐位一致范围不对。当前只有 D1、D2 的轨迹逐位一致，D3–D5 已重基线（`P0_GOLDEN_DELTA.md`）；
      - golden 归因一行写 13 个用例，当前是 15 个；
@@ -552,10 +551,8 @@
      - Known issues 中已划掉的条目。
 
      网站只取现行规则，以本文第 2 节为准。
-   - (d) `docs/MODULE_DEVELOPER_101.md` 的 “Same ID after a fix” 一条写“原地修好源码后 Enable 或 Rescan”，对已停用的扩展不成立（2.9 节），要按第 10 条的决定统一。
 8. **修正口径的 GBP1 结果、GBP1 public2 和 R029 public2 是否公开、何时公开。** 公开前，网站不得引用相关数字，也不得列出这两个包。
 9. **重启成本的 2025 年 CPI 指数值（138.4）尚待对照 ONS 核对一次**（参考统计表 4.2a 节）。核对之前，网站不列重启成本的具体数字。
-10. **扩展原地改源后能否重新启用。** 已安装模块允许原地改源（A16-4）；扩展在启用状态下原地改源同样被检测和记录，但停用之后，现行代码只在钩子文件与安装时一致时才允许 Enable（`GF_EXTENSION_SOURCE_CHANGED`）。A16-4 是否也适用于扩展的重新启用，待作者决定。决定之前，网站的常见问题按现行行为写（附录 A.4 第 4 条）。
 
 ---
 
@@ -660,7 +657,7 @@
 8. **“VALUE four user paths, 0.7.0-alpha.1 source”**
    - 证据：从 `docs/handoff/FOUR_ROLE_TEST_REPORT.md` 的结论一节照录四条路径（reproduce、adapt data、edit a module、add a function）各自的结论。
    - 边界：EN: Linux source tree, not an installer; scopes as tested（按报告写明一日、两年等范围）。
-   - 报告中仍有未关闭的中等缺陷时，在边界列写明（按本文依据的 HEAD 是 EM-中1 和 AF-中1，见 2.9 节）；有高等缺陷时这一行不上线。
+   - 报告中有未关闭的中等缺陷时，在边界列写明（按本文依据的代码状态，报告中没有中等缺陷，见 2.9 节）；有高等缺陷时这一行不上线。
 
 ### A.3 四类用户步骤（J-3，阶段 2；中英各三条，逐条对应）
 
@@ -712,9 +709,8 @@
    - EN: The page was opened through another address, an old bookmark or another installation. Close it, start VALUE again with its launcher, then use http://127.0.0.1:8800 or http://localhost:8800.
    - ZH：页面不是经启动器打开的（用了其他地址、旧书签或另一份安装）。关闭页面，用启动器重新启动 VALUE，再打开 http://127.0.0.1:8800 或 http://localhost:8800。
 4. **“A module or extension is quarantined (health: degraded).” / “模块或扩展被隔离（health 显示 degraded）。”**
-   - EN: VALUE keeps running without it. Open Modules: the Disabled and quarantined area lists it with its manifest file and Enable, Rescan and Remove. Fix the code, then press Rescan (or Rescan modules at the top); Rescan also imports extension hooks again. If two manifests declare the same module ID, press Disable on either row: the copy is moved aside, then Enable restores the module. An extension that was disabled after its hook files were edited in place can be enabled again only after restoring the original files; otherwise rebuild it with a new version and package name and install it as a new bundle. Remove moves the installation aside and is refused while a Study or Run uses it. Do not install, enable, disable or remove modules or extensions while Runs are queued: those Runs fail and must be started again. Offline: python -m gridform_core.module_recovery.
-   - ZH：VALUE 会在没有它的情况下继续运行。打开 Modules 页，Disabled and quarantined 区列出该条目和它的清单文件，带 Enable、Rescan、Remove 三个按钮。修好代码后点 Rescan（或页头的 Rescan modules）；Rescan 也会重新导入扩展钩子。同一模块 ID 有两份清单时，在任一行点 Disable，副本会被移到一旁，之后点 Enable 恢复。扩展在原地改过钩子文件后又被停用的，要先恢复原文件才能重新启用；否则改版本号和包名重建，作为新包安装。Remove 只是把安装移到一旁；Study 或 Run 仍在使用时会被拒绝。有 Run 排队时不要安装、启用、停用或移除模块和扩展，否则排队的 Run 会失败，需要重新启动。离线时用 python -m gridform_core.module_recovery。
-   - 第 7 节第 10 条的决定若改变扩展的重新启用规则，这一条要同步改；EM-中1（2.9 节）若在阶段 2 之前修好，删去关于排队 Run 的一句。
+   - EN: VALUE keeps running without it. Open Modules: the Disabled and quarantined area lists it with its manifest file and Enable, Rescan and Remove. Fix the code, then press Rescan (or Rescan modules at the top); Rescan also imports extension hooks again. If two manifests declare the same module ID, press Disable on either row: the copy is moved aside, then Enable restores the module. Remove moves the installation aside and is refused while a Study or Run uses it. Hook files of an installed extension may be edited in place, as for modules: Enable re-imports them and Runs record the new source hash; Enable is refused while a hook does not import. If you install, enable, disable or remove a module or extension while Runs are waiting, VALUE asks you to confirm: Runs that have not started are stopped, so resubmit them from the Runs page (Resubmit with current code) or start them again from the Study; Runs already running keep their code but cannot be resumed after the change. Offline: python -m gridform_core.module_recovery.
+   - ZH：VALUE 会在没有它的情况下继续运行。打开 Modules 页，Disabled and quarantined 区列出该条目和它的清单文件，带 Enable、Rescan、Remove 三个按钮。修好代码后点 Rescan（或页头的 Rescan modules）；Rescan 也会重新导入扩展钩子。同一模块 ID 有两份清单时，在任一行点 Disable，副本会被移到一旁，之后点 Enable 恢复。Remove 只是把安装移到一旁；Study 或 Run 仍在使用时会被拒绝。已安装扩展的钩子文件与模块一样可以原地修改：Enable 会重新导入，Run 记录新的源码哈希；钩子无法导入时 Enable 会被拒绝。有 Run 在等待时安装、启用、停用或移除模块或扩展，VALUE 会请你确认：尚未开始的 Run 会被停下，可在 Runs 页点 Resubmit with current code 重新提交，或从 Study 重新启动；已在运行的 Run 保持原代码，但变更后不能再 Resume。离线时用 python -m gridform_core.module_recovery。
 5. **“Annual results withheld for this reproduction run.” / “论文复现 Run 的年度结果被扣发。”**
    - EN: The doctoral reproduction profile publishes annual results only when every raw invariant passed. While the Run is still going, the check is pending. The notice names the raw invariant that failed. Read the results in Inspect or open the ledger files.
    - ZH：论文复现口径只有在原始不变量全部通过时才发布年度结果；Run 进行中显示待定。提示中写明失败的原始不变量。可以在 Inspect 中查看，或打开账本文件。

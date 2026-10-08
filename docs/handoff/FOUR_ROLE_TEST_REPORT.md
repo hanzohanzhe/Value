@@ -1,8 +1,8 @@
 # VALUE 0.7.0-alpha.1 四角色用户验收报告
 
 - 日期：2026-10-08。
-- 被测版本：分支 `fix/review-2026-10-04`，代码状态 `cbdb69a`（此后的提交只改文档），`package.json` 版本 0.7.0-alpha.1。
-- 结果的得出方式：先在构建 `c204aac` 上按四个角色各自从头完整走一遍，再在 `cbdb69a`（即当前代码）上逐项定向验证此后的每项修复，并用两个方法学口径各跑一次两整年冒烟 Run。
+- 被测版本：分支 `fix/review-2026-10-04`，代码状态 `6014421`（此后的提交只改文档），`package.json` 版本 0.7.0-alpha.1。
+- 结果的得出方式：先在构建 `c204aac` 上按四个角色各自从头完整走一遍，再对此后的每项修复做定向验证：在 `cbdb69a` 上逐项验证，并用两个方法学口径各跑一次两整年冒烟 Run；在 `6014421`（即当前代码）上验证 Run 未结束时更改模块或扩展、扩展钩子产物被拒、扩展原地改源后停用再启用这三组行为。
 - 四个角色按首页的四条路径命名：
   1. **复现**：reproduce from existing data；
   2. **换数据**：add your new data；
@@ -19,11 +19,11 @@
   - **高**：结果算错、数据丢失，或主路径走不通；
   - **中**：主路径能走通，但某个功能失败、提示与事实相反，或必须绕行；
   - **低**：文案、显示、一致性问题，或需要另行设计的小功能。
-- 编号：RP 复现、SD 换数据、EM 改函数、AF 加功能，后接严重度和序号，例如 EM-中1。
+- 编号：RP 复现、SD 换数据、EM 改函数、AF 加功能，后接严重度和序号，例如 EM-低1。编号固定不变，便于与 `docs/dev/p0-reports/` 中的验证记录对照，所以序号可能不连续。
 - 证据来源标注：
   - 「完整验收」：`c204aac` 上的四角色完整走查。只用于此后没有改动的功能，或经定向验证确认数值未变的结果；
-  - 「定向验证」：`cbdb69a` 上的定向验证与冒烟 Run；
-  - 「修复单元检查」：各修复单元在独立 scratch 实例上的 Playwright 检查和单元测试，针对纯显示类改动，定向验证没有再跑。
+  - 「定向验证」：`cbdb69a` 上的定向验证与冒烟 Run；标为「定向验证，`6014421`」的条目在当前代码上验证；
+  - 「修复单元检查」：各修复单元在独立 scratch 实例上的 Playwright 检查和单元测试，针对纯显示类改动，或真实时序下难以触发的路径，定向验证没有再跑。
 
 ## 0 总览
 
@@ -33,35 +33,29 @@
 |---|---|---|---:|---:|---:|
 | 复现 | 通过 | Home → VALUE 101 → 建修正口径与论文复现口径 Study → 两整年 Run → 结果页 → 比较 → 导出与审计包 → 重跑。重跑后年度结果、投资决策和市场账本逐字节相同 | 0 | 0 | 1 |
 | 换数据 | 通过 | 复制数据包 → 映射逐时、闰年、日/月/年、GW、EUR（带汇率）、当地时间等 CSV → 校验 → 派生 Study → 两整年 Run → 回放与比较。单位、币种和时钟只换算一次，需求量级变化有告警，已供电量扣除 stress 缺口 | 0 | 0 | 0 |
-| 改函数 | 通过但有问题 | 构建 → 安装 → 派生只改一个槽位的对照 Study → 两时段与两整年 Run → 比较。就地改源、隔离、同 ID 两份清单、停用/启用/移除、离线恢复、内置模块方法升级确认都正常 | 0 | 1 | 2 |
-| 加功能 | 通过但有问题 | 编写扩展 → 校验 → 安装 → 独立草稿启用并绑定数据 → 两时段与两整年 Run → Inspect 查看扩展结果 → 原地改源 → Rescan → 重跑对比。命名空间冲突、隔离、停用/启用都正常 | 0 | 1 | 3 |
-| **合计** | | | **0** | **2** | **6** |
+| 改函数 | 通过 | 构建 → 安装 → 派生只改一个槽位的对照 Study → 两时段与两整年 Run → 比较。就地改源、隔离、同 ID 两份清单、停用/启用/移除、离线恢复、内置模块方法升级确认都正常；有 Run 未结束时更改模块，确认框如实说明，未开始的 Run 以专门的错误码停止，可在 Runs 页一键按当前代码重新提交 | 0 | 0 | 3 |
+| 加功能 | 通过 | 编写扩展 → 校验 → 安装 → 独立草稿启用并绑定数据 → 两时段与两整年 Run → Inspect 查看扩展结果 → 原地改源 → Rescan → 重跑对比。命名空间冲突、隔离、停用/启用（含原地改源后停用再启用）都正常；钩子产物被拒时 Runs 页写明扩展、钩子和规则 | 0 | 0 | 2 |
+| **合计** | | | **0** | **0** | **6** |
 
-**一句话结论：** 四条用户路径都能从头走通，没有高等缺陷，没有发现算错的结果；两个口径的冒烟 Run 与完整验收的数值一致。两项中等缺陷都不影响模型结果：
-
-- **EM-中1**：有 Run 排队时更改模块或扩展，确认框说排队的 Run 会用新代码启动，实际它们会失败，而且错误码笼统；
-- **AF-中1**：原地改过钩子源码的扩展一旦停用，就不能直接重新启用。是否放开，需要作者决定。
+**一句话结论：** 四条用户路径都能从头走通，没有高等和中等缺陷，没有发现算错的结果；两个口径的冒烟 Run 与完整验收的数值一致。现存 6 项低等缺陷都不影响模型结果。
 
 ### 0.2 现存缺陷一览
 
 | ID | 严重度 | 现象 | 建议修复（要点） |
 |---|---|---|---|
-| EM-中1 | 中 | 有 Run 排队时安装、启用、停用或移除模块（或扩展），确认框写排队的 Run “would start with the changed code”；实际它们以 `GF_CONTRACT_001`（模块不满足契约）失败，日志原因是执行身份在入队后改变 | 确认框如实写“未开始的 Run 会失败，需要重新提交”；执行身份变化用专门的错误码和说明；或确认后自动把未开始的 Run 重新入队 |
-| AF-中1 | 中 | 原地改过钩子源码的扩展，停用后再 Enable 被拒（400 `GF_EXTENSION_SOURCE_CHANGED`）。信息写出改动的文件和两条出路；开发者手册第 12 节对扩展的说法与此不符 | 作者决定扩展是否与模块一样适用 A16-4，再相应地放开核对或改手册 |
 | RP-低1 | 低 | 两次逐位一致的重跑，第二个模型年的 `annual_input_state_sha256` 不同，因为状态中的投资项目 ID 带 Run id 前缀 | 另设与 Run 无关的可重复性哈希；现有哈希不动 |
 | EM-低1 | 低 | 比较页以第一个勾选的 Run 为参照，页面写明了参照，但没有选择控件（换数据、改函数两条路径都会遇到） | 加参照 Run 选择，默认取基线；待设计方决定 |
 | EM-低2 | 低 | 英文和中文用户指南中仍有 11 处把产品称作 FORCE | 统一改为 VALUE |
-| AF-低1 | 低 | 扩展钩子产物被拒导致 Run 失败时，Runs 页只显示通用的 `GF_CONTRACT_001`，具体原因只在 `diagnostics/error.json` | 用专门的错误类型带出原因，或在 Runs 页显示诊断首行（与 EM-中1 同一根因） |
+| EM-低3 | 低 | Run 开始准备的头几秒内（正在记录执行环境）停用模块，该 Run 以笼统的 `GF_INPUT_SNAPSHOT_FAILED` 失败，错误框显示原始的文件不存在信息，没有 `Resubmit with current code` 按钮 | 模块与扩展的生命周期操作先获取 `EXECUTION_CAPTURE_LOCK`；或把采集期间 `modules/` 下的 `FileNotFoundError` 归为 `GF_RUN_EXECUTION_IDENTITY_CHANGED` |
 | AF-低2 | 低 | 独立 Study 草稿在浏览器刷新后丢失，没有提示 | 保存草稿，或至少在离开页面前提示 |
 | AF-低3 | 低 | 界面中英混排：研究路径、Run 复现面板、需求单位说明等是中文，其余是英文 | 发布前定一种界面语言 |
 
 ### 0.3 需要作者或设计方决定的事项
 
-1. **扩展的原地改源规则（AF-中1）**：作者决定扩展停用后重新启用时，是否像模块一样接受并记录原地改动（A16-4）。
-2. **研究路径中能否直接选择口径**（`P0_FRONTEND_DEVIATIONS.md` F-R52-1）：现在研究路径和 Runs 页都显示口径，但要换口径必须到 Studies 编辑器。待设计方确认。
-3. **比较页的参照 Run 选择器**（F-R51-3，即 EM-低1）：待设计方确认。
-4. **储能 tranche 是否允许合并**（见 4.4 第 1 条）：只在需要进一步缩短“很少放电的储能 + full 追踪”的运行时间时才需要决定。
-5. 若干界面措辞待设计方确认（`P0_FRONTEND_DEVIATIONS.md` R5 各节中“待确认”为“是”的条目），不影响功能。
+1. **研究路径中能否直接选择口径**（`P0_FRONTEND_DEVIATIONS.md` F-R52-1）：现在研究路径和 Runs 页都显示口径，但要换口径必须到 Studies 编辑器。待设计方确认。
+2. **比较页的参照 Run 选择器**（F-R51-3，即 EM-低1）：待设计方确认。
+3. **储能 tranche 是否允许合并**（见 4.4 第 1 条）：只在需要进一步缩短“很少放电的储能 + full 追踪”的运行时间时才需要决定。
+4. 若干界面措辞待设计方确认（`P0_FRONTEND_DEVIATIONS.md` R5、R6-1 各节中“待确认”为“是”的条目，包括 Run 未结束时更改模块的确认框文字和 `Resubmit with current code` 按钮的位置），不影响功能。
 
 ## 1 测试方法与条件
 
@@ -72,13 +66,15 @@
 - 测试员以第一次使用的新用户身份从 Home 出发，用 Playwright（headless chromium 1243）操作界面。只有界面没有入口的边界情形，以及需要核对磁盘记录时，才直接调 API 或读文件。
 - 四个角色互相独立，不参考以前的报告结论。
 
-### 1.2 定向验证（`cbdb69a`）
+### 1.2 定向验证（`cbdb69a`、`6014421`）
 
-- 环境同上（API 18870、UI 网关 18871，全新数据目录）。
-- 范围：重跑完整验收中每个高、中缺陷的复现步骤，以及影响结果标注或导出内容的修复，逐项确认现状；另跑两个口径的两整年冒烟 Run。按 DECISIONS A28，没有完整重跑四个角色，也没有做新的探索性测试。
-- 纯显示类修复由各修复单元的 Playwright 检查和单元测试确认（「修复单元检查」）。
+- 环境同上（API 18870、UI 网关 18871，全新数据目录）。`6014421` 的验证用 `git archive` 从该提交导出的干净副本，重新构建界面，不含工作树中未提交的改动。
+- `cbdb69a`：重跑完整验收中每个高、中缺陷的复现步骤，以及影响结果标注或导出内容的修复，逐项确认现状；另跑两个口径的两整年冒烟 Run。
+- `6014421`：重跑 Run 未结束时更改模块或扩展、扩展钩子产物被拒、扩展原地改源后停用再启用这三组步骤，并在界面上用 `Resubmit with current code` 重新提交一个两整年 Run，跑到完成。`cbdb69a` 之后的代码提交只涉及 Run 排队与准备时的身份核对、失败分类、确认框文字、扩展启用和 Runs 页显示，不涉及计算路径，所以 1.3 节的冒烟 Run 数值对当前代码成立。
+- 按 DECISIONS A28，没有完整重跑四个角色，也没有做新的探索性测试。
+- 纯显示类修复，以及真实时序下难以触发的路径，由各修复单元的 Playwright 检查和单元测试确认（「修复单元检查」）。
 
-### 1.3 冒烟 Run（VALUE 101，两整年，35,040 个时段，「定向验证」）
+### 1.3 冒烟 Run（VALUE 101，两整年，35,040 个时段，「定向验证」，`cbdb69a`）
 
 | | 修正口径 | 论文复现口径 |
 |---|---|---|
@@ -206,7 +202,7 @@
 
 ### 4.1 结论
 
-**通过但有问题。** 主路径（构建改过的模块 → 安装 → 派生只改一个槽位的对照 Study → readiness → 运行 → 比较）能走通；就地改源、隔离、同 ID 两份清单、停用、启用、移除、离线恢复和内置模块方法升级确认都符合手册。现存 1 项中等缺陷（EM-中1，在定向验证中发现）和 2 项低等缺陷。
+**通过。** 主路径（构建改过的模块 → 安装 → 派生只改一个槽位的对照 Study → readiness → 运行 → 比较）能走通；就地改源、隔离、同 ID 两份清单、停用、启用、移除、离线恢复和内置模块方法升级确认都符合手册；有 Run 未结束时更改模块，确认框与实际行为一致，未开始的 Run 可一键按当前代码重新提交。现存 3 项低等缺陷，都不影响结果。
 
 ### 4.2 已验证可用（附证据）
 
@@ -240,26 +236,15 @@
 13. **模板与显示**
     - 可下载可编辑的源码模板，构建后能安装并通过一致性检查（完整验收）。storage_cost 模板名为 “Draft fixed-offer storage example (GBP 42/MWh)”，与其固定 42 GBP/MWh 的行为一致（修复单元检查）。
     - Modules 页徽标写 “13 of 18 ready · 5 experimental”；起止年份相同的 Study 只列出能运行的范围（修复单元检查）。
+14. **有 Run 未结束时更改模块或扩展**（定向验证，`6014421`）
+    - Run 记录执行身份时包含 `modules/` 下全部活动清单以及已安装的模块和扩展，所以任何模块或扩展的安装、启用、停用、移除都会改变它，与该 Run 是否用到这个模块无关。
+    - 有 Run 排队或在准备时，在 Modules 页停用或启用模块，确认框写 `{n} run(s) not started yet (…) will not start: the change alters the code they recorded, so VALUE stops them with GF_RUN_EXECUTION_IDENTITY_CHANGED and you resubmit them from the Runs page (Resubmit with current code)`；已在运行的 Run 另起一句 `{n} run(s) already running (…) keep their code but could not be resumed after the change`。
+    - 确认后，正在准备的 Run 以 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 失败（类别 `execution_identity`，状态中记录诊断首行 `error_detail`）；已由 worker 取得租约的 Run，由 worker 在启动核对时以同一错误码失败（约 24 s 后），诊断首行写出记录的和当前的执行身份。
+    - Runs 页错误框显示该错误码和公开说明，下一行是诊断首行，下方有 `Resubmit with current code` 按钮，不显示 checkpoint Resume。点击后以同一 Study 和范围新建 Run（`POST /api/projects/value-101-baseline/runs {"mode":"two_year"}`），新 Run 两整年跑完，execution 与 scientific 均通过。
+    - 尚未被 worker 取得租约的排队 Run，由服务器在确认后当场停下，并在变更成功的提示中列出（`stopped_unstarted_runs`）。真实时序下 worker 几毫秒内就取得租约，这条路径由单元测试和修复单元的 Playwright 检查覆盖（修复单元检查）。
+    - 在 Run 开始准备的头几秒内停用模块的情形见 EM-低3。
 
 ### 4.3 现存缺陷
-
-#### EM-中1 有 Run 排队时更改模块或扩展：确认框说排队的 Run 会用新代码启动，实际它们失败，错误码笼统
-
-- **来源：** 定向验证中观察到，代码确认。
-- **复现：**
-  1. 启动一个两整年 Run，再启动第二个，使它处于 queued 或 snapshotting；
-  2. 在 Modules 页安装、启用、停用或移除任一本地模块或扩展；
-  3. 确认框写：`Runs have not finished: 1 run(s) not started yet (…) would start with the changed code. Confirm to change installed modules anyway.`，点确认；
-  4. 排队的 Run 失败，显示 `GF_CONTRACT_001`（“A selected module did not satisfy its declared contract.”）；日志原因是 “Execution source or runtime changed after enqueue”。重新提交后正常完成。
-- **原因：**
-  - Run 入队时记录执行身份，其中包含 `modules/` 下全部活动清单以及已安装的模块和扩展（`gridform_core/execution_archive.py:123-150`）。所以任何模块或扩展的生命周期变更都会改变它，与排队的 Run 是否用到该模块无关。
-  - worker 启动时，`backend/run_execution.py:45` 发现执行身份变化，抛出 `ValueError`；`gridform_core/errors.py:90` 起的 `public_failure` 把所有 `ValueError` 归为 `GF_CONTRACT_001`。
-  - 确认框文字来自 `backend/server.py:476-494`（`require_no_pending_runs`），对尚未开始的 Run 的说法与实际相反。
-- **影响：** 安全失败，不产生错误结果。但用户按提示确认后，排队的 Run 全部失败，错误码又指向“模块不满足契约”，容易误以为模块本身有问题。
-- **建议修复：**
-  1. 确认框如实写明：“尚未开始的 Run 会失败，需要重新提交”；
-  2. 执行身份变化改用专门的错误码和公开说明（例如“Run 排队后已安装的代码发生了变化，请重新提交该 Run”），不再落入 `GF_CONTRACT_001`；
-  3. （可选）确认后自动把未开始的 Run 重新入队，重新记录执行身份。
 
 #### EM-低1 比较页不能选择参照 Run
 
@@ -269,19 +254,29 @@
 
 #### EM-低2 用户指南中仍把产品称作 FORCE
 
-- **位置：** `docs/USER_GUIDE.md` 第 253、261、287、392、532 行；`docs/USER_GUIDE_ZH.md` 第 206、220、260、347、499、507 行。界面和其余用户文档都用 VALUE。模块 ID（如 `force-perfect-foresight-lp`）不在此列。
+- **位置：** `docs/USER_GUIDE.md` 第 253、261、287、392、535 行；`docs/USER_GUIDE_ZH.md` 第 206、220、260、347、499、507 行。界面和其余用户文档都用 VALUE。模块 ID（如 `force-perfect-foresight-lp`）不在此列。
 - **建议：** 产品名统一改为 VALUE。
+
+#### EM-低3 Run 开始准备的头几秒内停用模块：Run 以笼统的 `GF_INPUT_SNAPSHOT_FAILED` 失败
+
+- **来源：** 定向验证（`6014421`）中复现，代码确认。
+- **现象：** 启动 Run 后的头几秒（Run 正在记录执行环境）内停用一个已启用的本地模块，该 Run 不以 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 失败，而以 `GF_INPUT_SNAPSHOT_FAILED` 失败；错误框显示原始信息 `[Errno 2] No such file or directory: '…/modules/hx-flat-offer-73.json'`，没有 `Resubmit with current code` 按钮。晚一些（例如启动后 8 s）再停用，Run 按 4.2 第 14 条以 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 失败。
+- **复现：** 启动一个两整年 Run，在 0.3–3 s 内停用一个已启用的本地模块（界面或 API）。4 次试验 4 次出现（界面 1 次；API 在启动后 0.3 s、1 s、3 s 各 1 次）。
+- **原因：** `gridform_core/execution_archive.py` 的 `_source_roots`（第 123–135 行）在采集开始时列出 `modules/` 与 `modules/extensions/` 下的活动清单，随后 `_scan_roots` 才读取并哈希这些文件。采集在 `EXECUTION_CAPTURE_LOCK` 内进行（`backend/server.py:951`），而模块和扩展的安装、启用、停用、移除不获取这把锁，清单可能在两步之间被移走。由此产生的 `FileNotFoundError` 进入 `_prepare_run_stages` 的通用分支（`backend/server.py:1077`），记为 `GF_INPUT_SNAPSHOT_FAILED`。复现用的是模块；扩展的活动清单在同一处列出，原因相同。
+- **影响：** 安全失败，不产生结果；在 Study 中重新启动 Run 即可。只是错误码和提示笼统，看不出原因是刚才的模块变更。
+- **建议：** 让模块与扩展的安装、启用、停用、移除操作先获取 `EXECUTION_CAPTURE_LOCK`（锁顺序允许它排在 `MODULE_LIFECYCLE_LOCK` 之前）；或把采集期间 `modules/` 下出现的 `FileNotFoundError` 归为 `GF_RUN_EXECUTION_IDENTITY_CHANGED`。
 
 ### 4.4 需要知道的情况（不计缺陷）
 
 1. **很少放电的储能在 full 追踪下仍比基线慢。** 一个储能的 tranche 超过 128 个时，声明状态只列本阶段报价用到的 tranche，其余合并为一项汇总（`value.storage-tranches-offered-plus-aggregate/v1`，修正 id `r53.bounded-storage-state-record`）；只影响记录，不改调度，128 个以内记录格式不变。内存中的 tranche 年内仍会增长，所以 flat-73 两整年 full 追踪约 6.4 分钟、1.63 GB（修复单元单独运行实测），基线为 3.7 分钟、1.4 GB；readiness 对 full 追踪且选了非内置 storage_cost 模块的 Study 给出警告。若要再缩短，需要合并 tranche，这会改变 dwell 记账，须由作者决定。
 2. **运行前的磁盘和时间估计按内置储能模块校准。** 对第三方储能模块，估计可能偏低，这正是上一条警告的用意；建议先跑短范围，或长运行改用 Summary 追踪。
+3. **确认框对等待记录执行环境的 Run 说得比实际保守。** 有 Run 正在等待记录执行环境（另一个 Run 正在记录）时更改模块，确认框也把它列为 “will not start”；它在变更之后才记录执行环境，实际按新代码启动并正常完成（定向验证，`6014421`，1 次）。不产生错误结果。
 
 ## 5 加功能角色（add new function to VALUE）
 
 ### 5.1 结论
 
-**通过但有问题。** 加功能主路径全部能走通（编写 → 校验 → 下载 → 安装 → 独立草稿启用 → 复制数据包并绑定扩展输入 → 确认实验性 → 保存 → readiness → 两时段与两整年运行 → Inspect 查看扩展结果 → 原地改源 → Rescan → 重跑与对比 → 命名空间冲突 → 停用/重新启用），扩展结果与运行记录逐项对得上。现存 1 项中等缺陷（AF-中1，需要作者决定规则）和 3 项低等缺陷。
+**通过。** 加功能主路径全部能走通（编写 → 校验 → 下载 → 安装 → 独立草稿启用 → 复制数据包并绑定扩展输入 → 确认实验性 → 保存 → readiness → 两时段与两整年运行 → Inspect 查看扩展结果 → 原地改源 → Rescan → 重跑与对比 → 命名空间冲突 → 停用/重新启用，含原地改源后停用再启用），扩展结果与运行记录逐项对得上。现存 2 项低等缺陷，都不影响结果。
 
 ### 5.2 已验证可用（附证据）
 
@@ -308,31 +303,18 @@
    - 未被引用的扩展可以停用；停用后另一个扩展可以占用它的命名空间，此时重新启用被 409 拒绝并说明原因；停用占用者后重新启用成功，并提示重新检查 readiness。
    - 被 Study 和 Run 引用的扩展：卡片 Disable 不可用并说明原因，API 返回 409 `GF_EXTENSION_IN_USE`（列出 Study 和 Run）；Remove 未停用的扩展返回 `GF_EXTENSION_REMOVE_ENABLED`；停用后的 Remove 有确认框，文件移到 `disabled-manifests/removed/`。
    - 停用确认框和 readiness 对扩展写“在 Study 中取消选择该扩展（另存修订）”（修复单元检查）。
-10. **本地开发的扩展**
+10. **原地改源后停用再启用**（定向验证，`6014421`；规则与模块相同，DECISIONS A29）
+    - 未被引用的扩展：合法地原地修改 `hooks.py` → Rescan → Disable → Enable，返回 200。安装记录追加一条 `accepted_source_edits`（`accepted_at`、`changed_modules`、新的 `hook_source_identities`）；安装时的身份保持不变，所以卡片和 readiness 继续写 “changed since install”。
+    - 钩子改坏后 Enable 返回 400 `GF_EXTENSION_HOOK`（写出 SyntaxError 和行号），扩展保持停用，不追加记录；已安装清单改为声明其他钩子时，Enable 返回 400 `GF_EXTENSION_SOURCE_CHANGED`，要求以新版本重建后安装。
+    - 被 Study 引用的扩展：卡片上的 Disable 返回 409 `GF_EXTENSION_IN_USE`。在界面上把源码改坏 → Rescan 后被隔离（`GF_EXTENSION_HOOK_IMPORT`）→ 在隔离面板点 Disable（有确认框）→ 修好源码 → 在 Disabled 面板点 Enable，提示 `{id} is enabled. Check readiness again before running a Study that uses it.`，安装记录追加一条 `accepted_source_edits`。
+    - readiness 给出 `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`（`… changed since install (d4dd5b4e… → 3ba16106…)`）和 `GF_PREFLIGHT_REVISION_REIDENTIFY`；重跑后 Study 追加修订，原因 `source-reidentify`（两次改源各追加一次）。
+    - 比较改源前后的两次两整年 Run：`/api/comparisons` 只有 `identity.method` 一个维度变化，路径为 `extensions.hook_source_identities`，review 为 verified；界面 Compare 的 `Identity check before comparison` 中，`Model method (modules, extension selection, methodology)` 为 Changed，其余维度为 Same。
+11. **本地开发的扩展**
     - 按 README 解压、改 ID、命名空间和包名，用构建脚本重建，安装、建 Study、两整年运行都成功（完整验收）。
-    - 其他钩子（如 after_cem、finalize）返回普通值时照常运行；若返回带 `artifact_type` 的产物，Run 明确失败，`diagnostics/error.json` 写明 VALUE 只记录 after_psm 的产物（定向验证）。
-11. 全部页面没有 pageerror；控制台错误只有预期的 409 响应（完整验收）。
+    - 其他钩子（如 after_cem、finalize）返回普通值时照常运行；若返回带 `artifact_type` 的产物，Run 失败，错误码为 `GF_EXTENSION_OUTPUT_REJECTED`（类别 contract）。Runs 页错误框显示公开说明，下一行写明扩展、钩子和规则，例如 `Extension ver-af-hooks:after_cem returned artifact 'local.ver-af.year-summary', but VALUE records extension artifacts only from after_psm …`；不提供重新提交按钮（定向验证，`6014421`）。
+12. 全部页面没有 pageerror；控制台错误只有预期的 409 响应（完整验收）。
 
 ### 5.3 现存缺陷
-
-#### AF-中1 原地改过钩子源码的扩展，停用后不能直接重新启用
-
-- **现象：** 启用状态下原地改源会被接受并记录（见 5.2 第 6 条）。但扩展一旦停用，Enable 要求钩子源码与安装时记录的哈希逐字节一致，否则返回 400 `GF_EXTENSION_SOURCE_CHANGED`。信息写出改动的钩子模块和两条出路：恢复原文件后再 Enable；或改版本号和 Python 包名，用 `scripts/build_extension_bundle.py` 重建后作为新包安装。恢复原文件后 Enable 成功（定向验证）。
-- **复现：**
-  - 往返：安装扩展 → 原地合法修改 `hooks.py` → Rescan → Disable → Enable → 400。
-  - 隔离恢复：被 Study 引用的扩展原地改源后又改坏 → Rescan 隔离 → 隔离面板 Disable → 修好源码 → Enable → 400；Study 的 readiness 停在 `GF_PREFLIGHT_MODULE_DISABLED`。
-- **原因：** `gridform_core/extension_bundle.py` 的 `_set_extension_enabled`（第 626–648 行）比较 `hook_source_identities`；模块没有这条限制。文档也不一致：`docs/frontend/EXTENSION_AUTHORING_PHASE5.md` 第 16 行写“重新启用校验原 hook 身份”，`docs/MODULE_DEVELOPER_101.md` 第 12 节 “Same ID after a fix”（第 568–571 行；中文版第 552 行）写原地修复后 Enable 或 Rescan，对扩展不成立。
-- **影响：** 想保留改动的用户只能以新版本重装，Study 要改选新扩展并另存修订；或者先恢复原文件启用，再改回。不影响任何结果。
-- **建议：** 由作者决定扩展是否与模块一样适用 A16-4（接受并记录原地改源）。
-  - 适用：`_set_extension_enabled` 改为只校验当前源码能导入、声明的钩子可调用，继续记录新哈希，Run 冻结新身份；
-  - 不适用：把 MODULE_DEVELOPER_101 中英文第 12 节对扩展的写法改为“恢复原文件，或以新版本重装”。
-
-#### AF-低1 扩展钩子产物被拒导致 Run 失败时，Runs 页只显示通用错误码
-
-- **现象：** 扩展在 after_psm 以外的钩子返回带 `artifact_type` 的产物时，Run 按设计失败；但 Runs 页只显示 `GF_CONTRACT_001`（“A selected module did not satisfy its declared contract.”），扩展、钩子和“只记录 after_psm 产物”的具体说明只在 `diagnostics/error.json` 中（定向验证）。
-- **复现：** 给扩展加 after_cem 钩子并返回带 `artifact_type` 的映射，重建、安装、运行。
-- **原因：** `gridform_core/extension_framework.py` 对此抛出 `ValueError`，`gridform_core/errors.py:90` 起的 `public_failure` 把它归为 `GF_CONTRACT_001`。与 EM-中1 同一根因。
-- **建议：** 改用带具体公开说明的错误类型（例如 `ContractError` 的子类），或在 Runs 页显示诊断信息的首行。
 
 #### AF-低2 独立 Study 草稿在浏览器刷新后丢失
 
@@ -346,8 +328,9 @@
 
 ### 5.4 需要知道的情况（不计缺陷）
 
-1. **扩展的记录范围。** Run 只记录 initialize 返回的状态（扩展命名空间下）和 after_psm 返回的产物（每个模型年一组，在 Inspect 中显示）。其他钩子照常运行但不记录返回值；返回声明产物会使 Run 失败。finalize 在全部年份算完后才运行，所以它返回产物时，要到最后才报错。README、MODULE_DEVELOPER_101 中英文和编写台都写明了这一点。
+1. **扩展的记录范围。** Run 只记录 initialize 返回的状态（扩展命名空间下）和 after_psm 返回的产物（每个模型年一组，在 Inspect 中显示）。其他钩子照常运行但不记录返回值；返回声明产物会使 Run 失败（`GF_EXTENSION_OUTPUT_REJECTED`）。finalize 在全部年份算完后才运行，所以它返回产物时，要到最后才报错。README、MODULE_DEVELOPER_101 中英文和编写台都写明了这一点。
 2. **被保留的 Run 引用的扩展不能停用。** 这是有意设计，用于保留复现能力；`GF_EXTENSION_IN_USE` 会列出引用它的 Run。
+3. **原地改源的规则与模块相同（DECISIONS A29）。** 启用中改源，或停用后修好再启用，都接受改动并记录新的钩子源码哈希；Run 冻结新哈希，Compare 标为方法已变。钩子不能导入，或清单声明的钩子与安装时不同，Enable 仍被拒。要作为方法发布或比较的改动，仍建议改版本号和包名，以新包安装（`docs/MODULE_DEVELOPER_101.md` 第 2 节）。
 
 ## 6 安全与环境核对
 
@@ -362,7 +345,8 @@
 |---|---|
 | 完整验收（`c204aac`）四份角色报告 | `docs/dev/p0-reports/final-role-reproduce.md`、`final-role-swap-data.md`、`final-role-edit-module.md`、`final-role-add-feature.md` |
 | 定向验证（`cbdb69a`）与冒烟 Run | `docs/dev/p0-reports/R5-verify.md` |
-| 截图（scratch，未入库） | `scratchpad/build/final_roles/<角色>/shots/`（各 9–10 张）；`scratchpad/build/r5verify/shots/`（15 张） |
-| 本报告新编号对应的证据 | RP-低1：`final-role-reproduce.md` 当前缺陷“低等”第 8 条；EM-中1、AF-低1：`R5-verify.md` 第 3 节；EM-低1：`final-role-edit-module.md` 低5、`final-role-swap-data.md` 低 5；EM-低2：本报告撰写时 grep 核对；AF-中1、AF-低2、AF-低3：`final-role-add-feature.md` F-中1、F-低5、F-低6，AF-中1 的现状见 `R5-verify.md` 第 1 节 |
+| 定向验证（`6014421`） | `docs/dev/p0-reports/R6-verify.md` |
+| 截图（scratch，未入库） | `scratchpad/build/final_roles/<角色>/shots/`（各 9–10 张）；`scratchpad/build/r5verify/shots/`（15 张）；`scratchpad/build/r6verify/shots/`（10 张） |
+| 本报告编号对应的证据 | RP-低1：`final-role-reproduce.md` 当前缺陷“低等”第 8 条；EM-低1：`final-role-edit-module.md` 低5、`final-role-swap-data.md` 低 5；EM-低2：本报告撰写时在 `6014421` 上 grep 核对；EM-低3：`R6-verify.md` 第 2 节；AF-低2、AF-低3：`final-role-add-feature.md` F-低5、F-低6；4.2 第 14 条、5.2 第 10 条与第 11 条：`R6-verify.md` 第 1 节 |
 
-各项修复的实现、测试和偏差记录在 `docs/dev/p0-reports/R5-1-swap-data-defects.md` 至 `R5-4-add-feature-defects.md`。
+各项修复的实现、测试和偏差记录在 `docs/dev/p0-reports/R5-1-swap-data-defects.md` 至 `R5-4-add-feature-defects.md`，以及 `R6-1-queued-runs-on-module-change.md`；扩展停用后再启用的规则（A29）的实现与测试见提交 `6014421`。

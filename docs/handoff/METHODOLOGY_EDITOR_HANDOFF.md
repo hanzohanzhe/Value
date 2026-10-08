@@ -1,6 +1,6 @@
 # VALUE 方法学修改员交接文档（方法学 0.4 版次）
 
-- 日期：2026-10-08。依据：分支 `fix/review-2026-10-04` 的 HEAD（代码状态为提交 `6560189`，应用版本 0.7.0-alpha.1，只在本地，未推送）。对照基线是 `main` 的 35aadb3，即 VALUE 0.6.0-alpha.2 的源码。
+- 日期：2026-10-08。依据：分支 `fix/review-2026-10-04` 的 HEAD（代码状态为提交 `6014421`，应用版本 0.7.0-alpha.1，只在本地，未推送）。对照基线是 `main` 的 35aadb3，即 VALUE 0.6.0-alpha.2 的源码。
 - 读者：维护以下文件的人：
   - `docs/methodology/` 下的 `en/`、`zh/`、`VALUE_METHODOLOGY.md`、`README.md`、`edition.json`、`generation.json`、`artifacts.json`；
   - `docs/MATHEMATICAL_REFERENCE.md`、`docs/SCHEME_C_MODEL_CARD.md`、`docs/VALIDATION_AND_CLAIMS.md`；
@@ -8,7 +8,7 @@
 - 交付：DECISIONS“收尾交付”第 2 项。仓库副本为 `docs/handoff/METHODOLOGY_EDITOR_HANDOFF.md`；worktree 根目录副本为 `VALUE_handoff_methodology_editor_2026-10-04.md`。
 - 本文只写当前最终状态：每一处改哪里、改成什么。施工经过只保留在 git 历史和 `docs/dev/p0-reports/` 中。
 - 事实来源（按权威排序）：
-  1. `docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A28；同一事项以编号靠后的一行为准）；
+  1. `docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A29；同一事项以编号靠后的一行为准）；
   2. 修正目录 `gridform_core/data/methodology/`（`profiles.json`、`corrections/*.json`、`declared_deviations.json`、`advisories.json`），以及由它生成的 `docs/generated/METHODOLOGY_PROFILES.md`；
   3. `docs/release/VERSION_LEDGER.json`（模块版本）、`docs/release/P0_GOLDEN_DELTA.md`（golden 变化的归因）、`CHANGELOG.md` 开头的 “Correction ids” 表（只登记在版本台账或 CHANGELOG 中的 id）；
   4. 参数表：

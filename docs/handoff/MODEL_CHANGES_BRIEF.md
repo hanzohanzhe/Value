@@ -1,12 +1,12 @@
 # VALUE 0.7.0-alpha.1 模型实质设定改动简报（给作者）
 
-- **代码状态：** 分支 `fix/review-2026-10-04`，代码状态 `6560189`（2026-10-08；之后只有交付文档的提交），对照 `main` 的 35aadb3（0.6.0-alpha.2 源码）。只有本地提交，没有推送（A17）。
+- **代码状态：** 分支 `fix/review-2026-10-04`，代码状态 `6014421`（2026-10-08；之后的提交只改文档），对照 `main` 的 35aadb3（0.6.0-alpha.2 源码）。只有本地提交，没有推送（A17）。
 - **两个口径与本文的定位（A26）：**
   - **修正口径** `value-corrected`：新 Study 的默认口径，也就是网上发布的 VALUE 新模型。网站方法学描述的是这个模型，不对应博士论文。
   - **论文复现口径** `doctoral-lineage-0.6.0a2`：兼容口径。界面标签 “Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)”，固定附注 “not an exact reproduction of the 2026-07-18 retained trajectory”。它保留论文期的设定（这些是设定，不是错误，见第 4 节），同时与修正口径一样接受全部通用修正（第 2 节）。论文代码库以 GitHub 上已锁定的版本为准。
 - **范围：** 只写改变模型数值或模型设定的改动。不改数值的软件、安全和界面改动在 2.3 节用一段带过。
 - **依据：**
-  - 决策：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A28；后面的条目优先于前面的条目）；
+  - 决策：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A29；后面的条目优先于前面的条目）；
   - 方法学目录 `gridform_core/data/methodology/`（口径、修正、声明偏差、advisory）、通用核算修正清单 `gridform_core/methodology.py::UNIVERSAL_ACCOUNTING_CORRECTIONS`、版本台账 `docs/release/VERSION_LEDGER.json`、`CHANGELOG.md` 的 “Correction ids” 表；
   - 参数表 `gridform_core/data/weather/value_uk_vre_loss_factors_v1.json`、`gridform_core/data/nuclear/value_uk_firm_availability_v1.json`、`gridform_core/data/thermal/value_thermal_restart_v1.json`；
   - golden 用例 `tests/golden/` 与数值报告 `tests/golden/reports/`；GBP1 文档 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`、`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`；参考统计表 `docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；论文内核修正的前后对比 `docs/dev/p0-reports/r41-golden/`。
@@ -59,7 +59,7 @@ VALUE 现在有两个方法学口径：默认的**修正口径**就是网上发�
 
 ### 2.3 不改数值的软件改动（一段说明）
 
-本地 API 安全边界（P0-1）、外部模块与扩展隔离（P0-2）、Run 生命周期（P0-3：关闭 VALUE 时 worker 继续运行，下次启动按租约接管）、结果页的标签与显示（P0-9）、口径登记与读时 advisory、Study 迁移（X0：纯代码身份变化自动追加修订，方法变化须在界面确认，Q13）、Run 异步启动与全局锁拆分（A24-5）、扩展状态链与钩子导入、一日课程选了扩展时预检阻断（F-D2）、原地修改已安装模块源码时记录新哈希并在比较页显示方法已变（M-D2）、完整 trace 下储能状态记录有界（超过 128 个批次时只列报价批次加汇总，`r53.bounded-storage-state-record`）、比较页在两个 Run 的 PSM 边界不同时不给未用 VRE 的差值，以及数据导入：逐小时需求在导入时每小时用于两个半小时时段并给出提示；VALUE 101 需求文件的单位标注更正为 MW（字节和读法不变），映射或复制数据包时需求量变化超过 1.5 倍或低于 0.67 倍会给出 `GF_DATA_DEMAND_SCALE` 提醒。`p05.weather-cache-key`（内核天气缓存按文件作键）和 `p05.validation-layers`（三层数据包校验）同样不改变正常运行的数值。这些都**不改变任何模型数值**。
+本地 API 安全边界（P0-1）、外部模块与扩展隔离（P0-2）、Run 生命周期（P0-3：关闭 VALUE 时 worker 继续运行，下次启动按租约接管）、结果页的标签与显示（P0-9）、口径登记与读时 advisory、Study 迁移（X0：纯代码身份变化自动追加修订，方法变化须在界面确认，Q13）、Run 异步启动与全局锁拆分（A24-5）、扩展状态链与钩子导入、一日课程选了扩展时预检阻断（F-D2）、原地修改已安装模块或扩展钩子的源码时记录新哈希并在比较页显示方法已变（M-D2；扩展停用后修好再启用同样接受并记录，A29）、有 Run 未结束时更改模块或扩展（尚未开始的 Run 以 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 停止，可在 Runs 页按当前代码重新提交；扩展钩子产物被拒时报 `GF_EXTENSION_OUTPUT_REJECTED`）、完整 trace 下储能状态记录有界（超过 128 个批次时只列报价批次加汇总，`r53.bounded-storage-state-record`）、比较页在两个 Run 的 PSM 边界不同时不给未用 VRE 的差值，以及数据导入：逐小时需求在导入时每小时用于两个半小时时段并给出提示；VALUE 101 需求文件的单位标注更正为 MW（字节和读法不变），映射或复制数据包时需求量变化超过 1.5 倍或低于 0.67 倍会给出 `GF_DATA_DEMAND_SCALE` 提醒。`p05.weather-cache-key`（内核天气缓存按文件作键）和 `p05.validation-layers`（三层数据包校验）同样不改变正常运行的数值。这些都**不改变任何模型数值**。
 
 ## 3 只改修正口径
 
@@ -238,7 +238,6 @@ VALUE 现在有两个方法学口径：默认的**修正口径**就是网上发�
 4. **论文内核中 A26 没有列入的几处实现。** 论文复现口径仍保留 4.2 节列出的几项内核实现，并由 advisory 披露：储能报价支付在平衡期之间结转（也进入时段成本列）、出清前 VRE 分流去电解、储能扩容余量按已接受的 VRE 计算（结果为 0），以及下调记账的三处（爬坡历史按列表位置匹配、栈中断后保留旧的剩余需求、下调电量只返还到水电预算）。A26 只把三项列为真错误，这几项在本版本中按论文期设定保留，影响量没有单独测量。如果你认为其中有真错误，处理方式与 A26 相同：通用修正、论文 golden 重基线一次、已保存 Study 确认。
 5. **CSV 光伏曲线的时间标注。** ERA5 的 ssrd 标在累积小时的末尾。按区间理解，`sa.csv` 这类逐时 CSV 曲线比半小时时钟滞后 1 小时（P6-06 的 CSV 版本）。CSV 曲线用于 VRE 扩容上限，以及没有 NetCDF 天气的数据包的调度；GBP1 与 R029 的调度用 NetCDF 站点天气，修正口径已按 C1 处理。是否把 CSV 曲线也按区间起点重新标注（整体提前 1 小时）是方法改动（Q13）。
 6. **本地新版数据包的发布。** GBP1 public2 和 R029 public2 都只在本地构建，没有发布、没有上传。要定：是否发布；修正口径的国家级默认数据包是否改用 R029 public2（代码中没有写死默认数据包 id）。按 A17，发布要等前端整体翻新之后。
-7. **非模型事项（不影响数值）：** 原地改过源码的扩展停用后能否重新启用（四角色 F-中1，是否与模块一样适用 A16-4），见 `docs/dev/p0-reports/R5-4-add-feature-defects.md` 第 2 节。
 
 ### 6.2 已生效的实现选择（你同意就不需要动作）
 
@@ -414,7 +413,7 @@ golden C10：新建 Study 的默认模块（`value-bid-at-cost-psm`、`dynamic-a
 ### 7.7 测量方法、可信度与局限
 
 - **VALUE 101（7.2、7.3 节）：** 每个用例都是一次完整的两年运行（17,520 期 × 2 年），使用 golden 的冻结项目 `tests/golden/projects/{D4,C5,C6}.json`，每次运行有自己的数据目录、HOME 和临时目录。
-  - 代码状态 `6560189`：在 `git archive` 的源码树上运行 `scripts/golden/run_case.py`。D4、C5、C6 的摘要与最新修订（D4 r13、C5 r16、C6 r14）的 trajectory 与 accounting 区逐列一致，只有 identity 区 1 列（内核 overlay 哈希）不同。
+  - 代码状态 `6560189`：在 `git archive` 的源码树上运行 `scripts/golden/run_case.py`。D4、C5、C6 的摘要与最新修订（D4 r13、C5 r16、C6 r14）的 trajectory 与 accounting 区逐列一致，只有 identity 区 1 列（内核 overlay 哈希）不同。此后到 `6014421` 的代码提交只涉及 Run 排队处理、失败分类、扩展启用和界面，不涉及计算路径，所以这些数字对当前代码成立。
   - 35aadb3：在 `git archive 35aadb3` 的源码树上，用同一冻结项目调用 `run_project_application(mode="two_year")`。
   - 7.3 节的中间状态：在对应提交的源码树上运行 `run_case.py`，摘要与对应 golden 修订逐列一致。论文复现口径 A26 之前一步的数值即 D4 修订 11 的运行。
   - 汇总用一个只读脚本读取 `year-results-v2.json`、成本账、碳账与 `market.sqlite`，放在施工临时目录，没有入库。
