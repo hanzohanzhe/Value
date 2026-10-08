@@ -69,6 +69,7 @@ existing installation is upgraded side by side, as described in
 | R4-1 (A26, thesis-kernel errors) | `r41.down-regulation-taken-once`, `r41.must-run-surplus-counted-once`, `p06.storage-net-per-period` (made universal; default PSM 6.7.0, explicit Study confirmation) | — |
 | R4-3 (A27, four-role S-中1, model clock label) | `r43.model-clock-utc-label` (ledger metadata label only, accounting zone; no model value changes) | — |
 | R5-1 (A28, four-role S-F-中2, energy served) | `r5.served-energy-net-of-stress-shortfall` (cost per MWh served and carbon intensity per MWh delivered; accounting zone, dispatch unchanged; not in the method identity, like `fx5.voll-17000`) | — |
+| R5-3 (A28, edit-module 中1, storage state record) | `r53.bounded-storage-state-record` (full-trace clearing declaration only: above 128 stored tranches a store's declared state lists the offered tranches and one aggregate; dispatch, ledger tables and results unchanged; not in the method identity) | — |
 
 P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
 lifecycle) and P0-9 (result views) are software fixes. They have no
@@ -1011,6 +1012,41 @@ availability, the original data readings) are unchanged.
   (S-F-低2); a read-only editor no longer says it is loading (S-F-低3);
   "1 period (30 minutes)" instead of "1 periods (0.0 days)" (S-F-低4); the
   review expiry is local time to the minute (S-F-低6).
+
+### Edit-module final fixes: storage state record, duplicate manifests (R5-3, DECISIONS A28)
+
+- **Bounded storage state in the clearing declaration (edit-module 中1).** A
+  store held full by an offer above the market price is topped up by a tiny
+  new charge tranche every period and never discharges, so its tranches grow
+  through the year. Every stage of a full market replay recorded all of them
+  (rows up to 536 KB; 20 GB for two VALUE 101 years with a 73 GBP/MWh fixed
+  offer). Above 128 tranches a store's declared state now lists the tranches
+  the stage offers (the clearing oracle still checks each offer against its
+  tranche) and one aggregate (`value.storage-tranches-offered-plus-aggregate/v1`:
+  count, MWh, first and last charge period); state of charge is unchanged.
+  Summary-trace runs no longer build the state at all. Recording only:
+  dispatch, every other ledger table and all results are unchanged (golden
+  C3 run with every state compacted: identical tables, same oracle
+  verdict). Correction id `r53.bounded-storage-state-record`; no golden case
+  reaches 128 tranches, so no golden changes.
+- **Estimate warning (中1).** Readiness warns
+  (`GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE`) that the disk and runtime estimate
+  is calibrated on the built-in storage-cost modules when a full market
+  replay selects any other storage-cost module.
+- **Two manifests with one module ID (中2).** Disable now parks every active
+  manifest that declares the ID (the copy goes to
+  `modules/disabled-manifests/modules/`), so the quarantine clears; Enable
+  refuses with `GF_MODULE_ID_COLLISION` naming the copy while one is active;
+  Remove moves copies too; `module_recovery list` names a manifest left by a
+  disabled installation with the `park-manifest` command. The quarantine
+  panel's notice names the moved files.
+- Low items: the method-upgrade remedy says to press Check readiness again,
+  without an API path, and the "saved as revision N" notice stays while
+  readiness is re-checked (低1); a one-year Study is not offered the two-year
+  scopes (低2); the storage-cost template is named "Draft fixed-offer storage
+  example (GBP 42/MWh)" (低3); the user guides say "Install a VALUE data
+  pack", "VALUE then checks" and "Start VALUE" (低4); the Modules badge
+  counts experimental modules separately (低6).
 
 ### Scientific validation recomputed and gated (P0-4)
 

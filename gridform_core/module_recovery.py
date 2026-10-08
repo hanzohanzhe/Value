@@ -82,6 +82,39 @@ def _relative(path: Path, root: Path) -> str:
         return path.name
 
 
+def active_manifests_declaring(root: Path, kind: str, entry_id: str) -> list[Path]:
+    """Active manifests in the scanned folder whose ``id`` is ``entry_id`` (R5-3 中2).
+
+    The installer writes ``<id>.json``; a copied manifest (``<id>-copy.json``)
+    declares the same ID under another name.  Raw JSON only, never imports.
+    """
+
+    folder = root if kind == "module" else root / "extensions"
+    found = []
+    for path in sorted(folder.glob("*.json")):
+        payload, error = _read(path)
+        if not error and isinstance(payload, dict) and payload.get("id") == entry_id:
+            found.append(path)
+    return found
+
+
+def park_other_manifests(root: Path, kind: str, entry_id: str) -> list[dict[str, object]]:
+    """Park every active manifest of ``entry_id`` except the installer's own file.
+
+    Used when an entry is disabled: a second manifest with the same ID would
+    otherwise stay in the scanned folder and keep the ID quarantined after
+    the installation is disabled (R5-3 中2).  The files go to
+    ``disabled-manifests/{modules,extensions}/``, as ``park-manifest`` does.
+    """
+
+    own = f"{entry_id}.json"
+    return [
+        park_manifest(root, kind, path.name)
+        for path in active_manifests_declaring(root, kind, entry_id)
+        if path.name != own
+    ]
+
+
 def _backend_running(modules_root: Path) -> bool:
     from backend.lifecycle.file_locks import LOCK_HELD, probe_lock
 
@@ -159,6 +192,21 @@ def inventory(modules_root: Path) -> dict[str, object]:
         if row["kind"] == "extension" and row.get("namespace") and len(namespaces[str(row["namespace"])]) > 1:
             row["problems"].append("namespace shared with " + ", ".join(
                 item for item in namespaces[str(row["namespace"])] if item != row["id"]))
+    enabled_modules = {
+        str(row["id"]) for row in rows
+        if row["kind"] == "module" and row["source"] == "installation_record" and row.get("enabled")
+    }
+    installed_modules = {
+        str(row["id"]) for row in rows if row["kind"] == "module" and row["source"] == "installation_record"
+    }
+    for row in rows:
+        # R5-3 中2: an active manifest left behind by a disabled or removed
+        # installation keeps the ID quarantined with a misleading import error.
+        if row["kind"] != "module" or row["source"] != "active_manifest" or not row.get("id"):
+            continue
+        if str(row["id"]) in installed_modules and str(row["id"]) not in enabled_modules:
+            row["problems"].append("active manifest of a disabled installation")
+            row["fix"] = f"park-manifest module {Path(str(row['file'])).name}"
     parked = sorted(_relative(path, root) for path in (root / PARKED).glob("*/*.json"))
     parked += sorted(_relative(path, root) for folder in INSTALLER_FOLDER.values()
                      for path in (root / PARKED / folder).glob("*/*"))
@@ -253,6 +301,7 @@ def disable(root: Path, kind: str, entry_id: str) -> dict[str, object]:
             changed.append(_relative(target, root))
         active.unlink()
         changed.append(_relative(active, root) + " (removed)")
+    changed += [f"{item['from']} -> {item['parked']} (parked)" for item in park_other_manifests(root, kind, entry_id)]
     return {"kind": kind, "id": entry_id, "changed": changed}
 
 
@@ -362,6 +411,9 @@ def remove_installation(root: Path, kind: str, entry_id: str) -> dict[str, objec
         sources.append(root / f"{entry}.json")
     else:
         sources += [root / "extensions" / f"{entry}.json", root / "disabled-extensions" / f"{entry}.json"]
+    # R5-3 中2: a second active manifest with this ID goes too, so Remove
+    # never reports success while a copy keeps the ID quarantined.
+    sources += [path for path in active_manifests_declaring(root, kind, entry) if path not in sources]
     present = [path for path in sources if path.exists() or path.is_symlink()]
     if not present:
         raise LookupError(f"No installed {kind} {entry_id} under {root}")

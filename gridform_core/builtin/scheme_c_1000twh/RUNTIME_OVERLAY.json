@@ -5,7 +5,7 @@
   "source_package": "gridform_core.builtin.scheme_c_1000twh.compat",
   "runtime_package": "gridform_core.builtin.scheme_c_1000twh.runtime_compat",
   "source_tree_sha256": "0dca6c9a1fb595e6aa0f31e249c0af5b0b13eaeb8a4244e5721de5c22ce9d117",
-  "runtime_tree_sha256": "fa86624ef63c26ae06bdcdfbd3b333d1a2e59556dab8561c2229a0480567362f",
+  "runtime_tree_sha256": "dc9d7126d75941cd1a625d25a46c89ea282724b1d58afad7097ec415b4e13da3",
   "v1_runtime_tree_sha256": "1c48e202e9741b160128dfb694d22c26df6564ca8a4a251faabca4bc66518255",
   "v1_note": "The v1 runtime_tree_sha256 predates VALUE instrumentation edits to modular_simulation_model.py and storage_cost.py and was never checked on the production path; v2 registers every runtime file instead.",
   "excluded_generated_paths": [
@@ -133,7 +133,7 @@
     },
     {
       "path": "modular_simulation_model.py",
-      "sha256": "e58d727cc3dc4f201d738fa2e8a3bec45c0d2b3c89c9c8a7f9fba20fe6605566",
+      "sha256": "4b53dc8d5228b4880cda253bd5471acec941d7e673eedd53b60046df6271b5c6",
       "kind": "declared_runtime_edit",
       "correction_ids": [
         "fx4.storage-offer-ledger",
@@ -153,9 +153,10 @@
         "p06.storage-net-per-period",
         "r12.economic-downward-order",
         "r41.down-regulation-taken-once",
-        "r41.must-run-surplus-counted-once"
+        "r41.must-run-surplus-counted-once",
+        "r53.bounded-storage-state-record"
       ],
-      "note": "R4-1 (A26): A15 down regulation taken once (r41.down-regulation-taken-once); DEV-BAL-04 must-run surplus counted once (r41.must-run-surplus-counted-once); DEV-STO-01 one storage position per period in the thesis rule set (p06.storage-net-per-period, now universal; buy-back before charge, close_period records sales once)",
+      "note": "R5-3 (A28): bounded declared storage state in full-trace clearing inputs; recording only",
       "previous_kind": "value_instrumentation"
     },
     {

@@ -146,26 +146,92 @@ def _asset_name(asset):
     return str(getattr(asset, "name", asset.__class__.__name__))
 
 
-def _storage_pre_state(batterys):
-    period_hours = physical_period_hours()
-    return [
-        {
-            "asset_id": _asset_name(battery),
-            "technology": str(getattr(battery, "battery_type", "unknown")),
-            "state_of_charge_mwh": float(sum(getattr(battery, "stored_energy", {}).values())),
+# VALUE R5-3 (A28, edit-module 中1): a store that stays full under an offer
+# above the market price is topped up by a tiny new charge tranche every
+# period and never discharges, so its tranche dictionary grows through the
+# year.  Recording every tranche in every stage's declared state made the
+# full-trace ledger grow with the square of the periods (20 GB for two VALUE
+# 101 years).  The declared state lists every tranche while there are at most
+# this many; above it, it lists the tranches the stage offers (so the clearing
+# oracle still checks each offered tranche against its stored energy) and
+# aggregates the rest.  Recording only: dispatch never reads this state.
+STORAGE_STATE_TRANCHE_RECORD_LIMIT = 128
+STORAGE_STATE_COMPACT_REPRESENTATION = "value.storage-tranches-offered-plus-aggregate/v1"
+_TRANCHE_RECORD_OBSERVATION = {"max_tranche_count": 0, "compacted_states": 0}
+
+
+def storage_tranche_record_observation():
+    """Largest tranche count seen and how many declared states were compacted."""
+    return dict(_TRANCHE_RECORD_OBSERVATION)
+
+
+def reset_storage_tranche_record_observation():
+    _TRANCHE_RECORD_OBSERVATION.update(max_tranche_count=0, compacted_states=0)
+
+
+def _declared_tranches(battery, stored, offered_periods):
+    count = len(stored)
+    if count > _TRANCHE_RECORD_OBSERVATION["max_tranche_count"]:
+        _TRANCHE_RECORD_OBSERVATION["max_tranche_count"] = count
+    if count <= STORAGE_STATE_TRANCHE_RECORD_LIMIT:
+        return {
             "stored_tranches_mwh": [
                 {"charge_period": int(key), "stored_mwh": float(value)}
-                for key, value in getattr(battery, "stored_energy", {}).items()
+                for key, value in stored.items()
             ],
+        }
+    _TRANCHE_RECORD_OBSERVATION["compacted_states"] += 1
+    explicit = []
+    rest_mwh = 0.0
+    rest_count = 0
+    rest_min = rest_max = None
+    for key, value in stored.items():
+        if key in offered_periods:
+            explicit.append({"charge_period": int(key), "stored_mwh": float(value)})
+            continue
+        rest_mwh += float(value)
+        rest_count += 1
+        rest_min = key if rest_min is None or key < rest_min else rest_min
+        rest_max = key if rest_max is None or key > rest_max else rest_max
+    return {
+        "stored_tranches_mwh": explicit,
+        "stored_tranche_representation": STORAGE_STATE_COMPACT_REPRESENTATION,
+        "stored_tranche_count": count,
+        "stored_tranches_aggregate": {
+            "tranche_count": rest_count,
+            "stored_mwh": rest_mwh,
+            "charge_period_min": None if rest_min is None else int(rest_min),
+            "charge_period_max": None if rest_max is None else int(rest_max),
+        },
+    }
+
+
+def _storage_pre_state(batterys, offers=None):
+    if active_market_ledger().trace_level != "full":
+        # Only a full-trace ledger records declared state (_record_declared_input).
+        return []
+    period_hours = physical_period_hours()
+    offered = {}
+    for offer in offers or ():
+        if offer.get("resource_kind") == "storage_discharge" and offer.get("charge_period") is not None:
+            offered.setdefault(str(offer["asset_id"]), set()).add(int(offer["charge_period"]))
+    rows = []
+    for battery in batterys:
+        stored = getattr(battery, "stored_energy", {})
+        asset_id = _asset_name(battery)
+        rows.append({
+            "asset_id": asset_id,
+            "technology": str(getattr(battery, "battery_type", "unknown")),
+            "state_of_charge_mwh": float(sum(stored.values())),
+            **_declared_tranches(battery, stored, offered.get(asset_id, ())),
             "charge_power_limit_mw": float(getattr(battery, "power_capacity_mw", 0.0)),
             "discharge_power_limit_mw": float(getattr(battery, "power_capacity_mw", 0.0)),
             "energy_capacity_mwh": float(getattr(battery, "energy_capacity_mwh", 0.0)),
             "charge_efficiency": float(getattr(battery, "n_1", 1.0)),
             "discharge_efficiency": float(getattr(battery, "n_2", 1.0)),
             "period_hours": period_hours,
-        }
-        for battery in batterys
-    ]
+        })
+    return rows
 
 
 def _record_declared_input(stage, period, information_scope, payload):
@@ -1702,7 +1768,7 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
             "objective": "minimise declared offer cost subject to the retained sequential availability rules",
             "tie_break": "stable ascending offer price then input order",
             "offers": declared_offers,
-            "storage_pre_state": _storage_pre_state(batterys),
+            "storage_pre_state": _storage_pre_state(batterys, declared_offers),
             "constraints": _ahead_constraints,
         },
     )
@@ -2373,7 +2439,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 "bidding_factor": float(bidding_factor),
                 "offers": declared_offers,
                 "storage_stage_start_state": declared_stage_start_storage,
-                "storage_pre_clearing_state": _storage_pre_state(batterys),
+                "storage_pre_clearing_state": _storage_pre_state(batterys, declared_offers),
                 "excluded_import_options": [],
                 "constraints": {
                     "single_zone": True,

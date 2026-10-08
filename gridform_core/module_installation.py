@@ -407,10 +407,22 @@ def _set_module_enabled(
     original_record = record_path.read_bytes()
     original_manifest = active_manifest.read_bytes() if active_manifest.is_file() else None
     source_text = str(source_root.resolve())
+    from .module_recovery import active_manifests_declaring, park_other_manifests
+
+    parked: list[dict[str, object]] = []
     try:
         if enabled:
             if active_manifest.exists():
                 raise ModuleInstallationError("GF_MODULE_ID_COLLISION", "An active manifest already uses this module ID")
+            others = [path.name for path in active_manifests_declaring(root, "module", module_id)]
+            if others:
+                # R5-3 中2: a copied manifest with this ID is still in the
+                # scanned folder; enabling would only quarantine both.
+                raise ModuleInstallationError(
+                    "GF_MODULE_ID_COLLISION",
+                    "Another active manifest declares this module ID (modules/" + ", modules/".join(others)
+                    + "); press Disable on its row in the quarantine panel, then Enable again",
+                )
             activate_external_module_sources(root)
             manifest = ModuleManifest.from_dict(
                 json.loads((record_path.parent / str(record["manifest_path"])).read_text(encoding="utf-8"))
@@ -445,6 +457,10 @@ def _set_module_enabled(
             ).hexdigest()
         else:
             active_manifest.unlink(missing_ok=True)
+            # R5-3 中2: a second manifest with this ID (for example a copy of
+            # <id>.json) is parked too, so a disabled ID leaves the scanned
+            # folder completely and the quarantine it caused clears.
+            parked = park_other_manifests(root, "module", module_id)
             # Disabled code must not stay importable from sys.modules (P0-2 R4).
             purge_source_root(source_root)
         record["enabled"] = enabled
@@ -455,6 +471,11 @@ def _set_module_enabled(
     except Exception:
         for temporary in (record_path, active_manifest):
             temporary.with_suffix(temporary.suffix + ".tmp").unlink(missing_ok=True)
+        for item in parked:
+            # Parked copies go back where they were (byte-exact rollback).
+            moved, original = root / str(item["parked"]), root / str(item["from"])
+            if moved.is_file() and not original.exists():
+                moved.replace(original)
         record_path.write_bytes(original_record)
         if original_manifest is None:
             active_manifest.unlink(missing_ok=True)
@@ -467,4 +488,6 @@ def _set_module_enabled(
         raise
     result = dict(record)
     result["record_path"] = str(record_path.resolve())
+    if parked:
+        result["parked_manifests"] = [str(item["parked"]) for item in parked]
     return result

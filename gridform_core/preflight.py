@@ -49,7 +49,7 @@ from .run_policy import (
     validate_pack_run_mode,
 )
 from .frontend_contract import validate_maturity_acknowledgements
-from .v2.module_manifest import ModuleRegistryV2, workspace_registry
+from .v2.module_manifest import ModuleRegistryV2, builtin_registry, workspace_registry
 from .runtime_paths import user_data_root
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .study_market_config import resolve_market_configuration
@@ -185,6 +185,38 @@ def _data_scale(pack_root: Path, pack_manifest: Mapping[str, object]) -> dict[st
         "planning_projects": planning_projects,
         "basis": "counts from fleet.generators and projects.repd bindings",
     }
+
+
+def _storage_module_estimate_warning(
+    selected: Mapping[str, object], trace: str
+) -> dict[str, object] | None:
+    """R5-3 (A28, edit-module 中1): warn that the estimate assumes built-in storage behaviour.
+
+    A storage offer that keeps a store full (an offer above the market price)
+    tops it up with a tiny charge tranche every period.  The disk and runtime
+    estimate is calibrated on the built-in storage-cost modules, so a full
+    market replay with any other storage-cost module can take longer and
+    write more than estimated.  The declared clearing state is bounded
+    (STORAGE_STATE_TRANCHE_RECORD_LIMIT), but offers and runtime still scale
+    with the number of stored tranches.
+    """
+
+    module_id = selected.get("storage_cost")
+    if trace != "full" or not module_id:
+        return None
+    try:
+        if str(module_id) in builtin_registry().manifests():
+            return None
+    except (ValueError, OSError):
+        return None
+    return _issue(
+        "GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE", "warning", "output",
+        f"The disk and runtime estimate is calibrated on the built-in storage-cost modules; with {module_id} "
+        "a store that rarely discharges keeps one record per charging period, so a full market replay can "
+        "take longer and write more than estimated.",
+        "Run a short scope first and compare its time and size with the estimate, or choose Summary market "
+        "tracing for long runs with this module.",
+    )
 
 
 def _estimates(
@@ -686,7 +718,7 @@ def run_preflight(
                 str(classification["error_code"]), "error", "project",
                 "The installed VALUE computes this Study differently from its saved revision ("
                 + kind.replace("_", " ") + "); review the changes and confirm them as a new revision.",
-                "Open the Study and confirm the listed changes (POST /api/projects/<id>/revision-migration).",
+                "Press Check readiness again: VALUE lists the changes for your confirmation and saves them as a new revision of this Study.",
             ))
     except (ValueError, KeyError) as exc:
         checks["project_revision"] = {"passed": False, "error": str(exc)}
@@ -932,6 +964,13 @@ def run_preflight(
                     "The run would exceed the local run-output quota (" + ", ".join(quota_reasons) + ").",
                     " ".join(QUOTA_CORRECTIVE_ACTIONS),
                 ))
+        storage_estimate_warning = _storage_module_estimate_warning(
+            selected, str(resolved.runtime.values.get("runtime.market_trace_level", "summary"))
+        )
+        if storage_estimate_warning is not None:
+            issues.append(storage_estimate_warning)
+            if isinstance(estimates, dict) and estimates:
+                estimates["storage_module_outside_calibration"] = True
         export_format = str(resolved.runtime.values.get("runtime.market_export_format", "sqlite"))
         parquet_ok = export_format != "parquet" or importlib.util.find_spec("pyarrow") is not None
         checks["optional_parquet"] = {"requested": export_format == "parquet", "passed": parquet_ok}
