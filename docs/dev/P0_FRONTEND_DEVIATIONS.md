@@ -360,3 +360,15 @@
 | F-R53-2 | 低1 | 方法升级确认保存后，“Saved as a new revision (revision N)…” 提示不再被随后的 readiness 复查清掉；readiness 的修复建议改为 `Press Check readiness again: VALUE lists the changes for your confirmation and saves them as a new revision of this Study.`，不再给出 API 路径 | 原建议指向不存在的入口，确认后看不到已保存修订 | 否 |
 | F-R53-3 | 低2 | 起止年份相同的 Study，Runs 页 Check for 下拉框不列出 `Two-year hand-off check` 与 `Two full model years`（冻结恢复要求的范围除外） | 选了必然被 readiness 拒绝 | 否 |
 | F-R53-4 | 低6 | Modules 页标题徽标改为 `{ready} of {total} ready · {n} experimental`（有实验性模块时） | 实验性模块计入分母却从不算 ready，原来没有说明 | 是（措辞） |
+
+## R5-4（加功能角色最终验收的缺陷；DECISIONS A28）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R54-1 | F-中2 | Modules 的 “Open independent Study draft” 生成默认名称时，若 `{来源 Study 名} · extension study` 推导出的 Study ID 已被占用，依次加 ` 2`、` 3`…（ID 推导与后端 `slug` 一致，超长名称先截短再加序号）。名称输入框不变，用户仍可改名。后端对“无基修订、ID 已存在”的保存改报 409 `GF_STUDY_ID_EXISTS`：`A Study with ID … already exists (…). Give this Study another name to save it as a new Study, or open the existing Study and use Edit as new revision.`，页面照原样在提示条显示 | 原来重名时报 “revision conflict… reload”，按提示重载会丢掉草稿 | 否 |
+| F-R54-2 | F-低4 | Data 页在 “Current unsaved Study draft” 语境（且不是在编辑已保存 Study）时，顶部语境条显示与 Studies 页相同的 `Independent Study draft · {名称} · Review and save to create a new Study.`，不再显示 “Selected saved Study … Editing is saved as a new revision.”。“Input contract for” 下拉框仍列出全部 Study（它是选择器） | 草稿状态下被误认为在修改来源 Study | 否 |
+| F-R54-3 | F-低1 | 隔离面板 Disable 确认框对扩展改为 `Disable {id}? Studies that select this extension cannot run until it is enabled again or they deselect it (saved as a new revision).`（模块不变）；readiness 对停用/隔离的扩展建议 `deselect the extension in the Study (saved as a new revision)`，模块与扩展混合时两者都写 | 扩展不能被“换成另一个 module” | 否 |
+| F-R54-4 | F-低3 | 扩展卡片被 Study 引用时的说明改为 `Referenced by N saved Studies; disabling here is blocked. If it is quarantined, Disabled and quarantined can still disable it so the Studies can be repaired.`；两处规则本身不变 | 两处规则不同但卡片没有说明 | 是（措辞） |
+| F-R54-5 | F-中3 | 扩展编写台高级清单说明末尾加一句 `A Run records the initialize state and the after_psm artifacts only; see the README for the other hooks.` | 手册与界面未说明哪些钩子输出会被记录 | 否 |

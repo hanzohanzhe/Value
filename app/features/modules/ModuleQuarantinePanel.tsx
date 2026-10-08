@@ -33,7 +33,7 @@ export default function ModuleQuarantinePanel({ report, busy, onDisable, onResca
       {row.details && <details><summary>Full error</summary><pre>{row.details}</pre></details>}
       {!row.canDisable && row.correctiveAction && <p className="quarantine-help">{row.correctiveAction}</p>}
       <div className="quarantine-actions">
-        {row.canDisable && <button type="button" className="value-action-primary" disabled={Boolean(busy)} onClick={() => { if (window.confirm(disableConfirmation(row.id ?? row.label))) onDisable(row); }}>{busy === row.key ? "Disabling…" : "Disable"}</button>}
+        {row.canDisable && <button type="button" className="value-action-primary" disabled={Boolean(busy)} onClick={() => { if (window.confirm(disableConfirmation(row.id ?? row.label, row.kind))) onDisable(row); }}>{busy === row.key ? "Disabling…" : "Disable"}</button>}
         <button type="button" className="value-action-link" disabled={Boolean(busy)} onClick={onRescan}>{busy === "rescan" ? "Rescanning…" : "Rescan"}</button>
       </div>
     </li>)}</ul>

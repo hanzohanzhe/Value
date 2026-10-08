@@ -63,7 +63,9 @@ export function quarantineRows(report) {
   });
 }
 
-export function disableConfirmation(id) {
+export function disableConfirmation(id, kind = "module") {
+  // R5 F-低1: a Study does not swap an extension for another one; it deselects it.
+  if (kind === "extension") return `Disable ${id}? Studies that select this extension cannot run until it is enabled again or they deselect it (saved as a new revision).`;
   return `Disable ${id}? Studies that use it will need another module before they can run.`;
 }
 
