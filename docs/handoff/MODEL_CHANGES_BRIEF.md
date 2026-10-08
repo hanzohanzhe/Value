@@ -1,93 +1,106 @@
 # VALUE 0.7.0-alpha.1 模型实质设定改动简报（给作者）
 
-- **代码状态：** 分支 `fix/review-2026-10-04`，HEAD `fab9ec2`（2026-10-07），对照 `main` 的 35aadb3（0.6.0-alpha.2 源码）。只做了本地提交，没有推送（A17）。
+- **代码状态：** 分支 `fix/review-2026-10-04`，代码状态 `6560189`（2026-10-08；之后只有交付文档的提交），对照 `main` 的 35aadb3（0.6.0-alpha.2 源码）。只有本地提交，没有推送（A17）。
+- **两个口径与本文的定位（A26）：**
+  - **修正口径** `value-corrected`：新 Study 的默认口径，也就是网上发布的 VALUE 新模型。网站方法学描述的是这个模型，不对应博士论文。
+  - **论文复现口径** `doctoral-lineage-0.6.0a2`：兼容口径。界面标签 “Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)”，固定附注 “not an exact reproduction of the 2026-07-18 retained trajectory”。它保留论文期的设定（这些是设定，不是错误，见第 4 节），同时与修正口径一样接受全部通用修正（第 2 节）。论文代码库以 GitHub 上已锁定的版本为准。
 - **范围：** 只写改变模型数值或模型设定的改动。不改数值的软件、安全和界面改动在 2.3 节用一段带过。
 - **依据：**
-  - 决策：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A25；后面的条目优先于前面的条目）；
-  - 方法学目录 `gridform_core/data/methodology/`（口径、修正、声明偏差、advisory）与版本台账 `docs/release/VERSION_LEDGER.json`；
+  - 决策：`docs/dev/P0_DECISIONS.md`（Q1–Q15、A1–A28；后面的条目优先于前面的条目）；
+  - 方法学目录 `gridform_core/data/methodology/`（口径、修正、声明偏差、advisory）、通用核算修正清单 `gridform_core/methodology.py::UNIVERSAL_ACCOUNTING_CORRECTIONS`、版本台账 `docs/release/VERSION_LEDGER.json`、`CHANGELOG.md` 的 “Correction ids” 表；
   - 参数表 `gridform_core/data/weather/value_uk_vre_loss_factors_v1.json`、`gridform_core/data/nuclear/value_uk_firm_availability_v1.json`、`gridform_core/data/thermal/value_thermal_restart_v1.json`；
-  - golden 用例 `tests/golden/`；GBP1 文档 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`、`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`、`GBP1_SURPLUS_CONSERVATION_INVESTIGATION.md`；参考统计表 `docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`。
-- **数字：** VALUE 101 的数字是为本简报新跑的（HEAD 与 35aadb3 各跑一次，另跑了分解用的中间状态），GBP1 与 R029 的数字取自上面的文档和 golden 数值报告。为什么这些数字对当前代码仍然成立，见 7.7 节。
-- 本文只描述当前的最终状态。施工过程和逐轮记录在 git 历史与 `docs/dev/p0-reports/` 中。
-- **两个口径：**
-  - **论文复现口径** `doctoral-lineage-0.6.0a2`。界面标签 “Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)”，固定附注 “not an exact reproduction of the 2026-07-18 retained trajectory”；
-  - **修正口径** `value-corrected`，新 Study 的默认口径。
-- finding 编号（P4-01 等）取自审查报告 `VALUE_review_2026-10-04.md`。correction id（`p07.thermal-net-revenue` 等）取自方法学目录和版本台账。
+  - golden 用例 `tests/golden/` 与数值报告 `tests/golden/reports/`；GBP1 文档 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`、`GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`；参考统计表 `docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`；论文内核修正的前后对比 `docs/dev/p0-reports/r41-golden/`。
+- **数字：** VALUE 101 两年算例的 HEAD 数字是为本文重跑的（golden D4、C5、C6），与最新 golden 修订逐列核对一致；35aadb3 的数字是对这一固定提交的运行。GBP1 与 R029 的数字取自 golden 数值报告和验收文档，7.7 节说明为什么它们对当前代码仍然成立。
+- 施工过程和逐轮记录只保留在 git 历史和 `docs/dev/p0-reports/` 中，本文只描述当前状态。
+- finding 编号（P4-01 等）取自审查报告 `VALUE_review_2026-10-04.md`；correction id（`p07.thermal-net-revenue` 等）取自方法学目录与 CHANGELOG。
 
 ## 1 一段话总结
 
-VALUE 现在有两个方法学口径。**论文复现口径**冻结在 35aadb3 的调度与投资行为上，只接受你批准的通用修正：改变轨迹的是 GBP1 的四处读取错误（互联线序列逐期对齐、比利时价格的币种与分辨率、BE/NL 潮流文件对调、夏令时后需求错位）和火电投资净收入扣除运行成本（A4）；其余通用修正只改核算、验证和发布，即缺电 stress 事件、声明的能量平衡边界、物理运营成本、成本账 v2（风光储的固定 OPEX 视为已含在平准化 CAPEX 中）、储能报价账本和 VoLL 17,000 £/MWh。**修正口径**在此之外又改了五组设定：数据与可用出力（ERA5 时间约定、风光文献损耗系数、光伏倾斜面换算、核电逐站可用率、径流水电 DUKES 负荷率）；默认 PSM 的出清与储能规则（D1-surplus、同档储能排在发电之后、每期一个净头寸、储能只报循环损耗、统一边际价结算、互联线进口进入日前出清、核电开局在运）；火电下调的经济次序（不停机段先于弃风，停机段按 a = c − S/(m·H) 与弃风比较，默认 PSM 与网络模型规则一致，重启成本按 2025 年英镑）；储能扩容（余量取储能充电后剩下的盈余，三种功率电池各自 0.2 × power_room）；网络模块的经济口径。风光储没有 OPEX、投资判据不折现、缺电时段的调度方式不变，这三项论文设定在两个口径中都保留。实测结果：VALUE 101 两年算例上，论文口径的出力、价格、储能和排放与 35aadb3 逐位相同，只是不再新建 13.05 MW 不赚钱的 CCGT，两年系统成本下降 2.17%；这次运行的储能原始不变量失败（DEV-STO-01），所以按 Q14 年度结果不在结果页发布。修正口径（默认配置）两年系统成本下降 2.06%，CCGT 发电和排放各下降 0.6%，电池两年放电由 0.36 MWh 变为 5,208 MWh，也不再新建 CCGT。这背后是两个方向相反、大小相近的作用：新市场规则使 CCGT 发电减少 11%，风光损耗系数又使它增加 12%。GBP1 第一年（2025）：论文口径的读取修正使进口减少 78%、价格尖峰消失、系统成本下降 3.2%、排放增加 3.4%；修正口径（本地构建的 public2）核电 38.26 TWh（对 Energy Trends 5.1 +2.5%），水电 6.01 TWh（对 DUKES +4.2%），风电容量因子仍高于 DUKES（按 A9 只披露，不标定）。仍需要你决定的主要是 A15 调查的处理方式（论文内核在 GBP1 上的重复下调）和几项数据事务，见第 6 节。
+VALUE 现在有两个方法学口径：默认的**修正口径**就是网上发布的新模型；**论文复现口径**是兼容口径，保留论文期设定，并与修正口径一样接受全部通用修正。**通用修正**中改变轨迹的有三组：GBP1 的四处数据读取错误（互联线序列逐期对齐、比利时价格的币种与分辨率、BE/NL 潮流文件对调、夏令时后需求错位）；火电投资净收入扣除燃料、碳价和单位时间成本（A4）；论文内核的三项实现错误（A26：削减分支同一笔下调削两次、储能在每个出清阶段重置功率上限、平衡阶段把必发核电盈余再计一次）。其余通用修正只改核算、验证和发布：缺电 stress 事件、声明的能量平衡边界、物理运营成本、成本账 v2（风光储固定 OPEX 视为已含在平准化 CAPEX 中）、储能报价账本、VoLL 17,000 £/MWh、扣除缺口后的已供电量。**修正口径**在此之外又改了五组设定：数据与可用出力（ERA5 时间约定、风光文献损耗系数、光伏倾斜面换算、核电逐站可用率、径流水电 DUKES 负荷率）；默认 PSM 的出清与储能规则（D1-surplus、同档储能排在发电之后、储能只报循环损耗、统一边际价结算、互联线进口进入日前出清、核电开局在运）；火电下调的经济次序（停机段按 a = c − S/(m·H) 与弃风比较，默认 PSM 与网络模型一致，重启成本按 2025 年英镑）；储能扩容（余量取储能充电后剩下的盈余，三种功率电池各自 0.2 × power_room）；网络模块的经济口径。风光储没有 OPEX、投资判据不折现、缺电时段的调度不变，这三项设定两个口径都保留。**实测：** VALUE 101 两年算例上，论文复现口径相对 35aadb3 系统成本下降 882,051 £（−2.98%：A4 −508,406 £，成本账 v2 −132,000 £，A26 −241,645 £），CCGT 发电与排放各 −1.8%，原始不变量全部通过，年度结果在结果页发布；修正口径（默认配置）系统成本 −2.06%，CCGT 发电与排放各 −0.6%，电池两年放电由 0.36 MWh 变为 5,208 MWh，不再新建 CCGT。GBP1 第一年（2025）：论文复现口径进口 −77%、价格尖峰消失、系统成本 −3.3%、排放 +2.6%，A26 使隐藏缺电由 300.9 GWh 降到 78.8 GWh，原始不变量通过、年度结果发布；修正口径（本地构建的 public2）核电 38.26 TWh（对 Energy Trends 5.1 +2.5%），径流水电 6.01 TWh（对 DUKES +4.2%），风电容量因子仍高于 DUKES（A9：只披露，不标定）。仍未解决的主要是几项数据核对、生物质补贴（下一轮）、论文内核中 A26 未列入的几处实现是否也算错误，以及分区 LP 的数值稳健性（第 6 节）。
 
 ## 2 两个口径都改（通用修正）
 
-这些是 Q1 严格冻结的例外。按 Q12，论文族 golden 的 trajectory 区只在你批准的 finding 下变化，每个 case 只重基线一次，并附数值报告（`tests/golden/doctoral_trajectory_rebaselines.json`、`tests/golden/reports/D4-r9.json`、`D5-r1.json`）。下表中 “VALUE 101” 指两年算例（2025–2026），“GBP1” 指 GBP1 public1 论文复现口径第一年（2025，golden D5），两者都相对 35aadb3。
+这些是 Q1 严格冻结的例外。按 Q12，论文族 golden 的 trajectory 区只在通用修正下变化，每项修正只重基线一次并附数值报告（`tests/golden/doctoral_trajectory_rebaselines.json`、`tests/golden/reports/D3-r14.json`、`D4-r9.json`、`D4-r12.json`、`D5-r1.json`、`D5-r3.json`）。下表 “VALUE 101” 指论文复现口径的两年算例（2025–2026，golden D4），“GBP1” 指 GBP1 public1 论文复现口径第一年（2025，golden D5），都相对 35aadb3；分组的效应按施工次序依次叠加测量。
 
 ### 2.1 改变调度或投资轨迹的修正
 
 | # | 改了什么 | 为什么 | finding / 决策 / correction id | VALUE 101 | GBP1 |
 |---|---|---|---|---|---|
-| U1 | 互联线序列按运行时钟逐期取值：第 p 期取第 p 行，每条连接只接本国序列 | 内核把每个值用两次（第 p 期取第 p//2 行），全年只用到约半年数据，并拉伸到全年 | P6-24；Q9、A3；`p05.interconnector-clock` | 0：101 的市场序列都是常数 | U1–U4 一起生效：进口 1.548 → 0.336 TWh（−78%）；时段平均成本的均值 22.35 → 18.23 £/MWh，最高 5,849.5 → 50.4 £/MWh；运营成本 −813.0 百万英镑；直接排放 29.91 → 30.91 MtCO2；风光提案 2,954.7 → 3,036.4 MW |
-| U2 | 比利时价格读 EUR 列，按 1.1 EUR/GBP 换算，并由逐小时展开为半小时 | 原读法把逐小时 EUR 当作半小时 GBP；保留内核读到国名列，价格全为 0 | P6-02；A5；`p05.belgium-price-currency` | 0 | 见 U1 |
+| U1 | 互联线序列按运行时钟逐期取值：第 p 期取第 p 行，每条连接只接本国序列 | 内核把每个值用两次（第 p 期取第 p//2 行），全年只用到约半年数据，并拉伸到全年 | P6-24；Q9、A3；`p05.interconnector-clock` | 0：101 的市场序列都是常数 | U1–U4 一起：进口 1.548 → 0.336 TWh（−78%）；时段平均成本均值 22.35 → 18.23 £/MWh，最高 5,849.5 → 50.4 £/MWh；运营成本 −813.0 百万英镑；直接排放 29.91 → 30.91 MtCO2；风光提案 2,954.7 → 3,036.4 MW |
+| U2 | 比利时价格读 EUR 列，按 1.1 EUR/GBP 换算，并由逐小时展开为半小时 | 原读法把逐小时 EUR 当作半小时 GBP；内核读到国名列，价格全为 0 | P6-02；A5；`p05.belgium-price-currency` | 0 | 见 U1 |
 | U3 | 互联线潮流文件按 NESO 线路身份接线（BritNed → 荷兰，Nemo → 比利时等） | BE/NL 两个文件对调：荷兰线接的是比利时文件，报价全年为 0，成了免费进口源（一年 1.34 TWh）；爱尔兰线接的是荷兰文件 | P6-03；A5；`p05.boundary-identity` | 0 | 见 U1 |
 | U4 | GBP1 需求对齐 UTC：删去 2022-10-30 的重复行 14495、14497，在 14514、14542 处各线性插补 2 期 | 夏令时结束后需求整体错位 1 小时 | P6-04；A5；`p05.demand-utc-clock` | 0：101 本来是 UTC | 全年需求 +5,407 MWh；其余见 U1 |
-| U5 | 声明了 `csv_column` 的序列，在任何读取模式下都按声明的列读；隐式选中的整数序号列报 `GF_DATA_INDEX_COLUMN` | R029 研究包的互联线价格和潮流被读成期序号 0..17519 | P6-01；`p05.declared-column` | 0 | 0：GBP1 public1 没有声明列。只影响 R029 类数据包 |
-| U6 | **火电投资净收入**：燃气、生物质以及任何带燃料或碳成本的资产，净收入 = 市场收入 − 发电量 × gen_cost（发电 + 燃料 + 碳价 + 单位时间成本）。风光储仍以毛收入为利润。相对差不超过 1e-9 的净收入按 0 处理 | v2 移植丢掉了原 Scheme C 的扣减（`runtime_compat/modular_investment_support.py:2150-2152, 2247`），电价等于边际成本的 CCGT 也被判为盈利而扩容 | P4-01（只限火电）；A4；`p07.thermal-net-revenue`；agent-investment 3.0.0 | 论文口径：两年提案 21.32 → 8.26 MW（CCGT 13.05 → 0），系统成本 −508,406 £（−1.72%）；出力、价格、排放不变 | CCGT 提案 1,773.8 MW → 0 |
+| U5 | 声明了 `csv_column` 的序列，在任何读取模式下都按声明的列读；隐式选中的整数序号列报 `GF_DATA_INDEX_COLUMN` | R029 研究包的互联线价格和潮流被读成期序号 0..17519 | P6-01；`p05.declared-column` | 0 | 0：GBP1 public1 没有声明列，只影响 R029 类数据包 |
+| U6 | **火电投资净收入**：燃气、生物质以及任何带燃料或碳成本的资产，净收入 = 市场收入 − 发电量 × gen_cost（发电 + 燃料 + 碳价 + 单位时间成本）。风光储仍以毛收入为利润 | v2 移植丢掉了原 Scheme C 的扣减（`runtime_compat/modular_investment_support.py:2150-2152, 2247`），电价等于边际成本的 CCGT 也被判为盈利而扩容 | P4-01（只限火电）；A4；`p07.thermal-net-revenue`；agent-investment 3.0.0 | 两年提案 21.32 → 8.26 MW（CCGT 13.05 → 0），系统成本 −508,406 £（−1.72%）；出力、价格、排放不变 | CCGT 提案 1,773.8 MW → 0（提案在 2026 年完工，第一年成本不变） |
+| U7 | **削减分支同一笔下调只削一次**：`store_service_three` 两个子分支中，非 VRE 机组一次削够剩余需求时，在 `break` 前把剩余需求 `need_curtailed_energy` 清零 | 原来没有清零，外层循环从后续报价（通常是风电）再削一次同样的量；多削的电既不记弃电也不记切负荷。只在下调价不高于 VRE 的非 VRE 机组排在 VRE 前面时触发（GBP1 的 `Hydro_natural_flow` 下调价为 0） | A15、A26；`r41.down-regulation-taken-once` | 0：不触发 | 563 个时段不再多削，合计 217,140 MWh；surplus conservation 与包络检查通过 |
+| U8 | **每台储能每期一个净头寸**：各出清阶段共享额定功率；本期已放电的储能先减少放电（回购），才能充电；已充电的储能不再报放电；时段收尾检查放电 ≤ 额定功率、不同时充放、0 ≤ SoC ≤ E | 每个出清阶段重置功率上限，同一时段可以先放后充，单期放电可达 2 倍额定功率 | A26；`p06.storage-net-per-period`（修正口径原已采用，现为通用） | 储能两年充 / 放 41,591 / 33,688 → 7,298 / 5,910 MWh | 同时充放的 15,653 个储能时段和超额定功率的 448 个时段都消失；储能充 / 放 5.05 / 3.66 → 2.42 / 1.75 TWh |
+| U9 | **平衡阶段的必发核电盈余只计一次**：日前已计入供给的核电盈余服务平衡需求时，只扣减盈余，不再加到核电出力上，也不再付第二次钱 | 原来把这部分电量再加到核电出力上并再付一次钱，记录的发电量超过需求加储能 | A26；`r41.must-run-surplus-counted-once` | 0：没有核电 | 0：2025 年没有出现这种时段 |
+
+- **U7–U9（A26）在 VALUE 101 上的合计效应**（全部来自 U8）：两年系统成本 −241,645 £（相对上一步 −0.84%），其中运营 −229,709 £、资本 −11,936 £；CCGT 发电 −3,454 MWh（−1.76%），排放同比例下降；需求加权时段平均成本 30.64 / 25.18 → 30.20 / 24.63 £/MWh（2025 / 2026）；两年提案 8.26 → 8.00 MW。储能门与原始不变量全部通过，年度结果按 Q14 在结果页发布。
+- **U7–U9 在 GBP1 上的合计效应：** A2 缺口 300,855 → 78,810 MWh（−222,045 MWh：U7 的 217,140 MWh，其余约 5 GWh 来自 U8）；stress 事件 / 时段 157 / 890 → 74 / 487；运营成本 −30.5 百万英镑（−0.7%）；CCGT 76.36 → 75.73 TWh；进口 0.336 → 0.361 TWh；直接排放 30.91 → 30.68 MtCO2；风光提案 3,036.4 → 3,029.3 MW；时段平均成本均值 18.23 → 18.17 £/MWh。能量平衡门与储能门都通过，原始不变量通过，年度结果发布。
+- 论文的报价、价格和结算规则都不变；修正口径原本就用自己的出清函数，调度不变。逐列数值见 `docs/dev/p0-reports/r41-golden/`。
 
 ### 2.2 只改核算、验证或发布的修正（Q12 accounting 区，轨迹不变）
 
 | # | 改了什么 | 为什么 | finding / 决策 / correction id | VALUE 101 | GBP1 |
 |---|---|---|---|---|---|
-| U7 | **缺电 stress 事件（A2）**：在声明的能量平衡边界上逐期记录缺口 `shortfall_mwh` 和 stress 标志，连续时段按年分组成事件；能量平衡账把缺口记为未供电量，账目闭合。run status、摘要和 replay 窗口公开 `stress_periods`、`shortfall_mwh`，另有全年事件列表 `GET /api/runs/<id>/market/stress-events`。**调度不变** | 日前满足不了预测时，内核按 forecast − real 削减，缺电被记为 0，用户看不到 | P3-01；A2；`p04.surplus-routing`、`p04.surplus-node-boundary`；声明偏差 DEV-BAL-02（两个口径） | 两个口径都是 0 个事件 | 157 个事件、890 个时段、缺口 300,855 MWh；其中 217,140 MWh 来自论文内核的重复下调（4.2 节、6.1 节） |
-| U8 | 能量平衡按声明的边界计算：论文口径 `default_psm_surplus_node_v1`，修正口径 `native_corrected_full_node_v1`；W_in 作为 `non_vre_spill` 单列；兼容调整只吸收数值噪声；逐资产储能能量审计 | 原兼容调整没有上限，把原始残差强制归零，所以账本、校验器和 parity 只看到 0；储能充电没有入账 | P7-10/P3-02、P3-14/P5-11；Q7；`p04.surplus-node-boundary`、`p04.storage-energy-audit` | 原始残差为 0（两个口径） | surplus conservation 有 563 行失败（6.1 节） |
-| U9 | **验证与发布**：stage parity v3 与 scientific validation v2 由实际执行的检查计算；三类 gate：run 不变量、能量平衡账、储能吞吐不变量（额定功率、同期不充放、0 ≤ SoC ≤ E、审计恒等式）。论文口径用声明偏差（DEV-BAL-04、DEV-STO-01）解读，**年度结果只在原始不变量全部通过时才在结果页发布**（Q14），否则只在 Inspect 和导出中提供。修正口径只要有一个 gate 失败，就不发布年度经济结果（`GF_VALIDATION_GATE_FAILED`） | 原生路径的 parity 是硬编码的 passed | P7-01、P7-10；Q14；`p04.validation-v2`、`p04.validation-gate` | 论文口径：`reproduction_with_declared_deviations`（DEV-STO-01），原始不变量 failed，**年度结果扣发**。修正口径：passed，发布 | 原始不变量 failed（储能 DEV-STO-01；surplus conservation 没有声明偏差），年度结果扣发 |
-| U10 | **物理运营成本** = Σ 运行成本 × 出力（不乘报价乘数）+ 进口 + 启动加价 + 记录的切负荷 × VoLL + 储能循环磨损；储能报价支付作为结算转移单列 | 原运营成本把储能报价支付（含 holding 资本回收）计入，又加了一次循环磨损，重复计入，而且不含 VoLL | P5-06；`p06.physical-operating-cost` | 论文口径 0 £；修正口径（35aadb3 的调度上）−19 £ | 运营成本 −25.28 百万英镑 |
-| U11 | **成本账 v2**：风光储的固定 OPEX 视为已含在平准化 CAPEX 中，移出头条，列为 memo 行。完全预见 PSM 的火电 FOM 改读 `annual_fixed_opex_gbp` | 避免在平准化 CAPEX 之外重复计入风光储 FOM（A7）；完全预见 PSM 原来读的键从未被写入，FOM 恒为 0 | A7；`p07.cost-ledger-v2` | 两个口径每年 −66,000 £（两年 −132,000 £，论文口径 −0.45%） | 资本 −56.66 百万英镑 |
-| U12 | **储能报价账本**：完整 trace 的市场账本新增核算表 `storage_orders`，每条储能报价一行，不论是否被接受，记报价（储能成本模块报价 × 报价乘数）、可报电量、接受量、状态与原因码，并与出清声明一一对应。`orders` 表不变 | 原账本只登记发电机报价，放电电池只有一行 0.0 价的净调度记录，改储能成本模块的人无法从账本核对报价公式 | M-D1；A16-1；`fx4.storage-offer-ledger` | 0：两年算例用 summary trace，不写这张表 | 0 |
-| U13 | **VoLL 17,000 £/MWh**（半小时 8,500 £/MW·时段），唯一常数在 `gridform_core/voll.py`。论文复现规则集 `reliability_voll = constant_17000`；论文代码的成本表与原论文成本视图改为 17,000。参数 `market.voll_gbp_per_mwh` 默认 17,000，完全预见 LP、参考 DC 网络、分阶段链和 doctoral national PSM 一并使用；旧 Study 中没有显式参数、仍是旧默认 10,000 的配置重新投影为 17,000，显式参数保持不变 | 论文代码 8,000、参数默认 10,000、分区研究 17,000，三处不一致；你的口径是 17,000 | A16-5；`fx5.voll-17000`（论文口径为通用核算修正） | 0：两个口径都没有记录的切负荷 | 0：同上。A2 的 stress 缺口只按 MWh 报告，不按 VoLL 计入头条 |
+| U10 | **缺电 stress 事件（A2）**：在声明的能量平衡边界上逐期记录缺口 `shortfall_mwh` 和 stress 标志，连续时段按年分组成事件；能量平衡账把缺口记为未供电量，账目闭合。run status、结果摘要和 replay 窗口公开 `stress_periods`、`shortfall_mwh`，全年事件列表在 `GET /api/runs/<id>/market/stress-events`。**调度不变** | 日前满足不了预测时，内核按 forecast − real 削减，缺电被记为 0，用户看不到 | P3-01；A2；`p04.surplus-routing`、`p04.surplus-node-boundary`；声明偏差 DEV-BAL-02（两个口径） | 0 个事件 | 74 个事件、487 个时段、缺口 78,810 MWh（最长事件 40 个时段） |
+| U11 | 能量平衡按声明的边界计算：论文复现口径 `default_psm_surplus_node_v1`，修正口径 `native_corrected_full_node_v1`；W_in 作为 `non_vre_spill` 单列；兼容调整只吸收数值噪声；逐资产储能能量审计 | 原兼容调整没有上限，把原始残差强制归零，账本、校验器和 parity 只看到 0；储能充电没有入账 | P7-10/P3-02、P3-14/P5-11；Q7；`p04.surplus-node-boundary`、`p04.storage-energy-audit` | 原始残差为 0 | surplus conservation、包络检查通过（U7 之后） |
+| U12 | **验证与发布**：stage parity v3 与 scientific validation v2 由实际执行的检查计算；三类 gate：run 不变量、能量平衡账、储能吞吐不变量（额定功率、同期不充放、0 ≤ SoC ≤ E、审计恒等式）。论文复现口径的年度结果**只在原始不变量全部通过时才在结果页发布**（Q14），否则只在 Inspect 和导出中提供；修正口径只要有一个 gate 失败，就不发布年度经济结果（`GF_VALIDATION_GATE_FAILED`） | 原生路径的 parity 是硬编码的 passed | P7-01、P7-10；Q14；`p04.validation-v2`、`p04.validation-gate` | 论文复现口径 `reproduction_conformant`，原始不变量 passed，发布；修正口径 passed，发布 | `reproduction_conformant`，原始不变量 passed，发布。能量平衡核验器自身的原始状态在 487 个 stress 时段上报 `period.boundary_residual`，只作证据，不是门控 |
+| U13 | **物理运营成本** = Σ 运行成本 × 出力（不乘报价乘数）+ 进口 + 启动加价 + 记录的切负荷 × VoLL + 储能循环磨损；储能报价支付作为结算转移单列 | 原运营成本计入了储能报价支付（含 holding 资本回收），又加了一次循环磨损，重复计入，而且不含 VoLL | P5-06；`p06.physical-operating-cost` | 0 £（修正口径在 35aadb3 的调度上 −19 £） | 运营成本 −25.28 百万英镑 |
+| U14 | **成本账 v2**：风光储的固定 OPEX 视为已含在平准化 CAPEX 中，移出头条，列为 memo 行。完全预见 PSM 的火电 FOM 改读 `annual_fixed_opex_gbp` | 避免在平准化 CAPEX 之外重复计入风光储 FOM（A7）；完全预见 PSM 原来读的键从未被写入，FOM 恒为 0 | A7；`p07.cost-ledger-v2` | 每年 −66,000 £（两年 −132,000 £，−0.45%） | 资本 −56.66 百万英镑 |
+| U15 | **储能报价账本**：完整 trace 的市场账本有核算表 `storage_orders`，每条储能报价一行（报价 = 储能成本模块报价 × 报价乘数、可报电量、接受量、状态与原因码），与出清声明一一对应；`orders` 表不变 | 原账本只登记发电机报价，改储能成本模块的人无法从账本核对报价公式 | M-D1；A16-1；`fx4.storage-offer-ledger` | 0：两年算例用 summary trace，不写这张表 | 0 |
+| U16 | **VoLL 17,000 £/MWh**（半小时 8,500 £/MW·时段），唯一常数在 `gridform_core/voll.py`。论文复现规则集 `reliability_voll = constant_17000`；参数 `market.voll_gbp_per_mwh` 默认 17,000，完全预见 LP、参考 DC 网络、分阶段链和 doctoral national PSM 一并使用；旧 Study 中仍是旧默认 10,000、又没有显式参数的配置投影为 17,000，显式参数不变 | 论文代码 8,000、参数默认 10,000、分区研究 17,000，三处不一致；你的口径是 17,000 | A16-5；`fx5.voll-17000` | 0：没有记录的切负荷 | 0：同上。A2 的 stress 缺口只按 MWh 报告，不按 VoLL 计入头条 |
+| U17 | **已供电量扣除 stress 缺口**：已供电量 = 需求 − 记录的切负荷 − A2 账在 PSM 之外记入的隐藏未供电量（只对有 stress 时段的年份），用于每 MWh 供电成本和每 MWh 交付电量的碳强度。run status 增加 `demand_mwh`、`unserved_energy_a2_mwh`；比较页把含 stress 缺口的未供电量与 PSM 记录的切负荷分两行 | 原来把 stress 缺口算作已供电，单位成本和碳强度偏低 | 四角色 S-F-中2；A28；`r5.served-energy-net-of-stress-shortfall` | 0：没有 stress | 已供电量 232,910,596.5 → 232,831,786.3 MWh；单位成本 116.789 → 116.829 £/MWh（+0.034%） |
+| U18 | 账本元数据把模型时钟标为 UTC、固定 365 天年（不含 2 月 29 日，没有夏令时）；回放导出带 `period_start_utc` | 原标签写 Europe/London，与实际的 UTC 时钟不符 | 四角色 S-中1；`r43.model-clock-utc-label` | 0（只改标签） | 0 |
+
+- 通用核算修正（U10–U17 中的 `fx4.*`、`fx5.*`、`p04.*`、`p06.physical-operating-cost`、`p07.cost-ledger-v2`、`r5.*`）不进入方法身份，已保存的 Study 不需要为它们确认；Run 记录写出实际生效的全部 correction id。
+- 现存的声明偏差有三条，都不影响门控：DEV-BAL-01（只作定义：论文复现口径的列语义，被储能、出口、电解吸收的日前盈余在已接受供给之外）、DEV-BAL-02（A2 缺电，两个口径）、DEV-BAL-03（每年新建储能对象，年末 SoC 丢弃，两个口径）。
 
 ### 2.3 不改数值的软件改动（一段说明）
 
-本地 API 安全边界（P0-1）、外部模块与扩展隔离（P0-2）、Run 生命周期（P0-3：关闭 VALUE 时 worker 继续运行，下次启动按租约接管）、结果页的标签与显示（P0-9）、口径登记与读时 advisory、Study 迁移（X0：纯代码身份变化自动追加修订，方法变化须在界面确认，Q13）、Run 异步启动与全局锁拆分（A24-5：启动请求立即返回，输入在后台冻结并显示进度）、扩展状态链（F-D1）、一日课程选了扩展时预检阻断（F-D2）、原地修改已安装模块源码时记录新哈希并在比较页显示方法已变（M-D2），以及四类用户测试发现的界面与记账问题，都**不改变任何模型数值**。`p05.weather-cache-key`（内核天气缓存按文件作键）和 `p05.validation-layers`（三层数据包校验）同样不改变正常运行的数值。
+本地 API 安全边界（P0-1）、外部模块与扩展隔离（P0-2）、Run 生命周期（P0-3：关闭 VALUE 时 worker 继续运行，下次启动按租约接管）、结果页的标签与显示（P0-9）、口径登记与读时 advisory、Study 迁移（X0：纯代码身份变化自动追加修订，方法变化须在界面确认，Q13）、Run 异步启动与全局锁拆分（A24-5）、扩展状态链与钩子导入、一日课程选了扩展时预检阻断（F-D2）、原地修改已安装模块源码时记录新哈希并在比较页显示方法已变（M-D2）、完整 trace 下储能状态记录有界（超过 128 个批次时只列报价批次加汇总，`r53.bounded-storage-state-record`）、比较页在两个 Run 的 PSM 边界不同时不给未用 VRE 的差值，以及数据导入：逐小时需求在导入时每小时用于两个半小时时段并给出提示；VALUE 101 需求文件的单位标注更正为 MW（字节和读法不变），映射或复制数据包时需求量变化超过 1.5 倍或低于 0.67 倍会给出 `GF_DATA_DEMAND_SCALE` 提醒。`p05.weather-cache-key`（内核天气缓存按文件作键）和 `p05.validation-layers`（三层数据包校验）同样不改变正常运行的数值。这些都**不改变任何模型数值**。
 
 ## 3 只改修正口径
 
-论文复现口径不启用下列任何一项（`profiles.json` 中它的 `gated_corrections` 为空）。网络模块只能在修正口径下选用（Q3）。“VALUE 101” 一列是两年算例在 HEAD 上的实测，或第 7.3 节分解中对应的一步。
+论文复现口径不启用下列任何一项（`profiles.json` 中它的 `gated_corrections` 为空）。网络模块只能在修正口径下选用（Q3）。“VALUE 101” 一列是两年算例 C6 在 HEAD 上的实测，或 7.3 节分解中对应的一步。
 
 ### 3.1 数据与可用出力
 
 | # | 改了什么 | 为什么 | 决策 / correction id | VALUE 101 | GBP1 及其他数据包 |
 |---|---|---|---|---|---|
-| C1 | ERA5 时间约定（天气 v2）：累积量 `ssrd` 第 t 期取标在第 t//2+1 小时的值；瞬时量取离时段中点最近的时次 (t+1)//2 | `ssrd` 是截至该时次的一小时累积量，原读法按小时开始使用，光伏整体滞后约 1 小时 | P6-06；`p05.weather-time-convention` | 与 C2 合并：两年系统成本 +1,480,346 £（+5.23%），CCGT 发电 +12.0%（7.3 节） | GBP1 伦敦站光伏质心 12.97 → 11.97 UTC |
+| C1 | ERA5 时间约定（天气 v2）：累积量 `ssrd` 第 t 期取标在第 t//2+1 小时的值；瞬时量取离时段中点最近的时次 (t+1)//2 | `ssrd` 是截至该时次的一小时累积量，按小时开始使用会使光伏整体滞后约 1 小时 | P6-06；`p05.weather-time-convention` | 与 C2 合并：两年系统成本 +1,480,346 £（+5.23%），CCGT 发电 +12.0%（7.3 节） | GBP1 伦敦站光伏质心 12.97 → 11.97 UTC |
 | C2 | **风光文献损耗系数**，乘在 ERA5 → 功率曲线换算之后：陆上 0.90307（尾流 5%、可用率 0.97、电气 2%），海上 0.814968（尾流 12%、可用率 0.945、电气 2%），光伏性能比 0.83。**不对统计负荷率标定**；逐期形状仍来自 ERA5，弃电仍由出清决定 | 风电容量因子明显高于实测 | P6-08；Q15、A1、A9；`p05.vre-loss-factors` | 容量因子：陆上 0.4132 → 0.3731，光伏 0.2500 → 0.2075；两年风光可用电量 −13.3% | GBP1 弃电前容量因子：陆上 0.4458 → 0.4026，海上 0.6028 → 0.4913，光伏 0.1201 → 0.0997。陆上、海上仍为 DUKES 2020–2024 均值的 1.56、1.23 倍（A9：只披露，结果摘要的 `vre_capacity_factor_disclosure` 把两者并列，并写明 ERA5 风速未做偏差校正、单机自由流功率曲线等原因） |
 | C3 | **光伏倾斜面换算**，逐时段计算：Spencer 太阳位置（时段中点）→ Erbs 直射/散射分解（太阳常数 1361 W/m²）→ Hay–Davies 换算到朝南斜面（反照率 0.2，倾角取 Jacobson & Jadhav 北半球最优倾角，51.5°N 约 36°；天顶角大于 87° 时不计直射）→ 乘性能比 0.83 | 性能比按组件平面辐照定义，直接乘在水平面辐照上会漏掉倾角增益 | A13、A16-6；`p05.solar-plane-of-array` | 0：101 的合成天气不做换算 | GBP1 光伏容量因子 0.0997 → 0.1065（DUKES 的 1.04 倍） |
-| C4 | **核电逐站可用率**：各站 2019–2024 年 PRIS 平均负荷率作为固定降额（Heysham 1 0.668、Hartlepool 0.689、Heysham 2 0.752、Torness 0.792、Sizewell B 0.801）；退役精确到月，Heysham 1、Hartlepool、Heysham 2、Torness 在 2030-03；没有年际波动，也没有换料日历 | 原来核电全年 100% 可用 | P5-10；A10、A14；`p05.firm-availability`、`p05.nuclear-generation-end-month` | 0：101 没有核电 | GBP1 public2 五站全年可发 38.26 TWh（对 Energy Trends 5.1 +2.5%）；实际发电见 C17 |
-| C5 | **径流水电**：年负荷率 0.3487（DUKES 6.3 标准口径 2019–2024 均值）× 由季度数据推出的阶梯形状 `[1.3851×3, 0.6582×3, 0.6776×3, 1.2791×3]`（12 个月均值为 1） | 原来 2 GW 径流水电全年 100% 可用、零成本调度（GBP1 论文口径 17.24 TWh，统计约 5.8 TWh） | P5-09、P6-10；A14；`p05.firm-availability`、`p05.hydro-dukes-load-factor` | 0：101 没有径流水电 | GBP1 public2 6.01 TWh；DUKES 6.2 2019–2024 均值 5.77 TWh（+4.2%，在 ±15% 以内） |
-| C6 | 声明式读取与数据门：表头推断、分辨率先于截取、闰年删 2 月 29 日、短序列只在声明为 cyclic 时回绕；数据门 fail-closed | 无表头文件吃掉首行（P6-05）；短窗口把半小时当小时（P6-07）；有缺陷的数据包照常运行（P6-11） | `p05.declared-reader`、`p05.series-clock`、`p05.data-gate` | 两年算例 0 | 已发布的 GBP1 public1 与 R029 public1 在修正口径的严格读取下报 `GF_DATA_SHORT_SERIES`（共用的光伏曲线多一小时，见 C8），修正口径要用本地新版 public2 |
+| C4 | **核电逐站可用率**：各站 2019–2024 年 PRIS 平均负荷率作为固定降额（Heysham 1 0.668、Hartlepool 0.689、Heysham 2 0.752、Torness 0.792、Sizewell B 0.801）；退役精确到月，Heysham 1、Hartlepool、Heysham 2、Torness 在 2030-03；没有年际波动，也没有换料日历 | 原来核电全年 100% 可用 | P5-10；A10、A14；`p05.firm-availability`、`p05.nuclear-generation-end-month` | 0：101 没有核电 | GBP1 public2 五站全年可发 38.26 TWh（对 Energy Trends 5.1 +2.5%）；实际发电见 C16 |
+| C5 | **径流水电**：年负荷率 0.3487（DUKES 6.3 标准口径 2019–2024 均值）× 由季度数据推出的阶梯形状 `[1.3851×3, 0.6582×3, 0.6776×3, 1.2791×3]`（12 个月均值为 1） | 原来 2 GW 径流水电全年 100% 可用、零成本调度（GBP1 论文复现口径 17.25 TWh，统计约 5.8 TWh） | P5-09、P6-10；A14；`p05.firm-availability`、`p05.hydro-dukes-load-factor` | 0：101 没有径流水电 | GBP1 public2 6.01 TWh；DUKES 6.2 2019–2024 均值 5.77 TWh（+4.2%，在 ±15% 以内） |
+| C6 | 声明式读取与数据门：表头推断、分辨率先于截取、闰年删 2 月 29 日、短序列只在声明为 cyclic 时回绕；数据门 fail-closed | 无表头文件吃掉首行（P6-05）；短窗口把半小时当小时（P6-07）；有缺陷的数据包照常运行（P6-11） | `p05.declared-reader`、`p05.series-clock`、`p05.data-gate` | 0 | 已发布的 GBP1 public1 与 R029 public1 在修正口径的严格读取下报 `GF_DATA_SHORT_SERIES`（共用的光伏曲线多一小时，见 C8），修正口径要用本地新版 public2 |
 | C7 | 互联线进口报价和出口价保留负价 | 原来被截断为非负 | `p05.raw-boundary-price` | 0 | — |
-| C8 | **本地新版数据包（只在本地构建，未发布）**：GBP1 public2（`value-uk-open-data-pack-public2`）与 R029 public2（`value-uk-calendar-vx-trade001-public2`），由 `scripts/build_value_uk_pack_revision.py@v3` 构建，登记为 scientific_reference。两者绑定同一份修订后的光伏曲线：两个 public1 共用的逐时 `sa.csv` 有 8,761 行，多出的是**最后一行**（ERA5 时次 2023-01-01T00:00Z，值为 0），新对象只保留前 8,760 行，binding 记录被删行与证据；三条逐时 VRE 曲线声明为 60 分钟。GBP1 public2 的需求与互联线改绑到 R029 已核准的对象，并取得逐站核电政策（五个 EDF 电站各自的负荷率与退役月份，Hinkley Point C、Sizewell C 作为外生管线项目） | 8,761 行的曲线在严格读取下报 `GF_DATA_SHORT_SERIES`；public2 原来只有一个合并的 `Nuclear` 资产，按全国回退值 0.723 | A16-7、A24-1；`p05.nuclear-stations-public2`（只对 GBP1 public2） | 0 | 所有现有读法的数值不变（原读法只用到前 8,760 行）。修正口径现在能跑 GBP1（golden C9）和 R029（golden C10）的一年，结果见 7.5、7.6 节。证据：`docs/dev/p0-reports/r31-solar/sa_8761_evidence.json` |
+| C8 | **本地新版数据包（只在本地构建，未发布）**：GBP1 public2（`value-uk-open-data-pack-public2`）与 R029 public2（`value-uk-calendar-vx-trade001-public2`），由 `scripts/build_value_uk_pack_revision.py@v3` 构建，登记为 scientific_reference。两者绑定同一份修订后的光伏曲线：两个 public1 共用的逐时 `sa.csv` 有 8,761 行，多出的是**最后一行**（ERA5 时次 2023-01-01T00:00Z，值为 0），新对象只保留前 8,760 行，binding 记录被删行与证据；三条逐时 VRE 曲线声明为 60 分钟。GBP1 public2 的需求与互联线改绑到 R029 已核准的对象，并取得逐站核电政策（五个 EDF 电站各自的负荷率与退役月份，Hinkley Point C、Sizewell C 作为外生管线项目） | 8,761 行的曲线在严格读取下报 `GF_DATA_SHORT_SERIES`；public2 原来只有一个合并的 `Nuclear` 资产，按全国回退值 0.723 | A16-7、A24-1；`p05.nuclear-stations-public2`（只对 GBP1 public2） | 0 | 所有现有读法的数值不变（它们只用到前 8,760 行）。修正口径能跑 GBP1（golden C9）和 R029（golden C10）的一年，结果见 7.5、7.6 节。证据：`docs/dev/p0-reports/r31-solar/sa_8761_evidence.json` |
 
-### 3.2 默认 PSM 的出清与储能规则（`value-bid-at-cost-psm` 6.6.0）
+### 3.2 默认 PSM 的出清与储能规则（`value-bid-at-cost-psm` 6.7.0）
 
 | # | 规则 | 为什么 | correction id |
 |---|---|---|---|
-| C9 | **D1-surplus**：日前出清后，按 “可用 − 接受” 逐来源重建盈余簿。必发（非 VRE）盈余先被使用；VRE 盈余被储能、出口、电解或平衡需求消耗时，计为 VRE 毛出力；平衡阶段不再重复计入必发盈余 | VRE 盈余在账上消失；核电盈余在平衡阶段被计两次（DEV-BAL-04） | `p06.d1-surplus-accounting` |
+| C9 | **D1-surplus**：日前出清后，按 “可用 − 接受” 逐来源重建盈余簿。必发（非 VRE）盈余先被使用；VRE 盈余被储能、出口、电解或平衡需求消耗时，计为 VRE 毛出力 | 论文规则集只在 VRE 报价被部分接受时记录 VRE 盈余，被零价储能或必发核电挤出的 VRE 从账上消失 | `p06.d1-surplus-accounting` |
 | C10 | 排序键 `(round(price, 2), is_storage, price, 输入序)`：同一 0.01 £/MWh 档内，储能排在发电之后（日前进口排在发电之后、储能之前） | 零报价储能挡住风电 | Q8；`p06.storage-after-generation-merit-key` |
-| C11 | 每台储能每期只有一个净头寸：各阶段共享额定功率；已放电的储能先回购，才能充电；同一期不能既充又放 | 同一时段可以先放、再充、再放，单期放电可达 2 倍额定功率（DEV-STO-01） | `p06.storage-net-per-period` |
-| C12 | 储能报价支付在本期结算 | 上一平衡期的储能费被带进后面的削减期 | `p06.storage-fee-per-period` |
-| C13 | 出清前不再从 VRE 分流去电解，电解只通过出清中的灵活需求消耗盈余 | 每个 VRE 最多 1 MW 分去电解，在能量账之外；电解爬坡超过可用量时整份可用量消失 | P3-08；`p06.no-vre-pre-clearing-skim` |
-| C14 | **储能只报循环损耗**（内置 dynamic 储能成本模块）：电池报 c_cycle = CAPEX/(E·η_dis·N_max)，抽水蓄能和氢储能报 0，最老批次先用；holding 回收只用于投资充足性检验。legacy 电价、用户公式和外部模块的报价不变 | 报价随存放时长线性递增并按 LIFO 出售，电量积压，长时储能报价远高于边际成本，1C 电池几乎不调度 | P5-04；Q8、A8(1)；`p06.storage-bid-cycle-only`；dynamic-annual-storage-cost 2.0.0 |
-| C15 | **统一边际价结算**：每个阶段所有被接受的供给（含储能、进口）都按该阶段的统一边际价（被接受的最高报价）结算；充电按当期电价计成本，用余电充电成本为 0。报价只决定调度顺序 | 储能按自己被接受的最高报价 `max_bat_price` 结算，收入取决于自身报价 | P5-05；A8(2)；`p06.storage-uniform-price-settlement` |
-| C16 | VoLL 取参数 `market.voll_gbp_per_mwh`（默认 17,000，见 U13） | 原为常数 | `p06.voll-chronology-parameter` |
-| C17 | **核电开局在运**：每个模型年开始前，核电视为上一期已被接受，第一期报价不加启动成本，按各站可用率（C4）作为基荷运行。某期未被接受（换料、停运、可用率为 0 或未出清）后重新启动时，报价加一次启动成本，物理运营成本也只在重启那一期记一次启动项。燃气、生物质不变 | 默认 PSM 每年从“没有机组在运”开始，没被接受过的核电报价要加 `startup_cost`（GBP1 为 500 £/MWh），排在所有资源之后，被接受后又一直运行到年底（路径依赖） | A18；`fx8.nuclear-in-service-at-start`（规则集字段 `nuclear_initial_state = in_service_at_start`） |
-| C18 | **互联线进口进入日前出清**：每条正容量的互联线以可用进口量、按当期对侧价格 × 报价乘数报价，与本国机组同一排序；平衡阶段只报日前剩下的进口容量；日前接受的进口在下调时按对侧价格作为避免成本减少，不付削减费。出口不变；`orders` 中进口记为 `ahead_offer` 行 | 论文内核的日前出清不接收互联线，进口只在实际需求高于日前计划时的平衡环节出现（四类用户测试 S-D3） | A16-2；`fx6.day-ahead-interconnector-imports` |
-| C19 | **下调的经济次序**（火电拆成不停机段与停机段，重启成本对比省下的成本），见 3.3 节 | 见 3.3 节 | `p06.avoided-cost-downward-order`、`r12.economic-downward-order`、`r33.restart-cost-price-base-2025` |
+| C11 | 储能报价支付在本期结算 | 论文内核把上一平衡期的储能费带进后面的削减期（也带进时段成本列） | `p06.storage-fee-per-period` |
+| C12 | 出清前不再从 VRE 分流去电解，电解只通过出清中的灵活需求消耗盈余 | 每个 VRE 最多 1 MW 分去电解，在能量账之外；电解爬坡超过可用量时整份可用量消失 | P3-08；`p06.no-vre-pre-clearing-skim` |
+| C13 | **储能只报循环损耗**（内置 dynamic 储能成本模块）：电池报 c_cycle = CAPEX/(E·η_dis·N_max)，抽水蓄能和氢储能报 0，最老批次先用；holding 回收只用于投资充足性检验。legacy 电价、用户公式和外部模块的报价不变 | 报价随存放时长线性递增并按 LIFO 出售，电量积压，长时储能报价远高于边际成本，1C 电池几乎不调度 | P5-04；Q8、A8(1)；`p06.storage-bid-cycle-only`；dynamic-annual-storage-cost 2.0.0 |
+| C14 | **统一边际价结算**：每个阶段所有被接受的供给（含储能、进口）都按该阶段的统一边际价（被接受的最高报价）结算；充电按当期电价计成本，用余电充电成本为 0。报价只决定调度顺序 | 储能按自己被接受的最高报价 `max_bat_price` 结算，收入取决于自身报价 | P5-05；A8(2)；`p06.storage-uniform-price-settlement` |
+| C15 | VoLL 取参数 `market.voll_gbp_per_mwh`（默认 17,000，见 U16） | 原为常数 | `p06.voll-chronology-parameter` |
+| C16 | **核电开局在运**：每个模型年开始前，核电视为上一期已被接受，第一期报价不加启动成本，按各站可用率（C4）作为基荷运行。某期未被接受（换料、停运、可用率为 0 或未出清）后重新启动时，报价加一次启动成本，物理运营成本也只在重启那一期记一次启动项。燃气、生物质不变 | 默认 PSM 每年从“没有机组在运”开始，没被接受过的核电报价要加 `startup_cost`（GBP1 为 500 £/MWh），排在所有资源之后，被接受后又一直运行到年底（路径依赖，4.2 节） | A18；`fx8.nuclear-in-service-at-start`（规则集字段 `nuclear_initial_state = in_service_at_start`） |
+| C17 | **互联线进口进入日前出清**：每条正容量的互联线以可用进口量、按当期对侧价格 × 报价乘数报价，与本国机组同一排序；平衡阶段只报日前剩下的进口容量；日前接受的进口在下调时按对侧价格作为避免成本减少，不付削减费。出口不变；`orders` 中进口记为 `ahead_offer` 行 | 论文内核的日前出清不接收互联线，进口只在实际需求高于日前计划时的平衡环节出现（四类用户测试 S-D3） | A16-2；`fx6.day-ahead-interconnector-imports` |
+| C18 | **下调的经济次序**（火电拆成不停机段与停机段，重启成本与省下的成本比较），见 3.3 节 | 见 3.3 节 | `r12.economic-downward-order`、`r33.restart-cost-price-base-2025` |
 
-- **列语义随之改变：** 修正口径的 `vre_accepted` 是 VRE 毛出力，`curtailed` = 可用 − 毛出力，即真正的弃风弃光，`excess` 是非 VRE spill。论文口径把被储能等吸收的 VRE 盈余记在 `excess`，所以两个口径的 VRE 与弃电列不能直接相比。
+每期一个储能净头寸（U8）在两个口径中都生效，不在本表。
+
+- **列语义随之改变：** 修正口径的 `vre_accepted` 是 VRE 毛出力，`curtailed` = 可用 − 毛出力，即真正的弃风弃光，`excess` 是非 VRE spill。论文复现口径把被储能等吸收的 VRE 盈余记在 `excess`（DEV-BAL-01），所以两个口径的 VRE 与弃电列不能直接相比；比较页对两个 Run 边界不同的未用 VRE 指标只并列数值，不给差值（`unused_vre_boundary_differs`）。
 - **不变：** 日前满足不了预测时的出清方式（A2，两个口径都不改）。
 - **实测：**
-  - C9–C16 在 VALUE 101 上一起生效（没有损耗系数时测量）：两年系统成本 −1,445,951 £（−4.86%），CCGT 发电 −11.3%，排放 −11.3%，电池两年放电 0.36 → 6,312 MWh、市场收入 21 → 275,598 £（7.3 节）。
-  - C17 在 VALUE 101 上为 0（没有核电）。GBP1 public2 修正口径 2025（单独测量）：核电 2.02 → 38.26 TWh，全年 17,520 期都在运；CCGT 101.41 → 67.53 TWh；出口 0.41 → 1.51 TWh；弃电 0.43 → 1.74 TWh；时段平均成本的均值 24.30 → 16.23 £/MWh；运营成本 −1,830.7 百万英镑；直接排放 40.58 → 27.56 MtCO2。核电全年没有停过（可用率是固定降额，没有换料日历），所以启动成本从未起作用。
-  - C18 在 VALUE 101 上为 0：法国 12 MW 按 82 £/MWh 报价，比 CCGT 的运行成本 66.5 £/MWh 贵，每期都被拒绝。GBP1 public2 修正口径 2025（在 C17 之前的代码上单独测量）：进口 0.331 → 1.560 TWh，CCGT −1.27 TWh，系统成本 −25.6 百万英镑。
+  - C9–C15 与 U8 在 VALUE 101 上一起生效（没有损耗系数时测量）：两年系统成本 −1,445,951 £（−4.86%），CCGT 发电 −11.3%，排放 −11.3%，电池两年放电 0.36 → 6,312 MWh、市场收入 21 → 275,598 £（7.3 节）。
+  - C16 在 VALUE 101 上为 0（没有核电）。GBP1 public2 修正口径 2025（单独测量这一项）：核电 2.02 → 38.26 TWh，全年 17,520 期都在运；CCGT 101.41 → 67.53 TWh；出口 0.41 → 1.51 TWh；弃电 0.43 → 1.74 TWh；时段平均成本均值 24.30 → 16.23 £/MWh；运营成本 −1,830.7 百万英镑；直接排放 40.58 → 27.56 MtCO2。核电全年没有停过（可用率是固定降额，没有换料日历），所以启动成本从未起作用。
+  - C17 在 VALUE 101 上为 0：法国 12 MW 按 82 £/MWh 报价，比 CCGT 的运行成本 66.5 £/MWh 贵，每期都被拒绝。GBP1 public2 修正口径 2025（单独测量这一项，没有 C16）：进口 0.331 → 1.560 TWh，CCGT −1.27 TWh，系统成本 −25.6 百万英镑。
 
 ### 3.3 火电下调的经济次序（默认 PSM 与网络模型）
 
@@ -105,8 +118,8 @@ VALUE 现在有两个方法学口径。**论文复现口径**冻结在 35aadb3 �
      H ≥ 最短停机时间时，停机段以 a 作为避免成本，与其他下调资源一起按价排序：a > 0（取整到 0.01 后严格大于弃风的 0）排在弃风之前，a ≤ 0 排在弃风之后。H 短于最短停机时间时，停机段只作最后手段，排在所有其他下调资源之后，这样原本可以消纳的盈余不会留在节点里。
 3. **H 的取法：** H = (1 + n) × 0.5 h。n 是当前时段之后，连续满足“预测需求 ≤ 预测 VRE 可用量 + 核电可用量”的时段数，当前时段计 1。水电、进口、储能不计入，所以 H 偏短，偏向先弃风。网络模型用对齐后的全国预测需求和申报的 VRE 与核电可用量。
 4. **排序与其他行**（默认 PSM）：所有段按避免成本（取整到 0.01 £/MWh）降序；同价时按类别次序：火电不停机段 → 进口 → 水电与生物质 → VRE → 停机段 → 核电。进口的避免成本是对侧价格，VRE 约为 0，核电的避免成本要减去 100 £/MWh 的下调溢价，所以排在 VRE 之后。爬坡下限按上期出力计算（max(上期出力 − alter_limit, 0)），被下调的水电和生物质电量返还到它们的年度预算。
-5. **网络模型的报价：** 不停机段按 c 报 dec，停机段按 a 报，H 短于最短停机时间时报价取 min(a, 当期其他 dec 的最低 0.01 价位 − 0.01)。共享的类别次序是 fuel、import、storage、run_of_river、vre、fuel_shutdown、nuclear、fuel_shutdown_last_resort；铜板按 0.01 取整价降序，再按类别次序；分区 LP 的精确同价由 physical tie 阶段的类别权重决定（新增 `fuel_shutdown` 3.5、`fuel_shutdown_last_resort` 5，PuLP/CBC oracle 同步）。风电的 dec 价是 −补贴，默认无补贴时为 0，与“和弃风的 0 比较”一致。
-6. **重启成本只用于排序**，不进成本账。物理运营成本的启动项仍是论文的 `startup_cost` 加价（U10）。
+5. **网络模型的报价：** 不停机段按 c 报 dec，停机段按 a 报，H 短于最短停机时间时报价取 min(a, 当期其他 dec 的最低 0.01 价位 − 0.01)。共享的类别次序是 fuel、import、storage、run_of_river、vre、fuel_shutdown、nuclear、fuel_shutdown_last_resort；铜板按 0.01 取整价降序，再按类别次序；分区 LP 的精确同价由 physical tie 阶段的类别权重决定（`fuel_shutdown` 3.5、`fuel_shutdown_last_resort` 5，PuLP/CBC oracle 同步）。风电的 dec 价是 −补贴，默认无补贴时为 0，与“和弃风的 0 比较”一致。
+6. **重启成本只用于排序**，不进成本账。物理运营成本的启动项仍是论文的 `startup_cost` 加价（U13）。
 7. **记录：** 每个模型年写 `extensions.downward_restart_economics`：下调时段数、平均 H、按段统计的下调电量和时段数。
 
 **取值**（参数表 `gridform_core/data/thermal/value_thermal_restart_v1.json`，2025 年英镑；你在 A22 认可了 2024 年英镑的原值，A24-4 换算到模型成本参数的基年）：
@@ -121,53 +134,53 @@ VALUE 现在有两个方法学口径。**论文复现口径**冻结在 35aadb3 �
 - 含义：CCGT 和生物质的 H\* 短于 6 h 最短停机时间，所以只要允许停机，a 就为正；但 c 低于 S/(m·6 h) 的便宜机组（CCGT 低于约 37.9 £/MWh）仍先弃风。OCGT 由比较决定：按半小时时段计，H ≥ 5 h 才先停机，否则先弃风。
 - 出处：Kumar 等 2012（NREL）、Staffell & Green 2015、DIW DD68、PyPSA-Eur、Badesa 等 2019、Elexon BM 动态参数（9 台机组）等，见参考统计表第 4 节。
 - **实测：**
-  - VALUE 101 两年（C6）：2025 年只有 1 个下调时段（H = 0.5 h，短于 CCGT 的 6 h 最短停机时间），CCGT 只在不停机段内下调 0.16 MWh，其余 0.84 MWh 由弃 VRE 承担，停机段没有用到；2026 年的 2 个下调时段都只弃 VRE。
+  - VALUE 101 两年（C6）：2025 年只有 1 个下调时段（H = 0.5 h，短于 CCGT 的 6 h 最短停机时间），CCGT 只在不停机段内下调 0.16 MWh，其余 0.84 MWh 由弃 VRE 承担，停机段没有用到；2026 年的 2 个下调时段都只弃 VRE（8.4 MWh）。
   - GBP1 public2 修正口径 2025（C9）：357 个下调时段，平均 H = 3.77 h；水电 91,515 MWh、VRE 21,996 MWh、进口 3,750 MWh、燃气不停机段 190.7 MWh（2 个时段），没有用到停机段。
   - R029 public2 修正口径 2025（C10）：174 个下调时段，平均 H = 4.0 h。
-  - 网络教学算例（C8，VALUE 101 一日分区）：42 个下调时段全部是弃风（257.1 MWh），平均 H 0.93 h；CCGT 从未被下调。它的每条 dec 拆成两条：不停机段 66.5 £/MWh，停机段因 H 短于 6 h 是最后手段，报价 −388.3 £/MWh（= 66.5 − 113.7/0.25），从未被接受。调度与成本只有求解器容差级别的差别（≤ 1.4e−7 MWh）。
+  - 网络教学算例（C8，VALUE 101 一日分区）：42 个下调时段全部是弃风（257.1 MWh），平均 H 0.93 h；CCGT 从未被下调。它的每条 dec 拆成两条：不停机段 66.5 £/MWh，停机段因 H 短于 6 h 是最后手段，报价 −388.3 £/MWh（= 66.5 − 113.7/0.25），从未被接受。
   - 停机段很少用到的原因：下调几乎只出现在日前没有排燃气的时段；有燃气时，需要的下调量也在不停机段之内。只有必须降到最小稳定出力以下、而且 H 足够长时，停机段才会先于弃风。toy 算例（铜板、两区 LP 与 CBC oracle 对照、实际 staged 分区 Run）都复现了规则：OCGT 在 H = 5 h 时先于风电停机，在 H = 3 h 时先弃风。
 
 ### 3.4 投资与成本账
 
 | # | 改了什么 | 为什么 | 决策 / correction id | VALUE 101 | GBP1 |
 |---|---|---|---|---|---|
-| C20 | **储能扩容余量**取“现有储能充电之后剩下的盈余”（PSM 逐期发布 `storage_headroom_inputs`）；运行不满 17,520 期时余量为 0，并记录原因 | 原来只用已接受的 VRE 计算，余量恒为 0，内生储能投资被关闭 | P5-01；`p07.storage-leftover-headroom`；value-storage-expansion-policy 5.1.0 | 2026 年每种功率电池上限 4.065 MW（35aadb3 为 0）；2026 年提案 1C 电池 0.418 MW，由统一价收入驱动，远低于上限 | 2025 年提案 0.25C 电池 97.2 MW、1C 电池 6.8 MW |
-| C21 | **按类型的功率电池上限**：在 C20 的余量上，1C、0.5C、0.25C 三种电池各自的上限都是 `expansion.storage_cap_fraction`（0.2）× power_room，agent-investment 对每种分别封顶。这是论文的设计，修正口径照用 | 三种电池服务时长不同，各拿一份上限是论文的有意设计，0.2 本身已是削弱过的比例 | A20；`r13.per-type-battery-caps`；value-storage-expansion-policy 5.1.0 | 见 C20（每种 4.065 MW） | 见 C20 |
-| C22 | 径流水电的兼容资本（`existing_stock_compatibility`）移出头条，列为 memo 行 | 2 GW 径流水电按约 £200bn 计入资本，每年约 £10.96bn，占年金化资本的 47.8%，扭曲头条系统成本 | P4-03；`p07.compatibility-capital-out-of-headline` | 0：101 没有径流水电 | GBP1 每年约 10.96 十亿英镑的兼容资本列为 memo：修正口径头条资本 11,959.2 百万英镑，论文口径（含此项）22,914.5 百万英镑（7.5 节） |
+| C19 | **储能扩容余量**取“现有储能充电之后剩下的盈余”（PSM 逐期发布 `storage_headroom_inputs`）；运行不满 17,520 期时余量为 0，并记录原因 | 原来只用已接受的 VRE 计算，余量恒为 0，内生储能投资被关闭 | P5-01；`p07.storage-leftover-headroom`；value-storage-expansion-policy 5.1.0 | 2026 年每种功率电池上限 4.065 MW（35aadb3 为 0）；2026 年提案 1C 电池 0.418 MW，由统一价收入驱动，远低于上限 | 2025 年提案 0.25C 电池 97.2 MW、1C 电池 6.8 MW |
+| C20 | **按类型的功率电池上限**：在 C19 的余量上，1C、0.5C、0.25C 三种电池各自的上限都是 `expansion.storage_cap_fraction`（0.2）× power_room，agent-investment 对每种分别封顶 | 三种电池服务时长不同，各拿一份上限是论文的有意设计，0.2 本身已是削弱过的比例 | A20；`r13.per-type-battery-caps`；value-storage-expansion-policy 5.1.0 | 见 C19 | 见 C19 |
+| C21 | 径流水电的兼容资本（`existing_stock_compatibility`）移出头条，列为 memo 行 | 2 GW 径流水电按约 £200bn 计入资本，每年约 £10.96bn，占年金化资本的 47.8%，扭曲头条系统成本 | P4-03；`p07.compatibility-capital-out-of-headline` | 0：101 没有径流水电 | GBP1 每年约 10.96 十亿英镑的兼容资本列为 memo：修正口径头条资本 11,959.2 百万英镑，论文复现口径（含此项）22,914.5 百万英镑（7.5 节） |
 | — | **储能投资审核**（两个口径的规则相同，没有改）：ROI = 年市场收入 ÷ 整体 CAPEX，年市场收入 = Σ 放电量 × 出清价 − Σ 充电量 × 充电时电价；不折现，不扣循环损耗（它是 CAPEX 的一部分），不另扣 FOM；扩容上限由物理利用率决定，不启用 tier_roi | 储能报价只决定是否放电，投资审核看整体 CAPEX，两者不混用（A8） | A6、A7、A8 | — | — |
 
-在 VALUE 101 修正口径上，火电净收入（U6）、成本账 v2（U11）与本节各项合起来使两年系统成本 −647,786 £（−2.18%），全部来自资本：少建的 CCGT 约 −515,786 £，A7 −132,000 £；调度不变；两年提案 22.60 → 9.49 MW（7.3 节）。
+在 VALUE 101 修正口径上，火电净收入（U6）、成本账 v2（U14）与本节各项合起来使两年系统成本 −647,786 £（−2.18%），全部来自资本：少建的 CCGT 约 −515,786 £，A7 −132,000 £；调度不变；两年提案 22.60 → 9.49 MW（7.3 节）。
 
 ### 3.5 网络模块（只在修正口径下可用，Q3）
 
 | # | 改了什么 | 为什么 | finding / correction id |
 |---|---|---|---|
-| C23 | zonal solver contract v4：primary 阶段解出后，先追加 Σshed ≤ shed\*，再对 bid 项加数值锁；£1 只作验收上限。v2/v3 合同可以读，执行前须显式升级 | 后续阶段用尽 £1 松弛，每个再调度时段约 1e−4 MWh 虚假切负荷，出力按资产 ID 偏离成本最优 | P2-01；Q5；`p08.zonal-solver-v4` |
-| C24 | staged 平衡的 dec 报价按经济价：燃料机组 SRMC × m_dec − 补贴（燃气与生物质按 3.3 节拆段）；风光 −补贴；核电再减溢价；储能不高于自身上调价。同价同方向按可用电量比例分配，并共享类别次序 | 所有 dec 报价原来恒为 £0：降火电还是弃风由资产 ID 决定，火电还有横财 | P2-05、P3-04；`p08.dec-economic-pricing`、`p08.pro-rata-ties`、`p08.dec-class-order`、`r32.network-economic-downward-order`；新参数 `market.dec_multiplier`、`market.policy_support_gbp_per_mwh_by_technology`、`network.inflexible_dec_premium_gbp_per_mwh_by_technology` |
-| C25 | 网络成本改为与“无网络 LP 反事实”比较，三个情形共用一张逐期单价表 | zonal 与 copperplate 的单价来源不同，调度完全相同也会算出网络约束成本 | P2-03；`p08.network-free-counterfactual` |
-| C26 | 边界边际值取 primary 阶段 LP 对偶（附状态），读作诊断量而不是分区电价；旧结果读为 `not_computed` | 原来写死为 0，却标为“诊断性边际价值” | P2-06；`p08.boundary-primary-dual` |
-| C27 | DC 网络中分布在多个母线上的资产，按份额展开为子资源（容量、功率、能量、SoC 都乘份额），求解后再汇总；份额之和必须为 1 | 原来把整台资产注入最后一个映射母线 | P1-01；`p08.network-share-expansion` |
+| C22 | zonal solver contract v4：primary 阶段解出后，先追加 Σshed ≤ shed\*，再对 bid 项加数值锁；£1 只作验收上限。v2/v3 合同可以读，执行前须显式升级 | 后续阶段用尽 £1 松弛，每个再调度时段约 1e−4 MWh 虚假切负荷，出力按资产 ID 偏离成本最优 | P2-01；Q5；`p08.zonal-solver-v4` |
+| C23 | staged 平衡的 dec 报价按经济价：燃料机组 SRMC × m_dec − 补贴（燃气与生物质按 3.3 节拆段）；风光 −补贴；核电再减溢价；储能不高于自身上调价。同价同方向按可用电量比例分配，并共享类别次序 | 所有 dec 报价原来恒为 £0：降火电还是弃风由资产 ID 决定，火电还有横财 | P2-05、P3-04；`p08.dec-economic-pricing`、`p08.pro-rata-ties`、`p08.dec-class-order`、`r32.network-economic-downward-order`；参数 `market.dec_multiplier`、`market.policy_support_gbp_per_mwh_by_technology`、`network.inflexible_dec_premium_gbp_per_mwh_by_technology` |
+| C24 | 网络成本改为与“无网络 LP 反事实”比较，三个情形共用一张逐期单价表 | zonal 与 copperplate 的单价来源不同，调度完全相同也会算出网络约束成本 | P2-03；`p08.network-free-counterfactual` |
+| C25 | 边界边际值取 primary 阶段 LP 对偶（附状态），读作诊断量而不是分区电价；没有对偶的结果读为 `not_computed` | 原来写死为 0，却标为“诊断性边际价值” | P2-06；`p08.boundary-primary-dual` |
+| C26 | DC 网络中分布在多个母线上的资产，按份额展开为子资源（容量、功率、能量、SoC 都乘份额），求解后再汇总；份额之和必须为 1 | 原来把整台资产注入最后一个映射母线 | P1-01；`p08.network-share-expansion` |
 
 另有只做报告的运行期 fallback 审计（P2-13，`p08.runtime-fallback-audit`）和 staged 储能 dwell 披露（P5-15，`p06.staged-dwell-disclosure`），不改调度。VALUE 101 两年算例默认用铜板、无网络，这些都为 0。
 
-### 3.6 模块版本与 Study 确认（Q13）
+### 3.6 模块版本与 Study 确认（两个口径，Q13）
 
-方法改动的模块都升了版本并要求用户确认（`requires_user_opt_in`）。本版本之前保存的 Study 在第一次运行前都要在界面确认一次；旧的 zonal Study 还要显式升级求解器合同（`GF_SOLVER_CONTRACT_UPGRADE_REQUIRED`）。
+方法改动的模块都升了版本并要求用户确认（`requires_user_opt_in`）。A26 的三项修正改变了**两个口径**的方法身份，所以本版本之前保存的 Study，不论哪个口径，第一次运行前都要在界面确认一次；旧的 zonal Study 还要显式升级求解器合同（`GF_SOLVER_CONTRACT_UPGRADE_REQUIRED`）。
 
 | 模块 | 当前版本 | 承载的方法改动 |
 |---|---|---|
-| `value-bid-at-cost-psm` | 6.6.0 | 3.2 节全部规则、3.3 节默认 PSM 部分、U10、U12、U13 |
-| `value-staged-bid-at-cost-psm` | 1.6.0 | C24 与 3.3 节网络部分、U13 |
-| `value-storage-expansion-policy` | 5.1.0 | C20、C21 |
+| `value-bid-at-cost-psm` | 6.7.0 | U7–U9（两个口径）；3.2 节全部规则、3.3 节默认 PSM 部分（修正口径）；U13、U15、U16 |
+| `value-staged-bid-at-cost-psm` | 1.6.0 | C23 与 3.3 节网络部分、U16 |
+| `value-storage-expansion-policy` | 5.1.0 | C19、C20 |
 | `agent-investment` | 3.0.0 | U6（火电组没有 `value.agent-cashflow/v1` 时拒绝运行） |
-| `dynamic-annual-storage-cost` | 2.0.0 | C14（报价基础由 PSM 规则集决定） |
-| `value-zonal-redispatch-balancing` | 4.0.0 | C23 |
-| `value-copperplate-balancing` | 1.1.0 | C24 的同价比例分配与类别次序 |
-| `value-reference-dc-network` | 1.2.0 | C27、U13 |
-| `value-perfect-foresight-lp` | 1.1.0 | U11 的火电 FOM、U13 |
-| `value-doctoral-national-psm` | 0.3.0 | U13 |
+| `dynamic-annual-storage-cost` | 2.0.0 | C13（报价基础由 PSM 规则集决定） |
+| `value-zonal-redispatch-balancing` | 4.0.0 | C22 |
+| `value-copperplate-balancing` | 1.1.0 | C23 的同价比例分配与类别次序 |
+| `value-reference-dc-network` | 1.2.0 | C26、U16 |
+| `value-perfect-foresight-lp` | 1.1.0 | U14 的火电 FOM、U16 |
+| `value-doctoral-national-psm` | 0.3.0 | U16 |
 
-## 4 明确没有改的论文设定
+## 4 明确没有改的论文期设定
 
 ### 4.1 两个口径共同保留（你的决定）
 
@@ -175,25 +188,23 @@ VALUE 现在有两个方法学口径。**论文复现口径**冻结在 35aadb3 �
 - **投资判据不折现**：所有金额按起始年不变币值计价。四档规则：净收入 S < 0 → 减容（Deplete）；S/K > preferred_rate → Invest_High；否则回收期 K/S ≤ 目标年限 → Invest_Profit；否则 Do_Nothing。不引入 NPV、IRR 或年金门槛（A6，P4-02 不在修复范围内）。成本账中的 CRF 年金化只把存量资本摊到各年，不用于折现投资收入。
 - **缺电时段的调度不变**：日前满足不了预测时，出力和价格照旧，只记录 stress 事件（A2，DEV-BAL-02）。
 - **风光不对统计负荷率标定**：模型容量因子与 DUKES 并列披露，并写明偏高的原因（Q15、A9）。
-- **默认 PSM 的“价格”仍是时段平均成本**（Average period cost，£/MWh demand），只改标签，不改算法（Q6）。staged v8 标 “National ahead clearing price”，PF 标 “Balance shadow price”。
+- **默认 PSM 的“价格”是时段平均成本**（Average period cost，£/MWh demand），只改标签，不改算法（Q6）。staged v8 标 “National ahead clearing price”，PF 标 “Balance shadow price”。
 - **储能投资审核**不扣循环损耗、不另扣 FOM；储能扩容不启用 tier_roi（A8）。
 - **生物质没有 CfD/ROC 补贴收入**：两个口径都按全额燃料与碳成本报价（GBP1 与 R029 参数下 0.2 + 80 + 4.8 = 85 £/MWh，高于 CCGT 55.07、OCGT 74.92；上一时段未被接受时再加 83 £/MWh 启动加价），几乎不调度。本轮只披露：凡冻结机组含生物质的 Run 都显示 advisory `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED`（medium），方法学草稿 `docs/methodology/drafts/0.4/r33_biomass_support_disclosure.md`。补贴建模放到下一轮（A24-2，P4-07）。
 - **每年新建储能对象，年末 SoC 丢弃**（DEV-BAL-03，只报告；修正口径是否跨年延续 SoC 留到 P1）。
-- **投资侧的 CSV 资源曲线与调度侧天气不一致**：本轮只披露，下一轮统一（Q15）。
+- **投资侧的 CSV 资源曲线与调度侧天气不一致**：只披露，下一轮统一（Q15）。
 
-### 4.2 论文复现口径冻结的行为（Q1；trajectory 与 35aadb3 逐位相同，只有 U1–U6 例外）
+### 4.2 论文复现口径保留的论文期设定（Q1）
 
-- 风光储按毛收入判档（论文设定，不是错误）。
-- 储能扩容余量恒为 0（P5-01）。三种功率电池各拿一份 0.2 上限是论文设计，与修正口径相同。
-- 储能报价随存放时长递增并按 LIFO 出售，1C 电池几乎不调度（P5-04）；储能按自身被接受的最高报价 `max_bat_price` 结算（P5-05）。
-- 同一时段可以多次充放，单期放电可达 2 倍额定功率（声明偏差 DEV-STO-01）；平衡阶段重复计入核电盈余（DEV-BAL-04）；出清前 VRE 分流去电解（P3-08）；储能费跨期残留。
-- **下调按 `curtail_cost` 升序，先弃风**，没有重启经济学；这是论文设定（A19）。下调记账有三处由 advisory 披露的问题：爬坡历史按列表位置匹配、栈中断后保留旧的要求、被下调的电量只返还到水电预算（生物质不返还）。
-- **削减分支的重复下调**：非 VRE 机组一次削够剩余需求后没有把剩余需求清零，外层循环会从后续报价（通常是风电）再削一次同样的量（`runtime_compat/modular_simulation_model.py` 的 `store_service_three`，第 1168、1283 行）。多削的电没有去处，内核记 blackout 为 0。只有下调价不高于 VRE 的非 VRE 机组排在 VRE 前面时才触发：GBP1 的 `Hydro_natural_flow` 下调价为 0，2025 年 563 个时段受影响，多削 217,140 MWh；VALUE 101 不触发。A2 的账已把它记为未供电量。处理方式待你决定（6.1 节）。
-- **核电路径依赖**：没被接受过的核电报价加启动成本（GBP1 为 500 £/MWh），排在最后；被接受后报价为 0，又受 `alter_limit`（GBP1 为每期最多降 500 MW）的约束，所以一直运行到年底。35aadb3 的 GBP1 运行中，核电 12 月中旬才被接受，全年 2.73 TWh；读取修正后全年没有被接受，为 0。修正口径由 C17 处理，论文口径保留并在方法学中披露（A15）。
-- **互联线进口只在平衡环节出现**，即只用于实际需求高于日前计划时的剩余缺口：GBP1 D5 的 0.336 TWh 进口全部发生在这样的 1,130 个时段。
-- 天气 v1 时间约定（P6-06）；没有风光损耗（P6-08）；核电和径流水电全年 100% 可用（P5-09、P5-10、P6-10）。
-- 旧的读法：无表头文件吃掉首行（P6-05）、半小时与小时时钟（P6-07）；径流水电兼容资本留在头条（P4-03）。
-- 参考配置：legacy 储能电价，加 doctoral 碳因子情景（碳账不给物理 tCO2）（Q3）。只允许论文谱系模块和论文期数据包（GBP1 public1、1000twh-reproduction、101、synthetic），启用了外部代码时拒绝运行。
+论文复现口径的 trajectory 只在第 2 节的通用修正下变化：VALUE 101 的 smoke 与 two_year_smoke（golden D1、D2）与 35aadb3 逐位相同；VALUE 101 一日与两年（D3、D4）、GBP1 第一年（D5）的变化全部来自 U1–U9。除此之外保留：
+
+- **数据与可用出力：** 天气 v1 时间约定（P6-06）；没有风光损耗（P6-08）；核电和径流水电全年 100% 可用（P5-09、P5-10、P6-10）；旧的读法：无表头文件吃掉首行（P6-05）、半小时与小时时钟（P6-07）；径流水电兼容资本留在头条（P4-03）。
+- **储能：** 报价随存放时长线性递增并按 LIFO 出售，1C 电池几乎不调度（P5-04）；按自身被接受的最高报价 `max_bat_price` 结算（P5-05）；储能扩容余量按已接受的 VRE 计算，结果为 0（P5-01）；三种功率电池各拿一份 0.2 上限，与修正口径相同。
+- **出清：** 论文规则集的盈余记账（只记边际 VRE 盈余，DEV-BAL-01 的列语义）；日前排序键按原价稳定排序；储能报价支付在平衡期之间结转；出清前 VRE 分流去电解（P3-08）。
+- **下调按 `curtail_cost` 升序，先弃零成本风电**，没有重启经济学（A19）。论文内核的下调记账另有三处由 advisory 披露：爬坡历史按列表位置匹配、栈中断后保留旧的剩余需求、被下调的电量只返还到水电预算（生物质不返还）。
+- **核电路径依赖：** 没被接受过的核电报价加启动成本（GBP1 为 500 £/MWh），排在最后；被接受后报价为 0，又受 `alter_limit`（GBP1 为每期最多降 500 MW）约束，所以一直运行到年底。35aadb3 的 GBP1 运行中核电 12 月中旬才被接受，全年 2.73 TWh；读取修正后全年没有被接受，为 0。修正口径由 C16 处理；论文复现口径保留，并按 A15 在方法学中以 GBP1 为例披露。
+- **互联线进口只在平衡环节出现**，即只用于实际需求高于日前计划时的剩余缺口；日前出清不接收互联线。
+- **参考配置：** legacy 储能电价，加 doctoral 碳因子情景（碳账不给物理 tCO2）（Q3）。只允许论文谱系模块和论文期数据包（GBP1 public1、1000twh-reproduction、101、synthetic），启用了外部代码时拒绝运行。
 
 ## 5 数据来源与审核状态
 
@@ -206,59 +217,41 @@ VALUE 现在有两个方法学口径。**论文复现口径**冻结在 35aadb3 �
 | 径流水电（修正口径） | 0.3487 × `[1.3851×3, 0.6582×3, 0.6776×3, 1.2791×3]`；验收参照 DUKES 6.2 2019–2024 均值 5.77 TWh（±15%） | DUKES 2026 表 6.3 标准口径；Energy Trends 6.1 季度数据 | 已审核（A14、A21） |
 | 风电损耗（修正口径） | 陆上：尾流 5%、可用率 0.97、电气 2%，合计 0.90307；海上：尾流 12%、可用率 0.945、电气 2%，合计 0.814968（约 −18.5%） | Barthelmie 2009、Simley 2025、Lee & Fields 2021、Conroy 2011、SPARTA 2017/18、Colmenar-Santos 2014 等（参考统计表第 3 节）。海上电气损耗暂用陆上的 2% 作下限；海上可用率只有 SPARTA 一个来源 | 已认可（A9）、已审核（A21） |
 | 光伏性能比（修正口径） | 0.83（区间 0.76–0.88） | Sheffield Solar 7000 套系统（Taylor 2015）、Dhimish 2020/2021、Leloux 2012 | 已认可（A9）、已审核（A21） |
-| 光伏倾斜面换算模型（修正口径） | Spencer 1971；Erbs、Klein & Duffie 1982；太阳常数 1361 W/m²（Kopp & Lean 2011）；Hay & Davies 1980，反照率 0.2；Jacobson & Jadhav 2018 最优倾角 | 参数表 `value_uk_vre_loss_factors_v1.json`，参考统计表 3.5 节 | 已认可（A16-6）、已审核（A21）。书目与拟合系数没有联网复核，你没有要求 |
+| 光伏倾斜面换算模型（修正口径） | Spencer 1971；Erbs、Klein & Duffie 1982；太阳常数 1361 W/m²（Kopp & Lean 2011）；Hay & Davies 1980，反照率 0.2；Jacobson & Jadhav 2018 最优倾角 | 参数表 `value_uk_vre_loss_factors_v1.json`，参考统计表 3.5 节 | 已认可（A16-6）、已审核（A21）。书目与拟合系数没有联网复核 |
 | DUKES 风光负荷率对照列（只披露） | DUKES 6.3 标准口径 2020–2024 均值：陆上 0.2582、海上 0.4009、光伏 0.1025。风电合计行 2020、2021 年与分项不符，没有使用 | DUKES 2026 表 6.3 | 已审核（A21） |
-| 火电重启成本（修正口径） | 见 3.3 节；最小稳定出力 50% / 50% / 35%；最短停机时间 6 h / 0.5 h / 6 h；H 取日前预测的连续盈余时长；两段下调 | 参考统计表第 4 节（Kumar 等 2012、Staffell & Green 2015、DIW DD68、PyPSA-Eur、Badesa 等 2019、Elexon BM 动态参数等） | 已认可（A22） |
-| 停机段净节省公式 | a = c − S/(m·H) | 参考统计表 4.6 节 | 已确认（A22a） |
-| 重启成本的价格基年 | 2025 年英镑，系数 1.0336（ONS CPI D7BT 138.4 / 133.9） | 参考统计表 4.2a 节 | 已决定（A24-4）。**2025 年指数 138.4 未联网核对**（6.4 节） |
+| 火电重启成本（修正口径） | 见 3.3 节；最小稳定出力 50% / 50% / 35%；最短停机时间 6 h / 0.5 h / 6 h；H 取日前预测的连续盈余时长；两段下调；a = c − S/(m·H) | 参考统计表第 4 节（Kumar 等 2012、Staffell & Green 2015、DIW DD68、PyPSA-Eur、Badesa 等 2019、Elexon BM 动态参数等） | 已认可（A22、A22a） |
+| 重启成本的价格基年 | 2025 年英镑，系数 1.0336（ONS CPI D7BT 138.4 / 133.9） | 参考统计表 4.2a 节 | 已决定（A24-4）。**2025 年指数 138.4 未联网核对**（6.1 节） |
 | VoLL（两个口径） | 17,000 £/MWh（8,500 £/MW·时段） | 你的口径 | 已决定（A16-5） |
 | 核电下调溢价（修正口径） | 100 £/MWh | 施工值 | 维持（A16-6，你未提异议） |
 | 比利时价格汇率（两个口径） | 1.1 EUR/GBP | R029 approved_r03 “Ember 2022 except Ireland 2021; approved fixed EUR/GBP 1.1” | 维持（A16-6） |
-| GBP1 夏令时修复（两个口径） | 删行 14495、14497，插补 14514、14542 各 2 期 | NESO 原始发布的审计（数据真相登记 `known_data_objects_v1.json`） | 随 A5 实施 |
+| GBP1 夏令时修复（两个口径） | 删行 14495、14497，插补 14514、14542 各 2 期 | NESO 原始发布的审计（数据真相登记 `gridform_core/data/validation/known_data_objects_v1.json`） | 随 A5 实施 |
 | 光伏曲线多出的一小时 | 删去 `sa.csv` 第 8,761 行（ERA5 2023-01-01T00:00Z，值 0） | 对 ERA5 2022 ssrd 的逐时相关与逐周滞后检验（`scripts/audit_hourly_solar_profile.py`） | 随 A24-1 实施，只在本地新版数据包中 |
+| VALUE 101 需求文件单位 | 文件表头写 MWh/period，实际按 MW 读；登记处更正为 MW，字节与读法不变 | 数据真相登记（`legacy_demand_unit`） | 已更正标注，数值不变 |
 
-## 6 仍需你决定的事项
+## 6 仍未解决的事项
 
-### 6.1 A15：GBP1 论文复现口径的 surplus conservation 失败（调查已完成，待你选处理方式）
+### 6.1 需要你核对或决定
 
-- **结论：** 这是论文内核的真实能量不平衡，不是记账边界问题，也与核电盈余无关。机制见 4.2 节“削减分支的重复下调”。GBP1 2025 年 surplus conservation 失败 563 行，全部在削减分支，最大缺口 991.33 MWh，合计 217,140 MWh；其中 562 个时段实际下调正好是记账量的 2 倍。35aadb3 的轨迹同样失败（737 行，274,187 MWh）。A15 中的“471 个时段”是同一缺陷在包络检查下的计数，都在这 563 个时段之内。VALUE 101 的 D3、D4 通过；修正口径的下调是一次扣减，没有这个问题。
-- **选项：**
-  - **A（建议）**：为论文复现口径登记声明偏差 DEV-BAL-05，带机器签名（只有全部失败行都符合签名才成立），实现匹配器，并在方法学的论文复现部分披露。冻结轨迹不变。
-  - B（不建议）：在记账上让守恒式闭合。这里没有记错账，电确实少了。
-  - C：在两个口径共用的内核中修复（两处加 `need_curtailed_energy = 0`），作为通用修正；D5 重基线一次，全年 A2 缺口预计减少约 217 GWh；这会使论文复现结果偏离论文原始代码。
-- **不论选哪项**，GBP1 复现运行的年度结果仍按 Q14 隐藏，因为储能门本身就是 `reproduction_with_declared_deviations`（DEV-STO-01）。
-- 详见 `docs/dev/GBP1_SURPLUS_CONSERVATION_INVESTIGATION.md` 第 8–10 节（含 DEV-BAL-05 的中文披露稿与目录条目草案）。
+1. **2025 年 CPI 年均值核对一次。** 重启成本换算用的 ONS D7BT 2025 年年均值 138.4 没有在 ONS 页面上重新读取（[NV]）。指数每差 0.1 点，取值变化 0.07%（每 MW 不到 £0.2）。若与 ONS 公布值不同，只需改参数表 `price_base` 的 `index_to_year` 和 `factor`，五个取值按规则重算（读取校验会强制一致），修正族 golden 修订一次。
+2. **互联线潮流方向的参考表。** 要把 GBP1 public2 的 `flow_sign` 标为 verified，需要年度参考表 `boundary_flow_reference_2022.json`：各国对 GB 的年度净进口（TWh，进口为正），schema `value.boundary-flow-reference/v1`。`scripts/audit_boundary_flow_sign.py` 据此核对符号和量级，只有每个国家都一致时才标 verified。
+3. **生物质补贴（下一轮 P4-07）。** 本轮只披露（4.1 节）。下一轮要定：补贴形式（CfD 执行价、ROC 收入）、适用哪些机组、是否两个口径都加（加在论文复现口径就是新的通用修正）。
+4. **论文内核中 A26 没有列入的几处实现。** 论文复现口径仍保留 4.2 节列出的几项内核实现，并由 advisory 披露：储能报价支付在平衡期之间结转（也进入时段成本列）、出清前 VRE 分流去电解、储能扩容余量按已接受的 VRE 计算（结果为 0），以及下调记账的三处（爬坡历史按列表位置匹配、栈中断后保留旧的剩余需求、下调电量只返还到水电预算）。A26 只把三项列为真错误，这几项在本版本中按论文期设定保留，影响量没有单独测量。如果你认为其中有真错误，处理方式与 A26 相同：通用修正、论文 golden 重基线一次、已保存 Study 确认。
+5. **CSV 光伏曲线的时间标注。** ERA5 的 ssrd 标在累积小时的末尾。按区间理解，`sa.csv` 这类逐时 CSV 曲线比半小时时钟滞后 1 小时（P6-06 的 CSV 版本）。CSV 曲线用于 VRE 扩容上限，以及没有 NetCDF 天气的数据包的调度；GBP1 与 R029 的调度用 NetCDF 站点天气，修正口径已按 C1 处理。是否把 CSV 曲线也按区间起点重新标注（整体提前 1 小时）是方法改动（Q13）。
+6. **本地新版数据包的发布。** GBP1 public2 和 R029 public2 都只在本地构建，没有发布、没有上传。要定：是否发布；修正口径的国家级默认数据包是否改用 R029 public2（代码中没有写死默认数据包 id）。按 A17，发布要等前端整体翻新之后。
+7. **非模型事项（不影响数值）：** 原地改过源码的扩展停用后能否重新启用（四角色 F-中1，是否与模块一样适用 A16-4），见 `docs/dev/p0-reports/R5-4-add-feature-defects.md` 第 2 节。
 
-### 6.2 生物质补贴（下一轮 P4-07）
-
-本轮只披露（4.1 节）。下一轮要定：补贴形式（CfD 执行价、ROC 收入）、适用哪些机组、是否两个口径都加（加在论文复现口径就是新的通用修正）。
-
-### 6.3 互联线潮流方向的参考表
-
-要把 GBP1 public2 的 `flow_sign` 标为 verified，需要你提供年度参考表 `boundary_flow_reference_2022.json`：各国对 GB 的年度净进口（TWh，进口为正），schema `value.boundary-flow-reference/v1`。`scripts/audit_boundary_flow_sign.py` 据此核对符号和量级，只有每个国家都一致时才标 verified。
-
-### 6.4 2025 年 CPI 年均值核对一次
-
-重启成本换算用的 2025 年 ONS D7BT 年均值 138.4 没有在 ONS 页面上重新读取（[NV]）。指数每差 0.1 点，取值变化 0.07%（每 MW 不到 £0.2）。若与 ONS 公布值不同，只需改参数表 `price_base` 的 `index_to_year` 和 `factor`，五个取值按规则重算（读取校验会强制一致），修正族 golden 修订一次。
-
-### 6.5 CSV 光伏曲线的时间标注
-
-ERA5 的 ssrd 标在累积小时的末尾。按区间理解，`sa.csv` 这类逐时 CSV 曲线比半小时时钟滞后 1 小时（P6-06 的 CSV 版本）。CSV 曲线用于 VRE 扩容上限，以及没有 NetCDF 天气的数据包的调度；GBP1 与 R029 的调度用 NetCDF 站点天气，修正口径已按 C1 处理。是否把 CSV 曲线也按区间起点重新标注（整体提前 1 小时）是方法改动（Q13），由你决定。
-
-### 6.6 本地新版数据包的发布
-
-GBP1 public2 和 R029 public2 都只在本地构建，没有发布、没有上传。要定：是否发布；修正口径的国家级默认数据包是否改用 R029 public2（代码中没有写死默认数据包 id）。按 A17，发布要等前端整体翻新之后。
-
-### 6.7 施工中的实现选择（已生效；你同意就不需要动作）
+### 6.2 已生效的实现选择（你同意就不需要动作）
 
 - 3.3 节：在线容量取当期日前接受出力；H 只计 VRE 与核电（偏向先弃风）；H 短于最短停机时间时停机段作最后手段，而不是完全禁止（否则没有其他下调资源的分区会让 LP 无解）；网络模型中被迫走到最后手段时，按“当期其他 dec 最低价 − 0.01”结算；有补贴时停机段与 −补贴比较；重启成本只排序、不进成本账。
-- U6：相对 1e−9 以内的火电净收入按 0 处理。
-- C18：日前进口报价乘报价乘数（与平衡环节一致，默认乘数为 1）；日前接受的进口在下调时按对侧价格作为避免成本，类别次序在火电之后，不付削减费。
+- U6：相对差不超过 1e−9 的火电净收入按 0 处理。
+- U8：储能回购时不退还日前的储能报酬（两个口径相同）；论文复现口径中，与放电相抵的 VRE 盈余作为 VRE 出力计入已接受供给，但不另付平衡费（VRE 报价 0.0001 £/MWh，影响可忽略）。
+- C17：日前进口报价乘报价乘数（与平衡环节一致，默认乘数为 1）；日前接受的进口在下调时按对侧价格作为避免成本，类别次序在火电之后，不付削减费。
+- U17：没有 stress 时段的年份不扣 A2 账的数值噪声（1e−8 MWh 量级）。
 
-### 6.8 不需要你决定、但仍未解决的已知问题
+### 6.3 不需要你决定、但仍未解决的已知问题
 
-- **zonal LP 的数值脆弱性**：个别系数组合下，分区 LP（HiGHS 双单纯形，经 SciPy 1.8.1）在 `physical_throughput` 阶段停在 “scaled model optimal, unscaled model NOTSET”（`GF_ZONAL_SOLVER_FAILURE`），与下调规则无关。需要网络负责人加受控重试或改缩放（zonal 模块升版本）。
-- **数据包验证层不检查 VRE 曲线的时钟**：GBP1 public1、R029 public1 在验证层显示修正口径 eligible，运行时却报 `GF_DATA_SHORT_SERIES`。
+- **分区 LP 的数值稳健性：** 个别系数组合下，分区 LP（HiGHS 双单纯形，经 SciPy 1.8.1）在 `physical_throughput` 阶段停在 “scaled model optimal, unscaled model NOTSET”（`GF_ZONAL_SOLVER_FAILURE`），与下调规则无关。需要网络负责人加受控重试或改缩放（zonal 模块升版本）。
+- **数据包验证层不检查 VRE 曲线的时钟：** GBP1 public1、R029 public1 在验证层显示修正口径 eligible，运行时却报 `GF_DATA_SHORT_SERIES`。
 - 核电没有换料日历（固定降额），年末储能 SoC 丢弃（DEV-BAL-03），这两项都在 P1。
 - 两个网络参考算例都短于一天，看不到停机段的实际作用；GB 尺度的分区一年运行需要另行安排。
 - 论文源规则版（thesis-source）作为第三个口径，放在下一轮（Q1）。
@@ -269,98 +262,101 @@ GBP1 public2 和 R029 public2 都只在本地构建，没有发布、没有上�
 
 **论文复现口径**（相对 35aadb3）：
 
-- 在边界序列为常数、没有比利时价格或夏令时问题的数据包上（例如 VALUE 101），出力、价格、储能和排放逐位不变。变化只有三处：电价约等于运行成本时不再扩容 CCGT（A4），资本成本因此降低；头条少计风光储 FOM（A7）；验证状态改为 v2 的判定。
-- 在 GBP1 这类数据包上，读取修正会改变调度：进口大幅减少，价格尖峰消失，CCGT 发电和排放增加，核电是否被接受（路径依赖）也会随之改变。
-- 原来被隐藏的缺电以 stress 事件出现，调度不变。
-- 原始不变量不全部通过时，年度结果在结果页扣发（Q14）。VALUE 101 和 GBP1 的复现运行都是这样，所以复现口径的年度结果在结果页上基本不显示，这一点你已确认知晓。
+- 在边界序列为常数、没有比利时价格或夏令时问题的数据包上（例如 VALUE 101），变化来自三处：电价约等于运行成本时不再扩容 CCGT（A4），资本成本因此降低；储能每期只有一个净头寸，不再同一时段既充又放，储能吞吐大幅下降，CCGT 发电和运营成本略降（A26）；头条少计风光储 FOM（A7）。
+- 在 GBP1 这类数据包上，读取修正会改变调度：进口大幅减少，价格尖峰消失，CCGT 发电和排放增加，核电是否被接受（路径依赖）也会随之改变。A26 消除了重复下调，隐藏缺电大幅减少。
+- 原来被隐藏的缺电以 stress 事件出现，调度不变；已供电量和单位成本扣除 stress 缺口。
+- 原始不变量不全部通过时，年度结果在结果页扣发（Q14）。本版本的参考运行（VALUE 101 一日与两年、GBP1 第一年）都通过，年度结果发布。
 
 **修正口径**（相对 35aadb3）：
 
 - 风光可用出力下降：陆上约 −10%，海上约 −19%，光伏约 −17%（GBP1 上倾斜面换算会把光伏拉回一部分）。火电发电、平均成本和排放随之上升。
 - 新市场规则使储能真正参与调度并按统一价获得收入，储能收入不再取决于自身报价，储能投资提案可能出现；下调时先降燃气的不停机段，是否停机由重启成本与省下的成本比较决定。火电发电和运营成本随之下降。
 - 在 VALUE 101 上这两组作用大致抵消：CCGT 发电与排放各 −0.6%，系统成本的下降（−2.06%）主要来自 A4 与 A7。
-- 有径流水电和核电的数据包（GBP1）：水电约 17.2 → 6.0 TWh；核电按站降额、按月退役，并从第 0 期起作为基荷运行；头条系统成本因 P4-03 大幅下降；进口在对侧价格低于本国边际报价时进入日前出清。
+- 有径流水电和核电的数据包（GBP1）：水电约 17.2 → 6.0 TWh；核电按站降额、按月退役，并从第 0 期起作为基荷运行；头条系统成本因 C21 大幅下降；进口在对侧价格低于本国边际报价时进入日前出清。
 - 弃电列是真正的风光弃电，非 VRE spill 单列。gate 失败的运行不发布年度经济结果。
 - 有切负荷的运行，切负荷按 17,000 £/MWh 计入运营成本（VALUE 101、GBP1 的参考运行都没有记录的切负荷）。
 
 ### 7.2 VALUE 101 两年算例（2025–2026 合计）
 
-| 指标 | 35aadb3，legacy 储能（D4/C5 修订 0） | 论文口径 HEAD（D4） | 修正口径 HEAD，legacy 储能（C5） | 35aadb3，dynamic 储能（C6 修订 0） | 修正口径 HEAD，默认配置（C6） |
+| 指标 | 35aadb3，legacy 储能（D4/C5 修订 0） | 论文复现口径 HEAD（D4） | 修正口径 HEAD，legacy 储能（C5） | 35aadb3，dynamic 储能（C6 修订 0） | 修正口径 HEAD，默认配置（C6） |
 |---|---:|---:|---:|---:|---:|
-| 系统成本头条（£） | 29,570,717 | 28,930,311（−2.17%） | 29,025,978（−1.84%） | 29,737,943 | 29,124,542（−2.06%） |
-| 其中运营（£） | 13,053,554 | 13,053,554（0） | 13,118,973（+0.50%） | 13,194,344 | 13,209,671（+0.12%） |
-| 其中资本（£） | 16,517,163 | 15,876,757 | 15,907,005 | 16,543,599 | 15,914,872 |
-| 分年头条（£，2025 / 2026） | 14,626,893 / 14,943,823 | 14,560,893 / 14,369,417 | 14,664,901 / 14,361,077 | 14,691,271 / 15,046,671 | 14,699,553 / 14,424,989 |
-| 单位成本（£/MWh 供电） | 63.22 | 61.85 | 62.06 | 63.58 | 62.27 |
-| 需求加权时段平均成本（£/MWh，2025 / 2026） | 30.64 / 25.18 | 30.64 / 25.18 | 31.08 / 25.01 | 30.91 / 25.50 | 31.23 / 25.25 |
+| 系统成本头条（£） | 29,570,717 | 28,688,666（−2.98%） | 29,025,978（−1.84%） | 29,737,943 | 29,124,542（−2.06%） |
+| 其中运营（£） | 13,053,554 | 12,823,845（−1.76%） | 13,118,973（+0.50%） | 13,194,344 | 13,209,671（+0.12%） |
+| 其中资本（£） | 16,517,163 | 15,864,821 | 15,907,005 | 16,543,599 | 15,914,872 |
+| 分年头条（£，2025 / 2026） | 14,626,893 / 14,943,823 | 14,458,446 / 14,230,219 | 14,664,901 / 14,361,077 | 14,691,271 / 15,046,671 | 14,699,553 / 14,424,989 |
+| 单位成本（£/MWh 已供电） | 63.22 | 61.33 | 62.06 | 63.58 | 62.27 |
+| 需求加权时段平均成本（£/MWh，2025 / 2026） | 30.64 / 25.18 | 30.20 / 24.63 | 31.08 / 25.01 | 30.91 / 25.50 | 31.23 / 25.25 |
 | 最高时段平均成本（£/MWh） | 65.92 | 65.92 | 64.74 | 65.92 | 64.74 |
-| CCGT 发电（MWh） | 196,294 | 196,294 | 197,277 | 198,410 | 197,191 |
-| 风光可用电量，弃电前（MWh） | 论文口径不记录 | 论文口径不记录 | 300,498 | 论文口径不记录 | 300,802 |
+| CCGT 发电（MWh） | 196,294 | 192,839 | 197,277 | 198,410 | 197,191 |
+| 风光可用电量，弃电前（MWh） | 不记录 | 不记录 | 300,498 | 不记录 | 300,802 |
 | 风光弃电（MWh，修正口径语义） | 不可比 | 不可比 | 28,812 | 不可比 | 29,029（可用量的 9.7%） |
-| 电池放电（MWh） | 33,688 | 33,688 | 5,207 | 0.36 | 5,208 |
+| 电池充电 / 放电（MWh） | 41,591 / 33,688 | 7,298 / 5,910 | 6,430 / 5,207 | 31 / 0.36 | 6,431 / 5,208 |
 | 电池市场收入（£） | 0 | 0 | 154,411 | 21 | 208,524 |
-| 直接排放（tCO2） | 77,340 | 77,340 | 77,727 | 78,174 | 77,693 |
-| 投资提案（MW） | 21.32（CCGT 13.05，陆上 5.56，光伏 2.71） | 8.26（陆上 5.56，光伏 2.71） | 8.89（陆上 5.80，光伏 3.09） | 21.96（CCGT 13.19，陆上 5.63，光伏 3.13） | 9.49（陆上 5.83，光伏 3.24，1C 电池 0.42） |
-| 2026 年投运（MW，含已规划的 15 MW 光伏） | CCGT 7.17，陆上 2.81，光伏 17.71 | 陆上 2.81，光伏 17.71 | 陆上 2.94，光伏 18.09 | CCGT 7.23，陆上 2.84，光伏 18.13 | 陆上 2.95，光伏 18.24 |
+| 直接排放（tCO2） | 77,340 | 75,979 | 77,727 | 78,174 | 77,693 |
+| 投资提案（MW） | 21.32（CCGT 13.05，陆上 5.56，光伏 2.71） | 8.00（陆上 5.52，光伏 2.48） | 8.89（陆上 5.80，光伏 3.09） | 21.96（CCGT 13.19，陆上 5.63，光伏 3.13） | 9.49（陆上 5.83，光伏 3.24，1C 电池 0.42） |
+| 2026 年投运（MW，含已规划的 15 MW 光伏） | CCGT 7.17，陆上 2.81，光伏 17.71 | 陆上 2.80，光伏 17.48 | 陆上 2.94，光伏 18.09 | CCGT 7.23，陆上 2.84，光伏 18.13 | 陆上 2.95，光伏 18.24 |
 | 记录的切负荷（MWh） | 0 | 0 | 0 | 0 | 0 |
 | stress 事件 / 缺口 | 账本无边界，不记录 | 0 / 0 | 0 / 0 | 账本无边界，不记录 | 0 / 0 |
-| 科学验证 | v1 “passed”（硬编码） | `reproduction_with_declared_deviations`（DEV-STO-01） | passed | v1 “passed”（硬编码） | passed |
-| 结果页发布（Q14） | — | **扣发**（储能原始不变量 failed） | 发布 | — | 发布 |
+| 科学验证 | v1 “passed”（硬编码） | `reproduction_conformant`，原始不变量 passed | passed | v1 “passed”（硬编码） | passed |
+| 结果页发布（Q14） | — | 发布 | 发布 | — | 发布 |
 
 说明：
 
-1. 论文口径 HEAD 与 35aadb3 的出力、价格、储能、风光和排放逐位相同。差别只有两项：A4 使 2025 年的 CCGT 提案（7.17 MW）不再在 2026 年投运，2026 年的 CCGT 提案（5.89 MW）也取消，2026 年系统成本因此少了这台 CCGT 的年金化资本 508,406 £；A7 又使每年少计 66,000 £。
-2. 论文口径和 35aadb3 都把被储能等吸收的 VRE 盈余记在 `excess` 列（两年 42,523 MWh），`curtailed` 两年只有 4 MWh，账本也不记录未被接受的 VRE 可用量；修正口径把它们分开（3.2 节），所以风光可用量和弃电两行只对修正口径给出数值。
+1. 论文复现口径 HEAD 与 35aadb3 的差别全部来自 A4、A7 和 A26：A4 使 2025 年的 CCGT 提案（7.17 MW）不再在 2026 年投运，2026 年的 CCGT 提案（5.89 MW）也取消；A7 每年少计 66,000 £；A26（U8）使储能不再同一时段既充又放，两年储能充电由 41,591 降到 7,298 MWh，CCGT 发电 −1.76%。价格最高值不变。
+2. 论文复现口径把被储能等吸收的 VRE 盈余记在 `excess` 列（HEAD 两年 45,029 MWh），`curtailed` 两年只有 4 MWh，账本也不记录未被接受的 VRE 可用量；修正口径把它们分开（3.2 节），所以风光可用量和弃电两行只对修正口径给出数值。
 3. “时段平均成本”就是默认 PSM 的 `clearing_price_gbp_per_mwh`，按 Q6 不是边际出清价。
-4. 排放是事后按同一套权威因子（`value_current_authoritative_v1`）乘以逐资产发电量算出的直接运行排放。论文口径的碳因子情景不给物理 tCO2，所以这样处理，差别只反映调度差别。
-5. 系统成本头条取成本账 v2 的 CEM 系统成本（35aadb3 为成本账 v1，与市场总成本相同）。
+4. 排放是事后按同一套权威因子（`value_current_authoritative_v1`）乘以逐资产发电量算出的直接运行排放。论文复现口径的碳因子情景不给物理 tCO2，所以这样处理，差别只反映调度差别。
+5. 系统成本头条取成本账 v2 的 CEM 系统成本（35aadb3 为成本账 v1，与市场总成本相同）。单位成本的分母是已供电量（U17；这里没有 stress，等于需求）。
 
-### 7.3 修正口径的分解（VALUE 101 两年，默认配置 C6）
+### 7.3 分解（VALUE 101 两年）
 
-各组修正按施工顺序依次叠加，每一步都是一次完整的两年运行：
+修正口径（默认配置 C6），各组修正按次序叠加，每一步都是一次完整的两年运行：
 
 | 依次加入 | 系统成本（£） | 变化 | 需求加权时段平均成本（£/MWh，两年） | CCGT 发电（MWh） | 排放（tCO2） | 电池放电（MWh） | CCGT 提案（MW） |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | 35aadb3 | 29,737,943 | — | 28.21 | 198,410 | 78,174 | 0.36 | 13.19 |
-| 物理运营成本（U10） | 29,737,923 | −19 | 28.21 | 198,410 | 78,174 | 0.36 | 13.19 |
-| 修正市场规则 C9–C16（及验证门控） | 28,291,972 | −1,445,951（−4.86%） | 25.29 | 176,089 | 69,379 | 6,312 | 11.71 |
+| 物理运营成本（U13） | 29,737,923 | −19 | 28.21 | 198,410 | 78,174 | 0.36 | 13.19 |
+| 修正市场规则（C9–C15、U8）与验证门控 | 28,291,972 | −1,445,951（−4.86%） | 25.29 | 176,089 | 69,379 | 6,312 | 11.71 |
 | 天气 v2 与风光损耗（C1、C2） | 29,772,318 | +1,480,346（+5.23%） | 28.24 | 197,191 | 77,693 | 5,208 | 13.11 |
-| 投资与成本账（U6、U11、C20–C22）与其余修正（HEAD） | 29,124,542 | −647,776（−2.18%） | 28.24 | 197,191 | 77,693 | 5,208 | 0 |
+| 投资与成本账（U6、U14、C19–C21）与其余修正（HEAD） | 29,124,542 | −647,776（−2.18%） | 28.24 | 197,191 | 77,693 | 5,208 | 0 |
 
-- 最后一行的 −647,776 £ 中，资本 −647,786 £（少建的 CCGT 约 −515,786 £，A7 −132,000 £），两年提案 22.60 → 9.49 MW；另有约 +£10 的运营成本来自 2025 年那 1 个下调时段的下调次序（3.3 节）。日前进口、核电开局在运、VoLL、储能报价账本、按类型的电池上限和重启成本基年在 VALUE 101 上都为 0。
+- 最后一行的 −647,776 £ 中，资本 −647,786 £（少建的 CCGT 约 −515,786 £，A7 −132,000 £），两年提案 22.60 → 9.49 MW；另有约 +£10 的运营成本来自 2025 年那 1 个时段的下调经济次序（C18）。日前进口、核电开局在运、VoLL、储能报价账本、按类型的电池上限和重启成本基年在 VALUE 101 上都为 0。
 - 只加 A4（在修正市场规则那一步之上）：系统成本 −456,944 £，CCGT 提案 11.71 → 0 MW，调度不变。
-- 市场规则那一步 CCGT 减少，主要来自电池开始调度（C14、C15）：电池两年放电 0.36 → 6,312 MWh，市场收入 21 → 275,598 £。损耗系数那一步风光可用电量 346,842 → 300,802 MWh（−13.3%），由 CCGT 补上。
+- 市场规则那一步 CCGT 减少，主要来自电池开始调度（C13、C14）：电池两年放电 0.36 → 6,312 MWh，市场收入 21 → 275,598 £。损耗系数那一步风光可用电量 346,842 → 300,802 MWh（−13.3%），由 CCGT 补上。
 
-论文口径（D4）：
+论文复现口径（D4）：
 
 | 依次加入 | 系统成本（£） | 变化 | 其他 |
 |---|---:|---:|---|
 | 35aadb3 | 29,570,717 | — | — |
-| 核算类修正（U7–U10） | 29,570,717 | 0 | 轨迹与成本都不变 |
+| 核算类修正（U10–U13） | 29,570,717 | 0 | 轨迹与成本都不变 |
 | A4（U6） | 29,062,311 | −508,406（−1.72%） | 提案 21.32 → 8.26 MW |
-| 成本账 v2（U11）；VoLL（U13）为 0 | 28,930,311 | −132,000（−0.45%） | — |
+| 成本账 v2（U14）；VoLL（U16）为 0 | 28,930,311 | −132,000（−0.45%） | — |
+| A26（U7–U9，实际起作用的是 U8） | 28,688,666 | −241,645（−0.84%） | 运营 −229,709 £；CCGT 发电 −1.76%；储能放电 33,688 → 5,910 MWh；提案 8.26 → 8.00 MW |
 
 ### 7.4 GBP1 public1，论文复现口径，第一年（2025）
 
-数据取自 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`，你已在 A15 认可修复后的结果为新参照。
-
 | 指标 | 35aadb3 | HEAD（doctoral-lineage-0.6.0a2） | 主要原因 |
 |---|---:|---:|---|
-| 进口合计（TWh） | 1.548 | 0.336（−78%） | U2、U3（荷兰线原先免费进口 1.34 TWh）、U1 |
-| 时段平均成本：均值 / 最高（£/MWh） | 22.35 / 5,849.5 | 18.23 / 50.4 | U1–U4，经由核电接受时点（路径依赖） |
-| 系统成本头条（百万英镑） | 28,126.9 | 27,232.0（−3.18%） | U1–U4 −813.0；U10 −25.3；U11 −56.7 |
-| 其中运营 / 资本（百万英镑） | 5,155.8 / 22,971.2 | 4,317.5 / 22,914.5 | 资本含径流水电兼容资本约 10,955（论文口径留在头条） |
-| 直接排放（MtCO2） | 29.91 | 30.91（+3.4%） | 免费进口和核电消失后由 CCGT 补足（CCGT 73.98 → 76.36 TWh） |
+| 进口合计（TWh） | 1.548 | 0.361（−77%） | U2、U3（荷兰线原先免费进口 1.34 TWh）、U1；A26 +0.025 |
+| 时段平均成本：均值 / 最高（£/MWh） | 22.35 / 5,849.5 | 18.17 / 50.4 | U1–U4，经由核电接受时点（路径依赖） |
+| 系统成本头条（百万英镑） | 28,126.9 | 27,201.5（−3.29%） | U1–U4 −813.0；U13 −25.3；U14 −56.7；A26 −30.5 |
+| 其中运营 / 资本（百万英镑） | 5,155.8 / 22,971.2 | 4,287.0 / 22,914.5 | 资本含径流水电兼容资本约 10,955（论文复现口径留在头条） |
+| 单位成本（£/MWh 已供电） | 120.77 | 116.83 | 同上；已供电量扣除 stress 缺口（U17） |
+| 直接排放（MtCO2） | 29.91 | 30.68（+2.6%） | 免费进口和核电消失后由 CCGT 补足（CCGT 73.98 → 75.73 TWh） |
 | 核电发电（TWh） | 2.73 | 0 | 路径依赖（4.2 节） |
-| 径流水电（TWh） | 17.17 | 17.24 | 论文口径 100% 可用 |
+| 径流水电（TWh） | 17.17 | 17.25 | 论文复现口径 100% 可用 |
+| 储能充 / 放（TWh） | 4.80 / 3.47 | 2.42 / 1.75 | U8 |
 | CCGT 提案（MW） | 1,717.1 | 0 | U6（U1–U4 之后为 1,773.8 MW，A4 取消） |
-| 风光提案（MW） | 2,954.7 | 3,036.4 | U1–U4 |
-| stress 事件 / 时段 / 缺口（MWh） | 168 / 848 / 302,138 | 157 / 890 / 300,855 | 数值差来自 U1–U4；能记录这些量来自 U7。HEAD 的缺口中 217,140 MWh 来自重复下调（6.1 节） |
-| 原始不变量 / 结果页 | 只读核验 failed | failed / 扣发 | 储能 DEV-STO-01；surplus conservation 563 行没有声明偏差（6.1 节） |
+| 风光提案（MW） | 2,954.7 | 3,029.3 | U1–U4；A26 |
+| stress 事件 / 时段 / 缺口（MWh） | 168 / 848 / 302,138 | 74 / 487 / 78,810 | U1–U4 改变数量，U7 去掉重复下调；能记录这些量来自 U10。35aadb3 一列是同一轨迹在声明边界上的记账 |
+| 原始不变量 / 结果页 | 只读核验 failed | passed / 发布 | U7、U8 之后能量平衡门与储能门都通过 |
+
+剩下的 78.8 GWh 缺口是日前满足不了预测时的隐藏缺电（A2，调度不改），按 stress 事件报告。
 
 ### 7.5 GBP1 public2，修正口径，第一年（2025，本地）
 
-运行设置：golden C9，即 D5 的冻结项目（参考配置：legacy 储能电价、doctoral 碳因子情景）加 `methodology.profile = value-corrected`，数据包为本地构建的 GBP1 public2 `@v3`（manifest `8d73e08c…f86f`，未发布），17,520 期。数字取自 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` 第 10 节，与当前代码的运行逐位相同（7.7 节）。
+运行设置：golden C9，即 D5 的冻结项目（参考配置：legacy 储能电价、doctoral 碳因子情景）加 `methodology.profile = value-corrected`，数据包为本地构建的 GBP1 public2 `@v3`（manifest `8d73e08c…f86f`，未发布），17,520 期。数字取自 `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md` 第 10 节，与当前代码的运行在门控区逐位相同（7.7 节）。
 
 验收（你定的标准：“看着差不多”）：
 
@@ -369,26 +365,26 @@ GBP1 public2 和 R029 public2 都只在本地构建，没有发布、没有上�
 | 核电发电 | 38.26 TWh（全年 17,520 期在运） | Energy Trends 5.1，2023–2024 年 supplied 约 37.3 TWh（±10%） | +2.5% | 通过 |
 | 径流水电 | 6.01 TWh | DUKES 6.2，2019–2024 均值 5.77 TWh（±15%） | +4.2% | 通过 |
 | 陆上 / 海上 / 光伏容量因子（按装机加权，弃电后） | 0.362 / 0.498 / 0.110 | DUKES 6.3 标准口径 2020–2024：0.258 / 0.401 / 0.103 | ×1.40 / ×1.24 / ×1.07 | 风电偏高，属于 A9 已接受的披露项；光伏差不多 |
-| 生物质 | 0.010 TWh（4,762 MW） | — | — | 没有补贴收入，几乎不调度（4.1 节，A24-2 已披露） |
+| 生物质 | 0.010 TWh（4,762 MW） | — | — | 没有补贴收入，几乎不调度（4.1 节） |
 
 与论文复现口径（7.4 节 HEAD 列，GBP1 public1）并列：
 
 | 指标 | 论文复现口径（public1） | 修正口径（public2） |
 |---|---:|---:|
-| 核电 / CCGT / OCGT（TWh） | 0 / 76.36 / 1.27 | 38.26 / 67.53 / 1.47 |
-| 径流水电（TWh） | 17.24 | 6.01 |
-| 陆上 / 海上 / 光伏（TWh） | 48.68 / 78.28 / 10.54 | 46.62 / 64.09 / 9.71 |
-| 弃电（TWh） | 0.30（论文语义） | 1.74（可用 VRE 的 1.42%） |
-| 进口 / 出口（TWh） | 0.336 / 1.735 | 1.376 / 1.511 |
-| 储能充 / 放（TWh） | 5.050 / 3.658 | 2.434 / 1.794 |
-| 时段平均成本：均值 / 最高（£/MWh） | 18.23 / 50.4 | 16.23 / 46.30 |
-| 运营成本（百万英镑） | 4,317.5 | 3,880.9 |
-| 头条资本（百万英镑） | 22,914.5（含径流水电兼容资本约 10,955） | 11,959.2（兼容资本移出头条，C22） |
-| 系统成本头条（百万英镑；£/MWh） | 27,232.0；116.92 | 15,840.0；68.01 |
-| 直接排放（MtCO2） | 30.91 | 27.56 |
-| 投资提案（MW） | 3,036.4（陆上 1,341.0、海上 843.3、光伏 852.1） | 2,810.5（陆上 1,250.2、海上 701.6、光伏 754.6、0.25C 电池 97.2、1C 电池 6.8） |
-| stress 事件 / 切负荷 | 157 个事件 / 0 | 0 / 0 |
-| 验证 / 结果页 | 原始不变量 failed / 扣发 | 三类 gate 与原始不变量全部通过 / 发布 |
+| 核电 / CCGT / OCGT（TWh） | 0 / 75.73 / 1.30 | 38.26 / 67.53 / 1.47 |
+| 径流水电（TWh） | 17.25 | 6.01 |
+| 陆上 / 海上 / 光伏（TWh） | 48.68 / 78.50 / 10.54 | 46.62 / 64.09 / 9.71 |
+| 弃电（TWh） | 0.29（论文语义） | 1.74（可用 VRE 的 1.42%） |
+| 进口 / 出口（TWh） | 0.361 / 1.780 | 1.376 / 1.511 |
+| 储能充 / 放（TWh） | 2.423 / 1.750 | 2.434 / 1.794 |
+| 时段平均成本：均值 / 最高（£/MWh） | 18.17 / 50.4 | 16.23 / 46.30 |
+| 运营成本（百万英镑） | 4,287.0 | 3,880.9 |
+| 头条资本（百万英镑） | 22,914.5（含径流水电兼容资本约 10,955） | 11,959.2（兼容资本移出头条，C21） |
+| 系统成本头条（百万英镑；£/MWh 已供电） | 27,201.5；116.83 | 15,840.0；68.01 |
+| 直接排放（MtCO2） | 30.68 | 27.56 |
+| 投资提案（MW） | 3,029.3（陆上 1,337.3、海上 841.9、光伏 850.0） | 2,810.5（陆上 1,250.2、海上 701.6、光伏 754.6、0.25C 电池 97.2、1C 电池 6.8） |
+| stress 事件 / 切负荷 | 74 个事件 / 0 | 0 / 0 |
+| 验证 / 结果页 | `reproduction_conformant`，原始不变量 passed / 发布 | 三类 gate 与原始不变量全部通过 / 发布 |
 
 两列的数据包不同：public2 的需求与互联线改绑到 R029 已核准的对象，并带逐站核电与修订后的光伏曲线；需求量相同（232.91 TWh）。所以这张表说明“修正口径会给出什么”，不是单项修正的严格归因。价格是 Q6 的时段平均成本，不是批发电价。
 
@@ -418,11 +414,11 @@ golden C10：新建 Study 的默认模块（`value-bid-at-cost-psm`、`dynamic-a
 ### 7.7 测量方法、可信度与局限
 
 - **VALUE 101（7.2、7.3 节）：** 每个用例都是一次完整的两年运行（17,520 期 × 2 年），使用 golden 的冻结项目 `tests/golden/projects/{D4,C5,C6}.json`，每次运行有自己的数据目录、HOME 和临时目录。
-  - HEAD `fab9ec2`：在 `git archive` 的源码树上运行 `scripts/golden/run_case.py`。D4、C5、C6 的 golden 摘要与最新修订（D4 r11、C5 r15、C6 r13）的 trajectory 与 accounting 区逐列一致；D4 只有 identity 区不同（代码哈希）。
+  - 代码状态 `6560189`：在 `git archive` 的源码树上运行 `scripts/golden/run_case.py`。D4、C5、C6 的摘要与最新修订（D4 r13、C5 r16、C6 r14）的 trajectory 与 accounting 区逐列一致，只有 identity 区 1 列（内核 overlay 哈希）不同。
   - 35aadb3：在 `git archive 35aadb3` 的源码树上，用同一冻结项目调用 `run_project_application(mode="two_year")`。
-  - 7.3 节的中间状态：在对应提交的源码树上运行 `run_case.py`（3537374、5014b7b、54fe0ed，以及只加 A4 的 7e07437）。摘要与对应修订逐列一致（C6 r3、r6、r7，D4 r8、r9）；7e07437 的 C6 运行在 lane 分支上，没有对应修订。
+  - 7.3 节的中间状态：在对应提交的源码树上运行 `run_case.py`，摘要与对应 golden 修订逐列一致。论文复现口径 A26 之前一步的数值即 D4 修订 11 的运行。
   - 汇总用一个只读脚本读取 `year-results-v2.json`、成本账、碳账与 `market.sqlite`，放在施工临时目录，没有入库。
-- **GBP1 与 R029（7.4–7.6 节）：** 数字取自当时的完整运行。之后每次代码改动都用 golden 核对过这些运行：C9（GBP1 修正口径）在核电开局在运之后的修订只增加了下调记录列、储能余量证据列和重启参数表哈希，在 `@v3` 数据包上复跑 gated 差异为 0；C10 只修订过重启参数表哈希；D5 在重基线之后只修订过 VoLL 的取值与依据两列（切负荷为 0，头条不变）。
-- **VALUE 101 是教学包：** 机组只有一台 CCGT（运行成本 66.5 £/MWh）、陆上风电、光伏（2026 年另有 15 MW 规划光伏投运）和 1C 电池；市场序列为常数，进口报价高于 CCGT，没有核电和径流水电，天气是合成数据。所以 U1–U5、C3–C5、C17、C18、C22 在这里都为 0，它们的量级要看 GBP1。
+- **GBP1 与 R029（7.4–7.6 节）：** 论文复现口径（D5）的数字取自 A26 修订的前后运行（`docs/dev/p0-reports/r41-golden/D5-gbp1-summary-before-after.json`），之后只有核算区修订（模型时钟标签、已供电量），单位成本已按后者更新；35aadb3 一列取自 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md`。修正口径的 C9 在核电开局在运（C16）之后、C10 在建立之后，修订只涉及下调与储能余量的记录列、重启参数表哈希和时钟标签，出力、价格、成本等数值列没有变化；最近一次在本地重建的 `@v3` 数据包上用 `capture.py check` 复核全部 15 个 golden 时，C9、C10 与最新修订一致。A26 不改变修正口径的调度。
+- **VALUE 101 是教学包：** 机组只有一台 CCGT（运行成本 66.5 £/MWh）、陆上风电、光伏（2026 年另有 15 MW 规划光伏投运）和 1C 电池；市场序列为常数，进口报价高于 CCGT，没有核电和径流水电，天气是合成数据。所以 U1–U5、U7、U9、C3–C5、C16、C17、C21 在这里都为 0，它们的量级要看 GBP1。
 - **只跑两年**（VALUE 101）或一年（GBP1、R029）：最后一年的提案在本次运行内不会投运。
 - 想看下调经济次序在其他情景（VRE 更多、预测误差更大）或 GB 尺度分区一年中的作用，需要另行安排敏感性运行。
