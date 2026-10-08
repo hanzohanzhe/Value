@@ -1,9 +1,9 @@
 # VALUE 0.7.0-alpha.1 网站交接文档（给 value.ac 上传员）
 
 - 日期：2026-10-08。
-- 依据的代码状态：分支 `fix/review-2026-10-04`，HEAD `c442545`；对照 `main` 的 35aadb3，即 0.6.0-alpha.2 的源码。本文只描述这一状态下的规则和事实；施工经过见 git 历史与 `docs/dev/p0-reports/`。
+- 依据的代码状态：分支 `fix/review-2026-10-04`，HEAD `6560189`（此后的提交只改交付文档）；对照 `main` 的 `35aadb3`，即 0.6.0-alpha.2 的源码。本文只描述这一状态下的规则和事实，施工经过见 git 历史与 `docs/dev/p0-reports/`。
 - 读者：维护 `website/` 并上传 value.ac 的人。`website/` 包括 `build.py`、`content.py`、`journey.py`、`site.json`、`methodology_page.py`、`publication.py`、`release_candidate.py`、`check_site.py`、`sync_methodology.py` 和 `static/`。
-- 本文只写交接内容，不改 `website/` 下的任何文件。本分支的 `website/` 与 35aadb3 逐字节相同（`git diff 35aadb3 -- website/` 为空），文中行号对两边都适用。
+- 本文只写交接内容，不改 `website/` 下的任何文件。本分支的 `website/` 与 35aadb3 逐字节相同（`git diff 35aadb3 -- website/` 为空），文中的行号对两边都适用。
 - 依据的优先次序：`docs/dev/P0_DECISIONS.md` 最高（同一事项有多条时，以编号靠后的为准），其次是代码，再次是 `CHANGELOG.md` 等公开文档，最后是本文。各项内容的出处见第 5 节。
 
 ---
@@ -21,7 +21,7 @@
    - 网站方法学的定位（2.1）；
    - 两个方法学口径及其固定标签（2.2）；
    - 两个口径共同的修正（2.3），只在修正口径中使用的设定（2.4），以及两个口径都保留的模型设定（2.5）；
-   - 验证门、stress event 和年度结果的发布规则（2.6）；
+   - 验证门、stress event、未供电量和年度结果的发布规则（2.6）；
    - 本地 API 安全边界与启动器（2.7）；
    - Run 的启动与准备（2.8）；
    - 四类用户路径的操作（2.9）；
@@ -61,20 +61,26 @@
   - 核电和水电不按可用率折减；
   - 沿用原有的数据读法。
 
-  这些是**设定，不是错误**，网站不要写成“论文的做法是错的”。实现错误和数据读取错误的修正，对论文复现口径同样适用（2.3 节）。
-- **论文本身的代码**以 GitHub 上已锁定的历史研究档案为准。网站已有的 “Historical archive / 历史研究档案” 说明（`content.py:87`，链接见 `:85`）把它写成较早的研究档案、不是当前 VALUE 的源码，这一定位与 A26 一致，保留不动。
+  这些是**设定，不是错误**，网站不要写成“论文的做法是错的”。实现错误、数据读取错误和记账口径的修正，对论文复现口径同样适用（2.3 节）。
+- **论文本身的代码**以 GitHub 上已锁定的历史研究档案为准。网站已有的 “Historical archive / 历史研究档案” 说明（about 页，`content.py:87`，链接定义在 `:85`）把它写成较早的研究档案、不是当前 VALUE 的源码，这一定位与 A26 一致，保留不动。
 - **建议写法**（中文页）：“修正口径是 VALUE 的默认模型，网站方法学描述的就是它。论文复现口径按 VALUE 0.6.0-alpha.2 的实现保留论文时期的设定，同时包含两个口径共同的错误修正，用于对照，不是论文结果的精确复现。”
 
 ### 2.2 两个方法学口径与标签（Q2、Q3、Q14；`docs/generated/METHODOLOGY_PROFILES.md`）
 
-| 机器 id | 应用内标签（英文原文，网站照抄） | 固定附注 | 默认 | 冻结 |
-|---|---|---|---|---|
-| `value-corrected` | `Corrected methodology (default)` | Current default methodology with review fixes of 2026-10. | 是 | 否 |
-| `doctoral-lineage-0.6.0a2` | `Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)` | `not an exact reproduction of the 2026-07-18 retained trajectory` | 否 | 是 |
+| 机器 id | 完整标签（英文原文，网站照抄） | 界面短名 | 固定附注 | 默认 | 冻结 |
+|---|---|---|---|---|---|
+| `value-corrected` | `Corrected methodology (default)` | `Corrected (default)` | Current default methodology with review fixes of 2026-10. | 是 | 否 |
+| `doctoral-lineage-0.6.0a2` | `Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)` | `Doctoral reproduction` | `not an exact reproduction of the 2026-07-18 retained trajectory` | 否 | 是 |
 
-- **标签照抄。** 两个英文标签逐字照抄，不改大小写，不缩写。应用中它们出现在三处：Study composer 第 1 步（`1. Study identity`）的 `Methodology` 单选框、Run 上下文条、Run 记录。定义见 `gridform_core/data/methodology/profiles.json` 和 `app/features/workspace/runValidation.ts:14-15`。
-- **固定附注（Q2）。** 凡出现 doctoral 标签，必须同时出现固定附注。中文页写作：“论文复现口径（Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)）：按 VALUE 0.6.0-alpha.2 的实现保留论文时期的设定，**不是** 2026-07-18 保留轨迹的精确复现。”
-- **中文名。** 中文统一写“修正口径（默认）”和“论文复现口径”，后面括注英文原标签。应用界面目前只有英文；前端整体翻新计划加入中英切换（`docs/dev/P0_FRONTEND_DEVIATIONS.md` F-R22-3），翻新后以应用的中文为准。
+- **标签照抄。** 完整标签定义在 `gridform_core/data/methodology/profiles.json` 和 `app/features/workspace/runValidation.ts:14-15`，出现在 Run 上下文条的口径标记、Run 记录（`resolved-run.json`）、`CHANGELOG.md` 和 `METHODOLOGY_PROFILES.md` 中。网站首次提到某个口径时用完整标签，逐字照抄，不改大小写，不缩写。
+- **界面短名。** 以下三处界面用短名：
+  - Study composer 第 1 步（`1. Study identity`）的 `Methodology` 单选框。论文复现一项下附说明 `Locks thesis-era reference settings: legacy storage tariff, doctoral carbon factors, thesis-era modules and data packs only. External code is not allowed.`；
+  - `Research guide` 页（研究路径）第 2 步的“方法学口径”一项（口径名和 profile id）；
+  - Runs 页 `What will run` 中的 `Methodology` 一格。
+
+  网站写操作步骤时可以引用短名，但介绍口径时用完整标签。
+- **固定附注（Q2）。** 凡出现 doctoral 完整标签，必须同时出现固定附注。中文页写作：“论文复现口径（Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)）：按 VALUE 0.6.0-alpha.2 的实现保留论文时期的设定，**不是** 2026-07-18 保留轨迹的精确复现。”
+- **中文名。** 中文统一写“修正口径（默认）”和“论文复现口径”，后面括注英文原标签。应用界面目前中英混排（主工作区为英文，`Research guide` 页和映射编辑器的说明为中文）；统一的中英切换放在前端整体翻新中（`docs/dev/P0_FRONTEND_DEVIATIONS.md` F-R22-3），翻新后以应用的中文为准。
 - **默认口径与旧 Run。** 新建的 Study 和 Run 默认使用修正口径。0.6.0-alpha.2 及更早版本的 Run 显示 `Methodology not recorded (pre-2026-10 run)`。
 - **论文复现口径的边界（Q3）：**
   - 只运行论文谱系模块（清单见 `METHODOLOGY_PROFILES.md`），并把参考配置写进 Study：legacy storage tariff 和 doctoral 碳因子情景；
@@ -82,31 +88,33 @@
   - 已启用外部模块或扩展时拒绝运行；
   - 网络模块（staged PSM 及其 copperplate、zonal 平衡，DC、AC 网络）只在修正口径下运行。
 - **年度结果的发布（Q14）。**
-  - 论文复现口径的 Run，只有全部原始不变量都通过，年度结果才在结果页发布；否则结果页显示 `Withheld`，Inspect 和账本文件照常可用。
-  - 本版代码上的论文复现参考运行，即 VALUE 101 一天、VALUE 101 两年和 GBP1 public1 第一个模型年（golden D3、D4、D5），原始不变量全部通过，年度结果在结果页发布。
+  - 论文复现口径的 Run，只有全部原始不变量都通过，年度结果才在结果页发布；否则结果页显示 `Withheld`，Inspect 和账本文件照常可用。Run 还在进行时显示待定（2.6 节）；
+  - 本版代码上的论文复现参考运行，即 VALUE 101 一天、VALUE 101 两年和 GBP1 public1 第一个模型年（golden D3、D4、D5），原始不变量全部通过，年度结果在结果页发布；
   - 在其他数据或配置上，扣发仍可能出现，所以网站不要写“论文复现口径的年度结果总会发布”。
 
-### 2.3 两个口径共同的修正（universal；Q9、Q12、A2、A3、A4、A5、A16-5、A26）
+### 2.3 两个口径共同的修正（universal；Q9、Q12、A2、A3、A4、A5、A16-5、A26、A28）
 
-论文复现口径冻结 0.6.0-alpha.2 的行为，下面这些修正是冻结的仅有例外，两个口径都适用。它们修正的是实现错误、数据读取错误和记账口径，不改变论文时期的设定。网站介绍论文复现口径时要一并写出：
+论文复现口径冻结 0.6.0-alpha.2 的行为，下面这些修正是冻结之外仅有的变化，两个口径都适用。它们修正的是实现错误、数据读取错误和记账口径，不改变论文时期的设定。网站介绍论文复现口径时要一并写出：
 
-- **互联线序列**按 17,520 期时钟逐期对齐（`p05.interconnector-clock`，P6-24）。
+- **互联线序列**按 17,520 期时钟逐期对齐（`p05.interconnector-clock`）。
 - **GBP1 的三处读取**：
-  - 比利时电价按逐小时的 EUR 读取，以 1.1 EUR/GBP 换算，并展开为两个半小时（`p05.belgium-price-currency`，P6-02）；
-  - BE/NL 潮流文件按线路身份分配（`p05.boundary-identity`，P6-03）；
-  - 需求放到 UTC 时钟上，处理 2022-10-30 的夏令时切换（`p05.demand-utc-clock`，P6-04）。
+  - 比利时电价按逐小时的 EUR 读取，以 1.1 EUR/GBP 换算，并展开为两个半小时（`p05.belgium-price-currency`）；
+  - BE/NL 潮流文件按线路身份分配（`p05.boundary-identity`）；
+  - 需求放到 UTC 时钟上，处理 2022-10-30 的夏令时切换（`p05.demand-utc-clock`）。
 - **按声明的列读取**：读取数据包声明的 CSV 列，隐式选中的整数序号列会被拒绝（`p05.declared-column`）。
 - **火电投资净收入**扣除运行成本，即燃料、碳价和单位时间成本（`p07.thermal-net-revenue`，A4）。风电、光伏、储能仍以毛收入作为利润，这是两个口径都保留的设定（2.5 节）。
 - **论文内核的三项实现错误（A26）：**
   - 削减分支的下调只做一次（`r41.down-regulation-taken-once`）：某台非 VRE 机组已满足剩余的下调需求时，需求随即清零，不再从后面的报价（通常是风电）重复削减；
   - 每个储能每个时段只有一个净头寸（`p06.storage-net-per-period`）：各出清阶段共用额定功率，已放电的储能先减少本时段放电才能充电，已充电的储能不再报放电；
   - 平衡阶段的必发核电盈余只计一次（`r41.must-run-surplus-counted-once`），不再重复发电、重复付费。
-- **缺电价值（VoLL）**在两个口径中都是 17,000 £/MWh（`fx5.voll-17000`）：
-  - 它在成本账中给模型记录的切负荷计价，不改变调度；
-  - VALUE 101 和 GBP1 第一年的参考运行没有记录切负荷，头条成本不含这一项；
-  - stress event 的缺口不在这一项里（2.6 节）。
+- **缺电价值（VoLL）**在两个口径中都是 17,000 £/MWh（`fx5.voll-17000`）。它只给模型（PSM）记录的切负荷计价，不改变调度，也不给 stress event 的缺口计价（2.6 节）。
 - **stress event 记账**（A2），见 2.6 节。
-- **只在核算区的修正**（Q12）：残差、审计、成本账 v2、验证报告；储能报价账本（`fx4.storage-offer-ledger`，导出账本的 `storage_orders` 表和 Market replay 的拍卖视图逐条列出储能报价）；账本时钟标注为 UTC（`r43.model-clock-utc-label`，只改元数据标签，不改任何数值）。
+- **已供电量扣除 stress 缺口**（`r5.served-energy-net-of-stress-shortfall`）：每 MWh 供电成本和每 MWh 交付电量的碳强度，分母都是需求减去全部未供电量（PSM 记录的切负荷加 stress 缺口）。只改账，不改调度；没有 stress 时段的年份不受影响。
+- **只在核算区或记录层面的修正**（Q12）：
+  - 残差、审计、成本账 v2、验证报告；
+  - 储能报价账本（`fx4.storage-offer-ledger`）：导出账本的 `storage_orders` 表和 Market replay 的拍卖视图逐条列出储能报价；
+  - 账本时钟标注为 UTC（`r43.model-clock-utc-label`），只改元数据标签，不改任何数值；
+  - 储能状态记录有上限（`r53.bounded-storage-state-record`）：完整市场回放中，一个储能的存量批次超过 128 个时，出清声明只列出本阶段报价用到的批次和一项汇总。调度、其他账本表和全部结果不变。
 - **Study 身份与迁移**：Run 记录口径身份；已保存的 Study 在代码或方法变化时按 Q13 分类（2.9 节）。
 
 **对网站的含义**：用 0.6.0-alpha.2 及更早版本（包括 rc1）得到的结果，没有这些修正。在 GBP1 public1 上影响尤其明显。是否在网站公开一份勘误，由作者决定（第 7 节第 3 条）。
@@ -149,7 +157,7 @@
    - 修正口径按声明读取分辨率和闰年，严格模式下拒绝有歧义的列；
    - 有登记缺陷或时序问题的非工作区数据包，不能用于修正口径。因此发布版 GBP1 public1 只能用于论文复现口径；发布版 R029 public1 在修正口径下读取逐时光伏曲线时被拒绝（2.10 节）；
    - 互联线报价和出口价格保留源数据中的负价。
-9. **成本账。** 修正口径的头条成本不含径流水电的兼容资本，这部分在 Runs 页作为备忘行显示。
+9. **成本账。** 修正口径的头条成本不含径流水电的兼容资本，这部分在 Runs 页作为备忘行显示（`Memo: run-of-river hydro compatibility capital (excluded from headline)`）。
 10. **网络模型**（只在修正口径下运行）：
     - zonal solver contract v4；
     - 分布在多个母线的资产按份额拆分；
@@ -161,7 +169,7 @@
 ### 2.5 两个口径都保留的设定（可作为模型假设或模型限制来写）
 
 - **投资判据不折现。** 用 ROI 和回收期判断，所有金额都按起始年币值计价（A6）。
-- **运营成本口径（A4、A7）。** 只有火电（燃气、生物质）有可变运营成本，并在投资净收入中扣除。风电、光伏、储能没有可变 OPEX，固定 OPEX 视为已含在年金化 CAPEX 中，所以它们的毛收入即利润。
+- **运营成本口径（A4、A7）。** 只有火电（燃气、生物质）有可变运营成本，并在投资净收入中扣除。风电、光伏、储能没有可变 OPEX，固定 OPEX 视为已含在年金化 CAPEX 中，所以它们的毛收入即利润；它们的固定 OPEX 只作为成本账的备忘行，不进入头条。
 - **供给不足时不改调度（A2）。** 缺口记为 stress event，出力和电价不变。
 - **生物质没有 CfD/ROC 补贴收入（A24-2）。**
   - 它按燃料加碳价的全额成本报价，在 GB 参数下为 85 £/MWh，高于 CCGT 的 55.07 和 OCGT 的 74.92，所以几乎不被调度；
@@ -169,23 +177,32 @@
   - 补贴建模放在后续版本（P4-07）。
 - **储能能量不跨年。** 默认 PSM 每年新建储能对象，年末存储的能量不带入下一年；这一点只在报告中披露。
 
-### 2.6 验证门、stress event 与年度结果的发布（A2、Q14）
+### 2.6 验证门、stress event、未供电量与年度结果的发布（A2、Q14）
 
 - **stress event（两个口径）：**
   - 凡是接纳的供给小于需求的时段，都逐期记录缺口（`shortfall_mwh`），并把连续的时段分组成事件；
   - 年度结果汇总事件数、stress 时段数和总缺口；能量平衡账把缺口记为未供电量，所以账能闭合；
   - **调度和电价不因此改变**；
-  - 界面显示位置：Run 上下文条的 `Stress events` 字段（`None`，或 `● {n} periods · {缺口}`）、Market replay 窗口卡片的 `Shortfall`，以及全年 stress 事件列表（表头 `Start (model date & time, UTC)`）。
-- **两个“未供电量”不是同一个数。** 年度卡片和比较页的 `Unserved demand`，以及成本账中按 VoLL 计价的那一项，只含模型记录的切负荷，**不含** stress event 的缺口。网站不要把两者写成一回事，也不要写“缺口按 VoLL 计入成本”。
+  - 界面显示位置：Run 上下文条的 `Stress events` 字段（`None`，或 `● {n} periods · {缺口}`）、Market replay 窗口卡片的 `Shortfall`，以及全年 stress 事件列表（表头 `Start (model date & time, UTC)`）；
+  - Market replay 的 CSV/JSONL 导出逐时段带 `clearing_price_basis`、`period_shortfall_mwh`、`period_stress`、`shortfall_basis` 四列。
+- **未供电量的三种写法，网站不要混为一谈：**
+  - 年度卡片的 `Unserved demand` 是全部未供电量，即 PSM 记录的切负荷加 stress 缺口，旁注 `incl. stress shortfall · {x} MWh recorded by the PSM`；
+  - 比较页分两行列出：`Unserved energy incl. stress shortfall (MWh)` 和 `Unserved energy recorded by the PSM (MWh)`，另有 `Annual demand (MWh)` 和 `Demand served (MWh)`；
+  - 成本账按 VoLL（17,000 £/MWh）计价的**只有** PSM 记录的切负荷。stress 缺口不按 VoLL 计入成本，网站不要写“缺口按 VoLL 计入成本”；
+  - 每 MWh 供电成本（结果页写作 `£{x}/MWh served`）和碳强度的分母已扣除全部未供电量（2.3 节）。
+- **未利用的 VRE（Unused VRE）：**
+  - 年度卡片 `Unused VRE (PSM boundary)` 显示 `{x} MWh · {y}% of available`；比较页列 `Unused VRE at the PSM boundary (MWh)` 和 `Unused VRE share of available VRE (%)`；
+  - 两个口径的测量边界不同：论文复现口径的账本把预平衡盈余（分给储能、出口、溢出的部分）单独列出，比较页另列 `Pre-balancing excess, reported separately (MWh)`；修正口径在全节点上按“可用减总出力”计算；
+  - 所以跨口径比较时，比较页只并列两边的数值，不给差值，并写明原因；同一口径的 Run 之间照常给差值；
+  - 网站不要把两个口径的弃电量当作同一个量相减。
 - **模型时钟。** 模型在 UTC 半小时、固定 365 天的模型年上运行（闰年跳过 2 月 29 日，没有夏令时切换）。Market replay 写作 `(UTC model time)`，导出的时间带 `Z`。
 - **旧运行的证据效力。** 0.6.0-alpha.2 及更早版本不报告这种缺口，所以旧运行的“能量平衡通过”不能作为“没有缺电”的证据。
 - **验证门。**
   - 验证门包括运行不变量、能量平衡和储能限值。任一失败时，应用显示 `Validation gate failed: {gate 名称}`；
   - 修正口径的 Run 被门挡住时，结果页不显示年度合计，改为显示 `Annual results not published`，并给出进入 Inspect 和账本文件的入口。
-- **论文复现口径的扣发说明（只在原始不变量没有全部通过时出现）：**
-  - Callout 标题为 `Annual results withheld for this reproduction run`，正文写明失败的原始不变量和行数；
-  - 下方有 `Open in Inspect` 和 `Open ledger files`；
-  - 上下文条只在论文复现口径下多一个字段 `Raw invariants`：全部通过时为 `● Passed`，否则为琥珀色 `● {k} failed`；
+- **论文复现口径的发布状态：**
+  - 上下文条只在论文复现口径下多一个字段 `Raw invariants`：全部通过时为 `● Passed`，否则为琥珀色 `● {k} failed`；Run 还在进行时为 `Pending`，提示框为 `Annual results pending the raw-invariant check`；
+  - 原始不变量没有全部通过时，提示框标题为 `Annual results withheld for this reproduction run`，正文写明失败的原始不变量和行数，下方有 `Open in Inspect` 和 `Open ledger files`；
   - 论文复现口径的能量平衡状态 `● Conformant` 只表示论文账本在其声明的边界上闭合，不等于物理验证通过，网站不要写成“已验证”。
 - **advisory：**
   - 每个 Run 在上下文条下方的折叠区列出读取时生成的 advisory；
@@ -194,14 +211,14 @@
   - 关于核电、径流水电或生物质的 advisory，只在 Run 冻结的机组中有这类资产时出现；Run 还没冻结完输入时，advisory 标为暂定。
 - **0.6.0-alpha.2 的旧 Run：**
   - 只读，不被改写；
-  - 带 advisory `VALUE-ADV-2026-10-04-REVIEW`（“Produced before the 2026-10 review fixes”，high）；
+  - 带 advisory `VALUE-ADV-2026-10-04-REVIEW`（`Produced before the 2026-10 review fixes`，high）；
   - 这些 Run 记录的 `passed` 显示为 `superseded_pre_fix`，涉及它们的比较标为 `needs_review`。
 - **对网站的含义**：网站上现有的“已通过”“哈希一致”“已完成”等证据，都来自 0.6.0-alpha.2 及更早版本，必须标明版本。在 0.7.0 中它们属于 `superseded_pre_fix`，而且**没有在 0.7.0 上重跑**。
 
 ### 2.7 本地 API 安全边界与启动器（`SECURITY.md`；`CHANGELOG.md` “Local API security boundary”“Run lifecycle”；`docs/USER_GUIDE_ZH.md` 第 2、13、19 节）
 
 - **只经界面地址访问。**
-  - 浏览器只与界面地址通信：`http://127.0.0.1:8800` 或 `http://localhost:8800`。`/api` 由界面网关带着会话转发。
+  - 浏览器只与界面地址通信：`http://127.0.0.1:8800` 或 `http://localhost:8800`。`/api` 由界面网关带着会话转发；
   - 用其他主机名、另一份安装的书签打开，或者数据目录不一致时，页面显示 **Open VALUE from its launcher**。处理方法是关闭页面，用启动器重新启动。
 - **启动器。**
   - 启动器把 `--api-origin` 交给网关，从不传递会话令牌；
@@ -215,7 +232,8 @@
 - **直接调用 API 的脚本。**
   - 除 `GET /api/health` 和 `OPTIONS` 外，每个请求都必须带 `X-VALUE-Session`，用 `backend.api_session.authorized_headers` 生成；
   - CORS 已移除；
-  - 这一项影响“改模块”和“加功能”用户的脚本。
+  - 新建 Study（`POST /api/projects`）时，若同名 Study 已存在而请求没有带 `base_revision_sha256`，返回 409 `GF_STUDY_ID_EXISTS`，要改名；
+  - 这些影响“改模块”和“加功能”用户的脚本。
 - **损坏的外部模块或扩展。**
   - 外部模块或扩展损坏，或名字冲突时，会被隔离，VALUE 照常运行，health 显示 `degraded`；
   - 修好后在 Modules 页点 Rescan（Rescan 也会重新导入扩展钩子）；
@@ -235,7 +253,7 @@
   2. `Freezing the Study's inputs`；
   3. `Checking disk space and reserving output space`；
   4. `Starting the model worker`。
-- **首个 Run 较慢。** 在新数据目录中，第一个 Run 要先把 Python 运行环境归档一次，约 3 分钟；之后的 Run 冻结输入不到一分钟。界面原文：`The first Run in a new data folder archives the Python runtime once (about 3 minutes); later Runs freeze their inputs in under a minute.`。准备期间，其他页面和操作照常可用。
+- **首个 Run 较慢。** 在新数据目录中，第一个 Run 要先把 Python 运行环境归档一次，约 3 分钟；之后的 Run 冻结输入不到一分钟。界面原文：`The first Run in a new data folder archives the Python runtime once (about 3 minutes); later Runs freeze their inputs in under a minute.`。准备期间，其他页面和操作照常可用；结果页不读取这个 Run 的结果，Market replay 和 Inspect 显示 `The Run is still preparing`。
 - **运行时间估算。** 还没有可比的已完成 Run 时，估算给出区间，例如 `estimated 3 min to 18 min (no comparable completed Run yet)`；有实测后给一个值。
 - **取消。** 准备中可以点 `Request safe cancellation`，Run 在模型 worker 启动之前停止。如果正在归档运行环境，取消要等这一阶段结束才生效。
 - **关闭 VALUE。** 准备期间关闭 VALUE，这个 Run 不会在后台继续。下次启动时它显示为 `Run preparation interrupted`，需要重新启动 Run。
@@ -253,14 +271,18 @@
 
 | 路径 | 0.7.0 的操作 | 依据 |
 |---|---|---|
-| 复现 | Study composer 第 1 步选择方法学口径。“对照参考结果”必须对照**同一版本、同一口径**的参考，0.6.0 rc1 的参考不能对照 0.7.0。0.6.0 保存的 Study 首次运行前，界面显示 `This Study needs your confirmation before it runs`，确认后另存为新修订（`Review and save as new revision`）。启动后 Run 立即列出并显示准备进度（2.8 节）。论文复现口径的年度结果若被扣发，在 Inspect 或账本文件中查看 | Q2、Q13、Q14、A24-5 |
-| 换数据 | 映射 CSV 时要声明列，隐式整数序号列会被拒绝（`GF_DATA_INDEX_COLUMN`）。需求要至少一个模型年的半小时数据（17,520 个值）；逐时的价格和可用量，每个值用于两个半小时；需求以外的序列不满一个模型年时从开头重复补齐，提交前要另行确认。可以声明时间戳列（UTC 或 Europe/London）和日期顺序（自动识别、DD/MM/YYYY 或 MM/DD/YYYY），系统逐行检查重复、缺口、倒序和步长，有问题不能提交；Europe/London 时间在映射时换成 UTC。EUR 价格必须填 EUR per GBP 汇率、汇率口径（三选一）和价格年份；价格年份不是 2025 时给出提示（VALUE 只换算币种，不按年份折算）。CSV 须为逗号分隔。Data 页每个数据包有校验面板：三层校验（Structural、Chronology、Plausibility），以及两个口径的资格。Study composer 把不符合所选口径的数据包标为 `not available with this methodology`。互联线数据角色写作 “{Country} interconnector availability (+ import / - export)”：正值为进口能力，负值为出口能力。用户映射的数据包只能用于修正口径；发布版 GBP1 public1 只能用于论文复现口径。正在被 Run 冻结的数据包不能替换文件 | P0-5a、A16-1、A16-2、A24-5、A27 |
-| 改模块 | 外部模块只能在修正口径下运行；论文复现口径拒绝已启用的外部代码。属于方法变化的模块升级（`requires_user_opt_in`），已保存的 Study 要在界面确认；纯代码身份的变化自动追加修订。损坏的模块被隔离，不会阻止 VALUE 启动；合同 ID 不匹配时安装或启用直接报 `GF_MODULE_CONTRACT_MISMATCH`。Modules 页常驻 `Disabled and quarantined` 区，每项有 `Enable`、`Rescan`、`Remove`，并显示清单文件和 ID；页头有 `Rescan modules`。允许原地修改已安装模块的源码：预检给出琥珀色提示，Run 记录新的源码哈希，比较页显示模块方法已改变；之后仍可从该 Study 派生对照 Study。修正口径下，内置储能对象只报循环损耗；用户公式和外部模块的报价不变。储能报价可以在导出账本的 `storage_orders` 表和 Market replay 中核对；Runs 页的 storage cost 槽位显示 PSM 内部调用该模块的账本证据 | Q3、Q13、P0-2、A16-4、A27 |
-| 加功能 | 扩展规则与改模块相同：只在修正口径下运行，冲突时被隔离，修复后 Rescan（Rescan 重新导入扩展钩子），也可以离线自救。扩展编写台的 “Open independent Study draft” 复制当前选中的 Study。原地修改扩展源码同样被检测和记录。含实验性扩展的 Run 在上下文条显示 `Experimental extension: {id} {version}`。直接调用 API 的脚本要带会话头（2.7 节），并按 2.8 节处理异步启动。一日课程（`value_101_day`）只运行市场步骤：选了扩展时，范围选项写作 `One-day market lesson (extensions do not run)`，选它会被预检阻断（`GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS`）；要运行扩展，改用两时段或更长的范围 | P0-1、P0-2、A16-3、A24-5、A27 |
+| 复现 | 在 Study composer 第 1 步选择方法学口径；`Research guide` 页和 Runs 页 `What will run` 都显示 Study 当前的口径（研究路径只显示，不提供切换）。“对照参考结果”必须对照**同一版本、同一口径**的参考，0.6.0 rc1 的参考不能对照 0.7.0。0.6.0 保存的 Study 首次运行前，界面显示 `This Study needs your confirmation before it runs`，确认后另存为新修订（`Review and save as new revision`）。启动后 Run 立即列出并显示准备进度（2.8 节）。论文复现口径的年度结果若被扣发，在 Inspect 或账本文件中查看。年度卡片和比较页列出未利用的 VRE；跨口径比较只并列数值，不给差值（2.6 节） | Q2、Q13、Q14、A24-5 |
+| 换数据 | 映射 CSV 时要声明列，隐式整数序号列会被拒绝（`GF_DATA_INDEX_COLUMN`）。**需求**至少覆盖一个模型年：半小时数据至少 17,520 个值；逐时数据（8,760 或 8,784 行，或声明的时间戳步长为 60 分钟）在映射时每小时用于两个半小时，审阅中给出 `GF_MAPPING_HOURLY_DEMAND` 说明。**VALUE 101 的需求文件**表头写 mwh、包内标为 MWh/period，但 VALUE 按 MW（半小时平均功率）读取；角色卡和映射编辑器写明这一点，按这些数值改写需求时映射中选 MW。新需求序列的年电量与被替换的文件相比超过 1.5 倍或低于 0.67 倍时，给出 `GF_DATA_DEMAND_SCALE` 警告（不阻止提交）。逐时的价格和可用量，每个值用于两个半小时；需求以外的序列不满一个模型年时从开头重复补齐，提交前要另行确认。可以声明时间戳列（UTC 或 Europe/London）和日期顺序（自动识别、DD/MM/YYYY 或 MM/DD/YYYY），系统逐行检查重复、缺口、倒序和步长，有问题不能提交；Europe/London 时间在映射时换成 UTC。EUR 价格必须填 EUR per GBP 汇率、汇率口径（年均、月均或固定汇率）和价格年份；价格年份不是 2025 时给出提示（VALUE 只换算币种，不按年份折算）。CSV 须为逗号分隔。Data 页每个数据包有校验面板：三层校验（Structural、Chronology、Plausibility），以及两个口径的资格。Study composer 把不符合所选口径的数据包标为 `not available with this methodology`。互联线数据角色写作 “{Country} interconnector availability (+ import / - export)”：正值为进口能力，负值为出口能力。用户映射的数据包只能用于修正口径；发布版 GBP1 public1 只能用于论文复现口径。正在被 Run 冻结的数据包不能替换文件；有 Run 在准备或运行时，映射编辑器中暂存的文件和列选择保留不变 | P0-5a、A16-1、A16-2、A24-5、A27、A28 |
+| 改模块 | 外部模块只能在修正口径下运行；论文复现口径拒绝已启用的外部代码。属于方法变化的模块升级（`requires_user_opt_in`），已保存的 Study 要在界面确认；纯代码身份的变化自动追加修订。损坏的模块被隔离，不会阻止 VALUE 启动；合同 ID 不匹配时安装或启用直接报 `GF_MODULE_CONTRACT_MISMATCH`。Modules 页常驻 `Disabled and quarantined` 区，每项有 `Enable`、`Rescan`、`Remove`，并显示清单文件和 ID；页头有 `Rescan modules`；模块计数写作 `{n} of {m} ready · {k} experimental`。同一模块 ID 有两份清单时两份都被隔离（`GF_MODULE_ID_DUPLICATE`）：在任一行点 Disable 会停用该模块，并把另一份清单移到 `modules/disabled-manifests/modules/`；仍有副本时 Enable 被拒（`GF_MODULE_ID_COLLISION`，提示写出副本文件名）。允许原地修改已安装模块的源码：预检给出琥珀色提示，Run 记录新的源码哈希，比较页显示模块方法已改变；之后仍可从该 Study 派生对照 Study。修正口径下，内置储能对象只报循环损耗；用户公式和外部模块的报价不变。储能报价可以在导出账本的 `storage_orders` 表和 Market replay 中核对；Runs 页的 storage cost 槽位显示 PSM 内部调用该模块的账本证据。完整市场回放选了非内置储能成本模块时，readiness 给出 `GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE` 警告：运行时间和磁盘占用可能超出估算，建议先跑短范围，长运行改用 Summary 追踪 | Q3、Q13、P0-2、A16-4、A27、A28 |
+| 加功能 | 扩展规则与改模块相同：只在修正口径下运行，冲突时被隔离，修复后 Rescan（Rescan 重新导入扩展钩子），也可以离线自救。扩展编写台的 `Open independent Study draft` 复制当前选中的 Study，草稿名与已有 Study 重名时自动加序号（例如 `… · extension study 2`）。**Run 只记录 `initialize` 钩子的状态和 `after_psm` 钩子返回的产物**；其他钩子返回声明产物（带 `artifact_type`）时 Run 失败，并在诊断中写明应从 `after_psm` 返回。原地修改已启用扩展的源码同样被检测和记录；但扩展停用之后，只有钩子文件与安装时一致才能重新启用（`GF_EXTENSION_SOURCE_CHANGED`），否则要恢复原文件，或改版本号和包名后作为新包安装（这条规则待作者决定，第 7 节第 10 条）。含实验性扩展的 Run 在上下文条显示 `Experimental extension: {id} {version}`。直接调用 API 的脚本要带会话头（2.7 节），并按 2.8 节处理异步启动。一日课程（`value_101_day`）只运行市场步骤：选了扩展时，范围选项写作 `One-day market lesson (extensions do not run)`，选它会被预检阻断（`GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS`）；要运行扩展，改用两时段或更长的范围 | P0-1、P0-2、A16-3、A24-5、A27、A28 |
 
-- 0.7.0 上的四角色测试记录在 `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（内部，不发布），依据是在最终版本上完整重走四个角色的结果（A25、A27），测试对象是源码树的导出，不是安装包。
-- 网站验证页 “VALUE four user paths” 的 0.7.0 一行（附录 A.2 第 8 行），结论和范围只能取自这份报告，并且只能在阶段 1 之后上线。
-- 报告中仍有未关闭的高等缺陷时，这一行不上线。在本文依据的 HEAD 上，换数据路径的终版验收（`docs/dev/p0-reports/final-role-swap-data.md`）记有 1 个高等缺陷：VALUE 101 基线的需求文件标为 MWh/period，模型按 MW 读，用户按文件单位换数据后需求会加倍（S-F-高1）。
+- 0.7.0 的四角色测试记录在 `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（内部，不发布）。它依据四个角色在源码树导出上的完整走查，以及在当前代码上对每项修复的定向验证和两个口径的两整年冒烟 Run（A28）；测试对象不是安装包。
+- 网站验证页 “VALUE four user paths” 的 0.7.0 一行（附录 A.2 第 8 行），结论和范围只能取自这份报告，并且只能在阶段 1 之后上线。报告中有未关闭的高等缺陷时，这一行不上线。
+- 报告的现状：四条路径都能从头走通，0 个高等、2 个中等、6 个低等缺陷，没有发现算错的结果。两个中等缺陷都不影响模型结果：
+  - EM-中1：有 Run 排队时安装、启用、停用或移除模块或扩展，确认框说排队的 Run 会用新代码启动，实际它们会以笼统的 `GF_CONTRACT_001` 失败，需要重新启动；
+  - AF-中1：原地改过钩子源码的扩展停用后不能直接重新启用，待作者决定（第 7 节第 10 条）。
+
+  低等缺陷包括独立 Study 草稿在页面刷新后丢失、界面中英混排、比较页没有选择参照 Run 的控件（年度表上方写明差值以第一个勾选的 Run 为参照）等。
 - 原有的 2026-10-02 / rc1 一行保留，并标注版本。
 
 ### 2.10 声明范围
@@ -272,13 +294,13 @@
   - D3、D4、D5 按经作者批准的通用修正各重基线，每项修正一次，并附数值报告（`tests/golden/reports/`）；
   - 与 2026-07-18 保留轨迹的比较结果为 **failed**。不得写“精确复现论文”。
 - **论文复现参考运行。**
-  - VALUE 101（一天、两年）和 GBP1 public1 第一个模型年：原始不变量、能量平衡门和储能门全部通过，年度结果发布；
+  - VALUE 101（一天、两年）和 GBP1 public1 第一个模型年：原始不变量全部通过，能量平衡门和储能门在论文账本的声明边界上为 conformant，年度结果发布；
   - 能量平衡通过的含义是论文账本在其声明的边界上闭合，不是物理验证；
-  - GBP1 第一年仍记录 487 个 stress 时段、74 个事件、缺口 78.8 GWh（A2，调度不变）；
-  - GBP1 只跑了一个模型年，修正之后没有重跑多年的 GBP1。
+  - GBP1 第一年记录 487 个 stress 时段、74 个事件、缺口 78.8 GWh（A2，调度不变）；
+  - GBP1 只跑了一个模型年，没有用本版代码重跑多年的 GBP1。
 - **核电路径依赖（论文复现口径）。** 论文规则下，核电一旦被接受，就满功率运行到年底。
 - **投资判据。** 投资决策是不折现的 ROI 和回收期检验，使用起始年币值。这是模型假设，不是经过验证的最优解。
-- **口径之间的比较。** 修正口径是方法变化。不同口径之间的比较是不同方法的比较，不能把差异归因于某一项输入。
+- **口径之间的比较。** 修正口径是方法变化。不同口径之间的比较是不同方法的比较，不能把差异归因于某一项输入；两个口径的未利用 VRE 测量边界不同，不能相减（2.6 节）。
 - **网络模块。**
   - 只在修正口径下运行；
   - 验证范围是玩具算例和 VALUE 101 算例（`VALIDATION_AND_CLAIMS.md` 中的相应各行）；
@@ -315,22 +337,25 @@
 
 ### 2.12 界面字符串（翻新前的现状，翻新后要逐条重新核对）
 
-下表是 HEAD `c442545` 的应用界面（`app/`）中，网站步骤和常见问题可能引用的英文字符串，网站照抄。这些字符串多数还没有写进 `CHANGELOG.md` 和用户指南（第 7 节第 7 条），前端整体翻新还会改界面。阶段 2 之前，网站只在“新版本有哪些变化”中概括一句，不逐条引用。
+下表是 HEAD `6560189` 的应用界面（`app/`）中，网站步骤和常见问题可能引用的英文字符串，网站照抄。这些字符串多数还没有写进 `CHANGELOG.md` 和用户指南（第 7 节第 7 条），前端整体翻新还会改界面。阶段 2 之前，网站只在“新版本有哪些变化”中概括一句，不逐条引用。
 
 | 位置 | 字符串（英文原文） |
 |---|---|
-| Study composer | 第 1 步 `1. Study identity` 中的 `Methodology` 单选框（两个口径标签）；数据包和计算域不符合所选口径时标为 `not available with this methodology` |
+| Study composer | 第 1 步 `1. Study identity` 中的 `Methodology` 单选框：`Corrected (default)`、`Doctoral reproduction`（附说明 `Locks thesis-era reference settings: …`）；数据包和计算域不符合所选口径时标为 `not available with this methodology` |
 | Study 迁移对话框 | `This Study needs your confirmation before it runs`；按钮 `Review and save as new revision` |
-| Runs：范围与预检 | 一日选项 `One-day market lesson`，Study 选了扩展时为 `One-day market lesson (extensions do not run)`；阻断原因 `The one-day lesson runs the market step only, so the selected extension(s) {names} would not execute. Choose two-period or a longer scope, or deselect the extension(s).`；Readiness 卡片按组列出：`Errors`（始终展开）、`Data plausibility`（默认展开）、`Chronology`、`Other data warnings`、`Adapter: unit not declared`、`Environment and setup`（默认折叠，按钮 `Show {n}`）；预检有错误时，物理预览徽章为 `inputs ready · Run blocked` |
+| Runs：What will run | `Years`、`Data pack`、`Methodology`（短名）、`Annual sequence` |
+| Runs：范围与预检 | 一日选项 `One-day market lesson`，Study 选了扩展时为 `One-day market lesson (extensions do not run)`；阻断原因 `The one-day lesson runs the market step only, so the selected extension(s) {names} would not execute. Choose two-period or a longer scope, or deselect the extension(s).`；起止年份相同的 Study 不列出两年范围；Readiness 卡片按组列出：`Errors`（始终展开）、`Data plausibility`（默认展开）、`Chronology`、`Other data warnings`、`Adapter: unit not declared`、`Environment and setup`（默认折叠，按钮 `Show {n}`）；预检有错误时，物理预览徽章为 `inputs ready · Run blocked` |
 | Runs：启动与准备 | `Preparing · step {i} of 4: {阶段} · {用时} elapsed`；四个阶段名见 2.8 节；`Request safe cancellation`；取消后进度句末尾加 `Cancellation requested: the Run stops before its model worker starts.`；中断时为 `Run preparation interrupted`；首次估算 `estimated {a} to {b} (no comparable completed Run yet)` |
-| 结果与上下文条 | `Withheld`；`Annual results withheld for this reproduction run`；`Raw invariants`（`● Passed` / `● {k} failed`）；`Open in Inspect`；`Open ledger files`；`Annual results not published`；`Validation gate failed: {gates}`；`Stress events`；`Shortfall`；`Methodology not recorded (pre-2026-10 run)`；`Experimental extension: {id} {version}` |
+| 年度卡片 | `Unserved demand`（旁注 `incl. stress shortfall · {x} MWh recorded by the PSM`）；`Unused VRE (PSM boundary)`（`{x} MWh · {y}% of available`）；`Planning evolution`：`Active before admission: {n}`、`Admitted this year: {m}` |
+| 结果与上下文条 | `Withheld`；`Annual results withheld for this reproduction run`；`Annual results pending the raw-invariant check`；`Raw invariants`（`● Passed` / `● {k} failed` / `Pending`）；`Open in Inspect`；`Open ledger files`；`Annual results not published`；`Validation gate failed: {gates}`；`Stress events`；`Shortfall`；`Methodology not recorded (pre-2026-10 run)`；`Experimental extension: {id} {version}` |
 | Market replay | 窗口行末尾 `(UTC model time)`；stress 事件表表头 `Start (model date & time, UTC)` |
 | Data 页校验面板 | `Validation`（`Structural` / `Chronology` / `Plausibility`）；`Methodology use`（`Corrected` / `Doctoral reproduction`，状态为 `Eligible` 或 `Not eligible — {原因}`，例如 `Not eligible — not a thesis-era pack`）；`Show details ▾`；数据包摘要 `{n}/{m} inputs present · validation {最差状态}` |
 | Data 页数据角色 | `{Country} interconnector availability (+ import / - export)` |
+| `Research guide` 换数据路径 | VALUE 101 需求文件的角色卡和映射编辑器中的单位说明（中文：“单位：按 MW 读取（每半小时平均功率）……映射中请选择 MW。”） |
 | 映射编辑器 | `Timestamp column (optional)`：`Timestamp column`、`Time zone`（UTC / Europe/London）、`Date order`（`Auto-detect (DD/MM/YYYY unless a row shows MM/DD/YYYY)` / `DD/MM/YYYY (day first)` / `MM/DD/YYYY (month first)`）；`Column name suggests EUR — confirm the currency.`。编辑器的说明文字目前是中文，翻新时统一界面语言 |
-| Modules 页 | `Disabled and quarantined` 区，每项 `Enable`、`Rescan`、`Remove`；页头 `Rescan modules`。Remove 前先确认：文件移到 `modules/disabled-manifests/removed/`，不删除；仍被 Study 或 Run 引用时拒绝。Enable 失败后提示 `Fix the cause, then press Enable again (Enable scans afresh; Rescan alone leaves a disabled entry disabled).`；原地改过源码的卡片写 `Source changed since install ({old8}… → {new8}…).` |
+| Modules 页 | 计数徽章 `{n} of {m} ready · {k} experimental`；`Disabled and quarantined` 区，每项 `Enable`、`Rescan`、`Remove`；页头 `Rescan modules`。Remove 前先确认：文件移到 `modules/disabled-manifests/removed/`，不删除；仍被 Study 或 Run 引用时拒绝。Enable 失败后提示 `Fix the cause, then press Enable again (Enable scans afresh; Rescan alone leaves a disabled entry disabled).`；原地改过源码的卡片写 `Source changed since install ({old8}… → {new8}…).` |
 | 预检（原地改模块源码） | `Module {id} source changed since install ({old8}… → {new8}…). Results will record the new source hash.`；模块已被隔离时，后一句为 `It is quarantined, so no Run can start; once it is repaired, results record the new source hash.` |
-| 比较页 | `Identity check before comparison`，每个维度标为 `Same` / `Changed` / `Cannot verify`；年度差值按指标分别显示，被扣发的指标写 `Delta withheld: {reason}`，年份列表上方有 `Deltas withheld` 提示 |
+| 比较页 | `Identity check before comparison`，每个维度标为 `Same` / `Changed` / `Cannot verify`；年度表上方 `Deltas (+ and %) are measured against {Study} ({run id}), the first Run ticked. To measure against another Run, clear the selection and tick that Run first.`；年度差值按指标分别显示，被扣发的指标写 `Delta withheld: {reason}`，年份列表上方有 `Deltas withheld` 提示；新指标名见 2.6 节 |
 | 页头 | `{n} of {m} base inputs ready`；工作区读不到时为 `Inputs not loaded` |
 | 任意页面 | `Open VALUE from its launcher` |
 | advisory 标题（举例） | `Produced before the 2026-10 review fixes`；`Biomass without support revenue` |
@@ -343,7 +368,7 @@
 |---|---|---|
 | **0 纠错** | 作者同意文案，并决定是否在前端翻新之前上线（第 7 节第 2 条） | 只限纠错与提示：rc1 的版本标注；把旧证据标为 0.6.0-alpha.2 的证据；作者批准后，可加 rc1 的安全提示（第 7 节第 1 条）。**不出现 0.7.0 的功能描述** |
 | **1 源码公开** | 前端整体翻新完成（A17、A21）；第 7 节第 7 条的公开文档已同步；作者把 0.7.0-alpha.1 推送到 `hanzohanzhe/Value`，并打出源码 tag（tag 名由作者定）。推送的版本包含翻新的改动，所以上线前要按推送时的 `CHANGELOG.md` 和界面，重新核对第 2 节与附录 A | 网站方法学定位与两个口径的介绍、声明范围、验证页新增行、引用页的新源码条目、Develop 页的源码链接；作者同意时加 GBP1 勘误。截图（如有）只用翻新后的界面 |
-| **2 安装包可用** | 0.7.0 Full 安装包已构建（`scripts/prepare_private_runtimes.py`、`scripts/build_full_desktop_installers.py`，每一步都要作者批准），已在目标平台验收，并上传到 GitHub Releases，有确定的文件名、字节数和 SHA256；`FOUR_ROLE_TEST_REPORT.md` 终版没有未关闭的高等缺陷，或作者决定在步骤中写明规避方法 | `site.json` 的 release 条目、下载页、安装页（启动器、升级、常见问题）、四类用户路径的新步骤、数据页的口径资格说明 |
+| **2 安装包可用** | 0.7.0 Full 安装包已构建（`scripts/prepare_private_runtimes.py`、`scripts/build_full_desktop_installers.py`，每一步都要作者批准），已在目标平台验收，并上传到 GitHub Releases，有确定的文件名、字节数和 SHA256；`FOUR_ROLE_TEST_REPORT.md` 没有未关闭的高等缺陷，或作者决定在步骤中写明规避方法 | `site.json` 的 release 条目、下载页、安装页（启动器、升级、常见问题）、四类用户路径的新步骤、数据页的口径资格说明 |
 | **3 方法学 0.4** | methodology 修改员完成 0.4 版次（源稿在 `docs/methodology/drafts/0.4/`），作者审阅通过；六个文档（中英文 × docx/pdf/html）有获批的哈希 | 用 `website/sync_methodology.py` 整体导入 0.4，同时更新 `publication-scope.json` 和 `site.json` 的版次字段 |
 
 阶段 2 的四类用户步骤只适用于 0.7.0。**在阶段 2 之前更新这些步骤，会误导仍在使用 rc1（0.6.0）的用户。**
@@ -410,7 +435,7 @@
 | J-4 | `:40` Develop 页的源码链接 | `https://github.com/hanzohanzhe/Value/tree/source-2026-10-04` | 改为新 tag；可以保留旧 tag 作为第二个链接 | 1 |
 | J-5 | `:43` Install 页步骤与 note | 第 3 步 “Run the platform installer, launch VALUE, and keep its terminal open.”；第 4 步 “Open the local address printed by the launcher; start with VALUE 101.”；note “Public downloads remain pending. Linux candidate offline installation …” | 第 3 步改为 “Run the platform installer into a directory that does not exist or is empty, launch VALUE, and keep its terminal open.” / “运行安装器，安装到不存在或为空的目录，启动 VALUE，并保持终端打开。”；第 4 步补 “(http://127.0.0.1:8800 or http://localhost:8800)”；新增第 5 步 “To upgrade, finish or cancel unfinished Runs, then install the new version into another empty directory; do not move or rename an installed directory.” / “升级时先完成或取消未结束的 Run，再把新版本装进另一个空目录；不要移动或重命名已安装的目录。”。代码框中的 `"$HOME/VALUE-full"` 不必改 | 2 |
 | J-6 | `:45` note “Included environment” 之后 | — | 新增一条 note：“One user per computer. Do not install VALUE on shared computers or remote-desktop servers.” / “一台电脑一个使用者，不要安装在共用电脑或远程桌面服务器上。”（Q11、`SECURITY.md` “Single-user host assumption”） | 2 |
-| J-7 | `:47` 常见问题 | 三问：页面打不开 / 输入校验失败 / 如何停止 | (a) “如何停止”的答案按附录 A.4 第 1 条改写；(b) “输入校验失败”的答案按附录 A.4 第 2 条改写；(c) 新增附录 A.4 第 3–8 条六问 | 2 |
+| J-7 | `:47` 常见问题 | 三问：页面打不开 / 输入校验失败 / 如何停止 | (a) “如何停止”的答案按附录 A.4 第 1 条改写；(b) “输入校验失败”的答案按附录 A.4 第 2 条改写；(c) 新增附录 A.4 第 3–9 条七问 | 2 |
 | J-8 | `:50` `replacements` | 按整句替换的字典 | 每改一次 `:20`、`:42` 或 `:43` 中被替换的句子，都要同步改这里的键和值。改完构建后，用 `grep` 检查 `dist/` 中是否残留 “pending” 句子（第 8 节第 6 步） | 0 / 2 |
 
 ### 4.4 `website/publication.py`（决定下载页和数据页）
@@ -457,7 +482,7 @@
 | golden 变化 | `docs/release/P0_GOLDEN_DELTA.md`（生成文件，与代码一致）；`tests/golden/reports/` 的数值报告 |
 | 验收与重装步骤 | `docs/release/P0_ACCEPTANCE.md`（第 6 节的重装**未执行**） |
 | 版本号 | `docs/release/VERSION_LEDGER.json`、`package.json`、`pyproject.toml` |
-| 用户可见行为（标签、状态词、启动器、常见问题） | `docs/USER_GUIDE.md`、`docs/USER_GUIDE_ZH.md`（第 2、12、13、19 节）；`SECURITY.md`；随安装包分发的各平台说明（`packaging/full-local/linux/README-LINUX.md`、`packaging/full-local/windows/README-WINDOWS.md`、`packaging/desktop-local/macos/README-MACOS.md`） |
+| 用户可见行为（标签、状态词、启动器、常见问题） | `docs/USER_GUIDE.md`、`docs/USER_GUIDE_ZH.md`（第 2、12、13、19 节）；`docs/MODULE_DEVELOPER_101.md`（扩展钩子输出的记录范围）；`SECURITY.md`；随安装包分发的各平台说明（`packaging/full-local/linux/README-LINUX.md`、`packaging/full-local/windows/README-WINDOWS.md`、`packaging/desktop-local/macos/README-MACOS.md`） |
 | 界面字符串（在 CHANGELOG 和用户指南补齐之前） | 应用源码 `app/features/`；设计规格 `docs/dev/P0_FRONTEND_DESIGN_SPEC.md` 与 `docs/dev/P0_FRONTEND_DEVIATIONS.md`（内部，只用来核对）。前端翻新会再改这些字符串 |
 | 模型设定改动（作者简报，可作背景） | `docs/handoff/MODEL_CHANGES_BRIEF.md`（内部，不发布） |
 | GBP1 论文复现口径的数值 | golden D5 的数值报告（`tests/golden/reports/D5-*.json`）；`docs/dev/p0-reports/r41-golden/` 的摘要（内部） |
@@ -465,7 +490,7 @@
 | 参考统计（核电、水电、风光损耗、火电重启成本） | `docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md`（内部；各节已由作者审核，A14、A21、A22） |
 | 方法学 0.4 源稿 | `docs/methodology/drafts/0.4/*.md`（未审阅，发布时排除） |
 | methodology 修改员的交接 | `docs/handoff/METHODOLOGY_EDITOR_HANDOFF.md`（worktree 根目录副本 `VALUE_handoff_methodology_editor_2026-10-04.md`） |
-| 0.7.0 四角色测试 | `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（worktree 根目录副本 `VALUE_four_role_test_report_2026-10-04.md`；内部，不发布）；各角色终版验收 `docs/dev/p0-reports/final-role-*.md` |
+| 0.7.0 四角色测试 | `docs/handoff/FOUR_ROLE_TEST_REPORT.md`（worktree 根目录副本 `VALUE_four_role_test_report_2026-10-04.md`；内部，不发布）；各角色完整走查的原始报告 `docs/dev/p0-reports/final-role-*.md`，修复与定向验证的记录也在 `docs/dev/p0-reports/` |
 
 ---
 
@@ -483,8 +508,8 @@
    - 作者决定发布之前，不得列入 `data_assets`，也不得引用它们的任何运行数字（2.10 节）。
 7. **方法学 0.4 草稿。** 不得导入 `website/methodology/`，也不得作为下载提供。
 8. **翻新前的界面截图。** `docs/dev/p0-ui-screens/` 中的截图是内部验收记录，界面在前端翻新后会改变。网站上的截图只从翻新后的界面拍。
-9. **超出声明范围的说法。** 见 2.10 节的禁用措辞，以及“与 DUKES 一致”“精确复现论文”“修正口径已在 GBP1 上验证”“R029 可用于修正口径”“经济下调顺序已在 GB 系统上验证”“stress 缺口按 VoLL 计入成本”。
-10. **声明偏差的编号。** 网站不列任何声明偏差编号；它们只出现在内部文档和旧 Run 的证据中。
+9. **超出声明范围的说法。** 见 2.10 节的禁用措辞，以及“与 DUKES 一致”“精确复现论文”“修正口径已在 GBP1 上验证”“R029 可用于修正口径”“经济下调顺序已在 GB 系统上验证”“stress 缺口按 VoLL 计入成本”“两个口径的弃电量之差”。
+10. **声明偏差的编号。** 网站不列任何声明偏差编号；它们只出现在内部文档和 Run 的证据中。
 11. **安全漏洞细节。** 审查报告中的复现步骤（请求头、端点、DNS rebinding 的做法）**不得**写到网站上。是否发安全提示、措辞如何，由作者决定（第 7 节第 1 条）。
 
 ---
@@ -507,18 +532,18 @@
      - 头条系统成本由 28,126.9 降到 27,201.5 百万英镑（−3.3%）。这一差额包含成本账 v2 等核算口径的变化；
      - 直接排放由 29.91 增加到 30.68 MtCO2（+2.6%）；
      - CCGT 新建提案取消。
-   - 出处：35aadb3 一侧取自 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md` 中 35aadb3 的一列；本版一侧取自 `docs/dev/p0-reports/r41-golden/D5-gbp1-summary-before-after.json` 的 `after-r41`。
+   - 出处：35aadb3 一侧取自 `docs/dev/GBP1_DOCTORAL_BEFORE_AFTER.md` 中 35aadb3 的一列；本版一侧取自 `docs/dev/p0-reports/r41-golden/D5-gbp1-summary-before-after.json` 的 `after-r41`（之后的 D5 修订只改核算区的已供电量和每 MWh 供电成本，上面这些数值不变）。
    - 这两份都是内部文档，网站只能引用公开文档。公开之前，要由代码负责人先把这组数字写进 `CHANGELOG.md`。`CHANGELOG.md` 现有的 D5 数字只对应部分修正，不能单独作为本版的勘误数字引用。
 4. **新源码 tag 的名称和推送时间**（阶段 1 的门槛，按 A17 在翻新之后）。根目录 `CITATION.cff` 目前仍是 `version: "source-2026-10-04"`，推送前要更新。
 5. **0.7.0 安装包的构建和发布**（阶段 2 的门槛）：包括哪些平台，是否先只发 Linux。
 6. **网站上口径的中文名。** 本文建议用“修正口径（默认）”和“论文复现口径”。翻新加入中英切换后，以应用的中文为准。
 7. **公开文档在阶段 1 之前要同步的内容**（代码负责人做，作者批准）。网站文案没有可公开引用的依据时，不能上线：
-   - (a) Run 的异步启动（2.8 节，含 API 行为）和 2.12 节的界面字符串，还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md`；
+   - (a) 还没有写进 `CHANGELOG.md` 和 `docs/USER_GUIDE*.md` 的行为：Run 的异步启动（2.8 节，含 API 行为）；2.12 节的界面字符串；新建 Study 同名时的 409 `GF_STUDY_ID_EXISTS`、扩展钩子输出的记录范围（目前只写在 `docs/MODULE_DEVELOPER_101.md`）；用户指南也还没有写逐时需求的映射和 VALUE 101 需求文件按 MW 读取（这两项 `CHANGELOG.md` 已有）；
    - (b) `docs/VALIDATION_AND_CLAIMS.md` 有几处与当前代码不一致，网站不照抄：
      - 论文复现口径一行的边界列，写的逐位一致范围不对。当前只有 D1、D2 的轨迹逐位一致，D3–D5 已重基线（`P0_GOLDEN_DELTA.md`）；
      - golden 归因一行写 13 个用例，当前是 15 个；
      - 表格之后关于论文复现运行的段落，没有反映论文复现运行现在能通过能量平衡；
-     - “Scope” 一节的通用修正清单不全，缺 VoLL 和论文内核的三项修正；该节还有一段把 GBP1 论文复现运行写成已知问题，已不适用；
+     - “Scope” 一节的通用修正清单不全，缺 VoLL、论文内核的三项修正和已供电量的核算修正；该节还有一段把 GBP1 论文复现运行写成已知问题，已不适用；
    - (c) `CHANGELOG.md` 0.7.0 一节中，按施工步骤写成的小节有些句子只描述该步骤当时的状态，与当前代码不一致：
      - “Golden delta summary” 第一段的逐位一致范围；
      - P0-4、P0-6 小节关于论文复现口径声明偏差和“调度逐位不变”的说法；
@@ -527,8 +552,10 @@
      - Known issues 中已划掉的条目。
 
      网站只取现行规则，以本文第 2 节为准。
+   - (d) `docs/MODULE_DEVELOPER_101.md` 的 “Same ID after a fix” 一条写“原地修好源码后 Enable 或 Rescan”，对已停用的扩展不成立（2.9 节），要按第 10 条的决定统一。
 8. **修正口径的 GBP1 结果、GBP1 public2 和 R029 public2 是否公开、何时公开。** 公开前，网站不得引用相关数字，也不得列出这两个包。
 9. **重启成本的 2025 年 CPI 指数值（138.4）尚待对照 ONS 核对一次**（参考统计表 4.2a 节）。核对之前，网站不列重启成本的具体数字。
+10. **扩展原地改源后能否重新启用。** 已安装模块允许原地改源（A16-4）；扩展在启用状态下原地改源同样被检测和记录，但停用之后，现行代码只在钩子文件与安装时一致时才允许 Enable（`GF_EXTENSION_SOURCE_CHANGED`）。A16-4 是否也适用于扩展的重新启用，待作者决定。决定之前，网站的常见问题按现行行为写（附录 A.4 第 4 条）。
 
 ---
 
@@ -558,6 +585,7 @@
    - `grep -rln "Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)" website/dist`：列出的每个页面，也要含 “not an exact reproduction of the 2026-07-18 retained trajectory”（中文页含“不是 2026-07-18 保留轨迹的精确复现”）；
    - `grep -rniE "globally optimal|exact reproduction|calibrated to DUKES|与 DUKES 一致|精确复现论文" website/dist`：除固定附注中的 “not an exact reproduction” 外，不应有其他命中；
    - `grep -rniE "aligned with the (doctoral )?thesis|reproduces the thesis|对标论文|与论文一致|复现论文" website/dist`：不应有命中（A26，2.1 节）；
+   - `grep -rniE "shortfall.{0,40}(VoLL|lost load)|缺口.{0,20}VoLL" website/dist`：不应有把 stress 缺口写成按 VoLL 计价的句子（2.6 节）；
    - `grep -rn "pending" website/dist/en`：检查 `journey.py:50` 和 `publication.py:30` 的整句替换是否仍然生效，不能残留与 `publication_ready` 状态矛盾的句子。
 7. **版本测试**：在仓库根目录用项目的 Python 3.10 运行 `python -B -m unittest tests.test_documentation_consistency`。`website/content.py`、`value-source-CITATION.cff`、`value-source-metadata.bib` 必须仍含 `0.6.0-alpha.2`。
 8. **再次确认清单**：所有改动完成后，再运行一次 `python -B scripts/refresh_source_release_manifest.py --check`，输出 `"stale": false`。
@@ -612,12 +640,12 @@
 2. **“Corrected default PSM energy identity”**
    - 证据：EN: closes per period on the VALUE 101 one-day and two-year smoke cases.
    - 边界：EN: ahead-stage shortfalls are reported as stress events, not removed.
-   - 若作者希望写 VoLL，加在这一行的边界列，不单独成行：EN: “Unserved energy recorded by the model is valued at £17,000/MWh in both profiles; stress-event shortfalls are reported separately.” ZH：“两个口径都按 17,000 £/MWh 给模型记录的切负荷计价；stress event 的缺口单独报告。”
+   - 若作者希望写 VoLL，加在这一行的边界列，不单独成行：EN: “Unserved energy recorded by the model is valued at £17,000/MWh in both profiles; stress-event shortfalls are reported separately and are deducted from energy served.” ZH：“两个口径都按 17,000 £/MWh 给模型记录的切负荷计价；stress event 的缺口单独报告，并从已供电量中扣除。”
 3. **“Stress events (both profiles)”**
    - 证据：EN: per-period shortfall recorded and grouped into events; dispatch and prices unchanged.
    - 边界：EN: runs made before 0.7.0 did not record shortfalls.
 4. **“GBP1 doctoral reproduction, first model year”**
-   - 证据：EN: raw invariants, energy balance and storage limits pass on the doctoral ledger boundary; annual results are published.
+   - 证据：EN: raw invariants pass; energy balance and storage limits are conformant on the doctoral ledger boundary; annual results are published.
    - 边界：EN: one model year; the doctoral ledger closing is not physical validation; 487 stress periods (78.8 GWh shortfall) are recorded with dispatch unchanged; in the doctoral rules an accepted nuclear unit runs to the end of the year.
 5. **“Local API security boundary”**
    - 证据：EN: browser-driven, cross-origin and sessionless requests are refused (tests and browser E2E).
@@ -632,7 +660,7 @@
 8. **“VALUE four user paths, 0.7.0-alpha.1 source”**
    - 证据：从 `docs/handoff/FOUR_ROLE_TEST_REPORT.md` 的结论一节照录四条路径（reproduce、adapt data、edit a module、add a function）各自的结论。
    - 边界：EN: Linux source tree, not an installer; scopes as tested（按报告写明一日、两年等范围）。
-   - 报告中仍有未关闭的中等缺陷时，在边界列写明；有高等缺陷时这一行不上线（2.9 节）。
+   - 报告中仍有未关闭的中等缺陷时，在边界列写明（按本文依据的 HEAD 是 EM-中1 和 AF-中1，见 2.9 节）；有高等缺陷时这一行不上线。
 
 ### A.3 四类用户步骤（J-3，阶段 2；中英各三条，逐条对应）
 
@@ -649,8 +677,8 @@
 
 1. 复制 Study 与数据包。
    - EN: Copy a Study and its data pack.
-2. 映射声明的列、字段名、单位、时区和采样间隔：需求用半小时数据；可以声明时间戳列（UTC 或 Europe/London）和日期顺序，系统逐行检查；欧元价格要填汇率、汇率口径和价格年份；互联线可用量正值为进口、负值为出口。
-   - EN: Map the declared column, field names, units, time zone and sampling interval: demand is half-hourly; optionally declare a timestamp column (UTC or Europe/London) and its date order, which are checked row by row; give EUR prices a rate, FX basis and price year; interconnector availability is positive for import and negative for export.
+2. 映射声明的列、字段名、单位、时区和采样间隔：需求用半小时或逐时数据，VALUE 101 的需求数值按 MW 读取，改写时选 MW；可以声明时间戳列（UTC 或 Europe/London）和日期顺序，系统逐行检查；欧元价格要填汇率、汇率口径和价格年份；互联线可用量正值为进口、负值为出口。
+   - EN: Map the declared column, field names, units, time zone and sampling interval: demand is half-hourly or hourly, and the VALUE 101 demand values are read as MW, so map them as MW; optionally declare a timestamp column (UTC or Europe/London) and its date order, which are checked row by row; give EUR prices a rate, FX basis and price year; interconnector availability is positive for import and negative for export.
 3. 在 Data 页的校验面板查看三层校验，在 Study 编辑器确认数据包可用于所选口径，再运行独立案例。
    - EN: Check the three validation layers in the Data page panel, confirm in the Study editor that the pack is available for the chosen profile, then run a separate case.
 
@@ -667,8 +695,8 @@
 
 1. 定义扩展的输入输出契约。
    - EN: Define the extension's input and output contract.
-2. 通过受支持的接口实现并登记；冲突或损坏的扩展会被隔离，修复后点 Rescan；直接调用 API 的脚本要带会话头，并轮询异步启动的 Run。
-   - EN: Implement and register it through the supported interface; a conflicting or broken extension is quarantined until you fix it and Rescan; API scripts send the session header and poll the Run they start.
+2. 通过受支持的接口实现并登记，产物从 after_psm 钩子返回；冲突或损坏的扩展会被隔离，修复后点 Rescan；直接调用 API 的脚本要带会话头，并轮询异步启动的 Run。
+   - EN: Implement and register it through the supported interface and return artifacts from the after_psm hook; a conflicting or broken extension is quarantined until you fix it and Rescan; API scripts send the session header and poll the Run they start.
 3. 先在修正口径下用两时段或更长范围运行小型示例（一日课程不运行扩展），再开展长期研究。
    - EN: Run a small example of two periods or longer under the corrected profile (the one-day lesson does not run extensions) before a longer study.
 
@@ -678,17 +706,18 @@
    - EN: Press Ctrl+C in the launch terminal. Runs whose model worker has started keep running in the background and are supervised again at the next start; a Run that is still being prepared stops and shows “Run preparation interrupted”, so start it again. Install new versions in a separate, empty directory.
    - ZH：在启动终端按 Ctrl+C。已经启动模型 worker 的 Run 会在后台继续，下次启动时重新接管；还在准备阶段的 Run 会停止，下次显示 “Run preparation interrupted”，需要重新启动。新版本安装到另一个空目录。
 2. **“Inputs fail validation.” / “输入校验失败。”**
-   - EN: Check field names, units, missing values and timestamps, the declared column and, for EUR prices, the rate, FX basis and price year. Demand needs at least one model year of half-hourly values (17,520); hourly prices and availability are each used for two half-hour periods. Save the file as comma-separated CSV. Any other series shorter than a model year is filled by repeating it from its start and needs your confirmation before it is committed. An optional timestamp column is checked row by row, with the date order detected or chosen. The Data page shows the three validation layers of each pack. Start with VALUE 101.
-   - ZH：检查字段、单位、缺失值、时间戳和声明的列；欧元价格还要填汇率、汇率口径和价格年份。需求要至少一个模型年的半小时数据（17,520 个值）；逐时的价格和可用量，每个值用于两个半小时。文件要存为逗号分隔的 CSV。需求以外的序列不满一个模型年时，从开头重复补齐，提交前要另行确认。可选的时间戳列会逐行检查，日期顺序可自动识别或手动选择。Data 页列出每个数据包的三层校验。先运行 VALUE 101。
+   - EN: Check field names, units, missing values and timestamps, the declared column and, for EUR prices, the rate, FX basis and price year. Demand needs at least one model year: 17,520 half-hourly values, or hourly rows (8,760 or 8,784), each hour being used for two half-hour periods. The VALUE 101 demand files are read as MW although their header says mwh, so map rewritten demand as MW; a demand whose annual energy differs from the replaced file by more than about 1.5 times gets a warning. Hourly prices and availability are each used for two half-hour periods. Save the file as comma-separated CSV. Any other series shorter than a model year is filled by repeating it from its start and needs your confirmation before it is committed. An optional timestamp column is checked row by row, with the date order detected or chosen. The Data page shows the three validation layers of each pack. Start with VALUE 101.
+   - ZH：检查字段、单位、缺失值、时间戳和声明的列；欧元价格还要填汇率、汇率口径和价格年份。需求至少覆盖一个模型年：半小时数据 17,520 个值，或逐时数据 8,760、8,784 行，每小时用于两个半小时。VALUE 101 的需求文件表头写 mwh，但按 MW 读取，改写需求时映射选 MW；新需求的年电量与被替换文件相差约 1.5 倍以上时会有警告。逐时的价格和可用量，每个值用于两个半小时。文件要存为逗号分隔的 CSV。需求以外的序列不满一个模型年时，从开头重复补齐，提交前要另行确认。可选的时间戳列会逐行检查，日期顺序可自动识别或手动选择。Data 页列出每个数据包的三层校验。先运行 VALUE 101。
 3. **“The page says ‘Open VALUE from its launcher’.” / “页面显示 Open VALUE from its launcher。”**
    - EN: The page was opened through another address, an old bookmark or another installation. Close it, start VALUE again with its launcher, then use http://127.0.0.1:8800 or http://localhost:8800.
    - ZH：页面不是经启动器打开的（用了其他地址、旧书签或另一份安装）。关闭页面，用启动器重新启动 VALUE，再打开 http://127.0.0.1:8800 或 http://localhost:8800。
 4. **“A module or extension is quarantined (health: degraded).” / “模块或扩展被隔离（health 显示 degraded）。”**
-   - EN: VALUE keeps running without it. Open Modules: the Disabled and quarantined area lists it with its manifest file and Enable, Rescan and Remove. Fix the code, then press Rescan (or Rescan modules at the top); Rescan also imports extension hooks again. Remove moves the installation aside and is refused while a Study or Run uses it. Offline: python -m gridform_core.module_recovery.
-   - ZH：VALUE 会在没有它的情况下继续运行。打开 Modules 页，Disabled and quarantined 区列出该条目和它的清单文件，带 Enable、Rescan、Remove 三个按钮。修好代码后点 Rescan（或页头的 Rescan modules）；Rescan 也会重新导入扩展钩子。Remove 只是把安装移到一旁；Study 或 Run 仍在使用时会被拒绝。离线时用 python -m gridform_core.module_recovery。
+   - EN: VALUE keeps running without it. Open Modules: the Disabled and quarantined area lists it with its manifest file and Enable, Rescan and Remove. Fix the code, then press Rescan (or Rescan modules at the top); Rescan also imports extension hooks again. If two manifests declare the same module ID, press Disable on either row: the copy is moved aside, then Enable restores the module. An extension that was disabled after its hook files were edited in place can be enabled again only after restoring the original files; otherwise rebuild it with a new version and package name and install it as a new bundle. Remove moves the installation aside and is refused while a Study or Run uses it. Do not install, enable, disable or remove modules or extensions while Runs are queued: those Runs fail and must be started again. Offline: python -m gridform_core.module_recovery.
+   - ZH：VALUE 会在没有它的情况下继续运行。打开 Modules 页，Disabled and quarantined 区列出该条目和它的清单文件，带 Enable、Rescan、Remove 三个按钮。修好代码后点 Rescan（或页头的 Rescan modules）；Rescan 也会重新导入扩展钩子。同一模块 ID 有两份清单时，在任一行点 Disable，副本会被移到一旁，之后点 Enable 恢复。扩展在原地改过钩子文件后又被停用的，要先恢复原文件才能重新启用；否则改版本号和包名重建，作为新包安装。Remove 只是把安装移到一旁；Study 或 Run 仍在使用时会被拒绝。有 Run 排队时不要安装、启用、停用或移除模块和扩展，否则排队的 Run 会失败，需要重新启动。离线时用 python -m gridform_core.module_recovery。
+   - 第 7 节第 10 条的决定若改变扩展的重新启用规则，这一条要同步改；EM-中1（2.9 节）若在阶段 2 之前修好，删去关于排队 Run 的一句。
 5. **“Annual results withheld for this reproduction run.” / “论文复现 Run 的年度结果被扣发。”**
-   - EN: The doctoral reproduction profile publishes annual results only when every raw invariant passed. The notice names the raw invariant that failed. Read the results in Inspect or open the ledger files.
-   - ZH：论文复现口径只有在原始不变量全部通过时才发布年度结果。提示中写明失败的原始不变量。可以在 Inspect 中查看，或打开账本文件。
+   - EN: The doctoral reproduction profile publishes annual results only when every raw invariant passed. While the Run is still going, the check is pending. The notice names the raw invariant that failed. Read the results in Inspect or open the ledger files.
+   - ZH：论文复现口径只有在原始不变量全部通过时才发布年度结果；Run 进行中显示待定。提示中写明失败的原始不变量。可以在 Inspect 中查看，或打开账本文件。
 6. **“The one-day lesson will not start with my extension.” / “选了扩展后一日课程不能运行。”**
    - EN: The one-day lesson runs the market step only, so extensions would not execute. Choose two-period or a longer scope, or deselect the extension.
    - ZH：一日课程只运行市场步骤，扩展不会执行。请改用两时段或更长的范围，或取消选择扩展。
@@ -698,6 +727,9 @@
 8. **“Why are replay times in UTC?” / “为什么回放时间是 UTC？”**
    - EN: VALUE runs on UTC half-hours of a fixed 365-day model year: 29 February is skipped in a leap year and there is no daylight-saving shift. Timestamps declared in Europe/London are converted to UTC when the file is mapped. Market replay and exports label times as UTC model time.
    - ZH：VALUE 的模型时钟是 UTC 半小时、固定 365 天的模型年：闰年跳过 2 月 29 日，没有夏令时切换。按 Europe/London 声明的时间戳在映射时换成 UTC。Market replay 和导出把时间标为 UTC model time。
+9. **“Why is Unserved demand larger than the unserved energy in the costs?” / “为什么年度卡片的 Unserved demand 比成本中的切负荷大？”**
+   - EN: Unserved demand includes the stress shortfall: periods in which the accepted supply fell short of demand, recorded without changing dispatch or prices. The cost accounts value only the unserved energy recorded by the model, at £17,000/MWh. Both are removed from energy served, so the cost per MWh served and the carbon intensity use the energy actually delivered.
+   - ZH：Unserved demand 包含 stress 缺口，即接纳的供给小于需求的时段；记录缺口时不改变调度和电价。成本账只按 17,000 £/MWh 给模型记录的切负荷计价。两者都从已供电量中扣除，所以每 MWh 供电成本和碳强度按实际交付的电量计算。
 
 ### A.5 rc1 安全提示草稿（只有作者选择第 7 节第 1 条 (a) 时才用）
 
