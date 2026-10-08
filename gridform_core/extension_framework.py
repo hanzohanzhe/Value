@@ -34,6 +34,11 @@ HOOKS = (
     "preflight", "initialize", "before_psm", "after_psm", "before_cem",
     "after_cem", "transition", "finalize",
 )
+# Hook outputs the orchestrator records (R5 F-中3): initialize returns the
+# namespace state; after_psm is the only hook whose artifacts reach the year
+# results and Inspect.  Other hooks run, but their return values are not kept.
+STATE_RECORDING_HOOKS = ("initialize",)
+ARTIFACT_RECORDING_HOOKS = ("after_psm",)
 SAFE_JSON_TYPES = {"boolean", "integer", "number", "string"}
 
 
@@ -562,6 +567,16 @@ class ExtensionRuntime:
             if not isinstance(result, Mapping):
                 raise ValueError(f"Extension {extension_id}:{hook} returned an untyped value")
             value = dict(result)
+            if "artifact_type" in value and hook not in ARTIFACT_RECORDING_HOOKS:
+                # R5 F-中3: the orchestrator records initialize state and
+                # after_psm artifacts only; an artifact from any other hook
+                # would be dropped silently, so it is refused instead.
+                raise ValueError(
+                    f"Extension {extension_id}:{hook} returned artifact "
+                    f"{value.get('artifact_type')!r}, but VALUE records extension artifacts "
+                    "only from after_psm (one set per model year). Return the artifact from "
+                    f"after_psm; {hook} may return a plain status mapping, which is not recorded."
+                )
             if "artifact_type" in value:
                 extension = next(
                     item for item in self.graph.extensions if item.id == extension_id

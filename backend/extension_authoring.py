@@ -139,6 +139,10 @@ Research question: {proposal['question']}
 
 This is an experimental local Python extension. The declared CSV role proves data binding and validation only; this observer does not calculate with its values. Capability and data declarations alone do not implement a scientific method. Initialization owns namespace `{manifest.namespace}` under extension `{manifest.id}` and schema `{manifest.state_schema_version}`. The after_psm hook emits one declared JSON artifact for each executed model year.
 
+## What a Run records
+
+VALUE records two hook outputs: the state returned by `initialize` (stored under the extension namespace) and the artifacts returned by `after_psm` (one set per executed model year, shown in Inspect → Artifacts & provenance). The other hooks (`preflight`, `before_psm`, `before_cem`, `after_cem`, `transition`, `finalize`) run in their lifecycle position, but their return values are not recorded. Returning a declared artifact (a mapping with `artifact_type`) from one of them stops the Run with an error naming the hook, so no result is dropped silently; produce artifacts from `after_psm` instead.
+
 ## Author validation plan
 
 {proposal['validation_plan']}

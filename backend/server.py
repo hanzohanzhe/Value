@@ -4330,6 +4330,20 @@ class Handler(BaseHTTPRequestHandler):
                             "study_id": project_id,
                         }, 409); return
                     existing_project = read_json(project_path, {})
+                    if existing_project.get("revision_sha256") and not body.get("base_revision_sha256"):
+                        # R5 F-中2: a save without a base revision creates a
+                        # Study; when its name maps to an existing Study ID
+                        # the conflict is the name, not a stale revision.
+                        self._json({
+                            "error": (
+                                f"A Study with ID {project_id} already exists "
+                                f"({existing_project.get('name') or project_id}). Give this Study "
+                                "another name to save it as a new Study, or open the existing "
+                                "Study and use Edit as new revision."
+                            ),
+                            "error_code": "GF_STUDY_ID_EXISTS",
+                            "study_id": project_id,
+                        }, 409); return
                     for metadata_key in ("derivation", "extensions"):
                         if metadata_key in existing_project:
                             project[metadata_key] = json.loads(json.dumps(existing_project[metadata_key]))

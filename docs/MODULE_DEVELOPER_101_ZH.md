@@ -535,6 +535,11 @@ Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入�
 还会重新导入所有已安装的 module 和每个已启用扩展的钩子，所以原地修改把一个已加载的
 module 或扩展钩子改坏时，它会立即被隔离，而不是等到下一次 Check readiness、Run 或重启。
 
+扩展在 Run 中被记录的输出只有两类：`initialize` 返回的状态（存放在扩展命名空间下）和
+`after_psm` 返回的产物（每个模型年一组，在 Inspect 中显示）。`preflight`、`before_psm`、
+`before_cem`、`after_cem`、`transition`、`finalize` 照常在各自位置运行，但返回值不记录；
+从这些钩子返回声明过的产物（带 `artifact_type`）会使 Run 报错并指明钩子，而不是被静默丢弃。
+
 ### 停用与隔离区
 
 Modules 页在 module 列表下方列出所有停用或隔离的本地 module 和扩展，每项都有

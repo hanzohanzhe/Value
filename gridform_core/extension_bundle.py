@@ -195,8 +195,11 @@ def _namespace_collision_message(namespace: str, owner: str, extension_id: str, 
     if any(manifest.id == owner for manifest in _builtin_extensions()):
         return (f"Extension namespace {namespace} belongs to the built-in extension {owner}, which cannot be "
                 f"disabled; give {extension_id} its own namespace and rebuild the bundle")
+    # R5 F-低2: disabling the owner is only possible while no saved Study or
+    # retained Run uses it, so the always-available way out comes first.
     return (f"Extension namespace {namespace} is owned by enabled extension {owner}; "
-            f"disable {owner} before {action} {extension_id}, or give {extension_id} its own namespace")
+            f"give {extension_id} its own namespace and rebuild the bundle, or disable {owner} before "
+            f"{action} {extension_id} (possible only while no saved Study or retained Run uses {owner})")
 
 
 def _source_packages(modules_root: Path, extension_id: str) -> set[str]:
@@ -623,7 +626,26 @@ def _set_extension_enabled(
     if enabled and stored.get("source_root") == "src":
         observed = _check_hooks(manifest, record_path.parent / "src")
         if observed != stored.get("hook_source_identities"):
-            raise ExtensionBundleError("GF_EXTENSION_SOURCE_CHANGED", "Installed hook source no longer matches its retained identity")
+            # R5 F-中1: the refusal stays (re-enable verifies the retained
+            # hook identity); the message names the changed files and the
+            # two ways out instead of a bare "fix the cause".
+            retained_by_file = {
+                str(item.get("implementation") or "").split(":", 1)[0]: item.get("source_sha256")
+                for item in stored.get("hook_source_identities") or () if isinstance(item, dict)
+            }
+            changed = sorted({
+                str(item.get("implementation") or "").split(":", 1)[0]
+                for item in observed
+                if retained_by_file.get(str(item.get("implementation") or "").split(":", 1)[0]) != item.get("source_sha256")
+            })
+            raise ExtensionBundleError(
+                "GF_EXTENSION_SOURCE_CHANGED",
+                "Installed hook source no longer matches the source recorded at install"
+                + (f" ({', '.join(changed)})" if changed else "")
+                + ". Enable only restores an extension whose installed hook files are unchanged: restore "
+                "the original files and press Enable again, or rebuild the edited project with a new "
+                "version and Python package (scripts/build_extension_bundle.py) and install it as a new bundle.",
+            )
     retained = {item: item.read_bytes() if item.exists() else None for item in (record_path, active, inactive)}
     try:
         stored["enabled"] = bool(enabled)

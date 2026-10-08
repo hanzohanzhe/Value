@@ -73,6 +73,20 @@ def _issue(code: str, severity: str, scope: str, message: str, action: str) -> d
     }
 
 
+def _replacement_advice(rows: object) -> str:
+    """How a Study stops using blocked local code (R5 F-低1): a module is
+    replaced by another module; an extension is deselected."""
+
+    kinds = {str(row.get("kind")) for row in rows or () if isinstance(row, Mapping)}
+    module = "select another module in the Study"
+    extension = "deselect the extension in the Study (saved as a new revision)"
+    if kinds == {"extension"}:
+        return extension
+    if "extension" in kinds:
+        return f"{module}, or {extension}"
+    return module
+
+
 def resource_gate_report(
     *,
     project: Mapping[str, object],
@@ -416,7 +430,7 @@ def run_preflight(
                 f"{row['kind']} {row['id']} ({row['error_code']})" for row in quarantine["blockers"]
             ),
             "Open Modules: repair the quarantined entry's source and press Rescan, or disable it and "
-            "select another module in the Study.",
+            + _replacement_advice(quarantine["blockers"]) + ".",
         ))
     elif quarantine["entries"]:
         issues.append(_issue(
@@ -441,7 +455,8 @@ def run_preflight(
                 f"{row['kind']} {row['id']}" + (f" {', '.join(row['versions'])}" if row["versions"] else "")
                 for row in disabled
             ) + ".",
-            "Open Modules > Disabled and quarantined and Enable it, or select another module in the Study.",
+            "Open Modules > Disabled and quarantined and Enable it, or "
+            + _replacement_advice(disabled) + ".",
         ))
     # A16-4 (M-D2, spec 11.7): an installed module whose source was edited in
     # place is accepted and recorded; preflight says so before the run.

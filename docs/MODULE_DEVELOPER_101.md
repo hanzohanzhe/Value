@@ -549,6 +549,13 @@ not prove order-level replay.
   enabled extension, so an in-place edit that breaks a module or an extension
   hook that is already loaded is quarantined at once instead of at the next
   Check readiness, Run or restart.
+- **What a Run records from an extension:** the state returned by `initialize`
+  (under the extension namespace) and the artifacts returned by `after_psm`
+  (one set per model year, shown in Inspect). `preflight`, `before_psm`,
+  `before_cem`, `after_cem`, `transition` and `finalize` run in place but their
+  return values are not recorded; returning a declared artifact
+  (`artifact_type`) from one of them stops the Run with an error naming the
+  hook instead of dropping it silently.
 - **Disabled and quarantined:** the Modules page lists every disabled or
   quarantined local module and extension below the module list, each with
   **Enable**, **Rescan** and **Remove**. Check readiness of a Study that selects
