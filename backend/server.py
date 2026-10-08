@@ -23,7 +23,7 @@ from types import SimpleNamespace
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 from urllib.parse import parse_qs, unquote, urlparse
 
 from backend.data_mapping import DataMappingService, DataMappingError, MAX_UPLOAD_BYTES as MAX_MAPPING_UPLOAD_BYTES
@@ -39,13 +39,13 @@ from backend.frozen_run_recovery import (
     FrozenRecoveryError, review_frozen_recovery, publish_frozen_recovery,
     verify_recovered_configuration, verify_recovered_inputs,
 )
-from backend.run_execution import current_execution, bind_run_execution, verify_run_execution
+from backend.run_execution import current_execution, bind_run_execution, source_identity_changed, verify_run_execution
 from gridform_core.execution_archive import verify_execution_bundle
 from gridform_core.legacy_module_ids import ORCHESTRATOR_ENGINES as LEGACY_ORCHESTRATOR_ENGINES
 
 from gridform_core.catalog import get_catalog_snapshot
 from gridform_core.dataset_slots import DATASET_SLOTS
-from gridform_core.errors import ContractError
+from gridform_core.errors import DETAIL_CATEGORIES, ContractError, ExecutionIdentityChangedError, failure_detail
 from gridform_core.execution_archive import ExecutionArchiveError
 from gridform_core.module_quarantine import (
     MODULE_LIFECYCLE_LOCK,
@@ -409,6 +409,24 @@ ROLE_INDEX = {slot["role"]: slot for slot in DATASET_SLOTS}
 CATALOG_STALE: dict[str, str] | None = None
 
 
+# R6-1 (EM-中1): bumped by every catalogue refresh (each module or extension
+# lifecycle change ends with one).  A Run preparation compares it with the
+# value it read when it recorded the execution identity; on a difference it
+# re-checks the installed source before it goes on.
+_EXECUTION_SOURCE_GENERATION = [0]
+_EXECUTION_SOURCE_GENERATION_GUARD = threading.Lock()  # leaf lock
+
+
+def _bump_execution_source_generation() -> None:
+    with _EXECUTION_SOURCE_GENERATION_GUARD:
+        _EXECUTION_SOURCE_GENERATION[0] += 1
+
+
+def execution_source_generation() -> int:
+    with _EXECUTION_SOURCE_GENERATION_GUARD:
+        return _EXECUTION_SOURCE_GENERATION[0]
+
+
 def refresh_module_catalog(*, refresh: bool = True) -> None:
     """Refresh the single registry after a reviewed local lifecycle change.
 
@@ -418,6 +436,8 @@ def refresh_module_catalog(*, refresh: bool = True) -> None:
 
     global MODULE_REGISTRY, MODULES, MODULE_SLOT_BY_ID, REQUIRED_MODULE_SLOTS, CATALOG_STALE
     with MODULE_LIFECYCLE_LOCK:
+        # R6-1 (EM-中1): a Run preparing meanwhile re-checks its frozen code.
+        _bump_execution_source_generation()
         try:
             snapshot = get_catalog_snapshot(refresh=refresh)
         except (Exception, SystemExit) as exc:
@@ -485,8 +505,12 @@ def require_no_pending_runs(confirmed: bool, *, noun: str = "modules") -> None:
     started = [run for run in statuses if run not in waiting]
     parts = []
     if waiting:
+        # R6-1 (EM-中1): a Run records the installed code when it is queued
+        # and refuses to start with other code, so say what really happens.
         parts.append(f"{len(waiting)} run(s) not started yet (" + ", ".join(waiting[:10])
-                     + ") would start with the changed code")
+                     + ") will not start: the change alters the code they recorded, so VALUE "
+                     "stops them with GF_RUN_EXECUTION_IDENTITY_CHANGED and you resubmit them "
+                     "from the Runs page (Resubmit with current code)")
     if started:
         parts.append(f"{len(started)} run(s) already running (" + ", ".join(started[:10])
                      + ") keep their code but could not be resumed after the change")
@@ -494,6 +518,102 @@ def require_no_pending_runs(confirmed: bool, *, noun: str = "modules") -> None:
         "GF_MODULE_LIFECYCLE_RUNS_PENDING",
         "Runs have not finished: " + "; ".join(parts) + f". Confirm to change installed {noun} anyway.",
     )
+
+
+EXECUTION_IDENTITY_CHANGED_STAGE = "Not started: the installed code changed after it was queued"
+
+
+def _execution_identity_failure(run_dir: Path) -> tuple[dict[str, Any], Callable[[], None]]:
+    """Status fields of a Run stopped before its worker started because the
+    installed code changed (GF_RUN_EXECUTION_IDENTITY_CHANGED), and a
+    callable that writes its diagnostic (``diagnostics/error.json``) once the
+    failure is recorded."""
+
+    error = ExecutionIdentityChangedError(
+        "Execution source changed after enqueue: a module or extension was installed, "
+        "enabled, disabled, removed or edited after this Run recorded its code; it was "
+        "stopped before its model worker started."
+    )
+    public = error.public_failure()
+
+    def write_diagnostic() -> None:
+        diagnostic = run_dir / "diagnostics" / "error.json"
+        diagnostic.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(diagnostic, {
+            "schema_version": "value.run-diagnostic/v1",
+            "run_id": run_dir.name,
+            "error_code": public.code,
+            "category": public.category,
+            "exception_type": type(error).__name__,
+            "exception_message": str(error),
+            "traceback": None,
+            "recorded_at": now(),
+        }, ensure_ascii=False, indent=2)
+
+    return {
+        "execution_status": "failed",
+        "current_stage": EXECUTION_IDENTITY_CHANGED_STAGE,
+        "error": public.message,
+        "error_code": public.code,
+        "error_category": public.category,
+        "error_detail": failure_detail(error),
+        "diagnostic_artifact": "diagnostics/error.json",
+        "finished_at": now(),
+    }, write_diagnostic
+
+
+class _NotQueued(Exception):
+    """The Run left ``queued`` before the server could stop it."""
+
+
+def stop_unstarted_runs_with_changed_code() -> list[str]:
+    """After a confirmed module or extension change: fail the queued Runs
+    whose recorded source no longer matches the installed one (R6-1, EM-中1).
+
+    Only Runs that are ``queued`` with no worker holding their lease are
+    stopped here (P0-3: the server never writes over a live worker).  A
+    worker that already holds its lease records the same coded failure
+    itself when it verifies the execution identity, and a Run still being
+    prepared by this backend re-checks before it queues.  Returns the IDs
+    of the stopped Runs.
+    """
+
+    candidates: list[tuple[str, Path, dict[str, Any]]] = []
+    for path in sorted(RUNS_ROOT.glob("*/status.json")):
+        status = read_object(path)
+        run_dir = path.parent
+        if status.get("status") != "queued" or run_is_preparing(run_dir.name):
+            continue
+        record = read_object(run_dir / "execution-bundle.json")
+        if record.get("source_sha256"):
+            candidates.append((run_dir.name, run_dir, record))
+    stopped: list[str] = []
+    for run_id, run_dir, record in candidates:
+        try:
+            with MODULE_LIFECYCLE_LOCK:  # no half-made lifecycle change is hashed
+                changed = source_identity_changed(record, source_root=PROJECT_ROOT, data_home=STATE_ROOT)
+        except (OSError, ValueError):
+            continue  # the worker's own verification reports it
+        if not changed or lease_state(run_dir) == LOCK_HELD:
+            continue
+        try:
+            with run_action_lock(run_id):
+                fields, write_diagnostic = _execution_identity_failure(run_dir)
+
+                def stop(current: dict[str, Any]) -> None:
+                    if current.get("status") != "queued":
+                        raise _NotQueued()
+                    current.update(fields)
+
+                update_status(
+                    run_dir, mutate=stop, transition="failed",
+                    reason_code=ExecutionIdentityChangedError.code, writer=WRITER_SERVER,
+                )
+                write_diagnostic()
+        except (_NotQueued, LeaseHeldError, LifecycleError, LockTimeout, OSError):
+            continue
+        stopped.append(run_id)
+    return stopped
 
 
 def _quarantined_ids(kind: str) -> set[str]:
@@ -673,6 +793,10 @@ class _RunPreparation:
     teaching_run_extensions: dict[str, object]
     lineage: dict[str, object] | None
     registry: Any
+    # R6-1 (EM-中1): the recorded source identity and the lifecycle
+    # generation read when it was recorded.
+    execution_source_sha256: str | None = None
+    execution_generation: int | None = None
 
 
 class _PreparationStopped(Exception):
@@ -689,6 +813,7 @@ def _preparation_stage(context: _RunPreparation, stage_id: str) -> None:
     index = next(i for i, (key, _label) in enumerate(RUN_PREPARATION_STAGES) if key == stage_id)
     label = RUN_PREPARATION_STAGES[index][1]
     run_dir = context.run_dir
+    changed = _preparation_code_changed(context)
     with run_action_lock(context.run_id):
         if (run_dir / "cancel-request.json").is_file():
             def cancelled(status: dict[str, Any]) -> None:
@@ -703,6 +828,11 @@ def _preparation_stage(context: _RunPreparation, stage_id: str) -> None:
                 run_dir, mutate=cancelled, transition="cancelled",
                 reason_code="GF_RUN_CANCELLED_BEFORE_WORKER", writer=WRITER_SERVER,
             )
+            raise _PreparationStopped()
+        if changed:
+            fields, write_diagnostic = _execution_identity_failure(run_dir)
+            _preparation_failed(run_dir, fields, ExecutionIdentityChangedError.code)
+            write_diagnostic()
             raise _PreparationStopped()
         if index == 0:
             return  # the first stage was recorded with the status itself
@@ -724,6 +854,31 @@ def _preparation_stage(context: _RunPreparation, stage_id: str) -> None:
             status["current_stage"] = label
 
         update_status(run_dir, mutate=advance, writer=WRITER_SERVER)
+
+
+def _preparation_code_changed(context: _RunPreparation) -> bool:
+    """R6-1 (EM-中1): did a module or extension change after this preparation
+    recorded the execution identity?  Only re-hashes the installed source
+    when a lifecycle change happened meanwhile; an unreadable tree is left to
+    the worker's own verification."""
+
+    recorded_generation = context.execution_generation
+    if recorded_generation is None or not context.execution_source_sha256:
+        return False
+    generation = execution_source_generation()
+    if generation == recorded_generation:
+        return False
+    try:
+        with MODULE_LIFECYCLE_LOCK:
+            changed = source_identity_changed(
+                {"source_sha256": context.execution_source_sha256},
+                source_root=PROJECT_ROOT, data_home=STATE_ROOT,
+            )
+    except (OSError, ValueError):
+        return False
+    if not changed:
+        context.execution_generation = generation
+    return changed
 
 
 def _preparation_failed(run_dir: Path, fields: Mapping[str, Any], reason_code: str) -> dict[str, Any]:
@@ -794,8 +949,11 @@ def _prepare_run_stages(context: _RunPreparation) -> None:
         _preparation_stage(context, "execution")
         verify_recovered_inputs(project, context.pack_root, pack_selection.network_pack_root)
         with EXECUTION_CAPTURE_LOCK:
+            generation = execution_source_generation()
             execution_record = current_execution(source_root=PROJECT_ROOT, data_home=STATE_ROOT, archive=True)
         project = bind_run_execution(project, run_dir, execution_record)
+        context.execution_source_sha256 = str(execution_record.get("source_sha256") or "") or None
+        context.execution_generation = generation
         _preparation_stage(context, "snapshot")
         snapshot = create_run_input_snapshot(
             run_dir=run_dir,
@@ -1871,6 +2029,14 @@ def present_run(run: dict[str, Any]) -> dict[str, Any]:
         if "initial_pipeline" not in result and "pipeline_next_year" in result:
             result["initial_pipeline"] = result["pipeline_next_year"]
     run_root = RUNS_ROOT / str(run.get("id") or "")
+    if (run.get("status") == "failed" and not run.get("error_detail") and run.get("id")
+            and run.get("error_category") in DETAIL_CATEGORIES):
+        # R6-1 (AF-低1): Runs that failed before error_detail was recorded
+        # show the first line of their diagnostic too.
+        diagnostic = read_object(run_root / "diagnostics" / "error.json")
+        detail = failure_detail(diagnostic.get("exception_message"))
+        if detail:
+            run["error_detail"] = detail
     cancel_request = read_json(run_root / "cancel-request.json") if run.get("id") else None
     if isinstance(cancel_request, Mapping) and cancel_request.get("schema_version") == "value.cancel-request/v1":
         run["cancel_requested_at"] = cancel_request.get("requested_at")
@@ -3262,7 +3428,7 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "installation": installation,
             "message": "The module passed structural conformance and is ready for a wiring test.",
-            **stale,
+            **stale, **self._stop_unstarted_runs(),
         }, 201)
 
     def _upload_extension_bundle(self) -> None:
@@ -3322,7 +3488,7 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "installation": installation,
             "message": "The extension passed structural contract validation; scientific maturity is unchanged.",
-            **stale,
+            **stale, **self._stop_unstarted_runs(),
         }, 201)
 
     def _migrate_derivation_source(self, source_id: str, body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
@@ -3367,6 +3533,13 @@ class Handler(BaseHTTPRequestHandler):
         if body is not None and body.get("confirm_pending_runs") is True:
             return True
         return self.headers.get("X-VALUE-Confirm-Pending-Runs", "").lower() == "acknowledged"
+
+    def _stop_unstarted_runs(self) -> dict[str, Any]:
+        """R6-1 (EM-中1): after a lifecycle change, fail the queued Runs whose
+        recorded code changed; the response names them for the notice."""
+
+        stopped = stop_unstarted_runs_with_changed_code()
+        return {"stopped_unstarted_runs": stopped} if stopped else {}
 
     def _refresh_after_lifecycle_change(self) -> dict[str, Any]:
         """The change on disk is already verified; a failed catalogue refresh
@@ -3432,7 +3605,7 @@ class Handler(BaseHTTPRequestHandler):
             activate_external_module_sources(root)
             clear_negative_caches()
             stale = self._refresh_after_lifecycle_change()
-        self._json({"ok": True, "removed": removed, "module_quarantine": module_quarantine_payload(), **stale})
+        self._json({"ok": True, "removed": removed, "module_quarantine": module_quarantine_payload(), **stale, **self._stop_unstarted_runs()})
 
     def _module_dependents(self, module_id: str) -> dict[str, list[str]]:
         projects = []
@@ -4464,7 +4637,7 @@ class Handler(BaseHTTPRequestHandler):
                     clear_negative_caches()
                 installation = set_module_enabled(module_id, enabling)
                 stale = self._refresh_after_lifecycle_change()
-            self._json({"ok": True, "installation": installation, "dependents": dependents, **stale})
+            self._json({"ok": True, "installation": installation, "dependents": dependents, **stale, **self._stop_unstarted_runs()})
         elif route.startswith("/api/extensions/") and route.endswith(("/enable", "/disable")):
             parts = route.strip("/").split("/")
             if len(parts) != 4:
@@ -4493,7 +4666,7 @@ class Handler(BaseHTTPRequestHandler):
                     extension_id, enabling, modules_root=external_modules_root()
                 )
                 stale = self._refresh_after_lifecycle_change()
-            self._json({"ok": True, "installation": installation, "dependents": dependents, **stale})
+            self._json({"ok": True, "installation": installation, "dependents": dependents, **stale, **self._stop_unstarted_runs()})
         elif route.startswith(("/api/modules/", "/api/extensions/")) and route.endswith("/remove"):
             self._remove_local_entry(route, body)
         elif route == "/api/modules/rescan":

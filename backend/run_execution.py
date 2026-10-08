@@ -6,12 +6,22 @@ from pathlib import Path
 
 from backend.lifecycle.atomic_io import atomic_write_json
 from backend.frozen_run_recovery import json_hash, read_object, verify_recovered_configuration
-from gridform_core.execution_archive import capture_execution_bundle, verify_execution_bundle
+from gridform_core.errors import ExecutionIdentityChangedError
+from gridform_core.execution_archive import capture_execution_bundle, current_source_sha256, verify_execution_bundle
 
 
 def current_execution(*, source_root: Path, data_home: Path, archive: bool = False) -> dict:
     return capture_execution_bundle(source_root=source_root, data_home=data_home,
                                     archive_root=data_home / "execution-archives", archive=archive)
+
+
+def source_identity_changed(record: dict, *, source_root: Path, data_home: Path) -> bool:
+    """Does the installed source differ from the one ``record`` froze?"""
+
+    recorded = record.get("source_sha256") if isinstance(record, dict) else None
+    if not isinstance(recorded, str) or not recorded:
+        return False
+    return current_source_sha256(source_root=source_root, data_home=data_home) != recorded
 
 
 def bind_run_execution(project: dict, run_root: Path, record: dict) -> dict:
@@ -42,6 +52,13 @@ def verify_run_execution(run_root: Path, project: dict, *, source_root: Path,
     verify_execution_bundle(recorded, archive_root=data_home / "execution-archives")
     current = current_execution(source_root=source_root, data_home=data_home)
     if current["identity_sha256"] != recorded["identity_sha256"]:
-        raise ValueError("Execution source or runtime changed after enqueue; restore the recorded execution or review a new migration.")
+        # R6-1 EM-中1: a coded error, not the generic contract failure.
+        raise ExecutionIdentityChangedError(
+            "Execution source or runtime changed after enqueue (recorded "
+            f"{str(recorded['identity_sha256'])[:12]}…, current {str(current['identity_sha256'])[:12]}…): "
+            "a module or extension was installed, enabled, disabled, removed or edited, "
+            "or VALUE itself changed. Resubmit the Run to use the current code, or restore "
+            "the recorded execution or review a new migration."
+        )
     verify_recovered_configuration(project, execution_identity=current["identity_sha256"])
     return recorded

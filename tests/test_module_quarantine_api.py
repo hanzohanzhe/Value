@@ -188,7 +188,7 @@ class ModuleQuarantineApiTests(unittest.TestCase):
             status, body = self._request("POST", "/api/modules/p02-api-ok/enable", {})
             self.assertEqual(status, 409)
             self.assertEqual(body["error_code"], "GF_MODULE_LIFECYCLE_RUNS_PENDING")
-            self.assertIn("1 run(s) not started yet (queued-run) would start with the changed code", body["error"])
+            self.assertIn("1 run(s) not started yet (queued-run) will not start", body["error"])  # R6-1 EM-中1
             self.assertIn("1 run(s) already running (running-run) keep their code but could not be resumed",
                           body["error"])
             self.assertEqual(tree_digest(self.modules), before)

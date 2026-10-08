@@ -426,6 +426,17 @@ def _capture_bundle(*, source_roots, environment_roots, metadata, archive_root, 
     return record
 
 
+def current_source_sha256(*, source_root: Path, data_home: Path) -> str:
+    """The source half of the execution identity, without the runtime scan.
+
+    Module and extension lifecycle changes alter only this half, so a cheap
+    comparison with a recorded ``source_sha256`` tells whether a queued Run
+    would be refused at worker start (R6-1, EM-中1).
+    """
+    rows, _sources, _records = _scan_roots(_source_roots(source_root, data_home))
+    return _tree_hash(rows)
+
+
 def capture_execution_bundle(*, source_root: Path, data_home: Path, archive_root: Path, archive: bool = False) -> dict:
     source_roots = _source_roots(source_root, data_home)
     # Admission and worker verification must use the same real import order.

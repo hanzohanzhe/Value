@@ -486,8 +486,11 @@ does not get that far, or every run is refused with
 `GF_EXECUTION_ARCHIVE_MODULE_RECORD`, stop VALUE and use the offline module
 recovery below.
 
-Changing modules while runs are queued or running needs an explicit
-confirmation: queued runs would start with the changed code, and a run that
+Changing modules or extensions while runs are queued or running needs an
+explicit confirmation. A run records the installed code when it is queued and
+never starts with other code, so runs that have not started yet are stopped
+with `GF_RUN_EXECUTION_IDENTITY_CHANGED`; the Runs page offers **Resubmit with
+current code**, which starts a new run of the same Study and scope. A run that
 is already running keeps its code but can no longer be resumed after the
 change.
 

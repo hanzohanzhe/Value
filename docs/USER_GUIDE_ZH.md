@@ -465,7 +465,7 @@ print(urllib.request.urlopen(request).status)
 
 VALUE 继续运行，只有选中该条目的 Study 会被拒绝，并给出 `GF_STUDY_MODULE_QUARANTINED` 或 `GF_PREFLIGHT_MODULE_QUARANTINED`。在 Modules 页停用它；或修好后用新 ID 安装，再点 **Rescan**。若 VALUE 走不到这一步，或所有 Run 都因 `GF_EXECUTION_ARCHIVE_MODULE_RECORD` 被拒绝，先停止 VALUE，再按下一节离线自救。
 
-有排队或运行中的 Run 时变更模块需要显式确认：排队的 Run 会用变更后的代码启动；已在运行的 Run 保持原代码，但变更后无法再 Resume。
+有排队或运行中的 Run 时变更模块或扩展需要显式确认。Run 在排队时记录已安装的代码，绝不会用别的代码启动，所以尚未开始的 Run 会以 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 停止；Runs 页提供 **Resubmit with current code**，用同一 Study 和范围新建一个 Run。已在运行的 Run 保持原代码，但变更后无法再 Resume。
 
 ### 离线模块自救（Offline module recovery）
 

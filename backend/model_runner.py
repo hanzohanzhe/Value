@@ -22,7 +22,7 @@ from backend.lifecycle.run_status import (
 from backend.lifecycle.worker_lease import WorkerTerminated
 from backend.run_execution import verify_run_execution
 from gridform_core.application import run_project_application
-from gridform_core.errors import public_failure, warning_event
+from gridform_core.errors import DETAIL_CATEGORIES, failure_detail, public_failure, warning_event
 from gridform_core.provenance import write_failed_run_provenance
 from gridform_core.methodology import methodology_record
 from gridform_core.run_policy import resolve_run_policy
@@ -211,7 +211,11 @@ def record_run_failure(
             "the failure status and local diagnostic were retained.",
         ))
 
+    detail = failure_detail(error) if public.category in DETAIL_CATEGORIES else None
+
     def apply(existing: dict) -> None:
+        if not detail:
+            existing.pop("error_detail", None)
         previous_warnings = existing.get("warnings")
         if not isinstance(previous_warnings, list):
             previous_warnings = []
@@ -226,6 +230,9 @@ def record_run_failure(
             "error_category": public.category,
             "diagnostic_artifact": "diagnostics/error.json",
             "warnings": [*previous_warnings, *warnings],
+            # R6-1 (EM-中1, AF-低1): the first line of the diagnostic, so the
+            # Runs page names the reason of a contract or identity failure.
+            **({"error_detail": detail} if detail else {}),
             "finished_at": now(),
         })
         if provenance is not None:

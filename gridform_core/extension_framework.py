@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+from .errors import ExtensionOutputError
 from .module_quarantine import (
     ExtensionHookImportError,
     cached_hook_failure,
@@ -565,13 +566,17 @@ class ExtensionRuntime:
         for extension_id in self.graph.hook_order.get(hook, ()):
             result = self._instances[(extension_id, hook)](immutable_input)
             if not isinstance(result, Mapping):
-                raise ValueError(f"Extension {extension_id}:{hook} returned an untyped value")
+                raise ExtensionOutputError(
+                    f"Extension {extension_id}:{hook} returned an untyped value; "
+                    "a hook returns a JSON object (mapping)."
+                )
             value = dict(result)
             if "artifact_type" in value and hook not in ARTIFACT_RECORDING_HOOKS:
                 # R5 F-中3: the orchestrator records initialize state and
                 # after_psm artifacts only; an artifact from any other hook
                 # would be dropped silently, so it is refused instead.
-                raise ValueError(
+                # R6-1 AF-低1: a typed error, so the Runs page names the reason.
+                raise ExtensionOutputError(
                     f"Extension {extension_id}:{hook} returned artifact "
                     f"{value.get('artifact_type')!r}, but VALUE records extension artifacts "
                     "only from after_psm (one set per model year). Return the artifact from "
@@ -581,6 +586,11 @@ class ExtensionRuntime:
                 extension = next(
                     item for item in self.graph.extensions if item.id == extension_id
                 )
-                value = validate_extension_artifact(value, extension)
+                try:
+                    value = validate_extension_artifact(value, extension)
+                except ValueError as exc:
+                    raise ExtensionOutputError(
+                        f"Extension {extension_id}:{hook} returned a rejected artifact: {exc}"
+                    ) from exc
             outputs.append(value)
         return tuple(outputs)
