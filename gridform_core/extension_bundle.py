@@ -623,33 +623,44 @@ def _set_extension_enabled(
                 _namespace_collision_message(manifest.namespace, owner, extension_id, "enabling"),
             )
     before_keys = quarantine_keys(workspace_registry(root)) if enabled else frozenset()
+    accepted_edit: dict[str, object] | None = None
     if enabled and stored.get("source_root") == "src":
+        # A hook that no longer imports is still refused (GF_EXTENSION_HOOK).
         observed = _check_hooks(manifest, record_path.parent / "src")
-        if observed != stored.get("hook_source_identities"):
-            # R5 F-中1: the refusal stays (re-enable verifies the retained
-            # hook identity); the message names the changed files and the
-            # two ways out instead of a bare "fix the cause".
+        retained_identities = [item for item in stored.get("hook_source_identities") or () if isinstance(item, dict)]
+        if observed != retained_identities:
+            declared = lambda items: sorted((str(item.get("hook")), str(item.get("implementation"))) for item in items)
+            if declared(observed) != declared(retained_identities):
+                raise ExtensionBundleError(
+                    "GF_EXTENSION_SOURCE_CHANGED",
+                    "The installed extension declares other hooks than were recorded at install. "
+                    "Rebuild the project with a new version (scripts/build_extension_bundle.py) and install it as a new bundle.",
+                )
+            # A29 (A16-4 for extensions): an in-place edit of the installed hook
+            # source is accepted and recorded.  The install identity is kept, so
+            # the Modules page and readiness keep saying "source changed since
+            # install"; Studies pick up the new hash as a code-identity revision
+            # and comparisons show the method change.
             retained_by_file = {
                 str(item.get("implementation") or "").split(":", 1)[0]: item.get("source_sha256")
-                for item in stored.get("hook_source_identities") or () if isinstance(item, dict)
+                for item in retained_identities
             }
             changed = sorted({
                 str(item.get("implementation") or "").split(":", 1)[0]
                 for item in observed
                 if retained_by_file.get(str(item.get("implementation") or "").split(":", 1)[0]) != item.get("source_sha256")
             })
-            raise ExtensionBundleError(
-                "GF_EXTENSION_SOURCE_CHANGED",
-                "Installed hook source no longer matches the source recorded at install"
-                + (f" ({', '.join(changed)})" if changed else "")
-                + ". Enable only restores an extension whose installed hook files are unchanged: restore "
-                "the original files and press Enable again, or rebuild the edited project with a new "
-                "version and Python package (scripts/build_extension_bundle.py) and install it as a new bundle.",
-            )
+            accepted_edit = {
+                "accepted_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                "changed_modules": changed,
+                "hook_source_identities": observed,
+            }
     retained = {item: item.read_bytes() if item.exists() else None for item in (record_path, active, inactive)}
     try:
         stored["enabled"] = bool(enabled)
         stored["state_changed_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+        if accepted_edit is not None:
+            stored["accepted_source_edits"] = [*(stored.get("accepted_source_edits") or ()), accepted_edit]
         temporary_record = record_path.with_suffix(".json.tmp")
         temporary_record.write_text(json.dumps(stored, indent=2) + "\n", encoding="utf-8")
         temporary_record.replace(record_path)
@@ -667,7 +678,7 @@ def _set_extension_enabled(
         if enabled:
             _verify_written(root, before_keys, extension_id)
         module_quarantine.clear_hook_quarantine(extension_id, _source_packages(root, extension_id))
-        return {**record, **stored}
+        return {**record, **stored, **({"accepted_source_edit": accepted_edit} if accepted_edit else {})}
     except Exception:
         for item, contents in retained.items():
             item.with_suffix(".json.tmp").unlink(missing_ok=True)

@@ -68,6 +68,13 @@ updated, so a change you intend to publish or compare as a method should still
 get a new module version (or ID), scientific version and package name and be
 installed as a bundle.
 
+The same rule applies to the hook source of an installed extension
+(DECISIONS A29), also across Disable and Enable: Enable re-imports the hooks,
+accepts an in-place edit and appends it to `accepted_source_edits` in the
+installation record, and readiness shows `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`.
+Enable still refuses hooks that no longer import (`GF_EXTENSION_HOOK`) and an
+installed manifest that declares other hooks than were installed.
+
 ## 3. Annual lifecycle
 
 ```text

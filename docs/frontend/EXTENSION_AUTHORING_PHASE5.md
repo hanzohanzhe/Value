@@ -13,7 +13,7 @@
 ## 实现与边界
 
 - 当前网页生成器只提供真实实现的 audit observer：初始化扩展自有状态，after_psm 输出年份和 PSM 输入哈希。不计算新物理算法，不消费样例 CSV 的值，不允许通过高级声明虚构其他已实现能力。
-- 源码 ZIP 使用一个独立顶层包，校验路径、文件清单、哈希、包冲突和 hook callable；安装失败回滚。重新启用校验原 hook 身份。安装报告绑定声明哈希，变更声明后旧通过报告不再适用。
+- 源码 ZIP 使用一个独立顶层包，校验路径、文件清单、哈希、包冲突和 hook callable；安装失败回滚。重新启用时重新导入并检查 hook：导入失败则拒绝；声明的 hook 与安装时不同则拒绝；只是原地改过 hook 源码则接受并记录（DECISIONS A29，与模块的 A16-4 相同）：安装记录追加 `accepted_source_edits`，安装时身份保留，readiness 给出 `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED` 琥珀色提示，Run 冻结新哈希，Compare 标为方法已改变。安装报告绑定声明哈希，变更声明后旧通过报告不再适用。
 - Run 冻结完整扩展声明和 hook 入口文件哈希；图输出经过 JSON 规范化，确保年度检查点读写身份一致。这里没有宣称捕获完整 Python 环境和全部间接依赖源码。
 - `value.extension-results/v1` 只读取 Run 的冻结文件，按扩展、年份和分页返回声明的标量摘要。文件大小和读前后身份受限；失败/未完成 Run 不展示产物，旧 Run 缺少声明明确 unavailable，不替换为当前 registry。
 - period、zone、technology 不在本结果族的维度范围。迁移说明不是已执行迁移；扩展科学成熟度仍为 experimental。

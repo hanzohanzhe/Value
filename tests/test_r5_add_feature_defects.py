@@ -126,24 +126,38 @@ class HookOutputRecordingTests(SourceBundleCase):
 
 
 class EditedSourceEnableTests(SourceBundleCase):
-    """F-中1 (partial): Enable still verifies the install identity, and now says how to recover."""
+    """F-中1 / A29: an extension edited in place is re-enabled and the edit recorded, like a module (A16-4)."""
 
-    def test_refusal_names_the_file_and_both_ways_out(self) -> None:
+    def test_edited_source_is_accepted_and_recorded(self) -> None:
         hooks = self.install()
-        original = hooks.read_bytes()
-        hooks.write_bytes(original + b"# edited in place\n")
-        self.assertEqual(len(installed_extension_source_changes(modules_root=self.modules)), 1)
+        hooks.write_bytes(hooks.read_bytes() + b"# edited in place\n")
         set_extension_enabled(EXTENSION_ID, False, modules_root=self.modules)
+        result = set_extension_enabled(EXTENSION_ID, True, modules_root=self.modules)
+        self.assertIn(EXTENSION_ID, workspace_registry(self.modules).extension_manifests())
+        edit = result["accepted_source_edit"]
+        self.assertEqual(edit["changed_modules"], [f"{self.package}.hooks"])
+        self.assertEqual(result["accepted_source_edits"], [edit])
+        # The install identity is kept, so the change stays visible as "changed since install".
+        changes = installed_extension_source_changes(modules_root=self.modules)
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["current_sha256"], edit["hook_source_identities"][0]["source_sha256"])
+        self.assertNotEqual(changes[0]["installed_sha256"], changes[0]["current_sha256"])
+
+    def test_unchanged_source_records_no_edit(self) -> None:
+        self.install()
+        set_extension_enabled(EXTENSION_ID, False, modules_root=self.modules)
+        result = set_extension_enabled(EXTENSION_ID, True, modules_root=self.modules)
+        self.assertNotIn("accepted_source_edit", result)
+        self.assertNotIn("accepted_source_edits", result)
+
+    def test_broken_hook_source_is_still_refused(self) -> None:
+        hooks = self.install()
+        set_extension_enabled(EXTENSION_ID, False, modules_root=self.modules)
+        hooks.write_bytes(b"raise RuntimeError('broken in place')\n")
         with self.assertRaises(ExtensionBundleError) as caught:
             set_extension_enabled(EXTENSION_ID, True, modules_root=self.modules)
-        self.assertEqual(caught.exception.code, "GF_EXTENSION_SOURCE_CHANGED")
-        message = str(caught.exception)
-        self.assertIn(f"{self.package}.hooks", message)
-        self.assertIn("restore the original files", message)
-        self.assertIn("new version and Python package", message)
-        hooks.write_bytes(original)
-        set_extension_enabled(EXTENSION_ID, True, modules_root=self.modules)
-        self.assertIn(EXTENSION_ID, workspace_registry(self.modules).extension_manifests())
+        self.assertEqual(caught.exception.code, "GF_EXTENSION_HOOK")
+        self.assertNotIn(EXTENSION_ID, workspace_registry(self.modules).extension_manifests())
 
 
 class WordingTests(unittest.TestCase):

@@ -4771,14 +4771,14 @@
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
-      "sha256": "2d92062aafe3dc1fb595f4eed66d713e916dcb6b0cbd3ed8cec2bc5a6a08bf4c",
-      "bytes": 28718,
+      "sha256": "a50b99a13e0cd09303fe0b27c2535e30d10f2074e0ec52050d150a413c328ba8",
+      "bytes": 29171,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/MODULE_DEVELOPER_101_ZH.md",
-      "sha256": "76510e214dc44a638c93056e84d121473c75d277938b6535fc58469571cc842f",
-      "bytes": 29722,
+      "sha256": "b29d3344058f5920b3b3652cee8cc8167a19475856a1854df25dad4ff58ba6a2",
+      "bytes": 30124,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -4951,9 +4951,9 @@
     },
     {
       "path": "docs/frontend/EXTENSION_AUTHORING_PHASE5.md",
-      "sha256": "a8724ea871997c540f4eb9c06acc81d26aea4e2658a564cef28d1f4bdc8e5de3",
-      "bytes": 3885,
-      "transform": "byte copy"
+      "sha256": "ca583c5846b6bd5f7b65ea0e9a4529cf4c84ad2b23aef3946d575387fc628c97",
+      "bytes": 4258,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/frontend/FINAL_DELIVERY_PHASE6.md",
@@ -8290,8 +8290,8 @@
     },
     {
       "path": "gridform_core/extension_bundle.py",
-      "sha256": "52aea1b7cc33bb81bba8f43a1c16f9e16ec932e07b9739baf871effacad133bb",
-      "bytes": 35732,
+      "sha256": "d5e84b1cb96aef366e467aa32c95d0806bc3ce7dd7e7c996b3966b46a0bd152a",
+      "bytes": 36484,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -12944,8 +12944,8 @@
     },
     {
       "path": "tests/test_r5_add_feature_defects.py",
-      "sha256": "fa7664698919b3ed62bd9aca9d1420e5738b0aac8b69308e3531772853f4a865",
-      "bytes": 9799,
+      "sha256": "beabbcb2a0211ce975598aab64d1e0ab3e0d455cb33d37caf8d86a677e8be55b",
+      "bytes": 10733,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {

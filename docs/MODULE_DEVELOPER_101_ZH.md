@@ -69,6 +69,11 @@ SHA-256；每个 Run 冻结新的源码哈希；Compare 把该 module 的方法�
 仍应使用新的 module version（或新 ID）、scientific version 和 Python package
 名，并以 bundle 安装。
 
+已安装扩展的 hook 源码适用同一规则（DECISIONS A29），停用后再启用也一样：
+Enable 重新导入 hook，接受原地修改，并在安装记录的 `accepted_source_edits` 中
+追加一条；readiness 显示 `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`。hook 无法导入
+（`GF_EXTENSION_HOOK`），或已安装清单声明的 hook 与安装时不同，Enable 仍然拒绝。
+
 ## 3. 年度模型链与调用位置
 
 每个模型年按下面的顺序执行：
