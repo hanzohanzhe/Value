@@ -78,3 +78,12 @@ export function pendingRunsQuestion(message, noun = "modules") {
   // R4 F-低5: an extension change is not called a module change.
   return `${message || "Runs have not finished."}\n\nChange the installed ${noun} anyway?`;
 }
+
+/** R6-1 (EM-中1): the queued Runs a confirmed lifecycle change stopped
+ * (GF_RUN_EXECUTION_IDENTITY_CHANGED), appended to the success notice. */
+export function stoppedRunsNotice(payload) {
+  const runs = Array.isArray(payload?.stopped_unstarted_runs) ? payload.stopped_unstarted_runs.filter((id) => typeof id === "string" && id) : [];
+  if (!runs.length) return "";
+  const shown = runs.slice(0, 10).join(", ") + (runs.length > 10 ? ", …" : "");
+  return ` ${runs.length} Run${runs.length === 1 ? " that had not started was" : "s that had not started were"} stopped because the installed code changed (GF_RUN_EXECUTION_IDENTITY_CHANGED): ${shown}. Resubmit ${runs.length === 1 ? "it" : "them"} with the current code from the Runs page.`;
+}

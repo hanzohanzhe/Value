@@ -372,3 +372,14 @@
 | F-R54-3 | F-低1 | 隔离面板 Disable 确认框对扩展改为 `Disable {id}? Studies that select this extension cannot run until it is enabled again or they deselect it (saved as a new revision).`（模块不变）；readiness 对停用/隔离的扩展建议 `deselect the extension in the Study (saved as a new revision)`，模块与扩展混合时两者都写 | 扩展不能被“换成另一个 module” | 否 |
 | F-R54-4 | F-低3 | 扩展卡片被 Study 引用时的说明改为 `Referenced by N saved Studies; disabling here is blocked. If it is quarantined, Disabled and quarantined can still disable it so the Studies can be repaired.`；两处规则本身不变 | 两处规则不同但卡片没有说明 | 是（措辞） |
 | F-R54-5 | F-中3 | 扩展编写台高级清单说明末尾加一句 `A Run records the initialize state and the after_psm artifacts only; see the README for the other hooks.` | 手册与界面未说明哪些钩子输出会被记录 | 否 |
+
+## R6-1（有 Run 排队时改模块或扩展；EM-中1、AF-低1；DECISIONS A29）
+
+以下按规格现有组件、token 与文案风格实现；规格没有覆盖的地方取最保守的做法，需设计方复核。
+
+| # | 缺陷 | 实现 | 原因 | 待确认 |
+|---|---|---|---|---|
+| F-R61-1 | EM-中1 | 有未结束 Run 时变更模块或扩展的确认框（文字来自后端 `GF_MODULE_LIFECYCLE_RUNS_PENDING`）对尚未开始的 Run 改为 `{n} run(s) not started yet ({ids}) will not start: the change alters the code they recorded, so VALUE stops them with GF_RUN_EXECUTION_IDENTITY_CHANGED and you resubmit them from the Runs page (Resubmit with current code)`；已在运行的 Run 一句不变。确认框组件（`window.confirm`）不变 | 原文“would start with the changed code”与实际（它们失败）相反 | 是（措辞） |
+| F-R61-2 | EM-中1 | 确认后变更成功的提示条（安装、启用、停用、移除，模块与扩展共 7 处）在原句后追加 `{n} Run(s) that had not started was/were stopped because the installed code changed (GF_RUN_EXECUTION_IDENTITY_CHANGED): {ids}. Resubmit it/them with the current code from the Runs page.`（只在后端返回 `stopped_unstarted_runs` 时） | 让用户知道哪些 Run 被停下、去哪里重新提交 | 否 |
+| F-R61-3 | EM-中1 | Runs 页：错误码为 `GF_RUN_EXECUTION_IDENTITY_CHANGED` 的失败 Run 在错误框下显示主按钮 `Resubmit with current code`（`primary full`，与 Run 按钮同一样式；启动中显示 `Starting…`），点击后以同一 Study、同一范围新建 Run（与 Run selected scope 相同的请求）；这类 Run 不显示 `Resume from verified annual checkpoint`（它从未开始，没有检查点，恢复必被拒） | 一键按当前代码重新提交 | 是（按钮位置与样式） |
+| F-R61-4 | AF-低1 | Runs 页错误框（`.error-box`）在 `{error_code}: {error}` 下另起一行显示 `error_detail`（诊断 `diagnostics/error.json` 的首行，最长 400 字符；只对 contract 与 execution_identity 两类失败给出）；新类 `.run-error-detail` 只设 `display:block`、6px 上边距与长词换行，颜色与字号沿用错误框 | 扩展钩子输出被拒等契约失败原来只显示通用说明，原因只在诊断文件里 | 否 |

@@ -15,7 +15,7 @@ import { Badge, formatBytes, formatNumber, modelDisplayName, withUnit } from "./
 import { API_BASE, OFFLINE_AFTER_FAILURES, classifyRefreshFailure, getJson, pollDelay, serviceState } from "./features/shared/api";
 import "./features/shared/service-status.css";
 import ModuleQuarantinePanel, { type QuarantineRow } from "./features/modules/ModuleQuarantinePanel";
-import { isPendingRunsRefusal, pendingRunsQuestion } from "./features/modules/module-quarantine.mjs";
+import { isPendingRunsRefusal, pendingRunsQuestion, stoppedRunsNotice } from "./features/modules/module-quarantine.mjs";
 import DisabledEntriesPanel, { type EntryError } from "./features/modules/DisabledEntriesPanel";
 import DataPackValidationPanel from "./features/data/DataPackValidationPanel";
 import { inputsPresentSuffix, validationLayers, worstStatus, type DataPackValidationReport } from "./features/data/dataPackValidation.ts";
@@ -1167,7 +1167,7 @@ export default function Home() {
       const { response, payload } = await lifecycleRequest(`${API}${row.disablePath.replace(/^\/api/, "")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Disabling ${row.id} failed`}`);
       const parkedCopies = (payload as { installation?: { parked_manifests?: string[] } }).installation?.parked_manifests ?? [];
-      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.${parkedCopies.length ? ` Its other manifest${parkedCopies.length === 1 ? " was" : "s were"} moved out of the scanned folder: ${parkedCopies.map((file) => `modules/${file}`).join(", ")}.` : ""}`); setPreflight(null); await refresh();
+      setNotice(`${row.id} is disabled. Studies that used it need another module before they can run.${parkedCopies.length ? ` Its other manifest${parkedCopies.length === 1 ? " was" : "s were"} moved out of the scanned folder: ${parkedCopies.map((file) => `modules/${file}`).join(", ")}.` : ""}${stoppedRunsNotice(payload)}`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Disable failed"); }
     finally { setQuarantineBusy(""); }
   }
@@ -1192,7 +1192,7 @@ export default function Home() {
       const { response, payload } = await lifecycleRequest(`${API}${lifecyclePath(entry, "enable")}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }, {});
       if (!response.ok) throw new EntryLifecycleError(payload.error || `Enabling ${entry.id} failed`, payload.error_code);
       recordEntryError(entry.key, null);
-      setNotice(`${entry.id} is enabled. Check readiness again before running a Study that uses it.`); setPreflight(null); await refresh();
+      setNotice(`${entry.id} is enabled. Check readiness again before running a Study that uses it.${stoppedRunsNotice(payload)}`); setPreflight(null); await refresh();
     } catch (reason) { recordEntryError(entry.key, { code: reason instanceof EntryLifecycleError ? reason.code : undefined, message: reason instanceof Error ? reason.message : "Enable failed" }); }
     finally { setQuarantineBusy(""); }
   }
@@ -1206,7 +1206,7 @@ export default function Home() {
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || `Removing ${entry.id} failed`}${dependents.length ? ` — ${dependents.join(", ")}` : ""}`);
       }
       recordEntryError(entry.key, null);
-      setNotice(`${entry.id} was removed from VALUE. Its files are kept in modules/${payload.removed?.destination ?? "disabled-manifests/removed"}.`); setPreflight(null); await refresh();
+      setNotice(`${entry.id} was removed from VALUE. Its files are kept in modules/${payload.removed?.destination ?? "disabled-manifests/removed"}.${stoppedRunsNotice(payload)}`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Remove failed"); }
     finally { setQuarantineBusy(""); }
   }
@@ -1226,7 +1226,7 @@ export default function Home() {
         body: moduleBundle,
       }) as { response: Response; payload: { error?: string; error_code?: string; installation: { name: string; module_version: string } } };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Module installation failed"}`);
-      setNotice(`${payload.installation.name} ${payload.installation.module_version} passed structural conformance. Run a wiring test before research use.`);
+      setNotice(`${payload.installation.name} ${payload.installation.module_version} passed structural conformance. Run a wiring test before research use.${stoppedRunsNotice(payload)}`);
       setModuleBundle(null); setModuleTrust(false); setBundleInputGeneration((generation) => generation + 1); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Module installation failed"); }
     finally { setModuleInstalling(false); }
@@ -1242,7 +1242,7 @@ export default function Home() {
         const projects = payload.dependents?.projects?.join(", ");
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${projects ? `: ${projects}` : ""}`);
       }
-      setNotice(`${installation.name} is now ${enabled ? "enabled and selectable" : "disabled"}.`); setPreflight(null); await refresh();
+      setNotice(`${installation.name} is now ${enabled ? "enabled and selectable" : "disabled"}.${stoppedRunsNotice(payload)}`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Module state change failed"); }
     finally { setModuleLifecycle(""); }
   }
@@ -1262,7 +1262,7 @@ export default function Home() {
         body: extensionBundle,
       }) as { response: Response; payload: { error?: string; error_code?: string; installation: { extension_id: string; version: string } } };
       if (!response.ok) throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error || "Extension installation failed"}`);
-      setNotice(`${payload.installation.extension_id} ${payload.installation.version} passed structural extension validation. Its declared scientific maturity has not changed.`);
+      setNotice(`${payload.installation.extension_id} ${payload.installation.version} passed structural extension validation. Its declared scientific maturity has not changed.${stoppedRunsNotice(payload)}`);
       setExtensionBundle(null); setExtensionTrust(false); setBundleInputGeneration((generation) => generation + 1); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Extension installation failed"); }
     finally { setExtensionInstalling(false); }
@@ -1278,7 +1278,7 @@ export default function Home() {
         const dependents = [...(payload.dependents?.projects ?? []), ...(payload.dependents?.runs_and_retained_history ?? [])];
         throw new Error(`${payload.error_code ? `${payload.error_code}: ` : ""}${payload.error}${dependents.length ? ` — ${dependents.join(", ")}` : ""}`);
       }
-      setNotice(`${installation.extension_id} is now ${enabled ? "enabled" : "disabled"}.`); setPreflight(null); await refresh();
+      setNotice(`${installation.extension_id} is now ${enabled ? "enabled" : "disabled"}.${stoppedRunsNotice(payload)}`); setPreflight(null); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Extension lifecycle change failed"); }
     finally { setExtensionLifecycle(""); }
   }
@@ -1415,6 +1415,13 @@ export default function Home() {
       setNotice("The Run was marked lost and recorded as failed. Resume it from its last annual checkpoint when ready."); await refresh();
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Mark as lost failed"); }
     finally { setLaunching(""); }
+  }
+  /** R6-1 (EM-中1): a Run stopped before it started because the installed code
+   * changed is resubmitted as a new Run of the same Study and scope. */
+  async function resubmitRun(run: ModelRun) {
+    const project = workspace.projects.find((item) => item.id === run.project_id);
+    if (!project) { setNotice("The source Study of this Run is not available; restore it before resubmitting."); return; }
+    await startRun(run.mode as RunMode, project);
   }
   async function rerunAsCopperplate(run: ModelRun) {
     setLaunching("rerun-copperplate"); setNotice("");
@@ -1673,7 +1680,7 @@ export default function Home() {
 
     {view === "projects" && <div className="page project-page"><div className="page-title"><div><span>Study setup</span><h2>Define the scientific question, then resolve the model</h2><p>The composer connects one data pack, physical domain, optional extensions, model chain and assumptions. Saving creates an immutable revision of exactly the graph shown in Review.</p></div><Badge tone={draftResolution?.valid ? "good" : "warn"}>{draftResolving ? "Resolving" : draftResolution?.valid ? "Draft ready" : "Draft incomplete"}</Badge></div><StudyComposer initialStep={composerInitialStep} workspace={workspace} form={projectForm} selectedPackId={selectedPack?.id ?? selectedPackId} resolution={draftResolution} resolving={draftResolving} resolutionError={draftResolutionError} savedProjects={workspace.projects} studyTrash={workspace.study_trash} selectedProjectId={selectedProjectId} assumptions={<><AdvancedSettings definitions={definitions} values={{ ...parameterValues, ...runtimeValues }} resolvedSources={resolvedSources} onChange={(id, value, runtime) => runtime ? setRuntimeValues((current) => ({ ...current, [id]: value })) : setParameterValues((current) => ({ ...current, [id]: value }))} /><button className="text-button full" onClick={() => void previewParameters()}>Check effective base values</button></>} onForm={(update) => setProjectForm(update)} onPack={setSelectedPackId} onDomain={chooseDomain} onExtension={toggleExtension} onModule={selectStudyModule} onExtensionParameter={(name, value) => setProjectForm((current) => ({ ...current, extension_parameters: { ...current.extension_parameters, [name]: value } }))} onAcknowledgement={(key, value, checked) => setProjectForm((current) => { const maturity_acknowledgements = { ...current.maturity_acknowledgements }; if (checked) maturity_acknowledgements[key] = value; else delete maturity_acknowledgements[key]; return { ...current, maturity_acknowledgements }; })} onSave={() => void saveProject()} onLoad={loadProjectRevision} onOpenRun={(project) => { selectRunProject(project.id); setView("run"); }} onTrash={(project, linkedRunCount) => void moveStudyToTrash(project, linkedRunCount)} onRestore={(entry) => void restoreStudyEntry(entry)} onOpenTrashRuns={(entry) => { const run = workspace.runs.find((item) => item.project_id === entry.study_id); setSelectedProjectId(entry.study_id); setSelectedRunId(run?.id ?? ""); setSelectedRunDetail(null); setView("run"); if (!run) setNotice("No indexed Run is available for this trashed Study; restore it to inspect non-indexed legacy evidence."); }} onOpenData={() => { setDataContextId("draft"); setView("data"); }} traceLevel={(runtimeValues["runtime.market_trace_level"] as TraceProfile | undefined) ?? "summary"} onTraceLevel={(trace) => setRuntimeValues((current) => ({ ...current, "runtime.market_trace_level": trace }))} methodology={{ catalogue: methodologyCatalogue, profileId: selectedProfileId(parameterValues, methodologyCatalogue), error: methodologyError }} editingStudyName={editingProjectId ? workspace.projects.find((project) => project.id === editingProjectId)?.name ?? editingProjectId : undefined} onMethodology={chooseMethodology} /></div>}
 
-    {view === "run" && <RunWorkspace methodologyCatalogue={methodologyCatalogue} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: openView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost, openInspect: (tab) => { setInspectTarget({ tab, nonce: Date.now() }); setView("audit"); } }} />}
+    {view === "run" && <RunWorkspace methodologyCatalogue={methodologyCatalogue} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: openView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, resubmitRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost, openInspect: (tab) => { setInspectTarget({ tab, nonce: Date.now() }); setView("audit"); } }} />}
 
     {view === "marketReplay" && <MarketReplayView key={`${selectedRun?.id ?? "no-run"}:${replayTarget?.nonce ?? 0}`} run={selectedRun} onCreateFullReplayRevision={createFullReplayRevision} initialWindow={replayTarget} focusStressEvents={stressEventsFocus > 0} onStressEventsFocused={() => setStressEventsFocus(0)} />}
 

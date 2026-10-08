@@ -41,7 +41,7 @@ export type ModelRun = RunValidationFields & {
   input_snapshot_id?: string; input_tree_sha256?: string; recorded_project_revision_sha256?: string | null;
   id: string; project_id: string; project_name: string; mode: RunMode;
   status: "queued" | "snapshotting" | "running" | "cancel_requested" | "cancelled" | "completed" | "failed" | "archived" | "deleting"; current_stage: string;
-  completed_years: number; total_years: number; updated_at: string; error?: string; error_code?: string;
+  completed_years: number; total_years: number; updated_at: string; error?: string; error_code?: string; /** R6-1: first line of diagnostics/error.json for contract and execution-identity failures. */ error_detail?: string;
   results: RunResult[]; modules?: Record<string, string>;
   module_evidence?: Record<string, ModuleEvidence>;
   diagnostic?: { periods_per_year?: number; total_periods?: number; years?: number[]; purpose?: string; annual_economics_published?: boolean; scientific_results_published?: boolean; warning?: string };

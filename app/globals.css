@@ -456,6 +456,8 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .progress { height: 5px; background: #e2e6ee; border-radius: 5px; margin-bottom: 20px; overflow: hidden; }
 .progress i { display: block; height: 100%; background: var(--blue); transition: width .25s ease; }
 .error-box { border: 1px solid #e6b8b8; border-radius: 7px; background: var(--red-soft); color: #843737; padding: 13px; font-size: 12px; margin-bottom: 14px; }
+/* R6-1 (EM-M1, AF-L1): the first line of the Run diagnostic under the public error. */
+.error-box .run-error-detail { display: block; margin-top: 6px; overflow-wrap: anywhere; }
 .info-box { margin-top: 14px; padding: 13px; border: 1px solid #c4d1ee; border-radius: 7px; background: var(--blue-soft); color: #40557e; font-size: 11px; line-height: 1.6; }
 .smoke-diagnostic { margin-top: 20px; padding: 23px; border: 1px solid #bfded8; border-radius: 10px; background: var(--teal-soft); }
 .smoke-diagnostic h3 { margin: 13px 0 7px; font-size: 19px; }

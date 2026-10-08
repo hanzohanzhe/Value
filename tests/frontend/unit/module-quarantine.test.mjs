@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  INSTALL_RECORD_INVALID, disableConfirmation, isPendingRunsRefusal, pendingRunsQuestion, quarantineRows, quarantineTitle, sanitizeMessage,
+  INSTALL_RECORD_INVALID, disableConfirmation, isPendingRunsRefusal, pendingRunsQuestion, quarantineRows, quarantineTitle, sanitizeMessage, stoppedRunsNotice,
 } from "../../../app/features/modules/module-quarantine.mjs";
 
 // P0-2 S9 (spec 6).
@@ -42,4 +42,12 @@ test("texts follow spec 6 and the pending-runs refusal is recognised", () => {
   assert.match(pendingRunsQuestion("Runs have not finished: 1 run(s) already running"), /already running[\s\S]*anyway\?$/);
   assert.equal(sanitizeMessage("C:\\Users\\bob\\x.py and /Users/bob/y.py"), "<path> and <path>");
   assert.deepEqual(quarantineRows(null), []);
+});
+
+// R6-1 (EM-中1): the success notice names the queued Runs the change stopped.
+test("stopped unstarted runs are named in the lifecycle notice", () => {
+  assert.equal(stoppedRunsNotice({}), "");
+  assert.equal(stoppedRunsNotice({ stopped_unstarted_runs: [] }), "");
+  assert.match(stoppedRunsNotice({ stopped_unstarted_runs: ["run-a"] }), /^ 1 Run that had not started was stopped .*GF_RUN_EXECUTION_IDENTITY_CHANGED.*run-a\. Resubmit it /);
+  assert.match(stoppedRunsNotice({ stopped_unstarted_runs: ["a", "b"] }), /2 Runs that had not started were stopped.*a, b\. Resubmit them /);
 });

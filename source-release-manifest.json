@@ -3445,8 +3445,8 @@
     },
     {
       "path": "app/features/modules/module-quarantine.mjs",
-      "sha256": "23405abfe1d62d077c8eb647cdec2a083dbf36f085715e1d4ff63a83428e5bf7",
-      "bytes": 4011,
+      "sha256": "60b05e9f4d08a16dee81a5cf0f94f047be68b1b97459bc7906ceadd02a9adab3",
+      "bytes": 4758,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3553,8 +3553,8 @@
     },
     {
       "path": "app/features/runs/RunWorkspace.tsx",
-      "sha256": "a85a1899b369751a00d196b361648b4c09913d5d5f98236ce737ed4230877e8d",
-      "bytes": 22939,
+      "sha256": "3715b671304d2e6a52f17a473c52d381874a53849db3038cb01dfe7e6ca20db6",
+      "bytes": 23900,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3607,8 +3607,8 @@
     },
     {
       "path": "app/features/runs/types.ts",
-      "sha256": "2351f229428c592ce685dac9cf1ed614a618da2f2f1b550ee7c33b707ac876ed",
-      "bytes": 7333,
+      "sha256": "ca431a2de584570bea0b4bd88d24daee36aa38cb935c89377ee6b6b19b12ef84",
+      "bytes": 7452,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3961,8 +3961,8 @@
     },
     {
       "path": "app/globals.css",
-      "sha256": "a5d97187b2887fb0a9ecc11999854889478bbd5a10fbb6a452755909784e7110",
-      "bytes": 107412,
+      "sha256": "ffd51cd10b0a60177a545fbbd374a398a562dc7ea62a087c253362a2392c6b71",
+      "bytes": 107593,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -3973,8 +3973,8 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "3ca7008ad1540b740e36fa4944ed5b31bcda7064eeb9085aac6881e881b7064b",
-      "bytes": 182037,
+      "sha256": "9cb2f151df1070df511377d11fbc9c3ae8e5b6ec78db79d21ff741ece08de74a",
+      "bytes": 182732,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -11060,8 +11060,8 @@
     },
     {
       "path": "tests/frontend/unit/module-quarantine.test.mjs",
-      "sha256": "40f20d75987abadb29431f79022e08118765bdc42ff9f72a905016500d88b78d",
-      "bytes": 2978,
+      "sha256": "b82d81d828b3ca3911622cc404be0dfd7d602ed216005914f838df2a298001e0",
+      "bytes": 3587,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
