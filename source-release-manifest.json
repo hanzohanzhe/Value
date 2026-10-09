@@ -2523,9 +2523,9 @@
     },
     {
       "path": "README_BILINGUAL.md",
-      "sha256": "fc85943d574f301075222a9e89928bf0db04140e29ce586a3c205e36fb311a16",
-      "bytes": 14327,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "65b2b76ac6a0142a2bf7f22accf7f14f9e3202da929f549be4f526c11e3d055f",
+      "bytes": 14331,
+      "transform": "Align bilingual guide with methodology 0.4.1"
     },
     {
       "path": "SECURITY.md",

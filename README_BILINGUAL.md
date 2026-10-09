@@ -1,7 +1,7 @@
 # VALUE bilingual project guide
 
-> **版本 / Version:** 源码应用 VALUE **0.7.0-alpha.1**（Python `0.7.0a1`）；方法学 **0.4（2026-10-08）**。安装包、数据发行与源码的对应关系见[部署说明](docs/DEPLOYMENT.md)和[发行映射](docs/release/release-map.json)。
-> Source application VALUE 0.7.0-alpha.1; methodology edition 0.4 (2026-10-08). See the deployment guide and the release map for installers and data releases.
+> **版本 / Version:** 源码应用 VALUE **0.7.0-alpha.1**（Python `0.7.0a1`）；方法学 **0.4.1（2026-10-09）**。安装包、数据发行与源码的对应关系见[部署说明](docs/DEPLOYMENT.md)和[发行映射](docs/release/release-map.json)。
+> Source application VALUE 0.7.0-alpha.1; methodology edition 0.4.1 (2026-10-09). See the deployment guide and the release map for installers and data releases.
 
 [一句话说明](#0-一句话说明--one-sentence-explanation) · [核心对象](#1-核心对象--core-objects) · [界面](#2-界面与地址--interface-and-addresses) · [四条路径](#3-四条研究路径--the-four-research-paths) · [运行与比较](#4-运行比较与检查--runs-comparison-and-inspect) · [边界](#5-能说什么不能说什么--claims-and-limits) · [详细文档](#7-详细文档--detailed-guides)
 
