@@ -14204,8 +14204,8 @@
     },
     {
       "path": "website/methodology_page.py",
-      "sha256": "cd99ced9bb5bbe4f9975ace7994358f11ca2a335bed535fe9b29607bf5cf024c",
-      "bytes": 4013,
+      "sha256": "e48fda268021e8543f6e819d8ecc9bf30a26d93d91259964c6b589b4764ccfb3",
+      "bytes": 4133,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
