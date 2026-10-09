@@ -8,185 +8,165 @@
       "repository": "https://github.com/hanzohanzhe/Value",
       "releases": [
         {
-          "version": "2026-10-03-rc1",
+          "version": "2026-10-09-a1",
+          "app_version": "0.7.0-alpha.1",
           "platform": "linux-x64",
-          "date": "2026-10-04",
-          "size": "445.57 MiB",
-          "bytes": 467218327,
+          "date": "2026-10-09",
+          "size": "447.13 MiB",
+          "bytes": 468850273,
           "requirements": "Bundled Python and Node; see platform installation guide",
-          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
-          "sha256": "aaaf0adcf9a3b74e89e66fc378c1879656325222e776d95b173c97b23cbcba56",
-          "filename": "VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
+          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-Linux-x64-Full-2026-10-09-a1.tar.gz",
+          "sha256": "2f94dcb8afa9ad0bb2eb32b099fef21d81b09b20c8182267e8b0fad62ed4f960",
+          "filename": "VALUE-Linux-x64-Full-2026-10-09-a1.tar.gz",
           "native_acceptance": true
         },
         {
-          "version": "2026-10-03-rc1",
+          "version": "2026-10-09-a1",
+          "app_version": "0.7.0-alpha.1",
           "platform": "macos-arm64",
-          "date": "2026-10-04",
-          "size": "232.48 MiB",
-          "bytes": 243768080,
+          "date": "2026-10-09",
+          "size": "234.34 MiB",
+          "bytes": 245725948,
           "requirements": "Bundled Python and Node; see platform installation guide",
-          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
-          "sha256": "e17b4b9c7dc8a1227253bd3d0f3be0fa0203c772978ca238d565626ec24fd676",
-          "filename": "VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
+          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-macOS-AppleSilicon-Full-2026-10-09-a1.zip",
+          "sha256": "e3bb8a1bd4c6359a8fa645f0acf6921ccad19252f96f1546abc57daed3750dae",
+          "filename": "VALUE-macOS-AppleSilicon-Full-2026-10-09-a1.zip",
           "native_acceptance": false
         },
         {
-          "version": "2026-10-03-rc1",
+          "version": "2026-10-09-a1",
+          "app_version": "0.7.0-alpha.1",
           "platform": "macos-x64",
-          "date": "2026-10-04",
-          "size": "294.80 MiB",
-          "bytes": 309120538,
+          "date": "2026-10-09",
+          "size": "296.66 MiB",
+          "bytes": 311071350,
           "requirements": "Bundled Python and Node; see platform installation guide",
-          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
-          "sha256": "72360d942ec277530d9c7f094dd5465605b86f12ee5fecdb3e1af26a0c2756f5",
-          "filename": "VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
+          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-macOS-Intel-Full-2026-10-09-a1.zip",
+          "sha256": "9f06fded212fbc1c487a27202b238939087cd7a932744501be091c410adcf809",
+          "filename": "VALUE-macOS-Intel-Full-2026-10-09-a1.zip",
           "native_acceptance": false
         },
         {
-          "version": "2026-10-03-rc1",
+          "version": "2026-10-09-a1",
+          "app_version": "0.7.0-alpha.1",
           "platform": "windows-x64",
-          "date": "2026-10-04",
-          "size": "295.58 MiB",
-          "bytes": 309939521,
+          "date": "2026-10-09",
+          "size": "297.44 MiB",
+          "bytes": 311890341,
           "requirements": "Bundled Python and Node; see platform installation guide",
-          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
-          "sha256": "5540a324af4f2ba98d5dd2eb9c744ba42efa2198b86c9adf4d73632733fc291c",
-          "filename": "VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
+          "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-Windows-x64-Full-2026-10-09-a1.zip",
+          "sha256": "7a2a6db23dbf363b8d533014b8fbcdf36ecf0d063f823e5aa0a6ebc0bc8bf9d4",
+          "filename": "VALUE-Windows-x64-Full-2026-10-09-a1.zip",
           "native_acceptance": false
         }
       ],
       "citation": null
     }
   ],
-  "candidate_release_id": "2026-10-03-rc1",
-  "package_evidence_date": "2026-10-03",
+  "candidate_release_id": "2026-10-09-a1",
+  "package_evidence_date": "2026-10-09",
   "website_repository": "https://github.com/hanzohanzhe/Value/tree/main/website",
   "methodology_revision_date": "2026-10-09",
   "methodology_edition": "0.4.1",
   "download_host": "https://github.com/hanzohanzhe/Value/releases",
   "publication_ready": true,
-  "source_tag": "source-2026-10-04",
-  "data_tag": "value-data-2026-10-04",
+  "source_tag": "source-2026-10-09",
+  "data_tag": "value-data-2026-10-09",
   "planned_release_assets": [
     {
-      "version": "2026-10-03-rc1",
+      "version": "2026-10-09-a1",
+      "app_version": "0.7.0-alpha.1",
       "platform": "linux-x64",
-      "date": "2026-10-04",
-      "size": "445.57 MiB",
-      "bytes": 467218327,
+      "date": "2026-10-09",
+      "size": "447.13 MiB",
+      "bytes": 468850273,
       "requirements": "Bundled Python and Node; see platform installation guide",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
-      "sha256": "aaaf0adcf9a3b74e89e66fc378c1879656325222e776d95b173c97b23cbcba56",
-      "filename": "VALUE-Linux-x64-Full-2026-10-03-rc1.tar.gz",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-Linux-x64-Full-2026-10-09-a1.tar.gz",
+      "sha256": "2f94dcb8afa9ad0bb2eb32b099fef21d81b09b20c8182267e8b0fad62ed4f960",
+      "filename": "VALUE-Linux-x64-Full-2026-10-09-a1.tar.gz",
       "native_acceptance": true
     },
     {
-      "version": "2026-10-03-rc1",
+      "version": "2026-10-09-a1",
+      "app_version": "0.7.0-alpha.1",
       "platform": "macos-arm64",
-      "date": "2026-10-04",
-      "size": "232.48 MiB",
-      "bytes": 243768080,
+      "date": "2026-10-09",
+      "size": "234.34 MiB",
+      "bytes": 245725948,
       "requirements": "Bundled Python and Node; see platform installation guide",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
-      "sha256": "e17b4b9c7dc8a1227253bd3d0f3be0fa0203c772978ca238d565626ec24fd676",
-      "filename": "VALUE-macOS-AppleSilicon-Full-2026-10-03-rc1.zip",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-macOS-AppleSilicon-Full-2026-10-09-a1.zip",
+      "sha256": "e3bb8a1bd4c6359a8fa645f0acf6921ccad19252f96f1546abc57daed3750dae",
+      "filename": "VALUE-macOS-AppleSilicon-Full-2026-10-09-a1.zip",
       "native_acceptance": false
     },
     {
-      "version": "2026-10-03-rc1",
+      "version": "2026-10-09-a1",
+      "app_version": "0.7.0-alpha.1",
       "platform": "macos-x64",
-      "date": "2026-10-04",
-      "size": "294.80 MiB",
-      "bytes": 309120538,
+      "date": "2026-10-09",
+      "size": "296.66 MiB",
+      "bytes": 311071350,
       "requirements": "Bundled Python and Node; see platform installation guide",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
-      "sha256": "72360d942ec277530d9c7f094dd5465605b86f12ee5fecdb3e1af26a0c2756f5",
-      "filename": "VALUE-macOS-Intel-Full-2026-10-03-rc1.zip",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-macOS-Intel-Full-2026-10-09-a1.zip",
+      "sha256": "9f06fded212fbc1c487a27202b238939087cd7a932744501be091c410adcf809",
+      "filename": "VALUE-macOS-Intel-Full-2026-10-09-a1.zip",
       "native_acceptance": false
     },
     {
-      "version": "2026-10-03-rc1",
+      "version": "2026-10-09-a1",
+      "app_version": "0.7.0-alpha.1",
       "platform": "windows-x64",
-      "date": "2026-10-04",
-      "size": "295.58 MiB",
-      "bytes": 309939521,
+      "date": "2026-10-09",
+      "size": "297.44 MiB",
+      "bytes": 311890341,
       "requirements": "Bundled Python and Node; see platform installation guide",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-03-rc1/VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
-      "sha256": "5540a324af4f2ba98d5dd2eb9c744ba42efa2198b86c9adf4d73632733fc291c",
-      "filename": "VALUE-Windows-x64-Full-2026-10-03-rc1.zip",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/VALUE-Windows-x64-Full-2026-10-09-a1.zip",
+      "sha256": "7a2a6db23dbf363b8d533014b8fbcdf36ecf0d063f823e5aa0a6ebc0bc8bf9d4",
+      "filename": "VALUE-Windows-x64-Full-2026-10-09-a1.zip",
       "native_acceptance": false
     }
   ],
   "data_assets": [
     {
-      "filename": "VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip",
-      "bytes": 62224519,
-      "sha256": "3b885bdb8b0945c580c027ea76113cf74ca0304ccda5bfe2ba54d8e3a797afb8",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-Package2-11zone-runtime-overlays-public1-2026-10-04.zip",
+      "filename": "value-uk-open-data-pack-public2-2026-10-09.zip",
+      "bytes": 640439598,
+      "sha256": "b6ceac96b8de0dfd0364881f873b3b61ddb49480f5823d68118bf8bfb58581cf",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-09/value-uk-open-data-pack-public2-2026-10-09.zip",
       "title": {
-        "en": "11-zone overlay family",
-        "zh": "11 区 overlay 集合"
+        "en": "GBP1 public2 national data (corrected methodology)",
+        "zh": "GBP1 public2 全国数据（修正口径）"
       },
       "interface": {
-        "en": "Unzip the container, select one of the 33 nested eight-role ZIPs, and follow its bundled Python installer instructions using extension dataset slots.",
-        "zh": "解压容器，选择 33 个八类角色子包之一，按包内 Python 安装说明通过扩展数据槽接入。"
+        "en": "Install on the Data page (Install a VALUE data pack) or through the Data API. Pack ID: value-uk-open-data-pack-public2. Use the corrected (default) methodology. Interconnector flow sign: declared_unverified.",
+        "zh": "在“数据”页的“安装 VALUE 数据包”或通过 Data API 安装。Pack ID：value-uk-open-data-pack-public2。使用修正口径（默认）。互联线潮流符号：declared_unverified。"
       }
     },
     {
-      "filename": "VALUE-Package2-national-demand-component-2026-10-04.zip",
-      "bytes": 1183359,
-      "sha256": "0ae76f16982e8eda29274f2cce2b5296c3af5971e4ac2b2ed178ef8b2f578190",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-Package2-national-demand-component-2026-10-04.zip",
+      "filename": "value-uk-calendar-vx-trade001-public2-2026-10-09.zip",
+      "bytes": 638868381,
+      "sha256": "cd26e841661d21155ff1e10b18b83257fed9fbeef7c833212aebdf52ab5cffca",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-09/value-uk-calendar-vx-trade001-public2-2026-10-09.zip",
       "title": {
-        "en": "National demand component",
-        "zh": "全国需求补充组件"
+        "en": "R029 public2 national inputs (corrected methodology)",
+        "zh": "R029 public2 全国输入（修正口径）"
       },
       "interface": {
-        "en": "Follow the bundled README to add these supplementary input files to your dataset.",
-        "zh": "按包内 README 将这些补充输入文件加入数据集。"
+        "en": "Install on the Data page (Install a VALUE data pack) or through the Data API. Pack ID: value-uk-calendar-vx-trade001-public2. Use the corrected (default) methodology; wind and solar inputs are declared hourly. Interconnector flow sign: declared_unverified.",
+        "zh": "在“数据”页的“安装 VALUE 数据包”或通过 Data API 安装。Pack ID：value-uk-calendar-vx-trade001-public2。使用修正口径（默认）；风光输入声明为逐时。互联线潮流符号：declared_unverified。"
       }
     },
     {
-      "filename": "VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip",
-      "bytes": 644362870,
-      "sha256": "c6fa4a09bd94967a820d8f3c6dbd02df58a7d1c242663dd9461b564f974ce453",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip",
+      "filename": "VALUE-UK-GBP1-23zone-research-suite-public2-2026-10-09.zip",
+      "bytes": 645219333,
+      "sha256": "0e96c0d605514fc285636d6c13c7d55466cf078e8f1fcc7bdee8637071039783",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-09/VALUE-UK-GBP1-23zone-research-suite-public2-2026-10-09.zip",
       "title": {
-        "en": "GBP1 + 23-zone suite",
-        "zh": "GBP1 与 23 区研究套件"
+        "en": "GBP1 public2 + 23-zone research suite (corrected methodology)",
+        "zh": "GBP1 public2 与 23 区研究套件（修正口径）"
       },
       "interface": {
-        "en": "Import through the research-suite UI/API; configure the national and network components using their corresponding settings.",
-        "zh": "通过研究套件 UI/API 导入；按对应设置配置全国与网络组件。"
-      }
-    },
-    {
-      "filename": "value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip",
-      "bytes": 4776057,
-      "sha256": "9800610146cc5022b7ea8e4b0caba9ab76a32c857cb328c42bec746e2493d48a",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip",
-      "title": {
-        "en": "23-zone network overlay",
-        "zh": "23 区网络 overlay"
-      },
-      "interface": {
-        "en": "Follow the Python installation instructions and use the zonal conditional dataset slots.",
-        "zh": "按 Python 安装说明，通过分区条件数据槽接入。"
-      }
-    },
-    {
-      "filename": "value-uk-calendar-vx-trade001-public1-2026-10-04.zip",
-      "bytes": 638859841,
-      "sha256": "cdab4222b6030b377499e5060e2d03b6a7c704c0ddf0d6cc2ea73dee202b2f04",
-      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-calendar-vx-trade001-public1-2026-10-04.zip",
-      "title": {
-        "en": "R029 national inputs",
-        "zh": "R029 全国输入"
-      },
-      "interface": {
-        "en": "Import as ordinary national Data inputs. Frozen doctoral replay remains to be verified, including initialization and investment eligibility.",
-        "zh": "作为普通全国 Data 输入导入；博士冻结复跑仍待验证，包括初始化与投资资格路径。"
+        "en": "Install on the Data page (Install the VALUE-UK research suite). The suite installs GBP1 public2 and the 23-zone network pack and creates copperplate and zonal Studies under the corrected (default) methodology. Zonal results are spatially indicative: thermal plant, nuclear, storage and imports use the England fallback zone.",
+        "zh": "在“数据”页的“安装 VALUE-UK 研究套件”安装。套件装入 GBP1 public2 和 23 区网络包，创建修正口径（默认）的铜板与分区 Study。分区结果的空间分布只具指示意义：火电、核电、储能和进口使用英格兰兜底分区。"
       }
     },
     {
@@ -195,20 +175,22 @@
       "sha256": "0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2",
       "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-open-data-pack-v1-public1-2026-10-04.zip",
       "title": {
-        "en": "GBP1 national data",
-        "zh": "GBP1 全国数据"
+        "en": "GBP1 public1 national data (doctoral reproduction)",
+        "zh": "GBP1 public1 全国数据（论文复现口径）"
       },
       "interface": {
-        "en": "Import through the national Data UI/API.",
-        "zh": "通过全国 Data UI/API 导入。"
+        "en": "Install through the national Data UI/API. Use the doctoral reproduction profile.",
+        "zh": "通过全国 Data UI/API 安装，使用论文复现口径。"
       }
     }
   ],
   "source_validation": {
-    "clean_install": true,
-    "frontend_build": true,
-    "wheel_objects": 13,
-    "teaching_short_run": "passed",
-    "historical_scientific_replay": false
+    "quick_gate": "passed",
+    "frontend_build": "passed",
+    "publication_allowlist": "passed",
+    "clean_source_checks": "passed",
+    "application_c1_file_identity": "passed",
+    "application_commit": "16d298e164a8f006c6f1a11626e39cc864743145",
+    "scope": "Checks on the frozen source and application build; installed runtime acceptance is recorded separately for Linux Full."
   }
 }

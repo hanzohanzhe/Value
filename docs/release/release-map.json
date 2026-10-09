@@ -31,13 +31,21 @@
   "installers": {
     "candidate": "2026-10-09-a1",
     "release_tag": "value-2026-10-09-a1",
-    "status": "preparing",
-    "platforms": [],
+    "status": "released_prerelease",
+    "platforms": [
+      "linux-x64",
+      "macos-arm64",
+      "macos-x64",
+      "windows-x64"
+    ],
     "validation": {
-      "linux": "pending new Full package acceptance",
+      "linux": "passed: offline empty-prefix installation, startup, 48-period VALUE 101 day and shutdown on 2026-10-09",
       "windows": "not_evaluated; experimental",
       "macos": "not_evaluated; experimental"
-    }
+    },
+    "application_source_commit": "16d298e164a8f006c6f1a11626e39cc864743145",
+    "source_alignment": "docs/release/installer-source-alignment.json",
+    "metadata_url": "https://github.com/hanzohanzhe/Value/releases/download/value-2026-10-09-a1/Full-metadata.json"
   },
   "data": {
     "included_cc0_packs": [

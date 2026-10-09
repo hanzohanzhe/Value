@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "Please cite the exact VALUE source commit or release and the dataset version used. Runtime acceptance does not constitute scientific validation."
+title: "VALUE electricity-system modelling framework"
+type: software
+version: 2026-10-09-a1
+date-released: 2026-10-09
+authors:
+  - given-names: "Hanzhe"
+    family-names: "Xing"
+license: Apache-2.0
+repository-code: "https://github.com/hanzohanzhe/Value"
+url: "https://value.ac"
+
+abstract: Full installer containing VALUE 0.7.0-alpha.1.

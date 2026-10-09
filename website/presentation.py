@@ -25,9 +25,9 @@ CHANGES={
 '11 区集合包含运行 overlay，不是完整的 29 项年度研究复现套件。':'11 区集合包含 33 个运行 overlay；完整的 29 项年度研究复现套件属于独立研究交付。',
 'CC0 applies to the separately identified synthetic teaching packs, not every research dataset.':'CC0 covers the identified synthetic teaching packs; research datasets use their recorded source terms.',
 'CC0 适用于明确标识的合成教学包，不适用于全部研究数据。':'CC0 适用于明确标识的合成教学包；研究数据使用其记录的来源条款。',
-'source-2026-10-04 passed clean installation, frontend build, thirteen wheel-object checks and a short teaching run. Installer candidates retain their own earlier application identity; the source checks do not establish frozen doctoral or annual research replay.':'The clean source snapshot passed installation, frontend build and a short teaching run. The released installers use their recorded application version. Annual research and frozen doctoral replay require separate scientific validation.',
-'source-2026-10-04 已通过干净安装、前端构建、十三项 wheel 对象检查与教学短运行。安装候选保留其早期应用身份；源码检查不证明博士冻结或年度研究复跑。':'干净源码快照已通过安装、前端构建与教学短运行。已发布安装包使用其记录的应用版本；年度研究与博士冻结复跑需独立科学验证。',
-'Source repository · source-2026-10-04':'Source repository','源码仓库 · source-2026-10-04':'源码仓库',
+'source-2026-10-09 passed clean installation, frontend build, thirteen wheel-object checks and a short teaching run. Installer candidates retain their own earlier application identity; the source checks do not establish frozen doctoral or annual research replay.':'The clean source snapshot passed installation, frontend build and a short teaching run. The released installers use their recorded application version. Annual research and frozen doctoral replay require separate scientific validation.',
+'source-2026-10-09 已通过干净安装、前端构建、十三项 wheel 对象检查与教学短运行。安装候选保留其早期应用身份；源码检查不证明博士冻结或年度研究复跑。':'干净源码快照已通过安装、前端构建与教学短运行。已发布安装包使用其记录的应用版本；年度研究与博士冻结复跑需独立科学验证。',
+'Source repository · source-2026-10-09':'Source repository','源码仓库 · source-2026-10-09':'源码仓库',
 'This configuration is not an AC power-flow or N−1 security study.':'This configuration uses a lossless zonal transport model.',
 '此配置不是交流潮流或 N−1 安全分析。':'本配置采用分区无损输电模型。',
 'The case is not an AC power-flow calculation or an N−1 security assessment.':'The case uses a lossless zonal transport model.',
@@ -63,11 +63,11 @@ def pages(w,original):
  for path,title,desc,body in original:
   if path=='cite':
    title=w.t('Cite VALUE','引用 VALUE');desc=w.t('Record the version, study configuration and data sources used.','记录所用版本、研究配置与数据来源。')
-   body=w.heading('VALUE / '+w.t('CITATION','引用'),title,desc)+'<p>'+w.t('Research citation is recommended. Use the citation file for the software snapshot and cite datasets using their own authors and source terms.','建议在研究成果中引用项目。使用软件快照对应的引用文件，并按数据集作者与来源条款分别引用数据。')+'</p>'+w.table([w.t('Material','材料'),w.t('File','文件')],[['VALUE','<a download href="/assets/value-source-review-CITATION.cff">CITATION.cff</a>'],[w.t('Full release candidate','Full 发布候选'),'<a download href="/assets/release-candidate/CITATION.cff">CITATION.cff</a> · <a download href="/assets/release-candidate/CITATION.bib">CITATION.bib</a>']])+'<p>'+w.a('data','Find data sources and terms','查看数据来源与条款')+'</p>'
+   body=w.heading('VALUE / '+w.t('CITATION','引用'),title,desc)+'<p>'+w.t('Research citation is recommended. Use the citation file for the software snapshot and cite datasets using their own authors and source terms.','建议在研究成果中引用项目。使用软件快照对应的引用文件，并按数据集作者与来源条款分别引用数据。')+'</p>'+w.table([w.t('Material','材料'),w.t('File','文件')],[[w.t('VALUE 0.7.0-alpha.1 source (source-2026-10-09)','VALUE 0.7.0-alpha.1 源码（source-2026-10-09）'),'<a download href="/assets/value-source-2026-10-09-CITATION.cff">CITATION.cff</a>'],[w.t('Full 2026-10-09-a1 (VALUE 0.7.0-alpha.1)','Full 2026-10-09-a1（VALUE 0.7.0-alpha.1）'),'<a download href="/assets/release-2026-10-09-a1/CITATION.cff">CITATION.cff</a> · <a download href="/assets/release-2026-10-09-a1/CITATION.bib">CITATION.bib</a>']])+'<p>'+w.a('data','Find data sources and terms','查看数据来源与条款')+'</p>'
   if not path.startswith("methodology"):
    for a,b in CHANGES.items():body=body.replace(a,b);title=title.replace(a,b);desc=desc.replace(a,b)
   # A shared plain-language status applies to the software-facing routes.
   if path in ['', 'releases','release-check','docs/value']:
-   body+=w.note(w.t('Current candidate','当前候选版'),w.t('The improved frontend is under review. Installation packages will be updated when that review is complete.','改进前端正在审查，完成后更新安装包。'))
+   body+=w.note(w.t('Current version','当前版本'),w.t('VALUE 0.7.0-alpha.1 · Full 2026-10-09-a1. Install it into a new, empty directory.','VALUE 0.7.0-alpha.1 · Full 2026-10-09-a1。请安装到新的空目录。'))
   out.append((path,title,desc,body))
  return out

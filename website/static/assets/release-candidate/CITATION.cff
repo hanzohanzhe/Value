@@ -1,9 +1,0 @@
-cff-version: 1.2.0
-message: "Release-candidate citation. Retain the exact artifact SHA256; no DOI is assigned."
-title: "VALUE: Full installation release candidate"
-type: software
-version: "2026-10-03-rc1"
-authors:
-  - given-names: "Hanzhe"
-    family-names: "Xing"
-abstract: "Full installation release candidate with the research frontend and bundled runtimes. Scientific datasets retain separate identities and citations."

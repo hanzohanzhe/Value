@@ -20,10 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # live website source (origin/main e2a1ed4, merged in 07f56fd) dropped their
 # historical 0.6.0-alpha.2 metadata block and line; they no longer record any
 # earlier release, so there is nothing left in them to protect.
-HISTORICAL_VERSION_RECORDS = {
-    "website/static/assets/value-source-CITATION.cff": "version: 0.6.0-alpha.2",
-    "website/static/assets/value-source-metadata.bib": "version = {0.6.0-alpha.2}",
-}
+HISTORICAL_VERSION_RECORDS = {}
 
 
 class DocumentationConsistencyTests(unittest.TestCase):

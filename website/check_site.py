@@ -44,6 +44,22 @@ for product in config['products']:
             if not release.get(key):errors.append(f'Missing release field: {product["id"]} {key}')
         if not re.fullmatch(r'[a-fA-F0-9]{64}',release.get('sha256','')):errors.append('Invalid release SHA256')
         if not release.get('url','').startswith('https://'):errors.append('Release requires HTTPS')
+ids=[r['version'] for r in config['products'][0]['releases']]
+if config.get('publication_ready') and config.get('candidate_release_id') not in ids:errors.append('candidate_release_id has no release entry')
+for r in config['products'][0]['releases']:
+    if not r.get('url','').endswith('/'+r.get('filename','')):errors.append('Release URL must end with its filename: '+r.get('filename',''))
+    if r.get('app_version')!='0.7.0-alpha.1':errors.append('Release application version mismatch')
+for x in config.get('data_assets',[]):
+    if not isinstance(x.get('bytes'),int) or x['bytes']<=0:errors.append('Invalid data asset bytes: '+x.get('filename',''))
+    if not re.fullmatch(r'[a-fA-F0-9]{64}',x.get('sha256','')):errors.append('Invalid data asset SHA256: '+x.get('filename',''))
+    if not x.get('url','').startswith('https://') or not x['url'].endswith('/'+x.get('filename','')):errors.append('Data asset URL: '+x.get('filename',''))
+    for lang in ['en','zh']:
+        if not x.get('title',{}).get(lang) or not x.get('interface',{}).get(lang):errors.append('Data asset text missing '+lang+': '+x.get('filename',''))
+for p in pages:
+    if p.relative_to(DIST).parts[1:2]==('methodology',):continue
+    text=p.read_text()
+    for stale in ['reproduce from existing data','add your new data','Edit module<','add new function to VALUE','The improved frontend is under review','改进前端正在审查','2026-10-03-rc1','release-candidate/']:
+        if stale in text:errors.append(str(p)+': stale text '+stale)
 total=sum(p.stat().st_size for p in DIST.rglob('*') if p.is_file())
 print(json.dumps({'localized_pages':len(pages),'local_links_and_assets':'passed' if not errors else 'failed','bilingual_metadata':'checked','static_bytes':total,'errors':errors},indent=2,ensure_ascii=False))
 raise SystemExit(bool(errors))

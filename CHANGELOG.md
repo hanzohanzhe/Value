@@ -12,6 +12,11 @@ the GBP1 public2 23-zone research suite, are available from
 Methodology edition 0.4.1 describes this implementation. The public source
 snapshot is `source-2026-10-09`.
 
+Linux Full passed offline installation, startup, a 48-period VALUE 101 day
+and shutdown on 2026-10-09. Windows and macOS packages are experimental;
+their native acceptance remains `not_evaluated`. All four archive inventories
+and bundled dependency notices passed verification.
+
 ### Two methodology profiles
 
 - **Corrected methodology (default)** (`value-corrected`): every correction

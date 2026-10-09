@@ -2373,13 +2373,11 @@
     "website/static/assets/methodology/math/eq-195.svg",
     "website/static/assets/methodology/math/eq-196.svg",
     "website/static/assets/methodology/math/eq-197.svg",
-    "website/static/assets/release-candidate/CITATION.bib",
-    "website/static/assets/release-candidate/CITATION.cff",
+    "website/static/assets/release-2026-10-09-a1/CITATION.bib",
+    "website/static/assets/release-2026-10-09-a1/CITATION.cff",
     "website/static/assets/site.css",
     "website/static/assets/site.js",
-    "website/static/assets/value-source-CITATION.cff",
-    "website/static/assets/value-source-metadata.bib",
-    "website/static/assets/value-source-review-CITATION.cff",
+    "website/static/assets/value-source-2026-10-09-CITATION.cff",
     "website/sync_methodology.py",
     "worker/index.ts"
   ],
@@ -2451,9 +2449,9 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "97bdd0ffb85e159a7756b139727155555fe67ce6efaf367c816ada0ab028e57f",
-      "bytes": 107662,
-      "transform": "VALUE 0.7.0 release preparation"
+      "sha256": "2958dfd5db00d6bd8d290af7c06fd61673d35f2280409accc6efa24273c5e529",
+      "bytes": 107941,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "CITATION.cff",
@@ -5199,8 +5197,8 @@
     },
     {
       "path": "docs/VALIDATION_AND_CLAIMS.md",
-      "sha256": "c4c45f97570229f06971a115ecaf99d41163fc2d6e1f503094c1fb8d13301968",
-      "bytes": 13118,
+      "sha256": "5e41c272953204131ec5675668715f511a0146d42ba3c21b4b1ae2f47c1e00d9",
+      "bytes": 13570,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -5619,9 +5617,9 @@
     },
     {
       "path": "docs/release/installer-source-alignment.json",
-      "bytes": 12484,
-      "sha256": "fe3841107cbc8815c4b64dc368d23d452a475b72950df0f3409c458fb626fcde",
-      "transform": "publication execution metadata, rights or packaging update"
+      "bytes": 4665,
+      "sha256": "d4436c0bc111dfda9cc4d92f016ce3dc1c19e3c9f1a66ea170588b97a72254fc",
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/release/public-data-assets.json",
@@ -5631,9 +5629,9 @@
     },
     {
       "path": "docs/release/release-map.json",
-      "sha256": "86843acf968033850589ceb5071ad426ad1e36b826a1b33bea916a39aec8c83f",
-      "bytes": 2792,
-      "transform": "VALUE 0.7.0 release preparation"
+      "sha256": "b032a77089aca44b894e6c3affbc3ccf383f84b093bed04b3025506b5d532613",
+      "bytes": 3219,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "docs/scientific-readiness/FRONTEND_EXPANSION_PROMPTS_77_84.md",
@@ -12484,8 +12482,8 @@
     },
     {
       "path": "tests/test_documentation_consistency.py",
-      "sha256": "81b582f766a228c0846b2f373fbc47ee92d58523811053a12623810026ee316b",
-      "bytes": 30275,
+      "sha256": "996613f9fd95f21779f214230a9969a115092cfcf0159dc911e734d71dae96ba",
+      "bytes": 30109,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -14134,21 +14132,21 @@
     },
     {
       "path": "website/.gitignore",
-      "sha256": "81af12476b3951a39f94707873626822d32d9cba1efd1e57bacd1ec8cd2120b2",
-      "bytes": 25,
-      "transform": "reviewed website/documentation input"
+      "sha256": "ce03041f74f17cd581c5a0d4bafe47db37d7d7ca1563161ab82c0fcdf1a9b4b8",
+      "bytes": 41,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/README.md",
-      "sha256": "5410814bb4c3a32bfceaef92a4462b9ef9ee90c7e7383b917be75af52c7aa498",
-      "bytes": 2424,
+      "sha256": "2de6450c05a92983fb48cc2e545c3c16dd292f8145f88115c0ab4eb092825e28",
+      "bytes": 2552,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/UPLOAD-FILES.txt",
-      "sha256": "a20aac7cbcd8d889811ba2f7306e990913275cd6406589102453d88367bf850d",
-      "bytes": 52280,
-      "transform": "publication execution metadata, rights or packaging update"
+      "sha256": "b637dc251b0811539af6327c7d6517173af12ea5a6f3261cb80b38aca879a4a3",
+      "bytes": 18037,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/build.py",
@@ -14158,20 +14156,20 @@
     },
     {
       "path": "website/check_site.py",
-      "sha256": "64e8e47216afd8da330d4a87b86dbb89a66b7b710bb30d092d413702c667aedf",
-      "bytes": 3092,
-      "transform": "reviewed website/documentation input"
+      "sha256": "cd3313e87fbdbd678be638443f2d4b31a062860c98296acb5e292bfaa61b8995",
+      "bytes": 4606,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/content.py",
-      "sha256": "5bdaf08e42436f84da8c890f44513e5fd52fcbc18af934ee24ed38e7dca990df",
-      "bytes": 28463,
+      "sha256": "b8710d373079d63649902f334ba5a6d0d8517bb00cc0f926d6c50ac656c58296",
+      "bytes": 33845,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/journey.py",
-      "sha256": "b3e6a49c85f5b15e88d485fd4c48231dff1ee72f9c95d43b2e1c8da71f727537",
-      "bytes": 10516,
+      "sha256": "679dee20814117d2d1585fcd48794b91e2afeb8138e6c57839ce79baf0a9ec75",
+      "bytes": 21253,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -14206,20 +14204,20 @@
     },
     {
       "path": "website/methodology_page.py",
-      "sha256": "d76f76e050adf44fe360ed97e93376d6c7d1ea040f634a464f87dfd33cb2364e",
-      "bytes": 4159,
+      "sha256": "cd99ced9bb5bbe4f9975ace7994358f11ca2a335bed535fe9b29607bf5cf024c",
+      "bytes": 4013,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/presentation.py",
-      "sha256": "ba566dbc349d9382b5a85a727e59f4f204fcfbcf5fb71004d450da97c600750f",
-      "bytes": 11105,
+      "sha256": "d2c0c8e062d3135db2026a0de564cb111e85ac5a6599847d39acb1748d5b96b5",
+      "bytes": 11250,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/publication.py",
-      "bytes": 5764,
-      "sha256": "afa2b4c622b1b413bed6986d2793277f90e58ee21858dd2991ce5a9d181618b2",
+      "bytes": 7597,
+      "sha256": "241365a5d61812897effaf75241a190e66cf7c913a56476182cba1c4ccbc33f8",
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -14230,8 +14228,8 @@
     },
     {
       "path": "website/site.json",
-      "sha256": "a11709392bf1d8392cc8d16e9851b1d92c6b8560f96f0073c593f3e2c5746d6b",
-      "bytes": 9779,
+      "sha256": "05d0df76edadf657db2c74aa06cfa23eb0a47fd6976adf5f0540ff303741c552",
+      "bytes": 10032,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -16635,16 +16633,16 @@
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
-      "path": "website/static/assets/release-candidate/CITATION.bib",
-      "sha256": "9ee57713b0ee07549dbfc25ed7ff9a8b77eb7529c8d0411cae49809a1bdba490",
-      "bytes": 287,
-      "transform": "publication execution metadata, rights or packaging update"
+      "path": "website/static/assets/release-2026-10-09-a1/CITATION.bib",
+      "sha256": "8eae35315b1d75e29aa3ca601fffe06f237b09b1ab780e72ec4503fbe7f03c64",
+      "bytes": 215,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
-      "path": "website/static/assets/release-candidate/CITATION.cff",
-      "sha256": "9a676c913214d20e7120f5e3dfa9403ceb917edc3fa2ad7d9bba4800dd752d11",
-      "bytes": 424,
-      "transform": "publication execution metadata, rights or packaging update"
+      "path": "website/static/assets/release-2026-10-09-a1/CITATION.cff",
+      "sha256": "e67bbd9d84c3179d6c8f7dc4b9c5b2aff542978976031e74656b4e1d4bf60c62",
+      "bytes": 511,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/static/assets/site.css",
@@ -16659,22 +16657,10 @@
       "transform": "reviewed website/documentation input"
     },
     {
-      "path": "website/static/assets/value-source-CITATION.cff",
-      "sha256": "e4cd3bcfaed7a40e37dd81a29afffcecfb36287b116e8c3817e7077cae778703",
-      "bytes": 650,
-      "transform": "reviewed website/documentation input"
-    },
-    {
-      "path": "website/static/assets/value-source-metadata.bib",
-      "sha256": "78e12c7a15918c59d881ba60357bcaf30279f96bd85245c28fbb2cf1cfc718fb",
-      "bytes": 315,
-      "transform": "reviewed website/documentation input"
-    },
-    {
-      "path": "website/static/assets/value-source-review-CITATION.cff",
-      "sha256": "13916d08d4029fb2016fa6c049f6fe96f2bd895fb532390354fffd8f8748c2be",
-      "bytes": 861,
-      "transform": "value.ac website integration or approved methodology 0.2 asset"
+      "path": "website/static/assets/value-source-2026-10-09-CITATION.cff",
+      "sha256": "defc1c0ee7547ff1f625011e280768fc383bf6796638cb95d708187d4b8648a1",
+      "bytes": 644,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "website/sync_methodology.py",
