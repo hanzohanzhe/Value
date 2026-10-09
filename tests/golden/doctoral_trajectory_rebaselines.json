@@ -1,0 +1,18 @@
+{
+ "schema_version": "value.golden-trajectory-allowlist/v1",
+ "notes": [
+  "The doctoral family's trajectory zone is frozen (decision Q1/Q12). The only exceptions are the universal corrections the author approved in the P0 decision record (decisions Q1, Q9/A3, A4, A5, A26 and A33, listed below by finding); each may re-baseline a doctoral case's trajectory once, in the commit that introduces it, with a diff report.",
+  "Accounting-zone revisions do not need an entry here but must name a universal correction id."
+ ],
+ "findings": {
+  "P6-24": "Q9/A3: interconnector series aligned period by period to the 17520 clock (no 2x stretch)",
+  "P6-02": "A5: Belgium hourly EUR price read as half-hourly GBP (documented FX)",
+  "P6-03": "A5: BE/NL flow files swapped",
+  "P6-04": "A5: demand DST shift after 2022-10-30",
+  "P4-01-thermal": "A4: thermal net revenue = income - energy x gen_cost (fuel, carbon, unit time cost) restored for gas/biomass; VRE and storage unchanged",
+  "A15": "A26 (R4-1, r41.down-regulation-taken-once): curtailment-branch down regulation taken once (a non-VRE unit that meets the requirement clears it)",
+  "DEV-BAL-04": "A26 (R4-1, r41.must-run-surplus-counted-once): must-run nuclear surplus serving the balancing requirement is not generated or paid a second time",
+  "DEV-STO-01": "A26 (R4-1, p06.storage-net-per-period universal): one storage position per store and period; the clearing stages share the rated power",
+  "P4-05": "A33 (R7-1, r71.endogenous-planning-timelines): endogenous investments take the pack's development timeline and regional success rate (original Scheme C pipeline entry) instead of next-year completion with probability one"
+ }
+}

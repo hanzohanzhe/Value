@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import contextvars
 import json
 import tempfile
 from pathlib import Path
 from typing import Mapping
 
+from .methodology import profile_ids, profile_scope
 from .parameters import REGISTRY
 from .v2.module_manifest import ModuleManifest, ModuleRegistryV2, workspace_registry
 from .runtime_paths import external_modules_root
@@ -67,8 +69,12 @@ def check_storage_lifecycle(model) -> None:
     finite_nonnegative(battery.storage_fee)
     finite_nonnegative(battery.per_storage_fee)
     battery.charge(0, 1.0)
+    battery.close_period(0)
     finite_nonnegative(battery.storage_bid_price(2, 0))
     output = battery.discharge(0, 0.4, 2)
+    # R4-1 (A26): both market rule sets keep one storage position per period
+    # and record its sales when the period closes, as the kernel loop does.
+    battery.close_period(2)
     first = report(2025)
     if output <= 0 or abs(float(first["current_year_sold_mwh"]) - output * period_hours) > 1e-9:
         raise ValueError("report must observe actual non-zero Battery discharge")
@@ -82,6 +88,19 @@ def check_storage_lifecycle(model) -> None:
     finite_nonnegative(battery.storage_bid_price(0, -1))
 
 
+def _storage_cost_fixture(instance: object, profile_id: str) -> None:
+    from .builtin.scheme_c_1000twh.runtime_compat.modular_simulation_model import physical_period_hours
+
+    with profile_scope(profile_id):
+        model = instance.create(  # type: ignore[attr-defined]
+            battery_type="1c",
+            period_hours=physical_period_hours(),
+            legacy_storage_fee=2.0,
+            legacy_holding_fee=0.1,
+        )
+        check_storage_lifecycle(model)
+
+
 def check_manifest(registry: ModuleRegistryV2, manifest: ModuleManifest) -> dict[str, object]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -92,25 +111,22 @@ def check_manifest(registry: ModuleRegistryV2, manifest: ModuleManifest) -> dict
         warnings.append("no explicit units declared; semantic role units remain authoritative")
     try:
         instance = registry.resolve(manifest.id, expected_slot=manifest.slot)
-    except Exception as exc:
-        errors.append(f"implementation resolution failed: {exc}")
+    except (Exception, SystemExit) as exc:
+        # External constructors may raise anything, even SystemExit (P0-2).
+        errors.append(f"implementation resolution failed: {type(exc).__name__}: {exc}")
         instance = None
     if instance is not None:
         for method in REQUIRED_METHODS[manifest.slot]:
             if not callable(getattr(instance, method, None)):
                 errors.append(f"implementation does not provide callable {method}")
         if manifest.slot == "storage_cost" and not errors:
-            try:
-                from .builtin.scheme_c_1000twh.runtime_compat.modular_simulation_model import physical_period_hours
-                model = instance.create(
-                    battery_type="1c",
-                    period_hours=physical_period_hours(),
-                    legacy_storage_fee=2.0,
-                    legacy_holding_fee=0.1,
-                )
-                check_storage_lifecycle(model)
-            except Exception as exc:
-                errors.append(f"minimal storage-cost fixture failed: {exc}")
+            # The fixture runs once under every methodology profile (X0 S9),
+            # each in a fresh context so an active run's profile never leaks in.
+            for profile_id in profile_ids():
+                try:
+                    contextvars.Context().run(_storage_cost_fixture, instance, profile_id)
+                except (Exception, SystemExit) as exc:
+                    errors.append(f"minimal storage-cost fixture failed under {profile_id}: {exc}")
     return {
         "module_id": manifest.id,
         "slot": manifest.slot,
@@ -137,8 +153,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Validate installed VALUE modules")
     parser.add_argument("--modules", type=Path, default=external_modules_root())
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--allow-quarantine", action="store_true",
+        help="report quarantined local entries instead of failing on them",
+    )
     args = parser.parse_args()
-    report = conformance_report(workspace_registry(args.modules))
+    # A conformance gate is strict: a quarantined local entry fails it (P0-2).
+    registry = workspace_registry(args.modules, strict=not args.allow_quarantine)
+    report = conformance_report(registry)
+    report["quarantined"] = [entry.to_dict() for entry in registry.quarantined]
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")

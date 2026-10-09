@@ -1,22 +1,22 @@
 # 天气与可用出力
 
-VALUE 以空间代表点的天气序列和资产容量计算逐时段风光可用电量。设资产 \(i\) 的容量为 \(K_i\) MW，可用出力系数为 \(a_{i,t}\)，则其可用功率与半小时电量上限为
+VALUE 用资产容量和代表点天气计算各资产逐时段可用的风光电量。调度字段 `available_mw` 和 `available_mwh` 分别表示可用功率（MW）和时段电量（MWh）；`capacity_mw` 为装机功率，`availability` 为天气决定的无量纲出力系数，`period_hours` 为时段长度。对每个资产和时段，
 
 $$
-P_{i,t}^{\max}=K_i a_{i,t},\qquad E_{i,t}^{\max}=K_i a_{i,t}\Delta t,\qquad \Delta t=0.5\ \mathrm{h}.
+\begin{aligned}
+\mathtt{available\_mw}&=\mathtt{capacity\_mw}\times\mathtt{availability},\\
+\mathtt{available\_mwh}&=\mathtt{available\_mw}\times\mathtt{period\_hours},\\
+\mathtt{period\_hours}&=0.5\ \mathrm{h}.
+\end{aligned}
 $$
 
-天气模块给出这一物理上限，市场调度在上限内确定实际接受的发电量。年度风光扩张规则随后使用相应配置的可用出力或技术平均曲线计算新增容量上限。
+市场出清在上述可用电量范围内接纳发电。年度扩张采用下文的技术平均投资曲线，或实验性物理可用出力规则。
 
 ## 天气序列与代表点采样
 
-R029 将 2020–2024 年 ERA5 小时数据转换为 365 日气候态，并在每个模型年复用。原始序列包含 43,848 小时，去除两个闰日的 48 小时后，对相同月、日、小时的五个样本取均值，得到 8,760 小时序列。设气象变量为 \(X\)，位置为 \((\phi,\lambda)\)，则除 2 月 29 日外的日历均值为
+R029 将 2020–2024 年 ERA5 小时观测按月、日、小时取算术平均，形成各模型年复用的 365 日气候态。原始序列包含 43,848 小时。删除两次 2 月 29 日的 48 小时后，每个保留的日历小时有五个观测，平均后得到 8,760 小时。
 
-$$
-\overline X(m,d,h,\phi,\lambda)=\frac{1}{5}\sum_{y=2020}^{2024}X_y(m,d,h,\phi,\lambda).
-$$
-
-风速在原始小时尺度先由 100 m 风矢量求模，再形成日历平均。对每个原始小时，\(v=\sqrt{u_{100}^2+v_{100}^2}\)；天气文件同时保存 `u100`、`v100` 和按上述顺序得到的 `wind_speed`，发电曲线优先使用 `wind_speed`。当输入只有风矢量分量时，读取器在相应输入时刻求模。
+风速在原始小时尺度先由 100 m 风矢量求模，再作日历平均：`wind_speed` 等于 `u100` 的平方与 `v100` 的平方之和的平方根。文件保留三个字段。`hourly_unit_cf` 优先读取 `wind_speed`；输入只有 `u100` 和 `v100` 时，在输入时刻计算矢量模长。
 
 气候态保留英国及附近海域的 0.25° 网格。太阳文件以 `ssrd` 表示向下太阳辐射，风文件提供 100 m 风信息；数组的空间与时间尺寸如下。
 
@@ -25,52 +25,201 @@ $$
 | 太阳辐射 | 45°–65°N | 14°W–4°E | 81 × 73 × 365 × 24 |
 | 100 m 风 | 46°–65°N | 14°W–5°E | 77 × 77 × 365 × 24 |
 
-每个资产代表点采用最近纬度和最近经度的格点天气。若代表点为 \((\phi_i,\lambda_i)\)，格点坐标为 \((\phi_j,\lambda_k)\)，则
+每个代表点采用天气网格中最近的纬度和经度。`point_series` 从坐标数组 `lats`、`lons` 中选择 `lat_index`、`lon_index`，站点坐标 `latitude`、`longitude` 以度表示：
 
 $$
-j^*=\operatorname*{arg\,min}_j|\phi_j-\phi_i|,\qquad
-k^*=\operatorname*{arg\,min}_k|\lambda_k-\lambda_i|.
+\begin{aligned}
+\mathtt{lat\_index}&=\operatorname*{arg\,min}_{j}|\mathtt{lats}[j]-\mathtt{latitude}|,\\
+\mathtt{lon\_index}&=\operatorname*{arg\,min}_{k}|\mathtt{lons}[k]-\mathtt{longitude}|.
+\end{aligned}
 $$
 
-`doctoral_weather` 从选定格点提取小时序列，接受“纬度—经度—日—小时”及“时间—纬度—经度”两类布局，并对掩码值或非有限值终止读取。半小时时段 \(t\) 使用源小时 \(h(t)=\lfloor t/2\rfloor\bmod H\)，其中 \(H\) 为源序列长度，因此每小时值连续用于两个半小时时段。
-
-英国原始兼容天气包按年内日序号形成 366 日、8,784 小时序列，一年调度使用其中前 8,760 小时。R029 则按月、日和小时对齐闰年与平年，并使用完整的 8,760 小时气候态；这一输入差异保留在各自研究配置中。
-
-## 风电和光伏发电曲线
-
-风电可用系数采用切入、立方增长、额定和切出四段关系。设风速为 \(v\) m/s，额定风速为 \(v_r\)，切出风速为 \(v_o\)，切入风速为 3 m/s，则
+`point_series` 接受“纬度—经度—日—小时”和“时间—纬度—经度”数组，将选定格点展平为小时序列。修正口径读取 `time_convention`；标记为 `GRIB_stepType=accum` 的场采用小时区间末累计值，缺少两项声明的场采用瞬时值约定。`hour_index` 按从零开始的半小时编号 `t` 和源小时数 `hours` 生成 `index`：
 
 $$
-a_w(v)=\begin{cases}
-0,&v<3\ \text{或}\ v>v_o,\\
-\dfrac{v^3-27}{v_r^3-27},&3\le v<v_r,\\
-1,&v_r\le v\le v_o.
+\mathtt{index}[t]=\begin{cases}
+(\lfloor t/2\rfloor+1)\bmod\mathtt{hours},&\text{accumulation\_end\_of\_hour},\\
+\lfloor(t+1)/2\rfloor\bmod\mathtt{hours},&\text{instantaneous}.
 \end{cases}
 $$
 
-陆风取 \((v_r,v_o)=(9.7,25)\) m/s，海风取 \((10.5,30)\) m/s。该曲线在切出边界仍取 1，风速严格超过切出值时取零；天气到发电的转换由这组技术参数和资产容量共同确定。
+累计值约定将截至 01:00 的小时辐射量赋给始于 00:00 和 00:30 的两个时段，太阳几何位置按接收时段的中点计算。瞬时值约定将 00:00 的样本赋给 00:00 时段，将 01:00 的样本赋给 00:30 和 01:00 时段。
 
-陆风在 8 m/s 时的可用系数为 0.5476061707。代入 100 MW 资产，得到可用功率 54.76061707 MW、半小时电量上限 27.38030853 MWh。保留的市场内核以 20 MW 为风电单位，再乘以 \(K_i/20\) 的容量系数，结果同样为 \(K_i a_w\)。
+论文复现口径采用 `index = (t // 2) % hours`，每个源小时值连续用于两个半小时。原始 GBP1 天气按年内日序号形成 366 日、8,784 小时序列，使用其中前 8,760 小时。R029 的 8,760 小时日历气候态在当前元数据中采用瞬时值约定。实验性 R029 调度路径保留逐小时重复时钟及原始发电曲线。
 
-光伏可用系数由小时累计太阳辐射归一化得到。设 `ssrd` 为 \(R\) J/m²，则
+## 风电转换与损失
+
+风电可用系数采用切入、立方增长、额定和切出四段关系。`wind_unit_output` 用 20 单位标度表达功率曲线，`hourly_unit_cf` 将结果除以 20，得到无量纲小时系数 `hourly`。风速 `speed`、额定风速 `rated` 和切出风速 `cut_out` 均以 m/s 表示：
 
 $$
-a_s(R)=\begin{cases}
-\dfrac{R}{3{,}600{,}000},&3{,}600<R\le36{,}000{,}000,\\
-0,&\text{其余情况}.
+\mathtt{wind\_unit\_output}(\mathtt{speed})=\begin{cases}
+0,&\mathtt{speed}<3\ \text{or}\ \mathtt{speed}>\mathtt{cut\_out},\\
+20\dfrac{\mathtt{speed}^3-27}{\mathtt{rated}^3-27},&3\le\mathtt{speed}<\mathtt{rated},\\
+20,&\mathtt{rated}\le\mathtt{speed}\le\mathtt{cut\_out}.
 \end{cases}
 $$
 
-当 \(R=1{,}800{,}000\) J/m² 时，\(a_s=0.5\)，10 MW 光伏在半小时内的可用电量为 2.5 MWh。该函数在上边界取 \(a_s=10\)；R029 气候态的最大辐射为 3,322,188.75 J/m²，对应最大系数约 0.9228302。独立空间聚合接口要求输入曲线位于 \([0,1]\)，因而新天气数据需满足所选接口的曲线范围。
+陆风采用 `rated = 9.7`、`cut_out = 25`，海风采用 `rated = 10.5`、`cut_out = 30`。修正口径将 `hourly[index]` 乘以 `multiplier`，其数值为 `value_uk_vre_loss_factors_v1.json` 中尾流、能量可用率和电气系数的乘积。
+
+| 技术 | 尾流系数 | 能量可用率系数 | 电气系数 | `multiplier` |
+|---|---|---|---|---|
+| 陆上风电 | 0.95 | 0.97 | 0.98 | 0.90307 |
+| 海上风电 | 0.88 | 0.945 | 0.98 | 0.814968 |
+
+风速为 8 m/s 时，陆风原始系数为 0.5476061707，修正后约为 0.49453，因此 100 MW 资产的可用功率约为 49.453 MW。论文复现口径采用原始曲线，损失乘数为 1；独立的 R029 实验路径也保留原始曲线。
+
+## 太阳辐射与阵列平面转换
+
+修正口径将 ERA5 水平累计辐射转换为朝南倾斜面的辐照度，再应用 0.83 的性能比和 1 的出力系数上限。`hourly_unit_cf` 将 `ssrd` 读入 `raw`，单位为 J/m²，并将各值转换为以 kW/m² 表示的 `hourly`：
+
+$$
+\mathtt{hourly}=\begin{cases}
+\mathtt{raw}/3{,}600{,}000,&3{,}600<\mathtt{raw}\le36{,}000{,}000,\\
+0,&\text{otherwise}.
+\end{cases}
+$$
+
+阵列倾角由纬度决定。`optimal_tilt_jacobson_jadhav` 中的 `phi` 为北纬度数，该函数采用 [Jacobson 和 Jadhav（2018），Solar Energy 169，55–66](https://web.stanford.edu/group/efmh/jacobson/Articles/I/TiltAngles.pdf) 的 0°–65°N 拟合式。返回值在 `plane_of_array` 中记为 `tilt`，单位为度：
+
+$$
+\mathtt{tilt}=1.3793+\mathtt{phi}\times\bigl[1.2011+\mathtt{phi}\times(-0.014404+0.000080509\mathtt{phi})\bigr].
+$$
+
+太阳几何位置按半小时时段中点计算。`period_clock` 由从零开始的时段编号 `t` 生成 `day_of_year` 和 `utc_hours`，`day_angle` 给出年角 `g`。`declination`、`equation_of_time_minutes` 和 `eccentricity_factor` 采用以下实现系数，输出依次为以弧度表示的赤纬 `decl`、以分钟表示的时差和无量纲轨道距离系数：
+
+$$
+\begin{aligned}
+\mathtt{day\_of\_year}&=(\lfloor t/48\rfloor\bmod365)+1,\\
+\mathtt{utc\_hours}&=(t\bmod48)/2+0.25,\\
+\mathtt{g}&=2\pi(\mathtt{day\_of\_year}-1)/365.
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\mathtt{decl}={}&0.006918-0.399912\cos\mathtt{g}+0.070257\sin\mathtt{g}\\
+&-0.006758\cos2\mathtt{g}+0.000907\sin2\mathtt{g}\\
+&-0.002697\cos3\mathtt{g}+0.00148\sin3\mathtt{g}.
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\mathtt{equation\_of\_time\_minutes}({}&\mathtt{day\_of\_year})=\\
+229.18\bigl(&0.000075+0.001868\cos\mathtt{g}-0.032077\sin\mathtt{g}\\
+&-0.014615\cos2\mathtt{g}-0.04089\sin2\mathtt{g}\bigr).
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\mathtt{eccentricity\_factor}({}&\mathtt{day\_of\_year})=\\
+&1.000110+0.034221\cos\mathtt{g}+0.001280\sin\mathtt{g}\\
+&+0.000719\cos2\mathtt{g}+0.000077\sin2\mathtt{g}.
+\end{aligned}
+$$
+
+经度与时差决定当地太阳时 `solar_time` 和小时角 `omega`。`incidence_cosines` 将纬度、倾角转换为以弧度表示的 `phi`、`beta`；返回值分别记为 `cos_z` 和 `cos_theta`，表示天顶角与入射角的余弦：
+
+$$
+\begin{aligned}
+\mathtt{solar\_time}={}&\mathtt{utc\_hours}+\mathtt{longitude\_deg}/15\\
+&+\mathtt{equation\_of\_time\_minutes}(\mathtt{day\_of\_year})/60,\\
+\mathtt{omega}={}&\pi(\mathtt{solar\_time}-12)/12,\\
+\mathtt{cos\_z}={}&\sin(\mathtt{phi})\times\sin(\mathtt{decl})\\
+&+\cos(\mathtt{phi})\times\cos(\mathtt{decl})\times\cos(\mathtt{omega}),\\
+\mathtt{cos\_theta}={}&\sin(\mathtt{phi}-\mathtt{beta})\times\sin(\mathtt{decl})\\
+&+\cos(\mathtt{phi}-\mathtt{beta})\times\cos(\mathtt{decl})\times\cos(\mathtt{omega}).
+\end{aligned}
+$$
+
+水平辐照度 `ghi` 采用 [Erbs、Klein 和 Duffie（1982），Solar Energy 28(4)，293–302](https://www.sciencedirect.com/science/article/pii/0038092X82903024) 的小时关系分解为直射和散射分量。`extraterrestrial_normal` 等于 1.361 kW/m² 乘以 `eccentricity_factor(day_of_year)`。当 `ghi` 为正且天顶角小于 87° 时，晴朗指数 `kt` 与散射比例 `kd` 为
+
+$$
+\mathtt{kt}=\min\left(1,\max\left(0,\frac{\mathtt{ghi}}{\mathtt{extraterrestrial\_normal}\times\mathtt{cos\_z}}\right)\right),
+$$
+
+$$
+\begin{aligned}
+\mathtt{middle}={}&0.9511-0.1604\mathtt{kt}+4.388\mathtt{kt}^2\\
+&-16.638\mathtt{kt}^3+12.336\mathtt{kt}^4,\\
+\mathtt{kd}={}&\begin{cases}
+1-0.09\mathtt{kt},&\mathtt{kt}\le0.22,\\
+\mathtt{middle},&0.22<\mathtt{kt}\le0.80,\\
+0.165,&\mathtt{kt}>0.80.
+\end{cases}
+\end{aligned}
+$$
+
+[Hay–Davies（1980）倾斜面转换](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.irradiance.haydavies.html) 汇总直射、各向异性天空散射及地面反射。`dhi`、`bhi`、`dni` 分别表示水平散射、水平直射和法向直射辐照度，单位为 kW/m²；`anisotropy`、`beam_ratio`、`sky_view`、`ground_view` 均为无量纲系数。采用 `albedo = 0.2` 时，阵列平面辐照度 `poa` 为
+
+$$
+\begin{aligned}
+\mathtt{dhi}&=\mathtt{kd}\times\mathtt{ghi},\qquad \mathtt{bhi}=\mathtt{ghi}-\mathtt{dhi},\\
+\mathtt{dni}&=\mathtt{bhi}/\mathtt{cos\_z},\\
+\mathtt{anisotropy}&=\min(1,\max(0,\mathtt{dni}/\mathtt{extraterrestrial\_normal})),\\
+\mathtt{beam\_ratio}&=\max(\mathtt{cos\_theta},0)/\mathtt{cos\_z},\\
+\mathtt{sky\_view}&=(1+\cos\mathtt{beta})/2,\\
+\mathtt{ground\_view}&=(1-\cos\mathtt{beta})/2,\\
+\mathtt{beam}&=\mathtt{bhi}\times\mathtt{beam\_ratio},\\
+\mathtt{sky\_diffuse}&=\mathtt{dhi}\times\bigl[\mathtt{anisotropy}\times\mathtt{beam\_ratio}\\
+&\qquad +(1-\mathtt{anisotropy})\times\mathtt{sky\_view}\bigr],\\
+\mathtt{ground}&=\mathtt{ghi}\times\mathtt{albedo}\times\mathtt{ground\_view},\\
+\mathtt{poa}&=\mathtt{beam}+\mathtt{sky\_diffuse}+\mathtt{ground}.
+\end{aligned}
+$$
+
+天顶角达到或超过 87°，或 `ghi` 为零时，计算设定 `kd = 1`、`dhi = ghi`、`bhi = 0`、`dni = 0`、`anisotropy = 0`、`beam_ratio = 0`。同一阵列平面求和式保留散射和地面反射。对于修正口径的累计输入，`site_cf_by_source` 将 `poa` 转换为出力系数 `values`：
+
+$$
+\mathtt{values}=\min(0.83\mathtt{poa},1).
+$$
+
+累计输入约定采用阵列平面转换。修正口径的瞬时输入，包括当前 R029 日历气候态和 VALUE 101 合成输入，直接将水平辐照度乘以 0.83。论文复现口径和实验性 R029 路径保留水平转换，乘数为 1。以下伪代码采用实现中的函数名和变量名：
+
+```text
+hourly, evidence = hourly_unit_cf(ds, technology, latitude, longitude, binding)
+index = hour_index(periods, len(hourly), method.clock, evidence["time_convention"])
+values = hourly[index]
+poa_applied = False
+if technology == "solar" and method.plane_of_array:
+    poa_applied, reason = plane_of_array_applies(method, evidence["time_convention"])
+    if poa_applied:
+        values, poa_evidence = plane_of_array(values, latitude_deg=latitude,
+            longitude_deg=longitude, parameters=plane_of_array_parameters())
+multiplier = method.multiplier(technology)
+values = values * multiplier
+if poa_applied:
+    values = minimum(values, 1.0)
+return values
+```
+
+## 与观测负荷率的比较
+
+GBP1 代表点天气计算可与 [DUKES 表 6.3](https://www.gov.uk/government/statistics/renewable-sources-of-energy-chapter-6-digest-of-united-kingdom-energy-statistics-dukes) 的全国负荷率比较。下表模型值为各代表点在 17,520 个半小时时段内、弃电前可用出力系数的非加权均值。DUKES 以全国发电量除以年初和年末装机容量的均值及全年小时数；两项定义共同确定比较范围。
+
+| 技术 | GBP1 修正口径 | DUKES 2019–2024 均值 | DUKES 2020–2024 均值 | 修正值 / 2020–2024 均值 | GBP1 论文复现口径 |
+|---|---|---|---|---|---|
+| 陆上风电 | 0.4026 | 0.2593 | 0.2582 | 1.56 | 0.4458 |
+| 海上风电 | 0.4913 | 0.4016 | 0.4009 | 1.23 | 0.6028 |
+| 光伏 | 0.1065 | 0.1033 | 0.1025 | 1.04 | 0.1201 |
+
+修正口径的风电值仍高于全国观测均值。计算采用原始 ERA5 风速、各风电技术的一条功率曲线及固定损失乘数；DUKES 则记录实际机组组合的发电量，包含调度和机组构成的影响。该表为上述参数设定提供外部比较。
+
+光伏计算对气候态辐射序列执行非线性分解和倾斜面转换。GBP1 代表点得到的散射比例约为 0.63–0.75，阵列平面与水平面辐射量之比约为 1.05–1.10。这些量对应所采用的气候态及转换，特定年份的模拟需要相应年份的天气输入。
 
 ## 项目位置、资产聚合与分区
 
-风光项目通过同技术代表点建立空间天气对应。英国初始模板包含光伏与陆风各 11 个代表点，以及 21 个海风代表点名称；R029 的 2025 年运营状态包含 11 个光伏、11 个陆风和 18 个海风正容量资产。代表点位置由 `fleet.locations` 和机组名称共同给出。
+风光项目通过同技术代表点建立空间天气对应。英国初始模板包含 11 个光伏和 11 个陆风代表点，以及 21 个海风代表点名称；R029 的 2025 年初始设定包含 11 个光伏、11 个陆风和 18 个海风正容量资产。代表点位置由 `fleet.locations` 和机组名称共同给出。
 
-具有明确坐标的项目按球面距离选择同技术最近代表点。项目 \(i\) 与候选点 \(j\) 的纬度、经度以弧度代入，距离为
+具有明确坐标的项目采用同技术的最近代表点。`nearest_site` 将项目纬度、经度转换为以弧度表示的 `lat1`、`lon1`，候选点坐标记为 `lat2`、`lon2`，球面距离为
 
 $$
-d(i,j)=2R_E\arcsin\sqrt{\sin^2\frac{\phi_j-\phi_i}{2}+\cos\phi_i\cos\phi_j\sin^2\frac{\lambda_j-\lambda_i}{2}},\qquad R_E=6{,}371\ \mathrm{km}.
+\begin{aligned}
+\mathtt{a}&=\sin^2\frac{\mathtt{lat2}-\mathtt{lat1}}{2}\\
+&\quad+\cos(\mathtt{lat1})\times\cos(\mathtt{lat2})\times\sin^2\frac{\mathtt{lon2}-\mathtt{lon1}}{2},\\
+\mathtt{distance}&=2\arcsin\sqrt{\mathtt{a}}\times6{,}371\ \mathrm{km}.
+\end{aligned}
 $$
 
 距离相同时，映射保留候选表中先出现的点。缺少明确位置的光伏和陆风项目先按 REPD 地区映射至下表代表点。
@@ -89,80 +238,73 @@ $$
 | West Midlands | Birmingham |
 | Yorkshire and Humber | Sheffield |
 
-其余未定位项目按同技术既有容量分配到代表点。设代表点运营容量为 \(K_j\)，则分配权重为 \(w_j=K_j/\sum_jK_j\)；同年已明确位置的投运项目先计入容量，再分配其余项目，最后一点接收浮点余量。既有总容量为零时采用第一个代表点，容量份额至多为 \(10^{-6}\) MW 时跳过该份额。
+其余未定位项目按同技术既有容量分配。`commissioned_project_weather` 中的 `stock[name]` 为代表点运营容量，`total_stock` 为该技术各点之和；同年投运且位置明确的项目先计入容量。其余各点获得 `total_new * stock[name] / total_stock` MW，最后一点接收余量。总容量为零时选择第一个代表点；分配量小于或等于 0.000001 MW 时，该份额的天气权重为零。
 
-混合来源资产保留投运时确定的天气权重。若资产 \(i\) 的 `weather_source_weights` 为 \(w_{ij}\)，其可用系数为
+资产沿用投运时确定的 `weather_source_weights`。`source_weights` 提供映射 `weights`，`_map_lineages` 按各来源曲线 `values` 及其 `weight` 求和，得到无量纲曲线 `combined`：
 
 $$
-a_{i,t}=\sum_jw_{ij}a_{j,t},\qquad w_{ij}\ge0,\qquad \sum_jw_{ij}=1.
+\mathtt{combined}[t]=\sum_{\mathtt{name}}\mathtt{weights}[\mathtt{name}]\times\mathtt{values}_{\mathtt{name}}[t].
 $$
 
-`doctoral_weather_mapping` 建立项目到代表点的对应，天气读取器检查权重及技术一致性。后续容量变化沿用该资产既有天气权重。
+天气读取器检查来源技术及权重的有限性、非负性。权重之和为 1，并保留 0.000001 MW 分配规则产生的有界缺口。后续容量变化沿用这些权重。
 
 当前全国市场将年度资产映射到固定的市场主体与代表天气拓扑。映射优先采用相同资产编号，其次选择同技术且地区匹配的主体，并按已有映射容量分配；容量为零时依次采用模板容量和等权分配。每个市场主体的最终容量等于归属于它的年度资产容量之和。
 
-分区运行通过容量份额划分资产，同时保留原资产的天气曲线与经济所有者。若区域 \(z\) 的资产份额为 \(s_{iz}\)，则
+分区运行按 `zone_share` 划分资产容量，保留其天气曲线和经济所有者。`StagedBidAtCostPSM` 将各区资源的 `capacity_mw` 设为原 `resource.capacity_mw` 乘以 `share`，各份额之和为 1。储能的 `charge_power_mw`、`discharge_power_mw`、`energy_capacity_mwh`、`initial_soc_mwh` 采用相同乘法，保持全国总量。
+
+独立聚合接口 `REPDERA5AggregatedWeather.build` 在同一所有者、技术和分区内，合并预先计算的项目曲线。分配记录集合记为 `rows`，其 `capacity_mw` 之和为 `total`，单位为 MW；各来源曲线记为 `values`，组合曲线 `weighted` 为
 
 $$
-K_{iz}=K_i s_{iz},\qquad a_{iz,t}=a_{i,t},\qquad
-\sum_zK_{iz}a_{iz,t}\Delta t=K_i a_{i,t}\Delta t
+\begin{aligned}
+\mathtt{total}&=\sum_{\mathtt{row}\in\mathtt{rows}}\mathtt{row.capacity\_mw},\\
+\mathtt{weighted}[t]&=\sum_{\mathtt{row}\in\mathtt{rows}}\mathtt{values}_{\mathtt{row}}[t]\times\frac{\mathtt{row.capacity\_mw}}{\mathtt{total}}.
+\end{aligned}
 $$
 
-在 \(\sum_zs_{iz}=1\) 时成立。`StagedBidAtCostPSM` 对发电容量以及储能功率、电量和库存采用相同的份额划分。
-
-独立聚合接口支持将已经计算好的项目曲线按容量合并。对同一所有者、技术和区域内的项目集合 \(G\)，`REPDERA5AggregatedWeather.build` 计算
-
-$$
-K_G=\sum_{i\in G}K_i,\qquad
- a_{G,t}=\sum_{i\in G}\frac{K_i}{K_G}a_{i,t}.
-$$
-
-该接口接受同长度、有限且位于 \([0,1]\) 的输入曲线和正总容量。当前分区执行路径采用上文的代表曲线复制；独立聚合接口的输入是调用方预先生成的来源曲线。
+聚合接口接受同长度、有限且位于 [0,1] 的曲线及正总容量，项目曲线由调用方提供。当前分区执行路径将代表点曲线复制到资产的各区域份额。
 
 ## 年度风光容量上限
 
-当前通用投资规则按峰值需求与技术曲线的峰值计算可新增容量空间。设峰值实际需求为 \(D^{\rm peak}\) MW，技术 \(k\) 的 CSV 曲线峰值为 \(a_k^{\rm peak}\)，运营总容量为 \(K_k\)，则
+通用投资规则按峰值需求与各技术 CSV 曲线的峰值计算可新增容量空间。`canonical_psm_data` 中，`demand` 为时段电量（MWh），`period_hours` 为 0.5 h，`availability` 为无量纲技术曲线，`capacity_by_technology` 为运营容量（MW）。`vre-expansion-cap` 模块将所得 `headroom` 乘以 `expansion.vre_cap_fraction`，该比例记为 `fraction`，得到以 MW 表示的年度上限 `limits`：
 
 $$
-H_k=\max\left(0,\frac{D^{\rm peak}}{\max(a_k^{\rm peak},10^{-12})}-K_k\right),\qquad
-C_k^{\rm annual}=\alpha H_k,\qquad \alpha=0.20.
+\begin{aligned}
+\mathtt{peak}&=\max_t\mathtt{availability}[t],\\
+\mathtt{headroom}[\mathtt{technology}]&=\max\left(0,\frac{\max_t\mathtt{demand}[t]}{\mathtt{period\_hours}\times\max(\mathtt{peak},10^{-12})}\right.\\
+&\qquad\left.-\mathtt{capacity\_by\_technology}[\mathtt{technology}]\right),\\
+\mathtt{limits}[\mathtt{technology}]&=\mathtt{fraction}\times\mathtt{headroom}[\mathtt{technology}],\\
+\mathtt{fraction}&=0.20.
+\end{aligned}
 $$
 
-技术平均曲线由 2022 年 ERA5 资料结合机组和项目假设构成。光伏 `sa.csv` 含 8,761 个数值，转换为半小时后取前 8,760 小时；陆风 `wa.csv` 和海风 `we.csv` 各含 8,760 个小时值。
+技术平均投资曲线由 2022 年 ERA5 资料结合机组和项目假设构成。原始光伏 `sa.csv` 含 8,761 行，最后一行为 `2023-01-01T00:00:00` 的零值；陆风 `wa.csv` 和海风 `we.csv` 各含 8,760 行。Public2 删除光伏末行并声明 `interval_minutes=60`，将剩余各值重复用于两个半小时时段后，与原年度截取所得数值一致。投资读取器沿用 CSV 行序和 ERA5 区间末时间戳；这些曲线直接用于投资计算，调度则采用上文的天气时钟、损失及太阳倾斜面转换。
 
-`canonical_psm_data` 读取这些曲线，年度扩张定义应用比例 \(\alpha\)。例如 \(D^{\rm peak}=1{,}000\) MW、\(a_k^{\rm peak}=0.8\)、\(K_k=300\) MW 时，新增空间为 950 MW，年度上限为 190 MW；曲线峰值为零时，公式采用 \(10^{-12}\) 的分母下界。
+峰值需求为 1,000 MW、`peak = 0.8`、运营容量为 300 MW 时，`headroom` 为 950 MW，年度上限为 190 MW。曲线峰值为零时，分母下界为 0.000000000001。
 
-R029 的 `thesis_final9.6` 投资配置以负净需求时段数确定容量上限。首先用所有运营风光资产的物理可用电量构造 \(V_t\)，并对每种技术求单位容量可用电量 \(g_{k,t}\)：
+实验函数 `thesis96_vre_annual_expansion_cap` 按负净需求时段数确定年度新增容量上限。其三个全年输入为：实际需求时段电量 `demand_mwh`，全部运营风光资产的物理可用电量 `operational_vre_available_mwh`，以及待扩张技术每 MW 可用电量 `generation_per_mw_mwh`。前两者单位为 MWh/时段，第三者为 MWh/MW/时段。技术曲线由该技术运营资产的可用电量除以其总 MW 容量得到；技术容量为零时曲线为零。
 
-$$
-V_t=\sum_k\sum_{i\in k}K_i a_{i,t}\Delta t,\qquad
- g_{k,t}=\begin{cases}
-\dfrac{\sum_{i\in k}K_i a_{i,t}\Delta t}{K_k},&K_k>0,\\
-0,&K_k=0.
-\end{cases}
-$$
-
-其中 \(g_{k,t}\) 的单位为 MWh/MW/时段。设实际需求电量为 \(Q_t\)，净需求为 \(N_t=Q_t-V_t\)，现有负净需求时段数为 \(n_0=\#\{t:N_t<0\}\)。阈值 \(b=200\) 个半小时时段，对应 100 小时。
-
-扩张上限取决于新增容量使净需求到达零的顺序统计量。当 \(n_0\ge b\) 时，上限为零；其余情况下，对 \(N_t\ge0\) 且 \(g_{k,t}>0\) 的时段计算 \(r_t=N_t/g_{k,t}\)，取第 \(b-n_0\) 小的值为临界容量 \(K_k^{\rm crit}\)，并令 \(C_k^{\rm annual}=0.20K_k^{\rm crit}\)。候选数少于 \(b-n_0\) 时，上限取零。容量等于某个 \(r_t\) 时，该时段净需求恰为零；严格负净需求的判据仍为 \(N_t<0\)。
+函数从需求中扣除风光可用电量得到 `net`，并将 `net < 0` 的时段数记为 `already_negative`。默认 `negative_threshold = 200` 个半小时时段，对应 100 小时。达到该时段数时新增上限为零；其余情况下，每个合格时段产生容量临界值 `net / profile`，其中 `profile` 为输入的 `generation_per_mw_mwh`。算法取指定的顺序统计量，乘以 `cap_fraction = 0.20`：
 
 ```text
-输入：完整年度需求 Q、资产容量 K、半小时可用系数 a
-V[t] = 对全部运营风光资产求和 K[i] × a[i,t] × 0.5
-N[t] = Q[t] − V[t]
-n0 = count(N[t] < 0)
-对每种风光技术 k：
-    按该技术容量加权计算每 MW 可用电量 g[k,t]
-    若 n0 >= 200：annual_cap[k] = 0
-    否则：
-        ratios = N[t] / g[k,t]，取 N[t] >= 0 且 g[k,t] > 0 的时段
-        若 ratios 数量 < 200 − n0：annual_cap[k] = 0
-        否则：annual_cap[k] = 0.20 × ratios 中第 (200 − n0) 小的值
-输出：各技术年度新增容量上限
+demand = demand_mwh
+available = operational_vre_available_mwh
+profile = generation_per_mw_mwh
+net = demand - available
+already_negative = count_nonzero(net < 0)
+if already_negative >= negative_threshold:
+    return 0.0
+transitions = net[(net >= 0) & (profile > 0)] / profile[(net >= 0) & (profile > 0)]
+needed = negative_threshold - already_negative
+if len(transitions) < needed:
+    return 0.0
+critical = partition(transitions, needed - 1)[needed - 1]
+return cap_fraction * critical
 ```
 
-R029 以年度物理输入构造这些量，并将其可用风光总量与年度市场汇总对齐。2025 年运行序列已有 1,878 个负净需求时段，因此光伏、陆风和海风的该项年度上限均为零。
+`critical` 为第 `needed` 小的容量临界值，单位为 MW。新增容量等于某个临界值时，对应净需求恰为零；继续增加容量后，该时段进入负净需求。合格临界值数量不足时，函数按既定规则返回零。随 VALUE 0.7.0-alpha.1 发布的 R029 public2 包提供构造这些输入所需的需求、资产和天气。第 6 章说明实验路径的执行覆盖范围。
 
 ## 数据与实现对应
 
-`calendar_mean_solar_2020_2024.nc` 和 `calendar_mean_wind_2020_2024.nc` 提供 R029 日历气候态；`doctoral_weather` 完成代表点提取及风光转换，`doctoral_weather_mapping` 管理项目位置和混合天气权重。`scheme_c_native_psm` 完成全国市场主体容量聚合，`staged_psm` 完成区域容量分片。年度上限由 `canonical_psm_data` 与 `v2_module_definitions` 提供通用峰值规则，或由 R029 的 `doctoral_expansion_inputs` 与 `doctoral_policy` 提供净需求阈值规则。
+`calendar_mean_solar_2020_2024.nc` 和 `calendar_mean_wind_2020_2024.nc` 提供 R029 日历气候态。`site_weather` 读取代表点序列并应用所选时钟与转换，`solar_irradiance` 计算阵列平面辐射。`value_uk_vre_loss_factors_v1.json` 提供转换参数，`value_uk_vre_cf_disclosure_v1.json` 记录负荷率比较。`doctoral_weather` 为实验路径提供固定转换，`doctoral_weather_mapping` 管理项目位置和混合天气权重。
+
+`scheme_c_native_psm` 将容量聚合到全国市场主体，`staged_psm` 按区域划分容量。年度上限的通用峰值规则由 `canonical_psm_data` 和 `v2_module_definitions` 提供。实验性净需求阈值函数 `thesis96_vre_annual_expansion_cap` 定义于 `doctoral_policy`。

@@ -4,18 +4,17 @@ import hashlib
 import json
 import sqlite3
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
 from contextlib import closing
 from dataclasses import replace
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from backend import server
+from tests.local_api_harness import start_local_api
 import gridform_core.zonal_results as zonal_results_module
 
 from gridform_core.market_ledger import (
@@ -1035,6 +1034,27 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
         self.assertEqual(included["items"][0]["event_id"], "observed-2025-1-1")
         self.assertEqual(excluded["total"], 0)
 
+    def test_reliability_pages_in_chronological_order(self) -> None:
+        # P0-9 S6 (F3-07): numeric start_period order, not TEXT event_id order.
+        with tempfile.TemporaryDirectory() as temporary:
+            database = Path(temporary) / "market.sqlite"
+            _write_fixture(database, "full")
+            with closing(sqlite3.connect(database)) as connection, connection:
+                connection.row_factory = sqlite3.Row
+                template = dict(connection.execute("SELECT * FROM reliability_event LIMIT 1").fetchone())
+                connection.execute("DELETE FROM reliability_event")
+                for start in (100, 10, 2):
+                    row = dict(template, event_id=f"observed-2025-{start}-{start}", start_period=start, end_period=start)
+                    connection.execute(
+                        f"INSERT INTO reliability_event ({','.join(row)}) VALUES ({','.join('?' for _ in row)})",
+                        tuple(row.values()),
+                    )
+            first = query_zonal_results(database, {"view": "reliability", "year": 2025, "limit": 2})
+            second = query_zonal_results(database, {"view": "reliability", "year": 2025, "limit": 2, "offset": 2})
+        self.assertEqual([row["start_period"] for row in first["items"]], [2, 10])
+        self.assertEqual([row["start_period"] for row in second["items"]], [100])
+        self.assertEqual((first["total"], first["has_more"], second["has_more"]), (3, True, False))
+
     def test_v5_reads_are_byte_preserving_and_avoided_values_remain_unknown(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1245,10 +1265,8 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                 root / "model-output" / "market" / "market.sqlite", "summary"
             )
             with patch.object(server, "RUNS_ROOT", runs):
-                httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-                thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-                thread.start()
-                origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+                api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+                httpd, origin, _session = api.start()
                 try:
                     period = json.loads(urllib.request.urlopen(
                         origin
@@ -1283,9 +1301,7 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                             timeout=10,
                         )
                 finally:
-                    httpd.shutdown()
-                    httpd.server_close()
-                    thread.join(timeout=10)
+                    api.stop()
 
         self.assertEqual(period["view"], "curtailment")
         self.assertEqual(period["count"], 1)
@@ -1310,10 +1326,8 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                 root / "model-output" / "market" / "market.sqlite", "summary"
             )
             with patch.object(server, "RUNS_ROOT", runs):
-                httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-                thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-                thread.start()
-                origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+                api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+                httpd, origin, _session = api.start()
 
                 def request(path: str) -> tuple[int, bytes]:
                     try:
@@ -1348,9 +1362,7 @@ class Prompt102ZonalResultsApiTests(unittest.TestCase):
                         )
                     ]
                 finally:
-                    httpd.shutdown()
-                    httpd.server_close()
-                    thread.join(timeout=10)
+                    api.stop()
 
         self.assertEqual(status, 200)
         direct = json.loads(direct_bytes)

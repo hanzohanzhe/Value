@@ -5,24 +5,23 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import defaultdict
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Mapping
 
 from .market_ledger import _read_only_connection
+from .model_clock import ledger_clock, period_start_iso
 
 
 AUCTION_VIEW_SCHEMA = "value.market-auction-view/v1"
 PHYSICAL_DISPATCH_SCHEMA = "value.physical-dispatch-view/v1"
-DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v1"
+DISPATCH_TIMELINE_SCHEMA = "value.dispatch-timeline/v2"
 REPLAY_CAPABILITIES_SCHEMA = "value.market-replay-capabilities/v1"
 VRE_SUMMARY_SCHEMA = "value.vre-curtailment-summary/v1"
 VRE_TIMELINE_SCHEMA = "value.vre-curtailment-timeline/v1"
+STRESS_EVENTS_SCHEMA = "value.stress-events/v1"
+# C20: the corrected rule set's declared ``curtailed`` column (native_market_rules.column_semantics).
+CORRECTED_CURTAILMENT_SEMANTICS = "vre_available_minus_gross_output"
 ZONAL_REPLAY_CAPABILITY = "value.zonal-results-page/v1"
-ZONAL_REPLAY_TABLES = {
-    "zonal_period_summary", "zone_period_summary", "boundary_period_summary",
-    "zonal_resource_dispatch", "reliability_event",
-}
 
 
 def canonical_technology(
@@ -71,6 +70,39 @@ def canonical_technology(
     return "unmapped"
 
 
+# Role of each physical-dispatch flow type in the period energy balance
+# (dispatch timeline v2, P0-9 S4).  Only ``supply`` flows are stacked as
+# generation; the others are context.  Every flow type the three writers
+# (scheme_c_native_psm, perfect_foresight_psm, staged_psm) record is listed;
+# tests/test_market_replay.py scans their source to keep this complete.  An
+# unknown flow type is ``context``: shown in evidence, never stacked.
+FLOW_ROLE_BY_TYPE = {
+    "generation": "supply",
+    "import": "supply",
+    "storage_discharge": "supply",
+    "storage_charge": "storage_charge",
+    "flexible_demand": "demand",
+    "export": "demand",
+    "balancing_curtailment": "curtailment",
+    "unused_vre": "curtailment",
+    "excess_generation": "excess",
+    "blackout": "unserved",
+}
+FLOW_ROLES = ("supply", "demand", "storage_charge", "curtailment", "excess", "unserved", "context")
+V8_SUPPLY_STAGE = "final_dispatch"
+
+
+def flow_role(flow_type: str) -> str:
+    return FLOW_ROLE_BY_TYPE.get(str(flow_type), "context")
+
+
+def v8_summary_flow_role(stage: str, energy_mwh: float) -> str:
+    """v8 dispatch summaries: only positive final dispatch is supply; earlier
+    stages (ahead schedules) are context for the same period."""
+
+    return "supply" if str(stage) == V8_SUPPLY_STAGE and float(energy_mwh) > 0 else "context"
+
+
 def _tables(connection: sqlite3.Connection) -> set[str]:
     return {
         str(row[0])
@@ -104,6 +136,80 @@ def _semantic_metadata(database: Path) -> dict[str, object]:
             except json.JSONDecodeError:
                 result[str(key)] = str(value)
     return result
+
+
+# What a period price in ``period_summary.clearing_price_gbp_per_mwh`` means
+# (P0-9 S3, Q6).  The read model states it; the UI only renders the label.
+PRICE_BASES = (
+    "average_period_cost",
+    "national_ahead_clearing_price",
+    "balance_shadow_price",
+    "ahead_settlement_price",
+    "not_declared",
+)
+
+
+def period_price_basis(
+    semantic: Mapping[str, object], ledger_schema_version: str | None = None,
+) -> tuple[str, str]:
+    """Return ``(price_basis, price_basis_source)`` for one market ledger.
+
+    ``source`` is ``declared`` when the writer named the basis, ``semantics``
+    when it is read from the writer's price semantics text, and
+    ``inferred_from_writer`` for the staged (v8) writer, which records a
+    national pay-as-clear price but no semantics key (the v8 metadata is
+    compared on reopen, so no key is added to it).  Anything else is
+    ``not_declared``: the UI then says "basis not recorded".
+    """
+
+    declared = semantic.get("price_basis")
+    if isinstance(declared, str) and declared in PRICE_BASES:
+        return declared, "declared"
+    semantics = str(semantic.get("period_price_semantics") or "").lower()
+    pricing_rule = str(semantic.get("pricing_rule") or "").lower()
+    legacy_basis = str(semantic.get("period_price_basis") or "").lower()
+    if semantics.startswith("demand_normalised_total_period_cost"):
+        return "average_period_cost", "semantics"
+    if "objective derivative" in semantics or pricing_rule == "lp_balance_dual":
+        return "balance_shadow_price", "semantics"
+    if legacy_basis.startswith("ahead_generator_settlement"):
+        return "ahead_settlement_price", "semantics"
+    if str(ledger_schema_version or "") == "value.market-ledger/v8":
+        return "national_ahead_clearing_price", "inferred_from_writer"
+    return "not_declared", "not_declared"
+
+
+def _ledger_schema_version(database: Path) -> str:
+    metadata_path = database.parent / "metadata.json"
+    if metadata_path.is_file():
+        version = json.loads(metadata_path.read_text(encoding="utf-8")).get("schema_version")
+        if version:
+            return str(version)
+    with _read_only_connection(database) as connection:
+        if "metadata" not in _tables(connection):
+            return "unknown"
+        row = connection.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()
+    return str(row[0]) if row else "unknown"
+
+
+def market_year_bounds(database: Path) -> dict[int, tuple[int, int, int]]:
+    """``{year: (first period, last period, distinct periods)}`` of the period ledger (P0-9 S5)."""
+
+    with _read_only_connection(database) as connection:
+        if "period_summary" not in _tables(connection):
+            return {}
+        rows = connection.execute(
+            "SELECT year, MIN(period), MAX(period), COUNT(DISTINCT period) "
+            "FROM period_summary GROUP BY year ORDER BY year"
+        ).fetchall()
+    return {int(year): (int(first), int(last), int(count)) for year, first, last, count in rows}
+
+
+def market_price_basis(database: Path) -> dict[str, str]:
+    """``{"price_basis", "price_basis_source"}`` of the run's market ledger."""
+
+    basis, source = period_price_basis(_semantic_metadata(database), _ledger_schema_version(database))
+    return {"price_basis": basis, "price_basis_source": source}
 
 
 def _artifact_hash(database: Path) -> str | None:
@@ -274,10 +380,13 @@ def market_replay_capabilities(database: Path) -> dict[str, object]:
             int(connection.execute("SELECT COUNT(*) FROM period_summary").fetchone()[0])
             if "period_summary" in tables else 0
         )
-        zonal_rows = (
-            int(connection.execute("SELECT COUNT(*) FROM zonal_period_summary").fetchone()[0])
-            if ZONAL_REPLAY_TABLES.issubset(tables) else 0
-        )
+        # R3-16: v6+ ledgers keep zonal periods in zonal_period_accounting;
+        # an EXISTS-style probe, not a COUNT over the year.
+        zonal_rows = int(any(
+            table in tables
+            and connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone() is not None
+            for table in ("zonal_period_accounting", "zonal_period_summary")
+        ))
         order_rows = (
             int(connection.execute("SELECT COUNT(*) FROM orders").fetchone()[0])
             if "orders" in tables else 0
@@ -288,10 +397,14 @@ def market_replay_capabilities(database: Path) -> dict[str, object]:
         )
     trace_level = str(metadata.get("trace_level", semantic.get("trace_level", "unknown")))
     bid_replay_available = trace_level == "full" and (bool(stages) or order_rows > 0)
+    ledger_schema_version = str(metadata.get("schema_version", semantic.get("schema_version", "unknown")))
+    price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
     return {
         "schema_version": REPLAY_CAPABILITIES_SCHEMA,
-        "ledger_schema_version": metadata.get("schema_version", semantic.get("schema_version", "unknown")),
+        "ledger_schema_version": ledger_schema_version,
         "trace_level": trace_level,
+        "price_basis": price_basis,
+        "price_basis_source": price_basis_source,
         "years": years,
         "period_summary": period_rows > 0,
         "physical_dispatch": physical_rows > 0,
@@ -333,7 +446,8 @@ def query_auction_view(
 ) -> dict[str, object]:
     with _read_only_connection(database) as connection:
         connection.row_factory = sqlite3.Row
-        if not {"clearing_inputs", "clearing_outcomes"}.issubset(_tables(connection)):
+        tables = _tables(connection)
+        if not {"clearing_inputs", "clearing_outcomes"}.issubset(tables):
             raise LookupError("This run does not contain declared auction evidence")
         row = connection.execute(
             """
@@ -344,6 +458,16 @@ def query_auction_view(
             """,
             (int(year), int(period), stage),
         ).fetchone()
+        # M-D1: the storage offer ledger books each storage offer's own
+        # accepted MWh (accounting zone), keyed by the clearing offer id.
+        storage_ledger = {
+            str(item["clearing_offer_id"]): item
+            for item in connection.execute(
+                "SELECT clearing_offer_id, accepted_mwh, status, reason_code FROM storage_orders "
+                "WHERE year=? AND period=?",
+                (int(year), int(period)),
+            )
+        } if "storage_orders" in tables else {}
     if row is None:
         raise LookupError("The requested market stage is not available")
     envelope = json.loads(str(row["payload_json"]))
@@ -386,6 +510,9 @@ def query_auction_view(
             if exact_offer_acceptance and outcome_has_order_acceptance
             else None
         )
+        ledger_offer = storage_ledger.get(str(offer.get("offer_id"))) if offer.get("offer_id") is not None else None
+        if ledger_offer is not None:
+            accepted_mwh = float(ledger_offer["accepted_mwh"])
         cumulative_offered += offered_mwh
         if accepted_mwh is not None:
             cumulative_accepted += accepted_mwh
@@ -405,9 +532,12 @@ def query_auction_view(
                 if outcome_has_order_acceptance else None
             ),
             "acceptance_granularity": (
-                "stage_summary" if not outcome_has_order_acceptance
+                "storage_offer_ledger" if ledger_offer is not None
+                else "stage_summary" if not outcome_has_order_acceptance
                 else "offer" if exact_offer_acceptance else "asset_aggregate"
             ),
+            "offer_status": None if ledger_offer is None else str(ledger_offer["status"]),
+            "offer_reason_code": None if ledger_offer is None else str(ledger_offer["reason_code"]),
             "cumulative_offered_mwh": cumulative_offered,
             "cumulative_exact_accepted_mwh": cumulative_accepted,
         })
@@ -445,7 +575,7 @@ def query_auction_view(
         ),
         "offer_acceptance_coverage": (
             "stage_summary_only" if not outcome_has_order_acceptance
-            else "complete" if all(item["acceptance_granularity"] == "offer" for item in result_offers)
+            else "complete" if all(item["acceptance_granularity"] in {"offer", "storage_offer_ledger"} for item in result_offers)
             else "asset_aggregate_for_multi_tranche_resources"
         ),
         "offer_ordering": "ascending offer price; stable input order for ties",
@@ -464,7 +594,8 @@ def _period_hours(semantic: Mapping[str, object]) -> float:
 
 
 def _model_timestamp(year: int, period: int, period_hours: float) -> str:
-    return (datetime(year, 1, 1) + timedelta(hours=period * period_hours)).isoformat()
+    # S-中1: the model clock is UTC on a fixed 365-day year (gridform_core.model_clock).
+    return period_start_iso(year, period, period_hours)
 
 
 def query_dispatch_timeline(
@@ -523,6 +654,8 @@ def query_dispatch_timeline(
             "SELECT value FROM metadata WHERE key='schema_version'"
         ).fetchone() if "metadata" in tables else None
         ledger_schema_version = str(schema_row[0]) if schema_row else "unknown"
+        price_basis, price_basis_source = period_price_basis(semantic, ledger_schema_version)
+        supply_boundary = accepted_supply_boundary(connection)
         if ledger_schema_version == "value.market-ledger/v8":
             dispatch_source = "dispatch_summary"
         elif ledger_schema_version in {
@@ -560,6 +693,7 @@ def query_dispatch_timeline(
                 "total": total_buckets, "limit": limit, "offset": offset,
                 "dispatch_source": dispatch_source,
                 "dispatch_summary_available": False,
+                "price_basis": price_basis, "price_basis_source": price_basis_source,
                 "items": [], "units": {"energy": "MWh", "price": "GBP/MWh"},
             }
         bucket_placeholders = ",".join("?" for _ in selected_buckets)
@@ -584,9 +718,9 @@ def query_dispatch_timeline(
                         ELSE AVG(clearing_price_gbp_per_mwh) END AS price_gbp_per_mwh,
                    SUM(blackout_mwh) AS blackout_mwh,
                    SUM(excess_mwh) AS excess_mwh,
-                   SUM(energy_balance_residual_mwh) AS energy_balance_residual_mwh,
-                   SUM(compatibility_adjustment_mwh) AS compatibility_adjustment_mwh,
-                   SUM(raw_energy_balance_residual_mwh) AS raw_energy_balance_residual_mwh
+                   SUM(ABS(energy_balance_residual_mwh)) AS energy_balance_residual_mwh,
+                   SUM(ABS(compatibility_adjustment_mwh)) AS compatibility_adjustment_mwh,
+                   SUM(ABS(raw_energy_balance_residual_mwh)) AS raw_energy_balance_residual_mwh
             FROM period_summary
             WHERE year=? AND period BETWEEN ? AND ?
               AND CAST((period-?)/? AS INTEGER) IN ({bucket_placeholders})
@@ -597,6 +731,11 @@ def query_dispatch_timeline(
                 start_period, bucket_periods, *selected_buckets,
             ),
         ).fetchall()
+        stress_by_bucket = _bucket_stress(
+            connection, tables,
+            year=int(year), start_period=start_period, end_period=end,
+            bucket_periods=bucket_periods, buckets=selected_buckets,
+        )
         flows_by_bucket: defaultdict[int, list[dict[str, object]]] = defaultdict(list)
         dispatch_summary_rows = 0
         if dispatch_source == "dispatch_summary" and "dispatch_summary" in tables:
@@ -626,9 +765,17 @@ def query_dispatch_timeline(
                     start_period, bucket_periods, *selected_buckets,
                 ),
             ):
+                raw_technology = str(row["technology"])
                 flows_by_bucket[int(row["bucket"])].append({
-                    "technology": str(row["technology"]),
+                    # R3-02: the staged writer records raw technology names
+                    # ("CCGT", "onshore"); the read model sends the canonical
+                    # group and keeps the raw name.
+                    "technology": canonical_technology(raw_technology, declared_technology=raw_technology),
+                    "raw_technology": raw_technology,
                     "flow_type": "accepted_dispatch",
+                    "role": v8_summary_flow_role(str(row["stage"]), float(row["energy_mwh"])),
+                    "stage": str(row["stage"]),
+                    "zone_id": str(row["zone_id"]),
                     "evidence_scope": (
                         f"zone:{row['zone_id']};stage:{row['stage']}"
                     ),
@@ -656,6 +803,7 @@ def query_dispatch_timeline(
                 flows_by_bucket[int(row["bucket"])].append({
                     "technology": str(row["technology"]),
                     "flow_type": str(row["flow_type"]),
+                    "role": flow_role(str(row["flow_type"])),
                     "evidence_scope": str(row["evidence_scope"]),
                     "energy_mwh": float(row["energy_mwh"]),
                     "balance_component_mwh": float(row["balance_component_mwh"]),
@@ -673,6 +821,8 @@ def query_dispatch_timeline(
             "timestamp_end": _model_timestamp(int(year), int(row["period_end"]) + 1, period_hours),
             "flows": flows_by_bucket.get(bucket, []),
         })
+        if stress_by_bucket is not None:
+            value.update(stress_by_bucket.get(bucket, _empty_stress(stress_basis(stress_by_bucket))))
         items.append(value)
     return {
         "schema_version": DISPATCH_TIMELINE_SCHEMA,
@@ -680,8 +830,7 @@ def query_dispatch_timeline(
         "year": int(year),
         "resolution": resolution,
         "period_hours": period_hours,
-        "timezone": str(semantic.get("timezone", "Europe/London")),
-        "calendar": str(semantic.get("calendar", "fixed_365_day_local_periods")),
+        **ledger_clock(semantic),
         "total": total_buckets,
         "limit": limit,
         "offset": offset,
@@ -690,7 +839,183 @@ def query_dispatch_timeline(
         "items": items,
         "source_artifact_sha256": _artifact_hash(database),
         "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
+        "price_basis": price_basis,
+        "price_basis_source": price_basis_source,
+        # P0-4 S3: residuals and adjustments are summed as absolute values, so
+        # a +2 and a -2 in one window show 4, not a cancelled 0.
+        "residual_aggregation": "sum_of_absolute_period_values",
+        "stress_recorded": stress_by_bucket is not None,
+        "accepted_supply_boundary": supply_boundary,
         "units": {"energy": "MWh", "price": "GBP/MWh"},
+    }
+
+
+STRESS_COLUMNS = (
+    "period", "stage", "forecast_demand_mwh", "real_demand_mwh", "accepted_supply_mwh",
+    "storage_charge_mwh", "flexible_demand_mwh", "export_mwh", "blackout_mwh",
+    "excess_mwh", "curtailed_mwh",
+)
+
+
+def _empty_stress(basis: str) -> dict[str, object]:
+    return {
+        "shortfall_mwh": 0.0, "shortfall_upper_mwh": 0.0, "shortfall_basis": basis,
+        "stress_periods": 0, "possible_stress_periods": 0,
+    }
+
+
+def accepted_supply_boundary(connection: sqlite3.Connection) -> dict[str, object]:
+    """The energy-balance boundary ``accepted_supply_mwh`` is recorded at (R5 R-低10).
+
+    The corrected PSM records gross supply at the full node (it covers demand
+    plus storage charge, export and flexible load); the doctoral PSM records
+    supply at its source-classified node, where storage charged from
+    pre-balancing surplus is routed outside accepted supply.  The UI states
+    the boundary next to the "Accepted supply" figure.
+    """
+
+    from . import energy_balance_contract as balance
+    from .energy_balance_oracle import read_metadata, resolve_boundary
+
+    try:
+        boundary = resolve_boundary(read_metadata(connection))
+    except (sqlite3.Error, ValueError, TypeError):
+        return {"boundary_id": balance.UNKNOWN_BOUNDARY, "formula": None, "description": None}
+    definition = balance.BOUNDARIES.get(str(boundary.get("boundary_id")))
+    return {
+        "boundary_id": str(boundary.get("boundary_id")),
+        "formula": definition.formula if definition else None,
+        "description": definition.description if definition else None,
+    }
+
+
+def stress_basis(stress_by_bucket: Mapping[int, Mapping[str, object]]) -> str:
+    return next((str(row["shortfall_basis"]) for row in stress_by_bucket.values()), "lower_bound")
+
+
+def _bucket_stress(
+    connection: sqlite3.Connection,
+    tables: set[str],
+    *,
+    year: int,
+    start_period: int,
+    end_period: int,
+    bucket_periods: int,
+    buckets: list[int],
+) -> dict[int, dict[str, object]] | None:
+    """A2 stress events per window bucket, from the same contract as the oracle.
+
+    ``shortfall_mwh`` is the certain shortfall summed over stress periods,
+    estimated by :func:`energy_balance_contract.estimate_shortfall` on the
+    boundary the oracle evaluates (declared in the ledger with every input it
+    needs), so window sums equal the run-level stress: exact on a declared
+    full-node boundary or with the surplus routing, otherwise the demand that
+    accepted supply did not meet (``shortfall_basis='lower_bound'``;
+    ``shortfall_upper_mwh`` bounds it).  Only the final dispatch row of a
+    period counts when a period has several stages.  None when the ledger
+    lacks the period columns (the UI then shows "not recorded").
+    """
+
+    from . import energy_balance_contract as balance
+    from .energy_balance_oracle import read_metadata, read_surplus_routing, resolve_boundary
+
+    if "period_summary" not in tables:
+        return None
+    columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(period_summary)")}
+    if any(column not in columns for column in STRESS_COLUMNS):
+        return None
+    boundary = resolve_boundary(read_metadata(connection))
+    tier = boundary["tolerance_tier"]
+    routing, _missing = read_surplus_routing(
+        connection, year=year, first_period=start_period, last_period=end_period,
+    )
+    declared = boundary["source"] == "metadata" and boundary["known"]
+    needs_routing = boundary["boundary_id"] == balance.DEFAULT_PSM_SURPLUS_NODE_V1
+    evaluable = boundary["boundary_id"] if declared and (routing is not None or not needs_routing) else None
+    placeholders = ",".join("?" for _ in buckets)
+    rows_by_period: dict[int, list[sqlite3.Row]] = defaultdict(list)
+    previous_factory = connection.row_factory
+    connection.row_factory = sqlite3.Row
+    try:
+        for row in connection.execute(
+            "SELECT " + ", ".join(STRESS_COLUMNS) + " FROM period_summary "
+            "WHERE year=? AND period BETWEEN ? AND ? "
+            f"AND CAST((period-?)/? AS INTEGER) IN ({placeholders})",
+            (year, start_period, end_period, start_period, bucket_periods, *buckets),
+        ):
+            rows_by_period[int(row["period"])].append(row)
+    finally:
+        connection.row_factory = previous_factory
+    result: dict[int, dict[str, object]] = {}
+    exact_all = True
+    for period, rows in sorted(rows_by_period.items()):
+        if len(rows) > 1:
+            rows = [row for row in rows if str(row["stage"]) == "final_dispatch"]
+        if len(rows) != 1:
+            continue
+        row = rows[0]
+        u_out = w_in = None
+        if routing is not None:
+            u_out, w_in = balance.surplus_terms(routing.get((year, period), []))
+        flows = balance.PeriodFlows(
+            year=year, period=period, stage=str(row["stage"]),
+            supply_mwh=float(row["accepted_supply_mwh"]), blackout_mwh=float(row["blackout_mwh"]),
+            demand_mwh=float(row["real_demand_mwh"]), storage_charge_mwh=float(row["storage_charge_mwh"]),
+            export_mwh=float(row["export_mwh"]), flexible_demand_mwh=float(row["flexible_demand_mwh"]),
+            excess_mwh=float(row["excess_mwh"]), curtailed_mwh=float(row["curtailed_mwh"]),
+            forecast_demand_mwh=float(row["forecast_demand_mwh"]), u_out_mwh=u_out, w_in_mwh=w_in,
+        )
+        if not flows.is_finite():
+            continue
+        estimate = balance.estimate_shortfall(flows, evaluable)
+        exact_all = exact_all and estimate.exact
+        tol = balance.tolerance(tier, flows.demand_mwh, flows.supply_mwh)
+        bucket = (period - start_period) // bucket_periods
+        stats = result.setdefault(bucket, {
+            "shortfall_mwh": 0.0, "shortfall_upper_mwh": 0.0,
+            "stress_periods": 0, "possible_stress_periods": 0,
+        })
+        if estimate.lower_mwh > tol:
+            stats["stress_periods"] = int(stats["stress_periods"]) + 1
+            stats["shortfall_mwh"] = float(stats["shortfall_mwh"]) + estimate.lower_mwh
+        if estimate.upper_mwh > tol:
+            stats["possible_stress_periods"] = int(stats["possible_stress_periods"]) + 1
+            stats["shortfall_upper_mwh"] = float(stats["shortfall_upper_mwh"]) + estimate.upper_mwh
+    basis = "exact" if exact_all and rows_by_period else "lower_bound"
+    for stats in result.values():
+        stats["shortfall_basis"] = basis
+        stats["shortfall_mwh"] = float(f"{float(stats['shortfall_mwh']):.12g}")
+        stats["shortfall_upper_mwh"] = float(f"{float(stats['shortfall_upper_mwh']):.12g}")
+    for bucket in buckets:
+        result.setdefault(bucket, _empty_stress(basis))
+    return result
+
+
+def _event_statistics(
+    values: list[float], periods: list[int], year: int, period_hours: float, basis: str,
+) -> dict[str, object]:
+    """Affected periods, longest run and peak of one per-period event series."""
+
+    longest = 0
+    current = 0
+    for value in values:
+        if value > 1e-9:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    peak_index = max(range(len(values)), key=values.__getitem__) if values else None
+    peak_period = periods[peak_index] if peak_index is not None else None
+    return {
+        "basis": basis,
+        "affected_periods": sum(value > 1e-9 for value in values),
+        "longest_event_periods": longest,
+        "longest_event_hours": longest * period_hours,
+        "peak_event_mwh": values[peak_index] if peak_index is not None else None,
+        "peak_event_period": peak_period,
+        "peak_event_timestamp": (
+            _model_timestamp(year, peak_period, period_hours) if peak_period is not None else None
+        ),
     }
 
 
@@ -700,6 +1025,12 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
     expected_periods = int(round(8760 / period_hours))
     relationship = str(semantic.get("excess_relationship", "unknown"))
     excess_scope = str(semantic.get("excess_scope", "unknown"))
+    curtailment_semantics = str(semantic.get("curtailment_semantics", "unknown"))
+    # C20 (P0-6 column semantics, P0-9 M7): under the corrected rule set
+    # ``curtailed`` is VRE availability minus gross VRE output and ``excess`` is
+    # the non-VRE spill, so "excess + curtailment" is not a VRE event basis; the
+    # unused-VRE events then carry the third basis ``corrected_unused_vre``.
+    corrected_columns = curtailment_semantics == CORRECTED_CURTAILMENT_SEMANTICS
     with _read_only_connection(database) as connection:
         connection.row_factory = sqlite3.Row
         if "period_summary" not in _tables(connection):
@@ -727,36 +1058,47 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
             excess = sum(float(row["excess_mwh"]) for row in rows)
             split_excess: float | None = None
             split_curtailment: float | None = None
-            if relationship == "alias_of_unused_vre":
-                event_values = [max(
-                    float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
-                ) for row in rows]
-            elif relationship == "separate_prebalancing":
-                event_values = [
-                    float(row["curtailed_mwh"]) + float(row["excess_mwh"])
-                    for row in rows
-                ]
+            if relationship == "separate_prebalancing":
                 split_excess = excess
                 split_curtailment = balancing_curtailment
-            else:
-                event_values = [max(
-                    float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
-                ) for row in rows]
-            longest = 0
-            current = 0
-            for value in event_values:
-                if value > 1e-9:
-                    current += 1
-                    longest = max(longest, current)
-                else:
-                    current = 0
-            peak_index = max(range(len(event_values)), key=event_values.__getitem__) if rows else None
-            peak_period = int(rows[peak_index]["period"]) if peak_index is not None else None
             reconciliation = available - accepted - neutral_unused
+            # G1-08 (P0-9 S8): the two event bases are reported separately so the
+            # UI never mixes unused VRE with pre-balancing excess plus
+            # curtailment; the legacy top-level event fields are the statistics
+            # of the run's event basis (excess + curtailment when the ledger
+            # separates them, unused VRE otherwise).
+            periods = [int(row["period"]) for row in rows]
+            unused_values = [max(
+                float(row["vre_available_mwh"]) - float(row["vre_accepted_mwh"]), 0.0
+            ) for row in rows]
+            unused_vre_events = _event_statistics(
+                unused_values, periods, year, period_hours,
+                "corrected_unused_vre" if corrected_columns else "unused_vre",
+            )
+            excess_curtailment_events = (
+                _event_statistics(
+                    [float(row["curtailed_mwh"]) + float(row["excess_mwh"]) for row in rows],
+                    periods, year, period_hours, "excess_plus_balancing_curtailment",
+                )
+                if relationship == "separate_prebalancing" and not corrected_columns else None
+            )
+            legacy_events = {
+                key: value
+                for key, value in (excess_curtailment_events or unused_vre_events).items()
+                if key != "basis"
+            }
             results.append({
                 "year": year,
                 "period_count": len(rows),
-                "full_chronology": len(rows) == expected_periods,
+                "first_period": int(rows[0]["period"]) if rows else None,
+                "last_period": int(rows[-1]["period"]) if rows else None,
+                # A full chronology covers periods 0..N-1 exactly, not just N rows.
+                "full_chronology": (
+                    len(rows) == expected_periods
+                    and bool(rows)
+                    and int(rows[0]["period"]) == 0
+                    and int(rows[-1]["period"]) == expected_periods - 1
+                ),
                 "available_vre_mwh": available,
                 "accepted_vre_mwh": accepted,
                 "neutral_unused_vre_mwh": neutral_unused,
@@ -767,15 +1109,7 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                 "reported_balancing_curtailment_mwh": balancing_curtailment if relationship != "unknown" else None,
                 "vre_utilisation_fraction": accepted / available if available > 0 else None,
                 "average_unused_vre_fraction": neutral_unused / available if available > 0 else None,
-                "affected_periods": sum(value > 1e-9 for value in event_values),
-                "longest_event_periods": longest,
-                "longest_event_hours": longest * period_hours,
-                "peak_event_mwh": event_values[peak_index] if peak_index is not None else None,
-                "peak_event_period": peak_period,
-                "peak_event_timestamp": (
-                    _model_timestamp(year, peak_period, period_hours)
-                    if peak_period is not None else None
-                ),
+                **legacy_events,
                 "storage_charge_mwh": sum(float(row["storage_charge_mwh"]) for row in rows),
                 "export_mwh": sum(float(row["export_mwh"]) for row in rows),
                 "flexible_demand_mwh": sum(float(row["flexible_demand_mwh"]) for row in rows),
@@ -787,6 +1121,13 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
                     if relationship == "alias_of_unused_vre"
                     else "partial_semantic_attribution"
                 ),
+                "event_basis": (
+                    "corrected_unused_vre" if corrected_columns
+                    else "excess_plus_balancing_curtailment"
+                    if relationship == "separate_prebalancing" else "unused_vre"
+                ),
+                "unused_vre_events": unused_vre_events,
+                "excess_curtailment_events": excess_curtailment_events,
                 "marginal_curtailment_status": "not_evaluated",
                 "marginal_curtailment_reason": "No versioned marginal-capacity experiment artifact is attached to this run.",
             })
@@ -795,9 +1136,10 @@ def query_vre_curtailment_summary(database: Path) -> dict[str, object]:
         "definition_id": "value.vre-excess-curtailment-accounting/v1",
         "years": results,
         "period_hours": period_hours,
-        "timezone": str(semantic.get("timezone", "Europe/London")),
+        **ledger_clock(semantic),
         "excess_relationship": relationship,
         "excess_scope": excess_scope,
+        "curtailment_semantics": curtailment_semantics,
         "source_artifact_sha256": _artifact_hash(database),
         "units": {"energy": "MWh", "rate": "fraction"},
     }
@@ -818,3 +1160,84 @@ def query_vre_curtailment_timeline(database: Path, **kwargs: object) -> dict[str
         "dispatch_timeline_schema_version": DISPATCH_TIMELINE_SCHEMA,
         "items": items,
     }
+
+
+STRESS_EVENT_PAGE_LIMIT = 200
+
+
+def query_stress_events(
+    database: Path,
+    *,
+    year: int | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, object]:
+    """A2 stress events of a run, full year, paged and ordered by start period.
+
+    Read-only view of the ledger's ``stress_event`` table (contiguous periods in
+    which accepted supply fell short of demand; the shortfall is booked as
+    unserved energy, dispatch is unchanged).  A ledger written before the
+    table existed returns ``status='not_recorded'`` and no items: the UI then
+    says so instead of "no stress events" (spec 4.4, P0-9 M7).
+    """
+
+    limit = max(1, min(int(limit), STRESS_EVENT_PAGE_LIMIT))
+    offset = max(0, int(offset))
+    semantic = _semantic_metadata(database)
+    period_hours = _period_hours(semantic)
+    result: dict[str, object] = {
+        "schema_version": STRESS_EVENTS_SCHEMA,
+        "status": "not_recorded",
+        "year": year,
+        "items": [],
+        "total": 0,
+        "limit": limit,
+        "offset": offset,
+        "has_more": False,
+        "order": "start_period ascending (numeric)",
+        "event_type": "stress",
+        "event_definition": "contiguous periods in which accepted supply fell short of demand (decision A2)",
+        "shortfall_basis": "exact",
+        **ledger_clock(semantic),
+        "period_hours": period_hours,
+        "source_artifact_sha256": _artifact_hash(database),
+        "units": {"energy": "MWh"},
+    }
+    with _read_only_connection(database) as connection:
+        if "stress_event" not in _tables(connection):
+            return result
+        where, parameters = ("WHERE year=?", (int(year),)) if year is not None else ("", ())
+        total, periods, shortfall = connection.execute(
+            f"SELECT COUNT(*), COALESCE(SUM(periods), 0), COALESCE(SUM(shortfall_mwh), 0.0) FROM stress_event {where}",
+            parameters,
+        ).fetchone()
+        rows = connection.execute(
+            "SELECT year, event_index, first_period, last_period, periods, shortfall_mwh, "
+            f"recorded_unserved_mwh, hidden_unserved_mwh, boundary_id FROM stress_event {where} "
+            "ORDER BY year, first_period, event_index LIMIT ? OFFSET ?",
+            (*parameters, limit, offset),
+        ).fetchall()
+    result.update(
+        status="recorded",
+        total=int(total),
+        has_more=offset + len(rows) < int(total),
+        stress_periods=int(periods),
+        shortfall_mwh=float(shortfall),
+        items=[
+            {
+                "year": int(row[0]),
+                "event_index": int(row[1]),
+                "start_period": int(row[2]),
+                "last_period": int(row[3]),
+                "periods": int(row[4]),
+                "start_timestamp": _model_timestamp(int(row[0]), int(row[2]), period_hours),
+                "shortfall_mwh": float(row[5]),
+                "recorded_unserved_mwh": float(row[6]),
+                "hidden_unserved_mwh": float(row[7]),
+                "boundary_id": str(row[8]),
+                "event_type": "stress",
+            }
+            for row in rows
+        ],
+    )
+    return result

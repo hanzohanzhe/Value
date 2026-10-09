@@ -1,13 +1,21 @@
-.frozen-input-recovery { display:grid; gap:12px; padding:16px; border:1px solid var(--border,#d9dde5); border-radius:8px; min-width:0; background:white; }
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.frozen-input-recovery { display:grid; gap:var(--sp-3); padding:var(--sp-4); border:1px solid var(--border,var(--line)); border-radius:var(--r-md); min-width:0; background:white; }
 .frozen-input-recovery h3,.frozen-input-recovery h4 { margin:0; }
-.frozen-input-recovery label { display:grid; gap:6px; }
+.frozen-input-recovery label { display:grid; gap:var(--sp-1); }
+/* W5: the English option text is long; the select and the grid track shrink to the panel (no page scroll at 375 px). */
+.frozen-input-recovery { grid-template-columns:minmax(0, 1fr); }
+.frozen-input-recovery select { max-width:100%; min-width:0; }
 .frozen-input-recovery code { overflow-wrap:anywhere; }
 .frozen-input-recovery pre { max-height:280px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
-.frozen-input-recovery .frozen-recovery-confirm { display:flex; align-items:flex-start; gap:8px; }
+.frozen-input-recovery .frozen-recovery-confirm { display:flex; align-items:flex-start; gap:var(--sp-2); }
 .frozen-recovery-confirm input { flex:none; }
 
-.frozen-recovery-changes { display:grid; gap:10px; padding-left:22px; margin:0; }
+.frozen-recovery-changes { display:grid; gap:var(--sp-2); padding-left:var(--sp-5); margin:0; }
 .frozen-recovery-changes li span { display:block; overflow-wrap:anywhere; line-height:1.5; }
 
 .frozen-archive-instructions summary { cursor:pointer; }
 .frozen-archive-instructions p { line-height:1.5; }
+.frozen-recovery-progress { margin:0; color:var(--ink-muted); font-size:var(--fs-sm); }
+}

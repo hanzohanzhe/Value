@@ -11,6 +11,8 @@ from .errors import ParameterError
 from .errors import warning_event
 from .builtin.scheme_c_1000twh.runtime_compat.storage_cost import compile_storage_formula
 from .cost_ledger import CEM_SYSTEM_COST_DEFINITION
+from .methodology import PROFILE_PARAMETER, default_profile_id, profile_ids
+from .voll import VOLL_GBP_PER_MWH
 
 
 class ParameterValidationError(ParameterError, ValueError):
@@ -68,6 +70,10 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("planning.uncertain_as_model_decision", "Model card", "boolean", False, "fixed", "fixed", "Uncertain REPD projects remain external projects in retained VALUE.", "value-canonical-planning-input-v1"),
     ParameterDefinition("expansion.storage_cap_method", "Model card", "enum", "value_simulation_trace", "fixed", "fixed", "VALUE storage-headroom calculation.", "value-storage-expansion-policy", allowed_values=("value_simulation_trace",)),
 
+    # The methodology profile (X0 S8). Default and allowed values come only
+    # from gridform_core/data/methodology/profiles.json (one source of truth).
+    ParameterDefinition(PROFILE_PARAMETER, "Methodology", "enum", default_profile_id(), "scientific", "basic", "Methodology profile: the corrected default, or the frozen doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2, with declared deviations). Part of the run's method identity, not of its configuration.", "application", allowed_values=profile_ids()),
+
     # Editable scientific settings. Current production defaults are preserved.
     ParameterDefinition("planning.success_mode", "Planning", "enum", "expected", "scientific", "advanced", "Expected-capacity or seeded stochastic planning success. Legacy expected/stochastic values remain accepted aliases.", "planning-pipeline", allowed_values=("expected", "stochastic", "expected_capacity", "seeded_stochastic")),
     ParameterDefinition("planning.random_seed", "Planning", "integer", 0, "scientific", "advanced", "Seed namespace for stochastic planning success draws.", "planning-pipeline", minimum=0, maximum=2_147_483_647),
@@ -88,8 +94,11 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("network.expansion.random_seed", "Network expansion", "integer", 0, "scientific", "advanced", "Seed namespace for physical transmission-project planning success; circuits are never probability-weighted fractions.", "reference-transmission-expansion", minimum=0, maximum=2_147_483_647, experimental=True),
     ParameterDefinition("scenario.id", "Scenario", "enum", "existing_decarb_base", "scientific", "basic", "Selects the VALUE policy/decarbonisation scenario.", "value-annual-state-transition", allowed_values=("existing_decarb_base", "subsidy_as_usual", "government_target")),
     ParameterDefinition("market.bid_multiplier", "Market experiment", "float", 1.0, "scientific", "advanced", "Experimental multiplier on cost-based offers; values other than one are not strict bid-at-cost.", "value-bid-at-cost-psm", unit="multiplier", minimum=0.01, maximum=10.0, data_pack_role="config.model_parameters", data_pack_path="simulation_parameters.bidding_factor", experimental=True),
+    ParameterDefinition("market.dec_multiplier", "Market experiment", "float", 1.0, "scientific", "advanced", "Multiplier on the avoided running cost that a fuel unit or import returns when it is decremented in staged balancing; must not exceed market.bid_multiplier.", "value-staged-bid-at-cost-psm", unit="multiplier", minimum=0.0, maximum=10.0, experimental=True),
+    ParameterDefinition("market.policy_support_gbp_per_mwh_by_technology", "Market experiment", "string", "{}", "scientific", "advanced", "JSON object {technology: GBP/MWh} of output-based support a decremented asset loses (CfD strike minus reference, ROC value); technologies not listed are merchant (0).", "value-staged-bid-at-cost-psm", unit="GBP/MWh", experimental=True),
+    ParameterDefinition("network.inflexible_dec_premium_gbp_per_mwh_by_technology", "Market experiment", "string", '{"nuclear":100.0}', "scientific", "advanced", "JSON object {technology: GBP/MWh} of the extra price an inflexible unit asks to be decremented; nuclear uses the shared down-regulation table value by default.", "value-staged-bid-at-cost-psm", unit="GBP/MWh", experimental=True),
     ParameterDefinition("market.perfect_foresight_terminal_soc_rule", "Market experiment", "enum", "cyclic", "scientific", "advanced", "Terminal storage state for the optional perfect-foresight PSM.", "value-perfect-foresight-lp", allowed_values=("cyclic", "fixed", "free")),
-    ParameterDefinition("market.voll_gbp_per_mwh", "Market experiment", "float", 10000.0, "scientific", "advanced", "Value of lost load charged to involuntary demand curtailment.", "value-perfect-foresight-lp", unit="GBP/MWh", minimum=0.0, maximum=1000000.0),
+    ParameterDefinition("market.voll_gbp_per_mwh", "Market experiment", "float", VOLL_GBP_PER_MWH, "scientific", "advanced", "Value of lost load charged to involuntary demand curtailment (author value 17000 GBP/MWh, decision A16-5).", "value-perfect-foresight-lp", unit="GBP/MWh", minimum=0.0, maximum=1000000.0),
     ParameterDefinition("carbon.factor_scenario", "Carbon accounting", "enum", "value_current_authoritative_v1", "scientific", "advanced", "Pins the carbon-factor dataset, variants and accounting boundary used by the annual carbon ledger.", "application", allowed_values=("value_current_authoritative_v1", "doctoral_reproduction_2026_07_18")),
     ParameterDefinition("terminal.policy", "Terminal horizon", "enum", "report_only", "scientific", "advanced", "Reports, advances planning-only tail years, or extends the complete model under a distinct project revision.", "application", allowed_values=("report_only", "pipeline_tail", "full_extension")),
     ParameterDefinition("fleet.valuation_discount_rate", "Terminal horizon", "float", 0.05, "scientific", "advanced", "Discount rate for informational model remaining-capital value; the value never enters dispatch or system cost.", "application", unit="fraction", minimum=0.0, maximum=1.0),
@@ -101,6 +110,7 @@ PARAMETERS: tuple[ParameterDefinition, ...] = (
     ParameterDefinition("runtime.checkpoint_enabled", "Output/runtime", "boolean", True, "runtime", "runtime", "Allows durable annual restart checkpoints.", "application"),
     ParameterDefinition("runtime.market_trace_level", "Output/runtime", "enum", "summary", "runtime", "runtime", "Controls period-level market evidence volume.", "value-bid-at-cost-psm", allowed_values=("off", "summary", "full")),
     ParameterDefinition("runtime.market_balance_diagnostic", "Output/runtime", "boolean", False, "runtime", "runtime", "Writes the verbose per-period balance-composition diagnostic only when explicitly enabled.", "value-bid-at-cost-psm"),
+    ParameterDefinition("runtime.energy_balance_strict", "Output/runtime", "boolean", False, "runtime", "runtime", "Stops a run at the first period whose declared energy-balance residual exceeds the numerical tolerance; by default the imbalance is recorded and reported (P0-4).", "value-bid-at-cost-psm"),
     ParameterDefinition("runtime.market_export_format", "Output/runtime", "enum", "sqlite", "runtime", "runtime", "Keeps SQLite as the canonical ledger and optionally creates post-run Parquet files.", "value-bid-at-cost-psm", allowed_values=("sqlite", "parquet")),
     ParameterDefinition("runtime.generation_trace_level", "Output/runtime", "enum", "off", "runtime", "runtime", "Controls generation trace volume.", "value-bid-at-cost-psm", allowed_values=("off", "summary", "full")),
     ParameterDefinition("runtime.console_verbosity", "Output/runtime", "enum", "normal", "runtime", "runtime", "Controls console logging only.", "application", allowed_values=("quiet", "normal", "debug")),
@@ -114,6 +124,27 @@ ALIASES = {
     "success_mode": "planning.success_mode",
     "random_seed": "planning.random_seed",
 }
+
+
+def normalise_numeric_values(values: Mapping[str, object]) -> dict[str, object]:
+    """``values`` with each float-typed registry parameter written as a float.
+
+    R3-N1 (DECISIONS A23): a Study is saved with its numbers in the registry
+    type, so an editor that sends ``17000`` for ``17000.0`` does not change
+    the saved Study or its revision hash.  Only int values of known float
+    parameters change; every other value (and any invalid one, which
+    validation reports) is kept as given.
+    """
+
+    result = dict(values)
+    for key, value in values.items():
+        definition = REGISTRY.get(ALIASES.get(str(key), str(key)))
+        if (
+            definition is not None and definition.value_type == "float"
+            and isinstance(value, int) and not isinstance(value, bool)
+        ):
+            result[key] = float(value)
+    return result
 
 
 def parameter_schema() -> dict[str, object]:
@@ -292,6 +323,12 @@ def resolve_scheme_c_parameters(
             "The bid multiplier is experimental; this run is not strict bid-at-cost.",
         ))
     compile_storage_formula(str(scientific["storage.cost.custom_formula"]))
+    from .network_method_rules import NetworkMethodRulesError, dec_pricing_inputs
+
+    try:
+        dec_pricing_inputs(scientific)
+    except NetworkMethodRulesError as exc:
+        raise ParameterValidationError(str(exc)) from exc
     return ResolvedParameterSet(
         SchemeCScientificParameters(scientific),
         SchemeCRuntimeOptions(runtime, periods_per_year),
@@ -343,6 +380,7 @@ class SchemeCLegacyParameterAdapter:
                 "1" if r["runtime.market_balance_diagnostic"] else "0"
             ),
             "MARKET_EXPORT_FORMAT": str(r["runtime.market_export_format"]),
+            "ENERGY_BALANCE_STRICT": "1" if r["runtime.energy_balance_strict"] else "0",
             "SAVE_GENERATION_TRACE": "0" if r["runtime.generation_trace_level"] == "off" else "1",
         }
 

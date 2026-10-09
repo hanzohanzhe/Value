@@ -2,23 +2,65 @@
   "schema_version": "value.publication-scope/v1",
   "source_manifest": "source-release-manifest.json",
   "methodology_root": "docs/methodology",
-  "edition": "0.3",
-  "revision_date": "2026-10-04",
-  "scientific_basis_date": "2026-10-02",
-  "chapter_ids": ["introduction", "datasets", "core_weather", "core", "national_alternatives", "r029_cem", "transmission", "optional_modules", "appendix"],
-  "chapter_exports": {"zh": "website/methodology/chapters.json", "en": "website/methodology/chapters-en.json"},
+  "edition": "0.4.1",
+  "revision_date": "2026-10-09",
+  "scientific_basis_date": "2026-10-09",
+  "chapter_ids": [
+    "introduction",
+    "datasets",
+    "core_weather",
+    "core",
+    "national_alternatives",
+    "r029_cem",
+    "transmission",
+    "optional_modules",
+    "appendix"
+  ],
+  "chapter_exports": {
+    "zh": "website/methodology/chapters.json",
+    "en": "website/methodology/chapters-en.json"
+  },
   "site_config": "website/site.json",
-  "site_products": ["value"],
+  "site_products": [
+    "value"
+  ],
   "generated_products": "website/dist/assets/releases.json",
-  "published_text_roots": ["website/static", "website/dist"],
+  "published_text_roots": [
+    "website/static",
+    "website/dist"
+  ],
   "artifact_manifest": "docs/methodology/artifacts.json",
   "artifact_prefix": "website/static/assets/methodology",
   "expected_artifacts": [
-    {"path": "VALUE_模型方法学_2026-10-04.docx", "language": "zh", "format": "docx"},
-    {"path": "VALUE_模型方法学_2026-10-04.pdf", "language": "zh", "format": "pdf"},
-    {"path": "VALUE_methodology_ZH_2026-10-04.html", "language": "zh", "format": "html"},
-    {"path": "VALUE_Model_Methodology_EN_2026-10-04.docx", "language": "en", "format": "docx"},
-    {"path": "VALUE_Model_Methodology_EN_2026-10-04.pdf", "language": "en", "format": "pdf"},
-    {"path": "VALUE_methodology_EN_2026-10-04.html", "language": "en", "format": "html"}
+    {
+      "path": "VALUE_模型方法学_2026-10-09.docx",
+      "language": "zh",
+      "format": "docx"
+    },
+    {
+      "path": "VALUE_模型方法学_2026-10-09.pdf",
+      "language": "zh",
+      "format": "pdf"
+    },
+    {
+      "path": "VALUE_methodology_ZH_2026-10-09.html",
+      "language": "zh",
+      "format": "html"
+    },
+    {
+      "path": "VALUE_Model_Methodology_EN_2026-10-09.docx",
+      "language": "en",
+      "format": "docx"
+    },
+    {
+      "path": "VALUE_Model_Methodology_EN_2026-10-09.pdf",
+      "language": "en",
+      "format": "pdf"
+    },
+    {
+      "path": "VALUE_methodology_EN_2026-10-09.html",
+      "language": "en",
+      "format": "html"
+    }
   ]
 }

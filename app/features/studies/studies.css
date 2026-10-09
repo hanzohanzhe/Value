@@ -1,0 +1,41 @@
+@layer reset, tokens, base, components, features, utilities;
+
+/* Studies (/studies), P1 spec 6.2 and principle 0.1: a one-line header, then the composer. */
+@layer features {
+.studies-page { display: grid; gap: var(--sp-4); min-width: 0; }
+.studies-header { margin: 0; }
+.studies-header h2 { margin: 0; color: var(--ink); font-size: var(--fs-2xl); line-height: var(--lh-heading); overflow-wrap: anywhere; }
+.studies-draft-state { color: var(--amber); font-size: var(--fs-xs); font-weight: 650; }
+/* R-15 (P1-polish): the link back to /studies above an edited Study's title. */
+.studies-back { display: inline-block; margin: 0 0 var(--sp-1); color: var(--blue-dark); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
+.studies-back:hover { text-decoration: underline; }
+.studies-draft-offer p { margin: 0 0 var(--sp-2); }
+.studies-draft-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.study-name-clash { margin: 0; color: var(--amber); font-size: var(--fs-xs); line-height: var(--lh-body); }
+.study-save-blocked { margin: 0; color: var(--red); font-size: var(--fs-sm); font-weight: 650; }
+/* R-8 (P1-polish): why the save button is disabled, beside it. */
+.study-save-reason { margin: var(--sp-1) 0 0; color: var(--ink-muted); font-size: var(--fs-sm); line-height: var(--lh-body); }
+.saved-projects .saved-study-graph { color: var(--ink-muted); font-size: var(--fs-xs); }
+.saved-projects .saved-study-graph > summary { cursor: pointer; }
+.composer-panel .parameter-field .v-field__label code { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--ink-muted); }
+.graph-review .v-hash code { color: var(--blue); }
+/* NumberField labels inside the legacy form panel (whose labels are grids) stay on one line. */
+.form-panel label.v-field__label { display: block; }
+.composer-panel .view-toggle button { white-space: nowrap; }
+.saved-projects > article .v-hash { flex-direction: row; justify-content: flex-start; align-self: flex-start; }
+/* R-5 (P1-polish): below 1600 px the saved Studies sit under the composer as a
+   two-column grid of cards (one column on narrow screens); from 1600 px they
+   are a right-hand column at least 360 px wide. */
+@media (max-width: 1599px) {
+  .studies-page .project-grid { grid-template-columns: minmax(0, 1fr); }
+  .studies-page .saved-projects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+  .studies-page .saved-projects > article { min-height: 0; grid-template-columns: minmax(0, 1fr); align-content: start; border: 1px solid var(--line-soft); border-radius: var(--r-md); }
+  .studies-page .saved-projects > article > span { flex-direction: row; flex-wrap: wrap; align-items: center; }
+}
+@media (max-width: 699px) {
+  .studies-page .saved-projects { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 1600px) {
+  .studies-page .project-grid { grid-template-columns: minmax(0, 1fr) minmax(360px, .62fr); }
+}
+}

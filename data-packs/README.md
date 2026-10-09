@@ -10,8 +10,8 @@
 
 三个合成包保留原 ID、哈希与生成关系，不代表真实英国观测。Full 内置前两个；源码使用 `python scripts/install_synthetic_pack.py --value-101-only` 安装教学包。
 
-真实研究输入从[数据 Release](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-04)下载，见[实物清单](../docs/release/public-data-assets.json)。GBP1 national 与 R029 是 data bundle；GBP1 suite 通过套件入口导入。23 区/11 区独立网络组件使用包内 Python 安装指引；11 区 family 先解压选择组件，不能将整个 family 当 national 数据包上传。
+真实研究输入从数据 Release 下载。VALUE 0.7.0 中：修正口径（默认）的全国研究使用 [value-data-2026-10-09](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-09) 中的 R029 public2 或 GBP1 public2（data bundle，Data → Install a VALUE data pack）；23 区网络研究使用同一发行中的 GBP1 public2 研究套件 `VALUE-UK-GBP1-23zone-research-suite-public2-2026-10-09.zip`（Data → Install the VALUE-UK research suite）；论文复现口径使用 [value-data-2026-10-04](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-04) 中的 GBP1 public1，见[实物清单](../docs/release/public-data-assets.json)。value-data-2026-10-04 中的 GBP1 public1 研究套件只适用于 0.6.0-alpha.2；23 区独立网络组件在 0.7.0 中经由 public2 研究套件接入；11 区 family 先解压选择组件，按包内 Python 安装指引接入，不能将整个 family 当 national 数据包上传。
 
-`public1` 修订单位标签、路径和分发元数据，保留全部数值绑定原字节。GBP1 与 R029 保留原 pack ID，实际 manifest SHA 另行记录。GBP1 的原核政策已在实际短运行中确认；R029 当前普通 VALUE 链兼容，博士冻结重现仍存在初始化限制。11 区仅发布获准的计算网络组件，未公开原 CP30 轮廓、原 workbook 或完整年度重放目录。详见[发布计划](../docs/PUBLICATION_PLAN.md)。
+`public1` 修订单位标签、路径和分发元数据，保留全部数值绑定原字节。GBP1 与 R029 保留原 pack ID，实际 manifest SHA 另行记录。GBP1 的原核政策已在实际短运行中确认；R029 public1 与 0.6.0-alpha.2 的普通 VALUE 链兼容（0.7.0 的修正口径改用 R029 public2），不用于论文复现口径。11 区仅发布获准的计算网络组件，未公开原 CP30 轮廓、原 workbook 或完整年度重放目录。详见[发布计划](../docs/PUBLICATION_PLAN.md)。
 
 需求、互联线、天气、REPD 等来源对象保留 NESO、CC BY、OGL 等许可与署名。运行参数编译来源见 [runtime parameter notices](../publication/RUNTIME_PARAMETER_NOTICES.md)。每个包都有 RIGHTS、ATTRIBUTION 或明确来源说明；短任务检查不代替科学验证。

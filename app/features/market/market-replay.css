@@ -1,0 +1,42 @@
+/* P0 frontend spec 3: Market replay elements added in this round (>= 12px, tokens only). */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+/* Designer ruling 6: a fixed three-column template (Window 2 + Demand; Accepted, Shortfall, Storage charge;
+   Storage discharge + Price 2) so no empty filler cell is left at desktop widths. */
+.selected-period-strip.window-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.selected-period-strip.window-summary small { font-size: var(--fs-xs); color: var(--ink-muted); }
+.selected-period-strip.window-summary b { font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
+.selected-period-strip.window-summary .window-summary-wide { grid-column: span 2; }
+.selected-period-strip.window-summary .window-clock-note { display: block; font-size: var(--fs-xs); font-style: normal; color: var(--ink-muted); }
+.selected-period-strip.window-summary .shortfall-positive b { color: var(--amber); }
+.selected-period-strip.window-summary .value-pill { align-self: flex-start; }
+@media (max-width: 600px) {
+  .selected-period-strip.window-summary { grid-template-columns: 1fr 1fr; }
+  .selected-period-strip.window-summary .window-summary-wide { grid-column: 1 / -1; }
+}
+/* Spec 3.3: a 4px amber band above stress periods; never a "shortfall" bar. */
+.evidence-chart .stress-band { fill: var(--amber); }
+.evidence-chart .stress-key { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: var(--sp-3); font-size: var(--fs-xs); color: var(--ink-muted); }
+.evidence-chart .stress-key i { display: inline-block; width: 18px; height: 4px; background: var(--amber); }
+.dispatch-empty code { font-size: var(--fs-xs); }
+/* Spec 4.1 / 4.5: VRE KPI coverage line and the two event groups. */
+.kpi-coverage { display: block; font-style: normal; font-size: var(--fs-xs); color: var(--ink-muted); }
+.vre-event-group { margin-top: var(--sp-3); }
+.vre-event-group h4 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); color: var(--ink); }
+.vre-event-basis { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--ink-muted); }
+/* Designer ruling 4: an isolated point of a VRE series is a solid dot of radius 2.5px in the series
+   colour: r=1.25 with a 2.5px stroke inherits the series stroke colour (no new colour values). */
+.evidence-chart circle.series-dot { fill: none; stroke-width: 2.5; stroke-dasharray: none; }
+/* Spec 4.4 (A2): the full-year stress-event list in Market replay. */
+.stress-event-note { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--ink-muted); }
+.stress-event-list td small { display: block; font-size: var(--fs-xs); color: var(--ink-muted); }
+.stress-event-list:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+/* Spec 3.4 / M-D1: per-offer storage acceptance note under the merit-order table. */
+.storage-ledger-note { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); color: var(--ink-muted); }
+/* W4c (spec 2.1, 6.5): ChartFrame charts of the replay; a period's UTC model time under its input. */
+.replay-page .evidence-controls .period-time { color: var(--ink-muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.dispatch-chart .dispatch-bucket, .dispatch-chart .selected-bucket { cursor: pointer; }
+.merit-chart .merit-offer { opacity: .84; }
+.replay-page .v-table-scroll { margin-top: var(--sp-2); }
+}

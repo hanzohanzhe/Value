@@ -7,7 +7,7 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Callable, Mapping, Sequence
 
-from gridform_core.catalog import DATASET_SLOTS
+from gridform_core.dataset_slots import DATASET_SLOTS
 from gridform_core.gb_zonal_pack_builder import build_candidate
 
 from .acquisition import UrllibFetchTransport, fetch_revision

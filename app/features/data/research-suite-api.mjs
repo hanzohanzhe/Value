@@ -1,7 +1,6 @@
-const DEFAULT_VALUE_API_ORIGIN = "http://127.0.0.1:8766";
-
-export function researchSuiteApiUrl(origin = DEFAULT_VALUE_API_ORIGIN) {
-  return `${origin.replace(/\/+$/, "")}/api/research-suites/install`;
+// Same-origin only (P0-1): the UI gateway forwards /api/* to the engine.
+export function researchSuiteApiUrl() {
+  return "/api/research-suites/install";
 }
 
 export function describeResearchSuiteInstallation(installation) {

@@ -1,0 +1,38 @@
+/* Spec 11.1 (S-D1): grouped readiness issues. New elements only; tokens only; >= 12px. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.readiness-groups { display: grid; gap: var(--sp-2); min-width: 0; }
+.readiness-group { display: grid; gap: var(--sp-1); min-width: 0; }
+.readiness-group-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
+.readiness-toggle {
+  border: 0;
+  padding: 0;
+  min-height: 24px;
+  background: transparent;
+  color: var(--blue);
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.readiness-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
+.readiness-group li {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.readiness-row-text { font-size: var(--fs-sm); color: var(--ink); }
+.readiness-row-title { font-size: var(--fs-sm); font-weight: 600; }
+.readiness-count { color: var(--amber); font-weight: 600; }
+.readiness-group.errors .readiness-count { color: var(--red); }
+.readiness-groups .readiness-group li small { font-size: var(--fs-xs); line-height: 1.45; color: var(--ink-muted); }
+.readiness-groups .readiness-group li code { font-size: var(--fs-xs); color: var(--ink-muted); }
+.readiness-run-blocked { margin: 0; font-size: var(--fs-sm); color: var(--red); }
+/* The readiness card's older rules style every nested section; keep the Callout's own box. */
+.readiness-groups .value-callout { margin: 0; border-left-width: 4px; padding: var(--sp-3) var(--sp-4); }
+}

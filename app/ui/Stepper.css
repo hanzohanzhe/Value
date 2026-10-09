@@ -1,0 +1,31 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-stepper ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+  .v-stepper__step { min-width: 0; }
+  .v-stepper__step > button, .v-stepper__static {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-md);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    opacity: 1;
+  }
+  .v-stepper__step > button { cursor: pointer; }
+  .v-stepper__step > button:hover { border-color: var(--blue); }
+  .v-stepper__mark { flex: 0 0 24px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--line-soft); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 700; }
+  .v-stepper__text { display: grid; gap: var(--sp-1); min-width: 0; }
+  .v-stepper__text b { font-size: var(--fs-sm); overflow-wrap: anywhere; }
+  .v-stepper__text small { color: var(--ink-muted); font-size: var(--fs-xs); }
+  .v-stepper__step.is-done .v-stepper__mark { background: var(--teal-soft); color: var(--teal); }
+  .v-stepper__step.is-current > button, .v-stepper__step.is-current .v-stepper__static { border-color: var(--blue); background: var(--blue-soft); box-shadow: inset 3px 0 var(--blue); }
+  .v-stepper__step.is-current .v-stepper__mark { background: var(--blue); color: var(--panel); }
+  .v-stepper__step.is-current b { color: var(--blue-dark); }
+}

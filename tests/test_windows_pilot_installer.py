@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import tempfile
@@ -71,6 +72,10 @@ internal static class PayloadPathHarness
             self.assertEqual(exercised.returncode, 0, exercised.stdout + exercised.stderr)
 
     def test_portable_launcher_refuses_an_unowned_listener_before_starting_services(self) -> None:
+        if shutil.which("powershell.exe") is None:
+            # Without PowerShell the launcher cannot run; never occupy the
+            # live install's port 8766 for nothing (P0 hard rule, M0-X0 review).
+            self.skipTest("needs Windows PowerShell (powershell.exe)")
         portable = ROOT / "scripts" / "start-portable-local.ps1"
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener, tempfile.TemporaryDirectory() as temporary:
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -639,7 +644,7 @@ internal static class PrePromotionRollbackHarness
 
     def test_formal_installer_registry_version_matches_manifest(self) -> None:
         installer = BOOTSTRAP.read_text("utf-8")
-        self.assertIn('key.SetValue("DisplayVersion", "0.6.0-alpha.2");', installer)
+        self.assertIn('key.SetValue("DisplayVersion", "0.7.0-alpha.1");', installer)
 
     def test_metadata_snapshot_restores_uninstaller_and_shortcut_files(self) -> None:
         framework = (

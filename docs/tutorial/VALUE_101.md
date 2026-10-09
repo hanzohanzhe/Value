@@ -18,6 +18,8 @@ It does not contain the UK research pack or the doctoral 1000 TWh reproduction d
 3. Wait for the browser to open at [http://127.0.0.1:8800](http://127.0.0.1:8800), or start `VALUE` from the desktop or Start menu.
 4. Check the lower-left status. It should show Python 3.10 and a ready local VALUE service.
 
+Install VALUE on your own computer. VALUE assumes one person per computer: it is not supported on shared lab computers or remote-desktop servers, where other users could reach your local VALUE (see `SECURITY.md`).
+
 No terminal, separate Python, Node, Git, administrator account or internet connection is required after download. Application state is stored at `%LOCALAPPDATA%\VALUE\state`. Closing the browser does not stop VALUE. Use the `Stop VALUE` Start-menu shortcut when finished. The `Uninstall VALUE` shortcut removes this VALUE installation and its application state. The older `%LOCALAPPDATA%\VALUE-101` pilot is a separate optional installation: it is not migrated and may remain installed.
 
 ## The five objects
@@ -111,7 +113,7 @@ The one-day route calls only the selected PSM and its storage-cost dependency. T
 | `demand.forecast`, `demand.real` | CSV | Forecast and realised MWh for every half-hour |
 | `fleet.generators` | JSON | Generator, storage and import asset records |
 | `market.<country>.price` | CSV | Import offer prices for Belgium, France, Ireland, Netherlands and Norway |
-| `market.<country>.profile` | CSV | Signed import availability profiles for the same five boundaries |
+| `market.<country>.profile` | CSV | Signed interconnector availability for the same five boundaries (positive = import capacity, negative = export capability). Under the corrected methodology a positive value is offered to the day-ahead clearing at the country's price; under the doctoral reproduction it is offered only in the balancing stage, when realised demand exceeds the day-ahead schedule |
 | `planning.success_rates` | CSV | Planning success assumptions |
 | `planning.timelines` | JSON | Stage and completion timing assumptions |
 | `policy.support` | JSON | Policy-support parameters |
@@ -119,6 +121,8 @@ The one-day route calls only the selected PSM and its storage-cost dependency. T
 | `projects.repd` | CSV | Prepared planning-project records |
 | `source.repd_raw` | CSV | Source project records retained for provenance |
 | `weather.solar`, `weather.wind` | NetCDF | Weather fields used by the selected weather method |
+
+Interconnector imports are used differently by the two methodology profiles (decision A16-2). Under the corrected methodology (default) a positive `market.<country>.profile` value is the import capacity available in the period; it is offered to the day-ahead clearing at `market.<country>.price`, in the same merit order as domestic generation, and capacity the day-ahead schedule leaves is offered again in balancing. The doctoral reproduction keeps the thesis kernel: imports are offered only in the balancing stage, so they can be accepted only when realised demand exceeds the day-ahead schedule. In the VALUE 101 pack France offers 12 MW at 82 GBP/MWh, dearer than the CCGT (66.5 GBP/MWh with its start-up adder), so the one-day lesson shows no import under either profile; lower the price below the CCGT and the corrected methodology accepts the import day-ahead.
 
 Open `Data` to inspect each binding, checksum, licence and source declaration. A real research dataset must be installed as one complete Data Pack; clicking a preset is not a substitute for mapping and validating the files.
 
@@ -181,7 +185,7 @@ The output records corridor loading, upward and downward redispatch, network-add
 
 ## If VALUE does not start
 
-Use `Stop VALUE`, then start `VALUE` once. If a bundled pack is missing, reinstall from the same `VALUE-Setup.exe`. If port 8800 or 8766 is occupied by another application, close that application; VALUE refuses to terminate a process it does not own.
+Use `Stop VALUE`, then start `VALUE` once. If the page says **Open VALUE from its launcher**, it was not opened through VALUE's own shortcut (for example an old bookmark or another address): close it and start `VALUE` from the desktop or Start menu. If a bundled pack is missing, reinstall from the same `VALUE-Setup.exe`. If port 8800 or 8766 is occupied by another application, close that application; VALUE refuses to terminate a process it does not own.
 
 Installer and startup diagnostics are under `%LOCALAPPDATA%\VALUE\diagnostics`. Teaching state and Runs are under `%LOCALAPPDATA%\VALUE\state`.
 

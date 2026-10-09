@@ -1,0 +1,9 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-metric { display: grid; gap: var(--sp-1); min-width: 0; padding: var(--sp-3); border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--panel); }
+  .v-metric__label { color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; }
+  .v-metric__value { color: var(--ink); font-size: var(--fs-xl); font-weight: 700; line-height: var(--lh-heading); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .v-metric__value .v-status { font-size: var(--fs-md); font-weight: 650; }
+  .v-metric__basis { color: var(--ink-muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+}

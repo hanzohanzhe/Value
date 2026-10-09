@@ -18,6 +18,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from .methodology import methodology_scoped
 from .network_contracts import NetworkPSMInput
 from .v2.contracts import ArtifactReference, JsonContract, MarketYearResult, PSMInput, PeriodSummary
 
@@ -216,6 +217,17 @@ def _parse_input(model_input: PSMInput) -> _ACInput:
         raise ACNetworkInputError("AC feasibility requires domain.network.ac, not a DC input")
     if network.run_id != model_input.run_id or network.year != model_input.year:
         raise ACNetworkInputError("AC network input run/year identity mismatch")
+    # An AC generator is one physical machine at one bus (P1-01): exactly one
+    # asset-map row per asset, whose share is therefore 1.
+    split = sorted(
+        asset for asset, rows in network.topology.mappings_by_asset().items()
+        if len(rows) != 1
+    )
+    if split:
+        raise ACNetworkInputError(
+            "AC feasibility requires exactly one bus mapping per asset; split: "
+            + ", ".join(split)
+        )
     ext = dict(network.extensions)
     raw_specs = ext.get("generator_specs")
     raw_reactive = ext.get("reactive_demand_mvar_by_bus")
@@ -365,6 +377,7 @@ class ReferenceACFeasibilityPSM:
     id = "value-reference-ac-feasibility"
     version = "0.1.0"
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         # AC feasibility is optional and must not make the default
         # single-node runtime depend on SciPy merely because its manifest is

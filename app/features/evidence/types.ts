@@ -2,6 +2,8 @@ export type PlanningProject = {
   project_id: string; name: string; source: string; technology: string; capacity_mw: number;
   region: string; latitude?: number; longitude?: number; development_stage: string; status: string;
   expected_completion_year?: number; outcome: string; failure_reason_code?: string;
+  /** R4 R-低1: the model year of a project-index row (one row per project and year). */
+  year?: number | null;
 };
 export type PlanningEvent = {
   sequence: number; project_id: string; year: number; event_type: string; reason_code?: string;

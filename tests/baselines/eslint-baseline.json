@@ -1,0 +1,12 @@
+{
+ "schema_version": "value.eslint-ratchet/v2",
+ "command": "eslint . --ignore-pattern dist --ignore-pattern .next",
+ "key": "[relative file, ruleId, first message line without absolute paths or :line:col] -> count",
+ "counts": {
+  "[\"app/features/runs/RunWorkspace.tsx\", \"@typescript-eslint/no-unused-vars\", \"'canRunMode' is defined but never used.\"]": 1,
+  "[\"app/features/runs/RunWorkspace.tsx\", \"@typescript-eslint/no-unused-vars\", \"'teachingProject' is defined but never used.\"]": 1,
+  "[\"e2e/module-authoring.spec.ts\", \"@next/next/no-assign-module-variable\", \"Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable\"]": 1,
+  "[\"scripts/methodology/render_math.cjs\", \"@typescript-eslint/no-require-imports\", \"A `require()` style import is forbidden.\"]": 9,
+  "[\"scripts/methodology/render_math.cjs\", \"@typescript-eslint/no-unused-vars\", \"'view' is assigned a value but never used.\"]": 1
+ }
+}

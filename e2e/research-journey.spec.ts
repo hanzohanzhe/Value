@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+// P1 W4a (A30): the research guide reads in English by default; its labels below are the en dictionary's (journey.*).
 import { VALUE_101_FALLBACK } from "../app/features/learn/value101";
+import { railLink } from "./workspace-nav";
 
 const baseline = {
   id: "fixture-study", name: "Journey baseline", data_pack_id: "baseline-pack",
@@ -113,7 +115,7 @@ async function mockWorkspace(page: Page, options: {
 
 async function openWorkspace(page: Page, url = "/") {
   await page.goto(url);
-  await expect(page.locator(".service")).toContainText("value-native ready");
+  await expect(page.locator(".rail .service")).toContainText("value-native ready");
 }
 
 async function expectNoPageOverflow(page: Page) {
@@ -125,23 +127,23 @@ test("reproduce saves the selected revision and pack, then opens Runs without la
   const refreshGate = deferred();
   const fixture = await mockWorkspace(page, { derivedRefresh: refreshGate.promise });
   await openWorkspace(page);
-  await page.getByRole("button", { name: "reproduce from existing data", exact: true }).click();
-  await expect(page).toHaveURL(/[?&]view=journey(?:&|$)/);
+  await page.getByRole("button", { name: "Reproduce from existing data", exact: true }).click();
+  await expect(page).toHaveURL(/\/journey(?:\?|$)/);
   const journey = page.locator(".research-journey:visible");
-  await expect(journey.getByRole("heading", { name: "reproduce from existing data", exact: true })).toBeVisible();
-  await journey.getByRole("combobox", { name: "已有研究", exact: true }).selectOption(baseline.id);
-  await journey.getByRole("textbox", { name: "新 Study 名称", exact: true }).fill("My reproduction");
+  await expect(journey.getByRole("heading", { name: "Reproduce from existing data", exact: true })).toBeVisible();
+  await journey.getByRole("combobox", { name: "Existing Study", exact: true }).selectOption(baseline.id);
+  await journey.getByRole("textbox", { name: "Name of the new Study", exact: true }).fill("My reproduction");
   await expect(journey.locator("details.research-journey-modules")).not.toHaveAttribute("open");
-  await journey.getByRole("button", { name: "创建复现 Study", exact: true }).click();
+  await journey.getByRole("button", { name: "Create the reproduction Study", exact: true }).click();
   try {
     await expect.poll(() => fixture.derivations.length).toBe(1);
-    await expect(journey.getByRole("button", { name: "正在创建 Study…", exact: true })).toBeDisabled();
+    await expect(journey.getByRole("button", { name: "Creating the Study…", exact: true })).toBeDisabled();
     await journey.locator("form").evaluate((form) => (form as HTMLFormElement).requestSubmit());
     expect(fixture.derivations).toEqual([{
       intent: "reproduce", name: "My reproduction", source_revision_sha256: baseline.revision_sha256, data_pack_id: baseline.data_pack_id,
     }]);
   } finally { refreshGate.resolve(); }
-  await expect(page).toHaveURL(/[?&]view=run(?:&|$)/);
+  await expect(page).toHaveURL(/\/runs(?:\/|\?|$)/);
   await expect(page.locator(".run-control").getByRole("combobox", { name: "Study", exact: true })).toHaveValue("derived-reproduce");
   expect(fixture.derived[0].modules).toEqual(baseline.modules);
   fixture.assertClean();
@@ -151,32 +153,34 @@ test("data requires another pack, retains choices after Data and fits a 390px vi
   await page.setViewportSize({ width: 390, height: 844 });
   const fixture = await mockWorkspace(page);
   await openWorkspace(page);
-  await page.getByRole("button", { name: "add your new data", exact: true }).click();
-  await expect(page).toHaveURL(/[?&]view=journey(?:&|$)/);
+  await page.getByRole("button", { name: "Add your new data", exact: true }).click();
+  await expect(page).toHaveURL(/\/journey(?:\?|$)/);
   const journey = page.locator(".research-journey:visible");
-  const source = journey.getByRole("combobox", { name: "已有研究", exact: true });
-  const name = journey.getByRole("textbox", { name: "新 Study 名称", exact: true });
-  const target = journey.getByRole("combobox", { name: "已安装的数据包", exact: true });
+  const source = journey.getByRole("combobox", { name: "Existing Study", exact: true });
+  const name = journey.getByRole("textbox", { name: "Name of the new Study", exact: true });
+  const target = journey.getByRole("combobox", { name: "Installed data pack", exact: true });
   await source.selectOption(baseline.id);
   await name.fill("My new-data comparison");
-  await expect(journey.getByRole("button", { name: "创建换数据 Study", exact: true })).toBeDisabled();
+  await expect(journey.getByRole("button", { name: "Create the new-data Study", exact: true })).toBeDisabled();
   await expect(target.locator(`option[value="${baseline.data_pack_id}"]`)).toHaveCount(0);
   await target.selectOption("new-data-pack");
-  await expect(journey).toContainText("文件完整度不代表研究预检通过");
+  await expect(journey).toContainText("Complete files do not mean the Study passes its checks");
   await expectNoPageOverflow(page);
-  await journey.locator("summary").filter({ hasText: "查看沿用的模块" }).click();
-  await expect(journey.getByRole("region", { name: "沿用的模块", exact: true })).toBeVisible();
+  await journey.locator("summary").filter({ hasText: "Show the modules that are kept" }).click();
+  await expect(journey.getByRole("region", { name: "Modules kept", exact: true })).toBeVisible();
   await expectNoPageOverflow(page);
-  await journey.getByRole("button", { name: "进入 Data 安装 / 校验", exact: true }).click();
+  await journey.getByRole("button", { name: "Open Data to install / validate", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Data Workbench", exact: true })).toBeVisible();
   await expect(page.locator(".data-workbench")).not.toContainText("Unexpected Data Workbench schema");
   await expectNoPageOverflow(page);
-  await page.getByRole("button", { name: /Research guide/ }).click();
+  // R-6 (P1-polish): below 900 px the sidebar is a drawer opened from its menu button.
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await railLink(page, "Research guide").click();
   await expect(name).toHaveValue("My new-data comparison");
   await expect(source).toHaveValue(baseline.id);
   await expect(target).toHaveValue("new-data-pack");
-  await journey.getByRole("button", { name: "创建换数据 Study", exact: true }).click();
-  await expect(page).toHaveURL(/[?&]view=run(?:&|$)/);
+  await journey.getByRole("button", { name: "Create the new-data Study", exact: true }).click();
+  await expect(page).toHaveURL(/\/runs(?:\/|\?|$)/);
   await expect(page.locator(".run-control").getByRole("combobox", { name: "Study", exact: true })).toHaveValue("derived-data");
   expect(fixture.derivations).toEqual([{
     intent: "data", name: "My new-data comparison", source_revision_sha256: baseline.revision_sha256, data_pack_id: "new-data-pack",
@@ -206,6 +210,8 @@ test("a late Study A preflight stays hidden after switching to B, and B can chec
   await expect(readiness.locator("section.accepted")).toHaveCount(0);
   await expect(readiness).not.toContainText("A-only preflight evidence");
   await page.getByRole("button", { name: "Check readiness", exact: true }).click();
+  // Readiness groups (R4/W4c) fold their warnings; open them before reading the evidence.
+  await readiness.locator("section.accepted").getByRole("button", { name: /^Show \d+$/ }).click();
   await expect(readiness.locator("section.accepted")).toContainText("B-only preflight evidence");
   await expect(readiness).not.toContainText("A-only preflight evidence");
   expect(fixture.preflights).toEqual([baseline.id, secondStudy.id]);

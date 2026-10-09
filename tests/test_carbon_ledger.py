@@ -91,6 +91,9 @@ class CarbonLedgerTests(unittest.TestCase):
             sum(result["components_tco2e"].values()),
             result["total_carbon_emissions_tco2e"],
         )
+        # F2-N4: component keys are sorted, independent of the hash seed.
+        self.assertEqual(list(result["components_tco2e"]), sorted(result["components_tco2e"]))
+        self.assertEqual(list(result["components_tco2e"]), ["asset_embodied", "direct_operational"])
 
     def test_embodied_missing_energy_capacity_fails_closed(self):
         result = build_operational_carbon_ledger(

@@ -1,278 +1,137 @@
 # VALUE runtime implementation overview
 
-This developer overview describes runtime objects and contracts. The complete bilingual mathematical methodology, edition 0.3, is maintained in the [methodology chapters](README.md).
+This overview describes the runtime contracts of VALUE 0.7.0-alpha.1. The [bilingual methodology, edition 0.4.1](README.md), provides the mathematical formulation, numerical parameters, pseudocode and input tables.
 
-## 1. Scope, clock and information structure
+## 1. Scope, clock and annual sequence
 
-VALUE is a modular power-system simulation and capacity-expansion framework. It represents market participation through declared offers and links each completed operating year to investment, planning, commissioning, retirement and the next year's opening state. The standard British research clock uses 30-minute periods. A complete non-leap model year therefore contains 17,520 periods.
+VALUE connects half-hourly electricity-system operation to annual investment, planning and asset retirement. The standard clock contains 17,520 UTC half-hours in a fixed 365-day model year, with February represented by 28 days. Power uses MW, interval energy MWh, and offer prices GBP/MWh.
 
-The default market method is bid at cost. Thermal generation, variable renewable energy (VRE), storage and external interconnector offers enter the same market process. VRE is not subtracted from demand before clearing. Storage is represented as a market participant with physical power, energy and state-of-charge limits. This information structure differs from a perfect-foresight co-optimization: each market period uses the information declared for that period, while annual investment uses completed annual evidence.
+The default market is bid at cost. Generation, storage and external import offers participate in period clearing under the information available to the selected module. A complete operating year supplies the revenue, cost and physical evidence used by annual investment.
 
-The normal annual sequence is:
+The annual sequence advances the planning pipeline, calculates available generation and demand, clears operating periods, assembles physical and economic accounts, evaluates expansion headroom and investment, admits new projects, and constructs the next year's asset state. A VALUE 101 one-day calculation covers 48 operating periods. An annual study supplies all 17,520 periods to the annual decision chain.
 
-1. advance projects already in the planning pipeline;
-2. clear every selected PSM period and, when selected, the balancing stage;
-3. assemble physical, cost, carbon, storage and curtailment evidence;
-4. calculate VRE and storage expansion headroom;
-5. evaluate owner-level investment and retirement;
-6. admit investment proposals into planning;
-7. commission, delay or reject eligible projects; and
-8. construct the next model year's opening state.
+## 2. Calculation identity and methodology profiles
 
-A one-day VALUE 101 Run calls the production PSM for 48 periods but does not provide annual economics. An annual VALUE-UK Run clears all 17,520 periods before the CEM stages use its results. A 2025 to 2034 Study contains 175,200 operating periods and ten annual decisions. Readiness confirms that the inputs can execute; it is not scientific validation.
+A calculation is defined by its Data Pack, selected Modules, Study revision and Run. Data roles specify columns, units and clocks. Module declarations specify inputs, outputs and lifecycle positions. Readiness resolves these declarations and freezes the input snapshot; annual validation subsequently checks the physical and accounting results.
 
-## 2. Reproducible model identities
+The corrected profile, `value-corrected`, is the default. The compatibility profile, `doctoral-lineage-0.6.0a2`, retains thesis-era settings as implemented in VALUE 0.6.0-alpha.2. Its reference configuration uses the legacy storage tariff, doctoral carbon factors and eligible thesis-lineage modules and data. The experimental national module, `value-doctoral-national-psm`, provides fixed-year dispatch and cash records for separate annual helpers; its integrated annual-CEM readiness is false.
 
-Five versioned objects define a calculation.
+Both profiles apply UTC demand and interconnector alignment, declared-column reading, thermal net revenue, one storage net position per period, single accounting of downward adjustments and must-run surplus, £17,000/MWh for recorded load shedding, common shortfall and served-energy accounting, and endogenous planning from the frozen development timelines and regional success rates. Their differing bidding, weather and availability assumptions are specified beside the relevant equations in the bilingual chapters.
 
-| Object | Function | Frozen evidence |
-| --- | --- | --- |
-| Data Pack | Binds source files to named roles, formats, units and clocks | Pack ID, manifest, file inventory, source notes and hashes |
-| Module | Implements one typed lifecycle slot | Module ID, semantic and scientific version, entry point and source hash |
-| Study | Selects years, one base Data Pack, modules, parameters and optional domains | Immutable Study revision and dependency graph |
-| Run | Executes one exact Study revision | Input snapshot, status, checkpoints and artifact index |
-| Result evidence | Stores physical and economic outcomes | SQLite ledgers, compact summaries, diagnostics and provenance |
+Default annual investment uses undiscounted return and payback. Resource-cost accounting separately annualises capital using a capital recovery factor. Wind, solar and storage use a zero variable-OPEX assumption, with their fixed OPEX included in the levelised capital-cost convention. Money follows a constant start-year-price convention, while input tables retain their original price-year declarations.
 
-`Check readiness` resolves exact module versions, validates every required role, unit and chronology, verifies identities and hashes, estimates resources, and freezes an input snapshot. A single-node Study freezes the declared base Data Pack and does not search for a Network Pack. A zonal Study also resolves and freezes one compatible Network Pack. A missing or incompatible network role blocks the Run; VALUE does not silently substitute a different pack or return to single-node operation.
+## 3. National operation and balancing
 
-The VALUE-UK research suite installs two independent data components and creates two saved, unrun Studies. The copperplate and zonal templates share the same base data, national demand, clock, storage-cost method and annual CEM chain. Their declared system domain and balancing implementation differ.
+The default PSM, `value-bid-at-cost-psm`, selects `native-corrected-v1` or `native-doctoral-thesis-v1` from the methodology profile. The staged variant, `value-staged-bid-at-cost-psm`, produces an immutable national ahead schedule, followed by `value-copperplate-balancing` or `value-zonal-redispatch-balancing` under the corrected profile.
 
-## 3. National bid-at-cost PSM
-
-The built-in PSM is `value-staged-bid-at-cost-psm`. Its purpose is to produce the national ahead schedule and period evidence used by balancing and the annual CEM. It reads forecast and realized demand, renewable availability, the operating asset state, interconnector boundaries and the selected storage-cost function. Power is expressed in MW, period energy in MWh, and offer prices in GBP/MWh.
-
-For each half-hour, agents submit available quantities with prices derived from their declared costs. The national market accepts the least-cost available offers needed to meet the market requirement under the selected single-node information structure. The ahead schedule is immutable when balancing begins. The staged design keeps forecast-driven corrections distinct from any subsequent network-congestion adjustment.
-
-The built-in copperplate balancing module compares the national schedule with realized demand and availability. It accepts upward and downward flexibility bids on a pay-as-bid basis and updates the physical period result. Bid records and settlement records remain separate from resource-cost accounting.
+The corrected default orders offers by price rounded to £0.01/MWh, storage status, and unrounded price. Generation and import offers occupy the same non-storage class. Accepted suppliers receive the stage's uniform marginal settlement price. The staged variant exposes upward and downward flexibility bids for subsequent balancing and network relief.
 
 | Module contract | Declaration |
 | --- | --- |
-| Lifecycle position | PSM, followed by current-period balancing |
-| Required inputs | Demand forecast and realization, VRE availability, operating assets, import offers and storage bids |
-| State reads | `operating.assets` and current storage state |
-| State writes | Physical storage state through the balancing result; the annual PSM does not commission assets |
-| Outputs | Ahead schedule, final dispatch, prices, accepted offers, storage flows and period summaries |
-| Configurable parameters | Bid multiplier, market-trace level and balance diagnostics |
+| Required inputs | Forecast and realised demand, VRE availability, operating assets, import envelopes and storage bids |
+| State reads | Operating assets, storage inventory and storage-cost observations |
+| State writes | Period dispatch and physical storage state; annual operating evidence |
+| Outputs | Accepted offers, settlement, storage flows, shortfall and cost records |
+| Parameters | Bid and downward-price multipliers, trace level, `market.voll_gbp_per_mwh` and diagnostics |
 
-The model does not include thermal start-up decisions, minimum up and down times, ramping, reserve co-optimization or integer unit-commitment variables unless a different PSM module explicitly implements them. Bid at cost is therefore comparable to economic dispatch under the declared simplified thermal constraints, not to a full mixed-integer unit-commitment model.
+The retained kernel applies a start-up bid adder and a per-period ramp allowance. Corrected downward bidding additionally uses minimum stable output, minimum downtime and restart costs to order thermal reductions. These parameters enter bidding and ordering; the dispatch state represents aggregate assets with continuous quantities.
 
-### Known limitations
+## 4. Thermal reductions, imports and shortfall
 
-The national market has one internal node. It cannot reveal internal British congestion. The sequential market does not claim a globally optimal multi-year dispatch, and its outcomes depend on declared agent information and offer rules.
+Corrected thermal downward offers have two segments. The first reduces an accepted gas or biomass schedule to its minimum stable fraction. The second compares avoided operating cost with restart expenditure over an estimated downtime:
 
-## 4. Thermal generation, VRE, imports and unmet demand
+`RestartParameters.net_saving(avoided_cost, horizon_h)` subtracts `restart_cost(horizon_h) / min_stable_fraction / horizon_h` from avoided operating cost. `avoided_cost` is GBP/MWh, `restart_cost` returns GBP per MW of capacity, `min_stable_fraction` is the stable-output fraction, and `horizon_h` is expected downtime in hours. `economic_segments` applies the running and shutdown quantities within the ramp floor. Downtime below the technology minimum places the shutdown segment last. The compatibility profile retains its VRE-first downward order. Each accepted quantity reduces the outstanding adjustment once.
 
-Thermal assets expose available capacity and a declared resource cost. Their accepted energy cannot exceed the realized period envelope. The built-in bid-at-cost method does not add hidden operational priority among thermal technologies.
+Corrected interconnectors offer positive import capability in ahead clearing at the current external price. Balancing uses the remaining envelope. Compatibility-profile imports enter balancing. Each profile aligns price and flow inputs to the model clock, with country and line identities retained through preprocessing.
 
-Solar, onshore wind and offshore wind expose time-varying available energy through their profiles. They participate in clearing rather than being removed from demand. Available VRE that is not finally used is recorded as curtailment. This makes competition with storage, thermal generation and imports visible in the market record.
+The default PSM values recorded load shedding at £17,000/MWh. Its balance ledger separately records additional physical shortfall as stress events while retaining the calculated dispatch and settlement. Annual unserved energy is recorded shedding plus stress shortfall; annual served energy is demand less this total. Consecutive shortfall periods form an event, and the event ledger records duration, energy and maximum power.
 
-Interconnectors are external boundary offers. Each country-specific price series determines the declared offer price and each signed profile constrains its available boundary quantity. They are not modeled as internal GB transmission branches. In zonal operation, a landing assignment and a period envelope place the same external offer at a zone without turning the neighbouring country into an internal node.
+## 5. Storage physics
 
-Load shedding is a last-resort system-operator action. The zonal module prices it at the configured value of lost load, with a built-in value of £17,000/MWh. VALUE records unserved MWh by zone and the number of half-hour periods in which shedding occurs. Expected interruption hours equal the affected half-hours multiplied by 0.5. This statistic describes the simulated chronology; it is not, by itself, a probabilistic reliability assessment.
+Storage declares charge and discharge power, energy capacity, efficiencies and opening inventory. `Battery.charge(period, available_input_power_mw)` adds a dated energy batch within the free capacity and remaining period power. Discharge withdraws inventory according to discharge efficiency; the inventory-removal and self-discharge accounts record the remaining losses. Chapter 4 gives the updates using the class’s physical variables and their units.
 
-The DSR interface accepts the same typed flexibility-bid contract. The distributed benchmark declares zero DSR capacity, so it changes no result until a researcher supplies a reviewed capacity and offer method below VOLL.
+The default PSM gives each storage asset one net position per period and shares its rated power across clearing stages. Charging uses surplus after same-period discharge has been bought back. Stored batches retain their charging period for age-dependent offers. The annual Native adapter creates fresh storage objects and records the discarded closing inventory at the year boundary.
 
-## 5. Storage physics and state of charge
+## 6. Dynamic annual-average storage cost
 
-Every storage technology declares charge power in MW, discharge power in MW, energy capacity in MWh, charge efficiency, discharge efficiency and an opening state of charge. Technology records also declare a duration or an equivalent fixed relationship between power and the energy pool. The physical variables use discharged energy as electricity delivered to the market and charged energy as electricity taken from the market.
+`dynamic-annual-storage-cost` calculates annual project-cost recovery from CAPEX, fixed O&M, economic life, previous-year sold energy and sales-weighted dwell. Its annual cost and battery cycle-depreciation terms are:
 
-For period `t`, the storage balance is:
+`DynamicAnnualStorageCost.prepare_year` calculates `annualized_capital_cost_gbp` from `capex` and `capital_recovery_factor(discount_rate, lifetime_years)`. The capital-recovery function returns the standard annuity factor and uses `1 / lifetime_years` at zero discount rate. `annual_fixed_opex_gbp` is rated MW multiplied by 1,000 and the catalogue’s GBP/kW/year cost; their sum is `annual_levelized_project_cost_gbp`.
 
-`SOC[t+1] = SOC[t] + eta_charge * charge[t] - discharge[t] / eta_discharge`
+For batteries, `cycle_depreciation_gbp_per_mwh` equals `capex / (usable_cycle_output * maximum_cycles)`, with `usable_cycle_output` equal to energy capacity times discharge efficiency. Pumped hydro and hydrogen use zero cycle depreciation. The remaining annual recovery equals annual project cost less cycle depreciation times `basis_sold`, bounded below by zero. `holding_recovery_gbp_per_mwh_period` divides that amount by `basis_sold * max(average_dwell, 1.0)`. The observation step has already bounded `average_dwell` below by two periods.
 
-subject to:
+The first-year reference uses annual cycles equal to the smaller of cycle-life use per economic year and the physical charge–discharge limit. `storage.cost.utilisation_floor_fraction` optionally supplies a floor relative to that reference.
 
-`0 <= SOC[t+1] <= energy_capacity`
+The corrected default PSM sets the exact built-in `DynamicAnnualStorageCost` object to `cycle_only`: batteries bid cycle depreciation, and pumped hydro and hydrogen bid zero. Holding recovery remains a project-cost-adequacy diagnostic. User-formula, legacy and external storage-cost modules supply their own bids.
 
-`0 <= charge[t] <= charge_power * period_hours`
+The compatibility rule and the staged dynamic-cost path use `bid_price_gbp_per_mwh(dwell_periods)`, which adds `cycle_depreciation_gbp_per_mwh` to nonnegative `dwell_periods` times `holding_recovery_gbp_per_mwh_period`. The staged adapter calls this function at 0.0 and labels dwell as `not_tracked_staged_single_pool`. Fixed O&M in `annual_levelized_project_cost_gbp` is part of the pricing calculation; wind, solar and storage FOM appears as a memo item in headline resource-cost accounting.
 
-`0 <= discharge[t] <= discharge_power * period_hours`
+`value-legacy-storage-tariff` supplies the fixed-plus-dwell tariff used by the compatibility configuration. `storage-cost-audit.json` records the selected bid basis, annual costs, sales, dwell and recovery difference.
 
-The actual post-balancing charge and discharge update SOC. In the zonal method this means redispatch, not the national ahead schedule, determines the physical state passed to the next period. The solver checks energy balance and rejects a numerically material simultaneous charge and discharge solution.
+## 7. Expansion headroom and investment
 
-Storage records preserve the charging time of energy tranches. The sales-weighted mean dwell is the average number of model periods spent in storage by each MWh sold, weighted by delivered MWh. It is used by the dynamic storage-cost method below.
+`vre-expansion-cap` calculates separate ceilings for solar, onshore wind and offshore wind from demand, technology profiles, installed capacity and the expansion fraction. Corrected `value-storage-expansion-policy` uses surplus remaining after existing storage has charged. Each of the three battery types receives its own power ceiling equal to the default fraction 0.2 times the calculated power headroom. The compatibility rule retains zero storage leftover headroom.
 
-### Known limitations
+`agent-investment` evaluates each owner and technology-region group once per year. Four policy tiers use realised net income divided by total CAPEX, payback and negative income to select investment, waiting or retirement. The technology headroom is consumed once across eligible proposals. Thermal investment income deducts generation, fuel, carbon and time-based operating costs; biomass revenue follows electricity-market settlement. Wind, solar and storage use the stated gross-revenue profit convention.
 
-The built-in storage method does not optimize the full year with perfect knowledge. Degradation is represented through the selected cost method rather than an electrochemical state-of-health model. A researcher who needs different chronology, degradation or terminal-SOC assumptions must select a compatible PSM or storage-cost module and disclose its information structure.
+Storage investment uses annual market income divided by total CAPEX, with zero procurement cost for surplus charging. The physical utilisation rule supplies its expansion ceiling. Successful proposals retain owner, technology, capacity, location, CAPEX, FOM and life. Site-dependent hydro proposals require their declared site, hydrology and cost inputs.
 
-## 6. Dynamic and legacy storage pricing
+## 8. Planning and annual state
 
-The default module is `dynamic-annual-storage-cost`. It implements dynamic annual-average project-cost recovery. Its inputs are the storage asset, previous-year sold energy and the previous-year sales-weighted dwell. It reads and writes `storage.cost-observation`. Its output is a callable bid-cost function used by the PSM.
+`agent-investment` obtains each endogenous proposal’s `completion_year` and `success_rate` from `endogenous_planning_terms`, using the planning tables frozen in `state.extensions["planning_parameters"]`. Technology labels determine the development timeline and regional success-rate lookup. Thermal plant and biomass use Wind Onshore; hydrogen storage uses Solar Photovoltaics. The default duration uses the stage-1 total median, with a deterministic owner-specific displacement from −6 to +6 months and commissioning from the following year onward.
 
-For discount rate `r` and economic life `L`, the capital recovery factor is:
+`planning-pipeline` advances existing projects and admits the proposals with their supplied timing and probability. Expected-capacity mode scales power, energy and total costs once; seeded-stochastic mode admits full capacity according to the seeded draw. Commissioned assets inherit project identity, economic ownership and spatial allocation. Annual headroom uses operating assets while pending proposals retain their individual development schedules.
 
-`CRF(r,L) = r(1+r)^L / ((1+r)^L - 1)`
+`value-annual-state-transition` writes the following year's operating assets, planning projects, economic records and storage-cost observations. Partial retirement scales physical and economic capacity together. Completed year boundaries receive checkpoints; an interrupted operating year is recalculated from its opening state.
 
-The annual levelized project cost is:
+## 9. Resource cost and carbon
 
-`A[y] = CAPEX * CRF(r,L) + FOM_per_kW_year * 1000 * power_capacity_MW`
+The headline definition `value.cem-system-resource-cost/v1` is assembled by cost ledger v2:
 
-For battery technologies only, cycle depreciation is:
+`system_cost = headline_capital + operating_sum`
 
-`cycle_cost = CAPEX / (usable_energy_per_cycle * maximum_cycles)`
+In `build_cem_cost_ledger`, `headline_capital` includes the declared annualised capital and thermal FOM, and `operating_sum` sums the physical operating-cost entries. Wind, solar and storage FOM is a memo item under the model's capital-cost convention. Run-of-river compatibility capital is a memo item in the corrected profile and contributes to the compatibility-profile headline.
 
-where `usable_energy_per_cycle = energy_capacity_MWh * discharge_efficiency`. Pumped hydro and hydrogen storage have no battery cycle-depreciation component in the supplied technology catalogue.
+Physical operating cost includes final thermal resource use, start-up adders, imports, storage cycle depreciation and recorded load shedding valued at VoLL. Settlement and policy transfers have separate accounts. The average resource cost divides by demand less recorded shedding and stress shortfall. Zonal transmission-constraint cost is constrained physical cost minus the matched network-free LP physical cost, recorded as an attribution within the total.
 
-If the previous year sold `S` MWh with sales-weighted mean dwell `D` periods, the holding coefficient is:
+Physical carbon accounting separates direct generation emissions, external-import emissions and annualised equipment-construction emissions. Generation includes the electricity supplied to storage charging. Delivered-electricity intensity uses the same served-energy denominator as cost. The compatibility carbon scenario retains its historical scalar units with the status `not_physically_interpretable`.
 
-`holding_cost = max(A[y] - cycle_cost * S, 0) / (S * D)`
+## 10. Hydrology and optional domains
 
-and the offer attached to a tranche held for `d` periods is:
+Natural-flow hydro, reservoir hydro and pumped storage use distinct input roles. Corrected default run-of-river availability is the declared statistical load factor 0.3487 multiplied by its seasonal shape. An activated hydrology extension instead supplies inflow or availability series and, for reservoirs, water stock, bounds and terminal assumptions.
 
-`storage_offer(d) = cycle_cost + d * holding_cost`
+A Study activates an optional domain by selecting its compatible module and resolving all conditional inputs. The reference DC network uses phase-angle flow equations and expands multi-bus asset allocations by their shares. Perfect-foresight dispatch solves its declared horizon jointly and labels the electricity value `Balance shadow price`.
 
-The method therefore separates degradation that necessarily accompanies a battery cycle from the project-cost recovery associated with holding and selling energy. After each year, actual sold MWh and dwell-weighted sales become the next year's denominator.
+## 11. Fixed zonal transport and redispatch
 
-If no previous-year sales exist, including the first model year, the module uses a full-utilization design case. Reference annual cycles are the smaller of cycle-life use per economic year and the physical charge-discharge limit. Users may set `storage.cost.utilisation_floor_fraction` to keep the denominator above a declared fraction of that reference. A zero floor reproduces the published thesis-exact rule; non-zero floors are sensitivity cases.
+The fixed zonal method is a post-thesis extension representing lossless power transport through directed corridors and simultaneous boundary cutsets. A Network Pack supplies zones, corridor limits, rating profiles, asset allocations, demand shares and interconnector landings. `scenario_scaled_zonal_shares` allocates the base pack's national demand among zones; `network_pack_absolute_demand` instead uses the Network Pack's absolute demand.
 
-`value-legacy-storage-tariff` retains the historical fixed plus dwell-time tariff for reproduction comparisons. It does not claim project-cost recovery. A Study must select one storage pricing module. The legacy and dynamic methods should be compared in cloned Studies with all other data, modules and parameters held fixed.
+The GBP1 public2 23-zone research suite supplies spatial positions for wind and solar. Other supplied technologies and imports use `ENGLAND_FALLBACK`, including the runtime fallback for Torness and country-named import resources. Its zonal results have indicative spatial scope.
 
-### Known limitations
+Each period's linear programme balances zonal supply, demand, storage, imports and transfers. Corridors have separate forward and reverse limits. Cutsets constrain signed sums of corridor flows, with period ratings applied to their transfer envelopes.
 
-Previous-year sales can make offers oscillate when utilization changes sharply. The audit artifact reports the pricing basis, sold energy, dwell, annual project cost and recovery difference, but the ordinary Runs page need not display every audit field. The dynamic method is a research method, not an assertion that all storage operators bid this way in Britain.
+Solver contract v4 first minimises redispatch bid cost plus VoLL-valued unserved energy. It then locks the primary solution's total unserved energy and applies a separate numerical cap to its bid-cost component. Three subsequent phases minimise absolute schedule deviation, weighted physical throughput and a stable tie-break, preserving the preceding locks.
 
-## 7. VRE and storage expansion headroom
+Corrected downward bids use avoidable economic cost, including two thermal segments. Equal-price acceptance is proportional within a class. The eight-class tie order is fuel turndown, imports, storage, run-of-river hydro, VRE, thermal shutdown, nuclear, then thermal shutdown below minimum downtime. The mathematical chapters give the sign conventions, class weights and objective tolerances.
 
-`vre-expansion-cap` and `value-storage-expansion-policy` calculate annual headroom before investment proposals are accepted. Both modules read the completed market-year result and the operating asset state, write no asset state directly, and output typed expansion-headroom records.
+Upward and downward adjustments settle pay as bid. Ahead settlement, redispatch payments and resource costs occupy separate accounts. The primary-stage boundary dual records the local marginal value of a transfer constraint under the declared LP. Storage uses actual redispatched flows for SOC, and external links retain their landing zones and remaining envelopes.
 
-The VRE policy calculates separate solar, onshore-wind and offshore-wind ceilings from demand, renewable profiles, installed capacity and the declared expansion fraction. The storage policy uses physical storage dispatch, system excess and `expansion.storage_cap_fraction`. Headroom is a shared technology budget for the model year. It is not multiplied by the number of incumbent generator rows or commissioned child assets.
-
-Headroom constrains capacity that investment agents may propose; it does not itself commission a project. A missing headroom record is zero for a technology whose eligibility mode requires headroom. Thermal technologies can be explicitly uncapped by the investment policy. Natural-flow hydro and pumped hydro require site and hydrology evidence rather than generic headroom.
-
-### Known limitations
-
-These are policy rules, not a network-capacity expansion optimization. The current zonal system does not change the national expansion ceiling by congestion location and contains no executable transmission-expansion CEM.
-
-## 8. Owner-level investment
-
-`agent-investment` evaluates one economic owner and technology-region group once per model year. It receives annual market results, capital cost, policy support, model parameters and expansion headroom. It reads operating assets and produces proposals, retirements and complete asset-economics records. It does not commission assets directly.
-
-The investment method evaluates the declared four-tier owner decision logic in the active CEM implementation. The calculation uses the owner's annual operating evidence and the candidate's cost and support assumptions, then applies technology eligibility and the one shared headroom budget. Several physical assets owned by the same economic agent do not create duplicate independent investment agents. Commissioned children inherit the owner identity but do not multiply the owner's opportunity or the technology cap.
-
-Each accepted proposal must carry CAPEX, fixed O&M, economic life, owner, technology, capacity and location or allocation evidence. Unknown technologies are denied. New natural-flow hydro and pumped hydro are deferred unless the proposal supplies the required site, hydrology, energy-capacity and new-build cost evidence.
-
-### Known limitations
-
-The owner rule is an agent-based investment heuristic, not a system-wide least-cost capacity-expansion optimization. Investment outcomes depend on annual realized evidence, exposed policy assumptions and planning outcomes. They should not be described as a proof of the globally optimal generation mix.
-
-## 9. Planning pipeline and commissioning
-
-`planning-pipeline` connects existing project evidence and new investment proposals to the physical fleet. It consumes prepared project records, planning timelines, success rates and investment economics. The module reads `year_state.planning_projects` and writes the next planning state, commissioned operating assets and their economics.
-
-At the start of a year, existing projects advance according to their stage, timeline, success mode and seed. Projects may remain in planning, fail, reach commissioning or be treated according to the declared uncertain-project rule. Later in the annual sequence, eligible investment proposals are admitted as new planning projects. The two phases are recorded separately so that an admitted proposal cannot commission in the same logical operation unless its explicit timeline permits it.
-
-Commissioned assets inherit stable project and owner identity, technology, capacity, CAPEX, fixed O&M, economic life and spatial allocation. VALUE writes events and summaries to the planning evidence store. Reporting counts expected capacity once; it does not multiply an already weighted project capacity by success probability again.
-
-The configurable planning fields include success mode, random seed, stage timelines, stale-project treatment and source preprocessing. Seeded modes must reproduce the same decisions under the same frozen input snapshot.
-
-### Known limitations
-
-Planning probabilities and completion dates are scenario assumptions. A large commissioning cohort can be a real consequence of the input cohort and rules even when the ledger reconciles. Users should audit source dates, mapping and expected-capacity interpretation before treating such a cohort as a forecast.
-
-## 10. Retirement and annual state transition
-
-`value-annual-state-transition` applies accepted planning and retirement results after the annual decisions. It reads the completed year state and writes `year_state.next`, including operating assets, planning projects, storage observations and economics needed by the next year.
-
-Newly commissioned assets enter the next year's actual PSM inventory. Partial retirement scales both physical capacity and the associated economic record. Full retirement removes operating availability while retaining the event evidence. The transition writes an annual checkpoint only after the year boundary is complete. If a Run stops within a model year, the current release recomputes that year rather than claiming a verified subannual continuation.
-
-### Known limitations
-
-The transition is annual. It does not model construction or retirement within an operating year. A module that changes that chronology must declare a different state-transition contract and compatible evidence.
-
-## 11. Cost, settlement, policy and carbon ledgers
-
-The headline cost identity is `value.cem-system-resource-cost/v1`:
-
-`system_resource_cost = annualized commissioned-fleet CAPEX and FOM + final physical operating cost`
-
-The denominator for the headline average is served demand, equal to demand minus unserved energy. Settlement payments are transfers and are not added again to physical resource cost. Policy payments, consumer accounts, pipeline commitments and residual asset value remain separate views. In a zonal Run, transmission-constraint resource cost is the difference between matched unconstrained and realized constrained physical cost. It is already within final operating cost and is reported as an attribution, not added twice.
-
-The current carbon scenario stores factor IDs and database hashes. It separates direct operational emissions, external import emissions, annualized embodied emissions for active generation and storage equipment, and storage charging inventory. Generation-side emissions already include electricity used for charging, so the carbon ledger does not add charging supply a second time. It reports total tCO2e, operational intensity and overall intensity when every required factor and denominator is physically interpretable.
-
-The doctoral-reproduction carbon scenario preserves its historical calculation boundary. Historical storage scalars without a declared physical unit remain labelled `not_physically_interpretable`; VALUE does not rename them as tCO2e or replace them with zero.
-
-Every ledger line records its source, classification, inclusion in the headline and any reason for exclusion. A reconciliation failure blocks a scientific result rather than silently filling a missing component with zero.
-
-## 12. Hydrology and other optional domains
-
-Natural-flow hydro, reservoir hydro and pumped hydro are distinct. Pumped hydro is a storage technology governed by electrical charge, discharge and SOC. It is not duplicated as a natural-inflow generator.
-
-The optional hydrology domain can bind run-of-river availability and reservoir inflow, capacity and water-state data. Run-of-river output is bounded by the supplied inflow or availability series. A reservoir implementation must conserve its declared water stock across periods and state its initial and terminal assumptions. The British base Study only activates hydrology when a compatible extension and its conditional data roles are selected.
-
-An optional domain adds versioned roles, parameters, lifecycle hooks and result artifacts. It does not become active merely because its package is installed. The Study must select it and readiness must resolve every conditional input.
-
-### Known limitations
-
-VALUE does not infer hydrology from installed electrical capacity. Missing inflow or reservoir data cannot be replaced by a generic capacity factor without declaring a different method. The current release includes no transmission-expansion implementation even though the extension interface can host one later.
-
-## 13. Fixed-zonal transmission and redispatch
-
-The fixed zonal method is a post-thesis VALUE extension. It is a lossless transport and redispatch model, not a DC load-flow implementation. It represents transfer envelopes between computational zones but does not calculate voltage angles, impedance-based flows, reactive power or electrical losses.
-
-### Spatial representation
-
-The Network Pack supplies DSO-aligned zones, directed computational corridors, simultaneous ETYS cutsets, rating profiles, asset mappings, zonal demand allocation and interconnector landings. An asset's zone is immutable once resolved for a Study. Assets with project coordinates use the declared spatial assignment. Offshore assets without a connection point use the documented nearest-coast DSO rule. An unresolved English aggregate connects to a representative England zone through an unconstrained link so that missing geography is visible without inventing a constrained boundary. Northern Ireland is outside the modeled GB system.
-
-The default `scenario_scaled_zonal_shares` mode keeps the base Data Pack's national demand authoritative. Network data allocate that total among zones, and the shares must reconcile to the national value each period. The alternative `network_pack_absolute_demand` mode allows the Network Pack to supply absolute zonal demand. Comparisons must use the same demand authority.
-
-### Transfer constraints
-
-Each corridor can have different forward and reverse limits. A positive flow follows the corridor's declared direction; a negative flow uses its reverse envelope. ETYS cutsets constrain signed linear combinations of corridor flows in both directions. A time-dependent rating multiplier can reduce a boundary for maintenance or seasonal availability. This version uses no endogenous losses.
-
-### Redispatch problem
-
-The national ahead schedule remains the commercial starting point. For each half-hour, the zonal module solves one linear redispatch problem with zonal balances, corridor and cutset limits, realized asset availability, interconnector envelopes, storage power and energy limits, DSR bids and load shedding. Thermal increases or decreases, VRE curtailment, storage changes, import adjustments, DSR and load shedding compete through the same declared flexibility-bid interface. There is no hidden physical priority list.
-
-The built-in solver uses SciPy HiGHS and four lexicographic phases:
-
-1. minimize accepted bid cost, with load shedding at £17,000/MWh;
-2. minimize total deviation from the national schedule while retaining the first objective within its numerical cap;
-3. minimize physical throughput, including storage movement and absolute corridor flow, while retaining the earlier objectives; and
-4. apply a stable key to make tied solutions reproducible.
-
-Upward and downward redispatch are recorded pay as bid. National ahead settlement, redispatch settlement, policy transfers and physical resource cost remain separate. The module writes solver identity, tolerances, input hash and objective-lock diagnostics. A solver failure preserves the declared input and fails the zonal Run. Automatic solver substitution and automatic copperplate fallback are disabled.
-
-Storage uses actual post-redispatch charge and discharge for SOC and sold-energy records. Interconnectors retain their external import/export envelope and assigned landing zone. DSR has zero capacity in the distributed benchmark but the executable bid interface remains available.
-
-### Curtailment attribution
-
-VALUE distinguishes potential VRE, curtailment before network relief, and final physical curtailment. Energy absorbed by extra storage charging, extra exports or additional local demand response is not counted as final curtailment. The reported `redispatch impact` is final constrained curtailment minus the matched copperplate counterfactual. A positive value means the network and redispatch process added curtailment; a negative value means it avoided curtailment.
-
-Forecast correction and congestion redispatch retain separate attribution. Total system resource cost includes the physical consequences of both. Detailed records preserve accepted bids, cashflows, boundary loading, unserved energy and the matched counterfactual needed to interpret the difference.
+Curtailment equals available VRE less final VRE use. Redispatch curtailment impact is constrained final curtailment minus the matched network-free counterfactual. The comparison uses identical demand, availability, storage openings and economic bids.
 
 ### State reads and state writes
 
-The zonal module reads the immutable national ahead schedule, realized zonal demand, asset availability, flexibility bids, Network Pack and opening storage SOC. It writes final zonal dispatch, corridor flows, accepted redispatch, load shedding, curtailment attribution, accounting views, solver diagnostics and actual closing storage SOC.
-
-### Configurable parameters
-
-Users can select demand authority, solver method within the declared HiGHS family, presolve and bounded numerical tolerances. The built-in VOLL is configurable. Corridor limits, directional cutsets, maintenance ratings, zones and mappings belong to the versioned Network Pack rather than ad hoc Run settings.
+The zonal module reads the ahead schedule, realised demand and availability, flexibility bids, network inputs and opening SOC. It writes final dispatch, corridor flows, accepted redispatch, load shedding, curtailment, settlement, physical cost, solver diagnostics and closing SOC.
 
 ### Known limitations
 
-This is not a security analysis. It does not perform AC or DC power flow, voltage or reactive-power analysis, transient or frequency stability, N-1 contingency analysis, endogenous loss calculation or transmission expansion. Boundary capabilities are input assumptions. Passing the zonal solver proves feasibility under this declared transport representation; it is a necessary but insufficient condition for real network security.
+The zonal result establishes feasibility under transfer limits; it is not a security analysis. AC voltage, reactive power, dynamic stability and contingency assessment require their corresponding electrical models. The annual investment chain evaluates agent rules, with results conditional on inputs, policy assumptions and planning outcomes.
 
-## 14. Results, auditability and declared claims
+## 12. Results and implementation references
 
-VALUE stores high-volume period records in SQLite and compact JSON summaries for the browser. The artifact index identifies the producing Module, Study revision, Run, year and source hash. Market replay exposes orders and accepted dispatch when the selected trace level records them. Full annual Runs can retain compact period evidence to control disk use. The planning store records projects by stage, location, outcome and commissioning year.
+Annual economic publication follows the selected profile's validation policy. Corrected runs require every applicable gate to pass. Compatibility runs require all raw invariants to pass. Pending or withheld summaries retain their period ledgers and inspection records.
 
-Every complete Run should be archived with:
+Price labels follow the producing calculation: the default PSM reports average period cost, staged ahead clearing reports uniform marginal settlement price, the LP reports balance shadow price, and the experimental national pathway reports its ahead settlement price. Wind and solar capacity factors are compared with DUKES alongside the declared weather conversion and loss assumptions.
 
-- the Study revision and frozen input snapshot;
-- Data Pack and Network Pack manifests and hashes;
-- exact Module manifests and source identities;
-- annual checkpoints and artifact index;
-- physical, cost, carbon, storage, planning and network ledgers;
-- solver diagnostics where an optimization module is selected; and
-- source rights and attribution records.
+The reproducible record contains the Study revision, methodology profile, selected module versions, input roles and source files, parameter tables, annual checkpoints and physical and economic ledgers. Result timestamps use the UTC model clock. Source and data rights accompany their respective inputs.
 
-Internal conservation and regression tests establish implementation consistency. Independent optimization checks establish agreement only for the declared formulations and information structures that they test. A successful one-day lesson does not validate annual economics. A successful readiness check does not validate a scientific scenario. A configured ten-year Study is not a completed ten-year result.
-
-The built-in single-node method can support studies of market competition, storage pricing, investment and planning under its stated constraints. The fixed zonal extension can support experiments on transfer limits and redispatch under its stated transport assumptions. Neither method supports claims about full unit commitment, AC feasibility, security compliance, globally optimal multi-year expansion or predictive certainty unless a separately documented Module and validation record supply that evidence.
-
-## Implementation references
-
-The maintained module declarations are under `gridform_core/manifests`. Typed public interfaces are under `gridform_core/v2`. Storage recovery is implemented by the selected storage-cost module and audited through `storage-cost-audit.json`. Cost and carbon definitions are maintained in `gridform_core/cost_ledger.py` and `gridform_core/carbon_ledger.py`. The post-thesis zonal formulation is implemented in `gridform_core/zonal_redispatch.py`, with network inputs defined by `gridform_core/zonal_contracts.py` and solver settings defined by `gridform_core/zonal_solver_contract.py`.
-
-The VALUE-UK suite retains object-level source, transformation, licence and attribution records inside both component bundles. Those records, rather than this methodology summary, govern reuse of the supplied data.
+Module declarations are in `gridform_core/manifests`, public interfaces in `gridform_core/v2`, and cost and carbon accounting in `cost_ledger.py` and `carbon_ledger.py`. `zonal_redispatch.py`, `zonal_contracts.py` and `zonal_solver_contract.py` implement network redispatch. The bilingual chapters pair each calculation with its specific functions and data tables.

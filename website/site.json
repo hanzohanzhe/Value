@@ -1,6 +1,6 @@
 {
   "origin": "https://value.ac",
-  "evidence_date": "2026-10-02",
+  "evidence_date": "2026-10-09",
   "products": [
     {
       "id": "value",
@@ -62,12 +62,11 @@
   "candidate_release_id": "2026-10-03-rc1",
   "package_evidence_date": "2026-10-03",
   "website_repository": "https://github.com/hanzohanzhe/Value/tree/main/website",
-  "methodology_revision_date": "2026-10-04",
-  "methodology_edition": "0.3",
+  "methodology_revision_date": "2026-10-09",
+  "methodology_edition": "0.4.1",
   "download_host": "https://github.com/hanzohanzhe/Value/releases",
   "publication_ready": true,
   "source_tag": "source-2026-10-04",
-  "methodology_tag": "methodology-0.3-2026-10-04",
   "data_tag": "value-data-2026-10-04",
   "planned_release_assets": [
     {
@@ -211,13 +210,5 @@
     "wheel_objects": 13,
     "teaching_short_run": "passed",
     "historical_scientific_replay": false
-  },
-  "methodology_release_assets": {
-    "VALUE_模型方法学_2026-10-04.docx": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_ZH_2026-10-04.docx",
-    "VALUE_模型方法学_2026-10-04.pdf": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_ZH_2026-10-04.pdf",
-    "VALUE_methodology_ZH_2026-10-04.html": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_methodology_ZH_2026-10-04.html",
-    "VALUE_Model_Methodology_EN_2026-10-04.docx": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_EN_2026-10-04.docx",
-    "VALUE_Model_Methodology_EN_2026-10-04.pdf": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_Model_Methodology_EN_2026-10-04.pdf",
-    "VALUE_methodology_EN_2026-10-04.html": "https://github.com/hanzohanzhe/Value/releases/download/methodology-0.3-2026-10-04/VALUE_methodology_EN_2026-10-04.html"
   }
 }

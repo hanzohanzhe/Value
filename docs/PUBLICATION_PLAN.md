@@ -1,39 +1,31 @@
 # VALUE 发布与上传计划
 
-更新日期：2026-10-04。当前工作是改善官网面向读者的文件名称、用途说明与安装导引。应用前端改进版正在代码审查中，审查修改验收后发布更新。
+发布版本：VALUE 0.7.0-alpha.1，2026-10-09。
 
-[value.ac](https://value.ac) 提供安装、数据、方法学与开发入口；VALUE 在用户自己的计算机上运行。[GitHub VALUE 项目](https://github.com/hanzohanzhe/Value) 提供源码、安装包和研究输入。
+[value.ac](https://value.ac) 提供安装、数据、方法学与开发入口。模型在用户自己的计算机上运行；[GitHub VALUE 项目](https://github.com/hanzohanzhe/Value) 托管源码、完整安装包和研究数据。
 
-## 当前已交付
-
-| 内容 | 版本与日期 | 获取与使用 |
+| 内容 | 版本 | 获取入口 |
 | --- | --- | --- |
-| 源码与开发文档 | `source-2026-10-04`，2026-10-04 | [源码发行](https://github.com/hanzohanzhe/Value/releases/tag/source-2026-10-04)，包含模型、应用、SDK、合成教学包与官网源稿。 |
-| 四个平台 Full 安装包 | 候选版 `2026-10-03-rc1`，发布于 2026-10-04 | [安装包发行](https://github.com/hanzohanzhe/Value/releases/tag/value-2026-10-03-rc1)：Linux x64、Windows x64、macOS Intel 与 Apple Silicon；随包提供 Python、Node 与科学依赖。 |
-| 双语方法学 | `0.3`，修订于 2026-10-04，科学依据日期为 2026-10-02 | [方法学发行](https://github.com/hanzohanzhe/Value/releases/tag/methodology-0.3-2026-10-04)：中英文各九章，网页与 Word、PDF、离线 HTML 共用正文，下载文件共六份。 |
-| 六份研究输入归档 | `value-data-2026-10-04`，2026-10-04 | [数据发行](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-04)：按各包的用途、安装说明与来源条款使用。 |
+| 源码、SDK、教学数据和官网源稿 | source-2026-10-09 | [源码发行](https://github.com/hanzohanzhe/Value/releases/tag/source-2026-10-09) |
+| Linux、Windows、macOS Intel、macOS Apple Silicon 完整安装包 | Full 2026-10-09-a1 | [软件发行](https://github.com/hanzohanzhe/Value/releases/tag/value-2026-10-09-a1) |
+| 中英文九章方法学，Word、PDF、离线 HTML | 0.4.1，2026-10-09 | [方法学](https://value.ac/zh/methodology/) |
+| GBP1 public2、R029 public2、GBP1 public2 23 区研究套件 | value-data-2026-10-09 | [新数据发行](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-09) |
+| GBP1 public1，供论文复现口径使用 | value-data-2026-10-04 | [数据归档](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-04) |
 
-Linux Full 已通过离线安装、移动目录后启动与停止，以及四类短任务验收。Windows 与 macOS 为实验候选，已完成归档、架构与依赖检查，原生安装验收、签名与公证待完成。科学验证按具体模型配置、输入与研究时间范围分别开展。
+## 安装与数据选择
 
-## 数据如何使用
+Full 随附 Python、Node、科学依赖和两个 VALUE 101 教学数据包。安装到新的空目录，启动后先完成 VALUE 101。平台验收记录以[软件发行](https://github.com/hanzohanzhe/Value/releases/tag/value-2026-10-09-a1)为准；Windows 与 macOS 为实验性版本，原生验收、签名与公证列入后续发布。
 
-| 材料 | 使用方式与研究范围 |
-| --- | --- |
-| GBP1 全国数据 | 从全国 Data 入口导入，用于全国运行与投资研究。 |
-| GBP1 与 23 区研究套件 | 从研究套件入口导入，按套件说明配置全国与网络组件。年度网络研究仍需相应科学验证。 |
-| 23 区独立网络组件 | 解压后按包内 Python 安装说明接入分区网络配置。 |
-| R029 全国输入 | 用作普通全国 Data 输入；博士冻结精确复跑的初始化与投资资格路径仍待验证。 |
-| 11 区网络组件集合 | 解压后选择 33 个网络组件之一，按 README 使用 Python 安装，接入扩展数据槽。完整年度研究复现属于后续工作。 |
-| 全国需求补充资料 | 解压后按包内说明添加补充输入，并保留来源与许可说明。 |
+修正口径是默认选择。全国研究通过 Data → Install a VALUE data pack 导入 GBP1 public2 或 R029 public2；23 区网络研究通过 Data → Install the VALUE-UK research suite 导入 public2 套件。论文复现口径使用 GBP1 public1。网络模块在修正口径下运行。
 
-软件采用 Apache-2.0，作者文档采用 CC BY 4.0，三个合成教学数据包采用 CC0；研究数据按各自来源条款使用。原始论文与第三方出版资料从对应出版来源获取。
+public2 互联线潮流符号为 declared_unverified。23 区套件把火电、核电、水电、储能和进口放入 ENGLAND_FALLBACK，分区结果的空间分布只具指示意义。研究结论按实际配置、输入和时间范围进一步验证。
 
-## 下一阶段
+## 发布流程
 
-1. 完成改进前端的代码审查，落实修改与验收意见。
-2. 根据实际改动，完成受影响用户任务所需的检查，确认安装、启动和使用流程。
-3. 准备新版本源码、Full 安装包与版本说明，写清版本名称、发布日期、平台状态和改进内容。
-4. 上传 GitHub 对应发行，确认下载文件与说明齐全。
-5. 更新官网版本说明和下载入口，让读者按平台与用途找到对应文件。
+1. 接入方法学 0.4.1，冻结模型和用户文档，按发布白名单导出干净源码。
+2. 上传新数据与方法学文件，核对远端下载文件。
+3. 从冻结的干净源码重建应用和四平台 Full，记录构建来源；完成 Linux 空目录断网安装、VALUE 101 与停止检查。
+4. 把实际下载信息和平台验收结果写入官网，更新四类任务指引、数据选择、版本与引用。
+5. 同步最终官网源码并生成完整公开源码快照；核对冻结的运行文件未变，发布源码标签和网站。
 
-四类导引持续覆盖 `reproduce from existing data`、`add your new data`、`Edit module` 与 `add new function to VALUE`。方法学修改由同一源稿同步各格式；版本对应关系见[发行映射](release/release-map.json)。
+四类路径为 Reproduce from existing data、Add your new data、Edit a module、Add a new function to VALUE。对应关系见[发行映射](release/release-map.json)。软件 Apache-2.0，作者文档 CC BY 4.0，合成教学数据 CC0；研究数据保留各自许可与署名。

@@ -3,16 +3,15 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
 from backend import server
 from gridform_core.data_bundle import build_data_bundle
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,10 +38,8 @@ class DataBundleApiTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(folder), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 unacknowledged = urllib.request.Request(
                     origin + "/api/data-packs/install",
@@ -87,9 +84,7 @@ class DataBundleApiTests(unittest.TestCase):
                 )
                 self.assertFalse(any((state / "import-staging").glob("*")))
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

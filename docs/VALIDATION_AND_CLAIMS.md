@@ -1,53 +1,65 @@
 # Validation evidence and bounded claims
 
-This matrix states what the VALUE Network Extensions 0.6.0-alpha.2 candidate and
-its separately preserved 0.5.0-beta.1 single-node baseline evidence support.
-"Passed" applies only to the named scope; it is not a general endorsement of all
-scientific output. Prompts 52-55 add complete post-architecture annual and
-ten-year evidence to the earlier solver and bounded-integration tests.
+This document distinguishes recorded test evidence, first-year research-pack checks, historical reports and experimental interfaces for the VALUE Network Extensions 0.7.0-alpha.1 source. A passed check supports the named model, input and period coverage. Methodology edition 0.4.1 describes the corrected default; doctoral reproduction is a compatibility profile retaining selected thesis-era settings.
 
-| Claim | Evidence type | Evidence | Status | Boundary |
-|---|---|---|---|---|
-| Perfect-foresight LP conserves interval energy and storage SOC | Analytical residual and unit tests | `tests/test_perfect_foresight_psm.py` | passed | Synthetic convex cases |
-| LP objective agrees with a separately encoded optimizer | Independent PuLP/CBC oracle against SciPy/HiGHS | `tests/test_independent_psm_validation.py` | passed | 24 h, 168 h and three random 24 h cases |
-| Broken balance, efficiency, SOC, terminal and import constraints are detected | Mutation tests | `tests/test_independent_psm_validation.py` | passed | Synthetic cases |
-| Project-selected external module executes | Integration and browser E2E marker | `tests/test_external_module_execution.py`, `e2e/happy-path.spec.ts` | passed | Synthetic two-year smoke |
-| Dynamic storage first year uses full-utilization basis | Analytical/unit tests | `tests/test_dynamic_storage_cost.py` | passed | Catalogue technologies |
-| Cycle depreciation applies to batteries, not pumped hydro/hydrogen | Unit tests and executable formula | `tests/test_dynamic_storage_cost.py` | passed | Shipped storage catalogue |
-| Cost ledger excludes settlements/policy transfers from physical resource cost | Reconciliation tests | `tests/test_release_upgrade_ledgers.py`, `tests/test_results_summary.py` | passed | Typed market results |
-| Missing carbon factors are not reported as zero | Database/ledger tests | `tests/test_carbon_ledger.py`, `tests/test_carbon_factor_database.py` | passed | Two shipped factor scenarios |
-| Pipeline event counts and state transitions reconcile | Modular regression | `tests/test_planning_ledger.py`, `tests/test_planning_index.py`, `tests/test_terminal_state.py` | passed | Synthetic and compatibility fixtures |
-| Checkpoint resume preserves frozen execution identity | Integration tests | `tests/test_native_checkpoint_resume.py`, `tests/test_run_lifecycle.py` | passed | Native test projects |
-| Browser happy path uses real backend and produces a valid run bundle | Playwright E2E | `e2e/happy-path.spec.ts` | passed | Synthetic pack, two-period/two-year smoke |
-| Full annual FORCE run produces non-zero model investment and reconciled owner/headroom evidence | 17,520-period production chronology | `publication/prompt52-one-year-full-audit.json` | passed | Corrected UK pack, 2025 |
-| Commissioned REPD and model projects enter the actual following PSM with complete economics and lineage | 35,040-period causal run | `publication/prompt52-two-year-full-audit.json` | passed | Corrected UK pack, 2025-2026 |
-| Dynamic and legacy modular scenarios complete ten annual transitions | Two 175,200-period runs and fail-closed audits | `publication/prompt52-dynamic-ten-year-audit.json`, `publication/prompt52-legacy-ten-year-audit.json` | passed | FORCE-CEM v1, 2025-2034 |
-| Scheme C reproduction carbon is not relabelled as physical tCO2e | Scenario-aware null/reason-code audit | `publication/prompt52-legacy-ten-year-audit.json` | passed | Historical storage scalars have no declared physical unit |
-| Checkpoint recovery preserves completed annual states | Interrupted and resumed paired ten-year runs | `publication/prompt52-checkpoint-resume-audit.json` | passed | Incomplete current year is recomputed |
-| Built-in GB scenario has no internal transmission constraints | Fixed parameter and model source review | `model.topology=single_gb_node` | passed | Built-in scenario only |
-| Compatibility thermal merit order equals continuous convex single-period dispatch under matching assumptions | Analytical qualification and small benchmark | `tests/test_market_ledger_benchmark.py` | bounded | No UC/ramp/network; storage excluded from the equivalence claim |
-| Declared convex FORCE live bid-at-cost clearing stages agree with an independent optimizer | Pre-clearing declarations and independent PuLP/CBC oracle | `publication/prompt46-force-24h-independent-validation.json`, `publication/prompt46-force-168h-independent-validation.json` | passed | 24 h and 168 h declared convex stages; sequential rule stages are classified separately |
-| Compatibility module exactly reproduces retained 2026-07-18 trajectory | Retained comparison did not satisfy gate | prior comparison artifacts | failed | Do not call exact reproduction |
-| Dynamic storage policy is the uniquely recommended scientific baseline | Sensitivity reveals denominator feedback | storage audits | not_evaluated | Published research scenario, not unique optimum |
-| CEM is a global perfect-foresight expansion optimum | No global CEM optimization formulation | none | not_evaluated | Agent/path-dependent model |
-| Chronological convex DC-network clearing satisfies its declared formulation | Independent angle-eliminated oracle, analytical/random cases and mutations | Prompt 68 tests and `docs/scientific-readiness/PROMPT71_EXPANDED_PLATFORM_RELEASE_REPORT.md` | passed | Reference synthetic 24 h and 168 h scope; not full unit commitment |
-| AC feasibility residuals agree across polar and rectangular checks | Cross-formulation feasibility fixtures | Prompt 69 tests and Prompt 71 report | experimental | Local feasibility only; not AC OPF or global optimality |
-| Transmission candidates follow a causal planning and commissioning lifecycle | Two-year fixtures and typed ledgers | Prompt 70 tests and Prompt 71 report | experimental | No full annual or ten-year GB network pathway |
-| Reserves, full unit commitment and ramping are represented | No executable module | none | not_evaluated | Unsupported |
-| Owner-controlled code, documentation and synthetic data may be publicly redistributed under the declared licences | Owner decision and per-object rights inventory | `LICENSE`, `docs/LICENSE.md`, `publication/rights-inventory.json` | passed | Does not grant redistribution rights for third-party UK data |
-| The separately assembled UK public-data candidate may be distributed per object | Per-object source terms, attribution, semantic checks and file hashes | `publication/rights-inventory.json`, `publication/force-uk-open-data-pack/prompt46-final-public-artifact-scan.json` | passed | No blanket relicensing; the installed local pack is not automatically covered |
+## Current source evidence
 
-The independent LP oracle proves the optional LP implementation against another
-optimizer; it does **not** prove that the research-compatible Scheme C algorithm is
-the same optimization problem. Smoke modes prove wiring and state continuity only.
-They deliberately hide annual economics and cannot replace a 17,520-period annual
-validation.
+The following evidence files and test modules are present in the review source tree. Status refers to recorded verification in the named reports. The boundaries below determine the scientific interpretation of those checks.
 
-The Prompt 52-55 decision is GO for a local research beta with bounded scientific
-claims. It is NO-GO for a fresh GitHub checkout because 460 intended source
-members are not tracked. It does not establish exact retained Scheme C
-reproduction, global optimality of the CEM, AC optimal power flow or full unit
-commitment. The reference DC validation remains bounded to its declared convex
-scope. Dynamic storage pricing remains a selectable research policy, and
-each redistributed UK data object remains governed by its recorded upstream
-terms. See `publication/prompt52-final-test-report.md` and the companion JSON.
+|Claim|Evidence|Recorded status|Boundary|
+|---|---|---|---|
+|Corrected Native closes its declared energy account and obeys storage bounds|`tests/test_energy_balance_oracle.py`, `tests/test_p04_validation_gate.py`, corrected VALUE 101 reference cases|passed|The declared boundary is `native_corrected_full_node_v1`; unmet demand is booked as stress shortfall.|
+|Each reduction is taken once, storage shares period power, and already-generated nuclear surplus serves balancing once|`tests/test_r41_doctoral_kernel_errors.py`, reference cases D3–D5|passed|Hand-calculated cases and the named compatibility cases.|
+|Native stress accounts and served energy reconcile|`tests/test_p04_balance_boundary.py`, `tests/test_stress_events_query.py`, `tests/test_r5_swap_data_defects.py`|passed|Accounting follows executed dispatch; served energy deducts recorded blackout and additional stress shortfall once.|
+|Annual result display follows profile-specific qualification|`tests/test_result_advisories.py`, `tests/test_methodology_profiles.py`, `tests/test_p04_validation_gate.py`|passed|Corrected economics requires all three gates; compatibility result pages require all raw invariants.|
+|Thermal investment income deducts physical running cost|`tests/test_p07_investment_corrections.py`, reference case D4|passed|Toy accounts and the named two-year case; income equal to operating cost gives zero net income.|
+|Cost ledger v2 separates physical resource cost from settlement and policy transfers|`tests/test_p07_cost_ledger_v2.py`, `tests/test_release_upgrade_ledgers.py`|passed|Wind, solar and storage FOM is memo-only under the headline convention; thermal FOM remains included.|
+|Storage dynamic cost uses cycle depreciation and annual recovery inputs|`tests/test_dynamic_storage_cost.py`|passed|Supplied catalogue technologies. Corrected Native's exact built-in dynamic module bids cycle depreciation only; first-year utilisation assumptions affect holding recovery diagnostics.|
+|Each power-battery type has its own expansion ceiling|`tests/test_r13_per_type_battery_caps.py`|passed|Toy cases and VALUE 101; each type receives the declared fraction of power headroom.|
+|VoLL defaults to £17,000/MWh in both profiles|`tests/test_fx5_voll.py`|passed|Native values recorded blackout in its cost account; LP/network uses depend on their stated objectives.|
+|Corrected imports participate in the ahead offer set|`tests/test_fx6_ahead_imports.py`|passed|Synthetic and VALUE 101 cases; available capacity is shared with balancing.|
+|Corrected nuclear starts in service|`tests/test_fx8_nuclear_in_service.py`, GBP1 public2 first-year check|passed|Synthetic restart cases and fixed-availability annual inputs.|
+|Storage offer records reconcile with executed net positions|`tests/test_fx4_storage_orders.py`|passed|Offer acceptance and net discharge can differ when output is bought back.|
+|Corrected downward order implements the declared restart comparison|`tests/test_r12_economic_downward_order.py`, `tests/test_r32_network_economic_dec.py`, `tests/test_r33_restart_price_base.py`|passed|Toy cases, VALUE 101, two-zone LP and independent PuLP/CBC checks. The GBP1 public2 and R029 public2 first years did not exercise thermal shutdown segments.|
+|Staged and zonal equal-price downward allocation follows economic classes and proportional ties|`tests/test_network_dec_pricing.py`|passed|Toy copperplate and zonal cases with explicit support and premium parameters.|
+|Network constraint cost uses a matched network-free LP|`tests/test_p08b_network_counterfactual.py`|passed|The difference isolates the constrained and network-free physical cost under the same inputs and unit-cost table.|
+|Boundary marginal values are primary-stage LP duals|`tests/test_p08b_boundary_duals.py`|passed|Finite-difference checks and the VALUE 101 NC value of £66.5/MWh; these values are diagnostics.|
+|The optional perfect-foresight LP satisfies interval energy and SOC equations|`tests/test_perfect_foresight_psm.py`, `tests/test_independent_psm_validation.py`|passed|Synthetic convex cases; independently encoded PuLP/CBC comparisons for 24 h, 168 h and three random 24 h cases, with constraint mutations.|
+|The R029 public2 revision satisfies declared solar-series timing|`tests/test_r31_solar_8761.py`, corrected reference case C10|passed|R029 public2 supplies the declared hourly inputs. The public1 curve remains subject to its current reader restriction.|
+|Endogenous proposals use the data pack’s development timelines and regional success rates|`tests/test_r71_endogenous_planning_timelines.py`, `tests/fixtures/r71/public2_planning_timelines.json`|passed within case scope|Both profiles; VALUE 101 remains unchanged. Public2 first-year proposal checks cover 2025 decisions and commissioning in 2026–2034. Multi-year public2 reference calculations following this change remain `not_evaluated`.|
+|Biomass revenue scope is disclosed|`tests/test_r33_biomass_disclosure.py`|disclosed|CfD and ROC support lie outside the implemented biomass revenue account; the advisory is informational.|
+|Compatibility trajectories follow the rules shared with the corrected methodology|`tests/golden/doctoral/`, `tests/golden/reports/`, `docs/release/P0_GOLDEN_DELTA.md`|passed within case scope|D1 and D2 preserve the baseline trajectory; D3–D5 use attributed shared-rule reference updates. Exact comparisons use the stated platform.|
+|Reference changes have machine-readable attribution|`scripts/golden/delta_report.py`, `tests/test_golden_delta_report.py`|passed|15 reference cases: D1–D5 and C1–C10, with four cross-profile pairs. The attribution table identifies affected columns.|
+|The local API applies its origin and session boundary|`tests/test_local_api_boundary.py`, `e2e/security-boundary.spec.ts`|passed|Linux source-tree execution and a single-user host. Installed software requires its own acceptance check.|
+
+The default national model is single-node with no internal transmission constraints. Reference LP, staged, zonal and DC results apply to their selected formulations. Native sequential market dispatch and the optional horizon-wide LP have separate algorithms and validation scopes.
+
+The zonal solver can be numerically fragile for individual parameter combinations. A solver response that satisfies its scaled problem but lacks an accepted unscaled result ends the run with `GF_ZONAL_SOLVER_FAILURE`; the result remains unavailable. Current network validation covers the stated convex, synthetic and VALUE 101 cases.
+
+The 23-zone public2 research suite locates wind and solar spatially and allocates the other supplied technologies and imports to `ENGLAND_FALLBACK`. The runtime nuclear fallback includes Torness. Import resource names use `import:<country>`, while landing entries use `interconnector:<line>`. Zonal spatial results therefore have indicative scope. Staged ledgers declare `full_node_v1`, enabling the energy-balance evaluation; `generation_cross_path` and `demand_input_reconciliation` retain `not_evaluated`. Summary traces omit period solver diagnostics and display them as “not recorded”.
+
+## National data checks
+
+The corrected data calculation applies literature wind losses, plane-of-array solar conversion, fixed nuclear load factors and seasonal natural-hydro availability. The London solar timing check gives a centroid of 11.97 UTC. GBP1 available-resource capacity factors are 0.4026 onshore, 0.4913 offshore and 0.1065 solar, respectively 1.56, 1.23 and 1.04 times the DUKES 2020–2024 comparison. These are disclosed model outputs; the weather parameters were selected independently of statistical load-factor fitting.
+
+The GBP1 public2 corrected 2025 check uses `tests/golden/projects/C9.json`, with `value-legacy-storage-tariff` and `doctoral_reproduction_2026_07_18` carbon factors. This configuration gives nuclear generation 38.26 TWh and natural-flow hydro 6.01 TWh, respectively +2.5% against the selected Energy Trends 5.1 nuclear comparison and +4.2% against the selected DUKES 6.2 hydro comparison. Imports total 1.376 TWh, with zero recorded blackout and zero stress periods. The configuration and first-year reference are recorded in `tests/golden/projects/C9.json` and `tests/golden/corrected/`. GBP1 public2 and R029 public2 are supplied with VALUE 0.7.0-alpha.1 ([data downloads](https://value.ac/en/data/)).
+
+The GBP1 public1 compatibility evidence covers its first model year. The final account records 74 stress events, 487 stress periods and 78,810 MWh additional shortfall, with zero recorded blackout. The energy-balance, storage and raw-invariant checks pass, permitting annual-result display under the compatibility rule. Its nuclear output is zero for the full year because nuclear first acceptance depends on the start-up bid and demand sequence. The configuration and reference are recorded in `tests/golden/projects/D5.json` and `tests/golden/doctoral/`; the check covers the stated first model year.
+
+## Profile and platform boundaries
+
+The compatibility profile `doctoral-lineage-0.6.0a2` retains selected input and market settings implemented in VALUE 0.6.0-alpha.2, together with shared rules for declared-column reading, interconnector time/currency/identity, demand alignment, thermal net income, one-time reductions, storage net positions, nuclear-surplus accounting, stress events, VoLL, resource ledgers, and endogenous planning from the frozen data-pack tables. Its balance uses `default_psm_surplus_node_v1`. The remaining declared differences identify its boundary and recorded state behaviour; raw invariants determine result qualification.
+
+Exact trajectory comparison is limited to the named reference cases on Linux x86-64, CPython 3.10.18 and NumPy 1.24.4. Other platforms compare values rounded to nine significant digits. Trajectory columns comprise dispatch, flows, prices, storage state, capacity and proposals; accounting and method-identity columns have their own declared definitions. Profile changes are method changes, so a cross-profile difference combines all active input and market differences.
+
+Investment is a myopic, undiscounted rule based on annual return and payback in constant start-year money. Its interpretation is an agent response under the stated rules. The global expansion optimum is `not_evaluated`. The operating market applies start-up bid adders and per-period ramps; reserve scheduling, binary commitment and full minimum-up/down commitment constraints are outside the implemented formulation. The corrected restart comparison is a downward ordering rule.
+
+`value-doctoral-national-psm` is an experimental fixed-year dispatch module with explicit annual cash records. Its output marks scientific release and integrated annual-CEM readiness false. Chapter 6 documents implemented annual helper functions and their required inputs. A complete experiment must supply compatible cash, costs, headroom and state transitions before making an annual-investment claim.
+
+## Historical evidence and release scope
+
+The earlier 0.6.0-alpha.2 record reported annual, two-year and ten-year calculations in `publication/prompt52-one-year-full-audit.json`, `publication/prompt52-two-year-full-audit.json`, `publication/prompt52-dynamic-ten-year-audit.json`, `publication/prompt52-legacy-ten-year-audit.json` and `publication/prompt52-checkpoint-resume-audit.json`. These evidence files are absent from the current source tree. Their status is historical reported pass with unavailable local evidence. Current source verification uses the present evidence listed above.
+
+Earlier independent-clearing reports under `publication/prompt46-*` are likewise absent from this source tree. Current independent-optimizer statements use the present test modules and the bounded scopes in the matrix. The comparison with the retained 2026-07-18 trajectory remains failed. Historical exact-trajectory, AC feasibility and transmission-expansion statements retain their original limited case scope.
+
+The 0.7.0-alpha.1 installers remain `not_evaluated` in this review record. Windows and macOS require their platform-specific installation and runtime acceptance. Short smoke runs establish wiring and state continuity over their executed periods; full annual economic evaluation requires a complete chronology and passing qualification checks. Distribution rights for any data object follow its recorded source terms and release inventory.

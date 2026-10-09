@@ -1,0 +1,14 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-table-scroll { position: relative; max-width: 100%; min-width: 0; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); }
+  .v-table-scroll:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .v-table { width: 100%; min-width: 0; border-collapse: separate; border-spacing: 0; font-size: var(--fs-sm); line-height: var(--lh-table); color: var(--ink); }
+  .v-table caption { padding: var(--sp-2) var(--sp-3); text-align: left; color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; caption-side: top; }
+  .v-table th, .v-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: top; font-size: var(--fs-sm); background: var(--panel); }
+  .v-table thead th { position: sticky; top: 0; z-index: 1; background: var(--paper); color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; border-bottom-color: var(--line); }
+  .v-table tbody th { font-weight: 650; }
+  .v-table tbody tr:last-child > * { border-bottom: 0; }
+  .v-table tbody tr:hover > * { background: var(--blue-soft); }
+  .v-table .v-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+}

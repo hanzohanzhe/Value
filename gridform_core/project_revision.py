@@ -9,27 +9,77 @@ from pathlib import Path
 from typing import Mapping
 
 from .frontend_contract import validate_project_solver_contract
+from .legacy_module_ids import LEGACY_MODULE_IDS
 from .doctoral_weather import uses_doctoral_weather, weather_execution_identity
 from .v2.module_manifest import ModuleRegistryV2
-from .zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
+from .zonal_solver_contract import (
+    DEFAULT_ZONAL_SOLVER_SETTINGS,
+    solver_contract_generation,
+    validate_recorded_solver_settings,
+)
 
 
 def _canonical_bytes(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def canonical_project_payload(project: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object]) -> dict[str, object]:
+FINGERPRINT_BASIS_SCHEMA = "value.project-fingerprint-basis/v1"
+# Why a revision was appended (X0 S11, Q13).  Code-only changes are appended
+# automatically; method or data changes only after the user confirmed the diff.
+REVISION_REASONS = (
+    "user-save",
+    "code-identity-upgrade",
+    "environment-reidentify",
+    "source-reidentify",
+    "method-upgrade-confirmed",
+    "data-change-confirmed",
+    "basis-reestablished-confirmed",
+)
+# Bookkeeping fields of a saved revision; never part of the Study content.
+REVISION_BOOKKEEPING_FIELDS = (
+    "revision_sha256", "revision_number", "parent_revision_sha256", "change_summary",
+    "fingerprint_basis", "revision_reason",
+)
+
+
+def canonical_project_payload(
+    project: Mapping[str, object],
+    registry: ModuleRegistryV2,
+    data_pack_manifest: Mapping[str, object],
+    *,
+    module_version_overrides: Mapping[str, tuple[str, str]] | None = None,
+    include_methodology: bool = True,
+    module_resolution_graph: Mapping[str, object] | None = None,
+    recorded_solver_contract: bool = False,
+    weather_identity: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """The canonical identity payload of a Study revision.
+
+    ``weather_identity`` replaces the current dispatch-weather identity
+    (only to reconstruct a payload saved by older sources, P0-5a).
+    ``module_version_overrides`` (module id -> (version, contract version))
+    ``include_methodology=False``, ``module_resolution_graph`` (the graph
+    stored in project.json, used instead of resolving the current one) and
+    ``recorded_solver_contract=True`` (a historical v2/v3 zonal solver
+    contract is read as recorded instead of being refused, P0-8 S5) exist
+    only to reconstruct the payload of a revision saved before X0 S11
+    (pre-profile, 35aadb3 module versions and module source hashes); see
+    :mod:`gridform_core.revision_migration`.  A payload built that way is an
+    identity record only: it is never saved or executed.
+    """
+
     modules = dict(project.get("modules") or {})  # type: ignore[arg-type]
     psm_id = str(modules.get("psm") or "")
     if psm_id:
         psm = registry.manifest(psm_id, expected_slot="psm")
         if "storage.bid-cost-function" in psm.requires_capabilities:
             modules.setdefault("storage_cost", "dynamic-annual-storage-cost")
+    overrides = dict(module_version_overrides or {})
     module_versions = {
         slot: {
             "module_id": module_id,
-            "version": registry.manifest(module_id, expected_slot=slot).version,
-            "contract_version": registry.manifest(module_id, expected_slot=slot).contract_version,
+            "version": overrides[module_id][0] if module_id in overrides else registry.manifest(module_id, expected_slot=slot).version,
+            "contract_version": overrides[module_id][1] if module_id in overrides else registry.manifest(module_id, expected_slot=slot).contract_version,
         }
         for slot, module_id in sorted(modules.items())
     }
@@ -47,11 +97,16 @@ def canonical_project_payload(project: Mapping[str, object], registry: ModuleReg
         "runtime_controls": dict(project.get("runtime_options") or project.get("runtime_controls") or {}),
     }
     if uses_doctoral_weather(data_pack_manifest):
-        result["dispatch_weather_identity"] = weather_execution_identity()
+        result["dispatch_weather_identity"] = (
+            json.loads(json.dumps(dict(weather_identity))) if weather_identity is not None
+            else weather_execution_identity()
+        )
     if "market_configuration" in project:
         result["market_configuration"] = dict(project.get("market_configuration") or {})
     selected_extensions = tuple(str(item) for item in project.get("selected_extensions", ()))
-    if selected_extensions:
+    if selected_extensions and module_resolution_graph is not None:
+        result["module_resolution_graph"] = json.loads(json.dumps(dict(module_resolution_graph)))
+    elif selected_extensions:
         graph = registry.resolve_selection(
             modules,
             selected_extensions=selected_extensions,
@@ -64,18 +119,54 @@ def canonical_project_payload(project: Mapping[str, object], registry: ModuleReg
             extension_parameters=dict(project.get("extension_parameters") or {}),
         )
         result["module_resolution_graph"] = graph.to_dict()
-    solver_contract = validate_project_solver_contract(
-        project,
-        registry,
-        modules={str(slot): str(module_id) for slot, module_id in modules.items()},
-        require_acknowledgement=False,
-    )
+    stored_contract = project.get("solver_contract")
+    if (
+        recorded_solver_contract
+        and isinstance(stored_contract, Mapping)
+        and solver_contract_generation(stored_contract) in {"v2", "v3"}
+    ):
+        # The hash a v2/v3 revision was saved with (X0 S11 reconstruction
+        # after the P0-8 v4 contract): the historical contract as recorded,
+        # which its own generation canonicalised to the same values.
+        solver_contract = validate_recorded_solver_settings(stored_contract)
+    else:
+        solver_contract = validate_project_solver_contract(
+            project,
+            registry,
+            modules={str(slot): str(module_id) for slot, module_id in modules.items()},
+            require_acknowledgement=False,
+        )
     if solver_contract is not None:
         result["solver_contract"] = solver_contract
     acknowledgements = dict(project.get("maturity_acknowledgements") or {})
     if acknowledgements:
         result["maturity_acknowledgements"] = acknowledgements
+    if include_methodology:
+        # The methodology profile decides how the Study is computed, so it is
+        # part of the revision identity (X0 S11, Q13): a Study saved before
+        # profiles existed, or under another catalogue, no longer matches and
+        # is classified by revision_migration instead of re-identified.
+        from .methodology import resolve_project_methodology
+
+        result["methodology"] = resolve_project_methodology(project).identity()
     return result
+
+
+def fingerprint_basis(project: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object]) -> dict[str, object]:
+    """What a revision hash was computed from, stored with the revision (X0 S11)."""
+
+    from .methodology import resolve_project_methodology
+
+    payload = canonical_project_payload(project, registry, data_pack_manifest)
+    return {
+        "schema_version": FINGERPRINT_BASIS_SCHEMA,
+        "revision_sha256": hashlib.sha256(_canonical_bytes(payload)).hexdigest(),
+        "payload": payload,
+        "applied_correction_ids": list(resolve_project_methodology(project).applied_correction_ids),
+        # Semantic records (id, track, scope, affects) so a later catalogue can
+        # tell a redefined correction from a presentation-only edit.
+        "applied_corrections": resolve_project_methodology(project).applied_correction_records(),
+    }
 
 
 def project_fingerprint(project: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object]) -> str:
@@ -106,14 +197,7 @@ def derive_zonal_execution_project(
     if not isinstance(decoded, Mapping):
         raise ValueError("Zonal source study must be a JSON object")
     candidate = dict(decoded)
-    legacy_ids = {
-        "force-staged-bid-at-cost-psm": "value-staged-bid-at-cost-psm",
-        "force-zonal-redispatch-balancing": "value-zonal-redispatch-balancing",
-        "force-representative-point-weather": "value-representative-point-weather",
-        "storage-expansion-scheme-c": "value-storage-expansion-policy",
-        "scheme-c-state-transition": "value-annual-state-transition",
-        "force-zonal-redispatch-extension": "value-zonal-redispatch-extension",
-    }
+    legacy_ids = LEGACY_MODULE_IDS
 
     # Prompt 104 is retained as immutable historical evidence.  Its execution
     # copy is renamed in memory so no FORCE identity can enter a current VALUE
@@ -154,8 +238,12 @@ def derive_zonal_execution_project(
     if module_id != "value-zonal-redispatch-balancing":
         raise ValueError("Zonal source study does not select the zonal balancing module")
     manifest = registry.manifest(module_id, expected_slot="balancing")
-    if manifest.version != "3.0.0" or not manifest.solver_contract:
-        raise ValueError("Zonal balancing module v3.0.0 solver contract is unavailable")
+    # The derivation always targets the registered module and its current
+    # solver contract (v4 since P0-8); historical contracts are never minted.
+    if not manifest.solver_contract:
+        raise ValueError(
+            f"Zonal balancing module v{manifest.version} solver contract is unavailable"
+        )
     if "solver_contract" in candidate:
         raise ValueError("Zonal source study already declares a solver contract")
 
@@ -182,11 +270,13 @@ def derive_zonal_execution_project(
 
 
 def _change_summary(previous: Mapping[str, object], current: Mapping[str, object]) -> list[str]:
-    ignored = {"name", "updated_at", "revision_sha256", "revision_number", "parent_revision_sha256", "change_summary"}
+    ignored = {"name", "updated_at", *REVISION_BOOKKEEPING_FIELDS}
     return sorted(key for key in set(previous) | set(current) if key not in ignored and previous.get(key) != current.get(key))
 
 
-def save_project_revision(project_dir: Path, candidate: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object], *, expected_base_revision: str | None = None) -> dict[str, object]:
+def save_project_revision(project_dir: Path, candidate: Mapping[str, object], registry: ModuleRegistryV2, data_pack_manifest: Mapping[str, object], *, expected_base_revision: str | None = None, revision_reason: str = "user-save") -> dict[str, object]:
+    if revision_reason not in REVISION_REASONS:
+        raise ValueError(f"Unknown revision reason {revision_reason!r}")
     current_path = project_dir / "project.json"
     previous: dict[str, object] = {}
     if current_path.is_file():
@@ -197,6 +287,11 @@ def save_project_revision(project_dir: Path, candidate: Mapping[str, object], re
     result = attach_revision_identity(candidate, registry, data_pack_manifest)
     if result["revision_sha256"] == previous_revision:
         return previous
+    # Every revision written from now on records what its hash was computed
+    # from and why it was appended (X0 S11), so a later code or method change
+    # can be classified instead of guessed.
+    result["fingerprint_basis"] = fingerprint_basis(candidate, registry, data_pack_manifest)
+    result["revision_reason"] = revision_reason
     result["parent_revision_sha256"] = previous_revision
     result["revision_number"] = int(previous.get("revision_number", 0)) + 1
     result["change_summary"] = _change_summary(previous, result)

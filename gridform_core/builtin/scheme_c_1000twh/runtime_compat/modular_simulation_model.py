@@ -44,14 +44,85 @@ from pathlib import Path
 from . import config
 from .storage_cost import DynamicAnnualStorageCost, technology_spec
 from ....market_ledger import (
+    BalanceTermsRow,
     OrderLedgerRow,
     PeriodLedgerRow,
+    StorageOrderLedgerRow,
     StorageStateRow,
     active_market_ledger,
 )
 from ....clearing_inputs import ClearingInputRow, ClearingOutcomeRow
+from .... import energy_balance_contract as _balance_contract
+# VALUE P0-4 S4-S5: observation-only energy audit (no effect on clearing).
+from ..native_balance_audit import (
+    IN_DISPATCH as _IN_DISPATCH,
+    OUT_OF_DISPATCH as _OUT_OF_DISPATCH,
+    SurplusTrace as _SurplusTrace,
+    battery_audit as _battery_audit,
+    excess_source_class as _excess_source_class,
+    node_terms as _node_terms,
+    open_storage_period as _open_storage_period,
+    storage_audit_rows as _storage_audit_rows,
+    stored_total as _stored_total,
+    surplus_routing_rows as _surplus_routing_rows,
+)
+
+from .. import native_corrected as _p06
+# VALUE four-role M-D1: observation-only record of the storage offers.
+from ..native_storage_orders import StorageOfferTrace as _StorageOfferTrace
+from ..native_market_rules import DOCTORAL as _DOCTORAL_RULES
 
 _WEATHER_LIMIT_CACHE = None
+# VALUE P0-4 S5: per-period surplus routing by source class (read-only trace of
+# the kernel's excess_energy / need_curtailed_energy at each take point).
+_SURPLUS_TRACE = _SurplusTrace()
+# VALUE four-role M-D1: storage offers of the period and what each delivered
+# (read-only; booked in the ledger's storage_orders table).  Never rebound.
+_STORAGE_OFFERS = _StorageOfferTrace()
+
+
+class _P06State:
+    """VALUE P0-6: the market rule set of the running kernel and its period state.
+
+    A mutable object (never rebound) so that loops compiled into a cloned
+    namespace (tests/native_reproduction_harness.py) share it with the market
+    functions.  The doctoral rule set is the default for direct calls.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self, rules=None):
+        self.rules = rules if rules is not None else _DOCTORAL_RULES
+        self.surplus = None          # corrected SurplusBook of the period
+        self.diagnostics = {}        # doctoral market_rule_diagnostics of the period (MW / GBP)
+        self.imports = _p06.ImportSchedule()  # FX6 (A16-2): day-ahead imports of the period
+        self.outlook = None          # R1-2 (A19/A22): SurplusOutlook of the run (expected downtime H)
+        self.downward_tally = None   # R1-2 (A19/A22): DownwardTally of the run
+        self.thesis_excess_rows = []  # R4-1 (A26): the thesis ahead stage's excess rows of the period
+
+    def rule(self, field):
+        return getattr(self.rules, field)
+
+    @property
+    def corrected(self):
+        return self.rules.surplus_accounting == "rebuilt_available_minus_accepted"
+
+    @property
+    def restart_economics(self):
+        # VALUE R1-2 (A19/A22, r12.economic-downward-order).
+        return self.rules.downward_restart_economics == "restart_cost_vs_avoided_cost_v1"
+
+    @property
+    def ahead_imports(self):
+        # VALUE FX6 (A16-2, fx6.day-ahead-interconnector-imports).
+        return self.rules.interconnector_import_stage == "day_ahead_offer_then_balancing_residual"
+
+    def diagnose(self, key, value):
+        self.diagnostics[key] = self.diagnostics.get(key, 0.0) + float(value)
+
+
+_P06_STATE = _P06State()
 DEBUG_MARKET_STDOUT = os.getenv("SIM_DEBUG_MARKET", "0") == "1"
 
 
@@ -75,26 +146,92 @@ def _asset_name(asset):
     return str(getattr(asset, "name", asset.__class__.__name__))
 
 
-def _storage_pre_state(batterys):
-    period_hours = physical_period_hours()
-    return [
-        {
-            "asset_id": _asset_name(battery),
-            "technology": str(getattr(battery, "battery_type", "unknown")),
-            "state_of_charge_mwh": float(sum(getattr(battery, "stored_energy", {}).values())),
+# VALUE R5-3 (A28, edit-module 中1): a store that stays full under an offer
+# above the market price is topped up by a tiny new charge tranche every
+# period and never discharges, so its tranche dictionary grows through the
+# year.  Recording every tranche in every stage's declared state made the
+# full-trace ledger grow with the square of the periods (20 GB for two VALUE
+# 101 years).  The declared state lists every tranche while there are at most
+# this many; above it, it lists the tranches the stage offers (so the clearing
+# oracle still checks each offered tranche against its stored energy) and
+# aggregates the rest.  Recording only: dispatch never reads this state.
+STORAGE_STATE_TRANCHE_RECORD_LIMIT = 128
+STORAGE_STATE_COMPACT_REPRESENTATION = "value.storage-tranches-offered-plus-aggregate/v1"
+_TRANCHE_RECORD_OBSERVATION = {"max_tranche_count": 0, "compacted_states": 0}
+
+
+def storage_tranche_record_observation():
+    """Largest tranche count seen and how many declared states were compacted."""
+    return dict(_TRANCHE_RECORD_OBSERVATION)
+
+
+def reset_storage_tranche_record_observation():
+    _TRANCHE_RECORD_OBSERVATION.update(max_tranche_count=0, compacted_states=0)
+
+
+def _declared_tranches(battery, stored, offered_periods):
+    count = len(stored)
+    if count > _TRANCHE_RECORD_OBSERVATION["max_tranche_count"]:
+        _TRANCHE_RECORD_OBSERVATION["max_tranche_count"] = count
+    if count <= STORAGE_STATE_TRANCHE_RECORD_LIMIT:
+        return {
             "stored_tranches_mwh": [
                 {"charge_period": int(key), "stored_mwh": float(value)}
-                for key, value in getattr(battery, "stored_energy", {}).items()
+                for key, value in stored.items()
             ],
+        }
+    _TRANCHE_RECORD_OBSERVATION["compacted_states"] += 1
+    explicit = []
+    rest_mwh = 0.0
+    rest_count = 0
+    rest_min = rest_max = None
+    for key, value in stored.items():
+        if key in offered_periods:
+            explicit.append({"charge_period": int(key), "stored_mwh": float(value)})
+            continue
+        rest_mwh += float(value)
+        rest_count += 1
+        rest_min = key if rest_min is None or key < rest_min else rest_min
+        rest_max = key if rest_max is None or key > rest_max else rest_max
+    return {
+        "stored_tranches_mwh": explicit,
+        "stored_tranche_representation": STORAGE_STATE_COMPACT_REPRESENTATION,
+        "stored_tranche_count": count,
+        "stored_tranches_aggregate": {
+            "tranche_count": rest_count,
+            "stored_mwh": rest_mwh,
+            "charge_period_min": None if rest_min is None else int(rest_min),
+            "charge_period_max": None if rest_max is None else int(rest_max),
+        },
+    }
+
+
+def _storage_pre_state(batterys, offers=None):
+    if active_market_ledger().trace_level != "full":
+        # Only a full-trace ledger records declared state (_record_declared_input).
+        return []
+    period_hours = physical_period_hours()
+    offered = {}
+    for offer in offers or ():
+        if offer.get("resource_kind") == "storage_discharge" and offer.get("charge_period") is not None:
+            offered.setdefault(str(offer["asset_id"]), set()).add(int(offer["charge_period"]))
+    rows = []
+    for battery in batterys:
+        stored = getattr(battery, "stored_energy", {})
+        asset_id = _asset_name(battery)
+        rows.append({
+            "asset_id": asset_id,
+            "technology": str(getattr(battery, "battery_type", "unknown")),
+            "state_of_charge_mwh": float(sum(stored.values())),
+            **_declared_tranches(battery, stored, offered.get(asset_id, ())),
             "charge_power_limit_mw": float(getattr(battery, "power_capacity_mw", 0.0)),
             "discharge_power_limit_mw": float(getattr(battery, "power_capacity_mw", 0.0)),
             "energy_capacity_mwh": float(getattr(battery, "energy_capacity_mwh", 0.0)),
             "charge_efficiency": float(getattr(battery, "n_1", 1.0)),
             "discharge_efficiency": float(getattr(battery, "n_2", 1.0)),
             "period_hours": period_hours,
-        }
-        for battery in batterys
-    ]
+        })
+    return rows
 
 
 def _record_declared_input(stage, period, information_scope, payload):
@@ -403,6 +540,13 @@ class Battery:
             period_power_headroom,
         )
         self.set_stored_energy_var(period, input_power * self.n_1 * period_hours)
+        # VALUE P0-4 S4: book the grid-side input and its stored share (P3-14).
+        audit = _battery_audit(self)
+        audit.charge_input_mwh += input_power * period_hours
+        audit.charge_stored_mwh += input_power * self.n_1 * period_hours
+        if _P06_STATE.rule("storage_position") == "net_per_period" and input_power > 0:
+            # VALUE P0-6 S8 (P5-03): one storage position per period.
+            _p06.period_book(self, period).charged_mw += input_power
         return input_power
 
     def available_discharge_power(self, charge_period):
@@ -421,11 +565,61 @@ class Battery:
             self.available_discharge_power(charge_period),
         )
         self.clr_stored_energy_var(charge_period, output_power * period_hours / self.n_2)
+        # VALUE P0-4 S4: book the grid-side output and the stored energy it withdrew.
+        audit = _battery_audit(self)
+        audit.discharge_output_mwh += output_power * period_hours
+        audit.discharge_withdrawn_mwh += output_power * period_hours / self.n_2
+        if _P06_STATE.rule("storage_position") == "net_per_period":
+            # VALUE P0-6 S8 (P5-03): the sale is recorded once the period's net
+            # position is known (close_period), so a buy-back is not a sale.
+            if output_power > 0:
+                _p06.period_book(self, current_period).draws.append([charge_period, output_power])
+            return output_power
         self.cost_recovery.record_sale(
             output_power * period_hours,
             max(current_period - charge_period, 0),
         )
         return output_power
+
+    def buy_back(self, period, requested_power_mw):
+        """VALUE P0-6 S8 (P5-03): undo this period's discharge, newest draw first.
+
+        The withdrawn stored energy returns to the tranche it came from; the
+        returned grid-side power is no longer delivered (no sale, no charge).
+        """
+        book = _p06.period_book(self, period)
+        period_hours = physical_period_hours()
+        remaining = max(float(requested_power_mw), 0.0)
+        audit = _battery_audit(self)
+        for draw in reversed(book.draws):
+            if remaining <= 0:
+                break
+            take = min(draw[1], remaining)
+            if take <= 0:
+                continue
+            draw[1] -= take
+            remaining -= take
+            self.set_stored_energy_var(draw[0], take * period_hours / self.n_2)
+            audit.discharge_output_mwh -= take * period_hours
+            audit.discharge_withdrawn_mwh -= take * period_hours / self.n_2
+        bought = max(float(requested_power_mw), 0.0) - remaining
+        book.bought_back_mw += bought
+        return bought
+
+    def close_period(self, period):
+        """VALUE P0-6 S8: record the period's net sales and assert the storage invariants."""
+        book = _p06.period_book(self, period)
+        period_hours = physical_period_hours()
+        if not book.closed:
+            # VALUE R4-1: record the period's sales once.
+            for charge_period, output_power in book.draws:
+                if output_power > 0:
+                    self.cost_recovery.record_sale(
+                        output_power * period_hours,
+                        max(period - charge_period, 0),
+                    )
+            book.closed = True
+        return _p06.close_battery_period(self, period)
 
     def storage_cost_report(self):
         report = self.cost_recovery.report()
@@ -452,11 +646,21 @@ class Battery:
             if previous_last is not None and key < previous_last:
                 self.stored_energy = dict(sorted(self.stored_energy.items()))
 
-    def clr_stored_energy_var(self, key, value):
+    def clr_stored_energy_var(self, key, value, audit_period=None):
+        # ``audit_period`` (VALUE P0-4 S4) is accepted for callers that name
+        # the period; the write-off is booked on the battery's open period.
         if key in self.stored_energy:
             self.stored_energy[key] -= value
             if self.stored_energy[key] < 0.001:
+                # VALUE P0-4 S4: the deleted tail is a write-off, not a flow.
+                _battery_audit(self).tail_writeoff_mwh += self.stored_energy[key]
                 del self.stored_energy[key]
+
+    def apply_self_discharge(self, period):
+        """VALUE P0-4 S4: decay_func on this battery, booking the energy it removes."""
+        before = _stored_total(self)
+        decay_func(self.stored_energy, self.battery_type)
+        _battery_audit(self).self_discharge_mwh += before - _stored_total(self)
 
     def set_run_time(self):
         self.run_time += physical_period_hours()
@@ -464,6 +668,7 @@ class Battery:
     def cleanup_negligible_energy(self, threshold=0.001):
         keys_to_remove = [key for key, value in self.stored_energy.items() if value < threshold]
         for key in keys_to_remove:
+            _battery_audit(self).tail_writeoff_mwh += self.stored_energy[key]
             del self.stored_energy[key]
         return len(keys_to_remove)
 
@@ -905,8 +1110,13 @@ def storage_discharge_offers(batterys, period, bidding_factor=1.0, minimum_dwell
     several historical charge tranches are present.
     """
     offers = []
+    net_position = _P06_STATE.rule("storage_position") == "net_per_period"
     for battery in batterys:
         remaining_power_mw = battery.power_capacity_mw
+        if net_position:
+            # VALUE P0-6 S8 (P5-03): the stages of one period share the rated
+            # power, and a battery that charged this period offers nothing.
+            remaining_power_mw = _p06.remaining_discharge_power_mw(battery, period)
         for charge_period in battery.ordered_charge_periods(period):
             dwell = period - charge_period
             if remaining_power_mw <= 0:
@@ -929,6 +1139,46 @@ def storage_discharge_offers(batterys, period, bidding_factor=1.0, minimum_dwell
     return offers
 
 
+def _thesis_absorb_excess(battery, period, excess_mw, gen_list, source_class, rows):
+    """VALUE R4-1 (A26, DEV-STO-01): thesis-rule absorption of the ahead excess by one store.
+
+    One net position per store and period: a store that discharged in the
+    period first reduces that discharge (buy-back), and only a store left
+    without discharge charges.  The surplus that replaces the bought-back
+    discharge serves demand: must-run (in-dispatch) surplus is already in S;
+    VRE (out-of-dispatch) surplus enters S as VRE output of the excess rows,
+    as in the thesis balancing re-dispatch.  An unclassified excess is not
+    netted.  Returns (bought back MW, charged MW).
+    """
+    power = max(float(excess_mw), 0.0)
+    bought = 0.0
+    vre_rows = [row for row in rows or () if type(row[0]) == ExpensiverenewableGenerator and row[1] > 0]
+    if source_class == _IN_DISPATCH:
+        limit = power
+    elif source_class == _OUT_OF_DISPATCH:
+        limit = min(power, sum(float(row[1]) for row in vre_rows))
+    else:
+        limit = 0.0
+    if limit > 0:
+        bought = battery.buy_back(period, limit)
+        _p06.reduce_output(gen_list, battery, bought)
+        if source_class == _OUT_OF_DISPATCH and bought > 0:
+            total = sum(float(row[1]) for row in vre_rows)
+            for row in vre_rows:
+                take = bought * float(row[1]) / total
+                row[1] -= take
+                for gen in gen_list:
+                    if gen[0] == row[0]:
+                        gen[1] += take
+                        break
+                else:
+                    gen_list.append([row[0], take])
+    charged = 0.0
+    if power - bought > _p06.TOLERANCE_MW and _p06.period_book(battery, period).discharged_mw <= _p06.TOLERANCE_MW:
+        charged = battery.charge(period, power - bought)
+    return bought, charged
+
+
 def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, last_gen_energy, excess_energy,
                         gen_list, connections, electrolyzer):
     # initialize the energy to stored as zero
@@ -938,19 +1188,40 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
     curtailed_fee = []
     curtailed_energy_list = []
     soldable = []
+    # VALUE P0-4 S5: the forecast-minus-real surplus is scheduled output (in S).
+    _trace = _SURPLUS_TRACE
+    _trace.add(_IN_DISPATCH, "available", need_curtailed_energy)
     #print(need_curtailed_energy)
+    # VALUE R4-1 (A26, DEV-STO-01, p06.storage-net-per-period now universal):
+    # one storage position per period.  A store that discharged in the ahead
+    # stage first reduces that discharge (buy-back) before it can charge, so it
+    # never charges and discharges in the same period.  Netting the need
+    # takes scheduled output out of S (routing: curtailed); netting the excess
+    # lets the surplus serve demand instead (routing: to_dispatch).
+    _net_position = _P06_STATE.rule("storage_position") == "net_per_period"
     for pool in new_bids:
         if need_curtailed_energy != 0:
-            charged_power = pool[0].charge(period, need_curtailed_energy)
+            if _net_position:
+                bought_power, charged_power = _p06.absorb(pool[0], period, need_curtailed_energy, gen_list)
+            else:
+                bought_power, charged_power = 0.0, pool[0].charge(period, need_curtailed_energy)
             store_energy += charged_power
-            need_curtailed_energy -= charged_power
+            need_curtailed_energy -= bought_power + charged_power
             curtailed_fee.append(0.0)
+            _trace.add(_IN_DISPATCH, "to_storage", charged_power)
+            _trace.add(_IN_DISPATCH, "curtailed", bought_power)
     if excess_energy != 0:
         for pool in new_bids:
             if excess_energy != 0:
-                charged_power = pool[0].charge(period, excess_energy)
+                if _net_position:
+                    bought_power, charged_power = _thesis_absorb_excess(
+                        pool[0], period, excess_energy, gen_list, _trace.excess_class, _P06_STATE.thesis_excess_rows)
+                else:
+                    bought_power, charged_power = 0.0, pool[0].charge(period, excess_energy)
                 store_energy += charged_power
-                excess_energy -= charged_power
+                excess_energy -= bought_power + charged_power
+                _trace.add(_trace.excess_class, "to_storage", charged_power)
+                _trace.add(_trace.excess_class, "to_dispatch", bought_power)
     # sell to interconnector before there is curtailment
     sold_fee = []
     for item in connections:
@@ -962,6 +1233,7 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
         for item in connections:
             item.sold_energy = 0
         energy_cell = min((electrolyzer.real_energy + electrolyzer.rampup_rate), electrolyzer.capacity_limit)
+        _excess_before, _need_before = excess_energy, need_curtailed_energy
         if excess_energy + need_curtailed_energy > 0:
             min_value = min((excess_energy + need_curtailed_energy), energy_cell)
             energy_cell_period = min_value
@@ -978,7 +1250,11 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             green_hy = 0
             electrolyzer.set_real_energy(0)
             energy_cell_period = 0
+        _trace.excess("to_flexible", _excess_before, excess_energy)
+        _trace.need("to_flexible", _need_before, need_curtailed_energy)
         curtailed_energy = need_curtailed_energy
+        # VALUE P0-4 S5: down-regulation actually taken out of S vs booked.
+        _supply_before_curtailment = sum(float(gen[1]) for gen in gen_list)
         for item in accepted_bids:
             if need_curtailed_energy != 0:
                 if type(item[0]) == ExpensiverenewableGenerator:
@@ -1029,6 +1305,10 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
                                     item[0].dec_have_gen_energy(need_curtailed_energy)
                                 else:
                                     pass
+                                # VALUE R4-1 (A26, A15, r41.down-regulation-taken-once):
+                                # the requirement is met; without this the outer
+                                # loop took the same amount again from later bids.
+                                need_curtailed_energy = 0
                                 break
                             else:
                                 curtailed_fee.append(max_curtail_energy * item[3])
@@ -1052,6 +1332,7 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
                 break
     else:
         soldable.sort(key=lambda x: x[2], reverse=True)
+        _excess_before, _need_before = excess_energy, need_curtailed_energy
         # to see whether the price is positive
         for item in soldable:
             if item[2] > 0:
@@ -1068,7 +1349,10 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             else:
                 sold_fee.append(0)
                 item[0].sold_energy = 0
+        _trace.excess("to_export", _excess_before, excess_energy)
+        _trace.need("to_export", _need_before, need_curtailed_energy)
         energy_cell = min((electrolyzer.real_energy + electrolyzer.rampup_rate), electrolyzer.capacity_limit)
+        _excess_before, _need_before = excess_energy, need_curtailed_energy
         if excess_energy + need_curtailed_energy > 0:
             min_value = min((excess_energy + need_curtailed_energy), energy_cell)
             energy_cell_period = min_value
@@ -1085,7 +1369,11 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
             green_hy = 0
             electrolyzer.set_real_energy(0)
             energy_cell_period = 0
+        _trace.excess("to_flexible", _excess_before, excess_energy)
+        _trace.need("to_flexible", _need_before, need_curtailed_energy)
         curtailed_energy = need_curtailed_energy
+        # VALUE P0-4 S5: down-regulation actually taken out of S vs booked.
+        _supply_before_curtailment = sum(float(gen[1]) for gen in gen_list)
         if need_curtailed_energy > 0:
             for item in accepted_bids:
                 if need_curtailed_energy != 0:
@@ -1136,6 +1424,10 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
                                         item[0].dec_have_gen_energy(need_curtailed_energy)
                                     else:
                                         pass
+                                    # VALUE R4-1 (A26, A15, r41.down-regulation-taken-once):
+                                    # the requirement is met; without this the outer
+                                    # loop took the same amount again from later bids.
+                                    need_curtailed_energy = 0
                                     break
                                 else:
                                     curtailed_fee.append(max_curtail_energy * item[3])
@@ -1155,27 +1447,125 @@ def store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, 
                                 pass
         else:
             sold_fee.append(0)
+    # VALUE P0-4 S5: booked down-regulation minus what left S is in-dispatch
+    # surplus the kernel claims as spilled; unused excess stays with its source.
+    _removed = _supply_before_curtailment - sum(float(gen[1]) for gen in gen_list)
+    _trace.add(_IN_DISPATCH, "curtailed", _removed)
+    _trace.add(_IN_DISPATCH, "claimed_spill", curtailed_energy - _removed)
+    _trace.add(_trace.excess_class, "claimed_spill", excess_energy)
     #print(store_energy)
     return (curtailed_fee, store_energy, gen_list, curtailed_energy, excess_energy, sold_fee,green_hy,
             energy_cell_period,curtailed_energy_list)
 
 
+def store_service_corrected(accepted_bids, new_bids, period, need_curtailed_energy, last_gen_energy, excess_energy,
+                            gen_list, connections, electrolyzer):
+    """VALUE P0-6 S5/S7/S8: curtailment branch of the corrected rule set.
+
+    The thesis absorption order is kept (decision Q5 of P0-6: storage, export,
+    flexible demand, then down regulation); what changes is that the surplus
+    is the rebuilt per-source book (D1-surplus, consumed VRE becomes gross
+    output), storage nets its period position (P5-03: buy back before
+    charging, need before surplus), and the down regulation follows the
+    avoided-cost stack (P3-03).  Need left after the whole stack is
+    in-dispatch spill.  Returns the store_service_three tuple.
+    """
+    global curtailed_energy
+    book = _P06_STATE.surplus if _P06_STATE.surplus is not None else _p06.SurplusBook([])
+    store_energy = 0
+    curtailed_fee = []
+    sold_fee = []
+    for pool in new_bids:
+        battery = pool[0]
+        if need_curtailed_energy > 0:
+            bought, charged = _p06.absorb(battery, period, need_curtailed_energy, gen_list)
+            need_curtailed_energy -= bought + charged
+            store_energy += charged
+        if book.total_mw > 0:
+            bought, charged = _p06.absorb(battery, period, book.total_mw, gen_list)
+            book.consume(bought + charged, gen_list)
+            store_energy += charged
+    excess_energy = book.total_mw
+    soldable = [[item, item.transfer_constraint, item.external_price]
+                for item in connections if item.transfer_constraint < 0]
+    for item in connections:
+        item.sold_energy = 0
+    if soldable:
+        soldable.sort(key=lambda x: x[2], reverse=True)
+        for item in soldable:
+            if item[2] > 0:
+                sell_energy = min(abs(item[1]), excess_energy + need_curtailed_energy)
+                sold_fee.append(sell_energy * item[2])
+                item[0].sold_energy = sell_energy
+                from_excess = book.consume(min(sell_energy, excess_energy), gen_list)
+                excess_energy = book.total_mw
+                need_curtailed_energy -= sell_energy - from_excess
+            else:
+                sold_fee.append(0)
+                item[0].sold_energy = 0
+    else:
+        sold_fee.append(0)
+    energy_cell = min((electrolyzer.real_energy + electrolyzer.rampup_rate), electrolyzer.capacity_limit)
+    if excess_energy + need_curtailed_energy > 0:
+        min_value = min((excess_energy + need_curtailed_energy), energy_cell)
+        from_excess = book.consume(min(min_value, excess_energy), gen_list)
+        excess_energy = book.total_mw
+        need_curtailed_energy -= min_value - from_excess
+        energy_cell_period = min_value
+        green_hy = min_value * electrolyzer.energy_efficiency
+        electrolyzer.set_real_energy(min_value)
+    else:
+        green_hy = 0
+        electrolyzer.set_real_energy(0)
+        energy_cell_period = 0
+    need_curtailed_energy = max(need_curtailed_energy, 0.0)
+    if _P06_STATE.restart_economics:
+        # VALUE R1-2 (A19/A22): gas and biomass are reduced before VRE down to
+        # minimum stable generation; below it a shutdown competes with VRE by
+        # its net saving c - S(H)/(m H) over the expected downtime H.
+        horizon_h = (_P06_STATE.outlook.horizon_hours(period) if _P06_STATE.outlook is not None
+                     else physical_period_hours())
+        remaining, curtailed_fee, curtailed_energy_list = _p06.economic_downward_stack(
+            accepted_bids, last_gen_energy, need_curtailed_energy, gen_list,
+            horizon_h=horizon_h, tally=_P06_STATE.downward_tally)
+    else:
+        remaining, curtailed_fee, curtailed_energy_list = _p06.downward_stack(
+            accepted_bids, last_gen_energy, need_curtailed_energy, gen_list)
+    if not curtailed_fee:
+        curtailed_fee.append(0)
+    # Down regulation actually taken (the thesis column books the requirement).
+    curtailed_energy = need_curtailed_energy - remaining
+    book.need_spill_mw = remaining
+    return (curtailed_fee, store_energy, gen_list, curtailed_energy, excess_energy, sold_fee, green_hy,
+            energy_cell_period, curtailed_energy_list)
+
+
 # Environment functions
 def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted_bids,  ahead_renewables, ahead_other,
                          ahead_traditional, ahead_nuclear, bidding_factor,
-                         retain_storage_tranche_history=True):
+                         retain_storage_tranche_history=True, connections=()):
     declared_target_power_mw = float(forecast_demand)
+    # VALUE FX6 (A16-2): the corrected rule set offers interconnector imports
+    # to this clearing; the thesis rule set never receives a connection here.
+    _P06_STATE.imports.reset(period)
+    if _P06_STATE.ahead_imports:
+        _P06_STATE.imports.offers = _p06.import_offers(connections, bidding_factor)
     renewable_hy_list = []
-    for gen in generators:
+    # VALUE P0-6 S9 (P3-08): the corrected rule set has no pre-clearing VRE skim
+    # to direct electrolysis; the thesis skim is kept with leak diagnostics.
+    skim = _P06_STATE.rule("vre_direct_electrolysis") == "thesis_pre_clearing_skim"
+    for gen in (generators if skim else ()):
         if type(gen) == ExpensiverenewableGenerator:
             energy = min((gen.real_energy + gen.rampup_rate), gen.electrolyzer_limit)
             if gen.capacity_limit != 0:
                 if energy > gen.capacity_limit:
+                    _P06_STATE.diagnose("vre_skim_leak_mw", gen.capacity_limit)
                     gen.capacity_limit = 0
                     renewable_green_hy = gen.capacity_limit * gen.energy_efficiency
                     gen.set_real_energy(gen.capacity_limit)
                     renewable_hy_list.append([gen, gen.capacity_limit * gen.electrolyzer_cost, renewable_green_hy])
                 else:
+                    _P06_STATE.diagnose("vre_skim_to_electrolysis_mw", energy)
                     gen.capacity_limit -= energy
                     renewable_green_hy = energy * gen.energy_efficiency
                     gen.set_real_energy(energy)
@@ -1206,7 +1596,12 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
     new_bids = [[bat, bat.pool_limit] for bat in batterys]
     # selectable discharge
     for item in new_bids:
-        decay_func(item[0].stored_energy, item[0].battery_type)
+        # VALUE P0-4 S4: same decay_func, booked per battery when it can audit.
+        self_discharge = getattr(item[0], "apply_self_discharge", None)
+        if callable(self_discharge):
+            self_discharge(period)
+        else:
+            decay_func(item[0].stored_energy, item[0].battery_type)
     # storage composition
     storage_pool_composition = []
     for item in new_bids:
@@ -1282,6 +1677,12 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
     # annual runs and cannot affect any scientific state, so do not duplicate it.
     
     new_list = bids + storage_pool_list
+    if _P06_STATE.imports.offers:
+        # VALUE FX6 (A16-2): imports after storage in the input order, so the
+        # stable merit key clears generation, then an import, then storage
+        # at an equal 0.01 band and storage offer indices are unchanged.
+        new_list = new_list + list(_P06_STATE.imports.offers)
+    _STORAGE_OFFERS.declare("ahead", period, new_list, bidding_factor=bidding_factor, asset_name=_asset_name)
     declared_offers = []
     for offer_index, item in enumerate(new_list):
         asset = item[0]
@@ -1319,6 +1720,18 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 "startup_component_applied": bool(asset not in accepted_bids_name and type(asset) not in (WaterGenerator, ExpensiverenewableGenerator)),
                 "curtailment_price_gbp_per_mwh": float(item[3]),
             })
+        elif _p06.is_import_offer(item):
+            declared_offers.append({
+                "offer_id": f"ahead:i:{offer_index}:{_asset_name(asset)}",
+                "asset_id": _asset_name(asset),
+                "asset_type": asset.__class__.__name__,
+                "resource_kind": "import",
+                "side": "supply",
+                "offer_price_gbp_per_mwh": float(item[1]),
+                "minimum_power_mw": 0.0,
+                "maximum_power_mw": max(float(item[2]), 0.0),
+                "counterparty_price_gbp_per_mwh": float(asset.external_price),
+            })
         else:
             declared_offers.append({
                 "offer_id": f"ahead:s:{offer_index}:{_asset_name(asset)}:{int(item[2])}",
@@ -1332,6 +1745,17 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 "charge_period": int(item[2]),
                 "dwell_periods": int(period - item[2]),
             })
+    _ahead_constraints = {
+        "single_zone": True,
+        "transmission_constraints": False,
+        "storage_offer_power_is_shared_across_tranches": True,
+        "hydro_and_biomass_annual_energy_limits": True,
+        "startup_is_internalised_in_offer_price": True,
+        "realised_demand_known": False,
+    }
+    if _P06_STATE.ahead_imports:
+        # VALUE FX6 (A16-2): declared only by the corrected rule set.
+        _ahead_constraints["imports_in_clearing_offer_set"] = bool(_P06_STATE.imports.offers)
     declared_input = _record_declared_input(
         "ahead",
         period,
@@ -1344,19 +1768,16 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
             "objective": "minimise declared offer cost subject to the retained sequential availability rules",
             "tie_break": "stable ascending offer price then input order",
             "offers": declared_offers,
-            "storage_pre_state": _storage_pre_state(batterys),
-            "constraints": {
-                "single_zone": True,
-                "transmission_constraints": False,
-                "storage_offer_power_is_shared_across_tranches": True,
-                "hydro_and_biomass_annual_energy_limits": True,
-                "startup_is_internalised_in_offer_price": True,
-                "realised_demand_known": False,
-            },
+            "storage_pre_state": _storage_pre_state(batterys, declared_offers),
+            "constraints": _ahead_constraints,
         },
     )
     # bid
-    new_list.sort(key=lambda x: x[1])
+    if _P06_STATE.rule("ahead_merit_key") == "rounded_price_generation_before_storage":
+        # VALUE P0-6 S5 (Q8): storage after generation in the same 0.01 band.
+        new_list.sort(key=_p06.merit_key)
+    else:
+        new_list.sort(key=lambda x: x[1])
     # print(new_list)
     # benchmark
     demand_met = 0
@@ -1469,12 +1890,25 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                 else:
                     pass
                 #print(item[0])
+            elif _p06.is_import_offer(item):
+                # VALUE FX6 (A16-2): an import offer (corrected rule set only)
+                # takes up to its available capacity, without ramp limits.
+                energy = min(float(item[2]), forecast_demand)
+                if energy > 0:
+                    accepted_bids_period.append([item[0], item[1], energy, 0.0])
+                    gen_list.append([item[0], energy])
+                    _P06_STATE.imports.schedule(item[0], energy)
+                    forecast_demand -= energy
+                if forecast_demand <= 0:
+                    forecast_demand = 0
+                    break
             # if chose storage pool
             else:
                 requested_output_power = min(item[3], forecast_demand)
                 delivered_output_power = item[0].discharge(
                     item[2], requested_output_power, period
                 )
+                _STORAGE_OFFERS.deliver(item, delivered_output_power)
                 forecast_demand -= delivered_output_power
                 gen_list.append([item[0], delivered_output_power])
                 add_price_ahead.append(item[1] * delivered_output_power)
@@ -1484,6 +1918,19 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
                     break
         else:
             pass
+    # VALUE P0-6 S5 (D1-surplus): rebuild the surplus per source from
+    # availability minus acceptance; the thesis rows only see it when a VRE
+    # is partially accepted (diagnostic unrecorded_vre for the doctoral set).
+    _rebuilt_excess, _rebuilt_rows, _unrecorded_vre = _p06.rebuild_surplus(
+        excess_energy, excess_energy_list, generators, accepted_bids_period)
+    if _P06_STATE.rule("surplus_accounting") == "rebuilt_available_minus_accepted":
+        excess_energy, excess_energy_list = _rebuilt_excess, _rebuilt_rows
+        _P06_STATE.surplus = _p06.SurplusBook(excess_energy_list)
+    else:
+        _P06_STATE.diagnose("unrecorded_vre_mw", _unrecorded_vre)
+        # VALUE R4-1 (A26): the curtailment branch nets VRE surplus against a
+        # store's discharge from these rows (store_service_three).
+        _P06_STATE.thesis_excess_rows = excess_energy_list
     accepted_bids[:] = accepted_bids_period
     if any(isinstance(obj, NuclearGenerator) for obj in accepted_gens):
         pass
@@ -1502,7 +1949,16 @@ def ahead_market_bidding(generators, batterys, forecast_demand, period, accepted
     for item in gen_list:
         if item[1] != 0:
             gen_list_name.append([item[0].name, item[1]])
-    income_dict = acm_income(accepted_bids, gen_list, max_bat_price)
+    if _P06_STATE.rule("storage_settlement_basis") == "uniform_clearing_price":
+        # VALUE P0-6 (A8, P5-05): every accepted supplier is paid the stage's
+        # uniform marginal price, storage included.
+        _uniform_price = max([float(row[1]) for row in accepted_bids] + [float(max_bat_price)])
+        income_dict = _p06.uniform_income(
+            [(row[0], row[2]) for row in accepted_bids]
+            + [(row[0], row[1]) for row in gen_list if type(row[0]) == Battery],
+            _uniform_price, physical_period_hours())
+    else:
+        income_dict = acm_income(accepted_bids, gen_list, max_bat_price)
     accepted_rows = [
         {
             "asset_id": _asset_name(asset),
@@ -1625,10 +2081,14 @@ def curtailment_market_bidding(period, real_demand, forecast_demand, accepted_bi
     # calculate needed curtailment
     need_curtailed_energy = forecast_demand - real_demand
     # storage service 3(central dispatch curtailment and excess generation instead of attach storage to generator)
+    # VALUE P0-6 S5/S7/S8: the corrected rule set clears this branch with
+    # store_service_corrected (D1-surplus, netting, avoided-cost stack).
+    _store_service = (store_service_corrected if _P06_STATE.rule("downward_order") == "avoided_cost"
+                      else store_service_three)
     (curtailed_fee, store_energy, gen_list, curtailed_energy, excess_energy, sold_fee,
      green_hy,energy_cell_period,curtailed_energy_list) \
-        = store_service_three(accepted_bids, new_bids, period, need_curtailed_energy, last_gen_energy, excess_energy,
-                              gen_list, connections,electrolyzer)
+        = _store_service(accepted_bids, new_bids, period, need_curtailed_energy, last_gen_energy, excess_energy,
+                         gen_list, connections,electrolyzer)
     real_list = [[sub_list[0], sub_list[2]] for sub_list in accepted_bids if sub_list[2] != 0]
     #print(curtailed_fee)
     #test_gen.capacity_limit = test_gen.capacity_limit + need_curtailed_energy #恢复
@@ -1676,14 +2136,47 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
     #gens = iter(bids)
     # rememmber available generators，namely generation after test_gen(included)
     # use test_gen to the marginal generator,，who has rest availability（generators before used up），from hime to bid
-    if len(accepted_bids) != 0:
-        test_gen = accepted_bids[-1]
+    # VALUE FX6 (A16-2): an accepted day-ahead import is not a generator of
+    # `bids`; the marginal generator is the last accepted generator.
+    _accepted_generation = ([row for row in accepted_bids if type(row[0]) != Connection]
+                            if _P06_STATE.ahead_imports else accepted_bids)
+    if len(_accepted_generation) != 0:
+        test_gen = _accepted_generation[-1]
+    elif _P06_STATE.ahead_imports and accepted_bids:
+        # VALUE FX6: imports alone met the forecast; there is no marginal
+        # generator, so every generator offers from zero below.
+        test_gen = [None, 0.0, 0.0, 0.0, 0]
     # if only use storage，then test-gen is the first generator
     else:
         test_gen = bids[0]
     #print(test_gen)
     new_bids = [[bat, bat.pool_limit] for bat in batterys]
-    if excess_energy_list:
+    # VALUE P0-4 S5: excess re-dispatched to the balancing requirement.
+    _trace = _SURPLUS_TRACE
+    _excess_before = excess_energy
+    _corrected = _P06_STATE.rule("surplus_accounting") == "rebuilt_available_minus_accepted"
+    _book = _P06_STATE.surplus if _P06_STATE.surplus is not None else _p06.SurplusBook([])
+    if _corrected:
+        # VALUE P0-6 S5 (D1-surplus, DEV-BAL-04): the surplus serves the
+        # balancing requirement must-run first; must-run output is already in
+        # S and settled ahead (no second generation or payment), consumed VRE
+        # becomes gross output paid as balancing energy.
+        _vre_before = {id(row[0]): float(row[1]) for row in _book.rows if _p06.is_vre(row[0])}
+        _used = _book.consume(min(max(energy_provided, 0.0), _book.total_mw), gen_list)
+        energy_provided -= _used
+        for row in _book.rows:
+            _taken = _vre_before.get(id(row[0]), 0.0) - float(row[1])
+            if _p06.is_vre(row[0]) and _taken > 0:
+                balancing_fee.append(row[0].gen_cost * bidding_factor * _taken)
+                balance_renewables[period] += row[0].gen_cost * bidding_factor * _taken
+                balance_list.append([row[0], _taken])
+        excess_energy = _book.total_mw
+    elif excess_energy_list:
+        # VALUE R4-1 (A26, DEV-BAL-04, r41.must-run-surplus-counted-once): a
+        # non-VRE (must-run nuclear) surplus row is output already in the
+        # accepted supply S and settled in the ahead stage; serving the
+        # balancing requirement with it neither generates nor pays that MWh a
+        # second time.  VRE surplus rows (outside S) are unchanged.
         # 如果需要补充发电的电量小于所有子列表的和，按比例分配
         if energy_provided <= excess_energy:
             total_excess_for_proportion = sum(item[1] for item in excess_energy_list)
@@ -1691,6 +2184,9 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 for item in excess_energy_list:
                     proportion = item[1] / total_excess_for_proportion
                     energy_from_this = energy_provided * proportion
+                    if type(item[0]) != ExpensiverenewableGenerator:
+                        item[1] -= energy_from_this
+                        continue
                     balancing_fee.append(item[0].gen_cost * bidding_factor * energy_from_this)
                     balance_renewables[period] += item[0].gen_cost * bidding_factor * energy_from_this
                     balance_list.append([item[0], energy_from_this])
@@ -1705,6 +2201,10 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             energy_provided = energy_provided - excess_energy
             excess_energy = 0
             for item in excess_energy_list:
+                if type(item[0]) != ExpensiverenewableGenerator:
+                    # VALUE R4-1 (DEV-BAL-04): already in S, see above.
+                    item[1] = 0
+                    continue
                 if(item[1] == 0):
                     pass
                 else:
@@ -1717,6 +2217,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                         else:
                             pass
                 item[1] = 0
+    _trace.excess("to_dispatch", _excess_before, excess_energy)
     '''
     if excess_energy != 0:
         if excess_energy > energy_provided:
@@ -1743,12 +2244,29 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             excess_energy = 0
     #print('excess_energy', excess_energy)
     '''
-    if excess_energy != 0:
+    if _corrected:
+        # VALUE P0-6 S8 (P5-03): buy back this period's discharge before charging.
+        for pool in new_bids:
+            if _book.total_mw > 0:
+                _bought, charged_power = _p06.absorb(pool[0], period, _book.total_mw, gen_list)
+                _book.consume(_bought + charged_power, gen_list)
+                store_energy += charged_power
+        excess_energy = _book.total_mw
+    elif excess_energy != 0:
+        # VALUE R4-1 (A26, DEV-STO-01): net position per period, as in the
+        # curtailment branch (buy back this period's discharge before charging).
+        _net_position = _P06_STATE.rule("storage_position") == "net_per_period"
         for pool in new_bids:
             if excess_energy != 0:
-                charged_power = pool[0].charge(period, excess_energy)
+                if _net_position:
+                    bought_power, charged_power = _thesis_absorb_excess(
+                        pool[0], period, excess_energy, gen_list, _trace.excess_class, excess_energy_list)
+                else:
+                    bought_power, charged_power = 0.0, pool[0].charge(period, excess_energy)
                 store_energy += charged_power
-                excess_energy -= charged_power
+                excess_energy -= bought_power + charged_power
+                _trace.add(_trace.excess_class, "to_storage", charged_power)
+                _trace.add(_trace.excess_class, "to_dispatch", bought_power)
 
     # calculate storage price
     add_price_balance = [0]
@@ -1793,6 +2311,9 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
         if start_index is not None:
             # from test_gen to loop
             add_bids = bids[start_index:]
+        elif test_gen[0] is None:
+            # VALUE FX6 (corrected rule set): no generator was accepted ahead.
+            add_bids = list(bids)
         # add storage and generator，bid together，note that generators in forms of tuple but storage in forms of list to distinguish
         new_list = add_bids + storage_pool_list
         for item in connections:
@@ -1807,12 +2328,15 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 buable.append((
                     item,
                     item.external_price * bidding_factor,
-                    item.transfer_constraint,
+                    # VALUE FX6 (A16-2): only the capacity the day-ahead
+                    # schedule left (corrected rule set).
+                    _P06_STATE.imports.remaining_mw(item) if _P06_STATE.ahead_imports else item.transfer_constraint,
                     0,
                 ))
         new_list.extend(buable)
         if soldable and excess_energy > 0:
             soldable.sort(key=lambda x: x[2])
+            _excess_before = excess_energy
             # positive price can sell
             for item in soldable:
                 if item[2] > 0:
@@ -1820,9 +2344,12 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                     sold_fee.append(sell_energy * item[2])
                     item[0].sold_energy = sell_energy
                     excess_energy -= sell_energy
+                    if _corrected:
+                        _book.consume(sell_energy, gen_list)
                 else:
                     sold_fee.append(0)
                     item[0].sold_energy = 0
+            _trace.excess("to_export", _excess_before, excess_energy)
         if not buable:
             pass
         else:
@@ -1832,8 +2359,11 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             min_value = min(excess_energy, energy_cell)
             energy_cell_period = min_value
             excess_energy -= min_value
+            if _corrected:
+                _book.consume(min_value, gen_list)
             green_hy = min_value * electrolyzer.energy_efficiency
             electrolyzer.set_real_energy(min_value)
+            _trace.add(_trace.excess_class, "to_flexible", min_value)
         else:
             green_hy = 0
             electrolyzer.set_real_energy(0)
@@ -1841,6 +2371,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
         declared_balance_list_start = len(balance_list)
         declared_balancing_fee_start = float(sum(balancing_fee))
         declared_storage_fee_start = float(sum(add_price_balance))
+        _STORAGE_OFFERS.declare("balancing", period, new_list, bidding_factor=bidding_factor, asset_name=_asset_name)
         declared_offers = []
         for offer_index, element in enumerate(new_list):
             asset = element[0]
@@ -1908,7 +2439,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                 "bidding_factor": float(bidding_factor),
                 "offers": declared_offers,
                 "storage_stage_start_state": declared_stage_start_storage,
-                "storage_pre_clearing_state": _storage_pre_state(batterys),
+                "storage_pre_clearing_state": _storage_pre_state(batterys, declared_offers),
                 "excluded_import_options": [],
                 "constraints": {
                     "single_zone": True,
@@ -1920,7 +2451,11 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             },
         )
         # bids
-        new_list.sort(key=lambda x: x[1])
+        if _P06_STATE.rule("ahead_merit_key") == "rounded_price_generation_before_storage":
+            # VALUE P0-6 S5 (Q8): storage after generation in the same 0.01 band.
+            new_list.sort(key=_p06.merit_key)
+        else:
+            new_list.sort(key=lambda x: x[1])
         # distinguish storage or generator, distinguish if generate in wholesale
         '''
         new_list_copy = []
@@ -2086,6 +2621,7 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
                     delivered_output_power = element[0].discharge(
                         element[2], requested_output_power, period
                     )
+                    _STORAGE_OFFERS.deliver(element, delivered_output_power)
                     max_bat_price = element[1]
                     energy_provided -= delivered_output_power
                     add_price_balance.append(element[1] * delivered_output_power)
@@ -2122,8 +2658,11 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
             min_value = min(excess_energy, energy_cell)
             energy_cell_period = min_value
             excess_energy -= min_value
+            if _corrected:
+                _book.consume(min_value, gen_list)
             green_hy = min_value * electrolyzer.energy_efficiency
             electrolyzer.set_real_energy(min_value)
+            _trace.add(_trace.excess_class, "to_flexible", min_value)
         else:
             green_hy = 0
             electrolyzer.set_real_energy(0)
@@ -2133,6 +2672,8 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
     balance_list_name = []
     for item in balance_list:
         balance_list_name.append([item[0].name, item[1]])
+    # VALUE P0-4 S5: excess left unused at the end of the balancing stage.
+    _trace.add(_trace.excess_class, "claimed_spill", excess_energy)
     if energy_provided != 0:
         if DEBUG_MARKET_STDOUT:
             print('insufficient energy', period)
@@ -2146,7 +2687,15 @@ def balancing_market_bidding(generators, period, real_demand, forecast_demand, a
     storage_pool_composition_after = []
     for item in new_bids:
         storage_pool_composition_after.append([item[0], sum(item[0].stored_energy.values())])
-    income_dict_balance = acm_income_balance(balance_list, max_gen_price, max_bat_price)
+    if _P06_STATE.rule("storage_settlement_basis") == "uniform_clearing_price":
+        # VALUE P0-6 (A8, P5-05): one balancing price for every accepted supplier.
+        _import_prices = [float(item[1]) for item in buable
+                          if any(row[0] is item[0] for row in balance_list)]
+        income_dict_balance = _p06.uniform_income(
+            balance_list, max([float(max_gen_price), float(max_bat_price)] + _import_prices),
+            physical_period_hours())
+    else:
+        income_dict_balance = acm_income_balance(balance_list, max_gen_price, max_bat_price)
     _record_declared_outcome(declared_input, {
         "stage": "balancing",
         "accepted": [
@@ -2249,7 +2798,99 @@ def cleanup_accumulating_lists(total_renew_capacity, renew_capacity, gen_list_co
     gc.collect()
 
 
-def run_simulation(periods, generators, batterys, forecast_demands, real_demands, connections, electrolyzer):
+def _active_rules(market_rules=None):
+    """Market rule set of this kernel run (VALUE P0-6 S2; see native_market_rules.active_rules)."""
+    from ..native_market_rules import active_rules
+    from . import module_context
+    return active_rules(market_rules, getattr(module_context, "_runtime", None))
+
+
+def _active_realisation_log(periods):
+    """RealisationLog of this kernel run (VALUE P0-6 S3): the module runtime's or a private one."""
+    from ..native_realisation import active_realisation_log
+    from . import module_context
+    return active_realisation_log(getattr(module_context, "_runtime", None), periods)
+
+
+def realise_period(period, real_demand, forecast_demand, generators, batterys, connections, electrolyzer,
+                   accepted_bids, last_gen_energy, excess_energy, gen_list, gen_list_name, bids,
+                   excess_energy_list, balance_renewables, balance_other, balance_traditional,
+                   balance_nuclear, bidding_factor, total_storage_fee_balance, market_rules):
+    """Real-time stage of one period (VALUE P0-6 S3, pure refactor of the HEAD loop body).
+
+    Runs the curtailment market when the real demand is below the forecast and
+    the balancing market otherwise, exactly as run_simulation did inline at
+    35aadb3, and returns a PeriodRealisation with the values the loop appends.
+    ``market_rules`` selects the storage-fee carry (P0-6 S5); the market
+    functions read the rest of the rule set from the kernel's _P06_STATE.
+    """
+    from ..native_realisation import BALANCING_BRANCH, CURTAILMENT_BRANCH, PeriodRealisation
+    income_dict_balance = {}
+    energy_deficit = 0
+    if real_demand < forecast_demand:
+        # return to curtailment fee and charged amount
+        curtailed_fee, store_energy, real_list, storage_pool_composition_after, gen_list, curtailed_energy, \
+        excess_energy, sold_fee, green_hy, energy_cell_period,curtailed_energy_list = \
+            curtailment_market_bidding(period, real_demand, forecast_demand, accepted_bids,
+                                       last_gen_energy, excess_energy, gen_list, connections, electrolyzer, batterys)
+        # curtailment fee is a list, add them up
+        total_fee = sum(curtailed_fee)
+        gen=[]
+        for item in gen_list:
+            if item[1] != 0:
+                gen.append(item[0])
+        for item in generators:
+            if item not in gen:
+                item.set_real_gen_energy(0)
+        # no balancing fee and no purchase; no blackout in curtailment market
+        if market_rules.storage_fee_carry == "per_period":
+            # VALUE P0-6 S5: the storage fee is settled in its own period; the
+            # thesis carries the last balancing period's fee (diagnostic).
+            total_storage_fee_balance = 0
+        else:
+            _P06_STATE.diagnose("storage_fee_carry_gbp_per_h", total_storage_fee_balance)
+        return PeriodRealisation(
+            CURTAILMENT_BRANCH, real_list, store_energy, storage_pool_composition_after, gen_list,
+            excess_energy, energy_cell_period, income_dict_balance, energy_deficit,
+            total_storage_fee_balance, balance_renewables, balance_other, balance_traditional,
+            balance_nuclear, total_fee, 0, curtailed_energy, curtailed_energy_list,
+            sum(sold_fee), 0, green_hy,
+        )
+    # ruturn to continue bidding
+    balancing_fee, total_storage_fee_balance, real_list, store_energy, storage_pool_composition_after, \
+    balance_renewables, balance_other, balance_traditional, gen_list, balance_nuclear, excess_energy, sold_fee, \
+    bought_fee, green_hy, energy_cell_period, income_dict_balance, energy_deficit = balancing_market_bidding(generators, period, real_demand, forecast_demand,
+                                          accepted_bids, excess_energy, balance_renewables, balance_other,
+                                          balance_traditional, gen_list, balance_nuclear, connections,
+                                          gen_list_name, bids, electrolyzer,excess_energy_list, batterys, bidding_factor)
+    gen = []
+    for item in gen_list:
+        if item[1] != 0:
+            gen.append(item[0])
+    for item in generators:
+        if item not in gen:
+            item.set_real_gen_energy(0)
+    # no curtailment in a balancing period
+    return PeriodRealisation(
+        BALANCING_BRANCH, real_list, store_energy, storage_pool_composition_after, gen_list,
+        excess_energy, energy_cell_period, income_dict_balance, energy_deficit,
+        total_storage_fee_balance, balance_renewables, balance_other, balance_traditional,
+        balance_nuclear, 0, sum(balancing_fee), 0, 0, sum(sold_fee), sum(bought_fee), green_hy,
+    )
+
+
+def run_simulation(periods, generators, batterys, forecast_demands, real_demands, connections, electrolyzer,
+                   market_rules=None):
+    # VALUE P0-6 S2: resolve the market rule set once per run (fail-closed for
+    # configured runtimes without rules).  No clearing step reads it yet.
+    market_rules = _active_rules(market_rules)
+    # VALUE P0-6 S5-S10: the market functions read the run's rule set from
+    # _P06_STATE; only the two tested rule sets run (plan 4.6 point 1).
+    from ..native_market_rules import require_supported_rules as _require_supported_rules
+    _require_supported_rules(market_rules)
+    _P06_STATE.reset(market_rules)
+    # VALUE P0-6 S3: per-period realised flows (numpy, no object references).
+    realisation_log = _active_realisation_log(periods)
     # plot average generation price
     avg_electricity_prices = []
     avg_gen_fees = []
@@ -2277,6 +2918,11 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     storage_pool_composition = []
     # selected generators
     accepted_bids = []
+    if _P06_STATE.rule("nuclear_initial_state") == "in_service_at_start":
+        # VALUE FX8 (A18, fx8.nuclear-in-service-at-start): nuclear units are
+        # running before the first period, so their first offer carries no
+        # start-up cost; a later restart after a period off still pays it.
+        accepted_bids = _p06.initial_running_rows(generators)
     # used energy(discharge)
     usage_storage_pool_composition = []
     gen_fees = []
@@ -2318,6 +2964,16 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     bidding_factor = config.simulation_parameters["bidding_factor"]
     trace_enabled = os.getenv("SAVE_MARKET_TRACE", "1") != "0"
     market_ledger = active_market_ledger()
+    # VALUE P0-4 S6 (C19, Q7): declare the energy-balance boundary of this
+    # run's market rule set on the ledger (also for the reference bridge).  A
+    # rule set without a registered boundary (a partial P0-6 rule set) keeps
+    # the retained self-report.
+    balance_boundary = _balance_contract.boundary_for_rule_set(getattr(market_rules, "rule_set_id", None))
+    if balance_boundary is not None:
+        market_ledger.declare_balance_boundary(
+            balance_boundary, rule_set=market_rules.rule_set_id,
+            strict=True if os.getenv("ENERGY_BALANCE_STRICT", "0") == "1" else None,
+        )
     market_ledger_full = market_ledger.trace_level == "full"
     trace_scenario = os.getenv("DECARB_SCENARIO", "scenario")
     trace_year = os.getenv("SIMULATION_YEAR", "year")
@@ -2373,6 +3029,13 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     print(f"尝试打开wind文件: {filein}")
     print(f"文件是否存在: {os.path.exists(filein)}")
 
+    # VALUE P0-5b (p05.weather-cache-key): the process cache is keyed by the
+    # files it was built from, so a later run on other weather never reuses it.
+    from .. import kernel_injection as _kernel_injection
+    _weather_key = _kernel_injection.weather_cache_key(filein, solar_file)
+    if _WEATHER_LIMIT_CACHE is not None and (len(_WEATHER_LIMIT_CACHE) != 2
+                                             or _WEATHER_LIMIT_CACHE[0] != _weather_key):
+        _WEATHER_LIMIT_CACHE = None
     if _WEATHER_LIMIT_CACHE is None:
         print("Preparing weather profiles from netCDF files...", flush=True)
         if Dataset is not None:
@@ -2439,7 +3102,7 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         except Exception:
             pass
 
-        _WEATHER_LIMIT_CACHE = (
+        _WEATHER_LIMIT_CACHE = _weather_key, (
             solar_limit_Nottingham, solar_limit_Ipswich, solar_limit_London, solar_limit_Newcastle,
             solar_limit_Manchester, solar_limit_Edinburgh, solar_limit_Portsmouth, solar_limit_Bournemouth,
             solar_limit_Cardiff, solar_limit_Birmingham, solar_limit_Sheffield,
@@ -2466,7 +3129,7 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         offshore_limit7, offshore_limit8, offshore_limit9, offshore_limit10, offshore_limit11, offshore_limit12,
         offshore_limit13, offshore_limit14, offshore_limit15, offshore_limit16, offshore_limit17, offshore_limit18,
         offshore_limit19, offshore_limit20, offshore_limit21,
-    ) = _WEATHER_LIMIT_CACHE
+    ) = _WEATHER_LIMIT_CACHE[1]
 
     LIMIT1 = IterLimit(solar_limit_Nottingham)
     LIMIT2 = IterLimit(solar_limit_Ipswich)
@@ -2567,27 +3230,29 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
     Interconnect_Norway = next((c for c in connections if c.name == 'Interconnect_Norway'), None)
     Interconnect_Beligum = next((c for c in connections if c.name == 'Interconnect_Beligum'), None)
 
-    transfer_constraint_france = np.array(pd.read_csv(config.file_paths["france_profile"])).flatten()
-    external_price_france = pd.to_numeric(pd.read_csv(config.file_paths["france_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_beligum = np.array(pd.read_csv(config.file_paths["belgium_profile"])).flatten()
-    external_price_beligum = pd.to_numeric(pd.read_csv(config.file_paths["belgium_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_netherland = np.array(pd.read_csv(config.file_paths["netherlands_profile"])).flatten()
-    external_price_netherland = pd.to_numeric(pd.read_csv(config.file_paths["netherlands_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_norway = np.array(pd.read_csv(config.file_paths["norway_profile"])).flatten()
-    external_price_norway = pd.to_numeric(pd.read_csv(config.file_paths["norway_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-    transfer_constraint_Ireland = np.array(pd.read_csv(config.file_paths["ireland_profile"])).flatten()
-    external_price_Ireland = pd.to_numeric(pd.read_csv(config.file_paths["ireland_price"], header=None).iloc[:, 0], errors='coerce').fillna(0).values
-
-    data1 = IterLimit_new(transfer_constraint_france)
-    data2 = IterLimit_new(external_price_france)
-    data3 = IterLimit_new(transfer_constraint_beligum)
-    data4 = IterLimit_new(external_price_beligum)
-    data5 = IterLimit_new(transfer_constraint_netherland)
-    data6 = IterLimit_new(external_price_netherland)
-    data7 = IterLimit_new(transfer_constraint_norway)
-    data8 = IterLimit_new(external_price_norway)
-    data9 = IterLimit_new(transfer_constraint_Ireland)
-    data10 = IterLimit_new(external_price_Ireland)
+    # VALUE P0-5a (p05.interconnector-clock / p05.boundary-identity, decisions
+    # Q9/A3 and A5): the boundary series come from the shared declarative
+    # reader (injected by the module runtime) and are assigned period by
+    # period to each country's own Connection; IterLimit_new is no longer used.
+    from .. import kernel_boundary as _kernel_boundary
+    from . import module_context as _boundary_context
+    _boundary = _kernel_boundary.active_boundary(
+        getattr(_boundary_context, "_runtime", None), config.file_paths, periods)
+    _boundary_connections = {c.name: c for c in (Interconnect_France, Interconnect_Netherland,
+                             Interconnect_Ireland, Interconnect_Norway, Interconnect_Beligum) if c is not None}
+    # VALUE P0-5b (corrected profile only): site CF (weather v2, loss factors)
+    # and nuclear / natural-flow hydro availability from the shared arrays of
+    # the canonical adapter; None (doctoral, unit sessions) keeps the frozen path.
+    _site_inputs = _kernel_injection.active_site_inputs(
+        getattr(_boundary_context, "_runtime", None), generators, periods)
+    if _P06_STATE.restart_economics:
+        # VALUE R1-2 (A19/A22, r12.economic-downward-order): expected downtime
+        # of a shutdown from the day-ahead forecast (demand vs VRE + nuclear).
+        _P06_STATE.outlook = _p06.build_surplus_outlook(
+            forecast_demands, _site_inputs, generators, physical_period_hours(), periods)
+        _P06_STATE.downward_tally = _p06.DownwardTally(
+            _P06_STATE.outlook.basis, _P06_STATE.outlook.vre_covered, _P06_STATE.outlook.vre_total)
+        realisation_log.downward_economics = _P06_STATE.downward_tally
 
     for period in range(periods):
         # Memory cleanup every 100 periods to prevent MemoryError
@@ -2596,6 +3261,9 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
                                  storage_pool_composition)
             # Periodic GC only; datasets already closed after limits computed
             pass
+        # VALUE P0-4 S4: open the per-battery energy audit at the period's
+        # starting state of charge (observation only).
+        _open_storage_period(batterys, period)
         
         solar_Nottingham.capacity_limit = (piecewise_limit(next(LIMIT1))) * solar_Nottingham.capacity_multiplier / 3600000
         solar_Ipswich.capacity_limit = (piecewise_limit(next(LIMIT2))) * solar_Ipswich.capacity_multiplier / 3600000
@@ -2678,26 +3346,23 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         offshore20.capacity_limit = offshore20.capacity_multiplier * (piecewise_limit3(offshore_speed20))
         offshore21.capacity_limit = offshore21.capacity_multiplier * (piecewise_limit4(offshore_speed21))
 
-        Interconnect_France.transfer_constraint = next(data1)
-        Interconnect_France.external_price = next(data2)
-        Interconnect_Netherland.transfer_constraint = next(data3)
-        Interconnect_Netherland.external_price = next(data4)
-        Interconnect_Ireland.transfer_constraint = next(data5)
-        Interconnect_Ireland.external_price = next(data6)
-        Interconnect_Norway.transfer_constraint =next(data7)
-        Interconnect_Norway.external_price = next(data8)
-        Interconnect_Beligum.transfer_constraint = next(data9)
-        Interconnect_Beligum.external_price = next(data10)
+        if _site_inputs is not None:
+            _kernel_injection.assign_period(_site_inputs, period)
+        _kernel_boundary.assign_period(_boundary, _boundary_connections, period)
 
         # chosen generation in wholesale，cost from stored energy and two storage pool variable for plotting
         # accepted_bids use for balancing, other three for plotting
+        # VALUE P0-6 S4: assets running in the previous period (start-up adder).
+        _p06_previous_accepted = [item[0] for item in accepted_bids]
+        _P06_STATE.surplus = None
+        _P06_STATE.diagnostics = {}
         accepted_bids, total_storage_fee_ahead, per_storage_pool, merge_storage_pool, storage_pool_composition, \
         last_gen_energy, excess_energy, ahead_renewables, ahead_other, ahead_traditional, gen_list, ahead_nuclear,\
             gen_list_name, bids, income_dict,excess_energy_list,renewable_hy_list = ahead_market_bidding(
             generators, batterys,
             forecast_demands[period],
             period, accepted_bids, ahead_renewables, ahead_other, ahead_traditional, ahead_nuclear, bidding_factor,
-            retain_storage_tranche_history=retain_storage_tranche_history)
+            retain_storage_tranche_history=retain_storage_tranche_history, connections=connections)
         for key, value in income_dict.items():
             if key in total_income_dict:
                 total_income_dict[key] += value
@@ -2731,75 +3396,87 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             excess_energy_dict[period] = excess_energy_list
         else:
             excess_energy_dict[period] = 0
-        if real_demand < forecast_demands[period]:
-            # return to curtailment fee and charged amount
-            curtailed_fee, store_energy, real_list, storage_pool_composition_after, gen_list, curtailed_energy, \
-            excess_energy, sold_fee, green_hy, energy_cell_period,curtailed_energy_list = \
-                curtailment_market_bidding(period, real_demand, forecast_demands[period], accepted_bids,
-                                           last_gen_energy, excess_energy, gen_list, connections, electrolyzer, batterys)
-            #print(sold_fee)
-            # curtailment fee is a list, add them upu
-            total_fee = sum(curtailed_fee)
-            curtailed_energy_dict[period] = curtailed_energy_list
-            # add curtailment fee in this period to total
-            curtailment_fees.append(total_fee)
-            curtailed_electricity.append(curtailed_energy)
-            excess_electricity.append(excess_energy)
-            # no balancing fee, add 0
-            balancing_fees.append(0)
-            # add storage to overall storage
-            store_electricity.append(store_energy)
-            sold_fees.append(sum(sold_fee))
-            purchase_fees.append(0)
-            total_green_hy.append(green_hy)
-            gen=[]
-            for item in gen_list:
-                if item[1] != 0:
-                    gen.append(item[0])
-            #print('gen', gen)
-            #print('generators',generators)
-            for item in generators:
-                if item not in gen:
-                    item.set_real_gen_energy(0)
+        # VALUE P0-4 S5: the ahead excess has one source (Q7): must-run nuclear
+        # inside S or VRE availability outside S.
+        _excess_class, _excess_kinds = _excess_source_class(
+            excess_energy_list, NuclearGenerator, ExpensiverenewableGenerator)
+        _SURPLUS_TRACE.begin(period, excess_energy, _excess_class, _excess_kinds)
+        # VALUE P0-6 S3: the real-time stage of the period (thesis forecast rule
+        # in both profiles, decision A2) is realise_period; the loop appends
+        # exactly what the inline HEAD block appended.
+        realisation = realise_period(
+            period, real_demand, forecast_demands[period], generators, batterys, connections,
+            electrolyzer, accepted_bids, last_gen_energy, excess_energy, gen_list, gen_list_name,
+            bids, excess_energy_list, balance_renewables, balance_other, balance_traditional,
+            balance_nuclear, bidding_factor, total_storage_fee_balance, market_rules)
+        real_list = realisation.real_list
+        store_energy = realisation.store_energy
+        storage_pool_composition_after = realisation.storage_pool_composition_after
+        gen_list = realisation.gen_list
+        excess_energy = realisation.excess_energy
+        energy_cell_period = realisation.energy_cell_period
+        income_dict_balance = realisation.income_dict_balance
+        energy_deficit = realisation.energy_deficit
+        total_storage_fee_balance = realisation.total_storage_fee_balance
+        balance_renewables = realisation.balance_renewables
+        balance_other = realisation.balance_other
+        balance_traditional = realisation.balance_traditional
+        balance_nuclear = realisation.balance_nuclear
+        curtailed_energy_dict[period] = realisation.curtailed_energy_record
+        blackout_periods.append(energy_deficit)
+        for key, value in income_dict_balance.items():
+            if key in total_income_dict:
+                total_income_dict[key] += value
+            else:
+                total_income_dict[key] = value
+        curtailment_fees.append(realisation.curtailment_fee)
+        balancing_fees.append(realisation.balancing_fee)
+        curtailed_electricity.append(realisation.curtailed_energy)
+        excess_electricity.append(excess_energy)
+        store_electricity.append(store_energy)
+        sold_fees.append(realisation.sold_fee)
+        purchase_fees.append(realisation.purchase_fee)
+        if _P06_STATE.ahead_imports:
+            # VALUE FX6 (A16-2): the import payment also covers the day-ahead
+            # imports (after any reduction in the curtailment branch).
+            purchase_fees[-1] += sum(float(row[1]) * float(row[2]) for row in accepted_bids
+                                     if type(row[0]) == Connection)
+        total_green_hy.append(realisation.green_hy)
+        excess_energy_final_dict[period] = excess_energy
+        if not _P06_STATE.corrected and _P06_STATE.rule("storage_position") == "net_per_period":
+            # VALUE R4-1 (A26, DEV-STO-01): the thesis rule set also keeps one
+            # net position per store and period; record its sales and assert
+            # the three storage invariants.
+            for battery in batterys:
+                battery.close_period(period)
+        if _P06_STATE.corrected:
+            # VALUE P0-6 S5/S8: close every battery's net position (sales and
+            # the three storage invariants) and book the period on the
+            # corrected column semantics: curtailment is VRE availability
+            # minus gross VRE output, excess is the non-VRE spill.
+            for battery in batterys:
+                battery.close_period(period)
+            _p06_book = _P06_STATE.surplus if _P06_STATE.surplus is not None else _p06.SurplusBook([])
+            _p06_vre_available = sum(float(gen.capacity_limit) for gen in generators
+                                     if type(gen) == ExpensiverenewableGenerator)
+            _p06_vre_gross = sum(float(row[1]) for row in gen_list if type(row[0]) == ExpensiverenewableGenerator)
+            _p06_supply = sum(float(row[1]) for row in gen_list)
+            _p06_loads = (float(store_energy or 0.0) + float(getattr(electrolyzer, "real_energy", 0.0) or 0.0)
+                          + sum(float(getattr(c, "sold_energy", 0.0) or 0.0) for c in connections))
+            _p06_claimed_spill = _p06_book.non_vre_remaining_mw + _p06_book.need_spill_mw
+            _p06_unused = max(_p06_supply + float(energy_deficit or 0.0) - float(real_demand) - _p06_loads, 0.0)
+            excess_energy = min(_p06_claimed_spill, _p06_unused)
+            _P06_STATE.diagnose("phantom_surplus_mw", _p06_claimed_spill - excess_energy)
+            realisation.excess_energy = excess_energy
+            realisation.curtailed_energy = max(_p06_vre_available - _p06_vre_gross, 0.0)
+            curtailed_electricity[-1] = realisation.curtailed_energy
+            excess_electricity[-1] = excess_energy
             excess_energy_final_dict[period] = excess_energy
-            blackout_periods.append(0)  # No blackout in curtailment market
-        else:
-            # ruturn to continue bidding
-            balancing_fee, total_storage_fee_balance, real_list, store_energy, storage_pool_composition_after, \
-            balance_renewables, balance_other, balance_traditional, gen_list, balance_nuclear, excess_energy, sold_fee, \
-            bought_fee, green_hy, energy_cell_period, income_dict_balance, energy_deficit = balancing_market_bidding(generators, period, real_demand, forecast_demands[period],
-                                                  accepted_bids, excess_energy, balance_renewables, balance_other,
-                                                  balance_traditional, gen_list, balance_nuclear, connections,
-                                                  gen_list_name, bids, electrolyzer,excess_energy_list, batterys, bidding_factor)
-            blackout_periods.append(energy_deficit)  # Track energy deficit for this period
-            for key, value in income_dict_balance.items():
-                if key in total_income_dict:
-                    total_income_dict[key] += value
-                else:
-                    total_income_dict[key] = value
-            # add continue bidding in this period to total balancing fee list
-            balancing_fees.append(sum(balancing_fee))
-            curtailed_energy_dict[period] = 0
-        #    print(sold_fee)
-            # no curtailment, curtailment is 0
-            curtailment_fees.append(0)
-            curtailed_electricity.append(0)
-            excess_electricity.append(excess_energy)
-            # no storage, storage is 0
-            store_electricity.append(store_energy)
-            sold_fees.append(sum(sold_fee))
-            purchase_fees.append(sum(bought_fee))
-            total_green_hy.append(green_hy)
-            gen = []
-            for item in gen_list:
-                if item[1] != 0:
-                    gen.append(item[0])
-            #print('gen',gen)
-            #print('generators', generators)
-            for item in generators:
-                if item not in gen:
-                    item.set_real_gen_energy(0)
-            excess_energy_final_dict[period] = excess_energy
+        realisation_log.record(
+            period, realisation, forecast_demand=forecast_demands[period], real_demand=real_demand,
+            flexible_demand=getattr(electrolyzer, "real_energy", 0.0),
+            export=sum(float(getattr(connection, "sold_energy", 0.0) or 0.0) for connection in connections),
+        )
         filtered_list = [sublist for sublist in gen_list if sublist[1] != 0]
         result_dict = {}
         for item in filtered_list:
@@ -2879,6 +3556,21 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             if isinstance(asset, Connection)
         ) * period_hours
         curtailed_mwh = float(curtailed_electricity[period] or 0.0) * period_hours
+        # VALUE P0-4 S5: source-classified surplus routing of this period.
+        surplus_terms, surplus_rows = _node_terms(
+            _SURPLUS_TRACE, period_hours,
+            supply_mwh=accepted_supply_mwh, blackout_mwh=blackout_mwh,
+            demand_mwh=real_demand_mwh, loads_mwh=storage_charge_mwh + export_mwh + flexible_demand_mwh,
+        )
+        if _P06_STATE.corrected:
+            # VALUE P0-6 S5: the corrected node (native_corrected_full_node_v1)
+            # has no out-of-dispatch surplus routing; its only spill term is
+            # the non-VRE spill booked in excess_mwh (phantom surplus capped).
+            surplus_terms = _p06.CorrectedNodeTerms(
+                excess_mwh, _P06_STATE.diagnostics.get("phantom_surplus_mw", 0.0) * period_hours)
+        else:
+            market_ledger.record_surplus_routing(_surplus_routing_rows(int(trace_year), period, surplus_rows))
+            realisation_log.record_surplus(period, _SURPLUS_TRACE, surplus_terms)
         # `result_list` follows the retained market's two accounting branches.
         # In the curtailment branch it retains forecast generation diverted into
         # storage, while the balancing branch charges from VRE excess that is not
@@ -2893,18 +3585,63 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             storage_charge_mwh,
             max(forecast_demand_mwh - real_demand_mwh, 0.0),
         )
-        raw_balance_residual = (
-            accepted_supply_mwh + blackout_mwh
-            - real_demand_mwh - accounted_storage_charge_mwh
-        )
-        # The copied Scheme C settlement exposes some secondary allocations only
-        # as annual/accounting variables, not asset dispatch rows. Preserve that
-        # raw gap explicitly and close the public ledger with a named compatibility
-        # adjustment; never silently relabel it as generation or blackout.
-        compatibility_adjustment_mwh = (
-            -raw_balance_residual if abs(raw_balance_residual) > 1e-9 else 0.0
-        )
+        if balance_boundary is not None:
+            # VALUE P0-4 S6: the raw residual is the declared boundary's
+            # (default_psm_surplus_node_v1 for the doctoral rule set, with the
+            # S5 U_out and W_in); the compatibility adjustment absorbs only
+            # numerical noise, so a physical imbalance stays visible (P7-10,
+            # P3-02) and A2 books its shortfall as unserved in the ledger.
+            balance_flows = _balance_contract.PeriodFlows(
+                int(trace_year), period,
+                supply_mwh=accepted_supply_mwh, blackout_mwh=blackout_mwh,
+                demand_mwh=real_demand_mwh, storage_charge_mwh=storage_charge_mwh,
+                export_mwh=export_mwh, flexible_demand_mwh=flexible_demand_mwh,
+                excess_mwh=excess_mwh, curtailed_mwh=curtailed_mwh,
+                forecast_demand_mwh=forecast_demand_mwh,
+                u_out_mwh=surplus_terms.u_out_mwh, w_in_mwh=surplus_terms.w_in_mwh,
+            )
+            raw_balance_residual = _balance_contract.boundary_residual(balance_boundary, balance_flows)
+            compatibility_adjustment_mwh = _balance_contract.capped_adjustment(
+                raw_balance_residual, _balance_contract.EXACT_ARITHMETIC,
+                real_demand_mwh, accepted_supply_mwh,
+            )
+            market_ledger.record_balance_terms(BalanceTermsRow(
+                int(trace_year), period, surplus_terms.u_out_mwh, surplus_terms.w_in_mwh,
+                surplus_terms.non_vre_double_counted_mwh, surplus_terms.in_dispatch_unrealised_mwh,
+            ))
+        else:
+            raw_balance_residual = (
+                accepted_supply_mwh + blackout_mwh
+                - real_demand_mwh - accounted_storage_charge_mwh
+            )
+            # The copied Scheme C settlement exposes some secondary allocations only
+            # as annual/accounting variables, not asset dispatch rows. Preserve that
+            # raw gap explicitly and close the public ledger with a named compatibility
+            # adjustment; never silently relabel it as generation or blackout.
+            compatibility_adjustment_mwh = (
+                -raw_balance_residual if abs(raw_balance_residual) > 1e-9 else 0.0
+            )
         balance_residual = raw_balance_residual + compatibility_adjustment_mwh
+        # VALUE P0-6 S4 (P5-06): physical operating cost terms of the period
+        # (gen_cost and import prices without the bid multiplier; start-up
+        # adder of units that were not running; storage fee of this period
+        # only) and the doctoral rule diagnostics, both outside the ledger.
+        realisation_log.record_costs(
+            period, _p06.physical_cost_terms(
+                dispatch_by_asset, _p06_previous_accepted, period_hours,
+                storage_fee_this_period=float(total_storage_fee_ahead) + (
+                    float(realisation.total_storage_fee_balance or 0.0)
+                    if realisation.branch == _p06.BALANCING_BRANCH else 0.0),
+                retained_cost_gbp=float(total_gen_cost) * period_hours,
+                generation_offer_gbp=float(gen_fees[period]) * period_hours,
+                storage_fee_retained_gbp=float(storage_fees[period]) * period_hours,
+                curtailment_fee_gbp=float(curtailment_fees[period]) * period_hours,
+                balancing_fee_gbp=float(balancing_fees[period]) * period_hours,
+                export_revenue_gbp=float(sold_fees[period]) * period_hours,
+                import_payment_gbp=float(purchase_fees[period]) * period_hours,
+            ),
+            _P06_STATE.diagnostics,
+        )
         allowed_trace_residual = max(
             1e-5,
             0.001 * max(abs(real_demand_mwh), abs(accepted_supply_mwh), 1.0),
@@ -2977,6 +3714,29 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
                     float(getattr(asset, "gen_cost", 0.0) or 0.0) * accepted_mwh,
                     float(avg_price) * accepted_mwh,
                 ))
+            if _P06_STATE.ahead_imports and _P06_STATE.imports.period == period:
+                # VALUE FX6 (A16-2): the day-ahead import offers (accepted
+                # MWh = final import, day-ahead plus balancing residual).
+                for import_index, import_offer in enumerate(_P06_STATE.imports.offers):
+                    asset, offer_price, offered_energy = (
+                        import_offer[0], float(import_offer[1]), float(import_offer[2]))
+                    offered_assets.add(asset)
+                    accepted_energy = float(dispatch_by_asset.get(asset, 0.0))
+                    if accepted_energy <= 1e-12:
+                        status, reason = "rejected", "not_selected_after_merit_and_balance"
+                    elif accepted_energy + 1e-12 < offered_energy:
+                        status, reason = "partially_accepted", "demand_filled"
+                    else:
+                        status, reason = "accepted", "cleared"
+                    accepted_mwh = accepted_energy * period_hours
+                    order_rows.append(OrderLedgerRow(
+                        f"{trace_year}:{period}:ahead:{len(bids) + import_index}", int(trace_year), period,
+                        "ahead_offer", _asset_name(asset), asset.__class__.__name__, "supply",
+                        offer_price, offered_energy * period_hours, accepted_mwh,
+                        status, reason,
+                        float(getattr(asset, "external_price", 0.0) or 0.0) * accepted_mwh,
+                        float(avg_price) * accepted_mwh,
+                    ))
             for asset, accepted_energy in dispatch_by_asset.items():
                 if asset in offered_assets or accepted_energy <= 1e-12:
                     continue
@@ -2990,6 +3750,10 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
                     0.0, float(avg_price) * accepted_mwh,
                 ))
             market_ledger.record_orders(order_rows)
+            # VALUE four-role M-D1 (Q12 accounting): the real storage offers,
+            # accepted or not; the final_dispatch rows above stay as frozen.
+            market_ledger.record_storage_orders(_STORAGE_OFFERS.rows(
+                int(trace_year), period, period_hours, StorageOrderLedgerRow))
         market_ledger.record_storage(
             StorageStateRow(
                 int(trace_year), period,
@@ -3002,6 +3766,9 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
             )
             for battery in batterys
         )
+        # VALUE P0-4 S4: per-asset storage energy audit (accounting zone;
+        # charge, self-discharge, tail write-off; P3-14, P5-11).
+        market_ledger.record_storage_audit(_storage_audit_rows(int(trace_year), period, batterys))
 
         if trace_enabled:
             for accepted_asset, accepted_price, accepted_energy, accepted_cost in accepted_bids:
@@ -3114,6 +3881,8 @@ def run_simulation(periods, generators, batterys, forecast_demands, real_demands
         income_trace_file.flush()
         market_trace_file.close()
         income_trace_file.close()
+    # VALUE P0-6: direct calls after this run use the doctoral default again.
+    _P06_STATE.reset()
     
     return (avg_electricity_prices, storage_fees, store_electricity, generation_costs, storage_pool, total_storage_pool, \
            storage_pools_composition, usage_storage_pool_composition, avg_gen_fees, avg_curtailment_fees, \

@@ -1,11 +1,15 @@
-.run-reproduction-panel { margin: 4px 0 12px; padding: 16px 20px; background: white; min-width: 0; border: 1px solid var(--border, #d9dde5); border-radius: 8px; }
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.run-reproduction-panel { margin: var(--sp-1) 0 var(--sp-3); padding: var(--sp-4) var(--sp-4); background: white; min-width: 0; border: 1px solid var(--border, var(--line)); border-radius: var(--r-md); }
 .run-reproduction-panel summary { cursor: pointer; font-weight: 600; }
-.run-reproduction-panel p { margin: 10px 0; line-height: 1.5; }
-.run-reproduction-panel ul { padding-left: 22px; margin: 10px 0; }
-.run-reproduction-panel li { margin: 5px 0; overflow-wrap: anywhere; }
-.run-reproduction-panel button { padding: 10px 14px; min-height: 44px; border: 1px solid var(--border, #d9dde5); border-radius: 7px; background: white; color: var(--blue, #20529c); font: inherit; font-weight: 600; cursor: pointer; }
+.run-reproduction-panel p { margin: var(--sp-2) 0; line-height: 1.5; }
+.run-reproduction-panel ul { padding-left: var(--sp-5); margin: var(--sp-2) 0; }
+.run-reproduction-panel li { margin: var(--sp-1) 0; overflow-wrap: anywhere; }
+.run-reproduction-panel button { padding: var(--sp-2) var(--sp-3); min-height: 44px; border: 1px solid var(--border, var(--line)); border-radius: var(--r-md); background: white; color: var(--blue, var(--blue-dark)); font: inherit; font-weight: 600; cursor: pointer; }
 .run-reproduction-panel button:disabled { cursor: wait; opacity: .65; }
 .run-reproduction-identity { font-family: monospace; overflow-wrap: anywhere; }
 
-.run-reproduction-details { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border, #d9dde5); }
-.run-reproduction-panel a { color: var(--blue, #20529c); }
+.run-reproduction-details { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border, var(--line)); }
+.run-reproduction-panel a { color: var(--blue, var(--blue-dark)); }
+}

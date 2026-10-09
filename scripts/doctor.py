@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
 from gridform_core.runtime_paths import APPLICATION_VERSION, user_data_root  # noqa: E402
 from gridform_core.runtime_capabilities import (  # noqa: E402
     VALUE_NATIVE,
-    SCHEME_C_REFERENCE,
+    DOCTORAL_REPRODUCTION,
     capability_matrix,
 )
 
@@ -80,17 +80,17 @@ def report(
         "detail": "all installed" if not missing_mandatory else "missing: " + ", ".join(missing_mandatory),
         "action": None if not missing_mandatory else "Run install-value.cmd to install the locked open-core environment.",
     }
-    checks["force_native_capability"] = {
+    checks["value_native_capability"] = {
         "passed": bool(runtime["capabilities"][VALUE_NATIVE]["available"]),
         "optional": capability != VALUE_NATIVE,
         "detail": "available" if runtime["capabilities"][VALUE_NATIVE]["available"] else "unavailable",
         "action": runtime["capabilities"][VALUE_NATIVE]["corrective_action"],
     }
-    checks["scheme_c_reference_capability"] = {
-        "passed": bool(runtime["capabilities"][SCHEME_C_REFERENCE]["available"]),
-        "optional": capability != SCHEME_C_REFERENCE,
-        "detail": "available" if runtime["capabilities"][SCHEME_C_REFERENCE]["available"] else "unavailable",
-        "action": runtime["capabilities"][SCHEME_C_REFERENCE]["corrective_action"],
+    checks["doctoral_reproduction_capability"] = {
+        "passed": bool(runtime["capabilities"][DOCTORAL_REPRODUCTION]["available"]),
+        "optional": capability != DOCTORAL_REPRODUCTION,
+        "detail": "available" if runtime["capabilities"][DOCTORAL_REPRODUCTION]["available"] else "unavailable",
+        "action": runtime["capabilities"][DOCTORAL_REPRODUCTION]["corrective_action"],
     }
     for optional_capability, package, action in (
         ("perfect_foresight_solver", "scipy", "Install requirements/value-perfect-foresight-py310.lock."),
@@ -104,7 +104,7 @@ def report(
         }
     try:
         state_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(prefix="force-write-check-", dir=state_root, delete=True):
+        with tempfile.NamedTemporaryFile(prefix="value-write-check-", dir=state_root, delete=True):
             pass
         writable = True
         write_detail = str(state_root)
@@ -146,7 +146,7 @@ def main() -> None:
     parser.add_argument("--json", action="store_true")
     parser.add_argument(
         "--capability",
-        choices=(VALUE_NATIVE, SCHEME_C_REFERENCE),
+        choices=(VALUE_NATIVE, DOCTORAL_REPRODUCTION),
         default=VALUE_NATIVE,
     )
     args = parser.parse_args()

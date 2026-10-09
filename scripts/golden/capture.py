@@ -1,0 +1,522 @@
+"""Capture, check and revise the two golden families.
+
+Commands::
+
+    capture.py check    [--tier fast|full|nightly] [--cases D1 C1 ...] [--mode exact|tolerance]
+    capture.py init     --cases ...                      # write revision 0 (never overwrites)
+    capture.py revise   --cases ... --reason TEXT [--correction-id ID ...] [--finding ID ...]
+    (init/revise --from-output DIR [--base-commit SHA]: digest a kept run output of one case
+     instead of running it; used for a case whose revision 0 is a run of the 35aadb3 tree)
+    capture.py validate                                  # bookkeeping only, no model runs
+    capture.py dump     --cases ... --out-dir DIR        # raw digests for inspection
+    capture.py freeze-projects --cases ...               # write tests/golden/projects/<case>.json for NEW cases
+    capture.py numeric-report --case D1 [--parent HEAD] [--revision K]
+                                                         # numeric before/after report of revision K
+
+Each case runs in its own hermetic subprocess (scripts/golden/run_case.py).
+``check`` exits 1 when any case differs from its latest revision in a
+trajectory or accounting column; identity-zone differences (code and module
+identity hashes, versions) are reported only.  ``revise`` appends a revision
+carrying the delta; for the doctoral family a trajectory change is accepted
+only for a finding listed in tests/golden/doctoral_trajectory_rebaselines.json
+and only once per finding and case, and only with a numeric before/after
+report ``tests/golden/reports/<case>-r<k>.json``.
+
+Research-pack cases (``research_pack`` in cases.json, decision A12) run on a
+pack that is not in the repository; it is taken from ``VALUE_P0_5_PACKS``.
+When it is not supplied, ``check`` lists the case under ``unavailable`` and
+does not fail, unless ``VALUE_GOLDEN_REQUIRE_RESEARCH_PACKS=1``; ``init``,
+``revise`` and ``dump`` always fail.
+
+Doctoral re-baseline workflow (one commit): ``revise`` appends revision k
+(its report is pending; earlier reports are checked), then
+``numeric-report --case <case> --parent HEAD`` runs the case with
+``run_case.py --keep-output`` on a ``git archive`` of the parent commit and
+on the working tree, checks they reproduce revisions k-1 and k, and writes
+the report (rows aligned on natural keys; per changed column max abs/rel
+delta, totals, annual and keyed group totals).  ``validate`` (gate
+``golden_bookkeeping``) refuses the commit until the report exists and is
+bound to the revision's digest; a report for any other revision is an error.
+"""
+
+from __future__ import annotations
+
+# P0 rule (P0_CONVENTIONS section 2): never write bytecode, even when started
+# without -B; the managed install's runtime is read-only and must stay
+# byte-identical.  Inherited by every subprocess through the environment.
+import os as _os
+import sys as _sys
+
+_sys.dont_write_bytecode = True
+_os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+
+import argparse
+import concurrent.futures
+import importlib.util
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+from pathlib import Path
+from typing import Any, Sequence
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from gridform_validation import golden as golden_lib  # noqa: E402
+
+GOLDEN_DIR = ROOT / "tests" / "golden"
+CASES = GOLDEN_DIR / "cases.json"
+TRAJECTORY_ALLOWLIST = GOLDEN_DIR / "doctoral_trajectory_rebaselines.json"
+REPORT_DIR = GOLDEN_DIR / "reports"
+ZONES = GOLDEN_DIR / "zones.json"
+TIER_ORDER = {"fast": 0, "full": 1, "nightly": 2}
+GATED_ZONES = ("trajectory", "accounting")
+
+
+def _runner_module():
+    spec = importlib.util.spec_from_file_location("run_backend_tests", ROOT / "scripts" / "run_backend_tests.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_cases() -> dict[str, dict[str, Any]]:
+    return json.loads(CASES.read_text(encoding="utf-8"))["cases"]
+
+
+def golden_path(family: str, case_id: str) -> Path:
+    return GOLDEN_DIR / family / f"{case_id}.json"
+
+
+def select_cases(cases: dict[str, dict[str, Any]], tier: str | None, names: Sequence[str] | None) -> list[str]:
+    if names:
+        unknown = sorted(set(names) - set(cases))
+        if unknown:
+            raise SystemExit(f"unknown golden case(s): {', '.join(unknown)}")
+        return list(names)
+    limit = TIER_ORDER[tier or "fast"]
+    return sorted(name for name, case in cases.items() if TIER_ORDER[case["tier"]] <= limit)
+
+
+REQUIRE_RESEARCH_PACKS_ENVIRONMENT = "VALUE_GOLDEN_REQUIRE_RESEARCH_PACKS"
+
+
+def run_case_subprocess(case_id: str, python: str = sys.executable, timeout: float = 3600) -> dict[str, Any]:
+    runner = _runner_module()
+    scratch = Path(tempfile.mkdtemp(prefix=f"value-golden-{case_id}-"))
+    started = time.monotonic()
+    try:
+        environment = runner.hermetic_environment(scratch)
+        completed = subprocess.run(
+            [python, "-B", str(ROOT / "scripts" / "golden" / "run_case.py"), case_id],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+        attempts = runner.forbidden_port_attempts(scratch)
+        if attempts:
+            raise RuntimeError(f"golden case {case_id} tried to reach the live VALUE ports: {attempts}")
+        if completed.returncode == _run_case_module().RESEARCH_PACK_UNAVAILABLE_EXIT:
+            return {"case": case_id, "unavailable": completed.stderr.strip().splitlines()[-1]}
+        if completed.returncode != 0:
+            raise RuntimeError(f"golden case {case_id} failed (exit {completed.returncode}):\n{completed.stderr[-4000:]}")
+        digest = json.loads(completed.stdout.strip().splitlines()[-1])
+        digest["seconds"] = round(time.monotonic() - started, 2)
+        return digest
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def run_cases(case_ids: Sequence[str], jobs: int | None = None, python: str = sys.executable) -> dict[str, dict[str, Any]]:
+    jobs = jobs or min(8, max(1, os.cpu_count() or 1))
+    results: dict[str, dict[str, Any]] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        futures = {pool.submit(run_case_subprocess, case_id, python): case_id for case_id in case_ids}
+        for future in concurrent.futures.as_completed(futures):
+            results[futures[future]] = future.result()
+    return results
+
+
+def _strip_runtime(digest: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in digest.items() if key not in {"seconds", "case"}}
+
+
+def _require_available(digests: dict[str, dict[str, Any]]) -> None:
+    missing = [digest["unavailable"] for digest in digests.values() if "unavailable" in digest]
+    if missing:
+        raise SystemExit("research pack missing (set VALUE_P0_5_PACKS):\n" + "\n".join(missing))
+
+
+def _digests(arguments: argparse.Namespace, selected: Sequence[str]) -> dict[str, dict[str, Any]]:
+    """Digests of the selected cases: run them, or digest ``--from-output``."""
+
+    if getattr(arguments, "from_output", None) is None:
+        digests = run_cases(selected, arguments.jobs)
+        _require_available(digests)
+        return digests
+    if len(selected) != 1:
+        raise SystemExit("--from-output digests the kept output of exactly one case (--cases X)")
+    output = arguments.from_output.resolve()
+    if not output.is_dir():
+        raise SystemExit(f"--from-output {output} is not a directory")
+    return {selected[0]: golden_lib.digest_run(output, golden_lib.ZoneRules.load(ZONES))}
+
+
+def _git_head() -> str:
+    try:
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def command_check(arguments: argparse.Namespace) -> int:
+    cases = load_cases()
+    selected = select_cases(cases, arguments.tier, arguments.cases)
+    mode = arguments.mode or golden_lib.default_mode()
+    digests = run_cases(selected, arguments.jobs)
+    report: dict[str, Any] = {"schema_version": "value.golden-check/v1", "mode": mode, "cases": {}, "errors": [],
+                              "unavailable": {}}
+    require_packs = os.environ.get(REQUIRE_RESEARCH_PACKS_ENVIRONMENT) == "1"
+    for case_id in selected:
+        family = cases[case_id]["family"]
+        if "unavailable" in digests[case_id]:
+            report["unavailable"][case_id] = digests[case_id]["unavailable"]
+            if require_packs:
+                report["errors"].append(f"{family}/{case_id}: {digests[case_id]['unavailable']}")
+            continue
+        path = golden_path(family, case_id)
+        if not path.is_file():
+            report["errors"].append(f"{family}/{case_id}: no golden file (run capture.py init)")
+            continue
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        differences = golden_lib.compare_digests(
+            golden_lib.latest_digest(golden), digests[case_id], mode, golden_lib.pinned_zones(golden)
+        )
+        gated = [row for row in differences if row.zone in GATED_ZONES]
+        report["cases"][case_id] = {
+            "family": family,
+            "seconds": digests[case_id].get("seconds"),
+            "revision": golden["revisions"][-1]["revision"],
+            "gated_differences": [row.to_dict() for row in gated],
+            "identity_differences": len(differences) - len(gated),
+        }
+        if gated:
+            report["errors"].append(
+                f"{family}/{case_id}: {len(gated)} trajectory/accounting column(s) differ from revision "
+                f"{golden['revisions'][-1]['revision']} (append a revision with capture.py revise)"
+            )
+    report["passed"] = not report["errors"]
+    _emit(report, arguments.json_output)
+    return 0 if report["passed"] else 1
+
+
+def command_init(arguments: argparse.Namespace) -> int:
+    cases = load_cases()
+    selected = select_cases(cases, arguments.tier, arguments.cases)
+    existing = [case_id for case_id in selected if golden_path(cases[case_id]["family"], case_id).exists()]
+    if existing:
+        # Revision 0 is written exactly once; there is no override.  A changed
+        # result is recorded with ``revise`` (p0_gate append_only enforces it).
+        raise SystemExit(f"golden file(s) already exist, revision 0 is immutable: {', '.join(existing)}")
+    if arguments.twice and arguments.from_output is not None:
+        raise SystemExit("--twice reruns the cases; it cannot be combined with --from-output")
+    first = _digests(arguments, selected)
+    second = run_cases(selected, arguments.jobs) if arguments.twice else first
+    _require_available(second)
+    head = arguments.base_commit or _git_head()
+    for case_id in selected:
+        differences = golden_lib.compare_digests(first[case_id], second[case_id], "exact")
+        if differences:
+            raise SystemExit(f"{case_id}: two captures differ: {[row.key for row in differences][:10]}")
+        family = cases[case_id]["family"]
+        golden = golden_lib.new_golden(family, case_id, _strip_runtime(first[case_id]), head, arguments.reason)
+        golden_lib.write_golden(golden_path(family, case_id), golden)
+    print(json.dumps({case_id: first[case_id].get("seconds") for case_id in selected}, indent=2))
+    return 0
+
+
+def command_revise(arguments: argparse.Namespace) -> int:
+    cases = load_cases()
+    selected = select_cases(cases, arguments.tier, arguments.cases)
+    digests = _digests(arguments, selected)
+    allowlist = json.loads(TRAJECTORY_ALLOWLIST.read_text(encoding="utf-8"))
+    head = arguments.base_commit or _git_head()
+    summary = {}
+    for case_id in selected:
+        family = cases[case_id]["family"]
+        path = golden_path(family, case_id)
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            revision = golden_lib.append_revision(
+                golden,
+                _strip_runtime(digests[case_id]),
+                base_commit=head,
+                reason=arguments.reason,
+                correction_ids=arguments.correction_id or [],
+                findings=arguments.finding or [],
+            )
+        except ValueError as exc:
+            summary[case_id] = str(exc)
+            continue
+        new_index = revision["revision"]
+        # The numeric report of the revision being appended can only be built
+        # after it exists (numeric-report checks that the child output
+        # reproduces it), so it is pending here; every earlier report is
+        # checked.  ``capture.py validate`` (gate golden_bookkeeping) refuses
+        # the commit until tests/golden/reports/<case>-r<k>.json is in place.
+        errors = golden_lib.validate_golden_file(
+            golden,
+            allowlist,
+            lambda index, case_id=case_id, new_index=new_index: (
+                golden_lib.REPORT_PENDING if index == new_index else load_report(case_id, index)
+            ),
+        )
+        if errors:
+            raise SystemExit("refusing revision:\n" + "\n".join(errors))
+        golden_lib.write_golden(path, golden)
+        summary[case_id] = revision["delta"]["by_zone"]
+        if family == "doctoral" and revision["delta"]["by_zone"].get("trajectory"):
+            summary[f"{case_id}:next"] = (
+                f"revision {new_index} needs its numeric report before commit: capture.py numeric-report "
+                f"--case {case_id} --parent HEAD  (writes tests/golden/reports/{case_id}-r{new_index}.json; "
+                "capture.py validate fails until it exists)"
+            )
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+def validate_all() -> list[str]:
+    allowlist = json.loads(TRAJECTORY_ALLOWLIST.read_text(encoding="utf-8"))
+    cases = load_cases()
+    errors: list[str] = []
+    for case_id, case in cases.items():
+        path = golden_path(case["family"], case_id)
+        if not path.is_file():
+            errors.append(f"{case['family']}/{case_id}: golden file missing")
+            continue
+        golden = json.loads(path.read_text(encoding="utf-8"))
+        if golden.get("case") != case_id or golden.get("family") != case["family"]:
+            errors.append(f"{path.relative_to(ROOT)}: case/family header mismatch")
+        errors.extend(golden_lib.validate_golden_file(golden, allowlist, lambda index, case_id=case_id: load_report(case_id, index)))
+    # Reports bound to an existing revision 1..n were validated above (a
+    # report for a revision that is not a doctoral trajectory re-baseline is
+    # an error there); anything else in the directory is an orphan.
+    for report_path in sorted(REPORT_DIR.iterdir()) if REPORT_DIR.is_dir() else []:
+        case_id, _, suffix = report_path.stem.rpartition("-r")
+        case = cases.get(case_id)
+        golden_file = golden_path(case["family"], case_id) if case else None
+        revisions = json.loads(golden_file.read_text(encoding="utf-8"))["revisions"] if golden_file and golden_file.is_file() else []
+        if report_path.suffix != ".json" or not report_path.is_file():
+            errors.append(f"tests/golden/reports/{report_path.name}: not a numeric report (<case>-r<k>.json)")
+        elif not suffix.isdigit() or str(int(suffix)) != suffix or not 0 < int(suffix) < len(revisions):
+            errors.append(f"tests/golden/reports/{report_path.name}: no matching golden revision")
+    run_case = _run_case_module()
+    for case_id, case in cases.items():
+        if not run_case.project_path(dict(case, id=case_id)).is_file():
+            errors.append(f"{case['family']}/{case_id}: frozen project missing (capture.py freeze-projects)")
+    for family in ("doctoral", "corrected"):
+        for path in sorted((GOLDEN_DIR / family).glob("*.json")):
+            if path.stem not in cases:
+                errors.append(f"{path.relative_to(ROOT)}: no case definition")
+    return errors
+
+
+def load_report(case_id: str, index: int) -> dict[str, Any] | None:
+    """The committed numeric report of revision ``index`` (``None`` when absent).
+
+    An unreadable report is returned as an empty-ish mapping so that
+    validation reports it instead of crashing."""
+
+    path = REPORT_DIR / f"{case_id}-r{index}.json"
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return {"unreadable": f"{type(exc).__name__}: {exc}"}
+    return payload if isinstance(payload, dict) else {"unreadable": f"top level is {type(payload).__name__}"}
+
+
+def run_case_at(case_id: str, output: Path, scratch: Path, ref: str | None = None, python: str = sys.executable) -> str:
+    """Run one case with ``--keep-output`` on a ``git archive`` of ``ref``
+    (``None``: this working tree).  Returns the commit (or ``working-tree``)."""
+
+    runner = _runner_module()
+    tree = ROOT
+    commit = "working-tree"
+    if ref is not None:
+        commit = subprocess.run(["git", "rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=ROOT, check=True,
+                                capture_output=True, text=True).stdout.strip()
+        tree = scratch / f"tree-{commit[:12]}"
+        tree.mkdir(parents=True)
+        archive = subprocess.Popen(["git", "archive", "--format=tar", commit], cwd=ROOT, stdout=subprocess.PIPE)
+        assert archive.stdout is not None
+        with tarfile.open(fileobj=archive.stdout, mode="r|") as stream:
+            stream.extractall(tree)
+        if archive.wait() != 0:
+            raise SystemExit(f"git archive {ref} failed")
+    environment = runner.hermetic_environment(scratch / f"env-{commit[:12]}", python_root=tree)
+    completed = subprocess.run(
+        [python, "-B", str(tree / "scripts" / "golden" / "run_case.py"), case_id, "--keep-output", str(output)],
+        cwd=tree, env=environment, capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    attempts = runner.forbidden_port_attempts(scratch / f"env-{commit[:12]}")
+    if attempts:
+        raise SystemExit(f"golden case {case_id} at {commit} tried to reach the live VALUE ports: {attempts}")
+    if completed.returncode != 0:
+        raise SystemExit(f"golden case {case_id} at {commit} failed:\n{completed.stderr[-4000:]}")
+    return commit
+
+
+def command_numeric_report(arguments: argparse.Namespace) -> int:
+    cases = load_cases()
+    if arguments.case not in cases:
+        raise SystemExit(f"unknown golden case {arguments.case!r}")
+    family = cases[arguments.case]["family"]
+    golden = json.loads(golden_path(family, arguments.case).read_text(encoding="utf-8"))
+    index = len(golden["revisions"]) - 1 if arguments.revision is None else arguments.revision
+    if not 0 < index < len(golden["revisions"]):
+        raise SystemExit(f"{arguments.case}: revision {index} does not exist or is revision 0 (append it with revise first)")
+    zones = golden_lib.ZoneRules.load(ZONES)
+    scratch = Path(tempfile.mkdtemp(prefix=f"value-golden-report-{arguments.case}-"))
+    try:
+        if arguments.before_output and arguments.after_output:
+            before, after = arguments.before_output, arguments.after_output
+            parent, child = arguments.parent or "unknown", arguments.child or "given-output"
+        else:
+            before, after = scratch / "before", scratch / "after"
+            parent = run_case_at(arguments.case, before, scratch, arguments.parent or "HEAD")
+            child = run_case_at(arguments.case, after, scratch, None)
+        for side, directory, revision in (("parent", before, index - 1), ("child", after, index)):
+            if golden_lib.digest_fingerprint(golden_lib.digest_run(directory, zones)) != golden_lib.digest_fingerprint(
+                golden["revisions"][revision]["digest"]
+            ):
+                raise SystemExit(f"{arguments.case}: the {side} output does not reproduce revision {revision}")
+        report = golden_lib.build_numeric_report(
+            before, after, zones, family=family, case=arguments.case, revision=index,
+            parent_commit=parent, child_commit=child, pinned=golden_lib.pinned_zones(golden, index),
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    destination = arguments.out or (REPORT_DIR / f"{arguments.case}-r{index}.json")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    print(json.dumps({"report": str(destination), **report["summary"]}, indent=2))
+    return 0
+
+
+def command_validate(arguments: argparse.Namespace) -> int:
+    errors = validate_all()
+    _emit({"schema_version": "value.golden-validate/v1", "errors": errors, "passed": not errors}, arguments.json_output)
+    return 0 if not errors else 1
+
+
+def _run_case_module():
+    spec = importlib.util.spec_from_file_location("golden_run_case", ROOT / "scripts" / "golden" / "run_case.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def command_freeze_projects(arguments: argparse.Namespace) -> int:
+    """Freeze the resolved input project of new cases; existing snapshots are immutable."""
+
+    run_case = _run_case_module()
+    cases = load_cases()
+    selected = select_cases(cases, arguments.tier, arguments.cases)
+    existing = [case_id for case_id in selected if run_case.project_path(dict(cases[case_id], id=case_id)).exists()]
+    if existing:
+        raise SystemExit(f"frozen project(s) already exist and are immutable: {', '.join(existing)}")
+    written = {}
+    for case_id in selected:
+        case = dict(cases[case_id], id=case_id)
+        path = run_case.project_path(case)
+        project = run_case.resolve_from_template(case)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(project, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
+        written[case_id] = str(path.relative_to(ROOT))
+    print(json.dumps(written, indent=2))
+    return 0
+
+
+def command_dump(arguments: argparse.Namespace) -> int:
+    cases = load_cases()
+    selected = select_cases(cases, arguments.tier, arguments.cases)
+    arguments.out_dir.mkdir(parents=True, exist_ok=True)
+    digests = run_cases(selected, arguments.jobs)
+    _require_available(digests)
+    for case_id, digest in digests.items():
+        (arguments.out_dir / f"{case_id}.json").write_text(json.dumps(digest, indent=1, sort_keys=True), encoding="utf-8")
+    return 0
+
+
+def _emit(report: dict[str, Any], destination: Path | None) -> None:
+    text = json.dumps(report, indent=2)
+    if destination:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(text + "\n", encoding="utf-8")
+    print(text)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    sub = parser.add_subparsers(dest="command", required=True)
+    for name in ("check", "init", "revise", "validate", "dump", "freeze-projects", "numeric-report"):
+        command = sub.add_parser(name)
+        command.add_argument("--json-output", type=Path)
+        if name == "validate":
+            continue
+        if name == "numeric-report":
+            command.add_argument("--case", required=True)
+            command.add_argument("--parent", help="commit before the change (default HEAD)")
+            command.add_argument("--revision", type=int, help="golden revision the report documents (default: latest)")
+            command.add_argument("--before-output", type=Path, help="kept run output of the parent (skips running it)")
+            command.add_argument("--after-output", type=Path, help="kept run output of the child (skips running it)")
+            command.add_argument("--child", help="commit that produced --after-output (recorded; default given-output)")
+            command.add_argument("--out", type=Path)
+            continue
+        command.add_argument("--cases", nargs="*")
+        command.add_argument("--tier", choices=sorted(TIER_ORDER), default=None)
+        command.add_argument("--jobs", type=int, default=None)
+        if name == "check":
+            command.add_argument("--mode", choices=("exact", "tolerance"))
+        if name in {"init", "revise"}:
+            command.add_argument("--from-output", type=Path,
+                                 help="digest this kept run output of the one selected case instead of running it")
+            command.add_argument("--base-commit", help="commit the digested behaviour belongs to (default HEAD)")
+        if name == "init":
+            command.add_argument("--reason", default="revision 0: behaviour of the model code at 35aadb3")
+            command.add_argument("--twice", action="store_true", help="capture twice and require identical digests")
+        if name == "revise":
+            command.add_argument("--reason", required=True)
+            command.add_argument("--correction-id", action="append")
+            command.add_argument("--finding", action="append")
+        if name == "dump":
+            command.add_argument("--out-dir", type=Path, required=True)
+    arguments = parser.parse_args(argv)
+    handler = {
+        "check": command_check,
+        "init": command_init,
+        "revise": command_revise,
+        "validate": command_validate,
+        "dump": command_dump,
+        "freeze-projects": command_freeze_projects,
+        "numeric-report": command_numeric_report,
+    }[arguments.command]
+    return handler(arguments)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

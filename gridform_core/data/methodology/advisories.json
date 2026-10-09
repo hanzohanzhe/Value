@@ -1,0 +1,36 @@
+{
+  "schema_version": "value.methodology-advisories/v1",
+  "notes": [
+    "Generic read-time advisories (X0 S10b). Correction-specific advisories live on the corrections in corrections/<pkg>.json; this file holds the advisories that are not tied to one correction.",
+    "applies_to is one of the predicates implemented in gridform_core/result_advisories.py: pre_profile_run (the run recorded no methodology profile), legacy_validation_report (the run's scientific-validation report is not the recomputed v2 schema, e.g. the v1 self-reported report), fleet_assets (A24-2: the run's frozen fleet contains an asset class of applies_when.assets_any, the classes of market_replay.canonical_technology; a fleet that cannot be read keeps the advisory). fleet_assets rows disclose a limitation of every profile; they are presentation only and never part of the method identity.",
+    "Severity high or critical puts every comparison that includes the run into attribution_status needs_review (no causal conclusion)."
+  ],
+  "advisories": [
+    {
+      "id": "VALUE-ADV-2026-10-04-REVIEW",
+      "applies_to": "pre_profile_run",
+      "severity": "high",
+      "title": "Produced before the 2026-10 review fixes",
+      "summary": "This Run was produced by a VALUE version before methodology profiles and the 2026-10-04 review corrections. Known issues may affect its energy balance, validation status and annual results; its recorded validation status is superseded.",
+      "affected_metrics": ["scientific_validation_status", "energy_balance", "annual_results", "comparisons"]
+    },
+    {
+      "id": "GF_VALIDATION_LEGACY_REPORT",
+      "applies_to": "legacy_validation_report",
+      "severity": "medium",
+      "title": "Validation report not independently verified",
+      "summary": "This run's scientific-validation report is not the recomputed v2 report (for example the v1 report, which relies on the model's self-reported, compatibility-adjusted residuals); its passed statements were not recomputed from the ledger by the independent energy-balance check.",
+      "affected_metrics": ["scientific_validation_status", "contract_validation_status"]
+    },
+    {
+      "id": "VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED",
+      "applies_to": "fleet_assets",
+      "applies_when": {"assets_any": ["biomass_and_waste"]},
+      "severity": "medium",
+      "findings": ["A24-2", "P4-07"],
+      "title": "Biomass without support revenue",
+      "summary": "VALUE does not model CfD or ROC support revenue for biomass (review finding P4-07, planned for the next round). Biomass therefore offers at its full fuel and carbon cost (85 GBP/MWh in the shipped GB parameters, above CCGT 55.07 and OCGT 74.92) and is rarely dispatched (GBP1 and R029 2025: about 0.01 TWh from 4,762 MW). Read the generation mix, emissions, prices and the biomass investment account with this in mind; both methodology profiles behave this way.",
+      "affected_metrics": ["generation_mix", "biomass_generation", "emissions", "prices", "investment"]
+    }
+  ]
+}

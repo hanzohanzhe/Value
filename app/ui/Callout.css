@@ -1,0 +1,50 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-callout {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--sp-2) var(--sp-3);
+    margin: var(--sp-3) 0;
+    padding: var(--sp-3) var(--sp-4);
+    border-left: 4px solid var(--blue);
+    border-radius: var(--r-md);
+    background: var(--blue-soft);
+    color: var(--ink);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    overflow-wrap: anywhere;
+  }
+  .v-callout--attention { border-left-color: var(--amber); background: var(--amber-soft); }
+  .v-callout--danger { border-left-color: var(--red); background: var(--red-soft); }
+  .v-callout--success { border-left-color: var(--teal); background: var(--teal-soft); }
+  .v-callout__icon { width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--blue); color: var(--panel); font-size: var(--fs-xs); font-weight: 700; line-height: 1; }
+  .v-callout--attention .v-callout__icon { background: var(--amber); }
+  .v-callout--danger .v-callout__icon { background: var(--red); }
+  .v-callout--success .v-callout__icon { background: var(--teal); }
+  .v-callout__content { display: grid; gap: var(--sp-1); min-width: 0; justify-items: start; }
+  .v-callout__title { margin: 0; font-size: var(--fs-md); font-weight: 650; }
+  .v-callout__body { min-width: 0; }
+  .v-callout__body p { margin: 0 0 var(--sp-1); }
+  .v-callout__action {
+    min-height: var(--control-h);
+    margin-top: var(--sp-1);
+    padding: var(--sp-1) var(--sp-3);
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    background: var(--panel);
+    color: var(--blue-dark);
+    font: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .v-callout__action:hover { border-color: var(--blue); background: var(--blue-soft); }
+
+  .v-empty { display: grid; justify-items: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-4); text-align: center; color: var(--ink-muted); font-size: var(--fs-sm); }
+  .v-empty__title { margin: 0; color: var(--ink); font-size: var(--fs-md); font-weight: 650; }
+  .v-empty__body { max-width: 60ch; }
+}

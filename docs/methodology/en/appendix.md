@@ -1,12 +1,19 @@
 # Carbon accounting parameters
 
-VALUE calculates operational emissions and equipment-construction emissions separately before combining them under the selected accounting scenario. Operational emissions vary with generation and imported electricity, while construction emissions vary with installed capacity and the annualisation rule. Current physical accounting uses the `value_current_authoritative_v1` factor set. Historical R029 results use the factor set associated with that research configuration.
+VALUE calculates operational emissions and equipment-construction emissions separately before combining them under the selected accounting scenario. Operational emissions vary with generation and imported electricity, while construction emissions vary with installed capacity and the annualisation rule. Current physical accounting uses the `value_current_authoritative_v1` factor set. The doctoral-reproduction reference configuration selects `doctoral_reproduction_2026_07_18`, retaining historical storage scalars in their original units and recording the carbon result as `not_physically_interpretable`.
 
 ## Generation and imported electricity
 
-Operational emissions are calculated by multiplying interval generation by the corresponding technology factor. Let \(Q_{a,t}\) denote the electricity supplied by technology or import source \(a\) in interval \(t\), in MWh, and let \(e_a\) denote its factor in kg/MWh. Annual operational emissions are
+Operational emissions multiply generated or imported electricity by its selected factor. In `build_operational_carbon_ledger`, `activity` is the MWh read from `generation_mwh_by_asset` for each `asset_id`; `kg` is the factor converted to kg/MWh. Each `emissions_tco2e` entry records the resulting tonnes, and `operational` sums these entries:
 
-$$M_{op}=\frac{1}{1000}\sum_{a,t}Q_{a,t}e_a.$$
+$$
+\begin{aligned}
+\mathtt{emissions\_tco2e}_{\mathtt{asset\_id}}
+&=\frac{\mathtt{activity}_{\mathtt{asset\_id}}\times
+\mathtt{kg}_{\mathtt{asset\_id}}}{1000},\\
+\mathtt{operational}&=\sum_{\mathtt{asset\_id}}\mathtt{emissions\_tco2e}_{\mathtt{asset\_id}}.
+\end{aligned}
+$$
 
 The result is in tonnes, retaining the CO₂ or CO₂e definition of the selected factor. Zero values in the table refer to the direct operational generation boundary. Equipment-construction emissions are calculated using the capacity-based emissions factors in the next section. Import factors use fixed national averages or fallback values.
 
@@ -28,9 +35,14 @@ The biomass calculation uses the fixed factor of 120 kgCO₂e/MWh in the table. 
 
 ## Construction emissions annualised by power capacity
 
-Construction emissions from generating equipment are annualised by operating power capacity. Let \(P_k\) denote the installed capacity of technology \(k\), in MW, and \(b_k\) its annual construction-emissions factor, in tCO₂e/(MW·year). Then
+Construction emissions are annualised for each operating asset. In `_asset_embodied_lines`, `capacity_mw` is operating power in MW and `factor.value` is its selected annual factor in tCO₂e/(MW·year). The per-asset value `emissions` becomes `line.emissions_tco2e`; `embodied` sums the construction entries:
 
-$$M_{build}=\sum_k P_k b_k.$$
+$$
+\begin{aligned}
+\mathtt{emissions}&=\mathtt{capacity\_mw}\times\mathtt{factor.value},\\
+\mathtt{embodied}&=\sum\mathtt{line.emissions\_tco2e}.
+\end{aligned}
+$$
 
 The following annual factors are those used in the research postprocessing input `embodied_factors_desnz_unece.csv`. The study configuration fixes the factor selection. Open-cycle gas uses the combined-cycle gas construction factor, and the electrolyser uses the literature proxy recorded in that input table.
 
@@ -49,11 +61,16 @@ The following annual factors are those used in the research postprocessing input
 
 ## Storage emissions measured by energy capacity
 
-Battery manufacturing emissions are annualised by rated energy capacity and equipment life. The model uses a manufacturing factor of 89 kgCO₂e/kWh of capacity, the midpoint applied in the Longfield Solar Farm environmental statement of 2022. For capacity \(E\) in MWh and life \(L\) in years, annual manufacturing emissions are
+Battery manufacturing emissions are annualised by rated energy capacity and equipment life. The selected factor is 89 kgCO₂e/kWh of capacity, the midpoint applied in the Longfield Solar Farm environmental statement of 2022. `_asset_embodied_lines` reads `asset.energy_capacity_mwh` in MWh and `economic_life` in years from `economic_lifetime_years`. Annual manufacturing emissions are
 
-$$M_{battery}=\frac{89E}{L}\quad\mathrm{tCO_2e/year}.$$
+$$
+\mathtt{emissions}
+=\frac{89\times\mathtt{asset.energy\_capacity\_mwh}}
+{\mathtt{economic\_life}}
+\quad\mathrm{tCO_2e/year}.
+$$
 
-Hydrogen storage accounts separately for power equipment and energy storage. The energy-storage component uses a lifetime factor of 0.0006 tCO₂e/MWh of capacity, annualised over a 10-year life. It is stored as `ch4_h2_store_lifetime` in `factor_catalog.csv`, with the original thesis Chapter 4 storage parameters recorded as its source. The electrolyser power component uses the annual factor in the preceding section.
+Hydrogen storage accounts separately for power equipment and energy storage. The energy-storage component uses a lifetime factor of 0.0006 tCO₂e/MWh of capacity, annualised over the asset's declared economic life. It is stored as `ch4_h2_store_lifetime` in `factor_catalog.csv`, with the original thesis Chapter 4 storage parameters and their 10-year source lifetime retained in the factor record. The electrolyser power component uses the annual factor in the preceding section.
 
 ## Data and implementation
 

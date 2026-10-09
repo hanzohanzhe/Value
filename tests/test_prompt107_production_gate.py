@@ -28,6 +28,37 @@ from scripts.run_prompt107_production_gate import (
 from gridform_core.market_ledger import validate_market_ledger_file
 
 
+# Local-only inputs of the historical Prompt 107 production gate.  The public
+# source release omits both: the real retained period is excluded by
+# source-release-manifest.json (``.json.gz``; see
+# test_source_release_tree.test_retained_real_prompt107_input_is_local_only)
+# and the Prompt 104 approved studies were never published.  The tests that
+# replay or derive from them run wherever the inputs exist and are skipped,
+# with this reason, everywhere else.
+RETAINED_EXACT_PERIOD_FIXTURE = (
+    production_gate.ROOT / "tests" / "fixtures" / "zonal_solver_failures"
+    / "period-2025-14.json.gz"
+)
+PROMPT104_APPROVED_SOURCES = tuple(
+    production_gate.ROOT / "publication" / name
+    for name in production_gate.PROMPT104_SOURCE_HASHES
+)
+requires_retained_exact_period = pytest.mark.skipif(
+    not RETAINED_EXACT_PERIOD_FIXTURE.is_file(),
+    reason=(
+        "local-only retained real input tests/fixtures/zonal_solver_failures/"
+        "period-2025-14.json.gz is not part of the public source release"
+    ),
+)
+requires_prompt104_sources = pytest.mark.skipif(
+    not all(path.is_file() for path in PROMPT104_APPROVED_SOURCES),
+    reason=(
+        "local-only Prompt 104 approved studies publication/prompt104-*.json "
+        "are not part of the public source release"
+    ),
+)
+
+
 def _write_manifest(root: Path, payload: dict[str, object]) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     path = root / "manifest.json"
@@ -559,7 +590,11 @@ def test_output_root_rejects_reparse_point_without_touching_target(
             execute_stage=lambda stage_id, _packs: calls.append(stage_id) or {},
         )
     finally:
-        if link.exists() or link.is_symlink():
+        if link.is_symlink():
+            # POSIX symlink (os.rmdir refuses one); a Windows junction is a
+            # directory reparse point that os.rmdir removes without its target.
+            link.unlink() if os.name != "nt" else os.rmdir(link)
+        elif link.exists():
             os.rmdir(link)
 
     assert calls == []
@@ -636,6 +671,7 @@ def test_runtime_lineage_allows_ignored_output_from_clean_tree(tmp_path: Path) -
     assert lineage["tracked_file_count"] == 3
 
 
+@requires_prompt104_sources
 def test_preflight_records_revision_lineage_signed_packs_disk_and_candidate_stack(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -736,6 +772,7 @@ def test_preflight_rejects_mismatched_external_accepted_source_lineage(
     assert caught.value.evidence["mismatched_fields"] == ["tree_id"]
 
 
+@requires_retained_exact_period
 def test_exact_period_stage_replays_only_retained_inputs_and_writes_v7_evidence(
     tmp_path: Path,
 ) -> None:
@@ -791,6 +828,8 @@ def test_exact_period_stage_replays_only_retained_inputs_and_writes_v7_evidence(
 
 
 def _exact_output_for_solver_mutation(tmp_path: Path) -> tuple[Path, Path]:
+    if not RETAINED_EXACT_PERIOD_FIXTURE.is_file():
+        pytest.skip(requires_retained_exact_period.kwargs["reason"])
     packs = resolve_required_packs(_pack_store(tmp_path / "force-data"))
     output_root = tmp_path / "production"
     result = build_application_stage_executor(output_root)("exact-periods", packs)
@@ -1208,6 +1247,7 @@ def test_consistent_completed_numerical_warning_is_visible_and_forces_no_go(
     assert caught.value.evidence["unvalidated_periods"] == 1
 
 
+@requires_prompt104_sources
 def test_application_stage_executor_copies_approved_studies_and_uses_explicit_outputs(
     tmp_path: Path,
 ) -> None:
@@ -1257,6 +1297,7 @@ def test_application_stage_executor_copies_approved_studies_and_uses_explicit_ou
     )
 
 
+@requires_prompt104_sources
 def test_failed_application_stage_retains_unvalidated_solver_stack_status(
     tmp_path: Path,
 ) -> None:
@@ -1294,6 +1335,7 @@ def _changed_leaf_paths(
     return set() if original == derived else {prefix}
 
 
+@requires_prompt104_sources
 def test_derived_execution_studies_preserve_source_and_recalculate_only_allowed_identity(
     tmp_path: Path,
 ) -> None:
@@ -1453,6 +1495,7 @@ def _two_year_causal_results(*, include_live_clearing: bool = True) -> list[dict
     ]
 
 
+@requires_prompt104_sources
 def test_two_year_studies_are_deterministically_derived_from_approved_2025_revisions(
     tmp_path: Path,
 ) -> None:
@@ -1498,6 +1541,7 @@ def test_two_year_studies_are_deterministically_derived_from_approved_2025_revis
         ]
 
 
+@requires_prompt104_sources
 def test_24h_executor_runs_matched_rerun_and_records_pair_fingerprint(
     tmp_path: Path,
 ) -> None:
@@ -1533,6 +1577,7 @@ def test_24h_executor_runs_matched_rerun_and_records_pair_fingerprint(
     assert len(result["deterministic_rerun_fingerprint"]) == 64
 
 
+@requires_prompt104_sources
 def test_24h_executor_fails_closed_when_matched_rerun_science_changes(
     tmp_path: Path,
 ) -> None:
@@ -1557,6 +1602,7 @@ def test_24h_executor_fails_closed_when_matched_rerun_science_changes(
     assert result["error_code"] == "GF_PROMPT107_NONDETERMINISTIC_RERUN"
 
 
+@requires_prompt104_sources
 @pytest.mark.parametrize("include_live_clearing", (True, False))
 def test_two_year_executor_requires_attributable_commissioning_to_live_clearing_chain(
     tmp_path: Path,

@@ -43,7 +43,10 @@ THREAD_ENV = ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'BLI
 
 
 class ExecutionArchiveError(ValueError):
-    pass
+    def __init__(self, *args, code=None):
+        super().__init__(*args)
+        # Optional stable code (P0-2: GF_EXECUTION_ARCHIVE_MODULE_RECORD).
+        self.code = code
 
 
 def _canonical(value):
@@ -133,20 +136,45 @@ def _source_roots(source_root, data_home):
             folder = modules / category
             if not folder.exists(): continue
             _no_links(folder)
+            kind = 'module' if category == 'installed' else 'extension'
             for identifier in sorted(folder.iterdir()):
-                if not identifier.is_dir() or identifier.is_symlink(): raise ExecutionArchiveError('Unsafe installer-owned module directory')
+                if not identifier.is_dir() or identifier.is_symlink():
+                    raise ExecutionArchiveError(
+                        'Unsafe installer-owned module directory modules/' + category + '/' + identifier.name
+                        + '; stop VALUE and move it aside with module_recovery park-installation ' + kind + ' '
+                        + identifier.name, code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
                 for version in sorted(identifier.iterdir()):
-                    if not version.is_dir() or version.is_symlink(): raise ExecutionArchiveError('Unsafe installer-owned version directory')
-                    record_path = _no_links(version / 'installation.json')
-                    record = json.loads(record_path.read_text(encoding='utf-8'))
-                    if not isinstance(record, dict): raise ExecutionArchiveError('Invalid installation record')
-                    if not record.get('enabled'): continue
+                    if not version.is_dir() or version.is_symlink():
+                        raise ExecutionArchiveError(
+                            'Unsafe installer-owned version directory modules/' + category + '/' + identifier.name + '/'
+                            + version.name + '; stop VALUE and move it aside with module_recovery park-installation '
+                            + kind + ' ' + identifier.name + ' ' + version.name, code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
                     label = 'modules/' + category + '/' + identifier.name + '/' + version.name
+                    # A damaged installer record must not surface as an anonymous
+                    # failure of every run: name it and point at the offline repair (P0-2).
+                    repair = ('; stop VALUE and move the installation aside with module_recovery park-installation '
+                              + kind + ' ' + identifier.name + ' '
+                              + version.name + " (user guide: 'Offline module recovery')")
+                    try:
+                        record_path = _no_links(version / 'installation.json')
+                        record = json.loads(record_path.read_text(encoding='utf-8'))
+                    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                        raise ExecutionArchiveError(
+                            'Unreadable installation record ' + label + '/installation.json' + repair,
+                            code='GF_EXECUTION_ARCHIVE_MODULE_RECORD') from exc
+                    if not isinstance(record, dict):
+                        raise ExecutionArchiveError('Invalid installation record ' + label + '/installation.json' + repair,
+                                                    code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
+                    if not record.get('enabled'): continue
                     roots.extend([(label + '/installation.json', record_path), (label + '/' + manifest_name, version / manifest_name)])
                     source_kind = record.get('source_root')
                     if source_kind == 'src': roots.append((label + '/src', version / 'src'))
-                    elif source_kind is not None: raise ExecutionArchiveError('Enabled external module declares an unsupported source root')
-                    elif category == 'installed': raise ExecutionArchiveError('Enabled module has no installer-owned source')
+                    elif source_kind is not None:
+                        raise ExecutionArchiveError('Enabled external module declares an unsupported source root (' + label + ')' + repair,
+                                                    code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
+                    elif category == 'installed':
+                        raise ExecutionArchiveError('Enabled module has no installer-owned source (' + label + ')' + repair,
+                                                    code='GF_EXECUTION_ARCHIVE_MODULE_RECORD')
     return roots
 
 
@@ -396,6 +424,17 @@ def _capture_bundle(*, source_roots, environment_roots, metadata, archive_root, 
         record['archive_complete'] = bool(identity_complete and native_complete)
         verify_execution_bundle(record, archive_root=archive_root)
     return record
+
+
+def current_source_sha256(*, source_root: Path, data_home: Path) -> str:
+    """The source half of the execution identity, without the runtime scan.
+
+    Module and extension lifecycle changes alter only this half, so a cheap
+    comparison with a recorded ``source_sha256`` tells whether a queued Run
+    would be refused at worker start (R6-1, EM-中1).
+    """
+    rows, _sources, _records = _scan_roots(_source_roots(source_root, data_home))
+    return _tree_hash(rows)
 
 
 def capture_execution_bundle(*, source_root: Path, data_home: Path, archive_root: Path, archive: bool = False) -> dict:

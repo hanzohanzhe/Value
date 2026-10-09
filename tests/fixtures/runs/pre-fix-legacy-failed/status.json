@@ -1,0 +1,33 @@
+{
+ "contract_validation_status": "passed",
+ "execution_engine": "value-annual-orchestrator/v2",
+ "execution_status": "passed",
+ "id": "pre-fix-legacy-failed",
+ "mode": "full",
+ "modules": {
+  "psm": "value-bid-at-cost-psm",
+  "storage_cost": "value-legacy-storage-tariff"
+ },
+ "project_id": "fixture-study",
+ "results": [
+  {
+   "capacity_mw": {
+    "wind": 10.0
+   },
+   "metrics": {
+    "blackout_mwh": 0.0,
+    "system_cost_gbp": 1000000000.0
+   },
+   "year": 2025
+  }
+ ],
+ "run_policy": {
+  "end_year": 2025,
+  "periods_per_year": 17520,
+  "start_year": 2025
+ },
+ "scientific_validation_artifact": "validation/scientific-validation.json",
+ "scientific_validation_status": "failed",
+ "status": "completed",
+ "updated_at": "2026-10-03T12:00:00+01:00"
+}

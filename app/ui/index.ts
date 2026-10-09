@@ -1,0 +1,23 @@
+// Shared components (P1 frontend overhaul spec 2). Import from here.
+export { Button, IconButton, buttonClass, type ButtonProps, type ButtonVariant, type ButtonSize } from "./Button.tsx";
+export { PageHeader } from "./PageHeader.tsx";
+export { Card, Panel, Disclosure } from "./Card.tsx";
+export { Tabs, nextTabIndex, type TabItem } from "./Tabs.tsx";
+export { useSearchParamState, readSearchParam, writeSearchParam } from "./useSearchParamState.ts";
+export { DataTable, stableRowKeys, type DataColumn } from "./DataTable.tsx";
+export { StatusWord } from "./StatusWord.tsx";
+export { Callout, EmptyState, type CalloutTone, type CalloutAction } from "./Callout.tsx";
+export { Field, TextField, Select, NumberField, type SelectOption } from "./Field.tsx";
+export { checkNumber, numberText, type NumberRules, type NumberCheck } from "./numberField.ts";
+export { FileDrop } from "./FileDrop.tsx";
+export { Hash, shortHash, HASH_PREFIX_LENGTH } from "./Hash.tsx";
+export { Metric } from "./Metric.tsx";
+export { Dialog, Confirm } from "./Dialog.tsx";
+export { Toast, ToastStack, type ToastTone } from "./Toast.tsx";
+export { Skeleton } from "./Skeleton.tsx";
+export { Stepper, type StepItem, type StepState } from "./Stepper.tsx";
+export { ChartFrame, type LegendItem, type ChartTable, type ChartSize } from "./ChartFrame.tsx";
+export { TECH_SERIES, techSeries, type TechSeriesKey, type SeriesStyle, type SeriesPattern } from "./chartPalette.ts";
+export { linearScale, niceTicks, chartHeightFor } from "./chartScale.ts";
+export { UI_STRINGS, fill, type UiStringKey } from "./strings.ts";
+export { useUiStrings, uiStrings, type UiStrings } from "./useUiStrings.ts";

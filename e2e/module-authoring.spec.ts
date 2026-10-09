@@ -117,7 +117,7 @@ test("module author discards late contexts and requires fresh candidate consent 
   await expect(save).toBeEnabled();
   await save.click();
   await expect.poll(() => derived.length).toBe(1);
-  await expect(page).toHaveURL(/[?&]view=run(?:&|$)/);
+  await expect(page).toHaveURL(/\/runs(?:\/|\?|$)/);
   expect(derived).toEqual([{ path: "/api/projects/source-b/derive", body: {
     intent: "edit_module", name: "My module experiment", data_pack_id: "pack-b", source_revision_sha256: sourceB.revision_sha256,
     slot: "storage_cost", module_id: "candidate-b", candidate_identity_sha256: "identity-candidate-b",

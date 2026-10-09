@@ -1,0 +1,48 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "r71",
+  "notes": [
+    "R7-1 (DECISIONS A33, finding P4-05): endogenous (model) investments enter the planning pipeline with the pack's development timeline and regional success rate, as the original Scheme C did (runtime_compat/modular_investment_support.py append_model_investment_to_pipeline: median stage-1 timeline plus success rate). Universal correction: both methodology profiles.",
+    "The planning tables (development_stage_timelines, repd_status_to_timeline, the regional success rates and the timeline statistic) are frozen into the initial state (state.extensions.planning_parameters) so a Run never re-reads the pack. The rule itself is gridform_core/builtin/scheme_c_1000twh/endogenous_planning.py.",
+    "Doctoral trajectories change in multi-year Runs (doctoral golden family re-baselined once, tests/golden/doctoral_trajectory_rebaselines.json finding P4-05; numeric reports in tests/golden/reports and docs/dev/p0-reports/r71-golden/). A new catalogue id changes the applied-corrections identity of both profiles: saved Studies need explicit confirmation (Q13)."
+  ],
+  "corrections": [
+    {
+      "id": "r71.endogenous-planning-timelines",
+      "package": "r71",
+      "findings": [
+        "P4-05",
+        "A33"
+      ],
+      "track": "universal",
+      "scope": "planning_pipeline",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "agent-investment"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Endogenous investments built the next year with certainty",
+        "summary": "Before R7-1 every investment decided by the model was commissioned the year after the decision with success probability 1: the development timelines and regional success rates of the data pack were applied only to REPD projects. With the GBP1/R029 public2 tables an offshore wind decision of 2025 completes in 2033 or 2034 (median 110.1 months) and onshore wind succeeds with 0.36-0.74 depending on the region, so earlier Runs expanded capacity too fast and by up to 1/p too much. VALUE 101 (12-30 month timelines, success 1) is affected only in commissioning dates.",
+        "affected_metrics": [
+          "investment",
+          "capacity",
+          "generation_mix",
+          "prices",
+          "costs"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_r71_endogenous_planning_timelines.SourceRuleParityTests"
+      },
+      "introduced_in": "R7-1 (A33)",
+      "deviation_signature": null,
+      "description": "agent-investment 3.1.0: each endogenous proposal gets its completion year and success probability from the frozen planning tables. Technology label as the original (_tech_label_for_success_rate: batteries -> Battery, gas/CCGT/OCGT/bio_and_waste -> Wind Onshore, others -> Solar Photovoltaics), development status Application Submitted (timeline type from repd_status_to_timeline, normally total_median), stage timeline of the label's technology (solar entry if missing), completion = decision year + floor(round(max(1, months + jitter)) / 12) with the original MD5 jitter of -6..+6 months on 'Model Decision: <owner>', and at least the year after the decision (explicit choice: the original never commissioned a project whose completion fell in its decision year). Success region from the owner name (get_asset_region), rate = region entry, else the label's mean, else 0.75. Expected-capacity admission multiplies capacity by p; seeded stochastic admission draws with planning.random_seed. Retirements still take effect the next year."
+    }
+  ]
+}

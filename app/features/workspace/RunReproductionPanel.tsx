@@ -1,7 +1,9 @@
 "use client";
 
+import { apiFetch, apiUrl } from "../../lib/api.ts";
 import { useEffect, useRef, useState } from "react";
 import "./RunReproductionPanel.css";
+import { useT } from "../../i18n/LocaleProvider";
 
 type Report = {
   schema_version: "value.run-reproduction-capability/v1";
@@ -38,12 +40,13 @@ function isReport(value: unknown): value is Report {
       && artifact.download_url.startsWith(`/api/runs/${value.run_id}/artifacts/`));
 }
 
-export default function RunReproductionPanel({ runId, apiOrigin }: { runId: string; apiOrigin: string }) {
+export default function RunReproductionPanel({ runId }: { runId: string }) {
+  const t = useT();
   const [result, setResult] = useState<{ key: string; report?: Report; error?: string }>();
   const [loadingKey, setLoadingKey] = useState<string>();
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
-  const key = `${apiOrigin}\n${runId}`;
+  const key = runId;
   useEffect(() => {
     generation.current += 1;
     controller.current?.abort();
@@ -57,14 +60,14 @@ export default function RunReproductionPanel({ runId, apiOrigin }: { runId: stri
     setLoadingKey(key);
     setResult(undefined);
     try {
-      const response = await fetch(`${apiOrigin}/api/runs/${encodeURIComponent(runId)}/reproduction-capability`, { signal: abort.signal });
+      const response = await apiFetch(apiUrl(`runs/${encodeURIComponent(runId)}/reproduction-capability`), { signal: abort.signal });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(isRecord(body) && typeof body.error === "string" ? body.error : `检查失败 (${response.status})`);
-      if (!isReport(body)) throw new Error("检查响应格式无效，请重试或检查服务版本");
-      if (body.run_id !== runId) throw new Error("检查返回的 Run 身份不匹配");
+      if (!response.ok) throw new Error(isRecord(body) && typeof body.error === "string" ? body.error : t("reproduction.requestFailed", { status: response.status }));
+      if (!isReport(body)) throw new Error(t("reproduction.invalidResponse"));
+      if (body.run_id !== runId) throw new Error(t("reproduction.identityMismatch"));
       if (generation.current === attempt) setResult({ key, report: body });
     } catch (error) {
-      if (!abort.signal.aborted && generation.current === attempt) setResult({ key, error: error instanceof Error ? error.message : "无法检查历史复现条件" });
+      if (!abort.signal.aborted && generation.current === attempt) setResult({ key, error: error instanceof Error ? error.message : t("reproduction.failed") });
     } finally {
       if (generation.current === attempt) setLoadingKey(undefined);
     }
@@ -72,24 +75,24 @@ export default function RunReproductionPanel({ runId, apiOrigin }: { runId: stri
   const active = result?.key === key ? result : undefined;
   const report = active?.report;
   const checking = loadingKey === key;
-  const status = report?.assessment === "verified_recorded_inputs_and_modules" ? "已核验保存输入与当前模块身份" : report?.assessment === "blocked" ? "存在阻断条件" : "缺少冻结输入快照";
+  const status = t(report?.assessment === "verified_recorded_inputs_and_modules" ? "reproduction.status.verified" : report?.assessment === "blocked" ? "reproduction.status.blocked" : "reproduction.status.noSnapshot");
   return <details key={key} className="run-reproduction-panel">
-    <summary>历史复现条件检查</summary>
-    <p>按需读取保存的快照并核验输入哈希和当前模块身份。检查不会执行模型，也不会创建 Run。</p>
-    <button type="button" disabled={checking} onClick={check}>{checking ? "正在核验…" : "检查此 Run 的保存条件"}</button>
+    <summary>{t("reproduction.summary")}</summary>
+    <p>{t("reproduction.intro")}</p>
+    <button type="button" disabled={checking} onClick={check}>{t(checking ? "reproduction.checking" : "reproduction.check")}</button>
     <div aria-live="polite">
-      {active?.error && <p role="alert">检查失败：{active.error}</p>}
+      {active?.error && <p role="alert">{t("reproduction.error", { error: active.error })}</p>}
       {report && <>
         <p><strong>{status}</strong></p>
-        <p>输入哈希：{report.checks.frozen_input_hashes === "verified" ? "已核验" : "未完成核验"}；当前模块兼容性：{report.checks.current_module_compatibility === "verified" ? "已核验" : "未完成核验"}</p>
-        {report.facts.recorded_data_object_count !== undefined && <p>已记录数据对象：{report.facts.recorded_data_object_count}；现存文件：{report.facts.present_data_object_count}。文件存在不等于哈希已核验。</p>}
-        <p>年度检查点文件：{report.facts.annual_checkpoint_file_count ?? 0}。恢复资格请查看现有 Run 恢复检查。</p>
+        <p>{t("reproduction.checks", { hashes: t(report.checks.frozen_input_hashes === "verified" ? "reproduction.verified" : "reproduction.notVerified"), modules: t(report.checks.current_module_compatibility === "verified" ? "reproduction.verified" : "reproduction.notVerified") })}</p>
+        {report.facts.recorded_data_object_count !== undefined && <p>{t("reproduction.objects", { recorded: report.facts.recorded_data_object_count, present: report.facts.present_data_object_count })}</p>}
+        <p>{t("reproduction.checkpoints", { count: report.facts.annual_checkpoint_file_count ?? 0 })}</p>
         {!!report.blocking_reasons.length && <ul>{report.blocking_reasons.map((reason, index) => <li key={index}>{reason}</li>)}</ul>}
         <ul>{report.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul>
-        <details className="run-reproduction-details"><summary>查看模块与来源文件</summary>
-        {report.facts.snapshot_id && <p className="run-reproduction-identity">快照身份：{report.facts.snapshot_id}</p>}
+        <details className="run-reproduction-details"><summary>{t("reproduction.details")}</summary>
+        {report.facts.snapshot_id && <p className="run-reproduction-identity">{t("reproduction.snapshot", { id: report.facts.snapshot_id })}</p>}
         {!!report.facts.recorded_modules?.length && <ul>{report.facts.recorded_modules.map((module, index) => <li key={`${module.module_id}-${index}`}>{module.module_id} · {module.module_version}</li>)}</ul>}
-        {!!report.metadata_artifacts.length && <><p>保存的元数据：</p><ul>{report.metadata_artifacts.map(artifact => <li key={artifact.path}><a href={`${apiOrigin}${artifact.download_url}`} target="_blank" rel="noreferrer">{artifact.path}</a></li>)}</ul></>}
+        {!!report.metadata_artifacts.length && <><p>{t("reproduction.metadata")}</p><ul>{report.metadata_artifacts.map(artifact => <li key={artifact.path}><a href={artifact.download_url} target="_blank" rel="noreferrer">{artifact.path}</a></li>)}</ul></>}
         </details>
       </>}
     </div>

@@ -1,11 +1,11 @@
-# FORCE 通用 Module 开发与替换 101
+# VALUE 通用 Module 开发与替换 101
 
 [English version](MODULE_DEVELOPER_101.md)
 
 如果你还没有确定应当换 data pack、Study parameter、module，还是平台 contract，
 先读总教程 [`BUILD_YOUR_OWN_MODEL_101_ZH.md`](BUILD_YOUR_OWN_MODEL_101_ZH.md)。
 
-这份手册对应当前仓库真实运行的 `gridform.module/v2` 与年度
+这份手册对应当前仓库真实运行的 `value.module/v2` 与年度
 orchestrator。它适用于 PSM、储能成本、扩张上限、投资、规划管线和年度
 状态转移，而不是只针对竞价。
 
@@ -43,12 +43,12 @@ orchestrator。它适用于 PSM、储能成本、扩张上限、投资、规划�
 
 ## 2. Module 替代的真实原理
 
-FORCE 不是把用户代码复制进 Scheme C，也不是修改原始函数。替代过程是：
+VALUE 不是把用户代码复制进 Scheme C，也不是修改原始函数。替代过程是：
 
 ```text
 module.zip
   -> 安装器验证文件、manifest、入口和契约
-  -> 原子安装到用户 FORCE_DATA_HOME/modules
+  -> 原子安装到用户 VALUE_DATA_HOME/modules
   -> workspace registry 同时加载内置与外部 module
   -> Study 在每个 slot 保存一个 module ID
   -> 启动运行时冻结 module ID、version、contract 和源码 SHA-256
@@ -61,9 +61,18 @@ module.zip
 实现。**它不会覆盖内置文件，也不会删除旧 module。旧 Study 仍保留原 ID、
 版本、参数和哈希，可以回滚或做 A/B 比较。
 
-当前安装器不允许外部包覆盖内置 ID，也不允许用同一个已安装 ID 静默替换
-源码。修改科学实现后应使用新 module ID、version、scientific version 和
-Python package 名。
+当前安装器不允许外部包覆盖内置 ID。对已安装 module 原地修改源码（同 ID、
+同版本）是允许的，会被记录而不是被拒绝（DECISIONS A16-4）：Check readiness
+显示琥珀色警告 `GF_PREFLIGHT_MODULE_SOURCE_CHANGED`，列出安装时和当前的源码
+SHA-256；每个 Run 冻结新的源码哈希；Compare 把该 module 的方法标为已改变。
+安装记录和 scientific version 不会随之更新，所以打算发布或作为方法对照的修改，
+仍应使用新的 module version（或新 ID）、scientific version 和 Python package
+名，并以 bundle 安装。
+
+已安装扩展的 hook 源码适用同一规则（DECISIONS A29），停用后再启用也一样：
+Enable 重新导入 hook，接受原地修改，并在安装记录的 `accepted_source_edits` 中
+追加一条；readiness 显示 `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`。hook 无法导入
+（`GF_EXTENSION_HOOK`），或已安装清单声明的 hook 与安装时不同，Enable 仍然拒绝。
 
 ## 3. 年度模型链与调用位置
 
@@ -97,13 +106,18 @@ orchestrator 拥有年份循环。第三方 module 只实现自己的阶段，�
 
 | Slot | Contract | 必须提供的方法 | 接收 | 返回 |
 | --- | --- | --- | --- | --- |
-| `psm` | `gridform.psm/v2` | `run(model_input)` | `PSMInput` | `MarketYearResult` |
+| `psm` | `value.psm/v2` | `run(model_input)` | `PSMInput` | `MarketYearResult` |
 | `storage_cost` | `value.storage-cost/v1` | `create(**parameters)` | 技术和运行参数 | 年度储能报价对象 |
-| `vre_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | 运行、在运系统、市场结果 | `ExpansionHeadroom` |
-| `storage_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | 同上 | `ExpansionHeadroom` |
-| `investment` | `gridform.investment/v2` | `decide(run, state, market, headroom)` | 市场收入、资产、扩张空间 | `InvestmentDecision` |
-| `pipeline` | `gridform.planning/v2` | `advance_year(...)`, `admit_projects(...)` | 年度状态和投资提案 | `PlanningAdvanceResult`、`PlanningAdmissionResult` |
-| `transition` | `gridform.state-transition/v2` | `apply(run, current_state, planning, investment)` | 本年资产、规划和退出 | 下一年 `YearState` |
+| `vre_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | 运行、在运系统、市场结果 | `ExpansionHeadroom` |
+| `storage_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | 同上 | `ExpansionHeadroom` |
+| `investment` | `value.investment/v2` | `decide(run, state, market, headroom)` | 市场收入、资产、扩张空间 | `InvestmentDecision` |
+| `pipeline` | `value.planning/v2` | `advance_year(...)`, `admit_projects(...)` | 年度状态和投资提案 | `PlanningAdvanceResult`、`PlanningAdmissionResult` |
+| `transition` | `value.state-transition/v2` | `apply(run, current_state, planning, investment)` | 本年资产、规划和退出 | 下一年 `YearState` |
+
+`value-module.json` 中的 `contract_version` 必须与上表完全一致。安装器按
+`gridform_core/v2/module_manifest.py` 的 `SUPPORTED_CONTRACTS` 核对，其他写法一律拒绝，
+包括改名之前的 `gridform.*` 写法；错误代码为 `GF_MODULE_CONTRACT_MISMATCH`，信息例如：
+`Module my-module in slot storage_cost uses gridform.storage-cost/v1; expected value.storage-cost/v1`。
 
 权威接口定义：
 
@@ -294,12 +308,12 @@ capability 只证明形式兼容，不证明科学兼容。具体 module 组合�
 
 ## 7. `module.zip` 的准确格式
 
-它是确定性的 `force.module-bundle/v1`，不是任意 ZIP，也不是 wheel：
+它是确定性的 `value.module-bundle/v1`，不是任意 ZIP，也不是 wheel：
 
 ```text
 my-module.zip
-├── force-bundle.json       # 构建器生成；不要手写
-├── force-module.json       # gridform.module/v2 manifest
+├── force-bundle.json       # 构建器生成的描述文件；不要手写
+├── value-module.json       # value.module/v2 manifest
 ├── LICENSE                 # 必需
 ├── README.md               # 可选，建议包含方法与引用
 └── src/
@@ -307,6 +321,12 @@ my-module.zip
         ├── __init__.py
         └── plugin.py
 ```
+
+描述文件名 `force-bundle.json` 是 VALUE 改名之前留下的兼容名称（见
+[`BRAND_AND_VARIANTS.md`](BRAND_AND_VARIANTS.md)），其 schema 是
+`value.module-bundle/v1`；manifest 文件是 `value-module.json`。slot 的 contract ID
+**没有**沿用旧名：请使用第 4 节表中的 `value.*` ID（例如 `value.storage-cost/v1`），
+写成 `gridform.*` 的包在安装时会被拒绝。
 
 硬性限制：
 
@@ -318,20 +338,20 @@ my-module.zip
 - 安装器离线运行，不执行 `pip`，不下载依赖；
 - 顶层包名不能是 `backend`、`examples`、`gridform_core`、
   `gridform_validation`、`scripts`、`tests`；
-- 外部 Python 在 FORCE 进程内执行，没有 OS 沙箱，只安装可信代码。
+- 外部 Python 在 VALUE 进程内执行，没有 OS 沙箱，只安装可信代码。
 
-## 8. `force-module.json` 怎么写
+## 8. `value-module.json` 怎么写
 
 ```json
 {
-  "schema_version": "gridform.module/v2",
+  "schema_version": "value.module/v2",
   "id": "my-research-module",
   "name": "My research module",
   "version": "1.0.0",
   "scientific_version": "paper-method-2026-01",
   "slot": "investment",
   "implementation": "my_unique_package.plugin:MyInvestment",
-  "contract_version": "gridform.investment/v2",
+  "contract_version": "value.investment/v2",
   "inputs": ["market.year-result", "expansion.headroom"],
   "outputs": ["investment.proposals", "investment.retirements"],
   "parameters": [],
@@ -360,12 +380,12 @@ my-module.zip
 - `scientific_version`：论文方法/算法版本；
 - `slot` 与 `contract_version` 必须匹配；
 - `implementation` 必须是 `src/` 中真实存在的 `package.module:ClassName`；
-- `parameters` 只能声明 FORCE registry 已存在的 ID；
+- `parameters` 只能声明 VALUE 参数注册表中已存在的 ID；
 - `units` 的 key 必须已在 inputs、outputs 或 parameters；
 - `determinism` 只能是 `deterministic`、`seeded` 或 `stochastic`；
 - 外部包必须 `status: ready`、`execution_kind: live_module`。
 
-当前 beta 不能根据第三方 manifest 自动生成新的 Advanced Settings 参数控件。
+当前版本不能根据第三方 manifest 自动生成新的 Advanced Settings 参数控件。
 新参数若要出现在界面，应单独进入参数注册表和前端，不能让 module 偷读本地 JSON。
 
 ## 9. 从零编写的标准流程
@@ -386,7 +406,7 @@ my-module.zip
 
 ```powershell
 py -3.10 scripts\build_module_bundle.py `
-  --manifest path\to\force-module.json `
+  --manifest path\to\value-module.json `
   --source-root path\to\src `
   --license path\to\LICENSE `
   --readme path\to\README.md `
@@ -502,6 +522,75 @@ ZIP 在 staging 中通过验证后，才原子保存 module/version、安装记�
 
 启用/禁用只影响 registry 可见性，不会自动修改 Study。存在 Study 引用时不应
 禁用；禁用也不应删除历史源码和运行记录。
+
+### 隔离
+
+内置 module 出错仍然直接失败（fail-closed）。本地清单读不了、实现导入时抛出
+任何异常（包括 `SystemExit`）、本地条目之间 ID 或命名空间重复时，该条目被隔离：
+不注册，`/api/health` 变为 `degraded`，只有选中它的 Study 会被拒绝。互相冲突的
+本地条目全部隔离，不设隐式赢家；与内置 ID 或命名空间冲突时只隔离本地那一条。
+被 Study 引用的隔离条目也可以停用，只有引用它的活动 Run 会阻止停用。
+
+### 安装与启用后的校验
+
+冲突在写盘前就被拒绝；写盘后先在进程内、再在一个与 worker 启动方式相同的新
+Python 进程中重建注册表，任一层拒绝都会逐字节回滚。导入失败的结果会被记住，
+点 **Rescan**（Modules 页顶部，以及每个停用或隔离条目上都有）才会重试；
+**Enable** 会先清除记住的失败，所以它报告的总是一次新扫描的结果。**Rescan**
+还会重新导入所有已安装的 module 和每个已启用扩展的钩子，所以原地修改把一个已加载的
+module 或扩展钩子改坏时，它会立即被隔离，而不是等到下一次 Check readiness、Run 或重启。
+
+扩展在 Run 中被记录的输出只有两类：`initialize` 返回的状态（存放在扩展命名空间下）和
+`after_psm` 返回的产物（每个模型年一组，在 Inspect 中显示）。`preflight`、`before_psm`、
+`before_cem`、`after_cem`、`transition`、`finalize` 照常在各自位置运行，但返回值不记录；
+从这些钩子返回声明过的产物（带 `artifact_type`）会使 Run 报错并指明钩子，而不是被静默丢弃。
+
+### 停用与隔离区
+
+Modules 页在 module 列表下方列出所有停用或隔离的本地 module 和扩展，每项都有
+**Enable**、**Rescan** 和 **Remove**。选用了其中某项的 Study 做 Check readiness 时，
+会显示阻断错误并禁用 Run 按钮。**Remove** 经确认后，把安装目录和清单移到
+`modules/disabled-manifests/removed/<modules|extensions>/<id>/`，不删除任何文件。
+已启用且正常的条目要先停用才能移除；被保存的 Study、活动 Run 或（扩展的）
+保留运行记录引用的条目不能移除。
+
+同一 ID 安装期间一直被占用（即使已停用）。修好源码后可以原地修复再 Enable 或
+Rescan（按第 2 节记录），也可以先 Remove 再安装修好的 bundle；要发布的方法改动
+应使用新版本。
+
+### 离线自救
+
+`module_recovery list`、`disable module|extension <id>`、
+`park-manifest module|extension <file>`、`park-installation module|extension <id> [<version>]`
+（安装记录损坏时）只读写安装器的文件，不导入任何已安装代码；`verify` 按新 worker
+的方式构建注册表。VALUE 正在使用该数据目录时，这些命令会拒绝执行（`--force` 可
+覆盖），请改用 Modules 页。源码检出中运行 `python -B -m gridform_core.module_recovery ...`；
+安装版须用自带解释器，命令见用户指南“离线模块自救（Offline module recovery）”。
+
+### 修改内置 module（方法升级）
+
+内置 module 在 VALUE 源码树中（`gridform_core/`；保留的 Scheme C 内核在
+`gridform_core/builtin/scheme_c_1000twh/runtime_compat/`）。改变内置 module 的计算
+方式属于方法改动，不能原地静默修改：
+
+1. 修改代码。只应在一个方法学口径中生效的改动，要在
+   `gridform_core/data/methodology/corrections/` 中用 correction id 开关；
+   不得修改保留的 `compat/` 目录。
+2. 同时提高 manifest（`gridform_core/manifests/<id>.json`）和实现类中的版本号。
+3. 在 `docs/release/VERSION_LEDGER.json` 追加一条 bump（`from`、`to`、`package`、
+   `correction_ids`、`reason`、`requires_user_opt_in`）。`true` 表示已保存的 Study
+   运行前要在界面中明确确认方法升级，`false` 只用于纯代码改动。每个 correction id
+   都必须已登记：在 `gridform_core/data/methodology/corrections/` 中，或列在
+   `CHANGELOG.md` 的 “Correction ids” 表中。用
+   `python -B scripts/check_version_ledger.py` 检查；未登记（例如拼错）的 id 会报错，
+   因为它会原样出现在用户看到的确认框里。
+4. 改动 `runtime_compat/` 之后必须登记：
+   `python -B scripts/seal_runtime_overlay.py --correction <id>`（使用该 bump 的 id；
+   未登记的 id 会被拒绝）。登记之前，
+   Check readiness 以 `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED` 拒绝所有 Run；
+   经 API 启动的 Run 会以 `GF_COMPATIBILITY_001` 停止。
+5. 重新生成 `docs/generated/` 并运行测试；数值变化要在同一 correction id 下修订
+   golden。
 
 ## 13. 常见失败
 

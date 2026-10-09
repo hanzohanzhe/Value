@@ -3,16 +3,15 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
 from backend import server
 from gridform_core.module_bundle import build_module_bundle
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,10 +43,8 @@ class ModuleInstallationApiTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(folder), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 untrusted = urllib.request.Request(
                     origin + "/api/modules/install",
@@ -66,7 +63,7 @@ class ModuleInstallationApiTests(unittest.TestCase):
                     headers={
                         "Content-Type": "application/zip",
                         "X-Filename": "example.zip",
-                        "X-Force-Executable-Trust": "acknowledged",
+                        "X-VALUE-Executable-Trust": "acknowledged",
                     },
                 )
                 payload = json.loads(urllib.request.urlopen(trusted, timeout=10).read())
@@ -79,6 +76,23 @@ class ModuleInstallationApiTests(unittest.TestCase):
                     if row["id"] == "example-flat-storage-offer"
                 )
                 self.assertEqual(installed["origin"], "local_bundle")
+                # M-D2 (round R1-5): the workspace names installed modules whose
+                # source was edited in place since install (no import).
+                self.assertEqual(workspace["module_source_changes"], [])
+                record = next(
+                    row for row in workspace["module_installations"]
+                    if row["module_id"] == "example-flat-storage-offer"
+                )
+                sources = sorted((state / "modules").rglob("*.py"))
+                self.assertTrue(sources)
+                edited = next(path for path in sources if path.name != "__init__.py")
+                edited.write_text(edited.read_text(encoding="utf-8") + "\n# edited in place\n", encoding="utf-8")
+                changed = json.loads(
+                    urllib.request.urlopen(origin + "/api/workspace", timeout=10).read()
+                )["module_source_changes"]
+                self.assertEqual([row["module_id"] for row in changed], ["example-flat-storage-offer"])
+                self.assertEqual(changed[0]["installed_sha256"], record["source_sha256"])
+                self.assertNotEqual(changed[0]["current_sha256"], record["source_sha256"])
 
                 project_path = projects / "uses-external" / "project.json"
                 project_path.parent.mkdir(parents=True)
@@ -96,9 +110,7 @@ class ModuleInstallationApiTests(unittest.TestCase):
                 body = json.loads(blocked.exception.read())
                 self.assertEqual(body["error_code"], "GF_MODULE_IN_USE")
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

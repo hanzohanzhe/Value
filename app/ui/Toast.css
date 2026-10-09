@@ -1,0 +1,28 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-toast-stack { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 20; display: grid; gap: var(--sp-2); width: min(420px, calc(100vw - 2 * var(--sp-4))); }
+  .v-toast {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-left-width: 4px;
+    border-radius: var(--r-md);
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: var(--shadow-2);
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+  }
+  .v-toast--success { border-left-color: var(--teal); }
+  .v-toast--error { border-color: var(--red-line); border-left-color: var(--red); background: var(--red-soft); }
+  .v-toast--info { border-left-color: var(--blue); }
+  .v-toast__icon { width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 50%; color: var(--panel); font-size: var(--fs-xs); font-weight: 700; background: var(--blue); }
+  .v-toast--success .v-toast__icon { background: var(--teal); }
+  .v-toast--error .v-toast__icon { background: var(--red); border-radius: var(--r-sm); }
+  .v-toast__dismiss { width: var(--control-h); height: var(--control-h); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink-muted); font-size: var(--fs-lg); cursor: pointer; opacity: 1; }
+  .v-toast__dismiss:hover { background: var(--line-soft); color: var(--ink); }
+}

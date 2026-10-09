@@ -1,12 +1,19 @@
-# FORCE security and supply-chain policy
+# VALUE security and supply-chain policy
 
 ## Release boundary
 
-FORCE 0.5 is a local, loopback-only research application. The browser server,
+VALUE is a local, loopback-only research application. The browser server,
 Python model service, source archive, synthetic data pack, UK benchmark asset
 and executable third-party modules have different trust boundaries. A module
-bundle executes Python in the FORCE process and is not sandboxed. A data bundle
+bundle executes Python in the VALUE process and is not sandboxed. A data bundle
 is non-executable and is fully hashed before atomic installation.
+
+The browser reaches the model service only through the same-origin UI gateway
+(`scripts/value-ui-gateway.mjs`), which checks Host, Sec-Fetch-Site and Origin
+and injects the per-process session token; the model service itself checks
+Host, refuses browser origins, requires the token and has no CORS. The
+assumption is one user per computer. See [SECURITY.md](../SECURITY.md) for the
+full local access boundary and how scripts authenticate.
 
 ## Dependency gates
 
@@ -20,7 +27,7 @@ an unexpired machine-readable disposition for every other finding.
 
 The reviewed package/version identities are also pinned in npm's standard
 `allowScripts` field in `package.json`. The verifier requires that npm-native
-policy and the detailed FORCE review ledger agree, so a future npm release
+policy and the detailed VALUE review ledger agree, so a future npm release
 cannot silently turn an unreviewed lifecycle script into an installation step.
 See the [npm install-script approval documentation](https://docs.npmjs.com/cli/v11/commands/npm-approve-scripts/)
 for the upstream field semantics.
@@ -36,7 +43,7 @@ Accepted findings are not hidden. Each has an owner, reachability analysis,
 exploit surface, fix status, compensating control and review date. The default
 native and retained-reference Python locks currently have no known finding. The
 optional SciPy 1.8.1 finding is retained temporarily because its affected
-`Py_FindObjects` helper is not used by FORCE; changing SciPy requires the
+`Py_FindObjects` helper is not used by VALUE; changing SciPy requires the
 independent LP and numerical regression gates.
 
 ## Checksums and signing
@@ -58,7 +65,7 @@ wheelhouse on an online Windows/Python 3.10 machine, retain every upstream file
 hash and licence, transfer it through an approved medium, and install with
 `pip --no-index --find-links`. JavaScript packages require the same controlled
 npm cache or internal registry process. Do not treat an arbitrary copied cache
-as a FORCE-signed distribution.
+as a VALUE-signed distribution.
 
 The source code, CC0 synthetic pack and rights-cleared UK benchmark asset remain
 separate products. No credential, npm token, GitHub token or private data object

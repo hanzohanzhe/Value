@@ -1,0 +1,22 @@
+/* Single-purpose helpers (spec 1.1). The only !important in the application
+   is in v-visually-hidden, so it hides whatever layer styles the element. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer utilities {
+  .v-visually-hidden, .visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+  .v-nowrap { white-space: nowrap; }
+  .v-num { font-variant-numeric: tabular-nums; text-align: right; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0s; animation-duration: 0s; animation-iteration-count: 1; scroll-behavior: auto; }
+  }
+}

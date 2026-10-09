@@ -1,0 +1,94 @@
+{
+  "schema_version": "value.vre-loss-factors/v1",
+  "table_id": "value-uk-vre-loss-factors-v1",
+  "status": "AUTHOR ACCEPTED (DECISIONS A9, 2026-10-06): the wind loss factors including the offshore total of about 18.5 % and the solar PR 0.83. The solar_plane_of_array model choices (A13) are AUTHOR APPROVED (DECISIONS A16-6, 2026-10-06).",
+  "applies_to": "value-corrected profile only (correction p05.vre-loss-factors; decisions Q15 and A1). The doctoral profile applies no factor.",
+  "method": "Multiplied after the ERA5 -> single-turbine power-curve conversion (wind) or, for solar, after the per-period plane-of-array irradiance of solar_plane_of_array (A13, correction p05.solar-plane-of-array; runs before A13 multiplied the horizontal ssrd/3.6e6 ratio). Per-period shape stays ERA5; curtailment stays a market outcome. There is NO calibration to statistical load factors (Q15, A9).",
+  "compiled_from": "docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md section 3 (central values of table 3.3; every value is a choice inside the cited literature range, not a literature conclusion)",
+  "access_date": "2026-10-06",
+  "technologies": {
+    "onshore": {
+      "multiplier": 0.90307,
+      "components": [
+        {"id": "wake", "central": 0.95, "loss_range": [0.02, 0.07], "source_ids": ["W4", "W5"],
+         "note": "Operational wake loss 1.9-6.4 %, mean 4 % (W4); UK onshore farms are smaller, 5 % chosen."},
+        {"id": "availability", "central": 0.97, "range": [0.89, 0.97], "source_ids": ["W6"],
+         "note": "Industry time-based guarantee 97 %; energy-based availability can be lower (Irish case: 11 % energy loss)."},
+        {"id": "electrical", "central": 0.98, "loss_range": [0.02, 0.03], "source_ids": ["W8"],
+         "note": "Wind-farm annual electrical losses about 2-3 % (W8, excerpt level [E])."}
+      ]
+    },
+    "offshore": {
+      "multiplier": 0.814968,
+      "components": [
+        {"id": "wake", "central": 0.88, "loss_range": [0.08, 0.20], "source_ids": ["W1", "W2", "W3"],
+         "note": "Large offshore farms 10-20 % (W1); European standard farm 8.3 % (W3); 2030 clusters 11-20 % (W2). 12 % chosen for UK clusters."},
+        {"id": "availability", "central": 0.945, "range": null, "source_ids": ["W7"],
+         "note": "SPARTA 2017/18 UK portfolio extracted 94.5 % of available wind energy (single source; range not literature)."},
+        {"id": "electrical", "central": 0.98, "loss_range": [0.02, 0.03], "source_ids": ["W8", "W10"],
+         "note": "Offshore absolute value not verified [NV]; the onshore 2-3 % is used as a lower bound (W10 qualitative)."}
+      ],
+      "author_decision": "DECISIONS A9 (2026-10-06): the offshore total loss of about 18.5 % is accepted although it exceeds the 'about 10-15 %' of Q15; no statistical calibration."
+    },
+    "solar": {
+      "multiplier": 0.83,
+      "components": [
+        {"id": "performance_ratio", "central": 0.83, "range": [0.76, 0.88], "source_ids": ["S1", "S2", "S3", "S4"],
+         "note": "UK fleet mean PR 83 % (S1); 84-88 % (S2, S3); France 76 % (S4) as lower bound. PR is defined on plane-of-array irradiance, so under p05.solar-plane-of-array it multiplies the transposed irradiance of solar_plane_of_array (A13); before A13 it multiplied horizontal GHI and missed the tilt gain."}
+      ]
+    }
+  },
+  "solar_plane_of_array": {
+    "status": "AUTHOR APPROVED (DECISIONS A16-6, 2026-10-06): the author approved the model choices made under DECISIONS A13 directly (Spencer geometry, Erbs decomposition, Hay-Davies transposition, ground albedo 0.2, Jacobson & Jadhav optimal tilt); values unchanged",
+    "applies_to": "value-corrected profile only (correction p05.solar-plane-of-array). The doctoral profile keeps ssrd/3.6e6 on the v1 clock without any factor.",
+    "model": {
+      "tilt": "south-facing plane at the Jacobson & Jadhav (2018) annual-optimal tilt for the site latitude",
+      "geometry": "Spencer (1971) declination, equation of time and eccentricity factor; hour angle from local solar time = UTC + longitude/15 h + equation of time; incidence on an equator-facing plane, Duffie & Beckman (2013) eqs 1.6.5 and 1.6.7",
+      "clock": "geometry at the midpoint of every half-hour period of a 365-day UTC model year (period t: day t//48+1, UTC hour (t mod 48)/2 + 0.25); under weather v2 the ERA5 accumulation served to period t is the hour that contains this midpoint (accumulation_end_of_hour: source stamp t//2+1)",
+      "decomposition": "Erbs, Klein & Duffie (1982) hourly diffuse-fraction correlation kd(kt), kt = GHI / (I0n cos z), kt clipped to [0, 1]",
+      "transposition": "Hay & Davies (1980) anisotropic sky: beam x Rb + diffuse x (Ai Rb + (1 - Ai)(1 + cos tilt)/2), Ai = DNI / I0n; ground reflection GHI x albedo x (1 - cos tilt)/2",
+      "low_sun": "zenith above max_zenith_deg or GHI = 0: no beam component, the GHI is treated as isotropic diffuse (so tilt 0 returns GHI exactly)",
+      "capacity_factor": "min(POA [kW m-2] x performance ratio, 1)"
+    },
+    "tilt_rule": "jacobson-jadhav-2018",
+    "fixed_tilt_deg": null,
+    "tilt_source_ids": ["P8", "P3"],
+    "tilt_note": "Literature optimum fixed tilt for the site latitude, the northern-hemisphere fit of Jacobson & Jadhav (2018): tilt = 1.3793 + lat (1.2011 + lat (-0.014404 + lat 0.000080509)) degrees, about 35.7-37.7 degrees for the GBP1 representative sites (50.7-56.0 N). A13 allows the site latitude instead (textbook rule, P3); on GBP1 it is steeper than the optimum for the diffuse-rich UK climate and gives a smaller gain (sensitivity reported in the methodology draft).",
+    "surface_azimuth": "south",
+    "albedo": 0.2,
+    "albedo_source_ids": ["P3"],
+    "solar_constant_w_m2": 1361.0,
+    "solar_constant_source_ids": ["P5"],
+    "max_zenith_deg": 87.0,
+    "decomposition": "erbs-1982",
+    "decomposition_source_ids": ["P2"],
+    "transposition": "hay-davies-1980",
+    "transposition_source_ids": ["P4", "P6"],
+    "geometry_source_ids": ["P1", "P3", "P7"],
+    "disclosure": "GBP1 weather is an ERA5 2020-2024 average climatology (finding P6-09): averaging smooths the hourly clearness index, so the decomposition gives a larger diffuse share and a smaller tilt gain than single-year hourly data would. The resulting capacity factors are reported next to DUKES 6.3 (A9, A13); they are not calibrated."
+  },
+  "sources": {
+    "W1": "Barthelmie R.J. et al., Wind Energy 12(5):431-444, 2009, doi:10.1002/we.348",
+    "W2": "Hahmann A. et al., EGU26-23045, 2026 (conference abstract, not peer reviewed)",
+    "W3": "Warder S.C. & Piggott M.D., arXiv:2408.15028v2, 2025 (preprint)",
+    "W4": "Simley E. et al., Wind Energy 28(11) e70067, 2025, doi:10.1002/we.70067",
+    "W5": "Lee J.C.Y. & Fields M.J., Wind Energy Science 6:311-365, 2021, doi:10.5194/wes-6-311-2021",
+    "W6": "Conroy N., Deane J.P., O Gallachoir B.P., Renewable Energy 36(11):2967-2971, 2011, doi:10.1016/j.renene.2011.03.044",
+    "W7": "ORE Catapult & The Crown Estate, SPARTA Portfolio Review 2017/18",
+    "W8": "Colmenar-Santos A. et al., Energies 7(11):6856-6885, 2014, doi:10.3390/en7116856",
+    "W10": "Gustavsen B. & Mo O., arXiv:1602.02982, 2016",
+    "S1": "Taylor J. et al. (Sheffield Solar), 31st EU PVSEC, 2015",
+    "S2": "Dhimish M., Case Studies in Thermal Engineering, 2020, doi:10.1016/j.csite.2020.100693",
+    "S3": "Dhimish M., Schofield N., Attya A., IEEE Trans. Industrial Informatics, 2021, doi:10.1109/TII.2020.3022762",
+    "S4": "Leloux J., Narvarte L., Trebosc D., Renewable and Sustainable Energy Reviews 16(2):1369-1376, 2012, doi:10.1016/j.rser.2011.10.018",
+    "P1": "Spencer J.W., Fourier series representation of the position of the sun, Search 2(5):172, 1971",
+    "P2": "Erbs D.G., Klein S.A., Duffie J.A., Estimation of the diffuse radiation fraction for hourly, daily and monthly-average global radiation, Solar Energy 28(4):293-302, 1982, doi:10.1016/0038-092X(82)90302-4",
+    "P3": "Duffie J.A., Beckman W.A., Solar Engineering of Thermal Processes, 4th edition, Wiley, 2013 (chapters 1-2: angle relations, ground reflectance about 0.2 without snow, slope about equal to latitude for maximum annual collection)",
+    "P4": "Hay J.E., Davies J.A., Calculation of the solar radiation incident on an inclined surface, in: Hay J.E., Won T.K. (eds), Proceedings of the First Canadian Solar Radiation Data Workshop, Ministry of Supply and Services Canada, 1980, pp. 59-72",
+    "P5": "Kopp G., Lean J.L., A new, lower value of total solar irradiance: Evidence and climate significance, Geophysical Research Letters 38, L01706, 2011, doi:10.1029/2010GL045777 (1360.8 +- 0.5 W m-2)",
+    "P6": "Loutzenhiser P.G. et al., Empirical validation of models to compute solar irradiance on inclined surfaces for building energy simulation, Solar Energy 81(2):254-267, 2007, doi:10.1016/j.solener.2006.03.009 (comparison of transposition models)",
+    "P7": "Iqbal M., An Introduction to Solar Radiation, Academic Press, 1983 (Spencer series for the equation of time)",
+    "P8": "Jacobson M.Z., Jadhav V., World estimates of PV optimal tilt angles and ratios of sunlight incident upon tilted and tracked PV panels relative to horizontal panels, Solar Energy 169:55-66, 2018, doi:10.1016/j.solener.2018.04.030",
+    "P_note": "P1-P8 are standard textbook and journal references cited from the literature; their bibliographic details were not re-checked online in this unit (no web access was authorised for F2). The author approved the model choices in DECISIONS A16-6 without asking for an online re-check."
+  }
+}

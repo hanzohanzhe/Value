@@ -4,15 +4,14 @@ import json
 import sqlite3
 import sys
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
 from contextlib import closing, redirect_stderr, redirect_stdout
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -228,10 +227,8 @@ class ZonalSolverContractSaveApiTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(folder), patch_state_roots=False)
+            httpd, origin, _session = api.start()
 
             def post(payload: dict[str, object]) -> dict[str, object]:
                 request = urllib.request.Request(
@@ -273,9 +270,7 @@ class ZonalSolverContractSaveApiTests(unittest.TestCase):
                     1,
                 )
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 
@@ -1222,9 +1217,9 @@ class ApplicationServiceTests(unittest.TestCase):
         self.assertEqual([row["year"] for row in stages[::7]], [2025, 2026])
         self.assertEqual({row["module_id"] for row in stages}, set(MODULES.values()) | {"value-annual-state-transition"})
         versions = {row["module_id"]: row["module_version"] for row in stages}
-        self.assertEqual(versions["value-bid-at-cost-psm"], "5.1.0")
-        self.assertEqual(versions["value-storage-expansion-policy"], "4.0.0")
-        self.assertEqual(versions["agent-investment"], "2.2.0")
+        self.assertEqual(versions["value-bid-at-cost-psm"], "5.2.0")
+        self.assertEqual(versions["value-storage-expansion-policy"], "5.1.0")
+        self.assertEqual(versions["agent-investment"], "3.0.0")
         self.assertEqual(versions["planning-pipeline"], "2.2.0")
         self.assertEqual(versions["vre-expansion-cap"], "2.0.0")
         self.assertEqual(versions["value-annual-state-transition"], "2.1.0")

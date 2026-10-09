@@ -19,6 +19,7 @@ from gridform_core.domain_results import (
     query_network_periods,
     query_network_summary,
 )
+from gridform_core.domain_results import _declared_asset_bus_shares
 from gridform_core.network_contracts import (
     AssetBusMapping,
     NetworkBranch,
@@ -53,7 +54,7 @@ def completed_root(root: Path) -> Path:
     return root
 
 
-def run_dc(root: Path, periods: int = 24) -> None:
+def run_dc(root: Path, periods: int = 24, *, split_cheap: bool = False) -> None:
     period_ids = tuple(f"2025:{index}" for index in range(periods))
     chronology = ChronologicalPSMData(
         period_ids, tuple(10.0 for _ in period_ids),
@@ -69,9 +70,11 @@ def run_dc(root: Path, periods: int = 24) -> None:
         ),
         (NetworkBranch("AB", "A", "B", "ac_line", True, 4.0, reactance_pu=0.1),),
         (
-            AssetBusMapping("cheap", "A", "generator"),
-            AssetBusMapping("local", "B", "generator"),
-        ), 100.0,
+            (
+                AssetBusMapping("cheap", "A", "generator", 0.5),
+                AssetBusMapping("cheap", "B", "generator", 0.5),
+            ) if split_cheap else (AssetBusMapping("cheap", "A", "generator"),)
+        ) + (AssetBusMapping("local", "B", "generator"),), 100.0,
     )
     network = NetworkPSMInput(
         root.name, 2025, 1.0, chronology, topology,
@@ -159,6 +162,23 @@ class Prompt83DomainResultTests(unittest.TestCase):
             self.assertEqual(len(summary["source_artifacts"]["period_index_sha256"]), 64)
             self.assertLess(elapsed, 5.0)
 
+    def test_dc_topology_read_model_keeps_split_assets(self):
+        """Review M2-P0-8a: a split asset is absent from asset_to_bus (DC 1.1.0)."""
+
+        with tempfile.TemporaryDirectory(prefix="value-p83-dc-split-") as temporary:
+            root = completed_root(Path(temporary) / "run-dc-split")
+            run_dc(root, periods=4, split_cheap=True)
+            summary = query_network_summary(root, year=2025)
+            self.assertEqual(
+                summary["topology"]["asset_bus_shares"],
+                {"cheap": [["A", 0.5], ["B", 0.5]], "local": [["B", 1.0]]},
+            )
+        # A clearing-input row written before DC 1.1.0 has no share list.
+        self.assertEqual(
+            _declared_asset_bus_shares({"asset_to_bus": {"g": "A", "h": "B"}}),
+            {"g": [["A", 1.0]], "h": [["B", 1.0]]},
+        )
+
     def test_swapped_branch_sign_and_rating_breach_fail_integrity_gate(self):
         with tempfile.TemporaryDirectory(prefix="value-p83-mutant-") as temporary:
             root = completed_root(Path(temporary) / "run-mutant")
@@ -197,6 +217,29 @@ class Prompt83DomainResultTests(unittest.TestCase):
             self.assertEqual(events["items"][0]["asset_id"], "line:AB-2")
             self.assertEqual(capabilities["capabilities"]["hydrology"]["status"], "not_evaluated")
             self.assertIsNotNone(capabilities["capabilities"]["hydrology"]["reason"])
+
+    def test_zonal_ledger_is_a_supported_domain_found_without_count(self):
+        # P0-9 S10 (R3-16): a v6+ zonal ledger keeps its periods in
+        # zonal_period_accounting; both capability views must see it.
+        import inspect
+        import gridform_core.domain_results as domain_results
+        from gridform_core.market_replay import market_replay_capabilities
+        from tests.test_prompt102_zonal_results_api import _write_fixture
+
+        with tempfile.TemporaryDirectory(prefix="value-p83-zonal-") as temporary:
+            root = completed_root(Path(temporary) / "run-zonal")
+            database = root / "model-output" / "market" / "market.sqlite"
+            _write_fixture(database, "summary")
+            zonal = domain_result_capabilities(root)["capabilities"]["zonal_redispatch"]
+            market = market_replay_capabilities(database)
+            empty_root = completed_root(Path(temporary) / "run-single-node")
+            single = domain_result_capabilities(empty_root)["capabilities"]["zonal_redispatch"]
+        self.assertEqual(zonal["status"], "supported")
+        self.assertEqual(zonal["years"], [2025])
+        self.assertTrue(market["zonal_redispatch"])
+        self.assertEqual(single["status"], "unsupported")
+        self.assertNotIn("valid", str(single["reason"]).lower())
+        self.assertNotIn("COUNT(", inspect.getsource(domain_results._zonal_redispatch_capability))
 
 
 if __name__ == "__main__":

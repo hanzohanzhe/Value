@@ -6,17 +6,17 @@ VALUE 用于研究电力系统运行与投资演化。你可以使用已有研�
 
 | 入口 | 你可以做什么 |
 | --- | --- |
-| **reproduce from existing data** | 使用已有数据与模型设置，复现一项研究。 |
-| **add your new data** | 导入并校验自己的数据，保留方法，比较变化。 |
-| **Edit module** | 修改现有模块的公式、算法或规则，并测试影响。 |
-| **add new function to VALUE** | 增加模型能力，同时补齐所需数据、模块和验证。 |
+| **Reproduce from existing data** | 使用已有数据与模型设置，复现一项研究。 |
+| **Add your new data** | 导入并校验自己的数据，保留方法，比较变化。 |
+| **Edit a module** | 修改现有模块的公式、算法或规则，并测试影响。 |
+| **Add a new function to VALUE** | 增加模型能力，同时补齐所需数据、模块和验证。 |
 
 按当前任务选择即可，四条路径可以切换，无需逐级解锁。
 
 ## 第一次使用
 
-1. 从首页选择 **reproduce from existing data**，选择基线并为副本命名；没有基线时，先在 **Learn → VALUE 101** 创建教学研究。
-2. 若使用自己的数据，选择 **add your new data**，复制基础数据包，在 **Data** 选择数据角色，上传标准文件，或为受支持的 CSV 选择来源列和单位，审阅校验报告后提交。校验成功后返回；也可选择其他已安装的基础数据包。新 Study 沿用基线的方法与参数。
+1. 从首页选择 **Reproduce from existing data**，选择基线并为副本命名；没有基线时，先在 **Learn → VALUE 101** 创建教学研究。
+2. 若使用自己的数据，选择 **Add your new data**，复制基础数据包，在 **Data** 选择数据角色，上传标准文件，或为受支持的 CSV 选择来源列和单位，审阅校验报告后提交。校验成功后返回；也可选择其他已安装的基础数据包。新 Study 沿用基线的方法与参数。
 3. 核对配置并创建独立 **Study**。随后在 **Runs → Check for** 选择运行范围，点击 **Check readiness**，核对时段数，再点击 **Run selected scope**。检查和启动使用同一范围。
 4. 从新 Study 的来源提示打开基线 Runs，选择两次运行进行比较；先核对范围和变化维度，再解读结果。
 
@@ -28,11 +28,11 @@ VALUE 用于研究电力系统运行与投资演化。你可以使用已有研�
 
 ## 当前支持的修改方式
 
-**Edit module**：在作者工作台选择槽位，查看输入输出、状态责任与源码；下载模板，在本地实现并打包。使用新的模块 ID 和 Python 包名安装，再选择基线 Study，检查兼容性并创建独立的方法对照。每次只替换一个已有槽位，原 Study 保留，保存不会运行。
+**Edit a module**：在作者工作台选择槽位，查看输入输出、状态责任与源码；下载模板，在本地实现并打包。使用新的模块 ID 和 Python 包名安装，再选择基线 Study，检查兼容性并创建独立的方法对照。每次只替换一个已有槽位，原 Study 保留，保存不会运行。
 
 版本对照显示声明和源码身份差异，契约报告与科学验证分开。模板中的通用方法需要补写；固定储能报价示例可用于接线验证。参数与有限公式调整继续在 Studies 中进行。
 
-**add new function to VALUE**：
+**Add a new function to VALUE**：
 
 1. 在提案生成器填写问题、验证并下载演示扩展包；安装后，在独立 Study 草稿的 **Optional domains** 中启用 experimental 扩展并确认声明。
 2. 打开 **Data**，选择 **Current unsaved Study draft**。在 **Data pack for this draft** 核对基础包，填写 **Independent data pack name**，点击 **Copy data pack for this draft**。副本自动用于当前草稿，已选方法与扩展保留。

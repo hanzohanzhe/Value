@@ -71,7 +71,15 @@ def load_application(archive: Path, expected: str):
         raise ValueError("Input archive contains files outside its inventory.")
     app = {name: data for name, data in members.items() if name.startswith("app/")}
     required = {"app/backend/server.py", "app/dist/server/index.js", "app/app/features/workspace/runScope.ts",
-                "app/public/README.md", "app/gridform_core/application.py"}
+                "app/public/README.md", "app/gridform_core/application.py",
+                # P0-3: an installed backend cannot start a Run without these.
+                "app/backend/worker_entry.py", "app/backend/run_supervisor.py",
+                "app/backend/lifecycle/worker_entry.py", "app/backend/lifecycle/run_status.py",
+                # P0-1: the UI cannot reach the API without its gateway and session.
+                "app/scripts/serve-value-ui.mjs", "app/scripts/value-ui-gateway.mjs", "app/backend/api_session.py",
+                # P0-2: the backend imports these to isolate broken local modules.
+                "app/gridform_core/module_quarantine.py", "app/gridform_core/module_recovery.py",
+                "app/gridform_core/dataset_slots.py"}
     if not required <= app.keys():
         raise ValueError("Accepted four-role application is incomplete.")
     if any(Path(name).suffix.lower() in {".so", ".node", ".dll", ".dylib", ".exe"} for name in app):

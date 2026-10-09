@@ -30,6 +30,24 @@
         "tests/test_prompt99_zonal_redispatch.py::ZonalRedispatchSolverContractTests::test_gbp1_policy_changes_only_primary_lock_allowance",
         "tests/test_prompt99_zonal_redispatch.py::ZonalRedispatchSolverContractTests::test_lock_repair_exhaustion_remains_a_hard_failure"
       ]
+    },
+    {
+      "registry_id": "scipy-1.8.1-highs-ea7abc64-shed-lock-v4",
+      "module_id": "value-zonal-redispatch-balancing",
+      "module_version": "4.0.0",
+      "solver_contract_version": "value.zonal-lexicographic-shed-lock/v4",
+      "scipy_version": "1.8.1",
+      "highs_binary_sha256": "ea7abc641063940981f8d231335373b6609973889bd2c2ecf4c68328c56262b3",
+      "highs_identity": "scipy-embedded-highs:ea7abc641063940981f8d231335373b6609973889bd2c2ecf4c68328c56262b3",
+      "status": "candidate",
+      "evidence_references": [
+        "tests/test_prompt103_zonal_validation.py::Prompt103IndependenceAndAnalyticalTests::test_hand_solvable_cases_match_independent_oracle",
+        "tests/test_prompt103_zonal_validation.py::Prompt103IndependenceAndAnalyticalTests::test_seeded_random_convex_cases_match",
+        "tests/test_p08_zonal_solver_v4.py::ZonalLockScaleTests::test_zonal_lock_scale",
+        "tests/test_p08_zonal_solver_v4.py::OracleAgreementTests::test_oracle_shares_equal_prices_pro_rata_across_resource_classes",
+        "tests/test_p08_zonal_solver_v4.py::OracleAgreementTests::test_oracle_keeps_forced_curtailment_outside_the_pro_rata_group",
+        "tests/test_p08_zonal_solver_v4.py::OracleAgreementTests::test_oracle_shares_the_free_part_after_a_forced_part"
+      ]
     }
   ]
 }

@@ -1,0 +1,15 @@
+/* R-D8 (four-role report, round R1-5): at phone width the older Study
+   composer grid, the Inspect planning filters and the Market replay year
+   selector widened the page beyond the viewport (scrollWidth 488 / 866 / 391
+   at 375 px). Only minimum widths change, and only below 760 px; no colour,
+   type size or desktop layout changes. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+@media (max-width: 760px) {
+  .project-grid > *, .audit-stack > *, .composer-panel .form-section > * { min-width: 0; }
+  .composer-panel .two-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .composer-panel input, .composer-panel select, .composer-panel textarea { min-width: 0; max-width: 100%; }
+  .inline-select, .inline-select select { min-width: 0; max-width: 100%; }
+}
+}

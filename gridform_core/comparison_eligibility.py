@@ -49,8 +49,15 @@ def build_psm_comparison_input_evidence(
     real_demand_mwh: Sequence[float],
     forecast_demand_mwh: Sequence[float],
     availability_mwh_by_technology: Mapping[str, Sequence[float]],
+    boundary_series_sha256: str | None = None,
+    data_method_id: str | None = None,
 ) -> dict[str, object]:
-    """Fingerprint the physical exogenous chronology, independent of zones."""
+    """Fingerprint the physical exogenous chronology, independent of zones.
+
+    P0-5a S4: the boundary series (signed flows and raw prices) and the
+    data-reading method enter the identity when the chronology records them,
+    so two Runs read with different methods are not silently comparable.
+    """
 
     periods = tuple(str(value) for value in period_ids)
     if not periods or len(periods) != len(set(periods)):
@@ -71,6 +78,8 @@ def build_psm_comparison_input_evidence(
         "real_demand_mwh": real,
         "forecast_demand_mwh": forecast,
         "availability_mwh_by_technology": availability,
+        **({"boundary_series_sha256": str(boundary_series_sha256)} if boundary_series_sha256 else {}),
+        **({"data_method_id": str(data_method_id)} if data_method_id else {}),
     }
     return {
         "year": int(year),
@@ -84,6 +93,8 @@ def build_psm_comparison_input_evidence(
         "availability_sha256": _canonical_sha256(availability),
         "real_demand_mwh": sum(real),
         "forecast_demand_mwh": sum(forecast),
+        **({"boundary_series_sha256": str(boundary_series_sha256)} if boundary_series_sha256 else {}),
+        **({"data_method_id": str(data_method_id)} if data_method_id else {}),
         "input_identity_sha256": _canonical_sha256(identity_payload),
     }
 

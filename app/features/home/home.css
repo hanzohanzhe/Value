@@ -1,0 +1,30 @@
+@layer reset, tokens, base, components, features, utilities;
+
+/* Home (/), P1 spec 6.1: a guiding layout (Home and Learn may use the 28 px title). */
+@layer features {
+.home-page { display: grid; gap: var(--sp-5); min-width: 0; }
+.home-hero { display: grid; gap: var(--sp-2); max-width: 860px; min-width: 0; }
+.home-kicker { color: var(--blue); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .06em; }
+.home-hero h2 { margin: 0; color: var(--ink); font-size: var(--fs-3xl); line-height: var(--lh-heading); }
+.home-hero p { margin: 0; color: var(--ink-muted); font-size: var(--fs-md); line-height: var(--lh-body); }
+.home-quick-start { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.home-scope { color: var(--amber); font-size: var(--fs-xs); font-weight: 650; }
+.home-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--sp-4); min-width: 0; }
+.home-facts { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.home-facts > div { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.home-facts dt { color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 650; }
+.home-facts dd { display: grid; gap: var(--sp-1); margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.home-facts b { font-size: var(--fs-sm); }
+.home-facts small { color: var(--ink-muted); font-size: var(--fs-xs); }
+.home-run-list { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.home-run-list > li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-width: 0; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line-soft); }
+.home-run-list > li:last-child { border-bottom: 0; }
+.home-run-list a { display: grid; gap: var(--sp-1); min-width: 0; color: var(--ink); text-decoration: none; }
+.home-run-list a:hover b { color: var(--blue-dark); text-decoration: underline; }
+.home-run-list b { font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.home-run-list small { color: var(--ink-muted); font-size: var(--fs-xs); }
+.home-run-list code.home-run-id { color: var(--ink-muted); font-family: var(--font-mono); font-size: var(--fs-2xs); overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .home-facts > div { grid-template-columns: minmax(0, 1fr); }
+}
+}

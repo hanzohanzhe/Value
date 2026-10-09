@@ -19,6 +19,7 @@ from netCDF4 import Dataset
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from gridform_core.canonical_psm_data import build_chronology
+from gridform_core.data_method import run_policy
 from gridform_core.v2.contracts import AssetStateV2, OperatingState
 
 
@@ -54,7 +55,7 @@ def main():
         if tech:
             assets.append(AssetStateV2(name, tech, 1.0))
     chronology = build_chronology(args.pack, manifest, OperatingState(2025, assets, ()),
-                                  periods=17520, period_hours=0.5)
+                                  periods=17520, period_hours=0.5, data_policy=run_policy(manifest))
     rows = {r.asset_id: r for r in chronology.resources}
     results = []
     with Dataset(str(args.pack / bindings["weather.wind"]["uri"])) as wind, \

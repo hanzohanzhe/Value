@@ -1,14 +1,22 @@
 "use client";
 
+// The optional VALUE 101 network lesson (P1 spec 6.1).  F4-07: the button of a
+// case opens that Study's latest Run (newest created; the workspace lists Runs
+// by last update), the install hint names no platform, and the request goes
+// through the single API client with the Study ID encoded.
+import { apiFetch, apiUrl } from "../../lib/api.ts";
 import { useMemo, useState } from "react";
+import { useT } from "../../i18n/LocaleProvider";
+import { latestRunFor } from "../shared/latestRun.ts";
+import { value101NetworkPairPath } from "./value101-api.mjs";
 
 import type { Value101NetworkPair, Value101StudyDraft } from "./value101";
-import { value101ApiUrl } from "./value101-api.mjs";
 
 type TeachingRun = {
   id: string;
   project_id: string;
   status: string;
+  created_at?: string | null;
 };
 
 // This view and its actions identify saved Studies; the complete run configuration
@@ -34,6 +42,7 @@ export default function Value101NetworkExercise({
   onRunStudy: (study: Value101NetworkStudy) => void;
   onOpenRun: (runId: string) => void;
 }) {
+  const t = useT();
   const [preview, setPreview] = useState<Value101NetworkPair | null>(null);
   const [created, setCreated] = useState<Value101NetworkPair["studies"] | null>(null);
   const [busy, setBusy] = useState<"preview" | "create" | "">("");
@@ -50,21 +59,20 @@ export default function Value101NetworkExercise({
         : null
     );
   }, [created, savedStudies]);
-  const latestRun = (projectId: string) => runs.filter((run) => run.project_id === projectId).at(-1);
-  const copperplateRun = studies ? latestRun(studies.copperplate.id) : undefined;
-  const constrainedRun = studies ? latestRun(studies.constrained.id) : undefined;
+  const copperplateRun = studies ? latestRunFor(runs, studies.copperplate.id) : undefined;
+  const constrainedRun = studies ? latestRunFor(runs, studies.constrained.id) : undefined;
 
   async function request(dryRun: boolean) {
     setBusy(dryRun ? "preview" : "create");
     setError("");
     try {
-      const response = await fetch(value101ApiUrl(`/tutorials/value-101/studies/${baselineStudyId}/network-pair`), {
+      const response = await apiFetch(apiUrl(value101NetworkPairPath(baselineStudyId)), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dry_run: dryRun }),
       });
-      const payload = await response.json() as Value101NetworkPair & { error?: string };
-      if (!response.ok) throw new Error(payload.error || "The matched network exercise could not be prepared.");
+      const payload = await response.json().catch(() => ({})) as Value101NetworkPair & { error?: string };
+      if (!response.ok) throw new Error(payload.error || t("learn.network.prepareFailed"));
       if (dryRun) setPreview(payload);
       else {
         setCreated(payload.studies);
@@ -82,14 +90,14 @@ export default function Value101NetworkExercise({
     else onRunStudy(study);
   }
 
-  return <section className="value101-network-exercise" aria-label="VALUE 101 optional network exercise">
-    <header><div><span>Optional lesson</span><h3>{"Network constraints & redispatch"}</h3><p>Hold the national demand, fleet, weather, bid-at-cost ahead market and model years fixed. Both cases run all 17,520 half-hours in 2025 and 2026, including the annual investment, planning and transition chain.</p></div><b>North · Central · South</b></header>
-    <div className="network-method-boundary"><b>Method boundary</b><p>This is a lossless zonal transport and pay-as-bid redispatch exercise; it is not DC load flow, AC power flow or N-1 security. It contains no transmission expansion implementation.</p></div>
-    {!installed && <p className="error-box">The optional VALUE 101 network pack is not installed. Re-run the standard Windows installer; the core course remains available.</p>}
-    <div className="network-pair-actions"><button className="secondary" disabled={!installed || !baselineStudyId || Boolean(busy)} onClick={() => void request(true)}>{busy === "preview" ? "Checking…" : "Preview matched pair"}</button><button className="primary" disabled={!preview?.identity.only_network_delivery_changed || Boolean(busy) || Boolean(studies)} onClick={() => void request(false)}>{busy === "create" ? "Creating…" : "Create matched Studies"}</button></div>
+  return <section className="value101-network-exercise" aria-label={t("learn.network.label")}>
+    <header><div><span>{t("learn.network.kicker")}</span><h3>{t("learn.network.title")}</h3><p>{t("learn.network.lead")}</p></div><b>{t("learn.network.zones")}</b></header>
+    <div className="network-method-boundary"><b>{t("learn.network.boundaryTitle")}</b><p>{t("learn.network.boundary")}</p></div>
+    {!installed && <p className="error-box">{t("learn.network.notInstalled")}</p>}
+    <div className="network-pair-actions"><button className="secondary" disabled={!installed || !baselineStudyId || Boolean(busy)} onClick={() => void request(true)}>{busy === "preview" ? t("learn.network.checking") : t("learn.network.preview")}</button><button className="primary" disabled={!preview?.identity.only_network_delivery_changed || Boolean(busy) || Boolean(studies)} onClick={() => void request(false)}>{busy === "create" ? t("learn.network.creating") : t("learn.network.create")}</button></div>
     {error && <p className="error-box" role="alert">{error}</p>}
-    {preview && <section className="network-pair-preview"><b>{preview.identity.only_network_delivery_changed ? "Controlled pair ready" : "Controlled comparison refused"}</b><dl><div><dt>Ahead inputs</dt><dd>{preview.identity.ahead_inputs_identical ? "Identical" : "Different"}</dd></div><div><dt>National demand authority</dt><dd>{preview.identity.same_national_demand_authority ? "Identical" : "Different"}</dd></div><div><dt>Delivery method</dt><dd>{preview.identity.network_method.replaceAll("_", " ")}</dd></div><div><dt>Changed controls</dt><dd>{preview.identity.controlled_dimensions.join(", ")}</dd></div></dl><small>The ahead schedule is checked from stored results after both Runs; this preview does not claim an outcome.</small></section>}
-    {studies && <div className="network-study-pair"><article><span>Control</span><h4>Copperplate delivery</h4><p>National ahead market followed by unconstrained balancing.</p><button className="secondary" disabled={launching} onClick={() => runOrOpen(studies.copperplate, copperplateRun)}>{copperplateRun ? `Open copperplate · ${copperplateRun.status}` : "Run copperplate"}</button></article><article><span>Network case</span><h4>Fixed three-zone delivery</h4><p>The same ahead market followed by constrained zonal redispatch.</p><button className="primary" disabled={launching} onClick={() => runOrOpen(studies.constrained, constrainedRun)}>{constrainedRun ? `Open constrained · ${constrainedRun.status}` : "Run constrained"}</button></article></div>}
-    {constrainedRun && ["completed", "archived"].includes(constrainedRun.status) && <button className="audit-link" onClick={() => onOpenRun(constrainedRun.id)}>Open network results</button>}
+    {preview && <section className="network-pair-preview"><b>{preview.identity.only_network_delivery_changed ? t("learn.network.ready") : t("learn.network.refused")}</b><dl><div><dt>{t("learn.network.aheadInputs")}</dt><dd>{preview.identity.ahead_inputs_identical ? t("learn.network.identical") : t("learn.network.different")}</dd></div><div><dt>{t("learn.network.demandAuthority")}</dt><dd>{preview.identity.same_national_demand_authority ? t("learn.network.identical") : t("learn.network.different")}</dd></div><div><dt>{t("learn.network.deliveryMethod")}</dt><dd>{preview.identity.network_method.replaceAll("_", " ")}</dd></div><div><dt>{t("learn.network.changedControls")}</dt><dd>{preview.identity.controlled_dimensions.join(", ")}</dd></div></dl><small>{t("learn.network.previewNote")}</small></section>}
+    {studies && <div className="network-study-pair"><article><span>{t("learn.network.controlKicker")}</span><h4>{t("learn.network.controlTitle")}</h4><p>{t("learn.network.controlBody")}</p><button className="secondary" disabled={launching} onClick={() => runOrOpen(studies.copperplate, copperplateRun)}>{copperplateRun ? t("learn.network.openCopperplate", { status: copperplateRun.status }) : t("learn.network.runCopperplate")}</button></article><article><span>{t("learn.network.caseKicker")}</span><h4>{t("learn.network.caseTitle")}</h4><p>{t("learn.network.caseBody")}</p><button className="primary" disabled={launching} onClick={() => runOrOpen(studies.constrained, constrainedRun)}>{constrainedRun ? t("learn.network.openConstrained", { status: constrainedRun.status }) : t("learn.network.runConstrained")}</button></article></div>}
+    {constrainedRun && ["completed", "archived"].includes(constrainedRun.status) && <button className="audit-link" onClick={() => onOpenRun(constrainedRun.id)}>{t("learn.network.openResults")}</button>}
   </section>;
 }

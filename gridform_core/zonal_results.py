@@ -17,11 +17,16 @@ from typing import Iterable, Mapping, Sequence
 
 from .market_ledger import (
     ATTRIBUTION_SCHEMA_VERSIONS,
+    BOUNDARY_SHADOW_SEMANTICS_V1,
+    SCHEMA_VERSION as MARKET_LEDGER_SCHEMA_VERSION,
+    BOUNDARY_SHADOW_SEMANTICS_V2,
+    public_boundary_row,
     _read_only_connection,
     market_ledger_capabilities,
     network_solver_evidence_errors,
 )
 from .zonal_solver_contract import (
+    V3_SOLVER_CONTRACT_VERSION,
     RECORDED_REFERENCE_THRESHOLDS,
     DEFAULT_VALIDATED_CEILINGS,
     ObjectiveLockDiagnostic,
@@ -38,9 +43,186 @@ ANNUAL_BRIEF_SCHEMA = "value.zonal-annual-brief/v2"
 LEGACY_ATTRIBUTION_REASON = (
     "legacy_contract_did_not_measure_avoided_curtailment"
 )
-SHADOW_VALUE_SEMANTICS = (
-    "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost"
+# R7-5: the authoritative v8 ledger keeps network_solver_diagnostics only under
+# the full trace profile (a full-only table). A summary-trace Run therefore has
+# no per-period solver diagnostics by design; that is reported as this status,
+# not as invalid evidence. A full-trace Run that lacks rows is still invalid.
+SOLVER_EVIDENCE_NOT_RECORDED_UNDER_TRACE_PROFILE = "not_recorded_under_trace_profile"
+SOLVER_EVIDENCE_TRACE_PROFILE_REASON = (
+    "per_period_solver_diagnostics_recorded_only_with_full_trace"
 )
+# P0-8 S10: v2 boundary values are primary-stage duals; v1 (pre-P0-8b)
+# ledgers recorded a hard-coded 0.0 and are read as not_computed.
+SHADOW_VALUE_SEMANTICS = BOUNDARY_SHADOW_SEMANTICS_V2
+LEGACY_SHADOW_VALUE_SEMANTICS = BOUNDARY_SHADOW_SEMANTICS_V1
+BOUNDARY_SHADOW_DEFECT = {
+    "defect_id": "p08.boundary-shadow-not-computed",
+    "finding_ids": ["P2-06", "F3-05"],
+    "severity": "high",
+    "summary": (
+        "Recorded before P0-8b: the boundary marginal value was written as a "
+        "hard-coded 0.0 and never computed, also on boundaries at their limit."
+    ),
+    "affected_outputs": [
+        "boundary_period_summary.boundary_shadow_value_gbp_per_mwh",
+        "zonal_accounting_gbp.boundary_shadow_value_gbp",
+    ],
+    "remedy": "Shown as not computed; re-run with staged PSM 1.3.0 for primary-stage duals.",
+}
+
+
+def _boundary_semantics(metadata: Mapping[str, object]) -> str:
+    return (
+        SHADOW_VALUE_SEMANTICS
+        if metadata.get("boundary_shadow_semantics") == SHADOW_VALUE_SEMANTICS
+        else LEGACY_SHADOW_VALUE_SEMANTICS
+    )
+# One declared reporting threshold for load shedding (P0-8 S6).  Shedding at
+# or below it is numerical residue, never a reliability event or an affected
+# zone; it is reported separately as numerical_residual_unserved_mwh.
+LOAD_SHEDDING_REPORTING_THRESHOLD_MWH = 1e-6
+# Known method defects of historical ledgers, derived when reading; stored
+# values are never rewritten (P0-8 S6).
+V3_LOCK_DEFECT = {
+    "defect_id": "p08.zonal-v3-gbp1-lock",
+    "finding_ids": ["P2-01", "F3-01", "P3-09", "R2-02", "P2-07"],
+    "severity": "critical",
+    "summary": (
+        "Recorded under zonal solver contract v3: later lexicographic phases "
+        "could spend the GBP 1 primary allowance, creating about "
+        "1/(VOLL - price) MWh of spurious load shedding per redispatch period, "
+        "spurious reliability events and asset-ID dependent dispatch shifts."
+    ),
+    "affected_outputs": [
+        "reliability_event", "zone_period_summary.load_shedding_mwh",
+        "physical_dispatch", "network_solver_diagnostics.validation_class",
+    ],
+    "remedy": "Re-run with solver contract v4 (migration recovery).",
+}
+
+
+# Known method defects of ledgers written before P0-8b (derived from the
+# absence of the P0-8b ledger metadata; stored values are never rewritten).
+DEC_PRICING_DEFECT = {
+    "defect_id": "p08.staged-dec-zero-pricing",
+    "finding_ids": ["P2-05", "P3-04"],
+    "severity": "high",
+    "summary": (
+        "Recorded before staged PSM 1.3.0: every balancing dec bid was priced at "
+        "GBP 0, so whether a fuel unit or a VRE asset was decremented depended on "
+        "its id, and a decremented thermal unit kept a windfall."
+    ),
+    "affected_outputs": [
+        "redispatch_settlement", "zonal_resource_dispatch", "vre_curtailment_period",
+        "market_income_gbp_by_agent",
+    ],
+    "remedy": "Re-run with staged PSM 1.3.0 (migration recovery).",
+}
+COUNTERFACTUAL_DEFECT = {
+    "defect_id": "p08.copperplate-counterfactual-mismatch",
+    "finding_ids": ["P2-02", "P2-03", "P2-04"],
+    "severity": "high",
+    "summary": (
+        "Recorded before the network-free LP counterfactual: the copperplate "
+        "reference cases left out VOLL, used static unit prices and could not "
+        "export, so network constraint cost and the redispatch curtailment "
+        "attribution also contain non-network effects."
+    ),
+    "affected_outputs": [
+        "zonal_period_accounting.network_constraint_cost_gbp",
+        "zonal_period_accounting.forecast_error_cost_gbp",
+        "vre_curtailment_period.redispatch_added_curtailment_mwh",
+        "vre_curtailment_period.redispatch_avoided_curtailment_mwh",
+    ],
+    "remedy": "Re-run with staged PSM 1.3.0 (migration recovery).",
+}
+ZONAL_ACCOUNTING_SCHEMA_V2 = "value.zonal-period-accounting/v2"
+
+
+def query_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
+    """Read the per-year run-time fallback audits written beside the ledger.
+
+    ``None`` when the Run wrote none (copperplate, or a ledger from before
+    P0-8 S12; status ``not_recorded`` is for the caller to show).
+    """
+
+    paths = sorted(Path(market_dir).glob("runtime-fallback-audit-*.json"))
+    if not paths:
+        return None
+    years = []
+    for path in paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, Mapping) or payload.get("schema_version") != "value.zonal-runtime-fallback-audit/v1":
+            raise ValueError(f"Invalid runtime fallback audit: {path.name}")
+        years.append(dict(payload))
+    indicative = [
+        {
+            "year": int(year["year"]),
+            "technology": str(row["technology"]),
+            "fallback_fraction": float(row["fallback_fraction"]),
+            "fallback_mw": float(row["fallback_mw"]),
+            "fallback_zone_ids": list(year.get("fallback_zone_ids") or []),
+        }
+        for year in years
+        for row in year.get("by_technology", ())
+        if row.get("spatially_indicative")
+    ]
+    return {
+        "schema_version": "value.zonal-runtime-fallback-summary/v1",
+        "years": years,
+        "spatially_indicative": bool(indicative),
+        "spatially_indicative_technologies": indicative,
+    }
+
+
+def guarded_runtime_fallback_audit(market_dir: Path) -> dict[str, object] | None:
+    """``query_runtime_fallback_audit`` that degrades instead of raising.
+
+    A malformed or wrong-schema audit file must not take down the read models
+    that show it (capabilities, run summary): it becomes ``status: invalid``
+    with the error text, and the ledger stays readable (M2-P0-8a review).
+    """
+
+    try:
+        return query_runtime_fallback_audit(market_dir)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return {
+            "schema_version": "value.zonal-runtime-fallback-summary/v1",
+            "status": "invalid",
+            "error": str(exc),
+        }
+
+
+def is_reportable_shedding(value: object) -> bool:
+    """True when a load-shedding quantity is above the reporting threshold."""
+
+    return float(value) > LOAD_SHEDDING_REPORTING_THRESHOLD_MWH
+
+
+def ledger_known_defects(connection: sqlite3.Connection, tables: set[str]) -> list[dict[str, object]]:
+    """Known method defects of one ledger, from its recorded solver evidence."""
+
+    defects: list[dict[str, object]] = []
+    if "network_solver_diagnostics" in tables:
+        row = connection.execute(
+            "SELECT COUNT(*) FROM network_solver_diagnostics "
+            "WHERE solver_contract_version=?",
+            (V3_SOLVER_CONTRACT_VERSION,),
+        ).fetchone()
+        if row and int(row[0] or 0):
+            defects.append({**V3_LOCK_DEFECT, "evidence_rows": int(row[0])})
+    if tables.intersection({"zonal_period_accounting", "zonal_period_summary"}):
+        metadata = _decoded_metadata(connection) if "metadata" in tables else {}
+        if not metadata.get("network_method_rules"):
+            defects.append(dict(DEC_PRICING_DEFECT))
+        if metadata.get("zonal_accounting_schema") != ZONAL_ACCOUNTING_SCHEMA_V2:
+            defects.append(dict(COUNTERFACTUAL_DEFECT))
+        if (
+            "boundary_period_summary" in tables
+            and _boundary_semantics(metadata) != SHADOW_VALUE_SEMANTICS
+        ):
+            defects.append(dict(BOUNDARY_SHADOW_DEFECT))
+    return defects
 
 
 def _decoded_metadata(connection: sqlite3.Connection) -> dict[str, object]:
@@ -363,6 +545,53 @@ def build_solver_validation_summary(
     }
 
 
+def _trace_profile_without_solver_diagnostics(
+    connection: sqlite3.Connection,
+) -> str | None:
+    """R7-5: the trace profile of a v8 ledger that records no solver rows.
+
+    Mirrors ``validate_market_ledger_file``: v8 checks solver evidence only
+    under the full trace profile. Legacy ledgers (v7) always carry the rows.
+    """
+
+    try:
+        metadata = dict(connection.execute(
+            "SELECT key, value FROM metadata "
+            "WHERE key IN ('schema_version', 'trace_level')"
+        ).fetchall())
+    except sqlite3.DatabaseError:
+        return None
+    if str(metadata.get("schema_version")) != MARKET_LEDGER_SCHEMA_VERSION:
+        return None
+    trace_level = str(metadata.get("trace_level") or "unknown")
+    return None if trace_level == "full" else trace_level
+
+
+def solver_evidence_not_recorded_under_trace_profile(
+    trace_level: str,
+) -> dict[str, object]:
+    """The solver summary of a Run whose trace profile omits diagnostics."""
+
+    return {
+        "schema_version": "value.solver-validation-summary/v1",
+        "annual_status": "NOT_RECORDED",
+        "study_status": "NOT_RECORDED",
+        "solver_validated": False,
+        "solver_stack_validation_status": "solver_stack_not_yet_validated",
+        "inherited_unvalidated": False,
+        "first_causal_period": None,
+        "row_count": 0,
+        "warning_periods": 0,
+        "unvalidated_periods": 0,
+        "maximum_validated_ceiling_use": 0.0,
+        "phases": {},
+        "evidence_status": SOLVER_EVIDENCE_NOT_RECORDED_UNDER_TRACE_PROFILE,
+        "evidence_reason": SOLVER_EVIDENCE_TRACE_PROFILE_REASON,
+        "trace_level": trace_level,
+        "evidence_errors": [],
+    }
+
+
 def query_solver_validation_summary(
     database: Path,
     *,
@@ -379,9 +608,27 @@ def query_solver_validation_summary(
         ).fetchone()
         if table is None:
             return None
-        evidence_errors = network_solver_evidence_errors(connection, year=year)
         where = "WHERE year=?" if year is not None else ""
         values: tuple[object, ...] = (year,) if year is not None else ()
+        trace_profile = _trace_profile_without_solver_diagnostics(connection)
+        profile_errors: list[str] = []
+        if trace_profile is not None:
+            stored_rows = int(connection.execute(
+                "SELECT COUNT(*) FROM network_solver_diagnostics"
+            ).fetchone()[0])
+            if stored_rows == 0:
+                return solver_evidence_not_recorded_under_trace_profile(
+                    trace_profile
+                )
+            # The writer never stores these rows below full trace: rows that
+            # are present anyway break the ledger contract.
+            profile_errors.append(
+                f"{trace_profile}_contains_full_only_rows:"
+                f"network_solver_diagnostics:{stored_rows}"
+            )
+        evidence_errors = profile_errors + network_solver_evidence_errors(
+            connection, year=year
+        )
         rows = connection.execute(
             "SELECT * FROM network_solver_diagnostics "
             f"{where} ORDER BY run_id, year, period, CASE phase_id "
@@ -468,6 +715,7 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
                     ),
                     "detail_location": "market.sqlite:zonal_demand_alignment",
                 }
+        known_defects = ledger_known_defects(connection, tables)
     trace_level = str(metadata.get("trace_level") or "off")
     return {
         "schema_version": "value.zonal-workspace-capabilities/v1",
@@ -505,13 +753,34 @@ def zonal_workspace_capabilities(database: Path) -> dict[str, object]:
             metadata.get("network_semantics")
             or "lossless_computational_transport_with_etys_cutsets"
         ),
-        "boundary_value_semantics": SHADOW_VALUE_SEMANTICS,
+        "boundary_value_semantics": _boundary_semantics(metadata),
+        "boundary_shadow_value_available": (
+            _boundary_semantics(metadata) == SHADOW_VALUE_SEMANTICS
+        ),
         "reliability_semantics": "observed_chronology_not_statistical_lole",
+        "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
+        "known_defects": known_defects,
+        "runtime_fallback_audit": guarded_runtime_fallback_audit(Path(database).parent),
         "security_scope": "not_a_security_analysis",
         "unsupported_scope": [
             "AC_power_flow", "voltage_security", "contingency_security", "dynamic_stability"
         ],
     }
+
+
+def zonal_year_bounds(database: Path) -> dict[int, tuple[int, int, int]]:
+    """``{year: (first, last, distinct periods)}`` of the zonal accounting table (P0-9 S5)."""
+
+    ledger_schema_version = str(market_ledger_capabilities(database)["ledger_schema_version"])
+    period_table = "zonal_period_accounting" if ledger_schema_version in ATTRIBUTION_SCHEMA_VERSIONS else "zonal_period_summary"
+    with _read_only_connection(database) as connection:
+        tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if period_table not in tables:
+            return {}
+        rows = connection.execute(
+            f"SELECT year, MIN(period), MAX(period), COUNT(DISTINCT period) FROM {period_table} GROUP BY year ORDER BY year"
+        ).fetchall()
+    return {int(year): (int(first), int(last), int(count)) for year, first, last, count in rows}
 
 
 def query_zonal_annual_brief(database: Path) -> dict[str, object]:
@@ -641,15 +910,26 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
                     item = dict(row)
                     technology_by_year.setdefault(int(item["year"]), []).append(item)
 
+        boundary_semantics = _boundary_semantics(
+            _decoded_metadata(connection) if "metadata" in tables else {}
+        )
         congestion = {
             int(row["year"]): dict(row) for row in connection.execute("""
                 SELECT year,
                     SUM(CASE WHEN utilisation_fraction >= 0.999999 THEN 1 ELSE 0 END)
                         AS congested_boundary_periods,
-                    MAX(utilisation_fraction) AS maximum_boundary_utilisation_fraction
+                    MAX(utilisation_fraction) AS maximum_boundary_utilisation_fraction,
+                    SUM(CASE WHEN shadow_value_semantics LIKE ? AND
+                             shadow_value_semantics NOT LIKE '%|status=not_computed'
+                        THEN ABS(boundary_shadow_value_gbp_per_mwh * transfer_mwh)
+                        ELSE 0 END) AS boundary_congestion_rent_diagnostic_gbp
                 FROM boundary_period_summary GROUP BY year
-            """).fetchall()
+            """, (SHADOW_VALUE_SEMANTICS + "|status=%",)).fetchall()
         } if "boundary_period_summary" in tables else {}
+        if boundary_semantics != SHADOW_VALUE_SEMANTICS:
+            # P0-8 S10 (F3-05): never show the old hard-coded 0.0 as a value.
+            for item in congestion.values():
+                item["boundary_congestion_rent_diagnostic_gbp"] = None
         reliability = {
             int(row["year"]): dict(row) for row in connection.execute("""
                 SELECT year,
@@ -663,9 +943,19 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
             for row in connection.execute("""
                 SELECT year, COUNT(DISTINCT zone_id) AS zones
                 FROM zone_period_summary
-                WHERE load_shedding_mwh > 0 GROUP BY year
-            """).fetchall()
+                WHERE load_shedding_mwh > ? GROUP BY year
+            """, (LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,)).fetchall()
         } if "zone_period_summary" in tables else {}
+        residual_shedding = {
+            int(row["year"]): float(row["residual"] or 0.0)
+            for row in connection.execute("""
+                SELECT year, SUM(load_shedding_mwh) AS residual
+                FROM zone_period_summary
+                WHERE load_shedding_mwh > 0 AND load_shedding_mwh <= ?
+                GROUP BY year
+            """, (LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,)).fetchall()
+        } if "zone_period_summary" in tables else {}
+        known_defects = ledger_known_defects(connection, tables)
     if is_v6:
         recorded_years = {int(row["year"]) for row in base}
         evidence_years = {
@@ -694,12 +984,19 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
         row.update(congestion.get(year, {
             "congested_boundary_periods": 0,
             "maximum_boundary_utilisation_fraction": 0.0,
+            "boundary_congestion_rent_diagnostic_gbp": (
+                0.0 if boundary_semantics == SHADOW_VALUE_SEMANTICS else None
+            ),
         }))
+        row["boundary_value_status"] = (
+            "computed" if boundary_semantics == SHADOW_VALUE_SEMANTICS else "not_computed"
+        )
         row.update(reliability.get(year, {
             "observed_loss_of_load_hours": 0.0,
             "observed_loss_of_load_events": 0,
         }))
         row["affected_load_shedding_zones"] = affected.get(year, 0)
+        row["numerical_residual_unserved_mwh"] = residual_shedding.get(year, 0.0)
         year_solver_summary = query_solver_validation_summary(
             database,
             year=year,
@@ -783,9 +1080,11 @@ def query_zonal_annual_brief(database: Path) -> dict[str, object]:
             "system_resource_cost": "final physical resource cost",
             "settlements": "payments kept outside system resource cost",
             "constraint_resource_cost": "matched zonal minus realised copperplate physical cost",
-            "boundary_shadow_value": SHADOW_VALUE_SEMANTICS,
+            "boundary_shadow_value": boundary_semantics,
         },
         "reliability_semantics": "observed_chronology_not_statistical_lole",
+        "load_shedding_reporting_threshold_mwh": LOAD_SHEDDING_REPORTING_THRESHOLD_MWH,
+        "known_defects": known_defects,
         "security_scope": "not_a_security_analysis",
     }
 
@@ -858,15 +1157,17 @@ def build_zonal_period_accounting(
         character not in "0123456789abcdef" for character in realised_input_sha256
     ):
         raise ValueError("realised_input_sha256 must be a lowercase SHA-256")
-    case_1 = _nonnegative(
+    # P0-8 S9: a case cost may be negative (negative import prices); every
+    # case includes VOLL x shed, so national shortfall is never network cost.
+    case_1 = _finite(
         perfect_forecast_resource_cost_gbp,
-        "perfect-forecast copperplate resource cost",
+        "perfect-forecast network-free resource cost",
     )
-    case_2 = _nonnegative(
+    case_2 = _finite(
         realised_copperplate_resource_cost_gbp,
-        "forecast-schedule realised copperplate resource cost",
+        "forecast-schedule realised network-free resource cost",
     )
-    case_3 = _nonnegative(zonal_resource_cost_gbp, "zonal resource cost")
+    case_3 = _finite(zonal_resource_cost_gbp, "zonal resource cost")
     clearing_price = _finite(
         national_clearing_price_gbp_per_mwh, "national clearing price"
     )
@@ -939,10 +1240,16 @@ def build_reliability_events(
             raw = row.get("load_shedding_mwh_by_zone") or {}
             if not isinstance(raw, Mapping):
                 raise ValueError("load_shedding_mwh_by_zone must be an object")
-            deficits = {
+            # Validate every recorded value before the reporting threshold
+            # filter, so negative or non-finite shedding still fails closed.
+            checked = {
                 str(zone): _nonnegative(value, f"load shedding in {zone}")
                 for zone, value in raw.items()
-                if float(value) > 0
+            }
+            deficits = {
+                zone: value
+                for zone, value in checked.items()
+                if is_reportable_shedding(value)
             }
             affected.update(deficits)
             period_deficits.append(sum(deficits.values()))
@@ -968,7 +1275,8 @@ def build_reliability_events(
         raw = row.get("load_shedding_mwh_by_zone") or {}
         if not isinstance(raw, Mapping):
             raise ValueError("load_shedding_mwh_by_zone must be an object")
-        total = sum(_nonnegative(value, "load shedding") for value in raw.values())
+        checked = [_nonnegative(value, "load shedding") for value in raw.values()]
+        total = sum(value for value in checked if is_reportable_shedding(value))
         consecutive = previous is not None and previous == (year, period - 1)
         if total > 0:
             if active and not consecutive:
@@ -1130,8 +1438,10 @@ def query_zonal_results(
                 )
             values.append(period_to)
         where = " WHERE " + " AND ".join(filters) if filters else ""
+        # F3-07: reliability events page in chronological order (start_period
+        # is numeric; the TEXT event_id sorted "observed-2025-10" before "-2").
         order_columns = [name for name in (
-            "run_id", "year", "period", "phase_id", "zone_id", "technology", "boundary_id",
+            "run_id", "year", "start_period", "period", "phase_id", "zone_id", "technology", "boundary_id",
             "agent_id", "asset_id", "bid_tranche_id", "bid_id", "event_id",
         ) if name in columns]
         order = ", ".join(order_columns) or "rowid"
@@ -1148,7 +1458,10 @@ def query_zonal_results(
         "offset": offset,
         "count": len(rows),
         "has_more": offset + len(rows) < total,
-        "items": [dict(row) for row in rows],
+        "items": [
+            public_boundary_row(dict(row)) if view == "boundary" else dict(row)
+            for row in rows
+        ],
     }
 
 

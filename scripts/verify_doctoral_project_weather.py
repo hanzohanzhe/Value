@@ -21,6 +21,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from gridform_core.canonical_psm_data import native_initial_state, build_chronology
+from gridform_core.data_method import run_policy
 from gridform_core.doctoral_weather import weather_execution_identity
 from gridform_core.doctoral_weather_mapping import source_weights
 from gridform_core.parameters import resolve_scheme_c_parameters
@@ -128,7 +129,7 @@ def main():
                 stock[n] += a.capacity_mw * w
     original_generators = {n: OriginalRepresentative(cap, unit(n)) for n, cap in stock.items()}
     reference = build_chronology(args.pack, manifest, OperatingState(2025,
-        tuple(AssetStateV2(n, s["technology"], 1.) for n, s in sites.items()), ()), periods=96, period_hours=.5)
+        tuple(AssetStateV2(n, s["technology"], 1.) for n, s in sites.items()), ()), periods=96, period_hours=.5, data_policy=run_policy(manifest))
     curves = {r.asset_id: np.asarray(r.availability) for r in reference.resources}
     run = ResolvedRun("offline-weather-audit", "audit", "audit", manifest["id"], 2025, 2034, parameters, {}, {})
     pipeline = SchemeCPlanningPipelineDefinition()
@@ -155,7 +156,7 @@ def main():
         old_stock = {n: a.capacity_multiplier * unit(n) for n, a in original_generators.items()}
         stock_error = max(abs(actual_stock[n] - old_stock[n]) for n in sites)
         chronology = build_chronology(args.pack, manifest, OperatingState(year, vre, (), extensions=operating.extensions),
-                                     periods=96, period_hours=.5)
+                                     periods=96, period_hours=.5, data_policy=run_policy(manifest))
         sizes = {a.asset_id: a.capacity_mw for a in vre}
         # Native chronology also materializes pack interconnectors; this audit
         # concerns VRE potential only, not imported power or dispatch decisions.

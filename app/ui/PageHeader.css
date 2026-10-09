@@ -1,0 +1,19 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2) var(--sp-4);
+    margin: 0 0 var(--sp-4);
+    min-width: 0;
+  }
+  .v-page-header__text { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); min-width: 0; flex: 1 1 320px; }
+  .v-page-header :is(h1, h2) { margin: 0; font-size: var(--fs-2xl); line-height: var(--lh-heading); color: var(--ink); }
+  .v-page-header :is(h1, h2):focus { outline: none; }
+  .v-page-header :is(h1, h2):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .v-page-header p { margin: 0; color: var(--ink-muted); font-size: var(--fs-sm); min-width: 0; overflow-wrap: anywhere; }
+  .v-page-header__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+}

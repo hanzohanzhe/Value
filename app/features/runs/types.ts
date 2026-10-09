@@ -1,5 +1,7 @@
 import type { SourceStudyStatus } from "../learn/studyLifecycle";
 import type { TraceProfile } from "../market/TraceCoverageNotice";
+import type { ResultCoverage } from "../shared/coverageView.ts";
+import type { RunValidationFields } from "../workspace/runValidation.ts";
 
 export type RunMode = "smoke" | "two_year_smoke" | "validation_24h" | "validation_168h" | "value_101_day" | "two_year" | "full";
 export type PlanningBreakdown = Record<string, Record<string, { projects: number; capacity_mw: number }>>;
@@ -10,13 +12,38 @@ export type RecoveryCapability = {
   user_message: string; state_gaps?: string[];
   latest_safe_point?: { available: boolean; year: number | null; artifact: string | null; meaning?: string };
 };
-export type ModelRun = {
+/**
+ * A24-5: the background preparation of a Run (status.json "preparation"). A
+ * start answers at once; the execution archive, input snapshot, disk
+ * reservation and worker spawn follow while the Run is `snapshotting`.
+ */
+export type RunPreparation = {
+  schema_version?: string;
+  state: "preparing" | "queued" | "failed" | "cancelled" | "interrupted" | string;
+  stage?: string; stage_label?: string; stage_index?: number; stage_count?: number;
+  started_at?: string;
+  /** Seconds since the preparation began / the current stage began (server clock, at the last poll). */
+  elapsed_seconds?: number | null; stage_elapsed_seconds?: number | null;
+  /** True while this backend is still preparing the Run. */
+  in_progress?: boolean;
+  failed_stage?: string;
+  stages?: { stage: string; label?: string; seconds?: number }[];
+};
+/** Evidence that a selected module ran: stage events, or (R4 M-中1) the market ledger for the storage-cost slot the PSM calls. */
+export type ModuleEvidence = { version: string | null; actions: number | null; years: number[]; source?: "market_ledger"; ledger_module_id?: string; storage_asset_periods?: number | null };
+/** RunValidationFields: methodology, energy balance, stress, advisories and Q14 publication (X0 S12, P0-9 S11). */
+export type ModelRun = RunValidationFields & {
+  preparation?: RunPreparation;
+  /** The stored state behind a presented `cancel_requested`. */
+  persisted_status?: string;
+  /** Q14: number of annual results removed from a withheld Run's record. */
+  withheld_result_year_count?: number;
   input_snapshot_id?: string; input_tree_sha256?: string; recorded_project_revision_sha256?: string | null;
   id: string; project_id: string; project_name: string; mode: RunMode;
   status: "queued" | "snapshotting" | "running" | "cancel_requested" | "cancelled" | "completed" | "failed" | "archived" | "deleting"; current_stage: string;
-  completed_years: number; total_years: number; updated_at: string; error?: string; error_code?: string;
+  completed_years: number; total_years: number; updated_at: string; error?: string; error_code?: string; /** R6-1: first line of diagnostics/error.json for contract and execution-identity failures. */ error_detail?: string;
   results: RunResult[]; modules?: Record<string, string>;
-  module_evidence?: Record<string, { version: string; actions: number; years: number[] }>;
+  module_evidence?: Record<string, ModuleEvidence>;
   diagnostic?: { periods_per_year?: number; total_periods?: number; years?: number[]; purpose?: string; annual_economics_published?: boolean; scientific_results_published?: boolean; warning?: string };
   execution_status?: string; contract_validation_status?: string; scientific_validation_status?: string;
   scientific_scenario_status?: string; retained_comparison_role?: string;
@@ -25,9 +52,15 @@ export type ModelRun = {
   recovery?: RecoveryCapability;
   comparison_parent_run_id?: string;
   extensions?: Record<string, unknown>;
+  /** R4 F-低4: extensions of the frozen Study, with declared maturity. */
+  selected_extensions?: { id: string; version?: string | null; maturity?: string | null }[];
   source_study_status?: SourceStudyStatus;
+  /** Shared annual-coverage verdict of the Run detail (P0-9 S5). */
+  result_coverage?: ResultCoverage | null;
+  /** P0-3: presentation of the worker lease ("alive", "starting", "lost", "unverifiable", "not_started", "not_active"). */
+  worker_liveness?: string;
 };
-export type PreflightIssue = { code: string; severity: "error" | "warning"; scope: string; message: string; corrective_action: string };
+export type PreflightIssue = { code: string; severity: "error" | "warning"; scope: string; message: string; corrective_action: string; /** Data-layer findings only (spec 11.1). */ layer?: string };
 export type DomainMetric = { value: unknown; unit: string; definition_id: string; source_sha256?: unknown; status: string };
 export type DomainSection = { status: string; claim?: string; error?: string; metrics?: Record<string, DomainMetric>; source_sha256?: unknown; [key: string]: unknown };
 export type DomainReadiness = {
@@ -40,7 +73,7 @@ export type PreflightReport = {
   accepted: boolean; mode: RunMode;
   errors: PreflightIssue[]; warnings: PreflightIssue[];
   checks?: { domain_readiness?: DomainReadiness; [key: string]: unknown };
-  estimates: { periods?: number; disk_bytes?: number; runtime_seconds?: number; runtime_basis?: string; peak_memory_bytes?: number; memory_basis?: string; data_scale?: { operating_assets?: number; planning_projects?: number } };
+  estimates: { periods?: number; disk_bytes?: number; runtime_seconds?: number; runtime_basis?: string; runtime_basis_kind?: "observed" | "heuristic"; runtime_range_seconds?: [number, number] | null; peak_memory_bytes?: number; memory_basis?: string; data_scale?: { operating_assets?: number; planning_projects?: number } };
   resource_readiness?: ResourceReadiness | null;
 };
 export type ResourceReadiness = {
@@ -56,6 +89,8 @@ export type ResourceReadiness = {
 };
 export type FrozenInputSnapshot = {
   snapshot_id?: string; state?: string; input_tree_sha256?: string;
+  /** Present only when the Run froze a resource-readiness record (R-D6). */
+  resource_readiness_path?: string;
   pack_manifest_sha256?: string;
   network_pack_id?: string;
   network_pack_manifest_sha256?: string;

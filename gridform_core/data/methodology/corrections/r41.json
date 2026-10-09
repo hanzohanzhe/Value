@@ -1,0 +1,94 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "r41",
+  "notes": [
+    "R4-1 (DECISIONS A26): the website methodology describes the published VALUE model, not the thesis, so three implementation errors of the retained thesis kernel (runtime_compat/modular_simulation_model.py) are corrected in both methodology profiles as universal corrections. Thesis settings that are not errors (wind curtailed first at zero cost, no loss factors, 100 % availability, the original readings) stay as they are in the doctoral reproduction profile.",
+    "Each correction changes the trajectory of doctoral Runs; the doctoral golden family is re-baselined once for them (tests/golden/doctoral_trajectory_rebaselines.json, numeric reports tests/golden/reports/D*-r*.json and docs/dev/p0-reports/r41-golden/). The corrected profile already ran the corrected behaviour (its own curtailment and balancing functions and p06.storage-net-per-period), so its dispatch does not change. A new catalogue id changes the applied-corrections identity of both profiles: saved Studies need explicit confirmation (Q13).",
+    "The advisories are limited to Runs of the doctoral reproduction profile (applies_when.profiles_any; a Run without a recorded profile keeps them), because corrected Runs never ran the old behaviour."
+  ],
+  "corrections": [
+    {
+      "id": "r41.down-regulation-taken-once",
+      "package": "r41",
+      "findings": [
+        "A15",
+        "A26"
+      ],
+      "track": "universal",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ],
+        "profiles_any": [
+          "doctoral-lineage-0.6.0a2"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Curtailment-branch down regulation taken twice",
+        "summary": "Before R4-1 the thesis down-regulation rule of the default PSM did not clear the remaining requirement after a hydro, biomass or thermal unit had met it, so the same amount was taken again from later offers (usually wind). The energy taken twice was not recorded as curtailment or blackout; the energy-balance account (A2) booked it as unserved energy. It occurs when a non-VRE unit with a down-regulation price not above wind sorts before wind: on GBP1 public1 2025 (doctoral profile) 563 half-hours, 217 GWh, 72 % of the year's A2 shortfall.",
+        "affected_metrics": [
+          "curtailment",
+          "unserved_energy",
+          "generation_mix",
+          "energy_balance",
+          "costs"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_r41_doctoral_kernel_errors.DownRegulationTakenOnceTests"
+      },
+      "introduced_in": "R4-1 (A26)",
+      "deviation_signature": null,
+      "description": "Curtailment branch of the thesis rule set (store_service_three, both sub-branches): when a non-VRE unit can give at least the remaining down-regulation requirement, it gives exactly that amount and the requirement is set to zero, as the VRE branch already did, so no later offer is reduced. The thesis order (ascending curtail cost, wind at zero before thermal) is unchanged. The corrected rule set never ran this function (avoided-cost stack, p06.avoided-cost-downward-order)."
+    },
+    {
+      "id": "r41.must-run-surplus-counted-once",
+      "package": "r41",
+      "findings": [
+        "DEV-BAL-04",
+        "P5-04",
+        "A26"
+      ],
+      "track": "universal",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ],
+        "assets_any": [
+          "nuclear"
+        ],
+        "profiles_any": [
+          "doctoral-lineage-0.6.0a2"
+        ]
+      },
+      "advisory": {
+        "severity": "medium",
+        "title": "Must-run nuclear surplus counted twice in balancing",
+        "summary": "Before R4-1, when must-run nuclear produced more than the day-ahead forecast and realised demand was higher, the thesis balancing stage of the default PSM added the part of that surplus that served the extra demand to nuclear output a second time and paid it again at the nuclear offer price, so recorded generation exceeded demand plus storage by that amount (DEV-BAL-04). Runs without nuclear units are not affected; the shipped VALUE 101 and GBP1 2025 doctoral cases have no period with it.",
+        "affected_metrics": [
+          "nuclear_generation",
+          "energy_balance",
+          "costs",
+          "income"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_r41_doctoral_kernel_errors.MustRunSurplusCountedOnceTests"
+      },
+      "introduced_in": "R4-1 (A26)",
+      "deviation_signature": null,
+      "description": "Balancing stage of the thesis rule set: a non-VRE (must-run nuclear) surplus row of the ahead stage is output already in the accepted supply S and settled at the ahead stage; when it serves the balancing requirement it is used up without being generated or paid a second time (as the doctoral national engine already did). VRE surplus rows (outside S) are still dispatched and paid as before. The ledger column non_vre_double_counted_mwh is therefore zero; surplus_routing.to_dispatch_mwh still records the surplus that served the requirement. The corrected rule set never ran this branch (D1-surplus book, p06.d1-surplus-accounting)."
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import sqlite3
 import sys
 import time
 from collections import Counter
-from contextlib import closing
+from contextlib import closing, contextmanager, redirect_stdout
 from dataclasses import replace
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -21,6 +21,7 @@ from .value_runtime_adapter import (
     persist_or_verify_value_context,
 )
 from .canonical_psm_data import build_chronology, native_initial_state, build_doctoral_psm_input
+from .data_method import run_policy as current_data_policy
 from .doctoral_weather import uses_doctoral_weather, weather_execution_identity
 from .cost_ledger import build_cem_cost_ledger, write_cost_ledgers
 from .carbon_ledger import build_operational_carbon_ledger, write_carbon_ledgers
@@ -30,9 +31,28 @@ from .comparison_eligibility import (
     build_comparison_eligibility,
     write_comparison_eligibility,
 )
+from .methodology import (
+    PROFILE_PARAMETER,
+    MethodologyMismatchError,
+    ProfileCombinationError,
+    activate as activate_methodology,
+    current_methodology,
+    pack_entry,
+    reference_deviations,
+    resolve_project_methodology,
+    selection_combination_violations,
+)
 from .parameters import resolve_scheme_c_parameters
-from .parity import write_stage_parity_report
+from .parity import build_native_parity_report
+from .energy_balance_oracle import evaluate_run_ledger, stored_report as stored_oracle_report
+from .run_invariants import (
+    chronology_tally,
+    evaluate_run_invariants,
+    read_jsonl,
+    record_input_tally,
+)
 from .provenance import snapshot_module_manifests, write_run_provenance
+from .builtin.scheme_c_1000twh.runtime_overlay import ensure_runtime_overlay_sealed
 from .performance import write_performance_report
 from .planning_index import materialize_planning_index
 from .scientific_validation import (
@@ -42,7 +62,10 @@ from .scientific_validation import (
 )
 from .run_policy import resolve_run_policy, validate_pack_run_mode
 from .terminal_state import write_terminal_artifacts
+from .voll import VOLL_GBP_PER_MWH
 from .run_lifecycle import cancellation_requested
+from backend.lifecycle.atomic_io import atomic_write_json
+from backend.lifecycle.run_status import WRITER_WORKER, update_status
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .v2.contracts import ModuleSelection, OperatingState, PSMInput, ResolvedRun, YearResult
 from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph, workspace_registry
@@ -115,13 +138,89 @@ FINAL_ZONAL_DISPATCH_CONTRACT = "network.zonal-redispatch-result/v1"
 
 def _atomic_json_artifact(path: Path, payload: Mapping[str, object]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
-        encoding="utf-8",
+    # Unique temporary per write (F5-03): never a shared fixed ``.tmp`` name.
+    return atomic_write_json(path, payload, indent=2, ensure_ascii=False, sort_keys=True)
+
+
+def _mapping_or_none(value: object) -> Mapping[str, object] | None:
+    return value if isinstance(value, Mapping) else None
+
+
+def _write_validation_artifacts(
+    output_dir: Path,
+    *,
+    mode: str,
+    periods: int,
+    year_results: Sequence[Mapping[str, object]],
+    expected_years: Sequence[int],
+    selected_psm: str,
+    execution_scope: str,
+    retained_comparison_role: str,
+    initial_state_sha256: str | None = None,
+    network_expansion: bool = False,
+    mechanism_checks: list | None = None,
+    extra_fields: Mapping[str, object] | None = None,
+    methodology: Mapping[str, object] | None = None,
+) -> tuple[Path, Path]:
+    """Recompute and write the run's validation evidence (P0-4 S2).
+
+    Order: the read-only energy-balance oracle on the closed ledger, the run
+    invariants, the stage-parity v3 contract checks, then the v2
+    scientific-validation report that recomputes every status from them.
+    The gate policy (P0-4 S7) follows the run's methodology profile: a
+    frozen reproduction profile reads gate failures through its declared
+    deviations, every other profile gates them.
+    """
+
+    from .declared_deviations import for_profile, gate_policy
+
+    policy = gate_policy(methodology)
+    profile_id = str((methodology or {}).get("profile_id") or "") or None
+
+    oracle = stored_oracle_report(evaluate_run_ledger(output_dir))
+    oracle_path = _atomic_json_artifact(
+        output_dir / "validation" / "energy-balance-oracle.json", oracle
     )
-    temporary.replace(path)
-    return path
+    invariants = evaluate_run_invariants(
+        output_dir,
+        year_results=list(year_results),
+        expected_years=list(expected_years),
+        periods_per_year=periods,
+        execution_scope=execution_scope,
+        initial_state_sha256=initial_state_sha256,
+        network_expansion=network_expansion,
+        events=read_jsonl(output_dir / "orchestrator-events.jsonl"),
+    )
+    invariants_path = _atomic_json_artifact(
+        output_dir / "validation" / "run-invariants.json", invariants
+    )
+    parity = build_native_parity_report(
+        output_dir,
+        year_results=list(year_results),
+        expected_years=list(expected_years),
+        periods_per_year=periods,
+        selected_psm=selected_psm,
+        execution_scope=execution_scope,
+        energy_balance=oracle,
+        run_invariants=invariants,
+    )
+    parity_path = _atomic_json_artifact(output_dir / "parity" / "stage-parity.json", parity)
+    scientific_path = write_scientific_validation_report(
+        output_dir,
+        mode=mode,
+        periods_per_year=periods,
+        parity_path=parity_path,
+        retained_comparison_role=retained_comparison_role,
+        run_invariants_path=invariants_path,
+        energy_balance_path=oracle_path,
+        execution_scope=execution_scope,
+        mechanism_checks=mechanism_checks,
+        extra_fields=extra_fields,
+        gate_policy=policy,
+        profile_id=profile_id,
+        declared_deviations=for_profile(profile_id),
+    )
+    return parity_path, scientific_path
 
 
 def _configure_subannual_checkpoint_sink(
@@ -384,15 +483,17 @@ def _recover_explicit_subannual_checkpoint(
     consumed = claim_subannual_recovery_authorization(
         store=store, authorization=presented
     )
-    status_path = output_dir.parent / "status.json"
-    status: dict[str, object] = {}
-    if status_path.is_file():
-        loaded_status = json.loads(status_path.read_text(encoding="utf-8"))
-        if not isinstance(loaded_status, Mapping):
-            raise ValueError("Run status must contain an object")
-        status = dict(loaded_status)
-    status["subannual_recovery_authorization"] = dict(consumed)
-    _atomic_json_artifact(status_path, status)
+    run_root = output_dir.parent
+    # Field-level merge under the run's status lock (P0-3 S2, P7-08): the
+    # worker's later completion write keeps this evidence.
+    update_status(
+        run_root,
+        mutate=lambda status: status.__setitem__(
+            "subannual_recovery_authorization", dict(consumed)
+        ),
+        writer=WRITER_WORKER,
+        merge_unknown=True,
+    )
 
     database = output_dir / "market" / "market.sqlite"
     if not database.is_file():
@@ -416,8 +517,12 @@ def _recover_explicit_subannual_checkpoint(
             "cleaned_database_sha256": recovery["cleaned_database_sha256"],
         },
     }
-    status["subannual_recovery"] = evidence
-    _atomic_json_artifact(status_path, status)
+    update_status(
+        run_root,
+        mutate=lambda status: status.__setitem__("subannual_recovery", evidence),
+        writer=WRITER_WORKER,
+        merge_unknown=True,
+    )
     return evidence
 
 
@@ -535,9 +640,12 @@ def _load_authorized_incomplete_year_context(
     )
     consumed = dict(authorization)
     consumed["state"] = "consumed"
-    updated_status = dict(status)
-    updated_status["recovery_authorization"] = consumed
-    _atomic_json_artifact(status_path, updated_status)
+    update_status(
+        status_path.parent,
+        mutate=lambda current: current.__setitem__("recovery_authorization", consumed),
+        writer=WRITER_WORKER,
+        merge_unknown=True,
+    )
     return context
 
 
@@ -1101,11 +1209,29 @@ def _native_result_payload(typed_results, ledgers, *, planning_mode: str) -> dic
             "Total_System_Cost_GBP": float(ledger.cem_system_cost_gbp or 0.0),
             "Cost_per_MWh_GBP": float(ledger.cem_system_cost_gbp_per_mwh_served or 0.0),
             "Total_Energy_Generated_MWh": market.total_generation_mwh,
-            "Total_Levelized_Capital_Cost_GBP": market.total_levelized_capital_cost_gbp,
+            # Cost ledger v2 (P0-7 S8): the capital that is in the headline, so
+            # capital + operating = Total_System_Cost_GBP.
+            "Total_Levelized_Capital_Cost_GBP": (
+                ledger.headline_capital_gbp
+                if getattr(ledger, "headline_capital_gbp", None) is not None
+                else market.total_levelized_capital_cost_gbp
+            ),
+            "RoR_Hydro_Compatibility_Capital_GBP": (
+                ledger.compatibility_capital_gbp
+                if getattr(ledger, "compatibility_capital_in_headline", None) is False else None
+            ),
             "Total_Operational_Cost_GBP": market.total_operational_cost_gbp,
-            "CM_Mechanism_Cost_Added_to_System_GBP": 0.0,
-            "Decarbonization_Mechanism_Cost_Added_to_System_GBP": 0.0,
+            # F3-04 (P0-9 S9): the native path does not model the capacity or
+            # decarbonisation mechanisms; record that instead of a false 0.0.
+            "CM_Mechanism_Cost_Added_to_System_GBP": None,
+            "CM_Mechanism_Cost_Status": "not_modelled",
+            "Decarbonization_Mechanism_Cost_Added_to_System_GBP": None,
+            "Decarbonization_Mechanism_Cost_Status": "not_modelled",
             "Total_Energy_Deficit_MWh": market.total_blackout_mwh,
+            # R5 (S-F-高1/中2): annual demand and the A2 served energy, for the
+            # run status and the comparison (demand served, unserved incl. stress).
+            "Total_Demand_MWh": getattr(market, "total_demand_mwh", None),
+            "Demand_Served_MWh": getattr(ledger, "demand_served_mwh", None),
             "Total_Excess_Energy_MWh": market.total_excess_mwh,
             "Total_Imports_MWh": sum(item.import_mwh for item in market.period_summaries),
             "Total_Storage_Charge_MWh": sum(item.storage_charge_mwh for item in market.period_summaries),
@@ -1180,7 +1306,8 @@ def _doctoral_native_input(run, pack_root, pack_manifest, state, periods):
         run_id=run.run_id, periods=periods,
         period_hours=float(run.scientific_parameters["clock.period_hours"]),
         parameters={**dict(run.scientific_parameters), **dict(run.runtime_controls)},
-        voll_gbp_per_mwh=float(run.scientific_parameters.get("market.voll_gbp_per_mwh", 10_000.0)))
+        voll_gbp_per_mwh=float(run.scientific_parameters.get("market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH)),
+        data_policy=current_data_policy(pack_manifest))
 
 
 def _configure_doctoral_native_psm(psm, pack_root, pack_manifest, output_dir):
@@ -1297,7 +1424,7 @@ def _run_native_project(
                 (network_pack_root / "manifest.json").read_text(encoding="utf-8")
             )
             network_pack = load_zonal_network_pack(
-                network_pack_root, network_manifest
+                network_pack_root, network_manifest, topology_policy="enforce"
             )
             declared_pack_id = str(configured.get("network_pack_id") or "")
             if declared_pack_id and declared_pack_id != network_pack.network_pack_id:
@@ -1472,14 +1599,12 @@ def _run_native_project(
     def write_partial(result: YearResult) -> None:
         partial_dir.mkdir(parents=True, exist_ok=True)
         destination = partial_dir / f"year-{result.year}.json"
-        temporary = destination.with_suffix(".json.tmp")
-        temporary.write_text(json.dumps({
+        atomic_write_json(destination, {
             "schema_version": "value.partial-year-result/v1",
             "identity": checkpoint_identity(resolved),
             "result_sha256": contract_hash(result),
             "result": result.to_dict(),
-        }, indent=2, ensure_ascii=False), encoding="utf-8")
-        temporary.replace(destination)
+        }, indent=2, ensure_ascii=False)
 
     recovery_consumed = False
 
@@ -1527,22 +1652,44 @@ def _run_native_project(
         )
         recovery_consumed = True
 
+    configured_demand_mode = str(
+        dict(project.get("market_configuration") or {}).get("zonal_demand_mode") or ""
+    )
+    # P0-4 S2: the demand the input factory hands to the PSM is tallied when
+    # the chronology is built and reconciled with the ledger afterwards
+    # (run.demand_input_reconciliation).  With a network pack the PSM may take
+    # its demand from the pack's zonal series instead of this chronology.
+    demand_authority = (
+        "chronology" if network_pack is None
+        else f"network_pack:{configured_demand_mode or 'not_declared'}"
+    )
+
+    def tallied_input(model_input: PSMInput, source: str) -> PSMInput:
+        tally = chronology_tally(model_input, source=source, demand_authority=demand_authority)
+        if tally is not None:
+            record_input_tally(output_dir, tally)
+        return model_input
+
     def input_factory(run: ResolvedRun, state):
         if selected.get("psm") == "value-doctoral-national-psm":
-            return _doctoral_native_input(run, pack_root, pack_manifest, state, periods)
+            return tallied_input(
+                _doctoral_native_input(run, pack_root, pack_manifest, state, periods),
+                "build_doctoral_psm_input",
+            )
         chronology = build_chronology(
             pack_root,
             pack_manifest,
             state,
             periods=periods,
             period_hours=float(run.scientific_parameters["clock.period_hours"]),
+            data_policy=current_data_policy(pack_manifest),
             terminal_soc_rule=str(
                 run.scientific_parameters.get(
                     "market.perfect_foresight_terminal_soc_rule", "cyclic"
                 )
             ),
             voll_gbp_per_mwh=float(
-                run.scientific_parameters.get("market.voll_gbp_per_mwh", 10_000.0)
+                run.scientific_parameters.get("market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH)
             ),
         )
         if network_pack is not None:
@@ -1580,7 +1727,7 @@ def _run_native_project(
                     network_input, state
                 )
             input_extensions["network_input"] = network_input.to_dict()
-        return PSMInput(
+        return tallied_input(PSMInput(
             run.run_id,
             state.year,
             run.data_pack_id,
@@ -1589,7 +1736,7 @@ def _run_native_project(
             {**dict(run.scientific_parameters), **dict(run.runtime_controls)},
             chronology=chronology,
             extensions=input_extensions,
-        )
+        ), "build_chronology")
 
     subannual_store = SubannualCheckpointStore(output_dir.parent)
     current_parent_annual_checkpoint_identity = _parent_annual_checkpoint_identity(
@@ -1799,20 +1946,21 @@ def _run_native_project(
             ) + "\n",
             encoding="utf-8",
         )
-        validation_path = _atomic_json_artifact(
-            output_dir / "validation" / "scientific-validation.json",
-            {
-                "schema_version": "value.scientific-validation/v1",
-                "mode": mode,
-                "periods_per_year": periods,
-                "execution_status": "passed",
-                "contract_validation_status": "passed",
-                "scientific_validation_status": "not_evaluated",
-                "annual_economics_eligible": False,
-                "short_run_diagnostics_only": True,
-                "execution_scope": "psm_only",
-                "cem_stages_executed": False,
-            },
+        # P0-4 S2: the lesson's contract status is recomputed from executed
+        # checks (it used to be a literal "passed"); the analytical module
+        # self-test is not part of the PSM-only lesson and is not claimed.
+        _parity_path, validation_path = _write_validation_artifacts(
+            output_dir,
+            mode=mode,
+            periods=periods,
+            year_results=[{"year": market.year, "market": market.to_dict()}],
+            expected_years=[resolved.start_year],
+            selected_psm=implementations["psm"].id,
+            execution_scope="psm_only",
+            retained_comparison_role=RETAINED_COMPARISON_INFORMATIONAL,
+            mechanism_checks=[],
+            extra_fields={"cem_stages_executed": False},
+            methodology=_mapping_or_none(resolved.extensions.get("methodology")),
         )
         provenance_path = _atomic_json_artifact(
             output_dir / "provenance.json",
@@ -1826,6 +1974,8 @@ def _run_native_project(
                 "periods": periods,
                 "year": resolved.start_year,
                 "result_artifact": day_path.relative_to(output_dir).as_posix(),
+                "runtime_overlay": ensure_runtime_overlay_sealed(),
+                "methodology": resolved.extensions.get("methodology"),
             },
         )
         # Publish the executed effective configuration for frozen Run comparison,
@@ -1903,10 +2053,18 @@ def _run_native_project(
             f"{expected_years}, found {[result.year for result in typed_results]}"
         )
     execution_seconds = time.perf_counter() - started
-    ledgers = [build_cem_cost_ledger(result.market) for result in typed_results]
+    # P0-7 S8 (P4-03, value-corrected): run-of-river hydro compatibility
+    # capital leaves the headline as a memo line; the doctoral headline keeps
+    # it (memo "of which"). VRE/storage FOM is a memo in both (A7).
+    exclude_compatibility = current_methodology().enabled("p07.compatibility-capital-out-of-headline")
+    ledgers = [
+        build_cem_cost_ledger(result.market, exclude_compatibility_capital=exclude_compatibility)
+        for result in typed_results
+    ]
     cost_ledger_path = write_cost_ledgers(
         output_dir / "ledgers" / "annual-cost-ledger.json", ledgers
     )
+    served_by_year = {ledger.year: ledger.demand_served_mwh for ledger in ledgers}
     carbon_scenario = str(
         resolved.scientific_parameters.get(
             "carbon.factor_scenario", "value_current_authoritative_v1"
@@ -1929,9 +2087,9 @@ def _run_native_project(
             scenario_id=carbon_scenario,
             generation_mwh_by_asset=result.market.generation_mwh_by_asset,
             technology_by_asset=technology_by_asset,
-            delivered_demand_mwh=max(
-                result.market.total_demand_mwh - result.market.total_blackout_mwh, 0.0
-            ),
+            # R5 (r5.served-energy-net-of-stress-shortfall): the same served
+            # energy as the cost ledger (demand less all A2 unserved energy).
+            delivered_demand_mwh=served_by_year[result.year],
             import_country_by_asset=import_countries,
             asset_states=result.planning_advance.operating_state.assets,
         )
@@ -1979,21 +2137,9 @@ def _run_native_project(
     (output_dir / "resolved-run.json").write_text(
         json.dumps(resolved.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    validation_dir = output_dir / "validation"
-    validation_dir.mkdir(parents=True, exist_ok=True)
-    parity_path = output_dir / "parity" / "stage-parity.json"
-    parity_path.parent.mkdir(parents=True, exist_ok=True)
-    market_metadata_path = output_dir / "market" / "metadata.json"
-    if market_metadata_path.is_file():
-        market_metadata = json.loads(market_metadata_path.read_text(encoding="utf-8"))
-        market_periods = int(market_metadata["rows"]["period_summary"])
-        market_database_artifact: str | None = "market/market.sqlite"
-    else:
-        # A conformant external PSM may return typed period summaries without
-        # using VALUE's optional SQLite writer. Typed results are the contract;
-        # the built-in ledger is an implementation artifact, not a hidden API.
-        market_periods = sum(len(result.market.period_summaries) for result in typed_results)
-        market_database_artifact = None
+    # A conformant external PSM may return typed period summaries without
+    # using VALUE's optional SQLite writer; the parity then reads the typed
+    # contract and the energy balance is not evaluated (no ledger).
     configured_network_pack_id = str(
         dict(project.get("market_configuration") or {}).get("network_pack_id")
         or "not_selected"
@@ -2010,37 +2156,18 @@ def _run_native_project(
         initial_state_sha256=contract_hash(source_initial_state),
         resolution_graph=resolution_graph,
     )
-    parity_path.write_text(json.dumps({
-        "schema_version": "value.stage-parity-report/v2",
-        "passed": True,
-        "contract_parity_passed": True,
-        "retained_numerical_parity_passed": None,
-        "release_gate_passed": None,
-        "first_divergence": None,
-        "execution_path": "native_public_contracts",
-        "selected_psm": selected["psm"],
-        "market_evidence": {
-            "available": True,
-            "periods": market_periods,
-            "database_artifact": market_database_artifact,
-            "source": "sqlite_ledger" if market_database_artifact else "typed_contract",
-        },
-        "planning_evidence": {
-            "available": True,
-            "years": len(typed_results),
-            "database_artifact": "planning/project-index.sqlite",
-        },
-        "agent_economics_evidence": {
-            "available": False,
-            "reason": "Native typed investment decisions are recorded directly; the legacy investment-analysis replay table is reference-only.",
-        },
-    }, indent=2), encoding="utf-8")
-    scientific_path = write_scientific_validation_report(
+    parity_path, scientific_path = _write_validation_artifacts(
         output_dir,
         mode=mode,
-        periods_per_year=periods,
-        parity_path=parity_path,
+        periods=periods,
+        year_results=[item.to_dict() for item in typed_results],
+        expected_years=expected_years,
+        selected_psm=str(selected["psm"]),
+        execution_scope="annual",
         retained_comparison_role=RETAINED_COMPARISON_INFORMATIONAL,
+        initial_state_sha256=contract_hash(source_initial_state),
+        network_expansion=network_expansion is not None,
+        methodology=_mapping_or_none(resolved.extensions.get("methodology")),
     )
     comparison_path: Path | None = None
     annual_comparison_evidence = []
@@ -2089,6 +2216,9 @@ def _run_native_project(
                     dict(resolved.scientific_parameters)
                 ),
                 "modules": fixed_modules,
+                # Runs under different methodologies are never a controlled
+                # network comparison (X0 S9).
+                "methodology": current_methodology().identity(),
             },
             annual_input_evidence=annual_comparison_evidence,
             network_treatment={
@@ -2129,6 +2259,7 @@ def _run_native_project(
         manifest_snapshots=manifest_snapshots,
         initial_state=source_initial_state,
         year_results=typed_results,
+        runtime_overlay=ensure_runtime_overlay_sealed(),
     )
     payload = _native_result_payload(
         typed_results,
@@ -2306,9 +2437,48 @@ def run_project_application(
     network_pack_root: Path | None = None,
     resume_checkpoint_id: str | None = None,
 ) -> dict[str, object]:
+    """Run the selected project under its methodology profile (X0 S9).
+
+    Entry order: resolve the profile; verify the sealed runtime kernel; then
+    the whole run - the annual loop and the ledgers, parity, validation and
+    cost reports after it - executes inside ``activate(methodology)``.  The
+    combination whitelist is checked inside, before the first output is
+    written, once the data and network packs are resolved.
+    """
+
+    methodology = resolve_project_methodology(project)
+    # The sealed runtime kernel is verified once per process before any run
+    # (RUNTIME_OVERLAY v2, X0 S5); a changed or unregistered kernel file fails
+    # closed here instead of silently producing numbers.
+    ensure_runtime_overlay_sealed()
+    with activate_methodology(methodology):
+        return _run_project_application_impl(
+            project,
+            run_id=run_id,
+            pack_root=pack_root,
+            output_dir=output_dir,
+            mode=mode,
+            registry=registry,
+            network_pack_root=network_pack_root,
+            resume_checkpoint_id=resume_checkpoint_id,
+        )
+
+
+def _run_project_application_impl(
+    project: Mapping[str, object],
+    *,
+    run_id: str,
+    pack_root: Path,
+    output_dir: Path,
+    mode: str,
+    registry: ModuleRegistryV2 | None = None,
+    network_pack_root: Path | None = None,
+    resume_checkpoint_id: str | None = None,
+) -> dict[str, object]:
     """Run the selected project without fallback to any other module set."""
 
     preparation_started = time.perf_counter()
+    methodology = current_methodology()
     pack_root = pack_root.resolve()
     output_dir = output_dir.resolve()
     registry = registry or workspace_registry()
@@ -2369,6 +2539,25 @@ def run_project_application(
     selected_extensions = tuple(
         str(item) for item in project.get("selected_extensions", ())
     )
+    # Fail closed on an unsupported profile combination before any output is
+    # written (C16; the same check as Study resolution and preflight).
+    if resolved_parameters.scientific.values.get(PROFILE_PARAMETER) != methodology.profile_id:
+        raise MethodologyMismatchError(
+            "The resolved methodology.profile parameter differs from the active methodology"
+        )
+    combination_violations = selection_combination_violations(
+        methodology,
+        registry=registry,
+        modules=selected,
+        extensions=selected_extensions,
+        data_packs=[
+            pack_entry(pack_root, pack_manifest),
+            pack_entry(pack_selection.network_pack_root)
+            if pack_selection.network_pack_root is not None else None,
+        ],
+    )
+    if combination_violations:
+        raise ProfileCombinationError(methodology.profile_id, combination_violations)
     validate_maturity_acknowledgements(
         registry,
         selected,
@@ -2400,6 +2589,21 @@ def run_project_application(
         resolved_sources,
         start, end,
     )
+    # The methodology is part of the run's method identity (plan X0 3.5):
+    # resolved-run.json, provenance, status and comparison eligibility carry
+    # the same record.  Deviations from the frozen profile's reference preset
+    # are allowed and recorded (Q3).
+    resolved = replace(resolved, extensions={
+        **resolved.extensions,
+        "methodology": {
+            **methodology.to_dict(),
+            "reference_deviations": reference_deviations(
+                methodology,
+                modules={slot: selection.module_id for slot, selection in resolved.modules.items()},
+                scientific_parameters=resolved.scientific_parameters,
+            ),
+        },
+    })
     if uses_doctoral_weather(pack_manifest):
         # Do not rely on a stored project revision: CLI callers can reuse it.
         # Annual and subannual recovery must see the currently loaded method.
@@ -2430,6 +2634,28 @@ def run_project_application(
         preparation_seconds=preparation_seconds,
         resume_checkpoint_id=resume_checkpoint_id,
     )
+
+
+@contextmanager
+def _stdout_to_stderr():
+    """Send everything written to stdout (Python prints, the sealed kernel's
+    progress output, child processes inheriting fd 1) to stderr, so the CLI's
+    stdout carries only its JSON summary (P7-24)."""
+
+    sys.stdout.flush()
+    try:
+        saved = os.dup(1)
+        os.dup2(2, 1)
+    except OSError:  # no usable fd 1/2 (embedded or detached interpreter)
+        saved = None
+    try:
+        with redirect_stdout(sys.stderr):
+            yield
+    finally:
+        sys.stderr.flush()
+        if saved is not None:
+            os.dup2(saved, 1)
+            os.close(saved)
 
 
 def main() -> None:
@@ -2466,30 +2692,34 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
     pack_manifest = json.loads((args.pack / "manifest.json").read_text(encoding="utf-8"))
-    preflight = run_preflight(
-        project,
-        mode=args.mode,
-        pack_root=args.pack.resolve(),
-        pack_manifest=pack_manifest,
-        dataset_slots=DATASET_SLOTS,
-        output_root=args.output.resolve(),
-        network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
-    )
+    with _stdout_to_stderr():
+        preflight = run_preflight(
+            project,
+            mode=args.mode,
+            pack_root=args.pack.resolve(),
+            pack_manifest=pack_manifest,
+            dataset_slots=DATASET_SLOTS,
+            output_root=args.output.resolve(),
+            network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
+        )
     (args.output / "preflight.json").write_text(
         json.dumps(preflight, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     if not preflight["accepted"]:
         print(json.dumps(preflight, ensure_ascii=False))
         raise SystemExit(2)
-    result = run_project_application(
-        project, run_id=args.run_id, pack_root=args.pack.resolve(),
-        output_dir=args.output.resolve(), mode=args.mode,
-        network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
-        resume_checkpoint_id=args.resume_checkpoint_id,
-    )
+    with _stdout_to_stderr():
+        result = run_project_application(
+            project, run_id=args.run_id, pack_root=args.pack.resolve(),
+            output_dir=args.output.resolve(), mode=args.mode,
+            network_pack_root=(args.network_pack.resolve() if args.network_pack else None),
+            resume_checkpoint_id=args.resume_checkpoint_id,
+        )
     print(json.dumps({
         "engine": result["engine"],
-        "years": len(result["system_cost_history"]),
+        # PSM-only and native paths return orchestrator_results instead of the
+        # legacy system_cost_history (P7-24); count whichever the engine wrote.
+        "years": len(result.get("system_cost_history") or result.get("orchestrator_results") or []),
         "output": str(args.output.resolve()),
     }, ensure_ascii=False))
 

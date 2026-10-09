@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "Please cite the exact VALUE source commit or release and the dataset version used. Runtime acceptance does not constitute scientific validation."
 title: "VALUE electricity-system modelling framework"
 type: software
-version: "source-2026-10-04"
-date-released: 2026-10-04
+version: "source-2026-10-09"
+date-released: 2026-10-09
 authors:
   - given-names: "Hanzhe"
     family-names: "Xing"

@@ -1,49 +1,55 @@
-# FORCE model card
+# VALUE model card
 
-**FORCE** is the **F**lexibility **O**ptimization, **R**esource
-**C**ompetition, & **E**xpansion framework. Its current UK configuration retains
-the internal `scheme-c-*` implementation and data-pack identifiers so that
-historical runs and the read-only numerical reference remain reproducible.
+VALUE simulates electricity dispatch, annual asset income, investment and a construction pipeline. Its default capacity-expansion pathway represents Great Britain as a single node with exogenous cross-border trading capacity. Alternative staged, zonal and DC modules provide their declared network formulations. This card describes methodology edition 0.4.1 and the VALUE 0.7.0-alpha.1 source.
 
-The selectable capacity-expansion path is **FORCE-CEM v1**. It is derived from
-the Scheme C research structure but is not an exact numerical reproduction.
-Immutable project/asset lineage and typed technology aggregation replace retained
-in-place Python-object mutation. REPD filtering, policy-support income and
-exogenous pumped-hydro differences are listed in each run's
-`cem-model-identity.json`.
+## Methodology profiles
 
-Physical operating assets and investment owners have separate identities. The
-current FORCE-CEM policy evaluates one owner/technology/region group once per
-year, spends VRE/storage headroom as one technology-wide MW budget and explicitly
-lists which thermal technologies are uncapped. Commissioned assets inherit an
-existing owner or remain non-investing external assets; they cannot multiply the
-number of investment tests.
+The default is **Corrected methodology (default)** (`value-corrected`). Native dispatch uses `value-bid-at-cost-psm` and the market rule set `native-corrected-v1`. The compatibility profile, `doctoral-lineage-0.6.0a2`, retains selected settings implemented in VALUE 0.6.0-alpha.2. It retains thesis-era settings through `native-doctoral-thesis-v1` and accepts the model rules shared with the corrected profile.
 
-Existing pumped hydro and natural-flow hydro remain valid operating stock. New
-hydro is site constrained and is deferred unless the project carries the required
-hydrology/site identifiers, storage energy where applicable, and a separately
-sourced `capital_cost_scope=new_build` record. The Scheme C hydro stock value is
-an accounting compatibility basis, not a new-build CAPEX assumption.
+Shared rules align interconnector inputs to the model clock, read declared CSV columns, convert GBP1 Belgian prices, associate boundary flows with their declared lines, align GBP1 demand and forecast, and deduct thermal operating expenditure from investment income. Both profiles apply the data pack’s development timelines and regional success rates to endogenous proposals, count each downward reduction once, share storage power across stages with one net position per period, and use already-generated nuclear surplus once. Energy accounts record stress events, value recorded blackout at £17,000/MWh by default, and calculate served energy after recorded blackout and additional stress shortfall.
 
-This module represents Great Britain as one node without internal transmission
-limits. Interconnectors are exogenous boundary import offers, not transmission
-lines inside the GB network. Dispatch is continuous bid-at-cost competition among
-VRE, storage, thermal generation and imports; it has no unit start/stop, ramping,
-minimum-output or minimum up/down constraints.
+`value-doctoral-national-psm` is a separate experimental national pathway. It supplies fixed-year dispatch and experimental annual cash records, with release and annual-CEM readiness set to false. The annual helper calculations and their input requirements are documented in Chapter 6. Profile selection and experimental-module selection are distinct configuration choices.
 
-A normal model year contains 17,520 half-hour periods. Short diagnostic runs only
-verify wiring and never publish annual economic indicators. The retained
-implementation requires Python 3.10 for numerical parity.
+## Dispatch and inputs
 
-The 1e9 MW / 1e9 MWh virtual storage pool is a non-binding diagnostic sentinel,
-not physical installed storage. FORCE-CEM system cost definition
-`force.cem-system-resource-cost/v1` uses reconciled active-fleet
-annualised CAPEX, explicit fixed O&M, realised operating costs and implemented
-policy-mechanism costs. A retained Scheme C comparison is reported under its own
-cost-definition identifier. Fixed assumptions require a new module version; they
-are not advanced-setting sliders.
+A normal model year has 17,520 UTC half-hours on a fixed 365-day calendar. Native dispatch is continuous bid-at-cost competition among generation, storage and imports, with a start-up bid adder and per-period ramp allowance. Each period clears forecast demand, routes surplus, and chooses downward or upward balancing by comparing actual with forecast demand. Short diagnostic runs report the periods executed; annual economic indicators require complete-year coverage.
 
-Every run writes `cem-model-identity.json`, `scheme-c-model-card.json` where the
-compatibility route requires it, and `resolved-run.json`. A bid
-multiplier other than 1.0 is marked experimental and the run must not be described
-as strict bid-at-cost.
+Corrected Native dispatch takes the same site-availability arrays as the canonical adapter: ERA5 weather time convention v2, literature wind-loss factors, solar plane-of-array irradiance and performance ratio, station nuclear load factors with month-specific generation end, and natural-flow hydro availability of 0.3487 multiplied by its seasonal shape. Nuclear starts each model year in service. Positive import capacity bids into the ahead market, with remaining capacity offered in balancing. All accepted supply categories share a uniform marginal settlement price within each stage.
+
+The default dynamic storage-cost module bids battery cycle depreciation; pumped hydro and hydrogen bid zero, with oldest batches first. Holding recovery remains a cost-adequacy diagnostic. Legacy, user-formula and external storage-cost modules supply their own bids. Native charges storage from surplus at zero procurement cost. Buy-back reduces the period's storage discharge and returns energy to its batch while retaining ahead remuneration. Each model year creates fresh Native storage objects; discarded closing inventory is recorded at the year boundary.
+
+Corrected downward dispatch compares avoided operating expenditure with restart costs through `RestartParameters.net_saving(avoided_cost, horizon_h)`. The method subtracts `restart_cost(horizon_h) / min_stable_fraction / horizon_h` from `avoided_cost`, in GBP/MWh. Expected downtime follows consecutive forecast surplus periods. Gas and biomass have a running range above minimum stable output and a shutdown segment ordered by this saving. The cost account separately uses the start-up bid adder. Aggregate online capacity for this calculation is accepted ahead output.
+
+The doctoral reproduction profile retains stable unrounded-price sorting, zero-cost wind early in the downward order, pre-clearing VRE diversion to electrolysis, age-dependent legacy storage bids, separate generator and storage settlement maxima, balancing storage-fee carry-over, balancing-only imports, and nuclear initially outside the accepted set. After first acceptance, nuclear output follows its per-period ramp allowance. Annual nuclear generation is consequently sensitive to first acceptance; GBP1 public1's first reference year records zero nuclear generation.
+
+The Native displayed price is **Average period cost (£/MWh demand)**, calculated from period expenditure divided by actual demand. Staged dispatch reports **National ahead clearing price**, the optional perfect-foresight LP reports **Balance shadow price**, and the experimental national pathway reports **Ahead settlement price**.
+
+## Investment and cost
+
+Default investment groups active assets by owner, technology and region. Each group is evaluated once per year using undiscounted annual net income divided by total CAPEX, a preferred rate and a payback target. Negative net income produces a loss-based retirement quantity. Successful proposals retain owner, technology, capacity, location and economic inputs; commissioned assets inherit their owner or remain external, non-investing assets.
+
+Thermal net income deducts fuel, carbon and time-based operating expenditure. Wind, solar and storage follow the gross-revenue profit convention, with their fixed OPEX included in levelised CAPEX. Storage investment therefore compares annual market income with total CAPEX; surplus charging has zero procurement cost. Corrected storage headroom uses leftover surplus after existing charging, and each of the 1C, 0.5C and 0.25C types receives its own ceiling of 0.2 times power headroom. The compatibility profile retains zero storage headroom. Same-technology owner proposals consume that technology's ceiling once.
+
+Endogenous proposals obtain completion years and success rates from the planning tables frozen in the initial state. `endogenous_planning_terms` maps each technology to its Scheme C planning label, uses the stage-1 development duration and owner-specific deterministic month displacement, and reads the regional success rate. Thermal plant and biomass use the onshore-wind label; hydrogen storage uses the solar label. Expected-capacity admission scales power, energy and total costs once, while seeded-stochastic admission selects the full proposal. Annual headroom is calculated from operating assets, so successive decisions can add projects against the same headroom while earlier projects remain in development.
+
+Existing natural hydro and pumped storage remain operating assets. New hydro projects require declared site, hydrology, energy-capacity and new-build cost inputs. The large virtual-storage pool used in utilisation analysis is a diagnostic capacity axis. Its output determines headroom for physical proposals.
+
+The headline resource-cost definition is `value.cem-system-resource-cost/v1`, assembled by annual cost ledger v2. It combines headline annual capital, thermal fixed OPEX and physical operating expenditure. Wind, solar and storage FOM is a memo item. Run-of-river compatibility capital is a memo item in the corrected profile and contributes to the compatibility-profile headline. Physical operating cost includes final generation costs, imports, start-up adders, recorded blackout valued at VoLL and current-cycle depreciation. Settlement and policy transfers have separate accounts.
+
+Cost and carbon intensity use served energy: demand less recorded blackout and additional stress shortfall. Monetary decisions use constant start-year values; source price years and currency conversions remain identified with their inputs. The physical carbon ledger retains the selected factors and their gas/unit labels. Historical storage scalars retain their declared interpretation status.
+
+## Scope and simplifications
+
+The default national topology has no internal transmission constraints. Interconnectors represent boundary trade. Network claims apply to the selected network module and its tested formulation. The operating market covers energy; reserve scheduling and binary commitment lie outside this formulation. Corrected nuclear and natural-flow hydro use fixed availability profiles across years. Wind and solar resource curves used for investment limits retain their CSV conventions, while dispatch uses the selected weather module.
+
+Zero-priced pumped hydro and hydrogen storage are dispatched sequentially without a stored-water value. Native's forecast-based branch choice can leave demand shortfalls, which enter the stress account. Biomass receives electricity-market income with CfD and ROC support outside the implemented revenue specification. At the supplied GB costs it is rarely dispatched: approximately 0.01 TWh from 4,762 MW in the corrected GBP1 public2 and R029 public2 first-year calculations. Runs containing biomass carry advisory `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED`; support-revenue implementation is tracked under `P4-07`.
+
+The wind and solar capacity factors are disclosed alongside statistical load factors. GBP1's corrected available-resource factors are 0.4026 onshore, 0.4913 offshore and 0.1065 solar, approximately 1.56, 1.23 and 1.04 times the DUKES 2020–2024 mean. Literature losses and the solar transformation are parameterised independently of this comparison. The GBP1 public2 2025 check uses `tests/golden/projects/C9.json`: corrected methodology with `value-legacy-storage-tariff` and `doctoral_reproduction_2026_07_18` carbon factors. It gives nuclear generation 38.26 TWh, 2.5% above the selected Energy Trends comparison, and natural-flow hydro 6.01 TWh, 4.2% above the selected DUKES comparison. These checks cover the stated first model year.
+
+## Data eligibility and result qualification
+
+GBP1 public1 is eligible for the doctoral reproduction profile. Corrected national calculations use the revisions GBP1 public2 and R029 public2 supplied with VALUE 0.7.0-alpha.1 ([data downloads](https://value.ac/en/data/)). R029 public1 fails the current corrected series-reading requirement and lies outside the reproduction whitelist. Station-level nuclear availability applies to station-policy packs; R029's national aggregate uses the corrected fallback 0.723. User-workspace data packs use the corrected profile.
+
+Corrected annual economic results require the run-invariant, energy-balance and storage-throughput gates to pass. The compatibility profile displays annual results only when all raw invariants pass. Stress periods are reported as reliability outcomes. The supplied VALUE 101 compatibility reference cases and GBP1 public1's first-year reference satisfy the applicable checks. GBP1's first-year record contains 74 stress events, 487 stress periods and 78.8 GWh additional shortfall, with zero recorded blackout.
+
+The tested platform for exact reference-trajectory comparison is Linux x86-64, CPython 3.10.18 and NumPy 1.24.4. `VALIDATION_AND_CLAIMS.md` distinguishes present source evidence, local pack checks, historical evidence and experimental scope. Run records contain the resolved modules, data roles, input parameters and account definitions needed to interpret a result.

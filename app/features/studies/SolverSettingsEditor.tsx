@@ -1,5 +1,12 @@
-import { isBuiltinZonalSolverContract, isLegacyZonalSolverContract, withZonalSolverContractFlags, type ZonalSolverContract } from "../network/networkRedispatch";
+"use client";
+
+// The zonal solver contract of a Study (Review step).  Wording from the
+// dictionaries (studies.solver.*, P1 spec 3); setting names in code stay as they are.
+import { isBuiltinZonalSolverContract, isLegacyZonalSolverContract, withZonalSolverContractFlags, zonalSolverContractGeneration, zonalSolverContractUpgradeChanges, type ZonalSolverContract } from "../network/networkRedispatch";
 import { Badge } from "../shared/presentation";
+import { useT } from "../../i18n/LocaleProvider";
+
+const SOLVER_METHODS: ZonalSolverContract["method"][] = ["highs-ds", "highs-ipm", "highs"];
 
 export default function SolverSettingsEditor({
   contract,
@@ -20,7 +27,10 @@ export default function SolverSettingsEditor({
   onAcknowledgement: (checked: boolean) => void;
   onUpgrade: () => void;
 }) {
+  const t = useT();
   const legacy = isLegacyZonalSolverContract(contract);
+  const generation = zonalSolverContractGeneration(contract);
+  const historicalLabel = generation === "v2" ? "v2" : t("studies.solver.gbp1Lock");
   const builtin = isBuiltinZonalSolverContract(contract);
   const update = <K extends keyof ZonalSolverContract>(key: K, value: ZonalSolverContract[K]) => {
     const next = { ...contract, [key]: value };
@@ -30,27 +40,26 @@ export default function SolverSettingsEditor({
     "validated_ceilings",
     { ...contract.validated_ceilings, [key]: value },
   );
-  return <section className="solver-settings-editor" aria-label="Advanced solver settings">
-    <header><div><span>Zonal numerical contract</span><h4>Advanced solver settings</h4></div><Badge tone={builtin ? "blue" : "warn"}>{legacy ? "Historical v2 policy" : builtin ? "Built-in £1 default settings" : "Custom £1 settings"}</Badge></header>
-    <p>The four-phase zonal optimiser keeps physical feasibility strict. These controls change only its declared numerical lexicographic contract.</p>
-    {legacy && <div className="info-box"><b>This draft retains its historical v2 numerical policy.</b><p>Using the current £1 policy changes the method. Saving records a new Study revision, clears the previous acknowledgement and requires a fresh review; the original revision and Run evidence retain their recorded policy. Results across these policies are not a comparison with identical methods.</p><button type="button" className="secondary" onClick={onUpgrade}>Use current £1 policy</button></div>}
-    {!legacy && <label className="solver-custom-toggle"><input type="checkbox" checked={useCustom} onChange={(event) => onUseCustom(event.target.checked)} /><span><b>Use custom solver settings</b><small>Enable editing for this new Study revision.</small></span></label>}
+  return <section className="solver-settings-editor" aria-label={t("studies.solver.title")}>
+    <header><div><span>{t("studies.solver.kicker")}</span><h4>{t("studies.solver.title")}</h4></div><Badge tone={builtin ? "blue" : "warn"}>{legacy ? t("studies.solver.historicalPolicy", { label: historicalLabel }) : builtin ? t("studies.solver.builtin") : t("studies.solver.custom")}</Badge></header>
+    <p>{t("studies.solver.lead")}</p>
+    {legacy && <div className="info-box"><b>{t("studies.solver.legacyTitle", { label: historicalLabel })}</b><p>{t("studies.solver.legacyBody")}</p><div className="table-scroll"><table className="solver-upgrade-preview" aria-label={t("studies.solver.upgradeTable")}><thead><tr><th>{t("studies.solver.setting")}</th><th>{t("studies.solver.recorded")}</th><th>{t("studies.solver.current")}</th></tr></thead><tbody>{zonalSolverContractUpgradeChanges(contract).map((row) => <tr key={row.field}><td><code>{row.field}</code></td><td>{row.recorded}</td><td>{row.current}</td></tr>)}</tbody></table></div><button type="button" className="secondary" onClick={onUpgrade}>{t("studies.solver.upgrade")}</button></div>}
+    {!legacy && <label className="solver-custom-toggle"><input type="checkbox" checked={useCustom} onChange={(event) => onUseCustom(event.target.checked)} /><span><b>{t("studies.solver.useCustom")}</b><small>{t("studies.solver.useCustomNote")}</small></span></label>}
     <fieldset disabled={!useCustom || legacy}>
-      <legend>Editable solver contract</legend>
+      <legend>{t("studies.solver.editable")}</legend>
       <div className="solver-settings-grid">
-        <label><span>Solver method</span><select value={contract.method} onChange={(event) => update("method", event.target.value as ZonalSolverContract["method"])}><option value="highs-ds">highs-ds</option><option value="highs-ipm">highs-ipm</option><option value="highs">highs</option></select></label>
-        <label><span>Primal feasibility tolerance</span><input type="number" min="1e-10" max="1e-7" step="any" value={contract.primal_feasibility_tolerance} onChange={(event) => update("primal_feasibility_tolerance", Number(event.target.value))} /></label>
-        <label><span>Dual feasibility tolerance</span><input type="number" min="1e-10" max="1e-7" step="any" value={contract.dual_feasibility_tolerance} onChange={(event) => update("dual_feasibility_tolerance", Number(event.target.value))} /></label>
-        <label><span>IPM optimality tolerance</span><input type="number" min="1e-12" max="1e-7" step="any" value={contract.ipm_optimality_tolerance} onChange={(event) => update("ipm_optimality_tolerance", Number(event.target.value))} /></label>
-        <label><span>Numerical warning threshold</span><input type="number" min="0" max="1" step="0.01" value={contract.warning_fraction} onChange={(event) => update("warning_fraction", Number(event.target.value))} /><small>Fraction of each validated ceiling; must be greater than zero.</small></label>
-        <label><span>Redispatch bid cost validated ceiling</span><input type="number" value={contract.validated_ceilings.primary_bid_cost_gbp} readOnly aria-readonly="true" /><small>{legacy ? "Recorded v2 GBP total per half-hour" : "Fixed at GBP 1 total bid cost per solved half-hour period"}</small></label>
-        <label><span>Schedule deviation validated ceiling</span><input type="number" min="0" max="0.01" step="any" value={contract.validated_ceilings.secondary_schedule_deviation_mwh} onChange={(event) => updateCeiling("secondary_schedule_deviation_mwh", Number(event.target.value))} /><small>MWh per half-hour</small></label>
-        <label><span>Physical throughput validated ceiling</span><input type="number" min="0" max="0.01" step="any" value={contract.validated_ceilings.physical_throughput_mwh} onChange={(event) => updateCeiling("physical_throughput_mwh", Number(event.target.value))} /><small>MWh per half-hour</small></label>
+        <label><span>{t("studies.solver.method")}</span><select value={contract.method} onChange={(event) => update("method", event.target.value as ZonalSolverContract["method"])}>{SOLVER_METHODS.map((method) => <option value={method} key={method}>{method}</option>)}</select></label>
+        <label><span>{t("studies.solver.primal")}</span><input type="number" min="1e-10" max="1e-7" step="any" value={contract.primal_feasibility_tolerance} onChange={(event) => update("primal_feasibility_tolerance", Number(event.target.value))} /></label>
+        <label><span>{t("studies.solver.dual")}</span><input type="number" min="1e-10" max="1e-7" step="any" value={contract.dual_feasibility_tolerance} onChange={(event) => update("dual_feasibility_tolerance", Number(event.target.value))} /></label>
+        <label><span>{t("studies.solver.ipm")}</span><input type="number" min="1e-12" max="1e-7" step="any" value={contract.ipm_optimality_tolerance} onChange={(event) => update("ipm_optimality_tolerance", Number(event.target.value))} /></label>
+        <label><span>{t("studies.solver.warning")}</span><input type="number" min="0" max="1" step="0.01" value={contract.warning_fraction} onChange={(event) => update("warning_fraction", Number(event.target.value))} /><small>{t("studies.solver.warningNote")}</small></label>
+        <label><span>{t("studies.solver.bidCeiling")}</span><input type="number" value={contract.validated_ceilings.primary_bid_cost_gbp} readOnly aria-readonly="true" /><small>{generation === "v2" ? t("studies.solver.bidCeilingV2") : t("studies.solver.bidCeilingFixed")}</small></label>
+        <label><span>{t("studies.solver.deviationCeiling")}</span><input type="number" min="0" max="0.01" step="any" value={contract.validated_ceilings.secondary_schedule_deviation_mwh} onChange={(event) => updateCeiling("secondary_schedule_deviation_mwh", Number(event.target.value))} /><small>{t("studies.solver.perHalfHour")}</small></label>
+        <label><span>{t("studies.solver.throughputCeiling")}</span><input type="number" min="0" max="0.01" step="any" value={contract.validated_ceilings.physical_throughput_mwh} onChange={(event) => updateCeiling("physical_throughput_mwh", Number(event.target.value))} /><small>{t("studies.solver.perHalfHour")}</small></label>
       </div>
     </fieldset>
-    <aside className="solver-execution-ceilings"><b>Immutable platform execution ceilings</b><p>These are explanatory limits and cannot be edited.</p><dl><div><dt>Redispatch bid cost</dt><dd>{legacy ? "Recorded v2: 0.10 GBP / half-hour" : "1.00 GBP total / solved half-hour period"}</dd></div><div><dt>Schedule deviation</dt><dd>0.01 MWh / half-hour</dd></div><div><dt>Physical throughput</dt><dd>0.01 MWh / half-hour</dd></div></dl><small>Presolve remains enabled. Execution never falls back automatically to another solver or to copperplate.</small></aside>
+    <aside className="solver-execution-ceilings"><b>{t("studies.solver.platformTitle")}</b><p>{t("studies.solver.platformLead")}</p><dl><div><dt>{t("studies.solver.platformBid")}</dt><dd>{generation === "v2" ? t("studies.solver.platformBidV2") : t("studies.solver.platformBidV4")}</dd></div><div><dt>{t("studies.solver.platformDeviation")}</dt><dd>{t("studies.solver.platformMwh")}</dd></div><div><dt>{t("studies.solver.platformThroughput")}</dt><dd>{t("studies.solver.platformMwh")}</dd></div></dl><small>{t("studies.solver.platformNote")}</small></aside>
     {error && <p className="solver-settings-error" role="alert">{error}</p>}
-    {!legacy && contract.requires_acknowledgement && <label className="solver-acknowledgement"><input type="checkbox" checked={acknowledgement} onChange={(event) => onAcknowledgement(event.target.checked)} /><span>Saving custom solver settings creates a new study revision and removes the built-in solver-validated label until the selected stack passes the validation gates.</span></label>}
+    {!legacy && contract.requires_acknowledgement && <label className="solver-acknowledgement"><input type="checkbox" checked={acknowledgement} onChange={(event) => onAcknowledgement(event.target.checked)} /><span>{t("studies.solver.acknowledgement")}</span></label>}
   </section>;
 }
-

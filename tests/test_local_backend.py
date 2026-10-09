@@ -181,7 +181,9 @@ class ProjectValidationTests(unittest.TestCase):
             }), encoding="utf-8")
             with patch.object(server, "RUNS_ROOT", runs):
                 payload = json.dumps(server.list_runs()).encode("utf-8")
-            self.assertLess(len(payload), 2_000)
+            # A 2 MB ledger must not leak into the listing; the listing itself
+            # carries bounded badges (P0-4 S3 added energy_balance_status).
+            self.assertLess(len(payload), 2_500)
 
     def test_external_module_disable_dependency_scan_is_bounded_to_saved_studies_and_active_runs(self):
         with tempfile.TemporaryDirectory() as folder:

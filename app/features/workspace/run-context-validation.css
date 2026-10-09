@@ -1,0 +1,53 @@
+/* P0 frontend spec 2 (X0 S12, P0-9 S11): methodology pill, validation fields
+   and notices of the Run context bar. New elements only; existing tokens only;
+   body text >= 13px, helper text >= 12px. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.run-context-profile { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-1); max-width: 100%; margin-top: var(--sp-1); }
+.run-context-profile .value-pill { white-space: normal; }
+
+.run-context-validation-field small { font-size: var(--fs-xs); }
+.run-context-check { font-size: var(--fs-xs); font-weight: 600; }
+.run-context-check i { font-style: normal; }
+.run-context-check.ok { color: var(--teal); }
+.run-context-check.danger { color: var(--red); }
+.run-context-check.caution { color: var(--amber); }
+.run-context-check.muted { color: var(--ink-muted); font-weight: 500; }
+
+.run-context-notices { display: grid; gap: var(--sp-2); margin-top: var(--sp-3); min-width: 0; }
+.run-context-notices .value-callout { margin: 0; }
+.run-context-more {
+  justify-self: start;
+  border: 0;
+  padding: var(--sp-1) 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.run-context-advisories { display: grid; gap: var(--sp-2); margin: var(--sp-2) 0 0; padding: 0 0 0 var(--sp-4); font-size: var(--fs-sm); }
+.run-context-advisories li { display: grid; gap: var(--sp-1); min-width: 0; }
+.run-context-advisories small { color: var(--ink-muted); font-size: var(--fs-xs); }
+/* F-P04-3: the failed validation gates, one sentence each. */
+.run-context-gates { display: grid; gap: var(--sp-1); margin: var(--sp-2) 0; padding: 0 0 0 var(--sp-4); font-size: var(--fs-sm); }
+.run-context-gates li { min-width: 0; }
+.run-context-advisory-empty { margin: var(--sp-2) 0 0; color: var(--ink-muted); font-size: var(--fs-sm); }
+
+.run-context-more:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .run-context-statuses > span { min-width: 0; }
+}
+
+/* R-D11 (round R1-5): the advisories that apply to a Run, in a disclosure. */
+.run-context-advisory-details { margin-top: var(--sp-2); font-size: var(--fs-sm); min-width: 0; }
+.run-context-advisory-details summary { color: var(--amber); font-weight: 600; cursor: pointer; }
+.run-context-advisory-details summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.run-context-advisory-severity { color: var(--ink-muted); font-size: var(--fs-xs); font-weight: 500; }
+}

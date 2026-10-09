@@ -1,0 +1,102 @@
+/* P0 frontend spec 1.3: styles for the elements added in this round only.
+   Existing tokens only; body text >= 13px, helper text >= 12px. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.value-callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sp-1) var(--sp-2);
+  margin: var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border-left: 4px solid var(--blue);
+  background: var(--blue-soft);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.value-callout.danger { border-left-color: var(--red); background: var(--red-soft); }
+.value-callout.caution { border-left-color: var(--amber); background: var(--amber-soft); }
+.value-callout.ok { border-left-color: var(--teal); background: var(--teal-soft); }
+.value-callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+.value-callout-icon {
+  grid-row: 1 / span 3;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-lg);
+  display: inline-grid;
+  place-items: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--panel);
+  background: var(--blue);
+}
+.value-callout.danger .value-callout-icon { background: var(--red); }
+.value-callout.caution .value-callout-icon { background: var(--amber); }
+.value-callout.ok .value-callout-icon { background: var(--teal); }
+.value-callout-title { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+.value-callout-body { margin: 0; font-size: var(--fs-sm); }
+.value-callout-body p { margin: 0 0 var(--sp-1); }
+.value-callout-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; margin-top: var(--sp-1); }
+.value-callout-actions button,
+.value-callout-actions a {
+  font-size: var(--fs-sm);
+  min-height: 30px;
+}
+.value-callout-actions .value-action-primary {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+}
+.value-callout-actions .value-action-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--blue);
+  text-decoration: underline;
+}
+
+.value-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 22px;
+  max-width: 100%;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  border: 1px solid transparent;
+}
+.value-pill.danger { color: var(--red); background: var(--red-soft); border-color: var(--red); }
+.value-pill.caution { color: var(--amber); background: var(--amber-soft); border-color: var(--amber); }
+.value-pill.ok { color: var(--teal); background: var(--teal-soft); border-color: var(--teal); }
+.value-pill.info { color: var(--blue); background: var(--blue-soft); border-color: var(--blue); }
+.value-pill.muted { color: var(--ink-muted); background: var(--panel); border-color: var(--line); }
+
+.value-state { color: var(--ink-muted); font-weight: inherit; font-style: normal; text-decoration: none; }
+.value-state.amber { color: var(--amber); }
+.value-state.red { color: var(--red); }
+.value-state.blue { color: var(--blue); }
+
+.value-callout button:focus-visible,
+.value-callout a:focus-visible,
+.value-pill:focus-visible,
+.value-new-control:focus-visible,
+.value-new-control button:focus-visible,
+.value-new-control a:focus-visible,
+.value-new-control summary:focus-visible,
+.value-new-control select:focus-visible,
+.value-new-control input:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+}

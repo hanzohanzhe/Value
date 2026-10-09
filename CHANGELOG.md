@@ -1,5 +1,1453 @@
 # Changelog
 
+## 0.7.0-alpha.1 — P0 review fixes and frontend overhaul (released 2026-10-09)
+
+Python version `0.7.0a1`. Full batch `2026-10-09-a1` contains VALUE
+0.7.0-alpha.1, Python, Node and the VALUE 101 teaching inputs. Install into
+a new, empty directory. Platform acceptance is recorded with the
+[software release](https://github.com/hanzohanzhe/Value/releases/tag/value-2026-10-09-a1).
+The corrected-profile data packs R029 public2 and GBP1 public2 `@v3`, and
+the GBP1 public2 23-zone research suite, are available from
+[value-data-2026-10-09](https://github.com/hanzohanzhe/Value/releases/tag/value-data-2026-10-09).
+Methodology edition 0.4.1 describes this implementation. The public source
+snapshot is `source-2026-10-09`.
+
+### Two methodology profiles
+
+- **Corrected methodology (default)** (`value-corrected`): every correction
+  in the catalogue applies. New Studies and Runs use it unless they choose
+  otherwise.
+- **Doctoral reproduction (as implemented in VALUE 0.6.0-alpha.2)**
+  (`doctoral-lineage-0.6.0a2`, frozen): this profile is *not an exact
+  reproduction of the 2026-07-18 retained trajectory*. It keeps the
+  0.6.0-alpha.2 behaviour, including gross-revenue investment for VRE and
+  storage and zero storage headroom (decision Q1); its per-type battery caps
+  are the thesis design, which the corrected profile also uses since A20. It
+  writes its reference configuration into the Study: the legacy storage
+  tariff and the doctoral carbon-factor scenario (Q3). It runs only the
+  thesis-lineage modules and data packs and refuses enabled external code.
+  Its annual results are published on result pages only when every raw
+  invariant passed; otherwise they can be read only through Inspect and
+  export (Q14).
+- **Universal corrections apply to both profiles**, so they are the only
+  changes to the frozen behaviour. They are:
+  - interconnector series aligned period by period to the 17,520-period clock
+    (P6-24);
+  - three GBP1 reading errors fixed: the Belgium price is hourly EUR, not
+    half-hourly GBP (P6-02); the BE/NL flow files were swapped (P6-03); demand
+    was shifted after the DST change on 2022-10-30 (P6-04);
+  - thermal investment net of running cost (A4);
+  - stress events (A2);
+  - value of lost load 17,000 GBP/MWh (A16-5; the thesis code's 8,000 entered
+    only the cost accounts);
+  - three implementation errors of the thesis kernel (A26, R4-1): down
+    regulation in the curtailment branch is taken once, must-run nuclear
+    surplus is not counted twice in balancing, and a store keeps one net
+    position per period (see "Three thesis-kernel errors corrected in both
+    profiles" below);
+  - corrections in the accounting zone only (residuals, audits, cost ledger,
+    validation; Q12).
+- The investment rule stays undiscounted, in constant base-year money (A6).
+- The generated table `docs/generated/METHODOLOGY_PROFILES.md` lists every
+  correction with its track and the profiles it applies to.
+
+### Correction ids
+
+| Package | Both profiles | Corrected profile only |
+|---|---|---|
+| X0 | `x0.methodology-identity`, `x0.study-revision-migration` | — |
+| P0-4 | `p04.validation-v2`, `p04.storage-energy-audit`, `p04.surplus-routing`, `p04.surplus-node-boundary`, `p04.validation-gate` (accounting zone) | — |
+| P0-5 | `p05.declared-column`, `p05.belgium-price-currency`, `p05.boundary-identity`, `p05.demand-utc-clock`, `p05.interconnector-clock`, `p05.validation-layers`, `p05.weather-cache-key` | `p05.declared-reader`, `p05.series-clock`, `p05.data-gate`, `p05.weather-time-convention`, `p05.vre-loss-factors`, `p05.solar-plane-of-array`, `p05.firm-availability`, `p05.nuclear-generation-end-month`, `p05.hydro-dukes-load-factor`, `p05.raw-boundary-price` |
+| P0-6 | `p06.physical-operating-cost` | `p06.d1-surplus-accounting`, `p06.storage-after-generation-merit-key`, `p06.avoided-cost-downward-order`, `p06.storage-net-per-period`, `p06.storage-fee-per-period`, `p06.no-vre-pre-clearing-skim`, `p06.storage-bid-cycle-only`, `p06.storage-uniform-price-settlement`, `p06.voll-chronology-parameter`, `p06.staged-dwell-disclosure` (staged path) |
+| P0-7 | `p07.thermal-net-revenue`, `p07.cost-ledger-v2` | `p07.storage-leftover-headroom`, `p07.power-battery-pool`, `p07.compatibility-capital-out-of-headline` |
+| P0-8 | `p08.zonal-solver-v4`, `p08.runtime-fallback-audit`, `p08.dec-economic-pricing`, `p08.pro-rata-ties`, `p08.dec-class-order`, `p08.network-free-counterfactual`, `p08.boundary-primary-dual`, `p08.network-share-expansion` (software fixes; network modules run only under the corrected profile, Q3) | — |
+| FX4 (post-UAT M-D1) | `fx4.storage-offer-ledger` (accounting zone) | — |
+| FX5 (A16-5 VoLL) | `fx5.voll-17000` (doctoral: accounting zone; parameter default for every module that reads `market.voll_gbp_per_mwh`) | — |
+| FX6 (A16-2, four-role S-D3) | — | `fx6.day-ahead-interconnector-imports` (method change, explicit Study confirmation) |
+| FX7 (A16-7, GBP1 public2 local acceptance) | — | `p05.nuclear-stations-public2` (GBP1 public2 only) |
+| FX8 (A18, nuclear in service at start) | — | `fx8.nuclear-in-service-at-start` (method change, explicit Study confirmation) |
+| R1-2 (A19/A22, economic down-regulation order) | — | `r12.economic-downward-order` (method change, explicit Study confirmation) |
+| R3-2 (A24-3, economic down-regulation order of the network models) | — | `r32.network-economic-downward-order` (staged / zonal path, which runs only under the corrected profile, Q3; method change, explicit Study confirmation) |
+| R1-3 (A20, per-type battery caps) | — | `r13.per-type-battery-caps` (method change, explicit Study confirmation; supersedes `p07.power-battery-pool`) |
+| R3-3 (A24-4, restart costs in 2025 GBP) | — | `r33.restart-cost-price-base-2025` (parameter restatement used by `r12.*` and `r32.*`; recorded on the default PSM 6.6.0 and staged PSM 1.6.0 ledger bumps, explicit Study confirmation) |
+| R4-1 (A26, thesis-kernel errors) | `r41.down-regulation-taken-once`, `r41.must-run-surplus-counted-once`, `p06.storage-net-per-period` (made universal; default PSM 6.7.0, explicit Study confirmation) | — |
+| R7-1 (A33, P4-05, endogenous planning timelines) | `r71.endogenous-planning-timelines` (agent-investment 3.1.0, explicit Study confirmation) | — |
+| R7-2 (A34, staged ledger balance boundary) | — | `r72.staged-ledger-balance-boundary` (staged / zonal path; ledger metadata only, accounting zone; dispatch, prices and costs unchanged; not in the method identity) |
+| R4-3 (A27, four-role S-中1, model clock label) | `r43.model-clock-utc-label` (ledger metadata label only, accounting zone; no model value changes) | — |
+| R5-1 (A28, four-role S-F-中2, energy served) | `r5.served-energy-net-of-stress-shortfall` (cost per MWh served and carbon intensity per MWh delivered; accounting zone, dispatch unchanged; not in the method identity, like `fx5.voll-17000`) | — |
+| R5-3 (A28, edit-module 中1, storage state record) | `r53.bounded-storage-state-record` (full-trace clearing declaration only: above 128 stored tranches a store's declared state lists the offered tranches and one aggregate; dispatch, ledger tables and results unchanged; not in the method identity) | — |
+
+P0-1 (local API security boundary), P0-2 (module quarantine), P0-3 (run
+lifecycle) and P0-9 (result views) are software fixes. They have no
+correction id and do not change model numbers.
+
+### Golden delta summary
+
+`docs/release/P0_GOLDEN_DELTA.md` is generated by
+`scripts/golden/delta_report.py`. It shows, for each golden case, the columns
+that changed since revision 0 (35aadb3) and the columns where the two
+profiles differ. Every column is attributed to a correction id; none is
+unattributed.
+
+- **Doctoral family.** The dispatch, price and cost columns of D1 and D2
+  (VALUE 101 smoke and two_year_smoke) are bit-identical to 35aadb3; their
+  trajectory differs only by the planning tables that R7-1 freezes into the
+  state (below). D3 (value_101_day) changes only under A26 (below). D4 (VALUE
+  101 two_year) was re-baselined once for the thermal net revenue (A4): only
+  an unprofitable CCGT is no longer built, two-year proposals fall from
+  21.32 MW to 8.26 MW and system cost falls by 1.7 % (approved in A12). D5
+  (GBP1 public1, first model year) was re-baselined once for A3, A5 and A4,
+  and the author accepted it as the new reference (A15): imports fall by
+  78 %, price spikes disappear, system cost falls by 3.2 %, the CCGT proposal
+  is dropped and emissions rise by 3.4 %.
+  Numeric reports: `tests/golden/reports/D4-r9.json` and `D5-r1.json`.
+  R4-1 (A26) re-baselined D3 (r14), D4 (r12) and D5 (r3) once for the three
+  thesis-kernel corrections (findings A15, DEV-BAL-04, DEV-STO-01; numeric
+  reports `D3-r14.json`, `D4-r12.json`, `D5-r3.json`, summary in
+  `docs/dev/p0-reports/r41-golden/`); D1 and D2 (r11) change only the list
+  of declared deviations in the validation report. All other doctoral
+  changes are in the accounting and identity zones.
+- **Corrected family.** C1–C8 were revised under the correction ids above.
+  Trajectory columns that changed since revision 0, by case: C1 34, C2 35,
+  C3 50, C4 32, C5 503, C6 490, C7 34, C8 111.
+  C9 (GBP1 public2, corrected, FX8) starts at revision 0 = the code before
+  A18 and has one revision for A18 (trajectory 394 columns).
+  R1-2 (A19/A22, `r12.economic-downward-order`) revised C1-C6 and C9 once
+  (C1-C4, C9: the ten new `downward_restart_economics` columns; C5/C6: one
+  2025 period, 28 trajectory and 41/43 accounting columns).
+  R1-3 (A20, `r13.per-type-battery-caps`) revised C1, C2, C4-C7 and C9 once,
+  for the storage headroom and investment evidence columns only (no pool
+  declared, per-type cap evidence); proposals and capacities are unchanged.
+  R2-1 (A22a closure, DECISIONS A23) revised C1-C6 and C9 once for the
+  restart table's corrected formula text (`restart_table_sha256`, one
+  trajectory column each; numbers unchanged) and synchronised the identity
+  zones of C3 (R3-N6) and D3 (R-D10, identity only).
+  R3-1 (A24-1) re-pinned C9 to GBP1 public2 `@v3` (the solar profile
+  without its extra hour; trajectory and accounting unchanged) and added
+  C10: R029 public2 under the corrected profile with the default modules of
+  a new Study, first model year (revision 0).
+  R3-2 (A24-3, `r32.network-economic-downward-order`) revised C7 (r13: rule
+  record and the new `downward_restart_economics` extension) and C8 (r15:
+  each CCGT dec becomes two bids, 40 more bid-ledger rows; dispatch, curtailment
+  and costs move only by solver tolerance, at most 1.4e-7 MWh); numeric
+  reports `docs/dev/p0-reports/r32-golden/`.
+  R3-3 (A24-4, `r33.restart-cost-price-base-2025`) revised C1-C10 once for
+  the restart costs in 2025 GBP: C1-C6, C9 and C10 change only the
+  `restart_table_sha256` column (no priced shutdown segment is reached, so
+  dispatch, curtailment and costs are bit-identical, GBP1 and R029 2025
+  included); C7 the rule record and extension sha; C8 the CCGT last-resort
+  shutdown dec prices (-373.5 -> -388.3 GBP/MWh) and solver-tolerance
+  movements of the zonal LP; numeric report
+  `docs/dev/p0-reports/r33-golden/C8-r16.json`.
+  R4-3 (A27, `r43.model-clock-utc-label`) revised all fifteen cases (D1-D5,
+  C1-C10) once for two accounting columns, `semantic_metadata.timezone` and
+  `semantic_metadata.calendar` of `market/metadata.json` (now `UTC` and
+  `fixed_365_day_utc_periods`; the staged ledgers of C7 and C8 record them
+  for the first time). Trajectory and every other accounting column are
+  unchanged.
+  R7-1 (A33, `r71.endogenous-planning-timelines`, finding P4-05) revised
+  D1, D2, D4, D5, C1, C2, C4-C7, C9 and C10 once (doctoral reports
+  `tests/golden/reports/D1-r13.json`, `D2-r13.json`, `D4-r14.json`,
+  `D5-r6.json`; corrected reports and planning summaries in
+  `docs/dev/p0-reports/r71-golden/`). Every case records the frozen
+  planning tables in its state; the cases that invest record the new
+  proposal fields. VALUE 101 (D2, D4, C2, C5, C6): every model investment
+  still completes the next year with probability 1 (12-30 month timelines,
+  success 1), so dispatch, prices, capacities and costs are bit-identical.
+  GBP1 public1/public2 and R029 public2 2025 (D5, C9, C10): the same
+  proposals (3,029 / 2,811 / 2,470 MW) now complete in 2026-2034 and their
+  expected capacity is 2,214 / 2,048 / 1,779 MW (-27 %, -27 %, -28 %); of
+  it 224 / 198 / 180 MW completes in 2026. The one-year runs themselves do
+  not change. D3, C3 and C8 (one-day runs) are unchanged.
+  R7-2 (A34, `r72.staged-ledger-balance-boundary`) revised C7 (r17) and C8
+  (r18) once in the accounting zone: the staged ledgers record the PSM
+  identity and the `full_node_v1` boundary. No trajectory column changes.
+
+### Known issues
+
+- **Nuclear path dependency in the doctoral profile (thesis-era setting).**
+  In the frozen thesis kernel, a nuclear unit that has been accepted runs at
+  full power until the end of the year. The doctoral profile keeps this rule
+  on purpose; the corrected profile starts nuclear in service
+  (`fx8.nuclear-in-service-at-start`, A18).
+- **The public1 national packs do not run under the corrected profile.**
+  R029 public1 and GBP1 public1 bind the same hourly `sa.csv` with 8761 values
+  and no interval declaration. The strict corrected reader recognises an
+  undeclared hourly series only at 8760/8784 values and refuses it
+  (`GF_DATA_SHORT_SERIES`) when the default PSM builds its chronology. Use
+  R029 public2 or GBP1 public2 for the corrected profile and the public1
+  packs for doctoral reproduction. The data-pack validation layers do not
+  check a VRE profile's clock, so they still report public1 eligible for
+  the corrected profile.
+- **Interconnector flow sign of the public2 packs is declared, not verified.**
+  Both public2 packs record `flow_sign` `declared_unverified` (the legacy
+  convention, positive = import), because the reference file
+  `boundary_flow_reference_2022.json` is missing;
+  `scripts/audit_boundary_flow_sign.py` can verify it once that file exists.
+- **public2 pack names say "(local build)".** The Data page shows the public2
+  manifest names, which end with "(local build)", and the manifests record
+  `derivation.publication = "local build only; publishing needs the
+  author's consent"`. The manifests are kept byte for byte because golden
+  cases C9 and C10 pin their sha256; `files/release-evidence/DERIVATION.md`
+  in each pack records the author's publication decision (A32).
+- **Repeated Runs do not reproduce `annual_input_state_sha256` (RP-低1).**
+  Two bit-identical runs of the same Study have different
+  `annual_input_state_sha256` values from the second model year on, because
+  the investment project IDs in the state carry the Run ID as a prefix.
+  Results are identical; the hash cannot yet serve as a Run-independent
+  reproducibility check.
+
+- **Zonal LP numerical fragility (found in R3-3).** For some coefficient
+  combinations the zonal redispatch LP (HiGHS dual simplex through SciPy
+  1.8.1, tolerances 1e-9) stops in the `physical_throughput` phase with
+  "optimal for the scaled model, NOTSET in the unscaled model"
+  (`GF_ZONAL_SOLVER_FAILURE`). In the two-zone live toy of
+  `tests/test_r32_network_economic_dec.py` it happens with an OCGT restart
+  cost of 173-178 GBP/MW and a GBP 90 southern unit, and with other price
+  pairs (OCGT 80 / CCGT 95). The rule is not involved; the zonal module
+  (4.0.0) and solver contract v4 are unchanged in R3-3. A retry policy or a
+  scaling fix belongs to the network owner; the live toy now uses a GBP 100
+  southern unit (documented in the test).
+- **Biomass support is not modelled (A24-2, disclosure).** VALUE has no CfD
+  or ROC support revenue for biomass (P4-07), so biomass is rarely
+  dispatched. Biomass offers at its
+  full fuel and carbon cost (85 GBP/MWh in the shipped GB parameters, above
+  CCGT 55.07 and OCGT 74.92) and generates about 0.01 TWh from 4,762 MW in
+  the 2025 GBP1 and R029 corrected runs. Both profiles behave this way and
+  are unchanged; Runs with biomass carry the advisory
+  `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED` (see "Restart costs in the model's
+  price base; biomass disclosure" below).
+
+- **Source quirks kept in the endogenous planning rule (R7-1; kept by the
+  author, DECISIONS A35).** The rule follows the original Scheme C mapping, so a `hydrogen_battery` investment
+  takes the Solar PV timeline and success rate (the source's default label),
+  gas, CCGT, OCGT and biomass take the onshore wind timeline and the
+  onshore-wind success rate, and batteries and thermal plant use the
+  England entry (in the shipped GB tables: the technology mean). Thermal
+  rows in the timeline tables and a hydrogen label are left to the author.
+  The seeded stochastic admission draws with the typed seeded hash, not the
+  source's MD5 draw.
+- **No multi-year reference run of the national packs after R7-1.** The
+  golden cases of GBP1 and R029 cover the first model year. A multi-year run
+  (for example 2025-2034) now commissions far less new capacity in
+  2026-2028 than before R7-1; no reference results for such runs were
+  produced for this release.
+- **Placement declared by the 23-zone Network Pack.** The network pack
+  `value-gb-zonal-network-v1-c9e841112c40` (used unchanged by the public2
+  research suite) places CCGT, OCGT, biomass and waste, run-of-river hydro,
+  nuclear and the four storage classes of its asset map (three batteries,
+  pumped hydro) in the unconstrained zone `ENGLAND_FALLBACK`
+  (`mapping_method` `unlocated_england_fallback`); only wind, solar, the
+  interconnector landings and zonal demand are located.
+  GBP1 public2 models nuclear by station (`nuclear:<station>`); these assets
+  are not in the asset map either and are placed in `ENGLAND_FALLBACK` by the
+  run-time fallback, so Torness, which lies north of the B6 boundary, sits in
+  the fallback zone. The pack's interconnector landings are keyed
+  `interconnector:<line>` (nine lines), while the base packs' import assets
+  are keyed `import:<country>`; the keys never match, so imports also fall
+  back to `ENGLAND_FALLBACK`. Every such placement is listed in the Run's
+  run-time fallback audit. Flows across B6 and B7a therefore see no
+  thermal, hydro, nuclear, storage or import injection north of the
+  boundary; the constraints of this pack are driven by the located wind,
+  solar and zonal demand only.
+- **Validation checks of staged and zonal Runs still `not_evaluated`.**
+  Since R7-2 the energy-balance gate of staged Runs is evaluated (see
+  below), but three checks are not: `run.generation_cross_path` on staged
+  copperplate Runs (the summary ledger records no per-asset detail,
+  `GF_INVARIANT_LEDGER_ASSET_DETAIL_NOT_RECORDED`),
+  `run.demand_input_reconciliation` on zonal Runs (the demand authority is
+  the network pack, not the chronology,
+  `GF_INVARIANT_DEMAND_AUTHORITY_NOT_CHRONOLOGY`) and the storage invariants
+  of zonal Runs (the v8 staged ledger has `storage_state` rows but no
+  `storage_energy_audit` table, `GF_STORAGE_AUDIT_NOT_RECORDED`). The
+  validation gate of these Runs is therefore `not_evaluated`, not `passed`
+  (under the corrected profile only a failed gate withholds annual
+  economics). The perfect-foresight PSM
+  (`value-perfect-foresight-lp`) records its PSM identity but declares no
+  energy-balance boundary, so its balance gate is also `not_evaluated`.
+
+### Migration notes
+
+- **Saved Studies.** When a saved Study's revision no longer matches the
+  installed code, VALUE classifies the mismatch (Q13):
+  - a code-identity or environment change appends a revision automatically
+    when the Study next starts a Run;
+  - a method upgrade needs explicit confirmation in the UI: a module bump
+    with `requires_user_opt_in`, a changed solver contract, or the first
+    recording of the methodology profile;
+  - changed content and unverifiable revisions stay errors.
+
+  Every Study saved before this version therefore asks for one
+  confirmation before its first Run. `GET /api/projects/<id>/revision-migration`
+  previews the classification and writes nothing.
+- **Runs made before the fixes.** These Runs are read, never rewritten. They
+  carry the read-time advisory `VALUE-ADV-2026-10-04-REVIEW`, plus one
+  advisory for each correction that applies to them. A recorded positive
+  status (`passed`) is shown as `superseded_pre_fix`, and the original value
+  is kept in `recorded_*`. Comparisons that involve such a Run are marked
+  `needs_review`.
+- **Unfinished Runs.** A Run left unfinished by 0.6.0-alpha.2 cannot be
+  resumed. The backend source hash is part of the execution identity, so
+  finish or cancel these Runs before upgrading.
+- **Zonal Studies.** A zonal Study that saves solver contract v2 or v3 gets
+  `GF_SOLVER_CONTRACT_UPGRADE_REQUIRED` (409) together with an upgrade
+  preview. A historical zonal Run whose method has been superseded gets
+  `GF_RUN_METHOD_SUPERSEDED` when it is resumed or re-run.
+- **Direct API clients and scripts.** Every request except `GET /api/health`
+  and `OPTIONS` needs the per-process session header `X-VALUE-Session`; use
+  `backend.api_session.authorized_headers`. Browsers reach the API only
+  through the UI gateway.
+- **Installed modules and extensions.** A broken external module or
+  extension, or one whose name collides with another, is quarantined; it no
+  longer stops VALUE. To recover offline, run
+  `python -m gridform_core.module_recovery`.
+- **Installation.** The installer installs only into an empty directory.
+  `docs/release/P0_ACCEPTANCE.md` shows how to carry the state across
+  without the session and lock files.
+
+### API contract changes
+
+| Area | Change | Package | Kind |
+|---|---|---|---|
+| Every `/api` request | `X-VALUE-Session` is required, except for `GET /api/health` without a session and for `OPTIONS`. CORS is removed. Any `Origin` returns 403; a foreign `Host` 421; a form or missing POST Content-Type 415; chunked POST 411. | P0-1 | breaking |
+| Error answers | The body carries `error_code` and the response carries the header `X-VALUE-Error-Code`. One exception boundary maps errors to 400/404/409/415/503/504. | P0-1, P0-2, P0-3 | changed |
+| `GET /api/health` | Adds `status: degraded` and `degraded_reasons [{code, count}]`. Without a session it returns a reduced payload. | P0-1, P0-2 | changed |
+| Module and extension lifecycle | New `POST /api/modules/rescan`. Conflicts return 409 (was 400). A probe timeout returns 504. A stale catalogue returns 503 at run start. Pending runs return `GF_MODULE_LIFECYCLE_RUNS_PENDING` until the change is confirmed. Responses carry `module_quarantine`. | P0-2 | changed |
+| Run lifecycle | New `POST /api/runs/<id>/mark-lost`. New fields `worker_liveness`, `worker`, `cancel_requested_at`, `persisted_status` and `lifecycle_history`; `worker.json` v2. | P0-3 | additive |
+| Run and summary payloads | New `methodology`, `advisories`, `advisory_summary`, `recorded_*` statuses and `result_publication` (Q14). The status vocabulary is passed / failed / not_evaluated / superseded_pre_fix / reproduction_with_declared_deviations / reproduction_conformant. | X0 | additive |
+| Study revisions | New `GET`/`POST /api/projects/<id>/revision-migration`. Run start returns 409 with `revision_migration` when confirmation is needed. Draft resolution returns a `methodology` block, and preflight has `checks.methodology`. | X0 | additive |
+| Validation and stress | New fields `storage_invariant_status`, `storage_invariants`, `validation_gate`, `declared_deviations`, `energy_balance.raw_boundary_status` and `publication_blocked`. Status, summaries and replay windows carry `stress_periods`, `shortfall_mwh` and `shortfall_basis`. New `GET /api/runs/<id>/market/stress-events`. | P0-4, P0-9 | additive |
+| PSM extensions | New `physical_operating_cost_detail_gbp`, `market_settlement_components_gbp`, `market_rule_diagnostics` and `market_rule_set`, and the cash-flow schema `value.agent-cashflow/v1`. | P0-6, P0-7 | additive |
+| Results summary | New `vre_capacity_factor_disclosure` (wind and solar capacity factors shown next to DUKES). | F2 | additive |
+| Zonal network | Solver contract v4. New `GF_SOLVER_CONTRACT_UPGRADE_REQUIRED` (409) and `GF_RUN_METHOD_SUPERSEDED`. Boundary marginal values use v2 semantics, and older ledgers read as `not_computed`. New run-time fallback audit read model. | P0-8 | changed |
+| Data mapping | Declared CSV columns are read (`GF_DATA_INDEX_COLUMN`, `GF_DATA_AMBIGUOUS_COLUMN`, `GF_DATA_SHORT_SERIES`). EUR prices take an explicit rate, FX basis and price year (`GF_MAPPING_FX`). | P0-5a, P0-9 | changed |
+| Market replay and exports (R4-3, S-中1) | Model times are UTC on the fixed 365-day model year and end in `Z` (`2025-07-01T16:00:00Z`; was a naive local-looking `2025-07-01T16:00:00`); a leap model year skips 29 February. `timezone` is `UTC` and `calendar` `fixed_365_day_utc_periods`; new `clock_rule`, `clock_label_corrected` and, for a ledger written before the fix, `clock_note`. CSV/JSONL replay exports end with a `period_start_utc` column; the ZIP manifest has `model_clock`. | R4-3 (A27) | changed |
+| Data mapping (R4-3) | Preview: optional `timestamp.date_order` (`auto`/`day_first`/`month_first`) and `model_start_year`; the review adds `clock`, `acknowledgements_required`, and in `timestamp` `data_row`/`csv_line` per problem, `date_order`, `date_order_basis`, `hints` and `coverage`; `validation.timestamp_check`. Commit: optional `acknowledged` (409 `GF_MAPPING_ACKNOWLEDGEMENT` without it when the series is shorter than a model year). `fx_basis` must be `annual average`, `monthly average` or `fixed rate`. Semicolon- or tab-separated uploads are refused with an explanation (`GF_MAPPING_CSV`). | R4-3 (A27) | changed |
+| Readiness and Study revisions (R4-4) | The preflight report's `project_revision_sha256` is the saved revision it evaluated (was the hash the installed code computes); the computed hash is `calculated_project_revision_sha256`. New warnings `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED` and error `GF_PREFLIGHT_EXTENSION_SOURCE_RELOAD`; `checks.extension_source_changes`; `checks.project_revision.blocked_by`. Derived `GF_PREFLIGHT_MODULE_SELECTION` / `GF_PREFLIGHT_PROJECT_REVISION` errors are no longer added when quarantined or disabled code is reported. New revision reason `source-reidentify`; migration revisions record the current `module_resolution_graph`. A Run start refuses an unsealed kernel (`GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`, 409) before a method confirmation. | R4-4 (A27) | changed |
+| Module and extension lifecycle (R4-4) | `GET /api/workspace` adds `extension_source_changes`. `POST /api/modules/rescan` imports extension hooks and adds `reloaded_extensions`, `quarantined_extensions`. `POST /api/projects/<id>/derive` appends the source's automatic code-only revision first (`source_migration`) and starts from the current module graph when only code identity drifted (`source_graph_drift`, `derivation.source_module_graph_drift`). New install codes `GF_MODULE_CONTRACT_MISMATCH`, `GF_MODULE_SLOT_UNSUPPORTED`. Conflicts are refused before `GF_MODULE_LIFECYCLE_RUNS_PENDING`, whose message names modules or extensions. Run payloads add `selected_extensions` and, for the storage-cost slot, `module_evidence[...].source = market_ledger`. | R4-4 (A27) | changed |
+| Comparisons | New `metric_delta_gates` ({metric: allowed, reason_code, definitions, reason}) and `withheld_metric_deltas`: annual deltas are gated per metric (AF3-1). `metric_deltas_allowed` still means "every metric". `changed_dimension_details` rows gain `name`. | R2-1 (A23) | additive |
+| Methodology record | `universal_accounting_correction_ids` and `correction_ids_in_force` next to `applied_correction_ids` (R3-N6 / O-3); the method identity is unchanged. Catalogue `applies_when` gains `assets_any` (R3-N7). | R2-1 (A23) | additive |
+| Parameters | New `methodology.profile`, `market.voll_gbp_per_mwh` (corrected VoLL), `market.dec_multiplier`, `market.policy_support_gbp_per_mwh_by_technology` and `network.inflexible_dec_premium_gbp_per_mwh_by_technology`. | X0, P0-6, P0-8 | additive |
+| Results, comparisons and replay (R5-2, reproduce role) | Run `results[].metrics` and comparison annual metrics add `unused_vre_mwh` / `available_vre_mwh` (Runs) and `unused_vre_mwh` / `unused_vre_share_percent` (comparison, `value.unused-vre/v1`, the VRE page's unused VRE; not gated by curtailment-attribution evidence). R5-2 review: each of these metrics records `vre_boundary` (`full_node_gross_vre_output` corrected, `after_separate_prebalancing_excess` doctoral, `unsplit_unused_vre` perfect foresight, `not_recorded`); the comparison adds `pre_balancing_excess_mwh` (`value.pre-balancing-excess/v1`, doctoral ledgers only, `not_applicable` otherwise) and withholds the deltas of all three with `unused_vre_boundary_differs` when the Runs' boundaries differ; the comparison values carry `vre_boundary`. The comparison CSV adds `value_status`, `value_reason_code`, `delta_shown`, `delta_withheld_reason`. Flat replay exports (CSV/JSONL) add `clearing_price_basis`, `period_shortfall_mwh`, `period_stress`, `shortfall_basis` before `period_start_utc`. The dispatch timeline adds `accepted_supply_boundary`. `result_publication` of an unfinished reproduction Run reads `raw_invariants_status: pending` / `GF_RESULTS_PENDING_RAW_INVARIANTS` (still withheld). The extension-results query answers `no_extensions_selected` for a Run without extensions and keeps the module-graph hash. The advisory `p07.compatibility-capital-out-of-headline` applies only to fleets with run-of-river hydro. No model number changes. | R5-2 (A28) | additive |
+| Data mapping and validation (R5-1) | Warning `GF_MAPPING_HOURLY_DEMAND`: a demand CSV with hourly rows is used for two half-hour periods per hour. Warning `GF_DATA_DEMAND_SCALE`: a mapped or copied demand series whose annual energy is above 1.5 or below 0.67 times the file it replaces. VALUE 101 demand bindings carry `runtime_unit_interpretation` (read as MW). | R5-1 (A28) | additive |
+| Run status, results and comparisons (R5-1) | Run `results[].metrics` add `demand_mwh` and `unserved_energy_a2_mwh` (recorded blackout plus stress shortfall). Comparison annual metrics add `demand_mwh`, `demand_served_mwh`, `unserved_energy_mwh` (`value.adequacy-unserved-energy/v2`) and `recorded_unserved_energy_mwh` (`/v1`). | R5-1 (A28) | additive |
+| Studies and module lifecycle (R5-3, R5-4) | `POST /api/projects` answers 409 `GF_STUDY_ID_EXISTS` when a Study with revisions already has the ID and the request names no base revision. Enabling a module while another active manifest declares its ID answers `GF_MODULE_ID_COLLISION`. Readiness warning `GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE` for a full market replay with a storage-cost module outside the built-in set. | R5-3, R5-4 (A28) | changed |
+| Run lifecycle (R6, RR-1) | New error `GF_RUN_EXECUTION_IDENTITY_CHANGED` (category `execution_identity`): a queued or preparing Run whose recorded execution identity no longer matches the installed code is stopped before it starts. Module and extension lifecycle responses add `stopped_unstarted_runs`. Failed Runs of the categories `contract` and `execution_identity` carry `error_detail` (the first line of the diagnostic) in the Run payloads; older failures get it from `diagnostics/error.json`. | R6-1 (A29), RR-1 | additive |
+| Extension hooks (R6) | New error `GF_EXTENSION_OUTPUT_REJECTED` (category `contract`) when a hook returns a non-mapping, a hook other than `after_psm` returns an artifact, or an artifact fails validation; the message names the extension, hook and rule. | R6-1 (A29) | changed |
+| Extension lifecycle (R6) | Enable of an extension whose hook source was edited in place is accepted and appends `accepted_source_edits` [{`accepted_at`, `changed_modules`, `hook_source_identities`}] to its `installation.json`; the install identity is kept. A hook that no longer imports is refused with `GF_EXTENSION_HOOK`, a manifest that declares other hooks with `GF_EXTENSION_SOURCE_CHANGED`. | R6-2 (A29) | changed |
+| Health and interface contract (P1) | `GET /api/health` reports `frontend_contract_version` (`value.expanded-frontend/v1`); the interface shows a blocking notice when it differs from its own. | P1 W2 (A30) | additive |
+| Readiness of zonal Studies (R7-2) | `POST /api/projects/resolve-readiness` resolves the Study's installed signed Network Pack with the preflight rule and checks the zonal roles in it (was: in the base pack, so every zonal draft reported `GF_DOMAIN_ZONAL_INPUT`). A missing, mismatched or wrong-kind Network Pack is reported first as `GF_DOMAIN_ZONAL_PACK_SELECTION` (error, scope `zonal_network`, status blocked). Copperplate drafts are unchanged. | R7-2 (A34) | changed |
+| Staged market ledger (R7-2) | The semantic metadata of the v8 staged ledger adds `psm_module_id`, `psm_module_version`, `energy_balance_boundary = full_node_v1` and `energy_balance_rule_set = null`. A staged ledger created before R7-2 without all four keys resumes with its own metadata. | R7-2 (A34) | additive |
+| Solver validation summary (R7-5) | `solver_validation_summary.evidence_status` (capabilities and annual brief of the Network & redispatch API) adds `not_recorded_under_trace_profile`, with `evidence_reason` and `trace_level`, for a v8 ledger below the full trace profile that holds no solver diagnostics (was: `invalid` with `solver_diagnostics_missing_completed_period`). | R7-5 | additive |
+| Research suites (R7-2) | A suite ID must be a safe immutable identifier (same rule as pack IDs); building or installing a suite with another ID fails with `VALUE_RESEARCH_SUITE_ID`. | R7-2 (A34) | changed |
+
+### Methodology profiles, read-time advisories and Study migration (X0)
+
+- `gridform_core/data/methodology/` is the single catalogue. It holds the
+  profiles, the corrections per package, the declared deviations and the
+  generic advisories. Every Run records its profile in `resolved-run.json`,
+  provenance and status. A Run that changes only the profile differs only in
+  the `method` comparison dimension.
+- Read-time advisories and the shared status presentation are computed when
+  a Run is read and never written to disk.
+- Study revisions record `fingerprint_basis` and `revision_reason`. Start-run
+  no longer silently overwrites a revision.
+- The golden families are frozen as doctoral and corrected snapshots. Gates
+  `p0_gate quick|full|nightly` run against them, and
+  `scripts/golden/delta_report.py` writes the delta report.
+
+### Declared data reading and validation (P0-5a)
+
+- One series reader (`gridform_core/series_reader.py`) reads the declared CSV
+  column in every reading mode (P6-01). An implicitly selected integer index
+  column is refused.
+- Registry-verified GBP1 objects are read with their recorded semantics in
+  both profiles: Belgium EUR prices are converted at the documented rate
+  (P6-02), flow files are assigned by line identity (P6-03), demand is put on
+  the UTC clock (P6-04), and interconnector series follow the run clock
+  (P6-24).
+- Data-pack validation has three layers (structural, chronology,
+  plausibility) and checks per-profile eligibility. The corrected profile
+  reads declared resolutions and leap years, and refuses ambiguous columns in
+  strict mode.
+
+### Network software correctness and economics (P0-8)
+
+- Assets mapped to several buses are split by share and the shares must sum
+  to 1. The DC network expands, solves and aggregates per share (module
+  1.1.0).
+- Zonal solver contract v4 locks load shedding after the primary stage and
+  then locks bid cost numerically; GBP 1 is only an acceptance ceiling (Q5).
+  Contracts v2 and v3 can still be read, but upgrading needs explicit action.
+- Staged balancing prices decremental bids economically. Equal-price bids are
+  accepted pro rata, so renaming an asset no longer moves dispatch.
+- Network cost is measured against a network-free LP counterfactual that uses
+  one unit-cost table. Boundary marginal values are primary-stage duals: a
+  diagnostic, not a zonal price.
+
+### Corrected solar on the module plane, nuclear end month, DUKES hydro, CF disclosure (F2)
+
+- Corrected profile only. Solar: ERA5 horizontal irradiance is split into
+  diffuse and beam (Erbs 1982) and transposed (Hay-Davies 1980, albedo 0.2)
+  onto a south-facing plane at the latitude-optimal tilt (Jacobson & Jadhav
+  2018), with the sun position of each half-hour period, before the PV
+  performance ratio 0.83 (decision A13, `p05.solar-plane-of-array`). GBP1
+  corrected solar CF 0.0997 -> 0.1065. Synthetic teaching weather (VALUE 101)
+  is not transposed.
+- Heysham 2 and Torness retire in March 2030 like Heysham 1 and Hartlepool
+  (A10). Natural-flow hydro uses the DUKES 2019-2024 load factor 0.3487 with a
+  quarterly-derived seasonal shape (A14): GBP1 6.10 TWh against 5.77 TWh.
+  The nuclear and hydro reference values are author-reviewed (A14); the wind
+  and solar loss factors author-accepted (A9).
+- The run results summary carries `vre_capacity_factor_disclosure`: the
+  model's pre-curtailment wind and solar capacity factors next to DUKES 6.3
+  load factors with the reasons they differ (A9; disclosure only, no
+  calibration). GBP1 corrected / DUKES 2020-2024: onshore 1.56, offshore 1.23,
+  solar 1.04.
+
+### GBP1 public2 registration and station nuclear (FX7, A16-6, A16-7)
+
+- The A13 solar transposition model choices are author-approved (A16-6);
+  values unchanged.
+- GBP1 public2 (`value-uk-open-data-pack-public2`, built by
+  `scripts/build_value_uk_pack_revision.py` and released with 0.7.0) is
+  registered in the pack-class registry as `scientific_reference`, so the
+  corrected profile reads it strictly. The builder (`@v2`; `@v3` since A24-1) also declares the
+  three hourly VRE profiles `interval_minutes` 60.
+- Corrected profile only (`p05.nuclear-stations-public2`): GBP1 public2 takes
+  the VALUE-UK nuclear station policy of GBP1 public1 (five EDF stations with
+  their own load factors and month-exact generation ends, Hinkley Point C and
+  Sizewell C as exogenous pipeline projects) instead of one aggregate
+  `Nuclear` asset at the national fallback 0.723.
+- One-year acceptance on GBP1 public2: hydro 6.06 TWh (DUKES 6.2
+  2019-2024 mean 5.77 TWh, +5 %); nuclear as in "Nuclear in service at the
+  start of the year" (A18); wind and solar CF above DUKES as disclosed under
+  A9. `docs/dev/GBP1_CORRECTED_LOCAL_ACCEPTANCE.md`.
+
+### The extra hour of the hourly solar profile (A24-1, R3-1)
+
+- **Which hour.** R029 public1 and GBP1 public1 share `sa.csv` (sha256
+  `15ef49b3...578e`, 8761 values, no timestamps). Against ERA5 2022 ssrd
+  (GB mean), rows 0-8759 match the stamps 2022-01-01T00:00Z to
+  2022-12-31T23:00Z one to one: correlation 0.956 at lag 0, 0.920 and
+  0.921 one hour either way, lag 0 best in all 52 weeks, and no daylight
+  row at a dark stamp. The last row (`0`) is the stamp 2023-01-01T00:00Z,
+  which an inclusive `2022-01-01 .. 2023-01-01` slice of an hourly
+  2022-2023 ERA5 file yields as its 8761st hour.
+  `scripts/audit_hourly_solar_profile.py`;
+  evidence `docs/dev/p0-reports/r31-solar/sa_8761_evidence.json`.
+- **Revised packs.** `scripts/build_value_uk_pack_revision.py@v3`
+  writes the first 8760 lines byte for byte (sha256 `ae4b9577...b306`) and
+  records the dropped row in the binding (`row_revision`: source sha256,
+  row 8761, value, ERA5 stamp, reason, evidence). `--pack r029-public2`
+  builds R029 public2 (`value-uk-calendar-vx-trade001-public2`): R029
+  public1 with that object revised and the three VRE profiles declared
+  `interval_minutes` 60; every other file is the public1 file. It is
+  registered as `scientific_reference` and named next to R029 in
+  the data corrections' `applies_when`. GBP1 public2 binds the same revised
+  object.
+- **No number changes.** Every existing reading used only the first 8760
+  rows (the doctoral hourly repeat, the declared clock, the kernel's VRE-cap
+  bisection, where the last row is a zero), so the doctoral reading of the
+  public1 packs and the GBP1 public2 results are unchanged. The corrected
+  profile now runs R029 (public2) with the default modules (golden C10).
+- **Not changed.** ERA5 stamps ssrd at the end of the accumulated hour, so
+  by interval the profile still lags the half-hour clock by one hour
+  (finding P6-06 for the CSV profiles, which feed the VRE expansion cap and
+  the dispatch of packs without NetCDF weather). Re-labelling it would be a
+  method change and is left to the author.
+
+### Result views read what was recorded (P0-9 close)
+
+- Stress events (decision A2) are visible end to end: the Run context bar's
+  Stress events field and notice, the Market replay window card (`Shortfall`,
+  stress periods) and a 4 px amber band on the dispatch chart, and a new
+  full-year list in Market replay (`GET /api/runs/{run}/market/stress-events`,
+  paged by numeric start period, with Replay). A shortfall of a Run that
+  predates exact stress accounting is shown as a lower bound `≥ x MWh`.
+- Validation gates: any failed gate (run invariants, energy balance, storage
+  limits) raises `Validation gate failed: {gates}`; a corrected Run blocked by
+  a gate shows `Annual results not published` instead of totals;
+  `reproduction_conformant` is a teal `● Conformant`; Inspect shows the raw
+  boundary residuals.
+- State words: `Withheld` is reserved for the Q14 rule on doctoral
+  reproduction runs; partial, running and stopped years read
+  `Partial year · n%`, `Running` and `Stopped · n%`. A Run cancelled or failed
+  before a declared year finished is `unavailable`, not a red `invalid`.
+- Labels state their basis: the average system cost reads `/MWh served` (CEM
+  ledger) or `/MWh generated` (legacy total); the native operating cost now
+  reports that it includes VoLL (P0-6) with the recorded amount; corrected VRE
+  columns read `Non-VRE spill` and `VRE curtailment` with the event basis
+  `corrected_unused_vre`.
+- Network & redispatch shows the run-time fallback audit ("Spatially
+  indicative: …"). Isolated VRE points are drawn as dots; event groups without
+  events say `No events recorded`.
+- CSV mapping accepts EUR prices with an explicit EUR per GBP rate, FX basis
+  and price year, and previews the original value beside the converted one.
+
+### Corrected-profile weather, VRE losses and firm availability (P0-5b)
+
+- Corrected profile only (the doctoral reproduction keeps 0.6.0-alpha.2
+  inputs): ERA5 accumulated irradiance is used for the hour it accumulates
+  (weather v2, P6-06; GBP1 London solar centroid 12.97 -> 11.97 UTC); wind
+  and solar are multiplied by cited literature loss factors (onshore 0.903,
+  offshore 0.815, PV performance ratio 0.83; P6-08) without any calibration
+  to statistical load factors; nuclear stations carry load factors and a
+  month-exact generation end, natural-flow hydro an annual load factor
+  (P5-09, P5-10).  The reference values were PENDING AUTHOR REVIEW at this
+  step; the author reviewed the nuclear and hydro values in decision A14 (see
+  F2 above).
+- The retained kernel receives the same per-site and firm availability arrays
+  as the canonical adapter; corrected interconnector offers keep negative
+  prices.  In both profiles the kernel's weather cache is keyed by its files
+  (P7-02).
+- `scripts/build_value_uk_pack_revision.py` builds GBP1 public2
+  (demand and interconnectors re-bound to the approved R029 objects);
+  `scripts/audit_boundary_flow_sign.py` marks `flow_sign` verified only
+  against an author-supplied reference.
+- Read-time advisories flag runs on the ERA5 research packs made without
+  these corrections.
+
+### External modules and extensions cannot stop VALUE (P0-2)
+
+- Built-in modules stay fail-closed; locally installed (external) module and
+  extension manifests are fail-isolated.  A manifest that cannot be read, an
+  implementation that raises anything while importing (including
+  `SystemExit`), an external ID or namespace that collides with another
+  external entry (every party is quarantined, there is no implicit winner) or
+  with a built-in (only the external entry is quarantined) is listed as
+  quarantined in memory; nothing is written into `modules/`.  A failed import
+  is not retried in the same process until `POST /api/modules/rescan`.
+- Install and enable refuse namespace conflicts before writing anything
+  (`GF_EXTENSION_NAMESPACE_COLLISION`, naming the real owner) and then check
+  the registry twice — in process and in a fresh, worker-like Python process
+  — rolling the change back byte for byte if either refuses
+  (`GF_EXTENSION_REGISTRY_CONFLICT`, `GF_MODULE_REGISTRY_CONFLICT`,
+  `GF_MODULE_PROBE_FAILED`, `GF_MODULE_PROBE_TIMEOUT`).  Each install or
+  enable takes about 1–2 s longer.  Disabling is always possible, also for a
+  schema-drifted extension and for a quarantined entry that saved Studies
+  still name (active runs still block it).
+- The module catalogue is built on first use, never at import;
+  `DATASET_SLOTS` moved to `gridform_core/dataset_slots.py` (re-exported by
+  `gridform_core.catalog`).  A worker no longer imports the catalogue, so a
+  broken module fails the run with `GF_MODULE_QUARANTINED` instead of leaving
+  it queued.  Draft resolution, preflight and Study derivation report
+  `GF_STUDY_MODULE_QUARANTINED` / `GF_PREFLIGHT_MODULE_QUARANTINED` only when
+  the Study selects quarantined code; otherwise they add one warning.
+  `preflight.json` records `checks.module_quarantine` and
+  `checks.external_code`.
+- Offline self-rescue without importing any installed code:
+  `python -m gridform_core.module_recovery list | disable module|extension <id> |
+  park-manifest module|extension <file> | park-installation module|extension <id> [<version>] |
+  verify`; the user guide ("Offline module recovery") gives the command for
+  an installed VALUE (bundled interpreter, `-B -s`, `PYTHONPATH=<prefix>/app`,
+  `--modules-root <prefix>/state/modules`).  A damaged installation record
+  (which refuses every run start) is reported as
+  `GF_MODULE_INSTALL_RECORD_INVALID` and parked with `park-installation`.
+- **API contract changes (additive):** `/api/health` reports
+  `status: degraded` with `degraded_reasons [{code, count}]`
+  (`GF_MODULE_IMPORT_FAILED`, `GF_EXTENSION_NAMESPACE_COLLISION`,
+  `GF_MODULE_CATALOG_STALE`, …); `/api/workspace`, `/api/modules` and
+  `/api/extensions` carry `module_quarantine`; new `POST /api/modules/rescan`;
+  lifecycle conflicts are 409 (were 400), probe timeout 504, a stale
+  catalogue 503 on run start; a lifecycle change while runs are pending is
+  409 `GF_MODULE_LIFECYCLE_RUNS_PENDING` until confirmed with
+  `{"confirm_pending_runs": true}` (JSON) or
+  `X-VALUE-Confirm-Pending-Runs: acknowledged` (ZIP upload); every error
+  answer carries `error_code`.  Library: `workspace_registry(...,
+  strict=False)` quarantines by default (`strict=True` for release gates);
+  catalogue constants are lazy attributes.
+- Scientific identity is unchanged: for VALUE 101 the module graph
+  (`graph_sha256` e6ff10cd…0ee9) and the Study revision (`revision_sha256`
+  8d348df4…626d) are identical before and after this change, and the
+  registry content and order are unchanged for every data directory that
+  loaded before.
+
+### Local API security boundary (P0-1)
+
+- The browser talks only to the UI origin. `scripts/value-ui-gateway.mjs`
+  (mounted by `serve-value-ui.mjs` and, for development, by `vite.config.ts`)
+  answers only `127.0.0.1:<port>`/`localhost:<port>` (421 otherwise), refuses
+  cross-site `/api` requests and writes without the page Origin (403), needs
+  a Content-Length on POST (411), sends a per-response CSP nonce,
+  `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff`,
+  `Referrer-Policy: no-referrer`, COOP/CORP, and forwards `/api` with the
+  API session.  A foreign Host on a page gets the "Open VALUE from its
+  launcher" explanation.
+- The API generates a session token per process and writes it only to
+  `<VALUE_DATA_HOME>/runtime/api-session-<port>.json` (0700/0600, atomic;
+  removed on exit only by its owner).  Every request passes
+  `backend/api_security.evaluate`: Host 421, any Origin 403
+  `GF_BROWSER_ORIGIN_REJECTED`, cross-site Sec-Fetch-Site 403, invalid
+  Content-Length 400, chunked POST 411, missing/wrong session 403
+  `GF_SESSION_REQUIRED`/`GF_SESSION_INVALID`, form-style or missing POST
+  Content-Type 415 `GF_CONTENT_TYPE_REJECTED`.
+- Launchers pass `--api-origin` after `--port` (process patterns unchanged),
+  never the token, and wait until the gateway reaches the API.
+- Frontend calls same-origin `/api`; `NEXT_PUBLIC_VALUE_API_ORIGIN` is gone;
+  pages are rendered per request (`force-dynamic`).
+- `scripts/verify_local_security_boundary.py` probes an installation.
+- **API contract changes (breaking for direct clients):** no CORS at all;
+  new request header `X-VALUE-Session` (scripts:
+  `backend.api_session.authorized_headers`); new response header
+  `X-VALUE-Error-Code`; new statuses 421, 403, 415, 411, 400 and, at the
+  gateway, 502 `GF_GATEWAY_SESSION_UNAVAILABLE`/`GF_GATEWAY_SESSION_MISMATCH`/
+  `GF_GATEWAY_UPSTREAM_UNAVAILABLE`; `GET /api/health` without a session
+  returns only `ok, service, version, python,
+  authoritative_runtime_compatible, session_required, status,
+  degraded_reasons`; the comparison CSV is an attachment.  The backend source
+  hash is part of the execution identity, so Runs left unfinished by an
+  earlier version cannot be resumed after the upgrade.
+- `SECURITY.md` names VALUE, points to the VALUE advisory form and states the
+  single-user host assumption; `X-VALUE-Executable-Trust` is documented as
+  informed consent, not a security control.
+
+### Run lifecycle (P0-3)
+
+- `status.json` has a single writer API (`backend/lifecycle/run_status.py`):
+  per-run file lock, field-level merges, a consecutive `lifecycle_history`,
+  late worker writes recorded in `late-worker-*.json` without touching
+  sealed artifacts. Cancellation is the `cancel-request.json` file only.
+- Workers start through `python -m backend.worker_entry`, take a lease
+  (`worker.lock`) before heavy imports, run detached from the backend and
+  are reaped, supervised and reconciled at start-up (`GF_WORKER_EXITED`,
+  `GF_WORKER_LOST`, `GF_WORKER_IMPORT_FAILED`, `GF_WORKER_TERMINATED`,
+  `GF_WORKER_SPAWN_FAILED`); `POST /api/runs/<id>/mark-lost`; one backend
+  per data directory (`.backend.lock`, exit code 3).
+- Delete moves the run to the trash before recording `deleting`; runs a
+  previous version left in `deleting` are repaired at start-up.
+- Disk quota counts physical bytes once per inode and reservations only
+  for the unwritten output of active runs; one rule for reservation,
+  preflight, snapshot readiness and resume; reservation lock is a flock
+  (timeout 503); reservation report v2.
+- Every API request has one exception boundary (`_dispatch`); listings
+  isolate bad records instead of failing.
+- Launchers start every interpreter with `-B -s -X pycache_prefix=<fresh
+  directory>`; stray `__pycache__` bytecode is quarantined instead of
+  blocking start/diagnose (`diagnose-value --repair-bytecode`).
+- API additions: `worker_liveness`, `worker`, `cancel_requested_at`,
+  `persisted_status`; `worker.json` v2.
+
+### Investment decisions, storage headroom and cost ledger (P0-7)
+
+- Thermal investment net revenue restored in both profiles (decision A4,
+  `p07.thermal-net-revenue`): gas and biomass net generated MWh x (generation
+  + fuel + carbon + unit-time cost) from their income; VRE and storage keep
+  gross revenue as profit. A CCGT paid exactly its marginal cost no longer
+  expands (HEAD built 10.95 MW per 100 MW). PSMs publish
+  `value.agent-cashflow/v1`; agent-investment 3.0.0 fails closed for a
+  thermal group without it. The doctoral two-year golden (D4) was
+  re-baselined once with a numeric report.
+- Corrected profile: storage headroom from the post-charge surplus (P5-01;
+  it was always zero) with a full-year guard, and one shared power-battery
+  pool (P5-02, read as "the cap was counted three times";
+  withdrawn by decision A20 in R1-3, see below). value-storage-expansion-policy
+  5.0.0. The doctoral profile keeps both 0.6.0-alpha.2 behaviours.
+- Cost ledger v2: VRE and storage fixed OPEX is a memo, not part of the
+  headline (decision A7, both profiles); the corrected headline excludes the
+  run-of-river hydro compatibility capital (P4-03), shown as a memo row on the
+  Runs page. Perfect foresight books thermal FOM from `annual_fixed_opex_gbp`
+  (the key it read never existed).
+- Investment decisions stay undiscounted in constant base-year money (decision
+  A6, P4-02 out of scope); see `docs/methodology/drafts/0.4/p07_investment.md`.
+
+### Default PSM clearing and storage dispatch (P0-6)
+
+- `value-bid-at-cost-psm` 6.0.0 runs one of two market rule sets derived from
+  the methodology catalogue (`corrections/p06.json`).  The doctoral
+  reproduction profile keeps the 0.6.0-alpha.2 dispatch bit for bit and
+  reports its known deviations in `market_rule_diagnostics`.  The default
+  (corrected) profile clears with: D1-surplus (VRE surplus rebuilt per source
+  and kept on the books; must-run surplus never generated twice), storage
+  after generation in the same 0.01 GBP/MWh band, an avoided-cost
+  down-regulation stack, one net storage position per period (shared rated
+  power, buy-back before charging), per-period storage fees, no pre-clearing
+  VRE electrolysis, cycle-only dynamic storage bids (pumped hydro and
+  hydrogen bid 0) and uniform-price settlement.  Saved Studies on the
+  corrected profile need method confirmation (Q13).
+- Realisation is unchanged in both profiles (decision A2): a period whose
+  ahead stage cannot meet the forecast keeps its shortfall, booked as a
+  stress event.
+- Operating cost of the default PSM (both profiles) is physical: generation
+  at running cost, imports, start-up adder, unserved energy x VoLL (17,000
+  in both profiles since FX5; 8000 doctoral and `market.voll_gbp_per_mwh`
+  corrected before) and storage cycle wear,
+  which was previously counted twice.  New extensions
+  `physical_operating_cost_detail_gbp`, `market_settlement_components_gbp`,
+  `market_rule_diagnostics`, `market_rule_set`.
+- Corrected ledgers declare `native_corrected_full_node_v1`: `vre_accepted`
+  is gross VRE output, `curtailed` is VRE availability minus that output,
+  `excess` is the non-VRE spill (declared in the ledger semantic metadata).
+- `dynamic-annual-storage-cost` 2.0.0 (bid basis owned by the PSM rule set);
+  `user-formula-storage-cost` stays 1.0.0; storage recovery adequacy v2.
+- Per-period source flows (RealisationLog) stay in memory only; persisting
+  them is deferred to ledger v9 (P1).
+
+### Storage offers in the market ledger (post-UAT M-D1)
+
+- `value-bid-at-cost-psm` 6.1.0 (code identity, no opt-in): the full market
+  trace writes the new accounting table `storage_orders`, one row per storage
+  tranche offer of the ahead and balancing stages, accepted or not, at its
+  real price (storage cost module bid x bid multiplier), with the energy it
+  delivered and a link to the clearing declaration.  The battery's `orders`
+  row (`final_dispatch`, price 0.0) is unchanged.  Dispatch is unchanged in
+  both profiles; golden D3 and C3 gained an accounting revision
+  (`fx4.storage-offer-ledger`).
+
+### Value of lost load 17,000 GBP/MWh in both profiles (A16-5)
+
+- VoLL is the author's 17,000 GBP/MWh (8,500 GBP per MW and half-hour
+  period) everywhere (`gridform_core/voll.py`).  Doctoral reproduction: the
+  thesis cost-ledger constant 8,000 (`case3.py` / `modular_case3.py`
+  `DEFICIT_VALUE_PER_MWH`, the native doctoral rule set, now
+  `reliability_voll = constant_17000`, and the original-thesis system-cost
+  view) becomes 17,000.  VoLL enters only the cost accounts there, so this is
+  a universal accounting correction (`fx5.voll-17000`, Q12): the doctoral
+  trajectory is bit-identical.  Corrected profile and every module that reads
+  `market.voll_gbp_per_mwh`: the registry default is 17,000 instead of 10,000
+  (zonal redispatch on the VALUE UK study already pinned 17,000).
+- Method upgrades with explicit confirmation (Q13): `value-bid-at-cost-psm`
+  6.2.0, `value-perfect-foresight-lp` 1.1.0, `value-staged-bid-at-cost-psm`
+  1.4.0, `value-reference-dc-network` 1.2.0, `value-doctoral-national-psm`
+  0.3.0.  `value-zonal-redispatch-balancing` keeps 4.0.0 (code and solver
+  contract unchanged; a zonal Study always runs the staged PSM).
+- A saved Study whose derived market configuration still carries the old
+  default 10,000 without an explicit parameter is re-projected to 17,000
+  instead of being refused; an explicit `market.voll_gbp_per_mwh` stays
+  authoritative.
+- VALUE 101 golden cases and GBP1 D5 record no blackout, so their headline
+  cost is unchanged; only the VoLL value and its basis label in
+  `physical_operating_cost_detail_gbp` change (accounting revisions of
+  D1–D5 and C1–C6).
+
+### Interconnector imports in the day-ahead clearing (A16-2, corrected profile)
+
+- Four-role finding S-D3: a positive "import availability" produced no
+  import in a one-day Run.  The retained default PSM offers interconnector
+  imports only in the balancing stage, for the upward requirement left when
+  realised demand exceeds the day-ahead schedule; the day-ahead clearing never
+  receives a connection.  The doctoral reproduction profile keeps this thesis
+  rule bit for bit (it is where the GBP1 doctoral imports, 0.336 TWh in the
+  first model year, come from).
+- Corrected profile (`fx6.day-ahead-interconnector-imports`, rule-set field
+  `interconnector_import_stage`): every connection with a positive transfer
+  constraint offers its available import capacity to the day-ahead clearing
+  at the period's counterparty price (times the bid multiplier), in the same
+  merit order as domestic generation (generation, then an import, then
+  storage at an equal 0.01 GBP/MWh band).  The balancing stage offers only the
+  import capacity the day-ahead schedule left, so no MW is bought twice.  An
+  accepted day-ahead import can be reduced in the curtailment branch at its
+  avoided import price (no curtailment payment).  Exports are unchanged.
+- Ledger: the ahead clearing declarations carry `ahead:i:` import offers
+  (`resource_kind` import, with the counterparty price), and the `orders`
+  table books each import offer as an `ahead_offer` row (offered capacity,
+  accepted import, status) instead of a 0.0-priced `final_dispatch` row; the
+  market replay shows the import in the ahead supply curve.  The import
+  payment diagnostic covers day-ahead and balancing imports.
+- `value-bid-at-cost-psm` 6.2.0 → 6.3.0 with `requires_user_opt_in` (Q13):
+  saved corrected Studies need explicit confirmation.  The data roles
+  `market.<country>.profile` are labelled "interconnector availability
+  (+ import / - export)".
+- VALUE 101: the France offer (12 MW at 82 GBP/MWh) is dearer than the CCGT
+  (66.5 GBP/MWh with its start-up adder), so it is offered and rejected in
+  every period; dispatch, prices and costs of C1–C6 are unchanged, and C1–C4
+  gained a revision for the new offer rows.
+
+### Nuclear in service at the start of the year (A18, corrected profile)
+
+- FX7 found that the default PSM starts every model year with no unit
+  running: a nuclear unit adds its start-up cost (500 GBP/MWh on GBP1) to its
+  day-ahead offer until it is first accepted, and then stays on to the year
+  end.  On the local GBP1 public2 corrected run (2025) nuclear entered only
+  on 12 December and generated 2.02 TWh against about 37.3 TWh supplied
+  (Energy Trends 5.1).
+- Corrected profile (`fx8.nuclear-in-service-at-start`, rule-set field
+  `nuclear_initial_state = in_service_at_start`): every nuclear unit counts as
+  running before the first period of each model year, so its first offer
+  carries no start-up cost and it runs as baseload at its station
+  availability.  A unit that was not accepted in a period (refuelling,
+  outage, zero availability or not cleared) pays the start-up cost once, in
+  its offer and in the physical start-up term, when it restarts.  Gas and
+  biomass keep the thesis rule.
+- The doctoral reproduction profile keeps the thesis rule bit for bit
+  (`off_until_accepted`; D1-D5 unchanged).  Doctoral Runs carry the read-time
+  advisory of the correction (severity high), which discloses the nuclear
+  path dependency (A15).
+- `value-bid-at-cost-psm` 6.3.0 → 6.4.0 with `requires_user_opt_in` (Q13).
+- GBP1 public2 2025, corrected: nuclear 2.02 → 38.26
+  TWh (+2.5 % against Energy Trends 5.1, every period from period 0), CCGT
+  101.4 → 67.5 TWh, curtailment 0.43 → 1.74 TWh, exports 0.41 → 1.51 TWh,
+  mean period price 24.30 → 16.23 GBP/MWh, headline system cost −1,830.7
+  GBP m, emissions −13.0 MtCO2.  New golden case C9 (research pack, tier
+  full) records the run before and after A18; numeric report
+  `docs/dev/p0-reports/fx8-golden/C9-r1.json`.  VALUE 101 has no nuclear, so
+  C1–C8 change only in identity.
+
+### Economic down-regulation order: restart cost against avoided cost (A19/A22, corrected profile)
+
+- P0-6 S7 had read finding P3-03 as "always reduce gas and biomass before
+  curtailing VRE".  Decision A19 withdrew that: whether reducing thermal
+  output is cheaper than curtailing wind depends on the restart cost as well
+  as on the fuel, carbon and variable cost saved, and neither side may be
+  assumed dearer.
+- Corrected profile (`r12.economic-downward-order`, rule-set field
+  `downward_restart_economics = restart_cost_vs_avoided_cost_v1`): in the
+  curtailment branch a gas or biomass row is split at minimum stable
+  generation (50 % CCGT/OCGT, 35 % biomass, of its accepted output).  The
+  running range above it is reduced at its avoided cost before VRE (no
+  restart).  Below it, shutting units down saves `a(H) = c - S(H)/(m H)` per MWh
+  (m = minimum stable fraction, since removing 1 MW of output shuts 1/m MW
+  of capacity; restart cost S per MW of capacity: CCGT 110/130/150 GBP/MW hot/warm/cold, OCGT 170, biomass
+  125; H = expected downtime from the day-ahead forecast surplus run): before
+  VRE when `a > 0`, after VRE otherwise, and only as a last resort when H is
+  below the minimum down time (6 h / 0.5 h / 6 h).  Values: reference
+  statistics section 4, author-reviewed in A22, stored in
+  `gridform_core/data/thermal/value_thermal_restart_v1.json`.  The restart
+  cost ranks the stack only; cost accounts are unchanged.
+- Every corrected market year records
+  `extensions.downward_restart_economics` (MWh by segment, periods, mean H).
+- The doctoral reproduction profile keeps the thesis curtail-cost order bit
+  for bit (D1-D5 unchanged); doctoral Runs carry the read-time advisory of
+  the correction (severity medium).
+- `value-bid-at-cost-psm` 6.4.0 → 6.5.0 with `requires_user_opt_in` (Q13).
+- Effect on the reference runs is small, because down regulation is rarely
+  needed while gas is scheduled day-ahead.  VALUE 101 two_year (C5/C6): one
+  period of 2025 changes (CCGT +0.16 MWh, curtailment +0.16 MWh, emissions
+  +0.06 tCO2, system cost +GBP 10.4); 2026 is unchanged.  GBP1 public2 2025
+  (local, C9): dispatch, curtailment (1.735 TWh), CCGT (67.53 TWh),
+  emissions and costs are unchanged; of the 357 down-regulation periods only
+  2 reduce gas (190.7 MWh, inside the running range), and no shutdown
+  segment is reached.  Golden: C1-C4 and C9 gain the new extension columns
+  only; C5/C6 one period; numeric reports
+  `docs/dev/p0-reports/r12-golden/`.
+
+### Economic down-regulation order in the network models (A24-3, corrected profile)
+
+- The staged / zonal balancing (P0-8b rule set `network-economic-v1`)
+  offered a gas or biomass unit's whole ahead schedule as one dec at its
+  avoided cost `c > 0`, so every such unit was reduced to zero before any
+  merchant VRE (dec price 0) was curtailed: the "fuel before VRE" order that
+  A19 withdrew for the default PSM.  Decision A24 item (3) applies A19, A22
+  and A22a to the network models.
+- Rule set `network-economic-v2` (`r32.network-economic-downward-order`): a
+  gas (CCGT, OCGT) or biomass dec is split at minimum stable generation (50 /
+  50 / 35 % of its ahead schedule).  The running range keeps the price `c`
+  and is reduced before VRE.  The shutdown segment (bid
+  `...:down-shutdown:<asset>`) is priced at the net saving
+  `a(H) = c - S(H)/(m H)` (same restart table as R1-2) and competes with VRE
+  on price, after VRE at an equal band; when the expected downtime H is below
+  the minimum down time (6 h / 0.5 h / 6 h) it is a last resort, priced 0.01
+  below every other dec of the period.  H = (1 + consecutive later periods
+  whose forecast demand is covered by declared VRE and nuclear availability) x
+  period hours.  Two dec classes join the shared order (`fuel_shutdown` after
+  VRE, `fuel_shutdown_last_resort` last; physical tie weights 3.5 and 5 in the
+  zonal LP and in the PuLP/CBC oracle).
+- Every staged market year records `extensions.downward_restart_economics`
+  (`value.network-downward-restart-economics/v1`: down-regulation periods,
+  mean H, dec MWh and periods by segment).
+- `value-staged-bid-at-cost-psm` 1.4.0 → 1.5.0 with `requires_user_opt_in`
+  (Q13); copperplate 1.1.0 and zonal 4.0.0 unchanged (they read the classes
+  from the shared table).  The doctoral profile cannot select these modules
+  (Q3).
+- Effect on the reference cases: C7 (copperplate smoke) has no balancing dec;
+  in C8 (zonal day) the 42 down-regulation periods all curtail VRE and the
+  CCGT is never balanced down, as before, so dispatch and costs move only by
+  solver tolerance.  Toy cases (staged copperplate, a two-zone LP checked
+  against the CBC oracle, a live staged zonal Run) reproduce the R1-2
+  examples: OCGT at H = 5 h shuts before wind, at H = 3 h wind is curtailed
+  first.
+
+### Restart costs in the model's price base; biomass disclosure (A24-4, A24-2)
+
+- A24-4 (corrected profile, `r33.restart-cost-price-base-2025`): the restart
+  costs of `gridform_core/data/thermal/value_thermal_restart_v1.json` were
+  author-reviewed in 2024 GBP (A22). They are compared with fuel, carbon and
+  variable costs, which are start-year money (A6); every shipped study starts
+  in 2025, and the dated cost inputs are declared in 2025 GBP (storage
+  catalogue `currency_base_year`, pumped-hydro CAPEX, policy budgets). The
+  table now uses the A22 values restated by the UK CPI (ONS D7BT annual
+  averages 138.4 / 133.9 = 1.0336, rounded to GBP 0.1): CCGT 113.7 / 134.4 /
+  155.0 GBP/MW hot / warm / cold, OCGT 175.7, biomass 129.2. It keeps the
+  2024 values, the index values, the factor and the source (`price_base`),
+  and the loader refuses a table whose values do not match them. The 2025
+  index value still has to be checked once against the ONS series (reference
+  statistics 4.2a). Minimum stable generation, minimum down times and the
+  rule are unchanged; break-even downtimes rise by 3.4 % (CCGT 4.13 h, OCGT
+  4.69 h, biomass 4.34 h at the thesis costs).
+- `value-bid-at-cost-psm` 6.5.0 → 6.6.0 and `value-staged-bid-at-cost-psm`
+  1.5.0 → 1.6.0, both with `requires_user_opt_in` (Q13). The doctoral profile
+  does not use the table.
+- Effect: none on the reference runs except C8 (the CCGT last-resort dec
+  price), because no priced shutdown segment is reached in them.
+- A24-2 (both profiles, disclosure only): Runs whose frozen fleet contains
+  biomass carry the read-time advisory `VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED`
+  (severity medium, generic predicate `fleet_assets`): biomass has no CfD/ROC
+  support revenue, offers at its full fuel and carbon cost and is rarely
+  dispatched. Behaviour and results are unchanged. Methodology draft
+  `docs/methodology/drafts/0.4/r33_biomass_support_disclosure.md`; model card
+  limitation list.
+
+### Per-type power-battery expansion caps (A20, corrected profile)
+
+- P0-7 S7 had read finding P5-02 ("each power battery receives the whole
+  0.2 x power room, three times the documented cap") as a defect and made the
+  1C, 0.5C and 0.25C batteries share one pool.  Decision A20 withdrew that:
+  the three types serve different durations, and giving each its own
+  `expansion.storage_cap_fraction x power_room` (0.2) is the thesis design;
+  the fraction is already a reduced share.
+- Corrected profile (`r13.per-type-battery-caps`): the storage headroom row
+  gives each power battery type its own cap and declares no shared pool;
+  agent-investment caps each type separately.  The P5-01 leftover headroom
+  (`p07.storage-leftover-headroom`) is unchanged.  `p07.power-battery-pool`
+  stays in the catalogue, without an advisory, so that Runs made between
+  P0-7 and R1-3 keep a readable identity; no profile pools any more, and a
+  per-type run that receives a pooled headroom row is refused.
+- `value-storage-expansion-policy` 5.0.0 → 5.1.0 with `requires_user_opt_in`
+  (Q13).  The doctoral reproduction profile is unchanged (D1-D5 gated 0);
+  doctoral Runs lose the medium advisory "Power-battery cap counted three
+  times".
+- Effect on the reference runs: none on proposals or capacities.  The pool
+  was never binding on VALUE 101 two_year (C5/C6) or on GBP1 public2 2025
+  (C9), whose battery requests stayed below it; the golden revisions change
+  only the headroom and investment evidence columns.
+
+### Three thesis-kernel errors corrected in both profiles (A26, R4-1)
+
+The website methodology describes the published VALUE model, not the
+thesis, so three implementation errors of the retained thesis kernel are
+corrected in both profiles (universal corrections). The thesis settings
+(wind curtailed first at zero cost, bid rules, no loss factors, full
+availability, the original data readings) are unchanged.
+
+- **Down regulation taken once** (`r41.down-regulation-taken-once`, A15): a
+  hydro, biomass or thermal unit that met the remaining down-regulation
+  requirement of the curtailment branch did not clear it, so the same amount
+  was reduced again from later offers (usually wind); it is now cleared.
+- **One storage position per period** (`p06.storage-net-per-period`, now
+  universal; formerly declared deviation DEV-STO-01): the clearing stages
+  share a store's rated power; a store that discharged reduces that discharge
+  before it can charge; a store that charged offers no discharge. The
+  absorbed surplus is booked as curtailed (forecast surplus) or re-dispatched
+  (must-run or VRE surplus, VRE then entering S as VRE output).
+  `storage_position` is no longer a switch of the market rule sets.
+- **Must-run surplus counted once** (`r41.must-run-surplus-counted-once`,
+  formerly DEV-BAL-04): must-run nuclear surplus that serves the balancing
+  requirement is neither generated nor paid a second time;
+  `non_vre_double_counted_mwh` is zero.
+- **Declared deviations.** DEV-BAL-04 and DEV-STO-01 and their gate matchers
+  are withdrawn (`declared_deviations.json` keeps them under `withdrawn` so
+  the evidence of earlier Runs stays readable); the drafted DEV-BAL-05 was
+  never registered. No remaining declared deviation explains a gate failure.
+- **Advisories.** Runs of the doctoral profile made before R4-1 (and Runs
+  without a recorded profile) carry the new advisories; `applies_when` has a
+  new key `profiles_any`. Corrected Runs never ran the old behaviour and get
+  none.
+- **Numbers (golden D3-D5).** GBP1 public1 2025, doctoral: surplus
+  conservation passes (563 failing rows before), the storage gate passes
+  (15,653 store-periods charged and discharged before), unserved energy
+  300,855 -> 78,810 MWh, stress periods 890 -> 487, storage charge/discharge
+  5.05/3.66 -> 2.42/1.75 TWh, operating cost GBP 4,317.5 m -> 4,287.0 m,
+  direct emissions 30.91 -> 30.68 MtCO2. VALUE 101 day and two years: the
+  storage gate passes (10 and 9,343 store-periods before). All three now
+  publish annual results (Q14). Corrected golden cases are unchanged in the
+  gated zones.
+- **Saved Studies.** `value-bid-at-cost-psm` 6.6.0 -> 6.7.0 with
+  `requires_user_opt_in`; the applied-corrections identity of both profiles
+  changes, so every saved Study asks for confirmation (Q13).
+- **Golden tooling.** The 96-period synthetic reproduction golden may
+  re-baseline its trajectory once for the A26 kernel corrections
+  (`capture_native_reproduction_golden.py revise --trajectory`, revision 4;
+  revision 0 keeps the 0.6.0-alpha.2 columns); the P0-4 per-table fixture
+  was re-captured once.
+
+### Endogenous investments use the pack's planning timelines (A33, R7-1)
+
+Finding P4-05: every investment decided by the model was commissioned the
+year after the decision with success probability 1, because
+`agent-investment` derived the development time and probability from
+member-asset fields that are never set. The original Scheme C entered model
+investments into the planning pipeline with the pack's median stage-1
+timeline and regional success rate. R7-1 restores that rule in both profiles
+(universal correction `r71.endogenous-planning-timelines`).
+
+- **Frozen tables.** `native_initial_state` writes the pack's
+  `development_stage_timelines`, `repd_status_to_timeline`, the regional
+  success rates and `planning.timeline_statistic` into
+  `state.extensions.planning_parameters`; Runs never re-read the pack.
+- **Rule** (`gridform_core/builtin/scheme_c_1000twh/endogenous_planning.py`):
+  technology label as the source (batteries and electrolysers -> Battery;
+  gas, CCGT, OCGT, biomass -> Wind Onshore; others -> Solar PV); status
+  Application Submitted (normally `total_median`); completion = decision
+  year + floor(round(max(1, months + d)) / 12), d = -6..+6 months from the
+  MD5 of `Model Decision: <owner>`; at least the year after the decision
+  (the source never commissioned a project whose completion fell in its
+  decision year). Success region from the owner name (city table, offshore
+  -> All Offshore, else England); rate = region entry, else the label's
+  mean, else 0.75. Compact packs that write `solar`/`onshore`/... are read
+  under the same labels. Expected-capacity admission multiplies by p;
+  seeded stochastic admission draws with `planning.random_seed`.
+  Retirements still take effect the next year.
+- **Records.** Proposals carry `success_probability`, `timeline_months`,
+  `success_rate_source` and the `endogenous_planning_terms` record;
+  `development_years` is gone.
+- **Numbers.** GBP1/R029 public2 tables, decisions of 2025: offshore 2033 or
+  2034 (110.1 months, p = 0.917), onshore 2029-2030 (62.5 months,
+  p = 0.22-0.71 by region), solar 2026-2027 (27.8 months, p = 0.84-0.95),
+  batteries 2027 (31.3 months, p = 0.873), thermal 2030 (onshore timeline,
+  p = 0.547). VALUE 101 is unchanged in every number (see the golden
+  summary above).
+- **Saved Studies.** `agent-investment` 3.0.0 -> 3.1.0 with
+  `requires_user_opt_in`; the applied-corrections identity of both profiles
+  changes, so every saved Study asks for confirmation (Q13). The CEM
+  identity is 2026.10.09.
+
+### Zonal readiness, staged ledger boundary and research-suite builds (R7-2, A34)
+
+- **Readiness of zonal Studies.** Check readiness resolves the Study's
+  installed signed Network Pack with the same rule as preflight and the Run
+  (`resolve_zonal_pack_selection`) and checks the `value.zonal.*` roles in
+  that pack. A zonal draft on a base pack such as GBP1 public2 is no longer
+  reported as "value.zonal.zones not bound" while preflight accepts it. A
+  Network Pack that is not installed, has another ID, is not a network
+  overlay or lacks the extension is reported as
+  `GF_DOMAIN_ZONAL_PACK_SELECTION` with the same corrective action as
+  preflight.
+- **Energy balance of staged Runs is evaluated.** The staged PSM (copperplate
+  and zonal) writes its PSM identity and the `full_node_v1` boundary
+  (S + B - D - C - E - X) into the ledger, so the energy-balance oracle
+  evaluates the balance at the LP solver tolerance instead of reporting
+  `GF_ENERGY_BALANCE_BOUNDARY_UNKNOWN`. VALUE 101 smoke, copperplate and
+  three-zone: balance passed, zero open periods, closing residual 0; the
+  stress shortfall is reported on the exact basis (the bounds basis had
+  listed two possible stress periods on the three-zone Run; the exact
+  shortfall is 0). Dispatch, prices and costs are unchanged (golden C7/C8:
+  accounting zone only, `r72.staged-ledger-balance-boundary`). The remaining
+  `not_evaluated` checks are listed under Known issues.
+- **Solver evidence of summary-trace zonal Runs (R7-5).** The v8 staged
+  ledger keeps the per-period `network_solver_diagnostics` rows only under
+  the full trace profile, but the Network & redispatch read model asked for
+  a row in every completed period, so a staged/zonal Run with the default
+  summary trace showed "Solver evidence invalid"
+  (`solver_diagnostics_missing_completed_period`) although the solver was
+  optimal and the results were correct. Such a Run now reports
+  `evidence_status = not_recorded_under_trace_profile` with a neutral state
+  word ("Not recorded under this trace profile") and the reason "Per-period
+  solver diagnostics are recorded only with the full trace profile". A
+  full-trace Run with missing rows, or a summary-trace ledger that holds
+  full-only rows, is still invalid. Read model and page only: no module
+  version, dispatch number or golden value changes.
+- **Research suites from published bundles.**
+  `scripts/build_value_uk_research_suite.py` takes each component either as
+  a source tree (`--base-source`, `--network-source`; resealed as before) or
+  as a published data bundle used byte for byte (`--base-bundle`,
+  `--network-bundle`; validated with `validate_data_bundle`, a base bundle
+  must not be a network overlay and a network bundle must be one). New
+  options `--base-pack-id` (checked against a published base bundle),
+  `--suite-id`, `--study-id-suffix` and `--study-name-suffix`; the Study
+  templates always come from `gridform_core.value_uk.value_uk_study_templates`
+  of the building code. The receipt records `component_inputs`. Without the
+  new options the output is byte-identical to the previous builder. Two
+  builds from the same inputs give the same suite bytes. The suite's Study
+  templates carry the confirmation keys of the registered module versions,
+  so a release suite is built on the release commit.
+
+### R1 retest fixes, backend (R2-1, DECISIONS A23)
+
+- **Unchanged saves stay unchanged (R3-N1).** A Study is saved with its
+  numbers in the registry type (the VoLL of `market_configuration` and
+  float-typed parameters as floats), so an editor that sends `17000` for
+  `17000.0` appends no revision; comparisons compare recorded values by
+  number, so `17000.0` and `17000` are no configuration change.
+- **Annual deltas per metric (AF3-1).** A comparison withholds only the
+  deltas whose own evidence is missing: the three VRE-curtailment metrics
+  need matching reconciled curtailment attribution, cost metrics matching
+  cost definitions, carbon its carbon definition. VALUE 101 annual
+  comparisons (copperplate modules, no counterfactual snapshot) now show
+  cost and carbon differences.
+- **Corrections in force in the Run record (R3-N6 / O-3).** The Run's
+  methodology record lists the universal accounting corrections that are
+  not in the catalogue (`fx5.voll-17000`, `fx4.*`, `p04.*`,
+  `p06.physical-operating-cost`, `p07.cost-ledger-v2`) and the union with
+  the catalogue ids.
+- **Advisories by asset presence (R3-N7).** Advisories about nuclear or
+  natural-flow hydro apply only to Runs whose frozen fleet has such an
+  asset; a VALUE 101 Run no longer lists the nuclear advisories.
+- **p06 advisory wording (R3-N2).** The advisory of
+  `p06.avoided-cost-downward-order` names only the bookkeeping defects;
+  curtailing VRE first is the thesis rule, not a defect (A19).
+- **Restart table text (A22a).** `rule.shutdown_segment` states
+  `a(H) = c - S(H)/(m H)`, as the code computes since R1-2.
+- Low items: an in-place module edit is named by its source hash and is a
+  controlled storage-cost change (R3M-6); no doubled parenthesis in the
+  comparison sentence (AF3-2); the source-change warning of a quarantined
+  module (R3M-5); the mapping editor lists empty, non-finite and negative
+  cells in one round and the API takes the editor's price-year range
+  (L-1, L-2, L-3, L-5).
+
+### Swap-data fixes: model clock, date order, coverage (R4-3, DECISIONS A27)
+
+- **One model clock (S-中1).** The model always ran on UTC half-hours of a
+  fixed 365-day year; the market ledger labelled that clock
+  `Europe/London`, so replay times in summer looked an hour early against
+  local-time input. The ledger now records `UTC` /
+  `fixed_365_day_utc_periods` (`gridform_core/model_clock.py`), read
+  models and exports write UTC times with `Z` and skip 29 February in a
+  leap model year, and the UI labels them `UTC model time`. A ledger
+  written before the fix is read on the UTC clock with a note, and resumes
+  with its old label.
+- **Clock notes say what the reader does (S-中2).** The pack validation and
+  the mapping review describe the reader's actual branch: hourly values are
+  used for two half-hour periods, 29 February is removed, a series longer
+  than a year is truncated, a shorter one is filled by repeating it from
+  its start (with the number of periods and days). It no longer says
+  "repeats it cyclically" for every length.
+- **Day/month dates (S-中3).** `02/01/2025` is read as 2 January when any
+  row shows a day above 12 (or when the user chooses DD/MM/YYYY); the
+  report names the order and why, and a wrong order is hinted at instead of
+  154 month-long "gaps".
+- **Coverage and data year (S-低2, report 7.3).** The timestamp report
+  gives the span in days and the calendar year of the data; a series
+  shorter than a model year needs an explicit confirmation before commit,
+  and a data year other than the Study's first model year is noted.
+- Low items: semicolon/tab exports get a plain explanation (S-低1); the
+  timestamp table and the cell errors both give the data row and the CSV
+  line (S-低3); the whole-file report includes the timestamp check
+  (S-低4); the role card shows the EUR rate, FX basis and price year, and
+  a read-only pack's roles can still be browsed (S-低5); `fx_basis` is one
+  of the editor's three values and a price year other than the model's
+  2025 price base is noted (S-低6); the single-change comparison sentence
+  no longer mentions a storage-cost experiment, and a missing curtailment
+  metric reads `Unavailable` on Compare as on Runs (S-低7).
+
+### Edit-module and add-feature fixes (R4-4, DECISIONS A27)
+
+- **Readiness after a code-only change (M-中2, F-中1).** A Study whose
+  module was upgraded code-only, or whose installed extension was edited in
+  place, now gets its readiness report: the report names the saved revision
+  it evaluated, and the new hash appended at run start is reported apart.
+- **Extensions edited in place (F-中2).** They are detected like modules
+  (card note, readiness warning); the re-identification says results may
+  change and the appended revision records `source-reidentify`.
+- **Rescan imports extension hooks (F-中3)**, so a broken hook is
+  quarantined at once.
+- **Deriving after a migration or an in-place edit (M-中3).** Migration
+  revisions record the current module graph; derive appends the automatic
+  code-only revision of the source first and, when only code identity
+  drifted, starts from the current graph and records the drift.
+- **Storage-cost evidence (M-中1).** The Run card shows the market-ledger
+  evidence of the storage-cost module the PSM called internally.
+- **Extension Study draft (F-中4)** copies the selected baseline Study.
+- Low items: correction ids must be registered (catalogue or the table
+  above) for the ledger check and the overlay seal (M-低1); an unsealed
+  kernel is reported before a method confirmation and readiness re-runs
+  after the dialog (M-低2); quarantined or disabled code is reported once
+  with the right action (M-低3, F-低3); quarantine and disabled entries show
+  their manifest files and IDs, with plural text (M-低4, F-低2); a wrong
+  contract ID is `GF_MODULE_CONTRACT_MISMATCH` (M-低5); a built-in
+  namespace says "choose another namespace" (F-低1); a Run with an
+  experimental extension is marked in its header (F-低4); install conflicts
+  come before the pending-runs question, which names modules or extensions
+  (F-低5).
+
+### Swap-data final fixes: demand unit, energy served, hourly demand (R5-1, DECISIONS A28)
+
+- **VALUE 101 demand unit (S-F-高1).** The two VALUE 101 demand files say
+  `mwh` in their header and `MWh/period` in the pack, but VALUE has always
+  read them as MW (half-hour average power). This is now a registry
+  relabel: bytes, manifests and both profiles' reading are unchanged, and
+  the workspace marks such a binding with `runtime_unit_interpretation`.
+  The swap-data role card and the CSV mapping editor say "read as MW" and
+  that a user who rewrites these numbers should map them as MW.
+- **Demand scale check (S-F-高1).** A mapped demand series whose annual
+  energy (mean MW x 8,760 h) is above 1.5 or below 0.67 times the file it
+  replaces gets a `GF_DATA_DEMAND_SCALE` warning with both annual energies;
+  the pack validation of a copied pack compares each changed demand file
+  with the pack it was copied from in the same way. Warnings only.
+- **Energy served (S-F-中2).** The cost per MWh served and the carbon
+  intensity per MWh delivered now divide by demand less all unserved
+  energy of the A2 account (the PSM's recorded blackout plus the stress
+  shortfall the energy-balance ledger books as hidden unserved energy), not
+  by demand less the recorded blackout alone. A year without a stress
+  period is unchanged (its A2 remainder is sub-tolerance noise). Universal
+  accounting correction `r5.served-energy-net-of-stress-shortfall` (both
+  profiles, accounting zone, no dispatch change). Golden: doctoral D5 r5
+  (accounting zone only: GBP1 2025 served 232,910,596.5 ->
+  232,831,786.3 MWh, cost per MWh served 116.789242 -> 116.828773 GBP/MWh);
+  no other case changes.
+- **Annual demand on Runs and Compare (S-F-高1, S-F-中2).** The run status
+  records `demand_mwh` and `unserved_energy_a2_mwh`; the annual card's
+  "Unserved demand" is the A2 total with the PSM-recorded part named
+  beside it; Compare lists annual demand, demand served, unserved energy
+  including the stress shortfall (`value.adequacy-unserved-energy/v2`) and
+  the PSM-recorded part, and names the Run the deltas are measured against.
+- **Hourly demand (S-F-中3).** A demand CSV with hourly rows (8,760 or 8,784
+  rows, or a declared timestamp column with 60-minute steps) is mapped like
+  hourly prices: each hour is used for two half-hour periods at the same MW
+  (MWh/period is then energy per hour). The canonical file is half-hourly;
+  the retained hourly source is re-checked at its own 60-minute period.
+- **Mapping editor stays put during a Run (S-F-中1).** The Data page keys the
+  Study's data-role resolution by content, so a workspace poll no longer
+  resets it and the staged CSV, column choices and review survive.
+- Low items: the column-mapping SHA is labelled as covering columns, units
+  and FX only (S-F-低1); `clock_adapter` in the validation details names the
+  reader's step (`as_is`, `hourly_to_half_hour`, `leap_day_removed`, …)
+  (S-F-低2); a read-only editor no longer says it is loading (S-F-低3);
+  "1 period (30 minutes)" instead of "1 periods (0.0 days)" (S-F-低4); the
+  review expiry is local time to the minute (S-F-低6).
+
+### Edit-module final fixes: storage state record, duplicate manifests (R5-3, DECISIONS A28)
+
+- **Bounded storage state in the clearing declaration (edit-module 中1).** A
+  store held full by an offer above the market price is topped up by a tiny
+  new charge tranche every period and never discharges, so its tranches grow
+  through the year. Every stage of a full market replay recorded all of them
+  (rows up to 536 KB; 20 GB for two VALUE 101 years with a 73 GBP/MWh fixed
+  offer). Above 128 tranches a store's declared state now lists the tranches
+  the stage offers (the clearing oracle still checks each offer against its
+  tranche) and one aggregate (`value.storage-tranches-offered-plus-aggregate/v1`:
+  count, MWh, first and last charge period); state of charge is unchanged.
+  Summary-trace runs no longer build the state at all. Recording only:
+  dispatch, every other ledger table and all results are unchanged (golden
+  C3 run with every state compacted: identical tables, same oracle
+  verdict). Correction id `r53.bounded-storage-state-record`; no golden case
+  reaches 128 tranches, so no golden changes.
+- **Estimate warning (中1).** Readiness warns
+  (`GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE`) that the disk and runtime estimate
+  is calibrated on the built-in storage-cost modules when a full market
+  replay selects any other storage-cost module.
+- **Two manifests with one module ID (中2).** Disable now parks every active
+  manifest that declares the ID (the copy goes to
+  `modules/disabled-manifests/modules/`), so the quarantine clears; Enable
+  refuses with `GF_MODULE_ID_COLLISION` naming the copy while one is active;
+  Remove moves copies too; `module_recovery list` names a manifest left by a
+  disabled installation with the `park-manifest` command. The quarantine
+  panel's notice names the moved files.
+- Low items: the method-upgrade remedy says to press Check readiness again,
+  without an API path, and the "saved as revision N" notice stays while
+  readiness is re-checked (低1); a one-year Study is not offered the two-year
+  scopes (低2); the storage-cost template is named "Draft fixed-offer storage
+  example (GBP 42/MWh)" (低3); the user guides say "Install a VALUE data
+  pack", "VALUE then checks" and "Start VALUE" (低4); the Modules badge
+  counts experimental modules separately (低6).
+
+### Add-feature final fixes (R5-4, DECISIONS A28)
+
+- A hook other than `after_psm` that returns a declared artifact
+  (`artifact_type`) stops the Run with an error naming the hook (since R6:
+  `GF_EXTENSION_OUTPUT_REJECTED`); `initialize` state and `after_psm`
+  artifacts are what a Run records. The generated extension README and the
+  developer guides say so.
+- Saving a new Study under an ID that already has revisions answers 409
+  `GF_STUDY_ID_EXISTS` with a rename hint; a second independent extension
+  draft is named `… extension study 2`.
+- Readiness and the quarantine dialog name extensions as extensions; a
+  namespace clash first suggests another namespace; the Data page calls a
+  draft context "Independent Study draft".
+
+### Queued Runs and extension changes (R6, DECISIONS A29)
+
+- **A module or extension change while Runs are queued.** A Run records its
+  execution identity (the installed modules, extensions and VALUE code) when
+  it is queued and never starts with other code. The confirmation now says
+  so: Runs that have not started will not start. After the change VALUE
+  stops them at once with `GF_RUN_EXECUTION_IDENTITY_CHANGED` (category
+  `execution_identity`) and lists them in `stopped_unstarted_runs`; a Run in
+  preparation stops at its next preparation step, and a Run whose worker
+  already holds the lease is stopped by its worker, all with the same code.
+  The Runs page shows the code, the first line of the diagnostic and
+  **Resubmit with current code**, which starts a new Run of the same Study
+  and scope through the ordinary readiness and method-confirmation path;
+  checkpoint Resume is not offered for such a Run. A Run that is already
+  running keeps its code.
+- **Rejected extension output.** An extension hook output that VALUE does
+  not accept fails the Run with `GF_EXTENSION_OUTPUT_REJECTED` instead of
+  the generic `GF_CONTRACT_001`; `status.json` records `error_detail` for
+  contract and execution-identity failures, and the Runs page shows it.
+- **Extensions edited in place.** Like modules (A16-4), an installed
+  extension whose hook source was edited in place can be disabled and
+  enabled again: Enable re-imports the hooks, accepts the edit and appends it
+  to `accepted_source_edits` in `installation.json`; the install identity is
+  kept, so readiness shows the amber `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`
+  note, the next Run appends a `source-reidentify` Study revision and
+  Compare shows the method change. A hook that no longer imports
+  (`GF_EXTENSION_HOOK`) or a manifest that declares other hooks
+  (`GF_EXTENSION_SOURCE_CHANGED`) is still refused.
+
+### Release-candidate fixes (RR-1, RR-2)
+
+- **Module change during Run preparation (EM-低3).** When a module or
+  extension file under `<data directory>/modules` disappears while a Run is
+  recording its execution environment or freezing its inputs, and a
+  lifecycle change happened since the Run was admitted (or the recorded
+  source hash no longer matches), the Run fails with
+  `GF_RUN_EXECUTION_IDENTITY_CHANGED` and offers **Resubmit with current
+  code**. Other snapshot failures keep `GF_INPUT_SNAPSHOT_FAILED`.
+- **Back and Forward** restore the selected Study, Run and data context from
+  the address; pages whose address carries no selection keep the current one.
+- Compare's "Identity check before comparison" sits one heading level below
+  the page header; the module and extension author tools stay in view when a
+  research path opens them; the notice after cancelling a method
+  confirmation stays while readiness is checked again.
+- `scripts/doctor.py` runs again: it offers the capabilities `value-native`
+  and `doctoral-reproduction` that `install-value.ps1` passes (it used to
+  stop with an ImportError).
+- Test suites follow the current interface: `npm test` (rendered HTML) and
+  the offline browser tests pass on the new routes and wording.
+
+### Frontend overhaul (做法二, DECISIONS A30)
+
+The interface keeps the existing visual style and the semantics of the
+earlier result views (state words, missing is never zero, the Run context
+bar, severity colours) and is rebuilt around routes, a shared component set
+and two languages.
+
+- **Routes and deep links.** Every page has its own address: `/` (Home),
+  `/learn`, `/journey`, `/studies` and `/studies/<study>`, `/data`,
+  `/modules`, `/extensions`, `/runs` (Run centre), `/runs/<run>` (`?year=`),
+  `/runs/<run>/replay`, `/vre`, `/network`, `/systems`, `/compare`
+  (`?runs=a,b&ref=a`) and `/inspect` (`?tab=&q=`). Page state (year, tab,
+  period window, Compare reference, Inspect search) is kept in the address,
+  so a refresh or a copied link opens the same view. An old `/?view=<page>`
+  link is forwarded on the server to its route with the other parameters
+  kept. The server renders the requested page directly.
+- **Shell.** The sidebar has three groups, Start (Home, Learn, Research
+  guide), Work (Studies, Data, Modules, Extensions) and Results (Runs,
+  Compare, Inspect). Its footer always shows the service status with
+  **Retry**, the language switch and the version. Below 1200 px it becomes
+  an icon bar, below 900 px a drawer that keeps keyboard focus inside while
+  open. The page starts with "Skip to main content"; the Run context bar
+  appears on a Run's own pages. Home shows the four research paths
+  **Reproduce from existing data**, **Add your new data**, **Edit a module**
+  and **Add a new function to VALUE**.
+- **English and Chinese.** The interface switches between English and
+  Chinese; English is the default. The choice is stored in the cookie
+  `value_locale` (never taken from the browser language), and the server
+  renders `<html lang="en-GB">` or `lang="zh-Hans"` from it. The two
+  dictionaries (`app/i18n/en.ts`, `app/i18n/zh.ts`) have the same keys,
+  checked by tests, and a test refuses hard-coded interface strings. Data
+  values, IDs, hashes, file and module names and error codes are not
+  translated; a known error code gets a Chinese explanation in front of the
+  service's English message. Model times are UTC in both languages.
+- **Design tokens and accessibility.** Cascade layers and design tokens
+  replace ad-hoc colours; shared components live in `app/ui/`, charts in
+  `ChartFrame`. Acceptance (16 routes, widths 375 to 1920, both languages):
+  no page-level horizontal scroll, computed text size at least 11 px, no
+  serious or critical axe findings (contrast included), every control
+  reachable by Tab with a visible focus.
+- **Data layer and contract check.** One API client (`app/lib/api.ts`) with
+  timeouts and typed errors; polling keeps one request in flight, pauses
+  while the page is hidden and backs off (2 to 30 s) before reporting the
+  service offline. At start the interface compares the service's
+  `frontend_contract_version` with its own and, when they differ, shows
+  "The interface and the local service are different versions. Restart
+  VALUE."
+- **Compare reference Run.** Compare has a **Reference Run** selector; by
+  default it is the earliest-created baseline Run (the source of a derived
+  Study), otherwise the earliest-created Run. Every delta is measured
+  against it, the page states which Run it is, the address keeps it as
+  `?ref=`, and the CSV export names it in a `reference_run_id` row after
+  `schema_version` (the JSON export has a `reference_run_id` field).
+- **Study draft persistence.** An unsaved new Study or an edited Study is
+  kept in the browser's local storage per Study; the Studies page offers
+  **Restore unsaved draft** or **Discard draft**, a draft of an older
+  revision cannot be restored onto a newer one, and leaving the page with
+  unsaved changes asks first.
+- **Replay and model times.** Market replay and the other result pages show
+  periods as date and time in UTC (for example `2025-05-17 13:30`, labelled
+  UTC model time) instead of an ordinal such as `2025:137`.
+- Other pages: Inspect searches on Enter or **Apply filters** and pages
+  projects and events separately; Run badges show state words with the code
+  in the title; removing a Run says that VALUE cannot restore it; the
+  network page shows limits in MW with a flow-direction legend; Modules has
+  a sticky in-page navigation (Catalog, Disabled & quarantined, Author a
+  module); the Data Workbench follows a running job again after a reload.
+
+### Data release: R029 public2, GBP1 public2 and the public2 23-zone research suite (DECISIONS A32, A34)
+
+- The two corrected-profile national packs are released with 0.7.0 as data
+  release `value-data-2026-10-09`:
+  `value-uk-calendar-vx-trade001-public2-2026-10-09.zip` (R029 public2,
+  pack `value-uk-calendar-vx-trade001-public2`) and
+  `value-uk-open-data-pack-public2-2026-10-09.zip` (GBP1 public2 `@v3`,
+  pack `value-uk-open-data-pack-public2`). Their manifest sha256 values are
+  the ones golden cases C10 and C9 pin.
+- Both are `value.data-bundle/v1` ZIPs built from the public1 assets of
+  `value-data-2026-10-04` by `scripts/build_value_uk_pack_revision.py@v3`
+  and `scripts/build_data_bundle.py`; each carries the public1 `RIGHTS.json`
+  and `ATTRIBUTION.md` and a `files/release-evidence/DERIVATION.md` that
+  lists every change. They install through Data → Install a VALUE data
+  pack (25/25 interfaces) and run under the corrected profile only
+  (`VALUE_PROFILE_COMBINATION_UNSUPPORTED` for the doctoral reproduction,
+  which uses the public1 packs). The interconnector flow sign stays
+  `declared_unverified` (see Known issues).
+- **23-zone research suite on GBP1 public2 (A34).** The same data release
+  carries `VALUE-UK-GBP1-23zone-research-suite-public2-<date>.zip` (suite
+  `value-uk-research-suite-v1-public2`). It holds the released GBP1 public2
+  bundle (`value-uk-open-data-pack-public2-2026-10-09.zip`) and the published
+  23-zone Network Pack `value-gb-zonal-network-v1-c9e841112c40` byte for
+  byte, plus two Study templates generated by the 0.7.0 code:
+  `value-uk-copperplate-2025-2034-public2` and
+  `value-uk-zonal-2025-2034-public2` (2025-2034, staged PSM, copperplate
+  or fixed-zonal redispatch, corrected profile). It installs through Data
+  → Install the VALUE-UK research suite and creates the two Studies
+  unrun. It is built reproducibly by
+  `scripts/build_value_uk_research_suite.py --base-bundle ... --network-bundle
+  ... --base-pack-id value-uk-open-data-pack-public2 --suite-id
+  value-uk-research-suite-v1-public2 --study-id-suffix=-public2`; the
+  receipt records the component bundle hashes. See Known issues for the
+  network pack's placement of thermal, nuclear, storage and imports.
+- **The public1 suite is for 0.6.0-alpha.2 only.**
+  `VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip` in
+  `value-data-2026-10-04` cannot be installed in 0.7.0: its Study templates
+  carry the 0.6.0-alpha.2 module confirmation keys and solver contract v3,
+  and its base pack (GBP1 public1) does not run under the corrected profile
+  that the network modules require. For 23-zone studies in 0.7.0 use the
+  public2 suite. The separate 23-zone network pack ZIP has no install
+  control in the interface; it reaches VALUE through a suite.
+
+### Scientific validation recomputed and gated (P0-4)
+
+- No more literal "passed": stage parity v3 and scientific validation v2 are
+  recomputed from checks executed on the run (contract checks, run
+  invariants, the read-only energy-balance oracle).  A report that ran no
+  check is `not_evaluated`.  Pre-fix runs keep their files; a `passed` that
+  rests on a non-v2 report is shown as `superseded_pre_fix` and the ledger is
+  re-checked read-only when the run is read.
+- The default PSM declares its energy-balance boundary
+  (`default_psm_surplus_node_v1` doctoral, `native_corrected_full_node_v1`
+  corrected), records surplus routing per source and a per-asset storage
+  audit, and its compatibility adjustment absorbs numerical noise only (it
+  used to close every residual, so the adjusted residual was zero by
+  construction).
+- Decision A2: dispatch is unchanged when the ahead stage cannot meet the
+  forecast; both profiles record stress events (per-period shortfall, events,
+  annual summary) and book the shortfall as unserved energy in the
+  energy-balance account.  Run status, summaries and market-replay windows
+  carry `stress_periods`, `shortfall_mwh` and `shortfall_basis`; on a declared
+  full-node boundary the shortfall now equals the booked unserved energy
+  (it was a lower bound).
+- Validation gates (P0-4 S7): run invariants, the energy-balance account and
+  the storage throughput invariants (rated power, no charge and discharge in
+  one period, 0 <= SoC <= E, audit identity).  Under the default profile a
+  failed gate fails scientific validation and blocks annual economics
+  (`publication_blocked.reason_code = GF_VALIDATION_GATE_FAILED`).  The
+  doctoral reproduction profile reads gate failures through declared
+  deviations with falsifiable signatures
+  (`gridform_core/data/methodology/declared_deviations.json`: DEV-BAL-04,
+  DEV-STO-01; DEV-BAL-01/02/03 as evidence only) and reports
+  `reproduction_conformant` or `reproduction_with_declared_deviations`;
+  its annual results follow decision Q14 (withheld unless every raw
+  invariant passes).  New report fields: `storage_invariant_status`,
+  `storage_invariants`, `validation_gate`, `declared_deviations`,
+  `energy_balance.raw_boundary_status`.
+- The Q14 verdict is derived from the gate statuses; a stored
+  `raw_invariants.status` that disagrees is treated as failed, and the bundle
+  validator recomputes it.
+- Documentation errata: `docs/visibility-refactor/MARKET_LEDGER.md`,
+  `RELEASE_0.4.md` (the 2,353 MWh statement), `ORCHESTRATOR_V2.md`,
+  `TWO_YEAR_SMOKE.md`; methodology draft
+  `docs/methodology/drafts/0.4/p04_energy_balance_validation.md`.
+
 ## 0.6.0-alpha.2 — VALUE Network Extensions identity (2026-08-20)
 
 - Adopted the scientific name **VALUE**: Variable renewable electricity

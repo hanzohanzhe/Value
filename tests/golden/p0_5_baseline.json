@@ -1,0 +1,461 @@
+{
+ "captured_with": {
+  "reader_sources_identical_to_35aadb3": true,
+  "reader_sources_sha256": {"gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_simulation_model.py":"dc4f8164ed2c74187fa9bf954bb12d9dced57fb35ee98f8891233d52683b9e5a","gridform_core/builtin/scheme_c_1000twh/scheme_c_native_psm.py":"d8f6edd9d5fe7c027fbeba3b0f7637c3d369136c5ca74192b2b0b8de928d14d0","gridform_core/canonical_psm_data.py":"b8ddd85b69d5d8688fdff38d75bae84c039d33fcc4cb8690448af60ff36750c4","gridform_core/data_pack_validation.py":"51ccfcb3709efee85e75e94fa0d5aa01052941537b335b86cbce39a1907aadc7","gridform_core/doctoral_weather.py":"c4f0760c80a3e78533c3243542d07c76de9810cb35d72d75cbc6a925308f49ed"},
+  "source_commit": "56460e1b5bf8d14d7398a196631814bda5c1269f"
+ },
+ "expected_change": [
+  {"decision":"plan 4.5 dual-track: universal software fix (a declared csv_column is read)","entries":["canonical_reader.market.*","validator_reader.market.*","canonical_clock.*.market.*","chronology.*.*.imports","chronology.*.*.exports","kernel_boundary_oracle.*","kernel_recorded.*"],"finding":"P6-01","note":"at HEAD the kernel stops with a TypeError on R029 (kernel_recorded records it); after the fix it runs","packs":["r029-public1"],"profiles":["doctoral-lineage-0.6.0a2","value-corrected"]},
+  {"decision":"Q1: profile-gated; doctoral keeps the hourly-repeat clock","entries":["canonical_clock.336.profiles.*","canonical_clock.48.profiles.*","chronology.*.336.headroom","chronology.*.48.headroom"],"finding":"P6-07","packs":["value-101-baseline-v1","value-101-network-v1","gbp1-public1","r029-public1"],"profiles":["value-corrected"]},
+  {"decision":"Q9/A3: universal, every interconnector series period by period on the 17520 clock","entries":["kernel_boundary_oracle.*.connections.*","kernel_recorded.*.connections.*"],"finding":"P6-24","note":"constant series (all ten 101 market series) cannot show the change; hashes of non-constant series must change","packs":["*"],"profiles":["doctoral-lineage-0.6.0a2","value-corrected"]},
+  {"decision":"A5: universal, Belgium hourly EUR price -> half-hourly GBP with documented FX","entries":["canonical_reader.market.belgium.price","validator_reader.market.belgium.price","canonical_clock.*.market.belgium.price","chronology.*.*.imports.belgium","chronology.*.*.exports.belgium","kernel_boundary_oracle.*.connections.*","kernel_recorded.*.connections.*"],"finding":"P6-02","packs":["gbp1-public1"],"profiles":["doctoral-lineage-0.6.0a2","value-corrected"]},
+  {"decision":"A5: universal, BE/NL flow files swapped (role binding by line identity)","entries":["chronology.*.*.imports.belgium","chronology.*.*.imports.netherlands","chronology.*.*.exports.belgium","chronology.*.*.exports.netherlands","kernel_boundary_oracle.*.connections.*","kernel_recorded.*.connections.*"],"finding":"P6-03","note":"whether the kernel Connection mis-wiring (head_rules.kernel_connection_feeds) is fixed under A5 or only in value-corrected is decided by the S4/S5 owner and recorded there","packs":["gbp1-public1"],"profiles":["doctoral-lineage-0.6.0a2","value-corrected"]},
+  {"decision":"A5: universal, demand on the UTC clock after the 2022-10-30 DST change","entries":["canonical_reader.demand.*","canonical_clock.*.demand.*","chronology.*.*.demand","chronology.*.*.forecast","kernel_boundary_oracle.*.demand","kernel_recorded.*.demand"],"finding":"P6-04","note":"the 48-period window lies before 2022-10-30; only full-year entries can show the shift","packs":["gbp1-public1"],"profiles":["doctoral-lineage-0.6.0a2","value-corrected"]},
+  {"decision":"plan 4.5 dual-track: corrected only (doctoral frozen, A5 does not list it)","entries":["canonical_reader.demand.forecast","canonical_clock.*.demand.forecast","chronology.*.*.forecast","kernel_boundary_oracle.*.demand","kernel_recorded.*.demand"],"finding":"P6-05","packs":["gbp1-public1"],"profiles":["value-corrected"]},
+  {"decision":"plan S6 / A1, Q15: weather time convention and literature loss factors, corrected only","entries":["chronology.*.*.vre_sites","chronology.*.*.vre_sites_digest","kernel_recorded.*.vre_unit_limit"],"finding":"P6-06/P6-08","packs":["*"],"profiles":["value-corrected"]},
+  {"decision":"plan 4.5 scheme 6 / dual-track: unclipped boundary prices in value-corrected","entries":["chronology.value.canonical.*.imports.*.price","chronology.value.canonical.*.exports.*.price"],"finding":"boundary-raw-price","packs":["gbp1-public1","r029-public1"],"profiles":["value-corrected"]}
+ ],
+ "hash_rule": {"manifest":"full sha256 of manifest.json (the manifest carries the sha256 of every bound file; capture verifies each read file against it)","numeric":"sha256 of numpy.asarray(values, dtype='<f8').tobytes(), first 12 hex digits","object":"'obj:' + first 12 hex digits of sha256 of '\\x1f'.join(repr(value) for value in values) (values the kernel receives as Python objects, e.g. strings)","summaries":"canonical_reader: cols = CSV columns pandas saw, col/label = the column _series picked and its header (or first cell when header=None), index_like = step-1 integer sequence; n/min/max/mean of the values (rounded to 6 decimals). validator_reader: [column, values, invalid cells, hash or '=canonical' when equal to canonical_reader.sha]"},
+ "head_rules": {
+  "canonical_clock_entry": "'exact:<source length>' alone means the clock returned the reader series unchanged (hash = canonical_reader.sha); otherwise [rule:<source length>, hash]",
+  "canonical_header": {"demand.forecast":0,"demand.real":0,"market.belgium.price":"none","market.belgium.profile":0,"market.france.price":"none","market.france.profile":0,"market.ireland.price":"none","market.ireland.profile":0,"market.netherlands.price":"none","market.netherlands.profile":0,"market.norway.price":"none","market.norway.profile":0,"profiles.vre_offshore":"none","profiles.vre_onshore":"none","profiles.vre_solar":"none"},
+  "canonical_hourly_repeat_roles": ["profiles.vre_offshore","profiles.vre_onshore","profiles.vre_solar"],
+  "chronology_state": "OperatingState(2025) holding every fleet.generators solar*/onshore*/offshore* site at 1 MW; doctoral-national (windows 17520 and 48) adds the doctoral_alignment_profile extension; only its boundary prices are recorded",
+  "kernel_clock": "IterLimit_new: period p receives source[(p // 2) % len(source)]",
+  "kernel_connection_feeds": {"Interconnect_Beligum":"ireland","Interconnect_France":"france","Interconnect_Ireland":"netherlands","Interconnect_Netherland":"belgium","Interconnect_Norway":"norway"},
+  "kernel_entry": "[dtype, source length, hash of the values assigned in periods 0..window-1]",
+  "kernel_recorded": "real kernel, frozen golden D3 project (value_101_day, 48 periods) run on the pack; hashes of what ahead_market_bidding saw per period; vre_unit_limit = {sites, raw_sites, digest of the sorted site -> hash(capacity_limit / capacity_multiplier) map; 'raw:' + hash of the limits when the multiplier is 0 or varies}; error + periods_reached when the kernel stops",
+  "vre_site_order": ["offshore1","offshore10","offshore11","offshore12","offshore13","offshore14","offshore15","offshore16","offshore17","offshore18","offshore19","offshore2","offshore20","offshore21","offshore3","offshore4","offshore5","offshore6","offshore7","offshore8","offshore9","onshore_Birmingham","onshore_Bournemouth","onshore_Cardiff","onshore_Edinburgh","onshore_Ipswich","onshore_London","onshore_Manchester","onshore_Newcastle","onshore_Nottingham","onshore_Portsmouth","onshore_Sheffield","solar_Birmingham","solar_Bournemouth","solar_Cardiff","solar_Edinburgh","solar_Ipswich","solar_London","solar_Manchester","solar_Newcastle","solar_Nottingham","solar_Portsmouth","solar_Sheffield"]
+ },
+ "kernel_recorded_window": 48,
+ "kernel_windows": [17520,48],
+ "packs": {
+  "gbp1-public1": {
+   "canonical_clock": {
+    "17520": {"demand.forecast":["truncate:26203","3fa6f4763149"],"demand.real":["truncate:26204","963e7b714ffb"],"market.belgium.price":["resize_wrap:15312","fff22e3b5434"],"market.belgium.profile":"exact:17520","market.france.price":["truncate:30624","2032f5e1ba0f"],"market.france.profile":"exact:17520","market.ireland.price":"exact:17520","market.ireland.profile":"exact:17520","market.netherlands.price":["truncate:24430","1fc40bb84f53"],"market.netherlands.profile":"exact:17520","market.norway.price":["truncate:30624","2ccabc2d72e3"],"market.norway.profile":"exact:17520","profiles.vre_offshore":["hourly_repeat:8760","fd54a2675317"],"profiles.vre_onshore":["hourly_repeat:8760","fa4773947089"],"profiles.vre_solar":["hourly_repeat:8761","283abb383d08"]},
+    "336": {"demand.forecast":["truncate:26203","b6ab638701cd"],"demand.real":["truncate:26204","137d99aa10d1"],"market.belgium.price":["truncate:15312","2a1c96e638e7"],"market.belgium.profile":["truncate:17520","63736a5720ea"],"market.france.price":["truncate:30624","bf56fac093ca"],"market.france.profile":["truncate:17520","7e3991b4c919"],"market.ireland.price":["truncate:17520","89df37cf1639"],"market.ireland.profile":["truncate:17520","bfed2a671df0"],"market.netherlands.price":["truncate:24430","2de310367778"],"market.netherlands.profile":["truncate:17520","892ddabdf9d3"],"market.norway.price":["truncate:30624","2befb5323c1b"],"market.norway.profile":["truncate:17520","99b47f5ed1de"],"profiles.vre_offshore":["hourly_repeat:8760","e6435fdb15aa"],"profiles.vre_onshore":["hourly_repeat:8760","79b01291f8f9"],"profiles.vre_solar":["hourly_repeat:8761","877d92164812"]},
+    "48": {"demand.forecast":["truncate:26203","a1dc39a4ffd6"],"demand.real":["truncate:26204","eeb012313d44"],"market.belgium.price":["truncate:15312","562f26aef3be"],"market.belgium.profile":["truncate:17520","88cc6a996e04"],"market.france.price":["truncate:30624","49caad5156a8"],"market.france.profile":["truncate:17520","d4d31f05d0c0"],"market.ireland.price":["truncate:17520","208acae10990"],"market.ireland.profile":["truncate:17520","8d1a301e959b"],"market.netherlands.price":["truncate:24430","b3f6a440fb9b"],"market.netherlands.profile":["truncate:17520","9ac0ac74b9fc"],"market.norway.price":["truncate:30624","47a77462745c"],"market.norway.profile":["truncate:17520","7a1b3446f5f5"],"profiles.vre_offshore":["hourly_repeat:8760","d36a04043429"],"profiles.vre_onshore":["hourly_repeat:8760","132e354cf49e"],"profiles.vre_solar":["hourly_repeat:8761","deb806d545f5"]}
+   },
+   "canonical_reader": {
+    "demand.forecast": {"col":0,"cols":1,"index_like":false,"label":"21560","max":46760.0,"mean":26640.757356,"min":14240.0,"n":26203,"sha":"22699ed55ef9"},
+    "demand.real": {"col":0,"cols":1,"index_like":false,"label":"reald","max":46042.0,"mean":26605.887574,"min":14799.0,"n":26204,"sha":"135ef4bb289b"},
+    "market.belgium.price": {"col":3,"cols":4,"index_like":false,"label":"Price (EUR/MWhe)","max":871.0,"mean":183.675176,"min":-120.0,"n":15312,"sha":"05330b84bb06"},
+    "market.belgium.profile": {"col":0,"cols":1,"index_like":false,"label":"BRITNED_FLOW","max":1062.0,"mean":165.811301,"min":-1076.0,"n":17520,"sha":"43f0f7f75660"},
+    "market.france.price": {"col":0,"cols":1,"index_like":false,"label":"71.34545455","max":2716.163636,"mean":183.307859,"min":-122.672727,"n":30624,"sha":"44ac21bb1cd1"},
+    "market.france.profile": {"col":0,"cols":1,"index_like":false,"label":"To France","max":2997.0,"mean":-1139.676998,"min":-3091.0,"n":17520,"sha":"560bc8b63fb1"},
+    "market.ireland.price": {"col":0,"cols":1,"index_like":false,"label":"49.10909091","max":454.545455,"mean":123.937076,"min":-18.572727,"n":17520,"sha":"d3631773ff3e"},
+    "market.ireland.profile": {"col":0,"cols":1,"index_like":false,"label":"To Ireland","max":998.0,"mean":100.843779,"min":-987.0,"n":17520,"sha":"ca4574903360"},
+    "market.netherlands.price": {"col":0,"cols":1,"index_like":false,"label":"113.3636364","max":791.818182,"mean":186.198187,"min":-202.145454,"n":24430,"sha":"18a4a453e091"},
+    "market.netherlands.profile": {"col":0,"cols":1,"index_like":false,"label":"NEMO_FLOW","max":1020.0,"mean":75.617694,"min":-1022.0,"n":17520,"sha":"4bc44a0c6795"},
+    "market.norway.price": {"col":0,"cols":1,"index_like":false,"label":"89.40909091","max":534.209091,"mean":94.942798,"min":-29.736364,"n":30624,"sha":"307326b1deb0"},
+    "market.norway.profile": {"col":0,"cols":1,"index_like":false,"label":"NSL_FLOW","max":1399.0,"mean":317.956849,"min":-1263.0,"n":17520,"sha":"113ce860cda5"},
+    "profiles.vre_offshore": {"col":0,"cols":1,"index_like":false,"label":"0.276188441","max":1.0,"mean":0.260512,"min":1e-06,"n":8760,"sha":"830f270c1f81"},
+    "profiles.vre_onshore": {"col":0,"cols":1,"index_like":false,"label":"0.18215541","max":1.0,"mean":0.362607,"min":4e-06,"n":8760,"sha":"826b17fafd83"},
+    "profiles.vre_solar": {"col":0,"cols":1,"index_like":false,"label":"0.0","max":0.838794,"mean":0.117342,"min":0.0,"n":8761,"sha":"75c74c7d7f67"}
+   },
+   "chronology": {
+    "doctoral-national": {
+     "17520": {
+      "exports": {
+       "belgium": {"price":"fff22e3b5434"},
+       "france": {"price":"2032f5e1ba0f"},
+       "ireland": {"price":"d3631773ff3e"},
+       "netherlands": {"price":"1fc40bb84f53"},
+       "norway": {"price":"2ccabc2d72e3"}
+      },
+      "imports": {
+       "belgium": {"price":"fff22e3b5434"},
+       "france": {"price":"2032f5e1ba0f"},
+       "ireland": {"price":"d3631773ff3e"},
+       "netherlands": {"price":"1fc40bb84f53"},
+       "norway": {"price":"2ccabc2d72e3"}
+      }
+     },
+     "48": {
+      "exports": {
+       "belgium": {"price":"562f26aef3be"},
+       "france": {"price":"49caad5156a8"},
+       "ireland": {"price":"208acae10990"},
+       "netherlands": {"price":"b3f6a440fb9b"},
+       "norway": {"price":"47a77462745c"}
+      },
+      "imports": {
+       "belgium": {"price":"562f26aef3be"},
+       "france": {"price":"49caad5156a8"},
+       "ireland": {"price":"208acae10990"},
+       "netherlands": {"price":"b3f6a440fb9b"},
+       "norway": {"price":"47a77462745c"}
+      }
+     }
+    },
+    "value.canonical": {
+     "17520": {
+      "demand": "595ce8390b91",
+      "exports": {
+       "belgium": {"env":"80750a30403f","price":"fc91d574fb4f"},
+       "france": {"env":"ca3c7d1a06f4","price":"bcf5075d342e"},
+       "ireland": {"env":"4f58f8744b06","price":"e7b423a64da7"},
+       "netherlands": {"env":"e8f84f2a614a","price":"3938d7355c68"},
+       "norway": {"env":"54e4e427a5b8","price":"cc6bacb77be8"}
+      },
+      "forecast": "de55b82b6efb",
+      "headroom": {"offshore":46021.0,"onshore":46031.0,"solar":54879.735569},
+      "imports": {
+       "belgium": {"avail":"6a3c200c4d81","cap_mw":1062.0,"marginal":186.781362,"price":"fc91d574fb4f"},
+       "france": {"avail":"3d54d1d55dad","cap_mw":2997.0,"marginal":250.789325,"price":"bcf5075d342e"},
+       "ireland": {"avail":"1e117f7126e4","cap_mw":998.0,"marginal":123.937076,"price":"e7b423a64da7"},
+       "netherlands": {"avail":"e4bc2df04555","cap_mw":1020.0,"marginal":219.917959,"price":"3938d7355c68"},
+       "norway": {"avail":"89136ba79110","cap_mw":1399.0,"marginal":126.503575,"price":"cc6bacb77be8"}
+      },
+      "vre_sites": ["cfa3b08b7631","79f6dd2d448e","8d362b17bd22","7ecfdd90f456","bf201f53644b","266ffa727edc","9bf08e7276b9","79f6dd2d448e","b4d44d2f91b1","7971685cede0","f0321a439614","79f6dd2d448e","f0321a439614","b7fef829f7cd","de8b975c5398","79f6dd2d448e","79f6dd2d448e","29c86907363f","2b33ada2e7f1","1073de9432e8","b7fef829f7cd","b932d817b0be","426b0c033b65","e339371c03ec","09cf265f36bf","946d93034721","34f253fe535d","0e0452150fc5","41138ea5f511","0f5db9f8267a","94c4bc170351","2a16ba56db0d","c4c168b0ceb4","631781b024de","de8e7fceb4e6","52c32e6c2631","52d950b3f545","6bc3bf1abc3a","0eda9c1865c6","5d38f6935067","28a8d3951538","1c60ebb5d152","26ac05e5d244"],
+      "weather_method": "value.doctoral-site-weather/v1"
+     },
+     "336": {
+      "demand": "886a724330a1",
+      "exports": {
+       "belgium": {"env":"28bc3df195ac","price":"7484bf90c8e1"},
+       "france": {"env":"1aa24079d5eb","price":"bf56fac093ca"},
+       "ireland": {"env":"fd9303807157","price":"89df37cf1639"},
+       "netherlands": {"env":"6662f60d44fc","price":"ee96732e4b9c"},
+       "norway": {"env":"a34556d3ff57","price":"2befb5323c1b"}
+      },
+      "forecast": "bec51c7c303c",
+      "headroom": {"offshore":44107.0,"onshore":44117.0,"solar":336102.643947},
+      "imports": {
+       "belgium": {"avail":"1214fae25be8","cap_mw":1053.0,"marginal":174.326905,"price":"7484bf90c8e1"},
+       "france": {"avail":"e64e3f74d0b3","cap_mw":2000.0,"marginal":131.928788,"price":"bf56fac093ca"},
+       "ireland": {"avail":"a8697899d162","cap_mw":887.0,"marginal":75.725866,"price":"89df37cf1639"},
+       "netherlands": {"avail":"47b06f1ca9ee","cap_mw":1020.0,"marginal":133.533929,"price":"ee96732e4b9c"},
+       "norway": {"avail":"2eca5459f940","cap_mw":693.0,"marginal":98.44145,"price":"2befb5323c1b"}
+      },
+      "vre_sites_digest": "27367b807358",
+      "weather_method": "value.doctoral-site-weather/v1"
+     },
+     "48": {
+      "demand": "42f50cef03c8",
+      "exports": {
+       "belgium": {"env":"3e5d65abc866","price":"af3d72ea49bd"},
+       "france": {"env":"5b84b27db01f","price":"49caad5156a8"},
+       "ireland": {"env":"fd95c6488638","price":"208acae10990"},
+       "netherlands": {"env":"710a51e6698e","price":"b3f6a440fb9b"},
+       "norway": {"env":"8ef37185a4e7","price":"47a77462745c"}
+      },
+      "forecast": "74cde2dbf854",
+      "headroom": {"offshore":30946.0,"onshore":30956.0,"solar":246168.403692},
+      "imports": {
+       "belgium": {"avail":"b6c99afb2e43","cap_mw":882.0,"marginal":66.423958,"price":"af3d72ea49bd"},
+       "france": {"avail":"240e584ffe92","cap_mw":517.0,"marginal":77.95303,"price":"49caad5156a8"},
+       "ireland": {"avail":"e670c4faffd7","cap_mw":796.0,"marginal":59.382576,"price":"208acae10990"},
+       "netherlands": {"avail":"40ce7e4ea8bc","cap_mw":999.0,"marginal":82.449621,"price":"b3f6a440fb9b"},
+       "norway": {"avail":"ef2ca17f4d1c","cap_mw":693.0,"marginal":88.275,"price":"47a77462745c"}
+      },
+      "vre_sites_digest": "2788a515bcec",
+      "weather_method": "value.doctoral-site-weather/v1"
+     }
+    }
+   },
+   "country": "GB",
+   "kernel_boundary_oracle": {
+    "17520": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":["float64",17520,"3bc356a8ec3f"],"feed":"ireland","transfer_constraint":["int64",17520,"a086b7dcbd52"]},
+      "Interconnect_France": {"external_price":["float64",30624,"99758952cee9"],"feed":"france","transfer_constraint":["int64",17520,"98a681bb8b03"]},
+      "Interconnect_Ireland": {"external_price":["float64",24430,"751e0a556375"],"feed":"netherlands","transfer_constraint":["int64",17520,"b0623638cfba"]},
+      "Interconnect_Netherland": {"external_price":["float64",15313,"2e4c7ce4fec9"],"feed":"belgium","transfer_constraint":["int64",17520,"433767de300e"]},
+      "Interconnect_Norway": {"external_price":["float64",30624,"5bce10be72b6"],"feed":"norway","transfer_constraint":["int64",17520,"3c7702d983f8"]}
+     },
+     "demand": {"forecast":"3fa6f4763149","real":"963e7b714ffb"}
+    },
+    "48": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":["float64",17520,"3566445f5874"],"feed":"ireland","transfer_constraint":["int64",17520,"25fc86d7b8bc"]},
+      "Interconnect_France": {"external_price":["float64",30624,"cfa5c1c56260"],"feed":"france","transfer_constraint":["int64",17520,"69d83d5d57d5"]},
+      "Interconnect_Ireland": {"external_price":["float64",24430,"3479658b1cae"],"feed":"netherlands","transfer_constraint":["int64",17520,"c38d9a5a1451"]},
+      "Interconnect_Netherland": {"external_price":["float64",15313,"a1a4f5721c1c"],"feed":"belgium","transfer_constraint":["int64",17520,"44e89d2c9b49"]},
+      "Interconnect_Norway": {"external_price":["float64",30624,"4da541211720"],"feed":"norway","transfer_constraint":["int64",17520,"2e5df1dd9ffd"]}
+     },
+     "demand": {"forecast":"a1dc39a4ffd6","real":"eeb012313d44"}
+    }
+   },
+   "kernel_recorded": {
+    "48": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":"3566445f5874","transfer_constraint":"25fc86d7b8bc"},
+      "Interconnect_France": {"external_price":"cfa5c1c56260","transfer_constraint":"69d83d5d57d5"},
+      "Interconnect_Ireland": {"external_price":"3479658b1cae","transfer_constraint":"c38d9a5a1451"},
+      "Interconnect_Netherland": {"external_price":"a1a4f5721c1c","transfer_constraint":"44e89d2c9b49"},
+      "Interconnect_Norway": {"external_price":"4da541211720","transfer_constraint":"2e5df1dd9ffd"}
+     },
+     "demand": {"forecast":"a1dc39a4ffd6","forecast_per_period":"a1dc39a4ffd6","real":"eeb012313d44"},
+     "periods_reached": 48,
+     "vre_unit_limit": {"digest":"1f1a458c0bf3","raw_sites":["offshore14","offshore19","offshore4"],"sites":43}
+    }
+   },
+   "manifest_sha256": "17a68154c26680d472879fbe6a2f67eb3c610d5de68052b1b0101384a3270025",
+   "pack_id": "value-uk-open-data-pack-v1",
+   "timezone": "Europe/London",
+   "validator_reader": {"demand.forecast":[0,26204,0,"95cd806057b3"],"demand.real":[0,26204,0,"=canonical"],"market.belgium.price":[3,15312,0,"=canonical"],"market.belgium.profile":[0,17520,0,"=canonical"],"market.france.price":[0,30624,0,"=canonical"],"market.france.profile":[0,17520,0,"=canonical"],"market.ireland.price":[0,17520,0,"=canonical"],"market.ireland.profile":[0,17520,0,"=canonical"],"market.netherlands.price":[0,24430,0,"=canonical"],"market.netherlands.profile":[0,17520,0,"=canonical"],"market.norway.price":[0,30624,0,"=canonical"],"market.norway.profile":[0,17520,0,"=canonical"],"profiles.vre_offshore":[0,8760,0,"=canonical"],"profiles.vre_onshore":[0,8760,0,"=canonical"],"profiles.vre_solar":[0,8761,0,"=canonical"]}
+  },
+  "r029-public1": {
+   "canonical_clock": {
+    "17520": {"demand.forecast":"exact:17520","demand.real":"exact:17520","market.belgium.price":"exact:17520","market.belgium.profile":"exact:17520","market.france.price":"exact:17520","market.france.profile":"exact:17520","market.ireland.price":"exact:17520","market.ireland.profile":"exact:17520","market.netherlands.price":"exact:17520","market.netherlands.profile":"exact:17520","market.norway.price":"exact:17520","market.norway.profile":"exact:17520","profiles.vre_offshore":["hourly_repeat:8760","fd54a2675317"],"profiles.vre_onshore":["hourly_repeat:8760","fa4773947089"],"profiles.vre_solar":["hourly_repeat:8761","283abb383d08"]},
+    "336": {"demand.forecast":["truncate:17520","f83482f7eadd"],"demand.real":["truncate:17520","137d99aa10d1"],"market.belgium.price":["truncate:17520","a8ced2e4e61e"],"market.belgium.profile":["truncate:17520","a8ced2e4e61e"],"market.france.price":["truncate:17520","a8ced2e4e61e"],"market.france.profile":["truncate:17520","a8ced2e4e61e"],"market.ireland.price":["truncate:17520","a8ced2e4e61e"],"market.ireland.profile":["truncate:17520","a8ced2e4e61e"],"market.netherlands.price":["truncate:17520","a8ced2e4e61e"],"market.netherlands.profile":["truncate:17520","a8ced2e4e61e"],"market.norway.price":["truncate:17520","a8ced2e4e61e"],"market.norway.profile":["truncate:17520","a8ced2e4e61e"],"profiles.vre_offshore":["hourly_repeat:8760","e6435fdb15aa"],"profiles.vre_onshore":["hourly_repeat:8760","79b01291f8f9"],"profiles.vre_solar":["hourly_repeat:8761","877d92164812"]},
+    "48": {"demand.forecast":["truncate:17520","53215be1832c"],"demand.real":["truncate:17520","eeb012313d44"],"market.belgium.price":["truncate:17520","7690d7988016"],"market.belgium.profile":["truncate:17520","7690d7988016"],"market.france.price":["truncate:17520","7690d7988016"],"market.france.profile":["truncate:17520","7690d7988016"],"market.ireland.price":["truncate:17520","7690d7988016"],"market.ireland.profile":["truncate:17520","7690d7988016"],"market.netherlands.price":["truncate:17520","7690d7988016"],"market.netherlands.profile":["truncate:17520","7690d7988016"],"market.norway.price":["truncate:17520","7690d7988016"],"market.norway.profile":["truncate:17520","7690d7988016"],"profiles.vre_offshore":["hourly_repeat:8760","d36a04043429"],"profiles.vre_onshore":["hourly_repeat:8760","132e354cf49e"],"profiles.vre_solar":["hourly_repeat:8761","deb806d545f5"]}
+   },
+   "canonical_reader": {
+    "demand.forecast": {"col":0,"cols":1,"index_like":false,"label":"forecast_mw","max":46760.0,"mean":26611.131963,"min":14240.0,"n":17520,"sha":"ed87dd0f861d"},
+    "demand.real": {"col":0,"cols":1,"index_like":false,"label":"demand_mw","max":46042.0,"mean":26587.967637,"min":15080.0,"n":17520,"sha":"a17993ef8c29"},
+    "market.belgium.price": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.belgium.profile": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.france.price": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.france.profile": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.ireland.price": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.ireland.profile": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.netherlands.price": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.netherlands.profile": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.norway.price": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "market.norway.profile": {"col":0,"cols":7,"index_like":true,"label":"period","max":17519.0,"mean":8759.5,"min":0.0,"n":17520,"sha":"7309c446da53"},
+    "profiles.vre_offshore": {"col":0,"cols":1,"index_like":false,"label":"0.276188441","max":1.0,"mean":0.260512,"min":1e-06,"n":8760,"sha":"830f270c1f81"},
+    "profiles.vre_onshore": {"col":0,"cols":1,"index_like":false,"label":"0.18215541","max":1.0,"mean":0.362607,"min":4e-06,"n":8760,"sha":"826b17fafd83"},
+    "profiles.vre_solar": {"col":0,"cols":1,"index_like":false,"label":"0.0","max":0.838794,"mean":0.117342,"min":0.0,"n":8761,"sha":"75c74c7d7f67"}
+   },
+   "chronology": {
+    "doctoral-national": {
+     "17520": {
+      "exports": {},
+      "imports": {
+       "belgium": {"price":"7309c446da53"},
+       "france": {"price":"7309c446da53"},
+       "ireland": {"price":"7309c446da53"},
+       "netherlands": {"price":"7309c446da53"},
+       "norway": {"price":"7309c446da53"}
+      }
+     },
+     "48": {
+      "exports": {},
+      "imports": {
+       "belgium": {"price":"7690d7988016"},
+       "france": {"price":"7690d7988016"},
+       "ireland": {"price":"7690d7988016"},
+       "netherlands": {"price":"7690d7988016"},
+       "norway": {"price":"7690d7988016"}
+      }
+     }
+    },
+    "value.canonical": {
+     "17520": {
+      "demand": "94bae56b79a3",
+      "exports": {},
+      "forecast": "a26b976e875f",
+      "headroom": {"offshore":46021.0,"onshore":46031.0,"solar":54879.735569},
+      "imports": {
+       "belgium": {"avail":"8a95dd826a32","cap_mw":17519.0,"marginal":8759.5,"price":"7309c446da53"},
+       "france": {"avail":"8a95dd826a32","cap_mw":17519.0,"marginal":8759.5,"price":"7309c446da53"},
+       "ireland": {"avail":"8a95dd826a32","cap_mw":17519.0,"marginal":8759.5,"price":"7309c446da53"},
+       "netherlands": {"avail":"8a95dd826a32","cap_mw":17519.0,"marginal":8759.5,"price":"7309c446da53"},
+       "norway": {"avail":"8a95dd826a32","cap_mw":17519.0,"marginal":8759.5,"price":"7309c446da53"}
+      },
+      "vre_sites": ["190027509f8c","ba3c5c34b031","d4ac11f78098","5ce7d00afb05","273ded68aa37","c040b0093ca2","d5e96fd88140","ba3c5c34b031","6cf3531a1cbf","07b0245ceb96","6e06860e42bf","ba3c5c34b031","6e06860e42bf","6db4c320cb18","8be7c8a63a97","ba3c5c34b031","ba3c5c34b031","b6e322eec2b2","f5049d3c1bbe","43c096f6699a","6db4c320cb18","53920ebf5923","849407db4b1d","51420f71e25c","9b2303854dc1","e42ecc7e436c","607356eb328a","d64e6977a599","a94b40c65bf9","0554cfbfc033","ac9f42cc8367","ca4e2465f022","cdd8b1d9c1a3","d8ef7509366c","cc9751e7f857","2199aa561ae0","5dfc62925133","3489d642e0f4","49b34b95fc0a","982d0ed6eaff","d5e9575545c5","844752de1050","3732f38a9ed0"],
+      "weather_method": "value.doctoral-site-weather/v1"
+     },
+     "336": {
+      "demand": "886a724330a1",
+      "exports": {},
+      "forecast": "315a79fd4768",
+      "headroom": {"offshore":44107.0,"onshore":44117.0,"solar":336102.643947},
+      "imports": {
+       "belgium": {"avail":"b2ad691a3358","cap_mw":335.0,"marginal":167.5,"price":"a8ced2e4e61e"},
+       "france": {"avail":"b2ad691a3358","cap_mw":335.0,"marginal":167.5,"price":"a8ced2e4e61e"},
+       "ireland": {"avail":"b2ad691a3358","cap_mw":335.0,"marginal":167.5,"price":"a8ced2e4e61e"},
+       "netherlands": {"avail":"b2ad691a3358","cap_mw":335.0,"marginal":167.5,"price":"a8ced2e4e61e"},
+       "norway": {"avail":"b2ad691a3358","cap_mw":335.0,"marginal":167.5,"price":"a8ced2e4e61e"}
+      },
+      "vre_sites_digest": "1b13d7d7a6a9",
+      "weather_method": "value.doctoral-site-weather/v1"
+     },
+     "48": {
+      "demand": "42f50cef03c8",
+      "exports": {},
+      "forecast": "ed35e453a323",
+      "headroom": {"offshore":30946.0,"onshore":30956.0,"solar":246168.403692},
+      "imports": {
+       "belgium": {"avail":"fc3ec5525f78","cap_mw":47.0,"marginal":23.5,"price":"7690d7988016"},
+       "france": {"avail":"fc3ec5525f78","cap_mw":47.0,"marginal":23.5,"price":"7690d7988016"},
+       "ireland": {"avail":"fc3ec5525f78","cap_mw":47.0,"marginal":23.5,"price":"7690d7988016"},
+       "netherlands": {"avail":"fc3ec5525f78","cap_mw":47.0,"marginal":23.5,"price":"7690d7988016"},
+       "norway": {"avail":"fc3ec5525f78","cap_mw":47.0,"marginal":23.5,"price":"7690d7988016"}
+      },
+      "vre_sites_digest": "fa20eaebcc46",
+      "weather_method": "value.doctoral-site-weather/v1"
+     }
+    }
+   },
+   "country": "GB",
+   "kernel_boundary_oracle": {
+    "17520": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":["float64",17521,"694c5cb3e2bd"],"feed":"ireland","transfer_constraint":["object",122640,"obj:997343a8a0ba"]},
+      "Interconnect_France": {"external_price":["float64",17521,"694c5cb3e2bd"],"feed":"france","transfer_constraint":["object",122640,"obj:7111175601e9"]},
+      "Interconnect_Ireland": {"external_price":["float64",17521,"694c5cb3e2bd"],"feed":"netherlands","transfer_constraint":["object",122640,"obj:d619eadad421"]},
+      "Interconnect_Netherland": {"external_price":["float64",17521,"694c5cb3e2bd"],"feed":"belgium","transfer_constraint":["object",122640,"obj:4c5c3c444366"]},
+      "Interconnect_Norway": {"external_price":["float64",17521,"694c5cb3e2bd"],"feed":"norway","transfer_constraint":["object",122640,"obj:cc4d135fef6e"]}
+     },
+     "demand": {"forecast":"ed87dd0f861d","real":"a17993ef8c29"}
+    },
+    "48": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":["float64",17521,"f152c39752b0"],"feed":"ireland","transfer_constraint":["object",122640,"obj:8dd09459b3c9"]},
+      "Interconnect_France": {"external_price":["float64",17521,"f152c39752b0"],"feed":"france","transfer_constraint":["object",122640,"obj:4e609f5ea8fd"]},
+      "Interconnect_Ireland": {"external_price":["float64",17521,"f152c39752b0"],"feed":"netherlands","transfer_constraint":["object",122640,"obj:1f4d6ab21e66"]},
+      "Interconnect_Netherland": {"external_price":["float64",17521,"f152c39752b0"],"feed":"belgium","transfer_constraint":["object",122640,"obj:438e22428ad0"]},
+      "Interconnect_Norway": {"external_price":["float64",17521,"f152c39752b0"],"feed":"norway","transfer_constraint":["object",122640,"obj:7dbee4df5273"]}
+     },
+     "demand": {"forecast":"53215be1832c","real":"eeb012313d44"}
+    }
+   },
+   "kernel_recorded": {
+    "48": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":"138451813637","transfer_constraint":"obj:712eddc34bb7"},
+      "Interconnect_France": {"external_price":"138451813637","transfer_constraint":"obj:2754d866d42d"},
+      "Interconnect_Ireland": {"external_price":"138451813637","transfer_constraint":"obj:3ae09166cf2b"},
+      "Interconnect_Netherland": {"external_price":"138451813637","transfer_constraint":"obj:2cd616516d63"},
+      "Interconnect_Norway": {"external_price":"138451813637","transfer_constraint":"obj:8d4ff3cacb53"}
+     },
+     "demand": {"forecast":"53215be1832c","forecast_per_period":"06e91b1a2933","real":"eeb012313d44"},
+     "error": "TypeError: '<' not supported between instances of 'str' and 'int'",
+     "periods_reached": 7,
+     "vre_unit_limit": {"digest":"5d5bf669601a","raw_sites":["offshore14","offshore19","offshore4"],"sites":43}
+    }
+   },
+   "manifest_sha256": "717543f0ea6c7601f7c5d11b743d1c4924db5296f4b57fed063fa63be51adee8",
+   "pack_id": "value-uk-calendar-vx-trade001",
+   "timezone": "UTC",
+   "validator_reader": {"demand.forecast":[0,17520,0,"435e6659798e"],"demand.real":[0,17520,0,"79eaf7cbda3e"],"market.belgium.price":[0,17520,0,"=canonical"],"market.belgium.profile":[0,17520,0,"=canonical"],"market.france.price":[0,17520,0,"=canonical"],"market.france.profile":[0,17520,0,"=canonical"],"market.ireland.price":[0,17520,0,"=canonical"],"market.ireland.profile":[0,17520,0,"=canonical"],"market.netherlands.price":[0,17520,0,"=canonical"],"market.netherlands.profile":[0,17520,0,"=canonical"],"market.norway.price":[0,17520,0,"=canonical"],"market.norway.profile":[0,17520,0,"=canonical"],"profiles.vre_offshore":[0,8760,0,"=canonical"],"profiles.vre_onshore":[0,8760,0,"=canonical"],"profiles.vre_solar":[0,8761,0,"=canonical"]}
+  },
+  "value-101-baseline-v1": {
+   "canonical_clock": {
+    "17520": {"demand.forecast":"exact:17520","demand.real":"exact:17520","market.belgium.price":"exact:17520","market.belgium.profile":"exact:17520","market.france.price":"exact:17520","market.france.profile":"exact:17520","market.ireland.price":"exact:17520","market.ireland.profile":"exact:17520","market.netherlands.price":"exact:17520","market.netherlands.profile":"exact:17520","market.norway.price":"exact:17520","market.norway.profile":"exact:17520","profiles.vre_offshore":"exact:17520","profiles.vre_onshore":"exact:17520","profiles.vre_solar":"exact:17520"},
+    "336": {"demand.forecast":["truncate:17520","5c33a7404c8e"],"demand.real":["truncate:17520","ea04bd668cf8"],"market.belgium.price":["truncate:17520","2d622524a1d2"],"market.belgium.profile":["truncate:17520","bb270d5b0180"],"market.france.price":["truncate:17520","612181b26fb7"],"market.france.profile":["truncate:17520","500e2d12f92c"],"market.ireland.price":["truncate:17520","2d622524a1d2"],"market.ireland.profile":["truncate:17520","bb270d5b0180"],"market.netherlands.price":["truncate:17520","2d622524a1d2"],"market.netherlands.profile":["truncate:17520","bb270d5b0180"],"market.norway.price":["truncate:17520","2d622524a1d2"],"market.norway.profile":["truncate:17520","bb270d5b0180"],"profiles.vre_offshore":["hourly_repeat:17520","34b85ec53ffc"],"profiles.vre_onshore":["hourly_repeat:17520","e65f059cc46d"],"profiles.vre_solar":["hourly_repeat:17520","2edf12290a29"]},
+    "48": {"demand.forecast":["truncate:17520","6d5a461de602"],"demand.real":["truncate:17520","25a8c0f32177"],"market.belgium.price":["truncate:17520","74dce2b7c74b"],"market.belgium.profile":["truncate:17520","a1a4f5721c1c"],"market.france.price":["truncate:17520","3c16af595f54"],"market.france.profile":["truncate:17520","7ade6a883740"],"market.ireland.price":["truncate:17520","74dce2b7c74b"],"market.ireland.profile":["truncate:17520","a1a4f5721c1c"],"market.netherlands.price":["truncate:17520","74dce2b7c74b"],"market.netherlands.profile":["truncate:17520","a1a4f5721c1c"],"market.norway.price":["truncate:17520","74dce2b7c74b"],"market.norway.profile":["truncate:17520","a1a4f5721c1c"],"profiles.vre_offshore":["hourly_repeat:17520","0a6b16880a46"],"profiles.vre_onshore":["hourly_repeat:17520","c2f8b4d0b29f"],"profiles.vre_solar":["hourly_repeat:17520","b1f6ba5a14e6"]}
+   },
+   "canonical_reader": {
+    "demand.forecast": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":58.624613,"mean":26.69889,"min":17.08869,"n":17520,"sha":"370a3426c264"},
+    "demand.real": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":58.624613,"mean":26.69752,"min":17.08869,"n":17520,"sha":"9a85b76ad552"},
+    "market.belgium.price": {"col":0,"cols":1,"index_like":false,"label":"200.0","max":200.0,"mean":200.0,"min":200.0,"n":17520,"sha":"400ff9256772"},
+    "market.belgium.profile": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":0.0,"mean":0.0,"min":0.0,"n":17520,"sha":"2e4c7ce4fec9"},
+    "market.france.price": {"col":0,"cols":1,"index_like":false,"label":"82.0","max":82.0,"mean":82.0,"min":82.0,"n":17520,"sha":"b561992e6d64"},
+    "market.france.profile": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":12.0,"mean":12.0,"min":12.0,"n":17520,"sha":"e30e94e22aaf"},
+    "market.ireland.price": {"col":0,"cols":1,"index_like":false,"label":"200.0","max":200.0,"mean":200.0,"min":200.0,"n":17520,"sha":"400ff9256772"},
+    "market.ireland.profile": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":0.0,"mean":0.0,"min":0.0,"n":17520,"sha":"2e4c7ce4fec9"},
+    "market.netherlands.price": {"col":0,"cols":1,"index_like":false,"label":"200.0","max":200.0,"mean":200.0,"min":200.0,"n":17520,"sha":"400ff9256772"},
+    "market.netherlands.profile": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":0.0,"mean":0.0,"min":0.0,"n":17520,"sha":"2e4c7ce4fec9"},
+    "market.norway.price": {"col":0,"cols":1,"index_like":false,"label":"200.0","max":200.0,"mean":200.0,"min":200.0,"n":17520,"sha":"400ff9256772"},
+    "market.norway.profile": {"col":0,"cols":1,"index_like":false,"label":"mwh","max":0.0,"mean":0.0,"min":0.0,"n":17520,"sha":"2e4c7ce4fec9"},
+    "profiles.vre_offshore": {"col":0,"cols":1,"index_like":false,"label":"0.546641","max":0.809605,"mean":0.451188,"min":0.097419,"n":17520,"sha":"dcbc727b5b27"},
+    "profiles.vre_onshore": {"col":0,"cols":1,"index_like":false,"label":"0.506149","max":0.749634,"mean":0.417767,"min":0.090203,"n":17520,"sha":"b4d73e4c20b7"},
+    "profiles.vre_solar": {"col":0,"cols":1,"index_like":false,"label":"0.0","max":0.999992,"mean":0.251106,"min":0.0,"n":17520,"sha":"8be966a39b42"}
+   },
+   "chronology": {
+    "doctoral-national": {
+     "17520": {
+      "exports": {},
+      "imports": {
+       "france": {"price":"b561992e6d64"}
+      }
+     },
+     "48": {
+      "exports": {},
+      "imports": {
+       "france": {"price":"3c16af595f54"}
+      }
+     }
+    },
+    "value.canonical": {
+     "17520": {
+      "demand": "9a31269bf2dd",
+      "exports": {},
+      "forecast": "b7ae67a417a6",
+      "headroom": {"offshore":51.411377,"onshore":67.204314,"solar":47.625082},
+      "imports": {
+       "france": {"avail":"8c96b1e8ab25","cap_mw":12.0,"marginal":82.0,"price":"b561992e6d64"}
+      },
+      "vre_sites": ["79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","79134d660bc4","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","6e2076989f17","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a","fb3e0492216a"],
+      "weather_method": "value.doctoral-site-weather/v1"
+     },
+     "336": {
+      "demand": "534bc5ea9645",
+      "exports": {},
+      "forecast": "2d226e8ea2f7",
+      "headroom": {"offshore":76.452525,"onshore":94.248762,"solar":48.550988},
+      "imports": {
+       "france": {"avail":"73142731cdd8","cap_mw":12.0,"marginal":82.0,"price":"612181b26fb7"}
+      },
+      "vre_sites_digest": "d1e6f64e4394",
+      "weather_method": "value.doctoral-site-weather/v1"
+     },
+     "48": {
+      "demand": "98b0d34846ec",
+      "exports": {},
+      "forecast": "5689f6b43111",
+      "headroom": {"offshore":76.452525,"onshore":94.248762,"solar":49.064848},
+      "imports": {
+       "france": {"avail":"1737432e85af","cap_mw":12.0,"marginal":82.0,"price":"3c16af595f54"}
+      },
+      "vre_sites_digest": "f8b1f86f76a0",
+      "weather_method": "value.doctoral-site-weather/v1"
+     }
+    }
+   },
+   "country": "SYNTHETIC",
+   "kernel_boundary_oracle": {
+    "17520": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":["float64",17520,"400ff9256772"],"feed":"ireland","transfer_constraint":["float64",17520,"2e4c7ce4fec9"]},
+      "Interconnect_France": {"external_price":["float64",17520,"b561992e6d64"],"feed":"france","transfer_constraint":["float64",17520,"e30e94e22aaf"]},
+      "Interconnect_Ireland": {"external_price":["float64",17520,"400ff9256772"],"feed":"netherlands","transfer_constraint":["float64",17520,"2e4c7ce4fec9"]},
+      "Interconnect_Netherland": {"external_price":["float64",17520,"400ff9256772"],"feed":"belgium","transfer_constraint":["float64",17520,"2e4c7ce4fec9"]},
+      "Interconnect_Norway": {"external_price":["float64",17520,"400ff9256772"],"feed":"norway","transfer_constraint":["float64",17520,"2e4c7ce4fec9"]}
+     },
+     "demand": {"forecast":"370a3426c264","real":"9a85b76ad552"}
+    },
+    "48": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":["float64",17520,"74dce2b7c74b"],"feed":"ireland","transfer_constraint":["float64",17520,"a1a4f5721c1c"]},
+      "Interconnect_France": {"external_price":["float64",17520,"3c16af595f54"],"feed":"france","transfer_constraint":["float64",17520,"7ade6a883740"]},
+      "Interconnect_Ireland": {"external_price":["float64",17520,"74dce2b7c74b"],"feed":"netherlands","transfer_constraint":["float64",17520,"a1a4f5721c1c"]},
+      "Interconnect_Netherland": {"external_price":["float64",17520,"74dce2b7c74b"],"feed":"belgium","transfer_constraint":["float64",17520,"a1a4f5721c1c"]},
+      "Interconnect_Norway": {"external_price":["float64",17520,"74dce2b7c74b"],"feed":"norway","transfer_constraint":["float64",17520,"a1a4f5721c1c"]}
+     },
+     "demand": {"forecast":"6d5a461de602","real":"25a8c0f32177"}
+    }
+   },
+   "kernel_recorded": {
+    "48": {
+     "connections": {
+      "Interconnect_Beligum": {"external_price":"74dce2b7c74b","transfer_constraint":"a1a4f5721c1c"},
+      "Interconnect_France": {"external_price":"3c16af595f54","transfer_constraint":"7ade6a883740"},
+      "Interconnect_Ireland": {"external_price":"74dce2b7c74b","transfer_constraint":"a1a4f5721c1c"},
+      "Interconnect_Netherland": {"external_price":"74dce2b7c74b","transfer_constraint":"a1a4f5721c1c"},
+      "Interconnect_Norway": {"external_price":"74dce2b7c74b","transfer_constraint":"a1a4f5721c1c"}
+     },
+     "demand": {"forecast":"6d5a461de602","forecast_per_period":"6d5a461de602","real":"25a8c0f32177"},
+     "periods_reached": 48,
+     "vre_unit_limit": {"digest":"1e07b80e55e8","raw_sites":["offshore1","offshore10","offshore11","offshore12","offshore13","offshore14","offshore15","offshore16","offshore17","offshore18","offshore19","offshore2","offshore20","offshore21","offshore3","offshore4","offshore5","offshore6","offshore7","offshore8","offshore9","onshore_Birmingham","onshore_Bournemouth","onshore_Cardiff","onshore_Edinburgh","onshore_Ipswich","onshore_London","onshore_Manchester","onshore_Newcastle","onshore_Nottingham","onshore_Sheffield","solar_Birmingham","solar_Bournemouth","solar_Cardiff","solar_Edinburgh","solar_Ipswich","solar_London","solar_Manchester","solar_Newcastle","solar_Nottingham","solar_Sheffield"],"sites":43}
+    }
+   },
+   "manifest_sha256": "8fe24b8a54251131d22a28b446deaf395f1148ee138d5d0333d14c88cdc2ac4c",
+   "pack_id": "value-101-baseline-v1",
+   "timezone": "UTC",
+   "validator_reader": {"demand.forecast":[0,17520,0,"=canonical"],"demand.real":[0,17520,0,"=canonical"],"market.belgium.price":[0,17520,0,"=canonical"],"market.belgium.profile":[0,17520,0,"=canonical"],"market.france.price":[0,17520,0,"=canonical"],"market.france.profile":[0,17520,0,"=canonical"],"market.ireland.price":[0,17520,0,"=canonical"],"market.ireland.profile":[0,17520,0,"=canonical"],"market.netherlands.price":[0,17520,0,"=canonical"],"market.netherlands.profile":[0,17520,0,"=canonical"],"market.norway.price":[0,17520,0,"=canonical"],"market.norway.profile":[0,17520,0,"=canonical"],"profiles.vre_offshore":[0,17520,0,"=canonical"],"profiles.vre_onshore":[0,17520,0,"=canonical"],"profiles.vre_solar":[0,17520,0,"=canonical"]}
+  },
+  "value-101-network-v1": {"country":"SYNTHETIC","manifest_sha256":"68801bbca5143004ee6c48cea0645e1dbf73f70f11c8483b9f80999ef643a542","pack_id":"value-101-network-v1","same_reading_as":"value-101-baseline-v1","timezone":"UTC"}
+ },
+ "purpose": "P0-5 S0: data-reading behaviour of the code as of capture (reader sites identical to 35aadb3, see captured_with) for later diffs; no behaviour change",
+ "research_packs": {
+  "gbp1-public1": {"manifest_sha256":"17a68154c26680d472879fbe6a2f67eb3c610d5de68052b1b0101384a3270025","pack_id":"value-uk-open-data-pack-v1","release_asset":"value-uk-open-data-pack-v1-public1-2026-10-04.zip","release_asset_sha256":"0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2"},
+  "r029-public1": {"manifest_sha256":"717543f0ea6c7601f7c5d11b743d1c4924db5296f4b57fed063fa63be51adee8","pack_id":"value-uk-calendar-vx-trade001","release_asset":"value-uk-calendar-vx-trade001-public1-2026-10-04.zip","release_asset_sha256":"cdab4222b6030b377499e5060e2d03b6a7c704c0ddf0d6cc2ea73dee202b2f04"}
+ },
+ "schema_version": "value.p0-5-reading-baseline/v1",
+ "windows": [17520,336,48]
+}

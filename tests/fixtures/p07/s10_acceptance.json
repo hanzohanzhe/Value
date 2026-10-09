@@ -1,0 +1,1509 @@
+{
+ "attribution": {
+  "cases": {
+   "C2": {
+    "family": "corrected",
+    "latest_revision": 10,
+    "mode": "two_year_smoke",
+    "revisions": [
+     {
+      "accounting_columns": 239,
+      "correction_ids": [
+       "p04.validation-v2"
+      ],
+      "findings": [],
+      "identity_columns": 21,
+      "m5": false,
+      "revision": 1,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 36,
+      "correction_ids": [
+       "p04.storage-energy-audit"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": false,
+      "revision": 2,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 71,
+      "correction_ids": [
+       "p04.surplus-node-boundary"
+      ],
+      "findings": [],
+      "identity_columns": 14,
+      "m5": false,
+      "revision": 3,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 0,
+      "correction_ids": [
+       "p05.series-clock"
+      ],
+      "findings": [
+       "P6-07"
+      ],
+      "identity_columns": 0,
+      "m5": false,
+      "revision": 4,
+      "trajectory_artifacts": [
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 8
+     },
+     {
+      "accounting_columns": 26,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 22,
+      "m5": false,
+      "revision": 5,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 93,
+      "correction_ids": [
+       "p06.d1-surplus-accounting",
+       "p06.storage-after-generation-merit-key",
+       "p06.avoided-cost-downward-order",
+       "p06.storage-net-per-period",
+       "p06.storage-fee-per-period",
+       "p06.no-vre-pre-clearing-skim",
+       "p06.storage-bid-cycle-only",
+       "p06.storage-uniform-price-settlement",
+       "p06.voll-chronology-parameter"
+      ],
+      "findings": [],
+      "identity_columns": 22,
+      "m5": false,
+      "revision": 6,
+      "trajectory_artifacts": [
+       "market/market.sqlite",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 18
+     },
+     {
+      "accounting_columns": 1,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 8,
+      "m5": false,
+      "revision": 7,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 69,
+      "correction_ids": [
+       "p04.validation-gate"
+      ],
+      "findings": [
+       "P7-01",
+       "P7-10",
+       "P3-01",
+       "P5-03"
+      ],
+      "identity_columns": 0,
+      "m5": false,
+      "revision": 8,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 40,
+      "correction_ids": [
+       "p05.weather-time-convention",
+       "p05.vre-loss-factors"
+      ],
+      "findings": [],
+      "identity_columns": 4,
+      "m5": true,
+      "revision": 9,
+      "trajectory_artifacts": [
+       "market/market.sqlite",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 15
+     },
+     {
+      "accounting_columns": 29,
+      "correction_ids": [
+       "p07.thermal-net-revenue",
+       "p07.storage-leftover-headroom",
+       "p07.power-battery-pool",
+       "p07.cost-ledger-v2",
+       "p07.compatibility-capital-out-of-headline"
+      ],
+      "findings": [
+       "P4-01-thermal"
+      ],
+      "identity_columns": 10,
+      "m5": true,
+      "revision": 10,
+      "trajectory_artifacts": [
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 9
+     }
+    ]
+   },
+   "C5": {
+    "family": "corrected",
+    "latest_revision": 10,
+    "mode": "two_year",
+    "revisions": [
+     {
+      "accounting_columns": 243,
+      "correction_ids": [
+       "p04.validation-v2"
+      ],
+      "findings": [],
+      "identity_columns": 21,
+      "m5": false,
+      "revision": 1,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 36,
+      "correction_ids": [
+       "p04.storage-energy-audit"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": false,
+      "revision": 2,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 45,
+      "correction_ids": [
+       "p04.surplus-routing"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": false,
+      "revision": 3,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 91,
+      "correction_ids": [
+       "p04.surplus-node-boundary"
+      ],
+      "findings": [],
+      "identity_columns": 14,
+      "m5": false,
+      "revision": 4,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 35,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 22,
+      "m5": false,
+      "revision": 5,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 199,
+      "correction_ids": [
+       "p06.d1-surplus-accounting",
+       "p06.storage-after-generation-merit-key",
+       "p06.avoided-cost-downward-order",
+       "p06.storage-net-per-period",
+       "p06.storage-fee-per-period",
+       "p06.no-vre-pre-clearing-skim",
+       "p06.storage-bid-cycle-only",
+       "p06.storage-uniform-price-settlement",
+       "p06.voll-chronology-parameter"
+      ],
+      "findings": [],
+      "identity_columns": 23,
+      "m5": false,
+      "revision": 6,
+      "trajectory_artifacts": [
+       "market/market.sqlite",
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 125
+     },
+     {
+      "accounting_columns": 1,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 8,
+      "m5": false,
+      "revision": 7,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 86,
+      "correction_ids": [
+       "p04.validation-gate"
+      ],
+      "findings": [
+       "P7-01",
+       "P7-10",
+       "P3-01",
+       "P5-03"
+      ],
+      "identity_columns": 0,
+      "m5": false,
+      "revision": 8,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 106,
+      "correction_ids": [
+       "p05.weather-time-convention",
+       "p05.vre-loss-factors"
+      ],
+      "findings": [],
+      "identity_columns": 7,
+      "m5": true,
+      "revision": 9,
+      "trajectory_artifacts": [
+       "market/market.sqlite",
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 130
+     },
+     {
+      "accounting_columns": 81,
+      "correction_ids": [
+       "p07.thermal-net-revenue",
+       "p07.storage-leftover-headroom",
+       "p07.power-battery-pool",
+       "p07.cost-ledger-v2",
+       "p07.compatibility-capital-out-of-headline"
+      ],
+      "findings": [
+       "P4-01-thermal"
+      ],
+      "identity_columns": 29,
+      "m5": true,
+      "revision": 10,
+      "trajectory_artifacts": [
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 456
+     }
+    ]
+   },
+   "C6": {
+    "family": "corrected",
+    "latest_revision": 8,
+    "mode": "two_year",
+    "revisions": [
+     {
+      "accounting_columns": 243,
+      "correction_ids": [
+       "p04.validation-v2"
+      ],
+      "findings": [],
+      "identity_columns": 21,
+      "m5": false,
+      "revision": 1,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 173,
+      "correction_ids": [
+       "p04.storage-energy-audit",
+       "p04.surplus-routing",
+       "p04.surplus-node-boundary"
+      ],
+      "findings": [],
+      "identity_columns": 14,
+      "m5": false,
+      "revision": 2,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 35,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 22,
+      "m5": false,
+      "revision": 3,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 208,
+      "correction_ids": [
+       "p06.d1-surplus-accounting",
+       "p06.storage-after-generation-merit-key",
+       "p06.avoided-cost-downward-order",
+       "p06.storage-net-per-period",
+       "p06.storage-fee-per-period",
+       "p06.no-vre-pre-clearing-skim",
+       "p06.storage-bid-cycle-only",
+       "p06.storage-uniform-price-settlement",
+       "p06.voll-chronology-parameter"
+      ],
+      "findings": [],
+      "identity_columns": 35,
+      "m5": false,
+      "revision": 4,
+      "trajectory_artifacts": [
+       "market/market.sqlite",
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 378
+     },
+     {
+      "accounting_columns": 1,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 8,
+      "m5": false,
+      "revision": 5,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 86,
+      "correction_ids": [
+       "p04.validation-gate"
+      ],
+      "findings": [
+       "P7-01",
+       "P7-10",
+       "P3-01",
+       "P5-03"
+      ],
+      "identity_columns": 0,
+      "m5": false,
+      "revision": 6,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 127,
+      "correction_ids": [
+       "p05.weather-time-convention",
+       "p05.vre-loss-factors"
+      ],
+      "findings": [],
+      "identity_columns": 7,
+      "m5": true,
+      "revision": 7,
+      "trajectory_artifacts": [
+       "market/market.sqlite",
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 148
+     },
+     {
+      "accounting_columns": 81,
+      "correction_ids": [
+       "p07.thermal-net-revenue",
+       "p07.storage-leftover-headroom",
+       "p07.power-battery-pool",
+       "p07.cost-ledger-v2",
+       "p07.compatibility-capital-out-of-headline"
+      ],
+      "findings": [
+       "P4-01-thermal"
+      ],
+      "identity_columns": 29,
+      "m5": true,
+      "revision": 8,
+      "trajectory_artifacts": [
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 462
+     }
+    ]
+   },
+   "D2": {
+    "family": "doctoral",
+    "latest_revision": 9,
+    "mode": "two_year_smoke",
+    "revisions": [
+     {
+      "accounting_columns": 239,
+      "correction_ids": [
+       "p04.validation-v2"
+      ],
+      "findings": [],
+      "identity_columns": 21,
+      "m5": false,
+      "revision": 1,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 36,
+      "correction_ids": [
+       "p04.storage-energy-audit"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": false,
+      "revision": 2,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 71,
+      "correction_ids": [
+       "p04.surplus-node-boundary"
+      ],
+      "findings": [],
+      "identity_columns": 14,
+      "m5": false,
+      "revision": 3,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 26,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 22,
+      "m5": false,
+      "revision": 4,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 3,
+      "correction_ids": [
+       "p06.d1-surplus-accounting",
+       "p06.storage-after-generation-merit-key",
+       "p06.avoided-cost-downward-order",
+       "p06.storage-net-per-period",
+       "p06.storage-fee-per-period",
+       "p06.no-vre-pre-clearing-skim",
+       "p06.storage-bid-cycle-only",
+       "p06.storage-uniform-price-settlement",
+       "p06.voll-chronology-parameter"
+      ],
+      "findings": [],
+      "identity_columns": 12,
+      "m5": false,
+      "revision": 5,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 1,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 8,
+      "m5": false,
+      "revision": 6,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 56,
+      "correction_ids": [
+       "p04.validation-gate"
+      ],
+      "findings": [
+       "P7-01",
+       "P7-10",
+       "P3-01",
+       "P5-03"
+      ],
+      "identity_columns": 0,
+      "m5": false,
+      "revision": 7,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 7,
+      "correction_ids": [
+       "p07.thermal-net-revenue"
+      ],
+      "findings": [
+       "P4-01-thermal"
+      ],
+      "identity_columns": 4,
+      "m5": true,
+      "revision": 8,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 20,
+      "correction_ids": [
+       "p07.cost-ledger-v2"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": true,
+      "revision": 9,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     }
+    ]
+   },
+   "D4": {
+    "family": "doctoral",
+    "latest_revision": 10,
+    "mode": "two_year",
+    "revisions": [
+     {
+      "accounting_columns": 243,
+      "correction_ids": [
+       "p04.validation-v2"
+      ],
+      "findings": [],
+      "identity_columns": 21,
+      "m5": false,
+      "revision": 1,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 36,
+      "correction_ids": [
+       "p04.storage-energy-audit"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": false,
+      "revision": 2,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 45,
+      "correction_ids": [
+       "p04.surplus-routing"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": false,
+      "revision": 3,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 91,
+      "correction_ids": [
+       "p04.surplus-node-boundary"
+      ],
+      "findings": [],
+      "identity_columns": 14,
+      "m5": false,
+      "revision": 4,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 35,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 22,
+      "m5": false,
+      "revision": 5,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 3,
+      "correction_ids": [
+       "p06.d1-surplus-accounting",
+       "p06.storage-after-generation-merit-key",
+       "p06.avoided-cost-downward-order",
+       "p06.storage-net-per-period",
+       "p06.storage-fee-per-period",
+       "p06.no-vre-pre-clearing-skim",
+       "p06.storage-bid-cycle-only",
+       "p06.storage-uniform-price-settlement",
+       "p06.voll-chronology-parameter"
+      ],
+      "findings": [],
+      "identity_columns": 12,
+      "m5": false,
+      "revision": 6,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 1,
+      "correction_ids": [
+       "p06.physical-operating-cost"
+      ],
+      "findings": [],
+      "identity_columns": 8,
+      "m5": false,
+      "revision": 7,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 94,
+      "correction_ids": [
+       "p04.validation-gate"
+      ],
+      "findings": [
+       "P7-01",
+       "P7-10",
+       "P3-01",
+       "P5-03"
+      ],
+      "identity_columns": 0,
+      "m5": false,
+      "revision": 8,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     },
+     {
+      "accounting_columns": 24,
+      "correction_ids": [
+       "p07.thermal-net-revenue"
+      ],
+      "findings": [
+       "P4-01-thermal"
+      ],
+      "identity_columns": 23,
+      "m5": true,
+      "revision": 9,
+      "trajectory_artifacts": [
+       "planning/project-index.sqlite",
+       "planning/summary.json",
+       "planning/typed-summary.json",
+       "terminal/fleet-vintage.json",
+       "terminal/terminal-state.json",
+       "year-results-v2.json"
+      ],
+      "trajectory_columns": 426
+     },
+     {
+      "accounting_columns": 20,
+      "correction_ids": [
+       "p07.cost-ledger-v2"
+      ],
+      "findings": [],
+      "identity_columns": 5,
+      "m5": true,
+      "revision": 10,
+      "trajectory_artifacts": [],
+      "trajectory_columns": 0
+     }
+    ]
+   }
+  },
+  "errors": [],
+  "passed": true
+ },
+ "passed": true,
+ "runs": {
+  "C2": {
+   "cost_ledger": [
+    {
+     "cem_system_cost_gbp": 7396634.174520535,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": false,
+     "errors": [],
+     "headline_capital_gbp": 7395437.164708658,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2025
+    },
+    {
+     "cem_system_cost_gbp": 8088420.633188024,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": false,
+     "errors": [],
+     "headline_capital_gbp": 8087223.623376147,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2026
+    }
+   ],
+   "errors": [],
+   "golden_check": {
+    "gated_differences": 0,
+    "revision": 10
+   },
+   "investment": [
+    {
+     "errors": [],
+     "proposals": [],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.0
+      },
+      "pools": {
+       "power_battery_pool": {
+        "added_mw": 0.0,
+        "cap_mw": 0.0
+       }
+      },
+      "reason": "partial_year_chronology",
+      "semantics": "corrected_leftover_power_pool_v1"
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 0.0,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.0,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 1197.008839321918,
+       "near_zero": true,
+       "net_gbp": 0.0,
+       "operating_cost_gbp": 1197.008839321918,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2025
+    },
+    {
+     "errors": [],
+     "proposals": [],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.0
+      },
+      "pools": {
+       "power_battery_pool": {
+        "added_mw": 0.0,
+        "cap_mw": 0.0
+       }
+      },
+      "reason": "partial_year_chronology",
+      "semantics": "corrected_leftover_power_pool_v1"
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 0.0,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.0,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 1197.008839321918,
+       "near_zero": true,
+       "net_gbp": 0.0,
+       "operating_cost_gbp": 1197.008839321918,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2026
+    }
+   ],
+   "passed": true,
+   "periods_per_year": [
+    2,
+    2
+   ],
+   "profile": "value-corrected",
+   "years": [
+    2025,
+    2026
+   ]
+  },
+  "C5": {
+   "cost_ledger": [
+    {
+     "cem_system_cost_gbp": 14664891.052477332,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": false,
+     "errors": [],
+     "headline_capital_gbp": 7395437.164708658,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2025
+    },
+    {
+     "cem_system_cost_gbp": 14361076.92784771,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": false,
+     "errors": [],
+     "headline_capital_gbp": 8511567.934816567,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2026
+    }
+   ],
+   "errors": [],
+   "golden_check": {
+    "gated_differences": 0,
+    "revision": 10
+   },
+   "investment": [
+    {
+     "errors": [],
+     "proposals": [
+      {
+       "capacity_mw": 2.942614121649176,
+       "owner": "onshore_Portsmouth",
+       "payback_years": 6.796677774655374,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.1471307060824588,
+       "technology": "onshore"
+      },
+      {
+       "capacity_mw": 3.089470981740521,
+       "owner": "solar_Portsmouth",
+       "payback_years": 11.328800369661343,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.08827059947830058,
+       "technology": "solar"
+      }
+     ],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.7809234122398845
+      },
+      "pools": {
+       "power_battery_pool": {
+        "added_mw": 0.0,
+        "cap_mw": 0.0
+       }
+      },
+      "reason": null,
+      "semantics": "corrected_leftover_power_pool_v1"
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 49425.60754880326,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.014977456832970684,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 7269462.167294196,
+       "near_zero": false,
+       "net_gbp": 20.778999990783632,
+       "operating_cost_gbp": 7269441.388294205,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2025
+    },
+    {
+     "errors": [],
+     "proposals": [
+      {
+       "capacity_mw": 2.8612596216779043,
+       "owner": "onshore_Portsmouth",
+       "payback_years": 8.018361545323572,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.12471375783537911,
+       "technology": "onshore"
+      }
+     ],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 4.0430652818072295,
+       "0.5c_battery": 4.0430652818072295,
+       "1c_battery": 4.0430652818072295,
+       "hydrogen_battery": 0.9694440931754535
+      },
+      "pools": {
+       "power_battery_pool": {
+        "added_mw": 0.0,
+        "cap_mw": 4.0430652818072295
+       }
+      },
+      "reason": null,
+      "semantics": "corrected_leftover_power_pool_v1"
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 4.0430652818072295,
+       "market_income_gbp": 104985.0689517498,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.031813657258106,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 5849494.323878901,
+       "near_zero": true,
+       "net_gbp": -3.632158041000366e-08,
+       "operating_cost_gbp": 5849494.323878937,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2026
+    }
+   ],
+   "passed": true,
+   "periods_per_year": [
+    17520,
+    17520
+   ],
+   "profile": "value-corrected",
+   "years": [
+    2025,
+    2026
+   ]
+  },
+  "C6": {
+   "cost_ledger": [
+    {
+     "cem_system_cost_gbp": 14699542.88915886,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": false,
+     "errors": [],
+     "headline_capital_gbp": 7395437.164708658,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2025
+    },
+    {
+     "cem_system_cost_gbp": 14424989.193829298,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": false,
+     "errors": [],
+     "headline_capital_gbp": 8519434.565419937,
+     "physical_reconciliation_residual_gbp": 1.862645149230957e-09,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2026
+    }
+   ],
+   "errors": [],
+   "golden_check": {
+    "gated_differences": 0,
+    "revision": 8
+   },
+   "investment": [
+    {
+     "errors": [],
+     "proposals": [
+      {
+       "capacity_mw": 2.9536910647518955,
+       "owner": "onshore_Portsmouth",
+       "payback_years": 6.771188848648246,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.14768455323759477,
+       "technology": "onshore"
+      },
+      {
+       "capacity_mw": 3.237037108597076,
+       "owner": "solar_Portsmouth",
+       "payback_years": 10.812356740380066,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.09248677453134503,
+       "technology": "solar"
+      }
+     ],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.7809234122398845
+      },
+      "pools": {
+       "power_battery_pool": {
+        "added_mw": 0.0,
+        "cap_mw": 0.0
+       }
+      },
+      "reason": null,
+      "semantics": "corrected_leftover_power_pool_v1"
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 70498.80251663257,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.021363273489888656,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 7269462.167294196,
+       "near_zero": false,
+       "net_gbp": 20.778999990783632,
+       "operating_cost_gbp": 7269441.388294205,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2025
+    },
+    {
+     "errors": [],
+     "proposals": [
+      {
+       "capacity_mw": 0.4182586570413064,
+       "owner": "1c_battery",
+       "payback_years": 23.908650380935022,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_Profit",
+       "roi": 0.04182586570413063,
+       "technology": "1c_battery"
+      },
+      {
+       "capacity_mw": 2.8804643486351034,
+       "owner": "onshore_Portsmouth",
+       "payback_years": 7.968746801406659,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.12549024644922563,
+       "technology": "onshore"
+      }
+     ],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 4.0651766033379495,
+       "0.5c_battery": 4.0651766033379495,
+       "1c_battery": 4.0651766033379495,
+       "hydrogen_battery": 0.97011509524134
+      },
+      "pools": {
+       "power_battery_pool": {
+        "added_mw": 0.4182586570413064,
+        "cap_mw": 4.0651766033379495
+       }
+      },
+      "reason": null,
+      "semantics": "corrected_leftover_power_pool_v1"
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 4.0651766033379495,
+       "market_income_gbp": 138025.3568236311,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.4182586570413064,
+       "roi": 0.04182586570413063,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 5843743.517649724,
+       "near_zero": true,
+       "net_gbp": -8.381903171539307e-09,
+       "operating_cost_gbp": 5843743.5176497325,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2026
+    }
+   ],
+   "passed": true,
+   "periods_per_year": [
+    17520,
+    17520
+   ],
+   "profile": "value-corrected",
+   "years": [
+    2025,
+    2026
+   ]
+  },
+  "D2": {
+   "cost_ledger": [
+    {
+     "cem_system_cost_gbp": 7396622.530998573,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": true,
+     "errors": [],
+     "headline_capital_gbp": 7395437.164708658,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2025
+    },
+    {
+     "cem_system_cost_gbp": 8088408.9896660615,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": true,
+     "errors": [],
+     "headline_capital_gbp": 8087223.623376147,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2026
+    }
+   ],
+   "errors": [],
+   "golden_check": {
+    "gated_differences": 0,
+    "revision": 9
+   },
+   "investment": [
+    {
+     "errors": [],
+     "proposals": [],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.0
+      },
+      "pools": {},
+      "reason": null,
+      "semantics": null
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 0.0,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.0,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 1185.3652998498594,
+       "near_zero": true,
+       "net_gbp": 0.0,
+       "operating_cost_gbp": 1185.3652998498594,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2025
+    },
+    {
+     "errors": [],
+     "proposals": [],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.0
+      },
+      "pools": {},
+      "reason": null,
+      "semantics": null
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 0.0,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.0,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 1185.3652998498594,
+       "near_zero": true,
+       "net_gbp": 0.0,
+       "operating_cost_gbp": 1185.3652998498594,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2026
+    }
+   ],
+   "passed": true,
+   "periods_per_year": [
+    2,
+    2
+   ],
+   "profile": "doctoral-lineage-0.6.0a2",
+   "years": [
+    2025,
+    2026
+   ]
+  },
+  "D4": {
+   "cost_ledger": [
+    {
+     "cem_system_cost_gbp": 14560893.376102587,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": true,
+     "errors": [],
+     "headline_capital_gbp": 7395437.164708658,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2025
+    },
+    {
+     "cem_system_cost_gbp": 14369417.475723028,
+     "compatibility_capital_gbp": 0.0,
+     "compatibility_capital_in_headline": true,
+     "errors": [],
+     "headline_capital_gbp": 8481319.870781647,
+     "physical_reconciliation_residual_gbp": 0.0,
+     "vre_storage_fixed_opex_memo_gbp": 66000.0,
+     "year": 2026
+    }
+   ],
+   "errors": [],
+   "golden_check": {
+    "gated_differences": 0,
+    "revision": 10
+   },
+   "investment": [
+    {
+     "errors": [],
+     "proposals": [
+      {
+       "capacity_mw": 2.8113907893540335,
+       "owner": "onshore_Portsmouth",
+       "payback_years": 7.113916740331696,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.14056953946770168,
+       "technology": "onshore"
+      },
+      {
+       "capacity_mw": 2.7061432292175938,
+       "owner": "solar_Portsmouth",
+       "payback_years": 12.933535676202652,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_Profit",
+       "roi": 0.07731837797764554,
+       "technology": "solar"
+      }
+     ],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.32978842400000036
+      },
+      "pools": {},
+      "reason": null,
+      "semantics": null
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 0.0,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.0,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 7165444.759198252,
+       "near_zero": true,
+       "net_gbp": -3.4458935260772705e-08,
+       "operating_cost_gbp": 7165444.759198287,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2025
+    },
+    {
+     "errors": [],
+     "proposals": [
+      {
+       "capacity_mw": 2.747297165781081,
+       "owner": "onshore_Portsmouth",
+       "payback_years": 8.303211998134374,
+       "preferred_rate": 0.08,
+       "recommendation": "Invest_High",
+       "roi": 0.1204353207198235,
+       "technology": "onshore"
+      }
+     ],
+     "retirements_mw": {},
+     "storage_headroom": {
+      "allowed_additions_mw": {
+       "0.25c_battery": 0.0,
+       "0.5c_battery": 0.0,
+       "1c_battery": 0.0,
+       "hydrogen_battery": 0.37243333960000014
+      },
+      "pools": {},
+      "reason": null,
+      "semantics": null
+     },
+     "storage_review": [
+      {
+       "asset_id": "1c_battery",
+       "capacity_mw": 10.0,
+       "headroom_mw": 0.0,
+       "market_income_gbp": 0.0,
+       "preferred_rate": 0.08,
+       "proposed_mw": 0.0,
+       "roi": 0.0,
+       "technology": "1c_battery",
+       "total_capex_gbp": 3300000.0
+      }
+     ],
+     "thermal_groups": [
+      {
+       "group": "CCGT|CCGT|GB",
+       "income_gbp": 5888085.27925749,
+       "near_zero": true,
+       "net_gbp": 7.450580596923828e-09,
+       "operating_cost_gbp": 5888085.279257483,
+       "proposed_mw": 0.0,
+       "retired_mw": 0.0
+      }
+     ],
+     "year": 2026
+    }
+   ],
+   "passed": true,
+   "periods_per_year": [
+    17520,
+    17520
+   ],
+   "profile": "doctoral-lineage-0.6.0a2",
+   "years": [
+    2025,
+    2026
+   ]
+  }
+ },
+ "schema_version": "value.p07-s10-acceptance/v1"
+}

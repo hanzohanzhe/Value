@@ -7,11 +7,13 @@ from gridform_core.cem_investment_policy import investment_mode, load_investment
 class CemIdentityTests(unittest.TestCase):
     def test_public_cem_declares_relationship_instead_of_hidden_parity(self):
         identity = load_cem_identity()
-        self.assertEqual(identity["model_id"], "force-cem-v1")
+        # Renamed with the FORCE -> VALUE identity change; the relationship is
+        # now declared against the doctoral reproduction, not "Scheme C".
+        self.assertEqual(identity["model_id"], "value-cem-v1")
         self.assertFalse(identity["numerical_reproduction_claim"])
         self.assertEqual(
-            identity["relationship_to_retained_scheme_c"],
-            "scheme_c_derived_declared_divergence",
+            identity["relationship_to_doctoral_reproduction"],
+            "method_derived_declared_divergence",
         )
         self.assertGreaterEqual(len(identity["decision_stages"]), 7)
 

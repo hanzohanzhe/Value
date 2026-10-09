@@ -105,6 +105,36 @@ class ResultQueriesTests(unittest.TestCase):
         result = query_vre_curtailment_results(self.root, {'source':'sqlite'})
         self.assertEqual(result['reason_code'], 'attribution_period_value_invalid')
 
+    def test_stopped_run_gets_the_precise_coverage_code(self):
+        # Review response (P0-9 S5): a cancelled full-year Run is not told it is non-annual.
+        self.compact()
+        self.status.update(status='archived', archived_from_status='cancelled')
+        self.write_status()
+        sqlite_result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        self.assertEqual((sqlite_result['status'], sqlite_result['reason_code']), ('withheld', 'run_cancelled_before_full_coverage'))
+        self.assertEqual(sqlite_result['legacy_reason_code'], 'annual_evidence_withheld_for_nonannual_run')
+        self.assertEqual(sqlite_result['coverage']['reason_code'], 'run_cancelled_before_full_coverage')
+        compact_result = query_vre_curtailment_results(self.root, {'source': 'compact'})
+        self.assertEqual((compact_result['status'], compact_result['reason_code']), ('withheld', 'run_cancelled_before_full_coverage'))
+
+    def test_archived_cancelled_run_missing_a_year_is_unavailable_not_invalid(self):
+        # Designer ruling 3 (M2 UI review): one of two declared years computed,
+        # then cancelled and archived -> unavailable (grey), never a red invalid.
+        self.compact()
+        self.status['run_policy']['end_year'] = 2026
+        self.status.update(status='archived', archived_from_status='cancelled')
+        self.write_status()
+        result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        self.assertEqual((result['status'], result['reason_code']), ('unavailable', 'cancelled_before_year_complete'))
+        self.status.update(archived_from_status='failed')
+        self.write_status()
+        result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        self.assertEqual((result['status'], result['reason_code']), ('unavailable', 'failed_before_year_complete'))
+        # A completed Run with a missing year is still self-contradictory.
+        self.status.update(status='completed', archived_from_status=None)
+        self.write_status()
+        self.assertEqual(query_vre_curtailment_results(self.root, {'source': 'sqlite'})['status'], 'invalid')
+
     def test_missing_metadata_run_not_filled_from_container(self):
         database = self.root / 'model-output' / 'market' / 'market.sqlite'
         with sqlite3.connect(database) as conn:
@@ -144,6 +174,27 @@ class ResultQueriesTests(unittest.TestCase):
             conn.execute('UPDATE vre_curtailment_period SET forecast_added_curtailment_mwh=-1,forecast_avoided_curtailment_mwh=-1 WHERE period=1')
         result = query_vre_curtailment_results(self.root, {'source':'sqlite','resolution':'half_hour','year':2025})
         self.assertEqual(result['reason_code'], 'attribution_period_value_invalid')
+
+    def test_copperplate_empty_attribution_is_unavailable_not_invalid(self):
+        # P0-9 S7 (G1-07): no attribution recorded is "unavailable" on every path.
+        database = self.root / 'model-output' / 'market' / 'market.sqlite'
+        with sqlite3.connect(database) as conn:
+            conn.execute('DELETE FROM vre_curtailment_period')
+            conn.execute('DELETE FROM zonal_period_accounting')
+        sqlite_result = query_vre_curtailment_results(self.root, {'source': 'sqlite'})
+        auto_result = query_vre_curtailment_results(self.root, {})
+        path = self.root / 'model-output' / 'network' / 'vre-curtailment-attribution.json'
+        path.parent.mkdir()
+        path.write_text(json.dumps({'schema_version': 'value.vre-curtailment-run-evidence/v1', 'contract_version': 'value.vre-curtailment-attribution/v2', 'capability_status': 'unavailable', 'reason_code': 'selected_balancing_does_not_provide_final_zonal_dispatch'}))
+        compact_result = query_vre_curtailment_results(self.root, {'source': 'compact'})
+        self.assertEqual([sqlite_result['status'], auto_result['status'], compact_result['status']], ['unavailable'] * 3)
+        self.assertEqual(sqlite_result['reason_code'], 'attribution_evidence_not_recorded')
+        self.assertEqual(sqlite_result['items'], [])
+        # one table emptied, the other not, is still an identity failure
+        _write_fixture(database, 'summary')
+        with sqlite3.connect(database) as conn:
+            conn.execute('DELETE FROM vre_curtailment_period')
+        self.assertEqual(query_vre_curtailment_results(self.root, {'source': 'sqlite'})['status'], 'invalid')
 
     def test_bundle_keeps_compact_attribution(self):
         self.assertTrue(_included('model-output/network/vre-curtailment-attribution.json', 'compact_results'))

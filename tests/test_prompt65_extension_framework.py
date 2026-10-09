@@ -24,12 +24,13 @@ from gridform_core.extension_bundle import (
     validate_extension_bundle,
 )
 from gridform_core.project_revision import project_fingerprint
-from gridform_core.v2.module_manifest import workspace_registry
+from gridform_core.v2.module_manifest import ModuleRegistryV2, workspace_registry
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / "data-packs" / "value-synthetic-contract-pack-v1"
 TOY_ID = "value-toy-audit-extension"
+NOOP_ID = "value-noop-test-extension"
 MODULES = {
     "psm": "value-perfect-foresight-lp",
     "investment": "agent-investment",
@@ -204,6 +205,115 @@ class Prompt65ExtensionFrameworkTests(unittest.TestCase):
                 resolution["extension_graph"]["extensions"][0]["id"], TOY_ID
             )
             self.assertTrue(bundle_validation["valid"], bundle_validation["errors"])
+            # F-D1: both annual links (source -> initialize -> 2025 input and
+            # 2025 output -> 2026 input) pass.
+            invariants = json.loads(
+                (root / "output" / "validation" / "run-invariants.json").read_text(encoding="utf-8")
+            )
+            chain = next(row for row in invariants["checks"] if row["id"] == "run.state_chain")
+            self.assertEqual(chain["status"], "passed", chain.get("failed_links"))
+            self.assertEqual(invariants["status"], "passed", invariants["failed_checks"])
+            self.assertIn("extension_initialize", years[0]["extensions"])
+            self.assertNotIn("extension_initialize", years[1]["extensions"])
+
+    # F-D1 (FOUR_ROLE_TEST_REPORT 4.1): selecting an extension must not move
+    # the state-chain origin. The run invariants and the scientific
+    # validation of an extension run equal those of the same run without it.
+    def _validation_run(self, root: Path, *, extensions, registry, profile=None, mode="smoke"):
+        pack = root / "pack"
+        if not pack.is_dir():
+            shutil.copytree(PACK, pack)
+            (pack / "manifest.json").write_text(
+                json.dumps(self._pack_manifest_with_toy_role(), indent=2), encoding="utf-8"
+            )
+        parameters = {} if profile is None else {"methodology.profile": profile}
+        project = {
+            "id": "p65-fd1", "data_pack_id": pack.name, "start_year": 2025,
+            "end_year": 2026, "modules": MODULES, "selected_extensions": list(extensions),
+            "extension_parameters": (
+                {"value.toy-audit.multiplier": 2.0} if TOY_ID in extensions else {}
+            ),
+            "parameters": parameters, "runtime_options": {},
+        }
+        output = root / f"output-{'-'.join(extensions) or 'none'}-{profile or 'default'}-{mode}"
+        result = run_project_application(
+            project, run_id="p65-fd1", pack_root=pack, output_dir=output,
+            mode=mode, registry=registry,
+        )
+        invariants = json.loads((output / "validation" / "run-invariants.json").read_text(encoding="utf-8"))
+        scientific = json.loads(
+            (output / "validation" / "scientific-validation.json").read_text(encoding="utf-8")
+        )
+        return result, invariants, scientific
+
+    def _noop_registry(self):
+        noop = replace(
+            self.toy, id=NOOP_ID, name="VALUE no-op test extension", namespace="value.noop-test",
+            provided_capabilities=("extension.noop-test/v1",), data_roles=(), parameters=(),
+            artifacts=(), hooks=(),
+        )
+        return ModuleRegistryV2(
+            tuple(self.registry.manifests().values()),
+            (*self.registry.extension_registry.manifests().values(), noop),
+        )
+
+    def _assert_extension_run_validates(self, invariants, scientific, control_scientific):
+        chain = next(row for row in invariants["checks"] if row["id"] == "run.state_chain")
+        self.assertEqual(chain["status"], "passed", chain.get("failed_links"))
+        self.assertEqual(invariants["status"], "passed", invariants["failed_checks"])
+        gate = scientific["validation_gate"]
+        self.assertEqual(gate["gates"]["run_invariants"], "passed")
+        self.assertNotEqual(gate["status"], "failed")
+        self.assertNotEqual(scientific["scientific_validation_status"], "failed")
+        self.assertEqual(
+            scientific["scientific_validation_status"],
+            control_scientific["scientific_validation_status"],
+        )
+        self.assertEqual(gate, control_scientific["validation_gate"])
+
+    def test_noop_extension_run_passes_invariants_and_scientific_validation(self):
+        registry = self._noop_registry()
+        for profile in (None, "value-corrected"):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory(prefix="force-p65-fd1-") as temporary:
+                root = Path(temporary)
+                _result, control_invariants, control = self._validation_run(
+                    root, extensions=(), registry=registry, profile=profile
+                )
+                self.assertEqual(control_invariants["status"], "passed")
+                result, invariants, scientific = self._validation_run(
+                    root, extensions=(NOOP_ID,), registry=registry, profile=profile
+                )
+                self._assert_extension_run_validates(invariants, scientific, control)
+                link = result["orchestrator_results"][0]["extensions"]["extension_initialize"]
+                self.assertEqual(link["extension_ids"], [NOOP_ID])
+                self.assertEqual(link["initialized_namespaces"], [])
+                self.assertNotEqual(link["input_state_sha256"], link["output_state_sha256"])
+
+    def test_initializing_extension_run_passes_invariants_and_scientific_validation(self):
+        for profile in (None, "value-corrected"):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory(prefix="force-p65-fd1-") as temporary:
+                root = Path(temporary)
+                _result, _control_invariants, control = self._validation_run(
+                    root, extensions=(), registry=self.registry, profile=profile
+                )
+                result, invariants, scientific = self._validation_run(
+                    root, extensions=(TOY_ID,), registry=self.registry, profile=profile
+                )
+                self._assert_extension_run_validates(invariants, scientific, control)
+                link = result["orchestrator_results"][0]["extensions"]["extension_initialize"]
+                self.assertEqual(link["initialized_namespaces"], [self.toy.namespace])
+
+    def test_doctoral_profile_refuses_any_extension_before_the_state_chain(self):
+        # The doctoral profile whitelists no extension (profiles.json
+        # supported_extensions: []), so an extension run never reaches the
+        # annual chain there; doctoral runs without extensions carry no
+        # extension_initialize link and keep their pre-fix chain and events.
+        from gridform_core.methodology import combination_violations
+
+        for extension_id in (TOY_ID, NOOP_ID):
+            rows = combination_violations("doctoral-lineage-0.6.0a2", extensions=(extension_id,))
+            self.assertEqual([row["sub_reason"] for row in rows], ["extension"], rows)
+            self.assertEqual(combination_violations("value-corrected", extensions=(extension_id,)), [])
 
     def test_extension_zip_reuses_bounded_inventory_and_installs_transactionally(self):
         with tempfile.TemporaryDirectory(prefix="force-p65-bundle-") as temporary:
@@ -229,8 +339,9 @@ class Prompt65ExtensionFrameworkTests(unittest.TestCase):
             executable = self._extension_zip(
                 root / "executable.zip", extra={"examples/payload.py": b"print('no')\n"}
             )
-            with self.assertRaisesRegex(ExtensionBundleError, "Executable code"):
+            with self.assertRaisesRegex(ExtensionBundleError, "Python hooks must be inside the declared src package") as rejected:
                 validate_extension_bundle(executable)
+            self.assertEqual(rejected.exception.code, "GF_EXTENSION_EXECUTABLE")
             traversal = root / "traversal.zip"
             with zipfile.ZipFile(traversal, "w") as archive:
                 archive.writestr("../escape.json", "{}")

@@ -11,10 +11,57 @@ from copy import deepcopy
 
 import pulp
 
+from gridform_validation.cbc import cbc_identity, cbc_path
+
 
 DOMAIN_SCHEMA = "value.zonal-redispatch-domain/v1"
 PACK_SCHEMA = "value.zonal-network-pack/v1"
 EPSILON = 1e-8
+
+# Independent restatement of the shared down-regulation class order
+# (network_method_rules.DEC_CLASSES, P0-8b M6 review): at an equal primary
+# price the physical tie phase reduces fuel units (0), imports (0.5), charges
+# storage (throughput weight 1), then run-of-river (2), VRE (3), nuclear (4).
+# R3-2 (A19/A22/A24-3): a gas or biomass shutdown segment declares
+# fuel_shutdown (3.5, after VRE, before nuclear) or, below its minimum down
+# time, fuel_shutdown_last_resort (5, last).
+_DEC_WEIGHT = {
+    "fuel": 0.0,
+    "import": 0.5,
+    "storage": 0.0,
+    "run_of_river": 2.0,
+    "vre": 3.0,
+    "fuel_shutdown": 3.5,
+    "nuclear": 4.0,
+    "fuel_shutdown_last_resort": 5.0,
+}
+
+
+def _dec_class(bid: Mapping[str, object], classes: Mapping[str, str]) -> str:
+    provenance = bid.get("provenance") or {}
+    if not isinstance(provenance, Mapping):
+        provenance = {}
+    resource = str(provenance.get("resource_class") or classes.get(str(bid["asset_id"]), "other"))
+    if resource == "storage":
+        return "storage"
+    declared = str(provenance.get("dec_class") or "")
+    if declared in _DEC_WEIGHT:
+        return declared
+    if resource in {"import", "export", "interconnector"}:
+        return "import"
+    if resource == "vre":
+        return "vre"
+    if resource == "hydro":
+        return "run_of_river"
+    if "nuclear" in str(bid.get("technology") or "").lower():
+        return "nuclear"
+    return "fuel"
+
+
+def _dec_weight(bid: Mapping[str, object], classes: Mapping[str, str]) -> float:
+    if bid["direction"] != "down":
+        return 0.0
+    return _DEC_WEIGHT[_dec_class(bid, classes)]
 
 
 def _canonical_sha256(value: Mapping[str, object]) -> str:
@@ -324,9 +371,54 @@ def _read_case(declaration: Mapping[str, object]) -> dict[str, object]:
     }
 
 
+def _forced_down_parts(
+    case: Mapping[str, object], bid_capacity: Mapping[str, float]
+) -> dict[str, float]:
+    """Down volume each bid must release because an upper bound is below the schedule.
+
+    The upper bound on an asset's final dispatch is its realised availability
+    (generators; storage and exports are bound otherwise) or the maximum of its
+    interconnector envelope.  The excess of the ahead schedule over that bound
+    is spread over the asset's down bids in proportion to their capacity and
+    never exceeds a bid's capacity.
+    """
+
+    period_hours = float(case["period_hours"])
+    schedule = case["schedule"]
+    storage = case["storage"]
+    envelopes = case["envelopes"]
+    classes = case["classes"]
+    upper: dict[str, float] = {}
+    for asset, available_mw in case["availability"].items():
+        if asset in storage or asset in envelopes or classes.get(asset, "other") == "export":
+            continue
+        upper[str(asset)] = float(available_mw) * period_hours
+    for asset, (_minimum, maximum) in envelopes.items():
+        upper[str(asset)] = float(maximum)
+    result: dict[str, float] = {}
+    for asset in sorted(upper):
+        shortfall = float(schedule.get(asset, 0.0)) - upper[asset]
+        if shortfall <= 0.0:
+            continue
+        down_ids = [
+            str(bid["bid_id"])
+            for bid in case["bids"]
+            if str(bid["asset_id"]) == asset and bid["direction"] == "down"
+        ]
+        capacity = math.fsum(bid_capacity[bid_id] for bid_id in down_ids)
+        if capacity <= 0.0:
+            continue
+        for bid_id in down_ids:
+            result[bid_id] = min(bid_capacity[bid_id], shortfall * bid_capacity[bid_id] / capacity)
+    return result
+
+
 def _cbc() -> pulp.COIN_CMD:
-    solver = pulp.COIN_CMD(msg=False, mip=False, threads=1)
-    if not solver.available():
+    try:
+        solver = pulp.COIN_CMD(msg=False, mip=False, threads=1, path=cbc_path())
+    except RuntimeError:
+        solver = None
+    if solver is None or not solver.available():
         raise RuntimeError("The independent CBC executable is unavailable")
     return solver
 
@@ -429,26 +521,45 @@ def solve_zonal_oracle(declaration: Mapping[str, object]) -> dict[str, object]:
             f"storage_bid_identity__{asset}",
         )
 
-    groups: dict[tuple[object, ...], list[dict[str, object]]] = defaultdict(list)
+    # Equal-price rule of solver contract v4, derived here from the declared
+    # data rather than from the production builder.  Bids in the same
+    # direction, zone, network effect and price are economically identical
+    # whatever their technology, so the resource class is not in an up key (a
+    # down key carries the dec class of the shared order);
+    # storage keeps its own convex identity and stays out.  A down bid whose
+    # asset is bound by realised availability below its ahead schedule must
+    # release that shortfall whatever the prices are: that forced part is
+    # carved out first and only the remaining free volume is shared:
+    #     (x_i - f_i) * free_1 == (x_1 - f_1) * free_i,   free = capacity - f.
     classes = case["classes"]
+    forced_by_bid = _forced_down_parts(case, bid_capacity)
+    groups: dict[tuple[object, ...], list[dict[str, object]]] = defaultdict(list)
     for bid in bids:
+        bid_id = str(bid["bid_id"])
         provenance = _mapping(bid.get("provenance", {}), "bid provenance")
         resource_class = str(provenance.get("resource_class") or classes.get(str(bid["asset_id"]), "other"))
-        if resource_class != "storage":
-            groups[(
-                bid["direction"], bid["zone_id"], bid["network_effect_id"],
-                float(bid["price_gbp_per_mwh"]), resource_class,
-            )].append(bid)
+        if resource_class == "storage":
+            continue
+        if bid_capacity[bid_id] - forced_by_bid.get(bid_id, 0.0) <= EPSILON:
+            continue
+        groups[(
+            bid["direction"], bid["zone_id"], bid["network_effect_id"],
+            float(bid["price_gbp_per_mwh"]),
+            _dec_class(bid, classes) if bid["direction"] == "down" else "",
+        )].append(bid)
     for index, rows in enumerate(groups.values()):
         if len(rows) < 2:
             continue
-        first = rows[0]
-        first_id = str(first["bid_id"])
+        first_id = str(rows[0]["bid_id"])
+        first_forced = forced_by_bid.get(first_id, 0.0)
+        first_free = bid_capacity[first_id] - first_forced
         for row_index, bid in enumerate(rows[1:]):
             bid_id = str(bid["bid_id"])
+            forced = forced_by_bid.get(bid_id, 0.0)
+            free = bid_capacity[bid_id] - forced
             problem += (
-                bid_vars[bid_id] * bid_capacity[first_id]
-                == bid_vars[first_id] * bid_capacity[bid_id],
+                (bid_vars[bid_id] - forced) * first_free
+                == (bid_vars[first_id] - first_forced) * free,
                 f"pro_rata__{index}__{row_index}",
             )
 
@@ -509,6 +620,10 @@ def solve_zonal_oracle(declaration: Mapping[str, object]) -> dict[str, object]:
         pulp.lpSum(discharge_vars.values())
         + pulp.lpSum(charge_vars.values())
         + pulp.lpSum(absolute_flow_vars.values())
+        + pulp.lpSum(
+            _dec_weight(bid, classes) * bid_vars[str(bid["bid_id"])]
+            for bid in bids
+        )
     )
     stable = pulp.lpSum(
         (index + 1) * value for index, value in enumerate(ordered_variables)
@@ -570,6 +685,7 @@ def solve_zonal_oracle(declaration: Mapping[str, object]) -> dict[str, object]:
         "success": True,
         "status": "optimal",
         "solver": "independent-pulp-cbc",
+        "solver_locator": cbc_identity(),
         "primary_objective_gbp": optima["primary"],
         "secondary_objective_mwh": optima["secondary"],
         "physical_tie_objective": optima["physical"],
@@ -726,7 +842,15 @@ def audit_zonal_candidate(
         for bid in case["bids"]
     ) + float(case["voll"]) * sum(shedding.values())
     expected_secondary = sum(accepted.values()) + sum(shedding.values())
-    expected_physical = sum(charge.values()) + sum(discharge.values()) + sum(abs(value_) for value_ in flows.values())
+    expected_physical = (
+        sum(charge.values())
+        + sum(discharge.values())
+        + sum(abs(value_) for value_ in flows.values())
+        + sum(
+            _dec_weight(bid, case["classes"]) * accepted.get(str(bid["bid_id"]), 0.0)
+            for bid in case["bids"]
+        )
+    )
     violation("primary_objective_voll", _number(candidate.get("primary_objective_gbp"), "primary objective") - expected_primary, "objective")
     violation("secondary_tie_breaking", _number(candidate.get("secondary_objective_mwh"), "secondary objective") - expected_secondary, "objective")
     violation("physical_tie_breaking", _number(candidate.get("physical_tie_objective"), "physical objective") - expected_physical, "objective")

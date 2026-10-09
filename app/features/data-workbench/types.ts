@@ -33,6 +33,9 @@ export type DataJob = {
   result?: Record<string, unknown> | null;
   error_code?: string | null;
   error_message?: string | null;
+  /** F4-05: the job record's timestamps (value.data-job/v1), for the elapsed time. */
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type CandidateSummary = {

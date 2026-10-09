@@ -1,0 +1,168 @@
+/* P1 spec 5.2 (W3): the application shell - grid, top bar, sidebar (240 px;
+   icon rail below 1200 px; drawer below 900 px), Run section bar, skip link,
+   language switch.  The only place the shell is styled (the old rail rules of
+   workbench.css and workspace-shell.css moved here).  Tokens only. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+/* Landmarks in DOM order: header, nav, main; the grid places the sidebar left. */
+.workbench { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "rail header" "rail main"; }
+.skip-link { position: absolute; left: var(--sp-2); top: var(--sp-2); z-index: 40; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); background: var(--panel); color: var(--blue-dark); font-weight: 650; box-shadow: var(--shadow-2); transform: translateY(-300%); }
+.skip-link:focus { transform: none; }
+
+/* Top bar */
+.topbar { grid-area: header; min-height: 86px; padding: var(--sp-4) clamp(var(--sp-5), 3vw, var(--sp-7)); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+.topbar-title { min-width: 0; }
+.topbar-title small { color: var(--ink-muted); font-size: var(--fs-xs); }
+.topbar h1 { margin: var(--sp-1) 0 0; font-size: var(--fs-2xl); letter-spacing: -.035em; }
+.top-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); min-width: 0; }
+.top-meta label { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.top-meta label > span, .top-meta-pack > span { color: var(--ink-muted); font-size: var(--fs-xs); }
+.top-meta select { max-width: min(340px, 100%); }
+.top-meta-pack { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.top-meta-pack b { font-size: var(--fs-sm); overflow-wrap: anywhere; }
+
+/* Sidebar */
+.rail { grid-area: rail; position: sticky; top: 0; align-self: start; height: 100vh; overflow: hidden; background: var(--navy); color: var(--on-navy); display: flex; flex-direction: column; padding: var(--sp-5) var(--sp-4) var(--sp-4); }
+.rail-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.logo { display: flex; gap: var(--sp-3); align-items: center; padding: 0 var(--sp-2) var(--sp-6); }
+.logo > span { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; border-radius: var(--r-lg); background: var(--paper); color: var(--blue-dark); font-weight: 750; letter-spacing: -.04em; }
+.logo div { display: flex; flex-direction: column; gap: var(--sp-1); }
+.logo b { font-size: var(--fs-xl); letter-spacing: -.03em; }
+.logo small { color: var(--on-navy-muted); font-size: var(--fs-xs); }
+.rail-toggle { display: none; }
+.rail-backdrop { display: none; }
+.rail-panel { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* The links scroll inside the sidebar; its footer (status, Retry, language, version) stays in view. */
+.rail nav { display: grid; align-content: start; gap: var(--sp-1); flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.workspace-nav-group { display: grid; gap: var(--sp-1); }
+.workspace-nav-group > p { margin: var(--sp-4) var(--sp-2) var(--sp-1); color: var(--on-navy-muted); font-size: var(--fs-xs); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.workspace-nav-group:first-child > p { margin-top: 0; }
+.rail nav a { width: 100%; min-height: 46px; border-radius: var(--r-md); color: var(--on-navy-muted); background: transparent; padding: var(--sp-1) var(--sp-2); display: flex; align-items: center; gap: var(--sp-3); text-align: left; text-decoration: none; transition: background .15s ease, color .15s ease; }
+.rail nav a:hover { background: color-mix(in srgb, var(--panel) 5.5%, transparent); color: var(--panel); }
+.rail nav a.active { background: var(--navy-soft); color: var(--panel); box-shadow: inset 3px 0 var(--navy-accent); }
+.rail nav i { width: 28px; flex: 0 0 auto; color: var(--on-navy-muted); font: normal var(--fs-2xs) var(--font-mono); }
+.rail nav span { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.rail nav b { font-size: var(--fs-md); font-weight: 650; }
+.rail nav small { color: var(--on-navy-muted); font-size: var(--fs-xs); }
+.rail-foot { flex: 0 0 auto; margin-top: var(--sp-3); border-top: 1px solid var(--navy-line); padding: var(--sp-4) var(--sp-2) 0; color: var(--on-navy-muted); }
+.rail-foot .rail-version { display: block; color: var(--on-navy-muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+
+/* Service status (sidebar footer; at every width, R-6) */
+.service { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.service > i { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: var(--status-offline); box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-offline) 15%, transparent); }
+.service.online > i { background: var(--status-online); box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-online) 14%, transparent); }
+.service span { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.service b { color: var(--on-navy); font-size: var(--fs-xs); }
+.service small { color: var(--on-navy-muted); font-size: var(--fs-xs); }
+.service button { min-height: 32px; margin-top: var(--sp-1); border: 0; background: transparent; color: var(--on-navy-muted); font-size: var(--fs-xs); text-decoration: underline; cursor: pointer; }
+
+/* Language switch */
+.locale-switch { display: flex; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+.locale-switch button { flex: 1 1 0; min-width: 0; min-height: 32px; padding: var(--sp-1) var(--sp-2); border: 1px solid var(--navy-line); border-radius: var(--r-sm); background: transparent; color: var(--on-navy-muted); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+.locale-switch button:hover { color: var(--on-navy); border-color: var(--on-navy-muted); }
+.locale-switch button.active { background: var(--navy-soft); color: var(--on-navy); border-color: var(--navy-accent); }
+
+/* Main */
+.surface { grid-area: main; min-width: 0; }
+
+/* The pages of one Run (/runs/[runId]/*) */
+.run-section-nav { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); margin: var(--sp-4) clamp(var(--sp-5), 3vw, var(--sp-7)) 0; border-bottom: 1px solid var(--line); }
+.run-section-nav a { min-height: 36px; display: inline-flex; align-items: center; padding: var(--sp-2) var(--sp-3); border-bottom: 2px solid transparent; color: var(--ink-muted); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
+.run-section-nav a:hover { color: var(--ink); }
+.run-section-nav a.active { color: var(--blue-dark); border-bottom-color: var(--blue); }
+
+.contract-mismatch { min-height: 100vh; display: grid; place-items: center; padding: var(--sp-6) var(--sp-4); background: var(--paper); }
+.contract-mismatch > .v-callout { width: 100%; max-width: 640px; }
+
+/* Icon rail below 1200 px: the index is the icon; the link keeps its name
+   (aria-label, title).  Status, Retry, language and version stay visible. */
+@media (max-width: 1199px) {
+  .workbench { grid-template-columns: 80px minmax(0, 1fr); }
+  .rail { padding: var(--sp-4) var(--sp-2) var(--sp-3); }
+  .logo { padding: 0 0 var(--sp-5); justify-content: center; }
+  .logo div, .rail nav span, .workspace-nav-group > p { display: none; }
+  .workspace-nav-group + .workspace-nav-group { border-top: 1px solid var(--navy-line); padding-top: var(--sp-1); margin-top: var(--sp-1); }
+  .rail nav a { justify-content: center; min-height: 44px; padding: var(--sp-2) var(--sp-1); }
+  .rail nav i { width: auto; font-size: var(--fs-xs); }
+  .rail-foot { padding: var(--sp-3) 0 0; text-align: center; }
+  .rail .service { justify-content: center; flex-wrap: wrap; }
+  .rail .service span { display: none; }
+  .rail .locale-switch { flex-direction: column; }
+}
+
+/* R-1 (designer ruling, P1-polish): on windows up to 900 px high the ten
+   entries fit without scrolling the sidebar - the notes under the entry names
+   are hidden (the link keeps them in its aria-label) and the rows are tighter.
+   The navigation still scrolls on its own if a window is shorter still; the
+   footer stays in view. */
+@media (min-width: 900px) and (max-height: 900px) {
+  .rail { padding-top: var(--sp-4); padding-bottom: var(--sp-3); }
+  .logo { padding-bottom: var(--sp-4); }
+  .rail nav { gap: 0; }
+  .rail nav small { display: none; }
+  .rail nav a { min-height: 36px; padding-top: 0; padding-bottom: 0; }
+  .workspace-nav-group { gap: 0; }
+  .workspace-nav-group > p { margin: var(--sp-2) var(--sp-2) var(--sp-1); }
+  .rail-foot { margin-top: var(--sp-2); padding-top: var(--sp-3); }
+  .service { margin-bottom: var(--sp-2); }
+  .locale-switch { margin-bottom: var(--sp-2); }
+}
+@media (min-width: 900px) and (max-width: 1199px) and (max-height: 900px) {
+  .rail nav a { min-height: 36px; }
+  .logo { padding-bottom: var(--sp-3); }
+}
+
+/* Drawer below 900 px: a strip with the brand and the menu button; the
+   sidebar opens over the page.  The top bar shows the service status. */
+@media (max-width: 899px) {
+  .workbench { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "rail" "header" "main"; }
+  .rail { position: sticky; top: 0; z-index: 10; height: auto; overflow: visible; padding: var(--sp-2) var(--sp-4); }
+  .logo { padding: 0; justify-content: flex-start; }
+  .logo div { display: flex; }
+  .logo > span { width: 36px; height: 36px; }
+  .rail-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--navy-line); border-radius: var(--r-md); background: transparent; color: var(--on-navy); cursor: pointer; }
+  .rail-toggle > i, .rail-toggle > i::before, .rail-toggle > i::after { display: block; width: 18px; height: 2px; border-radius: var(--r-sm); background: currentColor; }
+  .rail-toggle > i { position: relative; }
+  .rail-toggle > i::before, .rail-toggle > i::after { content: ""; position: absolute; left: 0; }
+  .rail-toggle > i::before { top: -6px; }
+  .rail-toggle > i::after { top: 6px; }
+  .rail-panel { position: fixed; top: 0; bottom: 0; left: 0; z-index: 30; width: min(320px, 86vw); padding: var(--sp-5) var(--sp-4) var(--sp-4); overflow-y: auto; background: var(--navy); box-shadow: var(--shadow-2); transform: translateX(-100%); visibility: hidden; transition: transform .15s ease, visibility 0s linear .15s; }
+  .rail-open .rail-panel { transform: none; visibility: visible; transition: transform .15s ease; }
+  .rail-open .rail-backdrop { display: block; position: fixed; inset: 0; z-index: 25; background: color-mix(in srgb, var(--navy) 45%, transparent); }
+  .rail nav span { display: flex; }
+  .workspace-nav-group > p { display: block; }
+  .workspace-nav-group + .workspace-nav-group { border-top: 0; padding-top: 0; margin-top: 0; }
+  .rail nav a { justify-content: flex-start; min-height: 44px; padding: var(--sp-2); }
+  .rail-foot { padding: var(--sp-4) var(--sp-2) 0; text-align: left; }
+  .rail .service { justify-content: flex-start; flex-wrap: nowrap; }
+  .rail .service span { display: flex; }
+  .rail .locale-switch { flex-direction: row; }
+  .topbar { position: static; min-height: 0; padding: var(--sp-3) var(--sp-4); align-items: flex-start; }
+  .top-meta { width: 100%; }
+  .top-meta label { flex: 1 1 180px; }
+  .top-meta select { width: 100%; }
+  .run-section-nav { margin: var(--sp-3) var(--sp-4) 0; flex-wrap: nowrap; overflow-x: auto; }
+  .run-section-nav a { flex: 0 0 auto; white-space: nowrap; }
+  .rail-open .rail-toggle { position: relative; z-index: 31; }
+  /* R-6 (P1-polish): the top bar keeps the page title and the Read me icon;
+     the Study context is one disclosure under it; the service status is at
+     the drawer's foot (a dot on the menu button when it is reduced or lost). */
+  .topbar { align-items: center; }
+  .topbar-title { flex: 1 1 0; }
+  .topbar > .top-meta { width: auto; flex: 0 0 auto; }
+  .workspace-readme-trigger.icon-only { display: inline-grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0; }
+  .topbar-study { width: 100%; min-width: 0; }
+  .topbar-study > summary { min-height: 32px; padding: var(--sp-1) 0; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; overflow-wrap: anywhere; cursor: pointer; }
+  .topbar-study-body > .background-runs { justify-self: start; }
+  .topbar-study-body { display: grid; gap: var(--sp-2); padding-top: var(--sp-2); }
+  .topbar-study .workspace-study-context { margin: 0; }
+  .rail-toggle { position: relative; }
+  .rail-toggle-alert { position: absolute; top: 3px; right: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
+  .rail-toggle-alert.offline { background: var(--red); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-panel, .rail nav a { transition: none; }
+}
+}

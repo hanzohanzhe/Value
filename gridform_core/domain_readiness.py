@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 from .canonical_psm_data import build_chronology, native_initial_state
+from .data_method import project_policy as project_data_policy
 from .hydrology import HydrologyInputBundle, load_hydrology_inputs_from_pack
 from .network_ac import ACGeneratorSpec, load_ac_data_from_pack
 from .network_contracts import NetworkPSMInput, load_network_input_from_pack
@@ -21,7 +22,14 @@ from .network_expansion import STATE_KEY, NetworkCandidate, load_network_expansi
 from .parameters import resolve_scheme_c_parameters
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .v2.module_manifest import ModuleRegistryV2
-from .zonal_contracts import ZonalNetworkPack, load_zonal_network_pack
+from .voll import VOLL_GBP_PER_MWH
+from .zonal_contracts import (
+    ZonalNetworkPack,
+    ZonalTopologyError,
+    audit_zonal_network_topology,
+    pack_fallback_assets,
+    load_zonal_network_pack,
+)
 
 
 SCHEMA_VERSION = "value.domain-readiness/v1"
@@ -419,9 +427,10 @@ def build_domain_readiness(
             chronology = build_chronology(
                 pack_root, pack_manifest, state,
                 periods=preview_periods,
+                data_policy=project_data_policy(project, pack_manifest),
                 period_hours=float(resolved_parameters.scientific.values["clock.period_hours"]),
                 terminal_soc_rule=str(resolved_parameters.scientific.values.get("market.perfect_foresight_terminal_soc_rule", "cyclic")),
-                voll_gbp_per_mwh=float(resolved_parameters.scientific.values.get("market.voll_gbp_per_mwh", 10_000.0)),
+                voll_gbp_per_mwh=float(resolved_parameters.scientific.values.get("market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH)),
             )
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             issues.append(_issue(
@@ -476,8 +485,15 @@ def build_domain_readiness(
         try:
             zonal_root = network_pack_root or pack_root
             zonal_manifest = network_pack_manifest or pack_manifest
-            zonal = load_zonal_network_pack(zonal_root, zonal_manifest)
+            zonal, topology = audit_zonal_network_topology(zonal_root, zonal_manifest)
             sections["zonal_network"] = summarise_zonal_network_pack(zonal)
+            sections["zonal_network"]["cutset_classification"] = dict(topology["counts"])
+            # Preflight side of the P0-8 S12 fallback audit: the assets the
+            # pack itself places in an unconstrained fallback zone.
+            sections["zonal_network"]["fallback_assets"] = pack_fallback_assets(zonal)
+            if topology["error_count"]:
+                # Same rule as the enforcing loaders of preflight and runs.
+                raise ZonalTopologyError(topology)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             issues.append(_issue(
                 "GF_DOMAIN_ZONAL_INPUT", str(exc), severity="error", scope="zonal_network",

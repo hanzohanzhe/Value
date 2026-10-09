@@ -23,6 +23,11 @@ FILES = ("package.json", "package-lock.json", "pyproject.toml", "LICENSE", "NOTI
          "tsconfig.json", "tsconfig.frontend.json", "vite.config.ts", "next.config.ts", "next-env.d.ts", "postcss.config.mjs")
 NODE_PACKAGES = ("vinext", "react", "react-dom", "react-server-dom-webpack", "scheduler")
 TEACHING_PACKS = ("value-101-baseline-v1", "value-101-network-v1")
+# Runtime data read from outside a package directory: without it the
+# installed app cannot classify saved Study revisions (Q13: every module
+# version bump would need confirmation).  gridform_core.revision_migration
+# reads docs/release/VERSION_LEDGER.json relative to the app root.
+REQUIRED_MEMBERS = ("app/docs/release/VERSION_LEDGER.json",)
 EXCLUDE = {".git", "__pycache__", "node_modules", "outputs", "output", "state", "value-state", "model-output", "test-results", ".cache", ".next", ".bin"}
 
 
@@ -47,22 +52,40 @@ def members(directory: Path):
             yield path
 
 
+def absolute_api_origin_files(dist: Path) -> list[str]:
+    """Built files that still embed http://127.0.0.1:8766 or localhost:8766."""
+
+    markers = (b"127.0.0.1:8766", b"localhost:8766")
+    found = []
+    for path in sorted(dist.rglob("*")):
+        if path.is_file() and path.suffix in {".js", ".mjs", ".html", ".json", ".css"}:
+            raw = path.read_bytes()
+            if any(marker in raw for marker in markers):
+                found.append(path.relative_to(dist).as_posix())
+    return found
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--include-teaching", action="store_true")
     parser.add_argument("--maximum-mib", type=int, default=512)
     parser.add_argument("--build-log", type=Path, help="Existing production-build evidence; not a claim of byte equivalence.")
-    parser.add_argument("--api-origin", default="http://127.0.0.1:8766")
     args = parser.parse_args()
-    if args.api_origin != "http://127.0.0.1:8766":
-        raise ValueError("This local candidate requires a UI built with http://127.0.0.1:8766")
     if not (ROOT / "dist/server/index.js").is_file() or not (ROOT / "dist/client").is_dir():
         raise ValueError("Build the final production UI before packaging.")
+    # P0-1: the UI calls only its own origin (/api through the UI gateway); a
+    # build that still names an API port predates the gateway.
+    stale = absolute_api_origin_files(ROOT / "dist")
+    if stale:
+        raise ValueError(f"The production UI still names an absolute API origin; rebuild it: {stale[:3]}")
     selected = {f"app/{name}": ROOT / name for name in FILES}
     for name in DIRECTORIES:
         for path in members(ROOT / name):
             selected[f"app/{path.relative_to(ROOT).as_posix()}"] = path
+    missing = [name for name in REQUIRED_MEMBERS if name not in selected]
+    if missing:
+        raise ValueError(f"Required runtime data missing from the release: {missing}")
     for name in ("dist/server", "dist/client", "dist/.openai"):
         if (ROOT / name).is_dir():
             for path in members(ROOT / name):
@@ -119,7 +142,7 @@ def main():
         manifest = {"schema_version": "value.linux-local-release/v1", "classification": "local_install_candidate",
                     "source_commit": head, "source_dirty_entries": dirty, "source_snapshot_sha256": sha(json.dumps(inventory, sort_keys=True).encode()),
                     "external_runtime_required": {"python": "3.10.x Linux x86-64 with installed VALUE scientific dependencies", "node": ">=22.13.0 Linux x86-64"},
-                    "api_origin": args.api_origin, "prebuilt_ui_provenance": "Packaged existing dist; final build and installed-UI validation are release evidence, not inferred from this script.",
+                    "api_origin": "same-origin", "api_base_path": "/api", "prebuilt_ui_provenance": "Packaged existing dist; final build and installed-UI validation are release evidence, not inferred from this script.",
                     "node_packages": runtime_versions, "teaching_packs": included, "contains_user_state": False,
                     "scientific_release_eligible": False, "files": inventory}
         (stage / "release-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import json
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,6 +19,7 @@ from gridform_core.value_101_lifecycle import (
 )
 from gridform_core.v2.module_manifest import workspace_registry
 from gridform_core.v2.projects import parse_project
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,10 +133,8 @@ class Value101LifecycleTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 status, created = self._request_json(
                     origin + "/api/tutorials/value-101/studies", "POST", {}
@@ -191,9 +188,7 @@ class Value101LifecycleTests(unittest.TestCase):
                 self.assertTrue((ordinary_dir / "project.json").is_file())
                 self.assertTrue((ROOT / "data-packs" / "value-101-baseline-v1").is_dir())
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

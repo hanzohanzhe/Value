@@ -1,11 +1,13 @@
-import fs from "node:fs";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { openRunSection, railLink } from "./workspace-nav";
 
 const hash = (letter: string) => letter.repeat(64);
 // Browser-test screenshots are ephemeral.  The reviewed Prompt 84 evidence in
 // publication/ is immutable and must not be rewritten by a normal test run.
-const screenshotRoot = "test-results/prompt84-browser-screenshots";
+// They go to the test's output folder (Playwright's outputDir), which an
+// offline run places in a temporary folder that it removes (P0-9 S0).
+const screenshotPath = (name: string) => test.info().outputPath("prompt84-browser-screenshots", name);
 
 const run = {
   id: "domain-demo", project_id: "domain-project", project_name: "Bounded network fixture", mode: "full",
@@ -18,7 +20,7 @@ const modules = [
   { id: "value-reference-dc-network", name: "Reference chronological DC network PSM", kind: "psm", slot: "psm", version: "1.0.0", status: "ready", inputs: [], outputs: [], provides_capabilities: ["domain.network.dc"] },
   { id: "value-reference-ac-feasibility", name: "Experimental AC feasibility", kind: "psm", slot: "psm", version: "0.1.0", status: "experimental", inputs: [], outputs: [], provides_capabilities: ["domain.network.ac"] },
   { id: "value-copperplate-balancing", name: "Copperplate balancing", kind: "system", slot: "balancing", version: "1.0.0", status: "ready", inputs: [], outputs: [], provides_capabilities: [] },
-  { id: "value-zonal-redispatch-balancing", name: "Zonal redispatch balancing", kind: "system", slot: "balancing", version: "2.0.0", status: "experimental", inputs: [], outputs: [], provides_capabilities: ["network.zonal-redispatch-result/v1"] },
+  { id: "value-zonal-redispatch-balancing", name: "Zonal redispatch balancing", kind: "system", slot: "balancing", version: "4.0.0", status: "experimental", inputs: [], outputs: [], provides_capabilities: ["network.zonal-redispatch-result/v1"] },
 ];
 
 const psmOptions = modules.filter((item) => item.slot === "psm").map((item) => ({ ...item, compatible: true }));
@@ -59,7 +61,6 @@ function resolution(request?: Record<string, unknown>) {
 }
 
 test.beforeEach(async ({ page }) => {
-  fs.mkdirSync(screenshotRoot, { recursive: true });
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -95,6 +96,8 @@ test.beforeEach(async ({ page }) => {
     else if (path.endsWith("/domains/ac/results")) body = { claim: "Local feasibility of a declared active schedule; not AC OPF.", year: 2025, total: 1, source_artifact_sha256: hash("a"), summary: { solver_status: "optimal", convergence_class: "LOCAL_SOLUTION_VALIDATED", maximum_active_residual_mw: 1e-9, branch_rating_utilisation: { status: "not_evaluated" } }, items: [{ period_id: "2025:0", status: "LOCAL_SOLUTION_VALIDATED", minimum_voltage_pu: .99, maximum_voltage_pu: 1.01, active_loss_mw: .1, branch_mva: { NS: 4.2 }, residuals: { active_mw: 1e-9 }, violations: {} }] };
     else if (path.endsWith("/domains/expansion/summary")) body = { status: "experimental", source_artifact_sha256: hash("x"), lineage: "candidate → proposal → planning → commissioned / failed / retired", counterfactual_claim: "not_claimed_without_a_controlled_comparison_study", years: [{ year: 2025, proposals: 1, admitted: 1, commissioned: 0, failed: 0, retired: 0 }, { year: 2026, proposals: 0, admitted: 0, commissioned: 1, failed: 0, retired: 0 }] };
     else if (path.endsWith("/domains/expansion/events")) body = { total: 1, source_artifact_sha256: hash("x"), items: [{ year: 2026, event_id: "commissioned:NS2", event_type: "commissioned", candidate_id: "NS2", project_id: "project:NS2", asset_id: "line:NS2", corridor_id: "North-South", from_bus: "North", to_bus: "South", circuits: 1, rating_mw: 4, reason_code: "planning_complete" }] };
+    // P1 W2/W3: the interface checks the service contract on /api/health.
+    else if (path === "/api/health") body = { ok: true, frontend_contract_version: "value.expanded-frontend/v1", status: "ok", degraded_reasons: [] };
     else body = { error: `Unmocked API ${path}` };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
@@ -102,17 +105,17 @@ test.beforeEach(async ({ page }) => {
 
 test("expanded composer and conditional Data stay capability-driven", async ({ page }) => {
   await page.goto("/");
-  await page.screenshot({ path: `${screenshotRoot}/01-home.png`, fullPage: true });
-  await page.getByRole("button", { name: /Studies/ }).click();
+  await page.screenshot({ path: screenshotPath("01-home.png"), fullPage: true });
+  await railLink(page, "Studies").click();
   await page.getByRole("button", { name: /System domain/ }).click();
   await expect(page.getByRole("button", { name: /Chronological DC network/ })).toBeVisible();
   await expect(page.getByText("not AC OPF", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: /Chronological DC network/ }).click();
-  await page.screenshot({ path: `${screenshotRoot}/02-study-composer.png`, fullPage: true });
-  await page.getByRole("button", { name: /Data:/ }).click();
+  await page.screenshot({ path: screenshotPath("02-study-composer.png"), fullPage: true });
+  await railLink(page, "Data").click();
   await expect(page.getByText("Network buses")).toBeVisible();
   await expect(page.getByText("value.network.nodal-demand", { exact: true })).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/03-conditional-data.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("03-conditional-data.png"), fullPage: true });
 });
 
 test("zonal solver settings require valid ranges and one revision acknowledgement", async ({ page }) => {
@@ -124,7 +127,7 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: /Studies/ }).click();
+  await railLink(page, "Studies").click();
   await page.getByRole("button", { name: "Review" }).click();
   await expect(page.getByRole("region", { name: "Advanced solver settings" })).toHaveCount(0);
 
@@ -135,7 +138,8 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
   await page.getByRole("button", { name: "Review" }).click();
 
   const editor = page.getByRole("region", { name: "Advanced solver settings" });
-  await expect(editor.getByText("Built-in default settings", { exact: true })).toBeVisible();
+  // D-W3-13: the built-in badge names the v4 policy (studies.solver.builtin).
+  await expect(editor.getByText("Built-in v4 default settings", { exact: true })).toBeVisible();
   await expect(editor.getByLabel("Solver method")).toBeDisabled();
   await expect(editor.getByLabel("Primal feasibility tolerance")).toBeDisabled();
   await editor.getByLabel("Use custom solver settings").check();
@@ -146,7 +150,6 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
     ["Dual feasibility tolerance", "1e-10", "1e-7"],
     ["IPM optimality tolerance", "1e-12", "1e-7"],
     ["Numerical warning threshold", "0", "1"],
-    ["Redispatch bid cost validated ceiling", "0", "0.1"],
     ["Schedule deviation validated ceiling", "0", "0.01"],
     ["Physical throughput validated ceiling", "0", "0.01"],
   ] as const;
@@ -155,6 +158,10 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
     await expect(input).toHaveAttribute("min", minimum);
     await expect(input).toHaveAttribute("max", maximum);
   }
+  // D-W3-13: under the v4 solver policy the redispatch bid-cost ceiling is fixed by the platform (read-only).
+  const bidCeiling = editor.getByLabel("Redispatch bid cost validated ceiling");
+  await expect(bidCeiling).toHaveAttribute("readonly", "");
+  await expect(bidCeiling).toHaveAttribute("aria-readonly", "true");
 
   const save = page.getByRole("button", { name: "Save this exact Study revision" });
   await editor.getByLabel("Primal feasibility tolerance").fill("0.000001");
@@ -181,28 +188,32 @@ test("zonal solver settings require valid ranges and one revision acknowledgemen
     requires_acknowledgement: true,
   });
   expect(projectPosts[0].maturity_acknowledgements).toEqual(expect.objectContaining({
-    "solver-contract:value-zonal-redispatch-balancing@2.0.0": "value.solver-contract-ack/v1",
+    // The shipped module is 4.0.0 (v4 solver policy, ZONAL_SOLVER_ACK_KEY).
+    "solver-contract:value-zonal-redispatch-balancing@4.0.0": "value.solver-contract-ack/v1",
   }));
 });
 
 test("optional-domain results expose evidence and non-evaluated states", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: /Network & water/ }).click();
+  // The workspace fixture lists no Study, so the Run is opened by its link:
+  // a Run is selected only together with the Study that owns it.
+  await page.goto(`/?study=${run.project_id}&run=${run.id}`);
+  // R3-16 (W4c): one network entry in the Run section bar; its page links to the optional-domain results.
+  await openRunSection(page, "Network & redispatch");
+  await page.getByRole("navigation", { name: "Network results of this Run" }).getByRole("link", { name: "DC network, expansion & water" }).click();
   await expect(page.getByRole("heading", { name: "Nodal balance and constrained transfers" })).toBeVisible();
   await expect(page.getByText("Electrical schematic only", { exact: false })).toBeVisible();
   await expect(page.getByText("168 periods", { exact: true })).toBeVisible();
-  await expect(page.getByText("not evaluated", { exact: true }).last()).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/04-dc-results.png`, fullPage: true });
+  // R-16 (P1-polish): state words are the vocabulary's sentence case; the recorded code is in the title.
+  await expect(page.getByText("Not evaluated", { exact: true }).last()).toBeVisible();
+  await page.screenshot({ path: screenshotPath("04-dc-results.png"), fullPage: true });
 
-  await page.getByRole("tab", { name: "AC feasibility" }).click();
-  await expect(page.getByText("Not AC OPF", { exact: true })).toBeVisible();
-  await expect(page.getByText("0.1 MW")).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/05-ac-feasibility.png`, fullPage: true });
-
+  // The public "AC feasibility" tab is intentionally absent (no AC model is
+  // shipped; the frontend guards forbid it from coming back), so its old
+  // assertions are removed rather than reworded (P0-9 S0/S10).
   await page.getByRole("tab", { name: "Transmission expansion" }).click();
   await expect(page.getByText("candidate → proposal → planning → commissioned / failed / retired")).toBeVisible();
   await expect(page.getByText("line:NS2")).toBeVisible();
-  await page.screenshot({ path: `${screenshotRoot}/06-transmission-expansion.png`, fullPage: true });
+  await page.screenshot({ path: screenshotPath("06-transmission-expansion.png"), fullPage: true });
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);

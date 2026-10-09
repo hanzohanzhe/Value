@@ -146,7 +146,8 @@ def prepare(*, run_id, data_home, destination, node, name, acknowledge_code=Fals
         copy_tree(REPO/'dist',ui/'dist')
         for package in ('vinext','react','react-dom','react-server-dom-webpack','scheduler'):
             copy_tree(REPO/'node_modules'/package,ui/'node_modules'/package)
-        (ui/'scripts').mkdir(); shutil.copyfile(REPO/'scripts/serve-value-ui.mjs',ui/'scripts/serve-value-ui.mjs')
+        (ui/'scripts').mkdir()
+        for script in ('serve-value-ui.mjs','value-ui-gateway.mjs'): shutil.copyfile(REPO/'scripts'/script,ui/'scripts'/script)
         tools=destination/'tools'; tools.mkdir(); shutil.copyfile(REPO/'packaging/linux-local/archived_value.py',tools/'archived_value.py')
         deps=report['host_dependencies'][:]
         for filename in ('/usr/lib/locale/locale-archive','/usr/lib/locale/C.utf8/LC_CTYPE','/usr/lib/x86_64-linux-gnu/gconv/gconv-modules.cache'):

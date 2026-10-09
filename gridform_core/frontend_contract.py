@@ -12,11 +12,23 @@ from itertools import combinations
 from typing import Mapping, Sequence
 
 from .extension_framework import canonical_hash
+from .methodology import (
+    COMBINATION_ERROR_CODE,
+    ProfileCombinationError,
+    UnknownProfileError,
+    module_supported,
+    reference_deviations,
+    resolve_project_methodology,
+    selection_combination_violations,
+)
+from .module_quarantine import all_quarantine_entries, selection_blockers
 from .data_contract_templates import runtime_supported_formats, template_available
 from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph
 from .study_market_config import resolve_market_configuration
 from .zonal_solver_contract import (
     DEFAULT_ZONAL_SOLVER_SETTINGS,
+    ZonalSolverContractError,
+    solver_contract_generation,
     validate_solver_settings,
 )
 
@@ -44,6 +56,7 @@ ALLOWED_DRAFT_FIELDS = {
     "extension_parameters", "maturity_acknowledgements", "updated_at",
     "base_revision_sha256", "revision_sha256", "revision_number",
     "parent_revision_sha256", "change_summary", "module_resolution_graph",
+    "fingerprint_basis", "revision_reason",  # revision bookkeeping (X0 S11)
     "market_configuration", "extensions",
     "solver_contract",
 }
@@ -59,6 +72,36 @@ class ProjectSolverContractError(ValueError):
 
 def solver_contract_acknowledgement_key(module_id: str, version: str) -> str:
     return f"solver-contract:{module_id}@{version}"
+
+
+def maturity_acknowledgement_key(kind: str, item_id: str, version: str) -> str:
+    """The one place that spells a maturity acknowledgement key."""
+
+    if kind not in {"module", "extension"}:
+        raise ValueError(f"Unknown acknowledgement kind: {kind}")
+    return f"{kind}:{item_id}@{version}"
+
+
+def builtin_maturity_acknowledgement_key(
+    kind: str, item_id: str, registry: ModuleRegistryV2 | None = None
+) -> str:
+    """Acknowledgement key for a module/extension at its registered version.
+
+    Built-in Study templates (VALUE 101 network lesson, VALUE UK suite) derive
+    their keys here so a module version bump cannot leave a stale key behind.
+    """
+
+    if registry is None:
+        from .v2.module_manifest import builtin_registry
+
+        registry = builtin_registry()
+    if kind == "module":
+        version = registry.manifest(item_id).version
+    elif kind == "extension":
+        version = registry.extension_registry.manifest(item_id).version
+    else:
+        raise ValueError(f"Unknown acknowledgement kind: {kind}")
+    return maturity_acknowledgement_key(kind, item_id, version)
 
 
 def _canonical_solver_settings(payload: object) -> dict[str, object]:
@@ -84,10 +127,46 @@ def _canonical_solver_settings(payload: object) -> dict[str, object]:
     candidate["requires_acknowledgement"] = not is_builtin_default
     try:
         return validate_solver_settings(candidate).to_dict()
+    except ZonalSolverContractError as exc:
+        # A v2/v3 Study is never silently rewritten (P0-8 S5, Q13): the user
+        # upgrades it explicitly, which saves a new revision.
+        raise ProjectSolverContractError(exc.code, str(exc)) from exc
     except ValueError as exc:
         raise ProjectSolverContractError(
             "GF_SOLVER_CONTRACT_INVALID", str(exc)
         ) from exc
+
+
+def solver_contract_upgrade_preview(project: Mapping[str, object]) -> dict[str, object] | None:
+    """Describe the explicit v2/v3 -> current upgrade without applying it.
+
+    Returns ``None`` when the Study already declares the current contract or
+    declares none.  The preview lists every changed field with its recorded
+    and current value so the UI can show the method difference before the
+    user saves a new revision (Q13 ``method_upgrade_required``).
+    """
+
+    recorded = project.get("solver_contract")
+    generation = solver_contract_generation(recorded if isinstance(recorded, Mapping) else None)
+    if generation in {"v4", "unknown"}:
+        return None
+    assert isinstance(recorded, Mapping)
+    current = DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict()
+    changes = [
+        {"field": key, "recorded": recorded.get(key), "current": current.get(key)}
+        for key in sorted(set(recorded) | set(current))
+        if recorded.get(key) != current.get(key)
+    ]
+    return {
+        "schema_version": "value.solver-contract-upgrade-preview/v1",
+        "error_code": "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED",
+        "classification": "method_upgrade_required",
+        "recorded_generation": generation,
+        "current_generation": "v4",
+        "recorded_was_builtin_default": recorded.get("is_builtin_default") is True,
+        "changes": changes,
+        "proposed_solver_contract": current,
+    }
 
 
 def validate_project_solver_contract(
@@ -408,7 +487,7 @@ def maturity_acknowledgement_requirements(
             continue
         if manifest.status in {"experimental", "not_evaluated"}:
             result.append({
-                "key": f"module:{manifest.id}@{manifest.version}",
+                "key": maturity_acknowledgement_key("module", manifest.id, manifest.version),
                 "kind": "module", "id": manifest.id, "version": manifest.version,
                 "maturity": manifest.status, "acknowledgement": EXPERIMENTAL_ACK,
             })
@@ -419,7 +498,7 @@ def maturity_acknowledgement_requirements(
             continue
         if manifest.maturity in {"experimental", "not_evaluated"}:
             result.append({
-                "key": f"extension:{manifest.id}@{manifest.version}",
+                "key": maturity_acknowledgement_key("extension", manifest.id, manifest.version),
                 "kind": "extension", "id": manifest.id, "version": manifest.version,
                 "maturity": manifest.maturity, "acknowledgement": EXPERIMENTAL_ACK,
             })
@@ -454,6 +533,7 @@ def resolve_study_draft(
     module_catalog: Sequence[Mapping[str, object]],
     base_dataset_slots: Sequence[Mapping[str, object]],
     available_data_roles: Sequence[str] = (),
+    data_packs: Sequence[tuple[Mapping[str, object], bytes | None] | None] = (),
 ) -> dict[str, object]:
     """Resolve a browser draft through the one executable registry.
 
@@ -491,12 +571,31 @@ def resolve_study_draft(
             "Extensions may be selected only once: " + ", ".join(duplicate_extensions),
             scope="extensions", detail=duplicate_extensions,
         ))
+    # P0-2: a selected module/extension that is quarantined gets its own code
+    # (not "unknown"); quarantine elsewhere is only a warning.
+    blockers = selection_blockers(registry, modules.values(), selected_extensions)
+    if blockers:
+        errors.append(_issue(
+            "GF_STUDY_MODULE_QUARANTINED",
+            "This Study selects quarantined local code: " + ", ".join(
+                f"{entry.kind} {entry.entry_id} ({entry.code})" for entry in blockers
+            ) + ". Disable or repair it in Modules, or select another module.",
+            scope="modules", detail=[entry.to_dict() for entry in blockers],
+        ))
+    elif all_quarantine_entries(registry):
+        warnings.append(_issue(
+            "GF_MODULE_QUARANTINE_PRESENT",
+            "Some local modules or extensions are quarantined; this Study does not use them.",
+            scope="modules", detail={"count": len(all_quarantine_entries(registry))},
+        ))
+    blocked_extensions = {str(entry.entry_id) for entry in blockers if entry.kind == "extension"}
     unknown_extensions = []
     for extension_id in selected_extensions:
         try:
             registry.extension_registry.manifest(extension_id)
         except ValueError:
-            unknown_extensions.append(extension_id)
+            if extension_id not in blocked_extensions:
+                unknown_extensions.append(extension_id)
     if unknown_extensions:
         errors.append(_issue(
             "GF_EXTENSION_UNKNOWN",
@@ -515,7 +614,8 @@ def resolve_study_draft(
     ]
     if not unknown_extensions:
         active_slots = active_dataset_slots(
-            registry, base_dataset_slots, selected_extensions
+            registry, base_dataset_slots,
+            tuple(item for item in selected_extensions if item in registry.extension_manifests()),
         )
     available = set(str(item) for item in available_data_roles)
     required_roles = {
@@ -578,10 +678,51 @@ def resolve_study_draft(
                 },
             ))
 
+    # Methodology profile (X0 S8, Q3): the combination whitelist is the same
+    # check as preflight and the run entry (C16); a deviation from the frozen
+    # profile's reference preset is allowed but reported.
+    methodology_block: dict[str, object] | None = None
+    profile_id: str | None = None
+    try:
+        methodology = resolve_project_methodology(project)
+        profile_id = methodology.profile_id
+        violations = selection_combination_violations(
+            methodology,
+            registry=registry,
+            modules=modules,
+            extensions=selected_extensions,
+            data_packs=list(data_packs),
+        )
+        deviations = reference_deviations(
+            methodology,
+            modules=modules,
+            scientific_parameters=dict(project.get("parameters") or project.get("parameter_overrides") or {}),  # type: ignore[arg-type]
+        )
+        if violations:
+            errors.append(_issue(
+                COMBINATION_ERROR_CODE,
+                str(ProfileCombinationError(methodology.profile_id, violations)),
+                scope="methodology", detail=violations,
+            ))
+        if deviations:
+            warnings.append(_issue(
+                "VALUE_PROFILE_REFERENCE_DEVIATION",
+                f"{methodology.label}: the Study departs from the reference configuration; "
+                "the run is allowed and records the deviation.",
+                scope="methodology", detail=deviations,
+            ))
+        methodology_block = {
+            **methodology.to_dict(),
+            "violations": violations,
+            "reference_deviations": deviations,
+        }
+    except UnknownProfileError as exc:
+        errors.append(_issue(UnknownProfileError.code, str(exc), scope="methodology"))
+
     graph = None
     effective_extension_parameters: dict[str, object] = {}
     registry_error: str | None = None
-    if not unknown_slots and not unknown_extensions:
+    if not unknown_slots and not unknown_extensions and not blockers:
         ideal_roles = tuple(sorted(required_roles | available))
         try:
             graph = registry.resolve_selection(
@@ -594,14 +735,27 @@ def resolve_study_draft(
                 effective_extension_parameters = dict(graph.extension_graph.parameters)
         except (ValueError, KeyError, TypeError) as exc:
             registry_error = str(exc)
-            code = "GF_EXTENSION_PARAMETER_INVALID" if "parameter" in registry_error.lower() else "GF_MODULE_INCOMPATIBLE"
+            if getattr(exc, "code", None) == "GF_EXTENSION_HOOK_IMPORT":
+                # A hook that cannot be imported is runtime-quarantined.
+                code = "GF_STUDY_MODULE_QUARANTINED"
+            else:
+                code = "GF_EXTENSION_PARAMETER_INVALID" if "parameter" in registry_error.lower() else "GF_MODULE_INCOMPATIBLE"
             errors.append(_issue(code, registry_error, scope="resolution"))
 
     compatible: dict[str, list[dict[str, object]]] = {}
     for slot_row in module_slot_catalog(registry, module_catalog):
         slot = str(slot_row["slot"])
         compatible[slot] = []
-        for option in slot_row["options"]:
+        for raw_option in slot_row["options"]:
+            option = dict(raw_option)
+            if profile_id is not None:
+                try:
+                    scientific_version = registry.manifest(str(option["id"]), expected_slot=slot).scientific_version
+                except (KeyError, ValueError):
+                    scientific_version = None
+                supported, reason = module_supported(profile_id, str(option["id"]), scientific_version)
+                option["methodology_supported"] = supported
+                option["methodology_reason"] = reason
             candidate = dict(modules)
             candidate[slot] = str(option["id"])
             if (
@@ -642,6 +796,12 @@ def resolve_study_draft(
             scope="modules", detail={"slot": "network_expansion"},
         ))
         market_configuration = dict(project.get("market_configuration") or {})
+    # R3-N1 (DECISIONS A23): numbers are saved in their registry type.
+    from .parameters import normalise_numeric_values
+
+    for key in ("parameters", "parameter_overrides", "runtime_options", "runtime_controls"):
+        if isinstance(project.get(key), Mapping):
+            normalised_project[key] = normalise_numeric_values(project[key])  # type: ignore[arg-type]
     normalised_project.update({
         "modules": modules,
         "selected_extensions": list(selected_extensions),
@@ -674,6 +834,7 @@ def resolve_study_draft(
             "acknowledgement_contract": EXPERIMENTAL_ACK,
             "acknowledgements_required": acknowledgement_requirements,
         },
+        "methodology": methodology_block,
         "curtailment_attribution": curtailment_attribution_resolution(graph),
         "graph_preview": graph_preview,
         "graph_sha256": graph.graph_sha256 if graph is not None else None,

@@ -1,3 +1,5 @@
+import { apiFetch, apiUrl } from "../../lib/api.ts";
+import { tr } from "../../i18n/index.ts";
 import type {
   CandidateReview,
   CandidateSummary,
@@ -14,26 +16,22 @@ const jobStatuses = new Set([
 ]);
 
 export class DataWorkbenchClient {
-  readonly base: string;
-
-  constructor(apiOrigin: string) {
-    this.base = `${apiOrigin}/api/data-workbench/v1`;
-  }
+  readonly base = apiUrl("data-workbench/v1");
 
   private async request<T>(path: string, init?: RequestInit, schema?: string): Promise<T> {
-    const response = await fetch(`${this.base}${path}`, {
+    const response = await apiFetch(`${this.base}${path}`, {
       ...init,
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
     const payload = await response.json() as Record<string, unknown>;
     if (!response.ok) {
       const message = payload.error_code
-        ? `${String(payload.error_code)}: ${String(payload.error ?? "request failed")}`
-        : String(payload.error ?? "Data Workbench request failed");
+        ? `${String(payload.error_code)}: ${String(payload.error ?? tr("workbenchClient.failed"))}`
+        : String(payload.error ?? tr("workbenchClient.requestFailed"));
       throw new Error(message);
     }
     if (schema && payload.schema_version !== schema) {
-      throw new Error(`Unexpected Data Workbench schema: expected ${schema}`);
+      throw new Error(tr("workbenchClient.schema", { schema }));
     }
     return payload as T;
   }
@@ -41,10 +39,10 @@ export class DataWorkbenchClient {
   private async jobResponse(path: string, init?: RequestInit): Promise<{ job: DataJob }> {
     const payload = await this.request<{ job: DataJob }>(path, init);
     if (!payload.job || payload.job.schema_version !== "value.data-job/v1") {
-      throw new Error("Unexpected Data Workbench schema: expected value.data-job/v1");
+      throw new Error(tr("workbenchClient.schema", { schema: "value.data-job/v1" }));
     }
     if (!jobStatuses.has(payload.job.status)) {
-      throw new Error(`Unknown Data Workbench job status: ${payload.job.status}`);
+      throw new Error(tr("workbenchClient.status", { status: payload.job.status }));
     }
     return payload;
   }

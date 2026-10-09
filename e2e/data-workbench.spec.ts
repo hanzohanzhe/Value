@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { railLink } from "./workspace-nav";
 
 const job = {
   schema_version: "value.data-job/v1",
@@ -110,16 +111,16 @@ test("Data Workbench keeps mechanical failures locked and promotes only named re
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: /Data: Inputs and mappings/ }).click();
+  await railLink(page, "Data").click();
   await expect(page.getByRole("heading", { name: "Data Workbench" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Official sources" }).click();
+  await page.getByRole("tab", { name: "Official sources" }).click(); // P1 W4b: WAI-ARIA tabs
   await expect(page.getByText("dso zone geometry")).toBeVisible();
   await page.getByRole("button", { name: "Check official catalogues" }).click();
   await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
 
-  await page.getByRole("button", { name: "Candidates & review" }).click();
+  await page.getByRole("tab", { name: "Candidates & review" }).click(); // P1 W4b: WAI-ARIA tabs
   await page.getByRole("button", { name: /blocked-review/ }).click();
   await expect(page.getByText("Mechanical gate failure")).toBeVisible();
   await expect(page.getByRole("img", { name: "Candidate audit map supplied by the backend" })).toBeVisible();
@@ -132,6 +133,6 @@ test("Data Workbench keeps mechanical failures locked and promotes only named re
   await page.getByRole("button", { name: "Approve and install bundle" }).click();
   await expect(page.getByText(/installed locally/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Installed packs" }).click();
+  await page.getByRole("tab", { name: "Installed packs" }).click(); // P1 W4b: WAI-ARIA tabs
   await expect(page.getByText("GB zonal reviewed fixture")).toBeVisible();
 });

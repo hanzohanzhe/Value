@@ -36,17 +36,67 @@
       "bytes": 639583456,
       "sha256": "0b21f21b9e9fef74343f0e0d0ad5818931012eae43c2d61acc2dae678e9fedd2",
       "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-04/value-uk-open-data-pack-v1-public1-2026-10-04.zip"
+    },
+    {
+      "name": "value-uk-calendar-vx-trade001-public2-2026-10-09.zip",
+      "bytes": 638868381,
+      "sha256": "cd26e841661d21155ff1e10b18b83257fed9fbeef7c833212aebdf52ab5cffca",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-09/value-uk-calendar-vx-trade001-public2-2026-10-09.zip"
+    },
+    {
+      "name": "value-uk-open-data-pack-public2-2026-10-09.zip",
+      "bytes": 640439598,
+      "sha256": "b6ceac96b8de0dfd0364881f873b3b61ddb49480f5823d68118bf8bfb58581cf",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-09/value-uk-open-data-pack-public2-2026-10-09.zip"
+    },
+    {
+      "name": "VALUE-UK-GBP1-23zone-research-suite-public2-2026-10-09.zip",
+      "bytes": 645219333,
+      "sha256": "0e96c0d605514fc285636d6c13c7d55466cf078e8f1fcc7bdee8637071039783",
+      "url": "https://github.com/hanzohanzhe/Value/releases/download/value-data-2026-10-09/VALUE-UK-GBP1-23zone-research-suite-public2-2026-10-09.zip"
     }
   ],
   "installation_boundary": {
-    "GBP1-suite": "Existing research-suite UI/API import",
+    "GBP1-suite": "Historical public1 suite; use the public2 suite with VALUE 0.7.0",
     "national-base-and-R029": "Existing national Data UI/API import",
     "23zone-and-11zone-overlays": "Existing Python installer with zonal conditional dataset slots; national Data endpoint does not accept network-only roles",
     "11zone-family": "Unzip container; install selected nested ZIP, not the family ZIP",
-    "11zone-national-component": "Supplementary dataset, not a value.data-bundle/v1 installation ZIP"
+    "11zone-national-component": "Supplementary dataset, not a value.data-bundle/v1 installation ZIP",
+    "GBP1-public2-suite": "Research-suite Data UI/API in VALUE 0.7.0; corrected methodology profile"
   },
   "GBP1_pack_id": "value-uk-open-data-pack-v1",
   "R029_pack_id": "value-uk-calendar-vx-trade001",
   "metadata_revision": "public1 in manifest/artifact name, not changed runtime pack ID",
-  "science_gate": "Bounded interface acceptance only; no historical/annual scientific equivalence; GBP1 original nuclear policy preserved and checked in actual short-run checkpoint"
+  "science_gate": "Bounded interface acceptance only; no historical/annual scientific equivalence; GBP1 original nuclear policy preserved and checked in actual short-run checkpoint",
+  "public2": {
+    "date": "2026-10-09",
+    "release_tag": "value-data-2026-10-09",
+    "decision": "A32",
+    "R029_public2_pack_id": "value-uk-calendar-vx-trade001-public2",
+    "R029_public2_manifest_sha256": "d9876d985371d6a9dca0ebd934eb982ad7fdb674bdcbc8160baf7a82040ed309",
+    "GBP1_public2_pack_id": "value-uk-open-data-pack-public2",
+    "GBP1_public2_manifest_sha256": "8d73e08cb10360bb4d268566073b9ecad9e451c3153e566f732eb31ddccaf86f",
+    "builder": "scripts/build_value_uk_pack_revision.py@v3",
+    "installation": "Existing national Data UI/API import; corrected methodology profile only",
+    "flow_sign": "declared_unverified (boundary_flow_reference_2022.json missing)",
+    "science_gate": "Two-period corrected-profile import check passed on 0.7.0 source; GBP1 public2 one-year corrected acceptance is local (A16-7/A18), not a historical validation",
+    "research_suite_public2": {
+      "suite_id": "value-uk-research-suite-v1-public2",
+      "decision": "A34",
+      "components": [
+        "value-uk-open-data-pack-public2",
+        "value-gb-zonal-network-v1-c9e841112c40"
+      ],
+      "component_bundle_sha256": [
+        "b6ceac96b8de0dfd0364881f873b3b61ddb49480f5823d68118bf8bfb58581cf",
+        "9800610146cc5022b7ea8e4b0caba9ab76a32c857cb328c42bec746e2493d48a"
+      ],
+      "study_ids": [
+        "value-uk-copperplate-2025-2034-public2",
+        "value-uk-zonal-2025-2034-public2"
+      ],
+      "builder": "scripts/build_value_uk_research_suite.py (R7-2) via release-0.7.0/data/build/suite-public2/build_suite_public2.py",
+      "science_gate": "Suite UI import, readiness and two-period corrected-profile Runs of both Studies passed on 0.7.0 source; validation gate not evaluated; network results spatially indicative (ENGLAND_FALLBACK)"
+    }
+  }
 }

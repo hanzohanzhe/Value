@@ -1,0 +1,10 @@
+"use client";
+
+// Runs (/runs, /runs/[runId]). Moved essentially verbatim from app/page.tsx (P1 W3, spec 5.1); W4 restyles it.
+import RunWorkspace from "../features/runs/RunWorkspace";
+import { useWorkbench } from "../features/shell/Workbench";
+
+export default function RunsView() {
+  const { setView, workspace, selectedProjectId, setSelectedRunId, launching, setInspectTarget, openView, methodologyCatalogue, setPreflightMode, setPreflight, frozenRunReadiness, frozenRunProject, frozenInputSnapshot, frozenRunSelectionId, projectRuns, selectedProject, selectedProjectPack, canRunMode, effectivePreflightMode, checkingPreflight, preflight, selectRunProject, zonalPreflight, selectedRun, selectedRunSourceMutable, selectedRunContext, teachingProject, onRecoveredStudyCreated, checkPreflight, startRun, resumeRun, markRunLost, resubmitRun, rerunAsCopperplate, cloneStoragePolicy, lifecycleAction } = useWorkbench();
+  return <RunWorkspace methodologyCatalogue={methodologyCatalogue} workspace={workspace} selectedProjectId={selectedProjectId} selectedProject={selectedProject} selectedProjectPack={selectedProjectPack} selectedRun={selectedRun} projectRuns={projectRuns} preflight={preflight} effectivePreflightMode={effectivePreflightMode} checkingPreflight={checkingPreflight} zonalPreflight={zonalPreflight} teachingProject={teachingProject} launching={launching} selectedRunSourceMutable={selectedRunSourceMutable} canRunMode={canRunMode} frozen={{ contextKind: selectedRunContext.kind, runId: frozenRunSelectionId, readiness: frozenRunReadiness, project: frozenRunProject, snapshot: frozenInputSnapshot }} actions={{ selectRunProject, onSelectRun: setSelectedRunId, onMode: (mode) => { setPreflightMode(mode); setPreflight(null); }, onNavigate: openView, cloneStoragePolicy, checkPreflight, startRun, resumeRun, resubmitRun, rerunAsCopperplate, lifecycleAction, onRecoveredStudyCreated, markLost: markRunLost, openInspect: (tab) => { setInspectTarget({ tab, nonce: Date.now() }); setView("audit"); } }} />;
+}

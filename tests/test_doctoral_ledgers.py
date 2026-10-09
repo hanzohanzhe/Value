@@ -192,8 +192,10 @@ class DoctoralLedgerTests(unittest.TestCase):
             cm_levy_gbp=40, generated_mwh=100,
             resource_capital_cost_gbp=100, resource_operating_cost_gbp=180,
             resource_reliability_cost_gbp=17000, served_mwh=80)
-        self.assertEqual(actual["legacy_system_cost_gbp"], 8390)
-        self.assertEqual(actual["legacy_cost_per_mwh_generated"], 83.9)
+        # A16-5 (fx5.voll-17000): 1 MWh of deficit at 17000 GBP/MWh (thesis code: 8000).
+        self.assertEqual(actual["legacy_deficit_cost_gbp"], 17000)
+        self.assertEqual(actual["legacy_system_cost_gbp"], 17390)
+        self.assertAlmostEqual(actual["legacy_cost_per_mwh_generated"], 173.9)
         self.assertEqual(actual["resource_system_cost_gbp"], 17280)
         self.assertEqual(actual["resource_cost_per_mwh_served"], 216)
 

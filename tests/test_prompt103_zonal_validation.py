@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pulp
 
+from gridform_validation.cbc import cbc_path
+
 from gridform_core.builtin.scheme_c_1000twh.staged_psm import (
     _validate_vre_counterfactual_cases,
 )
@@ -342,7 +344,7 @@ def _solve_prompt107_three_case_lp(
         + pulp.lpSum(bid_cost(bid, zonal_accept) for bid in model_input.bids)
         + model_input.voll_gbp_per_mwh * pulp.lpSum(zonal_shed.values())
     )
-    status = problem.solve(pulp.COIN_CMD(msg=False))
+    status = problem.solve(pulp.COIN_CMD(msg=False, path=cbc_path()))
     if status != pulp.LpStatusOptimal:
         raise RuntimeError(
             f"Prompt 107 combined CBC was {pulp.LpStatus[status]}"

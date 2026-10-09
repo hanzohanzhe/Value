@@ -116,7 +116,7 @@ class Prompt100ZonalLedgerTests(unittest.TestCase):
         self.assertEqual(result.counterfactual_realised_input_sha256, "a" * 64)
         self.assertEqual(
             result.boundary_shadow_value_semantics,
-            "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost",
+            market_ledger.BOUNDARY_SHADOW_SEMANTICS_V2,  # P0-8 S10 primary-stage dual
         )
 
     def test_bad_counterfactual_identity_is_rejected(self):

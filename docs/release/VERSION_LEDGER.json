@@ -1,0 +1,447 @@
+{
+  "schema_version": "value.version-ledger/v1",
+  "base_commit": "35aadb3",
+  "application_version": {
+    "baseline": "0.6.0-alpha.2",
+    "current": "0.7.0-alpha.1",
+    "current_python": "0.7.0a1",
+    "bumps": [
+      {
+        "from": "0.6.0-alpha.2",
+        "to": "0.7.0-alpha.1",
+        "package": "X0 S14",
+        "reason": "All P0 review fixes merged on fix/review-2026-10-04 (decision X0 Q5). One application version for package.json, package-lock.json, pyproject.toml (0.7.0a1), gridform_core/runtime_paths.APPLICATION_VERSION, the Windows pilot product.json and installer DisplayVersion, README and the current-version lines of the user guides, installation guide, mathematical reference, frontend field map and VALIDATION_AND_CLAIMS. Deprecated scheme_c_1000twh routes now name 0.8.0 for removal. Historical records keep 0.6.0-alpha.2: website/content.py, website/static/assets/value-source-CITATION.cff, website/static/assets/value-source-metadata.bib, docs/PUBLICATION_PLAN.md, CHANGELOG sections of earlier versions, scientific-readiness reports and the doctoral profile label. No installer of 0.7.0-alpha.1 has been built or installed (docs/release/P0_ACCEPTANCE.md section 6)."
+      }
+    ]
+  },
+  "rules": [
+    "Every module version change appends one bump {from, to, package, correction_ids, reason, requires_user_opt_in}; 'to' must be greater than 'from' and 'from' must equal the previous current_version (merge against the version current at merge time, C23).",
+    "current_version must equal the manifest version and the implementation class version (scripts/check_version_ledger.py, p0_gate quick).",
+    "requires_user_opt_in=true marks a method upgrade: saved Studies are classified method_upgrade_required and need explicit confirmation in the UI (Q13); code-only bumps are false."
+  ],
+  "modules": {
+    "agent-investment": {
+      "baseline_version": "2.2.0",
+      "baseline_scientific_version": "value-cem-v1-2026.08.10",
+      "current_version": "3.1.0",
+      "bumps": [
+        {
+          "from": "2.2.0",
+          "to": "3.0.0",
+          "package": "P0-7",
+          "correction_ids": [
+            "p07.thermal-net-revenue"
+          ],
+          "reason": "Decision A4 (both profiles, a universal exception to the Q1 freeze): thermal investment net revenue = market income - generated MWh x (generation + fuel + carbon + unit_time cost), read from the PSM's value.agent-cashflow/v1 extension; VRE and storage keep gross revenue as profit (bit-identical). A decidable thermal group without a running-cost row fails closed. Investment proposals and retirements of thermal owners change, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "3.0.0",
+          "to": "3.1.0",
+          "package": "R7-1",
+          "correction_ids": [
+            "r71.endogenous-planning-timelines"
+          ],
+          "reason": "Decision A33 (finding P4-05, universal: both profiles): every endogenous proposal takes its completion year and success probability from the pack's planning tables frozen into the initial state (original Scheme C append_model_investment_to_pipeline: median stage-1 timeline with the MD5 -6..+6 month dispersion, regional success rate, technology and region mapping of the source), at least the year after the decision; the min/max derivation from member-asset extensions (always one year, probability one) is removed. Commissioning years and expected capacities of model investments change, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "dynamic-annual-storage-cost": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "dynamic-storage-recovery-2026.08.04",
+      "current_version": "2.0.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "2.0.0",
+          "package": "P0-6",
+          "correction_ids": [
+            "p06.storage-bid-cycle-only"
+          ],
+          "reason": "Interface change (plan 4.6 S10, decision Q8): the created DynamicAnnualStorageCost exposes bid_basis, which the default PSM's market rule set owns (cycle_only in the corrected profile). The module's own default (thesis_dwell_linear) and its numbers are unchanged for every other caller; the user-formula module declares 1.0.0 explicitly.",
+          "requires_user_opt_in": false
+        }
+      ]
+    },
+    "planning-pipeline": {
+      "baseline_version": "2.2.0",
+      "baseline_scientific_version": "value-cem-v1-2026.08.10",
+      "current_version": "2.2.0",
+      "bumps": []
+    },
+    "reference-transmission-expansion": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "observed-congestion-central-planner-v1",
+      "current_version": "1.0.0",
+      "bumps": []
+    },
+    "user-formula-storage-cost": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "user-formula-storage-cost/v1",
+      "current_version": "1.0.0",
+      "bumps": []
+    },
+    "value-annual-state-transition": {
+      "baseline_version": "2.1.0",
+      "baseline_scientific_version": "value-cem-v1-2026.08.09",
+      "current_version": "2.1.0",
+      "bumps": []
+    },
+    "value-bid-at-cost-psm": {
+      "baseline_version": "5.1.0",
+      "baseline_scientific_version": "live-state-coupling-2026.08.09",
+      "current_version": "6.7.0",
+      "bumps": [
+        {
+          "from": "5.1.0",
+          "to": "5.2.0",
+          "package": "P0-4",
+          "correction_ids": [
+            "p04.storage-energy-audit",
+            "p04.surplus-routing",
+            "p04.surplus-node-boundary"
+          ],
+          "reason": "Energy-balance observation of the default PSM (plan 4.4 S4-S6, decisions Q7, A2, Q12): per-asset storage energy audit, source-classified surplus routing, the market rule set's declared balance boundary with a compatibility adjustment capped at numerical noise, and A2 stress events recorded in the ledger. Dispatch, prices, state of charge, costs and investment paths are unchanged (doctoral trajectory bit-identical); only accounting-zone ledger tables and columns change, so this is a code-identity upgrade without user opt-in (Q13).",
+          "requires_user_opt_in": false
+        },
+        {
+          "from": "5.2.0",
+          "to": "6.0.0",
+          "package": "P0-6",
+          "correction_ids": [
+            "p06.physical-operating-cost",
+            "p06.d1-surplus-accounting",
+            "p06.storage-after-generation-merit-key",
+            "p06.avoided-cost-downward-order",
+            "p06.storage-net-per-period",
+            "p06.storage-fee-per-period",
+            "p06.no-vre-pre-clearing-skim",
+            "p06.storage-bid-cycle-only",
+            "p06.storage-uniform-price-settlement",
+            "p06.voll-chronology-parameter"
+          ],
+          "reason": "Default PSM clearing and storage dispatch corrections (plan 4.6 S4-S10, decisions Q8, A2, A8): the kernel runs one of two market rule sets derived from the methodology catalogue. The corrected profile clears with D1-surplus, the storage-after-generation merit key, the avoided-cost down-regulation stack, per-period storage netting, per-period storage fees, no VRE skim, cycle-only dynamic storage bids and uniform-price settlement, so its dispatch, prices, storage state and investment paths change (method upgrade). The doctoral profile keeps the 0.6.0-alpha.2 dispatch bit for bit; both profiles report the P5-06 physical operating cost.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.0.0",
+          "to": "6.1.0",
+          "package": "FX4",
+          "correction_ids": [
+            "fx4.storage-offer-ledger"
+          ],
+          "reason": "Four-role finding M-D1 (decisions A16-1, Q12): the default PSM books every storage discharge offer of the ahead and balancing stages, accepted or not, at its real price in the new accounting table storage_orders (full trace level), with the energy each offer delivered. The battery's orders row (final_dispatch, offer price 0.0) is frozen and unchanged. Dispatch, prices, state of charge, costs and investment paths are unchanged in both profiles (doctoral trajectory bit-identical); only an accounting-zone ledger table is added, so this is a code-identity upgrade without user opt-in (Q13).",
+          "requires_user_opt_in": false
+        },
+        {
+          "from": "6.1.0",
+          "to": "6.2.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: VoLL is 17000 GBP/MWh in both profiles. The doctoral rule set values recorded unserved energy in the physical operating cost at the constant 17000 instead of the thesis constant 8000 (reliability_voll constant_17000; universal accounting correction, dispatch unchanged); the corrected rule set reads market.voll_gbp_per_mwh, whose registry default is now 17000 instead of 10000. Operating and system cost of years with recorded blackout change, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.2.0",
+          "to": "6.3.0",
+          "package": "FX6",
+          "correction_ids": [
+            "fx6.day-ahead-interconnector-imports"
+          ],
+          "reason": "Decision A16-2 (four-role finding S-D3): in the corrected profile every interconnector with a positive transfer constraint offers its available import capacity to the day-ahead clearing at the period's counterparty price (times the bid multiplier), in the merit order with domestic generation; the balancing stage offers only the capacity the day-ahead schedule left, and an accepted day-ahead import can be reduced in the curtailment branch at its avoided import price. Dispatch, imports, prices, costs and investment paths of corrected Runs change (method upgrade), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis rule (imports only in the balancing stage) bit for bit.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.3.0",
+          "to": "6.4.0",
+          "package": "FX8",
+          "correction_ids": [
+            "fx8.nuclear-in-service-at-start"
+          ],
+          "reason": "Decision A18: in the corrected profile every nuclear unit counts as running before the first period of each model year, so its first day-ahead offer carries no start-up cost and it runs as baseload at its station availability; the start-up cost (offer adder and physical start-up term) is charged only when a unit restarts after a period in which it was not accepted (refuelling, outage, zero availability or not cleared). Nuclear output, the generation mix, prices, costs, emissions and investment paths of corrected Runs change (method upgrade; GBP1 2025 nuclear about 2 TWh to about 38 TWh), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis rule (every unit off before the first period) bit for bit; its nuclear path dependency is disclosed (A15).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.4.0",
+          "to": "6.5.0",
+          "package": "R1-2",
+          "correction_ids": [
+            "r12.economic-downward-order"
+          ],
+          "reason": "Decisions A19 and A22: in the corrected profile the curtailment-branch down regulation no longer reduces every gas or biomass unit before VRE. A gas or biomass unit is reduced before VRE down to its minimum stable generation (CCGT/OCGT 50 %, biomass 35 % of its accepted output) because that saves its fuel, carbon and variable cost without a restart; below it, shutting units down comes before curtailing VRE only when the net saving c - S(H)/(m H) is positive (m: minimum stable fraction; restart cost S per MW of capacity: CCGT 110/130/150, OCGT 170, biomass 125 GBP/MW; expected downtime H from the day-ahead forecast surplus run, at least the minimum down time 6 h / 0.5 h / 6 h). Curtailment, thermal output, emissions, prices, costs and investment paths of corrected Runs change (method upgrade), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the thesis curtail-cost order bit for bit.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.5.0",
+          "to": "6.6.0",
+          "package": "R3-3",
+          "correction_ids": [
+            "r33.restart-cost-price-base-2025"
+          ],
+          "reason": "Decision A24-4: the restart costs of the thermal restart table (gridform_core/data/thermal/value_thermal_restart_v1.json, author-reviewed in A22 in 2024 GBP) are restated in the price base of the model's cost parameters, 2025 GBP, the same basis as the fuel and carbon prices (DECISIONS A6: start-year money; every shipped study starts in 2025): factor 1.0336 = ONS CPI D7BT annual average 2025 / 2024 = 138.4 / 133.9, so S = CCGT 113.7/134.4/155.0 GBP/MW hot/warm/cold, OCGT 175.7, biomass 129.2 (from 110/130/150, 170, 125). Minimum stable generation, minimum down times and the rule are unchanged. In the default PSM's economic down-regulation stack (r12.economic-downward-order) the net saving a(H) = c - S(H)/(m H) of a shutdown segment falls by 3.4 % of its restart term, so a shutdown that was just profitable can move after VRE (break-even downtime H* = S/(m c): CCGT 3.99 -> 4.13 h, OCGT 4.54 -> 4.69 h, biomass 4.20 -> 4.34 h at the thesis costs); curtailment, thermal output and costs of corrected Runs can change (method change), so saved Studies need explicit confirmation (Q13). The doctoral profile does not use the table.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "6.6.0",
+          "to": "6.7.0",
+          "package": "R4-1",
+          "correction_ids": [
+            "r41.down-regulation-taken-once",
+            "r41.must-run-surplus-counted-once",
+            "p06.storage-net-per-period"
+          ],
+          "reason": "Decision A26: three implementation errors of the retained thesis kernel are corrected in both methodology profiles (universal corrections; the website methodology describes the published VALUE model, not the thesis). (1) A15: in the curtailment branch a hydro, biomass or thermal unit that met the remaining down-regulation requirement left the requirement unchanged, so the same amount was taken again from later offers (usually wind); it is now taken once (r41.down-regulation-taken-once). (2) DEV-STO-01: every clearing stage reset a store's power limit, so a store could discharge up to twice its rating and charge and discharge in one period; the thesis rule set now keeps one net position per store and period, as the corrected rule set already did (p06.storage-net-per-period, now universal; storage_position is no longer a switch). (3) DEV-BAL-04: the balancing stage added must-run nuclear surplus that served the balancing requirement to nuclear output already in the accepted supply and paid it again; it is now used up without a second generation or payment (r41.must-run-surplus-counted-once). Thesis bids, prices, merit order and settlement are otherwise unchanged. Dispatch, storage, curtailment, unserved energy, prices and costs of doctoral Runs change (the doctoral golden family is re-baselined once); corrected Runs ran the corrected behaviour already, but the applied-corrections identity of both profiles changes, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-copperplate-balancing": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "value-copperplate-balancing-2026.08.21",
+      "current_version": "1.1.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "1.1.0",
+          "package": "P0-8b",
+          "correction_ids": [
+            "p08.pro-rata-ties",
+            "p08.dec-class-order"
+          ],
+          "reason": "P0-8 S7 (P2-05, P3-04): equal-price bids of one direction are accepted pro rata to their available energy instead of one at a time by bid id (storage after generation at an equal price, as in the zonal LP), so renaming an asset no longer moves dispatch; an up bid above VOLL is never accepted. The 1.0.0 bid-id rule stays only as the internal LEGACY golden rule. The scientific_version is kept because the doctoral profile whitelists it although no doctoral PSM calls a balancing module (Q3). M6 review (p08.dec-class-order): in the down direction equal-price groups are ordered by the 0.01-rounded dec price, then the shared dec class order (fuel, import, storage, run-of-river, VRE, nuclear; C15), then the exact price, so storage charging absorbs a surplus before VRE is curtailed even when its dec price is capped at a GBP 0 inc; the up direction keeps storage after generation (Q8).",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-doctoral-national-psm": {
+      "baseline_version": "0.2.0",
+      "baseline_scientific_version": "doctoral-national-final96-signed-settlement-2026.09.10",
+      "current_version": "0.3.0",
+      "bumps": [
+        {
+          "from": "0.2.0",
+          "to": "0.3.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000; the module's system cost books blackout x VoLL, so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). Scientific version unchanged (doctoral profile whitelist).",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-legacy-storage-tariff": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "doctoral-reproduction-storage-tariffs-2026.07.18",
+      "current_version": "1.0.0",
+      "bumps": []
+    },
+    "value-perfect-foresight-lp": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "value-perfect-foresight-single-node-lp-v1",
+      "current_version": "1.1.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "1.1.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The LP trades shedding against cost at this price, so dispatch and cost of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). Code unchanged apart from the default.",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-reference-dc-network": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "reference-chronological-dc-opf-v1",
+      "current_version": "1.2.0",
+      "bumps": [
+        {
+          "from": "1.0.0",
+          "to": "1.1.0",
+          "package": "P0-8a",
+          "correction_ids": [
+            "p08.network-share-expansion"
+          ],
+          "reason": "Asset bus shares are solved by expand-solve-aggregate (one sub-resource per bus share; capacity, power, energy and SOC times share) instead of injecting the whole asset at the last mapped bus (P1-01). Single-bus inputs give numerically equal results (only signed zeros and an integer curtailment zero differ in serialization). Studies with split mappings change numerically, so per Q13 the upgrade is marked as needing explicit user confirmation (pending author ruling; M2-P0-8a review). Since the M2 integration merged X0 S11 the flag is enforced: a saved Study that selects this module is classified method_upgrade_required (Q13) and runs under 1.1.0 only after the user confirms its revision migration.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.1.0",
+          "to": "1.2.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The DC-OPF objective and physical cost price shedding at this value, so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-repd-era5-aggregated-weather": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "value-repd-era5-aggregated-weather-2026.08.21",
+      "current_version": "1.0.0",
+      "bumps": []
+    },
+    "value-representative-point-weather": {
+      "baseline_version": "1.0.0",
+      "baseline_scientific_version": "value-representative-point-weather-2026.08.21",
+      "current_version": "1.0.0",
+      "bumps": []
+    },
+    "value-staged-bid-at-cost-psm": {
+      "baseline_version": "1.1.0",
+      "baseline_scientific_version": "value-staged-national-market-2026.08.21",
+      "current_version": "1.6.0",
+      "bumps": [
+        {
+          "from": "1.1.0",
+          "to": "1.2.0",
+          "package": "P0-6",
+          "correction_ids": [
+            "p06.staged-dwell-disclosure"
+          ],
+          "reason": "P5-15 disclosure (plan 4.6 S10): storage reports carry dwell_source = not_tracked_staged_single_pool and preflight warns (GF_STAGED_DWELL_NOT_TRACKED) when a dwell-based storage-cost module is selected. Dispatch, prices and costs are unchanged (report-only).",
+          "requires_user_opt_in": false
+        },
+        {
+          "from": "1.2.0",
+          "to": "1.3.0",
+          "package": "P0-8b",
+          "correction_ids": [
+            "p08.dec-economic-pricing",
+            "p08.pro-rata-ties",
+            "p08.network-free-counterfactual",
+            "p08.boundary-primary-dual",
+            "p08.dec-class-order"
+          ],
+          "reason": "P0-8 S7 (P2-05, P3-04): staged balancing dec bids carry an economic price (network_method_rules ECONOMIC): fuel units SRMC x market.dec_multiplier - support, imports the period price x dec multiplier, VRE and run-of-river hydro -support, nuclear SRMC x m_dec - support - inflexibility premium (shared down-regulation table), storage min(own up x round-trip efficiency, the period's lowest inc price). Before, every dec was GBP 0 and the curtailed asset depended on its id; a dec'd thermal unit kept a windfall. Dispatch, curtailment, settlement and investment income of staged Runs change, so saved Studies need explicit confirmation (Q13). Scientific version value-staged-network-economics-2026.10.06. P0-8 S9 (P2-02, P2-03, P2-04, C22): the two reference cases of the network cost are the zonal LP without the network (value.network-free-lp/v1: same bids, envelopes, VOLL, solver), every case and the agent running cost are priced with one per-period unit-cost table, and every period checks primary_zonal >= primary_network_free - tol; network_constraint_cost is zero whenever the network does not bind. P0-8 S10 (P2-06, F3-05): boundary marginal values are the primary-stage duals of the zonal LP (signed forward, status computed / degenerate_dual / shared_member, ledger semantics value.boundary-marginal-value/v2); the annual key boundary_shadow_value_gbp (a hard-coded 0.0) is replaced by boundary_congestion_rent_diagnostic_gbp and pre-P0-8b rows read as not_computed. M6 review (p08.dec-class-order): at an equal dec price storage charging precedes run-of-river, VRE and nuclear reductions in copperplate and in the zonal LP (a down bid's pro-rata group carries its dec class; the physical tie phase weighs non-storage down bids by class: fuel 0, import 0.5, run-of-river 2, VRE 3, nuclear 4 per MWh against storage throughput 1), and the rule set records dec_class_order.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.3.0",
+          "to": "1.4.0",
+          "package": "FX5",
+          "correction_ids": [
+            "fx5.voll-17000"
+          ],
+          "reason": "Decision A16-5: the default value of lost load (market.voll_gbp_per_mwh) is 17000 GBP/MWh instead of 10000. The staged chronology carries it to copperplate balancing (an up bid above VoLL is never accepted) and to zonal redispatch (VoLL x shed in the primary objective, the network-free counterfactual and the redispatch accounting), so results of a Study without an explicit VoLL can change; saved Studies need explicit confirmation (Q13). The zonal balancing module keeps 4.0.0 (its code and solver contract are unchanged; the VALUE UK study already pinned 17000).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.4.0",
+          "to": "1.5.0",
+          "package": "R3-2",
+          "correction_ids": [
+            "r32.network-economic-downward-order"
+          ],
+          "reason": "Decisions A19, A22, A22a and A24-3: in the network models (staged copperplate and zonal redispatch balancing, corrected profile only, Q3) a gas (CCGT, OCGT) or biomass unit is no longer reduced in one block before VRE. Rule set network-economic-v2 (network_method_rules ECONOMIC, thermal_shutdown = restart_cost_vs_avoided_cost_v1) splits its dec bid at minimum stable generation (CCGT/OCGT 50 %, biomass 35 % of its ahead schedule, the restart table of R1-2): the running range keeps the dec price c (SRMC x market.dec_multiplier - support) and is reduced before VRE; the shutdown segment (bid ...:down-shutdown:<asset>, dec class fuel_shutdown) is priced at the net saving a(H) = c - S(H)/(m H) (S: CCGT 110/130/150 GBP/MW hot/warm/cold by H, OCGT 170, biomass 125) and competes with VRE on price, after VRE at an equal band; when the expected downtime H is below the minimum down time (6 h / 0.5 h / 6 h) it is a last resort (class fuel_shutdown_last_resort, priced 0.01 below every other dec of the period). H = (1 + consecutive later periods whose forecast demand is covered by the declared VRE and nuclear availability) x period hours. Each staged market year records extensions.downward_restart_economics (value.network-downward-restart-economics/v1). Balancing dispatch, curtailment, settlement and investment income of staged Runs can change, so saved Studies need explicit confirmation (Q13). The copperplate (1.1.0) and zonal (4.0.0) balancing modules read the two new classes from the shared table without a version change: their clearing rule (price, then the shared class order) is unchanged. Scientific version value-staged-network-restart-economics-2026.10.07.",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "1.5.0",
+          "to": "1.6.0",
+          "package": "R3-3",
+          "correction_ids": [
+            "r33.restart-cost-price-base-2025"
+          ],
+          "reason": "Decision A24-4: the restart costs of the thermal restart table (gridform_core/data/thermal/value_thermal_restart_v1.json, author-reviewed in A22 in 2024 GBP) are restated in the price base of the model's cost parameters, 2025 GBP, the same basis as the fuel and carbon prices (DECISIONS A6: start-year money; every shipped study starts in 2025): factor 1.0336 = ONS CPI D7BT annual average 2025 / 2024 = 138.4 / 133.9, so S = CCGT 113.7/134.4/155.0 GBP/MW hot/warm/cold, OCGT 175.7, biomass 129.2 (from 110/130/150, 170, 125). Minimum stable generation, minimum down times and the rule are unchanged. In the network models' dec order (r32.network-economic-downward-order, rule set network-economic-v2, whose record carries the table sha256) the shutdown-segment dec price a(H) = c - S(H)/(m H) changes accordingly, so balancing dispatch, curtailment and settlement of staged Runs can change (method change); saved Studies need explicit confirmation (Q13). Copperplate 1.1.0 and zonal 4.0.0 are unchanged.",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-storage-expansion-policy": {
+      "baseline_version": "4.0.0",
+      "baseline_scientific_version": "storage-cost-policy-injected-2026.08.04",
+      "current_version": "5.1.0",
+      "bumps": [
+        {
+          "from": "4.0.0",
+          "to": "5.0.0",
+          "package": "P0-7",
+          "correction_ids": [
+            "p07.storage-leftover-headroom",
+            "p07.power-battery-pool"
+          ],
+          "reason": "value-corrected only (doctoral unchanged, Q1): storage headroom from the post-charge leftover surplus the PSM publishes (P5-01), zero with a recorded reason for a partial-year chronology or a PSM without the trace, one shared power-battery pool instead of three copies of the cap (P5-02), no kernel global rebound. Storage investment opens in corrected Studies, so saved Studies need explicit confirmation (Q13).",
+          "requires_user_opt_in": true
+        },
+        {
+          "from": "5.0.0",
+          "to": "5.1.0",
+          "package": "R1-3",
+          "correction_ids": [
+            "r13.per-type-battery-caps"
+          ],
+          "reason": "Decision A20: in the corrected profile the 0.25C, 0.5C and 1C batteries each get their own expansion cap of expansion.storage_cap_fraction x power_room (0.2 by default), as in the thesis design, instead of sharing one pool (P0-7 S7, p07.power-battery-pool, withdrawn). The P5-01 leftover headroom is unchanged. Storage additions of corrected Runs may now be up to three times the pooled amount when batteries are profitable (method change), so saved Studies need explicit confirmation (Q13). The doctoral profile keeps the 35aadb3 per-type caps bit for bit.",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "value-zonal-redispatch-balancing": {
+      "baseline_version": "3.0.0",
+      "baseline_scientific_version": "value-lossless-zonal-redispatch-gbp1-candidate-2026.10.01",
+      "current_version": "4.0.0",
+      "bumps": [
+        {
+          "from": "3.0.0",
+          "to": "4.0.0",
+          "package": "P0-8a",
+          "correction_ids": [
+            "p08.zonal-solver-v4",
+            "p08.dec-class-order"
+          ],
+          "reason": "Solver contract v4 (Q5): after the primary solve total load shedding is locked (fixed at zero when the primary sheds nothing), then only the bid-cost terms carry a coefficient-aware numerical lock; GBP 1 is only the acceptance ceiling. v3 used GBP 1 as the lock allowance, which later phases spent on spurious shedding and asset-ID shifts (P2-01). Equal-price pro-rata grouping no longer splits by resource class; a down bid's forced part (the asset's schedule minus the upper bound on its final dispatch, i.e. realised available energy or the import capacity of its interconnector envelope, split over its down bids and capped at their capacity) stays outside the group, so only free volume is shared pro rata (M2-P0-8a review M3, landed after golden revision 1; envelope bound added by the third-round review in P0-8b). Formulation value.lossless-zonal-redispatch/v2. P0-8b M6 review (p08.dec-class-order, unreleased 4.0.0 amended): a down bid's pro-rata group key carries its dec class and the physical tie phase adds a class weight per MWh of non-storage down bids (fuel 0, import 0.5, run-of-river 2, VRE 3, nuclear 4; storage throughput 1), so at an equal primary price the LP follows the copperplate class order within a zone; across zones the weight is traded against flow MWh.",
+          "requires_user_opt_in": true
+        }
+      ]
+    },
+    "vre-expansion-cap": {
+      "baseline_version": "2.0.0",
+      "baseline_scientific_version": "authoritative-copy-2026.07.18",
+      "current_version": "2.0.0",
+      "bumps": []
+    }
+  },
+  "planned_sequence": {
+    "note": "Plan 3.5 expectation, informational only; the ledger entries above are authoritative.",
+    "modules": {
+      "value-bid-at-cost-psm": [
+        "5.2.0 (P0-4)",
+        "6.0.0 (P0-6)",
+        "6.1.0 (P0-7)"
+      ],
+      "value-staged-bid-at-cost-psm": [
+        "1.2.0 (P0-6)",
+        "1.3.0 (P0-7)",
+        "1.4.0 (P0-8b)"
+      ],
+      "value-zonal-redispatch-balancing": [
+        "4.0.0 (P0-8)"
+      ],
+      "value-reference-dc-network": [
+        "1.1.0 (P0-8a)",
+        "1.2.0 (P0-7)"
+      ],
+      "value-copperplate-balancing": [
+        "1.1.0 (P0-8)"
+      ],
+      "dynamic-annual-storage-cost": [
+        "2.0.0 (P0-6)"
+      ],
+      "agent-investment": [
+        "3.0.0 (P0-7)",
+        "3.1.0 (R7-1)"
+      ],
+      "value-storage-expansion-policy": [
+        "5.0.0 (P0-7)"
+      ]
+    }
+  }
+}

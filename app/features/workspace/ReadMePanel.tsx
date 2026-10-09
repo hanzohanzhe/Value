@@ -1,7 +1,9 @@
 "use client";
 
+import { apiFetch } from "../../lib/api.ts";
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import "./community-paths.css";
+import { useT } from "../../i18n/LocaleProvider";
 
 export const README_URL = "/README.md";
 
@@ -111,6 +113,7 @@ function ReadMeContent({ blocks }: { blocks: ReadMeBlock[] }) {
 }
 
 export function ReadMePanel({ open, onClose }: ReadMePanelProps) {
+  const t = useT();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [content, setContent] = useState<ReadMeState>({ status: "idle" });
@@ -132,7 +135,7 @@ export function ReadMePanel({ open, onClose }: ReadMePanelProps) {
       if (!active) return;
       setContent({ status: "loading" });
       try {
-        const response = await fetch(README_URL, { signal: controller.signal, cache: "no-cache" });
+        const response = await apiFetch(README_URL, { signal: controller.signal, cache: "no-cache" });
         // A missing asset can be served as a successful app-shell fallback.
         if (!response.ok || response.headers.get("content-type")?.includes("text/html")) {
           throw new Error("Read me unavailable");
@@ -155,18 +158,19 @@ export function ReadMePanel({ open, onClose }: ReadMePanelProps) {
       onCancel={(event) => { event.preventDefault(); onClose(); }}
     >
       <header className="value-readme-header">
-        <h2 id={titleId}>Read me</h2>
-        <button type="button" className="value-readme-close" onClick={onClose} aria-label="关闭 Read me">关闭</button>
+        <h2 id={titleId}>{t("readme.title")}</h2>
+        <button type="button" className="value-readme-close" onClick={onClose} aria-label={t("readme.closeLabel")}>{t("readme.close")}</button>
       </header>
       <div className="value-readme-body">
-        {(content.status === "idle" || content.status === "loading") && <p role="status">正在读取使用说明…</p>}
+        {/* R3M-7 (round R2): the status line exists only while the Read me is being read. */}
+        {content.status === "loading" && <p role="status">{t("readme.loading")}</p>}
         {content.status === "error" && <div className="value-readme-error" role="alert">
-          <p>暂时无法读取使用说明。请重试，或打开说明原文。</p>
+          <p>{t("readme.error")}</p>
           <button type="button" className="secondary" onClick={() => {
             setContent({ status: "loading" });
             setAttempt((value) => value + 1);
-          }}>重新读取</button>
-          <a href={README_URL} target="_blank" rel="noreferrer">打开说明原文</a>
+          }}>{t("readme.retry")}</button>
+          <a href={README_URL} target="_blank" rel="noreferrer">{t("readme.original")}</a>
         </div>}
         {content.status === "ready" && <ReadMeContent blocks={content.blocks} />}
       </div>

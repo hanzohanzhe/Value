@@ -9,6 +9,7 @@ import unittest
 import pandas as pd
 
 from gridform_core.canonical_psm_data import build_chronology, native_initial_state
+from gridform_core.data_method import run_policy
 from gridform_core.v2.contracts import AssetStateV2, OperatingState, PSMInput
 from gridform_core.builtin.scheme_c_1000twh.doctoral_market_factory import from_doctoral_psm_input
 from tests.test_doctoral_market_factory import gas_parameters, pumped_parameters
@@ -171,7 +172,8 @@ class DoctoralChronologyEntryTests(unittest.TestCase):
             extensions={"doctoral_alignment_profile": "value.doctoral-national/v1"} if aligned else {})
 
     def chronology(self, *, aligned=True, assets=None):
-        return build_chronology(self.pack, self.manifest, self.state(aligned=aligned, assets=assets), periods=8, period_hours=.5)
+        return build_chronology(self.pack, self.manifest, self.state(aligned=aligned, assets=assets), periods=8, period_hours=.5,
+                                data_policy=run_policy(self.manifest))
 
     def test_default_path_retains_existing_cost_soc_and_price_semantics(self):
         chronology = self.chronology(aligned=False)

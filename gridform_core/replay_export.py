@@ -14,13 +14,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Mapping
 
-from .market_ledger import _read_only_connection, validate_market_ledger_file
+from .market_ledger import _read_only_connection, public_boundary_row, validate_market_ledger_file
+from .market_replay import market_price_basis
+from .model_clock import ledger_clock, period_start_iso
 from .module_context import RunStaticContext, YearContext, canonical_context_sha256
 from .run_policy import resolve_run_policy
 from .run_snapshot import SnapshotError, verify_run_input_snapshot
 from .v2.module_manifest import workspace_registry
 from .zonal_contracts import load_zonal_network_pack
-from .zonal_solver_contract import validate_solver_settings
+from .zonal_solver_contract import validate_recorded_solver_settings
 
 
 REPLAY_EXPORT_SCHEMA = "value.replay-export/v1"
@@ -103,6 +105,21 @@ def _tables(connection: sqlite3.Connection) -> set[str]:
         str(row[0])
         for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
     }
+
+
+def _period_hours(metadata: Mapping[str, object]) -> float:
+    try:
+        value = float(metadata.get("period_hours", 0.5))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.5
+    return value if value > 0 else 0.5
+
+
+def _model_clock(metadata: Mapping[str, object]) -> dict[str, object]:
+    """S-中1: the export states the model clock its period_start_utc column uses."""
+
+    clock = ledger_clock(metadata)
+    return {**clock, "period_hours": _period_hours(metadata), "period_start_column": "period_start_utc"}
 
 
 def _metadata(connection: sqlite3.Connection) -> dict[str, object]:
@@ -330,7 +347,14 @@ def _period_outcome(
         "schema_version": "value.replay-period-outcome/v1",
         "year": year,
         "period": period,
-        "tables": {table: _rows(connection, table, year, period) for table in common if table in tables},
+        "tables": {
+            table: (
+                [public_boundary_row(row) for row in _rows(connection, table, year, period)]
+                if table == "boundary_period_summary"
+                else _rows(connection, table, year, period)
+            )
+            for table in common if table in tables
+        },
     }
 
 
@@ -387,14 +411,32 @@ def _validated_context(
     return raw, context
 
 
+class ReplayExportError(ValueError):
+    """A replay export refusal; ``code`` is set when the cause has a stable code.
+
+    A Run whose frozen method was superseded (for example a v3 zonal solver
+    contract after the v4 upgrade) is refused here with
+    ``GF_RUN_METHOD_SUPERSEDED``: its results stay readable, but the full
+    replay ZIP re-verifies the frozen snapshot against the current registry.
+    """
+
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 def _verified_snapshot(run_root: Path) -> tuple[dict[str, object], object]:
     registry = workspace_registry()
     try:
         snapshot = verify_run_input_snapshot(
             run_root / "input-snapshot", registry
         )
-    except (OSError, ValueError, SnapshotError) as exc:
-        raise ValueError(f"frozen snapshot identity validation failed: {exc}") from exc
+    except SnapshotError as exc:
+        raise ReplayExportError(
+            f"frozen snapshot identity validation failed: {exc}", exc.code
+        ) from exc
+    except (OSError, ValueError) as exc:
+        raise ReplayExportError(f"frozen snapshot identity validation failed: {exc}") from exc
     status = _read_object(run_root / "status.json", "Official Run status")
     if (
         str(status.get("input_snapshot_id") or "")
@@ -455,9 +497,11 @@ def _validate_snapshot_context_identity(
         registry.manifest(
             str(balancing.get("module_id")), expected_slot="balancing"
         )
-        expected_solver = validate_solver_settings(
+        # Reading a frozen Run: its recorded contract (v2, v3 or v4) is
+        # validated for identity only and never executed (P0-8 S4/S5).
+        expected_solver = validate_recorded_solver_settings(
             project.get("solver_contract")
-        ).to_dict()
+        )
     if _json_bytes(run_context.solver_contract) != _json_bytes(expected_solver):
         raise ValueError("Frozen snapshot identity does not match Run context solver")
     network_hash = snapshot.get("network_pack_manifest_sha256")
@@ -472,6 +516,7 @@ def _validate_snapshot_context_identity(
     try:
         frozen_network = load_zonal_network_pack(
             run_root / "input-snapshot" / "network-pack", network,
+            topology_policy="audit",  # reading a historical Run (P0-8 S11)
         )
     except (OSError, TypeError, ValueError) as exc:
         raise ValueError(f"Frozen network-pack identity validation failed: {exc}") from exc
@@ -814,6 +859,7 @@ def _write_zip(
                 "output_format": request.output_format,
             },
             "ledger_schema_version": metadata.get("schema_version"),
+            "model_clock": _model_clock(metadata),
             "trace_level": trace_level,
             "period_count": period_count,
             "portability": portability,
@@ -824,6 +870,36 @@ def _write_zip(
     return {"portability": portability, "members": len(members) + 1}
 
 
+def _period_stress(
+    connection: sqlite3.Connection, where: str, values: tuple[object, ...],
+) -> dict[tuple[int, int], Mapping[str, object]] | None:
+    """Per-period A2 stress of the exported periods (R5 R-低9), as the replay API computes it.
+
+    One bucket per period, from :func:`market_replay._bucket_stress`; None
+    when the ledger lacks the columns (the export then leaves them empty).
+    """
+
+    from .market_replay import _bucket_stress
+
+    tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    bounds = connection.execute(
+        "SELECT year, MIN(period), MAX(period) FROM period_summary" + where + " GROUP BY year ORDER BY year",
+        values,
+    ).fetchall()
+    result: dict[tuple[int, int], Mapping[str, object]] = {}
+    for year, first, last in bounds:
+        first, last = int(first), int(last)
+        by_bucket = _bucket_stress(
+            connection, tables, year=int(year), start_period=first, end_period=last,
+            bucket_periods=1, buckets=list(range(last - first + 1)),
+        )
+        if by_bucket is None:
+            return None
+        for bucket, stats in by_bucket.items():
+            result[(int(year), first + int(bucket))] = stats
+    return result
+
+
 def _write_flat(
     database: Path,
     temporary: Path,
@@ -832,9 +908,14 @@ def _write_flat(
     values: tuple[object, ...],
 ) -> int:
     rows_written = 0
+    # R5 R-低9: the price basis of clearing_price_gbp_per_mwh (Q6) and the A2
+    # stress columns the API and UI show, so a flat export carries both.
+    price_basis = market_price_basis(database)["price_basis"]
     with _read_only_connection(database) as connection, temporary.open(
         "w", encoding="utf-8", newline=""
     ) as handle:
+        period_hours = _period_hours(_metadata(connection))
+        stress = _period_stress(connection, where, values)
         connection.row_factory = sqlite3.Row
         cursor = connection.execute(
             "SELECT * FROM period_summary" + where + " ORDER BY year, period, stage",
@@ -843,6 +924,13 @@ def _write_flat(
         writer: csv.DictWriter[str] | None = None
         for row in cursor:
             payload = dict(row)
+            payload["clearing_price_basis"] = price_basis
+            period_stress = None if stress is None else stress.get((int(row["year"]), int(row["period"])))
+            payload["period_shortfall_mwh"] = None if period_stress is None else period_stress["shortfall_mwh"]
+            payload["period_stress"] = None if period_stress is None else int(int(period_stress["stress_periods"]) > 0)
+            payload["shortfall_basis"] = None if period_stress is None else period_stress["shortfall_basis"]
+            # S-中1: the UTC start of the period on the model clock (last column).
+            payload["period_start_utc"] = period_start_iso(int(row["year"]), int(row["period"]), period_hours)
             if output_format == "jsonl":
                 handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
             else:

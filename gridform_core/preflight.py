@@ -10,12 +10,21 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from .data_pack_validation import validate_data_pack
 from .domain_readiness import build_domain_readiness
 from .module_conformance import conformance_report
+from .module_quarantine import external_code_evidence, quarantine_check
 from .parameters import ParameterValidationError, resolve_scheme_c_parameters
+from .methodology import (
+    COMBINATION_ERROR_CODE,
+    ProfileCombinationError,
+    UnknownProfileError,
+    pack_entry,
+    resolve_project_methodology,
+    selection_combination_violations,
+)
 from .module_context import canonical_context_sha256
 from .preflight_resources import (
     ResourceEstimate,
@@ -24,10 +33,23 @@ from .preflight_resources import (
     evaluate_resource_gate,
 )
 from .project_revision import project_fingerprint
-from .run_quota import RunQuotaPolicy
-from .run_policy import resolve_run_policy, validate_pack_run_mode
+from .revision_migration import classify_revision_mismatch
+from .run_quota import (
+    QUOTA_CORRECTIVE_ACTIONS,
+    QuotaUsage,
+    RunQuotaPolicy,
+    global_quota_reasons,
+    output_reservation_bytes,
+    quota_usage,
+)
+from .run_policy import (
+    resolve_run_policy,
+    scope_extension_block_message,
+    scope_runs_extensions,
+    validate_pack_run_mode,
+)
 from .frontend_contract import validate_maturity_acknowledgements
-from .v2.module_manifest import ModuleRegistryV2, workspace_registry
+from .v2.module_manifest import ModuleRegistryV2, builtin_registry, workspace_registry
 from .runtime_paths import user_data_root
 from .runtime_capabilities import VALUE_NATIVE, capability_status
 from .study_market_config import resolve_market_configuration
@@ -37,6 +59,10 @@ from .zonal_solver_contract import validate_solver_settings
 
 
 SCHEMA_VERSION = "value.run-preflight/v1"
+# Storage-cost modules whose bid has a dwell (holding) term (P0-6 S10, P5-15).
+DWELL_STORAGE_COST_MODULES = frozenset({"dynamic-annual-storage-cost", "user-formula-storage-cost"})
+
+
 def _issue(code: str, severity: str, scope: str, message: str, action: str) -> dict[str, str]:
     return {
         "code": code,
@@ -45,6 +71,20 @@ def _issue(code: str, severity: str, scope: str, message: str, action: str) -> d
         "message": message,
         "corrective_action": action,
     }
+
+
+def _replacement_advice(rows: object) -> str:
+    """How a Study stops using blocked local code (R5 F-低1): a module is
+    replaced by another module; an extension is deselected."""
+
+    kinds = {str(row.get("kind")) for row in rows or () if isinstance(row, Mapping)}
+    module = "select another module in the Study"
+    extension = "deselect the extension in the Study (saved as a new revision)"
+    if kinds == {"extension"}:
+        return extension
+    if "extension" in kinds:
+        return f"{module}, or {extension}"
+    return module
 
 
 def resource_gate_report(
@@ -75,18 +115,38 @@ def resource_gate_report(
     )
 
 
-def _runtime_observations(runs_root: Path | None, *, mode: str) -> list[float]:
+def _quota_usage(runs_root: Path | None, run_id: str | None) -> QuotaUsage:
+    if runs_root is None:
+        return QuotaUsage(0, 0, ())
+    return quota_usage(Path(runs_root), exclude_run=run_id)
+
+
+# F2-N2 (four-role report): the former 0.35 s per period estimated a
+# 35,040-period VALUE 101 run at 3.4 hours; it took about 3 minutes.  Measured
+# on the reference machine: VALUE 101 two-year about 0.005 s per period, GBP1
+# public1 one year about 0.02 s (F3 report, 351 s); 0.03 stays conservative.
+DEFAULT_SECONDS_PER_PERIOD = 0.03
+# R4 R-低8: without a comparable completed local run the estimate is a range
+# between the measured per-period times of the smallest and the largest
+# shipped scales (VALUE 101 two-year run about 0.005 s, GBP1 one-year run
+# about 0.02-0.03 s), not one point that is off by a factor of six for one
+# of them.
+HEURISTIC_SECONDS_PER_PERIOD_RANGE = (0.005, DEFAULT_SECONDS_PER_PERIOD)
+ANNUAL_RUNTIME_PERIODS = 17_520
+
+
+def _runtime_observations(runs_root: Path | None, *, mode: str | None, minimum_periods: int = 1) -> list[float]:
     values: list[float] = []
     if runs_root is None or not runs_root.is_dir():
         return values
     for status_path in runs_root.glob("*/status.json"):
         try:
             status = json.loads(status_path.read_text(encoding="utf-8"))
-            if status.get("status") != "completed" or status.get("mode") != mode:
+            if status.get("status") != "completed" or (mode is not None and status.get("mode") != mode):
                 continue
             policy = status.get("run_policy") or {}
             periods = int(policy.get("total_periods") or 0)
-            if periods <= 0:
+            if periods <= 0 or periods < minimum_periods:
                 continue
             started = datetime.fromisoformat(str(status["started_at"]))
             finished = datetime.fromisoformat(str(status["finished_at"]))
@@ -139,6 +199,38 @@ def _data_scale(pack_root: Path, pack_manifest: Mapping[str, object]) -> dict[st
         "planning_projects": planning_projects,
         "basis": "counts from fleet.generators and projects.repd bindings",
     }
+
+
+def _storage_module_estimate_warning(
+    selected: Mapping[str, object], trace: str
+) -> dict[str, object] | None:
+    """R5-3 (A28, edit-module 中1): warn that the estimate assumes built-in storage behaviour.
+
+    A storage offer that keeps a store full (an offer above the market price)
+    tops it up with a tiny charge tranche every period.  The disk and runtime
+    estimate is calibrated on the built-in storage-cost modules, so a full
+    market replay with any other storage-cost module can take longer and
+    write more than estimated.  The declared clearing state is bounded
+    (STORAGE_STATE_TRANCHE_RECORD_LIMIT), but offers and runtime still scale
+    with the number of stored tranches.
+    """
+
+    module_id = selected.get("storage_cost")
+    if trace != "full" or not module_id:
+        return None
+    try:
+        if str(module_id) in builtin_registry().manifests():
+            return None
+    except (ValueError, OSError):
+        return None
+    return _issue(
+        "GF_PREFLIGHT_ESTIMATE_STORAGE_MODULE", "warning", "output",
+        f"The disk and runtime estimate is calibrated on the built-in storage-cost modules; with {module_id} "
+        "a store that rarely discharges keeps one record per charging period, so a full market replay can "
+        "take longer and write more than estimated.",
+        "Run a short scope first and compare its time and size with the estimate, or choose Summary market "
+        "tracing for long runs with this module.",
+    )
 
 
 def _estimates(
@@ -200,12 +292,23 @@ def _estimates(
         + periods_per_year * max(1, operating_assets) * (80 if trace == "full" else 48)
     )
     observations = _runtime_observations(runs_root, mode=str(policy["mode"]))
+    if not observations and periods >= ANNUAL_RUNTIME_PERIODS:
+        # F2-N2: a full-year scope without a same-mode run uses the per-period
+        # time of any completed run of at least a year (the per-period cost of
+        # a two-year and a full run is the same; short runs are dominated by
+        # their fixed start-up time and are not used).
+        observations = _runtime_observations(runs_root, mode=None, minimum_periods=ANNUAL_RUNTIME_PERIODS)
+    runtime_range: list[float] | None = None
     if observations:
         seconds_per_period = sum(observations) / len(observations)
         basis = f"mean of {len(observations)} comparable completed local run(s)"
     else:
-        seconds_per_period = 0.35
-        basis = "conservative initial heuristic; no comparable completed local run"
+        runtime_range = [max(60.0, periods * value) for value in HEURISTIC_SECONDS_PER_PERIOD_RANGE]
+        seconds_per_period = DEFAULT_SECONDS_PER_PERIOD
+        basis = (
+            "initial heuristic of 0.03 s per period (measured: VALUE 101 two-year run about 0.005 s, "
+            "GBP1 one-year run about 0.02 s); no comparable completed local run"
+        )
     return {
         "label": "estimate_not_guarantee",
         "periods": periods,
@@ -213,6 +316,8 @@ def _estimates(
         "disk_bytes": estimated_bytes,
         "runtime_seconds": max(60.0, periods * seconds_per_period),
         "runtime_basis": basis,
+        "runtime_basis_kind": "observed" if observations else "heuristic",
+        "runtime_range_seconds": runtime_range,
         "peak_memory_bytes": estimated_peak_memory,
         "peak_memory_warning_bytes": max(4 * 1024 * 1024 * 1024, estimated_peak_memory * 2),
         "memory_basis": "bounded structural heuristic from pack asset/project counts and selected audit level; not a universal promise",
@@ -222,6 +327,40 @@ def _estimates(
         "zonal_redispatch": zonal,
         "full_trace_requires_presented_disk_estimate": trace == "full",
     }
+
+
+def data_eligibility_issues(project: Mapping[str, Any], pack_manifest: Mapping[str, Any],
+                            data_report: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Preflight issues of the data layers under the Study's profile (P0-5a S9)."""
+
+    from .data_method import project_policy
+    from .data_validation_layers import finding_severity
+
+    layers = dict(data_report.get("layers") or {})
+    findings = [*dict(layers.get("chronology") or {}).get("findings", []),
+                *dict(layers.get("plausibility") or {}).get("findings", [])]
+    if not findings:
+        return []
+    try:
+        policy = project_policy(project, pack_manifest)
+    except ValueError:
+        return []
+    issues = []
+    for finding in findings:
+        severity = finding_severity(policy, finding)
+        if severity == "not_applicable":
+            continue
+        issue = _issue(
+            str(finding["code"]), severity, "data",
+            f"{finding.get('role') or 'data pack'}: {finding['message']}",
+            "Use a pack revision that declares this series correctly (or the doctoral reproduction profile, "
+            "which reads the known GBP1 public1 defects repaired and records them)."
+            if severity == "error" else "Review the data-pack finding before publication.",
+        )
+        # Spec 11.1 (S-D1): the readiness card groups findings by their layer.
+        issue["layer"] = str(finding.get("layer") or "")
+        issues.append(issue)
+    return issues
 
 
 def run_preflight(
@@ -275,8 +414,97 @@ def run_preflight(
             "Open the Study model-chain settings and save an explicit supported market configuration.",
         ))
     extension_parameters = dict(project.get("extension_parameters") or {})
+    # P0-2: a selected module/extension that is quarantined blocks the run
+    # with its own code; quarantine elsewhere only warns and is recorded.
+    quarantine = quarantine_check(registry, selected.values(), selected_extensions)
+    checks["module_quarantine"] = quarantine
+    checks["external_code"] = external_code_evidence(registry, selected.values(), selected_extensions)
+    # R4 M-低3 / F-低3: once quarantined, disabled or stale local code is
+    # reported with its own code, the selection and revision checks that fail
+    # only because of it add no further (misleading) errors.
+    code_blocked = bool(quarantine["blockers"])
+    if quarantine["blockers"]:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules",
+            "The Study selects quarantined local code: " + ", ".join(
+                f"{row['kind']} {row['id']} ({row['error_code']})" for row in quarantine["blockers"]
+            ),
+            "Open Modules: repair the quarantined entry's source and press Rescan, or disable it and "
+            + _replacement_advice(quarantine["blockers"]) + ".",
+        ))
+    elif quarantine["entries"]:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_QUARANTINE_PRESENT", "warning", "modules",
+            f"{len(quarantine['entries'])} local module or extension entr"
+            + ("y is" if len(quarantine["entries"]) == 1 else "ies are")
+            + " quarantined; this Study does not use them.",
+            "Open Modules to disable or repair them; the run is unaffected.",
+        ))
+    # M2-N2: a selected local module or extension that is installed but
+    # disabled is named as such (the selection check below would only say
+    # "not registered").
+    from .module_installation import disabled_selections
+
+    disabled = disabled_selections(registry, selected.values(), selected_extensions)
+    checks["module_disabled"] = disabled
+    code_blocked = code_blocked or bool(disabled)
+    if disabled:
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_DISABLED", "error", "modules",
+            "The Study selects disabled local code: " + ", ".join(
+                f"{row['kind']} {row['id']}" + (f" {', '.join(row['versions'])}" if row["versions"] else "")
+                for row in disabled
+            ) + ".",
+            "Open Modules > Disabled and quarantined and Enable it, or "
+            + _replacement_advice(disabled) + ".",
+        ))
+    # A16-4 (M-D2, spec 11.7): an installed module whose source was edited in
+    # place is accepted and recorded; preflight says so before the run.
+    from .module_installation import installed_source_changes
+
+    source_changes = installed_source_changes(selected.values())
+    checks["module_source_changes"] = source_changes
+    # R3M-5: a quarantined module cannot run, so no result records anything yet.
+    quarantined_modules = {
+        str(row.get("id")) for row in quarantine["blockers"] if str(row.get("kind")) == "module"
+    }
+    for change in source_changes:
+        recorded = (
+            "It is quarantined, so no Run can start; once it is repaired, results record the new source hash."
+            if str(change["module_id"]) in quarantined_modules
+            else "Results will record the new source hash."
+        )
+        issues.append(_issue(
+            "GF_PREFLIGHT_MODULE_SOURCE_CHANGED", "warning", "modules",
+            f"Module {change['module_id']} source changed since install "
+            f"({str(change['installed_sha256'])[:8]}… → {str(change['current_sha256'])[:8]}…). "
+            + recorded,
+            "No action needed if the edit is intended: Compare shows the module method as changed. "
+            "Reinstall under a new version to keep the installed identity.",
+        ))
+    # R4 F-中2: the same rule for installed extensions edited in place.
+    from .extension_bundle import installed_extension_source_changes
+    from .runtime_paths import external_modules_root
+
+    try:
+        extension_changes = installed_extension_source_changes(
+            selected_extensions, modules_root=external_modules_root(),
+        )
+    except OSError:
+        extension_changes = []
+    checks["extension_source_changes"] = extension_changes
+    for change in extension_changes:
+        issues.append(_issue(
+            "GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED", "warning", "modules",
+            f"Extension {change['extension_id']} source {change['implementation']} changed since install "
+            f"({str(change['installed_sha256'])[:8]}… → {str(change['current_sha256'])[:8]}…). "
+            "Results may change; the Run records the new source hash.",
+            "No action needed if the edit is intended: Compare shows the extension source as changed. "
+            "Reinstall under a new version to keep the installed identity.",
+        ))
+    registered_extensions = registry.extension_manifests()
     active_dataset_slots = tuple(dataset_slots) + registry.extension_registry.conditional_dataset_slots(
-        selected_extensions
+        tuple(item for item in selected_extensions if item in registered_extensions)
     )
     pack_selection = None
     try:
@@ -294,6 +522,14 @@ def run_preflight(
             "Install and select the signed network pack named by market_configuration.network_pack_id.",
         ))
     selected.setdefault("transition", "value-annual-state-transition")
+    if selected.get("psm") == "value-staged-bid-at-cost-psm" and selected.get("storage_cost") in DWELL_STORAGE_COST_MODULES:
+        # P0-6 S10 (P5-15): the staged PSM bids storage with d = 0 (one SoC pool).
+        issues.append(_issue(
+            "GF_STAGED_DWELL_NOT_TRACKED", "warning", "modules",
+            "The staged PSM keeps one storage pool and does not track dwell: storage bids use d = 0, so the "
+            "selected storage-cost module's holding (dwell) term is reported but never bid.",
+            "Read storage revenue and dwell-based recovery of this Study as indicative, or use the default PSM.",
+        ))
     runtime_capability = capability_status(
         VALUE_NATIVE, selected_module_ids=selected.values()
     )
@@ -305,6 +541,25 @@ def run_preflight(
             "GF_PREFLIGHT_PYTHON_VERSION", "error", "environment",
             f"The selected VALUE native runtime is not validated on Python {sys.version.split()[0]}.",
             str(runtime_capability["corrective_action"]),
+        ))
+    # M-D6: the run entry verifies the sealed runtime kernel and refuses an
+    # unregistered edit (GF_COMPATIBILITY_001) only after the inputs are
+    # frozen; preflight runs the same uncached check so readiness says so.
+    from .builtin.scheme_c_1000twh.runtime_overlay import inspect_runtime_overlay
+
+    try:
+        overlay_errors = [str(item) for item in inspect_runtime_overlay()["errors"]]
+    except Exception as exc:  # a missing or unreadable manifest refuses the run as well
+        overlay_errors = [f"{type(exc).__name__}: {exc}"]
+    checks["runtime_overlay"] = {"passed": not overlay_errors, "errors": overlay_errors[:10]}
+    if overlay_errors:
+        issues.append(_issue(
+            "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED", "error", "environment",
+            "The runtime kernel differs from its sealed manifest (RUNTIME_OVERLAY.json); a run would stop with "
+            "GF_COMPATIBILITY_001 after freezing its inputs: " + "; ".join(overlay_errors[:3]),
+            "Restore the changed kernel files, or record the edit as a method change: raise the module version, "
+            "append docs/release/VERSION_LEDGER.json and run scripts/seal_runtime_overlay.py --correction <id> "
+            "(MODULE_DEVELOPER_101, built-in method upgrades).",
         ))
     missing_imports = list(runtime_capability["missing_imports"])
     checks["scientific_dependencies"] = {"passed": not missing_imports, "missing": missing_imports}
@@ -355,24 +610,89 @@ def run_preflight(
                 "Open Model modules, correct the listed manifest or callable contract, and run preflight again.",
             ))
     except (ValueError, KeyError) as exc:
-        issues.append(_issue(
-            "GF_PREFLIGHT_MODULE_SELECTION", "error", "modules", str(exc),
-            "Select one compatible registered module for every required model slot.",
-        ))
+        if getattr(exc, "code", None) == "GF_EXTENSION_HOOK_IMPORT":
+            # A selected extension's hook failed to import during this
+            # resolution: it is runtime-quarantined now, so the code is the
+            # same as on every later preflight (P0-2 review).
+            checks["module_quarantine"] = quarantine_check(registry, selected.values(), selected_extensions)
+            if not code_blocked:  # R4 F-低3: reported once
+                issues.append(_issue(
+                    "GF_PREFLIGHT_MODULE_QUARANTINED", "error", "modules", str(exc),
+                    "Open Modules: repair the extension's source and press Rescan, or disable the entry.",
+                ))
+            code_blocked = True
+        elif getattr(exc, "code", None) == "GF_EXTENSION_SOURCE_RELOAD_REQUIRED":
+            # R4 F-低3: the hook file was edited after VALUE imported it.
+            issues.append(_issue(
+                "GF_PREFLIGHT_EXTENSION_SOURCE_RELOAD", "error", "modules", str(exc),
+                "Open Modules and press Rescan modules so VALUE imports the edited source (a broken edit "
+                "is quarantined there), then check readiness again.",
+            ))
+            code_blocked = True
+        elif not code_blocked:
+            issues.append(_issue(
+                "GF_PREFLIGHT_MODULE_SELECTION", "error", "modules", str(exc),
+                "Select one compatible registered module for every required model slot.",
+            ))
     checks["modules"] = {"passed": bool(selected_reports) and all(row["status"] == "passed" for row in selected_reports), "selected": selected_reports}
+
+    # Methodology profile and its combination whitelist (X0 S8, Q3, C16): the
+    # same check as Study resolution and the run entry.
+    whitelist_packs = [
+        pack_entry(pack_root, pack_manifest),
+        pack_entry(pack_selection.network_pack_root)
+        if pack_selection is not None and pack_selection.network_pack_root is not None else None,
+    ]
+    try:
+        methodology = resolve_project_methodology(project)
+        violations = selection_combination_violations(
+            methodology,
+            registry=registry,
+            modules=selected,
+            extensions=selected_extensions,
+            data_packs=whitelist_packs,
+        )
+        checks["methodology"] = {
+            "passed": not violations,
+            **methodology.to_dict(),
+            "violations": violations,
+        }
+        if violations:
+            issues.append(_issue(
+                COMBINATION_ERROR_CODE, "error", "methodology",
+                str(ProfileCombinationError(methodology.profile_id, violations)),
+                "Select the corrected methodology, or keep to the thesis-lineage modules and data packs "
+                "and disable external code for the doctoral reproduction.",
+            ))
+    except UnknownProfileError as exc:
+        checks["methodology"] = {"passed": False, "error": str(exc)}
+        issues.append(_issue(
+            UnknownProfileError.code, "error", "methodology", str(exc),
+            "Choose one of the installed methodology profiles.",
+        ))
 
     try:
         revision_manifest = (
             pack_selection.revision_manifest
             if pack_selection is not None else dict(pack_manifest)
         )
-        calculated_revision = project_fingerprint(project, registry, revision_manifest)
         declared_revision = project.get("revision_sha256")
-        revision_ok = declared_revision in {None, calculated_revision}
+        # A mismatch is classified, never silently re-identified (X0 S11, Q13).
+        classification = (
+            classify_revision_mismatch(project, registry, revision_manifest, whitelist_packs=whitelist_packs)
+            if declared_revision is not None else None
+        )
+        calculated_revision = (
+            classification["calculated_sha256"] if classification is not None
+            else project_fingerprint(project, registry, revision_manifest)
+        )
+        kind = classification["classification"] if classification is not None else "unsaved"
+        revision_ok = kind in {"unsaved", "none"} or bool(classification and classification["automatic"])
         checks["project_revision"] = {
             "passed": revision_ok,
             "declared_sha256": declared_revision,
             "calculated_sha256": calculated_revision,
+            "classification": classification,
         }
         if declared_revision is None:
             issues.append(_issue(
@@ -380,15 +700,49 @@ def run_preflight(
                 "This legacy project has no saved immutable revision identity.",
                 "Save the project once before using its output as a published scientific result.",
             ))
-        elif not revision_ok:
+        elif classification is not None and classification["automatic"]:
+            # R4 F-中2: an in-place edit of installed local code is code-only
+            # for the revision rules (A16-4: accepted and recorded) but may
+            # change results; say so instead of "no change expected".
+            edited = sorted({
+                f"{row.get('kind')} {row.get('id')}"
+                for difference in classification.get("differences") or ()
+                for row in difference.get("source_changes") or ()
+            })
+            issues.append(_issue(
+                str(classification["error_code"]), "warning", "project",
+                (
+                    "The source code of installed local code changed in place since this Study revision was "
+                    "saved (" + ", ".join(edited) + "); results may change. A new revision recording the new "
+                    "source hashes is appended when the run starts."
+                ) if edited else (
+                    "Only the code identity of this Study changed (no change to methods or results expected); "
+                    "a new revision is appended when the run starts."
+                ),
+                "No action needed if the edit is intended; Compare shows the changed source."
+                if edited else "No action needed.",
+            ))
+        elif kind == "content_changed":
             issues.append(_issue(
                 "GF_PREFLIGHT_PROJECT_REVISION", "error", "project",
                 "The project content no longer matches its saved revision hash.",
                 "Reload or save a new project revision; do not run an edited stale snapshot.",
             ))
+        elif classification is not None and kind != "none":
+            issues.append(_issue(
+                str(classification["error_code"]), "error", "project",
+                "The installed VALUE computes this Study differently from its saved revision ("
+                + kind.replace("_", " ") + "); review the changes and confirm them as a new revision.",
+                "Press Check readiness again: VALUE lists the changes for your confirmation and saves them as a new revision of this Study.",
+            ))
     except (ValueError, KeyError) as exc:
         checks["project_revision"] = {"passed": False, "error": str(exc)}
-        issues.append(_issue("GF_PREFLIGHT_PROJECT_REVISION", "error", "project", str(exc), "Correct the project modules and save a new revision."))
+        if code_blocked:
+            # R4 M-低3: the revision cannot be computed only because the local
+            # code reported above cannot be resolved; fixing it is the action.
+            checks["project_revision"]["blocked_by"] = "local_code"
+        else:
+            issues.append(_issue("GF_PREFLIGHT_PROJECT_REVISION", "error", "project", str(exc), "Correct the project modules and save a new revision."))
 
     zonal_roles = {
         str(row.get("role")) for row in active_dataset_slots
@@ -412,7 +766,16 @@ def run_preflight(
         "selected": list(selected_extensions),
         "base_roles": len(dataset_slots),
         "conditional_roles": len(active_dataset_slots) - len(dataset_slots),
+        "executes_in_scope": bool(selected_extensions) and scope_runs_extensions(mode),
     }
+    # F-D2 (DECISIONS A16-3): a market-step-only scope never runs extension
+    # hooks, so selecting extensions there would record methods that do not run.
+    if selected_extensions and not scope_runs_extensions(mode):
+        issues.append(_issue(
+            "GF_PREFLIGHT_SCOPE_SKIPS_EXTENSIONS", "error", "project",
+            scope_extension_block_message(selected_extensions),
+            "Choose two-period or a longer scope, or deselect the extension(s) in the Study.",
+        ))
     checks["data_pack"] = data_report
     checks["network_data_pack"] = network_data_report
     if not data_report["valid"]:
@@ -429,6 +792,9 @@ def run_preflight(
         ))
     for warning in data_report["warnings"]:
         issues.append(_issue("GF_PREFLIGHT_DATA_WARNING", "warning", "data", str(warning), "Review the declared adapter behaviour before publication."))
+    # P0-5a S9: the chronology and plausibility layers never decide `valid`;
+    # the run's methodology profile decides which of their findings block.
+    issues.extend(data_eligibility_issues(project, pack_manifest, data_report))
     if network_data_report is not None:
         for warning in network_data_report["warnings"]:
             issues.append(_issue(
@@ -530,11 +896,14 @@ def run_preflight(
                     calibration_runner=resource_calibration_runner,
                     headroom_bounds=headroom_bounds,
                 )
+                usage = _quota_usage(runs_root, preflight_run_id)
                 decision = resource_gate_report(
                     project=project,
                     estimate=estimate,
                     free_bytes=free,
                     quota_policy=resource_quota_policy,
+                    existing_run_bytes=usage.existing_run_bytes,
+                    already_reserved_bytes=usage.outstanding_reserved_bytes,
                 )
                 estimates = {
                     "label": "estimate_not_guarantee",
@@ -593,6 +962,30 @@ def run_preflight(
             checks["disk"] = {"passed": free >= required * 2, "free_bytes": free, "estimated_output_bytes": required, "safety_factor": 2}
             if free < required * 2:
                 issues.append(_issue("GF_PREFLIGHT_DISK_SPACE", "error", "output", "Free disk space is below twice the estimated run output size.", "Free disk space or reduce market tracing before launch."))
+            # The same quota rule the reservation applies (F5-04): no preflight
+            # pass followed by a 507 at launch.
+            usage = _quota_usage(runs_root, preflight_run_id)
+            reserved = output_reservation_bytes(estimates)
+            quota_reasons = global_quota_reasons(usage, reserved, resource_quota_policy)
+            checks["quota"] = {
+                "passed": not quota_reasons, "required_bytes": reserved,
+                "reason_codes": quota_reasons, **usage.to_dict(),
+                "global_quota_bytes": resource_quota_policy.global_quota_bytes,
+                "per_run_quota_bytes": resource_quota_policy.per_run_quota_bytes,
+            }
+            if quota_reasons:
+                issues.append(_issue(
+                    "GF_PREFLIGHT_RUN_QUOTA", "error", "output",
+                    "The run would exceed the local run-output quota (" + ", ".join(quota_reasons) + ").",
+                    " ".join(QUOTA_CORRECTIVE_ACTIONS),
+                ))
+        storage_estimate_warning = _storage_module_estimate_warning(
+            selected, str(resolved.runtime.values.get("runtime.market_trace_level", "summary"))
+        )
+        if storage_estimate_warning is not None:
+            issues.append(storage_estimate_warning)
+            if isinstance(estimates, dict) and estimates:
+                estimates["storage_module_outside_calibration"] = True
         export_format = str(resolved.runtime.values.get("runtime.market_export_format", "sqlite"))
         parquet_ok = export_format != "parquet" or importlib.util.find_spec("pyarrow") is not None
         checks["optional_parquet"] = {"requested": export_format == "parquet", "passed": parquet_ok}
@@ -609,7 +1002,15 @@ def run_preflight(
         "accepted": not errors,
         "mode": mode,
         "project_id": project.get("id"),
-        "project_revision_sha256": checks.get("project_revision", {}).get("calculated_sha256") if isinstance(checks.get("project_revision"), Mapping) else None,
+        # R4 M-中2 / F-中1: the report identifies the saved revision it
+        # evaluated (the declared hash), so a code-only re-identification is
+        # still evidence for that Study revision; the hash the installed code
+        # computes is reported separately.
+        "project_revision_sha256": _report_revision(checks.get("project_revision")),
+        "calculated_project_revision_sha256": (
+            checks["project_revision"].get("calculated_sha256")
+            if isinstance(checks.get("project_revision"), Mapping) else None
+        ),
         "data_pack_id": pack_manifest.get("id"),
         "runtime_capability": VALUE_NATIVE,
         "checks": checks,
@@ -621,8 +1022,16 @@ def run_preflight(
     }
 
 
+def _report_revision(check: object) -> object:
+    """The saved revision a report evaluated: declared, else calculated (unsaved)."""
+
+    if not isinstance(check, Mapping):
+        return None
+    return check.get("declared_sha256") or check.get("calculated_sha256")
+
+
 def main() -> None:
-    from .catalog import DATASET_SLOTS
+    from .dataset_slots import DATASET_SLOTS
 
     parser = argparse.ArgumentParser(description="Preflight a VALUE research project")
     parser.add_argument("--project", required=True, type=Path)

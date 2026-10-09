@@ -1,0 +1,27 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-tabs { min-width: 0; }
+  .v-tabs__list { display: flex; gap: var(--sp-1); min-width: 0; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+  .v-tabs__tab {
+    flex: 0 0 auto;
+    min-height: var(--control-h);
+    margin-bottom: -1px;
+    padding: var(--sp-2) var(--sp-3);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 650;
+    cursor: pointer;
+    opacity: 1;
+  }
+  .v-tabs__tab:hover:not(:disabled) { color: var(--ink); background: var(--blue-soft); }
+  .v-tabs__tab.is-active { color: var(--blue-dark); border-bottom-color: var(--blue); }
+  .v-tabs__tab:disabled { cursor: not-allowed; color: var(--ink-muted); text-decoration: line-through; }
+  .v-tabs__panel { padding-top: var(--sp-4); min-width: 0; }
+  @media (pointer: coarse) { .v-tabs__tab { min-height: var(--control-h-touch); } }
+}

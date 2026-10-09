@@ -191,6 +191,48 @@ def primary_annual_asset_costs(asset: AssetStateV2) -> tuple[float, float]:
     )
 
 
+CAPITAL_COST_COMPONENTS_KEY = "capital_cost_components_gbp"
+CAPITAL_COST_COMPONENTS_SCHEMA = "value.capital-cost-components/v1"
+EXISTING_STOCK_COMPATIBILITY_SCOPE = "existing_stock_compatibility"
+# DECISIONS A7: VRE and storage have no separate fixed OPEX in the headline;
+# it is treated as folded into their levelised (annualised) CAPEX.
+FOM_IN_LEVELISED_CAPEX_TECHNOLOGIES = frozenset({
+    "solar", "onshore", "offshore",
+    "1c_battery", "0.5c_battery", "0.25c_battery", "hydrogen_battery", "pumped_hydro", "battery",
+})
+
+
+def capital_cost_components(assets, *, included_fixed_opex_gbp: float | None = None) -> dict[str, object]:
+    """What a PSM's ``total_levelized_capital_cost_gbp`` contains (cost ledger v2, P0-7 S8).
+
+    ``included_annualised_capital_gbp`` and ``included_fixed_opex_gbp`` are the
+    ``primary_annual_asset_costs`` sums the PSM booked; the two named parts are
+    subsets of them: the annualised capital of assets whose
+    ``capital_cost_scope`` is ``existing_stock_compatibility`` (run-of-river
+    hydro, P4-03) and the fixed OPEX of VRE and storage (decision A7). A PSM
+    that books a different FOM passes its ``included_fixed_opex_gbp``.
+    """
+    capital = fixed = compatibility = vre_storage_fom = 0.0
+    for asset in assets:
+        asset_capital, asset_fixed = primary_annual_asset_costs(asset)
+        capital += asset_capital
+        fixed += asset_fixed
+        if asset.extensions.get("capital_cost_scope") == EXISTING_STOCK_COMPATIBILITY_SCOPE:
+            compatibility += asset_capital
+        if asset.technology in FOM_IN_LEVELISED_CAPEX_TECHNOLOGIES:
+            vre_storage_fom += asset_fixed
+    if included_fixed_opex_gbp is not None:
+        fixed = float(included_fixed_opex_gbp)
+        vre_storage_fom = 0.0
+    return {
+        "schema_version": CAPITAL_COST_COMPONENTS_SCHEMA,
+        "included_annualised_capital_gbp": capital,
+        "included_fixed_opex_gbp": fixed,
+        "existing_stock_compatibility_capital_gbp": compatibility,
+        "vre_storage_fixed_opex_gbp": vre_storage_fom,
+    }
+
+
 def resize_asset_economics(asset: AssetStateV2, capacity_mw: float) -> AssetStateV2:
     """Apply a retirement without leaving stale annualized costs on the asset."""
 

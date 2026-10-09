@@ -1,0 +1,91 @@
+{
+ "declaration_keys": ["csv_header","csv_column","timestamp_column","unit","currency","eur_per_gbp","fx_basis","interval_minutes","source_periods","source_start_utc","cyclic","leap_policy","chronology_contract","time_convention","flow_sign","country","input_unit_contract"],
+ "mentioned_by_reader_site": {"chronology_contract":[],"country":["canonical_adapter"],"csv_column":[],"csv_header":[],"currency":[],"cyclic":["canonical_adapter"],"eur_per_gbp":[],"flow_sign":[],"fx_basis":[],"input_unit_contract":["validator"],"interval_minutes":["validator"],"leap_policy":[],"pack_class":[],"period_hours":["doctoral_weather","kernel_demand_read","kernel_input_block"],"periods_per_year":["validator"],"source_periods":[],"source_start_utc":[],"teaching_only":["validator"],"time_convention":[],"timestamp_column":[],"timezone":["kernel_demand_read","validator"],"unit":["validator"]},
+ "mentioned_note": "static scan of the quoted key in each reader site's source; a mention is not proof of consumption ('cyclic' is also the SoC rule, 'country' an extension key), an empty list proves the site never reads it",
+ "pack_keys": ["timezone","country","pack_class","teaching_only","periods_per_year","period_hours"],
+ "packs": {
+  "gbp1-public1": {
+   "pack": {"country":"GB","period_hours":0.5,"periods_per_year":17520,"timezone":"Europe/London"},
+   "roles": {
+    "demand.forecast": {"input_unit_contract":"value.demand-mw-half-hour/v1","interval_minutes":30,"unit":"MW"},
+    "demand.real": {"input_unit_contract":"value.demand-mw-half-hour/v1","interval_minutes":30,"unit":"MW"},
+    "market.belgium.price": {"unit":"GBP/MWh"},
+    "market.belgium.profile": {"unit":"MWh/period"},
+    "market.france.price": {"unit":"GBP/MWh"},
+    "market.france.profile": {"unit":"MWh/period"},
+    "market.ireland.price": {"unit":"GBP/MWh"},
+    "market.ireland.profile": {"unit":"MWh/period"},
+    "market.netherlands.price": {"unit":"GBP/MWh"},
+    "market.netherlands.profile": {"unit":"MWh/period"},
+    "market.norway.price": {"unit":"GBP/MWh"},
+    "market.norway.profile": {"unit":"MWh/period"},
+    "profiles.vre_offshore": {"unit":"p.u."},
+    "profiles.vre_onshore": {"unit":"p.u."},
+    "profiles.vre_solar": {"unit":"p.u."}
+   }
+  },
+  "r029-public1": {
+   "pack": {"country":"GB","period_hours":0.5,"periods_per_year":17520,"timezone":"UTC"},
+   "roles": {
+    "demand.forecast": {"chronology_contract":"value.utc-paired-demand/v1","csv_header":true,"source_periods":17520,"unit":"MW"},
+    "demand.real": {"chronology_contract":"value.utc-paired-demand/v1","csv_header":true,"source_periods":17520,"unit":"MW"},
+    "market.belgium.price": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"belgium","csv_column":"price_gbp_per_mwh","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"GBP/MWh"},
+    "market.belgium.profile": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"belgium","csv_column":"flow_mw","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"MW"},
+    "market.france.price": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"france","csv_column":"price_gbp_per_mwh","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"GBP/MWh"},
+    "market.france.profile": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"france","csv_column":"flow_mw","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"MW"},
+    "market.ireland.price": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"ireland","csv_column":"price_gbp_per_mwh","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"GBP/MWh"},
+    "market.ireland.profile": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"ireland","csv_column":"flow_mw","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"MW"},
+    "market.netherlands.price": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"netherlands","csv_column":"price_gbp_per_mwh","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"GBP/MWh"},
+    "market.netherlands.profile": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"netherlands","csv_column":"flow_mw","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"MW"},
+    "market.norway.price": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"norway","csv_column":"price_gbp_per_mwh","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"GBP/MWh"},
+    "market.norway.profile": {"chronology_contract":"value.approved-mixed-year-interconnectors/v1","country":"norway","csv_column":"flow_mw","csv_column_honoured":false,"csv_header":true,"eur_per_gbp":1.1,"head_canonical_label":"period","source_periods":17520,"unit":"MW"},
+    "profiles.vre_offshore": {"unit":"p.u."},
+    "profiles.vre_onshore": {"unit":"p.u."},
+    "profiles.vre_solar": {"unit":"p.u."}
+   }
+  },
+  "value-101-baseline-v1": {
+   "pack": {"country":"SYNTHETIC","period_hours":0.5,"periods_per_year":17520,"teaching_only":true,"timezone":"UTC"},
+   "roles": {
+    "demand.forecast": {"unit":"MWh/period"},
+    "demand.real": {"unit":"MWh/period"},
+    "market.belgium.price": {"unit":null},
+    "market.belgium.profile": {"unit":null},
+    "market.france.price": {"unit":null},
+    "market.france.profile": {"unit":null},
+    "market.ireland.price": {"unit":null},
+    "market.ireland.profile": {"unit":null},
+    "market.netherlands.price": {"unit":null},
+    "market.netherlands.profile": {"unit":null},
+    "market.norway.price": {"unit":null},
+    "market.norway.profile": {"unit":null},
+    "profiles.vre_offshore": {"unit":null},
+    "profiles.vre_onshore": {"unit":null},
+    "profiles.vre_solar": {"unit":null}
+   }
+  },
+  "value-101-network-v1": {
+   "pack": {"country":"SYNTHETIC","period_hours":0.5,"periods_per_year":17520,"teaching_only":true,"timezone":"UTC"},
+   "roles": {
+    "demand.forecast": {"unit":"MWh/period"},
+    "demand.real": {"unit":"MWh/period"},
+    "market.belgium.price": {"unit":null},
+    "market.belgium.profile": {"unit":null},
+    "market.france.price": {"unit":null},
+    "market.france.profile": {"unit":null},
+    "market.ireland.price": {"unit":null},
+    "market.ireland.profile": {"unit":null},
+    "market.netherlands.price": {"unit":null},
+    "market.netherlands.profile": {"unit":null},
+    "market.norway.price": {"unit":null},
+    "market.norway.profile": {"unit":null},
+    "profiles.vre_offshore": {"unit":null},
+    "profiles.vre_onshore": {"unit":null},
+    "profiles.vre_solar": {"unit":null}
+   }
+  }
+ },
+ "purpose": "P0-5 S0: which declarations each pack carries per series role, and which HEAD reader site mentions each key",
+ "reader_sites": {"canonical_adapter":"gridform_core/canonical_psm_data.py","doctoral_weather":"gridform_core/doctoral_weather.py","kernel_demand_read":"gridform_core/builtin/scheme_c_1000twh/scheme_c_native_psm.py","kernel_input_block":"gridform_core/builtin/scheme_c_1000twh/runtime_compat/modular_simulation_model.py","validator":"gridform_core/data_pack_validation.py"},
+ "schema_version": "value.p0-5-declaration-coverage/v1"
+}

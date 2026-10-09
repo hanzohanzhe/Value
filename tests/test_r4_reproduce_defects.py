@@ -1,0 +1,251 @@
+"""R4 (DECISIONS A27): the reproduce-role defects of the final four-role report.
+
+Each test names the defect it covers (R-中n / R-低n / T-低n).
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sqlite3
+import tempfile
+import unittest
+import urllib.error
+import urllib.request
+from contextlib import closing
+from pathlib import Path
+
+from gridform_core.planning_index import (
+    SCHEMA_VERSION,
+    materialize_planning_index,
+    planning_summary_payload,
+    query_index_projects,
+    query_index_summary,
+)
+from gridform_core.v2.contracts import (
+    InvestmentDecision, MarketYearResult, OperatingState, PlanningAdmissionResult,
+    PlanningAdvanceResult, PlanningProject, YearResult, YearState,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURES = ROOT / "tests" / "fixtures" / "runs"
+
+
+def _project(project_id: str, status: str, year: int, technology: str = "solar", region: str = "Wales") -> PlanningProject:
+    return PlanningProject(
+        project_id, project_id.upper(), "external", technology, 25, 100, region, "planning", status,
+        year, year + 1, "expected_capacity", 0.25,
+    )
+
+
+def _year_result(year: int, active: tuple[PlanningProject, ...], commissioned: tuple[PlanningProject, ...]) -> YearResult:
+    operating = OperatingState(year, (), active)
+    advance = PlanningAdvanceResult(year, operating, active, commissioned, (), (), ())
+    market = MarketYearResult("m", year, "p", "1", {}, {}, 0, 0, 0, 1, 0, 1, 0)
+    investment = InvestmentDecision("i", year, "i", (), {})
+    admission = PlanningAdmissionResult(year, (), (), active, ())
+    return YearResult("r", year, advance, market, (), investment, admission, YearState(year + 1, (), active))
+
+
+def _two_year_index(folder: Path) -> tuple[Path, dict[str, object]]:
+    """Project p1 is active in 2025 and commissioned in 2026: two project-year rows."""
+
+    path = folder / "project-index.sqlite"
+    first = _year_result(2025, (_project("p1", "active", 2025), _project("p2", "active", 2025, "wind", "Scotland")), ())
+    second = _year_result(2026, (_project("p2", "active", 2025, "wind", "Scotland"),), (_project("p1", "commissioned", 2025),))
+    summary = materialize_planning_index(path, (first, second), run_id="run", project_revision="sha")
+    return path, summary
+
+
+class PlanningSummaryYearsTests(unittest.TestCase):
+    """R-中1: the planning panel reads years[]; the v2 index summary.json has none."""
+
+    def test_v2_index_summary_has_no_years_and_the_payload_adds_them(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path, summary = _two_year_index(Path(folder))
+            self.assertEqual(summary["schema_version"], SCHEMA_VERSION)
+            self.assertNotIn("years", summary)
+            payload = planning_summary_payload(json.loads(json.dumps(summary)), path)
+            self.assertEqual([row["year"] for row in payload["years"]], [2025, 2026])
+            # The index-level fields stay alongside the per-year rows.
+            self.assertEqual(payload["project_year_rows"], 4)
+            first = payload["years"][0]
+            self.assertEqual(first["kpis"]["active"]["projects"], 2)
+            self.assertEqual(set(first["breakdowns"]["technology"]), {"solar", "wind"})
+            self.assertEqual(set(first["breakdowns"]["region"]), {"Wales", "Scotland"})
+            self.assertEqual(first["breakdowns"]["expected_completion_year"]["2026"]["projects"], 2)
+            second = payload["years"][1]
+            self.assertEqual(second["kpis"]["commissioned"]["projects"], 1)
+            self.assertIn("event_type", second["cause_breakdowns"])
+
+    def test_payload_without_summary_file_or_index(self):
+        with tempfile.TemporaryDirectory() as folder:
+            missing = Path(folder) / "missing.sqlite"
+            self.assertEqual(planning_summary_payload(None, missing)["years"], [])
+            self.assertEqual(planning_summary_payload({"schema_version": SCHEMA_VERSION}, missing)["years"], [])
+            path, _summary = _two_year_index(Path(folder))
+            self.assertEqual(planning_summary_payload(None, path), query_index_summary(path))
+            legacy = {"schema_version": "value.planning-ledger/v1", "years": [{"year": 2030}]}
+            self.assertIs(planning_summary_payload(legacy, path), legacy)
+
+    def test_server_answers_planning_summary_with_years(self):
+        from tests.local_api_harness import start_local_api
+
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            run = home / "runs" / "pre-fix-dynamic-full"
+            shutil.copytree(FIXTURES / "pre-fix-dynamic-full", run)
+            planning = run / "model-output" / "planning"
+            planning.mkdir(parents=True)
+            path, summary = _two_year_index(planning)
+            (planning / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+            with start_local_api(data_home=home) as (_httpd, origin, _token):
+                try:
+                    with urllib.request.urlopen(origin + "/api/runs/pre-fix-dynamic-full/planning/summary", timeout=30) as response:
+                        status, payload = response.status, json.loads(response.read())
+                except urllib.error.HTTPError as error:
+                    status, payload = error.code, json.loads(error.read())
+        self.assertEqual(status, 200, payload)
+        self.assertEqual([row["year"] for row in payload["years"]], [2025, 2026])
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class ComparisonWithholdingReasonTests(unittest.TestCase):
+    """R-中2: the comparison names why annual deltas are withheld, and the export says so."""
+
+    def _pair(self):
+        from gridform_core.results_summary import build_run_summary
+
+        published = build_run_summary(FIXTURES / "pre-fix-dynamic-full")
+        published["annual"] = [{"year": 2025, "metrics": {"cem_system_cost_gbp": {
+            "value": 14699553.0, "unit": "GBP", "definition_id": "d", "denominator": None, "source": "s"}}}]
+        withheld = build_run_summary(FIXTURES / "doctoral-no-invariants")
+        return published, withheld
+
+    def test_q14_withholding_is_not_the_teaching_boundary(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        published, withheld = self._pair()
+        self.assertEqual(withheld["result_publication"]["status"], "withheld")
+        comparison = compare_run_summaries([published, withheld])
+        self.assertTrue(comparison["annual_metrics_withheld"])
+        self.assertEqual(comparison["comparison_scope"], "annual_publication_withheld")
+        self.assertEqual(comparison["annual_comparison"], [])
+        reasons = comparison["annual_withholding"]
+        self.assertEqual([row["reason_code"] for row in reasons], ["result_publication_withheld"])
+        self.assertEqual(reasons[0]["run_ids"], ["doctoral-no-invariants"])
+        self.assertIn("not evaluated", reasons[0]["text"])
+        self.assertNotIn("teaching", json.dumps(reasons))
+        self.assertNotIn("teaching", comparison["storage_pricing_interpretation"])
+        # The published Run keeps its own annual values in the export, without deltas.
+        runs = {row["run"]["run_id"]: row for row in comparison["runs"]}
+        self.assertEqual(len(runs["pre-fix-dynamic-full"]["annual"]), 1)
+        self.assertEqual(runs["doctoral-no-invariants"]["annual"], [])
+        text = comparison_csv(comparison)
+        self.assertIn("comparison_scope,annual_publication_withheld", text)
+        self.assertIn("annual_metrics_withheld,true", text)
+        self.assertIn("annual_withheld_reason,result_publication_withheld,doctoral-no-invariants,", text)
+        self.assertIn("pre-fix-dynamic-full,2025,cem_system_cost_gbp,14699553.0", text)
+        self.assertNotIn("doctoral-no-invariants,2025", text)
+
+    def test_failed_raw_invariant_is_named(self):
+        from gridform_core.results_summary import compare_run_summaries
+
+        published, withheld = self._pair()
+        withheld["result_publication"]["raw_invariant_failures"] = [{
+            "gate": "storage_invariants", "check": "storage.single_direction", "name": "Storage single direction",
+            "count": 9343, "unit": "rows", "deviation_ids": ["DEV-STO-01"]}]
+        reason = compare_run_summaries([published, withheld])["annual_withholding"][0]
+        self.assertIn("storage.single_direction (9343 rows) failed", reason["text"])
+        self.assertEqual(reason["raw_invariant_failures"][0]["deviation_ids"], ["DEV-STO-01"])
+
+    def test_teaching_runs_keep_the_teaching_reason_and_scope(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        published, _withheld = self._pair()
+        first = json.loads(json.dumps(published)); first["run"]["mode"] = "value_101_day"
+        second = json.loads(json.dumps(first)); second["run"]["run_id"] = "lesson-2"
+        comparison = compare_run_summaries([first, second])
+        self.assertEqual(comparison["comparison_scope"], "teaching_diagnostic")
+        self.assertEqual([row["reason_code"] for row in comparison["annual_withholding"]], ["teaching_run"])
+        self.assertTrue(all(row["annual"] == [] for row in comparison["runs"]))
+        self.assertIn("annual_withheld_reason,teaching_run", comparison_csv(comparison))
+
+    def test_published_pair_has_no_withholding(self):
+        from gridform_core.results_summary import compare_run_summaries, comparison_csv
+
+        published, _withheld = self._pair()
+        other = json.loads(json.dumps(published)); other["run"]["run_id"] = "rerun"
+        comparison = compare_run_summaries([published, other])
+        self.assertFalse(comparison["annual_metrics_withheld"])
+        self.assertEqual(comparison["annual_withholding"], [])
+        self.assertEqual(comparison["comparison_scope"], "annual_scientific")
+        self.assertIn("annual_metrics_withheld,false", comparison_csv(comparison))
+
+
+class PlanningProjectYearRowsTests(unittest.TestCase):
+    """R-低1: the Inspect planning rows are project-years and say which year."""
+
+    def test_rows_carry_their_year(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path, _summary = _two_year_index(Path(folder))
+            page = query_index_projects(path, search="p1")
+        self.assertEqual(page["record_unit"], "project_year")
+        self.assertEqual(page["total"], 2)
+        self.assertEqual([(row["project_id"], row["year"], row["status"]) for row in page["items"]],
+                         [("p1", 2026, "commissioned"), ("p1", 2025, "active")])
+
+
+class ProvisionalAdvisoryTests(unittest.TestCase):
+    """R-低2: an unfinished Run does not show fleet-filtered advisories it cannot evaluate yet."""
+
+    BIOMASS = "VALUE-ADV-BIOMASS-SUPPORT-NOT-MODELLED"
+
+    def _run(self, folder: Path, status: str) -> tuple[dict, Path]:
+        root = folder / status
+        shutil.copytree(FIXTURES / "doctoral-no-invariants", root)
+        run = json.loads((root / "status.json").read_text(encoding="utf-8"))
+        run["status"] = status
+        return run, root
+
+    def test_running_run_without_frozen_fleet(self):
+        from gridform_core.result_advisories import evaluate_advisories, present_scientific_status
+
+        with tempfile.TemporaryDirectory() as folder:
+            for status in ("snapshotting", "queued", "running"):
+                with self.subTest(status):
+                    run, root = self._run(Path(folder), status)
+                    ids = {row["id"] for row in evaluate_advisories(run, root)}
+                    self.assertNotIn(self.BIOMASS, ids)
+                    self.assertTrue(present_scientific_status(dict(run), root)["advisories_provisional"])
+            # A completed Run whose fleet cannot be read keeps the disclosure (unchanged rule).
+            run, root = self._run(Path(folder), "completed")
+            self.assertIn(self.BIOMASS, {row["id"] for row in evaluate_advisories(run, root)})
+            self.assertFalse(present_scientific_status(dict(run), root)["advisories_provisional"])
+
+
+class RuntimeEstimateRangeTests(unittest.TestCase):
+    """R-低8: without a comparable completed Run the runtime estimate is a range."""
+
+    def test_heuristic_range_then_observed_value(self):
+        from gridform_core.preflight import HEURISTIC_SECONDS_PER_PERIOD_RANGE, _estimates
+
+        project = {"id": "p", "data_pack_id": "x", "modules": {}, "start_year": 2025, "end_year": 2026}
+        policy = {"total_periods": 35_040, "years": 2, "mode": "two_year", "periods_per_year": 17_520}
+        with tempfile.TemporaryDirectory() as folder:
+            runs = Path(folder)
+            first = _estimates(project, policy, {}, runs, {})
+            self.assertEqual(first["runtime_basis_kind"], "heuristic")
+            self.assertEqual(first["runtime_range_seconds"], [35_040 * value for value in HEURISTIC_SECONDS_PER_PERIOD_RANGE])
+            self.assertLessEqual(first["runtime_range_seconds"][0], 200)  # VALUE 101 two-year: about 3 minutes
+            (runs / "done").mkdir()
+            (runs / "done" / "status.json").write_text(json.dumps({
+                "status": "completed", "mode": "two_year", "run_policy": {"total_periods": 35_040},
+                "started_at": "2026-10-06T10:00:00", "finished_at": "2026-10-06T10:02:00"}), encoding="utf-8")
+            observed = _estimates(project, policy, {}, runs, {})
+            self.assertEqual(observed["runtime_basis_kind"], "observed")
+            self.assertIsNone(observed["runtime_range_seconds"])
+            self.assertAlmostEqual(observed["runtime_seconds"], 120.0)

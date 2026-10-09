@@ -1,0 +1,31 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-card {
+    display: grid;
+    gap: var(--sp-3);
+    min-width: 0;
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--panel);
+    box-shadow: var(--shadow-1);
+    container-type: inline-size;
+  }
+  .v-card__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2) var(--sp-3); min-width: 0; }
+  .v-card__titles { display: grid; gap: var(--sp-1); min-width: 0; }
+  .v-card__eyebrow { color: var(--blue); font-size: var(--fs-xs); font-weight: 700; }
+  .v-card__title { margin: 0; font-size: var(--fs-lg); font-weight: 650; line-height: var(--lh-heading); color: var(--ink); overflow-wrap: anywhere; }
+  .v-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+  .v-card__body { min-width: 0; }
+  .v-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding-top: var(--sp-3); border-top: 1px solid var(--line-soft); color: var(--ink-muted); font-size: var(--fs-xs); }
+
+  .v-panel--collapsible > summary { cursor: pointer; list-style: none; justify-content: flex-start; }
+  .v-panel--collapsible > summary::-webkit-details-marker, .v-disclosure > summary::-webkit-details-marker { display: none; }
+  .v-panel__chevron { flex: 0 0 auto; width: 8px; height: 8px; margin: var(--sp-1) var(--sp-1) 0 0; border-right: 2px solid var(--ink-muted); border-bottom: 2px solid var(--ink-muted); transform: rotate(-45deg); transition: transform var(--motion) ease; }
+  .v-panel--collapsible[open] > summary > .v-panel__chevron, .v-disclosure[open] > summary > .v-panel__chevron { transform: rotate(45deg); }
+
+  .v-disclosure { min-width: 0; border-top: 1px solid var(--line-soft); padding-top: var(--sp-2); }
+  .v-disclosure > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--control-h); cursor: pointer; list-style: none; color: var(--blue); font-size: var(--fs-sm); font-weight: 650; }
+  .v-disclosure__body { padding: var(--sp-2) 0 0; min-width: 0; }
+}

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "value-network-extensions"
-version = "0.6.0a2"
+version = "0.7.0a1"
 description = "VALUE power-system evolution framework with optional network extensions"
 authors = [{name = "Hanzhe Xing"}]
 license = "Apache-2.0"
@@ -74,8 +74,11 @@ gridform_core = [
   "data/cem/*.json",
   "data/doctoral_alignment/*.json",
   "data/storage/*.json",
+  "data/thermal/*.json",
   "data/contracts/*.json",
   "data/contracts/*.sql",
+  "data/methodology/*.json",
+  "data/methodology/corrections/*.json",
   "data_workbench/sources/**/*.json",
   "manifests/*.json",
   "builtin/scheme_c_1000twh/RUNTIME_OVERLAY.json",

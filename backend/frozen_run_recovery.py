@@ -14,11 +14,15 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from backend.frozen_input_recovery import stage_recovered_inputs
+from backend.frozen_input_recovery import file_sha256, recovered_manifests, stage_recovered_inputs
 from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.frontend_contract import (
     EXPERIMENTAL_ACK, maturity_acknowledgement_requirements, resolve_study_draft,
+    solver_contract_upgrade_preview,
 )
+from gridform_core.methodology import COMBINATION_ERROR_CODE, combination_violations, resolve_project_methodology
+from gridform_core.pack_source_identity import ID_KEYED_PACK_IDS
+from gridform_core.run_snapshot import METHOD_SUPERSEDED
 from gridform_core.project_revision import save_project_revision
 from gridform_core.run_policy import resolve_run_policy
 from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
@@ -100,7 +104,7 @@ def verify_recovered_inputs(project: dict, base_root: Path, network_root: Path |
             path = root / uri
             if (not uri or path.is_symlink() or not path.is_file()
                     or not path.resolve().is_relative_to(root.resolve())
-                    or hashlib.sha256(path.read_bytes()).hexdigest() != digest):
+                    or file_sha256(path) != digest):
                 raise FrozenRecoveryError(f"Recovered canonical input changed: {role}")
 
 
@@ -120,7 +124,8 @@ def _candidate(integrity: dict, scope: dict, recovery_mode: str, *, registry, mo
     source = integrity["project"]
     candidate = copy.deepcopy(source)
     for key in ("revision_sha256", "revision_number", "parent_revision_sha256", "base_revision_sha256",
-                "change_summary", "module_resolution_graph", "linked_run_count", "derivation"):
+                "change_summary", "module_resolution_graph", "linked_run_count", "derivation",
+                "fingerprint_basis", "revision_reason"):
         candidate.pop(key, None)
     extensions = dict(candidate.get("extensions") or {})
     extensions.pop("frozen_recovery", None)
@@ -149,6 +154,37 @@ def _candidate(integrity: dict, scope: dict, recovery_mode: str, *, registry, mo
     if previous_graph != current_graph:
         changes.append({"field": "module_resolution_graph", "recorded": previous_graph, "current": current_graph})
     return candidate, draft, changes
+
+
+def recovered_methodology_violations(source_run_root: Path, integrity: dict, candidate: dict) -> list[dict]:
+    """The methodology whitelist verdict on the packs recovery would publish (Q3).
+
+    Recovery keeps the Run's methodology profile (the method is fixed by the
+    review).  A frozen profile admits a recovered base pack only when it is
+    identified as a pinned pack (``pack_source_identity.recovered_source``: the
+    same data bytes and every manifest field except id, name, timestamps and
+    qualification as the source manifest recorded in the Run's input
+    snapshot, and a source id that does not select model behaviour,
+    ``ID_KEYED_PACK_IDS``).  The check runs on the manifests staging would
+    write (placeholder IDs), through the same resolver as Study validation,
+    preflight and the worker, so a refusal is reported at review rather than
+    at publish.
+    """
+    try:
+        resolved = resolve_project_methodology(candidate)
+    except ValueError:
+        return []  # the draft errors already report an unknown or unsupported profile
+    snapshot = source_run_root / "input-snapshot"
+    network = integrity["network_manifest"] is not None
+    projected = recovered_manifests(
+        integrity, source_run_id=source_run_root.name, base_pack_id="recovered-base-review",
+        network_pack_id="recovered-network-review" if network else None, timestamp="review",
+        base_manifest_sha256=file_sha256(snapshot / "pack" / "manifest.json"),
+        network_manifest_sha256=file_sha256(snapshot / "network-pack" / "manifest.json") if network else None)
+    packs = [(projected["base_manifest"], None)]
+    if network:
+        packs.append((projected["network_manifest"], None))
+    return combination_violations(resolved, data_packs=packs)
 
 
 def review_frozen_recovery(source_run_root: Path, recovery_mode: str, *, registry, module_catalog,
@@ -212,8 +248,36 @@ def review_frozen_recovery(source_run_root: Path, recovery_mode: str, *, registr
             for field in ("source_sha256", "environment_sha256"):
                 if recorded[field] != current[field]:
                     changes.append({"field": field, "recorded": recorded[field], "current": current[field]})
+        upgrade = solver_contract_upgrade_preview(integrity["project"])
+        if upgrade is not None:
+            # P0-8 S5: a Run recorded under a historical zonal solver
+            # contract is never re-executed silently under v4.
+            report["solver_contract_upgrade"] = upgrade
         report["blocking_reasons"].extend(str(row["message"]) for row in draft["errors"])
+        methodology_rows = recovered_methodology_violations(source_run_root, integrity, candidate)
+        if methodology_rows:
+            report["methodology_violations"] = methodology_rows
+            report["blocking_reasons"].append(
+                f"{COMBINATION_ERROR_CODE}: the recovered inputs cannot be published under this Run's methodology "
+                "profile, which admits a recovered pack only when it holds the verified content of a pinned pack "
+                "whose id does not select model behaviour: "
+                + "; ".join(str(row["message"]) for row in methodology_rows))
+        source_pack_id = str(integrity["base_manifest"].get("id") or "")
+        if source_pack_id in ID_KEYED_PACK_IDS and not methodology_rows:
+            # Open issue (predates P0): a profile without a pin admits the
+            # recovered pack, but behaviour keyed on the pack id is lost.
+            report["limitations"].append(
+                f"Model behaviour keys on the source pack id {source_pack_id} (VALUE-UK nuclear fleet policy, "
+                "doctoral site weather); the recovered pack has a new id, so its recomputation can differ "
+                "from the source Run.")
         if recovery_mode == "strict":
+            if upgrade is not None:
+                report["blocking_reasons"].append(
+                    f"{METHOD_SUPERSEDED}: this Run used the historical "
+                    f"{upgrade['recorded_generation']} zonal solver contract, which "
+                    "the current VALUE does not execute. Use migration recovery to "
+                    "review the change to the current contract."
+                )
             report["blocking_reasons"].extend(report["missing_evidence"])
             if changes:
                 report["blocking_reasons"].append("Recorded method or environment differs from the current execution. Use explicit migration or restore the recorded environment.")
@@ -253,7 +317,7 @@ def publish_frozen_recovery(source_run_root: Path, request: dict, *, review: Cal
         # The staging helper copied verified bytes, never hardlinks to history.
         for relative, entry in stage["inventory"].items():
             path = stage["stage_root"] / relative
-            if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
+            if path.is_symlink() or not path.is_file() or file_sha256(path) != entry["sha256"]:
                 raise FrozenRecoveryError("Staged recovery inputs changed before publication")
         candidate = copy.deepcopy(context["candidate"])
         candidate.update(id=project_id, name=name.strip(), data_pack_id=base_id)

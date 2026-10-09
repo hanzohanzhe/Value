@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Mapping
+from typing import Mapping, Sequence
 
 
 @dataclass(frozen=True)
@@ -103,3 +103,26 @@ def resolve_run_policy(mode: str) -> RunPolicy:
         return RUN_POLICIES[str(mode)]
     except KeyError as exc:
         raise ValueError("mode must be " + ", ".join(RUN_POLICIES)) from exc
+
+
+# F-D2 (DECISIONS A16-3): scopes that run the market step only.  The one-day
+# lesson returns before the extension runtime exists, so a selected extension
+# would be recorded in the Run identity without executing.  Preflight blocks
+# that combination; comparison and Inspect treat such recorded extensions as
+# not executed.
+PSM_ONLY_RUN_MODES = frozenset({"value_101_day"})
+
+
+def scope_runs_extensions(mode: object) -> bool:
+    """True when a run of ``mode`` executes selected extension hooks."""
+
+    return str(mode or "") not in PSM_ONLY_RUN_MODES
+
+
+def scope_extension_block_message(extension_ids: Sequence[str]) -> str:
+    names = ", ".join(str(item) for item in extension_ids)
+    return (
+        "The one-day lesson runs the market step only, so the selected "
+        f"extension(s) {names} would not execute. Choose two-period or a longer "
+        "scope, or deselect the extension(s)."
+    )

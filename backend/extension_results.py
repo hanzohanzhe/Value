@@ -10,9 +10,18 @@ import re
 from typing import Mapping
 
 from gridform_core.extension_framework import ExtensionManifest, canonical_hash, validate_extension_artifact
+from gridform_core.run_policy import scope_runs_extensions
 
 HEX = re.compile(r"[0-9a-f]{64}\Z")
 LIMITS = {"status": 64 * 1024, "year_results": 16 * 1024 * 1024, "module_resolution": 2 * 1024 * 1024}
+# F2-N1 (G4-05): a year-results file above LIMITS["year_results"] (any annual
+# or longer Run: 17,520 period summaries a year) is not parsed whole; the
+# extension artifacts are read line by line from the writer's indent-2 layout
+# (gridform_core/application.py), hashing every byte, up to these bounds.
+STREAM_YEAR_RESULTS_LIMIT = 4 * 1024 * 1024 * 1024
+STREAM_ARTIFACTS_LIMIT = 2 * 1024 * 1024
+_STREAM_CACHE: dict[tuple, tuple[list, str]] = {}
+_STREAM_CACHE_SIZE = 4
 
 
 class EvidenceError(ValueError):
@@ -48,15 +57,130 @@ def _read(path: Path, root: Path, kind: str) -> tuple[object, str, tuple]:
     if before != _stat(path):
         raise EvidenceError("invalid", "source_changed_during_read", "Run evidence changed during reading; retry once stable.")
     try:
-        def finite_float(text):
-            value = float(text)
-            if not math.isfinite(value):
-                raise ValueError("nonfinite number")
-            return value
-        payload = json.loads(raw, parse_float=finite_float, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite number")))
+        payload = _finite_json(raw)
     except (ValueError, UnicodeError) as exc:
         raise EvidenceError("invalid", f"{kind}_invalid_json", "Run evidence is not finite JSON.") from exc
     return payload, hashlib.sha256(raw).hexdigest(), before
+
+
+def _finite_json(raw):
+    def finite_float(text):
+        value = float(text)
+        if not math.isfinite(value):
+            raise ValueError("nonfinite number")
+        return value
+    return json.loads(raw, parse_float=finite_float, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite number")))
+
+
+_YEAR = re.compile(rb'^    "year": (-?\d+),?$')
+_YEAR_SCHEMA = re.compile(rb'^    "schema_version": ("(?:[^"\\]|\\.)*"),?$')
+
+
+def _stream_year_results(path: Path) -> tuple[list, str]:
+    """Year identities and extension artifacts of a large year-results file, without parsing it whole.
+
+    Relies on the one writer's ``json.dumps(..., indent=2)`` layout: a list of
+    year objects whose ``"market"`` object holds ``"extensions"`` holding
+    ``"extension_artifacts"``.  JSON strings cannot contain raw newlines, so
+    each structural line is unambiguous.  Returns the same minimal shape the
+    whole-file reader yields for this query, and the sha256 of every byte.
+    A file in any other layout stays ``year_results_size_limit``.
+    """
+
+    def unsupported():
+        return EvidenceError("unavailable", "year_results_size_limit",
+                             "year_results exceeds its bounded reader limit and is not in the recorded indent-2 layout.")
+
+    digest = hashlib.sha256()
+    years: list = []
+    current = None
+    depth = None           # None outside a year; "year", "market", "extensions", "artifacts"
+    captured: list[bytes] = []
+    captured_bytes = 0
+    first = True
+    closed = False
+    with path.open("rb") as stream:
+        for line in stream:
+            digest.update(line)
+            text = line.rstrip(b"\r\n")
+            if first:
+                if text != b"[":
+                    raise unsupported()
+                first = False
+                continue
+            if closed:
+                if text.strip():
+                    raise unsupported()
+                continue
+            if depth is None:
+                if text == b"  {":
+                    current, depth = {"schema_version": None, "year": None, "market": None}, "year"
+                elif text == b"]":
+                    closed = True
+                else:
+                    raise unsupported()
+            elif depth == "year":
+                if text in (b"  }", b"  },"):
+                    years.append(current); current, depth = None, None
+                elif (match := _YEAR.match(text)):
+                    current["year"] = int(match.group(1))
+                elif (match := _YEAR_SCHEMA.match(text)):
+                    current["schema_version"] = json.loads(match.group(1))
+                elif text == b'    "market": {':
+                    current["market"] = {"extensions": {}}; depth = "market"
+                elif text in (b'    "market": {}', b'    "market": {},'):
+                    current["market"] = {"extensions": {}}
+            elif depth == "market":
+                if text in (b"    }", b"    },"):
+                    depth = "year"
+                elif text == b'      "extensions": {':
+                    depth = "extensions"
+            elif depth == "extensions":
+                if text in (b"      }", b"      },"):
+                    depth = "market"
+                elif text == b'        "extension_artifacts": [':
+                    captured, captured_bytes, depth = [b"["], 1, "artifacts"
+                elif text in (b'        "extension_artifacts": []', b'        "extension_artifacts": [],'):
+                    current["market"]["extensions"]["extension_artifacts"] = []
+            elif depth == "artifacts":
+                if text in (b"        ]", b"        ],"):
+                    captured.append(b"]")
+                    try:
+                        current["market"]["extensions"]["extension_artifacts"] = _finite_json(b"\n".join(captured))
+                    except (ValueError, UnicodeError) as exc:
+                        raise EvidenceError("invalid", "year_results_invalid_json", "Run evidence is not finite JSON.") from exc
+                    captured, depth = [], "extensions"
+                else:
+                    captured.append(text)
+                    captured_bytes += len(text) + 1
+                    if captured_bytes > STREAM_ARTIFACTS_LIMIT:
+                        raise EvidenceError("unavailable", "extension_artifacts_size_limit",
+                                            "Recorded extension artifacts exceed their bounded reader limit.")
+    if first or not closed or depth is not None:
+        raise unsupported()
+    return years, digest.hexdigest()
+
+
+def _read_year_results(path: Path, root: Path) -> tuple[object, str, tuple]:
+    """The whole-file reader up to its limit; above it, the bounded line reader (F2-N1)."""
+
+    if not path.is_file() or path.stat().st_size <= LIMITS["year_results"]:
+        return _read(path, root, "year_results")
+    if not path.resolve().is_relative_to(root.resolve()):
+        raise EvidenceError("invalid", "source_path_outside_run", "Evidence path leaves the Run directory.")
+    before = _stat(path)
+    if before[2] > STREAM_YEAR_RESULTS_LIMIT:
+        raise EvidenceError("unavailable", "year_results_size_limit", "year_results exceeds its bounded reader limit.")
+    key = (str(path.resolve()), before)
+    cached = _STREAM_CACHE.get(key)
+    if cached is None:
+        years, digest = _stream_year_results(path)
+        if before != _stat(path):
+            raise EvidenceError("invalid", "source_changed_during_read", "Run evidence changed during reading; retry once stable.")
+        while len(_STREAM_CACHE) >= _STREAM_CACHE_SIZE:
+            _STREAM_CACHE.pop(next(iter(_STREAM_CACHE)))
+        cached = _STREAM_CACHE[key] = (years, digest)
+    return json.loads(json.dumps(cached[0])), cached[1], before
 
 
 def _integer(query: Mapping, field: str, default=None):
@@ -121,6 +245,21 @@ def _frozen(graph: Mapping) -> tuple[dict[str, ExtensionManifest], list[dict]]:
     return parsed, metadata
 
 
+def _no_extensions_selected(run_root: Path) -> bool:
+    """True when the Run's frozen Study selected no extensions (R5 R-低7).
+
+    A Run without extensions records no extension graph by design; only when
+    the frozen Study lists extensions is a missing graph an evidence gap.
+    """
+
+    try:
+        snapshot = json.loads((run_root / "project-snapshot.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    selected = snapshot.get("selected_extensions") if isinstance(snapshot, dict) else None
+    return isinstance(selected, list) and not selected
+
+
 def query_extension_artifacts(run_root: Path, query: Mapping) -> dict:
     """Read a bounded page of declared scalar summaries; never load hook code."""
     if set(query) - {"extension_id", "year", "limit", "offset"}:
@@ -152,16 +291,27 @@ def query_extension_artifacts(run_root: Path, query: Mapping) -> dict:
         graph_path = run_root / result["source"]["module_resolution"]["path"]
         graph, digest, stamp = _read(graph_path, run_root, "module_resolution")
         snapshots.append((graph_path, stamp)); result["source"]["module_resolution"]["sha256"] = digest
+        if isinstance(graph, dict):
+            # R5 R-低7: the module graph is recorded whether or not extensions were selected.
+            result["identity"]["frozen_module_graph_sha256"] = graph.get("graph_sha256")
         if not isinstance(graph, dict) or not isinstance(graph.get("extension_graph"), dict):
+            if _no_extensions_selected(run_root):
+                raise EvidenceError("unavailable", "no_extensions_selected",
+                                    "This Run selected no optional extensions, so it has no extension results.")
             raise EvidenceError("unavailable", "frozen_extension_graph_missing", "This Run has no frozen extension graph.")
-        result["identity"]["frozen_module_graph_sha256"] = graph.get("graph_sha256")
         result["identity"]["frozen_extension_graph_sha256"] = graph["extension_graph"].get("graph_sha256")
         manifests, identities = _frozen(graph["extension_graph"])
         result["capabilities"]["extensions"] = identities
         if extension_id is not None and extension_id not in manifests:
             raise EvidenceError("unavailable", "extension_not_in_frozen_graph", "The selected extension was not frozen in this Run.")
+        # F-D2 (DECISIONS A16-3): the one-day lesson runs the market step only;
+        # name that as the reason instead of reporting missing year results.
+        if not scope_runs_extensions(status.get("mode")):
+            names = ", ".join(sorted(manifests))
+            raise EvidenceError("unavailable", "extensions_not_executed_in_scope",
+                                f"The one-day lesson runs the market step only, so the recorded extension(s) {names} did not execute in this Run. Re-run with two-period or a longer scope to obtain extension results.")
         years_path = run_root / result["source"]["year_results"]["path"]
-        years, digest, stamp = _read(years_path, run_root, "year_results")
+        years, digest, stamp = _read_year_results(years_path, run_root)
         snapshots.append((years_path, stamp)); result["source"]["year_results"]["sha256"] = digest
         if not isinstance(years, list):
             raise EvidenceError("invalid", "year_results_invalid", "Year results must be a list.")

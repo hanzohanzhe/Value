@@ -1,5 +1,7 @@
 # VALUE zonal solver contract v2
 
+Superseded by [contract v4](ZONAL_SOLVER_CONTRACT_V4.md) (P0-8); kept as the record of v2.
+
 Status: built-in default settings documented; independently validated execution
 is not yet claimed.
 

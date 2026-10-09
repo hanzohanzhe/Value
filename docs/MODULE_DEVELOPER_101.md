@@ -1,4 +1,4 @@
-# FORCE General Module Authoring and Replacement 101
+# VALUE General Module Authoring and Replacement 101
 
 [中文版](MODULE_DEVELOPER_101_ZH.md)
 
@@ -6,7 +6,7 @@ If you have not yet decided whether the change belongs in a data pack, Study
 parameter, module or platform contract, start with
 [`BUILD_YOUR_OWN_MODEL_101.md`](BUILD_YOUR_OWN_MODEL_101.md).
 
-This handbook describes the live `gridform.module/v2` system used by the local
+This handbook describes the live `value.module/v2` module system used by the local
 website and annual orchestrator. It applies to all seven supported slots. It
 does not require changes to Scheme C or pretend that unsupported extension
 points already exist.
@@ -44,7 +44,7 @@ slot; do not disguise a new lifecycle stage as the wrong module.**
 ```text
 module.zip
   -> validate bundle, manifest, entry point and contract
-  -> atomically install below FORCE_DATA_HOME/modules
+  -> atomically install below VALUE_DATA_HOME/modules
   -> workspace registry loads built-in and external modules
   -> a Study stores one selected module ID per slot
   -> run freezes ID, version, contract and source SHA-256
@@ -58,9 +58,22 @@ revision. It does not overwrite Scheme C, delete the previous implementation or
 mutate an old Study. The previous revision remains reproducible and supports A/B
 comparison and rollback.
 
-External bundles cannot shadow built-in IDs. The current beta also refuses a
-silent source update under an installed ID. A changed scientific implementation
-should have a new module ID, version, scientific version and package name.
+External bundles cannot shadow built-in IDs. Editing the source of an
+installed module in place (same ID and version) is accepted and recorded, not
+refused (DECISIONS A16-4): Check readiness shows the amber warning
+`GF_PREFLIGHT_MODULE_SOURCE_CHANGED` with the installed and the current source
+SHA-256, every Run freezes the new source hash, and Compare marks the module
+method as changed. The installation record and the scientific version are not
+updated, so a change you intend to publish or compare as a method should still
+get a new module version (or ID), scientific version and package name and be
+installed as a bundle.
+
+The same rule applies to the hook source of an installed extension
+(DECISIONS A29), also across Disable and Enable: Enable re-imports the hooks,
+accepts an in-place edit and appends it to `accepted_source_edits` in the
+installation record, and readiness shows `GF_PREFLIGHT_EXTENSION_SOURCE_CHANGED`.
+Enable still refuses hooks that no longer import (`GF_EXTENSION_HOOK`) and an
+installed manifest that declares other hooks than were installed.
 
 ## 3. Annual lifecycle
 
@@ -85,13 +98,20 @@ launch a hidden ten-year script.
 
 | Slot | Contract | Required callable | Returns |
 | --- | --- | --- | --- |
-| `psm` | `gridform.psm/v2` | `run(model_input)` | `MarketYearResult` |
-| `storage_cost` | `gridform.storage-cost/v1` | `create(**parameters)` | annual storage-offer object |
-| `vre_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
-| `storage_cap` | `gridform.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
-| `investment` | `gridform.investment/v2` | `decide(run, state, market, headroom)` | `InvestmentDecision` |
-| `pipeline` | `gridform.planning/v2` | `advance_year(...)`, `admit_projects(...)` | planning results |
-| `transition` | `gridform.state-transition/v2` | `apply(run, current_state, planning, investment)` | next `YearState` |
+| `psm` | `value.psm/v2` | `run(model_input)` | `MarketYearResult` |
+| `storage_cost` | `value.storage-cost/v1` | `create(**parameters)` | annual storage-offer object |
+| `vre_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
+| `storage_cap` | `value.expansion-policy/v2` | `evaluate(run, state, market)` | `ExpansionHeadroom` |
+| `investment` | `value.investment/v2` | `decide(run, state, market, headroom)` | `InvestmentDecision` |
+| `pipeline` | `value.planning/v2` | `advance_year(...)`, `admit_projects(...)` | planning results |
+| `transition` | `value.state-transition/v2` | `apply(run, current_state, planning, investment)` | next `YearState` |
+
+`contract_version` in `value-module.json` must be exactly the ID in this table.
+The installer checks it against `SUPPORTED_CONTRACTS` in
+`gridform_core/v2/module_manifest.py` and rejects any other ID, including the
+pre-VALUE `gridform.*` form, with the error code `GF_MODULE_CONTRACT_MISMATCH`
+and, for example, the message
+`Module my-module in slot storage_cost uses gridform.storage-cost/v1; expected value.storage-cost/v1`.
 
 Authoritative definitions are in `gridform_core/v2/interfaces.py`,
 `gridform_core/v2/contracts.py` and `gridform_core/v2/orchestrator.py`. Do not
@@ -204,15 +224,15 @@ cannot be negative, and physical/economic records must scale together.
 The built-in `StagedBidAtCostPSM` adapter is currently the only integration that
 automatically captures the three dispatch cases and writes VRE curtailment
 attribution v2. Its resolved manifest declares output
-`force.vre-counterfactual-snapshot/v1` and capability
+`value.vre-counterfactual-snapshot/v1` and capability
 `evidence.vre-counterfactual-snapshot/v1`; the selected balancing component also
 produces `network.zonal-redispatch-result/v1`.
 
 For an external module, those declarations establish manifest compatibility
-only. They do not cause FORCE to install or invoke a generic evidence adapter.
+only. They do not cause VALUE to install or invoke a generic evidence adapter.
 A third-party PSM that needs `results.vre-curtailment-attribution/v2` must supply
 its own execution integration adapter and write complete, reconciled
-`gridform.market-ledger/v6` period/detail evidence. Full end-to-end execution of
+`value.market-ledger/v8` period/detail evidence. Full end-to-end execution of
 that external path has not yet been verified.
 
 One snapshot has `run_id`, `year`, `period`, `period_id`, one lowercase
@@ -247,7 +267,7 @@ or invalid evidence as a run error. An external adapter must enforce the same
 rule before publishing v2 evidence.
 
 Use the complete payload in
-`examples/external_psm_bundle/README.md` as the schema example. From a FORCE
+`examples/external_psm_bundle/README.md` as the schema example. From a VALUE
 source checkout, the focused static, registry and core-contract check is:
 
 ```powershell
@@ -277,8 +297,8 @@ tests.
 
 ```text
 my-module.zip
-├── force-bundle.json       # generated; do not hand-edit
-├── force-module.json       # gridform.module/v2 manifest
+├── force-bundle.json       # generated descriptor; do not hand-edit
+├── value-module.json       # value.module/v2 manifest
 ├── LICENSE                 # required
 ├── README.md               # optional; strongly recommended
 └── src/
@@ -287,26 +307,34 @@ my-module.zip
         └── plugin.py
 ```
 
-The deterministic `force.module-bundle/v1` limits are 25 MiB compressed,
+`scripts/build_module_bundle.py` writes the descriptor (schema
+`value.module-bundle/v1`). Its file name `force-bundle.json` is a compatibility
+name kept from before the VALUE name (see
+[`BRAND_AND_VARIANTS.md`](BRAND_AND_VARIANTS.md)); the manifest is
+`value-module.json`. Slot contract IDs are not kept from that period: use the
+`value.*` IDs of section 4 (for example `value.storage-cost/v1`); a
+`gridform.*` contract ID is rejected at install.
+
+The deterministic `value.module-bundle/v1` limits are 25 MiB compressed,
 100 MiB expanded and 1,000 members. Absolute/traversal paths, duplicates,
 encryption, links and native/executable files are rejected. Accepted source/data
 types are `.py/.pyi/.json/.csv/.txt/.md/.toml/.yaml/.yml`.
 
 The installer is offline, does not call `pip`, and runs external code in the
-FORCE Python process without an OS sandbox. Install trusted code only.
+VALUE Python process without an OS sandbox. Install trusted code only.
 
 ## 8. General manifest
 
 ```json
 {
-  "schema_version": "gridform.module/v2",
+  "schema_version": "value.module/v2",
   "id": "my-research-module",
   "name": "My research module",
   "version": "1.0.0",
   "scientific_version": "paper-method-2026-01",
   "slot": "investment",
   "implementation": "my_unique_package.plugin:MyInvestment",
-  "contract_version": "gridform.investment/v2",
+  "contract_version": "value.investment/v2",
   "inputs": ["market.year-result", "expansion.headroom"],
   "outputs": ["investment.proposals", "investment.retirements"],
   "parameters": [],
@@ -346,11 +374,11 @@ uses its own declared version and documented semantics where it differs.
 ```json
 {
   "solver_contract": {
-    "schema_path": "gridform_core/data/contracts/network-solver-contract-v2.schema.json",
-    "semantics": "four_phase_coefficient_aware_numerical_lexicographic_with_one_sided_caps",
+    "schema_path": "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
+    "semantics": "four_phase_lexicographic_primary_shed_lock_then_numerical_bid_cost_cap_gbp1_acceptance_ceiling_mwh_coefficient_aware",
     "defaults": {
-      "schema_version": "value.network-solver-contract/v2",
-      "contract_version": "value.zonal-lexicographic/v2",
+      "schema_version": "value.network-solver-contract/v4",
+      "contract_version": "value.zonal-lexicographic-shed-lock/v4",
       "method": "highs-ds",
       "presolve": true,
       "primal_feasibility_tolerance": 1e-09,
@@ -358,12 +386,12 @@ uses its own declared version and documented semantics where it differs.
       "ipm_optimality_tolerance": 1e-09,
       "warning_fraction": 0.1,
       "validated_ceilings": {
-        "primary_bid_cost_gbp": 0.01,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.001,
         "physical_throughput_mwh": 0.001
       },
       "absolute_ceilings": {
-        "primary_bid_cost_gbp": 0.1,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.01,
         "physical_throughput_mwh": 0.01
       },
@@ -371,14 +399,30 @@ uses its own declared version and documented semantics where it differs.
       "requires_acknowledgement": false
     },
     "ranges": {
-      "method": ["highs-ds", "highs-ipm", "highs"],
-      "primal_feasibility_tolerance": [1e-10, 1e-07],
-      "dual_feasibility_tolerance": [1e-10, 1e-07],
-      "ipm_optimality_tolerance": [1e-12, 1e-07],
-      "warning_fraction": {"exclusive_minimum": 0.0, "maximum": 1.0}
+      "method": [
+        "highs-ds",
+        "highs-ipm",
+        "highs"
+      ],
+      "primal_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "dual_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "ipm_optimality_tolerance": [
+        1e-12,
+        1e-07
+      ],
+      "warning_fraction": {
+        "exclusive_minimum": 0.0,
+        "maximum": 1.0
+      }
     },
     "recorded_reference_thresholds": {
-      "primary_bid_cost_gbp": 0.1,
+      "primary_bid_cost_gbp": 1.0,
       "secondary_schedule_deviation_mwh": 0.01,
       "physical_throughput_mwh": 0.01
     },
@@ -495,6 +539,82 @@ not prove order-level replay.
   overwrite source to simulate rollback.
 - **Disable:** changes registry visibility, not existing Study definitions or
   historical evidence; referenced modules should remain enabled.
+- **Quarantine:** built-in modules are fail-closed. A local manifest that
+  cannot be read, an implementation that raises anything while importing
+  (also `SystemExit`), or an external ID/namespace shared with another local
+  entry is quarantined: it is not registered, `/api/health` turns
+  `degraded`, and only Studies that select it are refused. Colliding local
+  entries are all quarantined (no entry silently wins); a local entry that
+  reuses a built-in ID or namespace is quarantined and the built-in stays.
+- **Checks after install/enable:** conflicts are refused before anything is
+  written; afterwards the registry is rebuilt in process and in a fresh
+  worker-like Python process, and the change is rolled back byte for byte if
+  either refuses. A failed import is remembered until **Rescan** (at the top
+  of the Modules page and on every disabled or quarantined entry); **Enable**
+  forgets remembered failures first, so it always reports a fresh scan.
+  **Rescan** also re-imports every installed module and the hooks of every
+  enabled extension, so an in-place edit that breaks a module or an extension
+  hook that is already loaded is quarantined at once instead of at the next
+  Check readiness, Run or restart.
+- **What a Run records from an extension:** the state returned by `initialize`
+  (under the extension namespace) and the artifacts returned by `after_psm`
+  (one set per model year, shown in Inspect). `preflight`, `before_psm`,
+  `before_cem`, `after_cem`, `transition` and `finalize` run in place but their
+  return values are not recorded; returning a declared artifact
+  (`artifact_type`) from one of them stops the Run with an error naming the
+  hook instead of dropping it silently.
+- **Disabled and quarantined:** the Modules page lists every disabled or
+  quarantined local module and extension below the module list, each with
+  **Enable**, **Rescan** and **Remove**. Check readiness of a Study that selects
+  one shows the blocking error and disables Run.
+- **Remove:** after a confirmation, moves the installer folder and the
+  manifests to `modules/disabled-manifests/removed/<modules|extensions>/<id>/`;
+  nothing is deleted. It refuses an enabled, working entry (disable it first)
+  and one that saved Studies, active Runs or, for an extension, retained Run
+  history use.
+- **Same ID after a fix:** an installed ID stays taken while it is installed,
+  even disabled. Repair the source in place and Enable or Rescan (recorded as in
+  section 2), or Remove the entry and install the repaired bundle; a published
+  method change should use a new version.
+- **Offline rescue:** `module_recovery list`,
+  `disable module|extension <id>`, `park-manifest module|extension <file>`
+  and `park-installation module|extension <id> [<version>]` (a damaged
+  installation record) work from the installer's files alone and never
+  import installed code; `verify` builds the registry as a new worker would.
+  In a source checkout run `python -B -m gridform_core.module_recovery ...`;
+  on an installed VALUE use the bundled interpreter as shown in the user
+  guide, "Offline module recovery".
+
+### 12.1 Changing a built-in module (method upgrade)
+
+Built-in modules live in the VALUE source tree (`gridform_core/`; the retained
+Scheme C kernel in `gridform_core/builtin/scheme_c_1000twh/runtime_compat/`).
+A change to how a built-in module computes is a method change, not an in-place
+edit:
+
+1. Make the change. Gate it behind a correction id in
+   `gridform_core/data/methodology/corrections/` when only one methodology
+   profile should apply it; never edit the retained `compat/` tree.
+2. Raise the module version in its manifest
+   (`gridform_core/manifests/<id>.json`) and in the implementation class.
+3. Append one bump to `docs/release/VERSION_LEDGER.json`
+   (`from`, `to`, `package`, `correction_ids`, `reason`,
+   `requires_user_opt_in`); `true` makes saved Studies ask for an explicit
+   method-upgrade confirmation before they run, `false` is for code-only
+   changes. Every correction id must be registered: a correction in
+   `gridform_core/data/methodology/corrections/`, or a row of the
+   "Correction ids" table in `CHANGELOG.md`. `python -B
+   scripts/check_version_ledger.py` checks the chain and fails on an
+   unregistered (for example misspelt) id, because the id is shown in the
+   confirmation users read.
+4. After any edit under `runtime_compat/`, register it:
+   `python -B scripts/seal_runtime_overlay.py --correction <id>` (the id of
+   the ledger bump; an unregistered id is refused). Until then
+   Check readiness refuses every Run with
+   `GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED`, and a Run started through the API
+   stops with `GF_COMPATIBILITY_001`.
+5. Regenerate `docs/generated/` and run the tests; a change of numbers needs a
+   golden revision under the same correction id.
 
 ## 13. Explicit current limitations
 

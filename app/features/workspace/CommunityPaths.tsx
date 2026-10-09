@@ -1,6 +1,11 @@
 "use client";
 
+// The four research-task paths (P1 spec 6.1): cards on Home, the switch bar on
+// the research guide (R3-07: only there, with the current task selected).
+// Wording comes from the dictionaries (home.path.*).
 import { useId } from "react";
+import { useT } from "../../i18n/LocaleProvider";
+import type { MessageKey } from "../../i18n/index.ts";
 import "./community-paths.css";
 
 export type CommunityPath = "reproduce" | "data" | "module" | "function";
@@ -10,81 +15,52 @@ export type CommunityPathsProps = {
   onSelect: (path: CommunityPath) => void;
 };
 
-export const COMMUNITY_PATHS: ReadonlyArray<{
-  id: CommunityPath;
-  label: string;
-  description: string;
-  capability: string;
-}> = [
-  {
-    id: "reproduce",
-    label: "reproduce from existing data",
-    description: "使用已有数据与模型设置，复现一项研究。",
-    capability: "选择已保存的基线，创建独立 Study，再检查、运行并比较。",
-  },
-  {
-    id: "data",
-    label: "add your new data",
-    description: "导入并校验自己的数据，保留方法，比较变化。",
-    capability: "安装独立数据包，沿用基线方法创建新 Study，检查后运行。",
-  },
-  {
-    id: "module",
-    label: "Edit module",
-    description: "修改现有模块的公式、算法或规则，并测试影响。",
-    capability: "安装与选择兼容模块；界面公式编辑限于已开放的受限公式。",
-  },
-  {
-    id: "function",
-    label: "add new function to VALUE",
-    description: "增加模型能力，同时补齐所需数据、模块和验证。",
-    capability: "安装扩展包；新能力由作者在本地实现、测试并打包。",
-  },
+/** The paths in order; their wording is `home.path.<id>.label|description|capability`. */
+export const COMMUNITY_PATHS: ReadonlyArray<{ id: CommunityPath }> = [
+  { id: "reproduce" }, { id: "data" }, { id: "module" }, { id: "function" },
 ];
 
-export function CommunityHome({ activePath, onSelect }: CommunityPathsProps) {
-  const descriptionId = useId();
+export const pathKey = (id: CommunityPath, part: "label" | "description" | "capability") => ("home.path." + id + "." + part) as MessageKey;
 
+export function CommunityHome({ activePath, onSelect }: CommunityPathsProps) {
+  const t = useT();
+  const descriptionId = useId();
   return (
-    <section className="community-home" aria-label="VALUE research tasks">
-      <header className="community-home-heading">
-        <span>VALUE</span>
-        <h2>选择研究任务</h2>
-        <p>按当前任务选择路径，使用同一套研究配置、运行与结果。</p>
-      </header>
+    <section className="community-home" aria-label={t("home.tasksLabel")}>
       <div className="community-path-grid">
         {COMMUNITY_PATHS.map((path) => {
-          const detailId = descriptionId + "-" + path.id;
+          const detailId = `${descriptionId}-${path.id}`;
           return (
             <button
               type="button"
               className="community-path-card"
               key={path.id}
-              aria-label={path.label}
+              aria-label={t(pathKey(path.id, "label"))}
               aria-describedby={detailId}
               aria-pressed={activePath === path.id}
               onClick={() => onSelect(path.id)}
               data-community-path={path.id}
             >
-              <span className="community-path-title" lang="en">{path.label}</span>
-              <span className="community-path-description">{path.description}</span>
+              <span className="community-path-title" lang="en">{t(pathKey(path.id, "label"))}</span>
+              <span className="community-path-description">{t(pathKey(path.id, "description"))}</span>
               <span className="community-path-capability" id={detailId}>
-                <span>当前支持</span>
-                {path.capability}
+                <span>{t("home.path.supported")}</span>
+                {t(pathKey(path.id, "capability"))}
               </span>
-              <span className="community-path-open" aria-hidden="true">打开路径 →</span>
+              <span className="community-path-open" aria-hidden="true">{t("home.path.open")}</span>
             </button>
           );
         })}
       </div>
-      <p className="community-home-note">四条路径可以切换，无需逐级解锁。完整模块和新能力在本地编辑、测试后，以版本包安装。</p>
+      <p className="community-home-note">{t("home.path.note")}</p>
     </section>
   );
 }
 
 export function CommunityPathPicker({ activePath, onSelect }: CommunityPathsProps) {
+  const t = useT();
   return (
-    <nav className="community-path-picker" aria-label="VALUE research tasks">
+    <nav className="community-path-picker" aria-label={t("home.tasksLabel")}>
       {COMMUNITY_PATHS.map((path) => (
         <button
           key={path.id}
@@ -94,7 +70,7 @@ export function CommunityPathPicker({ activePath, onSelect }: CommunityPathsProp
           data-community-path={path.id}
           lang="en"
         >
-          {path.label}
+          {t(pathKey(path.id, "label"))}
         </button>
       ))}
     </nav>

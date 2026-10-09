@@ -340,7 +340,9 @@ class DoctoralPeriodLedgerTests(unittest.TestCase):
         run = ResolvedRun("ledger", "p", "basic", "fixture", 2025, 2025, {}, {}, {})
         market = MarketYearResult("m", 2025, "fixture", "1", {}, {}, 0, 0, 0, 0, 0, 0, 0)
         caps = (ExpansionHeadroom("h", 2025, "vre-expansion-cap", {"solar": 100}),)
-        decision = decide_doctoral_investment(run, state, market, caps, accounts)
+        from tests.r71_planning_fixtures import with_planning
+        # r71: a Run's initial state carries the frozen planning tables.
+        decision = decide_doctoral_investment(run, with_planning(state), market, caps, accounts)
         self.assertEqual([(p.agent_id, p.capacity_mw) for p in decision.proposals], [("owner", 80)])
         with self.assertRaises(ValueError):
             ledger.build_asset_accounts(state, {"scenario": "with_cm"})

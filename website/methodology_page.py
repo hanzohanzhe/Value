@@ -21,6 +21,7 @@ def pages(w):
         body=body.replace('EDITION 0.2','EDITION '+str(edition['edition'])).replace('修订版 0.2','修订版 '+str(edition['edition']))
     other='zh' if lang=='en' else 'en'
     body+='<div class="methodology-intro"><nav class="methodology-language" aria-label="'+t('Methodology language','方法学语言')+'"><span>'+t('English edition','中文版本')+'</span><a data-language-link href="/'+other+'/methodology/" lang="'+other+'">'+t('阅读中文版','Read in English')+'</a></nav><p class="small">'+(edition['revision'][lang]+' · '+edition['basisLabel'][lang] if imported else t('Revised 3 October 2026 · Implementation and data basis 2 October 2026','修订于 2026年10月3日 · 模型实现与数据依据 2026年10月2日'))+'</p>'+downloads+'</div>'
+    body+='<p class="small">'+t('Edition 0.4 describes the reviewed VALUE 0.7.0-alpha.1 implementation. The downloadable Full 2026-10-03-rc1 contains VALUE 0.6.0-alpha.2; the revised installer awaits publication.','0.4 版方法学描述经修订的 VALUE 0.7.0-alpha.1 实现。当前可下载的 Full 2026-10-03-rc1 内含 VALUE 0.6.0-alpha.2；修订实现的安装包待发布。')+'</p>'
     body+='<details class="methodology-toc" open><summary>'+t('Chapters · full English methodology','章节目录 · 完整中文方法学')+'</summary><nav aria-label="'+t('Methodology chapters','方法学章节')+'">'+toc+'</nav></details>'
     body+='<article class="methodology-body" lang="'+lang+'">'
     for c in chapters:

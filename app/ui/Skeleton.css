@@ -1,0 +1,8 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-skeleton { display: grid; gap: var(--sp-2); padding: var(--sp-2) 0; }
+  .v-skeleton__line { display: block; height: 12px; border-radius: var(--r-sm); background: linear-gradient(90deg, var(--line-soft), var(--paper), var(--line-soft)); background-size: 200% 100%; animation: v-skeleton 1.2s ease-in-out infinite; }
+  .v-skeleton__line:last-child { width: 60%; }
+  @keyframes v-skeleton { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+}

@@ -1,0 +1,60 @@
+{
+  "schema_version": "value.firm-availability/v1",
+  "table_id": "value-uk-firm-availability-v1",
+  "status": "AUTHOR REVIEWED (DECISIONS A14, 2026-10-06)",
+  "acceptance": "DECISIONS A14: the nuclear station values are approved unchanged; natural-flow hydro uses the DUKES 6.3 2019-2024 mean load factor 0.3487 with the quarterly-derived monthly shape, accepted against DUKES 6.2 total hydro generation (2019-2024 mean 5.77 TWh, +-15 %). Plan 4.5 S8 nuclear target: within +-10 % of Energy Trends 5.1 (supplied basis).",
+  "applies_to": "value-corrected profile only (corrections p05.firm-availability, p05.nuclear-generation-end-month and p05.hydro-dukes-load-factor; findings P5-09, P5-10, P6-10). The doctoral profile keeps the 35aadb3 constant availability 1.0.",
+  "compiled_from": "docs/dev/REFERENCE_STATISTICS_FOR_AUTHOR_REVIEW.md sections 1 and 2 (second round with DESNZ xlsx, decision A11; reviewed by the author in A14)",
+  "access_date": "2026-10-06",
+  "calendar": "fixed 365-day year of 48 half-hour periods per day starting 1 January 00:00 UTC; periods beyond 17520 wrap",
+  "nuclear": {
+    "basis": "Station load factor = PRIS 2019-2024 mean of station supplied energy / (PRIS reference power x hours) [D], applied as a constant derate of every period (no outage calendar in P0; planned-outage calendars are a P1 item). The model capacity is the EDF station capacity of value_uk_nuclear_policy_v1.json, so the energy-preserving model load factor is pris_load_factor x pris_reference_mw / model capacity.",
+    "retirement": "In the year of announced_generation_end 'YYYY-MM' (value_uk_nuclear_policy_v1.json, or generation_end_month_overrides below under p05.nuclear-generation-end-month), availability is zero from the first period of the following month (2030-03 -> period 4320). A station whose end has no month (Sizewell B '2055') runs the whole year; the asset is absent from model_unavailable_from_year.",
+    "generation_end_month_overrides": {
+      "heysham-2": {"announced_generation_end": "2030-03", "source": "reference statistics 1.6: N6 [V] (December 2024 extension of Heysham 2 and Torness to March 2030), N3 [V]; the policy file only says 2030", "decision": "A10, A14"},
+      "torness": {"announced_generation_end": "2030-03", "source": "reference statistics 1.6: N6 [V] (December 2024 extension of Heysham 2 and Torness to March 2030), N3 [V]; the policy file only says 2030", "decision": "A10, A14"}
+    },
+    "stations": {
+      "heysham-1": {"reactor_type": "AGR", "pris_load_factor": 0.668, "pris_reference_mw": 1060.0, "grade": "[D] from N1 [V]"},
+      "hartlepool": {"reactor_type": "AGR", "pris_load_factor": 0.689, "pris_reference_mw": 1185.0, "grade": "[D] from N1 [V]"},
+      "heysham-2": {"reactor_type": "AGR", "pris_load_factor": 0.752, "pris_reference_mw": 1240.0, "grade": "[D] from N1 [V]"},
+      "torness": {"reactor_type": "AGR", "pris_load_factor": 0.792, "pris_reference_mw": 1200.0, "grade": "[D] from N1 [V]"},
+      "sizewell-b": {"reactor_type": "PWR", "pris_load_factor": 0.801, "pris_reference_mw": 1198.0, "grade": "[D] from N1 [V]"}
+    },
+    "reactor_type_defaults": {
+      "AGR": {"load_factor": 0.727, "grade": "[D] 2019-2024 mean of the four operating AGR stations"},
+      "PWR": {"load_factor": 0.801, "grade": "[D] Sizewell B 2019-2024 mean; used for planned PWR/EPR projects (Hinkley Point C, Sizewell C)"}
+    },
+    "planned_project_reactor_type": "PWR",
+    "national_aggregate": {"load_factor": 0.723, "grade": "[V2]/[E] DESNZ nuclear load factor 2023 72.4 %, 2024 72.3 % (N13, N15); consistent with DUKES 2026 table 5.10.B 2022-2024 mean 72.26 % [X]; used for an undifferentiated 'Nuclear' asset"},
+    "station_values_note": "pris_load_factor equals the 2019-2024 arithmetic mean of reference statistics 1.4a (66.80 / 68.86 / 75.17 / 79.20 / 80.09 %) rounded to three decimals; A14 approved these values unchanged."
+  },
+  "hydro_natural_flow": {
+    "basis": "Annual load factor x monthly shape (arithmetic mean 1 over the 12 months) applied to the dispatch capacity of run-of-river hydro.",
+    "load_factor": 0.3487,
+    "load_factor_grade": "[X] DUKES 2026 table 6.3, natural-flow hydro load factor, standard basis, 2019-2024 mean 34.87 % (yearly 36.05 / 41.59 / 32.77 / 30.60 / 33.82 / 34.41 %); chosen by the author in A14 (correction p05.hydro-dukes-load-factor)",
+    "monthly_shape": [1.3851, 1.3851, 1.3851, 0.6582, 0.6582, 0.6582, 0.6776, 0.6776, 0.6776, 1.2791, 1.2791, 1.2791],
+    "monthly_shape_grade": "[D] stepped shape from the Energy Trends 6.1 quarterly hydro load factors 2019-2024 (quarter factors 1.386 / 0.659 / 0.678 / 1.280), normalised to an arithmetic monthly mean of 1 (A14). On the 365-day calendar the period-weighted mean of this shape is 0.99883, so the modelled annual load factor is 0.3483.",
+    "capacity_note": "GBP1 carries 2000 MW of natural-flow hydro: 0.3487 x 0.99883 x 2000 MW x 8760 h = 6.10 TWh, +5.8 % against the DUKES 6.2 2019-2024 mean of 5.77 TWh (A14 acceptance +-15 %) [D].",
+    "p05b_values": {
+      "note": "Values of P0-5b (p05.firm-availability without p05.hydro-dukes-load-factor), kept so a run recorded with them can be explained; superseded by A14.",
+      "load_factor": 0.334,
+      "load_factor_grade": "[V2] 2023 only (Statista H4, citing DESNZ)",
+      "monthly_shape": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+      "monthly_shape_grade": "[NV] flat placeholder"
+    }
+  },
+  "sources": {
+    "N1": "World Nuclear Association Reactor Database (IAEA PRIS operating details), accessed 2026-10-06",
+    "N13": "DESNZ DUKES 2025 chapter 5 (excerpt [E])",
+    "N15": "Secondary page citing DESNZ load factors [V2]",
+    "H4": "Statista, Load factor of electricity from hydropower in the UK 2010-2023 (2025-01-14) [V2]",
+    "H5": "DESNZ DUKES chapter 6 page, tables 6.2 and 6.3 (existence verified, cells not read)",
+    "N3": "EDF Energy press release on the 2026-28 fleet investment, 2026-01-21 (reference statistics 1.1) [V]",
+    "N6": "World Nuclear News, Further life extension of two UK nuclear power stations, 2025-09-02 (reference statistics 1.1) [V]",
+    "X4": "DESNZ DUKES 2026 table 6.2 (xlsx, reference statistics section 6) [X]",
+    "X5": "DESNZ DUKES 2026 table 6.3 (xlsx, reference statistics section 6) [X]",
+    "X6": "DESNZ Energy Trends September 2026 table 6.1 (xlsx, reference statistics section 6) [X]",
+    "X1": "DESNZ DUKES 2026 table 5.10 (xlsx, reference statistics section 6) [X]"
+  }
+}

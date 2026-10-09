@@ -1,13 +1,21 @@
-.journey-data-editor { display: grid; gap: 14px; min-width: 0; }
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.journey-data-editor { display: grid; gap: var(--sp-3); min-width: 0; }
 .journey-data-editor p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
-.journey-data-editor code { display: block; font-size: 11px; overflow-wrap: anywhere; }
+.journey-data-editor code { display: block; font-size: var(--fs-xs); overflow-wrap: anywhere; }
 .journey-data-editor select { width: 100%; min-width: 0; min-height: 44px; }
-.journey-data-role { display: grid; gap: 8px; min-width: 0; }
-.journey-data-files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.journey-data-files > div { display: grid; gap: 6px; min-width: 0; padding: 12px; background: var(--paper); border-radius: 7px; overflow-wrap: anywhere; }
-.journey-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.journey-data-role { display: grid; gap: var(--sp-2); min-width: 0; }
+.journey-data-files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.journey-data-files > div { display: grid; gap: var(--sp-1); min-width: 0; padding: var(--sp-3); background: var(--paper); border-radius: var(--r-md); overflow-wrap: anywhere; }
+.journey-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .journey-data-editor button, .journey-data-editor a, .journey-data-editor .upload { max-width: 100%; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
 .journey-data-editor .upload:has(input:disabled) { opacity: .6; cursor: not-allowed; }
 @media (max-width: 640px) { .journey-data-files { grid-template-columns: minmax(0, 1fr); } .journey-data-actions > *, .journey-data-editor > button { width: 100%; } }
 
 .journey-data-network code { display: inline; }
+
+/* S-D8 / N-6 (round R1-5): the committed-mapping confirmation and the timestamp declaration. */
+.journey-data-mapped { padding: var(--sp-2) var(--sp-3); border-left: 4px solid var(--teal); border-radius: var(--r-md); background: var(--teal-soft); color: var(--ink); font-size: var(--fs-sm); }
+.journey-data-timestamp, .journey-data-fx, .journey-data-unit { color: var(--ink-muted); font-size: var(--fs-xs); }
+}

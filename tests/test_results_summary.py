@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from gridform_core.comparison_identity import build_comparison_identity
+from gridform_core.methodology import resolve_methodology
 
 from gridform_core.results_summary import (
     build_run_summary,
@@ -78,7 +79,8 @@ class ResultsSummaryTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(json.dumps(payload))
             status = {"mode": mode, "run_policy": {"start_year": 2025, "end_year": 2025, "periods_per_year": periods}}
-            resolved = {"scientific_parameters": {}, "runtime_controls": {}}
+            # Runs recorded after X0 S9 carry their methodology in the method dimension.
+            resolved = {"scientific_parameters": {}, "runtime_controls": {}, "extensions": {"methodology": resolve_methodology().to_dict()}}
             result["comparison_identity"] = build_comparison_identity(root, status, resolved)
         if eligibility is not None:
             result["comparison_eligibility"] = eligibility
@@ -260,6 +262,29 @@ class ResultsSummaryTests(unittest.TestCase):
             "vre_curtailment_counterfactual_proof_invalid",
         )
 
+    def test_validator_uses_the_shared_coverage_rule_for_stopped_runs(self) -> None:
+        # Review response (P0-9 S5): the non-annual and stopped-Run verdicts come from result_coverage.
+        for run_status, reason in (
+            ("cancelled", "run_cancelled_before_full_coverage"),
+            ({"status": "archived", "archived_from_status": "failed"}, "run_failed_before_full_coverage"),
+        ):
+            with self.subTest(run_status=run_status):
+                result = validate_vre_curtailment_attribution(
+                    self.attribution(), mode="full", periods_per_year=17520,
+                    expected_years=(2025,), run_status=run_status,
+                )
+                self.assertEqual((result["status"], result["reason_code"]), ("withheld", reason))
+        reconciled = validate_vre_curtailment_attribution(
+            self.attribution(), mode="full", periods_per_year=17520, expected_years=(2025,), run_status="completed",
+        )
+        self.assertEqual(reconciled["status"], "reconciled")
+        for mode, periods in (("value_101_day", 17520), ("full", 48), ("full", None)):
+            with self.subTest(mode=mode, periods=periods):
+                result = validate_vre_curtailment_attribution(
+                    self.attribution(), mode=mode, periods_per_year=periods, expected_years=(2025,),
+                )
+                self.assertEqual((result["status"], result["reason_code"]), ("withheld", "annual_evidence_withheld_for_nonannual_run"))
+
     def test_strict_validator_rejects_duplicate_expected_years(self) -> None:
         result = validate_vre_curtailment_attribution(
             self.attribution(),
@@ -428,22 +453,69 @@ class ResultsSummaryTests(unittest.TestCase):
             "vre_curtailment_redispatch_net_inconsistent",
         )
 
-    def test_mismatched_attribution_keeps_values_but_nulls_all_deltas(self) -> None:
-        left = self.summary("a", "dynamic")
-        right = self.summary("b", "legacy")
+    def _with_metrics(self, summary: dict, **metrics: float) -> dict:
+        for metric_id, value in metrics.items():
+            summary["annual"][0]["metrics"][metric_id] = {"value": value, "unit": "x"}
+        return summary
+
+    def test_mismatched_attribution_withholds_only_curtailment_deltas(self) -> None:
+        # AF3-1 (DECISIONS A23): before, a curtailment-evidence mismatch nulled
+        # every delta, cost and carbon included.
+        left = self._with_metrics(self.summary("a", "dynamic"), vre_curtailment_mwh=4.0, total_carbon_emissions_tco2e=7.0)
+        right = self._with_metrics(self.summary("b", "legacy"), vre_curtailment_mwh=5.0, total_carbon_emissions_tco2e=6.0)
         left["vre_curtailment_attribution"] = self.attribution()
         right["vre_curtailment_attribution"] = self.attribution()
         right["vre_curtailment_attribution"]["attribution_method_id"] = "method-b"  # type: ignore[index]
 
         result = compare_run_summaries([left, right])
 
-        metric = result["annual_comparison"][0]["metrics"]["cem_system_cost_gbp"]
-        self.assertEqual([row["value"] for row in metric], [1.0, 1.0])
-        self.assertEqual([row["delta_from_base"] for row in metric], [None, None])
+        metrics = result["annual_comparison"][0]["metrics"]
+        self.assertEqual([row["value"] for row in metrics["cem_system_cost_gbp"]], [1.0, 1.0])
+        self.assertEqual([row["delta_from_base"] for row in metrics["cem_system_cost_gbp"]], [0.0, 0.0])
+        self.assertEqual([row["delta_from_base"] for row in metrics["total_carbon_emissions_tco2e"]], [0.0, -1.0])
+        self.assertEqual([row["delta_from_base"] for row in metrics["vre_curtailment_mwh"]], [None, None])
+        self.assertEqual([row["value"] for row in metrics["vre_curtailment_mwh"]], [4.0, 5.0])
         self.assertEqual(
             result["curtailment_comparison"]["reason_code"],
             "attribution_method_mismatch",
         )
+        self.assertFalse(result["metric_deltas_allowed"])
+        self.assertEqual(result["withheld_metric_deltas"], ["vre_curtailment_mwh"])
+        gate = result["metric_delta_gates"]["vre_curtailment_mwh"]
+        self.assertEqual(gate["reason_code"], "attribution_method_mismatch")
+        self.assertIn("curtailment", gate["reason"])
+        self.assertTrue(result["metric_delta_gates"]["cem_system_cost_gbp"]["allowed"])
+
+    def test_missing_counterfactual_snapshot_keeps_cost_and_carbon_deltas(self) -> None:
+        # The VALUE 101 case of AF3-1: the copperplate modules provide no
+        # counterfactual snapshot, so no annual curtailment evidence exists.
+        summaries = [
+            self._with_metrics(self.summary(run_id, "dynamic"), vre_curtailment_mwh=None, total_carbon_emissions_tco2e=7.0)
+            for run_id in ("a", "b")
+        ]
+        for summary in summaries:
+            summary["vre_curtailment_attribution"] = {
+                "status": "unavailable", "reason_code": "module_does_not_provide_counterfactual_snapshot",
+            }
+        result = compare_run_summaries(summaries)
+        metrics = result["annual_comparison"][0]["metrics"]
+        self.assertEqual([row["delta_from_base"] for row in metrics["cem_system_cost_gbp"]], [0.0, 0.0])
+        self.assertEqual([row["delta_from_base"] for row in metrics["total_carbon_emissions_tco2e"]], [0.0, 0.0])
+        self.assertEqual(result["withheld_metric_deltas"], ["vre_curtailment_mwh"])
+        self.assertFalse(result["metric_delta_gates"]["vre_curtailment_mwh"]["allowed"])
+
+    def test_definition_mismatch_withholds_only_the_metrics_it_defines(self) -> None:
+        left = self._with_metrics(self.summary("a", "dynamic"), total_carbon_emissions_tco2e=7.0)
+        right = self._with_metrics(self.summary("b", "dynamic", cost="other"), total_carbon_emissions_tco2e=6.0)
+        for summary in (left, right):
+            summary["vre_curtailment_attribution"] = self.attribution()
+        result = compare_run_summaries([left, right])
+        metrics = result["annual_comparison"][0]["metrics"]
+        self.assertEqual([row["delta_from_base"] for row in metrics["cem_system_cost_gbp"]], [None, None])
+        self.assertEqual([row["delta_from_base"] for row in metrics["total_carbon_emissions_tco2e"]], [0.0, -1.0])
+        gate = result["metric_delta_gates"]["cem_system_cost_gbp"]
+        self.assertEqual((gate["reason_code"], gate["definitions"]), ("metric_definition_differs", ["cost"]))
+        self.assertFalse(result["metric_deltas_allowed"])
 
     def test_three_matching_runs_keep_shared_base_deltas_enabled(self) -> None:
         summaries = [self.summary(run_id, "dynamic") for run_id in ("a", "b", "c")]

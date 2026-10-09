@@ -1243,8 +1243,11 @@ def analyze_investment_case3(iteration, generator_objects, battery_objects, elec
     total_operational_cost_annual = sum(total_operational_costs.values())
     
     # Calculate energy deficit costs (lost value of electricity)
-    # Record the scale of deficit and calculate lost value at 8000 per unit (MWh)
-    DEFICIT_VALUE_PER_MWH = 8000  # Lost value per MWh of energy deficit
+    # Record the scale of deficit and calculate lost value at 17000 per unit (MWh).
+    # VALUE FX5 (decision A16-5, universal accounting correction fx5.voll-17000):
+    # the thesis code used 8000; the author's VoLL is 17000 GBP/MWh.  This
+    # value enters only the cost history, never dispatch or investment.
+    DEFICIT_VALUE_PER_MWH = 17000  # Lost value per MWh of energy deficit
     total_energy_deficit_mwh = (sum(blackout_periods) * PHYSICAL_PERIOD_HOURS) if blackout_periods else 0
     number_of_deficit_periods = sum(1 for d in blackout_periods if d > 0) if blackout_periods else 0
     max_period_deficit_mwh = max(blackout_periods) if blackout_periods and len(blackout_periods) > 0 else 0

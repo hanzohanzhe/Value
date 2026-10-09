@@ -29,7 +29,10 @@ def recovery_adequacy(report: Mapping[str, object]) -> dict[str, object]:
     target = _number(report, "annual_levelized_project_cost_gbp")
     other_revenue = report.get("other_storage_revenue_gbp")
     other = float(other_revenue) if other_revenue is not None else 0.0
-    bid_recovered = sold * cycle + sold * dwell * holding
+    # v2 (P0-6 S10, decision Q8): a cycle-only bid recovers the cycle wear
+    # only; the holding term is investment adequacy, not dispatch revenue.
+    bid_basis = str(report.get("bid_basis") or "thesis_dwell_linear")
+    bid_recovered = sold * cycle + (0.0 if bid_basis == "cycle_only" else sold * dwell * holding)
     recovered = bid_recovered + other
     fallback = (
         "no_previous_year_sales_full_utilisation_design_case"
@@ -37,8 +40,9 @@ def recovery_adequacy(report: Mapping[str, object]) -> dict[str, object]:
         else None
     )
     return {
-        "schema_version": "value.storage-recovery-adequacy/v1",
+        "schema_version": "value.storage-recovery-adequacy/v2",
         "technology": report.get("technology"),
+        "bid_basis": bid_basis,
         "pricing_basis": report.get("pricing_basis"),
         "fallback_reason": fallback,
         "annual_levelized_project_cost_gbp": target,

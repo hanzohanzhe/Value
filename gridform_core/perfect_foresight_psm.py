@@ -15,6 +15,13 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from . import agent_cashflow
+from .asset_economics import (
+    CAPITAL_COST_COMPONENTS_KEY,
+    FOM_IN_LEVELISED_CAPEX_TECHNOLOGIES,
+    capital_cost_components,
+)
+from .methodology import methodology_scoped
 from .v2.contracts import (
     ArtifactReference,
     ChronologicalPSMData,
@@ -219,8 +226,9 @@ class PerfectForesightPSM:
     """SciPy/HiGHS implementation of the public v2 PSM contract."""
 
     id = "value-perfect-foresight-lp"
-    version = "1.0.0"
+    version = "1.1.0"
 
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         data = model_input.chronology
         if data is None:
@@ -381,6 +389,16 @@ class PerfectForesightPSM:
             ))
             for period in range(periods)
         ])
+        # P0-7 (A4): running cost by resource, as the MWh-weighted unit cost.
+        running_cost_by_asset = {
+            resource.asset_id: (
+                float(np.dot(resource_period[index], resource_marginal_costs[index]))
+                / float(resource_period[index].sum())
+                if float(resource_period[index].sum()) > 0
+                else float(np.mean(resource_marginal_costs[index]))
+            )
+            for index, resource in enumerate(data.resources)
+        }
         degradation_costs = np.asarray([
             float(sum(
                 discharge_period[index, period]
@@ -450,8 +468,8 @@ class PerfectForesightPSM:
                     "psm_module_id": self.id,
                     "psm_module_version": self.version,
                     "period_hours": float(model_input.period_hours),
-                    "timezone": "Europe/London",
-                    "calendar": "fixed_365_day_local_periods",
+                    # The ledger stamps the model clock (UTC, fixed 365-day year;
+                    # gridform_core.model_clock, four-role test S-M1).
                     "requested_trace_level": requested_trace_level,
                     "dispatch_formulation": FORMULATION_ID,
                     "pricing_rule": "lp_balance_dual",
@@ -554,7 +572,12 @@ class PerfectForesightPSM:
         fixed_om = 0.0
         for asset in model_input.operating_state.assets:
             capital += float(asset.extensions.get("annualized_capital_cost_gbp", 0.0) or 0.0)
-            fixed_om += float(asset.extensions.get("fixed_om_gbp", 0.0) or 0.0)
+            # P0-7 S3: the economics key is annual_fixed_opex_gbp ("fixed_om_gbp"
+            # never existed, so FOM was silently 0). DECISIONS A7: VRE and
+            # storage FOM is folded into levelised CAPEX, so only thermal and
+            # other FOM enters the headline.
+            if asset.technology not in FOM_IN_LEVELISED_CAPEX_TECHNOLOGIES:
+                fixed_om += float(asset.extensions.get("annual_fixed_opex_gbp", 0.0) or 0.0)
         diagnostics = {
             "schema_version": "value.perfect-foresight-diagnostics/v1",
             "formulation_id": FORMULATION_ID,
@@ -627,5 +650,18 @@ class PerfectForesightPSM:
                     data.extensions.get("vre_expansion_headroom_mw_by_technology") or {}
                 ),
                 "market_ledger": market_ledger_metadata,
+                CAPITAL_COST_COMPONENTS_KEY: {
+                    **capital_cost_components(model_input.operating_state.assets, included_fixed_opex_gbp=fixed_om),
+                    "included_annualised_capital_gbp": capital,
+                },
+                agent_cashflow.EXTENSION_KEY: agent_cashflow.extension(
+                    agent_cashflow.unit_cost_cashflow(
+                        dispatch_by_asset, running_cost_by_asset,
+                        {asset.asset_id: asset.technology for asset in model_input.operating_state.assets},
+                        cost_basis="perfect_foresight_mwh_weighted_marginal_cost",
+                    ),
+                    psm_module_id=self.id,
+                    cost_basis="perfect_foresight_mwh_weighted_marginal_cost",
+                ),
             },
         )

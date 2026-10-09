@@ -599,7 +599,25 @@ def _audit_retained_sources(root: Path) -> dict[str, object]:
     return {"passed": not modified, "modified_files": modified, "manifest": str(manifest_path)}
 
 
-def _probe_api(api_origin: str) -> dict[str, object]:
+def _probe_api_headers(api_origin: str, api_state_root: Path | None) -> tuple[dict[str, str], str | None]:
+    """Session header for a direct API probe (P0-1: every route but a reduced
+    /api/health needs ``X-VALUE-Session``); the token comes from the API's
+    0600 session file in ``api_state_root`` (default: this process's
+    VALUE_DATA_HOME rules) and is never printed."""
+
+    from urllib.parse import urlsplit
+
+    from backend.api_session import SessionUnavailable, authorized_headers
+
+    try:
+        port = urlsplit(api_origin).port or 80
+        return authorized_headers(api_state_root, port), None
+    except (SessionUnavailable, ValueError) as exc:
+        return {}, str(exc)
+
+
+def _probe_api(api_origin: str, api_state_root: Path | None = None) -> dict[str, object]:
+    headers, session_problem = _probe_api_headers(api_origin, api_state_root)
     routes = {
         "health": "/api/health",
         "tutorial": "/api/tutorials/value-101",
@@ -611,7 +629,8 @@ def _probe_api(api_origin: str) -> dict[str, object]:
     payloads: dict[str, object] = {}
     for name, route in routes.items():
         try:
-            with urllib.request.urlopen(api_origin.rstrip("/") + route, timeout=2) as response:
+            request = urllib.request.Request(api_origin.rstrip("/") + route, headers=headers)
+            with urllib.request.urlopen(request, timeout=2) as response:
                 payload = json.loads(response.read().decode("utf-8"))
                 results[name] = response.status == 200
                 payloads[name] = payload
@@ -623,7 +642,7 @@ def _probe_api(api_origin: str) -> dict[str, object]:
         str(item.get("id")) for item in modules
         if isinstance(item, Mapping) and item.get("id")
     ]
-    return {"routes": results, "public_module_ids": public_module_ids}
+    return {"routes": results, "public_module_ids": public_module_ids, "session": session_problem or "available"}
 
 
 def _recompute_comparison(evidence: Mapping[str, Any]) -> dict[str, object]:
@@ -667,6 +686,7 @@ def _audit_evidence(
     evidence: Mapping[str, Any],
     issues: list[dict[str, Any]],
     api_origin: str,
+    api_state_root: Path | None = None,
 ) -> dict[str, Any]:
     try:
         source = _audit_source_control(root)
@@ -677,7 +697,7 @@ def _audit_evidence(
         _issue(issues, "SOURCE_TREE_DIRTY", "The reviewed source tree is not at a clean, identified commit.", unexpected_dirty)
 
     public_exposed = _audit_public_surface(root)
-    api = _probe_api(api_origin)
+    api = _probe_api(api_origin, api_state_root)
     public_ids = [str(item) for item in api.get("public_module_ids", [])]
     module_exposed = sorted(
         item for item in public_ids
@@ -836,6 +856,7 @@ def audit_release(
     *,
     minimum_installer_bytes: int = 100 * 1024 * 1024,
     api_origin: str = "http://127.0.0.1:8766",
+    api_state_root: Path | None = None,
 ) -> dict[str, Any]:
     root = Path(root).resolve()
     installer = Path(installer).resolve()
@@ -849,7 +870,7 @@ def audit_release(
     installer_report = _audit_installer(root, installer, issues, minimum_installer_bytes)
     product_report = _audit_product(root, issues)
     pack_report = _audit_packs(root, issues)
-    evidence_report = _audit_evidence(root, evidence, issues, api_origin)
+    evidence_report = _audit_evidence(root, evidence, issues, api_origin, api_state_root)
     blocking_codes = sorted({str(issue["code"]) for issue in issues})
     return {
         "schema_version": "value.101-release-audit/v1",
@@ -921,6 +942,8 @@ def main() -> int:
     parser.add_argument("--markdown", type=Path, required=True)
     parser.add_argument("--minimum-installer-bytes", type=int, default=100 * 1024 * 1024)
     parser.add_argument("--api-origin", default="http://127.0.0.1:8766")
+    parser.add_argument("--api-data-home", type=Path, default=None,
+                        help="VALUE_DATA_HOME of the probed API (its session file); default: this process's")
     args = parser.parse_args()
     report = audit_release(
         args.root,
@@ -928,6 +951,7 @@ def main() -> int:
         args.evidence,
         minimum_installer_bytes=args.minimum_installer_bytes,
         api_origin=args.api_origin,
+        api_state_root=args.api_data_home,
     )
     args.json.parent.mkdir(parents=True, exist_ok=True)
     args.markdown.parent.mkdir(parents=True, exist_ok=True)

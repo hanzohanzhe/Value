@@ -5,15 +5,14 @@ import hashlib
 import json
 import os
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
 from backend import server
+from tests.local_api_harness import start_local_api
 from gridform_core.application import _network_period_ids_for_year
 from gridform_core.value_101 import value_101_study
 from gridform_core.value_101_lifecycle import build_value_101_network_pair
@@ -103,7 +102,7 @@ class Value101NetworkPackTests(unittest.TestCase):
                 )
 
     def test_checked_in_pack_is_complete_three_zone_and_asymmetric(self) -> None:
-        model = load_zonal_network_pack(NETWORK)
+        model = load_zonal_network_pack(NETWORK, topology_policy="enforce")
         self.assertEqual([zone.zone_id for zone in model.zones], ["north", "central", "south"])
         self.assertEqual(
             [(row.corridor_id, row.from_zone_id, row.to_zone_id) for row in model.corridors],
@@ -142,7 +141,7 @@ class Value101NetworkPackTests(unittest.TestCase):
         manifest = payload(BASELINE / "manifest.json")
         demand_path = BASELINE / manifest["bindings"]["demand.real"]["uri"]
         baseline_mwh = [value * 0.5 for value in series(demand_path)]
-        model = load_zonal_network_pack(NETWORK)
+        model = load_zonal_network_pack(NETWORK, topology_policy="enforce")
         self.assertEqual(list(model.zonal_demand.national_demand_mwh[:17_520]), baseline_mwh)
         self.assertEqual(list(model.zonal_demand.national_demand_mwh[17_520:]), baseline_mwh)
 
@@ -383,10 +382,8 @@ class Value101NetworkPackTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 status, baseline = self._request(
                     origin + "/api/tutorials/value-101/studies", {}
@@ -421,14 +418,15 @@ class Value101NetworkPackTests(unittest.TestCase):
                             preflight["checks"]["project_revision"],
                         )
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 
     def test_frontend_teaches_scope_and_uses_existing_results_page(self) -> None:
-        page = (ROOT / "app" / "page.tsx").read_text(encoding="utf-8")
+        # P1 W3: "the page" is the union of the workbench state, the shell and the route views.
+        page = "\n".join((ROOT / "app" / name).read_text(encoding="utf-8") for name in (
+            "page.tsx", "features/shell/useWorkbenchState.ts", "features/shell/Workbench.tsx", "learn/LearnView.tsx", "runs/RunsView.tsx",
+        ))
         source = (ROOT / "app" / "features" / "learn" / "Value101NetworkExercise.tsx").read_text(encoding="utf-8")
         for label in (
             "Network constraints & redispatch",

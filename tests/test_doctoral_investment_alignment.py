@@ -14,6 +14,8 @@ from types import SimpleNamespace
 from typing import Mapping
 import unittest
 
+from tests.r71_planning_fixtures import with_planning
+
 import numpy as np
 import pandas as pd
 
@@ -97,7 +99,8 @@ def typed_inputs():
         ext.update(investment_owner_id=owner, investment_eligible=True, preferred_rate=0.08, target_payback_years=25)
         assets.append(AssetStateV2(asset_id, "solar", capacity, region=region, extensions=ext))
     run = ResolvedRun("test", "p", "basic", "fixture", 2025, 2025, {}, {}, {})
-    state = OperatingState(2025, tuple(assets), ())
+    # r71: the planning tables of the initial state (next year, certain).
+    state = with_planning(OperatingState(2025, tuple(assets), ()))
     market = MarketYearResult("market", 2025, "fixture", "1", {}, {}, 0, 0, 0, 0, 0, 0, 0)
     headroom = (ExpansionHeadroom("cap", 2025, "vre-expansion-cap", {"solar": 100}),)
     accounts = {"z1": {"net_revenue_gbp": 40}, "z2": {"net_revenue_gbp": 40}, "a": {"net_revenue_gbp": 80}}

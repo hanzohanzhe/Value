@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+// P1 W4a (A30): the research guide reads in English by default; its labels below are the en dictionary's (journey.*).
 import { VALUE_101_FALLBACK } from "../app/features/learn/value101";
 
 const sha = "a".repeat(64);
@@ -30,38 +31,38 @@ async function fixture(page: Page) {
   });
   return { uploads, derives, packs, assertClean() { expect(forbidden).toEqual([]); expect(errors).toEqual([]); } };
 }
-async function enter(page: Page) { await page.goto("/"); await expect(page.locator(".service")).toContainText("value-native ready"); await page.getByRole("button", { name: "add your new data", exact: true }).click(); await page.locator(".research-journey:visible").getByRole("combobox", { name: "已有研究", exact: true }).selectOption("source"); }
+async function enter(page: Page) { await page.goto("/"); await expect(page.locator(".rail .service")).toContainText("value-native ready"); await page.getByRole("button", { name: "Add your new data", exact: true }).click(); await page.locator(".research-journey:visible").getByRole("combobox", { name: "Existing Study", exact: true }).selectOption("source"); }
 
 test("copy BASE, upload only its target role with expected revision, return and derive without Run", async ({ page }) => {
   const f = await fixture(page); await enter(page);
   const journey = page.locator(".research-journey:visible");
-  await journey.getByRole("textbox", { name: "新 Study 名称", exact: true }).fill("My changed-data study");
-  await journey.getByRole("textbox", { name: "独立数据包名称", exact: true }).fill("My independent BASE");
-  await journey.getByRole("button", { name: "复制基线 BASE 包并加入我的文件", exact: true }).click();
+  await journey.getByRole("textbox", { name: "Name of the new Study", exact: true }).fill("My changed-data study");
+  await journey.getByRole("textbox", { name: "Name of the independent data pack", exact: true }).fill("My independent BASE");
+  await journey.getByRole("button", { name: "Copy the baseline BASE pack and add my files", exact: true }).click();
   const editor = page.locator(".journey-data-editor:visible");
   await expect(editor).toContainText("My independent BASE");
   await expect(editor.locator('input[type="file"]')).toBeEnabled();
-  await editor.getByRole("combobox", { name: "1. 选择文件的语义角色", exact: true }).selectOption("demand.real");
+  await editor.getByRole("combobox", { name: "1. Choose the semantic role of the file", exact: true }).selectOption("demand.real");
   await editor.locator('input[type="file"]').setInputFiles({ name: "my-demand.csv", mimeType: "text/csv", buffer: Buffer.from("year,mwh\n2025,12\n") });
-  await expect(editor).toContainText("SHA 改变 1");
+  await expect(editor).toContainText("SHA changed 1");
   expect(f.uploads).toEqual([{ path: "/api/data-packs/copy/files/demand.real", expected: targetSha }]);
   expect(f.packs.find((item) => item.id === "base")?.bindings["demand.real"].sha256).toBe(sha);
-  await editor.getByRole("button", { name: "保留目标包并返回研究引导", exact: true }).click();
-  await expect(journey.getByRole("combobox", { name: "已安装的数据包", exact: true })).toHaveValue("copy");
-  await journey.getByRole("button", { name: "创建换数据 Study", exact: true }).click();
-  await expect(page).toHaveURL(/[?&]view=run(?:&|$)/);
+  await editor.getByRole("button", { name: "Keep the target pack and return to the research guide", exact: true }).click();
+  await expect(journey.getByRole("combobox", { name: "Installed data pack", exact: true })).toHaveValue("copy");
+  await journey.getByRole("button", { name: "Create the new-data Study", exact: true }).click();
+  await expect(page).toHaveURL(/\/runs(?:\/|\?|$)/);
   expect(f.derives).toEqual([{ intent: "data", name: "My changed-data study", source_revision_sha256: sha, data_pack_id: "copy" }]); f.assertClean();
 });
 
 test("referenced target and lost journey context prevent writes at 390px", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); const f = await fixture(page); await enter(page);
   const journey = page.locator(".research-journey:visible");
-  await journey.getByRole("combobox", { name: "已安装的数据包", exact: true }).selectOption("referenced");
-  await journey.getByRole("button", { name: "进入 Data 安装 / 校验", exact: true }).click();
+  await journey.getByRole("combobox", { name: "Installed data pack", exact: true }).selectOption("referenced");
+  await journey.getByRole("button", { name: "Open Data to install / validate", exact: true }).click();
   const editor = page.locator(".journey-data-editor:visible");
-  await expect(editor).toContainText("已被保存的 Study 引用"); await expect(editor.locator('input[type="file"]')).toBeDisabled();
+  await expect(editor).toContainText("referenced by a saved Study"); await expect(editor.locator('input[type="file"]')).toBeDisabled();
   await expect.poll(() => page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await page.reload();
-  await expect(editor).toContainText("引导上下文已失效"); await expect(editor.locator('input[type="file"]')).toBeDisabled();
+  await expect(editor).toContainText("guide context is no longer valid"); await expect(editor.locator('input[type="file"]')).toBeDisabled();
   expect(f.uploads).toEqual([]); expect(f.derives).toEqual([]); f.assertClean();
 });

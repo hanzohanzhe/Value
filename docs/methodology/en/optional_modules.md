@@ -2,112 +2,183 @@
 
 ## Perfect-foresight single-node dispatch
 
-The perfect-foresight module jointly schedules generation, imports and storage across a complete time series with given asset capacities. It provides an optional single-node resource-cost comparison for national operation, with capacity investment supplied by the outer model. Inputs include period demand, resource availability and marginal cost, storage power and energy capacities, efficiencies and initial inventory. The standard application uses a half-hourly clock.
+The perfect-foresight module schedules generation, imports and storage jointly over the complete input chronology at fixed asset capacities. `PerfectForesightPSM.run` reads `PSMInput.chronology`; the outer annual model supplies investment and the resulting capacities. Each period contains demand, resource availability and marginal costs. Storage inputs give power, energy capacity, efficiencies and initial inventory.
 
-Resources and storage enter the model as period energy. Let \(x_{it}\) be resource supply, \(c_{st},d_{st}\) grid-side charging and discharging, \(S_{st}\) end-period internal inventory, and \(b_t\) unserved energy, all in MWh. Resource capacity is \(C_i\) MW, availability is \(a_{it}\in[0,1]\), nonnegative marginal cost is \(m_{it}\) GBP/MWh, and storage discharge degradation cost is \(\delta_s\) GBP/MWh. The operating objective is
-
-$$
-\min J=\sum_t\left[\sum_i m_{it}x_{it}+\sum_s\delta_sd_{st}+Vb_t\right].
-$$
-
-Supply balance and storage continuity are
+The objective minimises operating resource expenditure, storage degradation and shortage cost. The equations retain the implementation names: `resource_period`, `charge_period`, `discharge_period`, `soc_period` and `blackout` are MWh arrays, indexed by resource \(i\), storage asset \(s\) and period \(t\). `resource_marginal_costs` and `variable_degradation_gbp_per_mwh_discharged` are GBP/MWh. With `voll_gbp_per_mwh` as the shortage valuation, the objective is
 
 $$
-\sum_i x_{it}+\sum_s d_{st}+b_t-\sum_s c_{st}=D_t,
+\begin{aligned}
+\min\quad&\sum_{i,t}\mathrm{resource\_marginal\_costs}_{i,t}\cdot
+\mathrm{resource\_period}_{i,t}\\
+&+\sum_{s,t}\mathrm{variable\_degradation\_gbp\_per\_mwh\_discharged}_{s}\cdot
+\mathrm{discharge\_period}_{s,t}\\
+&+\mathrm{voll\_gbp\_per\_mwh}\cdot\sum_t\mathrm{blackout}_{t}.
+\end{aligned}
 $$
 
-$$
-S_{st}=S_{s,t-1}+\eta_s^cc_{st}-d_{st}/\eta_s^d.
-$$
-
-Resource output satisfies \(0\le x_{it}\le C_ia_{it}\Delta t\); storage power bounds are \(0\le c_{st}\le P_s^c\Delta t\) and \(0\le d_{st}\le P_s^d\Delta t\); and inventory satisfies \(0\le S_{st}\le E_s\). Inventory here measures internal energy, so separate charging and discharging efficiencies enter the transition. Every available resource can supply charging through the single-node balance.
-
-Initial and terminal inventory rules determine storage's net energy exchange over the study horizon. Initial inventory is supplied for each asset. The default cyclic rule equates final and initial inventory; fixed uses a supplied target; free allows terminal inventory anywhere within its bounds. When shortage is allowed, \(0\le b_t\le D_t\); otherwise \(b_t=0\). Defaults are \(\Delta t=0.5\) h, \(V=10{,}000\) GBP/MWh and \(\delta_s=0\), with value of lost load configurable from 0–1,000,000 GBP/MWh.
-
-Two-stage linear optimisation selects physical trajectories at equivalent cost. The first stage minimises \(J\). The second retains the original constraints and adds
+The single-node balance supplies demand and charging from available resources, storage discharge and recorded shortage:
 
 $$
-J\le J^*+\varepsilon,\qquad
-\varepsilon=\max(10^{-7},10^{-10}|J^*|),
+\begin{aligned}
+&\sum_i\mathrm{resource\_period}_{i,t}
++\sum_s\mathrm{discharge\_period}_{s,t}+\mathrm{blackout}_{t}\\
+&\qquad=\mathrm{demand\_mwh}_{t}+\sum_s\mathrm{charge\_period}_{s,t}.
+\end{aligned}
 $$
 
-while minimising \(\sum_{s,t}(c_{st}+d_{st})\). Both stages use HiGHS with primal and dual feasibility tolerances of \(10^{-8}\). The final trajectory requires \(\max_{s,t}\min(c_{st},d_{st})\le10^{-6}\) MWh. Unused renewable energy is available output less actual supply.
+Storage inventory records internal energy. `charge_efficiency` multiplies electricity absorbed from the grid, while delivered electricity is divided by `discharge_efficiency`:
 
-Prices are the first-stage marginal operating cost of period demand. The supply-balance dual \(p_t\) has units GBP/MWh, while physical output follows the second-stage trajectory. Resource revenue is \(\sum_t p_tx_{it}\), net storage market revenue is \(\sum_t p_t(d_{st}-c_{st})\), and consumer payment is \(\sum_t p_t(D_t-b_t)\). System cost adds the annualised capital and fixed-maintenance fields of operating assets to variable resource expenditure, storage degradation and shortage cost.
+$$
+\begin{aligned}
+\mathrm{soc\_period}_{s,t}={}&\mathrm{soc\_period}_{s,t-1}
++\mathrm{charge\_efficiency}_s\cdot \mathrm{charge\_period}_{s,t}\\
+&-\mathrm{discharge\_period}_{s,t}/\mathrm{discharge\_efficiency}_s.
+\end{aligned}
+$$
+
+Capacity bounds use `period_hours` to convert MW into period MWh:
+
+$$
+\begin{aligned}
+0&\le\mathrm{resource\_period}_{i,t}
+\le\mathrm{capacity\_mw}_{i}\cdot \mathrm{availability}_{i,t}\cdot \mathrm{period\_hours},\\
+0&\le\mathrm{charge\_period}_{s,t}
+\le\mathrm{charge\_power\_mw}_{s}\cdot \mathrm{period\_hours},\\
+0&\le\mathrm{discharge\_period}_{s,t}
+\le\mathrm{discharge\_power\_mw}_{s}\cdot \mathrm{period\_hours},\\
+0&\le\mathrm{soc\_period}_{s,t}\le\mathrm{energy\_capacity\_mwh}_{s}.
+\end{aligned}
+$$
+
+Initial and terminal inventory determine net storage energy exchange across the horizon. The first transition starts from `initial_soc_mwh`. The default `terminal_soc_rule = cyclic` equates final and initial inventory; `fixed` uses `terminal_soc_mwh_by_asset`; `free` leaves final inventory within its bounds. With `allow_blackout`, shortage lies between zero and `demand_mwh`; otherwise its upper bound is zero. Defaults are `period_hours = 0.5`, `voll_gbp_per_mwh = 17000` and zero degradation cost. The Study parameter `market.voll_gbp_per_mwh` accepts 0–1,000,000 GBP/MWh and enters the dispatch objective.
+
+A second linear programme minimises storage throughput within the first solution's cost tolerance. `primary.fun` is the first-stage minimum in GBP; the second stage retains all physical constraints and adds
+
+$$
+\begin{aligned}
+\mathrm{primary\_tolerance}&=\max(10^{-7},10^{-10}|\mathrm{primary.fun}|),\\
+\mathrm{objective}^{\mathsf T}\cdot\mathrm{solution}
+&\le\mathrm{primary.fun}+\mathrm{primary\_tolerance},\\
+\min\quad&\sum_{s,t}(\mathrm{charge\_period}_{s,t}+\mathrm{discharge\_period}_{s,t}).
+\end{aligned}
+$$
+
+Both stages use HiGHS with primal and dual feasibility tolerances of \(10^{-8}\). The returned physical trajectory is `secondary.x`. The maximum simultaneous charge and discharge, `simultaneous`, must be at most \(10^{-6}\) MWh. Unused renewable energy is availability less accepted resource supply.
+
+The displayed “Balance shadow price” is the first-stage marginal operating cost of period demand. Revenue multiplies the demand-balance dual in GBP/MWh by accepted MWh; storage earns the dual multiplied by discharge less charge. Consumer payment uses supplied demand. System cost adds annualised capital and the fixed operation and maintenance of non-wind, non-solar and non-storage assets to variable expenditure, degradation and shortage cost. The fixed-cost input is `annual_fixed_opex_gbp`; wind, solar and storage fixed operation and maintenance remains a memo line under Chapter 4.
 
 ```text
-read the complete chronology, resource availability, costs and storage states
-expand scalar availability or cost inputs to the declared time horizon
-build period energy balance, resource limits and storage transitions
-LP1: minimize variable resource cost, degradation and shortage cost
-retain the LP1 optimum within the declared cost tolerance
-LP2: minimize total storage charging and discharging
-verify the solution and calculate unused renewable energy
-return LP2 trajectories, LP1 demand duals and separate cost components
+PerfectForesightPSM.run(model_input):
+    data = model_input.chronology
+    validate_chronology(data, model_input.period_hours)
+    _availability(...) and _marginal_costs(...): expand inputs to every period
+    _layout(data): allocate resource, charge, discharge, soc and blackout
+    assemble objective, throughput_objective, equality, rhs and bounds
+    primary = linprog(objective, A_eq=equality, b_eq=rhs,
+                      bounds=bounds, method="highs")
+    primary_tolerance = max(1e-7, abs(primary.fun) * 1e-10)
+    secondary = linprog(
+        throughput_objective, A_ub=objective.reshape(1, -1),
+        b_ub=[primary.fun + primary_tolerance], A_eq=equality, b_eq=rhs,
+        bounds=bounds, method="highs")
+    extract resource_period, charge_period and discharge_period
+    extract soc_period and blackout
+    check balance and simultaneous storage operation
+    return costs and demand duals
 ```
 
-`PerfectForesightPSM` constructs and solves this problem, and `validate_chronology` checks period inputs. Resource availability in `PSMInput.chronology` may be a scalar or a complete series; marginal cost may be a scalar, a single-element series or a complete series. Storage inputs provide power, energy, efficiencies and the terminal rule. Hydro in this input acts as an ordinary resource with specified availability. Natural inflows and reservoir inventories follow the independent hydrological methods below.
+Resource availability accepts a single-element series or a complete series, with finite values in \([0,1]\). Marginal cost accepts a scalar, a single-element series or a complete series, with finite nonnegative values. The adapter checks chronology length and requires charging and discharging efficiencies in \((0,1]\). Hydro supplied here is a resource with declared electrical availability. The hydrological functions below construct availability from inflow or optimise a conventional reservoir.
 
 ## Available run-of-river electricity
 
-Run-of-river hydro converts current inflow into current available electricity. Site parameters comprise the bus, capacity \(P\), turbine efficiency \(\eta\), period length \(\Delta t\) and water-to-energy coefficient \(\kappa\). For an input already expressed as a normalised electrical availability factor \(u_t\in[0,1]\),
+The natural-hydrology method derives available electricity from an inflow series and site parameters. `run_of_river_dispatch` reads `HydroSite` and `CanonicalInflow`; the default national PSM uses the statistical load factor and seasonal profile in Chapter 5.
+
+A normalised electrical availability input scales installed power over the period. With `inflow.unit = p.u.`, `inflow.values` lies in \([0,1]\), `capacity_mw` is MW and `interval_hours` is hours:
 
 $$
-A_t=P\Delta t\,u_t.
+\begin{aligned}
+\mathrm{maximum}&=\mathrm{capacity\_mw}\cdot \mathrm{interval\_hours},\\
+\mathrm{available}_t&=\mathrm{maximum}\cdot \mathrm{inflow.values}_t.
+\end{aligned}
 $$
 
-For an input expressed as period water volume \(I_t\), turbine conversion and the power limit jointly determine
+A water-volume input is converted through the site's turbine efficiency and MWh per water unit, then limited by electric power:
 
 $$
-A_t=\min(P\Delta t,\kappa\eta I_t).
+\begin{aligned}
+\mathrm{available}_t=\min\bigl(&\mathrm{maximum},\\
+&\mathrm{inflow.values}_t\cdot \mathrm{conversion\_mwh\_per\_water\_unit}\cdot
+\mathrm{turbine\_efficiency}\bigr).
+\end{aligned}
 $$
 
-Accepted generation satisfies \(0\le G_t\le A_t\), defaulting to all available energy. Unused electrical potential is \(A_t-G_t\). For example, \(P=10\) MW, \(\Delta t=0.5\) h and availability factors \([0,0.5,1]\) give \([0,2.5,5]\) MWh of available electricity. Run-of-river calculation is period-local; conventional reservoirs separately represent intertemporal regulation.
+Accepted generation lies between zero and `available`; the default accepts all available electricity. `curtailed` is the remaining electrical potential. These arrays become `available_energy_mwh`, `accepted_generation_mwh` and `curtailed_energy_mwh` in the returned result. A 10 MW site over 0.5 h with factors \([0,0.5,1]\) supplies \([0,2.5,5]\) MWh. This calculation operates independently in each period.
 
 ## Conventional reservoir dispatch
 
-A conventional reservoir schedules releases over complete inflow and electricity-value series to maximise generation value. Period decisions are turbine release \(q_t\), ecological bypass \(e_t\), spill \(w_t\) and end-period volume \(S_t\). The first three are water volume per period, and inventory is water volume. Given electricity value \(p_t\), the objective is
+A conventional reservoir allocates water across the complete inflow and electricity-value chronology to maximise generation value. `reservoir_dispatch` uses four period variables: turbine release `q`, ecological `bypass`, `spill` and end-period `storage`. All four use the declared water unit; the first three are volumes within the period. The conversion to electricity is
 
 $$
-\min -\sum_t p_t\kappa\eta q_t+10^{-9}\sum_t w_t.
+\mathrm{conversion}=\mathrm{conversion\_mwh\_per\_water\_unit}\cdot
+\mathrm{turbine\_efficiency},\qquad
+\mathrm{generation}_t=\mathrm{q}_t\cdot \mathrm{conversion}.
 $$
 
-Water continuity and storage bounds constrain releases across time:
+The linear programme minimises the negative value of generation plus a small spill penalty. `energy_value_gbp_per_mwh` is an externally supplied electricity-value series:
 
 $$
-S_t=S_{t-1}+I_t-q_t-e_t-w_t,\qquad
-S_{\min}\le S_t\le S_{\max}.
+\begin{aligned}
+\min\quad&-\sum_t\mathrm{energy\_value\_gbp\_per\_mwh}_t\cdot
+\mathrm{conversion}\cdot \mathrm{q}_t+10^{-9}\sum_t\mathrm{spill}_t.
+\end{aligned}
 $$
 
-Turbine, ordinary-release and ecological requirements are
+Water continuity links successive inventories and inflows. The first period starts from `initial_volume`:
 
 $$
-0\le q_t\le q_{\max},\qquad
-0\le e_t\le R_{\max},\qquad w_t\ge0,
+\begin{aligned}
+\mathrm{storage}_t={}&\mathrm{storage}_{t-1}+\mathrm{inflow.values}_t
+-\mathrm{q}_t-\mathrm{bypass}_t-\mathrm{spill}_t,\\
+\mathrm{min\_volume}&\le\mathrm{storage}_t\le\mathrm{max\_volume}.
+\end{aligned}
 $$
 
+Turbine, ordinary-release and ecological bounds restrict the use of water:
+
 $$
-r_{\min}\le q_t+e_t\le R_{\max},\qquad
-G_t=\kappa\eta q_t.
+\begin{aligned}
+0&\le\mathrm{q}_t\le\mathrm{max\_turbine\_release\_per\_period},\\
+0&\le\mathrm{bypass}_t\le\mathrm{max\_total\_release\_per\_period},\qquad
+\mathrm{spill}_t\ge0,\\
+\mathrm{minimum\_environmental\_release\_per\_period}
+&\le\mathrm{q}_t+\mathrm{bypass}_t
+\le\mathrm{max\_total\_release\_per\_period}.
+\end{aligned}
 $$
 
-The ordinary-release ceiling and ecological minimum both apply to \(q_t+e_t\), with spill entering water balance separately. Initial volume is supplied explicitly. An optional terminal target \(S_T\) adds a final equality; other configurations allow terminal volume within the storage bounds. Parameters also satisfy \(R_{\max}\ge q_{\max}\) and \(\kappa\eta q_{\max}\le P\Delta t+10^{-9}\), keeping turbine water release consistent with electric power.
+The ordinary-release bound and ecological minimum apply to turbine release plus bypass; spill enters water balance separately. A supplied `terminal_volume` fixes final inventory. The parameter check requires maximum total release to be at least maximum turbine release and electricity from maximum turbine release to be at most `turbine_capacity_mw` multiplied by `interval_hours`, with tolerance \(10^{-9}\) MWh.
 
-Reservoir dispatch uses one full-horizon linear programme. The algorithm reads all inflows and values together, solves with SciPy/HiGHS, and returns period water volumes, generation and conservation residuals. Its reported objective includes the small spill penalty. The input labels `myopic`, `rolling_horizon` and `perfect_foresight` all call this same full-horizon algorithm, with the label returned as metadata. The mathematical definition in this chapter therefore uses perfect foresight.
+The solver reads the complete inflow and value series, solves one SciPy/HiGHS linear programme and returns water trajectories, generation and conservation residuals. `objective_gbp` includes the small spill penalty. The input labels `myopic`, `rolling_horizon` and `perfect_foresight` all call this full-horizon algorithm and are returned as metadata.
 
 ```text
-read site parameters, complete inflow and external electricity values
-validate water units, turbine conversion, power limits and storage boundaries
-build turbine release, ecological bypass, spill and end-period storage
-enforce water balance, ecological release and optional terminal storage
-solve the full-horizon linear programme
-return electricity generation, water trajectories and balance residuals
+reservoir_dispatch(parameters, inflow, energy_value_gbp_per_mwh):
+    inflow.validate(); parameters.validate(inflow.interval_hours)
+    conversion = (parameters.conversion_mwh_per_water_unit
+                  * parameters.turbine_efficiency)
+    allocate q, bypass, spill and storage for every period
+    assemble objective, water equalities, release inequalities and bounds
+    use parameters.terminal_volume as the final storage bound when supplied
+    solved = linprog(objective, A_ub=inequalities, b_ub=upper,
+                     A_eq=equalities, b_eq=rhs, bounds=bounds, method="highs")
+    generation = q * conversion
+    check previous + inflow.values[period] - q - bypass - spill - storage
+    return generation, water trajectories and residuals
 ```
 
 ## Hydrological inputs and module connection
 
-Natural-hydrology studies require five input roles: the site table, asset-to-site mapping, run-of-river inflow, reservoir inflow and reservoir parameters. Sites are classified as run-of-river or conventional reservoir and include capacity, efficiency, bus, source and licence. Pumped storage retains the electrical-storage model. The applicable mapping assigns each asset to a single site, with mapping shares in \((0,1]\) and total shares per asset at most 1.
+Natural-hydrology inputs comprise the site table, asset-to-site mapping, run-of-river inflow, reservoir inflow and reservoir parameters. Sites declare technology, capacity, turbine efficiency, bus, source and licence. Pumped storage uses the electrical-storage model. Each asset is assigned to a site, with mapping shares in \((0,1]\) and total shares per asset at most 1.
 
-Inflow uses CSV series with timezone-aware timestamps. The adapter filters by site and requires finite nonnegative values, unique period identifiers and consistent units. If an expected period sequence is supplied, the complete order is checked entry by entry. Metadata declare interval length and timezone, with missing-value treatment set to none. Site, mapping and parameter tables accept JSON or CSV; the inflow reader uses the CSV adapter.
+Inflow CSV files provide timezone-aware timestamps, interval length, site identifiers, values and water or electrical-availability units. The adapter requires finite nonnegative values, unique timestamps and consistent units; a supplied expected chronology is checked period by period. Site, mapping and parameter tables accept JSON or CSV. The declared missing-value treatment is `none`.
 
-Hydrological functions can be called independently for run-of-river and conventional-reservoir studies. `load_hydrology_inputs_from_pack` assembles inputs, `adapt_hydrology_csv` converts inflow, `validate_site_mapping` processes asset mapping, `run_of_river_dispatch` calculates run-of-river electricity, and `reservoir_dispatch` solves reservoir operation. Connecting these hydrological inputs to the annual market workflow requires dedicated integration. British applications additionally require the relevant sites, inflows, abstraction conditions, conversion coefficients, storage capacities and terminal rules.
+The input and operating functions can be called independently. `load_hydrology_inputs_from_pack` assembles inputs, `adapt_hydrology_csv` reads inflow, `validate_site_mapping` checks mapping, `run_of_river_dispatch` calculates run-of-river electricity and `reservoir_dispatch` optimises reservoir releases. An annual market application requires an adapter connecting these inputs and outputs to its dispatch workflow, together with the relevant site, inflow, abstraction, conversion, storage and terminal parameters.

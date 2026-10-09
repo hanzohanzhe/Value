@@ -154,6 +154,12 @@ def main() -> None:
     parser.add_argument("--source", required=True, type=Path, help="Read-only VALUE research-data directory")
     parser.add_argument("--weather", required=True, type=Path, help="Read-only weather-data directory")
     parser.add_argument("--target", type=Path, default=TARGET, help="Destination data-pack directory")
+    parser.add_argument(
+        "--doctoral-reproduction", action="store_true",
+        help="Write the historical 0.6.0-alpha.2 layout (Belgium/Netherlands flow files bound by file name, "
+             "Belgium price undeclared). Without it the flows are bound by NESO line identity and the "
+             "Belgium EUR price is declared (P0-5a S4, review P6-02/P6-03).",
+    )
     args = parser.parse_args()
     SOURCE = args.source.expanduser().resolve()
     WEATHER = args.weather.expanduser().resolve()
@@ -170,9 +176,15 @@ def main() -> None:
         "weather.solar": copy_binding("weather.solar", WEATHER / "average_annual_solar_profile.nc"),
         "market.france.profile": copy_binding("market.france.profile", SOURCE / "France_profile.csv", "MWh/period"),
         "market.france.price": copy_binding("market.france.price", SOURCE / "France.csv", "GBP/MWh"),
-        "market.belgium.profile": copy_binding("market.belgium.profile", SOURCE / "belgium_profile.csv", "MWh/period"),
+        "market.belgium.profile": copy_binding(
+            "market.belgium.profile",
+            SOURCE / ("belgium_profile.csv" if args.doctoral_reproduction else "nehtheralnd_profile.csv"),
+            "MWh/period" if args.doctoral_reproduction else "MW"),
         "market.belgium.price": copy_binding("market.belgium.price", SOURCE / "Belgium_price.csv", "GBP/MWh"),
-        "market.netherlands.profile": copy_binding("market.netherlands.profile", SOURCE / "nehtheralnd_profile.csv", "MWh/period"),
+        "market.netherlands.profile": copy_binding(
+            "market.netherlands.profile",
+            SOURCE / ("nehtheralnd_profile.csv" if args.doctoral_reproduction else "belgium_profile.csv"),
+            "MWh/period" if args.doctoral_reproduction else "MW"),
         "market.netherlands.price": copy_binding("market.netherlands.price", SOURCE / "Netherlands.csv", "GBP/MWh"),
         "market.norway.profile": copy_binding("market.norway.profile", SOURCE / "Norway_profile.csv", "MWh/period"),
         "market.norway.price": copy_binding("market.norway.price", SOURCE / "Norway.csv", "GBP/MWh"),
@@ -185,6 +197,16 @@ def main() -> None:
         "policy.support": copy_binding("policy.support", SOURCE / "mechansim cost.xlsx", "GBP"),
         "planning.success_rates": copy_binding("planning.success_rates", SOURCE / "regional_technology_success_rates.csv"),
     }
+    if not args.doctoral_reproduction:
+        # Line identity: belgium_profile.csv holds BRITNED_FLOW (GB-NL), nehtheralnd_profile.csv
+        # NEMO_FLOW (GB-BE); the Belgium price file is hourly EUR/MWh (R029 approved_r03 FX basis).
+        for country in ("france", "norway", "ireland"):
+            bindings[f"market.{country}.profile"]["unit"] = "MW"
+        bindings["market.belgium.price"].update({
+            "csv_header": True, "csv_column": "Price (EUR/MWhe)", "currency": "EUR", "eur_per_gbp": 1.1,
+            "fx_basis": "value.approved-eur-gbp-1.1/r029-approved-r03", "interval_minutes": 60,
+            "timestamp_column": "Datetime (UTC)",
+        })  # unit stays the canonical GBP/MWh: the reader converts with eur_per_gbp
     bindings["projects.repd"] = normalize_repd(SOURCE / "repd-q2-jul-2025.csv")
     bindings["fleet.generators"] = write_generated("fleet.generators", "fleet.json", {
         "generators": cfg.generators,

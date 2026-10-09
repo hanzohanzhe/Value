@@ -41,6 +41,7 @@ def build_evidence(
     reset_report: Path | None,
     test_report: Path,
     api_origin: str,
+    api_state_root: Path | None = None,
 ) -> dict[str, Any]:
     run_roots = {
         "baseline": str(baseline_run_root.resolve()),
@@ -49,7 +50,7 @@ def build_evidence(
     }
     comparison_seed: dict[str, Any] = {"comparison_run_roots": run_roots}
     comparison = _recompute_comparison(comparison_seed)
-    api = _probe_api(api_origin)
+    api = _probe_api(api_origin, api_state_root)
     network_verification = verify_network_pair(
         network_copperplate_run_root,
         network_constrained_run_root,
@@ -103,6 +104,8 @@ def main() -> int:
     parser.add_argument("--reset-report", type=Path)
     parser.add_argument("--test-report", type=Path, required=True)
     parser.add_argument("--api-origin", default="http://127.0.0.1:8766")
+    parser.add_argument("--api-data-home", type=Path, default=None,
+                        help="VALUE_DATA_HOME of the probed API (its session file); default: this process's")
     parser.add_argument(
         "--output",
         type=Path,
@@ -121,6 +124,7 @@ def main() -> int:
         reset_report=args.reset_report,
         test_report=args.test_report,
         api_origin=args.api_origin,
+        api_state_root=args.api_data_home,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

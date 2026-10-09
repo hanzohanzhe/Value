@@ -72,6 +72,39 @@ def _years(root: Path, prefix: str, suffix: str) -> list[int]:
     return sorted(set(result))
 
 
+ZONAL_ACCOUNTING_TABLES = ("zonal_period_accounting", "zonal_period_summary")
+
+
+def _zonal_redispatch_capability(run_root: Path) -> dict[str, object]:
+    """Whether the Run's market ledger holds zonal redispatch results (R3-16).
+
+    An EXISTS-style probe (``LIMIT 1``) on the v6+ accounting table or the
+    older summary table: never a full COUNT over a year of periods."""
+
+    database = run_root / "model-output" / "market" / "market.sqlite"
+    unsupported = {
+        "status": "unsupported", "years": [],
+        "reason": "No zonal redispatch ledger is recorded for this run (national single-node or copperplate balancing).",
+    }
+    if not database.is_file():
+        return unsupported
+    uri = f"file:{database.resolve().as_posix()}?mode=ro"
+    try:
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
+            tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            for table in ZONAL_ACCOUNTING_TABLES:
+                if table in tables and connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone():
+                    years = [int(row[0]) for row in connection.execute(f"SELECT DISTINCT year FROM {table} ORDER BY year")]
+                    return {
+                        "status": "supported", "years": years,
+                        "claim": "Fixed zonal transport and redispatch results; open Network & redispatch.",
+                        "reason": None,
+                    }
+    except sqlite3.DatabaseError:
+        return {**unsupported, "reason": "The market ledger could not be read."}
+    return unsupported
+
+
 def domain_result_capabilities(run_root: Path) -> dict[str, object]:
     _completed(run_root)
     network_root = run_root / "model-output" / "solver" / "network"
@@ -107,6 +140,7 @@ def domain_result_capabilities(run_root: Path) -> dict[str, object]:
                 "status": "experimental" if expansion else "unsupported",
                 "reason": None if expansion else "No network-expansion history artifact is indexed for this run.",
             },
+            "zonal_redispatch": _zonal_redispatch_capability(run_root),
         },
     }
 
@@ -121,6 +155,27 @@ def _dc_paths(run_root: Path, year: int) -> tuple[Path, Path, Path]:
     if not all(path.is_file() for path in paths):
         raise DomainResultError(f"DC network artifacts are incomplete for {year}")
     return paths
+
+
+def _declared_asset_bus_shares(payload: Mapping[str, object]) -> dict[str, list[list[object]]]:
+    """Every asset's [bus_id, share] rows from the declared DC clearing input.
+
+    Since DC 1.1.0 (P1-01) an asset split over several buses appears only in
+    ``asset_bus_shares``; ``asset_to_bus`` keeps the single-bus assets.  Rows
+    written before 1.1.0 have no share list, so their one-bus map is read as
+    share 1.0.
+    """
+
+    shares = payload.get("asset_bus_shares")
+    if isinstance(shares, Mapping):
+        return {
+            str(asset): [[str(bus), float(share)] for bus, share in rows]
+            for asset, rows in sorted(shares.items())
+        }
+    return {
+        str(asset): [[str(bus), 1.0]]
+        for asset, bus in sorted(dict(payload.get("asset_to_bus") or {}).items())
+    }
 
 
 def _declared_topology(path: Path) -> dict[str, object]:
@@ -141,6 +196,7 @@ def _declared_topology(path: Path) -> dict[str, object]:
         "buses": list(payload.get("buses", ())),
         "branches": branches,
         "asset_to_bus": dict(payload.get("asset_to_bus") or {}),
+        "asset_bus_shares": _declared_asset_bus_shares(payload),
         "reference_buses": list(payload.get("reference_buses", ())),
         "period_hours": float(payload.get("period_hours") or 0.0),
         "source_artifact_sha256": _sha256(path),
@@ -269,6 +325,7 @@ def query_network_summary(run_root: Path, *, year: int) -> dict[str, object]:
             "buses": topology["buses"],
             "branches": list(branches.values()),
             "reference_buses": topology["reference_buses"],
+            "asset_bus_shares": topology["asset_bus_shares"],
             "placement": "schematic_not_geographic",
         },
         "branch_summary": branch_rows,

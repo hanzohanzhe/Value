@@ -618,11 +618,17 @@ class ZonalRedispatchSolverContractTests(unittest.TestCase):
         primary = result.network_solver_diagnostics[0]
         self.assertEqual(primary.optimum, 64.18999999999998)
         self.assertEqual(primary.absolute_term_scale, 64.18999999999998)
-        self.assertEqual(primary.nonzero_terms, 3)
-        self.assertEqual(primary.computed_tolerance, 1.0)
+        # v4: the bid-cost lock carries only the non-zero bid terms (the
+        # thermal up bid; the zero-price wind bid and VOLL x shedding drop
+        # out) and its numerical tolerance (P0-8 S4).
+        self.assertEqual(primary.nonzero_terms, 1)
+        self.assertEqual(
+            primary.computed_tolerance,
+            max(1e-8, 1e-9 * primary.absolute_term_scale, 70.0 * 1e-9),
+        )
         self.assertLessEqual(primary.degradation, primary.computed_tolerance)
         epsilon = float(np.finfo(float).eps)
-        gamma_n = 3 * epsilon / (1.0 - 3 * epsilon)
+        gamma_n = 1 * epsilon / (1.0 - 1 * epsilon)
         expected_rhs = np.nextafter(
             primary.optimum
             + primary.computed_tolerance
@@ -664,7 +670,13 @@ class ZonalRedispatchSolverContractTests(unittest.TestCase):
         expected_mwh = zonal_redispatch.compute_lock_tolerance(
             coefficients, optimum, 1e-9, 1e-8
         ).tolerance
-        self.assertEqual(primary.computed_tolerance, 1.0)
+        # v4 (P0-8): GBP 1 is no longer the lock allowance; the bid-cost lock
+        # uses the declared solver tolerance (1e-9) and its 1e-8 GBP floor.
+        expected_gbp = zonal_redispatch.compute_lock_tolerance(
+            coefficients, optimum, 1e-8, 1e-9
+        ).tolerance
+        self.assertEqual(primary.computed_tolerance, expected_gbp)
+        self.assertLess(primary.computed_tolerance, 1e-6)
         self.assertEqual(secondary.computed_tolerance, expected_mwh)
         self.assertEqual(physical.computed_tolerance, expected_mwh)
 
@@ -803,16 +815,20 @@ class ZonalRedispatchSolverContractTests(unittest.TestCase):
         self.assertEqual(finalise.call_count, 4)
         self.assertEqual(rerun.call_count, 3)
 
-    def test_module_v30_exposes_gbp1_solver_contract(self) -> None:
+    def test_module_v40_exposes_shed_lock_solver_contract(self) -> None:
         from gridform_core.v2.module_manifest import ModuleManifest, workspace_registry
 
         manifest = workspace_registry(ROOT / "missing-modules").manifest(
             "value-zonal-redispatch-balancing"
         )
-        self.assertEqual(manifest.version, "3.0.0")
+        self.assertEqual(manifest.version, "4.0.0")
         self.assertEqual(
             manifest.scientific_version,
-            "value-lossless-zonal-redispatch-gbp1-candidate-2026.10.01",
+            "value-lossless-zonal-redispatch-shed-lock-candidate-2026.10.05",
+        )
+        self.assertEqual(
+            manifest.solver_contract["schema_path"],
+            "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
         )
         self.assertIn("evidence.network-solver-diagnostics/v7", manifest.outputs)
         self.assertEqual(
@@ -881,7 +897,7 @@ class ZonalRedispatchSolverContractTests(unittest.TestCase):
                     for row in result.extensions["network_solver_diagnostics"]
                 ))
 
-    def test_high_scale_primary_still_uses_fixed_gbp1_acceptance(self) -> None:
+    def test_high_scale_primary_is_classified_against_the_gbp1_ceiling(self) -> None:
         demand = {"north": 0.0, "south": 10.0}
         model_input, _module = _input(
             demand,
@@ -897,19 +913,29 @@ class ZonalRedispatchSolverContractTests(unittest.TestCase):
             pack=_pack(demand, forward_limit_mw=4.0),
         )
         problem = _problem(model_input)
-        high_scale = replace(
-            problem,
-            primary_objective=problem.primary_objective * 50_000.0,
-        )
-        result = zonal_redispatch.solve_lexicographic(
-            high_scale, DEFAULT_ZONAL_SOLVER_SETTINGS
-        )
-        primary = result.network_solver_diagnostics[0]
-        self.assertEqual(primary.computed_tolerance, 1.0)
-        self.assertEqual(
-            primary.validation_class, "GO_WITH_NUMERICAL_WARNING"
-        )
-        self.assertLessEqual(primary.degradation, primary.computed_tolerance)
+        # v4 (P0-8): the numerical bid-cost tolerance grows with scale and
+        # GBP 1 only classifies it: GO below 10% of the ceiling, completed
+        # with a numerical warning (not solver-validated) above GBP 1.
+        for scale, expected in (
+            (50_000.0, "GO"),
+            (2_000_000.0, "COMPLETED_WITH_NUMERICAL_WARNING"),
+        ):
+            with self.subTest(scale=scale):
+                high_scale = replace(
+                    problem,
+                    primary_objective=problem.primary_objective * scale,
+                )
+                result = zonal_redispatch.solve_lexicographic(
+                    high_scale, DEFAULT_ZONAL_SOLVER_SETTINGS
+                )
+                primary = result.network_solver_diagnostics[0]
+                self.assertAlmostEqual(
+                    primary.computed_tolerance,
+                    1e-9 * primary.absolute_term_scale,
+                    delta=1e-12 * primary.absolute_term_scale,
+                )
+                self.assertEqual(primary.validation_class, expected)
+                self.assertLessEqual(primary.degradation, primary.computed_tolerance)
 
     def test_primary_secondary_and_physical_degradation_are_each_rejected(self) -> None:
         demand = {"north": 0.0, "south": 10.0}
@@ -1301,27 +1327,24 @@ class Prompt99AnalyticalRedispatchTests(unittest.TestCase):
                 resource_cost={"cheap": 10.0, "local": 50.0},
             )
             result = module.clear(model_input)
+            # Solver contract v4 (P0-8): the bid-cost lock is numerical, so
+            # tie-breaking can no longer spend GBP 1 by moving 1/40 MWh
+            # (v3 delta 0.026) onto the expensive local unit.
             self.assertAlmostEqual(
-                result.final_dispatch_mwh_by_asset["cheap"], 10.0, delta=0.026
+                result.final_dispatch_mwh_by_asset["cheap"], 10.0, delta=1e-6
             )
             self.assertAlmostEqual(
-                result.final_dispatch_mwh_by_asset["local"], 0.0, delta=0.026
+                result.final_dispatch_mwh_by_asset["local"], 0.0, delta=1e-6
             )
             self.assertAlmostEqual(
                 result.extensions["corridor_flow_mwh_by_id"]["north-south"],
                 10.0,
-                delta=0.026,
-            )
-            self.assertLessEqual(
-                solver_diagnostic(result, "primary_bid_cost")["degradation"], 1.0
-            )
-            # The authorized GBP 1 is a real lexicographic policy allowance:
-            # stable tie-breaking may spend it while preserving balance.
-            self.assertAlmostEqual(
-                solver_diagnostic(result, "primary_bid_cost")["degradation"],
-                1.0,
                 delta=1e-6,
             )
+            primary = solver_diagnostic(result, "primary_bid_cost")
+            self.assertLessEqual(primary["degradation"], primary["computed_tolerance"])
+            self.assertLess(primary["computed_tolerance"], 1e-6)
+            self.assertEqual(primary["validation_class"], "GO")
             self.assertAlmostEqual(
                 sum(result.final_dispatch_mwh_by_asset.values()), 10.0,
                 delta=1e-7,
@@ -1718,7 +1741,9 @@ class Prompt99StorageTieAndFailureTests(unittest.TestCase):
                     "physical_throughput",
                 ],
             )
-            phases = solver["diagnostics"]["phases"]
+            phases = dict(solver["diagnostics"]["phases"])
+            # v4 records the shed lock between the primary and later phases.
+            self.assertEqual(phases.pop("primary_shed_lock")["mode"], "fixed_zero")
             self.assertEqual(set(phases), {"primary", "secondary", "physical", "stable"})
             for phase in phases.values():
                 self.assertEqual(phase["status"], 0)

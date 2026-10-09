@@ -17,6 +17,8 @@ from typing import Any, Mapping
 
 import pulp
 
+from gridform_validation.cbc import cbc_identity, cbc_path
+
 
 ORACLE_ID = "value.declared-clearing-pulp-cbc-oracle/v1"
 
@@ -33,8 +35,11 @@ class DeclaredClearingResult:
 
 
 def _cbc() -> pulp.LpSolver:
-    solver = pulp.COIN_CMD(msg=False, mip=False, threads=1)
-    if not solver.available():
+    try:
+        solver = pulp.COIN_CMD(msg=False, mip=False, threads=1, path=cbc_path())
+    except RuntimeError:
+        solver = None
+    if solver is None or not solver.available():
         raise RuntimeError("Independent CBC executable is unavailable")
     return solver
 
@@ -326,6 +331,7 @@ def validate_declared_database(database: Path, *, tolerance: float = 1e-3) -> di
     return {
         "schema_version": "value.declared-clearing-validation/v1",
         "oracle_id": ORACLE_ID,
+        "solver_locator": cbc_identity(),
         "power_tolerance_mw": tolerance,
         "cost_tolerance_gbp": "max(0.05, 1e-8 * comparison scale)",
         "database": str(database),

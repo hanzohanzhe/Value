@@ -29,6 +29,13 @@ the overall release gate passed even though retained annual numerical parity is
 not evaluated for a four-period run. `release_gate_passed` is now `null`; only
 `contract_parity_passed` is true.
 
+Correction (P0-4, 2026-10): up to 0.6.0-alpha.2 `contract_parity_passed` was a
+literal `true` written by the application, not the result of executed
+checks. From P0-4 S2 it is recomputed from the checks the parity report lists
+(`null`, i.e. not evaluated, when none ran), and it says nothing about the
+energy balance, which the scientific-validation report gates separately
+(P0-4 S7).
+
 Two periods also produce non-representative annual costs, investment quantities
 and pipeline quantities. The status contract and Run centre now explicitly mark
 all three as diagnostic, publish no scientific result rows, and retain the raw

@@ -1,0 +1,23 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-dialog {
+    width: min(560px, calc(100vw - 2 * var(--sp-4)));
+    max-height: calc(100vh - 2 * var(--sp-6));
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: var(--shadow-2);
+    overflow: auto;
+  }
+  .v-dialog::backdrop { background: color-mix(in srgb, var(--navy) 45%, transparent); }
+  .v-dialog__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4) var(--sp-4) 0; }
+  .v-dialog__title { margin: 0; font-size: var(--fs-xl); line-height: var(--lh-heading); }
+  .v-dialog__close { flex: 0 0 auto; width: var(--control-h); height: var(--control-h); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink-muted); font-size: var(--fs-xl); line-height: 1; cursor: pointer; opacity: 1; }
+  .v-dialog__close:hover { background: var(--line-soft); color: var(--ink); }
+  .v-dialog__body { padding: var(--sp-3) var(--sp-4); font-size: var(--fs-md); }
+  .v-dialog__consequence { margin: 0 0 var(--sp-2); }
+  .v-dialog__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4) var(--sp-4); border-top: 1px solid var(--line-soft); }
+}

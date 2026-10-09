@@ -62,7 +62,7 @@ The Data Pack manifest binds each scientific role to a file. VALUE reads roles, 
 | `profiles.vre_solar`, `profiles.vre_onshore`, `profiles.vre_offshore` | CSV | Half-hour availability for each renewable technology |
 | `weather.solar`, `weather.wind` | NetCDF | Weather fields used by the selected weather method |
 | `market.<country>.price` | CSV | Half-hour import offer prices for Belgium, France, Ireland, Netherlands and Norway |
-| `market.<country>.profile` | CSV | Signed half-hour import availability for the same boundaries |
+| `market.<country>.profile` | CSV | Signed half-hour interconnector availability for the same boundaries (positive = import capacity offered day-ahead at the country's price under the corrected methodology, balancing stage only under the doctoral reproduction; negative = export capability) |
 | `projects.repd`, `source.repd_raw` | CSV | Prepared planning records and the retained source records |
 | `planning.success_rates` | CSV | Planning success assumptions |
 | `planning.timelines` | JSON | Stage duration and completion assumptions |
@@ -86,43 +86,62 @@ Each binding declares at least its role, relative URI, format, SHA-256, unit whe
 
 ## 3. Install the prepared VALUE-UK research suite
 
-The application and research data are separate downloads. The current installation
-candidate batch is `2026-10-03-rc1` (not a published Git tag): four Full archives
-for Windows x64, Linux x64, macOS Intel and macOS Apple Silicon. VALUE macOS
-requires 15+. Full includes private Python/Node, locked dependencies and the two
-CC0 synthetic teaching packs; installation and bundled teaching work offline.
-Windows/macOS native acceptance is pending. The historical `VALUE-Setup.exe`
-workflow is not the installer supplied by this batch.
+The application and research data are separate downloads. The published
+installation candidate batch is `2026-10-03-rc1` (not a published Git tag): four
+Full archives for Windows x64, Linux x64, macOS Intel and macOS Apple Silicon.
+They contain VALUE 0.6.0-alpha.2; installers of VALUE 0.7.0-alpha.1 have not been
+built yet, so VALUE 0.7.0-alpha.1 currently runs from source (see
+`docs/DEPLOYMENT.md`). VALUE macOS requires 15+. Full includes private
+Python/Node, locked dependencies and the two CC0 synthetic teaching packs;
+installation and bundled teaching work offline. Windows/macOS native acceptance
+is pending. The historical `VALUE-Setup.exe` workflow is not the installer
+supplied by this batch.
 
 Windows uses `install-value.cmd`, then `start-value.cmd` from the installed
 `%USERPROFILE%\VALUE-four-role`; macOS uses `Install VALUE.command`, then
 `Start VALUE.command` from `~/VALUE-four-role`; Linux uses `./install-value`, then
 `~/VALUE-four-role/start-value`. Keep the startup terminal open and visit
 `http://127.0.0.1:8800/`; Ctrl+C stops the service. Start with the four tasks
-`reproduce from existing data`, `add your new data`, `Edit module`,
-`add new function to VALUE`.
+`Reproduce from existing data`, `Add your new data`, `Edit a module`,
+`Add a new function to VALUE`.
 
 Full contains no rights-governed UK research data. VALUE accepts a separately
-prepared research suite without reinstalling the application. The illustrative
-filename `VALUE-UK-Research-Suite.bundle.zip` below is not a claim that a public
-research-data Release already exists. Its rights-cleared contents and exact
-version/hash must be established before distribution; a suite carries data and
-declarative Study templates, not executable code.
+published research suite without reinstalling the application. A suite carries
+data and declarative Study templates, not executable code. Choose the suite that
+matches the VALUE version:
 
-1. Open `Data` and choose `Install a VALUE-UK research suite`.
-2. Select `VALUE-UK-Research-Suite.bundle.zip`.
-3. Read the suite and component rights notices, then acknowledge them.
-4. Start installation and keep the page open while VALUE validates and stages both components.
-5. Confirm that the result shows the exact base Data Pack ID, Network Pack ID, component hashes and two saved Study revisions.
+| VALUE version | Research suite | Data release |
+| --- | --- | --- |
+| 0.7.0-alpha.1 | `VALUE-UK-GBP1-23zone-research-suite-public2-<date>.zip` (suite `value-uk-research-suite-v1-public2`) | `value-data-2026-10-09` |
+| 0.6.0-alpha.2 only | `VALUE-UK-GBP1-23zone-research-suite-public1-2026-10-04.zip` | `value-data-2026-10-04` |
 
-The transaction creates:
+VALUE 0.7.0-alpha.1 cannot install the public1 suite: its Study templates carry
+the module confirmation keys and the zonal solver contract of 0.6.0-alpha.2, and
+its base pack, GBP1 public1, does not run under the corrected methodology profile
+that the network modules require. The public2 suite contains the released GBP1
+public2 bundle (`value-uk-open-data-pack-public2-2026-10-09.zip`) and the
+published 23-zone Network Pack `value-gb-zonal-network-v1-c9e841112c40`, both
+byte for byte, and two Study templates generated by VALUE 0.7.0-alpha.1. The
+Network Pack ZIP published on its own has no install control in the interface;
+VALUE 0.7.0-alpha.1 receives it through the suite.
+
+1. Download the suite from the data release and check its SHA-256 against the release notes.
+2. Open `Data` and go to `Install the VALUE-UK research suite`.
+3. Select the suite ZIP.
+4. Read the suite and component rights notices, then acknowledge them.
+5. Choose `Install data and create two Studies` and keep the page open while VALUE validates and stages both components.
+6. Confirm that the result shows the exact base Data Pack ID, Network Pack ID, component hashes and two saved Study revisions.
+
+The public2 transaction creates:
 
 | Saved Study | Years | System domain | Data identities |
 | --- | --- | --- | --- |
-| `VALUE-UK copperplate 2025-2034` | 2025 to 2034 | National single node | `value-uk-open-data-pack-v1`; no Network Pack |
-| `VALUE-UK fixed-zonal network 2025-2034` | 2025 to 2034 | Fixed GB zones and redispatch | The same base pack plus `value-gb-zonal-network-v1-*` |
+| `value-uk-copperplate-2025-2034-public2` (VALUE-UK copperplate 2025-2034 — GBP1 public2) | 2025 to 2034 | National single node, staged market with copperplate balancing | `value-uk-open-data-pack-public2`; no Network Pack |
+| `value-uk-zonal-2025-2034-public2` (VALUE-UK fixed-zonal network 2025-2034 — GBP1 public2) | 2025 to 2034 | Fixed GB zones and redispatch | The same base pack plus `value-gb-zonal-network-v1-c9e841112c40` |
 
-Both Studies use the same national demand, annual clock, storage-cost method and CEM chain. The zonal Study adds the Network Pack and post-thesis redispatch module. Installation leaves both Studies unrun. Open one Study, inspect its immutable revision, then use `Check readiness` before launching it.
+Both Studies use the same national demand, annual clock, storage-cost method and CEM chain, and the corrected methodology profile. The zonal Study adds the Network Pack, the representative-point weather spatializer and the post-thesis redispatch module and extension, which are marked experimental. Installation leaves both Studies unrun. Open one Study, inspect its immutable revision, then use `Check readiness` before launching it.
+
+The 23-zone Network Pack places CCGT, OCGT, biomass and waste, run-of-river hydro, nuclear (Torness, north of the B6 boundary, included) and all storage in the unconstrained zone `ENGLAND_FALLBACK`. Imports are also placed there, because the base pack keys them `import:<country>` while the network pack lands interconnectors as `interconnector:<line>`. The Run's run-time fallback audit lists every such placement. The B6 and B7a constraints of this pack therefore respond to the located wind, solar and zonal demand only.
 
 Installing identical suite bytes again is idempotent. An existing component ID with different bytes is a collision and must use a new versioned ID. The current Full installer requires an empty target directory. Upgrade by installing into a separate empty directory; automatic migration of previously installed research suites, Studies or Runs is not provided. Keep the old installation and its research state until a separate, verified migration workflow is available.
 
@@ -134,7 +153,7 @@ Installing identical suite bytes again is idempotent. An existing component ID w
 4. Run validation. Resolve missing roles, clock errors, unit errors, checksum failures and unresolved rights before promotion.
 5. Install the validated bundle locally. VALUE copies it into the local data store and exposes its immutable pack ID in `Studies`.
 
-The VALUE application installer does not contain the rights-governed UK research pack or the doctoral 1000 TWh reproduction data. Obtain the separate research suite from the project owner, or construct a new pack from sources that you are entitled to use. A manifest can record a restricted source without granting permission to redistribute it.
+The VALUE application installer does not contain the rights-governed UK research pack or the doctoral 1000 TWh reproduction data. Download the published research suite or data packs from the data releases (section 3), or construct a new pack from sources that you are entitled to use. A manifest can record a restricted source without granting permission to redistribute it.
 
 ## 5. Create the full Study
 
@@ -196,7 +215,7 @@ Use the public interfaces in `gridform_core/v2/interfaces.py` and the typed obje
 3. Upload the ZIP. VALUE treats it as trusted in-process Python, so install only reviewed code.
 4. Confirm that structural conformance passes and enable the installed version.
 5. Open `Studies`, switch to `Advanced`, create a new revision and select the Module in its declared slot.
-6. Compare the new revision with the unchanged control Study.
+6. On `Compare`, compare its Run with a Run of the unchanged control Study, with the control Run as the reference Run.
 
 Never overwrite a built-in ID or publish changed code under an existing version. A new scientific implementation needs a new version and source hash. Old Study revisions must continue to resolve to their original implementation.
 

@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from backend.lifecycle.atomic_io import atomic_write_json
+
 from .v2.contracts import ResolvedRun, YearResult, YearState
 from .v2.module_manifest import ModuleRegistryV2, ResolvedModuleGraph
 from .v2.orchestrator import contract_hash
@@ -177,10 +179,28 @@ def _write_artifact_index(bundle_root: Path, output_dir: Path) -> Path:
         "schema_version": "value.artifact-index/v1",
         "artifacts": _artifact_index(bundle_root, output_dir),
     }
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(path, payload, indent=2, ensure_ascii=True)
     return path
+
+
+def _failed_run_methodology(resolved_path: Path, project: Mapping[str, object]) -> object:
+    """The methodology a failed run executed (or would have executed) under (X0 S9)."""
+
+    try:
+        resolved = json.loads(resolved_path.read_text(encoding="utf-8"))
+        recorded = dict(resolved.get("extensions") or {}).get("methodology")
+        if isinstance(recorded, Mapping):
+            return dict(recorded)
+    except (OSError, ValueError, AttributeError):
+        pass
+    if not project:
+        return None
+    try:
+        from .methodology import resolve_project_methodology
+
+        return {**resolve_project_methodology(project).to_dict(), "source": "project_snapshot"}
+    except ValueError as exc:
+        return {"status": "unresolved", "error": str(exc)}
 
 
 def write_failed_run_provenance(
@@ -190,11 +210,17 @@ def write_failed_run_provenance(
     project_id: str,
     error_code: str,
 ) -> Path:
-    """Write an explicitly incomplete identity record for a newly failed run."""
+    """Write an explicitly incomplete identity record for a newly failed run.
+
+    The run directory must exist: a run moved to the trash is never recreated
+    (``FileNotFoundError``).
+    """
 
     bundle_root = bundle_root.resolve()
+    if not bundle_root.is_dir():
+        raise FileNotFoundError(f"Run directory does not exist: {bundle_root}")
     output_dir = bundle_root / "model-output"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(exist_ok=True)
     project = {}
     pack = {}
     for path, target in (
@@ -275,6 +301,7 @@ def write_failed_run_provenance(
         },
         "data_bindings": bindings,
         "resolved_configuration": resolved_reference,
+        "methodology": _failed_run_methodology(resolved_path, project),
         "randomness": {
             "planning_seed": (project.get("parameters") or {}).get("planning.random_seed", 0),
             "planning_draw_algorithm": "md5-prefix-mod-1000000/v1",
@@ -284,9 +311,7 @@ def write_failed_run_provenance(
         "artifacts": _artifact_index(bundle_root, output_dir),
     }
     path = bundle_root / "provenance.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(path, record, indent=2, ensure_ascii=False)
     return path
 
 
@@ -302,6 +327,7 @@ def write_run_provenance(
     manifest_snapshots: Mapping[str, Path],
     initial_state: YearState,
     year_results: Sequence[YearResult],
+    runtime_overlay: Mapping[str, object] | None = None,
 ) -> Path:
     """Write provenance only after immutable model artifacts have closed."""
 
@@ -433,8 +459,9 @@ def write_run_provenance(
         "artifact_index_artifact_id": artifact_index_path.relative_to(bundle_root).as_posix(),
         "artifacts": _artifact_index(bundle_root, output_dir),
     }
+    if runtime_overlay is not None:
+        record["runtime_overlay"] = dict(runtime_overlay)
+    record["methodology"] = resolved_run.extensions.get("methodology")
     path = bundle_root / "provenance.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
-    temporary.replace(path)
+    atomic_write_json(path, record, indent=2, ensure_ascii=False)
     return path

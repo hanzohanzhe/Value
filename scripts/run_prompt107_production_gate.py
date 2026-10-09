@@ -627,7 +627,7 @@ def derive_execution_studies(
     from gridform_core.zonal_pack_selection import resolve_zonal_pack_selection
 
     root = _validated_output_root(output_root)
-    registry = workspace_registry()
+    registry = workspace_registry(strict=True)
     sources = {
         "copperplate": ROOT / "publication" / "prompt104-staged-copperplate-study.json",
         "zonal": ROOT / "publication" / "prompt104-zonal-study.json",
@@ -732,7 +732,7 @@ def derive_two_year_execution_studies(
 
     root = _validated_output_root(output_root)
     annual = dict(annual_evidence or derive_execution_studies(root, packs))
-    registry = workspace_registry()
+    registry = workspace_registry(strict=True)
     evidence: dict[str, dict[str, object]] = {}
     expected_changes = {
         "end_year",
@@ -818,7 +818,7 @@ def _approved_solver_gate_contract() -> dict[str, object]:
         solver_stack_identity,
     )
 
-    manifest = workspace_registry().manifest(
+    manifest = workspace_registry(strict=True).manifest(
         "value-zonal-redispatch-balancing"
     ).to_dict()
     defaults = dict(dict(manifest.get("solver_contract") or {}).get("defaults") or {})
@@ -2388,7 +2388,7 @@ def build_production_preflight(
         raise ProductionGateError(
             "GF_PROMPT107_NETWORK_PACK_VERIFICATION_FAILED", network_verification
         )
-    registry = workspace_registry()
+    registry = workspace_registry(strict=True)
     zonal_manifest = registry.manifest("value-zonal-redispatch-balancing").to_dict()
     if zonal_manifest.get("version") != "1.2.0":
         raise ProductionGateError(

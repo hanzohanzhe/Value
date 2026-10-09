@@ -1265,6 +1265,12 @@ os._exit(0)
                     status_path, run_id=run_context.run_id, project_id="project",
                     mode="full", error=RuntimeError("first recovery failed"),
                 )
+                # P0-3 S2: failed -> cancelled is refused; a re-cancellation
+                # happens only after the failed run was resumed and is running.
+                resumed = json.loads(status_path.read_text(encoding="utf-8"))
+                status_path.write_text(json.dumps({
+                    **resumed, "status": "running", "execution_status": "running",
+                }), encoding="utf-8")
                 second_status = record_run_cancelled(
                     status_path, run_id=run_context.run_id, project_id="project",
                     mode="full", message=message,

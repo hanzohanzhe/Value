@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -14,7 +15,9 @@ from pathlib import Path, PurePosixPath
 from typing import Callable, Mapping, Sequence
 
 from .data_bundle import DataBundleError, install_data_bundle, validate_data_bundle
-from .project_revision import attach_revision_identity, save_project_revision
+from .methodology import profile_of_parameters, with_profile
+from .project_revision import attach_revision_identity, project_fingerprint, save_project_revision
+from .revision_migration import classify_revision_mismatch
 from .v2.module_manifest import ModuleRegistryV2
 
 
@@ -27,12 +30,17 @@ STUDIES_MEMBER = "study-templates.json"
 RIGHTS_MEMBERS = ("RIGHTS.json", "ATTRIBUTION.md")
 ALLOWED_MEMBERS = {DESCRIPTOR, BASE_MEMBER, NETWORK_MEMBER, STUDIES_MEMBER, *RIGHTS_MEMBERS}
 MAX_SUITE_BYTES = 3 * 1024 * 1024 * 1024
+DEFAULT_SUITE_ID = "value-uk-research-suite-v1"
+# The suite ID names the installation folder (research-suites/<id>), so it is
+# an immutable safe identifier like a pack ID (R7-2).
+SUITE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 class ResearchSuiteError(ValueError):
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, revision_migration: Mapping[str, object] | None = None):
         super().__init__(message)
         self.code = code
+        self.revision_migration = revision_migration
 
 
 @dataclass(frozen=True)
@@ -113,6 +121,8 @@ def validate_research_suite(path: Path) -> ValidatedResearchSuite:
             descriptor = _read_json_bytes(archive.read(DESCRIPTOR), DESCRIPTOR)
             if descriptor.get("schema_version") != SCHEMA_VERSION:
                 raise ResearchSuiteError("VALUE_RESEARCH_SUITE_SCHEMA", f"Expected {SCHEMA_VERSION}")
+            if not SUITE_ID.fullmatch(str(descriptor.get("suite_id") or "")):
+                raise ResearchSuiteError("VALUE_RESEARCH_SUITE_ID", "Research suite has no safe immutable suite_id")
             inventory_rows = descriptor.get("files")
             if not isinstance(inventory_rows, list):
                 raise ResearchSuiteError("VALUE_RESEARCH_SUITE_INVENTORY", "Research suite has no file inventory")
@@ -170,7 +180,10 @@ def build_research_suite(
     studies_path: Path,
     rights_paths: Sequence[Path],
     destination: Path,
+    suite_id: str = DEFAULT_SUITE_ID,
 ) -> dict[str, object]:
+    if not SUITE_ID.fullmatch(str(suite_id)):
+        raise ResearchSuiteError("VALUE_RESEARCH_SUITE_ID", f"Unsafe research-suite ID: {suite_id!r}")
     base = validate_data_bundle(Path(base_bundle))
     network = validate_data_bundle(Path(network_bundle))
     rights = {Path(path).name: Path(path) for path in rights_paths}
@@ -194,7 +207,7 @@ def build_research_suite(
     ]
     descriptor = {
         "schema_version": SCHEMA_VERSION,
-        "suite_id": "value-uk-research-suite-v1",
+        "suite_id": str(suite_id),
         "components": {
             "base": {"member": BASE_MEMBER, "pack_id": base.descriptor["pack_id"], "bundle_sha256": base.bundle_sha256},
             "network": {"member": NETWORK_MEMBER, "pack_id": network.descriptor["pack_id"], "bundle_sha256": network.bundle_sha256},
@@ -228,6 +241,36 @@ def _remove_new_directory(path: Path, parent: Path) -> None:
     resolved.relative_to(parent.resolve())
     if resolved.is_dir():
         shutil.rmtree(resolved)
+
+
+def _existing_suite_study(current: Mapping[str, object], template: Mapping[str, object], study_id: str,
+                          registry: ModuleRegistryV2, manifest: Mapping[str, object]) -> None:
+    """Accept an installed suite Study whose hash differs only because VALUE changed (X0 S11).
+
+    * same content as the template, migrated with the methodology written
+      explicitly: already installed, accepted;
+    * same content, saved by an earlier VALUE (code, method or data identity
+      changed): refused with a migration code and the classification, so the
+      user confirms it through /api/projects/<id>/revision-migration;
+    * otherwise a real collision.
+    """
+
+    current_now = project_fingerprint(current, registry, manifest)
+    template_explicit = project_fingerprint(
+        with_profile(template, profile_of_parameters(dict(template.get("parameters") or {}))), registry, manifest,
+    )
+    if current_now == template_explicit and current.get("revision_sha256") == current_now:
+        return
+    if current_now in {project_fingerprint(template, registry, manifest), template_explicit}:
+        classification = classify_revision_mismatch(current, registry, manifest)
+        if classification.get("classification") not in {"content_changed", "none", "unsaved"}:
+            raise ResearchSuiteError(
+                "VALUE_RESEARCH_SUITE_STUDY_MIGRATION_REQUIRED",
+                f"Study {study_id} was installed by an earlier VALUE version; review its revision migration "
+                f"(/api/projects/{study_id}/revision-migration), then install the suite again.",
+                revision_migration=classification,
+            )
+    raise ResearchSuiteError("VALUE_RESEARCH_SUITE_STUDY_COLLISION", f"Study ID already exists with different content: {study_id}")
 
 
 def install_research_suite(
@@ -333,7 +376,7 @@ def install_research_suite(
             if current_path.is_file():
                 current = json.loads(current_path.read_text(encoding="utf-8"))
                 if current.get("revision_sha256") != expected.get("revision_sha256"):
-                    raise ResearchSuiteError("VALUE_RESEARCH_SUITE_STUDY_COLLISION", f"Study ID already exists with different content: {study_id}")
+                    _existing_suite_study(current, candidate, study_id, registry, manifest)
             else:
                 save_project_revision(project_dir, candidate, registry, manifest)
                 newly_created.append((project_dir, Path(projects_root)))

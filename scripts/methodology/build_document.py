@@ -56,9 +56,8 @@ for ch in payload['chapters']:
     heading=re.search(r'<h2>(.*?)</h2>',ch['html']).group(1)
     doc.add_paragraph(re.sub('<[^>]+>','',heading))
 def soft(s):
- # Allow long technical identifiers and paths to wrap in narrow tables.
- s=re.sub(r'([/_])',r'\1\u200b',s) if False else s.replace('_','_\u200b').replace('/','/\u200b')
- return s
+ # Break long identifiers while keeping numerical units intact.
+ return re.sub(r'[^\s]{24,}',lambda m:m.group().replace('_','_\u200b').replace('/','/\u200b'),s)
 def addtext(p,text,bold=False,italic=False,code=False,small=False):
  if not text:return
  r=p.add_run(soft(text));r.bold=bold;r.italic=italic
@@ -111,7 +110,7 @@ def render_node(node,parent=doc):
     cell=cells[ci];cell.width=Inches(widths[ci]);cell.vertical_alignment=1
     pr=cell._tc.get_or_add_tcPr();margins=OxmlElement('w:tcMar')
     for side in ['top','left','bottom','right']:
-     x=OxmlElement('w:'+side);x.set(qn('w:w'),'90');x.set(qn('w:type'),'dxa');margins.append(x)
+     x=OxmlElement('w:'+side);x.set(qn('w:w'),'60' if ch['id']=='appendix' and side in ['top','bottom'] else '90');x.set(qn('w:type'),'dxa');margins.append(x)
     pr.append(margins)
     if ri==0:
      sh=OxmlElement('w:shd');sh.set(qn('w:fill'),'EEEEEE');pr.append(sh)

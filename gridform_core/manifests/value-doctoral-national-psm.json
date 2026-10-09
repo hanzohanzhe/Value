@@ -2,7 +2,7 @@
   "schema_version": "value.module/v2",
   "id": "value-doctoral-national-psm",
   "name": "Doctoral national physical PSM (experimental)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "scientific_version": "doctoral-national-final96-signed-settlement-2026.09.10",
   "slot": "psm",
   "implementation": "gridform_core.builtin.scheme_c_1000twh.doctoral_national_psm:DoctoralNationalPSM",

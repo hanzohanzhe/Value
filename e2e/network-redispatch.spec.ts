@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { openRunSection } from "./workspace-nav";
 
 const baseRun = {
   id: "zonal-demo", project_id: "demo", project_name: "Zonal evidence fixture", mode: "full",
@@ -131,13 +132,21 @@ type DetailResponse = {
 type MockNetworkOptions = {
   detailResponse?: (url: URL) => DetailResponse;
   evidenceProbeError?: string;
+  /** R-D5: a national-only ledger (zonal tables, no rows) whose annual brief is withheld (Q14). */
+  nationalWithheldLedger?: boolean;
   frozenProjectResponse?: DetailResponse;
   frozenSolverContract?: unknown;
   onCapabilitiesRequest?: () => void;
+  onAnnualRequest?: () => void;
   onSolverDiagnosticsRequest?: () => void;
   solverDiagnosticsResponse?: (url: URL) => DetailResponse | Promise<DetailResponse>;
   solverSummary?: Record<string, unknown>;
   solverContract?: Record<string, unknown>;
+  annualCoverage?: Record<string, unknown>;
+  reliabilityEvents?: Record<string, unknown>[];
+  /** Generate this many reliability events and page them by the request's offset. */
+  reliabilityTotal?: number;
+  onReliabilityRequest?: (url: URL) => void;
 };
 
 function detailRow(index: number, technology = "Onshore wind") {
@@ -202,7 +211,11 @@ async function mockNetwork(
       if (options.evidenceProbeError) {
         status = 404;
         body = { error: options.evidenceProbeError, error_code: "GF_ZONAL_RESULTS_UNAVAILABLE" };
-      } else body = {
+      } else if (options.nationalWithheldLedger) body = {
+        trace_level: traceLevel, years: [], network_pack_id: "", data_pack_id: "", available_views: ["period", "reliability"],
+        row_counts: { zonal_period_summary: 0, reliability_event: 0 }, bid_replay_available: false,
+      };
+      else body = {
       trace_level: traceLevel, years: [2025], network_pack_id: "gb-zones-v1", data_pack_id: "fixture",
       available_views: ["period", "zone", "boundary", "resource", "agent", "reliability", "solver", "solver-diagnostics"],
       row_counts: { zonal_period_summary: 2, network_solver_diagnostics: 6 }, bid_replay_available: traceLevel === "full",
@@ -213,7 +226,11 @@ async function mockNetwork(
       };
     }
     else if (url.includes("/network-redispatch/annual")) {
-      if (options.evidenceProbeError) {
+      if (options.nationalWithheldLedger) {
+        options.onAnnualRequest?.();
+        status = 409;
+        body = { status: "withheld", error: "Doctoral reproduction runs publish annual results only when every raw invariant passes; the results remain available in Inspect and exports.", error_code: "GF_RESULTS_WITHHELD_RAW_INVARIANTS_FAILED" };
+      } else if (options.evidenceProbeError) {
         status = 404;
         body = { error: options.evidenceProbeError, error_code: "GF_ZONAL_RESULTS_UNAVAILABLE" };
       } else body = { years: [{
@@ -223,7 +240,7 @@ async function mockNetwork(
       vre_curtailment: curtailment,
       unserved_energy_mwh: 1, congested_boundary_periods: 1, maximum_boundary_utilisation_fraction: 1,
       observed_loss_of_load_hours: .5, observed_loss_of_load_events: 1, affected_load_shedding_zones: 1,
-      }], solver_validation_summary: solverSummary, reliability_semantics: "observed_chronology_not_statistical_lole", security_scope: "not_a_security_analysis" };
+      }], solver_validation_summary: solverSummary, reliability_semantics: "observed_chronology_not_statistical_lole", security_scope: "not_a_security_analysis", ...(options.annualCoverage ? { coverage: options.annualCoverage } : {}) };
     }
     else if (url.includes("/network-redispatch/curtailment-detail")) {
       const response = options.detailResponse?.(new URL(url)) ?? detailPage();
@@ -241,7 +258,24 @@ async function mockNetwork(
     else if (url.includes("/network-redispatch/boundaries")) body = { view: "boundary", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, boundary_id: "B1", transfer_mwh: 2, forward_capacity_mwh: 2, reverse_capacity_mwh: 3, utilisation_fraction: 1, boundary_shadow_value_gbp_per_mwh: 4 }] };
     else if (url.includes("/network-redispatch/resources")) body = { view: "resource", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, asset_id: "battery", agent_id: "storage-owner", zone_id: "south", technology: "battery", ahead_dispatch_mwh: 0, signed_adjustment_mwh: 1, final_dispatch_mwh: 1, final_soc_mwh: 3, charge_mwh: 0, discharge_mwh: 1, physical_resource_cost_gbp: 20 }] };
     else if (url.includes("/network-redispatch/settlements")) body = { view: "agent", total: 1, limit: 1000, offset: 0, items: [{ year: 2025, period: 0, agent_id: "storage-owner", zone_id: "south", direction: "up", accepted_delta_mwh: 1, bid_price_gbp_per_mwh: 20, cashflow_to_agent_gbp: 20 }] };
-    else if (url.includes("/network-redispatch/reliability")) body = { view: "reliability", total: 1, limit: 250, offset: 0, items: [{ event_id: "observed-1", year: 2025, start_period: 1, end_period: 1, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" }] };
+    else if (url.includes("/network-redispatch/reliability")) {
+      const requested = new URL(url);
+      options.onReliabilityRequest?.(requested);
+      if (options.reliabilityTotal != null) {
+        const total = options.reliabilityTotal;
+        const offset = Number(requested.searchParams.get("offset") ?? 0);
+        const items = Array.from({ length: Math.max(0, Math.min(50, total - offset)) }, (_, index) => {
+          const start = (offset + index) * 10;
+          return { event_id: `observed-2025-${start}`, year: 2025, start_period: start, end_period: start, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" };
+        });
+        body = { view: "reliability", total, count: items.length, limit: 50, offset, has_more: offset + items.length < total, items };
+      } else {
+        const items = options.reliabilityEvents ?? [{ event_id: "observed-1", year: 2025, start_period: 1, end_period: 1, event_duration_hours: .5, unserved_mwh: 1, affected_zones_json: "[\"south\"]" }];
+        body = { view: "reliability", total: items.length, count: items.length, limit: 50, offset: 0, has_more: false, items };
+      }
+    }
+    else if (url.includes("/market/capabilities")) body = { years: [2025], trace_level: "summary", period_summary: true, physical_dispatch: true, auction_replay: false, storage_state: false, auction_stages: [], price_basis: "national_ahead_clearing_price" };
+    else if (url.includes("/market/dispatch")) body = { year: 2025, resolution: "daily", total: 0, limit: 96, offset: 0, items: [] };
     else if (url.includes("/network-redispatch/solver-diagnostics")) {
       options.onSolverDiagnosticsRequest?.();
       const response = options.solverDiagnosticsResponse
@@ -266,7 +300,7 @@ test("compact solver evidence keeps candidate status truthful and loads rows onl
     onSolverDiagnosticsRequest: () => { diagnosticsRequests += 1; },
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const summary = page.getByRole("region", { name: "Solver validation summary" });
   await expect(summary.getByText("Solver stack not yet validated", { exact: true })).toBeVisible();
@@ -295,7 +329,7 @@ test("validated, custom and numerically warned solver states remain distinct", a
     },
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
   await expect(page.getByText("Built-in validated baseline", { exact: true })).toBeVisible();
 
   await page.unroute("**/api/**");
@@ -317,7 +351,7 @@ test("validated, custom and numerically warned solver states remain distinct", a
     },
   });
   await page.reload();
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
   const customSummary = page.getByRole("region", { name: "Solver validation summary" });
   await expect(customSummary.getByText("Custom contract — not yet solver validated", { exact: true }).first()).toBeVisible();
   await expect(customSummary.getByText("Completed with numerical warning", { exact: true })).toBeVisible();
@@ -340,7 +374,7 @@ test("validated GO-with-warning keeps the built-in stack identity without turnin
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const summary = page.getByRole("region", { name: "Solver validation summary" });
   await expect(summary.getByText("Validated with numerical warning", { exact: true })).toBeVisible();
@@ -370,7 +404,7 @@ test("historical result uses its frozen solver contract instead of the current p
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const summary = page.getByRole("region", { name: "Solver validation summary" });
   await expect(summary.getByText("Built-in validated baseline", { exact: true })).toBeVisible();
@@ -397,7 +431,7 @@ for (const malformed of [
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: /Network & redispatch/ }).click();
+    await openRunSection(page, "Network & redispatch");
 
     const summary = page.getByRole("region", { name: "Solver validation summary" });
     await expect(summary.getByText("Frozen solver contract unavailable — not solver validated", { exact: true })).toBeVisible();
@@ -436,6 +470,11 @@ test("unsafe solver evidence states never render as green validation", async ({ 
     {
       id: "not-recorded", run: baseRun, summary: { ...greenSummary, annual_status: "NOT_RECORDED", study_status: "NOT_RECORDED", evidence_status: "not_recorded" },
       contract: defaultSolverContract, label: "Solver evidence not recorded",
+    },
+    {
+      // R7-5: a summary-trace Run keeps no per-period solver diagnostics by design.
+      id: "not-recorded-trace-profile", run: baseRun, summary: { ...greenSummary, annual_status: "NOT_RECORDED", study_status: "NOT_RECORDED", solver_validated: false, solver_stack_validation_status: "solver_stack_not_yet_validated", row_count: 0, evidence_status: "not_recorded_under_trace_profile", evidence_reason: "per_period_solver_diagnostics_recorded_only_with_full_trace", trace_level: "summary" },
+      contract: defaultSolverContract, label: "Not recorded under this trace profile",
     },
     {
       id: "custom-contract", run: baseRun, summary: greenSummary,
@@ -491,7 +530,7 @@ test("unsafe solver evidence states never render as green validation", async ({ 
       solverSummary: item.summary,
     });
     await page.goto("/");
-    await page.getByRole("button", { name: /Network & redispatch/ }).click();
+    await openRunSection(page, "Network & redispatch");
     const summary = page.getByRole("region", { name: "Solver validation summary" });
     await expect(summary.getByText(item.label, { exact: true })).toBeVisible();
     await expect(summary.getByText("Validated evidence", { exact: true })).toHaveCount(0);
@@ -512,7 +551,7 @@ test("solver diagnostic pagination clears stale rows while the next bounded page
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
   await page.getByRole("tab", { name: "Inspect" }).click();
   await expect(page.getByRole("cell", { name: "primary_bid_cost" })).toBeVisible();
   await page.getByRole("button", { name: "Next solver diagnostics page" }).click();
@@ -531,8 +570,9 @@ test("solver diagnostic pagination clears stale rows while the next bounded page
 test("network workspace separates physical redispatch, settlements and reliability", async ({ page }) => {
   await mockNetwork(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
-  await expect(page.getByRole("heading", { name: "Network & redispatch", level: 2 })).toBeVisible();
+  await openRunSection(page, "Network & redispatch");
+  // W4c: the page has a PageHeader of its own; the page name is the top bar's h1.
+  await expect(page.getByRole("heading", { name: "Network & redispatch", level: 1 })).toBeVisible();
   await expect(page.getByText("National ahead market", { exact: true })).toBeVisible();
   await expect(page.getByText("£240", { exact: true }).first()).toBeVisible();
   await page.getByRole("tab", { name: "Period replay" }).click();
@@ -548,7 +588,7 @@ test("network workspace separates physical redispatch, settlements and reliabili
 test("curtailment attribution shows signed steps, annual zone summary and object evidence", async ({ page }) => {
   await mockNetwork(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const attribution = page.getByRole("region", { name: "VRE curtailment attribution" });
   await expect(attribution.getByText("Economic curtailment", { exact: true })).toBeVisible();
@@ -592,7 +632,7 @@ test("legacy curtailment explains unavailable avoided values without zero placeh
   };
   await mockNetwork(page, baseRun, "full", legacyCurtailment);
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const attribution = page.getByRole("region", { name: "VRE curtailment attribution" });
   await expect(attribution.getByText("Legacy result — avoided curtailment was not calculated", { exact: true })).toBeVisible();
@@ -617,7 +657,7 @@ test("run without recorded attribution explains the production annual reason", a
   };
   await mockNetwork(page, baseRun, "full", unavailableCurtailment);
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const attribution = page.getByRole("region", { name: "VRE curtailment attribution" });
   await expect(attribution.getByText("Attribution unavailable — this run did not record v2 curtailment evidence.", { exact: true })).toBeVisible();
@@ -634,7 +674,7 @@ test("object and tranche evidence reaches rows after the first bounded page", as
     },
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const evidence = page.getByRole("region", { name: "Object and tranche evidence" });
   await expect(evidence.getByRole("cell", { name: /wind-000 zero-cost/ })).toBeVisible();
@@ -649,7 +689,7 @@ test("object evidence failure is not reported as an empty scientific result", as
     detailResponse: () => ({ status: 500, body: { error: "object evidence query failed" } }),
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const evidence = page.getByRole("region", { name: "Object and tranche evidence" });
   await expect(evidence.getByRole("alert")).toContainText("object evidence query failed");
@@ -663,7 +703,7 @@ test("successful object evidence selection clears its prior scoped error", async
       : { status: 500, body: { error: "total detail unavailable" } },
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   const attribution = page.getByRole("region", { name: "VRE curtailment attribution" });
   const evidence = attribution.getByRole("region", { name: "Object and tranche evidence" });
@@ -677,9 +717,10 @@ test("conforming third-party balancing module displays its zonal ledger", async 
   const thirdParty = { ...baseRun, id: "third-party-zonal", modules: { ...baseRun.modules, balancing: "external-zonal-balancing" } };
   await mockNetwork(page, thirdParty);
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
-  await expect(page.getByRole("heading", { name: "Network & redispatch", level: 2 })).toBeVisible();
+  // W4c: the page has a PageHeader of its own; the page name is the top bar's h1.
+  await expect(page.getByRole("heading", { name: "Network & redispatch", level: 1 })).toBeVisible();
   await expect(page.getByText("National ahead market", { exact: true })).toBeVisible();
   await expect(page.getByText("Copperplate run", { exact: true })).toHaveCount(0);
 });
@@ -688,7 +729,7 @@ test("unknown balancing module with no zonal evidence is not labelled copperplat
   const unknown = { ...baseRun, id: "unknown-balancing", modules: { ...baseRun.modules, balancing: "external-unknown-balancing" } };
   await mockNetwork(page, unknown, "full", reconciledCurtailment, { evidenceProbeError: "network redispatch ledger is not available" });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
 
   await expect(page.getByText("No zonal network evidence is available for this run.", { exact: true })).toBeVisible();
   await expect(page.getByText("Copperplate run", { exact: true })).toHaveCount(0);
@@ -697,7 +738,9 @@ test("unknown balancing module with no zonal evidence is not labelled copperplat
 test("run page keeps only compact v2 curtailment attribution metrics", async ({ page }) => {
   await mockNetwork(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /Runs/ }).click();
+  // W4c (spec 5.1/6.5): the annual results are on the Run's own page, reached
+  // from Runs (the Run centre) through the Run section bar.
+  await openRunSection(page, "Annual results");
 
   await expect(page.getByText("Final VRE curtailment", { exact: true })).toBeVisible();
   await expect(page.getByText("VRE curtailment rate", { exact: true })).toBeVisible();
@@ -711,7 +754,7 @@ test("failed zonal run creates a separate copperplate run", async ({ page }) => 
   const failedRun = { ...baseRun, status: "failed" as const, error_code: "GF_ZONAL_SOLVER", error: "Infeasible declared input" };
   await mockNetwork(page, failedRun);
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
   await page.getByRole("button", { name: /Rerun as copperplate/ }).click();
   await expect(page.getByRole("status")).toContainText("Created new copperplate run copperplate-new");
 });
@@ -719,10 +762,28 @@ test("failed zonal run creates a separate copperplate run", async ({ page }) => 
 test("summary trace keeps annual evidence but explains missing bid rows", async ({ page }) => {
   await mockNetwork(page, baseRun, "summary");
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
   await page.getByRole("tab", { name: "Period replay" }).click();
   await expect(page.getByText("Bid rows were not retained")).toBeVisible();
   await expect(page.getByText("Annual scientific totals remain available.", { exact: false })).toBeVisible();
+});
+
+// R-D5 (four-role report, round R1-5): a Run that selected no balancing module
+// cleared one national market; its ledger has the zonal tables but no rows.
+// It is labelled copperplate, the annual brief is not requested, and the
+// withheld reason is not glued to a "no zonal ledger" sentence.
+test("national-only withheld run is copperplate with one reason", async ({ page }) => {
+  const national = { ...baseRun, id: "national-doctoral", modules: { psm: "value-bid-at-cost-psm" } };
+  let annualRequested = false;
+  await mockNetwork(page, national, "full", reconciledCurtailment, { nationalWithheldLedger: true, onAnnualRequest: () => { annualRequested = true; } });
+  await page.goto("/");
+  await openRunSection(page, "Network & redispatch");
+  await expect(page.getByText("Copperplate run", { exact: true })).toBeVisible();
+  await expect(page.getByText("selected no network balancing module", { exact: false })).toBeVisible();
+  await expect(page.getByText("Doctoral reproduction runs publish", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("network evidence pending", { exact: false })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open Market replay →" })).toBeVisible();
+  expect(annualRequested).toBe(false);
 });
 
 test("copperplate run shows a truthful empty network workspace", async ({ page }) => {
@@ -733,8 +794,76 @@ test("copperplate run shows a truthful empty network workspace", async ({ page }
     onCapabilitiesRequest: () => { capabilitiesRequested = true; },
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Network & redispatch/ }).click();
+  await openRunSection(page, "Network & redispatch");
   await expect.poll(() => capabilitiesRequested).toBe(true);
   await expect(page.getByText("This run used copperplate balancing.", { exact: false })).toBeVisible();
   await expect(page.getByText("Copperplate run", { exact: true })).toBeVisible();
+});
+
+// P0-9 S5/S6 (F3-02, F3-07): a cancelled full-year Run at 16.6 % is not an
+// annual result; its reliability list covers the whole year and each event
+// opens Market replay at its own window.
+test("partial-year coverage withholds annual totals and full-year events replay at their window", async ({ page }) => {
+  const reliabilityQueries: URL[] = [];
+  await mockNetwork(page, baseRun, "full", reconciledCurtailment, {
+    annualCoverage: {
+      schema_version: "value.result-coverage/v1", annual_status: "partial", reason_code: "run_cancelled_before_full_coverage",
+      coverage_fraction: 2908 / 17520, coverage_percent: 16.6, expected_years: [2025], observed_years: [2025],
+      years: [{ year: 2025, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false }],
+    },
+    reliabilityEvents: [{ event_id: "observed-2025-5000-5001", year: 2025, start_period: 5000, end_period: 5001, observed_half_hours: 2, event_duration_hours: 1, unserved_mwh: 7, affected_zones_json: "[\"north\"]" }],
+    onReliabilityRequest: (url) => reliabilityQueries.push(url),
+  });
+  await page.goto("/");
+  await openRunSection(page, "Network & redispatch");
+  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Stopped · 16.6%");
+  await expect(page.getByText("Compact annual read model")).toHaveCount(0);
+  await expect(page.getByRole("alert").filter({ hasText: "Annual totals not shown" })).toBeVisible();
+  await page.getByRole("tab", { name: "Reliability" }).click();
+  const list = page.getByRole("region", { name: "Stress events and lost load" });
+  await expect(list.getByRole("heading", { name: "Stress events and lost load — full year 2025" })).toBeVisible();
+  await expect(list.getByText("period 5000")).toBeVisible();
+  expect(reliabilityQueries.at(-1)?.searchParams.get("period_from")).toBeNull();
+  await list.getByRole("button", { name: "Replay the event starting at period 5000" }).click();
+  await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  await expect(page.getByLabel("First period")).toHaveValue("4996");
+});
+
+// Review response (plan 6.9, S6): paging the year's reliability list makes one
+// request per page change and never repeats a request on its own.
+test("paging the reliability list requests each page once", async ({ page }) => {
+  const reliabilityQueries: URL[] = [];
+  await mockNetwork(page, baseRun, "full", reconciledCurtailment, { reliabilityTotal: 120, onReliabilityRequest: (url) => reliabilityQueries.push(url) });
+  await page.goto("/");
+  await openRunSection(page, "Network & redispatch");
+  await page.getByRole("tab", { name: "Reliability" }).click();
+  const list = page.getByRole("region", { name: "Stress events and lost load" });
+  await expect(list.getByText("period 490", { exact: true })).toBeVisible();
+  await list.getByRole("button", { name: "Next events" }).click();
+  await expect(list.getByText("period 500", { exact: true })).toBeVisible();
+  await list.getByRole("button", { name: "Previous events" }).click();
+  await expect(list.getByText("period 0", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1_000);
+  expect(reliabilityQueries.map((url) => url.searchParams.get("offset"))).toEqual(["0", "50", "0"]);
+});
+
+// Review response (S6): the network page publishes the selected year by the
+// same per-year rule as the Runs page; a complete year inside a cancelled Run
+// keeps its annual totals.
+test("a complete year of a cancelled Run shows its annual totals on the network page", async ({ page }) => {
+  await mockNetwork(page, baseRun, "full", reconciledCurtailment, {
+    annualCoverage: {
+      schema_version: "value.result-coverage/v1", annual_status: "partial", reason_code: "run_cancelled_before_full_coverage",
+      coverage_fraction: 0.583, coverage_percent: 58.3, expected_years: [2025, 2026], observed_years: [2025, 2026],
+      years: [
+        { year: 2025, first_period: 0, last_period: 17519, period_count: 17520, coverage_fraction: 1, complete: true },
+        { year: 2026, first_period: 0, last_period: 2907, period_count: 2908, coverage_fraction: 2908 / 17520, complete: false },
+      ],
+    },
+  });
+  await page.goto("/");
+  await openRunSection(page, "Network & redispatch");
+  await expect(page.getByRole("region", { name: "Annual coverage" })).toContainText("Stopped · 58.3%");
+  await expect(page.getByText("Final physical resource cost").first()).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Annual totals not shown" })).toHaveCount(0);
 });

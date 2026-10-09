@@ -1,0 +1,15 @@
+/* Round R1-5 (four-role report R-D7, S-D9, F-D5): changed dimensions as
+   labelled paths; the raw recorded values only on request. New elements only;
+   existing tokens only; text >= 12px. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.comparison-dimension-paths { margin: var(--sp-2) 0 0; color: var(--ink); font-size: var(--fs-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.comparison-dimensions details.comparison-raw, .module-differences details.comparison-raw { margin-top: var(--sp-1); padding: 0; border: 0; background: transparent; }
+.comparison-raw summary { color: var(--ink-muted); font-size: var(--fs-xs); cursor: pointer; }
+.comparison-raw summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.module-differences .comparison-raw pre { max-height: 240px; overflow: auto; font-size: var(--fs-xs); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Round R2 (AF3-1, DECISIONS A23): a metric whose annual delta is withheld
+   states its own reason under its values. */
+.comparison-metric-withheld { margin: var(--sp-2) 0 0; color: var(--ink-muted); font-size: var(--fs-xs); line-height: 1.45; overflow-wrap: anywhere; }
+}

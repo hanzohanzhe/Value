@@ -3,11 +3,28 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = (path) => readFile(new URL(path, import.meta.url), "utf8").catch(() => "");
+// P1 W3: app/page.tsx became the workbench state, the shell and one route per
+// page.  These files are read strictly (a moved file must fail, not read as "").
+const strict = (path) => readFile(new URL(path, import.meta.url), "utf8");
+const WORKBENCH_FILES = [
+  "../app/page.tsx", "../app/HomeView.tsx", "../app/features/shell/useWorkbenchState.ts", "../app/features/shell/Workbench.tsx",
+  "../app/learn/LearnView.tsx", "../app/studies/StudiesView.tsx", "../app/data/DataView.tsx", "../app/modules/ModulesView.tsx",
+  "../app/extensions/ExtensionsView.tsx", "../app/runs/RunsView.tsx", "../app/runs/[runId]/RunResultsView.tsx", "../app/runs/[runId]/replay/ReplayView.tsx",
+  "../app/runs/[runId]/vre/VreView.tsx", "../app/runs/[runId]/network/NetworkView.tsx", "../app/runs/[runId]/systems/SystemsView.tsx",
+  "../app/inspect/InspectView.tsx", "../app/compare/CompareView.tsx",
+  "../app/features/market/MarketReplayView.tsx", "../app/features/market/CurtailmentView.tsx", "../app/features/network/SystemResultsView.tsx",
+  // P1 W5: the wording of these views is in their dictionaries.
+  "../app/i18n/messages/network.en.ts", "../app/i18n/messages/market.en.ts", "../app/i18n/messages/runViews.en.ts",
+  "../app/i18n/messages/evidence.en.ts", "../app/i18n/messages/workspace.en.ts",
+];
+// P1 W5: a view and the dictionary that holds its wording, read as one text.
+const sourceWithWording = async (...paths) => (await Promise.all(paths.map(source))).join("\n");
+const workbenchSource = async () => (await Promise.all(WORKBENCH_FILES.map(strict))).join("\n");
 
 test("Study trace selection and readiness render frozen VALUE evidence", async () => {
   const [page, traceNotice, composer, readiness] = await Promise.all([
-    source("../app/page.tsx"),
-    source("../app/features/market/TraceCoverageNotice.tsx"),
+    workbenchSource(),
+    sourceWithWording("../app/features/market/TraceCoverageNotice.tsx", "../app/i18n/messages/market.en.ts"),
     source("../app/features/studies/StudyComposer.tsx"),
     source("../app/features/evidence/ReadinessEvidence.tsx"),
   ]);
@@ -31,8 +48,8 @@ test("Study trace selection and readiness render frozen VALUE evidence", async (
 
 test("summary results describe missing bid evidence and only offer a new Study revision", async () => {
   const [page, traceNotice] = await Promise.all([
-    source("../app/page.tsx"),
-    source("../app/features/market/TraceCoverageNotice.tsx"),
+    workbenchSource(),
+    sourceWithWording("../app/features/market/TraceCoverageNotice.tsx", "../app/i18n/messages/market.en.ts"),
   ]);
   const renderedSource = `${page}\n${traceNotice}`;
 
@@ -42,12 +59,14 @@ test("summary results describe missing bid evidence and only offer a new Study r
 });
 
 test("market and network result requests expose year, window and page bounds", async () => {
-  const [page, networkView, networkClient] = await Promise.all([
-    source("../app/page.tsx"),
+  const [page, networkView, networkClient, networkWording] = await Promise.all([
+    Promise.all([strict("../app/features/market/MarketReplayView.tsx"), strict("../app/i18n/messages/market.en.ts")]).then((parts) => parts.join("\n")),
     source("../app/features/network/NetworkRedispatchView.tsx"),
     source("../app/features/network/networkRedispatch.ts"),
+    // P1 W5: the network page's wording is in its dictionary.
+    strict("../app/i18n/messages/network.en.ts"),
   ]);
-  const network = `${networkView}\n${networkClient}`;
+  const network = `${networkView}\n${networkClient}\n${networkWording}`;
 
   for (const contract of [/period_from/, /period_to/, /limit/, /offset/]) {
     assert.match(page, contract);
@@ -61,7 +80,7 @@ test("market and network result requests expose year, window and page bounds", a
 
 test("replay exports use one explicit range and poll only the created job", async () => {
   const [page, panel, network] = await Promise.all([
-    source("../app/page.tsx"),
+    strict("../app/features/market/MarketReplayView.tsx"),
     source("../app/features/market/ReplayExportPanel.tsx"),
     source("../app/features/network/NetworkRedispatchView.tsx"),
   ]);
@@ -95,25 +114,32 @@ test("replay export controls invalidate stale artifacts and lock one immutable r
 });
 
 test("Audit summary bid evidence only creates an unsaved Full replay Study revision", async () => {
-  const [page, audit] = await Promise.all([source("../app/page.tsx"),source("../app/features/evidence/AuditView.tsx")]);
+  const [page, audit, inspect] = await Promise.all([workbenchSource(), source("../app/features/evidence/AuditView.tsx"), strict("../app/inspect/InspectView.tsx")]);
 
   assert.doesNotMatch(`${page}\n${audit}`, /Re-run with <code>runtime\.market_trace_level = full<\/code>/);
-  assert.match(audit, /function AuditView\(\{ run, apiOrigin, onCreateFullReplayRevision \}/);
+  // X0 S12 added an optional initialTab (Inspect opened on one tab by a Run notice).
+  // W4c (F3-19) added the applied planning search (?q=): initialSearch and onSearchChange.
+  assert.match(audit, /function AuditView\(\{ run, onCreateFullReplayRevision(?:, initialTab)?(?:, onTabChange)?(?:, initialSearch, onSearchChange)? \}/);
   assert.match(audit, /<TraceCoverageNotice traceLevel=\{periods\.trace_level \?\? "summary"\} bidReplayAvailable=\{false\} onCreateFullReplayRevision=\{onCreateFullReplayRevision\}/);
-  assert.match(page, /<AuditView run=\{selectedRun\} apiOrigin=\{API_ORIGIN\} onCreateFullReplayRevision=\{createFullReplayRevision\}/);
+  assert.match(inspect, /<AuditView run=\{selectedRun\} onCreateFullReplayRevision=\{createFullReplayRevision\}/);
 });
 
 test("GBP1 policy reads historical evidence and upgrades a draft only by explicit action", async () => {
   const ts = await import("typescript");
   const transpile = (code) => ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
   const url = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-  const networkUrl = url(transpile(await source("../app/features/network/networkRedispatch.ts")));
+  // networkRedispatch.ts imports the shared formatting layer (P0-9 S1): point its
+  // relative ".ts" imports at the real files so the data: module can load them.
+  const absoluteImports = (code, from) => code.replace(/from "(\.\.?\/[^"]+\.ts)"/g, (_, specifier) => `from "${new URL(specifier, new URL(from, import.meta.url)).href}"`);
+  const networkUrl = url(absoluteImports(transpile(await source("../app/features/network/networkRedispatch.ts")), "../app/features/network/networkRedispatch.ts"));
   const network = await import(networkUrl);
-  const contractCode = transpile(await source("../app/features/studies/solverContract.ts")).replace("../network/networkRedispatch",networkUrl);
+  // P1 W5: solverContract.ts also imports the dictionaries (its messages follow the interface language).
+  const contractCode = absoluteImports(transpile(await source("../app/features/studies/solverContract.ts")), "../app/features/studies/solverContract.ts").replace("../network/networkRedispatch",networkUrl);
   const policy = await import(url(contractCode));
   const summary = {schema_version:"value.solver-validation-summary/v1",annual_status:"GO",study_status:"GO",solver_validated:true,solver_stack_validation_status:"builtin_validated_baseline",inherited_unvalidated:false,first_causal_period:null,row_count:1,warning_periods:0,unvalidated_periods:0,maximum_validated_ceiling_use:0,phases:{},evidence_status:"valid",evidence_errors:[],method:"highs-ds",scipy_version:"1.15",highs_identity:"recorded-highs",detail_view:"solver-diagnostics"};
   assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"value.zonal-lexicographic/v2"}),true);
   assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"value.zonal-lexicographic-gbp1/v3"}),true);
+  assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"value.zonal-lexicographic-shed-lock/v4"}),true);
   assert.equal(network.isSolverValidationSummary({...summary,solver_contract_version:"unknown"}),false);
   const current = network.copyDefaultZonalSolverContract();
   const legacy = structuredClone(network.LEGACY_ZONAL_SOLVER_CONTRACT);
@@ -121,6 +147,19 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.equal(current.absolute_ceilings.primary_bid_cost_gbp,1);
   assert.equal(network.isZonalSolverContract(current),true);
   assert.equal(network.isZonalSolverContract(legacy),true);
+  // Three-state round trip (P0-8 S4): v2 and v3 stay readable, v4 is current.
+  const gbp1 = structuredClone(network.HISTORICAL_GBP1_ZONAL_SOLVER_CONTRACT);
+  assert.equal(current.schema_version,"value.network-solver-contract/v4");
+  assert.equal(current.contract_version,"value.zonal-lexicographic-shed-lock/v4");
+  for (const [contract, generation] of [[legacy,"v2"],[gbp1,"v3"],[current,"v4"]]) {
+    const roundTripped = JSON.parse(JSON.stringify(contract));
+    assert.equal(network.isZonalSolverContract(roundTripped),true);
+    assert.equal(network.isBuiltinZonalSolverContract(roundTripped),true);
+    assert.equal(network.zonalSolverContractGeneration(roundTripped),generation);
+    assert.equal(network.isLegacyZonalSolverContract(roundTripped),generation!=="v4");
+  }
+  assert.match(policy.validateZonalSolverContract(gbp1),/historical v3 GBP 1 lock/);
+  assert.equal(network.isZonalSolverContract({...gbp1,contract_version:current.contract_version}),false);
   assert.equal(network.isZonalSolverContract({...current,contract_version:legacy.contract_version}),false);
   assert.equal(network.isZonalSolverContract({...current,validated_ceilings:{...current.validated_ceilings,primary_bid_cost_gbp:0.5}}),false);
   const custom = network.withZonalSolverContractFlags({...current, method:"highs-ipm"});
@@ -130,19 +169,33 @@ test("GBP1 policy reads historical evidence and upgrades a draft only by explici
   assert.equal(backToDefault.is_builtin_default,true);
   assert.equal(backToDefault.requires_acknowledgement,false);
   assert.equal(network.isZonalSolverContract(backToDefault),true);
-  const draft = { solver_contract:legacy, maturity_acknowledgements:{[policy.LEGACY_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,other:"retained"}, modules:{balancing:"value-zonal-redispatch-balancing"} };
+  const draft = { solver_contract:legacy, maturity_acknowledgements:{[policy.LEGACY_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,[policy.GBP1_ZONAL_SOLVER_ACK_KEY]:policy.ZONAL_SOLVER_ACK,other:"retained"}, modules:{balancing:"value-zonal-redispatch-balancing"} };
   const original = structuredClone(draft);
   assert.deepEqual(policy.alignZonalSolverContract(draft,draft.modules).solver_contract,legacy);
   assert.match(policy.validateZonalSolverContract(legacy),/historical v2/);
   const upgraded = policy.upgradeZonalSolverContract(draft);
   assert.deepEqual(draft,original);
-  assert.equal(upgraded.solver_contract.schema_version,"value.network-solver-contract/v3");
+  assert.equal(upgraded.solver_contract.schema_version,"value.network-solver-contract/v4");
   assert.equal(upgraded.maturity_acknowledgements[policy.LEGACY_ZONAL_SOLVER_ACK_KEY],undefined);
   assert.equal(upgraded.maturity_acknowledgements[policy.ZONAL_SOLVER_ACK_KEY],undefined);
+  assert.equal(upgraded.maturity_acknowledgements[policy.GBP1_ZONAL_SOLVER_ACK_KEY],undefined);
   assert.equal(upgraded.maturity_acknowledgements.other,"retained");
+  assert.deepEqual(policy.withoutZonalSolverAcknowledgements(draft.maturity_acknowledgements),{other:"retained"});
+  const copperplate = policy.alignZonalSolverContract(draft,{balancing:"none"});
+  assert.deepEqual(copperplate.maturity_acknowledgements,{other:"retained"});
+  // Review M2-P0-8a: the composer's custom-settings toggles used to drop only
+  // the @4.0.0 and @2.0.0 keys and left the @3.0.0 (GBP1) key behind.
+  const composer = await source("../app/features/studies/StudyComposer.tsx");
+  assert.equal((composer.match(/withoutZonalSolverAcknowledgements\(current\.maturity_acknowledgements\)/g) ?? []).length,2);
+  assert.doesNotMatch(composer,/delete maturity_acknowledgements\[/);
   assert.equal(policy.validateZonalSolverContract(upgraded.solver_contract),"");
   const editor = await source("../app/features/studies/SolverSettingsEditor.tsx");
   assert.match(editor,/onClick=\{onUpgrade\}/);
   assert.match(editor,/disabled=\{!useCustom \|\| legacy\}/);
-  assert.match(editor,/Fixed at GBP 1 total bid cost/);
+  // P1 W4a: the editor's wording is in the dictionary (studies.solver.*); the v4 note is used where it was.
+  assert.match(editor,/generation === "v2" \? t\("studies\.solver\.bidCeilingV2"\) : t\("studies\.solver\.bidCeilingFixed"\)/);
+  assert.match(await source("../app/i18n/en/studies.ts"),/"studies\.solver\.bidCeilingFixed": "Fixed at GBP 1 total bid cost/);
+  // Review M2-P0-8a: the upgrade preview follows the .table-scroll wrapper
+  // convention (global tables have min-width: 800px).
+  assert.match(editor,/<div className="table-scroll"><table className="solver-upgrade-preview"[^]*?<\/table><\/div>/);
 });

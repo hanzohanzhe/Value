@@ -1,0 +1,16 @@
+# Repository files that are deliberately NOT members of the public source
+# release (scripts/refresh_source_release_manifest.py).  One pattern per line:
+# a trailing "/" excludes a directory prefix, otherwise fnmatch on the POSIX path.
+#
+# P0 construction documents: internal plan, decisions, design spec, conventions
+# and work reports.  They contain local absolute paths and are not release text.
+docs/dev/
+#
+# Methodology 0.4 drafts (plan C26): each package writes its methodology changes
+# here; the 0.3 sources stay frozen until the 0.4 edition is generated and reviewed.
+docs/methodology/drafts/
+#
+# Hand-off documents for the author, the website uploader and the methodology
+# editor (closing deliverables of the P0 construction).  They reference the
+# internal docs/dev/ material and are not release text.
+docs/handoff/

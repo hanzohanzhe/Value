@@ -5,10 +5,20 @@ from __future__ import annotations
 import random
 from dataclasses import replace
 
+from gridform_core.module_context import (
+    ImmutableContextResolver,
+    RunContextRef,
+    RunStaticContext,
+    YearContext,
+    YearContextRef,
+    canonical_context_sha256,
+)
 from gridform_core.staged_market_contracts import (
     AheadMarketResult,
     BalancingInput,
     FlexibilityBid,
+    ZonalRedispatchDomainV2,
+    ZonalRedispatchPeriodSlice,
     contract_sha256,
 )
 from gridform_core.zonal_contracts import (
@@ -354,11 +364,142 @@ def random_convex_case(seed: int) -> dict[str, object]:
     )
 
 
+def bind_production_input(
+    declaration: dict[str, object],
+    *,
+    module: ZonalRedispatchBalancing | None = None,
+) -> tuple[BalancingInput, ZonalRedispatchBalancing]:
+    """Bind a self-contained oracle declaration to the production module.
+
+    The oracle declarations keep the original single-object domain payload
+    (``value.zonal-redispatch-domain/v1``) so the independent CBC model reads
+    every number from one place.  The production module only accepts the
+    context-bound v2 domain: the network pack and annual metadata live in the
+    immutable run/year contexts and the period slice carries the current
+    capacities.  This adapter derives those contexts from the same numbers
+    without solving anything, then configures the module exactly as the
+    staged PSM does (``configure`` + ``start_year``).
+    """
+
+    legacy = BalancingInput.from_dict(declaration)
+    domain = dict(legacy.domain_payload)
+    if domain.get("schema_version") != "value.zonal-redispatch-domain/v1":
+        raise ValueError("Oracle declarations use value.zonal-redispatch-domain/v1")
+    ahead = AheadMarketResult.from_dict(dict(domain["ahead_result"]))
+    pack = ZonalNetworkPack.from_dict(dict(domain["network_pack"]))
+    period_hours = float(legacy.period_hours)
+    period_index = {
+        str(period_id): index
+        for index, period_id in enumerate(pack.zonal_demand.period_ids)
+    }[legacy.period_id]
+    profiles = {profile.profile_id: profile for profile in pack.rating_profiles}
+    forward: dict[str, float] = {}
+    reverse: dict[str, float] = {}
+    for boundary in pack.cutsets:
+        multiplier = 1.0
+        if boundary.rating_profile_id:
+            multiplier = float(
+                profiles[boundary.rating_profile_id].multipliers[period_index]
+            )
+        forward[boundary.boundary_id] = (
+            float(boundary.forward_limit_mw) * period_hours * multiplier
+        )
+        reverse[boundary.boundary_id] = (
+            float(boundary.reverse_limit_mw) * period_hours * multiplier
+        )
+    for corridor_id, limits in dict(domain.get("corridor_limits_mw_by_id") or {}).items():
+        forward[str(corridor_id)] = float(dict(limits)["forward_limit_mw"]) * period_hours
+        reverse[str(corridor_id)] = float(dict(limits)["reverse_limit_mw"]) * period_hours
+    envelopes: dict[str, dict[str, float]] = {}
+    for asset_id, raw in dict(domain.get("interconnector_envelope_mwh_by_asset") or {}).items():
+        envelope = dict(raw)
+        envelopes[str(asset_id)] = {
+            "import_capacity_mwh": max(float(envelope.get("maximum_mwh", 0.0)), 0.0),
+            "export_capacity_mwh": max(-float(envelope.get("minimum_mwh", 0.0)), 0.0),
+        }
+    zones = {
+        str(asset): str(zone)
+        for asset, zone in dict(domain["asset_zone_id_by_asset"]).items()
+    }
+    run_context = RunStaticContext(
+        run_id=legacy.run_id,
+        study_revision_sha256="a" * 64,
+        start_year=int(legacy.year),
+        end_year=int(legacy.year),
+        period_hours=period_hours,
+        data_pack={"data_pack_id": "independent-oracle-fixture", "manifest_sha256": "b" * 64},
+        module_graph={"graph_sha256": "c" * 64},
+        scientific_parameters={"clock.period_hours": period_hours},
+        runtime_controls={},
+        trace_profile="summary",
+        solver_contract={},
+        market_configuration={
+            "zonal_demand_mode": str(
+                domain.get("zonal_demand_mode") or "network_pack_absolute_demand"
+            )
+        },
+        network_pack=pack.to_dict(),
+    )
+    year_context = YearContext(
+        run_id=legacy.run_id,
+        year=int(legacy.year),
+        run_context_sha256=canonical_context_sha256(run_context),
+        operating_state={
+            "schema_version": "value.operating-state/v2",
+            "assets": [],
+            "active_planning_projects": [],
+            "asset_zone_id_by_asset": zones,
+            "resource_class_by_asset": dict(domain.get("resource_class_by_asset") or {}),
+            "resource_cost_gbp_per_mwh_by_asset": dict(
+                domain.get("resource_cost_gbp_per_mwh_by_asset") or {}
+            ),
+            "storage": dict(domain.get("storage") or {}),
+        },
+        frozen_zone_shares={asset: {zone: 1.0} for asset, zone in zones.items()},
+        opening_soc_mwh_by_asset=dict(legacy.initial_soc_mwh_by_asset),
+        transition_lineage={"fixture": "independent-oracle"},
+    )
+    run_reference = RunContextRef(canonical_context_sha256(run_context))
+    year_reference = YearContextRef(
+        year_context.year, canonical_context_sha256(year_context)
+    )
+    real_demand = {
+        str(zone): float(value)
+        for zone, value in dict(domain["real_demand_mwh_by_zone"]).items()
+    }
+    bound_domain = ZonalRedispatchDomainV2(
+        run_reference,
+        year_reference,
+        ZonalRedispatchPeriodSlice(
+            period_id=legacy.period_id,
+            ahead_result=ahead,
+            zonal_real_demand_mwh=real_demand,
+            zonal_forecast_demand_mwh=real_demand,
+            forward_boundary_capacity_mwh=forward,
+            reverse_boundary_capacity_mwh=reverse,
+            interconnector_envelopes=envelopes,
+        ),
+    )
+    payload = legacy.to_dict()
+    payload["domain_payload"] = bound_domain.to_dict()
+    payload["ahead_result_sha256"] = contract_sha256(ahead)
+    model_input = BalancingInput.from_dict(payload)
+    bound = module or ZonalRedispatchBalancing()
+    resolver = ImmutableContextResolver(
+        run_contexts=(run_context,),
+        year_contexts=(year_context,),
+        modules_by_slot={"balancing": bound},
+    )
+    bound.configure(run_context, resolver)
+    bound.start_year(year_context)
+    return model_input, bound
+
+
 def production_solution(declaration: dict[str, object]) -> dict[str, object]:
     """Normalize the live VALUE result into the oracle comparison schema."""
 
-    model_input = BalancingInput.from_dict(declaration)
-    result = ZonalRedispatchBalancing().clear(model_input)
+    model_input, module = bind_production_input(declaration)
+    result = module.clear(model_input)
     extensions = dict(result.extensions)
     accepted = {bid.bid_id: 0.0 for bid in model_input.bids}
     signed = {bid.bid_id: 0.0 for bid in model_input.bids}

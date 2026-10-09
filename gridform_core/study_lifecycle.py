@@ -13,8 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from backend.lifecycle.states import ACTIVE_STATES as ACTIVE_RUN_STATUSES
 
-ACTIVE_RUN_STATUSES = {"queued", "snapshotting", "running", "cancel_requested"}
+
 SAFE_ID = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
 
 
@@ -25,7 +26,7 @@ class StudyLifecycleError(ValueError):
 def _read_json(path: Path, fallback: Any = None) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):  # includes JSON and non-UTF-8 decoding (F5-05)
         return fallback
 
 

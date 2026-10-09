@@ -59,7 +59,7 @@ function Stop-PortableProcesses {
 try {
     $backend = Start-Process -FilePath $Python -ArgumentList @("-m", "backend.server", "--host", "127.0.0.1", "--port", "8766") -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $backendLog -RedirectStandardError $backendErrorLog
     $frontendScript = Join-Path $PSScriptRoot "serve-value-ui.mjs"
-    $frontendArguments = @("`"$frontendScript`"", "--host", "127.0.0.1", "--port", "8800")
+    $frontendArguments = @("`"$frontendScript`"", "--host", "127.0.0.1", "--port", "8800", "--api-origin", "http://127.0.0.1:8766")
     $frontend = Start-Process -FilePath $Node -ArgumentList $frontendArguments -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErrorLog
     @{ backend_pid=$backend.Id; frontend_pid=$frontend.Id; started_at=(Get-Date).ToString("o") } | ConvertTo-Json | Set-Content -LiteralPath $pidFile -Encoding UTF8
 
@@ -71,7 +71,13 @@ try {
         if ($attempt -eq 59) { throw "The VALUE model service did not start." }
     }
     for ($attempt=0; $attempt -lt 60; $attempt++) {
-        try { Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8800/" -TimeoutSec 1 | Out-Null; break }
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8800/" -TimeoutSec 1 | Out-Null
+            # The API through the UI gateway: proves the gateway found the API session file.
+            $gateway = Invoke-RestMethod -Uri "http://127.0.0.1:8800/api/health" -TimeoutSec 1
+            if ($gateway.service -eq "value-modular-local") { break }
+            throw "Unexpected gateway response"
+        }
         catch { Start-Sleep -Milliseconds 500 }
         if ($attempt -eq 59) { throw "The VALUE website did not start." }
     }

@@ -1,9 +1,9 @@
-# How to Build Your Own Model Based on FORCE — 101
+# How to Build Your Own Model Based on VALUE — 101
 
 [中文版](BUILD_YOUR_OWN_MODEL_101_ZH.md)
 
 This is the top-level route from “I have my own data or method” to a runnable,
-auditable and reproducible FORCE-derived model. It is written for researchers
+auditable and reproducible VALUE-derived model. It is written for researchers
 and model developers and does not require knowledge of private Scheme C
 implementation details.
 
@@ -12,13 +12,13 @@ For code, manifest and ZIP details for one module, continue with
 to change data, a parameter, a module or the platform. Module Developer 101 then
 explains the implementation.
 
-## 1. A FORCE model is not one Python file
+## 1. A VALUE model is not one Python file
 
-A reproducible FORCE study has five parts:
+A reproducible VALUE study has five parts:
 
 ```text
 model identity
-  = FORCE platform and contract version
+  = VALUE platform and contract version
   + data-pack revision and object SHA-256 values
   + Study years, scientific parameters and revision
   + module ID, version and source hash for all seven slots
@@ -83,7 +83,7 @@ path. The v2 contract currently has 25 required roles:
   model parameters.
 
 The authoritative roles, allowed formats and units are `DATASET_SLOTS` in
-`gridform_core/catalog.py`. The **Data** page is generated from the same list.
+`gridform_core/dataset_slots.py` (re-exported by `gridform_core/catalog.py`). The **Data** page is generated from the same list.
 Do not infer scientific meaning from a filename alone.
 
 ### 3.2 Every binding should declare
@@ -177,29 +177,29 @@ real typed output from the preceding stage.
 
 Replacing all seven still has a boundary: the annual call order, current input
 dimensions, shared state, cost/carbon ledgers and result contracts are owned by
-the platform. It creates a new model within the FORCE lifecycle; it does not
-turn FORCE into an arbitrary-script launcher with unconstrained signatures.
+the platform. It creates a new model within the VALUE lifecycle; it does not
+turn VALUE into an arbitrary-script launcher with unconstrained signatures.
 
 ### 5.2 What is `module.zip`?
 
-It is a `force.module-bundle/v1` installation package containing at least:
+It is a `value.module-bundle/v1` installation package containing at least:
 
 ```text
 my-module.zip
-  bundle.json              # exact file inventory and SHA-256 values
-  module/
-    module.json            # gridform.module/v2 manifest
-    LICENSE
-    METHOD.md              # recommended equations, assumptions and scope
+  force-bundle.json        # generated exact file inventory and SHA-256 values
+  value-module.json        # value.module/v2 manifest
+  LICENSE
+  README.md                # recommended equations, assumptions and scope
+  src/
     my_package/
       __init__.py
-      implementation.py    # entry class named by the manifest
+      plugin.py            # entry class named by the manifest
 ```
 
 The installer checks safe paths, hashes, manifest, entry point, slot/contract
 and callable conformance, then promotes the bundle atomically into the local
 module registry. It does not call `pip`, download dependencies or accept native
-binaries. External code still executes in the FORCE Python process.
+binaries. External code still executes in the VALUE Python process.
 Conformance proves wiring, not scientific validity.
 
 See [`MODULE_DEVELOPER_101.md`](MODULE_DEVELOPER_101.md) for exact fields,
@@ -214,8 +214,9 @@ templates for all seven slots, build commands and the test ladder.
 4. Clone a Study revision and select the module in the matching slot.
 5. Run two-period wiring, then two-year smoke, full annual and required
    multi-year tests.
-6. Compare Studies in **Runs**; inspect clearing and planning in **Inspect** and
-   curtailment attribution in **Network & redispatch**.
+6. Compare the Runs on **Compare**, with the baseline Run as the reference
+   Run; inspect clearing and planning in **Inspect** and curtailment attribution
+   on the Run's **Network & redispatch** page.
 
 ### 5.4 Evidence capabilities for VRE curtailment attribution
 
@@ -229,7 +230,8 @@ For a third-party PSM, declaring
 `evidence.vre-counterfactual-snapshot/v1` and resolving a balancing module that
 produces `network.zonal-redispatch-result/v1` establishes compatibility only.
 The module author must also provide an execution integration adapter and a
-complete, reconciled `gridform.market-ledger/v6` evidence path. Stable asset,
+complete, reconciled market-ledger evidence path (the `value.market-ledger/v6`
+attribution tables, kept by later ledger versions). Stable asset,
 owner, zone, technology and bid-tranche identities, MWh units and one matched
 realised-input SHA-256 are evidence requirements, not optional display metadata.
 Full external execution of this path has not yet been verified.
@@ -244,10 +246,12 @@ appropriate to the new module.
 ### 5.5 Alternative zonal solver contract
 
 A zonal balancing replacement must declare `solver_contract` in its
-`gridform.module/v2` manifest, publish the solver identity, numerical
+`value.module/v2` manifest, publish the solver identity, numerical
 lexicographic semantics, one-sided objective caps, advanced-setting bounds and
 no-fallback behaviour. The built-in `value-zonal-redispatch-balancing` module is
-`2.0.0`; it uses SciPy `1.8.1` and `highs-ds` by default. Its recorded embedded
+`4.0.0` (solver contract v4: total load shedding is locked after the primary
+solve, then only the bid-cost terms carry a numerical lock; GBP 1 is the
+acceptance ceiling); it uses SciPy `1.8.1` and `highs-ds` by default. Its recorded embedded
 HiGHS binary is source-registered as `candidate`, not independently validated.
 
 The following usable manifest fragment is intentionally identical to the
@@ -257,11 +261,11 @@ third-party solver's declared contract and validation gates.
 ```json
 {
   "solver_contract": {
-    "schema_path": "gridform_core/data/contracts/network-solver-contract-v2.schema.json",
-    "semantics": "four_phase_coefficient_aware_numerical_lexicographic_with_one_sided_caps",
+    "schema_path": "gridform_core/data/contracts/network-solver-contract-v4.schema.json",
+    "semantics": "four_phase_lexicographic_primary_shed_lock_then_numerical_bid_cost_cap_gbp1_acceptance_ceiling_mwh_coefficient_aware",
     "defaults": {
-      "schema_version": "value.network-solver-contract/v2",
-      "contract_version": "value.zonal-lexicographic/v2",
+      "schema_version": "value.network-solver-contract/v4",
+      "contract_version": "value.zonal-lexicographic-shed-lock/v4",
       "method": "highs-ds",
       "presolve": true,
       "primal_feasibility_tolerance": 1e-09,
@@ -269,12 +273,12 @@ third-party solver's declared contract and validation gates.
       "ipm_optimality_tolerance": 1e-09,
       "warning_fraction": 0.1,
       "validated_ceilings": {
-        "primary_bid_cost_gbp": 0.01,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.001,
         "physical_throughput_mwh": 0.001
       },
       "absolute_ceilings": {
-        "primary_bid_cost_gbp": 0.1,
+        "primary_bid_cost_gbp": 1.0,
         "secondary_schedule_deviation_mwh": 0.01,
         "physical_throughput_mwh": 0.01
       },
@@ -282,14 +286,30 @@ third-party solver's declared contract and validation gates.
       "requires_acknowledgement": false
     },
     "ranges": {
-      "method": ["highs-ds", "highs-ipm", "highs"],
-      "primal_feasibility_tolerance": [1e-10, 1e-07],
-      "dual_feasibility_tolerance": [1e-10, 1e-07],
-      "ipm_optimality_tolerance": [1e-12, 1e-07],
-      "warning_fraction": {"exclusive_minimum": 0.0, "maximum": 1.0}
+      "method": [
+        "highs-ds",
+        "highs-ipm",
+        "highs"
+      ],
+      "primal_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "dual_feasibility_tolerance": [
+        1e-10,
+        1e-07
+      ],
+      "ipm_optimality_tolerance": [
+        1e-12,
+        1e-07
+      ],
+      "warning_fraction": {
+        "exclusive_minimum": 0.0,
+        "maximum": 1.0
+      }
     },
     "recorded_reference_thresholds": {
-      "primary_bid_cost_gbp": 0.1,
+      "primary_bid_cost_gbp": 1.0,
       "secondary_schedule_deviation_mwh": 0.01,
       "physical_throughput_mwh": 0.01
     },
@@ -337,7 +357,7 @@ explicit, versioned platform upgrade.
    outputs, state ownership and compatibility boundary.
 2. Define semantic roles, schema, units, temporal/spatial indices and
    provenance for new data.
-3. Add a versioned contract such as `gridform.network-psm/v1`; do not silently
+3. Add a versioned contract such as `value.network-psm/v1`; do not silently
    change v2 semantics.
 4. Extend the canonical adapter so inputs are validated, frozen and delivered.
 5. Declare module capabilities and compatibility rules; incompatible Studies
@@ -353,7 +373,7 @@ explicit, versioned platform upgrade.
 
 ### 6.3 Concrete DC/AC transmission route
 
-The accepted GB baseline remains single-node, but the 0.6 extension line now
+The accepted GB baseline remains single-node, but VALUE now
 ships a solver-neutral network contract alongside it. It adds conditional buses,
 branches, asset-to-bus mapping and nodal-demand roles without migrating old
 Studies. Therefore:
@@ -373,8 +393,8 @@ Endogenous transmission expansion as well
 
 The shipped reference contract provides:
 
-- `force.network.buses`, `force.network.branches`;
-- `force.network.asset-map` and `force.network.nodal-demand`;
+- `value.network.buses`, `value.network.branches`;
+- `value.network.asset-map` and `value.network.nodal-demand`;
 - angles, limits, KCL/KVL, congestion and nodal prices for DC;
 - voltage, reactive power, losses, taps and convergence status for AC;
 - `network.single-node`, `network.dc/v1` and `network.ac/v1` capabilities.
@@ -412,25 +432,25 @@ existing or new data pack
 your data pack
   + psm/storage_cost/vre_cap/storage_cap/investment/pipeline/transition modules
   + your Study parameters
-  -> FORCE orchestrator, ledgers, checkpoints, comparison and Inspect
+  -> VALUE orchestrator, ledgers, checkpoints, comparison and Inspect
 ```
 
-This is a genuinely different model that deliberately reuses the FORCE
+This is a genuinely different model that deliberately reuses the VALUE
 lifecycle and public contracts.
 
 ### D. Add transmission expansion
 
 ```text
-force-network-contract-extension
+value-network-contract-extension
   + network data-pack roles
   + replacement or reference network PSM module
-  + optional force-network-expansion-extension
+  + optional value-network-expansion-extension
   + network-expansion module
   + network result views and validation suite
 ```
 
-This is deliberately two package types: a `force.extension-bundle/v1` declares
-the new roles/capabilities, while a `force.module-bundle/v1` supplies executable
+This is deliberately two package types: a `value.extension-bundle/v1` declares
+the new roles/capabilities, while a `value.module-bundle/v1` supplies executable
 solver or lifecycle logic. A single module ZIP must not invent hidden data roles
 or mutate the core contract.
 
@@ -440,7 +460,7 @@ Keep source data, executable code and study recipes separate instead of making
 one opaque ZIP:
 
 ```text
-my-force-model/
+my-value-model/
   MODEL_CARD.md
   CITATION.cff
   LICENSES/
@@ -486,7 +506,7 @@ Do not confuse run modes:
 
 Every result should freeze and retain:
 
-- FORCE platform, API and contract-schema versions;
+- VALUE platform, API and contract-schema versions;
 - Study ID/revision, years and effective parameters;
 - data-pack ID/revision, bindings and object SHA-256 values;
 - module ID, version, scientific version, source SHA-256 and capabilities;

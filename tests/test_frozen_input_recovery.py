@@ -11,6 +11,7 @@ from gridform_core.run_snapshot import create_run_input_snapshot, _freeze_pack
 from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
 from gridform_core.v2.module_manifest import workspace_registry
 from gridform_core.zonal_contracts import ZONAL_ROLES, load_zonal_network_pack
+from gridform_core.frontend_contract import builtin_maturity_acknowledgement_key
 from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 from tests.test_run_input_snapshot import SELECTION
 
@@ -37,7 +38,7 @@ class FrozenInputRecoveryTests(unittest.TestCase):
             project.update(data_pack_id=original["id"], market_configuration={"network_pack_id": original["id"]},
                 selected_extensions=["value-zonal-redispatch-extension"],
                 maturity_acknowledgements={
-                    "module:value-zonal-redispatch-balancing@3.0.0": "value.experimental-ack/v1",
+                    builtin_maturity_acknowledgement_key("module", "value-zonal-redispatch-balancing"): "value.experimental-ack/v1",
                     "module:value-representative-point-weather@1.0.0": "value.experimental-ack/v1",
                     "extension:value-zonal-redispatch-extension@1.0.0": "value.experimental-ack/v1"},
                 solver_contract=DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
@@ -101,7 +102,7 @@ class FrozenInputRecoveryTests(unittest.TestCase):
         self.assertTrue(set(ZONAL_ROLES).isdisjoint(result["base_manifest"]["bindings"]))
         self.assertEqual(set(result["network_manifest"]["bindings"]), set(ZONAL_ROLES))
         self.assertIn("demand.real", result["base_manifest"]["bindings"])
-        network = load_zonal_network_pack(result["network_root"], result["network_manifest"])
+        network = load_zonal_network_pack(result["network_root"], result["network_manifest"], topology_policy="audit")
         self.assertEqual(network.network_pack_id, "recovered-network-v1")
         self.assertNotEqual(network.scientific_sha256, before["network_manifest"]["zonal_network_pack"]["scientific_sha256"])
         self.assertFalse(result["network_manifest"]["scientific_baseline_eligible"])

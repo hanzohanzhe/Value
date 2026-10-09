@@ -1,0 +1,286 @@
+{
+ "case": "D2",
+ "child_commit": "working-tree (R7-1)",
+ "columns": {
+  "network/vre-curtailment-attribution.json::initial_state_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "db10a320f1b37203f70856accd35c0c9cd62864475725507d882bee23e3561e2",
+     "before": "43f2b05555662b4fb5b2cab2c784dec4b65c1127613efbef0843f7fc0c3e6725",
+     "label": ".initial_state_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.investment.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "3.1.0",
+     "before": "3.0.0",
+     "label": ".module_identities.investment.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_resolution_graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1b11610b006eb2010186e2504f2b57f5fc2d5ef3fe65be1daf287cc88ab0207b",
+     "before": "6d95c14a101099447d15ccf76e32ac1c6af57f93a510ef24747da3750be481f7",
+     "label": ".module_resolution_graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::extensions.annual_input_state_sha256": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "db10a320f1b37203f70856accd35c0c9cd62864475725507d882bee23e3561e2",
+     "before": "43f2b05555662b4fb5b2cab2c784dec4b65c1127613efbef0843f7fc0c3e6725",
+     "label": "[0].extensions.annual_input_state_sha256"
+    },
+    {
+     "after": "ce79405d87c63a40f2a346d916f285b2012fd160eeb383c0cdb09b4f52b5b7a2",
+     "before": "384432c3dc2d330ccab2da07792a7058816d3faa9e4cb8794ecbc98e77adc54c",
+     "label": "[1].extensions.annual_input_state_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::investment.extensions.cem_model_identity.version": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].investment.extensions.cem_model_identity.version"
+    },
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[1].investment.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256": {
+   "kind": "unchanged_since_parent",
+   "note": "changed between revision 12 and the parent commit (identity drift before R7-1); identical in the parent and child outputs",
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.cem_model_identity.version": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].next_state.extensions.cem_model_identity.version"
+    },
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[1].next_state.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.correction_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.development_stage_timelines": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 288.0,
+   "sum_before": 0,
+   "values_after": 16,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.repd_status_to_timeline": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.success_rates": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 8.0,
+   "sum_before": 0,
+   "values_after": 8,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.timeline_statistic": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.operating_state.extensions.cem_model_identity": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].planning_advance.operating_state.extensions.cem_model_identity.version"
+    },
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[1].planning_advance.operating_state.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 10,
+   "values_before": 10,
+   "zone": "identity"
+  },
+  "year-results-v2.json::planning_advance.operating_state.extensions.planning_parameters": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 32,
+   "values_before": 0,
+   "zone": "trajectory"
+  }
+ },
+ "digest_sha256": "1fcfbe1ee625cde987ad09110ec7943828cb09d0cc0e761d9483036e9d409e35",
+ "family": "doctoral",
+ "parent_commit": "f94f0c03739e541eccc3da311cd9892196f02df1",
+ "parent_reproduction": {
+  "columns_outside_the_revision_delta": [],
+  "identity_columns": [
+   "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256"
+  ],
+  "note": "The parent output (git archive of the parent commit) reproduces revision 12 in the trajectory and accounting zones; it differs only in 1 identity-zone column(s) changed by commits after that revision (module versions, source artifact hashes), so the report was built with gridform_validation.golden.build_numeric_report directly (R1-2 precedent)."
+ },
+ "revision": 13,
+ "schema_version": "value.golden-numeric-report/v2",
+ "summary": {
+  "by_zone": {
+   "accounting": 1,
+   "identity": 7,
+   "trajectory": 6
+  },
+  "changed_columns": 14,
+  "not_comparable_columns": 0
+ }
+}

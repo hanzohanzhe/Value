@@ -1,0 +1,32 @@
+/* Base typography (spec 1.1, 1.3, 1.5). No input, table or button styling here:
+   shared components carry their own (app/ui), with one exception below. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); font-size: var(--fs-md); line-height: var(--lh-body); }
+  h1, h2, h3, h4, h5, h6 { line-height: var(--lh-heading); }
+  :lang(zh-Hans) :is(h1, h2, h3, h4, h5, h6) { letter-spacing: normal; }
+  a { color: var(--blue); }
+  a:hover { color: var(--blue-dark); }
+  code, pre, kbd, samp { font-family: var(--font-mono); }
+  /* Browsers shrink small to "smaller" (~10-11px); the type floor is 12px (spec 1.3). */
+  small { font-size: var(--fs-xs); }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* Legacy workbench controls (W1 deviation D-W1-1). The views in page.tsx
+     still use bare inputs, buttons and tables; until W4 moves them to app/ui
+     components their defaults live here, scoped to the workbench root with zero
+     specificity so any v- component (components layer) always wins. The global
+     `table { min-width: 800px }` is gone (spec 2): wide tables scroll inside
+     their own .table-scroll container. */
+  :where(.workbench) :where(select, input, textarea) { min-height: 42px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); }
+  :where(.workbench) :where(select, input, textarea):focus { border-color: var(--blue); }
+  :where(.workbench) :where(button:disabled) { cursor: not-allowed; opacity: .48; }
+  :where(.workbench) :where(table) { width: 100%; border-collapse: collapse; line-height: var(--lh-table); }
+  :where(.workbench) :where(th) { color: var(--ink-muted); background: var(--paper); font-size: var(--fs-xs); font-weight: 700; text-align: left; padding: var(--sp-3); }
+  :where(.workbench) :where(td) { border-bottom: 1px solid var(--line-soft); padding: var(--sp-3); font-size: var(--fs-xs); vertical-align: top; font-variant-numeric: tabular-nums; }
+  :where(.workbench) :where(td b, td small) { display: block; }
+  :where(.workbench) :where(td small) { color: var(--ink-muted); font-size: var(--fs-xs); margin-top: var(--sp-1); }
+  :where(.workbench) :where(td code) { font-size: var(--fs-2xs); }
+}

@@ -1,6 +1,6 @@
 {
   "product_name": "VALUE",
-  "version": "0.6.0-alpha.2",
+  "version": "0.7.0-alpha.1",
   "install_scope": "current-user",
   "install_directory": "%LOCALAPPDATA%/VALUE/app",
   "state_directory": "%LOCALAPPDATA%/VALUE/state",

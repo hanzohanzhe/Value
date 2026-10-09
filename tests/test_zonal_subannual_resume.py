@@ -790,6 +790,20 @@ class ZonalSubannualResumeTests(unittest.TestCase):
         self.assertEqual(resumed_ledger, continuous_ledger)
         self.assertEqual(resumed_roots, continuous_roots)
 
+    def test_maintained_balancing_identity_follows_the_module_class(self) -> None:
+        # C22 (M2-P0-8a review): staged_psm compared against a hard-coded
+        # ("value-zonal-redispatch-balancing", "4.0.0"); a version bump would
+        # have silently refused every subannual restore.
+        with patch.object(ZonalRedispatchBalancing, "version", "4.0.1"):
+            with tempfile.TemporaryDirectory() as temporary:
+                output_dir = Path(temporary) / "same-run"
+                checkpoint, _captured = self._capture_january_checkpoint(output_dir)
+                resumed, balancing, resumed_input = _configured_psm(output_dir)
+                self.assertEqual(balancing.version, "4.0.1")
+                resumed.restore_runtime_checkpoint(checkpoint)
+                resumed.run(resumed_input)
+        self.assertGreater(balancing.clear_calls, 0)
+
     def test_restore_rejects_foreign_identity_before_any_solver_call(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output_dir = Path(temporary) / "same-run"

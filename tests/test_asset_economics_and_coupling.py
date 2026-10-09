@@ -1,6 +1,8 @@
 import math
 import unittest
 
+from tests.r71_planning_fixtures import with_planning
+
 from gridform_core.asset_economics import (
     build_asset_economic_extensions,
     resize_asset_economics,
@@ -251,7 +253,7 @@ class CommissionedAssetEconomicsTests(unittest.TestCase):
             1, 1, 1, 1, 1, 0, 0,
         )
         decision = SchemeCAgentInvestmentDefinition().decide(
-            run_contract(), OperatingState(2025, (asset,), ()), market,
+            run_contract(), with_planning(OperatingState(2025, (asset,), ())), market,
             (ExpansionHeadroom("h", 2025, "vre-expansion-cap", {"solar": 100}),),
         )
         self.assertEqual(len(decision.proposals), 1)
@@ -274,7 +276,7 @@ class CommissionedAssetEconomicsTests(unittest.TestCase):
             1, 1, 1, 1, 1, 0, 0,
         )
         decision = SchemeCAgentInvestmentDefinition().decide(
-            run_contract(), OperatingState(2025, assets, ()), market,
+            run_contract(), with_planning(OperatingState(2025, assets, ())), market,
             (ExpansionHeadroom("h", 2025, "vre-expansion-cap", {"solar": 100}),),
         )
         self.assertEqual(len(decision.proposals), 1)
@@ -292,7 +294,7 @@ class CommissionedAssetEconomicsTests(unittest.TestCase):
             income[asset_id] = 6_000_000
         market = MarketYearResult("m", 2025, "psm", "1", {}, income, 1, 1, 1, 1, 1, 0, 0)
         decision = SchemeCAgentInvestmentDefinition().decide(
-            run_contract(), OperatingState(2025, tuple(assets), ()), market,
+            run_contract(), with_planning(OperatingState(2025, tuple(assets), ())), market,
             (ExpansionHeadroom("h", 2025, "vre-expansion-cap", {"solar": 12}),),
         )
         self.assertAlmostEqual(sum(row.capacity_mw for row in decision.proposals), 12.0)
@@ -312,7 +314,7 @@ class CommissionedAssetEconomicsTests(unittest.TestCase):
             1, 1, 1, 1, 1, 0, 0,
         )
         decision = SchemeCAgentInvestmentDefinition().decide(
-            run_contract(), OperatingState(2025, (asset,), ()), market, (),
+            run_contract(), with_planning(OperatingState(2025, (asset,), ())), market, (),
         )
         self.assertEqual(decision.proposals, ())
         self.assertEqual(decision.extensions["ineligible_groups"][0]["reason"], "site_data_required")

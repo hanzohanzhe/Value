@@ -190,6 +190,51 @@ class ResearchSuiteTests(unittest.TestCase):
         )
         self.assertFalse((state / "runs").exists())
 
+    def test_reinstall_over_an_earlier_version_study_points_to_revision_migration(self) -> None:
+        """A suite Study saved before X0 S11 differs only in identity: migrate, do not call it a collision."""
+
+        import hashlib
+
+        from gridform_core import revision_migration
+        from gridform_core.project_revision import _canonical_bytes, canonical_project_payload, save_project_revision
+
+        suite = self._build(self.root / "suite.zip")
+        state = self.root / "state"
+        self._install(suite, state)
+        shutil.rmtree(state / "research-suites")
+        study_dir = state / "projects" / "value-uk-copperplate-2025-2034"
+        manifest = json.loads((state / "data-packs" / "value-101-baseline-v1" / "manifest.json").read_text(encoding="utf-8"))
+        project = json.loads((study_dir / "project.json").read_text(encoding="utf-8"))
+        for key in ("fingerprint_basis", "revision_reason"):
+            project.pop(key)
+        legacy = canonical_project_payload(
+            project, MODULE_REGISTRY, manifest, include_methodology=False,
+            module_version_overrides=revision_migration._baseline_overrides(MODULE_REGISTRY, project["modules"]),
+        )
+        project["revision_sha256"] = hashlib.sha256(_canonical_bytes(legacy)).hexdigest()
+        (study_dir / "project.json").write_text(json.dumps(project), encoding="utf-8")
+
+        with self.assertRaises(ResearchSuiteError) as caught:
+            self._install(suite, state)
+        self.assertEqual(caught.exception.code, "VALUE_RESEARCH_SUITE_STUDY_MIGRATION_REQUIRED")
+        self.assertIn("revision-migration", str(caught.exception))
+        classification = caught.exception.revision_migration
+        self.assertEqual(classification["classification"], "method_upgrade_required")
+
+        revision_migration.migrate_project_revision(
+            study_dir, MODULE_REGISTRY, manifest, confirm_diff_sha256=classification["diff_sha256"],
+        )
+        shutil.rmtree(state / "research-suites", ignore_errors=True)
+        self.assertFalse(self._install(suite, state)["idempotent"])  # the migrated Study is the suite's Study
+
+        shutil.rmtree(state / "research-suites")
+        edited = json.loads((study_dir / "project.json").read_text(encoding="utf-8"))
+        save_project_revision(study_dir, dict(edited, start_year=2026), MODULE_REGISTRY, manifest,
+                              expected_base_revision=edited["revision_sha256"])
+        with self.assertRaises(ResearchSuiteError) as caught:
+            self._install(suite, state)
+        self.assertEqual(caught.exception.code, "VALUE_RESEARCH_SUITE_STUDY_COLLISION")
+
     def test_suite_rejects_undeclared_executable_content(self) -> None:
         """Catches the data-only trust boundary accepting executable payloads."""
 

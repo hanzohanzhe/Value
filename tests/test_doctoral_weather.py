@@ -15,6 +15,7 @@ import numpy as np
 from netCDF4 import Dataset
 
 from gridform_core.canonical_psm_data import build_chronology
+from gridform_core.data_method import run_policy
 from gridform_core.v2.contracts import AssetStateV2, OperatingState, ResolvedRun, YearState
 from gridform_core.v2.orchestrator import json_checkpoint_writer, load_json_checkpoint
 from gridform_core.errors import ContractError
@@ -80,7 +81,7 @@ class DoctoralWeatherTests(unittest.TestCase):
     def chronology(self, periods=8, assets=None, period_hours=0.5):
         return build_chronology(self.pack, self.manifest,
             OperatingState(2025, self.assets if assets is None else assets, ()),
-            periods=periods, period_hours=period_hours)
+            periods=periods, period_hours=period_hours, data_policy=run_policy(self.manifest))
 
     def test_real_dispatch_uses_distinct_site_profiles_and_original_curve_boundaries(self):
         rows = {r.asset_id: r for r in self.chronology().resources}

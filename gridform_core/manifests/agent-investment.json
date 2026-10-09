@@ -2,7 +2,7 @@
   "schema_version": "value.module/v2",
   "id": "agent-investment",
   "name": "Agent investment logic",
-  "version": "2.2.0",
+  "version": "3.1.0",
   "scientific_version": "value-cem-v1-2026.08.10",
   "slot": "investment",
   "implementation": "gridform_core.builtin.value_modules:ValueAgentInvestment",

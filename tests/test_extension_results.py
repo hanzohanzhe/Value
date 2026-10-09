@@ -57,6 +57,24 @@ class ExtensionResultTests(unittest.TestCase):
         self.assertNotIn("private_undeclared", json.dumps(first))
         self.assertEqual(len(first["source"]["year_results"]["sha256"]), 64)
 
+    def test_one_day_lesson_names_the_scope_instead_of_missing_year_results(self):
+        # F-D2 (DECISIONS A16-3): the one-day lesson records the extension graph
+        # but never runs its hooks and writes no year results.
+        self.status["mode"] = "value_101_day"
+        self.write()
+        (self.root / "model-output/year-results-v2.json").unlink()
+        result = query_extension_artifacts(self.root, {})
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["reason_code"], "extensions_not_executed_in_scope")
+        self.assertIn("runs the market step only", result["message"])
+        self.assertIn("old-audit", result["message"])
+        self.assertEqual([row["id"] for row in result["capabilities"]["extensions"]], ["old-audit"])
+        self.assertNotEqual(result["reason_code"], "year_results_missing")
+        # A scope that runs hooks still reports the missing evidence itself.
+        self.status["mode"] = "smoke"
+        (self.root / "status.json").write_text(json.dumps(self.status))
+        self.assertEqual(query_extension_artifacts(self.root, {})["reason_code"], "year_results_missing")
+
     def test_old_declaration_and_hook_source_missing_are_unavailable(self):
         del self.graph["manifests"]
         self.write(False)
@@ -134,6 +152,42 @@ class ExtensionResultTests(unittest.TestCase):
         path = self.root / "model-output/year-results-v2.json"
         path.write_text(path.read_text().replace('"value": 25', '"value": 1e999'))
         self.assertEqual(query_extension_artifacts(self.root, {})["reason_code"], "year_results_invalid_json")
+
+    def test_year_results_above_16_mib_are_read_line_by_line(self):
+        # F2-N1 (G4-05): a two-year or full Run writes > 16 MiB of year results
+        # (17,520 period summaries a year); the extension artifacts must still show.
+        import hashlib
+        from backend import extension_results
+        for row in self.years:
+            row["market"] = {"total_system_cost_gbp": 1.0,
+                             "period_summaries": [{"period": index, "price_gbp_per_mwh": 61.68, "zone": "GB \"x\" ]"}
+                                                  for index in range(60000)],
+                             "extensions": {**row["market"]["extensions"], "network_resource_costs_gbp": {}}}
+            row["planning"] = {"projects": [{"year": 1, "market": {"extensions": {"extension_artifacts": []}}}]}
+        path = self.root / "model-output/year-results-v2.json"
+        payload = json.dumps(self.years, indent=2, ensure_ascii=False).encode("utf-8")
+        path.write_bytes(payload)
+        self.assertGreater(len(payload), extension_results.LIMITS["year_results"])
+        extension_results._STREAM_CACHE.clear()
+        result = query_extension_artifacts(self.root, {})
+        self.assertEqual(result["status"], "available", result["reason_code"])
+        self.assertEqual([item["year"] for item in result["items"]], [2025, 2026, 2027])
+        self.assertEqual(result["items"][2]["summary"], {"year": 2027, "value": 27, "nested": None})
+        self.assertEqual(result["source"]["year_results"]["sha256"], hashlib.sha256(payload).hexdigest())
+        self.assertNotIn("private_undeclared", json.dumps(result))
+        scoped = query_extension_artifacts(self.root, {"year": "2026"})   # served from the bounded cache
+        self.assertEqual((scoped["total"], scoped["items"][0]["year"]), (1, 2026))
+        # Changed bytes are a new identity and are read again.
+        path.write_bytes(payload.replace(b'"value": 25', b'"value": 1e999', 1))
+        self.assertEqual(query_extension_artifacts(self.root, {})["reason_code"], "year_results_invalid_json")
+        # Above the whole-file limit, a layout other than the writer's stays unavailable.
+        path.write_bytes(json.dumps(self.years).encode("utf-8") + b" " * len(payload))
+        self.assertEqual(query_extension_artifacts(self.root, {})["reason_code"], "year_results_size_limit")
+        # Recorded artifacts above their own bound are refused, not loaded.
+        path.write_bytes(payload)
+        extension_results._STREAM_CACHE.clear()
+        with patch("backend.extension_results.STREAM_ARTIFACTS_LIMIT", 64):
+            self.assertEqual(query_extension_artifacts(self.root, {})["reason_code"], "extension_artifacts_size_limit")
 
 
 if __name__ == "__main__":

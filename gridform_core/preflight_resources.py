@@ -23,7 +23,8 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from .module_context import RunStaticContext, YearContext, canonical_context_sha256
-from .run_quota import RunQuotaPolicy
+from .run_quota import QuotaUsage, RunQuotaPolicy, global_quota_reasons
+from .voll import VOLL_GBP_PER_MWH
 
 
 GIB = 1024**3
@@ -85,6 +86,7 @@ def build_frozen_resource_contexts(
         build_run_static_context,
     )
     from .canonical_psm_data import build_chronology, native_initial_state
+    from .data_method import project_policy as project_data_policy
     from .cem_investment_policy import investment_mode
     from .parameters import resolve_scheme_c_parameters
     from .v2.contracts import OperatingState, PSMInput
@@ -150,7 +152,9 @@ def build_frozen_resource_contexts(
     network_manifest = json.loads(
         (network_pack_root / "manifest.json").read_text(encoding="utf-8")
     )
-    network_pack = load_zonal_network_pack(network_pack_root, network_manifest)
+    network_pack = load_zonal_network_pack(
+        network_pack_root, network_manifest, topology_policy="enforce"
+    )
     run_context = build_run_static_context(
         resolved=resolved,
         project=frozen_project,
@@ -175,11 +179,12 @@ def build_frozen_resource_contexts(
         pack_root, pack_manifest, opening,
         periods=int(policy["periods_per_year"]),
         period_hours=float(resolved.scientific_parameters["clock.period_hours"]),
+        data_policy=project_data_policy(frozen_project, pack_manifest),
         terminal_soc_rule=str(resolved.scientific_parameters.get(
             "market.perfect_foresight_terminal_soc_rule", "cyclic"
         )),
         voll_gbp_per_mwh=float(resolved.scientific_parameters.get(
-            "market.voll_gbp_per_mwh", 10_000.0
+            "market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH
         )),
     )
     chronology = replace(
@@ -693,6 +698,7 @@ def selected_staged_zonal_calibration_runner(
             _network_period_ids_for_year,
         )
         from .canonical_psm_data import build_chronology
+        from .data_method import project_policy as project_data_policy
         from .module_context import ImmutableContextResolver
         from .parameters import resolve_scheme_c_parameters
         from .v2.contracts import OperatingState, PSMInput
@@ -780,17 +786,18 @@ def selected_staged_zonal_calibration_runner(
             (frozen_network_root / "manifest.json").read_text(encoding="utf-8")
         )
         network_pack = load_zonal_network_pack(
-            frozen_network_root, network_manifest
+            frozen_network_root, network_manifest, topology_policy="enforce"
         )
         chronology = build_chronology(
             frozen_pack_root, pack_manifest, operating_state,
             periods=periods,
             period_hours=run_context.period_hours,
+            data_policy=project_data_policy(calibration_project, pack_manifest),
             terminal_soc_rule=str(resolved_parameters.scientific.values.get(
                 "market.perfect_foresight_terminal_soc_rule", "cyclic"
             )),
             voll_gbp_per_mwh=float(resolved_parameters.scientific.values.get(
-                "market.voll_gbp_per_mwh", 10_000.0
+                "market.voll_gbp_per_mwh", VOLL_GBP_PER_MWH
             )),
         )
         chronology = replace(
@@ -1179,8 +1186,12 @@ def resource_readiness_from_snapshot(
     quota_policy: RunQuotaPolicy,
     target_volume_bytes: int | None = None,
     calibration_runner: Callable[[dict[str, object]], Mapping[str, object]] | None = None,
+    usage: QuotaUsage | None = None,
 ) -> tuple[ResourceEstimate, dict[str, object], dict[str, object]]:
-    """Build authoritative readiness from the promoted immutable snapshot."""
+    """Build authoritative readiness from the promoted immutable snapshot.
+
+    ``usage`` (run_quota.quota_usage) applies the shared global quota rule.
+    """
 
     from .run_snapshot import verify_run_input_snapshot
 
@@ -1218,6 +1229,8 @@ def resource_readiness_from_snapshot(
         estimate,
         free_bytes=free_bytes,
         quota_policy=quota_policy,
+        existing_run_bytes=usage.existing_run_bytes if usage is not None else 0,
+        already_reserved_bytes=usage.outstanding_reserved_bytes if usage is not None else 0,
     )
     evidence = {
         "trace_profile": estimate.trace_profile,
@@ -1248,11 +1261,11 @@ def evaluate_resource_gate(
 
     estimated_output = estimate.persisted_bytes + estimate.temporary_bytes
     required_free = estimated_output + estimate.reserve_bytes
-    reasons: list[str] = []
-    if estimated_output > quota_policy.per_run_quota_bytes:
-        reasons.append("per_run_quota_exceeded")
-    if existing_run_bytes + already_reserved_bytes + estimated_output > quota_policy.global_quota_bytes:
-        reasons.append("global_quota_exceeded")
+    reasons: list[str] = global_quota_reasons(
+        QuotaUsage(int(existing_run_bytes), int(already_reserved_bytes), ()),
+        estimated_output,
+        quota_policy,
+    )
     if int(free_bytes) < required_free or int(free_bytes) - required_free < quota_policy.minimum_free_bytes:
         reasons.append("free_space_reserve_not_satisfied")
     errors = []

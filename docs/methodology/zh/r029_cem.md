@@ -1,199 +1,109 @@
-# 年度投资与资产演化
+# 实验性年度账户与投资
 
-R029 全国研究通过年度运行收入驱动资产扩张、融资和退役。研究窗口为 2025—2034 年，每年运行 17,520 个半小时时段，采用 `thesis_final9.6` 投资规则。其 `basic` 情景将容量市场、辅助服务和脱碳支持预算设为零。风光和储能扩张比例均为 0.20，投资选择由完整年度运行账户形成。
+实验性全国路径向独立的年度账户与投资函数提供时段现金流和物理状态。`doctoral.investment_basis=thesis_final9.6` 选择 `build_thesis96_asset_accounts`、`evaluate_thesis96_investment_accounts` 及以下政策和规划规则。第 4 章给出默认投资规则。实验性 PSM 支持固定年份调度，结果中的 `scientific_release_eligible=false` 与 `doctoral_annual_cem_ready=false` 保留其年度接口状态。
 
-## 全国运行状态的年度连接
+R029 是全国研究及其输入系列的名称。public1 含 8,761 个小时光伏值，缺少所需时段声明，其数据资格排除修正读取器与论文复现白名单。public2 移除 2023-01-01 00:00 UTC 的末值，并将三条风光曲线声明为小时数据。public2 随 VALUE 0.7.0-alpha.1 发布，通过[官网数据页](https://value.ac/zh/data/)提供，并已用于修正 Native 调度。本章实验性计算采用显式提供的年度账户、时段序列与参数。
 
-R029 按实际开机事件计入启动费用。设资产铭牌容量为 \(K_i\)，启动费率为 \(s_i\) GBP/MW，期前和最终出力分别为 \(g_{i,t-1}\)、\(g_{i,t}\)。功率 \(g\) 以 MW 计，\(\Delta=0.5\) h，\(c_i\) 为 GBP/MWh 综合变量费用，\(m\) 为报价倍率。机组报价使用 \(mc_i\)，运行费用包含
+## 年度账户与决策分组
 
-$$
-z_{i,t}^{start}=\mathbf1[g_{i,t-1}\le10^{-7}\ \land\ g_{i,t}>10^{-7}],
-$$
-$$
-C_{i,t}^{start}=z_{i,t}^{start}K_is_i,\qquad
-O_{i,t}^{var}=g_{i,t}\Delta c_i+C_{i,t}^{start}.
-$$
-
-启动费用按整项调度资产的铭牌 MW 计价，事件费用单位为 GBP。既有核电保留源参数的正初始功率。燃料、碳价、其他运行费和启动费共同组成实际变量费用，市场收入按全国结算规则计算。
-
-R029 将 1C、0.5C、0.25C 电池及氢储能分别合成全国物理池。池内成员具有相同的 \(E/P\)、效率和运行报价参数，抽蓄保留独立资产表示。技术池的容量和项目分配关系为
-
-$$
-P_k^{pool}=\sum_{a\in k}P_a,\qquad E_k^{pool}=\sum_{a\in k}E_a,\qquad
-X_a=X_k^{pool}\frac{P_a}{P_k^{pool}}.
-$$
-
-\(X\) 可表示实际收入、运行费用或池的物理总量。`allocate_pool_amounts` 按运营 MW 分配至项目，并由最后一项吸收舍入余量。项目的资本、融资、投运年及退出年份保持独立，国内资产现金与边界交易现金分别汇总。
-
-池内库存按绝对充电时段保存批次年龄。正持有费和正报价倍率下，新批次优先；完全同价时按原时钟先后顺序接受。机组流、储能批次流和进口流稳定合并，单个池在所有批次及前置、平衡阶段共用功率限制。`PriceLots` 与 `PriceInventory` 保存剩余批次，自放电作为公共比例作用于库存。
-
-跨年状态保留期末批次、绝对时钟和机组记忆。若储能容量由 \(E_{old}>0\) 变为 \(E_{new}\)，每个旧批次统一乘
-
-$$
-f=\min(1,E_{new}/E_{old}),\qquad e_{k,new}=fe_{k,old},\qquad
-W^{retire}=\sum_ke_{k,old}-\sum_ke_{k,new}.
-$$
-
-扩容保留原有库存，缩容按容量比例冲销库存，完全退出时清空。该电量进入退役损失，对应市场售电量和收入均为零。新增机组采用自身初始功率，退出机组从运行状态中删除。
-
-## 年度账户与决策单位
-
-投资账户由实际前置收入、带符号平衡收入、变量费用、固定费用和年化资本构成。设项目 \(a\) 的容量市场、增量脱碳和辅助服务收入分别为 \(I_a^{CM}\)、\(I_a^{decarb}\)、\(I_a^{AS}\)，固定年费用为 \(F_a\)，年化资本为 \(A_a\)，则经营盈余与年度利润为
-
-$$
-S_a=I_a^{ahead}+I_a^{bal}+I_a^{CM}+I_a^{decarb}+I_a^{AS}-O_a^{var}-F_a,
-\qquad \Pi_a=S_a-A_a.
-$$
-
-`build_thesis96_asset_accounts` 用完整年度现金形成该账户。`net_revenue_gbp` 对应 \(S_a\)，`net_profit_gbp` 对应 \(\Pi_a\)。退出但仍有融资义务的项目保留费用账户，其运行收入采用声明值。
-
-投资以所有者和技术为决策组，并在决定总量后分配到区域。同组已退役融资资产继续贡献 \(S_a\) 和 \(A_a\)，运营 MW 及区域份额只采用仍在运行的成员。外生 REPD 项目保留独立报告账户；内生投资资格要求投资所有者。核电和直接电解采用外生表示，天然水电与抽蓄新建要求另行场址输入。
-
-设组 \(i\) 的运营容量为 \(P_i\)，经营盈余为 \(S_i\)，年化资本为 \(A_i\)，单位新建资本 \(\kappa_i\) 为成员每 MW 资本的容量加权均值。有效投资组要求 \(A_i>0\)、\(\kappa_i>0\)。利润率和分类为
-
-$$
-\Pi_i=S_i-A_i,\qquad R_i=\Pi_i/A_i,
-$$
-$$
-class_i=\begin{cases}
-High,&S_i>A_i(1+r_i),\\
-Profit,&\Pi_i>0\text{ and }S_i\le A_i(1+r_i),\\
-Deplete,&S_i<0,\\
-Nothing,&\text{otherwise}.
-\end{cases}
-$$
-
-高回报分类采用严格大于条件，达到门槛的正利润组进入 Profit。\(S_i\ge0\) 且 \(\Pi_i\le0\) 的资产维持运营。偏好利润率为光伏和陆风各 0.076、海风 0.089、四类可扩张储能 0.12；其他技术取冻结成员参数的最大值，R029 的 CCGT 和 OCGT 均为 0.089。
-
-亏损退役使用目标回收期 \(T_i\)。光伏取 25 年，陆风和海风取 30 年，CCGT、OCGT 取 25 年，生物质取 20 年，三类电池取 10 年，氢储能取 25 年；字面技术键 `gas` 取 20 年。这个期限用于下述退役量，利润率分母仍为年化资本。
-
-## 储能新增机会与收益筛选
-
-R029 的储能扩张同时使用完整风光可用量和既有储能充放电。以半小时电量定义需求 \(D_t\)、既有充电 \(C_t^{existing}\)、可用风光 \(V_t^{available}\) 和既有放电 \(D_t^{existing\ storage}\)，则
-
-$$
-N_t=D_t+C_t^{existing}-V_t^{available}-D_t^{existing\ storage},\qquad
-X_t=\max(-N_t,0),\qquad Z_t=\max(N_t,0).
-$$
-
-\(X_t\) 和 \(Z_t\) 分别为可充电余量和剩余需求，放电收入使用当期前置出清价 \(p_t\)。`doctoral_expansion_inputs.py` 将需求、调度、价格和按运营容量加权的风光可用量逐期对齐。
-
-每种候选技术独立运行一个空起始、能量上限 100 TWh 的虚拟池。额定能量为 \(E_v=100,000,000\) MWh，功率为 \(P_v=E_v/h\)，充放电额定功率相同，逐期库存保留率为 1。技术时长与效率为：1C 的 \((h,\eta_c,\eta_d)=(1,0.81,0.81)\)，0.5C 为 \((2,0.98,0.98)\)，0.25C 为 \((4,0.81,0.81)\)，氢储能为 \((250,0.57,0.57)\)。四次回放分别评估各技术的供需机会。
-
-虚拟功率轴采用连续分层，每层宽度 \(w\) 的单位为 MW，每 MW 库存 \(s\in[0,h]\) 的单位为 MWh/MW。每期从最低容量坐标起分配充电预算 \(X\)，随后分配放电预算 \(Z\)。记库存保留率为 \(\rho\)，单 MW 上界和状态更新为
-
-$$
-\overline c=\min\left(0.5,\frac{h-\rho s}{\eta_c}\right),\qquad s^+=\rho s+\eta_cc,
-$$
-$$
-\overline d=\min(0.5,\eta_ds^+),\qquad s'=s^+-d/\eta_d.
-$$
-
-预算在一层内部用尽时，该层精确切分为接受和剩余两段；物理与财务历史完全相同的相邻层可以合并。物理回放按容量次序进行，价格随后用于收益筛选。年末保留剩余库存，并按实际放电累计收入。
-
-层 \(\ell\) 的收入为 \(I_\ell=\sum_tp_td_{\ell,t}\)，年化资本为 \(A_\ell=w_\ell a_k\)，运维为 \(O_\ell=w_\ell f_k+Q_\ell^co_k^c+Q_\ell^do_k^d\)。其中 \(d_{\ell,t}\) 为整层的期间放电量，\(Q_\ell^c,Q_\ell^d\) 为整层的年度充放电量，单位均为 MWh；\(a_k,f_k\) 分别为 GBP/(MW·年) 的年化资本和固定运维，\(o_k^c,o_k^d\) 为 GBP/MWh 的充放电变量运维费率。
-
-候选技术的充电购电费与充放电变量运维费均取 0，固定维护按目录给定。年化采用 5% 资本成本及技术寿命，电池建设费用按下一节的设备和开发部分拆分。
-
-$$
-\Pi_\ell=I_\ell-O_\ell-A_\ell,\qquad
-qualified_\ell\iff I_\ell-O_\ell\ge1.12A_\ell,\qquad
-H_k=0.20\sum_{\ell:qualified}w_\ell.
-$$
-
-经济筛选包含恰好达到 12% 门槛的层。等效循环数为 \(Q_\ell^d/(\eta_dE_\ell)\)，放电半小时数单列；全年无充电的尾部容量退出候选层集合。`dispatch_virtual_storage` 执行连续层回放，`assess_virtual_storage` 计算成本和合格 MW。
+资产运行盈余汇总提前、平衡及政策收入，再扣除可变与固定运营费。`build_thesis96_asset_accounts` 要求完整的 17,520 个半小时时段，每项资产提供 `annual_fixed_opex_gbp` 与 `annualized_capital_cost_gbp`，时段账本提供市场收入及运行成本。以下账户金额均为该年度 GBP：
 
 ```text
-N ← 需求 + 既有充电 − 可用风光 − 既有放电
-X ← max(−N,0); Z ← max(N,0)
-for 每种候选储能技术:
-    建立100 TWh空虚拟池和连续容量轴
-    for 每个半小时:
-        按容量坐标顺序分配充电和放电
-        在预算切点分层，累计实际送出电量及其价格收入
-        核对库存平衡，合并物理与财务历史相同的相邻层
-    按收入、运维和年化资本筛选12%回报层
-    将合格MW总和乘0.20，形成该技术新增机会H
+operating_surplus_gbp = (
+    market_income_gbp + balancing_income_gbp
+    + cm_income_gbp + decarb_income_gbp + ancillary_income_gbp
+    - variable_operating_cost_gbp - annual_fixed_opex_gbp)
+annual_profit_gbp = operating_surplus_gbp - annualized_capital_cost_gbp
 ```
 
-风光新增上限采用天气与可用出力章的 200 个负净需求时段边界，并应用 0.20 扩张比例。两类上限共同进入年度投资分配。
+账户将运行盈余保存为 `net_revenue_gbp`，将扣除资本后的利润保存为 `net_profit_gbp`。此处显式提供的固定运营费扣除一次；第 4 章给出默认风电、光伏及储能把固定运营费计入平准化建设成本的处理。
 
-## 投资量与资金来源
+`decide_doctoral_investment` 按投资主体与技术合并在运且容量为正的资产，汇总年度盈余和资本，计算容量加权的单位 MW 建设成本，取最高偏好收益率及最短退役目标，再按运行 MW 份额向各地区分配新增容量。核电与直接电解制氢按外生方式处理，新建天然水电与抽水蓄能要求场址输入。
 
-组 \(i\) 的留存利润可购买容量为 \(b_i=\max(\Pi_i,0)/\kappa_i\)。对于风光，运营容量份额 \(s_i=P_i/\sum_{j:k(j)=k}P_j\) 将技术上限分为个体上限 \(h_i=s_iH_k\)。投资申请为
+评估器从 `operating_surplus_gbp` 读取 `surplus`，从 `annualized_capital_cost_gbp` 读取 `annual_capital`，从 `capital_cost_per_mw_gbp` 读取 `capex`，从 `preferred_rate` 读取 `preferred`。年度资本与单位建设成本均须为正，其 `profit`、年利润率 `rate` 和决策分类为：
 
-|决策与技术|新增申请 MW|
+$$
+\mathtt{profit}=\mathtt{surplus}-\mathtt{annual\_capital},\qquad\mathtt{rate}=\frac{\mathtt{profit}}{\mathtt{annual\_capital}}.
+$$
+
+```text
+if surplus > annual_capital * (1 + preferred):
+    recommendation = "Invest_High"
+elif profit > 0:
+    recommendation = "Invest_Profit"
+elif surplus < 0:
+    recommendation = "Deplete"
+else:
+    recommendation = "Do_Nothing"
+```
+
+达到高收益门槛等号且利润为正时归入 `Invest_Profit`。运行盈余非负、扣除资本后利润非正时保留容量。`thesis_final96_contract.json` 中光伏与陆上风电偏好率为 0.076，海上风电为 0.089，储能为 0.12，评估器采用各账户显式提供的数值。
+
+亏损退役采用显式的 `target_payback_years`。默认值为光伏、CCGT、OCGT、氢储能 25 年，陆上及海上风电 30 年，生物质 20 年，三类电池 10 年；技术键 `gas` 对应 20 年。
+
+## 扩容上限与投资量
+
+实验性风光扩容限制在运风光与候选新增出力合计超过需求的时段数。`thesis96_vre_annual_expansion_cap` 将 `demand_mwh`、`operational_vre_available_mwh`、`generation_per_mw_mwh` 分别读为 `demand`、`available`、`profile`。前两个数组为时段 MWh，`profile` 为候选技术每 MW 在各时段的 MWh，计算为：
+
+$$
+\mathtt{net}=\mathtt{demand}-\mathtt{available},\qquad\mathtt{already\_negative}=\#\{\mathtt{net}<0\}.
+$$
+
+`negative_threshold` 默认取 200 个时段，`cap_fraction` 默认取 0.20。`already_negative` 达到 200 时新增上限为零。其余情形，在净需求非负且单位出力为正的时段形成 `transitions=net/profile`，取从小到大第 `needed=negative_threshold−already_negative` 个值作为 `critical` MW，上限为 `cap_fraction×critical`。可用转折点少于 `needed` 时返回零。
+
+储能采用 `annual_caps` 中显式提供的年度技术额度。`storage_expansion_from_traces` 读取接纳风光、实际需求、充电、充电后剩余电量及放电，再应用第 4 章的利用时长计算。标准修正流程对实验性 PSM 以 `leftover_trace_unavailable` 返回零储能扩容空间，因此独立账户分析须输入所选额度及完整序列。储能账户收益门槛为 12%，实验性 PSM 的结果记录仍将年度储能价格与利润上限集成列为待完成。
+
+留存利润形成 `profit_floor_mw=max(profit,0)/capex`。此处 `capacity` 为组内 `current_capacity_mw`，`capacity_by_tech[tech]` 为该技术已解析账户的 MW 总和，`caps` 保存以 MW 计的 `annual_caps` 输入。风光组按运行容量取得技术额度份额：`share=capacity/capacity_by_tech[tech]`，`cap_share=caps[tech]×share`。`evaluate_thesis96_investment_accounts` 按下表给出 `requested_addition_mw`：
+
+|决策与技术|申请 MW|
 |---|---|
-|High 风光|\(h_i\)|
-|Profit 风光|\(\min(h_i,b_i)\)|
-|High CCGT、OCGT、生物质|\(0.01P_i\)|
-|High 储能|\(\max(H_k,b_i)\)|
-|Profit 其他合格技术|\(b_i\)|
-|Deplete 或 Nothing|0|
+|`Invest_High`，风光|`cap_share`|
+|`Invest_Profit`，风光|`min(cap_share,profit_floor_mw)`|
+|`Invest_High`，CCGT、OCGT 或生物质|`0.01×capacity`|
+|`Invest_High`，储能|`max(caps[tech],profit_floor_mw)`|
+|`Invest_Profit`，其他合格技术|`profit_floor_mw`|
+|`Deplete` 或 `Do_Nothing`|0|
 
-同技术多个 High 储能账户按保留利润底线分配。令申请量为 \(q_i\)、合计为 \(Q\)，组间分配总量为
+高收益储能账户共享同技术额度，并保留各自的利润投资下限。此处 `high` 为一种技术中合格的 `Invest_High` 账户，`total` 为其申请 MW 总和。分配器先计算：
 
-$$
-B=\max\left\{\sum_ib_i,\min(Q,H_k)\right\}.
-$$
+```text
+allowed = max(
+    sum(row["profit_floor_mw"] for row in high),
+    min(total, caps.get(tech, 0)))
+```
 
-先按 \(Bq_i/Q\) 分配；低于利润底线 \(b_i\) 的账户先取得 \(b_i\)，剩余预算再按其余账户的申请量比例分配，直至完成。由此，留存利润购买能力可以高于技术机会 \(H_k\)；Profit 储能直接按 \(b_i\) 投资。亏损组另退役 \(\min(P_i,-S_iT_i/\kappa_i)\)。
+分配器按申请 MW 比例分配 `allowed`。比例结果低于 `profit_floor_mw` 的账户先获得该下限，剩余额度再按其他申请量重分配，直至全部边界满足。盈利类储能直接获得留存利润对应容量。亏损账户取 `retirement_mw=min(capacity,−operating_surplus_gbp×target_payback_years/capital_cost_per_mw_gbp)`。
 
-最终新增容量 \(\Delta P_i\) 对应资本支出 \(C_i=\kappa_i\Delta P_i\)。留存利润资金与外部融资分别为
+接纳新增量决定计划中的留存利润与外部融资。`spent` 为 `accepted_addition_mw` 所需建设资金，`retained` 为正年度利润与该支出中的较小值，余量记入 `externally_funded_capital_gbp`：
 
-$$
-E_i=\min\{\max(\Pi_i,0),C_i\},\qquad B_i=C_i-E_i.
-$$
+```text
+spent = accepted_addition_mw * capital_cost_per_mw_gbp
+retained = min(max(annual_profit_gbp, 0), spent)
+profit_funded_addition_mw = retained / capital_cost_per_mw_gbp
+externally_funded_capital_gbp = spent - retained
+```
 
-所有者决定总量后，按各区域既有 MW 份额拆成项目。新增储能继承区域成员的 \(E/P\)，寿命取成员最小值、开发期取最大值、成功率取最小值。计划投运年为 \(y+\max(1,\lceil development\_years\rceil)\)。外部融资在此作为规则指定的资金来源。
+适配器按 `region_addition=addition×region_capacity/capacity` 向各地区分配 `addition`。储能能量取该地区合计的能量功率比，`life` 取成员经济寿命最小值。融资记录采用 0.05 贷款利率和等于 `life` 的期限，独立股权回收与贷款提款计划属于该融资接口的后续集成部分。
 
-例如风光组有 100 MW、同技术总容量 1,000 MW、技术上限 200 MW、单位资本 £1m/MW、年化资本 £10m、经营盈余 £11m、门槛 7.6%。其年度利润 £1m、利润率 10%，进入 High 并申请 20 MW；其中 £1m 为留存利润，£19m 为外部融资。
+内生项目时长与成功率采用第 4 章的相同冻结表。`decide_doctoral_investment` 对每项地区提案调用 `endogenous_planning_terms(state.extensions["planning_parameters"],technology,owner,decision_year)`，记录 `expected_completion_year`、`success_probability`、`timeline_months` 与 `success_rate_source`。燃气、CCGT、OCGT 及生物质采用陆上风电规划参数，氢储能采用光伏参数，普通电池采用 Battery 参数。
 
-## 年化费用和融资偿还
+```text
+terms = endogenous_planning_terms(
+    state.extensions["planning_parameters"],
+    technology=technology, owner=owner, decision_year=market.year)
+expected_completion_year = terms["completion_year"]
+success_probability = terms["success_rate"]
+```
 
-三类电池的建设费用分为设备和开发两部分。设备占比 \(\theta=C_{equipment}/(C_{equipment}+C_{development})\)，总年建设回收额 \(J\) 与固定维护 \(M\) 分类为
+例如，一个 100 MW 风光组在 1,000 MW 同技术机组中占 0.10 份额。技术额度为 200 MW、单位建设成本为 £1m/MW、年度资本为 £10m、运行盈余为 £11m、偏好率为 7.6% 时，年度利润为 £1m，收益率为 10%。该组进入 `Invest_High`，申请 20 MW，记录 £1m 留存利润融资与 £19m 外部融资。
 
-$$
-A=\theta J,\qquad F=M+(1-\theta)J,\qquad A+F=J+M.
-$$
+## 政策转移与支出
 
-设备回收进入年化资本，开发回收进入固定费用。这一分类同时确定投资利润率的资本分母。非电池技术取 \(\theta=1\)。
+政策情景向合格资产分配声明的年度预算。`basic` 将转移支付置零；`with_cm`、`decarbonisation_base`、`subsidy_as_usual` 与 `governmental_target` 启用容量市场及辅助服务转移，后三者还在政策支出中纳入已有脱碳支持。预算以 2025 年 GBP 显式输入。
 
-|技术|设备 GBP/MW|开发 GBP/MW|总建设费用 GBP/MW|
-|---|---:|---:|---:|
-|1C 电池|130,000|200,000|330,000|
-|0.5C 电池|160,000|190,000|350,000|
-|0.25C 电池|230,000|185,000|415,000|
+`allocate_thesis96_policy` 按折减容量分配容量市场收入。资产 `name` 对应 `cm_weights[name]=power×factor`，其中 `power` 为在运 MW，`factor` 为技术折减系数。年度容量市场预算为 £5.44bn，按这些权重分配。
 
-内生项目在实际投运时提款。对权益 \(E\)、债务 \(B\)、正整数寿命 \(L\) 和借款利率 0.05，债务年支付额为 \(M_B=B\,CRF(0.05,L)\)。开期本金 \(B_n\) 对应当年利息和本金偿还
-
-$$
-interest_n=0.05B_n,\qquad
-principal_n=\min\{B_n,\max(M_B-interest_n,0)\},\qquad
-B_{n+1}=B_n-principal_n.
-$$
-
-末年清偿剩余本金，权益按 \(E/L\) 直线回收，年建设回收额为
-
-$$
-J_y=E/L+interest_y+principal_y.
-$$
-
-第 \(L\) 年之后权益回收与偿债为零。提前物理退役的项目继续承担已承诺回收和债务，年度账户保留相应义务。建设期保持未提款状态，模型在投运年开始计债务利息。
-
-期望规划模式把项目功率、能量、资本、年费用、权益和债务承诺同时乘成功率一次。年度财务计划在运行前准备，完整年度结束后结算。`doctoral_finance.py` 管理提款和偿债，`doctoral_storage_costs.py` 进行电池费用分类。
-
-## 政策情景
-
-R029 实际采用 `basic`，各政策预算均为零。可选情景 `with_cm`、`decarbonisation_base`、`subsidy_as_usual` 和 `governmental_target` 使用显式年度预算与技术目标，金额按 2025 年 GBP 输入。全部非 `basic` 情景启用容量市场和辅助服务，后三种情景同时计入既有脱碳支持。
-
-容量市场启用后，固定年度预算 £5.44bn 按去额定容量分配：
-
-$$
-I_a^{CM}=5.44\times10^9\frac{f_{k(a)}P_a}{\sum_bf_{k(b)}P_b}.
-$$
-
-|技术|去额定因子|
+|技术|折减系数|
 |---|---:|
 |CCGT、OCGT、生物质|0.95|
 |核电|0.85|
@@ -202,42 +112,36 @@ $$
 |0.5C 电池|0.15|
 |0.25C 电池|0.60|
 
-氢储能的资格因子由情景显式给出。辅助服务按热电、核电及储能运营 MW 分配。`subsidy_as_usual` 和 `governmental_target` 将增量脱碳预算按合格风光 MW 分配；目标情景在某技术运营容量达到目标后结束该技术资格。
+氢储能须提供情景专用折减系数。辅助服务按火电、核电与储能的运行 MW 分配。`subsidy_as_usual` 和 `governmental_target` 按合格风光 MW 分配新增脱碳支持，后者在技术容量达到声明目标时终止该技术资格。已有支持进入政策支出，新增支持进入合格投资收入；合格容量合计为零时，预算保留未分配。
 
-既有脱碳支持进入政策成本报告，增量支持进入符合条件的投资收入。合格容量为零时预算保留为未分配。`allocate_thesis96_policy` 根据情景、年度预算、去额定因子及容量目标计算这些转移。
+`build_system_cost_views` 分别保留资源与历史支出视图。资源视图汇总提供的资本、运行及可靠性支出，以已供电量为分母；历史视图汇总资本、运行、政策征费及按 £17,000/MWh 计价的缺口，以包含适用进口的非电池发电量为分母。资源可靠性输入采用运行设定中的 VoLL，默认为 £17,000/MWh。
 
-历史论文费用视图将政策征费和 £8,000/MWh 的缺供价值计入分子，以非电池发电量为分母，该发电量可含进口。资源费用视图采用实际资本、运行和可靠性费用，以服务电量为分母；其 VoLL 取运行配置。历史配置碳指标按历史标量公式报告，当前物理排放账本采用第九章因子并以 tCO₂e 计量，两类输出分别保留其单位和计算。
+`legacy_carbon_metric` 以 `unknown_source_scalar` 保留输入的历史碳标量。`physical_carbon_view` 将发电 MWh 乘显式提供的 kgCO₂e/MWh 因子，再除以 1,000，报告运行 tCO₂e。储能碳库存须提供其充电、放电及来源强度输入，第 9 章列出当前因子目录与气体口径。
 
-## 建设管线与外生日程
+## REPD 项目与外生计划
 
-初始 REPD 项目按技术、区域和开发阶段形成投运管线。成功率先取技术与区域值，缺区域时取该技术已知区域的算术平均，再缺省为 0.75；仅对状态配置要求的项目应用该概率。R029 的内生规划采用期望容量模式、种子 0，项目功率与经济总量乘成功率一次。外生初始快照已经包含成功容量时，后续采用其有效容量。
+REPD 预处理依据项目状态、容量、地区及里程碑日期建立建设计划。`lookup_regional_success_rate` 先读取技术与地区条目，再取该技术地区均值，最后取 0.75；状态表决定是否应用成功率。期望容量模式将项目 MW 缩放一次，带种子的随机模式按名称、地区及技术生成项目结果，规划器保留这一预处理结果。
 
-外生完成时间由阶段月数和项目固定扰动确定。`completion_year_from_months` 使用范围为 −6 至 6 月的确定性扰动 \(j\)，基础完成年为
+REPD 项目的 `resolve_repd_success` 按 `project_name`、`region` 和成功率技术标签 `label` 确定随机结果，接纳条件包含等号。配置种子作为元数据保留，抽签值由这三个项目字段固定：
+
+```text
+draw = (stable_int_hash(f"{project_name}|{region}|{label}") % 1_000_000) / 1_000_000
+succeeds = draw <= rate
+```
+
+`completion_year_from_months` 采用 `base_year`、开发时长 `months` 与 `project_key`。项目专用 `jitter` 为 `stable_int_hash(project_key)` 取模 13 后减 6 个月，键为空时扰动取零，返回年份为：
 
 $$
-y_{complete}=y_{base}+\left\lfloor\frac{\operatorname{round}(\max(1,m+j))}{12}\right\rfloor.
+\begin{aligned}\mathtt{rounded\_months}&=\operatorname{round}(\max(1,\mathtt{months}+\mathtt{jitter})),\\\mathtt{completion\_year\_from\_months}&=\mathtt{base\_year}+\left\lfloor\frac{\mathtt{rounded\_months}}{12}\right\rfloor.\end{aligned}
 $$
 
-已批准项目的 \(m\) 包含施工前及施工阶段，申请日期按日先于月解析。完成年还受申请日起完整开发期、模型起年以及初始快照最早起年加 1 的约束。恰在起年完成的外生项目可按固定项目规则延后 1 至 3 年。
+获批项目合并施工准备与施工周期，日期按日优先解析。前向计划还考虑从申请开始的完整开发周期、模型起始年及初始快照的起始年加一下限。外部项目恰在起始年完成时，可按确定规则延后 1 至 3 年；内生提案采用第 4 章规定的决策年加一下限。
 
-项目筛选采用状态、技术、容量和日期条件。容量至少 1 MW、完成年不晚于 2040，终止、已运营、过去完成及停滞项目从待投运集合中移出；默认停滞界年为 2015，施工宽限为 2 年。`lookup_regional_success_rate`、`resolve_repd_success` 和 `preprocess_doctoral_project_records` 将区域概率与 REPD 项目字段连接。可选随机模式对外生项目采用项目名称、区域和技术的确定性抽样，对内生项目采用种子与提案标识的确定性抽样；R029 本例使用期望容量。
+`preprocess_doctoral_project_records` 保留容量至少 1 MW、至 2040 年完成的合格项目。过滤范围包括终止、已投运、已过完成期及长期停滞记录。默认陈旧状态年份为 2015 年，施工宽限期为两年，输出包含保留项目的时间、概率与有效容量。
 
-2025 年初始管线含 2,775 个标准化项目分量，其中 536 个储能源项目各分成四类技术。下表为已经应用规划成功期望、计划在后续年份投运的容量。
+实验抽蓄日程给出合并功率、能量及已经年化的费用。`apply_thesis96_pumped_schedule` 从 `thesis_final96_contract.json` 读取下表，应用到指定抽蓄资产。年度资本额与所选资本回收系数共同确定等效总资本，用于资产经济字段。
 
-|技术|项目分量数|期望 MW|计划完成年|
-|---|---:|---:|---|
-|光伏|386|13,106.265796|2026–2027|
-|陆风|215|6,871.231070|2026–2030|
-|海风|27|29,924.275000|2027–2034|
-|1C 电池|536|1,505.519970|2026–2028|
-|0.5C 电池|536|49,501.496623|2026–2028|
-|0.25C 电池|536|6,022.079881|2026–2028|
-|氢储能|536|15.055200|2026–2028|
-|核电|3|6,460.000000|2031–2035|
-
-抽蓄按外生机队表更新功率、能量及年度费用。表中费用已经年化，直接用于当年的固定运维和资本回收。
-
-|模型年|MW|MWh|年运维 百万GBP|年化资本 百万GBP|
+|模型年|MW|MWh|年 OPEX，百万 GBP|年化资本，百万 GBP|
 |---|---:|---:|---:|---:|
 |2025|2,828|26,700|85.4|377.9|
 |2026–2027|2,927.9|27,400|87.8|388.5|
@@ -247,31 +151,10 @@ $$
 |2031–2034|5,687.9|70,800|134.9|596.4|
 |2035|11,387.9|195,800|241.9|1,070.8|
 
-核电采用模型冻结的外生日程。Heysham 1、Hartlepool、Heysham 2 和 Torness 的容量分别为 1,155、1,185、1,230 和 1,190 MW，均从 2031 模型年退出；Sizewell B 为 1,198 MW，从 2056 年退出。Hinkley C 两台各 1,630 MW，分别自 2031 和 2032 年完整运行；Sizewell C 的 3,200 MW 保留在 2035 年管线中。初始核电总容量为 5,958 MW。该日程取自 `value_uk_nuclear_policy_v1.json`，新核工程费用待统一价格基年后进入主资源费用核算。
+核电采用冻结的 `value_uk_nuclear_policy_v1.json` 日程。Heysham 1、Hartlepool、Heysham 2 和 Torness 分别为 1,155、1,185、1,230、1,190 MW，从 2031 年退出年度资产日程；Sizewell B 为 1,198 MW，从 2056 年退出。Hinkley C 两台各 1,630 MW，于 2031、2032 年进入完整模型年运行；Sizewell C 的 3,200 MW 保留在 2035 年管线中。默认修正 Native 调度对具有电站政策的数据包另应用第 5 章负荷率，以及 AGR 在 2030 年第 4,320 期的可用率截止。
 
-## 年度更新与数值核对
+## 实验年度间的物理状态
 
-年度循环在运行前准备金融费用，运行后决定投资与退役，并把物理与金融状态共同传递。`doctoral_annual_cem.py` 要求完整年度需求、现金、费用和扩张输入，随后调用 `doctoral_policy.py` 形成所有者决定。
+实验逐期引擎在完整年度之间延续批次年龄与机组记忆。绝对时段索引跨年递增，继续运行批次保留其充电索引；原有机组记忆及累计天然资源预算共同传递，新机组采用给定初始状态，新储能采用空批次。
 
-```text
-for 每个模型年:
-    准备当年权益回收和债务计划
-    应用外生抽蓄、核电日程，推进到期项目
-    恢复跨年库存批次，运行完整半小时年度
-    从实际市场现金建立项目账户，按情景分配政策收入
-    计算风光上限和储能经济机会
-    聚合所有者与技术，决定新增和退役
-    按区域拆分项目，应用规划成功率
-    结算本年融资，更新物理资产并保留融资义务
-    保存期末批次、机组记忆与剩余建设管线
-```
-
-退役数量可用 R029 的 2025 年 CCGT 账户核对。该账户运营 28,000 MW，单位新建资本为 £2.4m/MW，经营盈余为 −£429,488,780.128199，目标回收期 25 年，因此退役
-
-$$
-\Delta P^{retire}=
-\frac{429,488,780.128199\times25}{2,400,000}
-=4,473.841459669\ \mathrm{MW}.
-$$
-
-这一计算使用经营盈余 \(S\)。该年 47 个决策账户中，6 个进入 Deplete、38 个维持容量、3 个进入 High；风光与储能技术上限均为零，新增提案为零。初始管线来自 `2025/input.json.gz`，账户示例来自 `2025/year-result.json.gz`，用于将上述年度规则与保存的模型数值对应。
+`DoctoralPeriodEngine.advance_year` 要求连续完整模型年及足以容纳继承库存的储能容量。非空储能退役或缩容至低于现有库存时，需要通过后续接入步骤提供显式处置规则。因此，现行转换保留继续运行储能的库存，退役冲销由显式处置接口确定。年度账户准备、物理状态延续和投资提案分别遵循前述输入要求。

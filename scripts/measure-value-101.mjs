@@ -13,7 +13,8 @@ function argument(name, fallback = undefined) {
 
 
 const baseUrl = argument("--base-url", "http://127.0.0.1:8800");
-const apiOrigin = argument("--api-origin", "http://127.0.0.1:8766");
+// Run status is read through the UI gateway (P0-1): the API itself needs the
+// session token, which only the gateway and the backend hold.
 const output = path.resolve(argument(
   "--output",
   "publication/prompt117-value-101-timing.json",
@@ -41,7 +42,7 @@ async function completedRun(page, startResponse) {
   const payload = await (await startResponse).json();
   const runId = payload.run.id;
   for (let attempt = 0; attempt < 240; attempt += 1) {
-    const response = await page.request.get(`${apiOrigin}/api/runs/${runId}`);
+    const response = await page.request.get(`${baseUrl}/api/runs/${runId}`);
     if (response.ok()) {
       const status = await response.json();
       if (status.status === "completed") return runId;

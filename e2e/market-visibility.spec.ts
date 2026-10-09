@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { openRunSection } from "./workspace-nav";
 
 const run = {
   id: "market-demo", project_id: "demo", project_name: "Market evidence fixture", mode: "full",
@@ -11,12 +14,19 @@ const flows = [
   { technology: "offshore_wind", flow_type: "generation", evidence_scope: "physical_asset", energy_mwh: 4, balance_component_mwh: 4 },
   { technology: "ccgt", flow_type: "generation", evidence_scope: "physical_asset", energy_mwh: 6, balance_component_mwh: 6 },
 ];
+// The dispatch read model (gridform_core/market_replay.py query_dispatch_timeline)
+// returns the bucket price as `price_gbp_per_mwh` with a declared aggregation.
+// The price (61.25 + period) deliberately differs from every offer price below
+// so that an assertion on it cannot be satisfied by the merit-order table.
 const timeline = {
   year: 2025, resolution: "daily", total: 4, limit: 500, offset: 0, source_artifact_sha256: "a".repeat(64),
+  period_hours: 0.5, price_aggregation: "demand_weighted_mean_gbp_per_mwh",
+  // P0-9 S3: the read model states what the price is (default PSM: total period cost / demand).
+  price_basis: "average_period_cost", price_basis_source: "semantics",
   items: Array.from({ length: 4 }, (_, period) => ({
     period_start: period, period_end: period, period_count: 1,
     timestamp_start: `2025-01-01T0${period}:00:00`, timestamp_end: `2025-01-01T0${period}:30:00`,
-    real_demand_mwh: 10, accepted_supply_mwh: 10, clearing_price_gbp_per_mwh: 50 + period,
+    real_demand_mwh: 10, accepted_supply_mwh: 10, price_gbp_per_mwh: 61.25 + period,
     storage_charge_mwh: period === 1 ? 1 : 0, storage_discharge_mwh: 0,
     curtailed_mwh: period === 2 ? 1 : 0, excess_mwh: period === 2 ? 2 : 0,
     vre_available_mwh: 5, vre_accepted_mwh: period === 2 ? 4 : 5,
@@ -30,7 +40,10 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
     const url = route.request().url();
     let body: unknown;
     if (url.endsWith("/api/workspace")) body = {
-      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [], projects: [],
+      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [],
+      // A Study must exist for its Run to be selected: the workspace opens the
+      // Run only when run.project_id matches the selected Study.
+      projects: [{ id: run.project_id, name: run.project_name, data_pack_id: "fixture", start_year: 2025, end_year: 2025, modules: {}, updated_at: run.updated_at }],
       data_packs: [{ id: "fixture", name: "Fixture", country: "GB", timezone: "Europe/London", bindings: {}, required_count: 0, bound_required_count: 0, valid_required_count: 0, binding_issues: {}, complete: true }],
       runs: [run], runtime: { python: "3.10.11", compatible: true, selected_capability: "value-native" },
     };
@@ -58,22 +71,89 @@ test("market replay and VRE evidence render from versioned bounded APIs", async 
       excess_relationship: "separate_prebalancing", excess_scope: "inflexible_mixed", source_artifact_sha256: "a".repeat(64),
     };
     else if (url.includes("/market/vre-timeline")) body = timeline;
+    else if (url.includes("/market/stress-events")) body = {
+      schema_version: "value.stress-events/v1", status: "recorded", year: 2025, total: 1, limit: 50, offset: 0, has_more: false,
+      stress_periods: 2, shortfall_mwh: 3.5, period_hours: 0.5, timezone: "Europe/London",
+      items: [{ year: 2025, event_index: 0, start_period: 2, last_period: 3, periods: 2, shortfall_mwh: 3.5, event_type: "stress" }],
+    };
     else if (url.includes("/market/dispatch")) body = timeline;
+    // P1 W2/W3: the interface checks the service contract on /api/health.
+    else if (url.endsWith("/api/health")) body = { ok: true, frontend_contract_version: "value.expanded-frontend/v1", status: "ok", degraded_reasons: [] };
     else body = { error: "unmocked API" };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /Market replay/ }).click();
+  await openRunSection(page, "Market replay");
   await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  // Spec 4.4 / A2: the full-year stress-event list with its type and Replay jump.
+  const stressList = page.getByRole("region", { name: "Stress events" });
+  await expect(stressList).toContainText("Stress events — full year 2025");
+  await expect(stressList).toContainText("stress (supply < demand)");
+  await expect(stressList).toContainText("2025-01-01 01:00");
+  await expect(stressList.getByRole("button", { name: "Replay the stress event starting at period 2" })).toBeVisible();
   await expect(page.getByRole("table").getByText("offshore wind")).toBeVisible();
   await expect(page.getByText("£50/MWh").first()).toBeVisible();
-  await page.screenshot({ path: "test-results/prompt56-market-replay.png", fullPage: true });
+  // R3-01 / Q6: the selected-period strip shows the recorded bucket price under
+  // its basis label; an average period cost is never called a clearing price.
+  const strip = page.locator(".selected-period-strip");
+  await expect(strip).toContainText("£61.25/MWh");
+  await expect(strip).toContainText("Average period cost (£/MWh demand)");
+  await expect(strip).toContainText("Accepted supply");
+  await expect(strip).toContainText("Shortfall");
+  await expect(strip).not.toContainText("Clearing price");
+  await expect(strip).not.toContainText("£0/MWh"); // a zero offer in the merit-order table is legitimate
+  // Spec 9.8: the window card fits a 375 px screen without its own horizontal scroll.
+  await page.setViewportSize({ width: 375, height: 800 });
+  expect(await strip.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.screenshot({ path: test.info().outputPath("prompt56-market-replay.png"), fullPage: true });
 
-  await page.getByRole("button", { name: /VRE & curtailment/ }).click();
+  await openRunSection(page, "VRE & curtailment");
   await expect(page.getByRole("heading", { name: "See how much VRE was available, used and left unused" })).toBeVisible();
   await expect(page.getByText("5% unused")).toBeVisible();
+  // P0-9 S8 (R3-21): a 20 MWh year is shown in MWh, never as 0 TWh.
+  await expect(page.locator(".curtailment-kpis").getByText("20 MWh", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("0 TWh");
   await expect(page.getByText("inflexible mixed", { exact: true })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
-  await page.screenshot({ path: "test-results/prompt57-vre-curtailment.png", fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("prompt57-vre-curtailment.png"), fullPage: true });
+});
+
+// P0-9 S4 (R3-02): a staged (v8) summary-trace Run has no physical_dispatch
+// rows but a dispatch summary; the chart stacks its final-dispatch supply.
+// The payloads are the generated contract fixtures (real read models).
+const contract = (name: string) => JSON.parse(readFileSync(path.join(process.cwd(), "tests", "fixtures", "ui-contract", `${name}.json`), "utf8")).payload;
+
+test("a v8 summary-trace Run draws its final-dispatch supply stack", async ({ page }) => {
+  const capabilities = contract("toy-v8.capabilities");
+  const daily = contract("toy-v8.dispatch-daily");
+  await page.route("**/api/**", async (route) => {
+    const url = route.request().url();
+    let body: unknown;
+    if (url.endsWith("/api/workspace")) body = {
+      architecture_version: "value.contracts/v2", modules: [], dataset_slots: [],
+      projects: [{ id: run.project_id, name: run.project_name, data_pack_id: "fixture", start_year: 2025, end_year: 2025, modules: {}, updated_at: run.updated_at }],
+      data_packs: [{ id: "fixture", name: "Fixture", country: "GB", timezone: "Europe/London", bindings: {}, required_count: 0, bound_required_count: 0, valid_required_count: 0, binding_issues: {}, complete: true }],
+      runs: [run], runtime: { python: "3.10.11", compatible: true, selected_capability: "value-native" },
+    };
+    else if (url.endsWith("/api/runs/market-demo")) body = run;
+    else if (url.includes("/market/capabilities")) body = capabilities;
+    else if (url.includes("/market/dispatch")) body = daily;
+    // P1 W2/W3: the interface checks the service contract on /api/health.
+    else if (url.endsWith("/api/health")) body = { ok: true, frontend_contract_version: "value.expanded-frontend/v1", status: "ok", degraded_reasons: [] };
+    else body = { error: "unmocked API" };
+    await route.fulfill({ status: url.includes("/market/") || url.endsWith("/api/workspace") || url.endsWith("/api/runs/market-demo") ? 200 : 404, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  await page.goto("/");
+  await openRunSection(page, "Market replay");
+  await expect(page.getByRole("heading", { name: "Replay bids, then follow the dispatched system" })).toBeVisible();
+  expect(capabilities.physical_dispatch).toBe(false);
+  await expect(page.locator(".evidence-chart rect.dispatch-segment").first()).toBeVisible();
+  expect(await page.locator(".evidence-chart rect.dispatch-segment").count()).toBeGreaterThanOrEqual(1);
+  // W4c (spec 2.1): the dispatch chart is a ChartFrame with an HTML legend.
+  await expect(page.locator(".dispatch-chart .v-chart__legend")).toContainText("onshore wind");
+  await expect(page.locator(".selected-period-strip")).toContainText("Demand-weighted national ahead clearing price");
+  await expect(page.locator(".selected-period-strip")).toContainText("£55/MWh");
+  await expect(page.getByText("No supply flows recorded for this window")).toHaveCount(0);
 });

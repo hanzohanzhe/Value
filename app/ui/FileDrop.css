@@ -1,0 +1,23 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-filedrop { display: grid; gap: var(--sp-1); min-width: 0; }
+  .v-filedrop__label { color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
+  .v-filedrop__zone {
+    display: grid;
+    gap: var(--sp-1);
+    min-height: 64px;
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-md);
+    background: var(--paper);
+    color: var(--blue-dark);
+    cursor: pointer;
+    min-width: 0;
+  }
+  .v-filedrop__zone:hover, .v-filedrop.is-over .v-filedrop__zone { border-color: var(--blue); background: var(--blue-soft); }
+  .v-filedrop__prompt { font-size: var(--fs-sm); font-weight: 650; }
+  .v-filedrop__files { display: grid; gap: var(--sp-1); color: var(--ink-muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+  .v-filedrop__file b { color: var(--ink); font-weight: 650; }
+  .v-filedrop.is-disabled .v-filedrop__zone { cursor: not-allowed; border-style: dotted; color: var(--ink-muted); background: var(--line-soft); }
+}

@@ -1,0 +1,28 @@
+{
+ "schema_version": "value.project/v1",
+ "id": "golden-study",
+ "name": "GBP1 doctoral reproduction, one year",
+ "data_pack_id": "value-uk-open-data-pack-v1",
+ "start_year": 2025,
+ "end_year": 2025,
+ "modules": {
+  "psm": "value-bid-at-cost-psm",
+  "storage_cost": "value-legacy-storage-tariff",
+  "investment": "agent-investment",
+  "pipeline": "planning-pipeline",
+  "vre_cap": "vre-expansion-cap",
+  "storage_cap": "value-storage-expansion-policy",
+  "transition": "value-annual-state-transition"
+ },
+ "purpose": "GBP1 public1 doctoral reproduction method, first model year (decision A12)",
+ "selected_extensions": [],
+ "extension_parameters": {},
+ "maturity_acknowledgements": {},
+ "parameters": {
+  "carbon.factor_scenario": "doctoral_reproduction_2026_07_18"
+ },
+ "runtime_options": {
+  "runtime.market_trace_level": "summary",
+  "runtime.checkpoint_enabled": true
+ }
+}

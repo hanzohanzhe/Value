@@ -6,16 +6,19 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { build } from 'esbuild';
 import { chromium } from '@playwright/test';
+import { chromiumLaunchOptions } from './helpers/chromium.mjs';
 const root = path.resolve(import.meta.dirname, '../..'), sha = 'a'.repeat(64);
 const report = (run, mode) => ({ schema_version: 'value.frozen-recovery-review/v1', source_run_id: run, source_snapshot_id: 'snapshot-1', recovery_mode: mode, review_sha256: sha, allowed: true, input_integrity: 'verified', scope: { mode: 'smoke', start_year: 2025, end_year: 2025, periods_per_year: 2 }, canonical_role_count: 2, source_execution_identity_sha256: null, current_execution_identity_sha256: sha, missing_evidence: ['Historical source not bundled'], changes: [{ field: 'method', recorded: null, current: 'current' }], blocking_reasons: [], limitations: ['Input recovery does not restore checkpoints'] });
+// P1 W5: the panel's wording is in the dictionaries (English by default); this
+// harness keeps its Chinese assertions by rendering the panel in Chinese.
 test('frozen recovery discards late reviews across mode/Run and creates only an explicitly confirmed Study', { timeout: 45000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'value-frozen-ui-')); let server, browser;
   try {
-    await build({ stdin: { contents: `import React,{useState}from'react';import{createRoot}from'react-dom/client';import Panel from './app/features/workspace/FrozenInputRecoveryPanel';function Harness(){const[run,setRun]=useState('run-a');const[created,setCreated]=useState('');return <><button onClick={()=>setRun(run==='run-a'?'run-b':'run-a')}>Switch Run</button><output aria-label="created Study">{created}</output><Panel apiOrigin={location.origin} runId={run} onStudyCreated={(id,mode)=>setCreated(id+':'+mode)}/></>};createRoot(document.getElementById('root')).render(<Harness/>);`, resolveDir: root, loader: 'tsx' }, bundle: true, format: 'esm', jsx: 'automatic', outfile: path.join(directory, 'harness.js') });
+    await build({ stdin: { contents: `import React,{useState}from'react';import{createRoot}from'react-dom/client';import Panel from './app/features/workspace/FrozenInputRecoveryPanel';import{LocaleProvider}from'./app/i18n/LocaleProvider';function Harness(){const[run,setRun]=useState('run-a');const[created,setCreated]=useState('');return <><button onClick={()=>setRun(run==='run-a'?'run-b':'run-a')}>Switch Run</button><output aria-label="created Study">{created}</output><LocaleProvider initialLocale="zh"><Panel runId={run} onStudyCreated={(id,mode)=>setCreated(id+':'+mode)}/></LocaleProvider></>};createRoot(document.getElementById('root')).render(<Harness/>);`, resolveDir: root, loader: 'tsx' }, bundle: true, format: 'esm', jsx: 'automatic', outfile: path.join(directory, 'harness.js') });
     await writeFile(path.join(directory, 'index.html'), '<div id="root"></div><script type="module" src="/harness.js"></script>');
     server = createServer(async (req, res) => { const file = req.url === '/harness.js' ? 'harness.js' : 'index.html'; res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : 'text/html'); res.end(await readFile(path.join(directory, file))); });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    browser = await chromium.launch({ headless: true, ...(process.env.CSV_MAPPING_CHROMIUM_EXECUTABLE ? { executablePath: process.env.CSV_MAPPING_CHROMIUM_EXECUTABLE } : {}) });
+    browser = await chromium.launch(chromiumLaunchOptions());
     const page = await browser.newPage(); let pending, delayed = true, creates = 0;
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url()), run = url.pathname.split('/')[3], body = route.request().postDataJSON();
@@ -26,7 +29,10 @@ test('frozen recovery discards late reviews across mode/Run and creates only an 
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     const review = page.getByRole('button', { name: '核对冻结输入与执行身份' }), save = page.getByRole('button', { name: '确认创建独立 Study' });
     const waitPending = async () => { const deadline = Date.now() + 5000; while (!pending && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10)); assert.ok(pending); };
-    await review.click(); await waitPending(); await page.getByLabel('核对方式').selectOption('migration'); await pending.route.fulfill({ json: pending.response }).catch(() => {}); pending = null;
+    await review.click(); await waitPending();
+    // R-D4 (round R1-5): a running review says it takes about 20 s.
+    assert.match(await page.getByRole('status').filter({ hasText: '通常需要约 20 秒' }).innerText(), /正在核对冻结输入与执行身份/);
+    await page.getByLabel('核对方式').selectOption('migration'); await pending.route.fulfill({ json: pending.response }).catch(() => {}); pending = null;
     assert.equal(await save.count(), 0);
     await review.click(); await waitPending(); await page.getByRole('button', { name: 'Switch Run' }).click(); await pending.route.fulfill({ json: pending.response }).catch(() => {}); pending = null;
     assert.equal(await save.count(), 0); await page.getByRole('button', { name: 'Switch Run' }).click(); assert.equal(await save.count(), 0);

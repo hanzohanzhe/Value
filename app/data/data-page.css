@@ -1,0 +1,17 @@
+/* P1 W4b (spec 6.3): the Data page's own blocks. Tokens only. */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.data-page .data-draft { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-3) var(--sp-5); align-items: end; margin-bottom: var(--sp-4); }
+.data-draft-pack { display: grid; gap: var(--sp-1); min-width: 0; }
+.data-draft-pack small { color: var(--ink-muted); font-size: var(--fs-xs); }
+.data-draft-title { color: var(--ink); font-size: var(--fs-lg); }
+.data-draft-copy { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-2); align-items: end; min-width: 0; }
+.data-draft-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.data-page .data-draft > p { grid-column: 1 / -1; margin: 0; }
+.data-page .journey-return { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.data-page .journey-return p { margin: var(--sp-1) 0 0; color: var(--ink-muted); font-size: var(--fs-sm); }
+@media (max-width: 760px) {
+  .data-page .data-draft, .data-draft-copy { grid-template-columns: minmax(0, 1fr); }
+}
+}

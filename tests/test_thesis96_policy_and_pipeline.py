@@ -72,11 +72,13 @@ class Thesis96PolicyTests(unittest.TestCase):
 
 class PlanningProbabilityRegressionTests(unittest.TestCase):
     def test_public_investment_does_not_replace_zero_planning_probability(self):
-        from test_doctoral_investment_alignment import typed_inputs
+        from tests.test_doctoral_investment_alignment import typed_inputs
         from gridform_core.builtin.scheme_c_1000twh.v2_module_definitions import SchemeCAgentInvestmentDefinition
+        from tests.r71_planning_fixtures import planning_parameters, with_planning
         run, state, market, caps, _ = typed_inputs()
-        state = replace(state, assets=tuple(replace(a, extensions={**a.extensions,
-            "success_probability": 0.0}) for a in state.assets))
+        # r71 (A33): the probability comes from the frozen pack success table,
+        # no longer from member-asset extensions; a zero rate stays zero.
+        state = with_planning(state, planning_parameters(rate=0.0))
         market = replace(market, market_income_gbp_by_agent={"z1": 40, "z2": 40, "a": 80})
         decision = SchemeCAgentInvestmentDefinition().decide(run, state, market, caps)
         self.assertTrue(decision.proposals)

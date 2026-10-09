@@ -13,6 +13,23 @@ MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(MODULE)
 
+# P0-1 local API security boundary files (grows with S3/S4/S7).
+P0_1_RELEASE_FILES = (
+    "backend/api_session.py",
+    "tests/test_api_session.py",
+    "tests/test_local_api_harness.py",
+    "scripts/value-ui-gateway.mjs",
+    "scripts/serve-value-ui.mjs",
+    "tests/ui-gateway.test.mjs",
+    "tests/test_ui_gateway_session_path.py",
+    "backend/api_security.py",
+    "tests/test_local_api_boundary.py",
+    "scripts/verify_local_security_boundary.py",
+    "tests/test_verify_local_security_boundary.py",
+    "e2e/security-boundary.spec.ts",
+    "tests/test_security_policy_docs.py",
+)
+
 
 class SourceReleaseTreeTests(unittest.TestCase):
     def test_zonal_solver_contract_sources_are_release_members(self):
@@ -33,6 +50,84 @@ class SourceReleaseTreeTests(unittest.TestCase):
             "tests/test_source_release_tree.py",
         }
         self.assertTrue(required.issubset(members), required.difference(members))
+
+    def test_version_ledger_ships_with_every_release_tree(self):
+        """Q13's automatic code-only path reads docs/release/VERSION_LEDGER.json at runtime."""
+        from gridform_core import revision_migration
+
+        ledger = "docs/release/VERSION_LEDGER.json"
+        self.assertEqual(revision_migration.LEDGER_PATH, ROOT / ledger)
+        self.assertTrue((ROOT / ledger).is_file())
+        members = {path.relative_to(ROOT).as_posix() for path in MODULE.release_members(ROOT)}
+        self.assertIn(ledger, members)
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        self.assertIn(ledger, set(json.dumps(manifest).split('"')))
+        # Linux local release (and the desktop installers that wrap it).
+        spec = importlib.util.spec_from_file_location(
+            "build_linux_frontend_release", ROOT / "scripts" / "build_linux_frontend_release.py")
+        linux = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(linux)
+        self.assertIn(f"app/{ledger}", linux.REQUIRED_MEMBERS)
+        self.assertTrue(any(ledger.startswith(directory + "/") for directory in linux.DIRECTORIES))
+        self.assertFalse(set(Path(ledger).parts) & linux.EXCLUDE)
+        # Windows pilot installer: allowlisted by the source-release manifest.
+        spec = importlib.util.spec_from_file_location(
+            "build_windows_pilot_installer", ROOT / "scripts" / "build_windows_pilot_installer.py")
+        windows = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(windows)
+        self.assertTrue(windows.is_allowlisted_release_member(ledger, windows.source_release_includes(ROOT)))
+        self.assertNotIn(ledger, windows.repository_local_only_members(ROOT))
+
+    def test_run_lifecycle_sources_are_release_members(self):
+        """P0-3: the worker entry, lease, status API and supervisor ship with
+        the backend; without them an installed VALUE cannot start a Run."""
+        members = {
+            path.relative_to(ROOT).as_posix()
+            for path in MODULE.release_members(ROOT)
+        }
+        lifecycle = {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "backend" / "lifecycle").glob("*.py")
+        }
+        required = lifecycle | {"backend/run_supervisor.py", "backend/worker_entry.py"}
+        self.assertGreaterEqual(len(lifecycle), 8)
+        self.assertTrue(required.issubset(members), required.difference(members))
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        listed = set(json.dumps(manifest).split('"'))
+        self.assertTrue(required.issubset(listed), required.difference(listed))
+
+    def test_module_isolation_sources_are_release_members(self):
+        """P0-2: quarantine, the offline rescue CLI and the dataset slots ship
+        with every release; the backend cannot import its catalogue without them."""
+        members = {
+            path.relative_to(ROOT).as_posix()
+            for path in MODULE.release_members(ROOT)
+        }
+        required = {
+            "gridform_core/module_quarantine.py",
+            "gridform_core/module_recovery.py",
+            "gridform_core/dataset_slots.py",
+        }
+        self.assertTrue(required.issubset(members), required.difference(members))
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        listed = set(json.dumps(manifest).split('"'))
+        self.assertTrue(required.issubset(listed), required.difference(listed))
+
+    def test_local_api_security_sources_are_release_members(self):
+        """P0-1: the session module (and, from S3 on, the UI gateway) ship
+        with every release; the pilot builder copies only allowlisted files,
+        so a missing entry would silently drop it from installers."""
+        members = {
+            path.relative_to(ROOT).as_posix()
+            for path in MODULE.release_members(ROOT)
+        }
+        required = set(P0_1_RELEASE_FILES)
+        self.assertTrue(required.issubset(members), required.difference(members))
+        manifest = json.loads((ROOT / "source-release-manifest.json").read_text(encoding="utf-8"))
+        listed = set(json.dumps(manifest).split('"'))
+        self.assertTrue(required.issubset(listed), required.difference(listed))
 
     def test_prompt107_and_prompt108_authoritative_reports_are_release_members(self):
         members = {

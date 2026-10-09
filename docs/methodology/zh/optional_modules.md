@@ -1,113 +1,184 @@
-# 完全预见调度与自然水文
+# 完全预见调度与天然水文
 
 ## 完全预见单节点调度
 
-完全预见模块在给定资产容量和完整时间序列下联合安排各期发电、进口和储能。它以单节点资源成本最小化作为全国运行的可选比较方法，容量投资由外层模型给定。输入包含逐期需求、资源可用率与边际成本、储能功率与能量容量、效率及初始库存；普通应用采用半小时时钟。
+完全预见模块在固定装机下，联合安排完整输入时序中的发电、进口和储能。`PerfectForesightPSM.run` 读取 `PSMInput.chronology`，年度外层模型提供投资及其形成的装机。各期输入包括需求、资源可用率和边际费用；储能输入包括功率、电量容量、效率和期初库存。
 
-资源与储能以期间电量进入模型。令 \(x_{it}\) 为资源供电量，\(c_{st},d_{st}\) 为电网侧充放电量，\(S_{st}\) 为期末内部库存，\(b_t\) 为未供电量，均以 MWh 计。资源容量为 \(C_i\) MW，可用率为 \(a_{it}\in[0,1]\)，非负边际成本为 \(m_{it}\) GBP/MWh，储能放电退化成本为 \(\delta_s\) GBP/MWh。运行目标为
-
-$$
-\min J=\sum_t\left[\sum_i m_{it}x_{it}+\sum_s\delta_sd_{st}+Vb_t\right].
-$$
-
-供需与储能库存分别满足
+目标函数最小化资源运行支出、储能衰减费用和缺电费用。公式保留实现名称：`resource_period`、`charge_period`、`discharge_period`、`soc_period` 和 `blackout` 均为 MWh 数组，下标 \(i\)、\(s\)、\(t\) 分别对应资源、储能和时段。`resource_marginal_costs` 与 `variable_degradation_gbp_per_mwh_discharged` 的单位为 GBP/MWh，`voll_gbp_per_mwh` 为缺电估值。目标为
 
 $$
-\sum_i x_{it}+\sum_s d_{st}+b_t-\sum_s c_{st}=D_t,
+\begin{aligned}
+\min\quad&\sum_{i,t}\mathrm{resource\_marginal\_costs}_{i,t}\cdot
+\mathrm{resource\_period}_{i,t}\\
+&+\sum_{s,t}\mathrm{variable\_degradation\_gbp\_per\_mwh\_discharged}_{s}\cdot
+\mathrm{discharge\_period}_{s,t}\\
+&+\mathrm{voll\_gbp\_per\_mwh}\cdot\sum_t\mathrm{blackout}_{t}.
+\end{aligned}
 $$
 
-$$
-S_{st}=S_{s,t-1}+\eta_s^cc_{st}-d_{st}/\eta_s^d.
-$$
-
-资源出力界为 \(0\le x_{it}\le C_ia_{it}\Delta t\)，储能充放界为 \(0\le c_{st}\le P_s^c\Delta t\) 和 \(0\le d_{st}\le P_s^d\Delta t\)，库存界为 \(0\le S_{st}\le E_s\)。这里库存按内部能量定义，独立充放效率分别进入递推；所有可用资源均可通过单节点平衡供应充电。
-
-初末库存规则决定储能在研究时域内的净能量交换。初始库存逐资产给定，默认末态为 cyclic，即末期等于初期；fixed 使用指定目标，free 允许末态在库存边界内自由选择。允许缺供时 \(0\le b_t\le D_t\)，其余配置取 \(b_t=0\)。参数默认 \(\Delta t=0.5\) h、\(V=10{,}000\) GBP/MWh、\(\delta_s=0\)，失负荷价值可在 0–1,000,000 GBP/MWh 内配置。
-
-调度采用两阶段线性优化以选择成本相同的物理轨迹。第一阶段最小化 \(J\)，第二阶段增加约束
+单节点平衡以资源供给、储能放电和记录缺电满足需求及充电：
 
 $$
-J\le J^*+\varepsilon,\qquad
-\varepsilon=\max(10^{-7},10^{-10}|J^*|),
+\begin{aligned}
+&\sum_i\mathrm{resource\_period}_{i,t}
++\sum_s\mathrm{discharge\_period}_{s,t}+\mathrm{blackout}_{t}\\
+&\qquad=\mathrm{demand\_mwh}_{t}+\sum_s\mathrm{charge\_period}_{s,t}.
+\end{aligned}
 $$
 
-并最小化 \(\sum_{s,t}(c_{st}+d_{st})\)。两阶段均使用 HiGHS，原、对偶可行容差为 \(10^{-8}\)；最终轨迹要求 \(\max_{s,t}\min(c_{st},d_{st})\le10^{-6}\) MWh。未利用的可再生出力按可用量与实际出力之差计算。
+储能库存表示内部电量。电网侧充电量乘 `charge_efficiency` 后进入库存，送出电量除以 `discharge_efficiency` 后从库存扣除：
 
-价格取第一阶段运行成本对期间需求的边际值。供需等式的对偶 \(p_t\) 具有 GBP/MWh 单位，物理出力采用第二阶段轨迹。资源收入为 \(\sum_t p_tx_{it}\)，储能净市场收入为 \(\sum_t p_t(d_{st}-c_{st})\)，用户支付为 \(\sum_t p_t(D_t-b_t)\)。系统成本在运行资源成本、储能退化费和缺供费之上，加上在役资产提供的年化资本与固定运维字段。
+$$
+\begin{aligned}
+\mathrm{soc\_period}_{s,t}={}&\mathrm{soc\_period}_{s,t-1}
++\mathrm{charge\_efficiency}_s\cdot \mathrm{charge\_period}_{s,t}\\
+&-\mathrm{discharge\_period}_{s,t}/\mathrm{discharge\_efficiency}_s.
+\end{aligned}
+$$
+
+容量约束通过 `period_hours` 将 MW 换为期间 MWh：
+
+$$
+\begin{aligned}
+0&\le\mathrm{resource\_period}_{i,t}
+\le\mathrm{capacity\_mw}_{i}\cdot \mathrm{availability}_{i,t}\cdot \mathrm{period\_hours},\\
+0&\le\mathrm{charge\_period}_{s,t}
+\le\mathrm{charge\_power\_mw}_{s}\cdot \mathrm{period\_hours},\\
+0&\le\mathrm{discharge\_period}_{s,t}
+\le\mathrm{discharge\_power\_mw}_{s}\cdot \mathrm{period\_hours},\\
+0&\le\mathrm{soc\_period}_{s,t}\le\mathrm{energy\_capacity\_mwh}_{s}.
+\end{aligned}
+$$
+
+期初与期末库存决定储能在整个时域内的净电量交换。第一期从 `initial_soc_mwh` 开始；默认 `terminal_soc_rule = cyclic` 要求期末等于期初，`fixed` 采用 `terminal_soc_mwh_by_asset`，`free` 允许期末库存位于容量界内。启用 `allow_blackout` 时，缺电量介于零与 `demand_mwh` 之间，其余情况的上界为零。默认 `period_hours = 0.5`、`voll_gbp_per_mwh = 17000`，衰减费用为零。Study 参数 `market.voll_gbp_per_mwh` 接受 0–1,000,000 GBP/MWh，并进入调度目标。
+
+第二次线性规划在第一次解的费用容差内最小化储能吞吐。`primary.fun` 为第一次求解的最小费用，单位 GBP；第二次保留全部物理约束，并增加
+
+$$
+\begin{aligned}
+\mathrm{primary\_tolerance}&=\max(10^{-7},10^{-10}|\mathrm{primary.fun}|),\\
+\mathrm{objective}^{\mathsf T}\cdot\mathrm{solution}
+&\le\mathrm{primary.fun}+\mathrm{primary\_tolerance},\\
+\min\quad&\sum_{s,t}(\mathrm{charge\_period}_{s,t}+\mathrm{discharge\_period}_{s,t}).
+\end{aligned}
+$$
+
+两次求解均采用 HiGHS，原始与对偶可行性容差为 \(10^{-8}\)。返回的物理轨迹为 `secondary.x`，最大同时充放电量 `simultaneous` 须小于等于 \(10^{-6}\) MWh。未使用的风光电量为可用量减已接纳资源供给。
+
+页面显示的“Balance shadow price”为第一阶段需求的边际运行费用。资源收入为需求平衡对偶值与接纳 MWh 的乘积，储能收入为该对偶值乘放电减充电，消费者支付采用已供应需求。系统费用在变量支出、衰减和缺电费用上，加年化资本及非风、非光、非储能资产的固定运维。固定费用输入为 `annual_fixed_opex_gbp`；风、光和储能的固定运维按第 4 章作为备查分项。
 
 ```text
-读取完整时序、资源可用率、成本和储能状态
-将标量可用率或成本展开到声明的时间范围
-建立期间能量平衡、资源限额与储能递推
-LP1：最小化资源变动成本、退化成本与缺供成本
-在声明的费用容差内保留 LP1 最优目标
-LP2：最小化储能充放电总量
-检验解并计算未利用可再生电量
-返回 LP2 轨迹、LP1 需求对偶及各项成本
+PerfectForesightPSM.run(model_input):
+    data = model_input.chronology
+    validate_chronology(data, model_input.period_hours)
+    _availability(...) and _marginal_costs(...): expand inputs to every period
+    _layout(data): allocate resource, charge, discharge, soc and blackout
+    assemble objective, throughput_objective, equality, rhs and bounds
+    primary = linprog(objective, A_eq=equality, b_eq=rhs,
+                      bounds=bounds, method="highs")
+    primary_tolerance = max(1e-7, abs(primary.fun) * 1e-10)
+    secondary = linprog(
+        throughput_objective, A_ub=objective.reshape(1, -1),
+        b_ub=[primary.fun + primary_tolerance], A_eq=equality, b_eq=rhs,
+        bounds=bounds, method="highs")
+    extract resource_period, charge_period and discharge_period
+    extract soc_period and blackout
+    check balance and simultaneous storage operation
+    return costs and demand duals
 ```
 
-`PerfectForesightPSM` 建立并求解上述问题，`validate_chronology` 检查逐期输入。`PSMInput.chronology` 的资源可用率可为标量或完整序列，边际成本可使用标量、单值序列或完整序列；储能参数还需提供功率、能量、效率与末态规则。该输入中的水电按给定可用率作为普通资源进入运行问题；自然入流与水库库存由下面的独立水文方法定义。
+资源可用率接受单元素序列或完整时序，数值须有限且位于 \([0,1]\)。边际费用接受标量、单元素序列或完整时序，数值须有限且非负。适配器核对时序长度，并要求充电、放电效率位于 \((0,1]\)。该输入中的水电作为具有给定电力可用率的资源。下述水文函数从来水构造可用电量，或优化常规水库运行。
 
-## 径流水电可用电量
+## 径流式水电可用电量
 
-径流水电以本期入流决定本期可用电量。站点参数包括节点、容量 \(P\)、涡轮效率 \(\eta\)、时间步 \(\Delta t\) 和水量到能量系数 \(\kappa\)。若输入为已经归一化的电出力可用率 \(u_t\in[0,1]\)，则
+天然水文方法根据来水时序和站点参数计算可用电量。`run_of_river_dispatch` 读取 `HydroSite` 与 `CanonicalInflow`；默认全国 PSM 采用第 5 章的统计负荷率和季节曲线。
 
-$$
-A_t=P\Delta t\,u_t.
-$$
-
-若输入为每期水量 \(I_t\)，则涡轮转换和功率上限共同给出
+归一化电力可用率按时段长度缩放装机功率。输入为 `inflow.unit = p.u.` 时，`inflow.values` 位于 \([0,1]\)，`capacity_mw` 单位为 MW，`interval_hours` 单位为小时：
 
 $$
-A_t=\min(P\Delta t,\kappa\eta I_t).
+\begin{aligned}
+\mathrm{maximum}&=\mathrm{capacity\_mw}\cdot \mathrm{interval\_hours},\\
+\mathrm{available}_t&=\mathrm{maximum}\cdot \mathrm{inflow.values}_t.
+\end{aligned}
 $$
 
-接受的发电量满足 \(0\le G_t\le A_t\)，默认取全部可用量；对应的未利用电能为 \(A_t-G_t\)。例如 \(P=10\) MW、\(\Delta t=0.5\) h、可用率为 \([0,0.5,1]\) 时，可用电量为 \([0,2.5,5]\) MWh。径流计算逐期进行，跨时调节由常规水库另行表示。
+水量输入乘站点水电转换系数和涡轮效率，再受发电功率约束：
+
+$$
+\begin{aligned}
+\mathrm{available}_t=\min\bigl(&\mathrm{maximum},\\
+&\mathrm{inflow.values}_t\cdot \mathrm{conversion\_mwh\_per\_water\_unit}\cdot
+\mathrm{turbine\_efficiency}\bigr).
+\end{aligned}
+$$
+
+接纳发电量介于零与 `available` 之间，默认接纳全部可用电量，`curtailed` 记录剩余电力潜力。返回结果中，三个数组分别记为 `available_energy_mwh`、`accepted_generation_mwh` 和 `curtailed_energy_mwh`。10 MW 电站在 0.5 h 时段内采用可用率 \([0,0.5,1]\)，得到 \([0,2.5,5]\) MWh。各期独立计算。
 
 ## 常规水库调度
 
-常规水库在完整入流与电能价值序列下安排放水，以最大化发电价值。每期决策为涡轮放水 \(q_t\)、生态旁路放水 \(e_t\)、溢流 \(w_t\) 和期末库容 \(S_t\)。前三者单位为每期水量，库存单位为水量；给定电能价值 \(p_t\) 的目标为
+常规水库在完整来水与电力价值时序上分配水量，以最大化发电价值。`reservoir_dispatch` 的四类期间变量为涡轮放水 `q`、生态旁路 `bypass`、弃水 `spill` 和期末库存 `storage`，均采用声明的水量单位，前三项表示期间水量。电量转换为
 
 $$
-\min -\sum_t p_t\kappa\eta q_t+10^{-9}\sum_t w_t.
+\mathrm{conversion}=\mathrm{conversion\_mwh\_per\_water\_unit}\cdot
+\mathrm{turbine\_efficiency},\qquad
+\mathrm{generation}_t=\mathrm{q}_t\cdot \mathrm{conversion}.
 $$
 
-水量连续和库容边界共同限制跨时放水：
+线性规划最小化发电价值的相反数与小额弃水惩罚之和。`energy_value_gbp_per_mwh` 为外部给定的电力价值时序：
 
 $$
-S_t=S_{t-1}+I_t-q_t-e_t-w_t,\qquad
-S_{\min}\le S_t\le S_{\max}.
+\begin{aligned}
+\min\quad&-\sum_t\mathrm{energy\_value\_gbp\_per\_mwh}_t\cdot
+\mathrm{conversion}\cdot \mathrm{q}_t+10^{-9}\sum_t\mathrm{spill}_t.
+\end{aligned}
 $$
 
-涡轮、普通放水与生态要求分别为
+水量连续性连接相邻库存与来水，第一期从 `initial_volume` 开始：
 
 $$
-0\le q_t\le q_{\max},\qquad
-0\le e_t\le R_{\max},\qquad w_t\ge0,
+\begin{aligned}
+\mathrm{storage}_t={}&\mathrm{storage}_{t-1}+\mathrm{inflow.values}_t
+-\mathrm{q}_t-\mathrm{bypass}_t-\mathrm{spill}_t,\\
+\mathrm{min\_volume}&\le\mathrm{storage}_t\le\mathrm{max\_volume}.
+\end{aligned}
 $$
 
+涡轮、普通放水及生态要求共同限制水量分配：
+
 $$
-r_{\min}\le q_t+e_t\le R_{\max},\qquad
-G_t=\kappa\eta q_t.
+\begin{aligned}
+0&\le\mathrm{q}_t\le\mathrm{max\_turbine\_release\_per\_period},\\
+0&\le\mathrm{bypass}_t\le\mathrm{max\_total\_release\_per\_period},\qquad
+\mathrm{spill}_t\ge0,\\
+\mathrm{minimum\_environmental\_release\_per\_period}
+&\le\mathrm{q}_t+\mathrm{bypass}_t
+\le\mathrm{max\_total\_release\_per\_period}.
+\end{aligned}
 $$
 
-普通放水上限和最小生态放水均作用于 \(q_t+e_t\)，溢流单独进入水量守恒。初始库容明确给定，可选末期目标 \(S_T\) 形成终端等式，其余情景允许末态在库容边界内选择。参数还须满足 \(R_{\max}\ge q_{\max}\) 和 \(\kappa\eta q_{\max}\le P\Delta t+10^{-9}\)，以保持涡轮放水能力与电功率一致。
+普通放水上限和生态下限同时约束涡轮放水加旁路，弃水单独进入水量平衡。给定 `terminal_volume` 时，期末库存固定为该值。参数检查要求普通放水上限至少等于涡轮放水上限，最大涡轮放水转换的电量至多为 `turbine_capacity_mw` 乘 `interval_hours`，容差为 \(10^{-9}\) MWh。
 
-水库调度使用一次全时域线性规划。算法同时读取全部入流和价值，使用 SciPy/HiGHS 求解并输出逐期水量、发电及守恒残差；报告目标包含极小溢流罚项。输入中的 `myopic`、`rolling_horizon` 和 `perfect_foresight` 信息标签均调用这一完整时域算法，标签字段随结果返回。因此本章水库方法采用完全预见的数学定义。
+求解器读取完整来水与价值序列，调用一次 SciPy/HiGHS 线性规划，返回水量轨迹、发电量和守恒残差。`objective_gbp` 包含小额弃水惩罚。输入标签 `myopic`、`rolling_horizon` 和 `perfect_foresight` 均调用这一完整时域算法，并作为元数据返回。
 
 ```text
-读取站点参数、完整入流与外部电能价值
-检查水量单位、涡轮转换、功率限额和库容边界
-建立涡轮放水、生态旁路、溢流与期末库容变量
-加入水量守恒、生态放水和可选终端库容约束
-求解全时域线性规划
-输出发电、水量轨迹与守恒残差
+reservoir_dispatch(parameters, inflow, energy_value_gbp_per_mwh):
+    inflow.validate(); parameters.validate(inflow.interval_hours)
+    conversion = (parameters.conversion_mwh_per_water_unit
+                  * parameters.turbine_efficiency)
+    allocate q, bypass, spill and storage for every period
+    assemble objective, water equalities, release inequalities and bounds
+    use parameters.terminal_volume as the final storage bound when supplied
+    solved = linprog(objective, A_ub=inequalities, b_ub=upper,
+                     A_eq=equalities, b_eq=rhs, bounds=bounds, method="highs")
+    generation = q * conversion
+    check previous + inflow.values[period] - q - bypass - spill - storage
+    return generation, water trajectories and residuals
 ```
 
 ## 水文输入与模块连接
 
-自然水文研究需要五类输入：站点表、资产到站点映射、径流入流、水库入流和水库参数。站点分为径流与常规水库，包含容量、效率、节点、来源和许可证；抽水蓄能沿用电储能模型。每项资产适用单站点映射，映射份额处于 \((0,1]\)，每资产累计份额至多为 1。
+天然水文输入包括站点表、资产到站点映射、径流式水电来水、水库来水和水库参数。站点声明技术、装机、涡轮效率、节点、来源及许可；抽蓄采用电储能模型。每项资产分配至一个站点，映射份额位于 \((0,1]\)，同一资产份额合计至多为 1。
 
-入流采用带时区时间戳的 CSV 序列。适配器按站点筛选，要求数值有限且非负、期间标识唯一、单位一致；声明预期期间序列时逐项核对完整顺序。间隔长度和时区由输入元数据给出，缺值处理设为 none。站点、映射和参数表可采用 JSON 或 CSV，实际入流读取由 CSV 适配器完成。
+来水 CSV 提供带时区的时间戳、时段长度、站点标识、数值及水量或电力可用率单位。适配器要求数值有限且非负、时间戳唯一、单位一致；给定预期时序时逐期核对。站点、映射及参数表接受 JSON 或 CSV，缺失值处理声明为 `none`。
 
-水文函数可独立调用以研究径流和常规水库。`load_hydrology_inputs_from_pack` 组装输入，`adapt_hydrology_csv` 转换入流，`validate_site_mapping` 处理资产映射，`run_of_river_dispatch` 计算径流电量，`reservoir_dispatch` 求解水库调度。年度市场主流程的水文输入连接仍需专门接入；英国案例应用还需提供相应站点、入流、取水条件、转换系数以及库容与终端规则。
+输入与运行函数可独立调用。`load_hydrology_inputs_from_pack` 汇集输入，`adapt_hydrology_csv` 读取来水，`validate_site_mapping` 核对映射，`run_of_river_dispatch` 计算径流式水电，`reservoir_dispatch` 优化水库放水。年度市场应用需要适配器连接这些输入、输出与调度流程，并提供相应站点、来水、取水、转换、库存及期末参数。

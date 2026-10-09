@@ -24,6 +24,12 @@ MODULES = {
 }
 
 
+# These tests exercise revision and resource warnings, not the host volume.
+# Pin the disk probe so the outcome does not depend on the free space of the
+# machine running the suite (X0 S1; preflight requires free >= 2x estimate).
+PINNED_DISK_USAGE = SimpleNamespace(total=4 * 1024**4, used=1024**4, free=3 * 1024**4)
+
+
 class ResolvedFixture:
     warnings = ()
 
@@ -62,7 +68,8 @@ class PreflightTests(unittest.TestCase):
                  "errors": [], "warnings": [], "bindings": [],
                  "summary": {"passed": 0, "failed": 0, "total": 0},
              }), \
-             patch("gridform_core.preflight.resolve_scheme_c_parameters", return_value=resolved or ResolvedFixture()):
+             patch("gridform_core.preflight.resolve_scheme_c_parameters", return_value=resolved or ResolvedFixture()), \
+             patch("gridform_core.preflight.shutil.disk_usage", return_value=PINNED_DISK_USAGE):
             return run_preflight(
                 project or self.project,
                 mode="full",
@@ -81,6 +88,17 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(report["estimates"]["periods"], 175_200)
         self.assertGreater(report["estimates"]["peak_memory_bytes"], 0)
         self.assertEqual(report["estimates"]["data_scale"]["operating_assets"], 0)
+
+    def test_staged_psm_with_a_dwell_cost_module_warns(self):
+        # P0-6 S10 (P5-15): the staged PSM bids storage with d = 0.
+        default = self._run()
+        self.assertNotIn("GF_STAGED_DWELL_NOT_TRACKED", {row["code"] for row in default["warnings"]})
+        staged = {**self.project, "modules": {**MODULES, "psm": "value-staged-bid-at-cost-psm"}}
+        report = self._run(staged)
+        self.assertIn("GF_STAGED_DWELL_NOT_TRACKED", {row["code"] for row in report["warnings"]})
+        legacy = {**self.project, "modules": {**MODULES, "psm": "value-staged-bid-at-cost-psm",
+                                               "storage_cost": "value-legacy-storage-tariff"}}
+        self.assertNotIn("GF_STAGED_DWELL_NOT_TRACKED", {row["code"] for row in self._run(legacy)["warnings"]})
 
     def test_stale_project_revision_is_blocking(self):
         project = {**self.project, "revision_sha256": "0" * 64}
@@ -198,6 +216,68 @@ class PreflightTests(unittest.TestCase):
             preflight.call_args.kwargs.get("network_pack_root"),
             network_root.resolve(),
         )
+
+
+class R14PreflightTests(unittest.TestCase):
+    """R1-4: disabled modules (M2-N2), the runtime-kernel seal (M-D6), runtime estimate (F2-N2)."""
+
+    setUp = PreflightTests.setUp
+    _run = PreflightTests._run
+
+    def test_selected_disabled_module_is_named_with_its_own_code(self):
+        project = {**self.project, "modules": {**MODULES, "storage_cost": "uat-disabled-offer"}}
+        disabled = [{"module_id": "uat-disabled-offer", "module_version": "0.1.0", "enabled": False}]
+        with patch("gridform_core.module_installation.list_module_installations", return_value=disabled):
+            report = self._run(project)
+        self.assertFalse(report["accepted"])
+        codes = [row["code"] for row in report["errors"]]
+        self.assertIn("GF_PREFLIGHT_MODULE_DISABLED", codes)
+        # R4 M-低3: the selection and revision errors caused only by the
+        # disabled module are not repeated with misleading advice.
+        self.assertNotIn("GF_PREFLIGHT_MODULE_SELECTION", codes)
+        self.assertNotIn("GF_PREFLIGHT_PROJECT_REVISION", codes)
+        issue = next(row for row in report["errors"] if row["code"] == "GF_PREFLIGHT_MODULE_DISABLED")
+        self.assertIn("module uat-disabled-offer 0.1.0", issue["message"])
+        self.assertIn("Enable", issue["corrective_action"])
+        self.assertEqual(report["checks"]["module_disabled"], [{"kind": "module", "id": "uat-disabled-offer", "versions": ["0.1.0"]}])
+        with patch("gridform_core.module_installation.list_module_installations",
+                   return_value=[{**disabled[0], "enabled": True}]):
+            report = self._run(project)
+        self.assertNotIn("GF_PREFLIGHT_MODULE_DISABLED", {row["code"] for row in report["errors"]})
+        self.assertIn("GF_PREFLIGHT_MODULE_SELECTION", {row["code"] for row in report["errors"]})
+
+    def test_unsealed_runtime_kernel_blocks_readiness(self):
+        report = self._run()
+        self.assertEqual(report["checks"]["runtime_overlay"], {"passed": True, "errors": []})
+        changed = {"errors": ["modular_simulation_model.py: registered runtime file changed (value_instrumentation); reseal with --correction <id>"],
+                   "warnings": []}
+        with patch("gridform_core.builtin.scheme_c_1000twh.runtime_overlay.inspect_runtime_overlay", return_value=changed):
+            report = self._run()
+        self.assertFalse(report["accepted"])
+        issue = next(row for row in report["errors"] if row["code"] == "GF_PREFLIGHT_RUNTIME_OVERLAY_UNSEALED")
+        self.assertIn("modular_simulation_model.py", issue["message"])
+        self.assertIn("seal_runtime_overlay.py --correction", issue["corrective_action"])
+        self.assertFalse(report["checks"]["runtime_overlay"]["passed"])
+
+    def test_runtime_estimate_uses_a_realistic_default_and_annual_runs(self):
+        from gridform_core.preflight import DEFAULT_SECONDS_PER_PERIOD, _estimates
+        policy = {"total_periods": 35_040, "years": 2, "mode": "two_year", "periods_per_year": 17_520}
+        with tempfile.TemporaryDirectory() as folder:
+            runs = Path(folder)
+            estimate = _estimates(self.project, policy, {}, runs, {})
+            self.assertEqual(DEFAULT_SECONDS_PER_PERIOD, 0.03)
+            self.assertAlmostEqual(estimate["runtime_seconds"], 35_040 * 0.03)
+            self.assertLess(estimate["runtime_seconds"] / 3600, 0.5)  # was 3.4 hours
+            for name, mode, periods, seconds in (("smoke", "smoke", 2, 5), ("full", "full", 17_520, 175)):
+                (runs / name).mkdir()
+                (runs / name / "status.json").write_text(json.dumps({
+                    "status": "completed", "mode": mode, "run_policy": {"total_periods": periods},
+                    "started_at": "2026-10-06T10:00:00", "finished_at": f"2026-10-06T10:{seconds // 60:02d}:{seconds % 60:02d}"}))
+            estimate = _estimates(self.project, policy, {}, runs, {})
+            self.assertAlmostEqual(estimate["runtime_seconds"], 35_040 * 175 / 17_520)
+            self.assertIn("comparable completed local run", estimate["runtime_basis"])
+            short = _estimates(self.project, {**policy, "total_periods": 2, "years": 1, "mode": "smoke"}, {}, runs, {})
+            self.assertEqual(short["runtime_seconds"], 60.0)
 
 
 if __name__ == "__main__":

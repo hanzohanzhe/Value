@@ -1,0 +1,4207 @@
+{
+ "case": "D5",
+ "child_commit": "working-tree (R7-1)",
+ "columns": {
+  "network/vre-curtailment-attribution.json::initial_state_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ce17b07d4f96cf9782657b062ec5785d5161640bfb99be150ba3bfa59c5665c7",
+     "before": "3b0a859d048b9cfe4006154af238eb05f63ce1c9dfa72e4b49992aef17b22937",
+     "label": ".initial_state_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.investment.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "3.1.0",
+     "before": "3.0.0",
+     "label": ".module_identities.investment.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_resolution_graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1b11610b006eb2010186e2504f2b57f5fc2d5ef3fe65be1daf287cc88ab0207b",
+     "before": "6d95c14a101099447d15ccf76e32ac1c6af57f93a510ef24747da3750be481f7",
+     "label": ".module_resolution_graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "planning/project-index.sqlite::event.capacity_mw": {
+   "alignment": "positional (natural keys identical)",
+   "annual_totals": {
+    "2025": [
+     3029.26557110787,
+     2214.2757162764365
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 2214.2757162764365,
+   "sum_before": 3029.26557110787,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "planning/project-index.sqlite::project_year.capacity_mw": {
+   "alignment": "positional (natural keys identical)",
+   "annual_totals": {
+    "2025": [
+     177862.89144315387,
+     177047.90158832242
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 177047.90158832242,
+   "sum_before": 177862.89144315387,
+   "totals_by_technology": {
+    "0.25c_battery": [
+     8590.509904841369,
+     8590.509904841369
+    ],
+    "0.5c_battery": [
+     70613.99141779626,
+     70613.99141779626
+    ],
+    "1c_battery": [
+     2147.627476210342,
+     2147.627476210342
+    ],
+    "Nuclear": [
+     6460.0,
+     6460.0
+    ],
+    "gas": [
+     37.14,
+     37.14
+    ],
+    "hydrogen_battery": [
+     21.476274762103536,
+     21.476274762103536
+    ],
+    "offshore": [
+     47549.64012015665,
+     47479.47844347693
+    ],
+    "onshore": [
+     11485.695952586168,
+     10857.474520103353
+    ],
+    "solar": [
+     30956.810296800475,
+     30840.203551131566
+    ]
+   },
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "planning/project-index.sqlite::project_year.expected_completion_year": {
+   "alignment": "positional (natural keys identical)",
+   "annual_totals": {
+    "2025": [
+     12065108.0,
+     12065300.0
+    ]
+   },
+   "changed_values": 38,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 8.0,
+   "max_rel_delta": 0.003948667324777887,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 12065300.0,
+   "sum_before": 12065108.0,
+   "totals_by_technology": {
+    "0.25c_battery": [
+     2085065.0,
+     2085065.0
+    ],
+    "0.5c_battery": [
+     2085065.0,
+     2085065.0
+    ],
+    "1c_battery": [
+     2085065.0,
+     2085065.0
+    ],
+    "Nuclear": [
+     6098.0,
+     6098.0
+    ],
+    "gas": [
+     14220.0,
+     14220.0
+    ],
+    "hydrogen_battery": [
+     2085065.0,
+     2085065.0
+    ],
+    "offshore": [
+     119782.0,
+     119924.0
+    ],
+    "onshore": [
+     885294.0,
+     885335.0
+    ],
+    "solar": [
+     2699454.0,
+     2699463.0
+    ]
+   },
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "planning/project-index.sqlite::project_year.success_probability": {
+   "alignment": "positional (natural keys identical)",
+   "annual_totals": {
+    "2025": [
+     4896.89443464036,
+     4888.485759897383
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "dispatch",
+   "sum_after": 4888.485759897383,
+   "sum_before": 4896.89443464036,
+   "totals_by_technology": {
+    "0.25c_battery": [
+     853.805265430392,
+     853.805265430392
+    ],
+    "0.5c_battery": [
+     853.805265430392,
+     853.805265430392
+    ],
+    "1c_battery": [
+     853.805265430392,
+     853.805265430392
+    ],
+    "Nuclear": [
+     3.0,
+     3.0
+    ],
+    "gas": [
+     7.0,
+     7.0
+    ],
+    "hydrogen_battery": [
+     853.805265430392,
+     853.805265430392
+    ],
+    "offshore": [
+     59.0,
+     57.49999999999996
+    ],
+    "onshore": [
+     245.98259233259122,
+     240.35306263019226
+    ],
+    "solar": [
+     1166.6907805861053,
+     1165.4116355455194
+    ]
+   },
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "planning/summary.json::expected_capacity.mean_declared_probability": {
+   "alignment": "json path",
+   "changed_values": 23,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 263.1658930861435,
+   "sum_before": 270.15790116246166,
+   "values_after": 326,
+   "values_before": 326,
+   "zone": "trajectory"
+  },
+  "planning/summary.json::expected_capacity.probability_weighted_capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 23,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.9015883219,
+   "sum_before": 177862.89144315332,
+   "values_after": 326,
+   "values_before": 326,
+   "zone": "trajectory"
+  },
+  "planning/typed-summary.json::expected_capacity.mean_declared_probability": {
+   "alignment": "json path",
+   "changed_values": 23,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 263.1658930861435,
+   "sum_before": 270.15790116246166,
+   "values_after": 326,
+   "values_before": 326,
+   "zone": "trajectory"
+  },
+  "planning/typed-summary.json::expected_capacity.probability_weighted_capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 23,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.9015883219,
+   "sum_before": 177862.89144315332,
+   "values_after": 326,
+   "values_before": 326,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::by_outcome.active.capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 814.9898548314522,
+   "max_rel_delta": 0.00458212417564308,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.90158832158,
+   "sum_before": 177862.89144315303,
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::outstanding_capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 814.9898548314522,
+   "max_rel_delta": 0.00458212417564308,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.90158832158,
+   "sum_before": 177862.89144315303,
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::post_horizon_capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 814.9898548314522,
+   "max_rel_delta": 0.00458212417564308,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.90158832158,
+   "sum_before": 177862.89144315303,
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.capacity_mw": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 428.0350628984922,
+    "max_rel_group_delta": 0.782608695652174
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.90158832158,
+   "sum_before": 177862.89144315303,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.expected_completion_year": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 38,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 8.0,
+    "max_rel_group_delta": 0.003948667324777887
+   },
+   "changed_values": 38,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 8.0,
+   "max_rel_delta": 0.003948667324777887,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 12065300.0,
+   "sum_before": 12065108.0,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.annualized_capital_cost_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 44216740.628682695,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 44216740.628682695,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 21899879991.73903,
+   "sum_before": 21988375512.295788,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 40,
+    "max_abs_group_delta": 1.0,
+    "max_rel_group_delta": 1.0
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 20368.0,
+   "sum_before": 20408.0,
+   "values_after": 5908,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.completion_floor_applied": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.completion_year": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     2034.0
+    ],
+    "5909": [
+     0.0,
+     2033.0
+    ],
+    "5910": [
+     0.0,
+     2034.0
+    ],
+    "5911": [
+     0.0,
+     2034.0
+    ],
+    "5912": [
+     0.0,
+     2033.0
+    ],
+    "5913": [
+     0.0,
+     2034.0
+    ],
+    "5914": [
+     0.0,
+     2034.0
+    ],
+    "5915": [
+     0.0,
+     2034.0
+    ],
+    "5916": [
+     0.0,
+     2034.0
+    ],
+    "5917": [
+     0.0,
+     2034.0
+    ],
+    "5918": [
+     0.0,
+     2034.0
+    ],
+    "5919": [
+     0.0,
+     2034.0
+    ],
+    "5920": [
+     0.0,
+     2034.0
+    ],
+    "5921": [
+     0.0,
+     2034.0
+    ],
+    "5922": [
+     0.0,
+     2034.0
+    ],
+    "5923": [
+     0.0,
+     2034.0
+    ],
+    "5924": [
+     0.0,
+     2034.0
+    ],
+    "5925": [
+     0.0,
+     2034.0
+    ],
+    "5926": [
+     0.0,
+     2029.0
+    ],
+    "5927": [
+     0.0,
+     2030.0
+    ],
+    "5928": [
+     0.0,
+     2030.0
+    ],
+    "5929": [
+     0.0,
+     2030.0
+    ],
+    "5930": [
+     0.0,
+     2030.0
+    ],
+    "5931": [
+     0.0,
+     2030.0
+    ],
+    "5932": [
+     0.0,
+     2030.0
+    ],
+    "5933": [
+     0.0,
+     2029.0
+    ],
+    "5934": [
+     0.0,
+     2030.0
+    ],
+    "5935": [
+     0.0,
+     2029.0
+    ],
+    "5936": [
+     0.0,
+     2030.0
+    ],
+    "5937": [
+     0.0,
+     2027.0
+    ],
+    "5938": [
+     0.0,
+     2026.0
+    ],
+    "5939": [
+     0.0,
+     2027.0
+    ],
+    "5940": [
+     0.0,
+     2027.0
+    ],
+    "5941": [
+     0.0,
+     2027.0
+    ],
+    "5942": [
+     0.0,
+     2027.0
+    ],
+    "5943": [
+     0.0,
+     2027.0
+    ],
+    "5944": [
+     0.0,
+     2027.0
+    ],
+    "5945": [
+     0.0,
+     2027.0
+    ],
+    "5946": [
+     0.0,
+     2027.0
+    ],
+    "5947": [
+     0.0,
+     2026.0
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 81232.0,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.correction_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.development_status": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.project_key": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.source_completion_year": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     2034.0
+    ],
+    "5909": [
+     0.0,
+     2033.0
+    ],
+    "5910": [
+     0.0,
+     2034.0
+    ],
+    "5911": [
+     0.0,
+     2034.0
+    ],
+    "5912": [
+     0.0,
+     2033.0
+    ],
+    "5913": [
+     0.0,
+     2034.0
+    ],
+    "5914": [
+     0.0,
+     2034.0
+    ],
+    "5915": [
+     0.0,
+     2034.0
+    ],
+    "5916": [
+     0.0,
+     2034.0
+    ],
+    "5917": [
+     0.0,
+     2034.0
+    ],
+    "5918": [
+     0.0,
+     2034.0
+    ],
+    "5919": [
+     0.0,
+     2034.0
+    ],
+    "5920": [
+     0.0,
+     2034.0
+    ],
+    "5921": [
+     0.0,
+     2034.0
+    ],
+    "5922": [
+     0.0,
+     2034.0
+    ],
+    "5923": [
+     0.0,
+     2034.0
+    ],
+    "5924": [
+     0.0,
+     2034.0
+    ],
+    "5925": [
+     0.0,
+     2034.0
+    ],
+    "5926": [
+     0.0,
+     2029.0
+    ],
+    "5927": [
+     0.0,
+     2030.0
+    ],
+    "5928": [
+     0.0,
+     2030.0
+    ],
+    "5929": [
+     0.0,
+     2030.0
+    ],
+    "5930": [
+     0.0,
+     2030.0
+    ],
+    "5931": [
+     0.0,
+     2030.0
+    ],
+    "5932": [
+     0.0,
+     2030.0
+    ],
+    "5933": [
+     0.0,
+     2029.0
+    ],
+    "5934": [
+     0.0,
+     2030.0
+    ],
+    "5935": [
+     0.0,
+     2029.0
+    ],
+    "5936": [
+     0.0,
+     2030.0
+    ],
+    "5937": [
+     0.0,
+     2027.0
+    ],
+    "5938": [
+     0.0,
+     2026.0
+    ],
+    "5939": [
+     0.0,
+     2027.0
+    ],
+    "5940": [
+     0.0,
+     2027.0
+    ],
+    "5941": [
+     0.0,
+     2027.0
+    ],
+    "5942": [
+     0.0,
+     2027.0
+    ],
+    "5943": [
+     0.0,
+     2027.0
+    ],
+    "5944": [
+     0.0,
+     2027.0
+    ],
+    "5945": [
+     0.0,
+     2027.0
+    ],
+    "5946": [
+     0.0,
+     2027.0
+    ],
+    "5947": [
+     0.0,
+     2026.0
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 81232.0,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_rate": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     0.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     0.0,
+     0.217391304347826
+    ],
+    "5927": [
+     0.0,
+     0.422680412
+    ],
+    "5928": [
+     0.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     0.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     0.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     0.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     0.0,
+     0.495049504950495
+    ],
+    "5933": [
+     0.0,
+     0.5
+    ],
+    "5934": [
+     0.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     0.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     0.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     0.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     0.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     0.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     0.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     0.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     0.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     0.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     0.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     0.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     0.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     0.0,
+     0.9282178217821784
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_region": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_technology": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_jitter_months": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     6.0
+    ],
+    "5909": [
+     0.0,
+     -3.0
+    ],
+    "5910": [
+     0.0,
+     1.0
+    ],
+    "5911": [
+     0.0,
+     4.0
+    ],
+    "5912": [
+     0.0,
+     -4.0
+    ],
+    "5913": [
+     0.0,
+     4.0
+    ],
+    "5914": [
+     0.0,
+     2.0
+    ],
+    "5915": [
+     0.0,
+     4.0
+    ],
+    "5916": [
+     0.0,
+     4.0
+    ],
+    "5917": [
+     0.0,
+     2.0
+    ],
+    "5918": [
+     0.0,
+     0.0
+    ],
+    "5919": [
+     0.0,
+     -2.0
+    ],
+    "5920": [
+     0.0,
+     1.0
+    ],
+    "5921": [
+     0.0,
+     -2.0
+    ],
+    "5922": [
+     0.0,
+     0.0
+    ],
+    "5923": [
+     0.0,
+     0.0
+    ],
+    "5924": [
+     0.0,
+     1.0
+    ],
+    "5925": [
+     0.0,
+     0.0
+    ],
+    "5926": [
+     0.0,
+     -5.0
+    ],
+    "5927": [
+     0.0,
+     -1.0
+    ],
+    "5928": [
+     0.0,
+     -3.0
+    ],
+    "5929": [
+     0.0,
+     1.0
+    ],
+    "5930": [
+     0.0,
+     4.0
+    ],
+    "5931": [
+     0.0,
+     -2.0
+    ],
+    "5932": [
+     0.0,
+     0.0
+    ],
+    "5933": [
+     0.0,
+     -4.0
+    ],
+    "5934": [
+     0.0,
+     3.0
+    ],
+    "5935": [
+     0.0,
+     -4.0
+    ],
+    "5936": [
+     0.0,
+     3.0
+    ],
+    "5937": [
+     0.0,
+     -4.0
+    ],
+    "5938": [
+     0.0,
+     -6.0
+    ],
+    "5939": [
+     0.0,
+     -2.0
+    ],
+    "5940": [
+     0.0,
+     4.0
+    ],
+    "5941": [
+     0.0,
+     -4.0
+    ],
+    "5942": [
+     0.0,
+     6.0
+    ],
+    "5943": [
+     0.0,
+     3.0
+    ],
+    "5944": [
+     0.0,
+     0.0
+    ],
+    "5945": [
+     0.0,
+     5.0
+    ],
+    "5946": [
+     0.0,
+     1.0
+    ],
+    "5947": [
+     0.0,
+     -5.0
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 8.0,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_months": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     110.1
+    ],
+    "5909": [
+     0.0,
+     110.1
+    ],
+    "5910": [
+     0.0,
+     110.1
+    ],
+    "5911": [
+     0.0,
+     110.1
+    ],
+    "5912": [
+     0.0,
+     110.1
+    ],
+    "5913": [
+     0.0,
+     110.1
+    ],
+    "5914": [
+     0.0,
+     110.1
+    ],
+    "5915": [
+     0.0,
+     110.1
+    ],
+    "5916": [
+     0.0,
+     110.1
+    ],
+    "5917": [
+     0.0,
+     110.1
+    ],
+    "5918": [
+     0.0,
+     110.1
+    ],
+    "5919": [
+     0.0,
+     110.1
+    ],
+    "5920": [
+     0.0,
+     110.1
+    ],
+    "5921": [
+     0.0,
+     110.1
+    ],
+    "5922": [
+     0.0,
+     110.1
+    ],
+    "5923": [
+     0.0,
+     110.1
+    ],
+    "5924": [
+     0.0,
+     110.1
+    ],
+    "5925": [
+     0.0,
+     110.1
+    ],
+    "5926": [
+     0.0,
+     62.5
+    ],
+    "5927": [
+     0.0,
+     62.5
+    ],
+    "5928": [
+     0.0,
+     62.5
+    ],
+    "5929": [
+     0.0,
+     62.5
+    ],
+    "5930": [
+     0.0,
+     62.5
+    ],
+    "5931": [
+     0.0,
+     62.5
+    ],
+    "5932": [
+     0.0,
+     62.5
+    ],
+    "5933": [
+     0.0,
+     62.5
+    ],
+    "5934": [
+     0.0,
+     62.5
+    ],
+    "5935": [
+     0.0,
+     62.5
+    ],
+    "5936": [
+     0.0,
+     62.5
+    ],
+    "5937": [
+     0.0,
+     27.8
+    ],
+    "5938": [
+     0.0,
+     27.8
+    ],
+    "5939": [
+     0.0,
+     27.8
+    ],
+    "5940": [
+     0.0,
+     27.8
+    ],
+    "5941": [
+     0.0,
+     27.8
+    ],
+    "5942": [
+     0.0,
+     27.8
+    ],
+    "5943": [
+     0.0,
+     27.8
+    ],
+    "5944": [
+     0.0,
+     27.8
+    ],
+    "5945": [
+     0.0,
+     27.8
+    ],
+    "5946": [
+     0.0,
+     27.8
+    ],
+    "5947": [
+     0.0,
+     27.8
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2975.1000000000013,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_months_applied": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     116.0
+    ],
+    "5909": [
+     0.0,
+     107.0
+    ],
+    "5910": [
+     0.0,
+     111.0
+    ],
+    "5911": [
+     0.0,
+     114.0
+    ],
+    "5912": [
+     0.0,
+     106.0
+    ],
+    "5913": [
+     0.0,
+     114.0
+    ],
+    "5914": [
+     0.0,
+     112.0
+    ],
+    "5915": [
+     0.0,
+     114.0
+    ],
+    "5916": [
+     0.0,
+     114.0
+    ],
+    "5917": [
+     0.0,
+     112.0
+    ],
+    "5918": [
+     0.0,
+     110.0
+    ],
+    "5919": [
+     0.0,
+     108.0
+    ],
+    "5920": [
+     0.0,
+     111.0
+    ],
+    "5921": [
+     0.0,
+     108.0
+    ],
+    "5922": [
+     0.0,
+     110.0
+    ],
+    "5923": [
+     0.0,
+     110.0
+    ],
+    "5924": [
+     0.0,
+     111.0
+    ],
+    "5925": [
+     0.0,
+     110.0
+    ],
+    "5926": [
+     0.0,
+     58.0
+    ],
+    "5927": [
+     0.0,
+     62.0
+    ],
+    "5928": [
+     0.0,
+     60.0
+    ],
+    "5929": [
+     0.0,
+     64.0
+    ],
+    "5930": [
+     0.0,
+     66.0
+    ],
+    "5931": [
+     0.0,
+     60.0
+    ],
+    "5932": [
+     0.0,
+     62.0
+    ],
+    "5933": [
+     0.0,
+     58.0
+    ],
+    "5934": [
+     0.0,
+     66.0
+    ],
+    "5935": [
+     0.0,
+     58.0
+    ],
+    "5936": [
+     0.0,
+     66.0
+    ],
+    "5937": [
+     0.0,
+     24.0
+    ],
+    "5938": [
+     0.0,
+     22.0
+    ],
+    "5939": [
+     0.0,
+     26.0
+    ],
+    "5940": [
+     0.0,
+     32.0
+    ],
+    "5941": [
+     0.0,
+     24.0
+    ],
+    "5942": [
+     0.0,
+     34.0
+    ],
+    "5943": [
+     0.0,
+     31.0
+    ],
+    "5944": [
+     0.0,
+     28.0
+    ],
+    "5945": [
+     0.0,
+     33.0
+    ],
+    "5946": [
+     0.0,
+     29.0
+    ],
+    "5947": [
+     0.0,
+     23.0
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2984.0,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_statistic": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_technology": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_type": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.planning_capacity_factor_applied": {
+   "alignment": "json path",
+   "annual_totals": {
+    "5908": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     1.0,
+     0.217391304347826
+    ],
+    "5927": [
+     1.0,
+     0.422680412
+    ],
+    "5928": [
+     1.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     1.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     1.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     1.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     1.0,
+     0.495049504950495
+    ],
+    "5933": [
+     1.0,
+     0.5
+    ],
+    "5934": [
+     1.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     1.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     1.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     1.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     1.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     1.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     1.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     1.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     1.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     1.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     1.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     1.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     1.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     1.0,
+     0.9282178217821784
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.success_probability": {
+   "alignment": "json path",
+   "annual_totals": {
+    "5908": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     1.0,
+     0.217391304347826
+    ],
+    "5927": [
+     1.0,
+     0.422680412
+    ],
+    "5928": [
+     1.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     1.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     1.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     1.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     1.0,
+     0.495049504950495
+    ],
+    "5933": [
+     1.0,
+     0.5
+    ],
+    "5934": [
+     1.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     1.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     1.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     1.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     1.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     1.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     1.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     1.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     1.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     1.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     1.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     1.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     1.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     1.0,
+     0.9282178217821784
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     110.1
+    ],
+    "5909": [
+     0.0,
+     110.1
+    ],
+    "5910": [
+     0.0,
+     110.1
+    ],
+    "5911": [
+     0.0,
+     110.1
+    ],
+    "5912": [
+     0.0,
+     110.1
+    ],
+    "5913": [
+     0.0,
+     110.1
+    ],
+    "5914": [
+     0.0,
+     110.1
+    ],
+    "5915": [
+     0.0,
+     110.1
+    ],
+    "5916": [
+     0.0,
+     110.1
+    ],
+    "5917": [
+     0.0,
+     110.1
+    ],
+    "5918": [
+     0.0,
+     110.1
+    ],
+    "5919": [
+     0.0,
+     110.1
+    ],
+    "5920": [
+     0.0,
+     110.1
+    ],
+    "5921": [
+     0.0,
+     110.1
+    ],
+    "5922": [
+     0.0,
+     110.1
+    ],
+    "5923": [
+     0.0,
+     110.1
+    ],
+    "5924": [
+     0.0,
+     110.1
+    ],
+    "5925": [
+     0.0,
+     110.1
+    ],
+    "5926": [
+     0.0,
+     62.5
+    ],
+    "5927": [
+     0.0,
+     62.5
+    ],
+    "5928": [
+     0.0,
+     62.5
+    ],
+    "5929": [
+     0.0,
+     62.5
+    ],
+    "5930": [
+     0.0,
+     62.5
+    ],
+    "5931": [
+     0.0,
+     62.5
+    ],
+    "5932": [
+     0.0,
+     62.5
+    ],
+    "5933": [
+     0.0,
+     62.5
+    ],
+    "5934": [
+     0.0,
+     62.5
+    ],
+    "5935": [
+     0.0,
+     62.5
+    ],
+    "5936": [
+     0.0,
+     62.5
+    ],
+    "5937": [
+     0.0,
+     27.8
+    ],
+    "5938": [
+     0.0,
+     27.8
+    ],
+    "5939": [
+     0.0,
+     27.8
+    ],
+    "5940": [
+     0.0,
+     27.8
+    ],
+    "5941": [
+     0.0,
+     27.8
+    ],
+    "5942": [
+     0.0,
+     27.8
+    ],
+    "5943": [
+     0.0,
+     27.8
+    ],
+    "5944": [
+     0.0,
+     27.8
+    ],
+    "5945": [
+     0.0,
+     27.8
+    ],
+    "5946": [
+     0.0,
+     27.8
+    ],
+    "5947": [
+     0.0,
+     27.8
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2975.1000000000013,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.total_capex_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 679719679.8828056,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 679719679.8828056,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 328434467408.12775,
+   "sum_before": 329787889714.7849,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.success_probability": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.7826086956521741,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 4888.485759897345,
+   "sum_before": 4896.894434640321,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::extensions.annual_input_state_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "ce17b07d4f96cf9782657b062ec5785d5161640bfb99be150ba3bfa59c5665c7",
+     "before": "3b0a859d048b9cfe4006154af238eb05f63ce1c9dfa72e4b49992aef17b22937",
+     "label": "[0].extensions.annual_input_state_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::investment.extensions.cem_model_identity.version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].investment.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::investment.proposals.expected_completion_year": {
+   "alignment": "json path",
+   "changed_values": 38,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 8.0,
+   "max_rel_delta": 0.003948667324777887,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 81232.0,
+   "sum_before": 81040.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.development_years": {
+   "alignment": "column removed",
+   "comparable": false,
+   "identifier": false,
+   "kind": "removed",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0,
+   "sum_before": 40.0,
+   "values_after": 0,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 680,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.success_probability": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2975.1000000000013,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256": {
+   "kind": "unchanged_since_parent",
+   "note": "changed between revision 5 and the parent commit (identity drift before R7-1); identical in the parent and child outputs",
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.cem_model_identity.version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].next_state.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.correction_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.development_stage_timelines": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 971.6999999999997,
+   "sum_before": 0,
+   "values_after": 32,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.repd_status_to_timeline": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 18,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.success_rates": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 36.566511257061414,
+   "sum_before": 0,
+   "values_after": 46,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.timeline_statistic": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.capacity_mw": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 428.0350628984922,
+    "max_rel_group_delta": 0.782608695652174
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.90158832158,
+   "sum_before": 177862.89144315303,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.expected_completion_year": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 38,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 8.0,
+    "max_rel_group_delta": 0.003948667324777887
+   },
+   "changed_values": 38,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 8.0,
+   "max_rel_delta": 0.003948667324777887,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 12065300.0,
+   "sum_before": 12065108.0,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.annualized_capital_cost_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 44216740.628682695,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 44216740.628682695,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 21899879991.73903,
+   "sum_before": 21988375512.295788,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 40,
+    "max_abs_group_delta": 1.0,
+    "max_rel_group_delta": 1.0
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 20368.0,
+   "sum_before": 20408.0,
+   "values_after": 5908,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 680,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.planning_capacity_factor_applied": {
+   "alignment": "json path",
+   "annual_totals": {
+    "5908": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     1.0,
+     0.217391304347826
+    ],
+    "5927": [
+     1.0,
+     0.422680412
+    ],
+    "5928": [
+     1.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     1.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     1.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     1.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     1.0,
+     0.495049504950495
+    ],
+    "5933": [
+     1.0,
+     0.5
+    ],
+    "5934": [
+     1.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     1.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     1.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     1.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     1.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     1.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     1.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     1.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     1.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     1.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     1.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     1.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     1.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     1.0,
+     0.9282178217821784
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.success_probability": {
+   "alignment": "json path",
+   "annual_totals": {
+    "5908": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     1.0,
+     0.217391304347826
+    ],
+    "5927": [
+     1.0,
+     0.422680412
+    ],
+    "5928": [
+     1.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     1.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     1.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     1.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     1.0,
+     0.495049504950495
+    ],
+    "5933": [
+     1.0,
+     0.5
+    ],
+    "5934": [
+     1.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     1.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     1.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     1.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     1.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     1.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     1.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     1.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     1.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     1.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     1.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     1.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     1.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     1.0,
+     0.9282178217821784
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     110.1
+    ],
+    "5909": [
+     0.0,
+     110.1
+    ],
+    "5910": [
+     0.0,
+     110.1
+    ],
+    "5911": [
+     0.0,
+     110.1
+    ],
+    "5912": [
+     0.0,
+     110.1
+    ],
+    "5913": [
+     0.0,
+     110.1
+    ],
+    "5914": [
+     0.0,
+     110.1
+    ],
+    "5915": [
+     0.0,
+     110.1
+    ],
+    "5916": [
+     0.0,
+     110.1
+    ],
+    "5917": [
+     0.0,
+     110.1
+    ],
+    "5918": [
+     0.0,
+     110.1
+    ],
+    "5919": [
+     0.0,
+     110.1
+    ],
+    "5920": [
+     0.0,
+     110.1
+    ],
+    "5921": [
+     0.0,
+     110.1
+    ],
+    "5922": [
+     0.0,
+     110.1
+    ],
+    "5923": [
+     0.0,
+     110.1
+    ],
+    "5924": [
+     0.0,
+     110.1
+    ],
+    "5925": [
+     0.0,
+     110.1
+    ],
+    "5926": [
+     0.0,
+     62.5
+    ],
+    "5927": [
+     0.0,
+     62.5
+    ],
+    "5928": [
+     0.0,
+     62.5
+    ],
+    "5929": [
+     0.0,
+     62.5
+    ],
+    "5930": [
+     0.0,
+     62.5
+    ],
+    "5931": [
+     0.0,
+     62.5
+    ],
+    "5932": [
+     0.0,
+     62.5
+    ],
+    "5933": [
+     0.0,
+     62.5
+    ],
+    "5934": [
+     0.0,
+     62.5
+    ],
+    "5935": [
+     0.0,
+     62.5
+    ],
+    "5936": [
+     0.0,
+     62.5
+    ],
+    "5937": [
+     0.0,
+     27.8
+    ],
+    "5938": [
+     0.0,
+     27.8
+    ],
+    "5939": [
+     0.0,
+     27.8
+    ],
+    "5940": [
+     0.0,
+     27.8
+    ],
+    "5941": [
+     0.0,
+     27.8
+    ],
+    "5942": [
+     0.0,
+     27.8
+    ],
+    "5943": [
+     0.0,
+     27.8
+    ],
+    "5944": [
+     0.0,
+     27.8
+    ],
+    "5945": [
+     0.0,
+     27.8
+    ],
+    "5946": [
+     0.0,
+     27.8
+    ],
+    "5947": [
+     0.0,
+     27.8
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2975.1000000000013,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.total_capex_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 679719679.8828056,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 679719679.8828056,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 328434467408.12775,
+   "sum_before": 329787889714.7849,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.success_probability": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.7826086956521741,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 4888.485759897345,
+   "sum_before": 4896.894434640321,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 2214.2757162764365,
+   "sum_before": 3029.26557110787,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.expected_completion_year": {
+   "alignment": "json path",
+   "changed_values": 38,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 8.0,
+   "max_rel_delta": 0.003948667324777887,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 81232.0,
+   "sum_before": 81040.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.annualized_capital_cost_gbp": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 44216740.628682695,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 307159946.7498311,
+   "sum_before": 395655467.30660343,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.development_years": {
+   "alignment": "column removed",
+   "comparable": false,
+   "identifier": false,
+   "kind": "removed",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0,
+   "sum_before": 40.0,
+   "values_after": 0,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 680,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.planning_capacity_factor_applied": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.success_probability": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2975.1000000000013,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.total_capex_gbp": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 679719679.8828056,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 4677959317.71577,
+   "sum_before": 6031381624.372858,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.success_probability": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.events.capacity_mw": {
+   "alignment": "json path",
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 2214.2757162764365,
+   "sum_before": 3029.26557110787,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.capacity_mw": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 428.0350628984922,
+    "max_rel_group_delta": 0.782608695652174
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 428.0350628984922,
+   "max_rel_delta": 0.782608695652174,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 177047.90158832158,
+   "sum_before": 177862.89144315303,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.expected_completion_year": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 38,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 8.0,
+    "max_rel_group_delta": 0.003948667324777887
+   },
+   "changed_values": 38,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 8.0,
+   "max_rel_delta": 0.003948667324777887,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 12065300.0,
+   "sum_before": 12065108.0,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.annualized_capital_cost_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 44216740.628682695,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 44216740.628682695,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 21899879991.73903,
+   "sum_before": 21988375512.295788,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 40,
+    "max_abs_group_delta": 1.0,
+    "max_rel_group_delta": 1.0
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 20368.0,
+   "sum_before": 20408.0,
+   "values_after": 5908,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 680,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.planning_capacity_factor_applied": {
+   "alignment": "json path",
+   "annual_totals": {
+    "5908": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     1.0,
+     0.217391304347826
+    ],
+    "5927": [
+     1.0,
+     0.422680412
+    ],
+    "5928": [
+     1.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     1.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     1.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     1.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     1.0,
+     0.495049504950495
+    ],
+    "5933": [
+     1.0,
+     0.5
+    ],
+    "5934": [
+     1.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     1.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     1.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     1.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     1.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     1.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     1.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     1.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     1.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     1.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     1.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     1.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     1.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     1.0,
+     0.9282178217821784
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.success_probability": {
+   "alignment": "json path",
+   "annual_totals": {
+    "5908": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5909": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5910": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5911": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5912": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5913": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5914": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5915": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5916": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5917": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5918": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5919": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5920": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5921": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5922": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5923": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5924": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5925": [
+     1.0,
+     0.9166666666666666
+    ],
+    "5926": [
+     1.0,
+     0.217391304347826
+    ],
+    "5927": [
+     1.0,
+     0.422680412
+    ],
+    "5928": [
+     1.0,
+     0.5497076023391813
+    ],
+    "5929": [
+     1.0,
+     0.5367483296213809
+    ],
+    "5930": [
+     1.0,
+     0.5436893203883495
+    ],
+    "5931": [
+     1.0,
+     0.7142857142857143
+    ],
+    "5932": [
+     1.0,
+     0.495049504950495
+    ],
+    "5933": [
+     1.0,
+     0.5
+    ],
+    "5934": [
+     1.0,
+     0.4479166666666667
+    ],
+    "5935": [
+     1.0,
+     0.3571428571428571
+    ],
+    "5936": [
+     1.0,
+     0.5858585858585859
+    ],
+    "5937": [
+     1.0,
+     0.8868360277136259
+    ],
+    "5938": [
+     1.0,
+     0.8486096807415036
+    ],
+    "5939": [
+     1.0,
+     0.8426966292134831
+    ],
+    "5940": [
+     1.0,
+     0.9088145896656536
+    ],
+    "5941": [
+     1.0,
+     0.8617363344051447
+    ],
+    "5942": [
+     1.0,
+     0.9057591623036648
+    ],
+    "5943": [
+     1.0,
+     0.8605200945626478
+    ],
+    "5944": [
+     1.0,
+     0.9471153846153846
+    ],
+    "5945": [
+     1.0,
+     0.8617594254937163
+    ],
+    "5946": [
+     1.0,
+     0.8687898089171975
+    ],
+    "5947": [
+     1.0,
+     0.9282178217821784
+    ]
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 31.59132525701525,
+   "sum_before": 40.0,
+   "values_after": 40,
+   "values_before": 40,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.timeline_months": {
+   "alignment": "column added",
+   "annual_totals": {
+    "5908": [
+     0.0,
+     110.1
+    ],
+    "5909": [
+     0.0,
+     110.1
+    ],
+    "5910": [
+     0.0,
+     110.1
+    ],
+    "5911": [
+     0.0,
+     110.1
+    ],
+    "5912": [
+     0.0,
+     110.1
+    ],
+    "5913": [
+     0.0,
+     110.1
+    ],
+    "5914": [
+     0.0,
+     110.1
+    ],
+    "5915": [
+     0.0,
+     110.1
+    ],
+    "5916": [
+     0.0,
+     110.1
+    ],
+    "5917": [
+     0.0,
+     110.1
+    ],
+    "5918": [
+     0.0,
+     110.1
+    ],
+    "5919": [
+     0.0,
+     110.1
+    ],
+    "5920": [
+     0.0,
+     110.1
+    ],
+    "5921": [
+     0.0,
+     110.1
+    ],
+    "5922": [
+     0.0,
+     110.1
+    ],
+    "5923": [
+     0.0,
+     110.1
+    ],
+    "5924": [
+     0.0,
+     110.1
+    ],
+    "5925": [
+     0.0,
+     110.1
+    ],
+    "5926": [
+     0.0,
+     62.5
+    ],
+    "5927": [
+     0.0,
+     62.5
+    ],
+    "5928": [
+     0.0,
+     62.5
+    ],
+    "5929": [
+     0.0,
+     62.5
+    ],
+    "5930": [
+     0.0,
+     62.5
+    ],
+    "5931": [
+     0.0,
+     62.5
+    ],
+    "5932": [
+     0.0,
+     62.5
+    ],
+    "5933": [
+     0.0,
+     62.5
+    ],
+    "5934": [
+     0.0,
+     62.5
+    ],
+    "5935": [
+     0.0,
+     62.5
+    ],
+    "5936": [
+     0.0,
+     62.5
+    ],
+    "5937": [
+     0.0,
+     27.8
+    ],
+    "5938": [
+     0.0,
+     27.8
+    ],
+    "5939": [
+     0.0,
+     27.8
+    ],
+    "5940": [
+     0.0,
+     27.8
+    ],
+    "5941": [
+     0.0,
+     27.8
+    ],
+    "5942": [
+     0.0,
+     27.8
+    ],
+    "5943": [
+     0.0,
+     27.8
+    ],
+    "5944": [
+     0.0,
+     27.8
+    ],
+    "5945": [
+     0.0,
+     27.8
+    ],
+    "5946": [
+     0.0,
+     27.8
+    ],
+    "5947": [
+     0.0,
+     27.8
+    ]
+   },
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2975.1000000000013,
+   "sum_before": 0,
+   "values_after": 40,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.total_capex_gbp": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 679719679.8828056,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 679719679.8828056,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 328434467408.12775,
+   "sum_before": 329787889714.7849,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.success_probability": {
+   "alignment": "json path",
+   "annual_totals": {
+    "groups": 4948,
+    "groups_changed": 40,
+    "groups_only_after": 0,
+    "groups_only_before": 0,
+    "max_abs_group_delta": 0.7826086956521741,
+    "max_rel_group_delta": 0.7826086956521741
+   },
+   "changed_values": 40,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.7826086956521741,
+   "max_rel_delta": 0.7826086956521741,
+   "numeric": true,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "sum_after": 4888.485759897345,
+   "sum_before": 4896.894434640321,
+   "values_after": 5948,
+   "values_before": 5948,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.operating_state.extensions.cem_model_identity": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].planning_advance.operating_state.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 5,
+   "values_before": 5,
+   "zone": "identity"
+  },
+  "year-results-v2.json::planning_advance.operating_state.extensions.planning_parameters": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 99,
+   "values_before": 0,
+   "zone": "trajectory"
+  }
+ },
+ "digest_sha256": "bd400b29e57cf7bb5a8b774af602c50ceec28540eec839c323a1a3111894541c",
+ "family": "doctoral",
+ "parent_commit": "f94f0c03739e541eccc3da311cd9892196f02df1",
+ "parent_reproduction": {
+  "columns_outside_the_revision_delta": [],
+  "identity_columns": [
+   "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256"
+  ],
+  "note": "The parent output (git archive of the parent commit) reproduces revision 5 in the trajectory and accounting zones; it differs only in 1 identity-zone column(s) changed by commits after that revision (module versions, source artifact hashes), so the report was built with gridform_validation.golden.build_numeric_report directly (R1-2 precedent)."
+ },
+ "revision": 6,
+ "schema_version": "value.golden-numeric-report/v2",
+ "summary": {
+  "by_zone": {
+   "accounting": 1,
+   "identity": 8,
+   "trajectory": 83
+  },
+  "changed_columns": 92,
+  "not_comparable_columns": 3
+ }
+}

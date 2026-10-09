@@ -56,7 +56,7 @@ def _literal_psm_ids(path: Path) -> list[dict[str, object]]:
 
 
 def build_report() -> dict[str, object]:
-    registry = workspace_registry()
+    registry = workspace_registry(strict=True)
     psm_manifests = [item for item in registry.manifests().values() if item.slot == "psm"]
     duplicate_ids = sorted({item.id for item in psm_manifests if sum(x.id == item.id for x in psm_manifests) > 1})
     canonical = registry.manifest("value-bid-at-cost-psm", expected_slot="psm")

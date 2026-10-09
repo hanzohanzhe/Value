@@ -10,12 +10,34 @@ from gridform_core.frozen_input_integrity import verify_frozen_input_integrity, 
 from gridform_core.run_snapshot import create_run_input_snapshot
 from gridform_core.run_input_snapshot import freeze_resource_readiness
 from gridform_core.v2.module_manifest import workspace_registry
+from gridform_core.frontend_contract import builtin_maturity_acknowledgement_key
 from gridform_core.zonal_solver_contract import DEFAULT_ZONAL_SOLVER_SETTINGS
 from tests.test_run_input_snapshot import SELECTION, pack, network_pack
 
 
 def h(value, ascii=False):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=ascii).encode()).hexdigest()
+
+
+def rehash_snapshot_identity(root):
+    """Re-derive snapshot.json's manifest hashes, graph hash and snapshot id after a test edited the snapshot."""
+
+    path = root / "snapshot.json"; snapshot = json.loads(path.read_bytes())
+    for filename, field in (("project.json", "project_sha256"), ("pack/manifest.json", "pack_manifest_sha256"),
+                            ("network-pack/manifest.json", "network_pack_manifest_sha256")):
+        if (root / filename).exists():
+            snapshot[field] = h(json.loads((root / filename).read_bytes()))
+    graph = snapshot["module_resolution_graph"]
+    payload = dict(graph["modules"])
+    if "extension_graph" in graph:
+        payload["$extensions"] = graph["extension_graph"]
+    graph["graph_sha256"] = h(payload, True)
+    identity = {key: snapshot[key] for key in ("project_sha256", "pack_manifest_sha256", "objects", "modules")}
+    for key in ("network_pack_id", "network_pack_manifest_sha256", "extension_graph"):
+        if key in snapshot:
+            identity[key] = snapshot[key]
+    snapshot["input_tree_sha256"] = snapshot["snapshot_id"] = h(identity)
+    path.write_text(json.dumps(snapshot))
 
 
 class FrozenInputIntegrityTests(unittest.TestCase):
@@ -38,7 +60,7 @@ class FrozenInputIntegrityTests(unittest.TestCase):
             project.update(modules=dict(selected), selected_extensions=["value-zonal-redispatch-extension"],
                 market_configuration={"network_pack_id": "signed-network-v1"},
                 maturity_acknowledgements={
-                    "module:value-zonal-redispatch-balancing@3.0.0": "value.experimental-ack/v1",
+                    builtin_maturity_acknowledgement_key("module", "value-zonal-redispatch-balancing"): "value.experimental-ack/v1",
                     "module:value-representative-point-weather@1.0.0": "value.experimental-ack/v1",
                     "extension:value-zonal-redispatch-extension@1.0.0": "value.experimental-ack/v1"},
                 solver_contract=DEFAULT_ZONAL_SOLVER_SETTINGS.to_dict())
@@ -64,22 +86,7 @@ class FrozenInputIntegrityTests(unittest.TestCase):
         path.write_text(json.dumps(value))
 
     def rehash(self, root):
-        path = root / "snapshot.json"; snapshot = json.loads(path.read_bytes())
-        for filename, field in (("project.json", "project_sha256"), ("pack/manifest.json", "pack_manifest_sha256"),
-                                ("network-pack/manifest.json", "network_pack_manifest_sha256")):
-            if (root / filename).exists():
-                snapshot[field] = h(json.loads((root / filename).read_bytes()))
-        graph = snapshot["module_resolution_graph"]
-        payload = dict(graph["modules"])
-        if "extension_graph" in graph:
-            payload["$extensions"] = graph["extension_graph"]
-        graph["graph_sha256"] = h(payload, True)
-        identity = {key: snapshot[key] for key in ("project_sha256", "pack_manifest_sha256", "objects", "modules")}
-        for key in ("network_pack_id", "network_pack_manifest_sha256", "extension_graph"):
-            if key in snapshot:
-                identity[key] = snapshot[key]
-        snapshot["input_tree_sha256"] = snapshot["snapshot_id"] = h(identity)
-        path.write_text(json.dumps(snapshot))
+        rehash_snapshot_identity(root)
 
     def test_generated_base_network_resource_defaults_and_read_only_without_registry(self):
         for network, resource, defaults in ((False, False, False), (True, False, False), (True, True, True)):

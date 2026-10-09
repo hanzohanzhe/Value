@@ -1,0 +1,53 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "fx8",
+  "notes": [
+    "FX8 (post-UAT fix round, decision A18): nuclear units of the default PSM start the run in service, so the start-up cost is charged only when a unit restarts after a period off. A method change of the corrected profile only (Q13: saved Studies need explicit confirmation); the doctoral reproduction profile keeps the thesis behaviour (every unit off before the first period), whose nuclear path dependency is disclosed in the methodology (A15).",
+    "The switch is one field of NativeMarketRules (gridform_core/builtin/scheme_c_1000twh/native_market_rules.py FIELD_CORRECTIONS, nuclear_initial_state)."
+  ],
+  "corrections": [
+    {
+      "id": "fx8.nuclear-in-service-at-start",
+      "package": "fx8",
+      "findings": [
+        "A18",
+        "A15"
+      ],
+      "track": "profile_gated",
+      "scope": "market_clearing",
+      "affects": [
+        "trajectory",
+        "accounting"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-bid-at-cost-psm"
+        ],
+        "assets_any": [
+          "nuclear"
+        ]
+      },
+      "advisory": {
+        "severity": "high",
+        "title": "Nuclear started the year off and paid its start-up cost to enter",
+        "summary": "If this Run has nuclear units, each one was off before the first period of each model year under the thesis rule of the default PSM, so its day-ahead offer carried the start-up cost (500 GBP/MWh on GBP1) until it was first accepted, and it then stayed on. Runs without nuclear units are not affected. Nuclear output therefore depends on when the first scarcity period of the year occurs: on GBP1 2025 nuclear first cleared on 12 December and generated about 2 TWh instead of about 38 TWh at station availability.",
+        "affected_metrics": [
+          "nuclear_generation",
+          "generation_mix",
+          "prices",
+          "costs",
+          "emissions",
+          "investment"
+        ]
+      },
+      "trigger_fixture": {
+        "test": "tests.test_fx8_nuclear_in_service.NuclearInServiceTests"
+      },
+      "introduced_in": "FX8 (A18)",
+      "deviation_signature": {
+        "doctoral": "accepted_bids starts empty: nuclear offers gen_cost + startup_cost until first accepted (path dependency, A15)"
+      },
+      "description": "Every nuclear unit counts as running before the first period of each model year, so its first day-ahead offer is its running cost without the start-up adder and it runs as baseload at its station availability (p05.firm-availability). A unit that was not accepted in a period (refuelling, outage, zero availability or not cleared) adds its start-up cost to its offer, and books the start-up term in the physical operating cost, in the period it restarts, once. Gas and biomass units keep the thesis rule (off until first accepted)."
+    }
+  ]
+}

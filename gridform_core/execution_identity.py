@@ -80,6 +80,7 @@ def scheme_c_execution_identity() -> dict[str, object]:
     scheme_root = core_root / "builtin" / "scheme_c_1000twh"
     dependencies = (
         core_root / "data.py",
+        core_root / "energy_balance_contract.py",
         core_root / "errors.py",
         core_root / "market_ledger.py",
         core_root / "module_registry.py",

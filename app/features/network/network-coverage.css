@@ -1,0 +1,25 @@
+/* P0 frontend spec 4.4 / 4.6: network-page elements added in this round (>= 12px, tokens only). */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.network-coverage-banner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: var(--sp-3) 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); font-size: var(--fs-sm); color: var(--ink); }
+.reliability-list td small { display: block; font-size: var(--fs-xs); color: var(--ink-muted); }
+.reliability-list .text-button { font-size: var(--fs-sm); }
+.reliability-stress-pointer { margin: var(--sp-2) 0; font-size: var(--fs-sm); color: var(--ink-muted); }
+/* R7-5: the one-line reason under a neutral solver state word (e.g. not recorded under the trace profile). */
+.solver-evidence-reason { margin: 0; font-size: var(--fs-sm); color: var(--ink-muted); }
+.network-fallback-audit ul { margin: 0 0 var(--sp-1); padding-left: var(--sp-4); font-size: var(--fs-sm); }
+/* W4c (F3-13 display part, R3-16, F3-18): sign conventions, the two network views of a Run, a period's UTC time. */
+.network-flow-legend { display: grid; gap: var(--sp-1); margin: var(--sp-2) 0; font-size: var(--fs-xs); color: var(--ink-muted); }
+.network-flow-legend div { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
+.network-flow-legend dt { font-weight: 650; color: var(--ink); }
+.network-flow-legend dd { margin: 0; }
+.network-zone-node article small + small { display: block; }
+.network-controls .period-time { color: var(--ink-muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+/* Outside the page box: aligned with .page (same max-width and side padding). */
+.network-hub-nav { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); max-width: 1510px; margin: var(--sp-4) auto 0; padding: 0 clamp(var(--sp-5), 3vw, var(--sp-7)); }
+.network-hub-nav a { min-height: var(--control-h); display: inline-flex; align-items: center; padding: var(--sp-2) var(--sp-3); border-bottom: 2px solid var(--line-soft); color: var(--ink-muted); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
+.network-hub-nav a:hover { color: var(--ink); }
+.network-hub-nav a[aria-current="page"] { color: var(--blue-dark); border-bottom-color: var(--blue); }
+@media (max-width: 760px) { .network-hub-nav { padding: 0 var(--sp-4); } }
+}

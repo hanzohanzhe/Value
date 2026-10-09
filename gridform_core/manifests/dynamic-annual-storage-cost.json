@@ -2,7 +2,7 @@
   "schema_version": "value.module/v2",
   "id": "dynamic-annual-storage-cost",
   "name": "Dynamic annual-average storage cost recovery",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scientific_version": "dynamic-storage-recovery-2026.08.04",
   "slot": "storage_cost",
   "implementation": "gridform_core.builtin.value_modules:ValueDynamicStorageCost",

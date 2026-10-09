@@ -1,0 +1,8 @@
+/* F-P04-5: Inspect residual panel (new element; tokens only; >= 12px). */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.residual-panel .residual-table { min-width: 0; font-size: var(--fs-sm); }
+.residual-panel .residual-table th { font-size: var(--fs-xs); color: var(--ink-muted); }
+.residual-panel-note { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--ink-muted); }
+}

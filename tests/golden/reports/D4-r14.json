@@ -1,0 +1,828 @@
+{
+ "case": "D4",
+ "child_commit": "working-tree (R7-1)",
+ "columns": {
+  "network/vre-curtailment-attribution.json::initial_state_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "db10a320f1b37203f70856accd35c0c9cd62864475725507d882bee23e3561e2",
+     "before": "43f2b05555662b4fb5b2cab2c784dec4b65c1127613efbef0843f7fc0c3e6725",
+     "label": ".initial_state_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "accounting"
+  },
+  "network/vre-curtailment-attribution.json::module_identities.investment.module_version": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "3.1.0",
+     "before": "3.0.0",
+     "label": ".module_identities.investment.module_version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "network/vre-curtailment-attribution.json::module_resolution_graph_sha256": {
+   "alignment": "json path",
+   "changed_values": 1,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "1b11610b006eb2010186e2504f2b57f5fc2d5ef3fe65be1daf287cc88ab0207b",
+     "before": "6d95c14a101099447d15ccf76e32ac1c6af57f93a510ef24747da3750be481f7",
+     "label": ".module_resolution_graph_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "reporting",
+   "values_after": 1,
+   "values_before": 1,
+   "zone": "identity"
+  },
+  "terminal/terminal-state.json::projects.extensions.development_years": {
+   "alignment": "column removed",
+   "comparable": false,
+   "identifier": false,
+   "kind": "removed",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0,
+   "sum_before": 1.0,
+   "values_after": 0,
+   "values_before": 1,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.completion_floor_applied": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.completion_year": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2027.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.correction_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.development_status": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.project_key": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.source_completion_year": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 2027.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_rate": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 1.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_region": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.success_technology": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_jitter_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": -4.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 18.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_months_applied": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 14.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_statistic": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_technology": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.endogenous_planning_terms.timeline_type": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "terminal/terminal-state.json::projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 18.0,
+   "sum_before": 0,
+   "values_after": 1,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::extensions.annual_input_state_sha256": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "db10a320f1b37203f70856accd35c0c9cd62864475725507d882bee23e3561e2",
+     "before": "43f2b05555662b4fb5b2cab2c784dec4b65c1127613efbef0843f7fc0c3e6725",
+     "label": "[0].extensions.annual_input_state_sha256"
+    },
+    {
+     "after": "b32c9f1f9ce6aabfe7895ba0aa18b7c06317f9aba1f9a4e19ac0dcf345e525a0",
+     "before": "741ba9c109e383432cb58f6c75051f62b5990c2a2e27619fdd7f5eb6d4d7f788",
+     "label": "[1].extensions.annual_input_state_sha256"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::investment.extensions.cem_model_identity.version": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].investment.extensions.cem_model_identity.version"
+    },
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[1].investment.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::investment.proposals.extensions.development_years": {
+   "alignment": "column removed",
+   "comparable": false,
+   "identifier": false,
+   "kind": "removed",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0,
+   "sum_before": 3.0,
+   "values_after": 0,
+   "values_before": 3,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 51,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::investment.proposals.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 48.0,
+   "sum_before": 0,
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256": {
+   "kind": "unchanged_since_parent",
+   "note": "changed between revision 13 and the parent commit (identity drift before R7-1); identical in the parent and child outputs",
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.assets.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 1.0,
+   "sum_before": 3.0,
+   "values_after": 1,
+   "values_before": 3,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.assets.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 34,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.assets.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.assets.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 30.0,
+   "sum_before": 0,
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.cem_model_identity.version": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "changes_from_zero": 0,
+   "comparable": true,
+   "identifier": false,
+   "kind": "changed",
+   "max_abs_delta": 0.0,
+   "max_rel_delta": null,
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].next_state.extensions.cem_model_identity.version"
+    },
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[1].next_state.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 2,
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.correction_id": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.development_stage_timelines": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 288.0,
+   "sum_before": 0,
+   "values_after": 16,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.repd_status_to_timeline": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.schema_version": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "identity"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.success_rates": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 8.0,
+   "sum_before": 0,
+   "values_after": 8,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.extensions.planning_parameters.timeline_statistic": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 1.0,
+   "sum_before": 4.0,
+   "values_after": 1,
+   "values_before": 4,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 51,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::next_state.planning_projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 48.0,
+   "sum_before": 0,
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.development_years": {
+   "alignment": "column removed",
+   "comparable": false,
+   "identifier": false,
+   "kind": "removed",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 0,
+   "sum_before": 3.0,
+   "values_after": 0,
+   "values_before": 3,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 51,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.admitted_projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 48.0,
+   "sum_before": 0,
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 1.0,
+   "sum_before": 4.0,
+   "values_after": 1,
+   "values_before": 4,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 51,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_admission.next_pipeline.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 48.0,
+   "sum_before": 0,
+   "values_after": 3,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.commissioned_projects.extensions.development_years": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 1.0,
+   "sum_before": 3.0,
+   "values_after": 1,
+   "values_before": 3,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.commissioned_projects.extensions.endogenous_planning_terms": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 34,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.commissioned_projects.extensions.success_rate_source": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": false,
+   "section": "economics",
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.commissioned_projects.extensions.timeline_months": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": false,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "sum_after": 30.0,
+   "sum_before": 0,
+   "values_after": 2,
+   "values_before": 0,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.operating_state.assets.extensions": {
+   "alignment": "not comparable (rows shifted)",
+   "comparable": false,
+   "identifier": false,
+   "kind": "changed",
+   "numeric": true,
+   "per_value": "not comparable (rows shifted)",
+   "section": "economics",
+   "sum_after": 271204750.3170993,
+   "sum_before": 271196562.3170993,
+   "values_after": 424,
+   "values_before": 388,
+   "zone": "trajectory"
+  },
+  "year-results-v2.json::planning_advance.operating_state.extensions.cem_model_identity": {
+   "alignment": "json path",
+   "changed_values": 2,
+   "comparable": true,
+   "identifier": true,
+   "kind": "changed",
+   "non_numeric_samples": [
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[1].planning_advance.operating_state.extensions.cem_model_identity.version"
+    },
+    {
+     "after": "2026.10.09",
+     "before": "2026.08.10",
+     "label": "[0].planning_advance.operating_state.extensions.cem_model_identity.version"
+    }
+   ],
+   "numeric": false,
+   "rows_only_after": 0,
+   "rows_only_before": 0,
+   "section": "economics",
+   "values_after": 10,
+   "values_before": 10,
+   "zone": "identity"
+  },
+  "year-results-v2.json::planning_advance.operating_state.extensions.planning_parameters": {
+   "alignment": "column added",
+   "comparable": false,
+   "identifier": true,
+   "kind": "added",
+   "numeric": true,
+   "section": "economics",
+   "values_after": 32,
+   "values_before": 0,
+   "zone": "trajectory"
+  }
+ },
+ "digest_sha256": "3ed017c6c235589a3e910616f11d39948168990242384fa351b057c40a526954",
+ "family": "doctoral",
+ "parent_commit": "f94f0c03739e541eccc3da311cd9892196f02df1",
+ "parent_reproduction": {
+  "columns_outside_the_revision_delta": [],
+  "identity_columns": [
+   "year-results-v2.json::market.extensions.market_rule_set.runtime_kernel_tree_sha256"
+  ],
+  "note": "The parent output (git archive of the parent commit) reproduces revision 13 in the trajectory and accounting zones; it differs only in 1 identity-zone column(s) changed by commits after that revision (module versions, source artifact hashes), so the report was built with gridform_validation.golden.build_numeric_report directly (R1-2 precedent)."
+ },
+ "revision": 14,
+ "schema_version": "value.golden-numeric-report/v2",
+ "summary": {
+  "by_zone": {
+   "accounting": 1,
+   "identity": 8,
+   "trajectory": 50
+  },
+  "changed_columns": 59,
+  "not_comparable_columns": 5
+ }
+}

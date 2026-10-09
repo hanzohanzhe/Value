@@ -24,3 +24,5 @@ Start keeps the terminal open while supervising API/UI. Open http://127.0.0.1:88
 The previously verified Linux execution-archive restoration workflow is Linux-only; a historical Linux archive is not portable to macOS through this installer. Scientific acceptance and numerical equivalence remain separate release gates.
 
 此前已验 Linux 历史执行归档恢复仅适用于其 Linux 平台；本安装器不提供跨系统历史复算保证。
+
+关闭 VALUE 时，正在运行的 Run 会在后台继续，停止提示会列出它们；下次启动时 VALUE 通过各 Run 的租约（worker.lock）重新接管监督。同一个状态目录只能由一个 VALUE 后端使用，第二个后端会以退出码 3 停止且不改动任何内容。若诊断报告安装目录的 `__pycache__` 中有多余字节码（stray bytecode），VALUE 不会读取它们；运行 `Diagnose VALUE.command --repair-bytecode` 可把它们移入 state/quarantine，只读安装会保留原位。

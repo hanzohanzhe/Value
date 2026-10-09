@@ -1,11 +1,15 @@
 "use client";
 
+import { useT } from "../../i18n/LocaleProvider";
+import type { MessageKey } from "../../i18n/index.ts";
+
 export type TraceProfile = "off" | "summary" | "full";
 
-const TRACE_LABELS: Record<TraceProfile, string> = {
-  summary: "Summary",
-  full: "Full market replay",
-  off: "Advanced: Off",
+// The labels are in app/i18n/messages/market.en.ts (trace.level.*).
+const TRACE_LABELS: Record<TraceProfile, MessageKey> = {
+  summary: "trace.level.summary",
+  full: "trace.level.full",
+  off: "trace.level.off",
 };
 
 export default function TraceCoverageNotice({
@@ -17,14 +21,15 @@ export default function TraceCoverageNotice({
   bidReplayAvailable: boolean;
   onCreateFullReplayRevision?: () => void;
 }) {
+  const t = useT();
   const profile = traceLevel in TRACE_LABELS ? traceLevel as TraceProfile : null;
-  return <section className="trace-coverage-notice" aria-label="Recorded trace coverage">
-    <header><span>Recorded trace</span><b>{profile ? TRACE_LABELS[profile] : traceLevel || "Not recorded"}</b></header>
+  return <section className="trace-coverage-notice" aria-label={t("trace.label")}>
+    <header><span>{t("trace.recorded")}</span><b>{profile ? t(TRACE_LABELS[profile]) : traceLevel || t("trace.notRecorded")}</b></header>
     {profile === "summary" && !bidReplayAvailable && <div>
-      <p><strong>Bid-level replay was not recorded.</strong> Dispatch, storage, curtailment, zonal flow and redispatch summaries remain available; missing bid detail is not zero.</p>
-      {onCreateFullReplayRevision && <button className="secondary" onClick={onCreateFullReplayRevision}>Create a new Study revision with Full market replay</button>}
+      <p><strong>{t("trace.summary.lead")}</strong> {t("trace.summary.body")}</p>
+      {onCreateFullReplayRevision && <button className="secondary" onClick={onCreateFullReplayRevision}>{t("trace.summary.createRevision")}</button>}
     </div>}
-    {profile === "off" && <p>Optional period browsing was not recorded. Annual scientific results, integrity evidence and failure evidence remain available.</p>}
-    {profile === "full" && <p>Summary science and the recorded bid, acceptance, settlement and solver detail are available through bounded views.</p>}
+    {profile === "off" && <p>{t("trace.off.body")}</p>}
+    {profile === "full" && <p>{t("trace.full.body")}</p>}
   </section>;
 }

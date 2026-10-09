@@ -1,0 +1,37 @@
+{
+  "schema_version": "value.methodology-corrections/v1",
+  "package": "r13",
+  "notes": [
+    "R1-3 (fix round after the four-role tests, decision A20): the corrected storage headroom gives each power battery type (0.25C, 0.5C, 1C) its own cap of expansion.storage_cap_fraction x power_room (0.2 by default), as in the thesis design: the three serve different durations and the fraction is already a reduced share. This withdraws the shared power-battery pool of P0-7 S7 (p07.power-battery-pool, finding P5-02), which stays in the catalogue so that the identity of Runs made between P0-7 and R1-3 remains readable; the corrected profile applies both corrections and r13 takes precedence. The P5-01 headroom fix (p07.storage-leftover-headroom) is kept.",
+    "A method change of the corrected profile only (Q13: saved Studies need explicit confirmation); the doctoral reproduction profile keeps the 35aadb3 per-type caps (Q1), so it has no advisory for this correction.",
+    "The switch is gridform_core/builtin/scheme_c_1000twh/v2_module_definitions.py power_battery_pool_in_force."
+  ],
+  "corrections": [
+    {
+      "id": "r13.per-type-battery-caps",
+      "package": "r13",
+      "findings": [
+        "A20",
+        "P5-02"
+      ],
+      "track": "profile_gated",
+      "scope": "expansion_headroom",
+      "affects": [
+        "trajectory"
+      ],
+      "applies_when": {
+        "modules_any": [
+          "value-storage-expansion-policy",
+          "storage-expansion-scheme-c"
+        ]
+      },
+      "advisory": null,
+      "trigger_fixture": {
+        "test": "tests.test_r13_per_type_battery_caps.PerTypeBatteryCapTests"
+      },
+      "introduced_in": "R1-3 (A20)",
+      "deviation_signature": null,
+      "description": "value-corrected: on the post-charge leftover headroom (p07.storage-leftover-headroom) each power battery type (0.25C, 0.5C, 1C) has its own cap of cap_fraction x power_room, so together they may take up to three times that room (the thesis design, decision A20); the hydrogen battery keeps cap_fraction x the seasonal room. The headroom row declares no shared pool and agent-investment caps each type separately. Withdraws the shared pool of p07.power-battery-pool (P5-02 as read by P0-7 S7); the doctoral profile has per-type caps already (Q1)."
+    }
+  ]
+}

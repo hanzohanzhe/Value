@@ -12,7 +12,14 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 
-SCHEMA_VERSION = "value.data-pack-validation/v1"
+SCHEMA_VERSION = "value.data-pack-validation/v2"
+# P0-5a S9: required NetCDF data variables and their canonical units per role.
+NETCDF_VARIABLES = {
+    "weather.solar": ({"ssrd"},),
+    "weather.wind": ({"wind_speed"}, {"u100", "v100"}),
+}
+NETCDF_UNITS = {"ssrd": "J m-2", "wind_speed": "m s-1", "u100": "m s-1", "v100": "m s-1"}
+TIME_LENGTHS = {8760, 8784}
 CLOCK_ROLES = {
     "demand.forecast", "demand.real",
     "market.france.profile", "market.france.price",
@@ -30,6 +37,32 @@ LEGACY_DEMAND_MW_SHA256 = {
     "demand.real": {"75b5f11d2c5603802cf49f07af48547da9cb3f4fca4539f7f90db24c3870e77b", "fcdb98f9a0d3bd7d8d75db9aea05153164b2ad88128ea7085dd9897162c626a3"},
 }
 VRE_PROFILE_ROLES = {"profiles.vre_solar", "profiles.vre_onshore", "profiles.vre_offshore"}
+# S-F-高1 (R5, A28): the registry relabel of the bytes above.  Their values are
+# half-hour average power in MW (the VALUE 101 files' header says "mwh" and the
+# manifest "MWh/period"); every page that shows such a binding states the unit
+# it is read in.  Bytes, manifests and both profiles' reading are unchanged.
+LEGACY_DEMAND_UNIT_NOTE = (
+    "Read as MW (half-hour average power). The file header says mwh and the pack labels it MWh/period; "
+    "that label is a known mislabel of these bytes, which VALUE has always read as MW. "
+    "Energy per half hour = MW x 0.5 h."
+)
+
+
+def legacy_demand_unit(role: str, binding: Mapping[str, object] | None) -> dict[str, str] | None:
+    """The unit a legacy-labelled demand binding is read in (S-F-高1 registry relabel); None otherwise.
+
+    Content-bound like the validation rule: only the audited bytes of
+    ``LEGACY_DEMAND_MW_SHA256`` declared ``MWh/period`` without an explicit
+    unit contract.
+    """
+
+    if role not in DEMAND_ROLES or not isinstance(binding, Mapping):
+        return None
+    if (binding.get("unit") == "MWh/period" and not binding.get("input_unit_contract")
+            and str(binding.get("sha256") or "").lower() in LEGACY_DEMAND_MW_SHA256[role]):
+        return {"declared_unit": "MWh/period", "runtime_unit": "MW", "note": LEGACY_DEMAND_UNIT_NOTE,
+                "definition_id": "value.legacy-demand-label/v1"}
+    return None
 CYCLIC_MARKET_ROLES = CLOCK_ROLES.difference(DEMAND_ROLES | VRE_PROFILE_ROLES)
 REQUIRED_JSON_KEYS = {
     "fleet.generators": {"generators", "batteries", "connections"},
@@ -99,6 +132,165 @@ def _csv_shape(path: Path) -> tuple[int, list[str], str]:
     return len(rows), (rows[0] if rows else []), encoding
 
 
+def normalize_unit(value: object) -> str:
+    """UDUNITS-style spelling: 'm s**-1', 'm s-1', 'm/s' and 'm.s-1' are the same unit."""
+
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    text = text.replace("**", "").replace("^", "").replace(".", " ")
+    match = re.fullmatch(r"([A-Za-z]+)\s*/\s*([A-Za-z]+)(\d*)", text)
+    if match:
+        text = f"{match.group(1)} {match.group(2)}-{match.group(3) or '1'}"
+    return re.sub(r"\s+", " ", text)
+
+
+def _registry_unit(path: Path, binding: Mapping[str, object]) -> object:
+    from .series_reader import registry_entry
+
+    entry = registry_entry(path, binding)
+    field = dict(dict(entry or {}).get("fields") or {}).get("unit") or {}
+    return field.get("value") if field.get("status") == "registry_asserted" else None
+
+
+def _series_cells(path: Path, binding: Mapping[str, object]) -> tuple[list[float], int]:
+    """The values of a single-series CSV role: the declared csv_column, else the legacy rule (P6-01)."""
+
+    column = binding.get("csv_column")
+    if not column:
+        return _first_numeric_column(path)
+    text, _encoding = _csv_text(path)
+    reader = csv.DictReader(io.StringIO(text))
+    if column not in (reader.fieldnames or []):
+        return [], 1
+    values: list[float] = []
+    invalid = 0
+    for row in reader:
+        try:
+            value = float(str(row.get(column) or "").strip())
+        except ValueError:
+            invalid += 1
+            continue
+        # L-2 (four-role R1 retest): NaN and infinity are counted with the
+        # missing and non-numeric cells, as the mapping editor's row list does.
+        if math.isfinite(value):
+            values.append(value)
+        else:
+            invalid += 1
+    return values, invalid
+
+
+def _netcdf_structure(dataset: object, role: str, np: object) -> tuple[list[str], list[str], dict[str, object]]:
+    """Structural NetCDF checks: data variables only (ndim >= 2, not coordinates), units, time axis, finiteness."""
+
+    errors: list[str] = []
+    warnings: list[str] = []
+    dimensions = set(dataset.dimensions)  # type: ignore[attr-defined]
+    data_variables = {
+        name: variable for name, variable in dataset.variables.items()  # type: ignore[attr-defined]
+        if name not in dimensions and getattr(variable, "ndim", 0) >= 2
+        and getattr(variable.dtype, "kind", "") in {"i", "u", "f"}
+    }
+    details: dict[str, object] = {"data_variables": sorted(data_variables)}
+    if not data_variables:
+        errors.append("NetCDF has no numeric data variable")
+        return errors, warnings, details
+    options = NETCDF_VARIABLES.get(role)
+    required: set[str] = set()
+    if options:
+        present = next((option for option in options if option <= set(data_variables)), None)
+        if present is None:
+            errors.append("NetCDF lacks the required variable " + " or ".join("+".join(sorted(o)) for o in options))
+        else:
+            required = set(present)
+    for name in sorted(required):
+        units = getattr(data_variables[name], "units", None)
+        if units is None:
+            warnings.append(f"NetCDF variable {name} declares no units; {NETCDF_UNITS[name]} is assumed")
+        elif normalize_unit(units) != NETCDF_UNITS[name]:
+            errors.append(f"NetCDF variable {name} has units {units!r}; expected {NETCDF_UNITS[name]}")
+    lengths = {name: len(value) for name, value in dataset.dimensions.items()}  # type: ignore[attr-defined]
+    if "time" in lengths:
+        time_ok = lengths["time"] in TIME_LENGTHS
+    elif "dayofyear" in lengths and "hour" in lengths:
+        time_ok = lengths["dayofyear"] in (365, 366) and lengths["hour"] == 24
+    else:
+        time_ok = False
+    details["time_axis"] = {key: lengths[key] for key in ("time", "dayofyear", "hour") if key in lengths}
+    if options and not time_ok:
+        errors.append("NetCDF time axis must be 8760/8784 hours or 365/366 days x 24 hours")
+    sampled = bad = 0
+    for name in sorted(required or set(list(data_variables)[:1])):
+        variable = data_variables[name]
+        index = tuple(
+            slice(None, None, max(1, len(dataset.dimensions[dim]) // 10))  # type: ignore[attr-defined]
+            if dim in ("latitude", "longitude", "lat", "lon") else slice(None)
+            for dim in variable.dimensions
+        )
+        flat = np.ma.asarray(variable[index]).filled(np.nan).reshape(-1)  # type: ignore[attr-defined]
+        sampled += int(flat.size)
+        bad += int(np.count_nonzero(~np.isfinite(flat)))  # type: ignore[attr-defined]
+    details.update({"validation_level": "data_variables_full_time_strided_space",
+                    "sampled_numeric_values": sampled, "sampled_non_finite_values": bad})
+    if bad:
+        errors.append("NetCDF data variable contains missing or non-finite values")
+    return errors, warnings, details
+
+
+# S-F-高1 (R5, A28): a replacement demand series whose annual energy is far
+# from the series it replaces is flagged with both annual energies (a unit
+# slip such as MWh/period read as MW doubles demand).  A warning only.
+DEMAND_SCALE_LIMITS = (1.0 / 1.5, 1.5)
+HOURS_PER_MODEL_YEAR = 8760.0
+
+
+def demand_annual_energy_mwh(path: Path, binding: Mapping[str, object]) -> float | None:
+    """Annual energy of a demand file read as MW: mean MW x 8,760 h (None when unreadable or empty)."""
+
+    try:
+        values, _invalid = _series_cells(path, binding)
+    except (OSError, UnicodeError, ValueError, csv.Error):
+        return None
+    if not values:
+        return None
+    return sum(values) / len(values) * HOURS_PER_MODEL_YEAR
+
+
+def demand_scale_warning(role: str, energy_mwh: float | None, reference_mwh: float | None,
+                         reference: str) -> str | None:
+    """GF_DATA_DEMAND_SCALE when ``energy_mwh`` / ``reference_mwh`` is outside DEMAND_SCALE_LIMITS."""
+
+    if energy_mwh is None or reference_mwh is None or reference_mwh <= 0:
+        return None
+    ratio = energy_mwh / reference_mwh
+    if DEMAND_SCALE_LIMITS[0] <= ratio <= DEMAND_SCALE_LIMITS[1]:
+        return None
+    return (f"GF_DATA_DEMAND_SCALE: {role} implies about {energy_mwh:,.0f} MWh per model year "
+            f"(mean MW x 8,760 h), {ratio:.2f} times {reference} (about {reference_mwh:,.0f} MWh per year). "
+            "Check the source unit: demand is read as MW, the average power of each half hour; "
+            "a MWh/period value is energy per period (MW x 0.5 h for a half-hour period).")
+
+
+def _origin_demand_warning(pack_root: Path, manifest: Mapping[str, object], role: str,
+                           binding: Mapping[str, object], path: Path) -> str | None:
+    """The scale check of a copied pack's demand against the pack it was copied from (S-F-高1)."""
+
+    origin = manifest.get("copy_origin")
+    source_id = origin.get("source_data_pack_id") if isinstance(origin, Mapping) else None
+    if not isinstance(source_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", source_id):
+        return None
+    source_root = Path(pack_root).parent / source_id
+    try:
+        source_manifest = json.loads((source_root / "manifest.json").read_text(encoding="utf-8"))
+        source_binding = dict(source_manifest["bindings"][role])
+        if str(source_binding.get("sha256") or "").lower() == str(binding.get("sha256") or "").lower():
+            return None
+        source_path = _resolve(source_root, str(source_binding.get("uri") or ""))
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return demand_scale_warning(role, demand_annual_energy_mwh(path, binding),
+                                demand_annual_energy_mwh(source_path, source_binding),
+                                f"the same role in the pack it was copied from ({source_id})")
+
+
 def _first_numeric_column(path: Path) -> tuple[list[float], int]:
     text, _encoding = _csv_text(path)
     rows = list(csv.reader(io.StringIO(text)))
@@ -124,9 +316,72 @@ def _first_numeric_column(path: Path) -> tuple[list[float], int]:
                     continue
                 invalid += 1
                 continue
+            if not math.isfinite(value):
+                invalid += 1  # L-2: NaN and infinity count as bad cells
+                continue
             values.append(value)
         candidates.append((values, invalid))
     return max(candidates, key=lambda item: len(item[0]))
+
+
+def _clock_note(
+    path: Path, role: str, binding: Mapping[str, object], count: int, periods: int,
+    details: dict[str, object], *, cyclic: bool,
+) -> str | None:
+    """What the corrected methodology's clock does with ``count`` periods (S-中2).
+
+    The same plan the mapping review shows (``series_reader.clock_alignment``);
+    ``details['clock_alignment']`` records it for the report.
+    """
+
+    from .series_reader import LENIENT, SeriesReadError, SeriesSpec, clock_alignment, registry_entry
+
+    try:
+        spec = SeriesSpec.from_binding(role, dict(binding), registry=registry_entry(path, dict(binding)))
+    except (SeriesReadError, OSError, ValueError):
+        return None
+    plan = clock_alignment(count, periods, spec, strictness=LENIENT, cyclic_default=cyclic)
+    details["clock_alignment"] = {
+        "reader": "value-corrected declared clock (UTC, fixed 365-day year)",
+        "source_periods": count,
+        "hourly_doubled": plan.hourly_doubled,
+        "leap_day_removed": plan.leap_day_removed,
+        "ignored_periods": plan.ignored_periods,
+        "wrapped_periods": plan.wrapped_periods,
+    }
+    text = plan.describe()
+    if text is None:
+        return None
+    return "on the model clock (VALUE corrected methodology): " + text[0].lower() + text[1:]
+
+
+def _clock_adapter_label(details: Mapping[str, object], periods: int) -> str:
+    """S-F-低2 (R5): the clock step the reader takes, from the same plan as ``clock_alignment``.
+
+    ``as_is`` for exactly one model year; otherwise the steps joined by ``+``
+    (hourly_to_half_hour, leap_day_removed, first_periods_used,
+    repeated_from_start).  Without a plan the earlier generic label stays.
+    """
+
+    plan = details.get("clock_alignment")
+    if isinstance(plan, Mapping):
+        steps = [name for name, key in (("hourly_to_half_hour", "hourly_doubled"), ("leap_day_removed", "leap_day_removed"),
+                                        ("first_periods_used", "ignored_periods"), ("repeated_from_start", "wrapped_periods"))
+                 if plan.get(key)]
+        return "+".join(steps) or "as_is"
+    if details.get("numeric_values") == periods:
+        return "as_is"
+    return str(details.get("clock_adapter"))
+
+
+def _own_manifest_bytes(pack_root: Path, manifest: Mapping[str, object]) -> bytes | None:
+    """The pack's manifest file bytes when ``manifest`` is that file's content (whitelist pins, N-1)."""
+
+    try:
+        raw = (Path(pack_root) / "manifest.json").read_bytes()
+        return raw if json.loads(raw.decode("utf-8")) == dict(manifest) else None
+    except (OSError, ValueError):
+        return None
 
 
 def validate_data_pack(
@@ -136,7 +391,14 @@ def validate_data_pack(
     *,
     full_year_periods: int = 17_520,
     verify_hashes_below_bytes: int = 32 * 1024 * 1024,
+    layers: bool = True,
 ) -> dict[str, object]:
+    """Validate a pack.  ``valid`` is the structural layer only (P0-5a S9).
+
+    With ``layers`` the report also carries the chronology and plausibility
+    layers and ``profile_eligibility`` (which findings block which
+    methodology profile); preflight reads the eligibility of the run's profile.
+    """
     pack_root = pack_root.resolve()
     if bool(manifest.get("teaching_only")):
         declared_periods = manifest.get("periods_per_year")
@@ -194,13 +456,13 @@ def validate_data_pack(
                 details.update({"csv_rows_including_optional_header": count, "first_row_columns": len(first_row), "encoding": encoding})
                 if role in DEMAND_ROLES:
                     details["clock_adapter"] = "take_first_required_periods"
-                    values, invalid = _first_numeric_column(path)
+                    values, invalid = _series_cells(path, binding)
                     details["numeric_values"] = len(values)
                     details["csv_data_rows"] = len(values)
                     details["non_numeric_or_missing_cells"] = invalid
                     if invalid:
                         row_errors.append(
-                            f"demand contains {invalid} non-numeric or missing data cells "
+                            f"demand contains {invalid} non-numeric, non-finite or missing data cells "
                             "after the optional header"
                         )
                     if len(values) < full_year_periods:
@@ -209,34 +471,48 @@ def validate_data_pack(
                             f"at least {full_year_periods} are required"
                         )
                     elif len(values) != full_year_periods:
+                        note = _clock_note(path, role, binding, len(values), full_year_periods, details,
+                                           cyclic=False)
                         row_warnings.append(
                             f"source contains {len(values)} numeric periods plus any header; "
-                            f"the VALUE adapter selects the first {full_year_periods} periods"
+                            + (note or f"the VALUE adapter selects the first {full_year_periods} periods")
                         )
-                    if any(not math.isfinite(value) or value < 0 for value in values):
-                        row_errors.append("demand contains a negative or non-finite value")
+                    if not invalid and values:
+                        scale = _origin_demand_warning(pack_root, manifest, role, binding, path)
+                        if scale:
+                            row_warnings.append(scale)
+                    negative = sum(1 for value in values if value < 0)
+                    if negative:
+                        # L-3: how many; the mapping editor lists the rows.
+                        row_errors.append(f"demand contains {negative} negative value(s)")
                 elif role in CYCLIC_MARKET_ROLES:
                     details["clock_adapter"] = "cyclic_repeat"
-                    values, invalid = _first_numeric_column(path)
+                    values, invalid = _series_cells(path, binding)
                     details["numeric_values"] = len(values)
                     details["csv_data_rows"] = len(values)
                     details["non_numeric_or_missing_cells"] = invalid
                     if invalid:
                         row_errors.append(
-                            f"cyclic market series contains {invalid} non-numeric or missing "
+                            f"cyclic market series contains {invalid} non-numeric, non-finite or missing "
                             "data cells after the optional header"
                         )
                     if len(values) < 1:
                         row_errors.append("cyclic market series is empty")
-                    elif len(values) != full_year_periods:
-                        row_warnings.append(
-                            f"source contains {len(values)} numeric periods plus any header; "
-                            "the VALUE interconnector adapter repeats it cyclically"
-                        )
+                    # L-2: with bad cells the error above explains the count.
+                    # S-中2: the note says what the reader does with this length
+                    # (hourly -> two half-hours, 29 February removed, repeated
+                    # from the start, or truncated), not "repeats it cyclically".
+                    elif len(values) != full_year_periods and not invalid:
+                        note = _clock_note(path, role, binding, len(values), full_year_periods, details,
+                                           cyclic=True)
+                        if note:
+                            row_warnings.append(
+                                f"source contains {len(values)} numeric periods plus any header; {note}"
+                            )
                 elif role in VRE_PROFILE_ROLES:
                     details["clock_adapter"] = "hourly_or_half_hour_profile"
                     minimum = max(full_year_periods // 2, 1)
-                    values, invalid = _first_numeric_column(path)
+                    values, invalid = _series_cells(path, binding)
                     details["numeric_values"] = len(values)
                     details["csv_data_rows"] = len(values)
                     details["non_numeric_or_missing_cells"] = invalid
@@ -247,7 +523,7 @@ def validate_data_pack(
                         )
                     if invalid:
                         row_errors.append(
-                            f"VRE profile contains {invalid} non-numeric or missing data cells "
+                            f"VRE profile contains {invalid} non-numeric, non-finite or missing data cells "
                             "after the optional header"
                         )
                     if any(not math.isfinite(value) or value < 0 or value > 1 for value in values):
@@ -309,37 +585,18 @@ def validate_data_pack(
                             details["dimensions"] = {
                                 name: len(value) for name, value in dataset.dimensions.items()
                             }
-                            numeric_variables = [
-                                value for value in dataset.variables.values()
-                                if getattr(value.dtype, "kind", "") in {"i", "u", "f"}
-                                and value.size > 0
-                            ]
-                            if not numeric_variables:
-                                row_errors.append("NetCDF has no numeric data variable")
-                            sampled = 0
-                            bad = 0
-                            for variable in numeric_variables[:8]:
-                                bounded = (
-                                    variable[...]
-                                    if getattr(variable, "ndim", 0) == 0
-                                    else variable[: min(variable.shape[0], 2)]
-                                )
-                                flat = np.ma.asarray(bounded).filled(np.nan).reshape(-1)
-                                sampled += int(flat.size)
-                                bad += int(np.count_nonzero(~np.isfinite(flat)))
-                            details.update({
-                                "validation_level": "metadata_plus_bounded_chunks",
-                                "sampled_numeric_values": sampled,
-                                "sampled_non_finite_values": bad,
-                            })
-                            if bad:
-                                row_errors.append("NetCDF bounded sample contains missing or non-finite values")
+                            nc_errors, nc_warnings, nc_details = _netcdf_structure(dataset, role, np)
+                            row_errors.extend(nc_errors)
+                            row_warnings.extend(nc_warnings)
+                            details.update(nc_details)
                     except (OSError, RuntimeError, IndexError) as exc:
                         row_errors.append(f"invalid NetCDF structure: {exc}")
             elif file_format == "zarr":
                 details["validation_level"] = "container_only"
                 row_warnings.append("Zarr deep chunk validation requires the optional zarr capability")
 
+            if details.get("clock_adapter") in ("take_first_required_periods", "cyclic_repeat"):
+                details["clock_adapter"] = _clock_adapter_label(details, full_year_periods)
             expected_unit = slot.get("unit")
             declared_unit = binding.get("unit")
             if role in DEMAND_ROLES and expected_unit == "MW":
@@ -362,6 +619,13 @@ def validate_data_pack(
                     "interval_minutes": 30, "definition_id": "value.legacy-demand-label/v1"}
                 row_warnings.append("Legacy demand label MWh/period is interpreted as raw MW, as in historical VALUE runs. "
                                     "Use CSV mapping with an explicit source unit for new data; old bytes are unchanged.")
+            elif (expected_unit and declared_unit != expected_unit and details.get("checksum_verified") is True
+                  and _registry_unit(path, binding) == expected_unit):
+                # A verified registry object whose label is known to be wrong
+                # (GBP1 public1 interconnector flows: MWh/period on MW values, P6-12).
+                details["registry_unit_interpretation"] = {"declared_unit": declared_unit, "runtime_unit": expected_unit}
+                row_warnings.append(f"unit label {declared_unit} is a known mislabel of this object; "
+                                    f"the values are {expected_unit} (truth registry)")
             elif expected_unit and declared_unit != expected_unit:
                 row_errors.append(f"unit {declared_unit} does not match canonical {expected_unit}")
 
@@ -370,10 +634,28 @@ def validate_data_pack(
         errors.extend(f"{role}: {item}" for item in row_errors)
         warnings.extend(f"{role}: {item}" for item in row_warnings)
 
+    layer_report = None
+    eligibility = None
+    if layers:
+        from .data_validation_layers import evaluate_layers, profile_eligibility
+
+        try:
+            layer_report = evaluate_layers(pack_root, manifest, periods=full_year_periods)
+            eligibility = profile_eligibility(manifest, layer_report, structural_valid=not errors,
+                                              manifest_bytes=_own_manifest_bytes(pack_root, manifest))
+        except Exception as exc:  # noqa: BLE001 - the layers never decide validity
+            layer_report = {"status": "not_evaluated", "error": f"{type(exc).__name__}: {exc}"}
     return {
         "schema_version": SCHEMA_VERSION,
         "data_pack_id": manifest.get("id"),
         "valid": not errors,
+        "layers": {
+            "structural": {"status": "passed" if not errors else "failed", "decides_valid": True},
+            **({"chronology": layer_report["chronology"], "plausibility": layer_report["plausibility"],
+                "evidence": layer_report["evidence"]} if layer_report and "chronology" in layer_report
+               else ({"not_evaluated": layer_report} if layer_report else {})),
+        },
+        "profile_eligibility": eligibility,
         "required_count": sum(bool(slot.get("required")) for slot in slot_by_role.values()),
         "valid_required_count": sum(
             bool(slot_by_role[row["role"]].get("required")) and row["status"] == "passed"

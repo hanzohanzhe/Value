@@ -20,6 +20,7 @@ import numpy as np
 import pulp
 
 from gridform_core.v2.contracts import ChronologicalPSMData
+from gridform_validation.cbc import cbc_identity, cbc_path
 
 
 ORACLE_ID = "value.independent-pulp-cbc-oracle/v1"
@@ -50,8 +51,11 @@ def _profile(values, fallback: float, periods: int, label: str) -> np.ndarray:
 
 
 def _cbc() -> pulp.LpSolver:
-    solver = pulp.COIN_CMD(msg=False, mip=False, threads=1)
-    if not solver.available():
+    try:
+        solver = pulp.COIN_CMD(msg=False, mip=False, threads=1, path=cbc_path())
+    except RuntimeError:
+        solver = None
+    if solver is None or not solver.available():
         raise RuntimeError("Independent CBC executable is unavailable; validation is NOT_INDEPENDENT")
     return solver
 
@@ -79,6 +83,7 @@ def solver_identity() -> dict[str, object]:
         ),
         "python": platform.python_version(),
         "license": {"PuLP": "MIT", "CBC": "EPL-2.0"},
+        "solver_locator": cbc_identity(),
     }
 
 

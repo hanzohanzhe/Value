@@ -1,9 +1,9 @@
-# 基于 FORCE 构建你自己的电力系统模型 101
+# 基于 VALUE 构建你自己的电力系统模型 101
 
 [English version](BUILD_YOUR_OWN_MODEL_101.md)
 
 这是一份从“我有自己的数据或方法”走到“我有一个可运行、可审计、可复现的
-FORCE 衍生模型”的总教程。它面向研究者和模型开发者，不要求先理解 Scheme C
+VALUE 衍生模型”的总教程。它面向研究者和模型开发者，不要求先理解 Scheme C
 的私有实现。
 
 如果你只想写一个具体 module，请继续阅读
@@ -11,13 +11,13 @@ FORCE 衍生模型”的总教程。它面向研究者和模型开发者，不�
 数据、参数、module，还是升级平台；Module 101 负责 `module.zip` 的代码、manifest
 和测试细节。
 
-## 1. 先理解：FORCE 模型不是一个 Python 文件
+## 1. 先理解：VALUE 模型不是一个 Python 文件
 
-一次可复现的 FORCE 研究由五部分共同定义：
+一次可复现的 VALUE 研究由五部分共同定义：
 
 ```text
 模型身份
-  = FORCE 平台与 contract 版本
+  = VALUE 平台与 contract 版本
   + data-pack revision 与每个对象的 SHA-256
   + Study 年份、科学参数与 revision
   + 七个 slot 的 module ID、版本与源码哈希
@@ -31,7 +31,7 @@ module 组装起来的运行配方；它不会拥有或修改原始数据库，�
 
 ## 2. 一套数据底座，加三种深度的替换/升级
 
-在 FORCE 上构建自己的模型时，先连接数据；随后按研究变化的深度选择下面三种
+在 VALUE 上构建自己的模型时，先连接数据；随后按研究变化的深度选择下面三种
 机制。不要把所有改动都写成 module。
 
 | 层级 | 适用变化 | 是否写 Python | 是否改变生命周期或输入维度 |
@@ -74,11 +74,11 @@ Data pack 是有版本、可校验的数据清单。它把来源专用文件映�
 role，而不是让模型代码依赖某个人桌面上的绝对路径。当前 v2 有 25 个必需角色：
 
 - PSM：现有发电机组、预测/实际需求、风/光天气，以及法国、比利时、荷兰、
-  挪威和爱尔兰的进口可用量与价格；
+  挪威和爱尔兰的互联线可用量（正值为进口容量，负值为出口能力）与价格；
 - CEM：太阳能、陆上风、海上风 profile，标准化和原始 REPD 项目，资本成本、
   policy/support、规划时间、规划成功率和模型参数。
 
-权威角色、允许格式和单位定义在 `gridform_core/catalog.py` 的 `DATASET_SLOTS`，
+权威角色、允许格式和单位定义在 `gridform_core/dataset_slots.py` 的 `DATASET_SLOTS`（`gridform_core/catalog.py` 原样转出），
 前端 **Data** 页面由同一清单生成。不要只根据文件名猜用途。
 
 ### 3.2 每个 binding 至少应声明
@@ -164,28 +164,28 @@ YearState(y)
 下一段就会收到前一段的真实结果。
 
 但“七个都可替换”仍有明确边界：年度调用顺序、现有输入维度、共享状态、成本/
-碳账本和结果契约仍由平台定义。全替换得到的是“在 FORCE 生命周期内的全新模型”，
+碳账本和结果契约仍由平台定义。全替换得到的是“在 VALUE 生命周期内的全新模型”，
 不是允许任意函数签名和任意生命周期的通用脚本启动器。
 
 ### 5.2 `module.zip` 是什么
 
-它是一个 `force.module-bundle/v1` 安装包，至少包括：
+它是一个 `value.module-bundle/v1` 安装包，至少包括：
 
 ```text
 my-module.zip
-  bundle.json              # 精确文件清单和每个文件的 SHA-256
-  module/
-    module.json            # gridform.module/v2 manifest
-    LICENSE
-    METHOD.md              # 推荐：方程、假设和验证边界
+  force-bundle.json        # 构建器生成的精确文件清单和每个文件的 SHA-256
+  value-module.json        # value.module/v2 manifest
+  LICENSE
+  README.md                # 推荐：方程、假设和验证边界
+  src/
     my_package/
       __init__.py
-      implementation.py    # manifest 指向的入口类
+      plugin.py            # manifest 指向的入口类
 ```
 
 安装器验证路径、哈希、manifest、入口、slot/contract 和 callable conformance，
 然后原子安装到本地 module registry。它不执行 `pip`，不下载依赖，也不接受 native
-binary。外部代码仍在 FORCE Python 进程内运行；conformance 证明接线正确，不证明
+binary。外部代码仍在 VALUE Python 进程内运行；conformance 证明接线正确，不证明
 科学方法正确。
 
 精确字段、七类入口模板、打包命令和测试示例见
@@ -198,7 +198,7 @@ binary。外部代码仍在 FORCE Python 进程内运行；conformance 证明接
 3. 在 **Modules → Install a model module** 上传并审查 ZIP。
 4. 在 **Studies** 复制一个 Study revision，在对应下拉框选择新 module。
 5. 先运行 two-period wiring；再运行 two-year smoke、完整年度和所需的多年测试。
-6. 在 **Runs** 比较旧/新 Study；在 **Inspect** 检查逐期出清、弃电和 planning。
+6. 在 **Compare** 页以基线 Run 为参照 Run 比较新旧 Run；在 **Inspect** 检查逐期出清和 planning，在该 Run 的 **Network & redispatch** 页查看弃电归因。
 
 ## 6. 方式三：升级平台 contract 或生命周期
 
@@ -217,7 +217,7 @@ binary。外部代码仍在 FORCE Python 进程内运行；conformance 证明接
 
 1. 写 extension proposal：科学问题、方程、输入、输出、状态所有权和兼容边界。
 2. 为新数据定义 semantic roles、schema、单位、时间/空间索引和 provenance。
-3. 新建版本化 contract，例如 `gridform.network-psm/v1`，不要静默改写 v2 含义。
+3. 新建版本化 contract，例如 `value.network-psm/v1`，不要静默改写 v2 含义。
 4. 修改 canonical adapter，使新输入被验证、冻结并传入 module。
 5. 声明 module capability 与兼容规则；不兼容的 Study 在 preflight 失败。
 6. 如有新阶段，更新 orchestrator、checkpoint、state transition 和 module registry。
@@ -229,7 +229,7 @@ binary。外部代码仍在 FORCE Python 进程内运行；conformance 证明接
 
 ### 6.3 DC/AC transmission 的具体路线
 
-英国基线仍是单节点模型，但 0.6 扩展线已经并行提供 solver-neutral network
+英国基线仍是单节点模型，但 VALUE 已经并行提供 solver-neutral network
 contract。它以条件角色加入 buses、branches、asset-to-bus mapping 和 nodal demand，
 不会迁移旧 Study。因此：
 
@@ -248,8 +248,8 @@ contract。它以条件角色加入 buses、branches、asset-to-bus mapping 和 
 
 当前 reference contract 已提供：
 
-- `force.network.buses`、`force.network.branches`；
-- `force.network.asset-map`、`force.network.nodal-demand`；
+- `value.network.buses`、`value.network.branches`；
+- `value.network.asset-map`、`value.network.nodal-demand`；
 - DC 的角度、线路限额、KCL/KVL、拥塞和节点价格输出；
 - AC 的电压、无功、损耗、tap 和收敛状态；
 - `network.single-node`、`network.dc/v1`、`network.ac/v1` capability。
@@ -286,25 +286,25 @@ reference DC 模块已经通过 2/3-bus、24/168 小时、随机、孤岛和故�
 自己的 data pack
   + psm/storage_cost/vre_cap/storage_cap/investment/pipeline/transition modules
   + 自己的 Study 参数
-  -> FORCE orchestrator、账本、checkpoint、比较和 Inspect
+  -> VALUE orchestrator、账本、checkpoint、比较和 Inspect
 ```
 
-这是一套真正不同的模型，但它主动复用了 FORCE 的生命周期和公共契约。
+这是一套真正不同的模型，但它主动复用了 VALUE 的生命周期和公共契约。
 
 ### D. 建立带 transmission expansion 的网络模型
 
 ```text
-force-network-contract-extension
+value-network-contract-extension
   + 网络 data pack roles
   + 替换型或 reference network PSM module
-  + 可选 force-network-expansion-extension
+  + 可选 value-network-expansion-extension
   + network-expansion module
   + 网络结果页面与验证套件
 ```
 
-0.6 扩展线已经发布 solver-neutral network contract。这里仍然是两类安装包：
-`force.extension-bundle/v1` 声明数据角色和 capability，
-`force.module-bundle/v1` 提供求解器或生命周期实现。一个普通 module ZIP 不能
+VALUE 已经发布 solver-neutral network contract。这里仍然是两类安装包：
+`value.extension-bundle/v1` 声明数据角色和 capability，
+`value.module-bundle/v1` 提供求解器或生命周期实现。一个普通 module ZIP 不能
 暗中发明数据角色或改写核心 contract。
 
 ## 8. 推荐的衍生研究项目目录
@@ -312,7 +312,7 @@ force-network-contract-extension
 不要把所有内容混成一个不透明 ZIP。推荐把来源、可执行代码和研究配方分开：
 
 ```text
-my-force-model/
+my-value-model/
   MODEL_CARD.md
   CITATION.cff
   LICENSES/
@@ -356,7 +356,7 @@ data pack、module 和 Study 分别安装/导入，最后由 Study 组合。这�
 
 每个结果至少应冻结并保存：
 
-- FORCE 平台、API 和 contract schema 版本；
+- VALUE 平台、API 和 contract schema 版本；
 - Study ID、revision、年份和 effective parameters；
 - data-pack ID/revision、binding 和对象 SHA-256；
 - module ID、version、scientific version、source SHA-256 和 capability；
@@ -364,7 +364,7 @@ data pack、module 和 Study 分别安装/导入，最后由 Study 组合。这�
 - 成本/碳定义、terminal policy、随机种子和 solver 身份；
 - validation report、运行工件和许可证。
 
-发布衍生模型时，提供 `MODEL_CARD.md`，明确写出：研究问题、相对 FORCE 基线改了
+发布衍生模型时，提供 `MODEL_CARD.md`，明确写出：研究问题、相对 VALUE 基线改了
 哪一层、哪些能力未实现、数据再分发权、测试范围和允许的科学结论。不能用 smoke
 test 宣称完成年度验证，也不能把“安装成功”写成“科学正确”。
 

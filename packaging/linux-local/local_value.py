@@ -23,6 +23,15 @@ SCHEMA = "value.linux-local-install/v1"
 UI_PORTS = {8800, 18800}
 
 
+def isolated_python_argv(python, prefix):
+    """-B -s and a fresh pycache_prefix: never read source-tree bytecode (R1-07).
+
+    Same contract as app/backend/lifecycle/python_argv.py; this controller
+    runs on the external interpreter before app/ is importable.
+    """
+    return [str(python), "-B", "-s", "-X", f"pycache_prefix={prefix}"]
+
+
 def sha(path):
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -183,6 +192,22 @@ def owned(entry, token):
                 and f"VALUE_LOCAL_INSTANCE={token}".encode() in actual["environment"])
 
 
+def background_runs(data_home):
+    """Runs whose model worker still holds its lease (they keep running)."""
+    names = []
+    for lock in sorted(Path(data_home).glob("runs/*/worker.lock")):
+        try:
+            with lock.open("r+b") as stream:
+                try:
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+                except BlockingIOError:
+                    names.append(lock.parent.name)
+        except OSError:
+            continue
+    return names
+
+
 def health(port, path):
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=2) as response: return response.status == 200
@@ -229,11 +254,14 @@ def start(prefix, config):
                 sock.listen(1)
             except OSError as exc: raise ValueError(f"Local port {port} is occupied; no existing process will be stopped.") from exc
     token = uuid.uuid4().hex; app = prefix / "app"
+    pycache = tempfile.mkdtemp(prefix="value-pycache-")
     env = os.environ.copy(); env.pop("PYTHONHOME", None); env.pop("NODE_PATH", None); env.pop("NODE_OPTIONS", None)
     env.update(VALUE_DATA_HOME=config["data_home"], PYTHONPATH=str(app), VALUE_LOCAL_INSTANCE=token, PYTHONHASHSEED="0",
-               PYTHONDONTWRITEBYTECODE="1", OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
-    commands = {"api": [rt["python"]["path"], "-m", "backend.server", "--host", "127.0.0.1", "--port", str(config["api_port"])],
-                "ui": [rt["node"]["path"], str(app / "scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", str(config["ui_port"])]}
+               PYTHONDONTWRITEBYTECODE="1", PYTHONPYCACHEPREFIX=pycache, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    commands = {"api": [*isolated_python_argv(rt["python"]["path"], pycache), "-m", "backend.server", "--host", "127.0.0.1", "--port", str(config["api_port"])],
+                # --api-origin follows --port; the gateway reads the API session from VALUE_DATA_HOME (no token here).
+                "ui": [rt["node"]["path"], str(app / "scripts/serve-value-ui.mjs"), "--host", "127.0.0.1", "--port", str(config["ui_port"]),
+                       "--api-origin", f"http://127.0.0.1:{config['api_port']}"]}
     processes = {}; children = []
     record = {"schema_version": "value.linux-local-processes/v1", "prefix": str(prefix), "token": token, "processes": processes}
     try:
@@ -247,7 +275,7 @@ def start(prefix, config):
         deadline = time.monotonic() + 40
         while time.monotonic() < deadline:
             if any(child.poll() is not None for child in children): raise ValueError("A local service exited; inspect diagnostics/api.log and ui.log.")
-            if health(config["api_port"], "/api/health") and health(config["ui_port"], "/"):
+            if health(config["api_port"], "/api/health") and health(config["ui_port"], "/") and health(config["ui_port"], "/api/health"):
                 print(json.dumps({"status": "started", "ui": f"http://127.0.0.1:{config['ui_port']}", "api": f"http://127.0.0.1:{config['api_port']}", "data_home": config["data_home"]})); return
             time.sleep(0.2)
         raise ValueError("Local service readiness timed out; inspect diagnostics logs.")
@@ -273,7 +301,8 @@ def diagnose(prefix, config):
     if path.exists():
         record = read(path); report["process_ownership"] = {kind: owned(entry, record["token"]) for kind, entry in record["processes"].items()}
     else: report["process_ownership"] = {}
-    report["health"] = {"api": health(config["api_port"], "/api/health"), "ui": health(config["ui_port"], "/")}
+    report["health"] = {"api": health(config["api_port"], "/api/health"), "ui": health(config["ui_port"], "/"),
+                        "ui_gateway_to_api": health(config["ui_port"], "/api/health")}
     report["logs"] = {}
     for name in ("api.log", "ui.log"):
         path = prefix / "diagnostics" / name
@@ -297,7 +326,7 @@ def main():
     try:
         if platform.system() != "Linux" or platform.machine() not in {"x86_64", "AMD64"}: raise ValueError("This candidate targets Linux x86-64.")
         if args.command == "install":
-            if args.ui_port not in UI_PORTS: raise ValueError("Choose UI port 8800 or 18800; these origins are allowed by the local API.")
+            if args.ui_port not in UI_PORTS: raise ValueError("Choose UI port 8800 or 18800.")
             install(args); return
         prefix = absolute(args.prefix); config = config_for(prefix)
         with (prefix / "control.lock").open("a") as lock:
@@ -307,7 +336,9 @@ def main():
             else:
                 path = prefix / "processes.json"
                 if path.exists(): stop_record(read(path)); path.unlink()
-                print(json.dumps({"status": "stopped", "data_preserved": True}))
+                # Model workers run in their own sessions and keep running (Q4).
+                print(json.dumps({"status": "stopped", "data_preserved": True,
+                                  "background_runs": background_runs(Path(config["data_home"]))}))
     except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError) as exc:
         raise SystemExit(str(exc)) from exc
 

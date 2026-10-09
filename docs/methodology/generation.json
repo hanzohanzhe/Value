@@ -1,7 +1,7 @@
 {
-  "edition": "0.3",
-  "date": "2026-10-04",
-  "basis": "2026-10-02",
+  "edition": "0.4.1",
+  "date": "2026-10-09",
+  "basis": "2026-10-09",
   "chapterIDs": [
     "introduction",
     "datasets",
@@ -19,14 +19,20 @@
   ],
   "checks": {
     "declared_nine_chapters": true,
-    "scientific_TeX_preserved": true,
-    "source_tables_preserved": true,
-    "numeric_tokens_preserved_after_chapter_reference_updates": true,
-    "bilingual_chapter_structure_matched": true
+    "bilingual_chapter_structure_matched": true,
+    "implementation_review": "passed",
+    "render_review": "passed",
+    "bilingual_display_math_equal": true,
+    "bilingual_inline_math_equal": true,
+    "bilingual_code_identifiers_equal": true,
+    "implementation_variable_names": "passed"
   },
   "scope_changes": [
-    "Remove independent site-capacity engine chapter and its introduction and dataset-guide cross-references",
-    "Renumber the retained nine chapters and update references to perfect-foresight and carbon-accounting chapters"
+    "Apply data-pack development timelines and regional success rates to endogenous investment",
+    "Correct thermal rounding, storage settlement, nuclear fleet description and DC circuit limits",
+    "Document public2 operational data and the public2 23-zone research suite supplied with VALUE 0.7.0-alpha.1",
+    "Use implementation variable and function names in equations and pseudocode, with adjacent definitions",
+    "Describe spatial allocation and evaluation coverage for staged and zonal results"
   ],
   "dependencies": {
     "mathjax-full": "3.2.2",

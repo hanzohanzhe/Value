@@ -1,7 +1,27 @@
 """Executable fixed-price experiment; no scientific cost-recovery claim."""
 
+from dataclasses import dataclass
 from math import isfinite
-from gridform_core.builtin.scheme_c_1000twh.compat.storage_cost import AnnualStorageObservation
+
+
+@dataclass
+class AnnualStorageObservation:
+    """This example's own annual sales record.
+
+    A module depends only on the public slot contract, never on VALUE's
+    private ``scheme_c_1000twh/compat`` internals (MODULE_DEVELOPER_101,
+    section 4), so the example keeps its own small record.
+    """
+
+    year: int | None = None
+    sold_energy_mwh: float = 0.0
+    dwell_weighted_sold_mwh_periods: float = 0.0
+
+    @property
+    def average_dwell_periods(self) -> float:
+        if self.sold_energy_mwh <= 0:
+            return 0.0
+        return self.dwell_weighted_sold_mwh_periods / self.sold_energy_mwh
 
 
 class FlatStorageOffer:

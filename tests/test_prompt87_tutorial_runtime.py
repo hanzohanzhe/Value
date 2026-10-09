@@ -3,10 +3,8 @@ from __future__ import annotations
 import json
 import io
 import tempfile
-import threading
 import unittest
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
@@ -19,6 +17,7 @@ from gridform_core.run_policy import resolve_run_policy
 from gridform_core.scientific_validation import build_scientific_validation_report
 from gridform_core.value_101 import value_101_descriptor, value_101_study
 from scripts.install_synthetic_pack import install_builtin_packs
+from tests.local_api_harness import start_local_api
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -180,6 +179,11 @@ class TutorialRuntimeTests(unittest.TestCase):
             if row["pack_id"] == "value-101-baseline-v1"
         )
         self.assertTrue(baseline["installed"])
+        # M-D9: the missing-pack hint also names the source-checkout command.
+        self.assertIsNone(descriptor["availability"]["corrective_action"])
+        hint = value_101_descriptor(installed_pack_ids=set())["availability"]["corrective_action"]
+        self.assertIn("standard VALUE installer", hint)
+        self.assertIn("scripts/install_synthetic_pack.py --value-101-only", hint)
         with tempfile.TemporaryDirectory(prefix="value-101-api-") as temporary:
             packs = Path(temporary) / "data-packs"
             patches = (
@@ -189,10 +193,8 @@ class TutorialRuntimeTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 payload = json.loads(
                     urllib.request.urlopen(origin + "/api/tutorials/value-101", timeout=10).read()
@@ -201,9 +203,7 @@ class TutorialRuntimeTests(unittest.TestCase):
                 self.assertFalse(payload["availability"]["all_packs_installed"])
                 self.assertEqual(payload["study"]["data_pack_id"], "value-101-baseline-v1")
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

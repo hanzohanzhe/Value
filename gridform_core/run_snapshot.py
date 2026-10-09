@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
@@ -21,13 +22,26 @@ from .frontend_contract import (
     validate_project_solver_contract,
 )
 from .data_adapters import AdapterSpec, execute_adapter
+from .pack_source_identity import IDENTITY_TRANSFORMATION, SOURCE_FIELD, frozen_source, source_record
 
 
 SCHEMA_VERSION = "value.run-input-snapshot/v1"
 
 
 class SnapshotError(RuntimeError):
-    pass
+    """Frozen-input verification failure; ``code`` is set when it is stable."""
+
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+METHOD_SUPERSEDED = "GF_RUN_METHOD_SUPERSEDED"
+_SUPERSEDED_ACTION = (
+    "The Run's results stay readable; to compute it again with the current "
+    "method use frozen-run recovery in migration mode, which shows every "
+    "changed setting before a new Study revision is saved."
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -98,9 +112,23 @@ def _freeze_pack(
     destination_name: str,
     pack_kind: str,
     object_root: Path,
+    manifest_bytes: bytes | None = None,
 ) -> tuple[dict[str, object], list[dict[str, object]]]:
-    """Freeze one data product without merging its namespace or provenance."""
+    """Freeze one data product without merging its namespace or provenance.
 
+    The frozen manifest records its source manifest (the exact file bytes and
+    their shas, ``pack_source_identity``) so a methodology pin on the source
+    manifest still identifies the frozen copy (decision Q3).
+
+    Freezing a verified frozen copy again (a run-input snapshot used as a pack
+    root) keeps that copy's record and its bindings' transformation identity:
+    the data files are already the frozen bytes, so no adapter runs again,
+    and the new copy is identified by the original source exactly as the
+    first copy was (preflight on the first copy and the worker on the second
+    see the same identity).
+    """
+
+    inherited = frozen_source(pack_manifest)
     frozen_manifest = dict(pack_manifest)
     frozen_bindings: dict[str, dict[str, object]] = {}
     objects: list[dict[str, object]] = []
@@ -121,8 +149,13 @@ def _freeze_pack(
         expected = source_sha256
         normalized_source = source
         adapter_payload = binding.get("adapter")
-        transformation_id = "identity/v1"
-        if isinstance(adapter_payload, Mapping):
+        transformation_id = IDENTITY_TRANSFORMATION
+        if inherited is not None:
+            # Already frozen bytes: copy them; the chain back to the original
+            # source digest and transformation stays as recorded.
+            source_sha256 = str(raw_binding.get("source_sha256") or "").lower()
+            transformation_id = str(raw_binding.get("transformation_id") or "")
+        elif isinstance(adapter_payload, Mapping):
             specification = AdapterSpec.from_dict(adapter_payload)
             if specification.canonical_role != role:
                 raise SnapshotError(
@@ -170,6 +203,12 @@ def _freeze_pack(
         })
     frozen_manifest["bindings"] = frozen_bindings
     frozen_manifest["snapshot_frozen"] = True
+    if inherited is not None:
+        frozen_manifest[SOURCE_FIELD] = copy.deepcopy(pack_manifest[SOURCE_FIELD])  # type: ignore[index]
+        if frozen_source(frozen_manifest) is None:
+            raise SnapshotError(f"The re-frozen {pack_kind} data pack lost its source manifest identity")
+    else:
+        frozen_manifest[SOURCE_FIELD] = source_record(pack_manifest, manifest_bytes)
     return frozen_manifest, objects
 
 
@@ -195,12 +234,13 @@ def create_run_input_snapshot(
     staging = run_dir / f".snapshot-{uuid.uuid4().hex[:12]}.tmp"
     staging.mkdir(parents=True, exist_ok=False)
     try:
-        pack_manifest = json.loads((pack_root / "manifest.json").read_text(encoding="utf-8"))
+        pack_manifest_bytes = (pack_root / "manifest.json").read_bytes()
+        pack_manifest = json.loads(pack_manifest_bytes.decode("utf-8"))
         network_pack_manifest = None
+        network_pack_manifest_bytes = None
         if network_pack_root is not None:
-            network_pack_manifest = json.loads(
-                (network_pack_root / "manifest.json").read_text(encoding="utf-8")
-            )
+            network_pack_manifest_bytes = (network_pack_root / "manifest.json").read_bytes()
+            network_pack_manifest = json.loads(network_pack_manifest_bytes.decode("utf-8"))
             declared_network_id = str(
                 dict(project.get("market_configuration") or {}).get("network_pack_id") or ""
             )
@@ -228,7 +268,7 @@ def create_run_input_snapshot(
                 require_acknowledgement=True,
             )
         except ProjectSolverContractError as exc:
-            raise SnapshotError(f"{exc.code}: {exc}") from exc
+            raise SnapshotError(f"{exc.code}: {exc}", exc.code) from exc
         if canonical_solver_contract is not None and canonical_solver_contract != project.get(
             "solver_contract"
         ):
@@ -249,6 +289,7 @@ def create_run_input_snapshot(
             destination_name="pack",
             pack_kind="base",
             object_root=object_root,
+            manifest_bytes=pack_manifest_bytes,
         )
         frozen_network_manifest = None
         if network_pack_manifest is not None and network_pack_root is not None:
@@ -259,6 +300,7 @@ def create_run_input_snapshot(
                 destination_name="network-pack",
                 pack_kind="network_overlay",
                 object_root=object_root,
+                manifest_bytes=network_pack_manifest_bytes,
             )
             objects.extend(network_objects)
         project_payload = dict(project)
@@ -359,9 +401,18 @@ def verify_run_input_snapshot(
     for row in manifest.get("modules", []):
         current = registry.manifest(str(row["module_id"]), expected_slot=str(row["slot"]))
         if current.version != row["module_version"] or current.contract_version != row["contract_version"]:
-            raise SnapshotError(f"Module identity changed after enqueue: {row['module_id']}")
+            raise SnapshotError(
+                f"{METHOD_SUPERSEDED}: Module identity changed after enqueue: "
+                f"{row['module_id']} {row['module_version']} -> {current.version}. "
+                + _SUPERSEDED_ACTION,
+                METHOD_SUPERSEDED,
+            )
         if sha256_file(_source_path(current.implementation)) != row["source_sha256"]:
-            raise SnapshotError(f"Module source changed after enqueue: {row['module_id']}")
+            raise SnapshotError(
+                f"{METHOD_SUPERSEDED}: Module source changed after enqueue: "
+                f"{row['module_id']}. " + _SUPERSEDED_ACTION,
+                METHOD_SUPERSEDED,
+            )
     selected = {
         str(row["slot"]): str(row["module_id"]) for row in manifest.get("modules", [])
     }
@@ -382,7 +433,12 @@ def verify_run_input_snapshot(
             require_acknowledgement=True,
         )
     except ProjectSolverContractError as exc:
-        raise SnapshotError(f"{exc.code}: {exc}") from exc
+        if exc.code == "GF_SOLVER_CONTRACT_UPGRADE_REQUIRED":
+            raise SnapshotError(
+                f"{METHOD_SUPERSEDED}: {exc}. " + _SUPERSEDED_ACTION,
+                METHOD_SUPERSEDED,
+            ) from exc
+        raise SnapshotError(f"{exc.code}: {exc}", exc.code) from exc
     if canonical_solver_contract is not None and canonical_solver_contract != project.get(
         "solver_contract"
     ):
@@ -398,5 +454,9 @@ def verify_run_input_snapshot(
     )
     frozen_graph = dict(manifest.get("module_resolution_graph") or {})
     if current_graph.graph_sha256 != frozen_graph.get("graph_sha256"):
-        raise SnapshotError("Module resolution graph changed after enqueue")
+        raise SnapshotError(
+            f"{METHOD_SUPERSEDED}: Module resolution graph changed after enqueue. "
+            + _SUPERSEDED_ACTION,
+            METHOD_SUPERSEDED,
+        )
     return manifest

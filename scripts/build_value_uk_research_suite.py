@@ -1,4 +1,23 @@
-"""Reseal local UK research inputs as a minimal, VALUE-only research suite."""
+"""Build the VALUE-UK two-pack research suite.
+
+Each component is either resealed from a local source pack (``--base-source``,
+``--network-source``: VALUE identity, only the runtime roles) or taken as an
+already published data bundle, byte for byte (``--base-bundle``,
+``--network-bundle``: no re-wrapping, so the suite's component SHA-256 is the
+published bundle's).  ``--suite-id``, ``--base-pack-id`` (resealed base only;
+checked against a published base bundle) and ``--study-id-suffix`` make a
+second suite on another base pack reproducible, e.g. the GBP1-public2 suite
+(DECISIONS A34)::
+
+    build_value_uk_research_suite.py \
+        --base-bundle value-uk-open-data-pack-public2-2026-10-09.zip \
+        --network-bundle value-gb-zonal-network-v1-c9e841112c40-2026-10-04.zip \
+        --suite-id value-uk-research-suite-v1-public2 --study-id-suffix=-public2 \
+        --study-name-suffix " (GBP1 public2)" --output suite.zip --receipt receipt.json
+
+The two Study templates always come from
+``gridform_core.value_uk.value_uk_study_templates(base_pack_id, network_pack_id)``.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +29,7 @@ import re
 import shutil
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -18,8 +38,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gridform_core.data_bundle import build_data_bundle  # noqa: E402
-from gridform_core.research_suite import build_research_suite  # noqa: E402
+from gridform_core.data_bundle import build_data_bundle, validate_data_bundle  # noqa: E402
+from gridform_core.research_suite import DEFAULT_SUITE_ID, build_research_suite  # noqa: E402
 from gridform_core.value_uk import value_uk_study_templates  # noqa: E402
 from gridform_core.zonal_contracts import (  # noqa: E402
     BoundaryRatingProfile,
@@ -39,6 +59,7 @@ from gridform_core.zonal_contracts import (  # noqa: E402
 BASE_PACK_ID = "value-uk-open-data-pack-v1"
 NETWORK_PREFIX = "value-gb-zonal-network-v1"
 STUDY_IDS = ["value-uk-copperplate-2025-2034", "value-uk-zonal-2025-2034"]
+SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 ROLE_UNITS = {
     "value.zonal.cutsets": "MW",
     "value.zonal.demand": "MWh/period",
@@ -117,7 +138,7 @@ def _copy_binding_file(source_root: Path, source_binding: Mapping[str, object], 
         shutil.copy2(source, target)
 
 
-def _reseal_base_pack(source: Path, target: Path) -> dict[str, object]:
+def _reseal_base_pack(source: Path, target: Path, pack_id: str = BASE_PACK_ID) -> dict[str, object]:
     manifest = _value_identity(_read_manifest(source))
     source_bindings = dict(manifest["bindings"])
     bindings: dict[str, object] = {}
@@ -140,7 +161,7 @@ def _reseal_base_pack(source: Path, target: Path) -> dict[str, object]:
         raise ValueError(f"VALUE-UK base pack must expose exactly 25 roles; found {len(bindings)}")
     manifest.update({
         "schema_version": "value.data-pack/v1",
-        "id": BASE_PACK_ID,
+        "id": pack_id,
         "name": "VALUE-UK open research data pack v1",
         "country": "GB",
         "timezone": "Europe/London",
@@ -163,7 +184,7 @@ def _reseal_base_pack(source: Path, target: Path) -> dict[str, object]:
         rights = {"source_notice": "See each manifest binding for its source, licence and attribution."}
     rights.update({
         "schema_version": "value.data-rights/v1",
-        "data_pack_id": BASE_PACK_ID,
+        "data_pack_id": pack_id,
         "complete_bundle_redistribution": "redistributable_per_object",
         "licence_rule": "Each object retains the licence and attribution stated in manifest.json.",
     })
@@ -313,45 +334,118 @@ def _reseal_network_pack(source: Path, target: Path) -> tuple[dict[str, object],
         "Licence v3.0. Northern Ireland is excluded.\n",
         encoding="utf-8",
     )
-    load_zonal_network_pack(target, manifest)
+    load_zonal_network_pack(target, manifest, topology_policy="enforce")
     return manifest, network_pack_id
+
+
+def _bundle_manifest(bundle: Path) -> dict[str, object]:
+    with zipfile.ZipFile(bundle) as archive:
+        value = json.loads(archive.read("manifest.json").decode("utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"Data bundle manifest is not a JSON object: {bundle}")
+    return value
+
+
+def _published_bundle(bundle: Path, *, network: bool) -> tuple[str, dict[str, object]]:
+    """Validate a published data bundle that is used as it is (no re-wrapping)."""
+
+    validated = validate_data_bundle(Path(bundle))
+    manifest = _bundle_manifest(Path(bundle))
+    is_overlay = manifest.get("data_pack_type") == "network_overlay"
+    if network and not is_overlay:
+        raise ValueError(f"Network bundle is not a network_overlay data product: {bundle}")
+    if not network and is_overlay:
+        raise ValueError(f"Base bundle is a network_overlay, not a base data pack: {bundle}")
+    return str(validated.descriptor["pack_id"]), {
+        "mode": "published_bundle",
+        "path": str(Path(bundle).resolve()),
+        "bundle_sha256": validated.bundle_sha256,
+        "bundle_bytes": validated.bundle_bytes,
+    }
+
+
+def _suffixed_templates(
+    base_pack_id: str, network_pack_id: str, *, study_id_suffix: str, study_name_suffix: str,
+) -> list[dict[str, object]]:
+    studies = [dict(item) for item in value_uk_study_templates(base_pack_id, network_pack_id)]
+    for study in studies:
+        study["id"] = f"{study['id']}{study_id_suffix}"
+        study["name"] = f"{study['name']}{study_name_suffix}"
+        if not SAFE_ID.fullmatch(str(study["id"])):
+            raise ValueError(f"Study ID is not a safe immutable identifier: {study['id']!r}")
+    return studies
 
 
 def build_value_uk_research_suite(
     *,
-    base_source: Path,
-    network_source: Path,
     destination: Path,
     receipt_path: Path,
+    base_source: Path | None = None,
+    network_source: Path | None = None,
+    base_bundle: Path | None = None,
+    network_bundle: Path | None = None,
+    base_pack_id: str | None = None,
+    suite_id: str = DEFAULT_SUITE_ID,
+    study_id_suffix: str = "",
+    study_name_suffix: str = "",
 ) -> dict[str, object]:
-    base_source = Path(base_source).resolve()
-    network_source = Path(network_source).resolve()
-    source_hashes = [_tree_sha256(base_source), _tree_sha256(network_source)]
+    if (base_source is None) == (base_bundle is None):
+        raise ValueError("Give exactly one of base_source (reseal) and base_bundle (published, used as is)")
+    if (network_source is None) == (network_bundle is None):
+        raise ValueError("Give exactly one of network_source (reseal) and network_bundle (published, used as is)")
+    if base_pack_id is not None and not SAFE_ID.fullmatch(base_pack_id):
+        raise ValueError(f"Base pack ID is not a safe immutable identifier: {base_pack_id!r}")
+    if not SAFE_ID.fullmatch(suite_id):
+        raise ValueError(f"Suite ID is not a safe immutable identifier: {suite_id!r}")
     destination = Path(destination).resolve()
     receipt_path = Path(receipt_path).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
+    source_hashes: list[str | None] = [None, None]
     with tempfile.TemporaryDirectory(prefix="value-uk-suite-") as folder:
         stage = Path(folder)
-        base_root = stage / "base"
-        network_root = stage / "network"
-        base_root.mkdir()
-        network_root.mkdir()
-        _reseal_base_pack(base_source, base_root)
-        _network_manifest, network_pack_id = _reseal_network_pack(network_source, network_root)
-        base_bundle = stage / "base.data-bundle.zip"
-        network_bundle = stage / "network.data-bundle.zip"
-        base_result = build_data_bundle(pack_root=base_root, destination=base_bundle)
-        network_result = build_data_bundle(pack_root=network_root, destination=network_bundle)
+        if base_bundle is not None:
+            resolved_base_id, base_input = _published_bundle(Path(base_bundle), network=False)
+            if base_pack_id is not None and base_pack_id != resolved_base_id:
+                raise ValueError(
+                    f"--base-pack-id {base_pack_id!r} does not match the published base bundle {resolved_base_id!r}"
+                )
+            base_bundle_path = Path(base_bundle).resolve()
+        else:
+            base_source = Path(base_source).resolve()  # type: ignore[arg-type]
+            source_hashes[0] = _tree_sha256(base_source)
+            resolved_base_id = base_pack_id or BASE_PACK_ID
+            base_root = stage / "base"
+            base_root.mkdir()
+            _reseal_base_pack(base_source, base_root, resolved_base_id)
+            base_bundle_path = stage / "base.data-bundle.zip"
+            build_data_bundle(pack_root=base_root, destination=base_bundle_path)
+            base_input = {"mode": "resealed_source", "path": str(base_source), "source_tree_sha256": source_hashes[0]}
+        if network_bundle is not None:
+            network_pack_id, network_input = _published_bundle(Path(network_bundle), network=True)
+            network_bundle_path = Path(network_bundle).resolve()
+        else:
+            network_source = Path(network_source).resolve()  # type: ignore[arg-type]
+            source_hashes[1] = _tree_sha256(network_source)
+            network_root = stage / "network"
+            network_root.mkdir()
+            _network_manifest, network_pack_id = _reseal_network_pack(network_source, network_root)
+            network_bundle_path = stage / "network.data-bundle.zip"
+            build_data_bundle(pack_root=network_root, destination=network_bundle_path)
+            network_input = {"mode": "resealed_source", "path": str(network_source), "source_tree_sha256": source_hashes[1]}
+        studies = _suffixed_templates(
+            resolved_base_id, network_pack_id,
+            study_id_suffix=study_id_suffix, study_name_suffix=study_name_suffix,
+        )
         studies_path = stage / "study-templates.json"
         _atomic_json(studies_path, {
             "schema_version": "value.study-templates/v1",
-            "studies": list(value_uk_study_templates(BASE_PACK_ID, network_pack_id)),
+            "studies": studies,
         })
         rights_path = stage / "RIGHTS.json"
         _atomic_json(rights_path, {
             "schema_version": "value.research-suite-rights/v1",
-            "suite_id": "value-uk-research-suite-v1",
-            "components": [BASE_PACK_ID, network_pack_id],
+            "suite_id": suite_id,
+            "components": [resolved_base_id, network_pack_id],
             "redistribution": "per-object open licences and owner-authored CC-BY-4.0 parameters",
             "details": "Install and review the RIGHTS.json inside each component before reuse.",
         })
@@ -363,12 +457,17 @@ def build_value_uk_research_suite(
             encoding="utf-8",
         )
         result = build_research_suite(
-            base_bundle=base_bundle,
-            network_bundle=network_bundle,
+            base_bundle=base_bundle_path,
+            network_bundle=network_bundle_path,
             studies_path=studies_path,
             rights_paths=(rights_path, attribution_path),
             destination=destination,
+            suite_id=suite_id,
         )
+        component_bundle_sha256 = [
+            validate_data_bundle(base_bundle_path).bundle_sha256,
+            validate_data_bundle(network_bundle_path).bundle_sha256,
+        ]
     receipt = {
         "schema_version": "value.research-suite-build-receipt/v1",
         "suite_id": result["suite_id"],
@@ -376,9 +475,10 @@ def build_value_uk_research_suite(
         "bytes": result["bytes"],
         "sha256": result["sha256"],
         "source_tree_sha256": source_hashes,
-        "component_pack_ids": [BASE_PACK_ID, network_pack_id],
-        "component_bundle_sha256": [base_result["sha256"], network_result["sha256"]],
-        "study_ids": STUDY_IDS,
+        "component_inputs": {"base": base_input, "network": network_input},
+        "component_pack_ids": [resolved_base_id, network_pack_id],
+        "component_bundle_sha256": component_bundle_sha256,
+        "study_ids": [str(study["id"]) for study in studies],
         "source_directories_modified": False,
     }
     _atomic_json(receipt_path, receipt)
@@ -386,15 +486,29 @@ def build_value_uk_research_suite(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--base-source", required=True, type=Path)
-    parser.add_argument("--network-source", required=True, type=Path)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    base = parser.add_mutually_exclusive_group(required=True)
+    base.add_argument("--base-source", type=Path, help="local base pack to reseal with VALUE identity")
+    base.add_argument("--base-bundle", type=Path, help="published base data bundle, used byte for byte")
+    network = parser.add_mutually_exclusive_group(required=True)
+    network.add_argument("--network-source", type=Path, help="local zonal network pack to reseal")
+    network.add_argument("--network-bundle", type=Path, help="published network data bundle, used byte for byte")
+    parser.add_argument("--base-pack-id", help=f"resealed base pack ID (default {BASE_PACK_ID}); checked against --base-bundle")
+    parser.add_argument("--suite-id", default=DEFAULT_SUITE_ID, help=f"research-suite ID (default {DEFAULT_SUITE_ID})")
+    parser.add_argument("--study-id-suffix", default="", help="appended to both Study IDs, e.g. -public2")
+    parser.add_argument("--study-name-suffix", default="", help="appended to both Study names")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--receipt", required=True, type=Path)
     arguments = parser.parse_args()
     result = build_value_uk_research_suite(
         base_source=arguments.base_source,
         network_source=arguments.network_source,
+        base_bundle=arguments.base_bundle,
+        network_bundle=arguments.network_bundle,
+        base_pack_id=arguments.base_pack_id,
+        suite_id=arguments.suite_id,
+        study_id_suffix=arguments.study_id_suffix,
+        study_name_suffix=arguments.study_name_suffix,
         destination=arguments.output,
         receipt_path=arguments.receipt,
     )

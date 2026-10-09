@@ -2,7 +2,7 @@
   "schema_version": "value.module/v2",
   "id": "value-copperplate-balancing",
   "name": "VALUE copperplate current-period balancing",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scientific_version": "value-copperplate-balancing-2026.08.21",
   "slot": "balancing",
   "implementation": "gridform_core.builtin.value_modules:ValueCopperplateBalancing",

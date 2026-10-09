@@ -12,16 +12,39 @@ from typing import Mapping
 import numpy as np
 import pandas as pd
 
-from ...asset_economics import primary_annual_asset_costs, validate_asset_economics
+from ...methodology import current_methodology, methodology_scoped
+from ... import agent_cashflow
+from ...asset_economics import (
+    CAPITAL_COST_COMPONENTS_KEY,
+    capital_cost_components,
+    primary_annual_asset_costs,
+    validate_asset_economics,
+)
 from ...market_ledger import (
     PhysicalDispatchRow,
+    StorageYearBoundaryRow,
     create_market_ledger,
     set_active_market_ledger,
 )
+from ...energy_balance_contract import NATIVE_CORRECTED_FULL_NODE_V1
 from ...market_replay import canonical_technology
 from ...v2.contracts import MarketYearResult, PSMInput, PeriodSummary
 from .legacy_result_adapter import SchemeCLegacyResultAdapter
+from .native_balance_audit import stored_total
+from .native_market_rules import (
+    NativeMarketRules,
+    column_semantics,
+    market_rule_set_record,
+    rules_for_methodology,
+    storage_bid_basis_source,
+    voll_gbp_per_mwh,
+)
+from .native_realisation import COST_COLUMNS, DIAGNOSTIC_COLUMNS, RealisationLog
 from .scheme_c_context import LegacyConfigSession, SchemeCRunContext
+from .storage_headroom import HEADROOM_INPUTS_KEY, headroom_inputs
+
+# R1-2 (A19/A22): extension key of the corrected economic down-regulation totals.
+DOWNWARD_ECONOMICS_KEY = "downward_restart_economics"
 
 
 class _NativeParameterAdapter:
@@ -36,21 +59,44 @@ class _NativeParameterAdapter:
 
 
 class _StorageRuntime:
-    def __init__(self, implementation: object, parameters: Mapping[str, object]) -> None:
+    """The storage-cost slot the kernel's ``Battery`` reads through ``get_runtime()``.
+
+    ``bid_basis_sources`` records, per battery type, whether the market rule
+    set owns the created cost object's bid basis (exact
+    ``DynamicAnnualStorageCost``) or the module defines its own bid
+    (``module_defined``).  The rule set's ``storage_bid_basis`` is applied to
+    ``rule_set`` objects (P0-6 S10, P5-04: cycle-only bids in the corrected
+    rule set); module-defined bids are left to their module.
+    """
+
+    def __init__(
+        self,
+        implementation: object,
+        parameters: Mapping[str, object],
+        market_rules: NativeMarketRules | None = None,
+    ) -> None:
         self.id = str(getattr(implementation, "id"))
         self.implementation = implementation
+        self.market_rules = market_rules
+        self.bid_basis_sources: dict[str, str] = {}
         if hasattr(implementation, "parameters"):
             implementation.parameters = dict(parameters)
 
     def create(self, **kwargs):
-        return self.implementation.create(**kwargs)
+        created = self.implementation.create(**kwargs)
+        battery_type = str(kwargs.get("battery_type", ""))
+        source = storage_bid_basis_source(created)
+        self.bid_basis_sources[battery_type] = source
+        if source == "rule_set" and self.market_rules is not None:
+            created.bid_basis = self.market_rules.storage_bid_basis
+        return created
 
 
 class SchemeCNativePSM:
     """Execute the Scheme C market once for the current typed operating year."""
 
     id = "scheme-c-psm"
-    version = "5.1.0"
+    version = "6.7.0"
     execution_kind = "live_module"
 
     def __init__(self) -> None:
@@ -238,6 +284,37 @@ class SchemeCNativePSM:
                 allocated[str(key)] += float(value)
         return dict(allocated)
 
+    def _agent_cashflow(
+        self,
+        generation: Mapping[str, float],
+        components: Mapping[str, Mapping[str, float]],
+        coupling: Mapping[str, object],
+        model_input: PSMInput,
+    ) -> dict[str, object]:
+        """``value.agent-cashflow/v1`` (P0-7, decision A4): generated MWh and running-cost parts by asset.
+
+        Each runtime generator object is allocated to the typed assets it
+        aggregates by their MW share, as its income is
+        (``_allocate_runtime_income``).
+        """
+
+        objects = []
+        for name, row_value in dict(coupling.get("generator_objects") or {}).items():
+            row = dict(row_value or {})
+            agent = str(row.get("market_agent_id") or name)
+            objects.append({
+                "generated_mwh": float(generation.get(agent, 0.0)),
+                **dict(components.get(name) or {
+                    field: 0.0 for field in agent_cashflow.COMPONENT_FIELDS}),
+                "source_asset_capacity_mw": dict(row.get("source_asset_capacity_mw") or {}),
+            })
+        technology = {
+            asset.asset_id: asset.technology for asset in model_input.operating_state.assets
+        }
+        basis = "scheme_c_generator_object_cost_components"
+        rows = agent_cashflow.allocate_object_cashflow(objects, technology, cost_basis=basis)
+        return agent_cashflow.extension(rows, psm_module_id=self.id, cost_basis=basis)
+
     @staticmethod
     def _restore_previous_observations(batteries: dict[str, object], model_input: PSMInput) -> None:
         observations = dict(
@@ -267,8 +344,29 @@ class SchemeCNativePSM:
         period_hours: float,
         forecast,
         real,
+        boundary_id: str | None = None,
+        realisation_log: RealisationLog | None = None,
     ) -> None:
-        """Materialise final physical rows without entering the clearing loop."""
+        """Materialise final physical rows without entering the clearing loop.
+
+        ``balance_component_mwh`` follows the ledger's declared boundary
+        (P0-4 S6): on default_psm_surplus_node_v1 a load's component is minus
+        the load plus the out-of-dispatch surplus that fed it (U_out), and the
+        in-dispatch spill W_in (non_vre_spill) is minus on the excess and
+        curtailment rows, so the components minus demand equal the raw
+        residual.  Row sets, energies and scopes are unchanged.  Without a declared
+        boundary the retained boundary share is kept.
+        """
+
+        surplus_node = (
+            boundary_id == "default_psm_surplus_node_v1"
+            and realisation_log is not None
+            and hasattr(realisation_log, "u_out_to_storage_mwh")
+        )
+        # P0-6 S5: on native_corrected_full_node_v1 every load is a full
+        # component, the non-VRE spill (excess) leaves the node and the VRE
+        # curtailment was never in S, so components minus demand = raw.
+        corrected_node = boundary_id == NATIVE_CORRECTED_FULL_NODE_V1
 
         for period, raw_dispatch in enumerate(named.dispatch_by_period):
             combined: defaultdict[tuple[str, str, str, str], float] = defaultdict(float)
@@ -301,35 +399,55 @@ class SchemeCNativePSM:
                 if abs(energy_mwh) > 1e-12
             ]
             charge_mwh = float(named.storage_charge_by_period[period] or 0.0) * period_hours
-            accounted_charge_mwh = min(
-                charge_mwh,
-                max((float(forecast[period]) - float(real[period])) * period_hours, 0.0),
-            )
+            flexible_mwh = float(named.flexible_demand_mwh_by_period[period] or 0.0) * period_hours
+            export_mwh = float(named.interconnector_exports_mwh_by_period[period] or 0.0) * period_hours
+            if corrected_node:
+                charge_component, flexible_component, export_component = -charge_mwh, -flexible_mwh, -export_mwh
+                excess_component = -float(named.excess_electricity_mwh_by_period[period] or 0.0) * period_hours
+                curtailment_component = 0.0
+            elif surplus_node:
+                charge_component = -charge_mwh + float(realisation_log.u_out_to_storage_mwh[period])
+                flexible_component = -flexible_mwh + float(realisation_log.u_out_to_flexible_mwh[period])
+                export_component = -export_mwh + float(realisation_log.u_out_to_export_mwh[period])
+                # W_in sits on the rows it came from: the unused excess first,
+                # the booked down-regulation that did not leave S next (W_in <=
+                # XS + K, so the curtailment row exists whenever it is needed).
+                excess_mwh = float(named.excess_electricity_mwh_by_period[period] or 0.0) * period_hours
+                spill_mwh = float(realisation_log.non_vre_spill_mwh[period])
+                excess_component = -min(spill_mwh, max(excess_mwh, 0.0))
+                curtailment_component = -(spill_mwh + excess_component)
+            else:
+                charge_component = -min(
+                    charge_mwh,
+                    max((float(forecast[period]) - float(real[period])) * period_hours, 0.0),
+                )
+                flexible_component = export_component = 0.0
+                excess_component = curtailment_component = 0.0
+            # The scopes are the HEAD labels (physical_dispatch.evidence_scope
+            # is a trajectory column); the boundary is in the ledger metadata.
             context = (
                 (
                     "__storage_charge_unallocated__", "storage_unallocated",
-                    "storage_charge", charge_mwh, -accounted_charge_mwh,
+                    "storage_charge", charge_mwh, charge_component,
                     "aggregate_input_charge; balance component includes only the retained final-dispatch boundary share",
                 ),
                 (
                     "__flexible_demand__", "flexible_demand", "flexible_demand",
-                    float(named.flexible_demand_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "context flow outside the retained demand-serving balance",
+                    flexible_mwh, flexible_component, "context flow outside the retained demand-serving balance",
                 ),
                 (
                     "__boundary_export__", "boundary_export", "export",
-                    float(named.interconnector_exports_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "gb boundary export context flow",
+                    export_mwh, export_component, "gb boundary export context flow",
                 ),
                 (
                     "__balancing_curtailment__", "vre_aggregate", "balancing_curtailment",
                     float(named.curtailed_electricity_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "reported balancing-stage curtailment",
+                    curtailment_component, "reported balancing-stage curtailment",
                 ),
                 (
                     "__prebalancing_excess__", "inflexible_mixed", "excess_generation",
                     float(named.excess_electricity_mwh_by_period[period] or 0.0) * period_hours,
-                    0.0, "pre-balancing excess may include VRE, nuclear or natural-flow hydro",
+                    excess_component, "pre-balancing excess may include VRE, nuclear or natural-flow hydro",
                 ),
                 (
                     "__blackout__", "unserved_energy", "blackout",
@@ -345,6 +463,164 @@ class SchemeCNativePSM:
             )
             ledger.record_physical_dispatch(rows)
 
+    def _kernel_inputs(self, periods: int, model_input: PSMInput | None = None) -> dict[str, object] | None:
+        """Demand and boundary series of the frozen pack through the shared reader (P0-5a).
+
+        ``None`` when the run context has no pack manifest (the kernel then
+        reads its configured files with the 35aadb3 readers, period by period).
+        """
+
+        from ...data_method import current_policy, read_role
+        from .kernel_boundary import from_pack
+
+        manifest_path = Path(self._context.pack_root) / "manifest.json"
+        if not manifest_path.is_file():
+            return None
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        policy = current_policy(manifest)
+        pack_root = Path(self._context.pack_root)
+        return {
+            "site_inputs": (self._kernel_site_inputs(pack_root, manifest, policy, model_input, periods)
+                            if model_input is not None else None),
+            "boundary": from_pack(pack_root, manifest, policy, periods),
+            "forecast": np.asarray(read_role(pack_root, manifest, "demand.forecast", policy, periods=periods).values,
+                                   dtype=float),
+            "real": np.asarray(read_role(pack_root, manifest, "demand.real", policy, periods=periods).values,
+                               dtype=float),
+        }
+
+    @staticmethod
+    def _kernel_site_inputs(pack_root: Path, manifest: Mapping[str, object], policy: object,
+                            model_input: PSMInput, periods: int):
+        """Corrected profile (P0-5b): the canonical site CF and firm availability arrays for the kernel.
+
+        ``None`` under the doctoral profile (frozen weather clock, no loss
+        factors, constant firm availability): the kernel keeps its own path.
+        """
+
+        from ...doctoral_weather import uses_doctoral_weather
+        from ...doctoral_weather_mapping import representative_sites
+        from ... import firm_availability
+        from ...site_weather import method_for_profile, site_cf_by_source
+        from .kernel_injection import METHOD_ID, KernelSiteInputs
+
+        profile_id = getattr(policy, "profile_id", None)
+        method = method_for_profile(profile_id)
+        firm = firm_availability.enabled_for_profile(profile_id)
+        vre_cf: dict[str, np.ndarray] = {}
+        evidence: dict[str, object] = {"method_id": METHOD_ID}
+        bindings = dict(manifest.get("bindings") or {})
+        if not method.frozen and uses_doctoral_weather(manifest):
+            fleet = json.loads((pack_root / str(dict(bindings["fleet.generators"])["uri"])).read_text(encoding="utf-8"))
+            sites = representative_sites(fleet)
+            roles = ("weather.solar", "weather.wind")
+            profiles = site_cf_by_source(
+                paths={role: pack_root / str(dict(bindings[role])["uri"]) for role in roles},
+                hashes={role: str(dict(bindings[role]).get("sha256") or "") for role in roles},
+                bindings={role: dict(bindings[role]) for role in roles},
+                sites=sites, sources=list(sites), periods=periods, method=method,
+            )
+            vre_cf = {name: values for name, (values, _) in profiles.items()}
+            evidence["site_weather"] = method.to_dict()
+            evidence["site_availability_sha256"] = {
+                name: str(item["availability_sha256"]) for name, (_, item) in sorted(profiles.items())}
+        firm_cf: dict[str, np.ndarray] = {}
+        if firm:
+            firm_method = firm_availability.method_for_profile(profile_id)
+            firm_cf = firm_availability.kernel_availability(
+                model_input.operating_state.assets, year=int(model_input.year), periods=periods, method=firm_method)
+            evidence["firm_availability"] = {"method_id": firm_availability.METHOD_ID,
+                                             "table_sha256": firm_availability.table_sha256(),
+                                             "firm_method": firm_method.to_dict()}
+        if not vre_cf and not firm_cf:
+            return None
+        return KernelSiteInputs(vre_cf, firm_cf, evidence)
+
+    @staticmethod
+    def _operating_cost_accounts(
+        realisation_log: RealisationLog,
+        summaries: tuple,
+        market_rules: NativeMarketRules,
+        parameters: Mapping[str, object],
+        cycle_wear: float,
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        """P5-06 physical operating cost and the settlement transfers (P0-6 S4)."""
+
+        totals = {column: float(np.sum(getattr(realisation_log, column))) for column in COST_COLUMNS}
+        voll = voll_gbp_per_mwh(market_rules, parameters)
+        blackout_mwh = float(sum(row.blackout_mwh for row in summaries))
+        reliability = blackout_mwh * voll
+        total = (
+            totals["generation_variable_gbp"] + totals["import_variable_gbp"]
+            + totals["startup_adder_gbp"] + reliability + float(cycle_wear)
+        )
+        detail = {
+            "schema_version": "value.native-operating-cost/v1",
+            "basis": market_rules.operating_cost_basis,
+            "generation_variable": totals["generation_variable_gbp"],
+            "import_variable": totals["import_variable_gbp"],
+            "startup_adder_resource": totals["startup_adder_gbp"],
+            "blackout_reliability": reliability,
+            "blackout_mwh": blackout_mwh,
+            "voll_gbp_per_mwh": voll,
+            "voll_basis": market_rules.reliability_voll,
+            "storage_cycle_wear": float(cycle_wear),
+            "total_gbp": total,
+        }
+        retained = totals["retained_period_cost_gbp"]
+        parts = (
+            totals["generation_offer_payment_gbp"] + totals["storage_fee_retained_gbp"]
+            + totals["curtailment_payment_gbp"] + totals["balancing_payment_gbp"]
+        )
+        settlement = {
+            "schema_version": "value.native-market-settlement/v1",
+            "generation_offer_payment": totals["generation_offer_payment_gbp"],
+            "storage_offer_payment": totals["storage_offer_payment_gbp"],
+            "storage_fee_carry_residual": totals["storage_fee_retained_gbp"] - totals["storage_offer_payment_gbp"],
+            "curtailment_payment": totals["curtailment_payment_gbp"],
+            "balancing_payment": totals["balancing_payment_gbp"],
+            "export_revenue": totals["export_revenue_gbp"],
+            "import_payment": totals["import_payment_gbp"],
+            "retained_period_cost": retained,
+            "reconciliation": (
+                "reconciled" if abs(retained - parts) <= 1e-6 * max(1.0, abs(retained)) else "unreconciled"
+            ),
+        }
+        return detail, settlement
+
+    @staticmethod
+    def _rule_diagnostics(
+        realisation_log: RealisationLog, market_rules: NativeMarketRules, period_hours: float,
+    ) -> dict[str, object]:
+        """Known thesis-rule deviations of this run (zero in the corrected rule set)."""
+
+        sums = {column: float(np.sum(getattr(realisation_log, column))) * float(period_hours)
+                for column in DIAGNOSTIC_COLUMNS}
+        return {
+            "schema_version": "value.native-market-rule-diagnostics/v1",
+            "rule_set_id": market_rules.rule_set_id,
+            "unrecorded_vre_mwh": sums["unrecorded_vre_mw"],
+            "storage_fee_carry_gbp": sums["storage_fee_carry_gbp_per_h"],
+            "vre_skim_leak_mwh": sums["vre_skim_leak_mw"],
+            "vre_skim_to_electrolysis_mwh": sums["vre_skim_to_electrolysis_mw"],
+            "phantom_surplus_mwh": sums["phantom_surplus_mw"],
+            "non_vre_double_counted_mwh": float(np.sum(getattr(
+                realisation_log, "non_vre_double_counted_mwh", np.zeros(0)))),
+        }
+
+    @staticmethod
+    def _kernel_tree_sha256() -> str | None:
+        from ...errors import CompatibilityError
+        from .runtime_overlay import ensure_runtime_overlay_sealed
+
+        try:
+            return str(ensure_runtime_overlay_sealed().get("runtime_tree_sha256") or "") or None
+        except CompatibilityError:
+            # Identity record only: an unsealed kernel is refused at the run
+            # entry; a unit-level call records the hash as unknown.
+            return None
+
+    @methodology_scoped
     def run(self, model_input: PSMInput) -> MarketYearResult:
         if self._context is None or self._storage_cost is None:
             raise RuntimeError("SchemeCNativePSM was not configured from the frozen run context")
@@ -359,9 +635,16 @@ class SchemeCNativePSM:
         )
 
         parameters = dict(model_input.parameters)
-        storage_runtime = _StorageRuntime(self._storage_cost, parameters)
-        runtime = SimpleNamespace(storage_cost=storage_runtime)
+        market_rules = rules_for_methodology(current_methodology())
+        storage_runtime = _StorageRuntime(self._storage_cost, parameters, market_rules)
+        realisation_log = RealisationLog()
         periods = len(model_input.chronology.period_ids)
+        kernel_inputs = self._kernel_inputs(periods, model_input)
+        runtime = SimpleNamespace(
+            storage_cost=storage_runtime, market_rules=market_rules, realisation_log=realisation_log,
+            kernel_boundary=kernel_inputs["boundary"] if kernel_inputs else None,
+            kernel_site_inputs=kernel_inputs["site_inputs"] if kernel_inputs else None,
+        )
         period_hours = float(model_input.period_hours)
         market_path = self._context.output_dir / "market" / "market.sqlite"
         trace_level = str(parameters.get("runtime.market_trace_level", "summary"))
@@ -378,16 +661,18 @@ class SchemeCNativePSM:
                 "psm_module_id": self.id,
                 "psm_module_version": self.version,
                 "period_hours": period_hours,
-                "timezone": "Europe/London",
-                "calendar": "fixed_365_day_local_periods",
+                # The ledger stamps the model clock (UTC, fixed 365-day year;
+                # gridform_core.model_clock, four-role test S-M1).
                 "requested_trace_level": trace_level,
                 "dispatch_formulation": "bid_at_cost_continuous_no_commitment",
                 "pricing_rule": "retained_bid_at_cost_pay_as_clear_agent_income",
                 "period_price_semantics": "demand_normalised_total_period_cost; not a stage clearing-price proof",
-                "excess_scope": "inflexible_mixed",
-                "excess_relationship": "separate_prebalancing",
-                "curtailment_semantics": "balancing_stage_down_regulation_after_storage_export_and_flexible_demand",
+                **column_semantics(market_rules),
                 "stage_order": ["ahead", "curtailment_or_balancing", "final_dispatch"],
+                "market_rule_set": {
+                    "rule_set_id": market_rules.rule_set_id,
+                    "rule_set_sha256": market_rules.sha256,
+                },
             },
         )
         set_active_market_ledger(ledger)
@@ -400,6 +685,10 @@ class SchemeCNativePSM:
                     "SIMULATION_YEAR": str(model_input.year),
                     "PHYSICAL_PERIOD_HOURS": str(period_hours),
                     "SAVE_MARKET_TRACE": "0",
+                    # P0-4 S6: raise on a declared-boundary imbalance.
+                    "ENERGY_BALANCE_STRICT": (
+                        "1" if bool(parameters.get("runtime.energy_balance_strict", False)) else "0"
+                    ),
                 },
             ):
                 fleet_generators = {}
@@ -415,13 +704,34 @@ class SchemeCNativePSM:
                     else:
                         value = ExpensiverenewableGenerator(**raw)
                     fleet_generators[name] = value
+                # P0-7 (A4): the running-cost parts each generator object was
+                # built with (gen_cost of Gas/Biomass = generation + carbon +
+                # fuel + unit_time, runtime_compat/modular_simulation_model.py).
+                generator_cost_components = {
+                    name: {
+                        "generation_cost_gbp_per_mwh": float(raw.get("gen_cost", 0.0) or 0.0),
+                        "fuel_cost_gbp_per_mwh": float(raw.get("fuel_cost", 0.0) or 0.0),
+                        "carbon_cost_gbp_per_mwh": float(raw.get("carbon_price", 0.0) or 0.0),
+                        "unit_time_cost_gbp_per_mwh": float(raw.get("unit_time_cost", 0.0) or 0.0),
+                    }
+                    for name, raw in config.generators.items()
+                }
                 batteries = {name: Battery(**raw) for name, raw in config.batteries.items()}
                 state_coupling = self._apply_state(fleet_generators, batteries, model_input)
                 self._restore_previous_observations(batteries, model_input)
                 for battery in batteries.values():
                     battery.prepare_operating_year(model_input.year)
-                forecast = np.asarray(pd.read_csv(config.file_paths["forecast_demand"]), dtype=float).reshape(-1)[:periods]
-                real = np.asarray(pd.read_csv(config.file_paths["real_demand"]), dtype=float).reshape(-1)[:periods]
+                # P0-4 S4 (P3-14): the year's batteries are new objects, so the
+                # opening state is whatever they start with and the closing
+                # state is discarded at the year end (frozen behaviour, booked).
+                opening_soc = {asset_id: stored_total(battery) for asset_id, battery in batteries.items()}
+                if kernel_inputs:
+                    # P0-5a: the shared reader (registry repairs such as the
+                    # P6-04 UTC clock apply in every profile).
+                    forecast, real = kernel_inputs["forecast"], kernel_inputs["real"]
+                else:
+                    forecast = np.asarray(pd.read_csv(config.file_paths["forecast_demand"]), dtype=float).reshape(-1)[:periods]
+                    real = np.asarray(pd.read_csv(config.file_paths["real_demand"]), dtype=float).reshape(-1)[:periods]
                 raw_result = run_simulation(
                     periods,
                     list(fleet_generators.values()),
@@ -430,6 +740,14 @@ class SchemeCNativePSM:
                     real,
                     [Connection(**raw) for raw in config.connections.values()],
                     Electrolyzer(**config.electrolyzer),
+                )
+                ledger.record_storage_year_boundary(
+                    StorageYearBoundaryRow(
+                        int(model_input.year), str(getattr(battery, "name", asset_id)),
+                        opening_soc[asset_id], stored_total(battery), 0.0, stored_total(battery),
+                        "new_battery_each_year",
+                    )
+                    for asset_id, battery in batteries.items()
                 )
                 named = SchemeCLegacyResultAdapter.validate_and_convert(
                     raw_result, year=model_input.year, periods=periods,
@@ -442,6 +760,8 @@ class SchemeCNativePSM:
                     period_hours=period_hours,
                     forecast=forecast,
                     real=real,
+                    boundary_id=getattr(ledger, "balance_boundary", None),
+                    realisation_log=realisation_log,
                 )
                 storage_reports = {
                     asset_id: battery.storage_cost_report()
@@ -505,11 +825,43 @@ class SchemeCNativePSM:
             float(report.get("current_cycle_depreciation_gbp", 0.0) or 0.0)
             for report in storage_reports.values()
         )
-        operating = sum(row.physical_resource_cost_gbp for row in summaries) + cycle_wear
+        # P0-6 S4 (P5-06, universal): physical operating cost = generation at
+        # running cost + imports + start-up adder + unserved x VoLL + cycle
+        # wear.  The bid payments (including storage offers, which already
+        # contain the cycle wear) are settlement transfers, reported apart.
+        operating_detail, settlement = self._operating_cost_accounts(
+            realisation_log, summaries, market_rules, parameters, cycle_wear,
+        )
+        operating = operating_detail["total_gbp"]
+        voll = operating_detail["voll_gbp_per_mwh"]
         allocated_market_income = self._allocate_runtime_income(
             named.market_income_gbp_by_agent,
             state_coupling,
         )
+        cashflow = self._agent_cashflow(
+            generation, generator_cost_components, state_coupling, model_input,
+        )
+        # P0-7 S6 (P5-01, C20): the surplus left after the existing fleet
+        # charged, read through the rule set's declared column semantics. Only
+        # the corrected rule set declares it (excess and curtailment are
+        # disjoint there); the doctoral rule set publishes nothing (Q1).
+        semantics = column_semantics(market_rules)
+        headroom_extension = {}
+        if semantics.get("leftover_relationship") == "excess_plus_curtailed_disjoint":
+            headroom_extension[HEADROOM_INPUTS_KEY] = headroom_inputs(
+                [
+                    float(excess) * period_hours + float(row.curtailed_mwh)
+                    for excess, row in zip(named.excess_electricity_mwh_by_period, summaries)
+                ],
+                basis="excess_plus_curtailed_disjoint",
+                psm_module_id=self.id,
+            )
+        # R1-2 (A19/A22): annual totals of the corrected economic down-regulation
+        # stack (only the corrected rule set records them; the doctoral rule set
+        # publishes nothing, Q1).
+        downward_tally = getattr(realisation_log, "downward_economics", None)
+        if downward_tally is not None:
+            headroom_extension[DOWNWARD_ECONOMICS_KEY] = downward_tally.summary(period_hours)
         self._invocations.append(model_input.year)
         return MarketYearResult(
             result_id=f"{model_input.run_id}:market:{model_input.year}",
@@ -549,6 +901,19 @@ class SchemeCNativePSM:
                 },
                 "vre_expansion_headroom_mw_by_technology": dict(
                     model_input.chronology.extensions.get("vre_expansion_headroom_mw_by_technology") or {}
+                ),
+                "physical_operating_cost_detail_gbp": operating_detail,
+                agent_cashflow.EXTENSION_KEY: cashflow,
+                CAPITAL_COST_COMPONENTS_KEY: capital_cost_components(model_input.operating_state.assets),
+                **headroom_extension,
+                "market_settlement_components_gbp": settlement,
+                "market_rule_diagnostics": self._rule_diagnostics(realisation_log, market_rules, period_hours),
+                "market_rule_set": market_rule_set_record(
+                    market_rules,
+                    storage_cost_module_id=storage_runtime.id,
+                    storage_bid_basis_sources=storage_runtime.bid_basis_sources,
+                    runtime_kernel_tree_sha256=self._kernel_tree_sha256(),
+                    voll_gbp_per_mwh=voll,
                 ),
                 "physical_operating_cost_components_gbp": {
                     "generation_import_and_reliability": operating - cycle_wear,

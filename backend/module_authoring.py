@@ -83,7 +83,7 @@ def module_authoring_template(registry, module_id, *, template_id=None, version=
         raise ValueError("Template module ID is already registered")
     package = "value_author_" + hashlib.sha256(template_id.encode()).hexdigest()[:12]
     payload = json.loads((ROOT / "examples" / "external_module_bundle" / "value-module.json").read_text(encoding="utf-8")) if manifest.slot == "storage_cost" else manifest.to_dict()
-    payload.update(id=template_id, name="Draft " + manifest.name, version=version, implementation=package + ".plugin:CandidateModule", scientific_version="flat42-example-only" if manifest.slot == "storage_cost" else "scaffold-not-validated", status="experimental", solver_contract={}, provides_capabilities=[], requires_capabilities=[], description="Local authoring scaffold; requires implementation and validation before research use.")
+    payload.update(id=template_id, name=("Draft fixed-offer storage example (GBP 42/MWh)" if manifest.slot == "storage_cost" else "Draft " + manifest.name), version=version, implementation=package + ".plugin:CandidateModule", scientific_version="flat42-example-only" if manifest.slot == "storage_cost" else "scaffold-not-validated", status="experimental", solver_contract={}, provides_capabilities=[], requires_capabilities=[], description="Local authoring scaffold; requires implementation and validation before research use.")
     if manifest.slot == "storage_cost":
         payload["provides_capabilities"] = ["storage.bid-cost-function"]
         example = ROOT / "examples" / "external_module_bundle" / "src" / "value_example_flat_offer" / "plugin.py"

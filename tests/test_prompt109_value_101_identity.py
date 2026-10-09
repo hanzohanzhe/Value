@@ -4,16 +4,15 @@ import importlib
 import importlib.util
 import json
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
 from backend import server
 from gridform_core.v2.module_manifest import workspace_registry
+from tests.local_api_harness import start_local_api
 
 
 class Value101IdentityTests(unittest.TestCase):
@@ -74,10 +73,8 @@ class Value101IdentityTests(unittest.TestCase):
             )
             for item in patches:
                 item.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
-            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-            thread.start()
-            origin = f"http://127.0.0.1:{httpd.server_address[1]}"
+            api = start_local_api(data_home=Path(temporary), patch_state_roots=False)
+            httpd, origin, _session = api.start()
             try:
                 status, payload = self._get_json(origin + "/api/tutorials/value-101")
                 self.assertEqual(status, 200)
@@ -93,9 +90,7 @@ class Value101IdentityTests(unittest.TestCase):
                 self.assertNotIn("value-ac-data-extension", visible)
                 self.assertNotIn("domain.network.ac", visible)
             finally:
-                httpd.shutdown()
-                httpd.server_close()
-                thread.join(timeout=10)
+                api.stop()
                 for item in reversed(patches):
                     item.stop()
 

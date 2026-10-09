@@ -1,0 +1,45 @@
+/* P0 frontend spec 6: module quarantine panel (>= 12px, tokens only). */
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.module-quarantine-panel .quarantine-rows { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: grid; gap: var(--sp-2); }
+.module-quarantine-panel .quarantine-rows li { padding: var(--sp-2) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); }
+.quarantine-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); }
+.quarantine-row-head code { font-size: var(--fs-xs); color: var(--ink-muted); }
+.quarantine-error { color: var(--ink); overflow-wrap: anywhere; }
+.module-quarantine-panel pre { max-height: 220px; overflow: auto; white-space: pre-wrap; font-size: var(--fs-xs); }
+.quarantine-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-1); }
+.quarantine-help { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); color: var(--ink-muted); }
+
+/* Spec 11.4 (M-D4, F-D3): the Disabled and quarantined area and the global Rescan. */
+.disabled-entries { display: grid; gap: var(--sp-2); }
+.disabled-entries > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.disabled-entries > header span { font-size: var(--fs-xs); color: var(--ink-muted); }
+.disabled-entries > header h3 { margin: var(--sp-1) 0 0; }
+.disabled-entries .quarantine-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.disabled-entries .quarantine-rows li { padding: var(--sp-2) var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); display: grid; gap: var(--sp-1); min-width: 0; }
+.disabled-entries .quarantine-error { margin: 0; font-size: var(--fs-sm); }
+.disabled-entries .quarantine-actions button { font-size: var(--fs-sm); min-height: 30px; }
+.disabled-entries .value-action-primary { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-1) var(--sp-3); background: var(--panel); color: var(--ink); font-weight: 600; }
+.disabled-entries .value-action-link { border: 0; padding: 0; background: transparent; color: var(--blue); text-decoration: underline; }
+.disabled-entries .value-action-link.danger { color: var(--red); }
+.disabled-entry-error { margin: 0; padding: var(--sp-1) var(--sp-2); border-left: 4px solid var(--red); background: var(--red-soft); font-size: var(--fs-sm); color: var(--ink); overflow-wrap: anywhere; }
+.disabled-entry-error code { font-size: var(--fs-xs); }
+.disabled-entry-error span { display: block; font-size: var(--fs-xs); color: var(--ink-muted); }
+.modules-rescan { font-size: var(--fs-sm); }
+.modules-title-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+
+/* M2-N4 / M-D2 (round R1-5): the installed module card names its state and an in-place source edit. */
+.installed-modules article[data-state] { grid-template-columns: minmax(190px, 1.3fr) repeat(4, minmax(110px, .8fr)) auto; }
+.installed-modules article b.installed-module-state { font-size: var(--fs-xs); }
+.installed-module-state.enabled { color: var(--teal); }
+.installed-module-state.disabled { color: var(--ink-muted); }
+.installed-module-state.quarantined { color: var(--amber); }
+@media (max-width: 1120px) { .installed-modules article[data-state] { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .installed-modules article[data-state] { grid-template-columns: 1fr; } }
+.installed-module-note { display: block; margin-top: var(--sp-1); font-size: var(--fs-xs); font-style: normal; line-height: 1.45; overflow-wrap: anywhere; }
+.installed-module-note.caution { color: var(--amber); }
+/* R4 M-低4: which manifest file a quarantined row comes from. */
+.quarantine-manifest { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--ink-muted); overflow-wrap: anywhere; }
+.quarantine-manifest code { font-size: var(--fs-xs); }
+}

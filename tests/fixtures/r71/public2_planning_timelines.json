@@ -1,0 +1,95 @@
+{
+  "construction_timelines": {
+    "0.25c_battery": 11.9,
+    "0.5c_battery": 11.9,
+    "1c_battery": 11.9,
+    "gas": 18.3,
+    "offshore": 36.0,
+    "onshore": 18.3,
+    "solar": 6.4
+  },
+  "development_stage_timelines": {
+    "battery": {
+      "construction_mean": 11.9,
+      "construction_median": 10.1,
+      "planning_consenting_mean": 7.4,
+      "planning_consenting_median": 6.2,
+      "pre_construction_mean": 15.1,
+      "pre_construction_median": 13.0,
+      "total_mean": 34.4,
+      "total_median": 31.3
+    },
+    "offshore": {
+      "construction_mean": 36.0,
+      "construction_median": 32.2,
+      "planning_consenting_mean": 36.3,
+      "planning_consenting_median": 30.4,
+      "pre_construction_mean": 48.4,
+      "pre_construction_median": 41.6,
+      "total_mean": 120.7,
+      "total_median": 110.1
+    },
+    "onshore": {
+      "construction_mean": 18.3,
+      "construction_median": 15.0,
+      "planning_consenting_mean": 24.1,
+      "planning_consenting_median": 19.8,
+      "pre_construction_mean": 30.4,
+      "pre_construction_median": 24.3,
+      "total_mean": 72.8,
+      "total_median": 62.5
+    },
+    "solar": {
+      "construction_mean": 6.4,
+      "construction_median": 4.9,
+      "planning_consenting_mean": 8.1,
+      "planning_consenting_median": 6.9,
+      "pre_construction_mean": 18.0,
+      "pre_construction_median": 14.8,
+      "total_mean": 32.5,
+      "total_median": 27.8
+    }
+  },
+  "development_timelines": {
+    "0.25c_battery": 31.3,
+    "0.5c_battery": 31.3,
+    "1c_battery": 31.3,
+    "battery": 31.3,
+    "gas": 62.5,
+    "offshore": 110.1,
+    "onshore": 62.5,
+    "solar": 27.8
+  },
+  "repd_status_to_timeline": {
+    "Appeal Lodged": {
+      "apply_success_rate": true,
+      "stage": "planning_consenting",
+      "timeline_type": "total_median"
+    },
+    "Application Submitted": {
+      "apply_success_rate": true,
+      "stage": "planning_consenting",
+      "timeline_type": "total_median"
+    },
+    "Awaiting Construction": {
+      "apply_success_rate": false,
+      "stage": "construction",
+      "timeline_type": "construction_median"
+    },
+    "Planning Permission Granted": {
+      "apply_success_rate": false,
+      "stage": "pre_construction",
+      "timeline_type": "pre_construction_median"
+    },
+    "Revised": {
+      "apply_success_rate": true,
+      "stage": "planning_consenting",
+      "timeline_type": "total_median"
+    },
+    "Under Construction": {
+      "apply_success_rate": false,
+      "stage": "construction",
+      "timeline_type": "construction_median"
+    }
+  }
+}

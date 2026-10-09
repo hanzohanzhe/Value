@@ -2,7 +2,7 @@
   "schema_version": "value.cem-model-identity/v1",
   "model_id": "value-cem-v1",
   "name": "VALUE Capacity Expansion Model v1",
-  "version": "2026.08.10",
+  "version": "2026.10.09",
   "relationship_to_doctoral_reproduction": "method_derived_declared_divergence",
   "numerical_reproduction_claim": false,
   "retained_reference_id": "doctoral-reproduction-1000twh-2026-07-18",
@@ -30,10 +30,10 @@
     },
     {
       "stage": "planning_success",
-      "typed_rule": "expected-capacity or seeded stochastic probability",
+      "typed_rule": "endogenous proposals take the pack's median stage-1 timeline (with the retained MD5 month dispersion) and the regional/technology success rate frozen in the initial state (r71.endogenous-planning-timelines, decision A33); expected-capacity or seeded stochastic admission",
       "retained_rule": "regional/technology success probability with retained pipeline timing",
-      "status": "aligned_modes_not_strict_trace_parity",
-      "remaining_difference": "record-level retained random and timing traces are not identical"
+      "status": "aligned_rule_not_strict_trace_parity",
+      "remaining_difference": "a model investment completes at least the year after its decision (the retained loop silently dropped one whose completion fell in its decision year); stochastic draws use the typed seeded hash, not the retained MD5 draw"
     },
     {
       "stage": "spatial_assignment",

@@ -1,6 +1,8 @@
 # VALUE zonal solver contract v3: GBP 1 study policy
 
-Status: candidate. This policy does not inherit scientific approval from v2.
+Status: **superseded** by [contract v4](ZONAL_SOLVER_CONTRACT_V4.md) (P0-8, decision Q5).
+v3 is readable for historical Runs only; executing it returns
+`GF_SOLVER_CONTRACT_UPGRADE_REQUIRED`. Former status: candidate. This policy does not inherit scientific approval from v2.
 
 For every solved period, the primary objective is the total redispatch bid cost
 across all assets. Its one-sided LP lock and final hard acceptance boundary are

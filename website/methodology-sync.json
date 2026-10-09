@@ -1,7 +1,7 @@
 {
-  "edition": "0.3",
-  "revision_date": "2026-10-04",
-  "basis_date": "2026-10-02",
+  "edition": "0.4.1",
+  "revision_date": "2026-10-09",
+  "basis_date": "2026-10-09",
   "canonical_chapters": "../docs/methodology",
   "state": "reviewed-artifacts-imported",
   "downloads_enabled": true,

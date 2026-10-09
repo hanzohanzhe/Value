@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import logging
 import math
 import importlib.util
 import shutil
@@ -26,6 +27,7 @@ from typing import (
     get_type_hints,
 )
 
+from . import energy_balance_contract as _balance
 from .clearing_inputs import ClearingInputRow, ClearingOutcomeRow
 from .errors import InvariantError
 from .market_integrity import (
@@ -41,6 +43,7 @@ from .market_integrity import (
     seal_year,
 )
 from .market_ownership import MarketLedgerOwnershipLease
+from .model_clock import is_legacy_clock_label, ledger_clock_metadata
 from .subannual_checkpoint import LedgerPrefixIdentity
 from .v2.contracts import JsonContract
 from .vre_curtailment_attribution import VRECurtailmentAttribution
@@ -49,8 +52,11 @@ from .zonal_solver_contract import (
     classify_lock,
     degradation_identity_matches,
     gbp1_stored_policy_matches,
+    gbp1_stored_policy_requirement,
     validate_stored_lock_evidence,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 SCHEMA_VERSION = "value.market-ledger/v8"
@@ -615,6 +621,40 @@ class OrderLedgerRow:
 
 
 @dataclass(frozen=True)
+class StorageOrderLedgerRow:
+    """One storage discharge offer of the default PSM (four-role M-D1, Q12).
+
+    The kernel offers each stored charge tranche at the storage cost module's
+    bid price (times the bid multiplier) in the ahead stage and, in balancing
+    periods, in the balancing stage.  Every offer is booked, accepted or not,
+    with the power it delivered.  ``clearing_offer_id`` is the ``offer_id``
+    of the same offer in ``clearing_inputs``; ``accepted_offer_value_gbp`` is
+    offer price x accepted MWh (the storage fee the kernel books).  The
+    battery's ``final_dispatch`` row in ``orders`` (offer price 0.0,
+    ``accepted_non_generator_offer``) is the frozen net-dispatch record and
+    is left unchanged; this table carries the real offers (accounting zone).
+    """
+
+    order_id: str
+    year: int
+    period: int
+    stage: str
+    clearing_offer_id: str
+    asset_id: str
+    asset_type: str
+    side: str
+    charge_period: int
+    dwell_periods: int
+    bidding_factor: float
+    offer_price_gbp_per_mwh: float
+    offered_mwh: float
+    accepted_mwh: float
+    status: str
+    reason_code: str
+    accepted_offer_value_gbp: float
+
+
+@dataclass(frozen=True)
 class StorageStateRow:
     year: int
     period: int
@@ -624,6 +664,136 @@ class StorageStateRow:
     discharge_mwh: float
     power_capacity_mw: float
     energy_capacity_mwh: float
+
+
+@dataclass(frozen=True)
+class StorageEnergyAuditRow:
+    """Per-asset storage energy audit of one period (P0-4 S4, P3-14, P5-11).
+
+    ``charge_input_mwh``/``discharge_output_mwh`` are grid side; the other
+    quantities are stored-side MWh.  ``identity_residual_mwh`` is
+    ``soc_start + charge_stored - discharge_withdrawn - self_discharge -
+    tail_writeoff - soc_end`` (rounding only).
+    """
+
+    year: int
+    period: int
+    asset_id: str
+    soc_start_mwh: float
+    charge_input_mwh: float
+    charge_stored_mwh: float
+    discharge_output_mwh: float
+    discharge_withdrawn_mwh: float
+    self_discharge_mwh: float
+    tail_writeoff_mwh: float
+    soc_end_mwh: float
+    identity_residual_mwh: float
+
+
+@dataclass(frozen=True)
+class StorageYearBoundaryRow:
+    """Storage state at an operating-year boundary (P0-4 S4, P3-14).
+
+    ``carry_policy`` names what the PSM does with the closing state: the
+    default PSM builds new batteries every year, so its closing state of
+    charge is ``discarded`` (doctoral frozen behaviour, booked not changed).
+    """
+
+    year: int
+    asset_id: str
+    opening_soc_mwh: float
+    closing_soc_mwh: float
+    carried_forward_mwh: float
+    discarded_mwh: float
+    carry_policy: str
+
+
+@dataclass(frozen=True)
+class SurplusRoutingLedgerRow:
+    """Pre-balancing surplus routing of one period and source class (P0-4 S5, Q7).
+
+    ``in_dispatch`` surplus is already inside the accepted supply (must-run
+    excess, scheduled output above real demand); ``out_of_dispatch`` surplus
+    is VRE availability the ahead market did not accept.  ``spilled_mwh`` of
+    the in-dispatch row is W_in (non_vre_spill); ``unrealised_mwh`` is the
+    in-dispatch surplus the kernel routed or spilled that the accepted supply
+    never contained.  available = storage + export + flexible + dispatch +
+    curtailed + spilled + unrealised.
+    """
+
+    year: int
+    period: int
+    source_class: str
+    available_mwh: float
+    to_storage_mwh: float
+    to_export_mwh: float
+    to_flexible_mwh: float
+    spilled_mwh: float
+    to_dispatch_mwh: float
+    curtailed_mwh: float
+    unrealised_mwh: float
+
+
+@dataclass(frozen=True)
+class BalanceTermsRow:
+    """Boundary terms a kernel reports with a period (P0-4 S6, Q7).
+
+    Recorded just before the period's PeriodLedgerRow; the ledger recomputes
+    the declared boundary residual from both.
+    """
+
+    year: int
+    period: int
+    u_out_mwh: float
+    non_vre_spill_mwh: float
+    non_vre_double_counted_mwh: float = 0.0
+    in_dispatch_unrealised_mwh: float = 0.0
+
+
+@dataclass(frozen=True)
+class BalanceBoundaryPeriodRow:
+    """One period of the energy-balance account on the declared boundary.
+
+    A2: ``shortfall_mwh`` is booked as unserved energy in place of the
+    recorded blackout, so ``closing_residual_mwh`` is zero when unmet demand
+    is the period's only defect.
+    """
+
+    year: int
+    period: int
+    stage: str
+    boundary_id: str
+    supply_mwh: float
+    demand_mwh: float
+    storage_charge_mwh: float
+    export_mwh: float
+    flexible_demand_mwh: float
+    u_out_mwh: float
+    non_vre_spill_mwh: float
+    non_vre_double_counted_mwh: float
+    in_dispatch_unrealised_mwh: float
+    recorded_unserved_mwh: float
+    raw_residual_mwh: float
+    compatibility_adjustment_mwh: float
+    shortfall_mwh: float
+    hidden_unserved_mwh: float
+    closing_residual_mwh: float
+    stress_flag: int
+
+
+@dataclass(frozen=True)
+class StressEventRow:
+    """A2 stress event: contiguous stress periods of one year."""
+
+    year: int
+    event_index: int
+    first_period: int
+    last_period: int
+    periods: int
+    shortfall_mwh: float
+    recorded_unserved_mwh: float
+    hidden_unserved_mwh: float
+    boundary_id: str
 
 
 @dataclass(frozen=True)
@@ -1014,6 +1184,54 @@ class ZonePeriodLedgerRow:
             _finite(getattr(self, name), name)
 
 
+# Boundary marginal value semantics (P0-8 S10).  v1 rows (before P0-8b) hold
+# a hard-coded 0.0 that was never computed; readers show them as not_computed.
+BOUNDARY_SHADOW_SEMANTICS_V1 = (
+    "diagnostic_marginal_value_in_accepted_bid_objective_not_zonal_price_or_cash_cost"
+)
+BOUNDARY_SHADOW_SEMANTICS_V2 = (
+    "value.boundary-marginal-value/v2:primary_stage_dual_signed_forward_"
+    "gbp_per_mwh_not_zonal_price_or_cash_cost"
+)
+BOUNDARY_SHADOW_STATUSES = ("computed", "degenerate_dual", "shared_member", "not_computed")
+
+
+def boundary_shadow_semantics(status: str) -> str:
+    """The stored semantics text of a v2 row: the v2 label plus its status."""
+
+    if status not in BOUNDARY_SHADOW_STATUSES:
+        raise ValueError(f"Unknown boundary marginal value status {status}")
+    return f"{BOUNDARY_SHADOW_SEMANTICS_V2}|status={status}"
+
+
+def boundary_shadow_status(semantics: object) -> str:
+    """Status of a stored row; every pre-P0-8b row is not_computed."""
+
+    text = str(semantics or "")
+    if text.startswith(BOUNDARY_SHADOW_SEMANTICS_V2 + "|status="):
+        status = text.rsplit("|status=", 1)[1]
+        if status in BOUNDARY_SHADOW_STATUSES:
+            return status
+    return "not_computed"
+
+
+def public_boundary_row(row: Mapping[str, object]) -> dict[str, object]:
+    """A boundary_period_summary row as the read models show it.
+
+    The stored value of a not_computed row (every v1 row) becomes None, never
+    a 0.0 that looks like an uncongested boundary (F3-05).
+    """
+
+    result = dict(row)
+    if "shadow_value_semantics" not in result:
+        return result
+    status = boundary_shadow_status(result.get("shadow_value_semantics"))
+    result["shadow_value_status"] = status
+    if status == "not_computed":
+        result["boundary_shadow_value_gbp_per_mwh"] = None
+    return result
+
+
 @dataclass(frozen=True)
 class BoundaryPeriodLedgerRow:
     year: int
@@ -1259,8 +1477,7 @@ class NetworkSolverDiagnosticRow:
             "absolute_ceiling": self.absolute_ceiling,
         }):
             raise ValueError(
-                "v3 primary bid cost evidence requires computed_tolerance, "
-                "validated_ceiling and absolute_ceiling all equal GBP 1"
+                gbp1_stored_policy_requirement(self.solver_contract_version)
             )
         classification = classify_lock(
             self.degradation,
@@ -1281,6 +1498,24 @@ class NetworkSolverDiagnosticRow:
             raise ValueError("nonzero_term_count must be a non-negative integer")
         if self.error_code is not None:
             _required_text(self.error_code, "error_code")
+
+
+# Optional v7 tables of the default PSM energy audit (P0-4 S4-S6).  They are
+# created on first write only, so ledgers of other PSMs keep their table set.
+# table -> (schema file, number of columns)
+OPTIONAL_ENERGY_AUDIT_TABLES: dict[str, tuple[str, int]] = {
+    "storage_energy_audit": ("market-ledger-storage-audit-v1.schema.sql", 12),
+    "storage_year_boundary": ("market-ledger-storage-audit-v1.schema.sql", 7),
+    "surplus_routing": ("market-ledger-surplus-routing-v1.schema.sql", 11),
+    "balance_boundary_period": ("market-ledger-energy-balance-v1.schema.sql", 20),
+    "stress_event": ("market-ledger-energy-balance-v1.schema.sql", 9),
+    # Four-role M-D1 (Q12 accounting): real storage offers, full trace only.
+    "storage_orders": ("market-ledger-storage-orders-v1.schema.sql", 17),
+}
+
+
+def _optional_table_ddl(schema_file: str) -> str:
+    return (Path(__file__).resolve().parent / "data" / "contracts" / schema_file).read_text(encoding="utf-8")
 
 
 class MarketLedger(Protocol):
@@ -1307,6 +1542,12 @@ class MarketLedger(Protocol):
     def record_network_solver_diagnostics(
         self, rows: Iterable[NetworkSolverDiagnosticRow]
     ) -> None: ...
+    def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: ...
+    def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: ...
+    def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None: ...
+    def record_storage_orders(self, rows: Iterable[StorageOrderLedgerRow]) -> None: ...
+    def declare_balance_boundary(self, boundary_id: str, *, rule_set: str | None = None, strict: bool | None = None) -> None: ...
+    def record_balance_terms(self, row: BalanceTermsRow) -> None: ...
     def close(self) -> dict[str, object]: ...
 
 
@@ -1347,6 +1588,12 @@ class NullMarketLedger:
     def record_network_solver_diagnostics(
         self, rows: Iterable[NetworkSolverDiagnosticRow]
     ) -> None: pass
+    def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None: pass
+    def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None: pass
+    def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None: pass
+    def record_storage_orders(self, rows: Iterable[StorageOrderLedgerRow]) -> None: pass
+    def declare_balance_boundary(self, boundary_id: str, *, rule_set: str | None = None, strict: bool | None = None) -> None: pass
+    def record_balance_terms(self, row: BalanceTermsRow) -> None: pass
     def close(self) -> dict[str, object]:
         return {"schema_version": self.schema_version, "trace_level": "off", "rows": 0, "bytes": 0, "writer_seconds": 0.0}
 
@@ -1402,6 +1649,44 @@ def _declared_schema_version(database: Path) -> str | None:
             return None
         raise
     return str(row[0]) if row else None
+
+
+def _existing_legacy_clock(database: Path) -> dict[str, str]:
+    """The pre-S-中1 clock label of an existing ledger (``{}`` when it has none)."""
+
+    with _read_only_connection(database) as connection:
+        stored = {
+            str(key): str(value)
+            for key, value in connection.execute(
+                "SELECT key, value FROM metadata WHERE key IN ('timezone', 'calendar')"
+            )
+        }
+    try:
+        label = {key: json.loads(value) for key, value in stored.items()}
+    except ValueError:
+        return {}
+    if not is_legacy_clock_label(label):
+        return {}
+    return {str(key): str(value) for key, value in label.items()}
+
+
+def _existing_absent_r72_keys(database: Path) -> tuple[str, ...]:
+    """R7-2 metadata keys an existing ledger was created without.
+
+    Only a ledger that has none of them (written before R7-2) is tolerated;
+    a ledger with some of them keeps the ordinary immutability check.
+    """
+
+    keys = tuple(_balance.STAGED_LEDGER_R72_METADATA_KEYS)
+    with _read_only_connection(database) as connection:
+        present = {
+            str(row[0])
+            for row in connection.execute(
+                "SELECT key FROM metadata WHERE key IN ({})".format(", ".join("?" for _ in keys)),
+                keys,
+            )
+        }
+    return () if present else keys
 
 
 def market_ledger_capabilities(database: Path) -> dict[str, object]:
@@ -1484,7 +1769,23 @@ class SQLiteMarketLedger:
                 raise ValueError(
                     f"Unsupported market ledger schema {existing_schema_version}"
                 )
-            supplied_semantic_metadata = dict(semantic_metadata or {})
+            # S-中1: the ledger records the model clock (UTC, fixed 365-day
+            # year); it is not a PSM choice, so a supplied label is replaced.
+            supplied_semantic_metadata = {
+                **dict(semantic_metadata or {}), **ledger_clock_metadata()
+            }
+            if self._authoritative_v8 and existing_schema_version == SCHEMA_VERSION:
+                legacy_clock = _existing_legacy_clock(self.path)
+                if legacy_clock:
+                    # A ledger created before S-中1 resumes with its own
+                    # (immutable) label; the read models correct it.
+                    supplied_semantic_metadata.update(legacy_clock)
+                absent = _existing_absent_r72_keys(self.path)
+                for key in absent:
+                    # R7-2: a staged ledger created before the PSM identity
+                    # and boundary were recorded resumes with its own
+                    # (immutable) metadata; its balance stays not_evaluated.
+                    supplied_semantic_metadata.pop(key, None)
             persistent_semantic_metadata = {
                 str(key): value
                 for key, value in supplied_semantic_metadata.items()
@@ -1542,6 +1843,20 @@ class SQLiteMarketLedger:
             self._reliability_events: list[tuple] = []
             self._solver_links: list[tuple] = []
             self._network_solver_diagnostics: list[tuple] = []
+            # P0-4 S4-S6 optional energy-audit tables: table -> buffered rows.
+            self._optional_rows: dict[str, list[tuple]] = {
+                table: [] for table in OPTIONAL_ENERGY_AUDIT_TABLES
+            }
+            self._optional_created: set[str] = set()
+            # P0-4 S6: boundary declared by the writing kernel (None: legacy
+            # behaviour, the self-reported residual must already be closed).
+            self.balance_boundary: str | None = None
+            self.balance_rule_set: str | None = None
+            self.balance_tier = _balance.EXACT_ARITHMETIC
+            self.balance_strict = False
+            self.physical_imbalance_periods = 0
+            self._pending_balance_terms: dict[tuple[int, int], BalanceTermsRow] = {}
+            self._balance_years: set[int] = set()
             self._closed = False
         except Exception:
             self._ownership_lease.close()
@@ -1962,11 +2277,125 @@ class SQLiteMarketLedger:
         self.writer_seconds += time.perf_counter() - started
         return integrity
 
+    def declare_balance_boundary(
+        self, boundary_id: str, *, rule_set: str | None = None, strict: bool | None = None,
+    ) -> None:
+        """The kernel's energy-balance boundary (P0-4 S6; Q7, C19).
+
+        Once declared, every period's self-reported raw residual must equal
+        the boundary recomputation, the compatibility adjustment may only
+        absorb numerical noise, and a physical imbalance is recorded (and
+        raised only in strict mode) instead of being closed.  A ledger keeps
+        one boundary for its whole life.
+        """
+
+        boundary = _balance.BOUNDARIES.get(str(boundary_id))
+        if boundary is None or not boundary.verdict_basis:
+            raise ValueError(f"GF_LEDGER_BOUNDARY_UNKNOWN: {boundary_id!r} is not a verdict boundary")
+        if self._authoritative_v8:
+            raise InvariantError("GF_LEDGER_BOUNDARY_UNSUPPORTED: v8 ledgers do not take a declared default-PSM boundary")
+        recorded = dict(self.connection.execute(
+            "SELECT key, value FROM metadata WHERE key IN (?, ?)",
+            (_balance.METADATA_BOUNDARY_KEY, _balance.METADATA_RULE_SET_KEY),
+        ).fetchall())
+        declared = {
+            _balance.METADATA_BOUNDARY_KEY: json.dumps(str(boundary_id)),
+            _balance.METADATA_RULE_SET_KEY: json.dumps(None if rule_set is None else str(rule_set)),
+        }
+        for key, value in declared.items():
+            if key in recorded and recorded[key] != value:
+                raise InvariantError(
+                    f"GF_LEDGER_BOUNDARY_CHANGED: {key} is {recorded[key]} in this ledger, not {value}"
+                )
+        if self.balance_boundary not in (None, str(boundary_id)):
+            raise InvariantError("GF_LEDGER_BOUNDARY_CHANGED: a ledger keeps one energy-balance boundary")
+        self.connection.executemany(
+            "INSERT OR REPLACE INTO metadata(key,value) VALUES(?,?)", tuple(declared.items()),
+        )
+        self.connection.commit()
+        self.balance_boundary = str(boundary_id)
+        self.balance_rule_set = None if rule_set is None else str(rule_set)
+        if strict is not None:
+            self.balance_strict = bool(strict)
+
+    def record_balance_terms(self, row: BalanceTermsRow) -> None:
+        self._pending_balance_terms[(int(row.year), int(row.period))] = row
+
+    def _declared_period(self, row: PeriodLedgerRow) -> None:
+        """Checks and books one period on the declared boundary (P0-4 S6)."""
+
+        boundary = str(self.balance_boundary)
+        terms = self._pending_balance_terms.pop((int(row.year), int(row.period)), None)
+        needs_terms = _balance.BOUNDARIES[boundary].requires_surplus_routing
+        if needs_terms and terms is None:
+            raise InvariantError(
+                f"GF_LEDGER_BALANCE_TERMS_MISSING: {row.year}:{row.period} has no U_out/W_in for {boundary}"
+            )
+        flows = _balance.PeriodFlows(
+            int(row.year), int(row.period),
+            supply_mwh=row.accepted_supply_mwh, blackout_mwh=row.blackout_mwh,
+            demand_mwh=row.real_demand_mwh, storage_charge_mwh=row.storage_charge_mwh,
+            export_mwh=row.export_mwh, flexible_demand_mwh=row.flexible_demand_mwh,
+            excess_mwh=row.excess_mwh, curtailed_mwh=row.curtailed_mwh,
+            forecast_demand_mwh=row.forecast_demand_mwh,
+            u_out_mwh=None if terms is None else terms.u_out_mwh,
+            w_in_mwh=None if terms is None else terms.non_vre_spill_mwh,
+            stage=row.stage,
+        )
+        tol = _balance.tolerance(self.balance_tier, row.real_demand_mwh, row.accepted_supply_mwh)
+        booking = _balance.balance_booking(boundary, flows, self.balance_tier)
+        where = f"{row.year}:{row.period}:{row.stage}"
+        if (
+            abs(booking.raw_residual_mwh - row.raw_energy_balance_residual_mwh) > tol
+            or abs(row.raw_energy_balance_residual_mwh + row.compatibility_adjustment_mwh
+                   - row.energy_balance_residual_mwh) > tol
+        ):
+            raise InvariantError(
+                f"GF_LEDGER_RESIDUAL_SELF_INCONSISTENT: {where} reports raw "
+                f"{row.raw_energy_balance_residual_mwh:.9f} MWh, {boundary} recomputes "
+                f"{booking.raw_residual_mwh:.9f} MWh"
+            )
+        if abs(row.compatibility_adjustment_mwh) > tol:
+            raise InvariantError(
+                f"GF_COMPAT_ADJUSTMENT_ABOVE_CAP: {where} adjustment "
+                f"{row.compatibility_adjustment_mwh:.9f} MWh exceeds the numerical-noise cap {tol:.3g} MWh"
+            )
+        if abs(row.energy_balance_residual_mwh) > tol:
+            self.physical_imbalance_periods += 1
+            if self.balance_strict:
+                raise InvariantError(
+                    f"GF_ENERGY_BALANCE_STRICT: {where} residual {row.energy_balance_residual_mwh:.9f} MWh "
+                    f"on {boundary} (runtime.energy_balance_strict)"
+                )
+        self._balance_years.add(int(row.year))
+        self._record_optional("balance_boundary_period", (BalanceBoundaryPeriodRow(
+            int(row.year), int(row.period), str(row.stage), boundary,
+            row.accepted_supply_mwh, row.real_demand_mwh, row.storage_charge_mwh,
+            row.export_mwh, row.flexible_demand_mwh,
+            0.0 if terms is None else terms.u_out_mwh,
+            0.0 if terms is None else terms.non_vre_spill_mwh,
+            0.0 if terms is None else terms.non_vre_double_counted_mwh,
+            0.0 if terms is None else terms.in_dispatch_unrealised_mwh,
+            row.blackout_mwh, booking.raw_residual_mwh, row.compatibility_adjustment_mwh,
+            booking.unserved_mwh, booking.hidden_unserved_mwh, booking.closing_residual_mwh,
+            int(booking.stress),
+        ),))
+
     def record_period(self, row: PeriodLedgerRow) -> None:
         if self._authoritative_v8:
             self.record_period_batch(build_market_period_batch(period=row))
             return
-        metrics = self._period_metrics(row)
+        if self.balance_boundary is not None:
+            if not (math.isfinite(row.energy_balance_residual_mwh) and math.isfinite(row.raw_energy_balance_residual_mwh)):
+                raise InvariantError("Market energy-balance residual is not finite")
+            self._declared_period(row)
+            metrics = (
+                abs(row.energy_balance_residual_mwh),
+                abs(row.raw_energy_balance_residual_mwh),
+                int(abs(row.compatibility_adjustment_mwh) > 1e-9),
+            )
+        else:
+            metrics = self._period_metrics(row)
         self.maximum_absolute_residual_mwh = max(
             self.maximum_absolute_residual_mwh, metrics[0]
         )
@@ -2158,10 +2587,54 @@ class SQLiteMarketLedger:
             return
         self._extend(self._network_solver_diagnostics, materialized)
 
+    def _record_optional(self, table: str, rows: Iterable[object]) -> None:
+        buffer = self._optional_rows[table]
+        buffer.extend(tuple(asdict(row).values()) for row in rows)
+        if len(buffer) >= self.batch_size:
+            self.flush()
+
+    def record_storage_audit(self, rows: Iterable[StorageEnergyAuditRow]) -> None:
+        """Per-asset storage energy audit (P0-4 S4); every trace level."""
+
+        self._record_optional("storage_energy_audit", rows)
+
+    def record_storage_year_boundary(self, rows: Iterable[StorageYearBoundaryRow]) -> None:
+        self._record_optional("storage_year_boundary", rows)
+
+    def record_surplus_routing(self, rows: Iterable[SurplusRoutingLedgerRow]) -> None:
+        """Source-classified surplus routing (P0-4 S5); every trace level."""
+
+        self._record_optional("surplus_routing", rows)
+
+    def record_storage_orders(self, rows: Iterable[StorageOrderLedgerRow]) -> None:
+        """Real storage discharge offers, accepted or not (four-role M-D1).
+
+        The default PSM writes them at the ``full`` trace level, next to
+        ``orders``.
+        """
+
+        self._record_optional("storage_orders", rows)
+
+    def _flush_optional(self) -> None:
+        for table, buffer in self._optional_rows.items():
+            if not buffer:
+                continue
+            if table not in self._optional_created:
+                schema_file, _ = OPTIONAL_ENERGY_AUDIT_TABLES[table]
+                self.connection.executescript(_optional_table_ddl(schema_file))
+                self._optional_created.add(table)
+            columns = OPTIONAL_ENERGY_AUDIT_TABLES[table][1]
+            self.connection.executemany(
+                f"INSERT OR REPLACE INTO {table} VALUES({','.join('?' for _ in range(columns))})",
+                buffer,
+            )
+            buffer.clear()
+
     def flush(self) -> None:
         if self._closed:
             return
         started = time.perf_counter()
+        self._flush_optional()
         if self._periods:
             self.connection.executemany("INSERT OR REPLACE INTO period_summary VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", self._periods)
             self._periods.clear()
@@ -2242,8 +2715,10 @@ class SQLiteMarketLedger:
             finally:
                 if lease is not None:
                     lease.close()
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - a finaliser must never raise
+            # Interpreter shutdown may already have torn down sqlite/locks; the
+            # explicit close() path reports real errors.  Record, do not hide.
+            _LOGGER.debug("Market ledger finaliser ignored %s: %s", type(exc).__name__, exc)
 
     def _close_owned(self) -> dict[str, object]:
         if not self._authoritative_v8:
@@ -2411,6 +2886,24 @@ class SQLiteMarketLedger:
             )
             for table in tables
         }
+        present = {
+            row[0] for row in self.connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        for table in OPTIONAL_ENERGY_AUDIT_TABLES:
+            if table in present:
+                counts[table] = int(
+                    self.connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                )
+        if self._balance_years and "balance_boundary_period" in present:
+            self._write_stress_events()
+            present.add("stress_event")
+            counts["stress_event"] = int(
+                self.connection.execute("SELECT COUNT(*) FROM stress_event").fetchone()[0]
+            )
+        energy_audit = self._energy_audit_summary(present)
+        energy_balance = self._energy_balance_summary(present)
         balance = self.connection.execute(
             "SELECT COALESCE(MAX(ABS(energy_balance_residual_mwh)), 0), "
             "COALESCE(MAX(ABS(raw_energy_balance_residual_mwh)), 0), "
@@ -2458,6 +2951,10 @@ class SQLiteMarketLedger:
             "source_artifact_sha256": source_artifact_sha256,
             "semantic_metadata": self.semantic_metadata,
         }
+        if energy_audit:
+            result["energy_audit"] = energy_audit
+        if energy_balance:
+            result["energy_balance"] = energy_balance
         (self.path.parent / "metadata.json").write_text(
             json.dumps(result, indent=2), encoding="utf-8"
         )
@@ -2489,6 +2986,148 @@ class SQLiteMarketLedger:
             ledger_schema_version=self.schema_version,
         )
         return result
+
+    def _write_stress_events(self) -> None:
+        """Group this instance's years into A2 stress events (contract rule)."""
+
+        if "stress_event" not in self._optional_created:
+            schema_file, _ = OPTIONAL_ENERGY_AUDIT_TABLES["stress_event"]
+            self.connection.executescript(_optional_table_ddl(schema_file))
+            self._optional_created.add("stress_event")
+        for year in sorted(self._balance_years):
+            rows = self.connection.execute(
+                "SELECT period, shortfall_mwh, recorded_unserved_mwh, hidden_unserved_mwh, "
+                "demand_mwh, supply_mwh, boundary_id FROM balance_boundary_period "
+                "WHERE year=? ORDER BY period", (year,),
+            ).fetchall()
+            estimates = [
+                _balance.ShortfallEstimate(year, int(row[0]), float(row[1]), float(row[1]), float(row[2]), True)
+                for row in rows
+            ]
+            scale = {(year, int(row[0])): max(float(row[4]), float(row[5])) for row in rows}
+            hidden = {int(row[0]): float(row[3]) for row in rows}
+            boundary = str(rows[0][6]) if rows else str(self.balance_boundary)
+            summary = _balance.stress_events(estimates, tier=self.balance_tier, scale=scale)
+            self.connection.execute("DELETE FROM stress_event WHERE year=?", (year,))
+            self.connection.executemany(
+                "INSERT INTO stress_event VALUES(?,?,?,?,?,?,?,?,?)",
+                (
+                    tuple(asdict(StressEventRow(
+                        year, index, event.first_period, event.last_period, event.periods,
+                        event.shortfall_lower_mwh, event.recorded_unserved_mwh,
+                        sum(hidden[period] for period in range(event.first_period, event.last_period + 1)),
+                        boundary,
+                    )).values())
+                    for index, event in enumerate(summary.events)
+                ),
+            )
+        self.connection.commit()
+
+    def _energy_balance_summary(self, present: set[str]) -> dict[str, object]:
+        if "balance_boundary_period" not in present:
+            return {}
+        by_year = []
+        for row in self.connection.execute(
+            "SELECT year, COUNT(*), SUM(stress_flag), SUM(shortfall_mwh), SUM(recorded_unserved_mwh), "
+            "SUM(hidden_unserved_mwh), MAX(ABS(raw_residual_mwh)), SUM(ABS(compatibility_adjustment_mwh)), "
+            "SUM(u_out_mwh), SUM(non_vre_spill_mwh), SUM(non_vre_double_counted_mwh), "
+            "SUM(in_dispatch_unrealised_mwh), MAX(ABS(closing_residual_mwh)), SUM(demand_mwh) "
+            "FROM balance_boundary_period GROUP BY year ORDER BY year"
+        ):
+            events = 0
+            if "stress_event" in present:
+                events = int(self.connection.execute(
+                    "SELECT COUNT(*) FROM stress_event WHERE year=?", (int(row[0]),)
+                ).fetchone()[0])
+            by_year.append({
+                "year": int(row[0]), "periods": int(row[1]), "stress_periods": int(row[2] or 0),
+                "stress_event_count": events, "shortfall_mwh": float(row[3] or 0.0),
+                "recorded_unserved_mwh": float(row[4] or 0.0), "hidden_unserved_mwh": float(row[5] or 0.0),
+                "maximum_absolute_raw_residual_mwh": float(row[6] or 0.0),
+                "sum_absolute_compatibility_adjustment_mwh": float(row[7] or 0.0),
+                "u_out_mwh": float(row[8] or 0.0), "non_vre_spill_mwh": float(row[9] or 0.0),
+                "non_vre_double_counted_mwh": float(row[10] or 0.0),
+                "in_dispatch_unrealised_mwh": float(row[11] or 0.0),
+                "maximum_absolute_closing_residual_mwh": float(row[12] or 0.0),
+                "demand_mwh": float(row[13] or 0.0),
+            })
+        return {
+            "boundary_id": self.balance_boundary,
+            "rule_set": self.balance_rule_set,
+            "tolerance_tier": self.balance_tier,
+            "strict": self.balance_strict,
+            "decision": "A2 stress events recorded without changing dispatch; shortfall booked as unserved",
+            "by_year": by_year,
+        }
+
+    def _energy_audit_summary(self, present: set[str]) -> dict[str, object]:
+        """Per-year SQL summaries of the optional P0-4 tables.
+
+        The default PSM opens a new ledger instance on the same file every
+        year, so the summary is computed over the file (all years so far),
+        not from this instance's buffers.
+        """
+
+        summary: dict[str, object] = {}
+        if "storage_energy_audit" in present:
+            summary["storage_by_year"] = [
+                {
+                    "year": int(row[0]),
+                    "charge_input_mwh": float(row[1]),
+                    "discharge_output_mwh": float(row[2]),
+                    "self_discharge_mwh": float(row[3]),
+                    "tail_writeoff_mwh": float(row[4]),
+                    "maximum_absolute_identity_residual_mwh": float(row[5]),
+                }
+                for row in self.connection.execute(
+                    "SELECT year, SUM(charge_input_mwh), SUM(discharge_output_mwh), "
+                    "SUM(self_discharge_mwh), SUM(tail_writeoff_mwh), "
+                    "MAX(ABS(identity_residual_mwh)) FROM storage_energy_audit "
+                    "GROUP BY year ORDER BY year"
+                )
+            ]
+            if "storage_state" in present:
+                # Report-only throughput bound (P0-4 S4): grid-side charge or
+                # discharge above rated power x period length.
+                try:
+                    hours = float(self.semantic_metadata.get("period_hours", 0.5))
+                except (TypeError, ValueError):
+                    hours = 0.5
+                row = self.connection.execute(
+                    "SELECT COUNT(*) FROM storage_energy_audit a JOIN storage_state s "
+                    "ON a.year=s.year AND a.period=s.period AND a.asset_id=s.asset_id "
+                    "WHERE a.charge_input_mwh > s.power_capacity_mw * ? + 1e-9 "
+                    "OR a.discharge_output_mwh > s.power_capacity_mw * ? + 1e-9",
+                    (hours, hours),
+                ).fetchone()
+                summary["storage_throughput_exceedances"] = {
+                    "periods": int(row[0]), "enforcement": "report_only",
+                }
+        if "surplus_routing" in present:
+            summary["surplus_routing_by_year"] = [
+                {
+                    "year": int(row[0]), "source_class": str(row[1]),
+                    "available_mwh": float(row[2]), "to_storage_mwh": float(row[3]),
+                    "to_export_mwh": float(row[4]), "to_flexible_mwh": float(row[5]),
+                    "to_dispatch_mwh": float(row[6]), "curtailed_mwh": float(row[7]),
+                    "spilled_mwh": float(row[8]), "unrealised_mwh": float(row[9]),
+                }
+                for row in self.connection.execute(
+                    "SELECT year, source_class, SUM(available_mwh), SUM(to_storage_mwh), "
+                    "SUM(to_export_mwh), SUM(to_flexible_mwh), SUM(to_dispatch_mwh), "
+                    "SUM(curtailed_mwh), SUM(spilled_mwh), SUM(unrealised_mwh) "
+                    "FROM surplus_routing GROUP BY year, source_class ORDER BY year, source_class"
+                )
+            ]
+        if "storage_year_boundary" in present:
+            summary["storage_year_boundary"] = [
+                {"year": int(row[0]), "discarded_mwh": float(row[1]), "carried_forward_mwh": float(row[2])}
+                for row in self.connection.execute(
+                    "SELECT year, SUM(discarded_mwh), SUM(carried_forward_mwh) "
+                    "FROM storage_year_boundary GROUP BY year ORDER BY year"
+                )
+            ]
+        return summary
 
     def metadata(self) -> dict[str, object]:
         metadata_path = self.path.parent / "metadata.json"
@@ -2606,11 +3245,11 @@ def _write_field_dictionary(
         "attribution_method_id": "Versioned deterministic reference-allocation method identity.",
         "evidence_level": "Evidence scope for detail rows; regional and technology values are deterministic reference allocations, not direct national counterfactual quantities.",
         "system_resource_cost_gbp": "Final physical resource cost; settlement transfers are excluded.",
-        "network_constraint_cost_gbp": "Zonal realised resource cost minus the matched realised copperplate resource cost.",
+        "network_constraint_cost_gbp": "Zonal realised resource cost minus the network-free LP counterfactual cost (same bids, unit-cost table and VOLL; zonal accounting v2). Earlier ledgers: minus the realised copperplate cost.",
         "national_settlement_gbp": "Ahead schedule volume paid at the GB national clearing price.",
         "redispatch_settlement_gbp": "Signed pay-as-bid cashflow for accepted redispatch adjustments.",
         "policy_transfer_gbp": "Declared policy/support transfer, kept outside physical resource cost.",
-        "boundary_shadow_value_gbp_per_mwh": "Diagnostic marginal value in the accepted-bid objective; not a zonal price or observed cash cost.",
+        "boundary_shadow_value_gbp_per_mwh": "Primary-stage dual of the boundary limit, GBP per MWh of transfer, signed in the forward direction (v2 semantics with a status); not a zonal price or observed cash cost. Rows before P0-8b were never computed and read as null.",
         "forecast_error_cost_gbp": "Forecast-schedule realised copperplate cost minus perfect-forecast copperplate realised cost.",
         "network_constraint_cost_identity_gbp": "Forecast-schedule realised zonal cost minus matched realised copperplate cost.",
         "total_deviation_cost_gbp": "Forecast-schedule realised zonal cost minus perfect-forecast copperplate realised cost.",
@@ -3577,7 +4216,30 @@ def validate_market_ledger_file(database: Path) -> dict[str, object]:
         "errors": errors,
         "science_root_by_year": science_root_by_year,
         "evidence_root_by_year": evidence_root_by_year,
+        **_physical_consistency(database, tables),
     }
+
+
+def _physical_consistency(database: Path, tables: set[str]) -> dict[str, object]:
+    """P3-02: the declared-boundary residual, not the adjusted self-report.
+
+    ``physically_consistent`` is None for ledgers without a declared boundary
+    (their adjusted residual is zero by construction and proves nothing).
+    """
+
+    if "balance_boundary_period" not in tables:
+        return {"physically_consistent": None, "physically_inconsistent_periods": None}
+    try:
+        with _read_only_connection(database) as connection:
+            count = int(connection.execute(
+                "SELECT COUNT(*) FROM balance_boundary_period WHERE ABS(raw_residual_mwh) > "
+                "MAX(?, ? * MAX(ABS(demand_mwh), ABS(supply_mwh), 1.0))",
+                (_balance.TOLERANCE_TIERS[_balance.EXACT_ARITHMETIC]["absolute_mwh"],
+                 _balance.TOLERANCE_TIERS[_balance.EXACT_ARITHMETIC]["relative"]),
+            ).fetchone()[0])
+    except (OSError, sqlite3.DatabaseError):
+        return {"physically_consistent": None, "physically_inconsistent_periods": None}
+    return {"physically_consistent": count == 0, "physically_inconsistent_periods": count}
 
 
 _SOLVER_PHASES = {

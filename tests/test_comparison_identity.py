@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from gridform_core.comparison_identity import build_comparison_identity
+from gridform_core.methodology import resolve_methodology
 from gridform_core.results_summary import build_run_summary, compare_run_summaries
 
 
@@ -18,18 +19,20 @@ class ComparisonIdentityTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
 
-    def fixture(self, name, *, storage="dynamic", data_sha="a" * 64, year=2025, parameter=1, solver="strict", source_sha="b" * 64, mode="full", periods=17520, extension=False):
+    def fixture(self, name, *, storage="dynamic", data_sha="a" * 64, year=2025, parameter=1, solver="strict", source_sha="b" * 64, mode="full", periods=17520, extension=False, storage_source_sha="c" * 64):
         root = Path(self.temp.name) / name
         project = {"schema_version": "value.project/v1", "id": name, "name": name, "data_pack_id": name, "start_year": year, "end_year": year,
                    "modules": {"psm": "psm", "storage_cost": storage}, "parameters": {"scientific.parameter": parameter}, "runtime_options": {},
                    "selected_extensions": ["ext"] if extension else [], "solver_contract": {"policy": solver}}
-        modules = [{"slot": slot, "module_id": module, "module_version": "1.0", "contract_version": "v1", "entry_point": "package:Module", "source_sha256": source_sha if slot == "psm" else "c" * 64} for slot, module in project["modules"].items()]
+        modules = [{"slot": slot, "module_id": module, "module_version": "1.0", "contract_version": "v1", "entry_point": "package:Module", "source_sha256": source_sha if slot == "psm" else storage_source_sha} for slot, module in project["modules"].items()]
         pack = {"id": name, "schema_version": "pack/v1", "country": "GB", "timezone": "UTC", "bindings": {"demand": {"sha256": data_sha, "uri": "files/demand.csv", "format": "csv", "unit": "MWh"}}}
         snapshot = {"state": "ready", "snapshot_id": name, "project_sha256": digest(project), "pack_manifest_sha256": digest(pack), "objects": [{"role": "demand", "sha256": data_sha, "pack_directory": "pack"}], "modules": modules}
         if extension:
             snapshot["extension_graph"] = {"extensions": [{"id": "ext", "version": "1", "manifest_sha256": "d" * 64}], "parameters": {}}
         status = {"id": name, "mode": mode, "run_policy": {"start_year": year, "end_year": year, "periods_per_year": periods}}
-        resolved = {"modules": {row["slot"]: {key: row[key] for key in ("module_id", "module_version", "contract_version")} for row in modules}, "scientific_parameters": {"scientific.parameter": parameter}, "runtime_controls": {}}
+        # Runs recorded after X0 S9 carry their methodology in the method dimension.
+        resolved = {"modules": {row["slot"]: {key: row[key] for key in ("module_id", "module_version", "contract_version")} for row in modules}, "scientific_parameters": {"scientific.parameter": parameter}, "runtime_controls": {},
+                    "extensions": {"methodology": resolve_methodology().to_dict()}}
         for path, value in [("input-snapshot/project.json", project), ("input-snapshot/snapshot.json", snapshot), ("input-snapshot/pack/manifest.json", pack), ("status.json", status), ("model-output/resolved-run.json", resolved)]:
             target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -187,6 +190,79 @@ class ComparisonIdentityTests(unittest.TestCase):
         path.write_text(json.dumps(resolved))
         self.assertIsNone(build_run_summary(root)["comparison_identity"]["dimensions"]["method"])
 
+    def test_one_day_lesson_recorded_extension_is_not_a_method_change(self):
+        # F-D2 (DECISIONS A16-3): the one-day lesson runs the market step only,
+        # so a recorded but never executed extension is not a method change.
+        for mode, periods in (("value_101_day", 48), ("smoke", 2)):
+            with self.subTest(mode=mode):
+                left = build_run_summary(self.fixture("lesson-left-" + mode, mode=mode, periods=periods))
+                right_root = self.fixture("lesson-right-" + mode, mode=mode, periods=periods, extension=True)
+                project_path = right_root / "input-snapshot/project.json"
+                project = json.loads(project_path.read_text())
+                project["extension_parameters"] = {"ext": {"threshold": 3}}
+                project_path.write_text(json.dumps(project))
+                snapshot_path = right_root / "input-snapshot/snapshot.json"
+                snapshot = json.loads(snapshot_path.read_text())
+                snapshot["project_sha256"] = digest(project)
+                snapshot_path.write_text(json.dumps(snapshot))
+                right = build_run_summary(right_root)
+                identity = right["comparison_identity"]
+                result = compare_run_summaries([left, right])
+                if mode == "value_101_day":
+                    self.assertIsNone(identity["dimensions"]["method"]["extensions"])
+                    self.assertEqual(identity["dimensions"]["config"]["extension_parameters"], {})
+                    self.assertEqual(identity["non_executed_extensions"], {"reason_code": "extensions_not_executed_in_scope", "extensions": ["ext"]})
+                    self.assertEqual(result["comparison_review"]["dimensions"]["method"]["status"], "same")
+                    self.assertEqual(result["comparison_review"]["dimensions"]["config"]["status"], "same")
+                    self.assertEqual(result["changed_dimensions"], {})
+                    self.assertEqual(result["storage_pricing_interpretation"], "matching_teaching_configuration")
+                else:
+                    # Scopes that run extension hooks keep them in the method.
+                    self.assertNotIn("non_executed_extensions", identity)
+                    self.assertEqual(result["comparison_review"]["dimensions"]["method"]["status"], "changed")
+                    self.assertEqual(result["comparison_review"]["dimensions"]["config"]["status"], "changed")
+
+
+    # R1-4 (S-D9, F-D5): the warning names the changed dimension and the
+    # differing paths instead of a fixed storage-policy sentence.
+    def test_warning_names_the_changed_dimension_and_paths(self):
+        left = build_run_summary(self.fixture("named-left"))
+        data = compare_run_summaries([left, build_run_summary(self.fixture("named-data", data_sha="e" * 64))])
+        self.assertEqual(data["changed_dimension_details"]["data"],
+                         {"label": "data inputs", "name": "data inputs", "paths": ["pack.roles.demand"], "more_paths": 0})
+        self.assertEqual(data["warning"], "Only one recorded dimension differs - data inputs: pack.roles.demand. The comparison "
+                         "describes the effect of this one change.")
+        self.assertNotIn("storage-policy", data["warning"])
+        # S-低7(a) (R4, A27): a data change is not described as a storage-cost experiment.
+        self.assertNotIn("storage-cost", data["warning"])
+        extension = compare_run_summaries([left, build_run_summary(self.fixture("named-ext", extension=True))])
+        self.assertEqual(extension["changed_dimension_details"]["method"]["paths"], ["extensions"])
+        # AF3-2: no doubled parenthesis ("... methodology) (extensions)").
+        self.assertIn("model method: extensions", extension["warning"])
+        self.assertNotIn(") (", extension["warning"])
+        both = compare_run_summaries([left, build_run_summary(self.fixture("named-both", parameter=2, year=2026))])
+        self.assertEqual(set(both["changed_dimension_details"]), {"config", "years"})
+        self.assertEqual(both["changed_dimension_details"]["years"]["paths"], ["end_year", "start_year"])
+        self.assertIn("parameters.scientific.parameter", both["warning"])
+        self.assertIn("jointly", both["warning"])
+        same = compare_run_summaries([left, build_run_summary(self.fixture("named-same"))])
+        self.assertEqual(same["changed_dimension_details"], {})
+
+    # R3M-6: a storage-cost module edited in place (same id and version, new
+    # source hash) is named by the field that changed and is the same
+    # controlled storage-cost change as a module swap.
+    def test_in_place_storage_module_edit_names_the_source_hash(self):
+        for mode, periods, interpretation in [("value_101_day", 48, "controlled_teaching_configuration"), ("full", 17520, "controlled_storage_cost_module_change")]:
+            with self.subTest(mode=mode):
+                left = build_run_summary(self.fixture(f"src-left-{mode}", mode=mode, periods=periods))
+                right = build_run_summary(self.fixture(f"src-right-{mode}", mode=mode, periods=periods, storage_source_sha="9" * 64))
+                result = compare_run_summaries([left, right])
+                self.assertEqual(result["changed_dimension_details"]["method"]["paths"], ["modules.storage_cost.source_sha256"])
+                self.assertTrue(result["clean_storage_policy_comparison"])
+                self.assertEqual(result["storage_pricing_interpretation"], interpretation)
+                swap = compare_run_summaries([left, build_run_summary(self.fixture(f"swap-{mode}", mode=mode, periods=periods, storage="legacy"))])
+                self.assertEqual(swap["changed_dimension_details"]["method"]["paths"], ["modules.storage_cost"])
+                self.assertEqual(swap["storage_pricing_interpretation"], interpretation)
 
 if __name__ == "__main__":
     unittest.main()

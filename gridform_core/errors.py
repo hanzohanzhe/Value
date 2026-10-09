@@ -31,6 +31,32 @@ class ContractError(VALUEError, ValueError):
     public_message = "A selected module did not satisfy its declared contract."
 
 
+class ExtensionOutputError(ContractError):
+    """An extension hook returned an output VALUE refuses (AF-低1).
+
+    The exception message names the extension, the hook and the rule; the
+    Runs page shows its first line next to this public message.
+    """
+
+    code = "GF_EXTENSION_OUTPUT_REJECTED"
+    category = "contract"
+    public_message = (
+        "An extension hook returned an output that VALUE does not accept; "
+        "the detail below names the extension, the hook and the rule."
+    )
+
+
+class ExecutionIdentityChangedError(VALUEError, ValueError):
+    """The installed code changed between enqueue and worker start (EM-中1)."""
+
+    code = "GF_RUN_EXECUTION_IDENTITY_CHANGED"
+    category = "execution_identity"
+    public_message = (
+        "The installed modules, extensions or VALUE code changed after this Run "
+        "was queued, so it did not start. Resubmit it to run with the current code."
+    )
+
+
 class DataError(VALUEError, OSError):
     code = "GF_DATA_001"
     category = "data"
@@ -99,6 +125,21 @@ def public_failure(error: BaseException) -> PublicFailure:
             ContractError.code, ContractError.category, ContractError.public_message
         )
     return RuntimeModelError().public_failure()
+
+
+# Failure categories whose exception message is shown (first line) next to
+# the public message on the Runs page (R6-1, EM-中1 / AF-低1).
+DETAIL_CATEGORIES = frozenset({"contract", "execution_identity"})
+
+
+def failure_detail(message: object, *, limit: int = 400) -> str | None:
+    """First non-empty line of a diagnostic exception message, bounded."""
+
+    for line in str(message or "").splitlines():
+        line = line.strip()
+        if line:
+            return line if len(line) <= limit else line[: limit - 1] + "…"
+    return None
 
 
 def warning_event(

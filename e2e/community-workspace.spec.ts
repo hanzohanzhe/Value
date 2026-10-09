@@ -1,11 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 import { VALUE_101_FALLBACK } from "../app/features/learn/value101";
+import { railLink } from "./workspace-nav";
+
+// RR-1 (3): migrated to the routes of P1 W3 (D-W3-13 ④: the page is the URL
+// path, the sidebar entries are links, the Run centre has no context bar) and
+// to the state words of R-16.  Every /api route is mocked.
 
 const PATHS = [
-  { label: "reproduce from existing data", path: "reproduce", view: "journey", heading: "reproduce from existing data" },
-  { label: "add your new data", path: "data", view: "journey", heading: "add your new data" },
-  { label: "Edit module", path: "module", view: "models", heading: "Install a model module", target: "module-installer" },
-  { label: "add new function to VALUE", path: "function", view: "models", heading: "Install a model extension", target: "extension-installer" },
+  { label: "Reproduce from existing data", path: "reproduce", route: "/journey", heading: "Reproduce from existing data" },
+  { label: "Add your new data", path: "data", route: "/journey", heading: "Add your new data" },
+  // P1 W4b (R3-22): the path opens the author tools, which are the last section of /modules and /extensions.
+  { label: "Edit a module", path: "module", route: "/modules", heading: "Install a model module", target: "module-author-workbench" },
+  { label: "Add a new function to VALUE", path: "function", route: "/extensions", heading: "Install a model extension", target: "extension-author-workbench" },
 ] as const;
 
 const mutableStudy = {
@@ -94,7 +100,7 @@ async function mockWorkspace(page: Page, delayedRun?: { id: string; ready: Promi
 
 async function openWorkspace(page: Page, url = "/") {
   await page.goto(url);
-  await expect(page.locator(".service")).toContainText("value-native ready");
+  await expect(page.locator(".rail .service")).toContainText("value-native ready");
 }
 
 async function expectNoPageOverflow(page: Page) {
@@ -124,9 +130,11 @@ for (const path of PATHS) {
     await expect(page.getByRole("button", { name: path.label, exact: true })).toBeVisible();
     await page.getByRole("button", { name: path.label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`[?&]path=${path.path}(?:&|$)`));
-    expect(new URL(page.url()).searchParams.get("view")).toBe(path.view);
+    expect(new URL(page.url()).pathname).toBe(path.route);
     await expect(page.getByRole("heading", { name: path.heading, exact: true })).toBeVisible();
     if ("target" in path) await expect(page.locator(`#${path.target}`)).toBeInViewport();
+    // The chosen path stays marked on Home.
+    await railLink(page, "Home").click();
     await expect(page.getByRole("button", { name: path.label, exact: true })).toHaveAttribute("aria-pressed", "true");
     assertClean();
   });
@@ -140,7 +148,7 @@ test("Read me loads the public document, traps keyboard focus and returns focus 
   await trigger.click();
   await expect(dialog.getByRole("heading", { name: "VALUE Read me", exact: true })).toBeVisible();
   for (const path of PATHS) await expect(dialog.getByRole("cell", { name: path.label, exact: true })).toBeVisible();
-  const close = dialog.getByRole("button", { name: "关闭 Read me", exact: true });
+  const close = dialog.getByRole("button", { name: "Close Read me", exact: true });
   await expect(close).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
@@ -167,13 +175,19 @@ test("a Run keeps its frozen revision after draft changes and hides the previous
   await expect(context.locator(".run-context-sources > span").filter({ hasText: "Frozen Study revision" }).locator("b")).toHaveText("1");
   await expect(context).not.toContainText("mutable-workspace-pack");
   await expect(context).toContainText("2 periods configured");
-  await expect(context.locator(".run-context-statuses > span").filter({ hasText: "Scientific validation" })).toContainText("not evaluated");
-  await page.getByRole("button", { name: "Home: Study status", exact: true }).click();
+  await expect(context.locator(".run-context-statuses > span").filter({ hasText: "Scientific validation" })).toContainText("Not evaluated");
+  // The draft's data pack is chosen in the top bar of Studies (the draft context).
+  await railLink(page, "Studies").click();
   await page.getByRole("combobox", { name: "Selected data pack", exact: true }).selectOption("another-draft-pack");
-  await page.getByRole("button", { name: "Runs: Launch and compare", exact: true }).click();
+  // The Run centre lists the Runs; the Run's own page carries the context bar.
+  const runPage = () => page.getByRole("navigation", { name: "Pages of this Run" }).getByRole("link", { name: "Annual results", exact: true }).click();
+  await railLink(page, "Runs").click();
+  await runPage();
   await expect(context).toContainText("frozen-old-data-pack");
   await expect(context).not.toContainText("another-draft-pack");
+  await railLink(page, "Runs").click();
   await page.getByRole("combobox", { name: "Selected run", exact: true }).selectOption("fixture-new-run");
+  await runPage();
   try {
     await expect(context).toContainText("fixture-new-run");
     await expect(context).toHaveAttribute("aria-busy", "true");
@@ -193,22 +207,23 @@ test("an explicitly unavailable Run URL preserves its identity without substitut
   await expect(context).toContainText("No Run selected");
   await expect(context).not.toContainText("fixture-old-run");
   await expect(context).not.toContainText("frozen-old-data-pack");
-  await expect(page.getByRole("combobox", { name: "Selected run", exact: true })).toHaveValue("");
-  expect(new URL(page.url()).searchParams.get("run")).toBe("missing-run");
+  // The old link is forwarded to the Run's own path, which keeps the unavailable Run.
+  expect(new URL(page.url()).pathname).toBe("/runs/missing-run");
   assertClean();
 });
 
 test("Data retains the saved Study and an intentional draft choice through reload and browser Back", async ({ page }) => {
   const assertClean = await mockWorkspace(page);
   await openWorkspace(page);
-  await page.getByRole("button", { name: "add your new data", exact: true }).click();
+  await railLink(page, "Data").click();
   const dataContext = page.getByRole("combobox", { name: "Data input context", exact: true });
+  await dataContext.selectOption("fixture-study");
   await expect(dataContext).toHaveValue("fixture-study");
   await expect(page).toHaveURL(/[?&]dataContext=fixture-study(?:&|$)/);
   await page.reload();
   await expect(dataContext).toHaveValue("fixture-study");
-  await page.getByRole("button", { name: "Edit module", exact: true }).click();
-  await expect(page).toHaveURL(/[?&]view=models(?:&|$)/);
+  await railLink(page, "Modules").click();
+  await expect(page).toHaveURL(/\/modules(?:\?|$)/);
   await page.goBack();
   await expect(dataContext).toHaveValue("fixture-study");
 
@@ -216,8 +231,8 @@ test("Data retains the saved Study and an intentional draft choice through reloa
   await expect(dataContext).toHaveValue("draft");
   await expect.poll(() => new URL(page.url()).searchParams.has("dataContext")).toBe(false);
   // Moving away waits for the committed URL and exercises restoration independently of reload.
-  await page.getByRole("button", { name: "Edit module", exact: true }).click();
-  await expect(page).toHaveURL(/[?&]view=models(?:&|$)/);
+  await railLink(page, "Modules").click();
+  await expect(page).toHaveURL(/\/modules(?:\?|$)/);
   await page.goBack();
   await expect(dataContext).toHaveValue("draft");
   await page.reload();
@@ -244,12 +259,14 @@ for (const width of [320, 390]) {
     await expectNoPageOverflow(page);
     await page.screenshot({ path: test.info().outputPath(`${width}-home.png`), fullPage: true });
     for (const path of PATHS) {
+      // Below 900 px the sidebar is a drawer; each path starts from Home.
+      await openWorkspace(page);
       await page.getByRole("button", { name: path.label, exact: true }).click();
       await expect(page.getByRole("heading", { name: path.heading, exact: true })).toBeVisible();
       await expectNoPageOverflow(page);
       if (path.path === "data") await page.screenshot({ path: test.info().outputPath(`${width}-data.png`), fullPage: true });
     }
-    await page.getByRole("button", { name: "Runs: Launch and compare", exact: true }).click();
+    await page.goto("/runs/fixture-old-run");
     await expect(page.getByRole("region", { name: "Selected Run context", exact: true })).toContainText("frozen-old-data-pack");
     await expectNoPageOverflow(page);
     await page.screenshot({ path: test.info().outputPath(`${width}-runs.png`), fullPage: true });

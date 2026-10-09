@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Mapping
 
 from gridform_core.market_ledger import _read_only_connection, market_ledger_capabilities, ATTRIBUTION_SCHEMA_VERSIONS
+from gridform_core.result_advisories import withheld_annual_result
+from gridform_core.result_coverage import REASON_CANCELLED, REASON_NON_ANNUAL, is_non_annual, legacy_reason, result_coverage, stopped_reason, year_bounds_from_rows
 from gridform_core.results_summary import validate_vre_curtailment_attribution
 from gridform_core.zonal_results import query_zonal_annual_brief, query_zonal_results
 from gridform_core.vre_curtailment_attribution import ATTRIBUTION_METHOD_ID
@@ -104,6 +106,14 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
     result = {"schema_version": "value.result-query/v1", "family": "vre-curtailment", "contract_version": CONTRACT, "identity": identity, "source": {"kind": kind, "requested": requested_source, "artifact_path": path.relative_to(run_root).as_posix(), "artifact_sha256": hashlib.sha256(evidence_bytes).hexdigest() if evidence_bytes is not None else _sha(path) if path.is_file() else None, "original_schema_version": None, "trace_level": None}, "scope": {"resolution": resolution, "year": year, "period_from": start, "period_to": end}, "identity_binding": {"container": "status.json", "source": "artifact_metadata", "source_run_id_recorded": bool(evidence.get("run_id"))}, "capabilities": {"available_resolutions": ["annual", "half_hour"] if kind == "sqlite" and path.is_file() else ["annual"] if path.is_file() else [], "available_dimensions": ["year", "period_window"] if kind == "sqlite" and path.is_file() else ["year"] if path.is_file() else [], "unavailable_dimensions": ["zone", "technology"] + (["period_window"] if kind == "compact" else [])}, "status": "unavailable", "reason_code": "result_artifact_missing", "total": 0, "limit": limit, "offset": offset, "count": 0, "has_more": False, "items": []}
     if kind == "compact" and resolution != "annual":
         raise ValueError("GF_RESULT_DIMENSION_UNAVAILABLE: compact evidence only records annual totals")
+    if resolution == "annual":
+        # Q14: a run whose profile publishes annual results only after its raw
+        # invariants pass serves no annual rows until they do.
+        withheld = withheld_annual_result(run_root, "results/vre-curtailment?resolution=annual", status)
+        if withheld is not None:
+            result.update(status="withheld", reason_code=withheld["reason_code"],
+                          result_publication=withheld["result_publication"], available_in=withheld["available_in"])
+            return result
     if not path.is_file():
         return result
     observed_stat = (path.stat().st_size, path.stat().st_mtime_ns)
@@ -118,7 +128,7 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
         result["source"]["trace_level"] = evidence.get("ledger_trace_level")
         policy = status.get("run_policy") or {}
         expected = expected_years
-        validation = validate_vre_curtailment_attribution(evidence, mode=status.get("mode"), periods_per_year=policy.get("periods_per_year"), expected_years=tuple(expected))
+        validation = validate_vre_curtailment_attribution(evidence, mode=status.get("mode"), periods_per_year=policy.get("periods_per_year"), expected_years=tuple(expected), run_status=status)
         if validation["status"] != "reconciled":
             missing_reasons = {"vre_curtailment_attribution_artifact_missing", "vre_curtailment_annual_evidence_missing", "vre_curtailment_attribution_not_reconciled", "module_does_not_provide_counterfactual_snapshot"}
             normalized_status = "withheld" if validation["status"] == "withheld" else "unavailable" if validation["reason_code"] in missing_reasons or evidence.get("capability_status") == "unavailable" else "invalid"
@@ -148,6 +158,16 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if not {"vre_curtailment_period", "zonal_period_accounting"} <= tables:
                 result.update(reason_code="attribution_evidence_not_recorded")
+                return result
+            # G1-07 (P0-9 S7): both tables present but empty (a copperplate or
+            # pre-attribution Run) means no evidence was recorded: unavailable,
+            # not invalid.  One empty and one filled table still fails below.
+            recorded_any = any(
+                connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
+                for table in ("vre_curtailment_period", "zonal_period_accounting")
+            )
+            if not recorded_any:
+                result.update(status="unavailable", reason_code="attribution_evidence_not_recorded")
                 return result
             mismatch = connection.execute("SELECT 1 FROM vre_curtailment_period v LEFT JOIN zonal_period_accounting a ON v.year=a.year AND v.period=a.period AND v.period_id=a.period_id WHERE a.period_id IS NULL OR v.counterfactual_realised_input_sha256 IS NULL OR a.counterfactual_realised_input_sha256 IS NULL OR length(v.counterfactual_realised_input_sha256)<>64 OR v.counterfactual_realised_input_sha256 GLOB '*[^0-9a-f]*' OR v.counterfactual_realised_input_sha256<>a.counterfactual_realised_input_sha256 OR a.accounting_status IS NULL OR v.accounting_status IS NULL OR v.attribution_method_id IS NULL OR a.accounting_status<>'reconciled' OR v.accounting_status<>'reconciled' OR v.attribution_method_id<>? LIMIT 1", (ATTRIBUTION_METHOD_ID,)).fetchone()
             missing = connection.execute("SELECT 1 FROM zonal_period_accounting a LEFT JOIN vre_curtailment_period v ON v.year=a.year AND v.period=a.period AND v.period_id=a.period_id WHERE v.period_id IS NULL LIMIT 1").fetchone()
@@ -195,18 +215,28 @@ def query_vre_curtailment_results(run_root: Path, query: Mapping[str, object]) -
                     identity[key] = value
         identity["attribution_method_id"] = ATTRIBUTION_METHOD_ID
         if resolution == "annual":
-            policy = status.get("run_policy") or {}
-            if status.get("mode") in {"smoke", "two_year_smoke", "validation_24h", "validation_168h", "tutorial"} or policy.get("periods_per_year") != 17520:
-                result.update(status="withheld", reason_code="annual_evidence_withheld_for_nonannual_run")
+            # P0-9 S5: the shared annual-coverage rule (gridform_core.result_coverage).
+            if is_non_annual(status):
+                result.update(status="withheld", reason_code=REASON_NON_ANNUAL)
                 return result
             brief_years = query_zonal_annual_brief(database)["years"]
             if not expected_years or {item["year"] for item in brief_years} != set(expected_years):
+                # Designer ruling 3 (M2 UI review): a Run that was cancelled (or
+                # failed) before a declared year completed is not self-contradictory;
+                # a missing year is then unavailable, never a red "invalid".
+                stopped = stopped_reason(status)
+                if stopped is not None and expected_years and {item["year"] for item in brief_years} <= set(expected_years):
+                    result.update(status="unavailable", reason_code="cancelled_before_year_complete" if stopped == REASON_CANCELLED else "failed_before_year_complete")
+                    return result
                 result.update(status="invalid", reason_code="vre_curtailment_annual_year_set_invalid")
                 return result
             with _read_only_connection(database) as connection:
                 bounds = connection.execute("SELECT year,MIN(period),MAX(period),COUNT(DISTINCT period) FROM vre_curtailment_period GROUP BY year").fetchall()
-            if any(first != 0 or last != 17519 or count != 17520 for _, first, last, count in bounds):
-                result.update(status="withheld", reason_code="annual_evidence_withheld_for_nonannual_run")
+            coverage = result_coverage(status, year_bounds_from_rows(bounds))
+            result["coverage"] = coverage
+            if coverage["annual_status"] != "complete":
+                # Review response: the precise coverage code, with the older wording kept beside it.
+                result.update(status="invalid" if coverage["annual_status"] == "invalid" else "withheld", reason_code=coverage["reason_code"], legacy_reason_code=legacy_reason(coverage))
                 return result
             rows = []
             for item in brief_years:

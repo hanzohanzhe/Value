@@ -1,7 +1,7 @@
 {
-  "edition": "0.3",
-  "date": "2026-10-04",
-  "basis": "2026-10-02",
+  "edition": "0.4.1",
+  "date": "2026-10-09",
+  "basis": "2026-10-09",
   "chapterIDs": [
     "introduction",
     "datasets",
@@ -14,11 +14,11 @@
     "appendix"
   ],
   "revision": {
-    "zh": "修订版 0.3   2026年10月4日",
-    "en": "Edition 0.3   4 October 2026"
+    "zh": "修订版 0.4.1   2026年10月9日",
+    "en": "Edition 0.4.1   9 October 2026"
   },
   "basisLabel": {
-    "zh": "模型实现与数据依据 2026年10月2日",
-    "en": "Implementation and data basis 2 October 2026"
+    "zh": "VALUE 0.7.0-alpha.1 · 模型实现与数据依据 2026年10月9日",
+    "en": "VALUE 0.7.0-alpha.1 · Implementation and data basis 9 October 2026"
   }
 }

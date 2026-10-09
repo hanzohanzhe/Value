@@ -1,0 +1,9 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer components {
+  .v-status { display: inline-flex; align-items: baseline; gap: var(--sp-1); color: var(--ink-muted); font-weight: inherit; font-style: normal; }
+  .v-status__icon { font-size: var(--fs-xs); font-weight: 700; line-height: 1; }
+  .v-status--amber { color: var(--amber); }
+  .v-status--red { color: var(--red); }
+  .v-status--blue { color: var(--blue); }
+}

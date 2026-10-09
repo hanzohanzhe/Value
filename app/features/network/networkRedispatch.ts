@@ -1,3 +1,7 @@
+import { formatMoney, formatNumber } from "../shared/format.ts";
+import { VALUE_STATES } from "../shared/valueStates.ts";
+import type { ResultCoverage } from "../shared/coverageView.ts";
+
 export type ZonalRun = {
   id: string;
   status: string;
@@ -9,8 +13,8 @@ export type ZonalRun = {
 };
 
 export type ZonalSolverContract = {
-  schema_version: "value.network-solver-contract/v2" | "value.network-solver-contract/v3";
-  contract_version: "value.zonal-lexicographic/v2" | "value.zonal-lexicographic-gbp1/v3";
+  schema_version: "value.network-solver-contract/v2" | "value.network-solver-contract/v3" | "value.network-solver-contract/v4";
+  contract_version: "value.zonal-lexicographic/v2" | "value.zonal-lexicographic-gbp1/v3" | "value.zonal-lexicographic-shed-lock/v4";
   method: "highs-ds" | "highs-ipm" | "highs";
   presolve: true;
   primal_feasibility_tolerance: number;
@@ -23,9 +27,11 @@ export type ZonalSolverContract = {
   requires_acknowledgement: boolean;
 };
 
+// Solver contract v4 (P0-8): shed lock first, then a numerical bid-cost lock;
+// GBP 1 per period is only its acceptance ceiling.
 export const DEFAULT_ZONAL_SOLVER_CONTRACT: ZonalSolverContract = {
-  schema_version: "value.network-solver-contract/v3",
-  contract_version: "value.zonal-lexicographic-gbp1/v3",
+  schema_version: "value.network-solver-contract/v4",
+  contract_version: "value.zonal-lexicographic-shed-lock/v4",
   method: "highs-ds",
   presolve: true,
   primal_feasibility_tolerance: 1e-9,
@@ -54,9 +60,50 @@ export const LEGACY_ZONAL_SOLVER_CONTRACT: ZonalSolverContract = {
   absolute_ceilings: { ...DEFAULT_ZONAL_SOLVER_CONTRACT.absolute_ceilings, primary_bid_cost_gbp: 0.1 },
 };
 
+// v3 used GBP 1 as the primary lock allowance (P2-01); its built-in values are
+// the same as v4's, only the identity differs.  Readable, never executable.
+export const HISTORICAL_GBP1_ZONAL_SOLVER_CONTRACT: ZonalSolverContract = {
+  ...DEFAULT_ZONAL_SOLVER_CONTRACT,
+  schema_version: "value.network-solver-contract/v3",
+  contract_version: "value.zonal-lexicographic-gbp1/v3",
+};
+
+export type ZonalSolverContractGeneration = "v2" | "v3" | "v4";
+
+export function zonalSolverContractGeneration(contract: ZonalSolverContract): ZonalSolverContractGeneration {
+  if (contract.schema_version === "value.network-solver-contract/v2") return "v2";
+  if (contract.schema_version === "value.network-solver-contract/v3") return "v3";
+  return "v4";
+}
+
+/** Every field an explicit upgrade to the current contract would change (P0-8 S5 preview). */
+export function zonalSolverContractUpgradeChanges(contract: ZonalSolverContract): { field: string; recorded: string; current: string }[] {
+  const current = DEFAULT_ZONAL_SOLVER_CONTRACT;
+  const rows: { field: string; recorded: string; current: string }[] = [];
+  for (const key of solverContractKeys) {
+    if (key === "validated_ceilings" || key === "absolute_ceilings") {
+      for (const ceiling of solverCeilingKeys) {
+        if (contract[key][ceiling] !== current[key][ceiling]) {
+          rows.push({ field: `${key}.${ceiling}`, recorded: String(contract[key][ceiling]), current: String(current[key][ceiling]) });
+        }
+      }
+    } else if (contract[key] !== current[key]) {
+      rows.push({ field: key, recorded: String(contract[key]), current: String(current[key]) });
+    }
+  }
+  return rows;
+}
+
+/** A historical (v2 or v3) contract: readable, but a run needs an explicit upgrade. */
 export function isLegacyZonalSolverContract(contract: ZonalSolverContract): boolean {
-  return contract.schema_version === "value.network-solver-contract/v2"
-    && contract.contract_version === "value.zonal-lexicographic/v2";
+  return zonalSolverContractGeneration(contract) !== "v4";
+}
+
+function generationDefaults(contract: ZonalSolverContract): ZonalSolverContract {
+  const generation = zonalSolverContractGeneration(contract);
+  if (generation === "v2") return LEGACY_ZONAL_SOLVER_CONTRACT;
+  if (generation === "v3") return HISTORICAL_GBP1_ZONAL_SOLVER_CONTRACT;
+  return DEFAULT_ZONAL_SOLVER_CONTRACT;
 }
 
 export function copyDefaultZonalSolverContract(): ZonalSolverContract {
@@ -98,7 +145,7 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
 }
 
 function hasBuiltinZonalSolverValues(contract: ZonalSolverContract): boolean {
-  const defaults = isLegacyZonalSolverContract(contract) ? LEGACY_ZONAL_SOLVER_CONTRACT : DEFAULT_ZONAL_SOLVER_CONTRACT;
+  const defaults = generationDefaults(contract);
   return contract.schema_version === defaults.schema_version
     && contract.contract_version === defaults.contract_version
     && contract.method === defaults.method
@@ -124,7 +171,8 @@ export function isZonalSolverContract(value: unknown): value is ZonalSolverContr
   if (!isRecord(value)
     || !hasExactKeys(value, solverContractKeys)
     || !((value.schema_version === "value.network-solver-contract/v2" && value.contract_version === "value.zonal-lexicographic/v2")
-      || (value.schema_version === "value.network-solver-contract/v3" && value.contract_version === "value.zonal-lexicographic-gbp1/v3"))
+      || (value.schema_version === "value.network-solver-contract/v3" && value.contract_version === "value.zonal-lexicographic-gbp1/v3")
+      || (value.schema_version === "value.network-solver-contract/v4" && value.contract_version === "value.zonal-lexicographic-shed-lock/v4"))
     || !solverMethods.includes(value.method as (typeof solverMethods)[number])
     || value.presolve !== true
     || typeof value.is_builtin_default !== "boolean"
@@ -185,8 +233,12 @@ export type SolverValidationSummary = {
   highs_identity?: string;
   phases: Record<string, unknown>;
   detail_view: "solver-diagnostics" | string;
-  evidence_status: "valid" | "invalid" | "not_recorded" | string;
+  evidence_status: "valid" | "invalid" | "not_recorded" | "not_recorded_under_trace_profile" | string;
   evidence_errors: string[];
+  /** R7-5: why the evidence is not recorded (a code, e.g. diagnostics kept only under the full trace profile). */
+  evidence_reason?: string;
+  /** R7-5: the ledger's trace profile when it records no per-period solver diagnostics by design. */
+  trace_level?: string;
 };
 
 const annualSolverStatuses = [
@@ -204,7 +256,18 @@ const stackValidationStatuses = [
   "builtin_validated_baseline",
   "solver_stack_not_yet_validated",
 ] as const;
-const evidenceStatuses = ["valid", "invalid", "not_recorded"] as const;
+const evidenceStatuses = ["valid", "invalid", "not_recorded", "not_recorded_under_trace_profile"] as const;
+
+/**
+ * R7-5: a summary-trace staged/zonal Run keeps no per-period solver diagnostics
+ * by design (the v8 ledger writes them only under the full trace profile). Its
+ * summary says so; it is neither invalid evidence nor a solver failure.
+ */
+export function solverEvidenceNotRecordedByTraceProfile(summary: SolverValidationSummary): boolean {
+  return summary.evidence_status === "not_recorded_under_trace_profile"
+    && summary.evidence_errors.length === 0
+    && summary.study_status !== "solver_evidence_invalid";
+}
 
 function isNonnegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
@@ -240,7 +303,7 @@ export function isSolverValidationSummary(value: unknown): value is SolverValida
     || !(value.detail_view === undefined || value.detail_view === "solver-diagnostics")) return false;
   if (value.row_count > 0) {
     return solverMethods.includes(value.method as (typeof solverMethods)[number])
-      && ["value.zonal-lexicographic/v2", "value.zonal-lexicographic-gbp1/v3"].includes(value.solver_contract_version as string)
+      && ["value.zonal-lexicographic/v2", "value.zonal-lexicographic-gbp1/v3", "value.zonal-lexicographic-shed-lock/v4"].includes(value.solver_contract_version as string)
       && typeof value.scipy_version === "string"
       && value.scipy_version.length > 0
       && typeof value.highs_identity === "string"
@@ -250,8 +313,36 @@ export function isSolverValidationSummary(value: unknown): value is SolverValida
   return true;
 }
 
+/** A method defect of a historical ledger, derived when reading (P0-8 S6). */
+export type ZonalKnownDefect = {
+  defect_id: string;
+  finding_ids: string[];
+  severity: string;
+  summary: string;
+  affected_outputs: string[];
+  remedy: string;
+  evidence_rows?: number;
+};
+
+/** P0-8 S12 run-time fallback audit (one row per technology and year). */
+export type ZonalRuntimeFallbackSummary = {
+  schema_version: string;
+  years: {
+    year: number;
+    fallback_zone_ids: string[];
+    threshold_fraction: number;
+    spatially_indicative: boolean;
+    by_technology: { technology: string; capacity_mw: number; fallback_mw: number; fallback_fraction: number; runtime_unallocated_mw: number; spatially_indicative: boolean }[];
+    assets: { asset_id: string; technology: string; capacity_mw: number; fallback_mw: number; allocation_source: string }[];
+  }[];
+  spatially_indicative: boolean;
+  spatially_indicative_technologies: { year: number; technology: string; fallback_fraction: number; fallback_mw: number; fallback_zone_ids: string[] }[];
+};
+
 export type ZonalCapabilities = {
   trace_level: "off" | "summary" | "full";
+  /** Hours of one model period (the ledger's period_hours; 0.5 for half-hours). */
+  period_hours?: number;
   years: number[];
   network_pack_id: string;
   data_pack_id: string;
@@ -260,7 +351,11 @@ export type ZonalCapabilities = {
   bid_replay_available: boolean;
   network_semantics: string;
   boundary_value_semantics: string;
+  boundary_shadow_value_available?: boolean;
   reliability_semantics: string;
+  load_shedding_reporting_threshold_mwh?: number;
+  known_defects?: ZonalKnownDefect[];
+  runtime_fallback_audit?: ZonalRuntimeFallbackSummary | null;
   security_scope: string;
   unsupported_scope: string[];
   solver_validation_summary?: SolverValidationSummary | null;
@@ -351,6 +446,7 @@ export type AnnualNetworkRow = {
   observed_loss_of_load_hours: number;
   observed_loss_of_load_events: number;
   affected_load_shedding_zones: number;
+  numerical_residual_unserved_mwh?: number;
   solver_validation_summary?: SolverValidationSummary;
 };
 
@@ -359,8 +455,12 @@ export type AnnualBrief = {
   ledger_schema_version?: string;
   years: AnnualNetworkRow[];
   reliability_semantics: string;
+  load_shedding_reporting_threshold_mwh?: number;
+  known_defects?: ZonalKnownDefect[];
   security_scope: string;
   solver_validation_summary?: SolverValidationSummary | null;
+  /** Shared annual-coverage verdict (P0-9 S5); absent from older backends. */
+  coverage?: ResultCoverage | null;
 };
 
 export type ResultPage<T = Record<string, unknown>> = {
@@ -391,35 +491,51 @@ export function boundedPeriodQuery(selection: BoundedPeriodSelection): URLSearch
   });
 }
 
-export async function fetchNetworkJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Network results request failed");
-  return payload as T;
+/**
+ * R-D5 (four-role report, round R1-5): how a Run is copperplate. "module" = the
+ * built-in copperplate balancing module; "national" = a Run that selected no
+ * balancing module and cleared one national market; null = a network
+ * balancing module (built-in zonal or third party) or an unrecorded module set.
+ */
+export function copperplateBalancing(modules: Record<string, string> | undefined | null): "module" | "national" | null {
+  if (!modules) return null;
+  if (modules.balancing === "value-copperplate-balancing") return "module";
+  return modules.balancing ? null : "national";
 }
 
-export function numberValue(row: Record<string, unknown>, key: string): number {
-  const value = Number(row[key] ?? 0);
-  return Number.isFinite(value) ? value : 0;
+/** R-D5: the market ledger holds zonal rows (a national-only ledger has the tables but no rows or years). */
+export function zonalLedgerRecorded(capabilities: Pick<ZonalCapabilities, "years" | "row_counts">): boolean {
+  return capabilities.years.length > 0 || Object.values(capabilities.row_counts ?? {}).some((count) => Number(count) > 0);
 }
 
-export function formatNetworkNumber(value: number, digits = 2): string {
-  return new Intl.NumberFormat("en-GB", { maximumFractionDigits: digits }).format(value);
+/** A recorded number of a result row, or null when the row has none (never 0 for missing). */
+export function toNumber(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const value = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function numberValue(row: Record<string, unknown>, key: string): number | null {
+  return toNumber(row[key]);
+}
+
+/** Scale a nullable number (for example a fraction to a percentage) without inventing a value. */
+export function scaled(value: number | null | undefined, factor: number): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value * factor : null;
+}
+
+// Network formatting delegates to the single shared layer (P0-9 S1).
+export function formatNetworkNumber(value: number | null | undefined, digits = 2): string {
+  return formatNumber(value, digits) ?? VALUE_STATES.missing.text;
 }
 
 export function formatOptionalNetworkNumber(
   value: number | null | undefined,
   digits = 2,
 ): string | null {
-  return typeof value === "number" && Number.isFinite(value)
-    ? formatNetworkNumber(value, digits)
-    : null;
+  return formatNumber(value, digits);
 }
 
-export function formatNetworkMoney(value: number): string {
-  const absolute = Math.abs(value);
-  if (absolute >= 1e9) return `£${formatNetworkNumber(value / 1e9, 3)}bn`;
-  if (absolute >= 1e6) return `£${formatNetworkNumber(value / 1e6, 3)}m`;
-  if (absolute >= 1e3) return `£${formatNetworkNumber(value / 1e3, 2)}k`;
-  return `£${formatNetworkNumber(value, 2)}`;
+export function formatNetworkMoney(value: number | null | undefined): string {
+  return formatMoney(value) ?? VALUE_STATES.missing.text;
 }

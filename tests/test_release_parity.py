@@ -60,7 +60,7 @@ class ReleaseParityTests(unittest.TestCase):
         self.assertEqual(manifest.version, "1.0.0")
         self.assertEqual(manifest.scientific_version, "dynamic-storage-recovery-2026.08.04")
         psm = MODULE_REGISTRY.manifest("value-bid-at-cost-psm")
-        self.assertEqual(psm.version, "5.1.0")
+        self.assertEqual(psm.version, "5.2.0")
         self.assertEqual(psm.execution_kind, "live_module")
         self.assertTrue(psm.implementation.endswith(":SchemeCNativePSM"))
         self.assertIn("storage.bid-cost-function", psm.requires_capabilities)

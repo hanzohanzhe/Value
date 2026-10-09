@@ -1,23 +1,25 @@
 import type { ReactNode } from "react";
+import { formatMoney as formatSharedMoney, formatNumber as formatSharedNumber } from "./format.ts";
+export { withUnit } from "./format.ts";
+import { VALUE_STATES } from "./valueStates.ts";
 
-export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "good" | "warn" | "blue" }) {
-  return <span className={`badge ${tone}`}>{children}</span>;
+export function Badge({ children, tone = "neutral", title }: { children: ReactNode; tone?: "neutral" | "good" | "warn" | "blue"; /** R-16: the recorded code behind a state word. */ title?: string }) {
+  return <span className={`badge ${tone}`} title={title}>{children}</span>;
 }
-export function formatBytes(bytes = 0) {
+export function formatBytes(bytes?: number | null) {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes)) return VALUE_STATES.missing.text;
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
   if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;
 }
-export function formatNumber(value?: number, digits = 2) {
-  return new Intl.NumberFormat("en-GB", { maximumFractionDigits: digits }).format(value ?? 0);
+/** Legacy signature kept for existing call sites; delegates to shared/format.ts.
+ * A missing value renders the "—" state word, never 0 (P0-9 S1, F1-07). */
+export function formatNumber(value?: number | null, digits = 2): string {
+  return formatSharedNumber(value, digits) ?? VALUE_STATES.missing.text;
 }
-export function formatMoney(value = 0) {
-  const absolute = Math.abs(value);
-  if (absolute >= 1e9) return `£${formatNumber(value / 1e9, 3)}bn`;
-  if (absolute >= 1e6) return `£${formatNumber(value / 1e6, 3)}m`;
-  if (absolute >= 1e3) return `£${formatNumber(value / 1e3, 3)}k`;
-  return `£${formatNumber(value, 2)}`;
+export function formatMoney(value?: number | null): string {
+  return formatSharedMoney(value) ?? VALUE_STATES.missing.text;
 }
 export function labelFor(id: string) {
   const scientificLabels: Record<string, string> = {

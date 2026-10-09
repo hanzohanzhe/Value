@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import shutil
+import socket
 import sqlite3
 import tempfile
 import unittest
@@ -455,6 +456,21 @@ def fixture_inventory(root: Path) -> dict[str, dict[str, object]]:
     return inventory
 
 
+def unreachable_api_origin() -> str:
+    """A loopback origin nothing listens on.
+
+    ``audit_release`` defaults to the live install's API (127.0.0.1:8766);
+    tests that exercise the real ``_probe_api`` must point it at a port they
+    reserved and released themselves (M0-X0 review: tests never talk to the
+    live install).
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    return f"http://127.0.0.1:{port}"
+
+
 def independent_overrides(auditor, root: Path, evidence_path: Path):
     evidence = json.loads(evidence_path.read_text("utf-8"))
     network = json.loads(Path(evidence["network_accounting_source"]).read_text("utf-8"))
@@ -691,6 +707,7 @@ class Value101ReleaseGateTests(unittest.TestCase):
                 installer,
                 evidence_path,
                 minimum_installer_bytes=100,
+                api_origin=unreachable_api_origin(),
             )
 
         codes = set(report["blocking_codes"])
@@ -759,7 +776,9 @@ class Value101ReleaseGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="value-101-release-dummy-") as temporary:
             root = Path(temporary)
             installer, evidence_path = build_fixture(root)
-            report = auditor.audit_release(root, installer, evidence_path, minimum_installer_bytes=100)
+            report = auditor.audit_release(
+                root, installer, evidence_path, minimum_installer_bytes=100, api_origin=unreachable_api_origin()
+            )
         self.assertFalse(report["release_gate_passed"])
         self.assertIn("INSTALLER_PAYLOAD_UNVERIFIED", report["blocking_codes"])
 

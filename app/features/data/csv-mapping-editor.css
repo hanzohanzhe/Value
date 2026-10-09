@@ -1,11 +1,47 @@
-.csv-mapping-editor { display:grid; gap:12px; padding:16px; background:var(--paper); border:1px solid var(--line); border-radius:8px; min-width:0; }
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
+.csv-mapping-editor { display:grid; gap:var(--sp-3); padding:var(--sp-4); background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md); min-width:0; }
 .csv-mapping-editor h4,.csv-mapping-editor h5 { margin:0; }
 .csv-mapping-editor code { display:inline; overflow-wrap:anywhere; }
-.csv-mapping-columns { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; min-width:0; }
-.csv-mapping-columns fieldset { min-width:0; display:grid; gap:10px; border:1px solid var(--line); border-radius:6px; }
-.csv-mapping-columns label { display:grid; gap:6px; }
-.csv-mapping-review { display:grid; gap:12px; min-width:0; }
-.csv-mapping-review pre { max-height:300px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; padding:12px; font-size:12px; }
-.csv-mapping-confirm { display:flex; align-items:flex-start; gap:10px; }
-.csv-mapping-confirm input { flex:0 0 16px; width:16px; height:16px; min-height:16px; margin:3px 0 0; padding:0; }
-@media(max-width:640px) { .csv-mapping-columns { grid-template-columns:minmax(0,1fr); } .csv-mapping-editor { padding:12px; } }
+.csv-mapping-columns { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:var(--sp-3); min-width:0; }
+.csv-mapping-columns fieldset { min-width:0; display:grid; gap:var(--sp-2); border:1px solid var(--line); border-radius:var(--r-md); }
+.csv-mapping-columns label { display:grid; gap:var(--sp-1); }
+.csv-mapping-review { display:grid; gap:var(--sp-3); min-width:0; }
+.csv-mapping-review pre { max-height:300px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; padding:var(--sp-3); font-size:var(--fs-xs); }
+.csv-mapping-confirm { display:flex; align-items:flex-start; gap:var(--sp-2); }
+.csv-mapping-confirm input { flex:0 0 16px; width:16px; height:16px; min-height:16px; margin:var(--sp-1) 0 0; padding:0; }
+@media(max-width:640px) { .csv-mapping-columns { grid-template-columns:minmax(0,1fr); } .csv-mapping-editor { padding:var(--sp-3); } }
+/* F-P05A-1: currency and EUR->GBP rate of a price column (new elements; tokens only; >= 12px). */
+.csv-mapping-fx { display:grid; gap:var(--sp-2); min-width:0; }
+.csv-mapping-fx label { display:grid; gap:var(--sp-1); }
+.csv-mapping-fx-error { color:var(--red); font-size:var(--fs-xs); }
+.csv-mapping-fx-table { overflow-x:auto; min-width:0; }
+.csv-mapping-fx-table table { min-width:0; font-size:var(--fs-sm); }
+.csv-mapping-fx-table th { font-size:var(--fs-xs); color:var(--ink-muted); text-align:left; }
+/* Spec 11.6 (S-D4, S-D5): timestamp declaration, its row-by-row report and the EUR hint (new elements; tokens only; >= 12px). */
+.csv-mapping-timestamp { min-width:0; display:grid; gap:var(--sp-2); border:1px solid var(--line); border-radius:var(--r-md); }
+.csv-mapping-timestamp label { display:grid; gap:var(--sp-1); }
+.csv-mapping-timestamp p { margin:0; font-size:var(--fs-xs); color:var(--ink-muted); }
+.csv-mapping-hint { margin:0; padding:var(--sp-1) var(--sp-2); border-left:4px solid var(--amber); background:var(--amber-soft); color:var(--ink); font-size:var(--fs-sm); }
+.csv-mapping-timestamp-report { display:grid; gap:var(--sp-1); min-width:0; overflow-x:auto; }
+.csv-mapping-timestamp-report p { margin:0; font-size:var(--fs-sm); }
+.csv-mapping-timestamp-report table { min-width:0; font-size:var(--fs-sm); }
+.csv-mapping-timestamp-report th { font-size:var(--fs-xs); color:var(--ink-muted); text-align:left; }
+.csv-mapping-timestamp-report small { font-size:var(--fs-xs); color:var(--ink-muted); }
+/* L-6 (round R2): the whole-file report has not run yet (mapping or conversion errors above). */
+.csv-mapping-validation-pending { margin:var(--sp-2) 0 0; color:var(--ink-muted); font-size:var(--fs-xs); line-height:1.45; }
+/* P1 W4b (F4-13): suggested columns, the review's lists, sample table and report summary. */
+.csv-mapping-suggested { border-left-color:var(--blue); background:var(--blue-soft); }
+.csv-mapping-errors, .csv-mapping-warnings { display:grid; gap:var(--sp-1); min-width:0; padding:var(--sp-2) var(--sp-3); border-left:4px solid var(--red); border-radius:var(--r-md); background:var(--red-soft); font-size:var(--fs-sm); overflow-wrap:anywhere; }
+.csv-mapping-warnings { border-left-color:var(--amber); background:var(--amber-soft); }
+.csv-mapping-errors ul, .csv-mapping-warnings ul { margin:0; padding-left:var(--sp-5); }
+.csv-mapping-sample, .csv-mapping-validation { display:grid; gap:var(--sp-2); min-width:0; }
+.csv-mapping-sample p, .csv-mapping-validation p { margin:0; }
+.csv-mapping-map { margin:0; padding-left:var(--sp-5); font-size:var(--fs-sm); }
+.csv-mapping-facts { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap:var(--sp-2); margin:0; }
+.csv-mapping-facts > div { display:grid; gap:var(--sp-1); min-width:0; padding:var(--sp-2); border-radius:var(--r-md); background:var(--panel); }
+.csv-mapping-facts dt { color:var(--ink-muted); font-size:var(--fs-xs); }
+.csv-mapping-facts dd { margin:0; font-size:var(--fs-sm); overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.csv-mapping-editor > .v-btn, .csv-mapping-review > .v-btn { justify-self:start; max-width:100%; white-space:normal; }
+}

@@ -5,10 +5,9 @@ import test from "node:test";
 test("VALUE-UK research suites target the local atomic installation route", async () => {
   const { researchSuiteApiUrl } = await import("../app/features/data/research-suite-api.mjs");
 
-  assert.equal(
-    researchSuiteApiUrl("http://127.0.0.1:9901/"),
-    "http://127.0.0.1:9901/api/research-suites/install",
-  );
+  // P0-1 S9: same-origin only; the UI has no API origin to prepend.
+  assert.equal(researchSuiteApiUrl(), "/api/research-suites/install");
+  assert.equal(researchSuiteApiUrl.length, 0);
 });
 
 test("the installed-suite summary keeps component hashes and unrun Study identities", async () => {
@@ -32,7 +31,10 @@ test("the installed-suite summary keeps component hashes and unrun Study identit
 });
 
 test("the Data page exposes research-suite installation without starting a Run", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  // P1 W3: the installer is on the /data route; its upload (with the rights header) is a workbench action.
+  // P1 W4b: the page's wording is the dictionary app/i18n/pages/data.en.ts (data.suite.*).
+  const page = (await Promise.all(["../app/data/DataView.tsx", "../app/features/shell/useWorkbenchState.ts", "../app/i18n/pages/data.en.ts"]
+    .map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n");
 
   assert.match(page, /Install the VALUE-UK research suite/);
   assert.match(page, /Install data and create two Studies/);

@@ -1,10 +1,14 @@
+@layer reset, tokens, base, components, features, utilities;
+
+@layer features {
 .study-market-method > .network-overlay-selection,
 .study-market-method > label { grid-column: 1 / -1; min-width: 0; }
-.study-market-method > .network-overlay-selection { gap: 10px; }
+.study-market-method > .network-overlay-selection { gap: var(--sp-2); }
 .network-overlay-selection label { min-width: 0; }
 .network-overlay-selection select,
 .study-market-method > label select { width: 100%; min-width: 0; }
 .network-overlay-selection > button { justify-self: start; }
-.study-market-method > .network-overlay-selection label > span { color: var(--ink); font: inherit; font-size: 12px; font-weight: 650; }
+.study-market-method > .network-overlay-selection label > span { color: var(--ink); font: inherit; font-size: var(--fs-xs); font-weight: 650; }
 .study-market-method > .network-overlay-selection small { line-height: 1.6; }
-.network-overlay-selection p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.network-overlay-selection p { margin: 0; font-size: var(--fs-xs); overflow-wrap: anywhere; }
+}

@@ -15,6 +15,10 @@ import shutil
 import uuid
 
 from gridform_core.frozen_input_integrity import verify_frozen_input_integrity
+from gridform_core.pack_source_identity import (
+    RECOVERY_BINDING_HISTORY_FIELDS, RECOVERY_BINDING_PROVENANCE_FIELD, RECOVERY_ORIGIN_FIELD,
+    RECOVERY_ORIGIN_SCHEMA, RECOVERY_QUALIFICATION_FIELDS, recovery_history_binding_field,
+)
 from gridform_core.zonal_contracts import ZONAL_ROLES, load_zonal_network_pack
 from gridform_core.data_workbench.overlay_editor import reconstruct
 
@@ -25,19 +29,16 @@ class FrozenInputRecoveryError(ValueError):
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 SHA = re.compile(r"^[0-9a-fA-F]{64}$")
-QUALIFICATION_FIELDS = {
-    "installation", "validation", "validation_status", "contract_validation_status",
-    "scientific_validation_status", "scientific_baseline_eligible", "scientific_baseline_status",
-    "owner_approval", "pack_revision_sha256", "manifest_sha256", "snapshot_frozen",
-    "copy_origin", "overlay_editor_provenance", "frozen_recovery_origin",
-}
-BINDING_HISTORY_FIELDS = {
-    "adapter", "mapping_provenance", "frozen_recovery_provenance", "source_uri", "snapshot_uri",
-    "source_sha256", "normalized_sha256", "transformation_id", "snapshot_storage", "validation",
-}
+# Shared with the whitelist identity resolver (gridform_core.pack_source_identity),
+# which identifies a recovered base pack by verified content identity with the
+# source pack recorded in its origin (decision Q3).
+QUALIFICATION_FIELDS = RECOVERY_QUALIFICATION_FIELDS
+BINDING_HISTORY_FIELDS = RECOVERY_BINDING_HISTORY_FIELDS
 
 
-def _digest(path):
+def file_sha256(path):
+    """sha256 of a file's bytes, streamed (the one file digest of recovery)."""
+
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         while chunk := stream.read(4 * 1024 * 1024):
@@ -67,7 +68,7 @@ def _manifest(source, new_id, source_id, source_snapshot_id, source_manifest_sha
                     scientific_validation_status="not_evaluated", contract_validation_status="not_evaluated")
     manifest["copy_origin"] = {"schema_version": "value.data-pack-copy/v1", "source_data_pack_id": source["id"],
                                "source_manifest_sha256": source_manifest_sha256, "created_at": timestamp}
-    manifest["frozen_recovery_origin"] = {"schema_version": "value.frozen-input-recovery-origin/v1",
+    manifest[RECOVERY_ORIGIN_FIELD] = {"schema_version": RECOVERY_ORIGIN_SCHEMA,
         "source_run_id": source_id, "source_snapshot_id": source_snapshot_id,
         "source_pack_id": source["id"], "source_manifest_sha256": source_manifest_sha256,
         "source_data_pack_type": source.get("data_pack_type"), "source_qualification": history,
@@ -77,6 +78,48 @@ def _manifest(source, new_id, source_id, source_snapshot_id, source_manifest_sha
         manifest.pop("zonal_network_pack", None)
     manifest["bindings"] = {}
     return manifest
+
+
+def recovered_manifests(verified: dict, *, source_run_id: str, base_pack_id: str, network_pack_id: str | None,
+                        timestamp: str, base_manifest_sha256: str, network_manifest_sha256: str | None) -> dict:
+    """The recovered product manifests and role rows of a verified snapshot, without copying bytes.
+
+    Used by staging and, with placeholder IDs, by the recovery review, so the
+    review checks the methodology whitelist on the manifests recovery writes.
+    """
+    original_base, original_network = verified["base_manifest"], verified["network_manifest"]
+    base_manifest = _manifest(original_base, base_pack_id, source_run_id, verified["snapshot_id"],
+        base_manifest_sha256, timestamp, network=False)
+    network_manifest = (_manifest(original_network, network_pack_id, source_run_id, verified["snapshot_id"],
+        network_manifest_sha256, timestamp, network=True) if original_network else None)
+    recovered = []
+    projected_out = []
+    network_roles = {row["role"] for row in verified["canonical_roles"]
+                     if row["pack_directory"] == "network-pack" and _network_role(row["role"])}
+    for row in verified["canonical_roles"]:
+        directory, role = row["pack_directory"], row["role"]
+        if ((directory == "pack" and original_network and role in network_roles)
+                or (directory == "network-pack" and role not in network_roles)):
+            projected_out.append(copy.deepcopy(row))
+            continue
+        manifest, original = ((base_manifest, original_base) if directory == "pack"
+            else (network_manifest, original_network))
+        binding = copy.deepcopy(original["bindings"][role])
+        history = {field: binding.pop(field) for field in list(binding) if recovery_history_binding_field(field)}
+        binding.update(role=role, uri=row["uri"], sha256=row["sha256"], bytes=row["bytes"],
+                       binding_revision=row["sha256"], imported_at=timestamp)
+        binding[RECOVERY_BINDING_PROVENANCE_FIELD] = {"schema_version": "value.frozen-binding-recovery/v1",
+            "source_run_id": source_run_id, "source_snapshot_id": verified["snapshot_id"],
+            "source_pack_directory": directory, "source_role": role,
+            "source_sha256": row["source_sha256"], "normalized_sha256": row["normalized_sha256"],
+            "transformation_id": row["transformation_id"], "historical_metadata": history,
+            "historical_metadata_only": True,
+            "historical_uri_files_restored": False, "active_bytes_are_normalized": True}
+        manifest["bindings"][role] = binding
+        recovered.append({**copy.deepcopy(row), "recovered_product": "base" if directory == "pack" else "network",
+                          "recovered_pack_id": manifest["id"]})
+    return {"base_manifest": base_manifest, "network_manifest": network_manifest,
+            "canonical_roles": recovered, "projected_out_roles": projected_out}
 
 
 def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pack_id: str,
@@ -110,7 +153,8 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
             raise FrozenInputRecoveryError("Recovery requires new IDs; original products cannot be replaced")
         # Validate mechanical network content before changing its declared ID.
         if original_network:
-            load_zonal_network_pack(source / "network-pack", original_network)
+            # Recovering a historical Run reads its frozen pack (P0-8 S11).
+            load_zonal_network_pack(source / "network-pack", original_network, topology_policy="audit")
         staging_root.mkdir(parents=True, exist_ok=True)
         candidate = staging_root / uuid.uuid4().hex
         candidate.mkdir()
@@ -120,45 +164,23 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
         network_root = stage / "network" if original_network else None
         if network_root:
             network_root.mkdir()
-        base_manifest = _manifest(original_base, base_pack_id, source_run_root.name, verified["snapshot_id"],
-            _digest(source / "pack/manifest.json"), timestamp, network=False)
-        network_manifest = (_manifest(original_network, network_pack_id, source_run_root.name, verified["snapshot_id"],
-            _digest(source / "network-pack/manifest.json"), timestamp, network=True) if original_network else None)
-        recovered = []
-        projected_out = []
-        network_roles = {row["role"] for row in verified["canonical_roles"]
-                         if row["pack_directory"] == "network-pack" and _network_role(row["role"])}
-        for row in verified["canonical_roles"]:
-            directory, role = row["pack_directory"], row["role"]
-            if ((directory == "pack" and original_network and role in network_roles)
-                    or (directory == "network-pack" and role not in network_roles)):
-                projected_out.append(copy.deepcopy(row))
-                continue
-            product_root, manifest, original = ((base_root, base_manifest, original_base) if directory == "pack"
-                else (network_root, network_manifest, original_network))
-            binding = copy.deepcopy(original["bindings"][role])
-            history = {field: binding.pop(field) for field in list(binding)
-                if field in BINDING_HISTORY_FIELDS or field.endswith("_uri") or field.endswith("_path")
-                or "provenance" in field}
+        projected = recovered_manifests(
+            verified, source_run_id=source_run_root.name, base_pack_id=base_pack_id,
+            network_pack_id=network_pack_id, timestamp=timestamp,
+            base_manifest_sha256=file_sha256(source / "pack/manifest.json"),
+            network_manifest_sha256=file_sha256(source / "network-pack/manifest.json") if original_network else None)
+        base_manifest, network_manifest = projected["base_manifest"], projected["network_manifest"]
+        recovered, projected_out = projected["canonical_roles"], projected["projected_out_roles"]
+        for row in recovered:
+            directory = row["pack_directory"]
+            product_root = base_root if directory == "pack" else network_root
             # Preserve exact relative data names, with safe paths already proved
             # by the integrity verifier. copyfile creates independent inodes.
             destination = product_root / row["uri"]
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source / directory / row["uri"], destination)
-            if destination.stat().st_nlink != 1 or destination.stat().st_size != row["bytes"] or _digest(destination) != row["sha256"]:
+            if destination.stat().st_nlink != 1 or destination.stat().st_size != row["bytes"] or file_sha256(destination) != row["sha256"]:
                 raise FrozenInputRecoveryError("Copied canonical data does not match its recorded bytes")
-            binding.update(role=role, uri=row["uri"], sha256=row["sha256"], bytes=row["bytes"],
-                           binding_revision=row["sha256"], imported_at=timestamp)
-            binding["frozen_recovery_provenance"] = {"schema_version": "value.frozen-binding-recovery/v1",
-                "source_run_id": source_run_root.name, "source_snapshot_id": verified["snapshot_id"],
-                "source_pack_directory": directory, "source_role": role,
-                "source_sha256": row["source_sha256"], "normalized_sha256": row["normalized_sha256"],
-                "transformation_id": row["transformation_id"], "historical_metadata": history,
-                "historical_metadata_only": True,
-                "historical_uri_files_restored": False, "active_bytes_are_normalized": True}
-            manifest["bindings"][role] = binding
-            recovered.append({**copy.deepcopy(row), "recovered_product": "base" if directory == "pack" else "network",
-                              "recovered_pack_id": manifest["id"]})
         if network_manifest:
             identity = copy.deepcopy(original_network["zonal_network_pack"])
             original_identity = copy.deepcopy(identity)
@@ -170,7 +192,7 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
             network_manifest["zonal_network_pack"] = identity
             network = reconstruct(network_root, network_manifest)
             identity["scientific_sha256"] = network.compute_scientific_sha256()
-            load_zonal_network_pack(network_root, network_manifest)
+            load_zonal_network_pack(network_root, network_manifest, topology_policy="audit")
         _write(base_root / "manifest.json", base_manifest)
         if network_manifest:
             _write(network_root / "manifest.json", network_manifest)
@@ -185,7 +207,7 @@ def stage_recovered_inputs(source_run_root: Path, staging_root: Path, *, base_pa
         after = verify_frozen_input_integrity(source)
         if after != verified or after["snapshot_id"] != source_snapshot_id.lower():
             raise FrozenInputRecoveryError("Source inputs changed while staging; prepare recovery again")
-        inventory = {path.relative_to(stage).as_posix(): {"sha256": _digest(path), "bytes": path.stat().st_size}
+        inventory = {path.relative_to(stage).as_posix(): {"sha256": file_sha256(path), "bytes": path.stat().st_size}
                      for path in stage.rglob("*") if path.is_file()}
         return {**record, "stage_root": stage, "base_root": base_root, "network_root": network_root,
                 "base_manifest": base_manifest, "network_manifest": network_manifest, "inventory": inventory,

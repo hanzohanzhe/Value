@@ -414,6 +414,7 @@ def decide_doctoral_investment(run, state, market, headroom, accounts=None):
     from ...cem_identity import cem_identity_summary
     from ...cem_investment_policy import investment_mode, policy_summary
     from ...v2.contracts import InvestmentDecision, InvestmentProposal
+    from .endogenous_planning import endogenous_planning_terms
 
     basis = str(run.scientific_parameters.get("doctoral.investment_basis", "source"))
     if basis not in {"source", "thesis_final9.6"}:
@@ -512,7 +513,10 @@ def decide_doctoral_investment(run, state, market, headroom, accounts=None):
             life = min(float(asset.extensions.get("economic_lifetime_years", 25.0)) for asset in regional)
             capex = float(outcome["capital_cost_per_mw_gbp"])
             proposal_id = f"{run.run_id}:{market.year}:{outcome['account_id']}:{region_index}"
-            development = max(float(asset.extensions.get("development_years", 1.0)) for asset in regional)
+            # r71 (A33, P4-05): pack timeline and regional success rate, not
+            # min/max over member-asset extensions that were never set.
+            terms = endogenous_planning_terms(state.extensions.get("planning_parameters"), technology=technology,
+                                              owner=owner, decision_year=market.year)
             fixed_om = sum(float(asset.extensions.get("annual_fixed_opex_gbp", 0.0)) for asset in regional)
             extensions = build_asset_economic_extensions(
                 technology, region_addition, energy_capacity_mwh=energy,
@@ -524,8 +528,8 @@ def decide_doctoral_investment(run, state, market, headroom, accounts=None):
             extensions.update({
                 "energy_capacity_mwh": energy, "preferred_rate": outcome["preferred_rate"],
                 "target_payback_years": outcome["target_payback_years"],
-                "development_years": development,
-                "success_probability": min(float(asset.extensions.get("success_probability", 1.0)) for asset in regional),
+                "success_probability": terms["success_rate"], "timeline_months": terms["timeline_months"],
+                "success_rate_source": terms["success_rate_source"], "endogenous_planning_terms": terms,
                 "investment_recommendation": outcome["recommendation"],
                 "source_agent_id": owner, "investment_owner_id": owner,
                 "investment_eligibility_mode": investment_mode(technology),
@@ -547,7 +551,7 @@ def decide_doctoral_investment(run, state, market, headroom, accounts=None):
                 })
             proposals.append(InvestmentProposal(
                 proposal_id, market.year, owner, technology, region_addition, region,
-                market.year + max(1, int(math.ceil(development))),
+                int(terms["completion_year"]),
                 evidence={
                     "roi": float(outcome["roi"] or 0.0),
                     "preferred_rate": float(outcome["preferred_rate"]),

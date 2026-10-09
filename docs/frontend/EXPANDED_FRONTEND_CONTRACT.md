@@ -1,8 +1,8 @@
-# FORCE expanded frontend contract
+# VALUE expanded frontend contract
 
 Status: frozen by Prompt 77 on 20 August 2026  
-Contract version: `force.expanded-frontend/v1`  
-Target: separate FORCE `0.6.x` expanded-platform private alpha
+Contract version: `value.expanded-frontend/v1`  
+Target: separate VALUE `0.6.x` expanded-platform private alpha
 
 ## Decision
 
@@ -49,10 +49,10 @@ catalogue contains the established PSM/CEM chain plus optional
 
 | Extension | Maturity | Activates | Conditional input |
 | --- | --- | --- | --- |
-| `force-network-contract-extension` | ready | solver-neutral network contract and topology | buses, branches, asset map and nodal demand; optional contingencies, ratings and candidates |
-| `force-ac-data-extension` | experimental | local AC-feasibility input contract | generator P/Q limits, reactive demand and declared active schedule; optional initial voltage |
-| `force-hydrology-extension` | experimental | run-of-river and reservoir resources | site catalogue, asset map, both inflow series and reservoir parameters |
-| `force-network-expansion-extension` | experimental | network-expansion lifecycle | candidate-corridor JSON and composed `network_expansion` module |
+| `value-network-contract-extension` | ready | solver-neutral network contract and topology | buses, branches, asset map and nodal demand; optional contingencies, ratings and candidates |
+| `value-ac-data-extension` | experimental | local AC-feasibility input contract | generator P/Q limits, reactive demand and declared active schedule; optional initial voltage |
+| `value-hydrology-extension` | experimental | run-of-river and reservoir resources | site catalogue, asset map, both inflow series and reservoir parameters |
+| `value-network-expansion-extension` | experimental | network-expansion lifecycle | candidate-corridor JSON and composed `network_expansion` module |
 
 The reference DC PSM is ready only within its declared linear synthetic scope.
 The AC component checks a declared active-power schedule; it is not AC OPF.
@@ -68,7 +68,7 @@ The workspace response gains `frontend_contract_version`, `module_slots` and
 
 ```json
 {
-  "schema_version": "force.study-draft/v1",
+  "schema_version": "value.study-draft/v1",
   "data_pack_id": "pack-id",
   "start_year": 2025,
   "end_year": 2034,
@@ -76,7 +76,7 @@ The workspace response gains `frontend_contract_version`, `module_slots` and
   "selected_extensions": ["extension-id"],
   "extension_parameters": {"namespace.parameter": "value"},
   "maturity_acknowledgements": {
-    "extension-id@version": "force.experimental-ack/v1"
+    "extension-id@version": "value.experimental-ack/v1"
   }
 }
 ```
@@ -85,7 +85,7 @@ The workspace response gains `frontend_contract_version`, `module_slots` and
 
 ```json
 {
-  "schema_version": "force.study-draft-resolution/v1",
+  "schema_version": "value.study-draft-resolution/v1",
   "valid": false,
   "errors": [{"code": "GF_EXTENSION_DATA_MISSING", "message": "..."}],
   "warnings": [],
@@ -102,7 +102,7 @@ Every field is sourced from one of these existing contracts:
 
 - modules and slots: `ModuleManifest` / `ModuleRegistryV2`;
 - extensions, roles, parameters, hooks and artifacts: `ExtensionManifest`;
-- pack bindings: `force.data-pack/v1` manifest;
+- pack bindings: `value.data-pack/v1` manifest;
 - graph identity: `ResolvedModuleGraph.to_dict()`;
 - maturity: module `status` and extension `maturity`;
 - runtime availability: the existing runtime capability matrix.
@@ -212,3 +212,31 @@ bounded queries and refuses to reconstruct missing hydrology output. Prompt 84
 tests these paths and issues capability-specific decisions. Retained Scheme C
 was not edited, no second registry was introduced, and old Studies receive no
 implicit extension migration.
+
+## P0 result-view additions (2026-10, additive)
+
+The P0 fixes change read models and serialisation only; no ledger writer and no
+clearing, investment or accounting calculation was changed for display. All
+changes below are additive: an older backend omits the field and the browser
+degrades to a state word.
+
+| Resource | Addition |
+| --- | --- |
+| `/api/runs/{run}/market/dispatch` | Timeline v2: `price_basis`, flow `role` and canonical technology names; per bucket `shortfall_mwh`, `shortfall_upper_mwh`, `shortfall_basis` (`exact` / `lower_bound`), `stress_periods`, `possible_stress_periods` (decision A2) |
+| `/api/runs/{run}/market/stress-events` | New: `value.stress-events/v1`, the full year's A2 stress events (contiguous periods in which accepted supply fell short of demand), paged ≤ 200, numeric start-period order; `status=not_recorded` for a ledger without the `stress_event` table. Row-level evidence, so not withheld under Q14 |
+| `/api/runs/{run}/market/vre-summary` | `curtailment_semantics`; `event_basis` gains `corrected_unused_vre` (corrected rule set); `unused_vre_events` and `excess_curtailment_events` reported separately; `coverage` |
+| `/api/runs/{run}` | `methodology`, `energy_balance_status`, `energy_balance` (incl. `balance_account`, `raw_boundary_status`), `storage_invariant_status`, `validation_gate`, `stress`, `advisories`, `result_publication` (Q14), `publication_blocked` (production gate), `result_coverage` |
+| Run `results[].metrics` | Mechanism costs `null` with a status instead of `0.0`; `system_cost_definition_id`, `system_cost_includes_voll`, `operating_cost_voll_gbp`, `voll_gbp_per_mwh`, `ror_hydro_compatibility_capital_gbp` |
+| `/api/runs/{run}/results/vre-curtailment` | `status` ∈ `reconciled`, `unavailable`, `withheld`, `invalid`; a Run cancelled or failed before a declared year finished is `unavailable` (`cancelled_before_year_complete` / `failed_before_year_complete`), never `invalid` |
+| CSV mapping preview | Request `fx: {eur_per_gbp, fx_basis[, price_year]}`; review `source_sample_rows`, `fx` |
+
+Missing-value rule: a field that is absent, `null` or not computed is rendered
+as `—`, `Not recorded`, `Not modelled`, `Not evaluated` or `Not computed`, never
+as 0. `invalid` (red) is reserved for self-contradictory evidence; `Withheld`
+only for the Q14 rule on doctoral reproduction runs. Field-by-field mapping:
+[`EXPANDED_FRONTEND_FIELD_MAP.md`](EXPANDED_FRONTEND_FIELD_MAP.md#result-views-displayed-value---api-field-p0-fixes-2026-10).
+
+The complete P0 API contract change table, including the breaking changes for
+direct clients (session header, no CORS, error codes and statuses), is in
+[`CHANGELOG.md`](../../CHANGELOG.md), section 0.7.0-alpha.1, "API contract
+changes".

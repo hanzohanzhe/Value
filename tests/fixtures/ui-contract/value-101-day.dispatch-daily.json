@@ -1,0 +1,36 @@
+{
+ "schema_version": "value.ui-contract-fixture/v1",
+ "generated_by": "tests/ui_contract_fixtures.py",
+ "source": "value-101-day",
+ "request": {
+  "path": "/api/runs/{run_id}/market/dispatch",
+  "query": {"year":2025,"period_from":0,"period_to":47,"limit":96,"offset":0,"resolution":"daily"}
+ },
+ "payload": {
+  "schema_version": "value.dispatch-timeline/v2",
+  "physical_dispatch_schema_version": "value.physical-dispatch-view/v1",
+  "year": 2025,
+  "resolution": "daily",
+  "period_hours": 0.5,
+  "timezone": "UTC",
+  "calendar": "fixed_365_day_utc_periods",
+  "clock_rule": "Half-hour periods in UTC on a fixed 365-day year: period p of model year Y starts at 00:00 UTC of model day p // periods_per_day (29 February is never a model day) plus the period's offset within the day. No daylight saving.",
+  "clock_label_corrected": false,
+  "total": 1,
+  "limit": 96,
+  "offset": 0,
+  "dispatch_source": "physical_dispatch",
+  "dispatch_summary_available": false,
+  "items": [
+   {"period_start":0,"period_end":47,"period_count":48,"forecast_demand_mwh":781.4910185,"real_demand_mwh":775.4910185,"accepted_supply_mwh":787.0223009515915,"storage_charge_mwh":11.531282451591508,"storage_discharge_mwh":9.339096910593035,"flexible_demand_mwh":0.0,"export_mwh":0.0,"vre_available_mwh":349.5564208181178,"vre_accepted_mwh":349.5564208181178,"curtailed_mwh":0.0,"import_mwh":0.0,"price_gbp_per_mwh":37.05523743407874,"blackout_mwh":0.0,"excess_mwh":0.0,"energy_balance_residual_mwh":5.329070518200751e-15,"compatibility_adjustment_mwh":0.0,"raw_energy_balance_residual_mwh":5.329070518200751e-15,"timestamp_start":"2025-01-01T00:00:00Z","timestamp_end":"2025-01-02T00:00:00Z","flows":[{"technology":"ccgt","flow_type":"generation","role":"supply","evidence_scope":"final_demand_serving_generation","energy_mwh":428.1267832228807,"balance_component_mwh":428.1267832228807},{"technology":"onshore_wind","flow_type":"generation","role":"supply","evidence_scope":"final_demand_serving_generation","energy_mwh":132.33225701811782,"balance_component_mwh":132.33225701811782},{"technology":"solar","flow_type":"generation","role":"supply","evidence_scope":"final_demand_serving_generation","energy_mwh":217.22416379999999,"balance_component_mwh":217.22416379999999},{"technology":"storage_unallocated","flow_type":"storage_charge","role":"storage_charge","evidence_scope":"aggregate_input_charge; balance component includes only the retained final-dispatch boundary share","energy_mwh":11.531282451591508,"balance_component_mwh":-11.531282451591508},{"technology":"battery_storage","flow_type":"storage_discharge","role":"supply","evidence_scope":"final_storage_output","energy_mwh":9.339096910593035,"balance_component_mwh":9.339096910593035}],"shortfall_mwh":0.0,"shortfall_upper_mwh":0.0,"stress_periods":0,"possible_stress_periods":0,"shortfall_basis":"exact"}
+  ],
+  "source_artifact_sha256": "<sqlite-file-sha256>",
+  "price_aggregation": "demand_weighted_mean_gbp_per_mwh",
+  "price_basis": "average_period_cost",
+  "price_basis_source": "semantics",
+  "residual_aggregation": "sum_of_absolute_period_values",
+  "stress_recorded": true,
+  "accepted_supply_boundary": {"boundary_id":"native_corrected_full_node_v1","formula":"S + B - D - C - E - X - XS","description":"corrected default PSM: gross source output (VRE incl. consumed surplus) + imports + discharge + shortfall = demand + charge + export + flexible load + non-VRE spill"},
+  "units": {"energy":"MWh","price":"GBP/MWh"}
+ }
+}

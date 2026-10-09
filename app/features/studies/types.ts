@@ -32,7 +32,7 @@ export type ExtensionInstallation = {
   installation_boundary?: string; installation_path?: string;
   conformance?: { status: string; meaning?: string };
 };
-export type ModuleSlot = { slot: string; required: boolean; contract_version: string; order: number; options: (Pick<Module, "id" | "name" | "version" | "status" | "description" | "provides_capabilities" | "requires_capabilities" | "origin"> & { compatible?: boolean; reason?: string | null })[] };
+export type ModuleSlot = { slot: string; required: boolean; contract_version: string; order: number; options: (Pick<Module, "id" | "name" | "version" | "status" | "description" | "provides_capabilities" | "requires_capabilities" | "origin"> & { compatible?: boolean; reason?: string | null; methodology_supported?: boolean; methodology_reason?: string | null })[] };
 export type DraftIssue = { code: string; message: string; scope: string; detail?: unknown };
 export type DomainPreset = { id: string; title: string; claim: string; psm_module_id: string; psm_name: string; description: string; maturity: Module["status"]; recommended_modules: Record<string, string>; required_extensions: string[]; available: boolean; unavailable_reason?: string | null };
 export type DraftResolution = {
@@ -45,6 +45,8 @@ export type DraftResolution = {
   maturity: { acknowledgement_contract: string; acknowledgements_required: { key: string; kind: string; id: string; version: string; maturity: string; acknowledgement: string }[] };
   graph_preview?: { graph_sha256: string; modules: Record<string, { module_id: string; module_version: string; contract_version: string }>; extension_graph?: { extensions: { id: string; version: string }[]; parameters: Record<string, unknown> } } | null;
   graph_sha256?: string | null;
+  /** X0 S8: the resolved methodology of the draft, with whitelist violations and reference deviations. */
+  methodology?: { profile_id: string; label: string; frozen: boolean; violations?: { sub_reason?: string; detail?: string }[]; reference_deviations?: unknown[] } | null;
 };
 export type MarketConfiguration = {
   network_pack_id?: string;
@@ -66,7 +68,11 @@ export type DataPack = {
   binding_issues: Record<string, string>; complete: boolean;
   manifest_sha256?: string; data_pack_type?: string;
   copy_origin?: { source_data_pack_id: string; source_manifest_sha256: string; created_at: string };
+  /** A pack recovered from a Run's frozen inputs (backend/frozen_input_recovery.py). */
+  frozen_recovery_origin?: Record<string, unknown> | null;
   teaching_only?: boolean; allowed_run_modes?: RunMode[];
+  /** P0-5a S9 cached layer summary (spec 11.2). */
+  plausibility_status?: import("../data/dataPackValidation.ts").CachedValidationStatus;
   installation?: { bundle_sha256: string; bundle_bytes: number; installed_at: string; rights_files: string[]; installation_boundary: string };
 };
 export type FrozenRecoveryOrigin = {
@@ -81,6 +87,8 @@ export type Project = {
   purpose?: string; selected_extensions?: string[]; extension_parameters?: Record<string, unknown>;
   maturity_acknowledgements?: Record<string, string>; module_resolution_graph?: { graph_sha256?: string };
   revision_sha256?: string; revision_number?: number; parent_revision_sha256?: string;
+  /** X0 S11: why the latest revision was written ("user-save", "code-identity-upgrade", …). */
+  revision_reason?: string;
   market_configuration?: MarketConfiguration;
   solver_contract?: ZonalSolverContract;
   extensions?: Record<string, unknown> & { frozen_recovery?: FrozenRecoveryOrigin };
