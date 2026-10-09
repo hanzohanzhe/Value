@@ -2515,9 +2515,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "0b4f6cabff17d2f2f47a7481e5b6f88c27c0680ab6404a8aa69e329a3c9916d8",
-      "bytes": 3553,
-      "transform": "VALUE 0.7.0 release preparation"
+      "sha256": "9b0710d29f2a1a0d2f8b50db1317cf72ac1f528d3b1947982c99a8c99bb04a63",
+      "bytes": 4076,
+      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
       "path": "README_BILINGUAL.md",
