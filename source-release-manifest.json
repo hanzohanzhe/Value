@@ -14162,8 +14162,8 @@
     },
     {
       "path": "website/content.py",
-      "sha256": "7105b65c7720b95f9b703c4cc5e293211c2f2a45b6502b718bbb3643ea4a9f7c",
-      "bytes": 33354,
+      "sha256": "b8710d373079d63649902f334ba5a6d0d8517bb00cc0f926d6c50ac656c58296",
+      "bytes": 33845,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
