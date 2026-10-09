@@ -17,6 +17,10 @@ def url(path=''):
     return f'/{LANG}/' + (parsed.path.strip('/') + '/' if parsed.path else '') + ('?'+parsed.query if parsed.query else '') + ('#'+parsed.fragment if parsed.fragment else '')
 def a(path, en, zh, cls='text-link'): return f'<a class="{cls}" href="{url(path)}">{t(en,zh)}</a>'
 def external(link, label): return f'<a href="{escape(link)}" rel="noopener noreferrer" target="_blank">{label}<span class="sr-only">{t(" (opens in a new tab)","（在新标签页打开）")}</span></a>'
+def github_cta(compact=False):
+    label='GitHub' if compact else t('View on GitHub','GitHub 项目')
+    icon='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.77-.24.77-.54v-2.08c-3.13.68-3.79-1.33-3.79-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.39-1.22.71-1.5-2.5-.29-5.13-1.25-5.13-5.55 0-1.23.44-2.23 1.16-3.02-.12-.28-.5-1.43.11-2.98 0 0 .95-.3 3.08 1.15a10.75 10.75 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.55.23 2.7.11 2.98.73.79 1.16 1.79 1.16 3.02 0 4.31-2.63 5.26-5.14 5.54.4.35.76 1.03.76 2.08v3.09c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg>'
+    return '<a class="github-cta'+(' github-nav' if compact else ' button')+'" href="https://github.com/hanzohanzhe/Value" target="_blank" rel="noopener noreferrer">'+icon+'<span>'+label+'</span><span class="sr-only">'+t(' (opens in a new tab)','（在新标签页打开）')+'</span></a>'
 def tag(en, zh): return f'<span class="tag">{t(en,zh)}</span>'
 def heading(kicker, title, lead=''): return f'<header class="page-heading"><p class="eyebrow">{kicker}</p><h1>{title}</h1>'+ (f'<p class="lead">{lead}</p>' if lead else '')+'</header>'
 def section_head(kicker, title, link=''): return f'<div class="section-heading"><div><p class="eyebrow">{kicker}</p><h2>{title}</h2></div>{link}</div>'
@@ -45,7 +49,7 @@ def nav(path):
     other='zh' if LANG=='en' else 'en'
     links=[('', 'Home','首页'),('community','Get started','开始使用'),('docs/value','Install','安装'),('data','Data','数据'),('methodology','Methodology','方法学'),('docs','Develop','开发')]
     menu=''.join('<a href="'+url(p)+'"'+(' aria-current="page"' if path==p else '')+'>'+t(en,zh)+'</a>' for p,en,zh in links)
-    return '<a class="skip-link" href="#main">'+t('Skip to content','跳至正文')+'</a><header class="site-header"><div class="wrap nav-inner"><a class="brand" href="'+url()+'"><span class="brand-mark">VA</span><span>VALUE</span></a><button class="menu-toggle" aria-controls="main-nav" aria-expanded="false">'+t('Menu','菜单')+'</button><nav id="main-nav" aria-label="'+t('Main navigation','主导航')+'">'+menu+'</nav><div class="nav-actions"><a class="language" href="/'+other+'/'+(path+'/' if path else '')+'" lang="'+other+'">'+t('中文','EN')+'</a></div></div></header>'
+    return '<a class="skip-link" href="#main">'+t('Skip to content','跳至正文')+'</a><header class="site-header"><div class="wrap nav-inner"><a class="brand" href="'+url()+'"><span class="brand-mark">VA</span><span>VALUE</span></a><button class="menu-toggle" aria-controls="main-nav" aria-expanded="false">'+t('Menu','菜单')+'</button><nav id="main-nav" aria-label="'+t('Main navigation','主导航')+'">'+menu+'</nav><div class="nav-actions">'+github_cta(True)+'<a class="language" href="/'+other+'/'+(path+'/' if path else '')+'" lang="'+other+'">'+t('中文','EN')+'</a></div></div></header>'
 
 def footer():
     return '<footer class="site-footer"><div class="wrap footer-grid"><div><h2>VALUE</h2><p>'+t('Electricity system operation and evolution.','电力系统运行与演化。')+'</p></div><div>'+a('community','Get started','开始使用','')+a('docs/value','Install','安装','')+a('data','Data','数据','')+'</div><div>'+a('methodology','Methodology','方法学','')+a('docs','Develop','开发','')+a('studies','Studies','案例','')+'</div><div>'+a('about','About and licences','关于与许可','')+a('cite','Research citation','研究引用','')+a('validation','Validation','验证','')+'</div></div></footer>'

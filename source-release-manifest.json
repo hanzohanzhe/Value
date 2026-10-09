@@ -14150,8 +14150,8 @@
     },
     {
       "path": "website/build.py",
-      "sha256": "7022d1119d2aa3192a7a197e8b1f76b5f33b47c4f204525930e35599e1d6e685",
-      "bytes": 10321,
+      "sha256": "82c70e8d0da3e37187e82e4521c7db28ce449f6f9183f691c023b67f192b1b82",
+      "bytes": 11350,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -14168,8 +14168,8 @@
     },
     {
       "path": "website/journey.py",
-      "sha256": "679dee20814117d2d1585fcd48794b91e2afeb8138e6c57839ce79baf0a9ec75",
-      "bytes": 21253,
+      "sha256": "2d24f6f0f212d8719008b7c3c2cd03ce11a598105c03890a65da1747c996d14e",
+      "bytes": 21268,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
@@ -16646,8 +16646,8 @@
     },
     {
       "path": "website/static/assets/site.css",
-      "sha256": "d1ef89dcee8d6724b9ae2083e1fe3ad1f39d881b0baa770c8ab51acaefd91ee2",
-      "bytes": 20732,
+      "sha256": "bce5950ce22f64144524833d4686842825f42642bbb748762031b9aca72ae1b7",
+      "bytes": 22286,
       "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
     },
     {
