@@ -2,8 +2,8 @@
   "schema_version": "value.publication-scope/v1",
   "source_manifest": "source-release-manifest.json",
   "methodology_root": "docs/methodology",
-  "edition": "0.4.1",
-  "revision_date": "2026-10-09",
+  "edition": "0.5",
+  "revision_date": "2026-10-12",
   "scientific_basis_date": "2026-10-09",
   "chapter_ids": [
     "introduction",
@@ -33,32 +33,32 @@
   "artifact_prefix": "website/static/assets/methodology",
   "expected_artifacts": [
     {
-      "path": "VALUE_模型方法学_2026-10-09.docx",
+      "path": "VALUE_模型方法学_2026-10-12.docx",
       "language": "zh",
       "format": "docx"
     },
     {
-      "path": "VALUE_模型方法学_2026-10-09.pdf",
+      "path": "VALUE_模型方法学_2026-10-12.pdf",
       "language": "zh",
       "format": "pdf"
     },
     {
-      "path": "VALUE_methodology_ZH_2026-10-09.html",
+      "path": "VALUE_methodology_ZH_2026-10-12.html",
       "language": "zh",
       "format": "html"
     },
     {
-      "path": "VALUE_Model_Methodology_EN_2026-10-09.docx",
+      "path": "VALUE_Model_Methodology_EN_2026-10-12.docx",
       "language": "en",
       "format": "docx"
     },
     {
-      "path": "VALUE_Model_Methodology_EN_2026-10-09.pdf",
+      "path": "VALUE_Model_Methodology_EN_2026-10-12.pdf",
       "language": "en",
       "format": "pdf"
     },
     {
-      "path": "VALUE_methodology_EN_2026-10-09.html",
+      "path": "VALUE_methodology_EN_2026-10-12.html",
       "language": "en",
       "format": "html"
     }

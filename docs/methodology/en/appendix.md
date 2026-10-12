@@ -1,6 +1,6 @@
 # Carbon accounting parameters
 
-VALUE calculates operational emissions and equipment-construction emissions separately before combining them under the selected accounting scenario. Operational emissions vary with generation and imported electricity, while construction emissions vary with installed capacity and the annualisation rule. Current physical accounting uses the `value_current_authoritative_v1` factor set. The doctoral-reproduction reference configuration selects `doctoral_reproduction_2026_07_18`, retaining historical storage scalars in their original units and recording the carbon result as `not_physically_interpretable`.
+VALUE calculates operational emissions and equipment-construction emissions separately before combining them under the selected accounting scenario. Operational emissions vary with generation and imported electricity, while construction emissions vary with installed capacity and the annualisation rule. The `value_current_authoritative_v1` factor set supplies the accounting factors.
 
 ## Generation and imported electricity
 
@@ -44,7 +44,7 @@ $$
 \end{aligned}
 $$
 
-The following annual factors are those used in the research postprocessing input `embodied_factors_desnz_unece.csv`. The study configuration fixes the factor selection. Open-cycle gas uses the combined-cycle gas construction factor, and the electrolyser uses the literature proxy recorded in that input table.
+Annual construction factors come from `embodied_factors_desnz_unece.csv`. Open-cycle gas uses the combined-cycle gas construction factor, and the electrolyser uses the proxy recorded in that table.
 
 |Technology|Annual factor tCO₂e/(MW·year)|
 |---|---|
@@ -70,7 +70,65 @@ $$
 \quad\mathrm{tCO_2e/year}.
 $$
 
-Hydrogen storage accounts separately for power equipment and energy storage. The energy-storage component uses a lifetime factor of 0.0006 tCO₂e/MWh of capacity, annualised over the asset's declared economic life. It is stored as `ch4_h2_store_lifetime` in `factor_catalog.csv`, with the original thesis Chapter 4 storage parameters and their 10-year source lifetime retained in the factor record. The electrolyser power component uses the annual factor in the preceding section.
+Hydrogen storage accounts separately for power equipment and energy storage. The energy-storage component uses a lifetime factor of 0.0006 tCO₂e/MWh of capacity, annualised over the asset's declared economic life. It is stored as `ch4_h2_store_lifetime` in `factor_catalog.csv`. The electrolyser power component uses the annual factor in the preceding section.
+
+## Carbon carried by stored electricity
+
+Battery discharge enters `storage_carried_transfer` as a transfer of stored electricity, with zero additional operational emissions. Pumped hydro uses the zero operational factor in the table. Emissions from the charging source enter the generation or imported-electricity account. When `storage_trace` is supplied, a mixed-inventory calculation also tracks the emissions held in storage. Its inputs are period `charge_mwh`, `discharge_mwh`, `charge_source_kgco2e_per_mwh` and charge and discharge efficiencies.
+
+The carbon inventory starts at zero. Charging adds emissions at the source intensity; discharging removes the fraction associated with the withdrawn inventory energy. In the calculation below, `inventory_energy` is in MWh and `inventory_kg` in kg; `ending_inventory` converts the closing carbon inventory to tonnes. Each period checks `withdrawn` against available inventory; an excess above \(10^{-7}\) MWh terminates the calculation with `ValueError`.
+
+```text
+inventory_energy = 0.0
+inventory_kg = 0.0
+for charge, discharge, intensity in zip(
+    storage_trace["charge_mwh"],
+    storage_trace["discharge_mwh"],
+    storage_trace["charge_source_kgco2e_per_mwh"]):
+    admitted = charge * storage_trace["charge_efficiency"][0]
+    inventory_energy += admitted
+    inventory_kg += charge * intensity
+    withdrawn = discharge / storage_trace["discharge_efficiency"][0]
+    if withdrawn > inventory_energy + 1e-7:
+        raise ValueError("Storage withdrawal exceeds available inventory")
+    share = withdrawn / inventory_energy if inventory_energy > 0 else 0.0
+    inventory_kg *= 1.0 - share
+    inventory_energy -= withdrawn
+ending_inventory = inventory_kg / 1000.0
+```
+
+Hydrogen-storage operation enters `unresolved` in the current ledger. `_normalise_technology` maps `hydrogen_battery` to `hydrogen_storage`, whose operational factor is empty; this activity makes `operational` and `total` return `None`. Hydrogen-storage construction emissions still use the power- and energy-capacity factors specified above.
+
+## Annual emissions and intensity
+
+Annual emissions `total` sum operational emissions `operational` and annualised construction emissions `embodied`. Aggregation requires a matching factor for each activity and energy capacity and a positive economic life for storage. `delivered_demand_mwh` is served electricity; a positive value supplies the denominator for the following kg/MWh intensities:
+
+$$
+\begin{aligned}
+\mathtt{total}&=\mathtt{operational}+\mathtt{embodied},\\
+\mathtt{operational\_intensity}
+&=\frac{1000\times\mathtt{operational}}{\mathtt{delivered\_demand\_mwh}},\\
+\mathtt{overall\_intensity}
+&=\frac{1000\times\mathtt{total}}{\mathtt{delivered\_demand\_mwh}}.
+\end{aligned}
+$$
+
+## Construction emissions from line expansion
+
+Line construction enters `network_construction_embodied` once in the commissioning year and is added to that year's `total`. `adjust_carbon_ledger_for_network` selects network assets with `commissioning_year == year` and `status == "commissioned"`. For each selected asset, `rating` is MW, `factor` reads `asset.embodied_carbon_factor_tco2e_per_mw` in tCO₂e/MW, and `emissions` is tonnes:
+
+$$
+\begin{aligned}
+\mathtt{rating}
+&=\mathtt{asset.thermal\_rating\_mw\_per\_circuit}\\
+&\qquad\times\mathtt{asset.circuits},\\
+\mathtt{emissions}&=\mathtt{rating}\times\mathtt{factor},\\
+\mathtt{network\_total}&=\sum\mathtt{emissions},\\
+\mathtt{total}&\leftarrow\mathtt{total}+\mathtt{network\_total}.
+\end{aligned}
+$$
+
+The updated total supplies `overall_kgco2e_per_mwh` and `delivered_demand_kgco2e_per_mwh`, using served electricity as `denominator` when it is positive. A selected line with a missing factor receives an unresolved construction entry and makes the total return `None`. The supplied fixed 23-zone network retains its declared branches; this additional calculation accompanies the optional line-expansion module.
 
 ## Data and implementation
 

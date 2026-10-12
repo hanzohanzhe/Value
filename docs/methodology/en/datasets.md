@@ -1,33 +1,15 @@
 # Initial data and input processing
 
-VALUE combines demand, weather, assets, planning data and external-market inputs on a common model clock. The source year determines the demand or weather sample; the model year determines asset operation and investment. The data package and methodology profile jointly determine the reading rules.
+VALUE constructs an electricity-system study from demand, weather, operating assets, planned projects, technology parameters and external-market prices and flow limits. Source years identify the observed samples; the study's start year selects the operating fleet and the subsequent investment calendar. The default `value-corrected` configuration reads the following public2 packages, available from the [data page](https://value.ac/en/data/).
 
-| Data configuration | Package | Coverage and availability |
+| Study inputs | Package | Contents |
 |---|---|---|
-| VALUE 101 | `value-101-baseline-v1` | Bundled synthetic teaching data for 2025–2026, with 17,520 half-hours per year and a 48-period exercise |
-| GBP1 public1 | `value-uk-open-data-pack-v1` | Published GB inputs; eligible for the doctoral reproduction profile |
-| GBP1 public2 | `value-uk-open-data-pack-public2` | Revision for the corrected methodology, published with VALUE 0.7.0-alpha.1 ([download](https://value.ac/en/data/)) |
-| R029 public2 | `value-uk-calendar-vx-trade001-public2` | Revision for the corrected methodology, published with VALUE 0.7.0-alpha.1 ([download](https://value.ac/en/data/)); study window 2025–2034, 2022 demand and 2020–2024 weather |
+| Great Britain, national | `value-uk-open-data-pack-public2` | Demand, representative-point weather, fleet, planning, costs and five external markets |
+| Great Britain, 2025–2034 with calendar-mean weather | `value-uk-calendar-vx-trade001-public2` | R029 configuration with 2022 demand and 2020–2024 weather |
+| Great Britain, 23 zones | `value-uk-research-suite-v1-public2` | National inputs, zonal demand, asset allocation, corridors and external boundaries |
+| VALUE 101 | Synthetic teaching inputs | 2025–2026 studies with a full 17,520-period year and a 48-period exercise; generation rules are given below |
 
-The corrected GB studies require the declared columns, source units and time resolutions supplied by the public2 revisions or an eligible user workspace package. R029 public1 (`value-uk-calendar-vx-trade001`) is outside the doctoral reproduction whitelist; its 8,761-value solar investment profile also fails the corrected reader's annual-length requirement. Chapter 3 describes the revised profile. GB 23-zone network studies use the GBP1 public2 research suite, `value-uk-research-suite-v1-public2`, available from the [data page](https://value.ac/en/data/). It supplies the compatible national and spatial inputs for the corrected methodology.
-
-## Temporal resolution and input roles
-
-The national model balances half-hourly energy. In `canonical_psm_data`, the arrays in `series` contain demand power in MW; multiplication by `period_hours` gives actual `demand` and forecast `forecast_demand` in MWh per period. Annual energy is the sum of the period values:
-
-$$
-\begin{aligned}
-\mathtt{demand}[t]&=\mathtt{series}[\text{demand.real}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
-\mathtt{forecast\_demand}[t]&=\mathtt{series}[\text{demand.forecast}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
-\mathtt{period\_hours}&=0.5\ \mathrm{h},\qquad \mathtt{periods}=365\times24\times2=17{,}520.
-\end{aligned}
-$$
-
-The model year consists of 365 days on a fixed UTC clock, with 28 days in February. Declared leap-year demand is reduced to this calendar while preserving annual energy, as defined below and in Chapter 4. Capacity is measured in MW, inventory in MWh, money in GBP and electricity prices in GBP/MWh.
-
-Demand enters the model as MW and is multiplied by the period duration for dispatch. VALUE 101 retains a `mwh` column name and MWh/period package label for values that are read as MW in both profiles. User-mapped demand instead follows its declared source unit: MWh/period is divided by the source-period duration in hours to obtain MW.
-
-Data bindings assign physical files to defined computational roles. Demand files supply actual demand and the day-ahead forecast, the fleet table supplies technology, capacity and representative location, and planning tables supply project status and dates. Weather and technology-average profiles support spatial available generation and the corresponding investment rules, respectively.
+Input roles connect files to physical quantities. The package's `manifest.json` binds each role to its file and declares its column, unit and temporal resolution. The following table gives the R029 filenames and the variables supplied to the calculations.
 
 | Input role | Main data or fields | Computational use |
 |---|---|---|
@@ -40,13 +22,31 @@ Data bindings assign physical files to defined computational roles. Demand files
 | External markets | Country-specific `flow_mw`, `price_gbp_per_mwh` | Available interconnector exchanges and external offers |
 | Zonal network | Zones, corridors, boundaries, asset mapping and zonal demand | Spatial supply–demand balance and transmission constraints |
 
-## Declared reading and annual alignment
+## Model clock and units
 
-Both profiles read a declared `csv_column` under its declared `csv_header` convention. An implicitly selected integer index column terminates loading. R029 demand and boundary series use this shared reader through `data_method.read_role` and `data_method.read_boundary`.
+The operating year contains 17,520 half-hours on a 365-day UTC calendar. Period zero starts at 00:00 on 1 January; February contains 28 days. Asset capacity is measured in MW, stored energy in MWh, money in GBP and electricity price in GBP/MWh. The `period_start_utc` function assigns each period its calendar time.
 
-The corrected methodology uses `declared-v2`. Without a header declaration, the first row is treated as a header only when all its cells are non-numeric. Without a column declaration, strict reading requires a single wholly numeric column. The source interval is read from `interval_minutes`, or inferred as hourly for 8,760 or 8,784 values. Each hourly value then supplies two half-hours.
+Demand enters as power in MW. The default national algorithm passes the values from `read_role` through `_kernel_inputs` to `run_simulation` in MW. The staged and optimisation interfaces use `build_chronology` in `canonical_psm_data` to form period energy: `series["demand.real"].values` and `series["demand.forecast"].values` hold MW, while `demand` and `forecast_demand` hold MWh per period. With zero-based period index `t`,
 
-A 17,568-period leap-year demand series loses the 48 periods on 29 February and rescales the remainder to preserve annual energy. `normalize_half_hour_year` reads the source as `numbers` and stores the retained values as `reduced`. With a positive retained total, it returns
+$$
+\begin{aligned}
+\mathtt{demand}[t]&=\mathtt{series}[\text{demand.real}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
+\mathtt{forecast\_demand}[t]&=\mathtt{series}[\text{demand.forecast}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
+\mathtt{period\_hours}&=0.5\ \mathrm{h},\qquad \mathtt{periods}=365\times24\times2=17{,}520.
+\end{aligned}
+$$
+
+Annual demand energy is the sum of `demand`. A user-supplied column expressed in MWh per source period is divided by that period's duration in hours to obtain MW before half-hour alignment. VALUE 101 writes its synthetic power values under the column name `mwh`; those values enter the same MW-to-MWh calculation above.
+
+## Column selection, missing values and annual alignment
+
+Time-series loading follows the declared column and header. `read_series` uses `csv_column` with `csv_header=true`; each cell in that column must be numeric and finite. An empty sequence, a missing named column or an invalid numeric cell terminates loading. For a file with an inferred column, an integer sequence of at least three values increasing by one requires an explicit column declaration.
+
+Header and column inference follow the contents of the file. A declared `csv_header` takes precedence. Otherwise the first row is a header when it has at least one populated cell and every populated cell is non-numeric. With a missing `csv_column`, strict reading selects the sole wholly numeric column; multiple numeric columns require an explicit selection. The user-workspace reader selects the first wholly numeric column in an ambiguous file. Declaring the column fixes this choice independently of column order.
+
+Hourly inputs are expanded before the requested run window is selected. `align_clock` reads `interval_minutes=60` as two copies of each source value and `interval_minutes=30` as one value per half-hour. With an absent interval declaration, lengths of 8,760 and 8,784 identify hourly years. Other declared resolutions terminate loading. The hourly conversion is applied once.
+
+Leap-year demand retains its annual energy on the 365-day model clock. After hourly expansion, a 17,568-period year loses the 48 values beginning at `(31 + 28) * 48`, corresponding to 29 February. In `normalize_half_hour_year`, `numbers` contains the source values and `reduced` the retained values. For a positive retained sum,
 
 $$
 \begin{aligned}
@@ -56,35 +56,31 @@ $$
 \end{aligned}
 $$
 
-A zero retained sum with a non-zero original sum terminates reading; an all-zero series remains zero. Other roles remove the leap day without energy rescaling. The binding may explicitly retain the leap day through `leap_policy=keep`, in which case the run takes its required leading periods.
+An all-zero demand series remains zero. A zero retained sum with a positive original sum terminates conversion. Other time-series roles remove the same 48 values and retain the remaining values. An explicit `leap_policy="keep"` retains the source calendar and selects the required leading periods.
 
-Strict reading truncates a sufficiently long series to the run length and repeats a shorter series only when cycling is declared or supplied by the role convention. Boundary roles use this cycling convention. Corrected non-workspace packages use strict reading; user workspace packages use lenient reading and repeat a shorter sequence from the beginning. Mapping requires confirmation of that repetition.
+The run consumes the first `periods` values of a sufficiently long aligned sequence. A shorter series repeats from its beginning when `cyclic=true`, or when its role supplies the cycling convention; external-market flows and prices have this convention. Strict package reading requires that declaration for shorter demand or investment sequences. User-workspace reading fills a short series by repetition. These rules determine the numerical input for a partial-year or full-year run.
+
+The following sequence produces the aligned values. `path` is the bound file, `spec` contains its declarations, `policy.strictness` selects strict package reading or user-workspace reading, and `cyclic` is the role's repetition default.
 
 ```text
-read = read_series(path, spec, mode=policy.reader_mode,
-                   strictness=policy.strictness, legacy_header=header)
-values = align_clock(read.values, periods, spec, mode=policy.clock_mode,
-                     strictness=policy.strictness,
-                     hourly_repeat=hourly_repeat, cyclic_default=cyclic)
+read = read_series(path, spec, mode="declared-v2", strictness=policy.strictness)
+values = align_clock(read.values, periods, spec, mode="declared-v2",
+                     strictness=policy.strictness, cyclic_default=cyclic)
 return values
 ```
 
-The doctoral reproduction profile uses `legacy-v1`: its role-specific header settings, largest-numeric-column selection and short-series repetition remain active alongside declared-column reading. In GBP1 public1, the headerless forecast's first value, 21,560, is consumed as a header, so forecast values lead the actual series by one period. The corrected reader retains this first value as data.
+## Observed demand and missing settlement periods
 
-## Demand series and calendar processing
-
-R029 uses NESO's 2022 day-ahead half-hourly demand forecasts and corresponding actual demand as the base demand shapes for model years. GBP1 demand uses the same UTC preprocessing rules in both profiles. `actual_mw.csv` and `forecast_mw.csv` each contain 17,520 rows. Their initial statistics are given below; subsequent scenario scaling acts on these base shapes.
+The supplied GB demand shape uses NESO's 2022 half-hour actual demand and day-ahead forecast. Each of `actual_mw.csv` and `forecast_mw.csv` contains 17,520 values after UTC preprocessing. Each subsequent model year uses the same aligned 2022 actual-demand and forecast-demand sequences. Their power and energy totals are
 
 | Series | Minimum power MW | Maximum power MW | Mean power MW | Annual energy MWh |
 |---|---:|---:|---:|---:|
 | Actual demand | 15,080 | 46,042 | 26,587.967637 | 232,910,596.5 |
 | Day-ahead forecast | 14,240 | 46,760 | 26,611.131963 | 233,113,516 |
 
-Demand preprocessing identifies duplicate records by settlement date and period, then converts UK local dates to a UTC time axis. For a given settlement period, it retains the latest publication; equal publication times are resolved by retaining the last row. The original 17,518 rows become 17,516 after duplicate consolidation, and four missing half-hours are filled by linear interpolation in UTC.
+Demand preprocessing resolves settlement records before interpolation. Rows with the same settlement date and settlement period are ordered by publication time; the latest publication is retained, with the final row breaking a tie. UK local settlement times are then placed on the UTC half-hour axis. The 17,518 source rows yield 17,516 distinct periods, leaving four missing half-hours.
 
-Linear interpolation divides the difference between the two known endpoint values into equal increments. A gap of one half-hour receives the endpoint mean. A gap of two half-hours receives the values one-third and two-thirds of the way from the preceding observation to the following observation.
-
-Each gap in the 2022 input contains at most two consecutive periods, and all filled values occur on 30 October. The table reports MW values to six decimal places.
+Missing demand periods are filled by linear interpolation between their adjacent known values. One missing period receives the mean of the endpoints. Two consecutive missing periods receive one-third and two-thirds of the endpoint difference added to the preceding value. The four replacements in the 2022 input occur on 30 October:
 
 | UTC time | Forecast demand MW | Actual demand MW |
 |---|---:|---:|
@@ -93,15 +89,19 @@ Each gap in the 2022 input contains at most two consecutive periods, and all fil
 | 2022-10-30 23:00 | 19,063.333333 | 20,494.666667 |
 | 2022-10-30 23:30 | 19,086.666667 | 19,689.333333 |
 
-## Initial assets and planned projects
+User demand timestamps are converted to UTC before the same model-year alignment. The mapping accepts UTC or Europe/London and a declared DD/MM/YYYY or MM/DD/YYYY date order. Timestamps must identify a strictly increasing sequence with a regular 30- or 60-minute step; duplicates, unresolved dates and gaps terminate mapping. The resulting row order is placed from 1 January 00:00 UTC in each model year, retaining the input's sequence of weekday and holiday effects.
 
-Initial wind, solar and storage assets are determined jointly by REPD technology, operational status, commissioning year and capacity. The input uses the second-quarter 2025 edition of the DESNZ Renewable Energy Planning Database, released in July. The source table contains 12,977 projects and 53 fields; normalisation retains 10,653 projects and 14 fields.
+## Initial operating assets
 
-Normalisation retains recognised technologies with positive capacity and standardises technology names, numerical fields and dates. The 14 fields cover project identifier, site name, standardised and source technology names, MW capacity, development status, region, country, application date, permission date, construction date, operational date and two coordinates. Failed numerical conversions and missing source dates remain missing for subsequent filtering. Standardised technologies include onshore wind, offshore wind, solar, batteries and gas.
+The initial renewable and battery stock is selected from the DESNZ Renewable Energy Planning Database, second quarter 2025, released in July. Its 12,977 project rows and 53 source fields yield 10,653 rows and 14 fields after technology and positive-capacity filtering. `normalize_repd` retains onshore wind, offshore wind, solar, battery and gas technologies; `capacity_mw`, `x_coordinate` and `y_coordinate` are converted to numbers, with failed conversions stored as missing values.
 
-Initial operating capacity comprises assets commissioned by the study's starting year. `build_repd_operational_snapshot` selects wind, solar and storage projects with `Operational` status, a commissioning year at or before the starting year, and positive capacity, then maps them to representative assets. Battery capacity is allocated according to storage-template `pool_limit` weights. Nuclear capacity follows a separate station policy and annual commissioning and retirement schedule.
+The normalised project table retains the information needed for date and location selection. Its fields are `project_id`, `site_name`, `technology`, `technology_source`, `capacity_mw`, `development_status`, `region`, `country`, `planning_application_submitted`, `planning_permission_granted`, `under_construction`, `operational`, `x_coordinate` and `y_coordinate`. Date strings remain available for the asset and planning readers to parse.
 
-The R029 2025 initial asset specification contains the capacities below. The table describes its configured starting stock, with aggregated nuclear, gas and several other technologies. In the corrected default pathway, GBP1 studies with station policies use station-level nuclear availability and monthly retirement; R029 aggregated nuclear capacity uses an availability factor of 0.723. Run-of-river output uses a load factor of 0.3487 multiplied by seasonal shape (Chapter 5). The doctoral reproduction profile retains availability of 100%; the separate experimental R029 pathway also retains that input convention.
+Operating wind, solar and battery capacity requires `Operational` status, a readable operational date at or before the study's start year, and positive installed MW. `build_repd_operational_snapshot` parses the date with day-first order and skips records with missing dates or invalid capacity. Solar and onshore projects first use the region-to-city mapping in Chapter 3. Remaining projects use geographic coordinates and the nearest representative of their technology; OSGB coordinates are converted from EPSG:27700 to EPSG:4326 when required. A project with neither a regional assignment nor usable coordinates contributes zero to the mapped initial wind or solar stock.
+
+Initial battery MW is distributed among the storage entries other than pumped hydro. For each entry, `weighted[asset_id]` equals the larger of its `pool_limit` and 1; `weight_total` is their sum. `native_initial_state` assigns `capacity = operational_storage_mw * weighted[asset_id] / weight_total`. Its energy is `capacity * duration`, where `duration` comes from the technology catalogue. The 2025 pumped-hydro stock is specified separately as 2,828 MW and 26,700 MWh.
+
+The R029 2025 stock contains the capacities below. Its aggregated nuclear availability is 0.723, and run-of-river generation uses 0.3487 multiplied by the seasonal shape in Chapter 5. GBP1 selects its nuclear units through the station schedule, with the station availability and retirement rules also defined in Chapter 5.
 
 | Technology | Asset rows | Power MW | Stored energy MWh |
 |---|---:|---:|---:|
@@ -119,9 +119,11 @@ The R029 2025 initial asset specification contains the capacities below. The tab
 | Hydrogen storage | 1 | 0.749960 | 187.490103 |
 | Pumped hydro | 1 | 2,828 | 26,700 |
 
-Planning inputs specify success probabilities by technology and region and duration distributions by technology and stage. `regional_technology_success_rates.csv` contains 46 records; `planning_timelines.json` supplies stage durations in months. Both tables govern REPD projects and endogenous investment. The model freezes `development_stage_timelines`, `repd_status_to_timeline` and `success_rates` in the initial state.
+## Planning inputs
 
-Endogenous proposals obtain their development duration and probability from these frozen tables under both methodology profiles. Technology labels, regional matching, deterministic month displacement, commissioning dates and expected-capacity or seeded-stochastic admission follow Chapters 4 and 6. `endogenous_planning._success_rate` takes the rate for the technology label and region, then the mean across that label's regions, then 0.75. The input development and construction medians are
+Project development uses technology- and region-specific success rates and technology-specific stage durations. `regional_technology_success_rates.csv` contains 46 records; `planning_timelines.json` supplies durations in months. `development_stage_timelines`, `repd_status_to_timeline` and `success_rates` are stored in the initial state and supply both existing planned projects and new investment proposals.
+
+The input medians distinguish development from construction. Status mappings select the relevant remaining stages. The following preprocessing constructs the initial project list; Chapter 6 advances these projects and admits new investment proposals each year.
 
 | Technology | Median development months | Median construction months |
 |---|---:|---:|
@@ -130,9 +132,77 @@ Endogenous proposals obtain their development duration and probability from thes
 | Offshore wind | 110.1 | 32.2 |
 | Battery | 31.3 | 10.1 |
 
-## Costs and storage parameters
 
-Investment inputs specify unit capital costs, payback targets and technical operating parameters separately. R029 uses `capital_costs.json` and `model_parameters.json` from its study configuration. Upstream capital-cost sources include BEIS Electricity Generation Costs 2020 and Arup material; the table reports the parameters adopted by the model. The default rate for annual capital recovery is 0.05; investment decisions compare undiscounted return and payback. The table gives the base-configuration payback targets and `preferred_rate` parameters. R029's investment rule sets the effective threshold for all four expandable storage technologies to 0.12; Chapter 6 defines its profit ratio and decision rules.
+Initial planned projects are selected by capacity, development status and recorded progress. `native_initial_state` uses the controls below; the default `planning.success_mode="expected"` is read as `success_mode="expected_capacity"`. `year` is the study's start year and `capacity` is the source project's MW.
+
+| Parameter | Default | Use |
+|---|---|---|
+| `planning.minimum_project_size_mw` | 1 MW | Smallest positive project admitted |
+| `planning.include_uncertain_projects` | `true` | Admit application, appeal and revised statuses |
+| `planning.zombie_filter_enabled` | `true` | Apply status, progress and construction-overrun filters |
+| `planning.zombie_status_stale_year` | 2015 | Latest-progress cutoff for uncertain projects |
+| `planning.construction_grace_years` | 2 years | Added to the estimated construction completion year |
+| `planning.max_completion_year` | 2040 | Latest admitted completion year |
+| `planning.timeline_statistic` | `median` | Select median or mean stage durations |
+| `planning.defer_spread_years` | 3 years | Maximum added delay for inferred completion dates |
+| `planning.random_seed` | 0 | Input to project-specific success draws |
+| `planning.repd_battery_assignment` | `value_proportional_split` | Allocate generic battery capacity among four storage technologies |
+
+A replacement application supersedes its older project record. The preprocessing reads `Ref ID` and `Are they re-applying (New REPD Ref)` in the raw REPD table and excludes the old record when the replacement is a different, non-empty identifier present in that table. It also excludes capacity below `minimum_size` and non-positive or unparseable capacity.
+
+Development-status filtering acts on stripped, lower-case labels. `terminal_statuses` always excludes `operational`, `abandoned`, `planning permission refused` and `application withdrawn`. With `zombie_filter=true`, the additional excluded labels are `application refused`, `appeal refused`, `appeal withdrawn`, `decommissioned`, `application expired` and `finished`. Setting `include_uncertain=false` retains only `under construction`, `awaiting construction` and `planning permission granted`.
+
+The recorded progress cutoff applies to `application submitted`, `appeal lodged` and `revised`. `_date_year` extracts the first four-digit year beginning with 19 or 20 from each date string; a missing year yields `None`. `latest_progress_year` takes the latest known year across `planning_application_submitted`, `planning_permission_granted`, `under_construction` and `operational`. With the progress filter enabled, an uncertain project is excluded when this year is at or before `zombie_stale_year`; a missing progress year passes this particular filter.
+
+The completion year first uses a recorded future year and otherwise uses the remaining stage duration. `timeline_months(source_technology, status)` selects `timeline_type` from `repd_status_to_timeline`, replaces its mean or median suffix with `timeline_statistic`, and reads the selected technology entry in `development_stage_timelines`. A missing status mapping selects `total_median` by default; a missing stage entry uses `development_timelines`, with a final fallback of 12 months. Storage components use the battery duration table.
+
+The inferred completion date adds a deterministic delay of zero to `defer_spread_years` whole years. The following sequence uses the source `project_id` to calculate that delay; an existing future date bypasses the duration and delay calculations.
+
+```text
+completion = next((candidate for candidate in (
+    _date_year(row.get("operational")),
+    _date_year(row.get("under_construction")),
+) if candidate is not None and candidate > year), None)
+if completion is None:
+    months = timeline_months(source_technology, status)
+    completion = year + max(1, int(math.ceil(months / 12.0)))
+    if defer_spread_years > 0:
+        completion += int(
+            hashlib.sha256(project_id.encode("utf-8")).hexdigest()[:8], 16
+        ) % (defer_spread_years + 1)
+```
+
+Construction status receives a separate elapsed-time check. For `under construction` with a known `construction_year`, preprocessing forms `construction_end = construction_year + max(1, math.ceil(timeline_months(source_technology, status) / 12)) + construction_grace`. With `zombie_filter=true`, a value earlier than `year` excludes the project. A `completion` later than `maximum_completion` also excludes the project.
+
+Initial project success uses a technology–region lookup. `_planning_probability` reads `technology`, `region` and `success_rate`, clamps each readable rate to [0,1] and skips unreadable rates. A missing required column yields an empty rate table. The lookup first uses the project's lower-case region, then the technology's `gb` entry, then 1.0. The calculation below gives `probability`, the dimensionless draw `draw`, and the admitted capacity; all components of one physical battery project share its draw.
+
+```text
+probability_key = "battery" if source_technology == "battery" else _technology(source_technology)
+probability = success_rates.get(
+    (probability_key, region.strip().lower()),
+    success_rates.get((probability_key, "gb"), 1.0),
+)
+draw = int(
+    hashlib.sha256(f"{random_seed}:{project_id}".encode("utf-8")).hexdigest()[:13], 16
+) / float(16 ** 13 - 1)
+realised_failure = success_mode == "seeded_stochastic" and draw > probability
+components = typed_project_components(project_id, source_technology, capacity)
+for component_id, technology, declared_component_capacity, assignment_method in components:
+    effective_capacity = (
+        declared_component_capacity * probability
+        if success_mode == "expected_capacity" else declared_component_capacity
+    )
+```
+
+Generic battery projects are split before their success-adjusted capacities are recorded. `typed_project_components` uses `scheme_c_storage_weights`, formed from the same positive fleet weights used for initial battery stock, to allocate source MW among `1c_battery`, `0.5c_battery`, `0.25c_battery` and `hydrogen_battery`. Each `declared_component_capacity` equals the source capacity times its weight divided by total weight. The settings `all_1c`, `all_0.5c` and `all_0.25c` assign the full capacity to one technology; `exclude_untyped` removes generic battery projects from the initial list. Projects with a specified technology retain that technology and capacity.
+
+The expected-capacity mode multiplies each component's declared MW by its success probability. The stochastic setting `planning.success_mode="stochastic"`, read as `seeded_stochastic`, retains full declared MW and sets `phase="failed"` and `outcome="failed_planning"` when `draw > probability`; equality passes. Successful projects and expected-capacity projects receive `phase="active"` and `outcome="active"`. Storage energy is `effective_capacity * duration_hours` in MWh. `PlanningProject` stores these values with `expected_completion_year=completion`, the start year, status, technology and region for Chapter 6's annual progression.
+
+New investment proposals use the success-rate lookup in `endogenous_planning._success_rate`. It selects the regional rate, then the technology's regional mean, then 0.75. Chapter 6 defines proposal capacity and the subsequent planning process.
+
+## Capital costs and storage parameters
+
+Capital costs, target returns and payback periods are supplied as distinct financial inputs. The R029 configuration reads `capital_costs.json` and `model_parameters.json`; the capital-cost material draws on BEIS Electricity Generation Costs 2020 and Arup. The table gives the financial parameters assigned to the initial assets. Annual capital recovery uses `capital_discount_rate=0.05`; the investment calculations and effective decision thresholds are defined in Chapter 6.
 
 | Technology | Capital cost GBP/MW | `preferred_rate` | Target payback years |
 |---|---:|---:|---:|
@@ -140,13 +210,13 @@ Investment inputs specify unit capital costs, payback targets and technical oper
 | Onshore wind | 1,588,000 | 0.076 | 30 |
 | Offshore wind | 3,976,000 | 0.089 | 30 |
 | CCGT / OCGT | 2,400,000 | 0.089 | 25 |
-| Biomass and waste | 1,500,000 | 0.089 | 20 |
+| Biomass and waste | 1,500,000 | 0.089 | 25 |
 | 1C battery | 330,000 | 0.0825 | 10 |
 | 0.5C battery | 350,000 | 0.165 | 10 |
 | 0.25C battery | 415,000 | 0.0825 | 10 |
 | Hydrogen storage | 600,000 | 0.01375 | 25 (default) |
 
-Storage parameters assign charging efficiency, discharging efficiency, duration and lifetime to inventory and cost calculations. Round-trip efficiency is `charge_efficiency * discharge_efficiency`; for example, the 0.5C battery uses \(0.98^2=0.9604\). Catalogue economic lifetimes and the payback targets above enter the calculations as separate parameters. The cycle parameter `maximum_cycles` determines reference annual cycles. The three battery technologies also use it for cycle depreciation. The dynamic storage-cost module uses time recovery for pumped hydro and hydrogen storage; the corrected default dispatch uses the cycle-only offer rule described in Chapter 5.
+Storage energy losses follow separate charging and discharging efficiencies. Round-trip efficiency is `charge_efficiency * discharge_efficiency`, giving \(0.98^2=0.9604\) for the 0.5C battery. The catalogue also supplies duration, economic lifetime and `maximum_cycles`. These values enter the storage-state and cost equations in Chapters 4 and 6; initial stored energy is specified with the operating algorithm in Chapter 4.
 
 | Technology | Catalogue duration h | Charging efficiency | Discharging efficiency | Catalogue economic life years | Cycle parameter `maximum_cycles` |
 |---|---:|---:|---:|---:|---:|
@@ -156,27 +226,17 @@ Storage parameters assign charging efficiency, discharging efficiency, duration 
 | 0.25C battery | 4 | 0.81 | 0.81 | 15 | 8,000 |
 | Hydrogen storage | 250 | 0.57 | 0.57 | 10 | 1,000 |
 
-Annual asset schedules can specify storage power and energy directly. The 2025 pumped-hydro asset state therefore uses 2,828 MW and 26,700 MWh.
+Source price years remain attached to the numerical inputs. Storage costs and policy budgets are expressed in 2025 GBP; BEIS capital-cost inputs retain 2020 values, the European electricity samples retain their 2022 or 2021 values after currency conversion, and nuclear-policy entries carry their declared 2015 or 2024 price years. Restart costs use the conversion in Chapter 5. The currency reader converts euros to pounds using `eur_per_gbp`.
 
-Initial stored energy follows the dispatch pathway. The experimental R029 chronology starts from zero; general chronological inputs default to 50% of maximum inventory unless specified. The default national PSM constructs storage objects at each annual boundary, as described in Chapter 5.
+Annual policy spending uses the schedules in `mechansim cost.xlsx`. The workbook combines NESO Capacity Market and balancing-cost series, Ofgem RO/FIT/REGO material and LCCC CfD data. Chapter 6 specifies how these inputs enter annual accounts.
 
-Financial calculations select time parameters by computational purpose and technology configuration. Biomass uses an economic life of 25 years and a payback target of 20 years. The gas prototype has a 20-year payback target, while the R029 run configuration sets CCGT and OCGT to 25 years.
+## External markets and zonal demand
 
-Amounts are interpreted in constant start-year money; the supplied studies begin in 2025. The storage catalogue, pumped-hydro capital cost and policy budgets explicitly use 2025 GBP. Fuel and carbon prices are treated on that basis, while restart costs use the conversion documented in Chapter 5. BEIS 2020 costs, the 2022 euro price series and nuclear-policy entries labelled 2015 or 2024 retain their source-year values after any currency conversion. Thus the common monetary convention includes inputs of different price vintages; the reader applies the declared currency conversion.
+External electricity exchange is limited by a time-varying envelope and priced by the corresponding foreign market. R029 supplies 17,520-row files for France, Belgium, the Netherlands, Norway and Ireland. Each file provides `flow_mw` and `price_gbp_per_mwh` alongside its period and source timestamps. NESO line names associate `NEMO_FLOW` with Belgium, `BRITNED_FLOW` with the Netherlands and `NSL_FLOW` with Norway.
 
-Policy expenditure inputs combine historical aggregation with forward assumptions. `mechansim cost.xlsx` assembles NESO Capacity Market and balancing-cost data, Ofgem RO/FIT/REGO material and LCCC CfD data for annual policy expenditure calculations.
+Foreign prices use Ember's compilation of ENTSO-E day-ahead prices. France, Belgium, the Netherlands and Norway use 2022; Ireland uses 2021. An hourly EUR/MWh value is divided by 1.1 EUR/GBP and assigned to both receiving half-hours. Negative prices retain their sign. R029 stores the converted GBP/MWh values; a GBP1 file such as `Belgium_price.csv` supplies `Price (EUR/MWhe)` and receives the same conversion through `read_series`.
 
-## Interconnectors and zonal demand
-
-External market inputs describe cross-border exchange opportunities through flow limits and prices for each half-hour. R029 provides one 17,520-row file for each of France, Belgium, the Netherlands, Norway and Ireland, binding each file to both flow and price roles. Fields include `period`, `flow_mw`, `price_gbp_per_mwh`, the source price hour, a half-hour marker, and source row numbers for flows and prices.
-
-Boundary prices use European day-ahead prices assembled by Ember from ENTSO-E data. France, Belgium, the Netherlands and Norway use 2022 prices, while Ireland uses 2021. Each hourly price is repeated twice and saved in GBP/MWh after dividing EUR/MWh by 1.1 EUR/GBP. The corrected methodology preserves negative boundary prices. The doctoral reproduction profile clips general chronological prices at zero; the experimental R029 pathway preserves negative prices.
-
-Each boundary uses its NESO line identity. `NEMO_FLOW` supplies Belgium, `BRITNED_FLOW` the Netherlands and `NSL_FLOW` Norway. The registered GBP1 file `Belgium_price.csv` supplies its `Price (EUR/MWhe)` column as hourly EUR/MWh. `read_series` divides `values` by `spec.eur_per_gbp = 1.1` once and repeats each converted hour into two half-hours. The kernel reads the flow corresponding to each period.
-
-These rules apply to both profiles. GBP1 flow values are read as MW despite their retained MWh/period labels.
-
-Boundary flows provide exogenous exchange limits in source-period order. The field `flow_mw` uses positive values for imports and negative values for exports. `canonical_psm_data` converts it to signed MWh as `raw_availability`; the non-negative energy limits `import_energy` and `export_energy` are
+The positive and negative values of `flow_mw` define import and export capacity, respectively. Multiplication by `period_hours` yields signed period energy `raw_availability`, from which the two non-negative envelopes are calculated:
 
 $$
 \begin{aligned}
@@ -186,7 +246,7 @@ $$
 \end{aligned}
 $$
 
-The corrected default national PSM offers import capacity in day-ahead clearing; the doctoral reproduction profile offers it only in balancing (Chapter 5). The public2 revisions retain the declared sign convention, positive for import and negative for export, with status `declared_unverified`: source verification of country-level annual net flow remains pending. The input ranges and mean prices below describe the R029 files.
+The default national market offers imports in day-ahead clearing. Chapter 5 defines their use during clearing and balancing, and Chapter 7 applies the external-boundary capacities in the zonal model. The R029 envelope ranges and mean prices are
 
 | Boundary | Flow range MW | Price year | Mean price GBP/MWh |
 |---|---:|---:|---:|
@@ -196,7 +256,7 @@ The corrected default national PSM offers import capacity in day-ahead clearing;
 | Netherlands | −1,076 to 1,062 | 2022 | 219.917959 |
 | Norway | −1,263 to 1,399 | 2022 | 126.503575 |
 
-Zonal studies allocate national study demand using the network pack's period-specific regional shares. In `align_zonal_demand`, mode `scenario_scaled_zonal_shares` sets `output_real` to study actual demand and reads `network_national` from the network pack at each `index`. All demand quantities are MWh per period. Each zone receives `value`, appended to `aligned[zone_id]`:
+Zonal demand uses the national study's total and the network input's spatial shares. `align_zonal_demand` matches network and study `period_ids`, which must be unique and have corresponding records. Actual and forecast input energy must be finite, non-negative and equal in length to the period list. In `scenario_scaled_zonal_shares`, `output_real` holds the study's actual MWh and `network_national` the network's national MWh at `index`:
 
 $$
 \begin{aligned}
@@ -205,11 +265,31 @@ $$
 \end{aligned}
 $$
 
-The final zone receives national demand minus the sum of the other zones, conserving the spatial total. Loading terminates if network national demand is zero while study demand is non-zero. The alternative `network_pack_absolute_demand` uses network national demand directly and adjusts the forecast using the original forecast-to-actual ratio. Zone, corridor and asset-mapping constraints are defined in the transmission chapter.
+The final zone receives the remaining national energy after the preceding zones have been assigned. If both national inputs equal zero, `scale=1.0`; positive study demand with zero network national demand terminates alignment. The following sequence gives the complete allocation, with `zone_ids` retaining the network's declared order:
+
+```text
+aligned = {zone_id: [] for zone_id in zone_ids}
+for index, period_id in enumerate(periods):
+    network_national = network_national_mwh[index]
+    if network_national == 0.0 and output_real[index] == 0.0:
+        scale = 1.0
+    elif network_national == 0.0:
+        raise ValueError("Zonal demand requires positive network national demand")
+    else:
+        scale = output_real[index] / network_national
+    remaining = output_real[index]
+    for zone_id in zone_ids[:-1]:
+        value = network_demand_mwh_by_zone[zone_id][index] * scale
+        aligned[zone_id].append(value)
+        remaining -= value
+    aligned[zone_ids[-1]].append(remaining)
+```
+
+The alternative `network_pack_absolute_demand` sets `output_real` to `network_national_mwh` and `scale=1.0`. Its forecast is `output_real[index] * forecast[index] / real[index]`. When `real[index]` is zero, both `forecast[index]` and `output_real[index]` must also be zero and the resulting forecast is zero. The same final-zone remainder rule preserves the national energy total.
 
 ## VALUE 101 synthetic inputs
 
-VALUE 101 generates daily peaks, seasonal variation and two local demand disturbances with deterministic functions in `build_value_101_packs`. The function `_demand` returns demand power in MW. It calculates `day` and `hour` from half-hour index `period`, and combines the following morning, evening, overnight and winter terms. `weekday` is 1 when `day % 7 < 5` and 0.92 otherwise; `teaching_peak` is 30 MW when `day` is 0 or 182 and `period % 48 == 31`, and zero otherwise:
+VALUE 101 supplies deterministic demand, weather and investment profiles. `_demand` returns MW for zero-based half-hour index `period`; `day` and `hour` identify its day and hour. `weekday` equals 1 when `day % 7 < 5` and 0.92 otherwise. `teaching_peak` is 30 MW at `period % 48 == 31` on days 0 and 182, and zero elsewhere:
 
 $$
 \begin{aligned}
@@ -230,9 +310,9 @@ $$
 \end{aligned}
 $$
 
-The forecast function `_forecast_demand` adds `balancing_margin` to `_demand(period)` and rounds to six decimal places. `balancing_margin` is 12 MW when `day` is 0 or 182 and `period % 48 == 30`; it is zero in the other periods.
+The day-ahead forecast is `_demand(period) + balancing_margin`, rounded to six decimal places. `balancing_margin` is 12 MW at `period % 48 == 30` on days 0 and 182, and zero elsewhere. The 12 MW addition precedes each of the two actual demand peaks by half an hour.
 
-The solar investment profile `_solar_profile` multiplies daylight and seasonal factors. It returns zero for `hour < 6` or `hour > 18`. Within that daylight window, using the same `day` and `hour` definitions,
+The solar investment coefficient multiplies daylight and seasonal terms. `_solar_profile` returns zero for `hour < 6` or `hour > 18`. During the daylight window it uses the same `day` and `hour` definitions:
 
 $$
 \begin{aligned}
@@ -242,7 +322,7 @@ $$
 \end{aligned}
 $$
 
-The wind investment profile `_wind_profile` combines daily, 29-day and annual components and limits the coefficient to 0.08–0.92:
+The wind investment coefficient combines daily, 29-day and annual components. `_wind_profile` limits the result to 0.08–0.92 and rounds it to six decimal places:
 
 $$
 \begin{aligned}
@@ -254,9 +334,9 @@ $$
 \end{aligned}
 $$
 
-Offshore investment availability is 1.08 times `_wind_profile(period)`, capped at 1 and rounded to six decimal places. The three sequences are saved under `profiles.vre_solar`, `profiles.vre_onshore` and `profiles.vre_offshore`.
+The offshore investment coefficient is 1.08 times `_wind_profile(period)`, capped at 1 and rounded to six decimal places. Solar, onshore and offshore arrays are bound to `profiles.vre_solar`, `profiles.vre_onshore` and `profiles.vre_offshore`.
 
-Teaching weather is specified separately on one grid point at 52°N, 0°E for 8,760 hours. In this calculation, `hour` is the zero-based index through the year. The solar array `hourly_solar` is in J/m² and the wind-speed array `hourly_wind` in m/s:
+The synthetic weather grid has one point at 52°N, 0°E and 8,760 hourly samples. Here `hour` is the zero-based hourly index through the year; `hourly_solar` is accumulated radiation in J/m² and `hourly_wind` is wind speed in m/s:
 
 $$
 \begin{aligned}
@@ -266,20 +346,4 @@ $$
 \end{aligned}
 $$
 
-The weather wind speed passes through the generation curve for dispatch; the technology profiles supply the investment rule. The French boundary has a 12 MW import limit and a price of 82 GBP/MWh. The other four boundaries have zero exchange capacity and placeholder prices of 200 GBP/MWh. `build_value_101_packs` writes these demand, weather and market sequences into the teaching package.
-
-## Data eligibility and user mappings
-
-Package validation separates structural validity, chronology and physical plausibility. Structure determines whether a package can be installed. Chronology checks boundary identity, price currency, local-time demand, known row-order issues, forecast alignment and declared timestamps. Plausibility checks use the ranges in `value_data_plausibility_v1.json`.
-
-The `profile_eligibility` decision combines those findings with the profile's package whitelist. In the corrected methodology, chronology findings for non-workspace packages and plausibility failures for scientific reference packages block preflight. They remain warnings under doctoral reproduction, whose whitelist separately excludes user workspaces and the VALUE 101 network package. Successful package validation is followed by role-specific reading; VRE investment-profile clock requirements are checked at that stage.
-
-User demand mappings declare columns, units and, when provided, timestamps in UTC or Europe/London. Local timestamps are converted row by row to UTC. Declared day/month order resolves dates as DD/MM/YYYY or MM/DD/YYYY; otherwise it is inferred. Unreadable, duplicate, decreasing, gapped or irregular timestamps block submission.
-
-Mapped sequences enter the model in row order from 1 January 00:00 UTC and repeat in each model year. A differing source year generates a notice; the reader preserves row order, weekdays and holidays from the input. Hourly demand identified by 8,760 or 8,784 rows or a 60-minute timestamp interval expands to half-hours after source-unit conversion. Short inputs require confirmation of repetition. A mapped demand total above 1.5 times or below 0.67 times the replaced annual total generates a notice containing both energy totals.
-
-Mapped euro prices use the declared exchange rate and its annual-average, monthly-average or fixed-rate basis. The declared price year is recorded, and a year other than 2025 generates a notice; only the currency conversion is applied.
-
-## Data and implementation
-
-NESO supplies the demand source, DESNZ REPD supplies projects, Copernicus ERA5 single levels supplies weather, and Ember's ENTSO-E compilation supplies boundary prices. `import_scheme_c_1000twh` normalises project data. `series_reader.py` and `data_method` read time series; `interconnector_identity` assigns boundary series; `known_data_objects_v1.json` associates recognised input files with their declarations and row transformations. `data_validation_layers` evaluates package eligibility, `model_clock` defines UTC periods, and `zonal_demand_alignment` distributes national demand among zones.
+Dispatch converts this wind speed through the wind curve and this solar series through the instantaneous-input rule in Chapter 3. Investment uses the coefficients above. The French boundary supplies a constant 12 MW import envelope and 82 GBP/MWh price; the other four boundaries have zero exchange capacity and a price input of 200 GBP/MWh. `build_value_101_packs` writes these sequences into the teaching inputs.

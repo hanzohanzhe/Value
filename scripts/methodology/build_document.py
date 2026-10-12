@@ -56,8 +56,12 @@ for ch in payload['chapters']:
     heading=re.search(r'<h2>(.*?)</h2>',ch['html']).group(1)
     doc.add_paragraph(re.sub('<[^>]+>','',heading))
 def soft(s):
- # Break long identifiers while keeping numerical units intact.
- return re.sub(r'[^\s]{24,}',lambda m:m.group().replace('_','_\u200b').replace('/','/\u200b'),s)
+ # Allow long identifiers to wrap while keeping quoted field values intact.
+ def break_token(match):
+  pieces=re.split(r'("[^"]*"|\'[^\']*\')',match.group())
+  return ''.join(piece if i%2 else piece.replace('_','_\u200b').replace('/','/\u200b')
+                 for i,piece in enumerate(pieces))
+ return re.sub(r'[^\s]{24,}',break_token,s)
 def addtext(p,text,bold=False,italic=False,code=False,small=False):
  if not text:return
  r=p.add_run(soft(text));r.bold=bold;r.italic=italic

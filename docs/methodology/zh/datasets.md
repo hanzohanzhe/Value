@@ -1,33 +1,15 @@
 # 初始数据与输入处理
 
-VALUE 将需求、天气、资产、规划数据和外部市场输入组织到同一模型时钟上。来源年份决定需求或天气样本，模型年份决定资产运行与投资。数据包和方法学口径共同规定读取规则。
+VALUE 用需求、天气、运行资产、规划项目、技术参数以及外部市场价格和交换上限构建电力系统研究。来源年份确定观测样本，研究起始年确定初始机组及后续投资日历。默认 `value-corrected` 配置采用下列 public2 数据包，可从[数据页](https://value.ac/zh/data/)取得。
 
-| 数据配置 | 数据包 | 范围与可用性 |
+| 研究输入 | 数据包 | 内容 |
 |---|---|---|
-| VALUE 101 | `value-101-baseline-v1` | 随安装提供的 2025–2026 年合成教学数据，每年 17,520 个半小时，另设 48 时段练习 |
-| GBP1 public1 | `value-uk-open-data-pack-v1` | 已发布的英国输入，适用于论文复现口径 |
-| GBP1 public2 | `value-uk-open-data-pack-public2` | 适用于修正口径的修订包，已随 VALUE 0.7.0-alpha.1 发布（[下载](https://value.ac/zh/data/)） |
-| R029 public2 | `value-uk-calendar-vx-trade001-public2` | 适用于修正口径的修订包，已随 VALUE 0.7.0-alpha.1 发布（[下载](https://value.ac/zh/data/)）；研究期为 2025–2034 年，需求取自 2022 年，天气取自 2020–2024 年 |
+| 英国全国系统 | `value-uk-open-data-pack-public2` | 需求、代表点天气、机组、规划、成本及五个外部市场 |
+| 英国 2025–2034 年日历平均天气研究 | `value-uk-calendar-vx-trade001-public2` | R029 配置，采用 2022 年需求与 2020–2024 年天气 |
+| 英国 23 区系统 | `value-uk-research-suite-v1-public2` | 全国输入、分区需求、资产分配、走廊与外部边界 |
+| VALUE 101 | 合成教学输入 | 2025–2026 年研究，包含完整的 17,520 时段年和 48 时段练习；生成规则见下文 |
 
-修正口径的英国研究要求明确声明列名、源单位和时间分辨率，可由 public2 修订包或合格的用户工作区数据包提供。R029 public1（`value-uk-calendar-vx-trade001`）位于论文复现口径的白名单之外，其含 8,761 个数值的光伏投资曲线也未满足修正读取器的全年长度要求。第 3 章说明修订后的曲线。英国 23 区网络研究采用 GBP1 public2 研究套件 `value-uk-research-suite-v1-public2`，从[数据页](https://value.ac/zh/data/)下载。该套件提供修正口径所需的相容国家级与空间输入。
-
-## 时间分辨率与输入角色
-
-全国模型按半小时电量完成供需平衡。`canonical_psm_data` 的 `series` 数组存储以 MW 表示的需求功率；乘以 `period_hours` 后，得到以 MWh/时段表示的实际需求 `demand` 和预测需求 `forecast_demand`。全年电量为各时段电量之和：
-
-$$
-\begin{aligned}
-\mathtt{demand}[t]&=\mathtt{series}[\text{demand.real}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
-\mathtt{forecast\_demand}[t]&=\mathtt{series}[\text{demand.forecast}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
-\mathtt{period\_hours}&=0.5\ \mathrm{h},\qquad \mathtt{periods}=365\times24\times2=17{,}520.
-\end{aligned}
-$$
-
-模型年由 365 日组成，采用固定 UTC 时钟，2 月包含 28 日。声明为闰年的需求序列按下文和第 4 章的规则保留全年电量。容量以 MW 表示，库存以 MWh 表示，金额以 GBP 表示，电价以 GBP/MWh 表示。
-
-需求按 MW 进入模型，调度时再乘以时段长度。VALUE 101 保留了 `mwh` 列名和 MWh/period 数据包标签，其中数值在两个口径下均按 MW 读取。用户映射的需求则按声明的源单位处理：MWh/period 除以用小时表示的源时段长度，得到 MW。
-
-数据绑定将物理文件分配给确定的计算角色。需求文件提供实际需求与日前预测，机组表提供技术、容量和代表位置，规划表提供项目状态与日期；天气和技术平均曲线分别用于空间化可用出力与相应投资规则。
+输入角色将文件与物理量相连接。数据包的 `manifest.json` 为每个角色指定文件，并声明列名、单位及时间分辨率。下表列出 R029 文件和它们向计算提供的量。
 
 | 输入角色 | 主要数据或字段 | 计算用途 |
 |---|---|---|
@@ -40,13 +22,31 @@ $$
 | 外部市场 | 各国 `flow_mw`、`price_gbp_per_mwh` | 互联线可用交换量与外部报价 |
 | 分区网络 | 区域、走廊、边界、资产映射、分区需求 | 空间供需平衡和传输约束 |
 
-## 声明式读取与全年对齐
+## 模型时钟与单位
 
-两个口径均按声明的 `csv_header` 表头规则读取 `csv_column`。隐式选中的整数序号列会终止读取。R029 的需求与边界序列通过 `data_method.read_role` 和 `data_method.read_boundary` 使用这一共享读取器。
+运行年在 365 日 UTC 日历上包含 17,520 个半小时。第零期从 1 月 1 日 00:00 开始，2 月包含 28 日。资产容量以 MW 表示，储能电量以 MWh 表示，金额以 GBP 表示，电价以 GBP/MWh 表示。`period_start_utc` 为每个时段确定日历时间。
 
-修正口径采用 `declared-v2`。未声明表头时，仅当首行所有单元格均为非数值才将其视为表头。未声明列名时，严格读取要求文件仅有一列全部为数值。源分辨率取自 `interval_minutes`，或根据 8,760、8,784 个数值推断为逐时；每个小时值随后用于两个半小时。
+需求以 MW 功率载入。默认全国算法由 `_kernel_inputs` 将 `read_role` 取得的 MW 数值传给 `run_simulation`；分阶段与优化接口通过 `canonical_psm_data` 的 `build_chronology` 构造时段电量，其中 `series["demand.real"].values`、`series["demand.forecast"].values` 存储 MW，`demand`、`forecast_demand` 存储 MWh/时段。对从零开始的时段编号 `t`，
 
-含 17,568 期的闰年需求序列删除 2 月 29 日的 48 期，并重新缩放余下数值以保留全年电量。`normalize_half_hour_year` 将源序列读为 `numbers`，保留值记为 `reduced`；保留值之和为正时，返回
+$$
+\begin{aligned}
+\mathtt{demand}[t]&=\mathtt{series}[\text{demand.real}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
+\mathtt{forecast\_demand}[t]&=\mathtt{series}[\text{demand.forecast}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
+\mathtt{period\_hours}&=0.5\ \mathrm{h},\qquad \mathtt{periods}=365\times24\times2=17{,}520.
+\end{aligned}
+$$
+
+全年需求电量为 `demand` 各项之和。用户提供的需求列若以 MWh/源时段表示，先除以该源时段的小时数得到 MW，再对齐至半小时。VALUE 101 在名为 `mwh` 的列中写入合成功率值，这些数值也按上述 MW 至 MWh 关系进入计算。
+
+## 列选择、缺失值与全年对齐
+
+时序载入按声明的列名和表头执行。`read_series` 在 `csv_header=true` 时读取 `csv_column`，要求该列每个单元格均为有限数值。空序列、缺少指定列或无效数值会终止载入。自动选列若得到至少三个连续递增整数且步长为一，则要求显式声明列名。
+
+表头和列名的推断依据文件内容。声明的 `csv_header` 优先；其余情况下，首行至少有一个非空单元格且所有非空单元格均为非数值时，将该行作为表头。缺少 `csv_column` 时，严格读取选择唯一的全数值列；多列全为数值时要求指定其中一列。用户工作区读取在多列情形下选择第一列全数值列，声明列名后由该声明确定选择。
+
+逐时输入先展开，再截取运行所需窗口。`align_clock` 对 `interval_minutes=60` 的输入将每个源值复制两次，对 `interval_minutes=30` 的输入按每半小时一个值读取。缺少时间间隔声明时，8,760 或 8,784 个数值对应逐时年；其他声明分辨率会终止载入。逐时至半小时的转换执行一次。
+
+闰年需求在 365 日日历上保留全年电量。逐时展开后的 17,568 时段年移除从 `(31 + 28) * 48` 开始的 48 个值，即 2 月 29 日。`normalize_half_hour_year` 中，`numbers` 为源值，`reduced` 为保留值；保留值之和为正时，
 
 $$
 \begin{aligned}
@@ -56,35 +56,31 @@ $$
 \end{aligned}
 $$
 
-保留值之和为零、原值之和非零时终止读取；全零序列保持为零。其他角色仅移除闰日，维持其余数值。绑定可以通过 `leap_policy=keep` 显式保留闰日，此时运行取所需的前若干期。
+全零需求序列保持为零。保留值之和为零且原总量为正时，转换终止。其他时序角色移除相同的 48 个值并保留其余数值。显式设置 `leap_policy="keep"` 时保留源日历，再取所需的前若干期。
 
-严格读取将足够长的序列截取至运行长度；短序列仅在声明循环或角色约定循环时从头重复，边界角色采用该循环约定。修正口径下的非工作区数据包采用严格读取，用户工作区数据包采用宽松读取，短序列从开头重复补齐；映射时需确认这一重复方式。
+运行从足够长的对齐序列中取前 `periods` 个值。较短的序列在 `cyclic=true` 或该角色约定循环时从开头重复，外部市场流量和价格采用这一约定。严格数据包读取要求较短的需求或投资曲线显式声明循环；用户工作区读取按重复方式补足短序列。这组规则共同确定全年或部分年份运行实际使用的数值。
+
+下列步骤返回对齐序列。`path` 为绑定文件，`spec` 包含其声明，`policy.strictness` 选择严格数据包读取或用户工作区读取，`cyclic` 为角色的默认重复规则。
 
 ```text
-read = read_series(path, spec, mode=policy.reader_mode,
-                   strictness=policy.strictness, legacy_header=header)
-values = align_clock(read.values, periods, spec, mode=policy.clock_mode,
-                     strictness=policy.strictness,
-                     hourly_repeat=hourly_repeat, cyclic_default=cyclic)
+read = read_series(path, spec, mode="declared-v2", strictness=policy.strictness)
+values = align_clock(read.values, periods, spec, mode="declared-v2",
+                     strictness=policy.strictness, cyclic_default=cyclic)
 return values
 ```
 
-论文复现口径采用 `legacy-v1`：按角色设置表头、选择有效数值最多的列和重复短序列的规则与声明列读取共同生效。在 GBP1 public1 中，无表头预测文件的首值 21,560 被作为表头消耗，预测数值因此比实测序列领先一期。修正读取器将该首值保留为数据。
+## 观测需求与缺失结算时段
 
-## 需求序列与日历处理
-
-R029 采用 NESO 的 2022 年日前半小时需求预测及相应实际需求，作为各模型年的基础需求形状。GBP1 的需求在两个口径下采用相同的 UTC 预处理规则。`actual_mw.csv` 与 `forecast_mw.csv` 各含 17,520 行，初始序列的统计量如下；后续情景缩放作用于这一基础形状。
+英国需求形状采用 NESO 的 2022 年半小时实际需求及日前预测。UTC 预处理后，`actual_mw.csv` 和 `forecast_mw.csv` 各包含 17,520 个值；后续模型年依次重复使用这两条已对齐的 2022 年需求序列。功率统计与全年电量为
 
 | 序列 | 最小功率 MW | 最大功率 MW | 平均功率 MW | 年电量 MWh |
 |---|---:|---:|---:|---:|
 | 实际需求 | 15,080 | 46,042 | 26,587.967637 | 232,910,596.5 |
 | 日前预测 | 14,240 | 46,760 | 26,611.131963 | 233,113,516 |
 
-需求预处理以结算日期和结算时段识别重复记录，再将英国本地日期转换为 UTC 时间轴。对于同一结算时段，采用最新发布时间的记录；发布时间相同则取最后一行。原始 17,518 行经过重复项合并后形成 17,516 行，四个缺失半小时时段采用 UTC 线性插值补齐。
+需求预处理先合并结算记录，再插值补齐时段。对于同一结算日期和结算时段，按发布时间排序后取最新记录，发布时间相同时取最后一行；随后将英国本地结算时刻转换到 UTC 半小时时间轴。17,518 条源记录形成 17,516 个独立时段，留下四个半小时缺口。
 
-线性插值将缺口两端已知值之差等分。缺一个半小时时，补值为两个端点的均值；缺两个半小时时，补值依次位于前一观测值向后一观测值变化的三分之一和三分之二处。
-
-2022 年输入的每段缺口至多包含两个连续时段，补值集中在 10 月 30 日。表中数值以 MW 表示，展示到六位小数。
+缺失需求由相邻已知值作线性插值。缺一期间取两个端点的均值；连续缺两期间，依次在前一值上加端点差值的三分之一、三分之二。2022 年输入的四个补值均位于 10 月 30 日：
 
 | UTC 时刻 | 预测需求 MW | 实际需求 MW |
 |---|---:|---:|
@@ -93,15 +89,19 @@ R029 采用 NESO 的 2022 年日前半小时需求预测及相应实际需求，
 | 2022-10-30 23:00 | 19,063.333333 | 20,494.666667 |
 | 2022-10-30 23:30 | 19,086.666667 | 19,689.333333 |
 
-## 初始资产与规划项目
+用户需求时间戳先转换为 UTC，再进入相同的模型年对齐。映射接受 UTC 或 Europe/London 时区，以及声明的 DD/MM/YYYY 或 MM/DD/YYYY 日期顺序。时间戳须严格递增并具有规则的 30 或 60 分钟步长；重复、无法解析的日期和时间缺口会终止映射。转换后的行序从各模型年 1 月 1 日 00:00 UTC 起排列，保留输入中星期和节假日效应的先后顺序。
 
-初始风光储资产由 REPD 的项目技术、投运状态、投运年份和容量共同确定。输入采用 DESNZ《Renewable Energy Planning Database》2025 年第二季度、7 月发布版本；原表包含 12,977 个项目、53 个字段，规范化后保留 10,653 个项目、14 个字段。
+## 初始运行资产
 
-规范化过程保留可识别技术且容量为正的项目，并统一技术名称、数值和日期字段。14 个字段覆盖项目编号、站名、规范技术与原技术名称、MW 容量、开发状态、地区、国家、申请日期、获批日期、施工日期、投运日期以及两个坐标；数值转换失败和原始缺失日期继续作为缺失值参与后续筛选。规范技术包括陆风、海风、光伏、电池和气电。
+初始风光和电池装机取自 DESNZ《Renewable Energy Planning Database》2025 年第二季度、7 月发布版本。原表含 12,977 个项目和 53 个字段，经过技术及正容量筛选后形成 10,653 行、14 个字段。`normalize_repd` 保留陆风、海风、光伏、电池和气电，将 `capacity_mw`、`x_coordinate`、`y_coordinate` 转换为数值，转换失败的值记为缺失。
 
-运行初始容量由研究起始年以前已投运的资产构成。`build_repd_operational_snapshot` 选取状态为 `Operational`、投运年早于或等于起始年、容量为正的风光储项目，并将其映射到对应代表资产；电池容量按储能模板的 `pool_limit` 权重分配。核电容量采用单独的电站政策与年度投退运计划。
+规范化项目表保存日期与位置筛选需要的信息。字段为 `project_id`、`site_name`、`technology`、`technology_source`、`capacity_mw`、`development_status`、`region`、`country`、`planning_application_submitted`、`planning_permission_granted`、`under_construction`、`operational`、`x_coordinate`、`y_coordinate`。日期字符串由资产和规划读取步骤继续解析。
 
-R029 的 2025 年初始资产设定包含下表容量，核电、燃气和部分其他技术采用聚合表示。修正口径的默认路径对具备电站政策的 GBP1 研究采用逐站核电可用率及按月停发规则，R029 聚合核电采用 0.723 的可用率。径流水电采用负荷率 0.3487 与季节形状的乘积（第 5 章）。论文复现口径保留 100% 可用率；独立的 R029 实验路径也采用这一输入约定。
+初始风光储项目须具有 `Operational` 状态、早于或等于研究起始年的有效投运日期，以及正的 MW 装机。`build_repd_operational_snapshot` 按日优先顺序解析日期，跳过日期缺失或容量无效的记录。光伏与陆风首先采用第 3 章的地区至城市映射；剩余项目按坐标选择同技术最近的代表点，必要时将 OSGB 坐标由 EPSG:27700 转换为 EPSG:4326。地区和坐标均无法给出分配的项目，对映射后初始风光装机的贡献为零。
+
+初始电池 MW 按权重分配至抽蓄以外的储能条目。各条目的 `weighted[asset_id]` 取其 `pool_limit` 与 1 的较大值，`weight_total` 为这些权重之和。`native_initial_state` 按 `capacity = operational_storage_mw * weighted[asset_id] / weight_total` 分配功率，再以 `capacity * duration` 计算电量，其中 `duration` 取技术目录的持续时间。2025 年抽蓄独立指定为 2,828 MW 和 26,700 MWh。
+
+R029 的 2025 年初始装机如下。其聚合核电可用率为 0.723，径流水电以 0.3487 乘以第 5 章的季节形状计算出力。GBP1 按电站计划选择核电机组，逐站可用率与退运规则也在第 5 章定义。
 
 | 技术 | 资产行数 | 功率 MW | 储能电量 MWh |
 |---|---:|---:|---:|
@@ -119,9 +119,11 @@ R029 的 2025 年初始资产设定包含下表容量，核电、燃气和部分
 | 氢储能 | 1 | 0.749960 | 187.490103 |
 | 抽水蓄能 | 1 | 2,828 | 26,700 |
 
-规划输入按技术和地区给出成功率，按技术和阶段给出时间分布。`regional_technology_success_rates.csv` 含 46 条记录，`planning_timelines.json` 提供以月计的阶段时间。两张表同时用于 REPD 项目和内生投资；模型将 `development_stage_timelines`、`repd_status_to_timeline`、`success_rates` 冻结在初始状态中。
+## 规划输入
 
-两个方法口径均从这些冻结表取得内生提案的开发期和成功率。技术标签、地区匹配、确定性月份扰动、投运日期及期望容量或带种子随机准入规则见第 4、6 章。`endogenous_planning._success_rate` 依次取技术标签与地区对应的成功率、该标签各地区的平均值、默认值 0.75。输入的开发期和施工期中位数为
+项目开发采用按技术和地区给定的成功率，以及按技术给定的阶段时间。`regional_technology_success_rates.csv` 包含 46 条记录，`planning_timelines.json` 给出以月计的时间。`development_stage_timelines`、`repd_status_to_timeline`、`success_rates` 存入初始状态，同时服务于已有规划项目和新增投资提案。
+
+输入中位数分别描述开发期和施工期。状态映射确定项目尚需经过的阶段。下述预处理构造初始项目清单，第 6 章推进这些项目并在各年接收新增投资提案。
 
 | 技术 | 开发期中位数 月 | 施工期中位数 月 |
 |---|---:|---:|
@@ -130,9 +132,77 @@ R029 的 2025 年初始资产设定包含下表容量，核电、燃气和部分
 | 海风 | 110.1 | 32.2 |
 | 电池 | 31.3 | 10.1 |
 
-## 成本与储能参数
 
-投资输入分别规定单位资本成本、投资回收目标和技术运行参数。R029 使用研究配置中的 `capital_costs.json` 与 `model_parameters.json`；资本成本的上游依据包括 BEIS《Electricity Generation Costs 2020》及 Arup 材料，表中数值为模型采用的参数。年度资本回收利率默认取 0.05，投资决策直接比较未折现收益率与回收期。下表列出基础配置的投资回收目标和 `preferred_rate` 参数。R029 投资规则将四类可扩张储能的有效门槛统一设为 0.12，具体利润率定义及决策规则见第 6 章。
+初始规划项目按容量、开发状态和进展日期筛选。`native_initial_state` 采用下表控制量，默认 `planning.success_mode="expected"` 读为 `success_mode="expected_capacity"`。`year` 为研究起始年，`capacity` 为源项目的 MW 容量。
+
+| 参数 | 默认值 | 用途 |
+|---|---|---|
+| `planning.minimum_project_size_mw` | 1 MW | 进入清单的最小正容量 |
+| `planning.include_uncertain_projects` | `true` | 接收申请、上诉和修订状态 |
+| `planning.zombie_filter_enabled` | `true` | 启用状态、进展和施工超期筛选 |
+| `planning.zombie_status_stale_year` | 2015 | 不确定项目最新进展年份的截止值 |
+| `planning.construction_grace_years` | 2 年 | 加至估计施工完成年份的宽限期 |
+| `planning.max_completion_year` | 2040 | 接收项目的最晚完成年份 |
+| `planning.timeline_statistic` | `median` | 选择阶段时间中位数或均值 |
+| `planning.defer_spread_years` | 3 年 | 推算完成日期的最大附加延期 |
+| `planning.random_seed` | 0 | 项目成功率抽样的输入 |
+| `planning.repd_battery_assignment` | `value_proportional_split` | 将通用电池容量分至四类储能 |
+
+替代申请取代其旧项目记录。预处理读取 REPD 原表的 `Ref ID` 与 `Are they re-applying (New REPD Ref)`；后者给出不同于原标识、非空且确实存在于原表的替代标识时，移除旧记录。容量低于 `minimum_size`、容量非正或无法解析的记录也被移除。
+
+开发状态按去除两端空白并转为小写后的标签筛选。`terminal_statuses` 始终移除 `operational`、`abandoned`、`planning permission refused`、`application withdrawn`。`zombie_filter=true` 时还移除 `application refused`、`appeal refused`、`appeal withdrawn`、`decommissioned`、`application expired`、`finished`。设置 `include_uncertain=false` 后，仅保留 `under construction`、`awaiting construction`、`planning permission granted`。
+
+进展年份筛选作用于 `application submitted`、`appeal lodged`、`revised`。`_date_year` 从日期字符串提取首个以 19 或 20 开头的四位年份，缺少年份时返回 `None`；`latest_progress_year` 再取 `planning_application_submitted`、`planning_permission_granted`、`under_construction`、`operational` 中最近的已知年份。进展筛选启用时，该年份早于或等于 `zombie_stale_year` 的不确定项目被移除；进展年份缺失的项目通过此项筛选。
+
+完成年份优先采用记录中的未来年份，其余项目按剩余阶段时间推算。`timeline_months(source_technology, status)` 从 `repd_status_to_timeline` 选择 `timeline_type`，将其均值或中位数后缀换为 `timeline_statistic`，再读取 `development_stage_timelines` 中对应技术的数值。状态映射缺失时默认采用 `total_median`；阶段条目缺失时采用 `development_timelines`，最终缺省值为 12 个月。储能组件采用电池阶段时间表。
+
+推算完成日期附加零至 `defer_spread_years` 个整年的确定性延期。下列步骤由源项目的 `project_id` 计算延期；已经给定未来日期的项目直接采用该日期。
+
+```text
+completion = next((candidate for candidate in (
+    _date_year(row.get("operational")),
+    _date_year(row.get("under_construction")),
+) if candidate is not None and candidate > year), None)
+if completion is None:
+    months = timeline_months(source_technology, status)
+    completion = year + max(1, int(math.ceil(months / 12.0)))
+    if defer_spread_years > 0:
+        completion += int(
+            hashlib.sha256(project_id.encode("utf-8")).hexdigest()[:8], 16
+        ) % (defer_spread_years + 1)
+```
+
+施工中项目另作历时检查。对于状态为 `under construction` 且 `construction_year` 已知的项目，预处理计算 `construction_end = construction_year + max(1, math.ceil(timeline_months(source_technology, status) / 12)) + construction_grace`。`zombie_filter=true` 且该值早于 `year` 时移除项目；`completion` 晚于 `maximum_completion` 的项目也被移除。
+
+初始项目成功率按技术和地区查表。`_planning_probability` 读取 `technology`、`region`、`success_rate`，将可解析的成功率限制在 [0,1]，跳过无法解析的值；缺少必要列时，成功率表为空。查询时先查项目地区的小写标签，再查同技术的 `gb` 条目，最终缺省为 1.0。下式给出成功率 `probability`、无量纲抽样值 `draw` 与接收容量，同一实体电池项目的全部组件采用同一个抽样值。
+
+```text
+probability_key = "battery" if source_technology == "battery" else _technology(source_technology)
+probability = success_rates.get(
+    (probability_key, region.strip().lower()),
+    success_rates.get((probability_key, "gb"), 1.0),
+)
+draw = int(
+    hashlib.sha256(f"{random_seed}:{project_id}".encode("utf-8")).hexdigest()[:13], 16
+) / float(16 ** 13 - 1)
+realised_failure = success_mode == "seeded_stochastic" and draw > probability
+components = typed_project_components(project_id, source_technology, capacity)
+for component_id, technology, declared_component_capacity, assignment_method in components:
+    effective_capacity = (
+        declared_component_capacity * probability
+        if success_mode == "expected_capacity" else declared_component_capacity
+    )
+```
+
+通用电池项目先拆分，再记录经过成功率处理的容量。`typed_project_components` 采用 `scheme_c_storage_weights`，按初始电池装机使用的正机组权重，将源 MW 分至 `1c_battery`、`0.5c_battery`、`0.25c_battery`、`hydrogen_battery`；各 `declared_component_capacity` 等于源容量乘以该权重占总权重的比例。`all_1c`、`all_0.5c`、`all_0.25c` 分别将全部容量分给一种技术，`exclude_untyped` 从初始清单移除通用电池项目。技术已经明确的项目保留其技术与容量。
+
+期望容量模式将组件声明 MW 乘以成功概率。随机模式 `planning.success_mode="stochastic"` 读为 `seeded_stochastic`，保留全部声明 MW；`draw > probability` 时设为 `phase="failed"`、`outcome="failed_planning"`，两者相等时通过。通过抽样的项目与期望容量项目采用 `phase="active"`、`outcome="active"`。储能电量为 `effective_capacity * duration_hours`，单位 MWh。`PlanningProject` 将这些值与 `expected_completion_year=completion`、起始年、状态、技术和地区一并保存，供第 6 章逐年推进。
+
+新增投资提案采用 `endogenous_planning._success_rate` 查询成功率。它依次选择地区成功率、同技术各地区均值和缺省值 0.75。第 6 章规定提案容量及后续规划过程。
+
+## 资本成本与储能参数
+
+资本成本、目标收益率和回收期分别作为财务输入。R029 从 `capital_costs.json` 和 `model_parameters.json` 读取参数；资本成本材料包括 BEIS《Electricity Generation Costs 2020》及 Arup。下表给出赋予初始资产的财务参数。年度资本回收采用 `capital_discount_rate=0.05`，投资计算和实际决策门槛见第 6 章。
 
 | 技术 | 资本成本 GBP/MW | `preferred_rate` | 投资回收目标 年 |
 |---|---:|---:|---:|
@@ -140,13 +210,13 @@ R029 的 2025 年初始资产设定包含下表容量，核电、燃气和部分
 | 陆风 | 1,588,000 | 0.076 | 30 |
 | 海风 | 3,976,000 | 0.089 | 30 |
 | CCGT / OCGT | 2,400,000 | 0.089 | 25 |
-| 生物质与废弃物 | 1,500,000 | 0.089 | 20 |
+| 生物质与废弃物 | 1,500,000 | 0.089 | 25 |
 | 1C 电池 | 330,000 | 0.0825 | 10 |
 | 0.5C 电池 | 350,000 | 0.165 | 10 |
 | 0.25C 电池 | 415,000 | 0.0825 | 10 |
 | 氢储能 | 600,000 | 0.01375 | 25（默认） |
 
-储能参数将充电效率、放电效率、持续时间和寿命分别用于库存递推与成本计算。往返效率为 `charge_efficiency * discharge_efficiency`，例如 0.5C 电池取 \(0.98^2=0.9604\)。技术目录中的经济寿命与上表的投资回收目标分开参与计算。循环参数 `maximum_cycles` 用于参考年循环数；三类电池同时用它计算循环折旧。动态储能成本模块对抽蓄和氢储能采用时间回收；修正口径的默认调度采用第 5 章的仅循环折旧报价规则。
+储能损耗由充电效率与放电效率分别描述。往返效率为 `charge_efficiency * discharge_efficiency`，0.5C 电池对应 \(0.98^2=0.9604\)。技术目录还提供持续时间、经济寿命和 `maximum_cycles`，这些量进入第 4、6 章的库存递推与成本计算，初始库存随运行算法在第 4 章给定。
 
 | 技术 | 目录持续时间 h | 充电效率 | 放电效率 | 目录经济寿命 年 | 循环参数 `maximum_cycles` |
 |---|---:|---:|---:|---:|---:|
@@ -156,27 +226,17 @@ R029 的 2025 年初始资产设定包含下表容量，核电、燃气和部分
 | 0.25C 电池 | 4 | 0.81 | 0.81 | 15 | 8,000 |
 | 氢储能 | 250 | 0.57 | 0.57 | 10 | 1,000 |
 
-年度资产计划可以直接给定储能功率与电量。2025 年抽水蓄能因此采用 2,828 MW 和 26,700 MWh 的资产状态。
+各输入沿用其来源价格年的数值。储能成本与政策预算以 2025 年英镑计价；BEIS 资本成本输入保留 2020 年值，欧洲电价样本在币种换算后保留 2022 或 2021 年值，核电政策条目带有其声明的 2015 或 2024 价格年。重启成本采用第 5 章的换算。币种读取器按 `eur_per_gbp` 将欧元转换为英镑。
 
-初始储能库存随调度路径设定。R029 实验时序配置取零，通用时间序列输入默认取最大库存的 50%，也可显式指定。默认全国 PSM 在每个年度边界新建储能对象，具体见第 5 章。
+年度政策支出采用 `mechansim cost.xlsx` 中的序列。该表汇集 NESO 容量市场与平衡成本、Ofgem RO/FIT/REGO 材料以及 LCCC CfD 数据，第 6 章定义这些输入进入年度核算的方式。
 
-财务核算按计算用途与技术配置选取时间参数。生物质经济寿命为 25 年、投资回收目标为 20 年；气电原型的回收目标为 20 年，R029 运行配置将 CCGT 和 OCGT 设为 25 年。
+## 外部市场与分区需求
 
-金额按起始年不变币值解释，随模型提供的研究从 2025 年开始。储能目录、抽蓄资本成本和政策预算明确采用 2025 年英镑，燃料与碳价按同一基年解释，重启成本采用第 5 章所述换算。BEIS 2020 年成本、2022 年欧元价格序列，以及标注 2015 或 2024 价格年的核电政策条目，在完成适用的币种换算后保留来源年份数值。因此，共同的货币计价约定包含多个来源价格年，读取器仅执行已声明的币种换算。
+外部电力交换由时变交换上限和对应市场价格描述。R029 为法国、比利时、荷兰、挪威和爱尔兰各提供一个 17,520 行文件，包含 `flow_mw`、`price_gbp_per_mwh` 及其时段和来源时间戳。NESO 线路名将 `NEMO_FLOW` 对应到比利时、`BRITNED_FLOW` 对应到荷兰、`NSL_FLOW` 对应到挪威。
 
-政策支出输入由历史汇总与前推假设组成。`mechansim cost.xlsx` 汇集 NESO 容量市场与平衡成本、Ofgem 的 RO/FIT/REGO 资料以及 LCCC 的 CfD 数据，供年度政策支出计算使用。
+外部价格采用 Ember 汇集的 ENTSO-E 日前市场数据。法国、比利时、荷兰和挪威取 2022 年，爱尔兰取 2021 年；每个逐时 EUR/MWh 值除以 1.1 EUR/GBP，再用于对应的两个半小时，负价保留其符号。R029 保存已转换的 GBP/MWh 值；GBP1 的 `Belgium_price.csv` 等文件由 `Price (EUR/MWhe)` 列提供输入，通过 `read_series` 执行相同换算。
 
-## 互联线与分区需求
-
-外部市场输入用每个半小时时段的流量界限和价格描述跨境交换机会。R029 为法国、比利时、荷兰、挪威和爱尔兰各提供一个 17,520 行文件，同时绑定流量和价格；字段包括 `period`、`flow_mw`、`price_gbp_per_mwh`、来源价格小时、半小时标记及流量与价格的来源行号。
-
-边界价格采用 Ember 整理的欧洲日前价格，其上游来源为 ENTSO-E。法国、比利时、荷兰和挪威取 2022 年，爱尔兰取 2021 年；每小时价格重复两次，按 EUR/MWh 除以 1.1 EUR/GBP 转为 GBP/MWh 后保存。修正口径保留负的边界价格。论文复现口径将通用时序资源价格的下界设为零，R029 实验路径保留负价。
-
-各边界按 NESO 线路身份连接：`NEMO_FLOW` 对应比利时，`BRITNED_FLOW` 对应荷兰，`NSL_FLOW` 对应挪威。已登记的 GBP1 文件 `Belgium_price.csv` 以 `Price (EUR/MWhe)` 列提供逐小时 EUR/MWh。`read_series` 将 `values` 除以 `spec.eur_per_gbp = 1.1` 一次，再将每小时价格用于两个半小时；内核读取各时段对应的潮流。
-
-这组规则适用于两个口径。GBP1 潮流数值按 MW 读取，其文件仍保留 MWh/period 标签。
-
-边界流量按源时段顺序提供外生交换上限。`flow_mw` 字段以正值表示进口、负值表示出口；`canonical_psm_data` 将其转换为带符号的 MWh，记为 `raw_availability`。非负电量上限 `import_energy`、`export_energy` 为
+`flow_mw` 的正值定义进口上限，负值定义出口上限。乘以 `period_hours` 得到带符号的时段电量 `raw_availability`，再计算两个非负电量界限：
 
 $$
 \begin{aligned}
@@ -186,7 +246,7 @@ $$
 \end{aligned}
 $$
 
-修正口径的默认全国 PSM 将进口容量用于日前出清，论文复现口径仅在平衡环节使用（第 5 章）。public2 修订包沿用正值进口、负值出口的声明符号，状态为 `declared_unverified`，逐国年净潮流的来源核对仍待完成。下表给出 R029 输入文件的范围与平均价格。
+默认全国市场在日前出清中接受进口报价。第 5 章给出交换上限在出清与平衡中的用法，第 7 章将外部边界容量用于分区模型。R029 的输入范围与平均价格为
 
 | 边界 | 流量范围 MW | 价格年 | 平均价格 GBP/MWh |
 |---|---:|---:|---:|
@@ -196,7 +256,7 @@ $$
 | 荷兰 | −1,076 至 1,062 | 2022 | 219.917959 |
 | 挪威 | −1,263 至 1,399 | 2022 | 126.503575 |
 
-分区研究采用网络包的逐时段地区份额分配全国研究需求。`align_zonal_demand` 在 `scenario_scaled_zonal_shares` 模式下将 `output_real` 设为研究的实际需求，并在各 `index` 从网络包读取 `network_national`。需求量的单位均为 MWh/时段；各区分配值 `value` 追加到 `aligned[zone_id]`：
+分区需求由全国研究总量和网络输入的地区份额确定。`align_zonal_demand` 按 `period_ids` 对应网络和研究时段，要求时段标识唯一且具有对应记录。实际需求和预测需求均须为有限非负电量，长度须与时段列表相同。在 `scenario_scaled_zonal_shares` 模式下，`output_real` 为研究实际电量，`network_national` 为该 `index` 的网络全国电量，单位均为 MWh：
 
 $$
 \begin{aligned}
@@ -205,11 +265,31 @@ $$
 \end{aligned}
 $$
 
-最后一个区域以全国量减去其他区域之和赋值，使空间分配守恒；当网络全国量为零且研究需求具有非零值时，读取器终止运行。可选的 `network_pack_absolute_demand` 直接采用网络包全国量，并按原预测与实际需求的比值调整预测。区域、走廊和资产映射的具体约束在传输章定义。
+最后一个区域接收全国电量扣除此前各区分配后的余量。两组全国输入均为零时，`scale=1.0`；研究需求为正而网络全国需求为零时终止对齐。以下步骤给出完整分配过程，`zone_ids` 保留网络声明的区域顺序：
+
+```text
+aligned = {zone_id: [] for zone_id in zone_ids}
+for index, period_id in enumerate(periods):
+    network_national = network_national_mwh[index]
+    if network_national == 0.0 and output_real[index] == 0.0:
+        scale = 1.0
+    elif network_national == 0.0:
+        raise ValueError("Zonal demand requires positive network national demand")
+    else:
+        scale = output_real[index] / network_national
+    remaining = output_real[index]
+    for zone_id in zone_ids[:-1]:
+        value = network_demand_mwh_by_zone[zone_id][index] * scale
+        aligned[zone_id].append(value)
+        remaining -= value
+    aligned[zone_ids[-1]].append(remaining)
+```
+
+可选模式 `network_pack_absolute_demand` 将 `output_real` 设为 `network_national_mwh`，并取 `scale=1.0`；预测电量为 `output_real[index] * forecast[index] / real[index]`。当 `real[index]` 为零时，要求 `forecast[index]` 和 `output_real[index]` 同为零，此时预测也取零。最后一区仍采用余量分配，以保留全国电量总和。
 
 ## VALUE 101 合成输入
 
-VALUE 101 通过 `build_value_101_packs` 中的确定性函数生成日内峰值、季节变化及两次局部需求扰动。`_demand` 返回以 MW 表示的需求功率；它由半小时时段编号 `period` 计算 `day`、`hour`，并组合早间、晚间、夜间与冬季项。`day % 7 < 5` 时 `weekday` 为 1，其余取 0.92；`day` 为 0 或 182 且 `period % 48 == 31` 时，`teaching_peak` 为 30 MW，其余为零：
+VALUE 101 采用确定性需求、天气和投资曲线。`_demand` 返回从零开始的半小时时段编号 `period` 对应的 MW，`day` 和 `hour` 表示该期的日与小时。`day % 7 < 5` 时 `weekday` 取 1，其余取 0.92；第 0、182 日的 `period % 48 == 31` 时，`teaching_peak` 取 30 MW，其余为零：
 
 $$
 \begin{aligned}
@@ -230,9 +310,9 @@ $$
 \end{aligned}
 $$
 
-预测函数 `_forecast_demand` 在 `_demand(period)` 上加 `balancing_margin`，再保留六位小数。`day` 为 0 或 182 且 `period % 48 == 30` 时，`balancing_margin` 为 12 MW，其余时段为零。
+日前预测为 `_demand(period) + balancing_margin`，保留六位小数。第 0、182 日的 `period % 48 == 30` 时，`balancing_margin` 取 12 MW，其余为零。这两次 12 MW 附加量分别位于实际需求峰值前半小时。
 
-光伏投资曲线 `_solar_profile` 将日照与季节系数相乘。`hour < 6` 或 `hour > 18` 时返回零；日照窗口内沿用上述 `day`、`hour` 定义，计算
+光伏投资系数由日照项与季节项相乘得到。`hour < 6` 或 `hour > 18` 时 `_solar_profile` 返回零；日照窗口内沿用同一 `day`、`hour` 定义：
 
 $$
 \begin{aligned}
@@ -242,7 +322,7 @@ $$
 \end{aligned}
 $$
 
-风电投资曲线 `_wind_profile` 叠加日内、29 日和年周期分量，并将系数限定在 0.08–0.92：
+风电投资系数叠加日内、29 日和年度分量。`_wind_profile` 将结果限定在 0.08–0.92，并保留六位小数：
 
 $$
 \begin{aligned}
@@ -254,9 +334,9 @@ $$
 \end{aligned}
 $$
 
-海风投资系数取 `_wind_profile(period)` 的 1.08 倍，以 1 为上限，保留六位小数。三条序列分别保存为 `profiles.vre_solar`、`profiles.vre_onshore`、`profiles.vre_offshore`。
+海风投资系数取 `_wind_profile(period)` 的 1.08 倍，上限为 1，保留六位小数。光伏、陆风、海风数组分别绑定至 `profiles.vre_solar`、`profiles.vre_onshore`、`profiles.vre_offshore`。
 
-教学天气另在 52°N、0°E 的一个格点给定 8,760 小时序列。此处 `hour` 为从零开始的全年小时编号；太阳数组 `hourly_solar` 的单位为 J/m²，风速数组 `hourly_wind` 的单位为 m/s：
+合成天气在 52°N、0°E 处设一个格点，给定 8,760 个小时值。此处 `hour` 为从零开始的全年小时编号，`hourly_solar` 为 J/m² 累计辐射，`hourly_wind` 为 m/s 风速：
 
 $$
 \begin{aligned}
@@ -266,20 +346,4 @@ $$
 \end{aligned}
 $$
 
-天气风速经发电曲线转换后用于调度，技术曲线用于投资规则。法国边界进口上限为 12 MW、价格为 82 GBP/MWh；其余四个边界交换容量为零，占位价格为 200 GBP/MWh。`build_value_101_packs` 将上述需求、天气与市场序列写入教学数据包。
-
-## 数据资格与用户映射
-
-数据包校验区分结构有效性、时序和物理合理性。结构层决定数据包能否安装；时序层检查边界身份、价格币种、本地时间需求、已知行序问题、预测对齐及声明时间戳；合理性层采用 `value_data_plausibility_v1.json` 中的范围。
-
-`profile_eligibility` 将这些发现与口径的数据包白名单共同用于资格判断。修正口径下，非工作区包的时序问题和科学参考包的合理性失败会阻止预检查通过。论文复现口径将其作为警告，同时由白名单排除用户工作区和 VALUE 101 网络包。数据包校验通过后仍需执行按角色读取，风光投资曲线的时钟要求在该步骤检查。
-
-用户需求映射声明列名、单位，并可提供 UTC 或 Europe/London 时间戳。本地时间戳逐行转换为 UTC。日期可声明为 DD/MM/YYYY 或 MM/DD/YYYY，其余情况由数据推断。不可读、重复、倒序、存在缺口或步长不规则的时间戳会阻止提交。
-
-映射序列按行序从模型年的 1 月 1 日 00:00 UTC 起使用，并在各模型年重复。源年份不同会产生提示，读取仍保留输入的行序、星期和节假日。逐时需求由 8,760 或 8,784 行、或 60 分钟时间戳步长识别，完成源单位换算后展开为半小时。短输入需确认重复补齐；替换需求的全年电量超过原序列的 1.5 倍或低于 0.67 倍时，提示同时列出两个全年电量。
-
-映射的欧元价格采用声明的汇率及其年均、月均或固定汇率依据。价格年份被记录，声明年份与 2025 年不同时给出提示，数值仅作币种换算。
-
-## 数据与实现对应
-
-需求来源为 NESO，项目来源为 DESNZ REPD，天气来源为 Copernicus ERA5 single levels，边界价格来源为 Ember 整理的 ENTSO-E 数据。`import_scheme_c_1000twh` 完成项目规范化，`series_reader.py` 和 `data_method` 读取时序，`interconnector_identity` 分配边界序列，`known_data_objects_v1.json` 将已识别输入文件与其声明及行变换关联。`data_validation_layers` 判断数据包资格，`model_clock` 定义 UTC 时段，`zonal_demand_alignment` 将全国需求分配到各区。
+调度按第 3 章风电曲线转换上述风速，并按该章瞬时输入规则转换太阳序列；投资采用前述系数。法国边界采用恒定 12 MW 进口上限和 82 GBP/MWh 电价，其余四个边界交换容量为零，价格输入为 200 GBP/MWh。`build_value_101_packs` 将这些序列写入教学输入。

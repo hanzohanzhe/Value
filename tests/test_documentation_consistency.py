@@ -62,6 +62,21 @@ class DocumentationConsistencyTests(unittest.TestCase):
         ):
             text = (ROOT / reference).read_text(encoding="utf-8")
             normalized = re.sub(r"\s+", " ", text)
+            if reference.endswith("MATHEMATICAL_REFERENCE.md"):
+                # The model exposition uses the implementation's variable names.
+                # Check its equations against the same chapter used by downloads.
+                chapter = (ROOT / "docs/methodology/en/transmission.md").read_text()
+                formulas = re.findall(r"\$\$([\s\S]*?)\$\$", chapter)
+                self.assertTrue(formulas)
+                for equation in formulas:
+                    self.assertIn(equation, text, reference)
+                for name in (
+                    "compute_lock_tolerance", "absolute_term_scale",
+                    "coefficient_one_norm", "solver_tolerance",
+                    "unit_floor", "nonzero_terms", "epsilon",
+                ):
+                    self.assertIn(name, chapter.replace(r"\_", "_"), name)
+                continue
             for relationship in (
                 "U_k     = sum(abs(c_i * x_i*))",
                 "C_k     = sum(abs(c_i))",
@@ -71,39 +86,16 @@ class DocumentationConsistencyTests(unittest.TestCase):
                 "objective_k(x) <= objective_k(x*) + tau_k",
             ):
                 self.assertIn(relationship, text, reference)
-            if reference.endswith("MATHEMATICAL_REFERENCE.md"):
-                ceilings = re.search(
-                    r"The validated ceilings per half-hour are `([^ ]+) GBP`, `([^ ]+) MWh` "
-                    r"schedule\s+deviation and `([^ ]+) MWh` throughput\. Recorded reference "
-                    r"thresholds are\s+`([^ ]+) GBP`, `([^ ]+) MWh` and `([^ ]+) MWh` "
-                    r"respectively\.",
+            for label, unit, ceiling_key in objectives:
+                validated = defaults["validated_ceilings"][ceiling_key]
+                absolute = defaults["absolute_ceilings"][ceiling_key]
+                row = re.search(
+                    rf"\| {re.escape(label)} \| {unit} \| `([^`]+)` \| `([^`]+)` \|",
                     text,
                 )
-                self.assertIsNotNone(ceilings, reference)
-                expected_ceilings = [
-                    defaults["validated_ceilings"]["primary_bid_cost_gbp"],
-                    defaults["validated_ceilings"]["secondary_schedule_deviation_mwh"],
-                    defaults["validated_ceilings"]["physical_throughput_mwh"],
-                    defaults["absolute_ceilings"]["primary_bid_cost_gbp"],
-                    defaults["absolute_ceilings"]["secondary_schedule_deviation_mwh"],
-                    defaults["absolute_ceilings"]["physical_throughput_mwh"],
-                ]
-                self.assertEqual(
-                    [float(value) for value in ceilings.groups()],
-                    expected_ceilings,
-                    reference,
-                )
-            else:
-                for label, unit, ceiling_key in objectives:
-                    validated = defaults["validated_ceilings"][ceiling_key]
-                    absolute = defaults["absolute_ceilings"][ceiling_key]
-                    row = re.search(
-                        rf"\| {re.escape(label)} \| {unit} \| `([^`]+)` \| `([^`]+)` \|",
-                        text,
-                    )
-                    self.assertIsNotNone(row, reference)
-                    self.assertEqual(float(str(row.group(1))), validated, reference)
-                    self.assertEqual(float(str(row.group(2))), absolute, reference)
+                self.assertIsNotNone(row, reference)
+                self.assertEqual(float(str(row.group(1))), validated, reference)
+                self.assertEqual(float(str(row.group(2))), absolute, reference)
             self.assertIn(formula, text, reference)
             self.assertIn(
                 "numerical tolerance does not relax physical feasibility",

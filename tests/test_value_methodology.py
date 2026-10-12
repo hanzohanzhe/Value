@@ -23,11 +23,11 @@ class ValueMethodologyTests(unittest.TestCase):
             "redispatch",
             "£17,000/MWh",
             "scenario_scaled_zonal_shares",
-            "post-thesis",
-            "not a security analysis",
-            "state reads",
-            "state writes",
-            "Known limitations",
+            "native_initial_state",
+            "planning.advance_year",
+            "planning.admit_projects",
+            "transition.apply",
+            "build_operational_carbon_ledger",
         )
         for phrase in required:
             self.assertIn(phrase.casefold(), source.casefold(), phrase)

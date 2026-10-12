@@ -1,70 +1,41 @@
 # 模型框架
 
-VALUE 将电力系统的逐期运行与年度资产演化连接起来。发电、储能和外部电力交换在给定需求与天气下参与市场出清，年度运行收入、成本及扩容余量随后进入投资与退役规则。模型输出包括发电与储能运行、未供电量、系统资源成本、碳排放、在役容量和建设项目。
+VALUE 模拟电力系统的半小时运行及其年度资产变化。发电、储能和进口电力按报价参与市场出清；各资产的年度收入、运行成本和扩容空间决定投资与退役提案；项目按建设周期和地区成功率进入后续年份的在役资产。结果包括发电量、储能充放电、供电缺口、价格、系统成本、碳排放及各技术的在役容量。
 
-## 时间与空间表示
+## 时间、单位与空间
 
-VALUE 以 0.5 小时为运行步长，每个模型年固定为 365 天、17,520 期。时钟采用 UTC，2 月按 28 天排列。功率以 MW 表示，期间电量以 MWh 表示；期间电量等于功率乘以时段长度。投资决策在完整运行年之后更新。
+模型以 UTC 半小时为运行步长，每年固定为 365 天、17,520 期，2 月取 28 天。功率以 MW 表示，每期电量以 MWh 表示；在 0.5 小时内，1 MW 对应 0.5 MWh。完整运行年的结果进入年度投资计算，项目投运和退役在年与年之间更新。
 
-全国模型将大不列颠电力系统表示为一个供需节点，互联线以外部边界报价参与交换。分区模型进一步给定资源与需求的位置、区间通道容量及边界约束。网络数据中的区域映射、需求分配和容量共同确定所求解的空间系统，第 7 章给出约束与求解方法。
+全国单节点模型将大不列颠的需求与供给汇总出清，互联线以外部电力报价参与交易。分区模型按资源位置和需求份额形成各区电力平衡，并施加区间线路与边界约束。第 7 章给出 23 区输入、资源落点、网络约束和数值求解过程。
 
-## 方法学口径
+金额采用起始年不变币值的情景设定，默认起始年为 2025 年。输入表保留技术成本、进口电价和政策参数各自的价格年份。第 2 章列出输入及换算方式，第 5 章列出以 2025 年英镑表示的机组重启成本。
 
-修正口径 `value-corrected` 是 VALUE 的默认设定，也是本文各章的主要描述对象。默认全国调度模块 `value-bid-at-cost-psm` 使用 `native-corrected-v1` 规则集；分阶段调度模块 `value-staged-bid-at-cost-psm` 将全国计划与随后发生的平衡或分区再调度连接起来。两条运行路径的报价、结算和储能计算分别在第 4、5、7 章展开。
+## 运行方法
 
-论文复现口径 `doctoral-lineage-0.6.0a2` 是保留 VALUE 0.6.0-alpha.2 所实现论文时期设定的兼容配置。它使用 `native-doctoral-thesis-v1` 规则集，保留原有天气转换、下调顺序和储能定价。两个口径共同采用 UTC 需求与互联线对齐、声明列读取、火电净收入、每期单一储能净头寸、下调与必发盈余的单次记账，17,000 £/MWh 的已记录切负荷价值、包含物理运行成本的成本账 v2、验证报告，以及相同的缺口和已供电量定义。两个口径的内生提案均采用从数据包冻结的建设周期和地区成功率。各章在相关方程之后说明兼容口径的具体取值。
+默认全国运行使用 `value-corrected` 配置和 `value-bid-at-cost-psm` 模块，该模块的 Native 内核采用 `native-corrected-v1` 的报价排序、统一边际结算、储能充放电和火电下调规则。每期先根据预测需求和可用出力形成计划，再根据当期需求、可用出力及剩余调节能力执行平衡。第 5 章按这一顺序描述完整算法。
 
-实验性全国路径 `value-doctoral-national-psm` 另行定义全国出清与年度核算接口。它提供固定年度调度与实验现金记录，整合年度 CEM 的就绪标记为 false。第 5、6 章分别给出其运行算法和独立年度辅助函数，口径选择与调度模块选择共同构成一次计算的方法身份。
+`value-staged-bid-at-cost-psm` 将全国计划传递给独立的平衡模块。`value-copperplate-balancing` 求单节点平衡，`value-zonal-redispatch-balancing` 求网络约束下的分区再调度。第 4 章说明计划、平衡和储能状态的连接，第 7 章说明分区再调度的目标函数、约束及结算。
 
-界面分别选择方法学口径与调度模块。下表将本文使用的名称对应到 Study 编辑器。
+完全预见调度在给定求解时窗内同时使用全部需求与可用出力序列，并联合优化发电、进口和储能。`value-perfect-foresight-lp` 的目标、时序约束及储能终值见第 8 章。该章同时给出径流和水库从天然入流到可用水电的计算。
 
-|正文名称|英文界面标签|中文界面标签|模块或口径|
+## 初始条件与年度顺序
+
+一次计算由输入数据包、起止年份、所选模块和数值参数共同确定。`native_initial_state` 根据机组表、REPD 项目、成本表、建设周期和地区成功率构造 `initial_state`。在役资产带有技术、地区、功率容量、储能能量容量、成本与寿命；规划项目带有容量、状态和预计投运年。第 2 章给出输入字段、取值和初始化规则。
+
+模型每年先推进规划项目，再运行全年市场，最后形成下一年的资产与项目状态。`AnnualModelOrchestratorV2.run` 按下表顺序调用各模块；各项计算的公式、初始值与边界条件在相应章节展开。
+
+|顺序|计算内容|变量与函数|章节|
 |---|---|---|---|
-|修正口径|Corrected methodology (default)|修正口径（默认）|`value-corrected`|
-|兼容口径|Doctoral reproduction|论文复现口径|`doctoral-lineage-0.6.0a2`|
-|Native 全国调度|National single node|全国单节点|VALUE live bid-at-cost PSM; `value-bid-at-cost-psm`|
-|实验性全国路径|Doctoral national physical PSM (experimental)|Doctoral national physical PSM (experimental)|`value-doctoral-national-psm`|
+|1|按项目投运年更新当年在役资产|`planning.advance_year` 生成 `advanced.operating_state`|6|
+|2|整理需求、天气、可用出力和外部交换|`psm_input_factory` 生成 `model_input`|2、3|
+|3|逐期出清并汇总运行结果|`psm.run` 生成 `market`|4、5、7、8|
+|4|由当年需求、出力及储能使用量计算扩容空间|`policy.evaluate` 生成 `headroom`|6|
+|5|按投资主体与技术地区分组评价收益|`adapt_market_for_investment` 整理账户，`investment.decide` 生成 `decision.proposals`|6|
+|6|按建设周期与成功率准入投资项目|`planning.admit_projects` 生成 `admission`|6|
+|7|执行资产寿命、退役和新项目更新|`transition.apply` 生成 `next_state`|6|
 
-## 年度计算流程
+储能的期内库存与年度成本观察值分别更新。全国运行在每个运行年创建储能对象；上一年售电量和储存时长用于下一年的动态储能成本。第 4、5 章给出库存初值、效率、自放电、逐期功率限制和年度处理。
 
-默认年度路径根据初始资产、建设项目、需求和天气决定当年运行。年初推进已有建设项目，并形成可用发电与外部交换输入；调度模块计算全年运行；年末根据运行结果、投资规则和建设周期更新下一年的资产与项目状态。
+年度投资依据实际收入、总资本支出、目标回收期和偏好收益率作出决策。燃气和生物质的投资净收入扣除运行成本；风电、光伏和储能按其收入计算投资收益。第 6 章给出逐项成本、四级决策规则、建设时长、成功率和资产更新的伪代码。
 
-```text
-state = initial_state
-for year in range(initial_state.year, run.end_year + 1):
-    advanced = self.planning.advance_year(run, state)
-    model_input = self.psm_input_factory(run, advanced.operating_state)
-    market = self.psm.run(model_input)
-    headroom = []
-    for slot in sorted(self.expansion_policies):
-        policy = self.expansion_policies[slot]
-        value = policy.evaluate(run, advanced.operating_state, market)
-        headroom.append(value)
-    investment_market = adapt_market_for_investment(
-        market, advanced.operating_state)
-    decision = self.investment.decide(
-        run, advanced.operating_state, investment_market, tuple(headroom))
-    decision = inherit_frozen_zone_shares(decision, advanced.operating_state)
-    admission = self.planning.admit_projects(
-        run, advanced.operating_state, decision.proposals)
-    transition_state = YearState(
-        year, advanced.operating_state.assets, advanced.active_projects,
-        cumulative_metrics=state.cumulative_metrics,
-        extensions=transition_extensions)
-    next_state = self.transition.apply(
-        run, transition_state, admission, decision)
-    state = next_state
-```
-
-`run` 保存选定模块、参数和模型年份。`state` 保存在役资产与建设项目，`advanced.operating_state` 是年初规划更新后的资产状态。`market` 包含调度和年度账户，`headroom` 包含各技术的扩容上限，`decision.proposals` 包含新投资提案。`transition_extensions` 将年度储能成本观察值和求解验证状态带入 `next_state`。这些名称和调用对应 `gridform_core/v2/orchestrator.py` 的默认年度流程；选定的网络扩建模块另行执行其年度步骤。
-
-
-默认投资采用年度收入形成的收益率与回收期判据，资本年化核算使用资本回收因子。燃气和生物质的投资净收入扣除发电、燃料、碳与单位时间运行成本；风电、光伏和储能的设定将毛收入作为投资利润，其固定运维费用并入资本成本口径。第 4 章定义这些默认计算，第 6 章给出独立的实验账户与投资接口。
-
-模型金额采用起始年不变币值的情景约定，默认起始年为 2025 年。输入表同时保留各自的原始价格年份，包括技术成本、进口电价与政策参数。第 2 章列出价格来源与换算，第 5 章列出重启成本的 2025 年英镑取值。
-
-## 数据与结果
-
-模型输入包括需求、天气、初始资产、技术经济参数、建设项目和外部电力交换。第 2 章给出输入文件、时间覆盖、单位及适用口径，第 3 章给出天气到可用出力的转换。数据文件与函数名紧接对应计算，便于读者从设定定位到实现。
-
-年度经济结果在物理与核算检查通过后进入结果页。修正口径检查所选路径的验证门，论文复现口径检查全部原始不变量；逐期账本保留出力、储能、缺口和成本记录。第 4 章说明这些检查与年度结果的关系，第 9 章给出碳核算参数。
+年度输出由逐期结果求和或按电量加权。供电量等于需求电量扣除未供电量，系统成本汇总运行与年化资本支出，碳排放按发电量、进口电量和设备容量核算。第 5、6、9 章分别定义这些量、单位和分母。

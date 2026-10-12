@@ -2,7 +2,13 @@
 
 ## 分区再调度的空间表示
 
-分区再调度在全国日前计划上加入空间约束。每个半小时接纳上调与下调报价，使最终注入满足分区需求、走廊容量和地理边界限额。无损运输表示通过守恒与容量约束确定流量。23 区配置与 11 区实验采用这一表示，直流调度与交流可行性采用下述独立方法。网络模块在修正口径下使用具备相应资格的数据包。
+分区再调度在全国日前市场之后确定各区发电调整、储能运行和传输。每个半小时采用无损运输模型，使最终注入满足分区需求、走廊限额与地理边界容量。英国输入包含 23 个分区和 22 条计算走廊；下述 DC 与 AC 方法采用节点和支路输入。
+
+英国网络输入由 `value-uk-research-suite-v1-public2` 提供。`zones` 定义分区，`corridors` 给出有向连接，`cutsets` 将走廊归入地理边界，`ratings` 给出时变限额，`asset-map` 分配资源位置，`demand` 给出分区 MWh，`interconnector-landings` 分配进出口资产的登陆区域。B6 和 B7a 的双向容量分别为 6,700 和 9,400 MW。给定的 2025–2034 年配置保持这些容量固定。
+
+资产位置按固定优先级确定。`_zone_shares_with_source` 先取 `frozen_zone_shares`，再用 `asset_id` 匹配 `asset-map`，随后匹配 `interconnector-landings`，最后归入唯一标为 `is_unconstrained_fallback` 的分区。份额之和在 \(10^{-8}\) 容差内等于 1。跨区资产按份额拆为各区的物理单元，装机、储能功率、能量与初始库存均乘该份额，各单元保留原投资主体。
+
+随模型提供的映射按站点定位风电与光伏，将 CCGT、OCGT、生物质、径流水电、核电、储能和进口分配至 `ENGLAND_FALLBACK`。该节点连接声明的中央运输分区。电站政策生成的核电站通过这一规则进入回退区，其中包括地理位置在 B6 以北的 Torness。进口资源名称采用 `import:<country>`，登陆表采用 `interconnector:<line>`，精确标识匹配因此将这些进口归入回退区。这些分配决定 B6 和 B7a 约束中使用的区域注入。
 
 需求按案例指定的空间规则分配。`align_zonal_demand` 在 23 区研究中保留网络包的分区份额，并缩放至全国情景需求。数组 `aligned`、`output_real`、`network_demand_mwh_by_zone` 和 `network_national_mwh` 均为 MWh，区域和时段下标为 \(z,t\)：
 
@@ -13,17 +19,26 @@ $$
 \end{aligned}
 $$
 
-最后一个分区取全国需求减去前面各区已分配量，以保持总量守恒。11 区实验采用网络数据的绝对需求，并保留基础序列的预测需求与实际需求之比：
+最后一个分区取全国需求减去前面各区已分配量。两个全国合计均为零时，缩放系数取 1；全国情景需求为正时，网络需求合计须为正。`demand_mwh_by_zone` 与资产位置、实际可用率和互联线进出口限额共同进入期间问题。
 
-$$
-\begin{aligned}
-\mathrm{output\_real}_t&=\mathrm{network\_national\_mwh}_t,\\
-\mathrm{output\_forecast}_t&=\mathrm{output\_real}_t\cdot
-\frac{\mathrm{research\_forecast\_mwh}_t}{\mathrm{research\_real\_mwh}_t}.
-\end{aligned}
-$$
+## 日前计划与调整报价
 
-分母为零而目标需求为正时，输入检查报错。输出 `demand_mwh_by_zone` 与资产位置、实际可用率、互联线进出口限额一起进入 `build_single_period_problem`。
+网络模块根据期间资源可用量和初始储能库存生成日前计划。`_ahead_offers` 按 `capacity_mw * availability * period_hours` 给出各资源可用 MWh，报价为期间边际费用乘 `market.bid_multiplier`，倍率默认 1。储能报出时段放电功率限额与 `soc * discharge_efficiency` 的较小值，价格为 `bid_price_gbp_per_mwh(0.0)` 乘同一倍率。`clear_ahead` 先按 `price_gbp_per_mwh`、再按 `offer_id` 排序，每次接纳可用量与剩余预测 MWh 的较小值；剩余需求至多为 `1e-12` MWh 或全部报价耗尽时结束。最后接纳价格用于日前结算。
+
+资源调整量以 `schedule_mwh_by_asset` 为起点。`_flexibility_bids` 将可用量减计划量的正值报为上调 MWh，将计划量报为最大下调 MWh。上调价格为边际费用乘 `market.bid_multiplier`。`network-economic-v2` 下调规则采用默认取 1 的 `market.dec_multiplier`、各技术政策支持费用及核电下调附加值：
+
+|资源|下调价格，GBP/MWh|
+|---|---|
+|燃料发电|边际费用 × 下调倍率 − 政策支持费用|
+|进口|期间进口价格 × 下调倍率|
+|风电、光伏与径流水电|− 政策支持费用|
+|核电|边际费用 × 下调倍率 − 政策支持费用 − 下调附加值|
+
+`resource_dec_price` 从 `market.policy_support_gbp_per_mwh_by_technology` 读取政策支持费用，默认取零；从 `network.inflexible_dec_premium_gbp_per_mwh_by_technology` 读取附加值，核电默认 100 GBP/MWh。燃气和生物质将计划 MWh 拆成 `running_mwh` 与 `shutdown_mwh`，后者等于计划量乘 `min_stable_fraction`。`thermal_dec_segments` 保留不停机段价格，并按第 5 章的 `net_saving` 和重启参数表给停机段定价。预计停机时间计入当前期以及随后连续由声明风光和核电可用量覆盖预测需求的时段，每期长度为 `period_hours`。短于 `min_down_time_h` 的停机段，其价格取净节省和低于其他全部下调价格档 0.01 GBP/MWh 的数值中较小者。
+
+储能调整报价覆盖从计划放电到最终放电或充电的变化。`maximum_discharge` 取 `discharge_power_mw * period_hours` 与 `soc * discharge_efficiency` 的较小值，上调量为 `max(maximum_discharge - scheduled, 0)`。下调量为计划 MWh 加上时段充电功率限额与剩余内部容量除以充电效率的较小值。`storage_dec_price` 取储能上调价格、该价格乘往返效率、期间最低可用上调价格三者中的最小值；期间存在上调报价时才使用第三项。声明的出口限额另形成下调取电报价，价格取出口价格的非负部分。
+
+储能从 `initial_soc_mwh` 开始，每期求解后的库存成为下一期初值。发电遵循逐期可用量与下文接纳调整量的边界。算法沿给定时序逐期计算，返回最终注入、充电、放电、库存、走廊流量、未满足需求与结算。
 
 ## 调整目标与运行约束
 
@@ -57,7 +72,7 @@ $$
 |核电|4|
 |短于最小停机时间的燃料机组停机段|5|
 
-同一区域内，第一目标价格完全相同时，储能充电先于径流水电、风光及核电下调；燃料机组停机段位于风光之后、核电之前。跨区时，类别权重同时与走廊流量竞争。第一目标采用原始价格，无网络平衡按 0.01 GBP/MWh 分档排列下调价格。第四目标按报价、走廊、区域和储能标识的固定顺序，依次给变量赋权 1、2、……。
+同一区域内，第一目标价格完全相同时，储能充电先于径流水电、风光及核电下调；燃料机组停机段位于风光之后、核电之前。跨区时，类别权重同时与走廊流量竞争。第一目标采用原始价格。第四目标按报价、走廊、区域和储能标识的固定顺序，依次给变量赋权 1、2、……。
 
 资产最终注入等于日前计划加接纳的带方向调整。`final_dispatch_mwh_by_asset` 与 `schedule_mwh_by_asset` 均为 MWh。索引 \(k\) 表示报价，其 `asset_id` 指定资产 \(a\)，`asset_zone_id_by_asset` 指定分区 \(z\)：
 
@@ -103,7 +118,7 @@ $$
 \le\mathrm{forward\_capacity}_b.
 $$
 
-各边界同时约束流量。单独声明的走廊限额进一步限制该走廊，`absolute-flow` 至少等于正、负两个方向的流量值。因此，B6 的 6,700 MW 在每半小时对应 3,350 MWh，Western Link 的 2,200 MW 对应 1,100 MWh。缺少自身限额的走廊仍受分区守恒和所属边界约束。
+各边界同时约束流量。单独声明的走廊限额进一步限制该走廊，`absolute-flow` 至少等于正、负两个方向的流量值。因此，B6 的 6,700 MW 在每半小时对应 3,350 MWh。缺少自身限额的走廊仍受分区守恒和所属边界约束。
 
 储能再调度以实际充放电更新内部库存。`opening` 取自 `initial_soc_mwh_by_asset`，`capacity` 取自 `energy_capacity_mwh`。各储能满足
 
@@ -136,7 +151,7 @@ $$
 
 网络约束费用将该结果与合并为单节点、移除走廊和边界后的同一线性规划比较。`solve_network_free_counterfactual` 保留报价、出口套利、进出口限额、储能物理约束、缺电估值和求解设置。两种情况共用逐期单位费用表：优先取给定的时变资源费用，其余采用年度边际费用、储能循环折旧及零出口资源费用。负进口价格可使期间资源支出为负。
 
-第一目标的差额单独记为 `network_constraint_bid_objective_gbp`。预测误差归因比较实际预测和完全预测的无网络结果。每次比较仅改变所声明的空间或预测输入，并保留相同优化方法。
+第一目标的差额记为 `network_constraint_bid_objective_gbp`，表示接纳报价支付与缺电估值的变化；`physical_resource_cost_gbp` 表示资源支出。
 
 ## 数值求解与边界边际价值
 
@@ -171,8 +186,9 @@ for period in the half-hour chronology:
         minimise physical_tie_objective; retain its objective bound
         minimise stable_tie_objective; validate_solution(...)
     solve_network_free_counterfactual(...): compute matched comparison
-    return actual injections, storage inventory, flows, shortage and costs
+    record actual injections, storage inventory, flows, shortage and costs
     pass final_soc_mwh_by_asset to the next period
+return all period results
 ```
 
 边界边际价值表示第一目标对传输容量的响应。`boundary_marginal_values` 在增加目标约束前读取正、反向容量行的对偶值：
@@ -183,46 +199,7 @@ $$
 -\mathrm{marginals}_{\mathrm{forward\_row}_b}.
 $$
 
-正值对应正向限额生效，负值对应反向限额生效。状态为 `computed`、限额生效但对偶值为零时的 `degenerate_dual`，或多个生效边界共享走廊、对偶分配具有多解时的 `shared_member`。年度合计的“边界价值乘传输量绝对值”作为拥塞诊断，与区域价格、现金流和系统费用分别报告。缺少该计算的账本显示“Not computed”。
-
-## 两个分区案例
-
-英国 23 区网络研究采用随 VALUE 0.7.0-alpha.1 提供的 GBP1 public2 研究套件 `value-uk-research-suite-v1-public2`，下载见[数据页](https://value.ac/zh/data/)。网络包含 22 条计算走廊以及 B6、B7a 两个边界，双向容量分别为 6,700 MW 和 9,400 MW。2025–2034 年研究设计保持网络容量固定，年度需求与资产可以变化。
-
-23 区包按站点分配风电和光伏位置，CCGT、OCGT、生物质、径流水电、核电、储能和进口均放入 `ENGLAND_FALLBACK`。public2 核电政策在运行时形成的逐站资产采用该默认分区，包括位于 B6 以北的 Torness。进口资源名称为 `import:<country>`，登陆点表名称为 `interconnector:<line>`，两者对应关系缺失，进口也进入默认分区。`runtime_fallback_audit` 记录这些分配，分区结果的空间分布具有指示意义。
-
-分段与分区运行的账本声明 `full_node_v1` 平衡边界，因此能够评估能量平衡。独立检查 `generation_cross_path` 与 `demand_input_reconciliation` 的状态仍为 `not_evaluated`。默认 `summary` 轨迹省略逐时段求解诊断，结果页相应显示“未记录”。
-
-11 区试验使用 T1–T11 表示英国区域，并在固定资产下运行单年传输比较。区域依次为苏格兰北部、苏格兰南部、英格兰北部、北威尔士／默西河／亨伯河、英格兰中部、英格兰中部偏南、东英吉利、南威尔士／塞文河、英格兰西南部、英格兰南部和英格兰东南部。时间序列采用 2022 年负荷与天气，共 17,520 个半小时，模型背景年为 2025。该试验的容量保持固定，年度投资模块留在试验之外。
-
-11 区网络由 13 条交流资产类别的计算走廊及 Western Link 组成。普通走廊连接 1–2、2–3、3–4、4–5、5–6、5–8、6–7、6–8、6–11、8–9、8–10、9–10、10–11；Western Link 连接 T2→T4。下表列出地理边界及另设的 Western Link 限额。2029 容量作为独立敏感性输入，基础案例使用 2025 容量。
-
-| 边界 | 2025 正反向容量 MW | 2029 敏感性容量 MW | 正向成员 |
-|---|---:|---:|---|
-| B4 | 4,002 | 4,923 | f12 |
-| B6 | 6,700 | 11,456 | f23 + fWL |
-| B7a | 9,400 | 10,609 | f34 + fWL |
-| B8 | 11,000 | 14,005 | f45 |
-| B9 | 11,500 | 12,900 | f56 + f58 |
-| EC5 | 3,300 | 5,925 | −f67 |
-| LE1 | 11,223 | 13,917 | f6,11 + f10,11 |
-| B13 | 3,500 | 6,575 | −f89 + f9,10 |
-| Western Link | 2,200 | 2,200 | fWL |
-
-Western Link 的传输同时占用 B6 与 B7a 的既定容量。8 个地理边界的反向能力采用正向能力的对称假设，Western Link 输入采用双向额定值。基础约简网络对 T6、T8、T10 的边界成员定义相同，三者之间的模型传输能力缺少有限上界。其 14 维走廊空间中，节点关联矩阵秩为 10，地理边界矩阵秩为 8，加入 HVDC 限额后秩为 9；5 维约束零空间含 3 维循环流和 2 维节点净传输方向。
-
-热容量敏感性为南部 8 条走廊补充单独限额，同时保留地理边界。构造方法将区内已知变电站收缩为区域节点，保留未知中间节点，排除其他已知区，再以线路网络的最大流／最小割计算走廊容量。并联线路容量相加，串联路径受其瓶颈控制；MVA 按功率因数 1 换算为 MW。普通夏季与冬季输入如下，另设的上界敏感性使用各自输入文件。
-
-| 走廊 | 夏季 MW | 冬季 MW |
-|---|---:|---:|
-| T5–T6 | 19,086 | 21,052 |
-| T5–T8 | 3,424 | 3,934 |
-| T6–T8 | 4,436 | 5,558 |
-| T6–T11 | 16,684 | 19,849 |
-| T8–T9 | 8,088 | 9,217 |
-| T8–T10 | 6,470 | 7,834 |
-| T9–T10 | 4,434 | 5,558 |
-| T10–T11 | 6,587 | 7,500 |
+边界价值为正对应正向限额生效，为负对应反向限额生效。多个生效边界共享走廊时，可有多组对偶分配对应同一最优解。年度输出还合计边界价值绝对值乘传输 MWh，作为拥塞量度。
 
 ## 直流网络调度
 
@@ -279,11 +256,11 @@ $$
 
 回路数缩放热容量，声明的等效电抗进入相角方程。每个电气孤岛有一个零相角参考节点，其余相角位于 \([-\pi,\pi]\)。停运支路流量为零，直流联络线以声明范围内的可控流量进入节点平衡。
 
-HiGHS 在一次线性规划中求解全部时段，原始与对偶容差为 \(10^{-8}\)，等式残差上限为 \(10^{-7}\)。节点电量平衡的对偶值给出 GBP/MWh 边际运行价格，系统显示价格按需求加权。该完整时域比较由固定资产、连续调度、储能与线性网络共同定义。
+HiGHS 在一次线性规划中求解全部时段，原始与对偶容差为 \(10^{-8}\)，完成条件为求解状态最优且等式残差至多为 \(10^{-7}\)。节点电量平衡的对偶值给出 GBP/MWh 边际运行价格，系统显示价格按需求加权。输出包括完整时域的期间调度、储能库存、节点价格和支路流量。
 
 ## 交流可行性计算
 
-交流模块计算给定有功计划下的稳态潮流。输入包含有功与无功需求、发电机有功和无功限额、电压设定、支路阻抗与充电电纳、固定变比及相移、电压范围和 MVA 额定值。每个电气孤岛有一个平衡资产，PV 和平衡节点配置发电机，同一节点的发电机采用共同电压设定。储能按给定的有功充放电计划运行。
+交流模块计算给定有功计划下的稳态潮流。输入包含有功与无功需求、发电机有功和无功限额、电压设定、支路阻抗与充电电纳、固定变比及相移、电压范围和 MVA 额定值。每个电气孤岛有一个平衡资产，PV 和平衡节点配置发电机，同一节点的发电机采用共同电压设定。储能按给定的有功充放电计划运行。PQ 节点根据给定有功与无功注入求电压幅值和相角；PV 节点固定电压幅值及有功；各平衡节点固定电压幅值和零相角，并平衡所在孤岛。
 
 节点复功率由求得的电压及节点导纳矩阵计算。`vm` 为标幺电压幅值，`theta` 为弧度，`voltage` 为复数标幺电压，`injection` 的实部和虚部分别为 MW、Mvar。`ybus` 为 `base_mva` 基准下的标幺导纳，\(j^2=-1\)：
 
@@ -320,7 +297,9 @@ $$
 
 两端视在功率均受 `apparent_power_rating_mva` 乘 `circuits` 约束。在役支路按声明阻抗进入导纳矩阵，拓扑和设备设定保持固定。
 
-非线性最小二乘从多个初始电压条件求解。收敛解先核对一致性，再检查发电有功与无功边界、节点电压、支路额定值，以及供给、充电、需求和损失之间的系统平衡。`ReferenceACFeasibilityPSM` 返回该计划对应的局部稳态轨迹和可行性检查。
+AC 求解分别从平坦电压和另一组初值开始：后者相角均匀分布于 0.01–0.03 弧度，PQ 节点电压取上下界中点；声明的初始电压构成第三组初值。各组初值先投影到相角和电压边界。`least_squares` 采用 `xtol = ftol = gtol = 1e-12`、`max_nfev = 2000`，要求成功终止且最大不平衡量至多为 `residual_tolerance`，默认 \(10^{-7}\) MW 或 Mvar，再选择残差最小的有效解。
+
+接纳的 AC 解在不同初值间的电压及相角差至多为 \(10^{-5}\)，雅可比矩阵条件数至多为 \(10^{12}\)。有功、无功、电压和支路端点视在功率在 `equipment_tolerance` 内满足声明限额，默认容差为各自单位下的 \(10^{-6}\)。每期返回电压、发电、端点潮流和损耗，随后进入下一期；某期求解失败时计算结束。
 
 ## 可选线路扩建
 
@@ -337,7 +316,7 @@ $$
 \end{aligned}
 $$
 
-资本回收函数 `_crf` 使用参数 `rate` 与 `life`：
+资本回收函数 `_crf` 使用年度折现比例 `rate` 与按年计量的寿命 `life`；`annual_cost` 为 GBP/年，`total_capex_gbp_per_build` 为 GBP，`ratio` 为无量纲比值：
 
 $$
 \operatorname{\_crf}(\mathrm{rate},\mathrm{life})=
@@ -348,14 +327,17 @@ $$
 \end{cases}
 $$
 
-候选按 `ratio` 降序和标识升序排列，最早决策年、最低触发利用率、最低效益费用比、总预算与预算组额度共同决定准入。年费用为零时比率为无穷大。注册参数默认年度总资金为 0 GBP，每组额度为 \(10^{13}\) GBP。每个接纳提案扣除完整建设费用，预计投运年为决策年加 `lead_time_years` 和 `delay_years`。
+已投运或已进入规划队列的候选从下一轮决策中移除，其余候选按 `ratio` 降序和标识升序排列，最早决策年、最低触发利用率、最低效益费用比、总预算与预算组额度共同决定准入。年费用为零时比率为无穷大。注册参数默认年度总资金为 0 GBP，每组额度为 \(10^{13}\) GBP。每个接纳提案扣除完整建设费用，预计投运年为决策年加 `lead_time_years` 和 `delay_years`。
 
-规划成功由可重复的均匀抽样值与 `success_probability` 比较决定。默认种子为 0，提案标识包含运行标识，两者共同确定抽样。年初将已完成项目投运；线路按投运年加 `economic_life_years` 向上取整的年份退役。`apply_commissioned_network_assets` 将投运支路接入年度网络。23 区和 11 区案例保持固定网络，线路扩建属于单独选择的方法。
+`ReferenceTransmissionExpansion.admit` 在可重复抽样值 `draw` 至多为 `success_probability` 时接纳规划。`seed` 取自 `network.expansion.random_seed`，默认 0；提案标识为 `network-proposal:{run_id}:{year}:{candidate_id}`。这些输入按下式确定 `draw`：
 
-## 数据与实现对应
+```text
+digest = hashlib.sha256(
+    f"{seed}:{proposal.proposal_id}".encode()
+).hexdigest()
+draw = int(digest[:13], 16) / float(16 ** 13 - 1)
+if draw <= candidate.success_probability:
+    admit the proposal into the planning queue
+```
 
-分区数据由 `zones`、`corridors`、`cutsets`、`asset-map`、`demand`、`ratings` 和 `interconnector-landings` 输入组成。`align_zonal_demand` 执行两种需求规则，`build_single_period_problem` 建立再调度约束，`solve_lexicographic` 依次求解 4 个目标，`ZonalRedispatchBalancing` 返回实际注入、库存及费用。11 区研究采用外部研究脚本 `build_network_data.py` 和 `fixed_fleet_runner.py`，容量情景由 `cutsets_2025.json`、`cutsets_2029.json` 及夏冬热容量文件定义。这些脚本属于上文的独立固定资产实验，随模型提供的英国网络研究采用 23 区套件。
-
-`network_method_rules.py` 定义 `network-economic-v2`。无网络参照使用 `value.network-free-lp/v1` 标识，`zonal_results.py` 汇总分区结果。各年度在 `extensions.downward_restart_economics` 中记录下调报价假设，采用 `value.network-downward-restart-economics/v1` 结构；缺失输入及回退依据记入计算记录。
-
-独立电网模块使用节点、支路、资产到节点映射及逐期需求。`ReferenceDCNetworkPSM` 和 `validate_dc_solution` 对应线性调度及其物理检查；`load_ac_data_from_pack`、`ReferenceACFeasibilityPSM` 和 `validate_ac_result` 对应交流输入、潮流及可行性检查。`ReferenceTransmissionExpansion` 读取候选与预算并更新建设状态，`apply_commissioned_network_assets` 将在役新增线路接入网络。
+年初将已完成项目投运；线路按投运年加 `economic_life_years` 向上取整的年份退役。`apply_commissioned_network_assets` 将投运支路接入年度网络。线路扩建通过候选表与年度预算启用；随模型提供的 23 区配置保持网络固定。

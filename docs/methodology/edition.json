@@ -1,6 +1,6 @@
 {
-  "edition": "0.4.1",
-  "date": "2026-10-09",
+  "edition": "0.5",
+  "date": "2026-10-12",
   "basis": "2026-10-09",
   "chapterIDs": [
     "introduction",
@@ -14,8 +14,8 @@
     "appendix"
   ],
   "revision": {
-    "zh": "修订版 0.4.1   2026年10月9日",
-    "en": "Edition 0.4.1   9 October 2026"
+    "zh": "修订版 0.5   2026年10月12日",
+    "en": "Edition 0.5   12 October 2026"
   },
   "basisLabel": {
     "zh": "VALUE 0.7.0-alpha.1 · 模型实现与数据依据 2026年10月9日",

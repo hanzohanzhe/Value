@@ -1,54 +1,54 @@
 {
-  "edition": "0.4.1",
-  "date": "2026-10-09",
+  "edition": "0.5",
+  "date": "2026-10-12",
   "basis": "2026-10-09",
   "files": [
     {
-      "path": "VALUE_模型方法学_2026-10-09.docx",
-      "language": "zh",
-      "format": "docx",
-      "sha256": "454d4216f30f733cdf810743f2393b5114aaa73c54ecc89efbd8ab7ba2a272a4",
-      "bytes": 7258557,
-      "render_review": "passed"
-    },
-    {
-      "path": "VALUE_模型方法学_2026-10-09.pdf",
-      "language": "zh",
-      "format": "pdf",
-      "sha256": "02fbf3129a12fae52c989bb63000d316387be5244276467dc0d225a1f983240d",
-      "bytes": 9117724,
-      "render_review": "passed"
-    },
-    {
-      "path": "VALUE_methodology_ZH_2026-10-09.html",
-      "language": "zh",
-      "format": "html",
-      "sha256": "35a700f3525c9b2fbc438124f0695ff68d929989f3bfb319db7b05bf11527273",
-      "bytes": 8723824,
-      "render_review": "passed"
-    },
-    {
-      "path": "VALUE_Model_Methodology_EN_2026-10-09.docx",
+      "path": "VALUE_Model_Methodology_EN_2026-10-12.docx",
       "language": "en",
       "format": "docx",
-      "sha256": "c5762c6f5504ff3894ee3de80dd81b16865f6581afb6b719678506f981c3d80a",
-      "bytes": 7254711,
+      "sha256": "44fa4a9a03cea37881ed31bf8f5aafacbf4ff6ef59d096a78e6bab7a9e1864fc",
+      "bytes": 6467380,
       "render_review": "passed"
     },
     {
-      "path": "VALUE_Model_Methodology_EN_2026-10-09.pdf",
+      "path": "VALUE_Model_Methodology_EN_2026-10-12.pdf",
       "language": "en",
       "format": "pdf",
-      "sha256": "88681b7b13665798a9b3be34fe230b9578f555ba50d2fc4f311a873649fe0dd2",
-      "bytes": 8122390,
+      "sha256": "463fba8b87c9f6f861c7c39263e77b9b42c6f02f0e0a04328205a38f7ea5291c",
+      "bytes": 7226524,
       "render_review": "passed"
     },
     {
-      "path": "VALUE_methodology_EN_2026-10-09.html",
+      "path": "VALUE_methodology_EN_2026-10-12.html",
       "language": "en",
       "format": "html",
-      "sha256": "4e62e77c4091687905843fb56b83f05216e8295d74bc2d0ba6ecd221c9fbf8d9",
-      "bytes": 8745189,
+      "sha256": "d05d16903b8a5f309d2fe044bf93dca88da65cd3ed450cd8fd479d98bc135ded",
+      "bytes": 7795387,
+      "render_review": "passed"
+    },
+    {
+      "path": "VALUE_methodology_ZH_2026-10-12.html",
+      "language": "zh",
+      "format": "html",
+      "sha256": "bab6882e3fcc56b907cbde35dc4e2f7b6569e59ee26d319c218c9aadc1023dd3",
+      "bytes": 7769497,
+      "render_review": "passed"
+    },
+    {
+      "path": "VALUE_模型方法学_2026-10-12.docx",
+      "language": "zh",
+      "format": "docx",
+      "sha256": "989cdc21233f6cb375a41342b2cac8785b49072ba48026b5592119a6a12fd1c7",
+      "bytes": 6471155,
+      "render_review": "passed"
+    },
+    {
+      "path": "VALUE_模型方法学_2026-10-12.pdf",
+      "language": "zh",
+      "format": "pdf",
+      "sha256": "bd444cf8db5fdd855864771a98395efddbc30157d795d4c7c9ae8f6f50d6ea79",
+      "bytes": 8173566,
       "render_review": "passed"
     }
   ],
@@ -61,8 +61,8 @@
       "Browser review of bilingual offline HTML and all equation images"
     ],
     "pages": {
-      "zh": 67,
-      "en": 61
+      "zh": 63,
+      "en": 56
     }
   }
 }

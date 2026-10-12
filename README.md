@@ -29,7 +29,7 @@ Linux has passed offline installation, a 48-period VALUE 101 run and shutdown ch
 
 ## Methodology and research data
 
-[Methodology 0.4.1](https://value.ac/en/methodology/) describes VALUE 0.7.0-alpha.1, with an implementation and data basis of 9 October 2026. English and Chinese editions are available as web pages, Word, PDF and offline HTML.
+[Methodology 0.5](https://value.ac/en/methodology/) describes VALUE 0.7.0-alpha.1, with an implementation and data basis of 9 October 2026. English and Chinese editions are available as web pages, Word, PDF and offline HTML.
 
 Select research inputs to match your methodology profile:
 

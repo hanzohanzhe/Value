@@ -1,6 +1,6 @@
 # 碳排放核算参数
 
-VALUE 将运行排放和设备建设排放分别计算，再按所选核算情景汇总。运行排放随实际发电量和进口电量变化，建设排放随在役设备容量及年化规则变化。当前物理核算使用 `value_current_authoritative_v1` 因子集；论文复现口径的参考配置选择 `doctoral_reproduction_2026_07_18`，其中历史储能标量按原始单位保留，碳结果记录为 `not_physically_interpretable`。
+VALUE 将运行排放和设备建设排放分别计算，再按所选核算情景汇总。运行排放随实际发电量和进口电量变化，建设排放随在役设备容量及年化规则变化。因子集由 `value_current_authoritative_v1` 指定。
 
 ## 发电与进口电力
 
@@ -44,7 +44,7 @@ $$
 \end{aligned}
 $$
 
-下表采用研究后处理输入 `embodied_factors_desnz_unece.csv` 中使用的年度因子。因子选择随研究配置固定，其中开式循环燃气沿用联合循环燃气的建设因子，电解槽使用该输入表的文献代理值。
+年度建设因子取自 `embodied_factors_desnz_unece.csv`。开式循环燃气使用联合循环燃气的建设因子，电解槽使用该表列出的代理值。
 
 |技术|年度因子 tCO₂e/(MW·年)|
 |---|---|
@@ -70,7 +70,65 @@ $$
 \quad\mathrm{tCO_2e/year}.
 $$
 
-氢储能将功率设备与能量储存部分分别计量。能量储存部分采用 0.0006 tCO₂e/MWh 容量的全寿命因子，按资产声明的经济寿命年化；该值对应 `factor_catalog.csv` 的 `ch4_h2_store_lifetime` 参数项，记录保留原论文第 4 章储能参数及其 10 年来源寿命。电解槽的功率部分采用上一节的年度因子。
+氢储能将功率设备与能量储存部分分别计量。能量储存部分采用 0.0006 tCO₂e/MWh 容量的全寿命因子，按资产声明的经济寿命年化；该值对应 `factor_catalog.csv` 的 `ch4_h2_store_lifetime` 参数项。电解槽的功率部分采用上一节的年度因子。
+
+## 储能电量的碳记录
+
+电池放电作为已存电力的转移记入 `storage_carried_transfer`，该项新增运行排放取零。抽水蓄能按表中的零运行因子计量。充电电源的排放已计入发电或进口电量。提供 `storage_trace` 时，模型另行按混合库存法追踪储能中留存的排放；输入包含每期 `charge_mwh`、`discharge_mwh`、`charge_source_kgco2e_per_mwh` 及充放电效率。
+
+库存碳从零开始，充电按电源强度增加库存碳，放电按取出的库存能量比例移出库存碳。以下计算中的 `inventory_energy` 以 MWh 表示，`inventory_kg` 以 kg 表示；期末 `ending_inventory` 换算为吨。每期检查取出量 `withdrawn` 与现有库存，超出量大于 \(10^{-7}\) MWh 时以 `ValueError` 终止计算。
+
+```text
+inventory_energy = 0.0
+inventory_kg = 0.0
+for charge, discharge, intensity in zip(
+    storage_trace["charge_mwh"],
+    storage_trace["discharge_mwh"],
+    storage_trace["charge_source_kgco2e_per_mwh"]):
+    admitted = charge * storage_trace["charge_efficiency"][0]
+    inventory_energy += admitted
+    inventory_kg += charge * intensity
+    withdrawn = discharge / storage_trace["discharge_efficiency"][0]
+    if withdrawn > inventory_energy + 1e-7:
+        raise ValueError("Storage withdrawal exceeds available inventory")
+    share = withdrawn / inventory_energy if inventory_energy > 0 else 0.0
+    inventory_kg *= 1.0 - share
+    inventory_energy -= withdrawn
+ending_inventory = inventory_kg / 1000.0
+```
+
+氢储能的运行活动在当前账本中进入 `unresolved`。`_normalise_technology` 将 `hydrogen_battery` 转为 `hydrogen_storage`，该名称对应的运行因子为空；该活动使 `operational` 和 `total` 返回 `None`。氢储能设备建设部分仍按前述功率与能量容量因子计算。
+
+## 年度排放与强度
+
+年度排放 `total` 是运行排放 `operational` 与年化建设排放 `embodied` 之和。各活动具有匹配的排放因子、储能具有能量容量和正的经济寿命时，模型汇总这些分项。`delivered_demand_mwh` 是已供电量；其为正时，模型按以下分母计算 kg/MWh 强度：
+
+$$
+\begin{aligned}
+\mathtt{total}&=\mathtt{operational}+\mathtt{embodied},\\
+\mathtt{operational\_intensity}
+&=\frac{1000\times\mathtt{operational}}{\mathtt{delivered\_demand\_mwh}},\\
+\mathtt{overall\_intensity}
+&=\frac{1000\times\mathtt{total}}{\mathtt{delivered\_demand\_mwh}}.
+\end{aligned}
+$$
+
+## 线路扩建的建设排放
+
+线路建设排放在投运年一次计入 `network_construction_embodied`，并加入该年的 `total`。`adjust_carbon_ledger_for_network` 选择 `commissioning_year == year` 且 `status == "commissioned"` 的网络资产。各资产的 `rating` 以 MW 表示，`factor` 读取以 tCO₂e/MW 表示的 `asset.embodied_carbon_factor_tco2e_per_mw`，`emissions` 以吨表示：
+
+$$
+\begin{aligned}
+\mathtt{rating}
+&=\mathtt{asset.thermal\_rating\_mw\_per\_circuit}\\
+&\qquad\times\mathtt{asset.circuits},\\
+\mathtt{emissions}&=\mathtt{rating}\times\mathtt{factor},\\
+\mathtt{network\_total}&=\sum\mathtt{emissions},\\
+\mathtt{total}&\leftarrow\mathtt{total}+\mathtt{network\_total}.
+\end{aligned}
+$$
+
+更新后的总排放用于 `overall_kgco2e_per_mwh` 和 `delivered_demand_kgco2e_per_mwh`，以正的已供电量 `denominator` 为分母。所选线路缺少排放因子时，其建设条目进入待求值状态，总排放返回 `None`。随附的固定 23 区网络保留其声明的线路；上述新增计算随可选线路扩建模块执行。
 
 ## 数据与实现对应
 

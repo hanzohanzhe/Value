@@ -1,70 +1,41 @@
 # Model framework
 
-VALUE links electricity-system operation to annual changes in the asset fleet. Generation, storage and external electricity exchange participate in market clearing under specified demand and weather. Annual operating revenues, costs and expansion headroom then enter investment and retirement rules. Outputs include generation and storage operation, unserved energy, system resource cost, carbon emissions, operating capacity and construction projects.
+VALUE simulates half-hourly electricity-system operation and annual changes in its assets. Generation, storage and imported electricity enter market clearing through offers. Annual asset income, operating cost and expansion headroom determine investment and retirement proposals. Development times and regional success rates determine when projects enter the operating fleet. Outputs include generation, storage charging and discharging, electricity shortfall, prices, system cost, carbon emissions and operating capacity by technology.
 
-## Temporal and spatial representation
+## Time, units and space
 
-VALUE uses a 0.5-hour operating interval and a fixed 365-day model year containing 17,520 intervals. The clock is UTC, with February represented by 28 days. Power is measured in MW and interval energy in MWh; interval energy equals power multiplied by interval duration. Investment decisions follow a complete operating year.
+The operating interval is half an hour in UTC. Each model year has 365 days and 17,520 intervals, with 28 days in February. Power is measured in MW and interval energy in MWh: 1 MW supplies 0.5 MWh in a half-hour. A complete operating year supplies the annual investment calculation; commissioning and retirement update the fleet between years.
 
-The national model represents Great Britain's electricity system as a single supply–demand node, with interconnectors represented by external boundary offers. The zonal model additionally specifies resource and demand locations, corridor capacities and boundary constraints. The network mappings, demand allocation and capacities jointly define the spatial system. Chapter 7 gives its constraints and solution method.
+The national single-node model clears aggregate demand and supply in Great Britain, with interconnectors offering external electricity. The zonal model forms an electricity balance for each zone from resource locations and demand shares, subject to line and boundary constraints. Chapter 7 specifies the 23-zone inputs, resource allocation, network constraints and numerical solution.
 
-## Methodology profiles
+Monetary calculations use constant start-year prices as a scenario convention, with 2025 as the default start year. Input tables retain the price years of technology costs, imported electricity and policy parameters. Chapter 2 lists the inputs and conversions; Chapter 5 gives generator restart costs in 2025 GBP.
 
-The corrected profile, `value-corrected`, supplies VALUE's default settings and the principal formulation described in this document. The default national dispatch module, `value-bid-at-cost-psm`, applies the `native-corrected-v1` rule set. The staged dispatch module, `value-staged-bid-at-cost-psm`, connects a national schedule to subsequent balancing or zonal redispatch. Chapters 4, 5 and 7 specify the bidding, settlement and storage calculations for these operating pathways.
+## Operating methods
 
-The doctoral-reproduction profile, `doctoral-lineage-0.6.0a2`, is a compatibility configuration retaining thesis-era settings as implemented in VALUE 0.6.0-alpha.2. It applies `native-doctoral-thesis-v1` and retains the earlier weather conversion, downward ordering and storage pricing. Both profiles share UTC demand and interconnector alignment, declared-column reading, thermal net revenue, one storage net position per period, single entries for downward adjustments and must-run surplus, a recorded-blackout value of £17,000/MWh, cost ledger v2 with physical operating expenditure, validation reports, and common definitions of shortfall and served energy. Endogenous proposals in both profiles use the development timelines and regional success rates frozen from the data pack. Each chapter states the compatibility values beside the relevant formulation.
+Default national operation uses the `value-corrected` configuration and `value-bid-at-cost-psm` module. Its Native kernel uses `native-corrected-v1` to determine offer ordering, uniform marginal settlement, storage operation and thermal downward adjustments. Each period first schedules supply against forecast demand and availability, then balances realised demand and availability using the remaining flexibility. Chapter 5 develops the algorithm in this order.
 
-The experimental national pathway, `value-doctoral-national-psm`, defines a separate national clearing and annual-accounting interface. It supplies fixed-year dispatch and experimental cash records; integrated annual-CEM readiness is false. Chapters 5 and 6 describe its operating algorithm and separate annual helpers. The profile and dispatch-module selections jointly identify the method used by a calculation.
+`value-staged-bid-at-cost-psm` passes the national schedule to a separate balancing module. `value-copperplate-balancing` calculates single-node balancing, while `value-zonal-redispatch-balancing` calculates zonal redispatch subject to network constraints. Chapter 4 connects scheduling, balancing and storage state; Chapter 7 defines the zonal objective functions, constraints and settlement.
 
-The interface identifies the methodology profile separately from the dispatch module. The following names connect the calculation described here to the Study editor.
+Perfect-foresight dispatch uses the complete demand and availability sequences within its solution window to optimise generation, imports and storage jointly. Chapter 8 defines the objective, time-coupled constraints and terminal storage condition of `value-perfect-foresight-lp`. It also specifies the run-of-river and reservoir calculations from natural inflows to available hydroelectricity.
 
-|Document term|English interface label|Chinese interface label|Module or profile|
+## Initial conditions and annual sequence
+
+A calculation is defined by its input data pack, start and end years, selected modules and numerical parameters. `native_initial_state` constructs `initial_state` from the fleet, REPD projects, costs, development timelines and regional success rates. Operating assets carry technology, region, power capacity, storage energy capacity, costs and lifetime. Planned projects carry capacity, status and expected commissioning year. Chapter 2 specifies the input fields, values and initialisation rules.
+
+Each year advances the planning projects, operates the annual market and constructs the following year's assets and projects. `AnnualModelOrchestratorV2.run` calls the modules in the order below. The corresponding chapters develop each calculation, including its equations, initial values and boundary conditions.
+
+|Order|Calculation|Variables and functions|Chapter|
 |---|---|---|---|
-|Corrected profile|Corrected methodology (default)|修正口径（默认）|`value-corrected`|
-|Compatibility profile|Doctoral reproduction|论文复现口径|`doctoral-lineage-0.6.0a2`|
-|Native national dispatch|National single node|全国单节点|VALUE live bid-at-cost PSM; `value-bid-at-cost-psm`|
-|Experimental national pathway|Doctoral national physical PSM (experimental)|Doctoral national physical PSM (experimental)|`value-doctoral-national-psm`|
+|1|Update the operating fleet from project commissioning years|`planning.advance_year` produces `advanced.operating_state`|6|
+|2|Prepare demand, weather, availability and external exchange|`psm_input_factory` produces `model_input`|2, 3|
+|3|Clear operating periods and aggregate their results|`psm.run` produces `market`|4, 5, 7, 8|
+|4|Calculate expansion headroom from annual demand, availability and storage use|`policy.evaluate` produces `headroom`|6|
+|5|Evaluate income by owner and technology-region group|`adapt_market_for_investment` assembles accounts; `investment.decide` produces `decision.proposals`|6|
+|6|Admit investment projects using development times and success rates|`planning.admit_projects` produces `admission`|6|
+|7|Update asset age, retirement and new projects|`transition.apply` produces `next_state`|6|
 
-## Annual calculation
+Storage inventory updates within operating periods, while cost observations update annually. National operation creates storage objects for each operating year. The previous year's sold energy and dwell time enter the following year's dynamic storage cost. Chapters 4 and 5 specify opening inventory, efficiencies, self-discharge, period power limits and year-end treatment.
 
-The default annual pathway uses the initial fleet, construction projects, demand and weather to determine annual operation. Existing construction projects advance at the beginning of the year, followed by preparation of available generation and external-exchange inputs. The dispatch module calculates annual operation. Operating results, investment rules and development times then determine the following year's assets and projects.
+Annual investment uses realised income, total capital expenditure, target payback and preferred return. Gas and biomass investment income deducts operating costs; wind, solar and storage use revenue to calculate investment returns. Chapter 6 gives the cost components, four decision tiers, development times, success rates and asset-update pseudocode.
 
-```text
-state = initial_state
-for year in range(initial_state.year, run.end_year + 1):
-    advanced = self.planning.advance_year(run, state)
-    model_input = self.psm_input_factory(run, advanced.operating_state)
-    market = self.psm.run(model_input)
-    headroom = []
-    for slot in sorted(self.expansion_policies):
-        policy = self.expansion_policies[slot]
-        value = policy.evaluate(run, advanced.operating_state, market)
-        headroom.append(value)
-    investment_market = adapt_market_for_investment(
-        market, advanced.operating_state)
-    decision = self.investment.decide(
-        run, advanced.operating_state, investment_market, tuple(headroom))
-    decision = inherit_frozen_zone_shares(decision, advanced.operating_state)
-    admission = self.planning.admit_projects(
-        run, advanced.operating_state, decision.proposals)
-    transition_state = YearState(
-        year, advanced.operating_state.assets, advanced.active_projects,
-        cumulative_metrics=state.cumulative_metrics,
-        extensions=transition_extensions)
-    next_state = self.transition.apply(
-        run, transition_state, admission, decision)
-    state = next_state
-```
-
-`run` contains the selected modules, parameters and model years. `state` holds operating assets and construction projects; `advanced.operating_state` is the fleet after the beginning-of-year planning update. `market` contains dispatch and annual accounts, `headroom` contains the technology expansion limits, and `decision.proposals` contains the new investment proposals. `transition_extensions` carries the annual storage-cost observations and solver-validation state into `next_state`. These names and calls follow the default annual sequence in `gridform_core/v2/orchestrator.py`; selected network-expansion modules add their own annual steps.
-
-
-Default investment uses annual-income-based return and payback criteria, while annualised capital accounting uses a capital recovery factor. Gas and biomass investment income deducts generation, fuel, carbon and time-based operating costs. Wind, solar and storage treat gross revenue as investment profit, with fixed operating expenditure included in the capital-cost convention. Chapter 4 defines these default calculations; Chapter 6 gives the separate experimental account and investment interfaces.
-
-Monetary calculations adopt a constant start-year-price convention, with 2025 as the default start year. Input tables also retain their original price years for technology costs, imported electricity and policy parameters. Chapter 2 lists price sources and conversions, and Chapter 5 gives restart costs in 2025 GBP.
-
-## Data and results
-
-Model inputs comprise demand, weather, initial assets, techno-economic parameters, construction projects and external electricity exchange. Chapter 2 specifies input files, time coverage, units and profile eligibility. Chapter 3 converts weather to available generation. Dataset and function names follow the corresponding calculations so that readers can locate their implementation.
-
-Annual economic results enter the results page after the required physical and accounting checks pass. The corrected profile applies the selected pathway's validation gates, while the doctoral-reproduction profile checks every raw invariant. Period ledgers retain dispatch, storage, shortfall and cost records. Chapter 4 describes their relationship to annual results, and Chapter 9 gives carbon-accounting parameters.
+Annual outputs sum period results or weight them by electricity volumes. Served energy equals demand less unserved energy, system cost aggregates operating and annualised capital expenditure, and carbon accounting uses generation, imported electricity and equipment capacity. Chapters 5, 6 and 9 define these quantities, their units and denominators.

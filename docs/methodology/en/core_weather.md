@@ -1,6 +1,6 @@
 # Weather and available generation
 
-VALUE calculates each asset's available wind and solar energy from its capacity and representative-point weather. The dispatch fields `available_mw` and `available_mwh` denote available power in MW and period energy in MWh; `capacity_mw` is installed power, `availability` is the weather-derived dimensionless output coefficient, and `period_hours` is the period duration. For each asset and period,
+Wind and solar availability is calculated for each asset from its installed capacity and the weather assigned to its representative location. `capacity_mw` is installed MW, `availability` is the dimensionless weather conversion coefficient, `available_mw` is available power, and `available_mwh` is energy available in one operating period:
 
 $$
 \begin{aligned}
@@ -10,22 +10,22 @@ $$
 \end{aligned}
 $$
 
-Market clearing accepts generation up to this available-energy limit. Annual expansion uses the technology-average investment profiles or the experimental physical-availability rule specified below.
+The weather calculation produces an upper supply limit for clearing. Dispatch determines the accepted energy in Chapters 4, 5 and 7. Annual investment uses the technology-average profiles described at the end of this chapter and the capacity limits in Chapter 6.
 
-## Weather sequences and representative-point sampling
+## Weather inputs and spatial sampling
 
-R029 averages the 2020–2024 ERA5 hourly observations by calendar month, day and hour and reuses the resulting 365-day climatology in each model year. The original sequence contains 43,848 hours. Removing 48 hours on 29 February leaves five observations for every retained calendar hour; their arithmetic mean gives 8,760 hours.
+R029 represents each calendar hour by the mean of the 2020–2024 ERA5 observations for that month, day and hour. The source contains 43,848 hourly records. Removing the two leap days removes 48 hours, leaving five observations for each of 8,760 retained calendar hours. The resulting annual sequence is reused in each model year.
 
-Wind speed is calculated from the 100 m wind-vector magnitude at each original hour before calendar averaging: `wind_speed` is the square root of `u100` squared plus `v100` squared. The files retain all three fields. `hourly_unit_cf` preferentially reads `wind_speed`; for a file containing only `u100` and `v100`, it calculates the vector magnitude at the input time.
+Wind speed is averaged after calculation of the vector magnitude at each source hour. The preprocessing first takes the square root of `u100` squared plus `v100` squared, then forms its calendar mean as `wind_speed`; it also retains `u100` and `v100`. The solar file contains accumulated downward horizontal radiation `ssrd`. The R029 files are `calendar_mean_wind_2020_2024.nc` and `calendar_mean_solar_2020_2024.nc`.
 
-The climatology retains a 0.25° grid over Great Britain and nearby seas. The solar file represents downward solar radiation as `ssrd`, while the wind file provides 100 m wind information. Spatial and temporal array dimensions are given below.
+The weather grid covers Great Britain and adjacent seas at 0.25° resolution. The files have the following coordinate extents and array sizes:
 
 | Input | Latitude range | Longitude range | Latitude × longitude × day × hour |
 |---|---|---|---|
 | Solar radiation | 45°–65°N | 14°W–4°E | 81 × 73 × 365 × 24 |
 | 100 m wind | 46°–65°N | 14°W–5°E | 77 × 77 × 365 × 24 |
 
-Each representative point uses the nearest latitude and nearest longitude in the weather grid. `point_series` selects `lat_index` and `lon_index` from the coordinate arrays `lats` and `lons`, with site coordinates `latitude` and `longitude` in degrees:
+A representative site receives the nearest grid latitude and longitude. In `point_series`, site coordinates `latitude` and `longitude` and grid arrays `lats` and `lons` are in degrees. `lat_index` and `lon_index` select the smallest absolute coordinate differences; a tie selects the first grid-array entry:
 
 $$
 \begin{aligned}
@@ -34,7 +34,11 @@ $$
 \end{aligned}
 $$
 
-`point_series` accepts latitude–longitude–day–hour and time–latitude–longitude arrays and flattens the selected point into an hourly sequence. The corrected profile reads `time_convention`; a field labelled `GRIB_stepType=accum` uses hourly interval-end accumulation, while a field lacking both declarations uses the instantaneous convention. `hour_index` produces `index` for zero-based half-hour index `t` and source length `hours`:
+Spatial extraction accepts latitude–longitude–day–hour arrays and time–latitude–longitude arrays. The selected point is flattened in source order to an hourly sequence. An empty sequence, masked value, non-finite value or other array layout terminates weather loading. Each site's `lat` and `lon` are supplied by `fleet.locations`; `representative_sites` matches those locations to the generator names in `fleet.json`.
+
+## Hourly weather and half-hour dispatch
+
+Weather values are assigned according to the physical meaning of their timestamps. The default weather method has `clock="v2"`. A binding's `time_convention` takes precedence; otherwise `GRIB_stepType="accum"` denotes an accumulation ending at the timestamp, and other fields use the instantaneous convention. `hour_index` maps zero-based half-hour index `t` to source index `index`, wrapping after `hours` source values:
 
 $$
 \mathtt{index}[t]=\begin{cases}
@@ -43,13 +47,13 @@ $$
 \end{cases}
 $$
 
-The accumulated convention assigns the radiation for the hour ending at 01:00 to periods beginning at 00:00 and 00:30. Solar geometry uses the midpoint of each receiving period. The instantaneous convention assigns the 00:00 sample to period 00:00 and the 01:00 sample to periods 00:30 and 01:00.
+An hourly accumulation ending at 01:00 supplies the periods beginning at 00:00 and 00:30. The instantaneous rule assigns the sample at 00:00 to the period beginning at 00:00, and the sample at 01:00 to the periods beginning at 00:30 and 01:00. Solar geometry is evaluated at each receiving period's midpoint.
 
-The doctoral reproduction profile uses `index = (t // 2) % hours`, repeating each source value for two half-hours. Original GBP1 weather groups by day of year into 366 days, or 8,784 hours, and uses the first 8,760 hours. R029's 8,760-hour calendar climatology carries the instantaneous convention in its current metadata. The experimental R029 dispatch pathway retains the hourly-repeat clock and raw generation curves.
+The R029 calendar-mean files declare instantaneous inputs, so they use the second row of the index rule. The supported `clock="v1"` setting instead uses `index = (t // 2) % hours`: each source value serves two consecutive half-hours. These index rules apply to the declared source order, including the wrap from the final source hour to the first.
 
-## Wind conversion and losses
+## Wind power curve and losses
 
-Wind availability follows cut-in, cubic growth, rated output and cut-out segments. `wind_unit_output` expresses the power curve on a 20-unit scale; `hourly_unit_cf` divides its result by 20 to obtain the dimensionless hourly coefficient `hourly`. Wind speed `speed`, rated speed `rated` and cut-out speed `cut_out` are in m/s:
+Wind availability follows a cut-in speed of 3 m/s, cubic growth to rated output, constant rated output and a cut-out limit. `hourly_unit_cf` reads `wind_speed` when that variable is present; otherwise it forms the magnitude from `u100` and `v100`. `wind_unit_output` uses a 20-unit output scale and its result is divided by 20 to obtain the dimensionless hourly coefficient `hourly`. For speed `speed`, rated speed `rated` and cut-out speed `cut_out`, all in m/s,
 
 $$
 \mathtt{wind\_unit\_output}(\mathtt{speed})=\begin{cases}
@@ -59,18 +63,20 @@ $$
 \end{cases}
 $$
 
-Onshore wind uses `rated = 9.7` and `cut_out = 25`; offshore wind uses `rated = 10.5` and `cut_out = 30`. The corrected profile multiplies `hourly[index]` by `multiplier`, the product of the wake, energy-availability and electrical factors in `value_uk_vre_loss_factors_v1.json`.
+Onshore wind uses `rated=9.7` and `cut_out=25`; offshore wind uses `rated=10.5` and `cut_out=30`. Output equals the rated value at the cut-out speed and falls to zero above it. The cubic segment is bounded to the 0–20 range before conversion to `hourly`.
+
+The delivered wind coefficient multiplies the assigned `hourly[index]` by the product of wake, energy-availability and electrical factors. `method.multiplier(technology)` reads the following values from `value_uk_vre_loss_factors_v1.json` when `loss_factors=true`, the default setting:
 
 | Technology | Wake factor | Energy-availability factor | Electrical factor | `multiplier` |
 |---|---|---|---|---|
 | Onshore wind | 0.95 | 0.97 | 0.98 | 0.90307 |
 | Offshore wind | 0.88 | 0.945 | 0.98 | 0.814968 |
 
-At 8 m/s, the onshore raw coefficient is 0.5476061707 and its corrected coefficient is approximately 0.49453. A 100 MW asset therefore supplies approximately 49.453 MW of available power. The doctoral reproduction profile uses the raw curve with a multiplier of 1. The separate experimental R029 pathway also retains the raw curve.
+At 8 m/s the onshore curve gives 0.5476061707. Multiplication by 0.90307 gives approximately 0.49453, corresponding to 49.453 MW of available power from 100 MW of installed capacity. The supported setting `loss_factors=false` sets `multiplier=1.0` and uses the curve output directly.
 
-## Solar radiation and array-plane conversion
+## Horizontal radiation and solar conversion
 
-The corrected profile converts accumulated horizontal ERA5 radiation to irradiance on a south-facing tilted plane, then applies a performance ratio of 0.83 and a coefficient ceiling of 1. `hourly_unit_cf` reads `ssrd` into `raw` in J/m² and converts each value to `hourly` in kW/m²:
+Solar conversion first expresses each source-hour radiation value as irradiance. `hourly_unit_cf` reads `ssrd` as `raw` in J/m² and returns `hourly` in kW/m². The input filter and unit conversion are
 
 $$
 \mathtt{hourly}=\begin{cases}
@@ -79,13 +85,19 @@ $$
 \end{cases}
 $$
 
-Array tilt follows latitude. In `optimal_tilt_jacobson_jadhav`, `phi` is latitude in degrees north; the function applies the 0°–65°N polynomial from [Jacobson and Jadhav (2018), Solar Energy 169, 55–66](https://web.stanford.edu/group/efmh/jacobson/Articles/I/TiltAngles.pdf). Its returned value becomes `tilt`, in degrees, in `plane_of_array`:
+The default solar method uses `plane_of_array=true` and a performance ratio of 0.83. Array-plane conversion applies when `clock="v2"` and `time_convention="accumulation_end_of_hour"`; it evaluates horizontal irradiance on a south-facing tilted surface at each half-hour midpoint. Instantaneous sources, including R029 and VALUE 101, use horizontal irradiance multiplied by 0.83. With `plane_of_array=false`, all sources use that horizontal calculation. `loss_factors=false` replaces the performance ratio by 1.0.
+
+Array tilt is a function of site latitude. The default `tilt_rule="jacobson-jadhav-2018"` evaluates the 0°–65°N polynomial of [Jacobson and Jadhav (2018), Solar Energy 169, 55–66](https://web.stanford.edu/group/efmh/jacobson/Articles/I/TiltAngles.pdf). In `optimal_tilt_jacobson_jadhav`, `phi` is latitude in degrees north; the returned degrees become `tilt` in `plane_of_array`:
 
 $$
 \mathtt{tilt}=1.3793+\mathtt{phi}\times\bigl[1.2011+\mathtt{phi}\times(-0.014404+0.000080509\mathtt{phi})\bigr].
 $$
 
-Solar geometry uses each half-hour midpoint. `period_clock` produces `day_of_year` and `utc_hours` from zero-based period index `t`; `day_angle` gives the annual angle `g`. The functions `declination`, `equation_of_time_minutes` and `eccentricity_factor` use the following implemented coefficients. Their outputs are declination `decl` in radians, the time correction in minutes and a dimensionless orbital-distance factor:
+The tilt parameter also supports `tilt_rule="site_latitude"`, giving the absolute latitude in degrees, and `tilt_rule="fixed"`, using `fixed_tilt_deg` in [0,90]. The radiation plane faces south under all three rules. `PlaneOfArrayParameters` supplies `albedo=0.2`, `solar_constant_w_m2=1361` and `max_zenith_deg=87`. Supported parameter ranges are [0,1] for albedo, 1,300–1,400 W/m² for the solar constant and [80,90) degrees for the zenith threshold.
+
+## Solar geometry
+
+Solar geometry follows the UTC midpoint of the operating period. `period_clock` returns the calendar day `day_of_year` and hour `utc_hours`; `day_angle` calculates the annual angle `g` in radians. For zero-based period `t`,
 
 $$
 \begin{aligned}
@@ -94,6 +106,8 @@ $$
 \mathtt{g}&=2\pi(\mathtt{day\_of\_year}-1)/365.
 \end{aligned}
 $$
+
+Declination and orbital corrections use the following coefficients in `declination`, `equation_of_time_minutes` and `eccentricity_factor`. The resulting `decl` is in radians, the time correction is in minutes and the distance factor is dimensionless:
 
 $$
 \begin{aligned}
@@ -119,7 +133,7 @@ $$
 \end{aligned}
 $$
 
-Longitude and the time correction determine `solar_time` and hour angle `omega`. The function `incidence_cosines` converts latitude and tilt to radians as `phi` and `beta`; its outputs become `cos_z` and `cos_theta`, the cosines of zenith angle and incidence angle:
+Longitude and the time correction give local solar time and hour angle. `longitude_deg` is positive eastward, `solar_time` is in hours and `omega` is in radians. `incidence_cosines` converts latitude and tilt to radians as `phi` and `beta`, returning `cos_z` and `cos_theta` for the zenith and incidence angles:
 
 $$
 \begin{aligned}
@@ -133,11 +147,15 @@ $$
 \end{aligned}
 $$
 
-The horizontal irradiance `ghi` is separated into beam and diffuse components using the hourly relation of [Erbs, Klein and Duffie (1982), Solar Energy 28(4), 293–302](https://www.sciencedirect.com/science/article/pii/0038092X82903024). `extraterrestrial_normal` equals 1.361 kW/m² times `eccentricity_factor(day_of_year)`. For positive `ghi` and zenith below 87°, the clearness index `kt` and diffuse fraction `kd` are
+## Diffuse radiation and array-plane irradiance
+
+The horizontal irradiance is decomposed into diffuse and beam components. `plane_of_array` sets `ghi` to the non-negative part of `ghi_kw_m2`, in kW/m², and calculates `extraterrestrial_normal` as `parameters.solar_constant_w_m2 / 1000.0 * eccentricity_factor(day_of_year)`; the default multiplier is 1.361 kW/m². For positive `ghi` and zenith below 87°, the clearness index is
 
 $$
 \mathtt{kt}=\min\left(1,\max\left(0,\frac{\mathtt{ghi}}{\mathtt{extraterrestrial\_normal}\times\mathtt{cos\_z}}\right)\right),
 $$
+
+The diffuse fraction follows the hourly relation of [Erbs, Klein and Duffie (1982), Solar Energy 28(4), 293–302](https://www.sciencedirect.com/science/article/pii/0038092X82903024). The coefficient `kd` depends on the dimensionless clearness index `kt`; `middle` is the polynomial value for its central interval:
 
 $$
 \begin{aligned}
@@ -151,7 +169,7 @@ $$
 \end{aligned}
 $$
 
-The [Hay–Davies (1980) transposition](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.irradiance.haydavies.html) combines beam, anisotropic sky-diffuse and ground-reflected irradiance. `dhi`, `bhi` and `dni` denote diffuse horizontal, beam horizontal and direct normal irradiance in kW/m²; `anisotropy`, `beam_ratio`, `sky_view` and `ground_view` are dimensionless. With `albedo = 0.2`, the array-plane irradiance `poa` is
+The [Hay–Davies (1980) transposition](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.irradiance.haydavies.html) combines beam, sky-diffuse and ground-reflected irradiance. `dhi`, `bhi` and `dni` denote diffuse horizontal, beam horizontal and direct normal irradiance in kW/m². `anisotropy`, `beam_ratio`, `sky_view` and `ground_view` are dimensionless; the default `albedo` is 0.2. The array-plane irradiance `poa` is
 
 $$
 \begin{aligned}
@@ -159,8 +177,9 @@ $$
 \mathtt{dni}&=\mathtt{bhi}/\mathtt{cos\_z},\\
 \mathtt{anisotropy}&=\min(1,\max(0,\mathtt{dni}/\mathtt{extraterrestrial\_normal})),\\
 \mathtt{beam\_ratio}&=\max(\mathtt{cos\_theta},0)/\mathtt{cos\_z},\\
-\mathtt{sky\_view}&=(1+\cos\mathtt{beta})/2,\\
-\mathtt{ground\_view}&=(1-\cos\mathtt{beta})/2,\\
+\mathtt{cos\_beta}&=\cos(\pi\mathtt{tilt}/180),\\
+\mathtt{sky\_view}&=(1+\mathtt{cos\_beta})/2,\\
+\mathtt{ground\_view}&=(1-\mathtt{cos\_beta})/2,\\
 \mathtt{beam}&=\mathtt{bhi}\times\mathtt{beam\_ratio},\\
 \mathtt{sky\_diffuse}&=\mathtt{dhi}\times\bigl[\mathtt{anisotropy}\times\mathtt{beam\_ratio}\\
 &\qquad +(1-\mathtt{anisotropy})\times\mathtt{sky\_view}\bigr],\\
@@ -169,13 +188,15 @@ $$
 \end{aligned}
 $$
 
-For zenith at or above 87° or zero `ghi`, the calculation sets `kd = 1`, `dhi = ghi`, `bhi = 0`, `dni = 0`, `anisotropy = 0` and `beam_ratio = 0`. The same array-plane sum retains diffuse and ground-reflected irradiance. For corrected accumulated inputs, `site_cf_by_source` converts `poa` into the output coefficient `values`:
+Periods with zenith at or above 87° or with zero `ghi` have `kt=0`, `kd=1`, `dhi=ghi`, `bhi=0`, `dni=0`, `anisotropy=0` and `beam_ratio=0`. Their `poa` retains the diffuse and ground-reflected terms. The selected `max_zenith_deg` replaces 87° in this condition when its parameter is changed.
+
+Array-plane irradiance is converted to generation by the performance ratio and a coefficient ceiling of 1. Under the default parameters, `site_cf_by_source` returns the dimensionless coefficient `values` as
 
 $$
 \mathtt{values}=\min(0.83\mathtt{poa},1).
 $$
 
-The accumulated-input convention selects array-plane conversion. Corrected instantaneous inputs, including the current R029 calendar climatology and VALUE 101 synthetic input, apply 0.83 directly to horizontal irradiance. The doctoral reproduction profile and experimental R029 pathway retain horizontal conversion with a multiplier of 1. The following pseudocode uses the implemented function and variable names:
+The coefficient ceiling is applied after the array-plane step. Horizontal conversion applies the performance ratio to `hourly[index]` directly. The following algorithm covers wind, instantaneous solar and accumulated solar. `ds` is the opened NetCDF input, `binding` declares its time convention, `periods` is the requested number of half-hours, and `method` contains `clock`, `loss_factors` and `plane_of_array`:
 
 ```text
 hourly, evidence = hourly_unit_cf(ds, technology, latitude, longitude, binding)
@@ -190,29 +211,15 @@ if technology == "solar" and method.plane_of_array:
 multiplier = method.multiplier(technology)
 values = values * multiplier
 if poa_applied:
-    values = minimum(values, 1.0)
+    values = np.minimum(values, 1.0)
 return values
 ```
 
-## Comparison with observed load factors
+## Project locations and weather mixtures
 
-The GBP1 representative-point weather calculation can be compared with national load factors from [DUKES Table 6.3](https://www.gov.uk/government/statistics/renewable-sources-of-energy-chapter-6-digest-of-united-kingdom-energy-statistics-dukes). The model values below are unweighted means across representative points, each evaluated over 17,520 half-hours before curtailment. DUKES divides national generation by the mean of installed capacity at the beginning and end of the year and by annual hours. These definitions determine the scope of the comparison.
+Assets obtain their representative weather from technology and location. The GB template lists 11 solar and 11 onshore points and 21 offshore point names; the R029 2025 stock has 11 solar, 11 onshore and 18 offshore assets with positive capacity. Operating stock is mapped during the initial selection in Chapter 2. Planned projects receive a representative point before commissioning.
 
-| Technology | GBP1 corrected | DUKES 2019–2024 mean | DUKES 2020–2024 mean | Corrected / 2020–2024 mean | GBP1 doctoral reproduction |
-|---|---|---|---|---|---|
-| Onshore wind | 0.4026 | 0.2593 | 0.2582 | 1.56 | 0.4458 |
-| Offshore wind | 0.4913 | 0.4016 | 0.4009 | 1.23 | 0.6028 |
-| Solar PV | 0.1065 | 0.1033 | 0.1025 | 1.04 | 0.1201 |
-
-The corrected wind values remain above the observed national averages. The calculation combines unadjusted ERA5 wind speeds, one power curve for each wind technology and fixed loss multipliers. DUKES measures realised fleet generation, including the effects of dispatch and the operating fleet's composition. The table provides an external comparison for the specified parameterisation.
-
-The solar calculation uses a climatological radiation series followed by nonlinear decomposition and transposition. For the GBP1 representative points, the calculated diffuse share is approximately 0.63–0.75 and the ratio of array-plane to horizontal irradiation is approximately 1.05–1.10. These quantities describe the adopted climatology and transformation; year-specific simulations require year-specific weather inputs.
-
-## Project locations, asset aggregation and zones
-
-Wind and solar projects obtain their spatial weather correspondence through representative points of the same technology. The initial GB template contains 11 solar and 11 onshore representative points, plus 21 offshore point names. R029's 2025 initial specification contains 11 solar, 11 onshore and 18 offshore assets with positive capacity. `fleet.locations` and generator names jointly specify representative-point locations.
-
-Projects with explicit coordinates use the nearest same-technology representative point. `nearest_site` converts project latitude and longitude to radians as `lat1` and `lon1`, and candidate coordinates as `lat2` and `lon2`. Its great-circle distance is
+A planned project's explicit location takes precedence. `attach_project_weather` first uses its `latitude` and `longitude`, then searches the source REPD row by `physical_project_id`, then uses the site name when coordinates remain missing. Finite coordinates are assigned to the nearest representative of the same technology. `nearest_site` converts project coordinates to radians as `lat1`, `lon1` and representative coordinates as `lat2`, `lon2`; the distance in kilometres is
 
 $$
 \begin{aligned}
@@ -222,7 +229,7 @@ $$
 \end{aligned}
 $$
 
-Equal distances retain the first point in the candidate list. Solar and onshore projects without an explicit location first use the REPD region mapping below.
+Equal distances select the first representative in the declared order. Solar and onshore planned projects with missing coordinates use their REPD region and the following city mapping. The initial operating-stock reader also uses this table, with the region taking precedence over coordinates at that earlier step.
 
 | REPD region | Representative point |
 |---|---|
@@ -238,21 +245,35 @@ Equal distances retain the first point in the candidate list. Solar and onshore 
 | West Midlands | Birmingham |
 | Yorkshire and Humber | Sheffield |
 
-Remaining unlocated projects are distributed in proportion to existing same-technology capacity. In `commissioned_project_weather`, `stock[name]` is the operating capacity at a representative point and `total_stock` is its sum across the technology. Located projects entering operation in the same year are included first. Each remaining point receives `total_new * stock[name] / total_stock` MW, with the final point receiving the remainder. Zero total capacity selects the first representative point; assigned amounts at or below 0.000001 MW have zero weather weight.
+Unlocated projects share a capacity-weighted weather mixture when they enter operation. `commissioned_project_weather` first accumulates each representative's operating capacity as `stock[name]` and adds all explicitly located projects due in that year. It then groups the remaining projects by technology. `total_stock` is the corresponding stock in MW, `total_new` is the new MW and `names` is the list of that technology's representatives:
 
-Assets retain the `weather_source_weights` fixed at commissioning. `source_weights` supplies the mapping `weights`; `_map_lineages` combines each source curve `values` with its associated `weight`. The resulting dimensionless curve `combined` is
+```text
+total_stock = sum(stock[name] for name in names)
+total_new = sum(p.capacity_mw for p in projects)
+if total_new <= 0 or total_stock <= 0:
+    weights = {names[0]: 1.0}
+else:
+    names.sort()
+    remaining, weights = total_new, {}
+    for i, name in enumerate(names):
+        amount = remaining if i == len(names) - 1 else total_new * stock[name] / total_stock
+        remaining -= amount
+        weights[name] = amount / total_new if amount > 1e-6 else 0.0
+```
+
+Each project in the unlocated group receives the same `weights`. Positive allocations above 0.000001 MW become `amount / total_new`; smaller allocations have zero weather weight. Alphabetical ordering and the final-point remainder fix the floating-point allocation order. With zero total stock, the first representative receives weight 1.
+
+The stored `weather_source_weights` remain attached to the asset after commissioning. `source_weights` uses this explicit mapping first, then a single `weather_source_asset_id`, then an identity match through the asset, assigned generator, investment owner, source agent or base asset. Source names must identify representatives of the same technology. Weights must be finite and non-negative, with their sum at most 1 plus 0.000000000001. If `deficit = 1.0 - sum(weights.values())` exceeds that tolerance, `cohort` is the positive finite `weather_allocation_cohort_mw` and `skipped` counts zero weights; acceptance requires `deficit <= skipped * 1e-6 / cohort + 1e-12`.
+
+The asset's availability is the weighted sum of its source curves. `_map_lineages` applies the mapping `weights` to each source's `values`; using subscript `name` to select the source array, the resulting `combined` is
 
 $$
 \mathtt{combined}[t]=\sum_{\mathtt{name}}\mathtt{weights}[\mathtt{name}]\times\mathtt{values}_{\mathtt{name}}[t].
 $$
 
-The weather reader checks source technology and finite, non-negative weights. The weights sum to 1 apart from the bounded effect of the 0.000001 MW allocation rule. Subsequent capacity changes retain these weights.
+Zonal allocation preserves the weather curve while dividing the asset's physical capacity. `StagedBidAtCostPSM` multiplies `capacity_mw` by each `share`; the shares sum to 1. It multiplies storage `charge_power_mw`, `discharge_power_mw`, `energy_capacity_mwh` and `initial_soc_mwh` by the same share. Chapter 7 defines the asset-to-zone mapping and network constraints.
 
-The current national market maps annual assets onto a fixed market-agent and representative-weather topology. Mapping first uses identical asset identifiers, then selects agents of the same technology with matching region and allocates by previously mapped capacity. Zero capacity invokes template capacity and then equal allocation. Each market agent's final capacity is the sum of the annual assets assigned to it.
-
-Zonal operation divides asset capacity by `zone_share`, retaining its weather curve and economic owner. `StagedBidAtCostPSM` sets each regional resource's `capacity_mw` to the original `resource.capacity_mw` multiplied by `share`; the shares sum to 1. It applies the same multiplication to storage `charge_power_mw`, `discharge_power_mw`, `energy_capacity_mwh` and `initial_soc_mwh`, preserving their national totals.
-
-The separate aggregation interface `REPDERA5AggregatedWeather.build` combines precomputed project profiles within each owner–technology–zone group. For allocation records `rows`, `total` is their summed `capacity_mw` in MW. Each source curve becomes `values`, and the group curve `weighted` is
+The optional `REPDERA5AggregatedWeather.build` interface combines caller-supplied project curves within each owner–technology–zone group. For allocation records `rows`, `total` is total MW, `values` is a project's dimensionless curve and `weighted` is the group's curve:
 
 $$
 \begin{aligned}
@@ -261,50 +282,10 @@ $$
 \end{aligned}
 $$
 
-The aggregation accepts equal-length finite profiles within [0,1] and positive total capacity. Its caller supplies the project profiles. The current zonal execution pathway copies the representative profile to each allocated portion of an asset.
+This aggregation requires equal-length, finite project curves in [0,1] and positive `total`. Multiplication of `weighted` by total MW gives the sum of the projects' available power. The zonal dispatch interface can instead use the representative curve directly for each allocated portion of an asset.
 
-## Annual wind and solar capacity limits
+## Technology-average investment profiles
 
-The general investment rule derives capacity headroom from peak demand and the peak of each technology's CSV profile. In `canonical_psm_data`, `demand` is period energy in MWh, `period_hours` is 0.5 h, `availability` is the dimensionless technology profile and `capacity_by_technology` is operating MW. The `vre-expansion-cap` module multiplies the resulting `headroom` by `expansion.vre_cap_fraction`, recorded as `fraction`, to obtain annual limits `limits` in MW:
+Annual expansion calculations use one technology-average profile for solar, onshore wind and offshore wind. These inputs combine 2022 ERA5 data with the fleet and project assumptions embodied in `sa.csv`, `wa.csv` and `we.csv`. Each public2 file contains 8,760 hourly values and declares `interval_minutes=60`; each value supplies two consecutive half-hours in source row order.
 
-$$
-\begin{aligned}
-\mathtt{peak}&=\max_t\mathtt{availability}[t],\\
-\mathtt{headroom}[\mathtt{technology}]&=\max\left(0,\frac{\max_t\mathtt{demand}[t]}{\mathtt{period\_hours}\times\max(\mathtt{peak},10^{-12})}\right.\\
-&\qquad\left.-\mathtt{capacity\_by\_technology}[\mathtt{technology}]\right),\\
-\mathtt{limits}[\mathtt{technology}]&=\mathtt{fraction}\times\mathtt{headroom}[\mathtt{technology}],\\
-\mathtt{fraction}&=0.20.
-\end{aligned}
-$$
-
-Technology-average investment profiles combine 2022 ERA5 data with fleet and project assumptions. The original solar `sa.csv` has 8,761 rows, with a final zero at `2023-01-01T00:00:00`; onshore `wa.csv` and offshore `we.csv` each have 8,760 rows. Public2 removes the final solar row and declares `interval_minutes=60`. Repeating each remaining value for two half-hours preserves the values formerly obtained by annual truncation. The investment reader retains the CSV row order and ERA5 interval-end timestamps; these profiles supply the investment calculation directly, while dispatch uses the weather-clock, loss and solar-plane transformations above.
-
-For a peak demand of 1,000 MW, `peak = 0.8` and operating capacity of 300 MW, `headroom` is 950 MW and the annual limit is 190 MW. A zero profile peak uses the denominator floor 0.000000000001.
-
-The experimental function `thesis96_vre_annual_expansion_cap` sets an annual addition limit from the number of negative net-demand periods. It takes three full-year inputs: `demand_mwh`, actual demand energy per period; `operational_vre_available_mwh`, the physical available energy of all operating wind and solar assets; and `generation_per_mw_mwh`, available energy per MW of the technology being expanded. The first two are in MWh/period and the third in MWh/MW/period. The technology curve is the available energy of its operating assets divided by their total MW; zero technology capacity gives a zero curve.
-
-The function subtracts available renewable energy from demand as `net` and counts `already_negative`, the periods with `net < 0`. The default `negative_threshold = 200` half-hours represents 100 hours. Reaching this count gives an addition limit of zero; otherwise each eligible period contributes a capacity transition `net / profile`, where `profile` is the supplied `generation_per_mw_mwh`. The algorithm selects the required order statistic and multiplies it by `cap_fraction = 0.20`:
-
-```text
-demand = demand_mwh
-available = operational_vre_available_mwh
-profile = generation_per_mw_mwh
-net = demand - available
-already_negative = count_nonzero(net < 0)
-if already_negative >= negative_threshold:
-    return 0.0
-transitions = net[(net >= 0) & (profile > 0)] / profile[(net >= 0) & (profile > 0)]
-needed = negative_threshold - already_negative
-if len(transitions) < needed:
-    return 0.0
-critical = partition(transitions, needed - 1)[needed - 1]
-return cap_fraction * critical
-```
-
-`critical` is the `needed`-th smallest transition in MW. At a transition, the corresponding net demand equals zero; a larger addition makes it negative. A shortage of eligible transitions gives zero under this function's convention. The R029 public2 package published with VALUE 0.7.0-alpha.1 supplies demand, assets and weather for constructing these inputs. Chapter 6 specifies the experimental pathway's execution coverage.
-
-## Data and implementation
-
-`calendar_mean_solar_2020_2024.nc` and `calendar_mean_wind_2020_2024.nc` provide the R029 calendar climatology. `site_weather` reads representative-point series and applies the selected clock and conversion; `solar_irradiance` calculates array-plane radiation. `value_uk_vre_loss_factors_v1.json` supplies conversion parameters, and `value_uk_vre_cf_disclosure_v1.json` records the load-factor comparison. `doctoral_weather` provides the frozen conversion for the experimental pathway, while `doctoral_weather_mapping` manages locations and mixed weather weights.
-
-`scheme_c_native_psm` aggregates capacity into national market agents, and `staged_psm` divides capacity among zones. Annual limits use the general peak rule in `canonical_psm_data` and `v2_module_definitions`. The experimental net-demand threshold function `thesis96_vre_annual_expansion_cap` is defined in `doctoral_policy`.
+The resulting `availability` is dimensionless and supplies `peak` and annual capacity headroom in Chapter 6. These investment profiles enter that rule directly. Dispatch availability follows the site sampling, time assignment, conversion and losses defined above.

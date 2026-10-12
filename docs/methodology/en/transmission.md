@@ -2,7 +2,13 @@
 
 ## Spatial representation of zonal redispatch
 
-Zonal redispatch adds spatial constraints to a national ahead schedule. Each half-hour accepts upward and downward bids so that final injections satisfy zonal demand, corridor capacities and geographical boundary limits. Flow follows a lossless transport formulation with conservation and capacity constraints. The 23-zone configuration and 11-zone experiment use this representation; DC dispatch and AC feasibility use the separate methods below. These network modules operate under the corrected methodology with an eligible dataset.
+Zonal redispatch determines generation adjustments, storage operation and transfers that serve each zone after a national ahead market. Each half-hour uses a lossless transport model: final injections satisfy zonal demand, corridor limits and geographical boundary capacities. The British input contains 23 zones and 22 computational corridors. The DC and AC formulations below use bus and branch inputs.
+
+The British network inputs are supplied in `value-uk-research-suite-v1-public2`. The `zones` table defines the regions, `corridors` gives directed connections, `cutsets` assigns corridors to geographical boundaries, `ratings` supplies time-dependent limits, `asset-map` assigns resources to zones, `demand` supplies zonal MWh, and `interconnector-landings` assigns import/export assets to landing zones. B6 and B7a have symmetric capacities of 6,700 and 9,400 MW. The supplied 2025–2034 configuration holds these capacities fixed.
+
+Asset location follows a fixed precedence. `_zone_shares_with_source` first uses `frozen_zone_shares`, then matches `asset_id` in `asset-map`, then matches it in `interconnector-landings`, and finally assigns the asset to the single zone marked `is_unconstrained_fallback`. Shares sum to 1 within a tolerance of \(10^{-8}\). An asset occupying several zones becomes a physical unit in each zone with capacity, storage power, energy and opening inventory multiplied by its share; all units retain their original investment owner.
+
+The supplied mapping places wind and solar by site and assigns CCGT, OCGT, biomass, run-of-river hydro, nuclear, storage and imports to `ENGLAND_FALLBACK`. The fallback node connects to the declared central transport zone. Nuclear stations created from the station policy enter through that fallback, including Torness, whose geographical location is north of B6. Import resource names use `import:<country>`, while landing-table names use `interconnector:<line>`; exact identifier matching therefore sends these imports to the fallback node. These assignments determine the injections subject to the B6 and B7a constraints.
 
 Demand follows the spatial rule selected for the case. `align_zonal_demand` preserves the network pack's zonal shares for the 23-zone study and scales them to national scenario demand. Its arrays `aligned`, `output_real`, `network_demand_mwh_by_zone` and `network_national_mwh` are MWh; zone and period indices are \(z,t\):
 
@@ -13,17 +19,26 @@ $$
 \end{aligned}
 $$
 
-The last zone receives national demand less the sum allocated to the preceding zones, preserving the total. The 11-zone experiment instead selects absolute network demand and retains the forecast-to-actual ratio from the base series:
+The last zone receives national demand less the sum allocated to the preceding zones. When both national totals are zero, the scale is 1; a positive scenario demand requires a positive network total. The resulting `demand_mwh_by_zone` enters the period problem with asset locations, realised availability and interconnector import/export envelopes.
 
-$$
-\begin{aligned}
-\mathrm{output\_real}_t&=\mathrm{network\_national\_mwh}_t,\\
-\mathrm{output\_forecast}_t&=\mathrm{output\_real}_t\cdot
-\frac{\mathrm{research\_forecast\_mwh}_t}{\mathrm{research\_real\_mwh}_t}.
-\end{aligned}
-$$
+## Ahead schedule and adjustment bids
 
-A zero denominator with positive required demand is an input error. The resulting `demand_mwh_by_zone` accompanies asset locations, realised availability and interconnector import/export envelopes into `build_single_period_problem`.
+The network module builds its ahead schedule from period resource availability and opening storage inventory. `_ahead_offers` gives each resource `capacity_mw * availability * period_hours` MWh at its period marginal cost multiplied by `market.bid_multiplier`, default 1. Storage offers the smaller of its discharge-power limit over the period and `soc * discharge_efficiency`, at `bid_price_gbp_per_mwh(0.0)` multiplied by the same factor. `clear_ahead` orders by `price_gbp_per_mwh` and then `offer_id`, accepts the smaller of available and remaining forecast MWh, and stops when the remaining requirement is at most `1e-12` MWh or all offers are exhausted. The last accepted price settles the ahead schedule.
+
+Resource adjustment volumes are measured relative to `schedule_mwh_by_asset`. `_flexibility_bids` offers upward MWh equal to the positive part of available MWh less scheduled MWh and downward MWh up to the scheduled quantity. Upward prices use marginal cost times `market.bid_multiplier`. The `network-economic-v2` downward rules use `market.dec_multiplier`, default 1, and the per-technology support and nuclear-premium inputs:
+
+|Resource|Downward price, GBP/MWh|
+|---|---|
+|Fuel generation|Marginal cost × downward multiplier − policy support|
+|Imports|Period import price × downward multiplier|
+|Wind, solar and run-of-river hydro|− policy support|
+|Nuclear|Marginal cost × downward multiplier − policy support − inflexibility premium|
+
+`resource_dec_price` reads policy support from `market.policy_support_gbp_per_mwh_by_technology`, default zero, and the premium from `network.inflexible_dec_premium_gbp_per_mwh_by_technology`, default 100 GBP/MWh for nuclear. Gas and biomass split scheduled MWh into `running_mwh` and `shutdown_mwh`: the latter equals scheduled MWh times `min_stable_fraction`. `thermal_dec_segments` retains the running price and gives the shutdown segment the `net_saving` calculation and restart table in Chapter 5. The downtime forecast includes the current period and consecutive subsequent periods whose forecast demand is covered by declared wind, solar and nuclear availability, each lasting `period_hours`. A shutdown shorter than `min_down_time_h` receives the smaller of its net saving and a price 0.01 GBP/MWh below every other downward price band.
+
+Storage adjustment bids cover the change from scheduled discharge to final discharge or charging. `maximum_discharge` is the smaller of `discharge_power_mw * period_hours` and `soc * discharge_efficiency`; upward volume is `max(maximum_discharge - scheduled, 0)`. Downward volume is scheduled MWh plus the smaller of charging power over the period and remaining internal capacity divided by charging efficiency. `storage_dec_price` takes the minimum of the storage upward price, that price times round-trip efficiency, and the lowest available upward price in the period when such a bid exists. A declared export envelope adds a downward withdrawal bid at the nonnegative part of its export price.
+
+Storage starts at `initial_soc_mwh`; each solved final inventory becomes the next period's opening inventory. Generation follows the period availability and accepted adjustment bounds below. The algorithm processes the supplied chronology once in time order, returning final injections, charge, discharge, inventory, corridor flows, unmet demand and settlement for every period.
 
 ## Adjustment objectives and operating constraints
 
@@ -57,7 +72,7 @@ The second objective sums accepted bid MWh and shortage MWh. The third assigns w
 |Nuclear|4|
 |Fuel shutdown before its minimum downtime|5|
 
-Within a zone and at an exact primary-price tie, storage charging precedes run-of-river, wind, solar and nuclear reductions; fuel shutdown follows wind and solar and precedes nuclear. Across zones, class weights also trade against corridor-flow MWh. The primary LP uses exact prices, while copperplate balancing groups downward prices in 0.01 GBP/MWh bands. The fourth objective weights successive variables by 1, 2, … in the fixed order of bid, corridor, zone and storage identifiers.
+Within a zone and at an exact primary-price tie, storage charging precedes run-of-river, wind, solar and nuclear reductions; fuel shutdown follows wind and solar and precedes nuclear. Across zones, class weights also trade against corridor-flow MWh. The primary LP uses exact prices. The fourth objective weights successive variables by 1, 2, … in the fixed order of bid, corridor, zone and storage identifiers.
 
 Final asset injection adds signed accepted bids to the ahead schedule. `final_dispatch_mwh_by_asset` and `schedule_mwh_by_asset` are MWh. The index \(k\) identifies a bid; its `asset_id` selects asset \(a\), and `asset_zone_id_by_asset` selects the zone \(z\):
 
@@ -103,7 +118,7 @@ $$
 \le\mathrm{forward\_capacity}_b.
 $$
 
-All boundary constraints apply together. A corridor-specific limit additionally bounds its own flow; `absolute-flow` is at least both positive and negative signed flow. Thus 6,700 MW at B6 becomes 3,350 MWh per half-hour, and 2,200 MW on Western Link becomes 1,100 MWh. Corridors without individual limits remain constrained by zonal conservation and their boundary memberships.
+All boundary constraints apply together. A corridor-specific limit additionally bounds its own flow; `absolute-flow` is at least both positive and negative signed flow. Thus 6,700 MW at B6 becomes 3,350 MWh per half-hour. Corridors without individual limits remain constrained by zonal conservation and their boundary memberships.
 
 Storage redispatch determines final internal inventory from realised charge and discharge. `opening` is `initial_soc_mwh_by_asset`; `capacity` is `energy_capacity_mwh`. For each store,
 
@@ -136,7 +151,7 @@ $$
 
 Network constraint cost compares this result with the same LP collapsed to one node, removing corridors and boundaries. `solve_network_free_counterfactual` retains bids, export arbitrage, import/export envelopes, storage physics, shortage valuation and solver settings. Both cases use the same period unit-cost table: supplied time-varying resource cost, otherwise annual marginal cost, storage cycle depreciation and zero export resource cost. Negative import prices can give negative period resource expenditure.
 
-The primary-objective difference is recorded separately as `network_constraint_bid_objective_gbp`. Forecast-error attribution compares actual-forecast and perfect-forecast network-free cases. Each comparison changes its stated spatial or forecast inputs within the same optimisation formulation.
+The primary-objective difference is returned as `network_constraint_bid_objective_gbp`. It measures the change in accepted bid payments and shortage valuation; `physical_resource_cost_gbp` measures resource expenditure.
 
 ## Numerical solution and boundary marginal values
 
@@ -171,8 +186,9 @@ for period in the half-hour chronology:
         minimise physical_tie_objective; retain its objective bound
         minimise stable_tie_objective; validate_solution(...)
     solve_network_free_counterfactual(...): compute matched comparison
-    return actual injections, storage inventory, flows, shortage and costs
+    record actual injections, storage inventory, flows, shortage and costs
     pass final_soc_mwh_by_asset to the next period
+return all period results
 ```
 
 Boundary marginal values measure the primary objective's response to transfer capacity. `boundary_marginal_values` reads the forward and reverse constraint-row duals before objective locks are added:
@@ -183,46 +199,7 @@ $$
 -\mathrm{marginals}_{\mathrm{forward\_row}_b}.
 $$
 
-A positive value corresponds to a binding forward limit and a negative value to a binding reverse limit. Status is `computed`, `degenerate_dual` for a binding limit with zero dual, or `shared_member` when binding boundaries share a corridor and the dual allocation is non-unique. The annual sum of absolute boundary value times transfer is reported as a congestion diagnostic, separately from zonal prices, cash flows and system cost. A ledger without this calculation displays “Not computed”.
-
-## The two zonal cases
-
-The British 23-zone study uses the GBP1 public2 research suite, `value-uk-research-suite-v1-public2`, supplied with VALUE 0.7.0-alpha.1 through the [data page](https://value.ac/en/data/). It contains 22 computational corridors and the B6 and B7a boundaries, rated at 6,700 MW and 9,400 MW in each direction. The 2025–2034 study design holds network capacity fixed while annual demand and assets may change.
-
-The 23-zone pack locates wind and solar by site; CCGT, OCGT, biomass, run-of-river hydro, nuclear, storage and imports are allocated to `ENGLAND_FALLBACK`. Nuclear stations created by the public2 policy enter that zone through the runtime fallback, including Torness north of B6. Import resources are named `import:<country>`, while the landing table uses `interconnector:<line>`; this mismatch also places imports in the fallback zone. `runtime_fallback_audit` records these allocations, and the resulting spatial distribution is indicative.
-
-Staged and zonal runs declare the ledger balance boundary `full_node_v1`, enabling energy-balance assessment. The independent checks `generation_cross_path` and `demand_input_reconciliation` retain status `not_evaluated`. The default `summary` trace omits per-period solver diagnostics; the result therefore displays “Not recorded”.
-
-The 11-zone experiment represents British regions as T1–T11 and compares transmission outcomes for a single year with fixed assets. The regions are N. Scotland, S. Scotland, N. England, N. Wales/the Mersey/the Humber, Midlands, Central England, E. Anglia, S. Wales/the Severn, S.W. England, S. England and South-East England. It uses 2022 demand and weather over 17,520 half-hours with a 2025 model background. Asset capacities remain fixed throughout the experiment, with annual investment outside its execution path.
-
-The 11-zone network combines 13 computational corridors classified as AC assets with Western Link. Ordinary corridors connect 1–2, 2–3, 3–4, 4–5, 5–6, 5–8, 6–7, 6–8, 6–11, 8–9, 8–10, 9–10 and 10–11; Western Link connects T2→T4. The table gives geographical boundary capacities and the separate Western Link limit. The 2029 values form an independent sensitivity input, while base cases use 2025 capacities.
-
-| Boundary | 2025 capacity in each direction, MW | 2029 sensitivity capacity, MW | Positive-flow members |
-|---|---:|---:|---|
-| B4 | 4,002 | 4,923 | f12 |
-| B6 | 6,700 | 11,456 | f23 + fWL |
-| B7a | 9,400 | 10,609 | f34 + fWL |
-| B8 | 11,000 | 14,005 | f45 |
-| B9 | 11,500 | 12,900 | f56 + f58 |
-| EC5 | 3,300 | 5,925 | −f67 |
-| LE1 | 11,223 | 13,917 | f6,11 + f10,11 |
-| B13 | 3,500 | 6,575 | −f89 + f9,10 |
-| Western Link | 2,200 | 2,200 | fWL |
-
-Western Link flow consumes the stated capacity of both B6 and B7a. The 8 geographical boundaries use symmetric reverse capacities, while the Western Link input specifies a bidirectional rating. In the base reduced network, T6, T8 and T10 have identical boundary memberships, leaving modelled transfer between them without a finite upper bound. In its 14-dimensional corridor space, the nodal incidence matrix has rank 10, the geographical boundary matrix rank 8, and the matrix including the HVDC limit rank 9. The 5-dimensional constraint null space contains 3 circulation directions and 2 directions that alter nodal net transfers.
-
-The thermal-capacity sensitivity adds separate limits to 8 southern corridors while retaining geographical boundaries. Its construction contracts known substations within each zone to the zone node, retains unknown intermediate nodes, excludes other known zones, and calculates corridor capacity by network maximum flow/minimum cut. Parallel line capacities add, while serial paths are limited by their bottlenecks; MVA is converted to MW at an assumed power factor of 1. The ordinary summer and winter inputs are shown below; separate upper-bound sensitivities use their own files.
-
-| Corridor | Summer MW | Winter MW |
-|---|---:|---:|
-| T5–T6 | 19,086 | 21,052 |
-| T5–T8 | 3,424 | 3,934 |
-| T6–T8 | 4,436 | 5,558 |
-| T6–T11 | 16,684 | 19,849 |
-| T8–T9 | 8,088 | 9,217 |
-| T8–T10 | 6,470 | 7,834 |
-| T9–T10 | 4,434 | 5,558 |
-| T10–T11 | 6,587 | 7,500 |
+A positive boundary value corresponds to a binding forward limit and a negative value to a binding reverse limit. Where binding boundaries share a corridor, several dual allocations can represent the same optimum. The annual output also sums absolute boundary value multiplied by transferred MWh as a congestion measure.
 
 ## DC network dispatch
 
@@ -279,11 +256,11 @@ $$
 
 Circuit count scales thermal capacity; the declared equivalent reactance sets the angle equation. Each connected island has one reference bus at zero angle, with other angles bounded by \([-\pi,\pi]\). Out-of-service branches have zero flow. DC links enter nodal balance as controllable flows within their declared bounds.
 
-HiGHS solves all periods in one linear programme with primal and dual tolerances of \(10^{-8}\) and an equality-residual limit of \(10^{-7}\). Nodal energy-balance duals provide marginal operating prices in GBP/MWh; the displayed system price is demand weighted. Fixed assets, continuous dispatch, storage and the linear network define this full-horizon comparison.
+HiGHS solves all periods in one linear programme with primal and dual tolerances of \(10^{-8}\). Completion requires an optimal solver status and an equality-residual limit of \(10^{-7}\). Nodal energy-balance duals provide marginal operating prices in GBP/MWh; the displayed system price is demand weighted. The output contains period dispatch, storage inventory, nodal prices and branch flows for the complete horizon.
 
 ## AC feasibility calculation
 
-The AC module calculates steady-state power flow for a given active-power schedule. Inputs contain active and reactive demand, generator active and reactive limits, voltage setpoints, branch impedances and charging susceptance, fixed taps and phase shifts, voltage bounds and MVA ratings. Each connected island has one slack balancing asset; PV and slack buses require generation, with a common voltage setpoint for generators at one bus. Storage follows its supplied active charging and discharging schedule.
+The AC module calculates steady-state power flow for a given active-power schedule. Inputs contain active and reactive demand, generator active and reactive limits, voltage setpoints, branch impedances and charging susceptance, fixed taps and phase shifts, voltage bounds and MVA ratings. Each connected island has one slack balancing asset; PV and slack buses require generation, with a common voltage setpoint for generators at one bus. Storage follows its supplied active charging and discharging schedule. PQ buses solve for voltage magnitude and angle from specified active and reactive injections; PV buses hold voltage magnitude and active power; each slack bus holds its voltage magnitude and zero angle while balancing the island.
 
 Nodal complex injection follows the solved voltage and nodal admittance matrix. `vm` is per-unit voltage magnitude, `theta` is radians, `voltage` is complex per-unit voltage, and `injection` contains MW and Mvar. `ybus` is per-unit admittance on the `base_mva` base, and \(j^2=-1\):
 
@@ -320,7 +297,9 @@ $$
 
 Apparent power at both terminals is limited by `apparent_power_rating_mva` times `circuits`. Every in-service branch enters the admittance matrix with its declared impedance. Topology and device settings remain fixed.
 
-Nonlinear least squares solves from several initial voltage conditions. Converged solutions are checked for agreement, followed by generator active and reactive bounds, bus voltages, branch ratings and system balance among supply, charging, demand and losses. `ReferenceACFeasibilityPSM` returns the local steady-state trajectory and feasibility checks for that schedule.
+The AC solve starts from flat voltage and from an alternative state with angles spread from 0.01 to 0.03 radians and PQ voltages at the midpoint of their bounds; a declared initial voltage adds a third start. Each start is clipped to the angle and voltage bounds. `least_squares` uses `xtol = ftol = gtol = 1e-12` and `max_nfev = 2000`. A solution requires successful termination and maximum mismatch at most `residual_tolerance`, default \(10^{-7}\) MW or Mvar; the acceptable start with the smallest residual is selected.
+
+Accepted AC solutions have start-to-start voltage/angle differences at most \(10^{-5}\) and Jacobian condition number at most \(10^{12}\). Active and reactive generation, voltage and terminal apparent power remain within declared limits to `equipment_tolerance`, default \(10^{-6}\) in their respective units. Each period returns voltages, generation, terminal flows and losses. Solving continues through the chronology; an unsuccessful period terminates the calculation.
 
 ## Optional line expansion
 
@@ -337,7 +316,7 @@ $$
 \end{aligned}
 $$
 
-The capital-recovery function `_crf` uses its arguments `rate` and `life`:
+The capital-recovery function `_crf` uses annual discount fraction `rate` and lifetime `life` in years; `annual_cost` is GBP/year, `total_capex_gbp_per_build` is GBP, and `ratio` is dimensionless:
 
 $$
 \operatorname{\_crf}(\mathrm{rate},\mathrm{life})=
@@ -348,14 +327,17 @@ $$
 \end{cases}
 $$
 
-Candidates are ordered by descending `ratio` and ascending identifier. Earliest decision year, minimum trigger utilisation, minimum benefit-cost ratio, total budget and budget-group allowance determine admission; zero annual cost gives an infinite ratio. The registered parameter defaults are 0 GBP for total annual funding and \(10^{13}\) GBP per group. Each accepted proposal deducts its complete construction cost. Expected commissioning is the decision year plus `lead_time_years` and `delay_years`.
+Candidates already commissioned or in the planning queue are excluded from the next decision. Remaining candidates are ordered by descending `ratio` and ascending identifier. Earliest decision year, minimum trigger utilisation, minimum benefit-cost ratio, total budget and budget-group allowance determine admission; zero annual cost gives an infinite ratio. The registered parameter defaults are 0 GBP for total annual funding and \(10^{13}\) GBP per group. Each accepted proposal deducts its complete construction cost. Expected commissioning is the decision year plus `lead_time_years` and `delay_years`.
 
-Planning success compares a reproducible uniform draw with `success_probability`. The default seed is 0; the proposal identifier includes the run identifier, and together they define the draw. At each year's start, completed projects commission and active lines retire at commissioning year plus the ceiling of `economic_life_years`. `apply_commissioned_network_assets` inserts commissioned branches into the annual network. The 23-zone and 11-zone cases retain fixed networks; line expansion is a separately selected method.
+Planning success in `ReferenceTransmissionExpansion.admit` accepts a proposal when its reproducible draw `draw` is at most `success_probability`. `seed` reads `network.expansion.random_seed`, default 0. The proposal identifier is `network-proposal:{run_id}:{year}:{candidate_id}`. These inputs determine `draw` through the following calculation:
 
-## Data and implementation
+```text
+digest = hashlib.sha256(
+    f"{seed}:{proposal.proposal_id}".encode()
+).hexdigest()
+draw = int(digest[:13], 16) / float(16 ** 13 - 1)
+if draw <= candidate.success_probability:
+    admit the proposal into the planning queue
+```
 
-Zonal inputs comprise `zones`, `corridors`, `cutsets`, `asset-map`, `demand`, `ratings` and `interconnector-landings`. `align_zonal_demand` applies the two demand rules, `build_single_period_problem` constructs redispatch constraints, `solve_lexicographic` solves the 4 objectives sequentially, and `ZonalRedispatchBalancing` returns actual injections, inventory and costs. The 11-zone study uses the external research scripts `build_network_data.py` and `fixed_fleet_runner.py`, with `cutsets_2025.json`, `cutsets_2029.json` and summer/winter thermal files defining its scenarios. These scripts belong to the separate fixed-asset experiment described above; the packaged British network study uses the 23-zone suite.
-
-`network_method_rules.py` defines `network-economic-v2`. The network-free comparison is identified by `value.network-free-lp/v1`, while `zonal_results.py` assembles zonal outcomes. Each year records downward-bid assumptions in `extensions.downward_restart_economics`, using schema `value.network-downward-restart-economics/v1`; missing inputs and the resulting fallback basis accompany the calculation record.
-
-The independent network modules use buses, branches, asset-to-bus mappings and period demand. `ReferenceDCNetworkPSM` and `validate_dc_solution` implement linear dispatch and its physical checks; `load_ac_data_from_pack`, `ReferenceACFeasibilityPSM` and `validate_ac_result` implement AC inputs, power flow and feasibility checks. `ReferenceTransmissionExpansion` reads candidates and budgets and advances construction states, while `apply_commissioned_network_assets` inserts active new lines into the network.
+At each year's start, completed projects commission and active lines retire at commissioning year plus the ceiling of `economic_life_years`. `apply_commissioned_network_assets` inserts commissioned branches into the annual network. Line expansion is selected with its candidate table and annual budgets; the supplied 23-zone configuration keeps its network fixed.

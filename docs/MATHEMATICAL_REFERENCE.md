@@ -1,112 +1,63 @@
 # VALUE mathematical and algorithmic reference
 
-Version 0.7.0-alpha.1, October 2026. Methodology edition 0.4.1, 9 October 2026.
+Version 0.7.0-alpha.1, October 2026. Methodology edition 0.5, 12 October 2026.
 
 The nine chapters below contain the English methodology used by the website and downloadable documents. The [Chinese chapters](methodology/README.md) follow the same calculations, variable names and sequence.
 
-
 ## 1. Model framework
 
-VALUE links electricity-system operation to annual changes in the asset fleet. Generation, storage and external electricity exchange participate in market clearing under specified demand and weather. Annual operating revenues, costs and expansion headroom then enter investment and retirement rules. Outputs include generation and storage operation, unserved energy, system resource cost, carbon emissions, operating capacity and construction projects.
+VALUE simulates half-hourly electricity-system operation and annual changes in its assets. Generation, storage and imported electricity enter market clearing through offers. Annual asset income, operating cost and expansion headroom determine investment and retirement proposals. Development times and regional success rates determine when projects enter the operating fleet. Outputs include generation, storage charging and discharging, electricity shortfall, prices, system cost, carbon emissions and operating capacity by technology.
 
-### Temporal and spatial representation
+### Time, units and space
 
-VALUE uses a 0.5-hour operating interval and a fixed 365-day model year containing 17,520 intervals. The clock is UTC, with February represented by 28 days. Power is measured in MW and interval energy in MWh; interval energy equals power multiplied by interval duration. Investment decisions follow a complete operating year.
+The operating interval is half an hour in UTC. Each model year has 365 days and 17,520 intervals, with 28 days in February. Power is measured in MW and interval energy in MWh: 1 MW supplies 0.5 MWh in a half-hour. A complete operating year supplies the annual investment calculation; commissioning and retirement update the fleet between years.
 
-The national model represents Great Britain's electricity system as a single supply–demand node, with interconnectors represented by external boundary offers. The zonal model additionally specifies resource and demand locations, corridor capacities and boundary constraints. The network mappings, demand allocation and capacities jointly define the spatial system. Chapter 7 gives its constraints and solution method.
+The national single-node model clears aggregate demand and supply in Great Britain, with interconnectors offering external electricity. The zonal model forms an electricity balance for each zone from resource locations and demand shares, subject to line and boundary constraints. Chapter 7 specifies the 23-zone inputs, resource allocation, network constraints and numerical solution.
 
-### Methodology profiles
+Monetary calculations use constant start-year prices as a scenario convention, with 2025 as the default start year. Input tables retain the price years of technology costs, imported electricity and policy parameters. Chapter 2 lists the inputs and conversions; Chapter 5 gives generator restart costs in 2025 GBP.
 
-The corrected profile, `value-corrected`, supplies VALUE's default settings and the principal formulation described in this document. The default national dispatch module, `value-bid-at-cost-psm`, applies the `native-corrected-v1` rule set. The staged dispatch module, `value-staged-bid-at-cost-psm`, connects a national schedule to subsequent balancing or zonal redispatch. Chapters 4, 5 and 7 specify the bidding, settlement and storage calculations for these operating pathways.
+### Operating methods
 
-The doctoral-reproduction profile, `doctoral-lineage-0.6.0a2`, is a compatibility configuration retaining thesis-era settings as implemented in VALUE 0.6.0-alpha.2. It applies `native-doctoral-thesis-v1` and retains the earlier weather conversion, downward ordering and storage pricing. Both profiles share UTC demand and interconnector alignment, declared-column reading, thermal net revenue, one storage net position per period, single entries for downward adjustments and must-run surplus, a recorded-blackout value of £17,000/MWh, cost ledger v2 with physical operating expenditure, validation reports, and common definitions of shortfall and served energy. Endogenous proposals in both profiles use the development timelines and regional success rates frozen from the data pack. Each chapter states the compatibility values beside the relevant formulation.
+Default national operation uses the `value-corrected` configuration and `value-bid-at-cost-psm` module. Its Native kernel uses `native-corrected-v1` to determine offer ordering, uniform marginal settlement, storage operation and thermal downward adjustments. Each period first schedules supply against forecast demand and availability, then balances realised demand and availability using the remaining flexibility. Chapter 5 develops the algorithm in this order.
 
-The experimental national pathway, `value-doctoral-national-psm`, defines a separate national clearing and annual-accounting interface. It supplies fixed-year dispatch and experimental cash records; integrated annual-CEM readiness is false. Chapters 5 and 6 describe its operating algorithm and separate annual helpers. The profile and dispatch-module selections jointly identify the method used by a calculation.
+`value-staged-bid-at-cost-psm` passes the national schedule to a separate balancing module. `value-copperplate-balancing` calculates single-node balancing, while `value-zonal-redispatch-balancing` calculates zonal redispatch subject to network constraints. Chapter 4 connects scheduling, balancing and storage state; Chapter 7 defines the zonal objective functions, constraints and settlement.
 
-The interface identifies the methodology profile separately from the dispatch module. The following names connect the calculation described here to the Study editor.
+Perfect-foresight dispatch uses the complete demand and availability sequences within its solution window to optimise generation, imports and storage jointly. Chapter 8 defines the objective, time-coupled constraints and terminal storage condition of `value-perfect-foresight-lp`. It also specifies the run-of-river and reservoir calculations from natural inflows to available hydroelectricity.
 
-|Document term|English interface label|Chinese interface label|Module or profile|
+### Initial conditions and annual sequence
+
+A calculation is defined by its input data pack, start and end years, selected modules and numerical parameters. `native_initial_state` constructs `initial_state` from the fleet, REPD projects, costs, development timelines and regional success rates. Operating assets carry technology, region, power capacity, storage energy capacity, costs and lifetime. Planned projects carry capacity, status and expected commissioning year. Chapter 2 specifies the input fields, values and initialisation rules.
+
+Each year advances the planning projects, operates the annual market and constructs the following year's assets and projects. `AnnualModelOrchestratorV2.run` calls the modules in the order below. The corresponding chapters develop each calculation, including its equations, initial values and boundary conditions.
+
+|Order|Calculation|Variables and functions|Chapter|
 |---|---|---|---|
-|Corrected profile|Corrected methodology (default)|修正口径（默认）|`value-corrected`|
-|Compatibility profile|Doctoral reproduction|论文复现口径|`doctoral-lineage-0.6.0a2`|
-|Native national dispatch|National single node|全国单节点|VALUE live bid-at-cost PSM; `value-bid-at-cost-psm`|
-|Experimental national pathway|Doctoral national physical PSM (experimental)|Doctoral national physical PSM (experimental)|`value-doctoral-national-psm`|
+|1|Update the operating fleet from project commissioning years|`planning.advance_year` produces `advanced.operating_state`|6|
+|2|Prepare demand, weather, availability and external exchange|`psm_input_factory` produces `model_input`|2, 3|
+|3|Clear operating periods and aggregate their results|`psm.run` produces `market`|4, 5, 7, 8|
+|4|Calculate expansion headroom from annual demand, availability and storage use|`policy.evaluate` produces `headroom`|6|
+|5|Evaluate income by owner and technology-region group|`adapt_market_for_investment` assembles accounts; `investment.decide` produces `decision.proposals`|6|
+|6|Admit investment projects using development times and success rates|`planning.admit_projects` produces `admission`|6|
+|7|Update asset age, retirement and new projects|`transition.apply` produces `next_state`|6|
 
-### Annual calculation
+Storage inventory updates within operating periods, while cost observations update annually. National operation creates storage objects for each operating year. The previous year's sold energy and dwell time enter the following year's dynamic storage cost. Chapters 4 and 5 specify opening inventory, efficiencies, self-discharge, period power limits and year-end treatment.
 
-The default annual pathway uses the initial fleet, construction projects, demand and weather to determine annual operation. Existing construction projects advance at the beginning of the year, followed by preparation of available generation and external-exchange inputs. The dispatch module calculates annual operation. Operating results, investment rules and development times then determine the following year's assets and projects.
+Annual investment uses realised income, total capital expenditure, target payback and preferred return. Gas and biomass investment income deducts operating costs; wind, solar and storage use revenue to calculate investment returns. Chapter 6 gives the cost components, four decision tiers, development times, success rates and asset-update pseudocode.
 
-```text
-state = initial_state
-for year in range(initial_state.year, run.end_year + 1):
-    advanced = self.planning.advance_year(run, state)
-    model_input = self.psm_input_factory(run, advanced.operating_state)
-    market = self.psm.run(model_input)
-    headroom = []
-    for slot in sorted(self.expansion_policies):
-        policy = self.expansion_policies[slot]
-        value = policy.evaluate(run, advanced.operating_state, market)
-        headroom.append(value)
-    investment_market = adapt_market_for_investment(
-        market, advanced.operating_state)
-    decision = self.investment.decide(
-        run, advanced.operating_state, investment_market, tuple(headroom))
-    decision = inherit_frozen_zone_shares(decision, advanced.operating_state)
-    admission = self.planning.admit_projects(
-        run, advanced.operating_state, decision.proposals)
-    transition_state = YearState(
-        year, advanced.operating_state.assets, advanced.active_projects,
-        cumulative_metrics=state.cumulative_metrics,
-        extensions=transition_extensions)
-    next_state = self.transition.apply(
-        run, transition_state, admission, decision)
-    state = next_state
-```
-
-`run` contains the selected modules, parameters and model years. `state` holds operating assets and construction projects; `advanced.operating_state` is the fleet after the beginning-of-year planning update. `market` contains dispatch and annual accounts, `headroom` contains the technology expansion limits, and `decision.proposals` contains the new investment proposals. `transition_extensions` carries the annual storage-cost observations and solver-validation state into `next_state`. These names and calls follow the default annual sequence in `gridform_core/v2/orchestrator.py`; selected network-expansion modules add their own annual steps.
-
-
-Default investment uses annual-income-based return and payback criteria, while annualised capital accounting uses a capital recovery factor. Gas and biomass investment income deducts generation, fuel, carbon and time-based operating costs. Wind, solar and storage treat gross revenue as investment profit, with fixed operating expenditure included in the capital-cost convention. Chapter 4 defines these default calculations; Chapter 6 gives the separate experimental account and investment interfaces.
-
-Monetary calculations adopt a constant start-year-price convention, with 2025 as the default start year. Input tables also retain their original price years for technology costs, imported electricity and policy parameters. Chapter 2 lists price sources and conversions, and Chapter 5 gives restart costs in 2025 GBP.
-
-### Data and results
-
-Model inputs comprise demand, weather, initial assets, techno-economic parameters, construction projects and external electricity exchange. Chapter 2 specifies input files, time coverage, units and profile eligibility. Chapter 3 converts weather to available generation. Dataset and function names follow the corresponding calculations so that readers can locate their implementation.
-
-Annual economic results enter the results page after the required physical and accounting checks pass. The corrected profile applies the selected pathway's validation gates, while the doctoral-reproduction profile checks every raw invariant. Period ledgers retain dispatch, storage, shortfall and cost records. Chapter 4 describes their relationship to annual results, and Chapter 9 gives carbon-accounting parameters.
-
+Annual outputs sum period results or weight them by electricity volumes. Served energy equals demand less unserved energy, system cost aggregates operating and annualised capital expenditure, and carbon accounting uses generation, imported electricity and equipment capacity. Chapters 5, 6 and 9 define these quantities, their units and denominators.
 
 ## 2. Initial data and input processing
 
-VALUE combines demand, weather, assets, planning data and external-market inputs on a common model clock. The source year determines the demand or weather sample; the model year determines asset operation and investment. The data package and methodology profile jointly determine the reading rules.
+VALUE constructs an electricity-system study from demand, weather, operating assets, planned projects, technology parameters and external-market prices and flow limits. Source years identify the observed samples; the study's start year selects the operating fleet and the subsequent investment calendar. The default `value-corrected` configuration reads the following public2 packages, available from the [data page](https://value.ac/en/data/).
 
-| Data configuration | Package | Coverage and availability |
+| Study inputs | Package | Contents |
 |---|---|---|
-| VALUE 101 | `value-101-baseline-v1` | Bundled synthetic teaching data for 2025–2026, with 17,520 half-hours per year and a 48-period exercise |
-| GBP1 public1 | `value-uk-open-data-pack-v1` | Published GB inputs; eligible for the doctoral reproduction profile |
-| GBP1 public2 | `value-uk-open-data-pack-public2` | Revision for the corrected methodology, published with VALUE 0.7.0-alpha.1 ([download](https://value.ac/en/data/)) |
-| R029 public2 | `value-uk-calendar-vx-trade001-public2` | Revision for the corrected methodology, published with VALUE 0.7.0-alpha.1 ([download](https://value.ac/en/data/)); study window 2025–2034, 2022 demand and 2020–2024 weather |
+| Great Britain, national | `value-uk-open-data-pack-public2` | Demand, representative-point weather, fleet, planning, costs and five external markets |
+| Great Britain, 2025–2034 with calendar-mean weather | `value-uk-calendar-vx-trade001-public2` | R029 configuration with 2022 demand and 2020–2024 weather |
+| Great Britain, 23 zones | `value-uk-research-suite-v1-public2` | National inputs, zonal demand, asset allocation, corridors and external boundaries |
+| VALUE 101 | Synthetic teaching inputs | 2025–2026 studies with a full 17,520-period year and a 48-period exercise; generation rules are given below |
 
-The corrected GB studies require the declared columns, source units and time resolutions supplied by the public2 revisions or an eligible user workspace package. R029 public1 (`value-uk-calendar-vx-trade001`) is outside the doctoral reproduction whitelist; its 8,761-value solar investment profile also fails the corrected reader's annual-length requirement. Chapter 3 describes the revised profile. GB 23-zone network studies use the GBP1 public2 research suite, `value-uk-research-suite-v1-public2`, available from the [data page](https://value.ac/en/data/). It supplies the compatible national and spatial inputs for the corrected methodology.
-
-### Temporal resolution and input roles
-
-The national model balances half-hourly energy. In `canonical_psm_data`, the arrays in `series` contain demand power in MW; multiplication by `period_hours` gives actual `demand` and forecast `forecast_demand` in MWh per period. Annual energy is the sum of the period values:
-
-$$
-\begin{aligned}
-\mathtt{demand}[t]&=\mathtt{series}[\text{demand.real}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
-\mathtt{forecast\_demand}[t]&=\mathtt{series}[\text{demand.forecast}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
-\mathtt{period\_hours}&=0.5\ \mathrm{h},\qquad \mathtt{periods}=365\times24\times2=17{,}520.
-\end{aligned}
-$$
-
-The model year consists of 365 days on a fixed UTC clock, with 28 days in February. Declared leap-year demand is reduced to this calendar while preserving annual energy, as defined below and in Chapter 4. Capacity is measured in MW, inventory in MWh, money in GBP and electricity prices in GBP/MWh.
-
-Demand enters the model as MW and is multiplied by the period duration for dispatch. VALUE 101 retains a `mwh` column name and MWh/period package label for values that are read as MW in both profiles. User-mapped demand instead follows its declared source unit: MWh/period is divided by the source-period duration in hours to obtain MW.
-
-Data bindings assign physical files to defined computational roles. Demand files supply actual demand and the day-ahead forecast, the fleet table supplies technology, capacity and representative location, and planning tables supply project status and dates. Weather and technology-average profiles support spatial available generation and the corresponding investment rules, respectively.
+Input roles connect files to physical quantities. The package's `manifest.json` binds each role to its file and declares its column, unit and temporal resolution. The following table gives the R029 filenames and the variables supplied to the calculations.
 
 | Input role | Main data or fields | Computational use |
 |---|---|---|
@@ -119,13 +70,31 @@ Data bindings assign physical files to defined computational roles. Demand files
 | External markets | Country-specific `flow_mw`, `price_gbp_per_mwh` | Available interconnector exchanges and external offers |
 | Zonal network | Zones, corridors, boundaries, asset mapping and zonal demand | Spatial supply–demand balance and transmission constraints |
 
-### Declared reading and annual alignment
+### Model clock and units
 
-Both profiles read a declared `csv_column` under its declared `csv_header` convention. An implicitly selected integer index column terminates loading. R029 demand and boundary series use this shared reader through `data_method.read_role` and `data_method.read_boundary`.
+The operating year contains 17,520 half-hours on a 365-day UTC calendar. Period zero starts at 00:00 on 1 January; February contains 28 days. Asset capacity is measured in MW, stored energy in MWh, money in GBP and electricity price in GBP/MWh. The `period_start_utc` function assigns each period its calendar time.
 
-The corrected methodology uses `declared-v2`. Without a header declaration, the first row is treated as a header only when all its cells are non-numeric. Without a column declaration, strict reading requires a single wholly numeric column. The source interval is read from `interval_minutes`, or inferred as hourly for 8,760 or 8,784 values. Each hourly value then supplies two half-hours.
+Demand enters as power in MW. The default national algorithm passes the values from `read_role` through `_kernel_inputs` to `run_simulation` in MW. The staged and optimisation interfaces use `build_chronology` in `canonical_psm_data` to form period energy: `series["demand.real"].values` and `series["demand.forecast"].values` hold MW, while `demand` and `forecast_demand` hold MWh per period. With zero-based period index `t`,
 
-A 17,568-period leap-year demand series loses the 48 periods on 29 February and rescales the remainder to preserve annual energy. `normalize_half_hour_year` reads the source as `numbers` and stores the retained values as `reduced`. With a positive retained total, it returns
+$$
+\begin{aligned}
+\mathtt{demand}[t]&=\mathtt{series}[\text{demand.real}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
+\mathtt{forecast\_demand}[t]&=\mathtt{series}[\text{demand.forecast}].\mathtt{values}[t]\times\mathtt{period\_hours},\\
+\mathtt{period\_hours}&=0.5\ \mathrm{h},\qquad \mathtt{periods}=365\times24\times2=17{,}520.
+\end{aligned}
+$$
+
+Annual demand energy is the sum of `demand`. A user-supplied column expressed in MWh per source period is divided by that period's duration in hours to obtain MW before half-hour alignment. VALUE 101 writes its synthetic power values under the column name `mwh`; those values enter the same MW-to-MWh calculation above.
+
+### Column selection, missing values and annual alignment
+
+Time-series loading follows the declared column and header. `read_series` uses `csv_column` with `csv_header=true`; each cell in that column must be numeric and finite. An empty sequence, a missing named column or an invalid numeric cell terminates loading. For a file with an inferred column, an integer sequence of at least three values increasing by one requires an explicit column declaration.
+
+Header and column inference follow the contents of the file. A declared `csv_header` takes precedence. Otherwise the first row is a header when it has at least one populated cell and every populated cell is non-numeric. With a missing `csv_column`, strict reading selects the sole wholly numeric column; multiple numeric columns require an explicit selection. The user-workspace reader selects the first wholly numeric column in an ambiguous file. Declaring the column fixes this choice independently of column order.
+
+Hourly inputs are expanded before the requested run window is selected. `align_clock` reads `interval_minutes=60` as two copies of each source value and `interval_minutes=30` as one value per half-hour. With an absent interval declaration, lengths of 8,760 and 8,784 identify hourly years. Other declared resolutions terminate loading. The hourly conversion is applied once.
+
+Leap-year demand retains its annual energy on the 365-day model clock. After hourly expansion, a 17,568-period year loses the 48 values beginning at `(31 + 28) * 48`, corresponding to 29 February. In `normalize_half_hour_year`, `numbers` contains the source values and `reduced` the retained values. For a positive retained sum,
 
 $$
 \begin{aligned}
@@ -135,35 +104,31 @@ $$
 \end{aligned}
 $$
 
-A zero retained sum with a non-zero original sum terminates reading; an all-zero series remains zero. Other roles remove the leap day without energy rescaling. The binding may explicitly retain the leap day through `leap_policy=keep`, in which case the run takes its required leading periods.
+An all-zero demand series remains zero. A zero retained sum with a positive original sum terminates conversion. Other time-series roles remove the same 48 values and retain the remaining values. An explicit `leap_policy="keep"` retains the source calendar and selects the required leading periods.
 
-Strict reading truncates a sufficiently long series to the run length and repeats a shorter series only when cycling is declared or supplied by the role convention. Boundary roles use this cycling convention. Corrected non-workspace packages use strict reading; user workspace packages use lenient reading and repeat a shorter sequence from the beginning. Mapping requires confirmation of that repetition.
+The run consumes the first `periods` values of a sufficiently long aligned sequence. A shorter series repeats from its beginning when `cyclic=true`, or when its role supplies the cycling convention; external-market flows and prices have this convention. Strict package reading requires that declaration for shorter demand or investment sequences. User-workspace reading fills a short series by repetition. These rules determine the numerical input for a partial-year or full-year run.
+
+The following sequence produces the aligned values. `path` is the bound file, `spec` contains its declarations, `policy.strictness` selects strict package reading or user-workspace reading, and `cyclic` is the role's repetition default.
 
 ```text
-read = read_series(path, spec, mode=policy.reader_mode,
-                   strictness=policy.strictness, legacy_header=header)
-values = align_clock(read.values, periods, spec, mode=policy.clock_mode,
-                     strictness=policy.strictness,
-                     hourly_repeat=hourly_repeat, cyclic_default=cyclic)
+read = read_series(path, spec, mode="declared-v2", strictness=policy.strictness)
+values = align_clock(read.values, periods, spec, mode="declared-v2",
+                     strictness=policy.strictness, cyclic_default=cyclic)
 return values
 ```
 
-The doctoral reproduction profile uses `legacy-v1`: its role-specific header settings, largest-numeric-column selection and short-series repetition remain active alongside declared-column reading. In GBP1 public1, the headerless forecast's first value, 21,560, is consumed as a header, so forecast values lead the actual series by one period. The corrected reader retains this first value as data.
+### Observed demand and missing settlement periods
 
-### Demand series and calendar processing
-
-R029 uses NESO's 2022 day-ahead half-hourly demand forecasts and corresponding actual demand as the base demand shapes for model years. GBP1 demand uses the same UTC preprocessing rules in both profiles. `actual_mw.csv` and `forecast_mw.csv` each contain 17,520 rows. Their initial statistics are given below; subsequent scenario scaling acts on these base shapes.
+The supplied GB demand shape uses NESO's 2022 half-hour actual demand and day-ahead forecast. Each of `actual_mw.csv` and `forecast_mw.csv` contains 17,520 values after UTC preprocessing. Each subsequent model year uses the same aligned 2022 actual-demand and forecast-demand sequences. Their power and energy totals are
 
 | Series | Minimum power MW | Maximum power MW | Mean power MW | Annual energy MWh |
 |---|---:|---:|---:|---:|
 | Actual demand | 15,080 | 46,042 | 26,587.967637 | 232,910,596.5 |
 | Day-ahead forecast | 14,240 | 46,760 | 26,611.131963 | 233,113,516 |
 
-Demand preprocessing identifies duplicate records by settlement date and period, then converts UK local dates to a UTC time axis. For a given settlement period, it retains the latest publication; equal publication times are resolved by retaining the last row. The original 17,518 rows become 17,516 after duplicate consolidation, and four missing half-hours are filled by linear interpolation in UTC.
+Demand preprocessing resolves settlement records before interpolation. Rows with the same settlement date and settlement period are ordered by publication time; the latest publication is retained, with the final row breaking a tie. UK local settlement times are then placed on the UTC half-hour axis. The 17,518 source rows yield 17,516 distinct periods, leaving four missing half-hours.
 
-Linear interpolation divides the difference between the two known endpoint values into equal increments. A gap of one half-hour receives the endpoint mean. A gap of two half-hours receives the values one-third and two-thirds of the way from the preceding observation to the following observation.
-
-Each gap in the 2022 input contains at most two consecutive periods, and all filled values occur on 30 October. The table reports MW values to six decimal places.
+Missing demand periods are filled by linear interpolation between their adjacent known values. One missing period receives the mean of the endpoints. Two consecutive missing periods receive one-third and two-thirds of the endpoint difference added to the preceding value. The four replacements in the 2022 input occur on 30 October:
 
 | UTC time | Forecast demand MW | Actual demand MW |
 |---|---:|---:|
@@ -172,15 +137,19 @@ Each gap in the 2022 input contains at most two consecutive periods, and all fil
 | 2022-10-30 23:00 | 19,063.333333 | 20,494.666667 |
 | 2022-10-30 23:30 | 19,086.666667 | 19,689.333333 |
 
-### Initial assets and planned projects
+User demand timestamps are converted to UTC before the same model-year alignment. The mapping accepts UTC or Europe/London and a declared DD/MM/YYYY or MM/DD/YYYY date order. Timestamps must identify a strictly increasing sequence with a regular 30- or 60-minute step; duplicates, unresolved dates and gaps terminate mapping. The resulting row order is placed from 1 January 00:00 UTC in each model year, retaining the input's sequence of weekday and holiday effects.
 
-Initial wind, solar and storage assets are determined jointly by REPD technology, operational status, commissioning year and capacity. The input uses the second-quarter 2025 edition of the DESNZ Renewable Energy Planning Database, released in July. The source table contains 12,977 projects and 53 fields; normalisation retains 10,653 projects and 14 fields.
+### Initial operating assets
 
-Normalisation retains recognised technologies with positive capacity and standardises technology names, numerical fields and dates. The 14 fields cover project identifier, site name, standardised and source technology names, MW capacity, development status, region, country, application date, permission date, construction date, operational date and two coordinates. Failed numerical conversions and missing source dates remain missing for subsequent filtering. Standardised technologies include onshore wind, offshore wind, solar, batteries and gas.
+The initial renewable and battery stock is selected from the DESNZ Renewable Energy Planning Database, second quarter 2025, released in July. Its 12,977 project rows and 53 source fields yield 10,653 rows and 14 fields after technology and positive-capacity filtering. `normalize_repd` retains onshore wind, offshore wind, solar, battery and gas technologies; `capacity_mw`, `x_coordinate` and `y_coordinate` are converted to numbers, with failed conversions stored as missing values.
 
-Initial operating capacity comprises assets commissioned by the study's starting year. `build_repd_operational_snapshot` selects wind, solar and storage projects with `Operational` status, a commissioning year at or before the starting year, and positive capacity, then maps them to representative assets. Battery capacity is allocated according to storage-template `pool_limit` weights. Nuclear capacity follows a separate station policy and annual commissioning and retirement schedule.
+The normalised project table retains the information needed for date and location selection. Its fields are `project_id`, `site_name`, `technology`, `technology_source`, `capacity_mw`, `development_status`, `region`, `country`, `planning_application_submitted`, `planning_permission_granted`, `under_construction`, `operational`, `x_coordinate` and `y_coordinate`. Date strings remain available for the asset and planning readers to parse.
 
-The R029 2025 initial asset specification contains the capacities below. The table describes its configured starting stock, with aggregated nuclear, gas and several other technologies. In the corrected default pathway, GBP1 studies with station policies use station-level nuclear availability and monthly retirement; R029 aggregated nuclear capacity uses an availability factor of 0.723. Run-of-river output uses a load factor of 0.3487 multiplied by seasonal shape (Chapter 5). The doctoral reproduction profile retains availability of 100%; the separate experimental R029 pathway also retains that input convention.
+Operating wind, solar and battery capacity requires `Operational` status, a readable operational date at or before the study's start year, and positive installed MW. `build_repd_operational_snapshot` parses the date with day-first order and skips records with missing dates or invalid capacity. Solar and onshore projects first use the region-to-city mapping in Chapter 3. Remaining projects use geographic coordinates and the nearest representative of their technology; OSGB coordinates are converted from EPSG:27700 to EPSG:4326 when required. A project with neither a regional assignment nor usable coordinates contributes zero to the mapped initial wind or solar stock.
+
+Initial battery MW is distributed among the storage entries other than pumped hydro. For each entry, `weighted[asset_id]` equals the larger of its `pool_limit` and 1; `weight_total` is their sum. `native_initial_state` assigns `capacity = operational_storage_mw * weighted[asset_id] / weight_total`. Its energy is `capacity * duration`, where `duration` comes from the technology catalogue. The 2025 pumped-hydro stock is specified separately as 2,828 MW and 26,700 MWh.
+
+The R029 2025 stock contains the capacities below. Its aggregated nuclear availability is 0.723, and run-of-river generation uses 0.3487 multiplied by the seasonal shape in Chapter 5. GBP1 selects its nuclear units through the station schedule, with the station availability and retirement rules also defined in Chapter 5.
 
 | Technology | Asset rows | Power MW | Stored energy MWh |
 |---|---:|---:|---:|
@@ -198,9 +167,11 @@ The R029 2025 initial asset specification contains the capacities below. The tab
 | Hydrogen storage | 1 | 0.749960 | 187.490103 |
 | Pumped hydro | 1 | 2,828 | 26,700 |
 
-Planning inputs specify success probabilities by technology and region and duration distributions by technology and stage. `regional_technology_success_rates.csv` contains 46 records; `planning_timelines.json` supplies stage durations in months. Both tables govern REPD projects and endogenous investment. The model freezes `development_stage_timelines`, `repd_status_to_timeline` and `success_rates` in the initial state.
+### Planning inputs
 
-Endogenous proposals obtain their development duration and probability from these frozen tables under both methodology profiles. Technology labels, regional matching, deterministic month displacement, commissioning dates and expected-capacity or seeded-stochastic admission follow Chapters 4 and 6. `endogenous_planning._success_rate` takes the rate for the technology label and region, then the mean across that label's regions, then 0.75. The input development and construction medians are
+Project development uses technology- and region-specific success rates and technology-specific stage durations. `regional_technology_success_rates.csv` contains 46 records; `planning_timelines.json` supplies durations in months. `development_stage_timelines`, `repd_status_to_timeline` and `success_rates` are stored in the initial state and supply both existing planned projects and new investment proposals.
+
+The input medians distinguish development from construction. Status mappings select the relevant remaining stages. The following preprocessing constructs the initial project list; Chapter 6 advances these projects and admits new investment proposals each year.
 
 | Technology | Median development months | Median construction months |
 |---|---:|---:|
@@ -209,9 +180,77 @@ Endogenous proposals obtain their development duration and probability from thes
 | Offshore wind | 110.1 | 32.2 |
 | Battery | 31.3 | 10.1 |
 
-### Costs and storage parameters
 
-Investment inputs specify unit capital costs, payback targets and technical operating parameters separately. R029 uses `capital_costs.json` and `model_parameters.json` from its study configuration. Upstream capital-cost sources include BEIS Electricity Generation Costs 2020 and Arup material; the table reports the parameters adopted by the model. The default rate for annual capital recovery is 0.05; investment decisions compare undiscounted return and payback. The table gives the base-configuration payback targets and `preferred_rate` parameters. R029's investment rule sets the effective threshold for all four expandable storage technologies to 0.12; Chapter 6 defines its profit ratio and decision rules.
+Initial planned projects are selected by capacity, development status and recorded progress. `native_initial_state` uses the controls below; the default `planning.success_mode="expected"` is read as `success_mode="expected_capacity"`. `year` is the study's start year and `capacity` is the source project's MW.
+
+| Parameter | Default | Use |
+|---|---|---|
+| `planning.minimum_project_size_mw` | 1 MW | Smallest positive project admitted |
+| `planning.include_uncertain_projects` | `true` | Admit application, appeal and revised statuses |
+| `planning.zombie_filter_enabled` | `true` | Apply status, progress and construction-overrun filters |
+| `planning.zombie_status_stale_year` | 2015 | Latest-progress cutoff for uncertain projects |
+| `planning.construction_grace_years` | 2 years | Added to the estimated construction completion year |
+| `planning.max_completion_year` | 2040 | Latest admitted completion year |
+| `planning.timeline_statistic` | `median` | Select median or mean stage durations |
+| `planning.defer_spread_years` | 3 years | Maximum added delay for inferred completion dates |
+| `planning.random_seed` | 0 | Input to project-specific success draws |
+| `planning.repd_battery_assignment` | `value_proportional_split` | Allocate generic battery capacity among four storage technologies |
+
+A replacement application supersedes its older project record. The preprocessing reads `Ref ID` and `Are they re-applying (New REPD Ref)` in the raw REPD table and excludes the old record when the replacement is a different, non-empty identifier present in that table. It also excludes capacity below `minimum_size` and non-positive or unparseable capacity.
+
+Development-status filtering acts on stripped, lower-case labels. `terminal_statuses` always excludes `operational`, `abandoned`, `planning permission refused` and `application withdrawn`. With `zombie_filter=true`, the additional excluded labels are `application refused`, `appeal refused`, `appeal withdrawn`, `decommissioned`, `application expired` and `finished`. Setting `include_uncertain=false` retains only `under construction`, `awaiting construction` and `planning permission granted`.
+
+The recorded progress cutoff applies to `application submitted`, `appeal lodged` and `revised`. `_date_year` extracts the first four-digit year beginning with 19 or 20 from each date string; a missing year yields `None`. `latest_progress_year` takes the latest known year across `planning_application_submitted`, `planning_permission_granted`, `under_construction` and `operational`. With the progress filter enabled, an uncertain project is excluded when this year is at or before `zombie_stale_year`; a missing progress year passes this particular filter.
+
+The completion year first uses a recorded future year and otherwise uses the remaining stage duration. `timeline_months(source_technology, status)` selects `timeline_type` from `repd_status_to_timeline`, replaces its mean or median suffix with `timeline_statistic`, and reads the selected technology entry in `development_stage_timelines`. A missing status mapping selects `total_median` by default; a missing stage entry uses `development_timelines`, with a final fallback of 12 months. Storage components use the battery duration table.
+
+The inferred completion date adds a deterministic delay of zero to `defer_spread_years` whole years. The following sequence uses the source `project_id` to calculate that delay; an existing future date bypasses the duration and delay calculations.
+
+```text
+completion = next((candidate for candidate in (
+    _date_year(row.get("operational")),
+    _date_year(row.get("under_construction")),
+) if candidate is not None and candidate > year), None)
+if completion is None:
+    months = timeline_months(source_technology, status)
+    completion = year + max(1, int(math.ceil(months / 12.0)))
+    if defer_spread_years > 0:
+        completion += int(
+            hashlib.sha256(project_id.encode("utf-8")).hexdigest()[:8], 16
+        ) % (defer_spread_years + 1)
+```
+
+Construction status receives a separate elapsed-time check. For `under construction` with a known `construction_year`, preprocessing forms `construction_end = construction_year + max(1, math.ceil(timeline_months(source_technology, status) / 12)) + construction_grace`. With `zombie_filter=true`, a value earlier than `year` excludes the project. A `completion` later than `maximum_completion` also excludes the project.
+
+Initial project success uses a technology–region lookup. `_planning_probability` reads `technology`, `region` and `success_rate`, clamps each readable rate to [0,1] and skips unreadable rates. A missing required column yields an empty rate table. The lookup first uses the project's lower-case region, then the technology's `gb` entry, then 1.0. The calculation below gives `probability`, the dimensionless draw `draw`, and the admitted capacity; all components of one physical battery project share its draw.
+
+```text
+probability_key = "battery" if source_technology == "battery" else _technology(source_technology)
+probability = success_rates.get(
+    (probability_key, region.strip().lower()),
+    success_rates.get((probability_key, "gb"), 1.0),
+)
+draw = int(
+    hashlib.sha256(f"{random_seed}:{project_id}".encode("utf-8")).hexdigest()[:13], 16
+) / float(16 ** 13 - 1)
+realised_failure = success_mode == "seeded_stochastic" and draw > probability
+components = typed_project_components(project_id, source_technology, capacity)
+for component_id, technology, declared_component_capacity, assignment_method in components:
+    effective_capacity = (
+        declared_component_capacity * probability
+        if success_mode == "expected_capacity" else declared_component_capacity
+    )
+```
+
+Generic battery projects are split before their success-adjusted capacities are recorded. `typed_project_components` uses `scheme_c_storage_weights`, formed from the same positive fleet weights used for initial battery stock, to allocate source MW among `1c_battery`, `0.5c_battery`, `0.25c_battery` and `hydrogen_battery`. Each `declared_component_capacity` equals the source capacity times its weight divided by total weight. The settings `all_1c`, `all_0.5c` and `all_0.25c` assign the full capacity to one technology; `exclude_untyped` removes generic battery projects from the initial list. Projects with a specified technology retain that technology and capacity.
+
+The expected-capacity mode multiplies each component's declared MW by its success probability. The stochastic setting `planning.success_mode="stochastic"`, read as `seeded_stochastic`, retains full declared MW and sets `phase="failed"` and `outcome="failed_planning"` when `draw > probability`; equality passes. Successful projects and expected-capacity projects receive `phase="active"` and `outcome="active"`. Storage energy is `effective_capacity * duration_hours` in MWh. `PlanningProject` stores these values with `expected_completion_year=completion`, the start year, status, technology and region for Chapter 6's annual progression.
+
+New investment proposals use the success-rate lookup in `endogenous_planning._success_rate`. It selects the regional rate, then the technology's regional mean, then 0.75. Chapter 6 defines proposal capacity and the subsequent planning process.
+
+### Capital costs and storage parameters
+
+Capital costs, target returns and payback periods are supplied as distinct financial inputs. The R029 configuration reads `capital_costs.json` and `model_parameters.json`; the capital-cost material draws on BEIS Electricity Generation Costs 2020 and Arup. The table gives the financial parameters assigned to the initial assets. Annual capital recovery uses `capital_discount_rate=0.05`; the investment calculations and effective decision thresholds are defined in Chapter 6.
 
 | Technology | Capital cost GBP/MW | `preferred_rate` | Target payback years |
 |---|---:|---:|---:|
@@ -219,13 +258,13 @@ Investment inputs specify unit capital costs, payback targets and technical oper
 | Onshore wind | 1,588,000 | 0.076 | 30 |
 | Offshore wind | 3,976,000 | 0.089 | 30 |
 | CCGT / OCGT | 2,400,000 | 0.089 | 25 |
-| Biomass and waste | 1,500,000 | 0.089 | 20 |
+| Biomass and waste | 1,500,000 | 0.089 | 25 |
 | 1C battery | 330,000 | 0.0825 | 10 |
 | 0.5C battery | 350,000 | 0.165 | 10 |
 | 0.25C battery | 415,000 | 0.0825 | 10 |
 | Hydrogen storage | 600,000 | 0.01375 | 25 (default) |
 
-Storage parameters assign charging efficiency, discharging efficiency, duration and lifetime to inventory and cost calculations. Round-trip efficiency is `charge_efficiency * discharge_efficiency`; for example, the 0.5C battery uses \(0.98^2=0.9604\). Catalogue economic lifetimes and the payback targets above enter the calculations as separate parameters. The cycle parameter `maximum_cycles` determines reference annual cycles. The three battery technologies also use it for cycle depreciation. The dynamic storage-cost module uses time recovery for pumped hydro and hydrogen storage; the corrected default dispatch uses the cycle-only offer rule described in Chapter 5.
+Storage energy losses follow separate charging and discharging efficiencies. Round-trip efficiency is `charge_efficiency * discharge_efficiency`, giving \(0.98^2=0.9604\) for the 0.5C battery. The catalogue also supplies duration, economic lifetime and `maximum_cycles`. These values enter the storage-state and cost equations in Chapters 4 and 6; initial stored energy is specified with the operating algorithm in Chapter 4.
 
 | Technology | Catalogue duration h | Charging efficiency | Discharging efficiency | Catalogue economic life years | Cycle parameter `maximum_cycles` |
 |---|---:|---:|---:|---:|---:|
@@ -235,27 +274,17 @@ Storage parameters assign charging efficiency, discharging efficiency, duration 
 | 0.25C battery | 4 | 0.81 | 0.81 | 15 | 8,000 |
 | Hydrogen storage | 250 | 0.57 | 0.57 | 10 | 1,000 |
 
-Annual asset schedules can specify storage power and energy directly. The 2025 pumped-hydro asset state therefore uses 2,828 MW and 26,700 MWh.
+Source price years remain attached to the numerical inputs. Storage costs and policy budgets are expressed in 2025 GBP; BEIS capital-cost inputs retain 2020 values, the European electricity samples retain their 2022 or 2021 values after currency conversion, and nuclear-policy entries carry their declared 2015 or 2024 price years. Restart costs use the conversion in Chapter 5. The currency reader converts euros to pounds using `eur_per_gbp`.
 
-Initial stored energy follows the dispatch pathway. The experimental R029 chronology starts from zero; general chronological inputs default to 50% of maximum inventory unless specified. The default national PSM constructs storage objects at each annual boundary, as described in Chapter 5.
+Annual policy spending uses the schedules in `mechansim cost.xlsx`. The workbook combines NESO Capacity Market and balancing-cost series, Ofgem RO/FIT/REGO material and LCCC CfD data. Chapter 6 specifies how these inputs enter annual accounts.
 
-Financial calculations select time parameters by computational purpose and technology configuration. Biomass uses an economic life of 25 years and a payback target of 20 years. The gas prototype has a 20-year payback target, while the R029 run configuration sets CCGT and OCGT to 25 years.
+### External markets and zonal demand
 
-Amounts are interpreted in constant start-year money; the supplied studies begin in 2025. The storage catalogue, pumped-hydro capital cost and policy budgets explicitly use 2025 GBP. Fuel and carbon prices are treated on that basis, while restart costs use the conversion documented in Chapter 5. BEIS 2020 costs, the 2022 euro price series and nuclear-policy entries labelled 2015 or 2024 retain their source-year values after any currency conversion. Thus the common monetary convention includes inputs of different price vintages; the reader applies the declared currency conversion.
+External electricity exchange is limited by a time-varying envelope and priced by the corresponding foreign market. R029 supplies 17,520-row files for France, Belgium, the Netherlands, Norway and Ireland. Each file provides `flow_mw` and `price_gbp_per_mwh` alongside its period and source timestamps. NESO line names associate `NEMO_FLOW` with Belgium, `BRITNED_FLOW` with the Netherlands and `NSL_FLOW` with Norway.
 
-Policy expenditure inputs combine historical aggregation with forward assumptions. `mechansim cost.xlsx` assembles NESO Capacity Market and balancing-cost data, Ofgem RO/FIT/REGO material and LCCC CfD data for annual policy expenditure calculations.
+Foreign prices use Ember's compilation of ENTSO-E day-ahead prices. France, Belgium, the Netherlands and Norway use 2022; Ireland uses 2021. An hourly EUR/MWh value is divided by 1.1 EUR/GBP and assigned to both receiving half-hours. Negative prices retain their sign. R029 stores the converted GBP/MWh values; a GBP1 file such as `Belgium_price.csv` supplies `Price (EUR/MWhe)` and receives the same conversion through `read_series`.
 
-### Interconnectors and zonal demand
-
-External market inputs describe cross-border exchange opportunities through flow limits and prices for each half-hour. R029 provides one 17,520-row file for each of France, Belgium, the Netherlands, Norway and Ireland, binding each file to both flow and price roles. Fields include `period`, `flow_mw`, `price_gbp_per_mwh`, the source price hour, a half-hour marker, and source row numbers for flows and prices.
-
-Boundary prices use European day-ahead prices assembled by Ember from ENTSO-E data. France, Belgium, the Netherlands and Norway use 2022 prices, while Ireland uses 2021. Each hourly price is repeated twice and saved in GBP/MWh after dividing EUR/MWh by 1.1 EUR/GBP. The corrected methodology preserves negative boundary prices. The doctoral reproduction profile clips general chronological prices at zero; the experimental R029 pathway preserves negative prices.
-
-Each boundary uses its NESO line identity. `NEMO_FLOW` supplies Belgium, `BRITNED_FLOW` the Netherlands and `NSL_FLOW` Norway. The registered GBP1 file `Belgium_price.csv` supplies its `Price (EUR/MWhe)` column as hourly EUR/MWh. `read_series` divides `values` by `spec.eur_per_gbp = 1.1` once and repeats each converted hour into two half-hours. The kernel reads the flow corresponding to each period.
-
-These rules apply to both profiles. GBP1 flow values are read as MW despite their retained MWh/period labels.
-
-Boundary flows provide exogenous exchange limits in source-period order. The field `flow_mw` uses positive values for imports and negative values for exports. `canonical_psm_data` converts it to signed MWh as `raw_availability`; the non-negative energy limits `import_energy` and `export_energy` are
+The positive and negative values of `flow_mw` define import and export capacity, respectively. Multiplication by `period_hours` yields signed period energy `raw_availability`, from which the two non-negative envelopes are calculated:
 
 $$
 \begin{aligned}
@@ -265,7 +294,7 @@ $$
 \end{aligned}
 $$
 
-The corrected default national PSM offers import capacity in day-ahead clearing; the doctoral reproduction profile offers it only in balancing (Chapter 5). The public2 revisions retain the declared sign convention, positive for import and negative for export, with status `declared_unverified`: source verification of country-level annual net flow remains pending. The input ranges and mean prices below describe the R029 files.
+The default national market offers imports in day-ahead clearing. Chapter 5 defines their use during clearing and balancing, and Chapter 7 applies the external-boundary capacities in the zonal model. The R029 envelope ranges and mean prices are
 
 | Boundary | Flow range MW | Price year | Mean price GBP/MWh |
 |---|---:|---:|---:|
@@ -275,7 +304,7 @@ The corrected default national PSM offers import capacity in day-ahead clearing;
 | Netherlands | −1,076 to 1,062 | 2022 | 219.917959 |
 | Norway | −1,263 to 1,399 | 2022 | 126.503575 |
 
-Zonal studies allocate national study demand using the network pack's period-specific regional shares. In `align_zonal_demand`, mode `scenario_scaled_zonal_shares` sets `output_real` to study actual demand and reads `network_national` from the network pack at each `index`. All demand quantities are MWh per period. Each zone receives `value`, appended to `aligned[zone_id]`:
+Zonal demand uses the national study's total and the network input's spatial shares. `align_zonal_demand` matches network and study `period_ids`, which must be unique and have corresponding records. Actual and forecast input energy must be finite, non-negative and equal in length to the period list. In `scenario_scaled_zonal_shares`, `output_real` holds the study's actual MWh and `network_national` the network's national MWh at `index`:
 
 $$
 \begin{aligned}
@@ -284,11 +313,31 @@ $$
 \end{aligned}
 $$
 
-The final zone receives national demand minus the sum of the other zones, conserving the spatial total. Loading terminates if network national demand is zero while study demand is non-zero. The alternative `network_pack_absolute_demand` uses network national demand directly and adjusts the forecast using the original forecast-to-actual ratio. Zone, corridor and asset-mapping constraints are defined in the transmission chapter.
+The final zone receives the remaining national energy after the preceding zones have been assigned. If both national inputs equal zero, `scale=1.0`; positive study demand with zero network national demand terminates alignment. The following sequence gives the complete allocation, with `zone_ids` retaining the network's declared order:
+
+```text
+aligned = {zone_id: [] for zone_id in zone_ids}
+for index, period_id in enumerate(periods):
+    network_national = network_national_mwh[index]
+    if network_national == 0.0 and output_real[index] == 0.0:
+        scale = 1.0
+    elif network_national == 0.0:
+        raise ValueError("Zonal demand requires positive network national demand")
+    else:
+        scale = output_real[index] / network_national
+    remaining = output_real[index]
+    for zone_id in zone_ids[:-1]:
+        value = network_demand_mwh_by_zone[zone_id][index] * scale
+        aligned[zone_id].append(value)
+        remaining -= value
+    aligned[zone_ids[-1]].append(remaining)
+```
+
+The alternative `network_pack_absolute_demand` sets `output_real` to `network_national_mwh` and `scale=1.0`. Its forecast is `output_real[index] * forecast[index] / real[index]`. When `real[index]` is zero, both `forecast[index]` and `output_real[index]` must also be zero and the resulting forecast is zero. The same final-zone remainder rule preserves the national energy total.
 
 ### VALUE 101 synthetic inputs
 
-VALUE 101 generates daily peaks, seasonal variation and two local demand disturbances with deterministic functions in `build_value_101_packs`. The function `_demand` returns demand power in MW. It calculates `day` and `hour` from half-hour index `period`, and combines the following morning, evening, overnight and winter terms. `weekday` is 1 when `day % 7 < 5` and 0.92 otherwise; `teaching_peak` is 30 MW when `day` is 0 or 182 and `period % 48 == 31`, and zero otherwise:
+VALUE 101 supplies deterministic demand, weather and investment profiles. `_demand` returns MW for zero-based half-hour index `period`; `day` and `hour` identify its day and hour. `weekday` equals 1 when `day % 7 < 5` and 0.92 otherwise. `teaching_peak` is 30 MW at `period % 48 == 31` on days 0 and 182, and zero elsewhere:
 
 $$
 \begin{aligned}
@@ -309,9 +358,9 @@ $$
 \end{aligned}
 $$
 
-The forecast function `_forecast_demand` adds `balancing_margin` to `_demand(period)` and rounds to six decimal places. `balancing_margin` is 12 MW when `day` is 0 or 182 and `period % 48 == 30`; it is zero in the other periods.
+The day-ahead forecast is `_demand(period) + balancing_margin`, rounded to six decimal places. `balancing_margin` is 12 MW at `period % 48 == 30` on days 0 and 182, and zero elsewhere. The 12 MW addition precedes each of the two actual demand peaks by half an hour.
 
-The solar investment profile `_solar_profile` multiplies daylight and seasonal factors. It returns zero for `hour < 6` or `hour > 18`. Within that daylight window, using the same `day` and `hour` definitions,
+The solar investment coefficient multiplies daylight and seasonal terms. `_solar_profile` returns zero for `hour < 6` or `hour > 18`. During the daylight window it uses the same `day` and `hour` definitions:
 
 $$
 \begin{aligned}
@@ -321,7 +370,7 @@ $$
 \end{aligned}
 $$
 
-The wind investment profile `_wind_profile` combines daily, 29-day and annual components and limits the coefficient to 0.08–0.92:
+The wind investment coefficient combines daily, 29-day and annual components. `_wind_profile` limits the result to 0.08–0.92 and rounds it to six decimal places:
 
 $$
 \begin{aligned}
@@ -333,9 +382,9 @@ $$
 \end{aligned}
 $$
 
-Offshore investment availability is 1.08 times `_wind_profile(period)`, capped at 1 and rounded to six decimal places. The three sequences are saved under `profiles.vre_solar`, `profiles.vre_onshore` and `profiles.vre_offshore`.
+The offshore investment coefficient is 1.08 times `_wind_profile(period)`, capped at 1 and rounded to six decimal places. Solar, onshore and offshore arrays are bound to `profiles.vre_solar`, `profiles.vre_onshore` and `profiles.vre_offshore`.
 
-Teaching weather is specified separately on one grid point at 52°N, 0°E for 8,760 hours. In this calculation, `hour` is the zero-based index through the year. The solar array `hourly_solar` is in J/m² and the wind-speed array `hourly_wind` in m/s:
+The synthetic weather grid has one point at 52°N, 0°E and 8,760 hourly samples. Here `hour` is the zero-based hourly index through the year; `hourly_solar` is accumulated radiation in J/m² and `hourly_wind` is wind speed in m/s:
 
 $$
 \begin{aligned}
@@ -345,28 +394,11 @@ $$
 \end{aligned}
 $$
 
-The weather wind speed passes through the generation curve for dispatch; the technology profiles supply the investment rule. The French boundary has a 12 MW import limit and a price of 82 GBP/MWh. The other four boundaries have zero exchange capacity and placeholder prices of 200 GBP/MWh. `build_value_101_packs` writes these demand, weather and market sequences into the teaching package.
-
-### Data eligibility and user mappings
-
-Package validation separates structural validity, chronology and physical plausibility. Structure determines whether a package can be installed. Chronology checks boundary identity, price currency, local-time demand, known row-order issues, forecast alignment and declared timestamps. Plausibility checks use the ranges in `value_data_plausibility_v1.json`.
-
-The `profile_eligibility` decision combines those findings with the profile's package whitelist. In the corrected methodology, chronology findings for non-workspace packages and plausibility failures for scientific reference packages block preflight. They remain warnings under doctoral reproduction, whose whitelist separately excludes user workspaces and the VALUE 101 network package. Successful package validation is followed by role-specific reading; VRE investment-profile clock requirements are checked at that stage.
-
-User demand mappings declare columns, units and, when provided, timestamps in UTC or Europe/London. Local timestamps are converted row by row to UTC. Declared day/month order resolves dates as DD/MM/YYYY or MM/DD/YYYY; otherwise it is inferred. Unreadable, duplicate, decreasing, gapped or irregular timestamps block submission.
-
-Mapped sequences enter the model in row order from 1 January 00:00 UTC and repeat in each model year. A differing source year generates a notice; the reader preserves row order, weekdays and holidays from the input. Hourly demand identified by 8,760 or 8,784 rows or a 60-minute timestamp interval expands to half-hours after source-unit conversion. Short inputs require confirmation of repetition. A mapped demand total above 1.5 times or below 0.67 times the replaced annual total generates a notice containing both energy totals.
-
-Mapped euro prices use the declared exchange rate and its annual-average, monthly-average or fixed-rate basis. The declared price year is recorded, and a year other than 2025 generates a notice; only the currency conversion is applied.
-
-### Data and implementation
-
-NESO supplies the demand source, DESNZ REPD supplies projects, Copernicus ERA5 single levels supplies weather, and Ember's ENTSO-E compilation supplies boundary prices. `import_scheme_c_1000twh` normalises project data. `series_reader.py` and `data_method` read time series; `interconnector_identity` assigns boundary series; `known_data_objects_v1.json` associates recognised input files with their declarations and row transformations. `data_validation_layers` evaluates package eligibility, `model_clock` defines UTC periods, and `zonal_demand_alignment` distributes national demand among zones.
-
+Dispatch converts this wind speed through the wind curve and this solar series through the instantaneous-input rule in Chapter 3. Investment uses the coefficients above. The French boundary supplies a constant 12 MW import envelope and 82 GBP/MWh price; the other four boundaries have zero exchange capacity and a price input of 200 GBP/MWh. `build_value_101_packs` writes these sequences into the teaching inputs.
 
 ## 3. Weather and available generation
 
-VALUE calculates each asset's available wind and solar energy from its capacity and representative-point weather. The dispatch fields `available_mw` and `available_mwh` denote available power in MW and period energy in MWh; `capacity_mw` is installed power, `availability` is the weather-derived dimensionless output coefficient, and `period_hours` is the period duration. For each asset and period,
+Wind and solar availability is calculated for each asset from its installed capacity and the weather assigned to its representative location. `capacity_mw` is installed MW, `availability` is the dimensionless weather conversion coefficient, `available_mw` is available power, and `available_mwh` is energy available in one operating period:
 
 $$
 \begin{aligned}
@@ -376,22 +408,22 @@ $$
 \end{aligned}
 $$
 
-Market clearing accepts generation up to this available-energy limit. Annual expansion uses the technology-average investment profiles or the experimental physical-availability rule specified below.
+The weather calculation produces an upper supply limit for clearing. Dispatch determines the accepted energy in Chapters 4, 5 and 7. Annual investment uses the technology-average profiles described at the end of this chapter and the capacity limits in Chapter 6.
 
-### Weather sequences and representative-point sampling
+### Weather inputs and spatial sampling
 
-R029 averages the 2020–2024 ERA5 hourly observations by calendar month, day and hour and reuses the resulting 365-day climatology in each model year. The original sequence contains 43,848 hours. Removing 48 hours on 29 February leaves five observations for every retained calendar hour; their arithmetic mean gives 8,760 hours.
+R029 represents each calendar hour by the mean of the 2020–2024 ERA5 observations for that month, day and hour. The source contains 43,848 hourly records. Removing the two leap days removes 48 hours, leaving five observations for each of 8,760 retained calendar hours. The resulting annual sequence is reused in each model year.
 
-Wind speed is calculated from the 100 m wind-vector magnitude at each original hour before calendar averaging: `wind_speed` is the square root of `u100` squared plus `v100` squared. The files retain all three fields. `hourly_unit_cf` preferentially reads `wind_speed`; for a file containing only `u100` and `v100`, it calculates the vector magnitude at the input time.
+Wind speed is averaged after calculation of the vector magnitude at each source hour. The preprocessing first takes the square root of `u100` squared plus `v100` squared, then forms its calendar mean as `wind_speed`; it also retains `u100` and `v100`. The solar file contains accumulated downward horizontal radiation `ssrd`. The R029 files are `calendar_mean_wind_2020_2024.nc` and `calendar_mean_solar_2020_2024.nc`.
 
-The climatology retains a 0.25° grid over Great Britain and nearby seas. The solar file represents downward solar radiation as `ssrd`, while the wind file provides 100 m wind information. Spatial and temporal array dimensions are given below.
+The weather grid covers Great Britain and adjacent seas at 0.25° resolution. The files have the following coordinate extents and array sizes:
 
 | Input | Latitude range | Longitude range | Latitude × longitude × day × hour |
 |---|---|---|---|
 | Solar radiation | 45°–65°N | 14°W–4°E | 81 × 73 × 365 × 24 |
 | 100 m wind | 46°–65°N | 14°W–5°E | 77 × 77 × 365 × 24 |
 
-Each representative point uses the nearest latitude and nearest longitude in the weather grid. `point_series` selects `lat_index` and `lon_index` from the coordinate arrays `lats` and `lons`, with site coordinates `latitude` and `longitude` in degrees:
+A representative site receives the nearest grid latitude and longitude. In `point_series`, site coordinates `latitude` and `longitude` and grid arrays `lats` and `lons` are in degrees. `lat_index` and `lon_index` select the smallest absolute coordinate differences; a tie selects the first grid-array entry:
 
 $$
 \begin{aligned}
@@ -400,7 +432,11 @@ $$
 \end{aligned}
 $$
 
-`point_series` accepts latitude–longitude–day–hour and time–latitude–longitude arrays and flattens the selected point into an hourly sequence. The corrected profile reads `time_convention`; a field labelled `GRIB_stepType=accum` uses hourly interval-end accumulation, while a field lacking both declarations uses the instantaneous convention. `hour_index` produces `index` for zero-based half-hour index `t` and source length `hours`:
+Spatial extraction accepts latitude–longitude–day–hour arrays and time–latitude–longitude arrays. The selected point is flattened in source order to an hourly sequence. An empty sequence, masked value, non-finite value or other array layout terminates weather loading. Each site's `lat` and `lon` are supplied by `fleet.locations`; `representative_sites` matches those locations to the generator names in `fleet.json`.
+
+### Hourly weather and half-hour dispatch
+
+Weather values are assigned according to the physical meaning of their timestamps. The default weather method has `clock="v2"`. A binding's `time_convention` takes precedence; otherwise `GRIB_stepType="accum"` denotes an accumulation ending at the timestamp, and other fields use the instantaneous convention. `hour_index` maps zero-based half-hour index `t` to source index `index`, wrapping after `hours` source values:
 
 $$
 \mathtt{index}[t]=\begin{cases}
@@ -409,13 +445,13 @@ $$
 \end{cases}
 $$
 
-The accumulated convention assigns the radiation for the hour ending at 01:00 to periods beginning at 00:00 and 00:30. Solar geometry uses the midpoint of each receiving period. The instantaneous convention assigns the 00:00 sample to period 00:00 and the 01:00 sample to periods 00:30 and 01:00.
+An hourly accumulation ending at 01:00 supplies the periods beginning at 00:00 and 00:30. The instantaneous rule assigns the sample at 00:00 to the period beginning at 00:00, and the sample at 01:00 to the periods beginning at 00:30 and 01:00. Solar geometry is evaluated at each receiving period's midpoint.
 
-The doctoral reproduction profile uses `index = (t // 2) % hours`, repeating each source value for two half-hours. Original GBP1 weather groups by day of year into 366 days, or 8,784 hours, and uses the first 8,760 hours. R029's 8,760-hour calendar climatology carries the instantaneous convention in its current metadata. The experimental R029 dispatch pathway retains the hourly-repeat clock and raw generation curves.
+The R029 calendar-mean files declare instantaneous inputs, so they use the second row of the index rule. The supported `clock="v1"` setting instead uses `index = (t // 2) % hours`: each source value serves two consecutive half-hours. These index rules apply to the declared source order, including the wrap from the final source hour to the first.
 
-### Wind conversion and losses
+### Wind power curve and losses
 
-Wind availability follows cut-in, cubic growth, rated output and cut-out segments. `wind_unit_output` expresses the power curve on a 20-unit scale; `hourly_unit_cf` divides its result by 20 to obtain the dimensionless hourly coefficient `hourly`. Wind speed `speed`, rated speed `rated` and cut-out speed `cut_out` are in m/s:
+Wind availability follows a cut-in speed of 3 m/s, cubic growth to rated output, constant rated output and a cut-out limit. `hourly_unit_cf` reads `wind_speed` when that variable is present; otherwise it forms the magnitude from `u100` and `v100`. `wind_unit_output` uses a 20-unit output scale and its result is divided by 20 to obtain the dimensionless hourly coefficient `hourly`. For speed `speed`, rated speed `rated` and cut-out speed `cut_out`, all in m/s,
 
 $$
 \mathtt{wind\_unit\_output}(\mathtt{speed})=\begin{cases}
@@ -425,18 +461,20 @@ $$
 \end{cases}
 $$
 
-Onshore wind uses `rated = 9.7` and `cut_out = 25`; offshore wind uses `rated = 10.5` and `cut_out = 30`. The corrected profile multiplies `hourly[index]` by `multiplier`, the product of the wake, energy-availability and electrical factors in `value_uk_vre_loss_factors_v1.json`.
+Onshore wind uses `rated=9.7` and `cut_out=25`; offshore wind uses `rated=10.5` and `cut_out=30`. Output equals the rated value at the cut-out speed and falls to zero above it. The cubic segment is bounded to the 0–20 range before conversion to `hourly`.
+
+The delivered wind coefficient multiplies the assigned `hourly[index]` by the product of wake, energy-availability and electrical factors. `method.multiplier(technology)` reads the following values from `value_uk_vre_loss_factors_v1.json` when `loss_factors=true`, the default setting:
 
 | Technology | Wake factor | Energy-availability factor | Electrical factor | `multiplier` |
 |---|---|---|---|---|
 | Onshore wind | 0.95 | 0.97 | 0.98 | 0.90307 |
 | Offshore wind | 0.88 | 0.945 | 0.98 | 0.814968 |
 
-At 8 m/s, the onshore raw coefficient is 0.5476061707 and its corrected coefficient is approximately 0.49453. A 100 MW asset therefore supplies approximately 49.453 MW of available power. The doctoral reproduction profile uses the raw curve with a multiplier of 1. The separate experimental R029 pathway also retains the raw curve.
+At 8 m/s the onshore curve gives 0.5476061707. Multiplication by 0.90307 gives approximately 0.49453, corresponding to 49.453 MW of available power from 100 MW of installed capacity. The supported setting `loss_factors=false` sets `multiplier=1.0` and uses the curve output directly.
 
-### Solar radiation and array-plane conversion
+### Horizontal radiation and solar conversion
 
-The corrected profile converts accumulated horizontal ERA5 radiation to irradiance on a south-facing tilted plane, then applies a performance ratio of 0.83 and a coefficient ceiling of 1. `hourly_unit_cf` reads `ssrd` into `raw` in J/m² and converts each value to `hourly` in kW/m²:
+Solar conversion first expresses each source-hour radiation value as irradiance. `hourly_unit_cf` reads `ssrd` as `raw` in J/m² and returns `hourly` in kW/m². The input filter and unit conversion are
 
 $$
 \mathtt{hourly}=\begin{cases}
@@ -445,13 +483,19 @@ $$
 \end{cases}
 $$
 
-Array tilt follows latitude. In `optimal_tilt_jacobson_jadhav`, `phi` is latitude in degrees north; the function applies the 0°–65°N polynomial from [Jacobson and Jadhav (2018), Solar Energy 169, 55–66](https://web.stanford.edu/group/efmh/jacobson/Articles/I/TiltAngles.pdf). Its returned value becomes `tilt`, in degrees, in `plane_of_array`:
+The default solar method uses `plane_of_array=true` and a performance ratio of 0.83. Array-plane conversion applies when `clock="v2"` and `time_convention="accumulation_end_of_hour"`; it evaluates horizontal irradiance on a south-facing tilted surface at each half-hour midpoint. Instantaneous sources, including R029 and VALUE 101, use horizontal irradiance multiplied by 0.83. With `plane_of_array=false`, all sources use that horizontal calculation. `loss_factors=false` replaces the performance ratio by 1.0.
+
+Array tilt is a function of site latitude. The default `tilt_rule="jacobson-jadhav-2018"` evaluates the 0°–65°N polynomial of [Jacobson and Jadhav (2018), Solar Energy 169, 55–66](https://web.stanford.edu/group/efmh/jacobson/Articles/I/TiltAngles.pdf). In `optimal_tilt_jacobson_jadhav`, `phi` is latitude in degrees north; the returned degrees become `tilt` in `plane_of_array`:
 
 $$
 \mathtt{tilt}=1.3793+\mathtt{phi}\times\bigl[1.2011+\mathtt{phi}\times(-0.014404+0.000080509\mathtt{phi})\bigr].
 $$
 
-Solar geometry uses each half-hour midpoint. `period_clock` produces `day_of_year` and `utc_hours` from zero-based period index `t`; `day_angle` gives the annual angle `g`. The functions `declination`, `equation_of_time_minutes` and `eccentricity_factor` use the following implemented coefficients. Their outputs are declination `decl` in radians, the time correction in minutes and a dimensionless orbital-distance factor:
+The tilt parameter also supports `tilt_rule="site_latitude"`, giving the absolute latitude in degrees, and `tilt_rule="fixed"`, using `fixed_tilt_deg` in [0,90]. The radiation plane faces south under all three rules. `PlaneOfArrayParameters` supplies `albedo=0.2`, `solar_constant_w_m2=1361` and `max_zenith_deg=87`. Supported parameter ranges are [0,1] for albedo, 1,300–1,400 W/m² for the solar constant and [80,90) degrees for the zenith threshold.
+
+### Solar geometry
+
+Solar geometry follows the UTC midpoint of the operating period. `period_clock` returns the calendar day `day_of_year` and hour `utc_hours`; `day_angle` calculates the annual angle `g` in radians. For zero-based period `t`,
 
 $$
 \begin{aligned}
@@ -460,6 +504,8 @@ $$
 \mathtt{g}&=2\pi(\mathtt{day\_of\_year}-1)/365.
 \end{aligned}
 $$
+
+Declination and orbital corrections use the following coefficients in `declination`, `equation_of_time_minutes` and `eccentricity_factor`. The resulting `decl` is in radians, the time correction is in minutes and the distance factor is dimensionless:
 
 $$
 \begin{aligned}
@@ -485,7 +531,7 @@ $$
 \end{aligned}
 $$
 
-Longitude and the time correction determine `solar_time` and hour angle `omega`. The function `incidence_cosines` converts latitude and tilt to radians as `phi` and `beta`; its outputs become `cos_z` and `cos_theta`, the cosines of zenith angle and incidence angle:
+Longitude and the time correction give local solar time and hour angle. `longitude_deg` is positive eastward, `solar_time` is in hours and `omega` is in radians. `incidence_cosines` converts latitude and tilt to radians as `phi` and `beta`, returning `cos_z` and `cos_theta` for the zenith and incidence angles:
 
 $$
 \begin{aligned}
@@ -499,11 +545,15 @@ $$
 \end{aligned}
 $$
 
-The horizontal irradiance `ghi` is separated into beam and diffuse components using the hourly relation of [Erbs, Klein and Duffie (1982), Solar Energy 28(4), 293–302](https://www.sciencedirect.com/science/article/pii/0038092X82903024). `extraterrestrial_normal` equals 1.361 kW/m² times `eccentricity_factor(day_of_year)`. For positive `ghi` and zenith below 87°, the clearness index `kt` and diffuse fraction `kd` are
+### Diffuse radiation and array-plane irradiance
+
+The horizontal irradiance is decomposed into diffuse and beam components. `plane_of_array` sets `ghi` to the non-negative part of `ghi_kw_m2`, in kW/m², and calculates `extraterrestrial_normal` as `parameters.solar_constant_w_m2 / 1000.0 * eccentricity_factor(day_of_year)`; the default multiplier is 1.361 kW/m². For positive `ghi` and zenith below 87°, the clearness index is
 
 $$
 \mathtt{kt}=\min\left(1,\max\left(0,\frac{\mathtt{ghi}}{\mathtt{extraterrestrial\_normal}\times\mathtt{cos\_z}}\right)\right),
 $$
+
+The diffuse fraction follows the hourly relation of [Erbs, Klein and Duffie (1982), Solar Energy 28(4), 293–302](https://www.sciencedirect.com/science/article/pii/0038092X82903024). The coefficient `kd` depends on the dimensionless clearness index `kt`; `middle` is the polynomial value for its central interval:
 
 $$
 \begin{aligned}
@@ -517,7 +567,7 @@ $$
 \end{aligned}
 $$
 
-The [Hay–Davies (1980) transposition](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.irradiance.haydavies.html) combines beam, anisotropic sky-diffuse and ground-reflected irradiance. `dhi`, `bhi` and `dni` denote diffuse horizontal, beam horizontal and direct normal irradiance in kW/m²; `anisotropy`, `beam_ratio`, `sky_view` and `ground_view` are dimensionless. With `albedo = 0.2`, the array-plane irradiance `poa` is
+The [Hay–Davies (1980) transposition](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.irradiance.haydavies.html) combines beam, sky-diffuse and ground-reflected irradiance. `dhi`, `bhi` and `dni` denote diffuse horizontal, beam horizontal and direct normal irradiance in kW/m². `anisotropy`, `beam_ratio`, `sky_view` and `ground_view` are dimensionless; the default `albedo` is 0.2. The array-plane irradiance `poa` is
 
 $$
 \begin{aligned}
@@ -525,8 +575,9 @@ $$
 \mathtt{dni}&=\mathtt{bhi}/\mathtt{cos\_z},\\
 \mathtt{anisotropy}&=\min(1,\max(0,\mathtt{dni}/\mathtt{extraterrestrial\_normal})),\\
 \mathtt{beam\_ratio}&=\max(\mathtt{cos\_theta},0)/\mathtt{cos\_z},\\
-\mathtt{sky\_view}&=(1+\cos\mathtt{beta})/2,\\
-\mathtt{ground\_view}&=(1-\cos\mathtt{beta})/2,\\
+\mathtt{cos\_beta}&=\cos(\pi\mathtt{tilt}/180),\\
+\mathtt{sky\_view}&=(1+\mathtt{cos\_beta})/2,\\
+\mathtt{ground\_view}&=(1-\mathtt{cos\_beta})/2,\\
 \mathtt{beam}&=\mathtt{bhi}\times\mathtt{beam\_ratio},\\
 \mathtt{sky\_diffuse}&=\mathtt{dhi}\times\bigl[\mathtt{anisotropy}\times\mathtt{beam\_ratio}\\
 &\qquad +(1-\mathtt{anisotropy})\times\mathtt{sky\_view}\bigr],\\
@@ -535,13 +586,15 @@ $$
 \end{aligned}
 $$
 
-For zenith at or above 87° or zero `ghi`, the calculation sets `kd = 1`, `dhi = ghi`, `bhi = 0`, `dni = 0`, `anisotropy = 0` and `beam_ratio = 0`. The same array-plane sum retains diffuse and ground-reflected irradiance. For corrected accumulated inputs, `site_cf_by_source` converts `poa` into the output coefficient `values`:
+Periods with zenith at or above 87° or with zero `ghi` have `kt=0`, `kd=1`, `dhi=ghi`, `bhi=0`, `dni=0`, `anisotropy=0` and `beam_ratio=0`. Their `poa` retains the diffuse and ground-reflected terms. The selected `max_zenith_deg` replaces 87° in this condition when its parameter is changed.
+
+Array-plane irradiance is converted to generation by the performance ratio and a coefficient ceiling of 1. Under the default parameters, `site_cf_by_source` returns the dimensionless coefficient `values` as
 
 $$
 \mathtt{values}=\min(0.83\mathtt{poa},1).
 $$
 
-The accumulated-input convention selects array-plane conversion. Corrected instantaneous inputs, including the current R029 calendar climatology and VALUE 101 synthetic input, apply 0.83 directly to horizontal irradiance. The doctoral reproduction profile and experimental R029 pathway retain horizontal conversion with a multiplier of 1. The following pseudocode uses the implemented function and variable names:
+The coefficient ceiling is applied after the array-plane step. Horizontal conversion applies the performance ratio to `hourly[index]` directly. The following algorithm covers wind, instantaneous solar and accumulated solar. `ds` is the opened NetCDF input, `binding` declares its time convention, `periods` is the requested number of half-hours, and `method` contains `clock`, `loss_factors` and `plane_of_array`:
 
 ```text
 hourly, evidence = hourly_unit_cf(ds, technology, latitude, longitude, binding)
@@ -556,29 +609,15 @@ if technology == "solar" and method.plane_of_array:
 multiplier = method.multiplier(technology)
 values = values * multiplier
 if poa_applied:
-    values = minimum(values, 1.0)
+    values = np.minimum(values, 1.0)
 return values
 ```
 
-### Comparison with observed load factors
+### Project locations and weather mixtures
 
-The GBP1 representative-point weather calculation can be compared with national load factors from [DUKES Table 6.3](https://www.gov.uk/government/statistics/renewable-sources-of-energy-chapter-6-digest-of-united-kingdom-energy-statistics-dukes). The model values below are unweighted means across representative points, each evaluated over 17,520 half-hours before curtailment. DUKES divides national generation by the mean of installed capacity at the beginning and end of the year and by annual hours. These definitions determine the scope of the comparison.
+Assets obtain their representative weather from technology and location. The GB template lists 11 solar and 11 onshore points and 21 offshore point names; the R029 2025 stock has 11 solar, 11 onshore and 18 offshore assets with positive capacity. Operating stock is mapped during the initial selection in Chapter 2. Planned projects receive a representative point before commissioning.
 
-| Technology | GBP1 corrected | DUKES 2019–2024 mean | DUKES 2020–2024 mean | Corrected / 2020–2024 mean | GBP1 doctoral reproduction |
-|---|---|---|---|---|---|
-| Onshore wind | 0.4026 | 0.2593 | 0.2582 | 1.56 | 0.4458 |
-| Offshore wind | 0.4913 | 0.4016 | 0.4009 | 1.23 | 0.6028 |
-| Solar PV | 0.1065 | 0.1033 | 0.1025 | 1.04 | 0.1201 |
-
-The corrected wind values remain above the observed national averages. The calculation combines unadjusted ERA5 wind speeds, one power curve for each wind technology and fixed loss multipliers. DUKES measures realised fleet generation, including the effects of dispatch and the operating fleet's composition. The table provides an external comparison for the specified parameterisation.
-
-The solar calculation uses a climatological radiation series followed by nonlinear decomposition and transposition. For the GBP1 representative points, the calculated diffuse share is approximately 0.63–0.75 and the ratio of array-plane to horizontal irradiation is approximately 1.05–1.10. These quantities describe the adopted climatology and transformation; year-specific simulations require year-specific weather inputs.
-
-### Project locations, asset aggregation and zones
-
-Wind and solar projects obtain their spatial weather correspondence through representative points of the same technology. The initial GB template contains 11 solar and 11 onshore representative points, plus 21 offshore point names. R029's 2025 initial specification contains 11 solar, 11 onshore and 18 offshore assets with positive capacity. `fleet.locations` and generator names jointly specify representative-point locations.
-
-Projects with explicit coordinates use the nearest same-technology representative point. `nearest_site` converts project latitude and longitude to radians as `lat1` and `lon1`, and candidate coordinates as `lat2` and `lon2`. Its great-circle distance is
+A planned project's explicit location takes precedence. `attach_project_weather` first uses its `latitude` and `longitude`, then searches the source REPD row by `physical_project_id`, then uses the site name when coordinates remain missing. Finite coordinates are assigned to the nearest representative of the same technology. `nearest_site` converts project coordinates to radians as `lat1`, `lon1` and representative coordinates as `lat2`, `lon2`; the distance in kilometres is
 
 $$
 \begin{aligned}
@@ -588,7 +627,7 @@ $$
 \end{aligned}
 $$
 
-Equal distances retain the first point in the candidate list. Solar and onshore projects without an explicit location first use the REPD region mapping below.
+Equal distances select the first representative in the declared order. Solar and onshore planned projects with missing coordinates use their REPD region and the following city mapping. The initial operating-stock reader also uses this table, with the region taking precedence over coordinates at that earlier step.
 
 | REPD region | Representative point |
 |---|---|
@@ -604,21 +643,35 @@ Equal distances retain the first point in the candidate list. Solar and onshore 
 | West Midlands | Birmingham |
 | Yorkshire and Humber | Sheffield |
 
-Remaining unlocated projects are distributed in proportion to existing same-technology capacity. In `commissioned_project_weather`, `stock[name]` is the operating capacity at a representative point and `total_stock` is its sum across the technology. Located projects entering operation in the same year are included first. Each remaining point receives `total_new * stock[name] / total_stock` MW, with the final point receiving the remainder. Zero total capacity selects the first representative point; assigned amounts at or below 0.000001 MW have zero weather weight.
+Unlocated projects share a capacity-weighted weather mixture when they enter operation. `commissioned_project_weather` first accumulates each representative's operating capacity as `stock[name]` and adds all explicitly located projects due in that year. It then groups the remaining projects by technology. `total_stock` is the corresponding stock in MW, `total_new` is the new MW and `names` is the list of that technology's representatives:
 
-Assets retain the `weather_source_weights` fixed at commissioning. `source_weights` supplies the mapping `weights`; `_map_lineages` combines each source curve `values` with its associated `weight`. The resulting dimensionless curve `combined` is
+```text
+total_stock = sum(stock[name] for name in names)
+total_new = sum(p.capacity_mw for p in projects)
+if total_new <= 0 or total_stock <= 0:
+    weights = {names[0]: 1.0}
+else:
+    names.sort()
+    remaining, weights = total_new, {}
+    for i, name in enumerate(names):
+        amount = remaining if i == len(names) - 1 else total_new * stock[name] / total_stock
+        remaining -= amount
+        weights[name] = amount / total_new if amount > 1e-6 else 0.0
+```
+
+Each project in the unlocated group receives the same `weights`. Positive allocations above 0.000001 MW become `amount / total_new`; smaller allocations have zero weather weight. Alphabetical ordering and the final-point remainder fix the floating-point allocation order. With zero total stock, the first representative receives weight 1.
+
+The stored `weather_source_weights` remain attached to the asset after commissioning. `source_weights` uses this explicit mapping first, then a single `weather_source_asset_id`, then an identity match through the asset, assigned generator, investment owner, source agent or base asset. Source names must identify representatives of the same technology. Weights must be finite and non-negative, with their sum at most 1 plus 0.000000000001. If `deficit = 1.0 - sum(weights.values())` exceeds that tolerance, `cohort` is the positive finite `weather_allocation_cohort_mw` and `skipped` counts zero weights; acceptance requires `deficit <= skipped * 1e-6 / cohort + 1e-12`.
+
+The asset's availability is the weighted sum of its source curves. `_map_lineages` applies the mapping `weights` to each source's `values`; using subscript `name` to select the source array, the resulting `combined` is
 
 $$
 \mathtt{combined}[t]=\sum_{\mathtt{name}}\mathtt{weights}[\mathtt{name}]\times\mathtt{values}_{\mathtt{name}}[t].
 $$
 
-The weather reader checks source technology and finite, non-negative weights. The weights sum to 1 apart from the bounded effect of the 0.000001 MW allocation rule. Subsequent capacity changes retain these weights.
+Zonal allocation preserves the weather curve while dividing the asset's physical capacity. `StagedBidAtCostPSM` multiplies `capacity_mw` by each `share`; the shares sum to 1. It multiplies storage `charge_power_mw`, `discharge_power_mw`, `energy_capacity_mwh` and `initial_soc_mwh` by the same share. Chapter 7 defines the asset-to-zone mapping and network constraints.
 
-The current national market maps annual assets onto a fixed market-agent and representative-weather topology. Mapping first uses identical asset identifiers, then selects agents of the same technology with matching region and allocates by previously mapped capacity. Zero capacity invokes template capacity and then equal allocation. Each market agent's final capacity is the sum of the annual assets assigned to it.
-
-Zonal operation divides asset capacity by `zone_share`, retaining its weather curve and economic owner. `StagedBidAtCostPSM` sets each regional resource's `capacity_mw` to the original `resource.capacity_mw` multiplied by `share`; the shares sum to 1. It applies the same multiplication to storage `charge_power_mw`, `discharge_power_mw`, `energy_capacity_mwh` and `initial_soc_mwh`, preserving their national totals.
-
-The separate aggregation interface `REPDERA5AggregatedWeather.build` combines precomputed project profiles within each owner–technology–zone group. For allocation records `rows`, `total` is their summed `capacity_mw` in MW. Each source curve becomes `values`, and the group curve `weighted` is
+The optional `REPDERA5AggregatedWeather.build` interface combines caller-supplied project curves within each owner–technology–zone group. For allocation records `rows`, `total` is total MW, `values` is a project's dimensionless curve and `weighted` is the group's curve:
 
 $$
 \begin{aligned}
@@ -627,60 +680,19 @@ $$
 \end{aligned}
 $$
 
-The aggregation accepts equal-length finite profiles within [0,1] and positive total capacity. Its caller supplies the project profiles. The current zonal execution pathway copies the representative profile to each allocated portion of an asset.
+This aggregation requires equal-length, finite project curves in [0,1] and positive `total`. Multiplication of `weighted` by total MW gives the sum of the projects' available power. The zonal dispatch interface can instead use the representative curve directly for each allocated portion of an asset.
 
-### Annual wind and solar capacity limits
+### Technology-average investment profiles
 
-The general investment rule derives capacity headroom from peak demand and the peak of each technology's CSV profile. In `canonical_psm_data`, `demand` is period energy in MWh, `period_hours` is 0.5 h, `availability` is the dimensionless technology profile and `capacity_by_technology` is operating MW. The `vre-expansion-cap` module multiplies the resulting `headroom` by `expansion.vre_cap_fraction`, recorded as `fraction`, to obtain annual limits `limits` in MW:
+Annual expansion calculations use one technology-average profile for solar, onshore wind and offshore wind. These inputs combine 2022 ERA5 data with the fleet and project assumptions embodied in `sa.csv`, `wa.csv` and `we.csv`. Each public2 file contains 8,760 hourly values and declares `interval_minutes=60`; each value supplies two consecutive half-hours in source row order.
 
-$$
-\begin{aligned}
-\mathtt{peak}&=\max_t\mathtt{availability}[t],\\
-\mathtt{headroom}[\mathtt{technology}]&=\max\left(0,\frac{\max_t\mathtt{demand}[t]}{\mathtt{period\_hours}\times\max(\mathtt{peak},10^{-12})}\right.\\
-&\qquad\left.-\mathtt{capacity\_by\_technology}[\mathtt{technology}]\right),\\
-\mathtt{limits}[\mathtt{technology}]&=\mathtt{fraction}\times\mathtt{headroom}[\mathtt{technology}],\\
-\mathtt{fraction}&=0.20.
-\end{aligned}
-$$
+The resulting `availability` is dimensionless and supplies `peak` and annual capacity headroom in Chapter 6. These investment profiles enter that rule directly. Dispatch availability follows the site sampling, time assignment, conversion and losses defined above.
 
-Technology-average investment profiles combine 2022 ERA5 data with fleet and project assumptions. The original solar `sa.csv` has 8,761 rows, with a final zero at `2023-01-01T00:00:00`; onshore `wa.csv` and offshore `we.csv` each have 8,760 rows. Public2 removes the final solar row and declares `interval_minutes=60`. Repeating each remaining value for two half-hours preserves the values formerly obtained by annual truncation. The investment reader retains the CSV row order and ERA5 interval-end timestamps; these profiles supply the investment calculation directly, while dispatch uses the weather-clock, loss and solar-plane transformations above.
+## 4. Operation and storage
 
-For a peak demand of 1,000 MW, `peak = 0.8` and operating capacity of 300 MW, `headroom` is 950 MW and the annual limit is 190 MW. A zero profile peak uses the denominator floor 0.000000000001.
+VALUE resolves demand and supply in half-hour periods, with generation, imports, exports and storage subject to their physical capacities. This chapter defines the operating clock, staged market clearing and storage-cost calculation. Chapter 5 gives the national Native dispatch algorithm, Chapter 7 adds network constraints, and Chapter 6 links annual operating results to investment.
 
-The experimental function `thesis96_vre_annual_expansion_cap` sets an annual addition limit from the number of negative net-demand periods. It takes three full-year inputs: `demand_mwh`, actual demand energy per period; `operational_vre_available_mwh`, the physical available energy of all operating wind and solar assets; and `generation_per_mw_mwh`, available energy per MW of the technology being expanded. The first two are in MWh/period and the third in MWh/MW/period. The technology curve is the available energy of its operating assets divided by their total MW; zero technology capacity gives a zero curve.
-
-The function subtracts available renewable energy from demand as `net` and counts `already_negative`, the periods with `net < 0`. The default `negative_threshold = 200` half-hours represents 100 hours. Reaching this count gives an addition limit of zero; otherwise each eligible period contributes a capacity transition `net / profile`, where `profile` is the supplied `generation_per_mw_mwh`. The algorithm selects the required order statistic and multiplies it by `cap_fraction = 0.20`:
-
-```text
-demand = demand_mwh
-available = operational_vre_available_mwh
-profile = generation_per_mw_mwh
-net = demand - available
-already_negative = count_nonzero(net < 0)
-if already_negative >= negative_threshold:
-    return 0.0
-transitions = net[(net >= 0) & (profile > 0)] / profile[(net >= 0) & (profile > 0)]
-needed = negative_threshold - already_negative
-if len(transitions) < needed:
-    return 0.0
-critical = partition(transitions, needed - 1)[needed - 1]
-return cap_fraction * critical
-```
-
-`critical` is the `needed`-th smallest transition in MW. At a transition, the corresponding net demand equals zero; a larger addition makes it negative. A shortage of eligible transitions gives zero under this function's convention. The R029 public2 package published with VALUE 0.7.0-alpha.1 supplies demand, assets and weather for constructing these inputs. Chapter 6 specifies the experimental pathway's execution coverage.
-
-### Data and implementation
-
-`calendar_mean_solar_2020_2024.nc` and `calendar_mean_wind_2020_2024.nc` provide the R029 calendar climatology. `site_weather` reads representative-point series and applies the selected clock and conversion; `solar_irradiance` calculates array-plane radiation. `value_uk_vre_loss_factors_v1.json` supplies conversion parameters, and `value_uk_vre_cf_disclosure_v1.json` records the load-factor comparison. `doctoral_weather` provides the frozen conversion for the experimental pathway, while `doctoral_weather_mapping` manages locations and mixed weather weights.
-
-`scheme_c_native_psm` aggregates capacity into national market agents, and `staged_psm` divides capacity among zones. Annual limits use the general peak rule in `canonical_psm_data` and `v2_module_definitions`. The experimental net-demand threshold function `thesis96_vre_annual_expansion_cap` is defined in `doctoral_policy`.
-
-
-## 4. Operation and annual feedback
-
-VALUE links half-hourly dispatch to annual investment. Projects due for commissioning enter the operating portfolio at the start of a year; their operation generates the income used for year-end additions and retirements. This chapter defines staged dispatch, storage pricing, investment and system accounts. Chapter 5 describes the default national PSM, and Chapter 6 describes the experimental national accounts.
-
-### Model clock and annual state
+### Operating clock and initial storage
 
 A model year contains 365 days and 17,520 half-hour periods in UTC. `period_start_utc` takes the zero-based `period`, divides it into `day_index` and within-day `offset`, and adds `offset×period_hours` hours to the date returned by `model_day`. With `period_hours=0.5`, the calculation is:
 
@@ -688,30 +700,9 @@ $$
 \mathtt{day\_index}=\left\lfloor\frac{\mathtt{period}}{48}\right\rfloor,\qquad\mathtt{offset}=\mathtt{period}\bmod48.
 $$
 
-`model_day` skips 29 February. Source series are aligned to this clock before dispatch; records declared as Europe/London are converted to UTC row by row. Output timestamps use ISO 8601 with `Z`. Period energy is measured in MWh, rated power in MW and inventory in MWh. Formulas and pseudocode below retain the names used by the corresponding functions and fields.
+`model_day` skips 29 February. Source series are aligned to this clock before dispatch; records declared as Europe/London are converted to UTC row by row. Output timestamps use ISO 8601 with `Z`. Period energy is measured in MWh, rated power in MW and inventory in MWh.
 
-The annual state carries operating assets, uncommissioned projects, storage-pricing observations and cumulative financial quantities. In the annual orchestrator, `planning.advance_year` commissions due projects, `psm_input_factory` assembles the year’s demand and availability, and `psm.run` returns dispatch and income. Each expansion policy then evaluates annual capacity limits; `investment.decide` creates investment decisions and `planning.admit_projects` applies the declared success mode. `transition.apply` constructs the following year’s state.
-
-The main annual calls use the same data objects throughout. Before transition, `transition_state` contains the operating assets, remaining active projects, cumulative metrics and annual observations:
-
-```text
-advanced = planning.advance_year(run, state)
-model_input = psm_input_factory(run, advanced.operating_state)
-market = psm.run(model_input)
-headroom = []
-for slot in sorted(expansion_policies):
-    policy = expansion_policies[slot]
-    headroom.append(policy.evaluate(run, advanced.operating_state, market))
-investment_market = adapt_market_for_investment(
-    market, advanced.operating_state)
-decision = investment.decide(
-    run, advanced.operating_state, investment_market, tuple(headroom))
-admission = planning.admit_projects(
-    run, advanced.operating_state, decision.proposals)
-next_state = transition.apply(run, transition_state, admission, decision)
-```
-
-Terminal handling follows the selected study setting. `report_only` retains the final state, `pipeline_tail` advances projects already in the pipeline, and `full_extension` continues annual operation and investment.
+Storage has a specified opening inventory at each model-year boundary. Native creates each year's storage agents with empty `stored_energy`; Chapter 5 defines the within-year batch updates. The chronological input used by staged, LP and DC dispatch assigns `initial_soc_mwh=0.5×energy_capacity_mwh`. These opening conditions apply each year. The preceding year's delivered sales and holding-time observations are retained for storage-cost preparation.
 
 ### Ahead market and balancing
 
@@ -740,7 +731,7 @@ Balancing responds to the difference between actual demand and the ahead schedul
 
 ### Downward bids and settlement
 
-Downward settlement returns the accepted reduction multiplied by its bid price. Thus an upward adjustment has positive signed `delta`, a downward adjustment has negative `delta`, and both use `cashflow=delta×price_gbp_per_mwh`. The corrected staged and network pathways use `network-economic-v2` to construct these prices.
+Downward settlement returns the accepted reduction multiplied by its bid price. Thus an upward adjustment has positive signed `delta`, a downward adjustment has negative `delta`, and both use `cashflow=delta×price_gbp_per_mwh`. The staged and network pathways construct these prices with `network-economic-v2`.
 
 Thermal downward bids divide the ahead schedule into the running range and the minimum-stable-output segment. `thermal_dec_segments` sets `shutdown_mwh=min_stable_fraction×scheduled_mwh` and puts the remainder in `running_mwh`. Running-range price is avoided marginal cost after the downward multiplier and policy support. Shutdown price deducts restart expenditure spread across the expected shutdown interval. In `RestartParameters.net_saving`, `avoided_cost` is GBP/MWh, `restart_cost(horizon_h)` is GBP/MW per start, and `horizon_h` is hours:
 
@@ -752,7 +743,14 @@ $$
 
 CCGT uses a minimum stable fraction of 0.50, minimum downtime of 6 h and hot, warm and cold restart costs of 113.7, 134.4 and 155.0 GBP/MW. OCGT uses 0.50, 0.5 h and 175.7 GBP/MW; biomass uses 0.35, 6 h and 129.2 GBP/MW. CCGT selects hot starts below 12 h, warm starts from 12 through 48 h and cold starts above 48 h. These costs are in 2025 GBP. The running range precedes the unit’s shutdown segment; the shutdown segment precedes unsupported wind only when its net saving is positive. Wind precedes shutdown at a price tie.
 
-Other downward prices use `resource_dec_price`. Imports return `marginal×dec_multiplier`; wind, solar and run-of-river hydro return `−support`; nuclear returns `marginal×dec_multiplier−support−premium`; other fuel resources return `marginal×dec_multiplier−support`. `market.dec_multiplier` defaults to 1 and is at most `market.bid_multiplier`. Unlisted policy support is zero, while nuclear’s default premium is 100 GBP/MWh. Storage uses `storage_dec_price`, bounded by its upward bid times charging and discharge efficiency and by the lowest available upward price.
+Other downward prices use `resource_dec_price`. Imports return `marginal×dec_multiplier`; wind, solar and run-of-river hydro return `−support`; nuclear returns `marginal×dec_multiplier−support−premium`; other fuel resources return `marginal×dec_multiplier−support`. `market.dec_multiplier` defaults to 1 and is at most `market.bid_multiplier`. Unlisted policy support is zero, while nuclear’s default premium is 100 GBP/MWh. Storage values downward adjustment at its upward bid multiplied by round-trip efficiency. `storage_dec_price` also applies the lowest available upward price and the store's own upward price as bounds; all prices in this calculation are GBP/MWh:
+
+```text
+value = up_price_gbp_per_mwh * charge_efficiency * discharge_efficiency
+if lowest_inc_price_gbp_per_mwh is not None:
+    value = min(value, lowest_inc_price_gbp_per_mwh)
+value = min(value, up_price_gbp_per_mwh)
+```
 
 Copperplate balancing ranks upward bids by increasing price, with storage after generation at a price tie; bids above VoLL remain outside the accepted set. It ranks downward bids by decreasing price rounded to 0.01 GBP/MWh, then by class, then by exact price. The class order is fuel running range, imports, storage, run-of-river hydro, VRE, thermal shutdown, nuclear and short-downtime shutdown. Equal-price bids of the same direction and class share acceptance in proportion to available energy.
 
@@ -768,7 +766,7 @@ $$
 \mathtt{soc}=\begin{cases}\mathtt{opening}-\mathtt{dispatch}/\mathtt{discharge\_efficiency},&\mathtt{dispatch}\ge0,\\\mathtt{opening}-\mathtt{dispatch}\times \mathtt{charge\_efficiency},&\mathtt{dispatch}<0.\end{cases}
 $$
 
-Inventory remains between zero and `energy_capacity_mwh`, with a 10⁻⁸ MWh rounding tolerance. Zonal dispatch represents charge and discharge separately and requires at most one to exceed 10⁻⁸ MWh. Each year opens from `initial_soc_mwh`: `canonical_psm_data.py` assigns half the energy capacity to ordinary inputs and zero to the designated research-input alignment. The staged inventory carries between periods, while the following year takes its opening inventory from annual inputs. Storage-pricing observations carry between years; Chapter 6 gives the experimental dated-batch transition.
+Inventory remains between zero and `energy_capacity_mwh`, with a 10⁻⁸ MWh rounding tolerance. Charging and discharging respect `charge_power_mw×period_hours` and `discharge_power_mw×period_hours`. Zonal dispatch represents these directions separately and requires at most one to exceed 10⁻⁸ MWh. The closing inventory becomes the next period's `opening`; the annual opening conditions are specified above.
 
 `DynamicAnnualStorageCost` divides equipment-cost recovery into cycle depreciation and holding recovery. `capital_recovery_factor` uses `discount_rate` and `lifetime_years`; at a nonpositive discount rate it returns the inverse lifetime, otherwise it uses:
 
@@ -788,17 +786,16 @@ annual_levelized_project_cost_gbp = (
     annualized_capital_cost_gbp + annual_fixed_opex_gbp)
 ```
 
-Reference annual sales use the smaller of lifetime cycles per year and physically possible charge-discharge cycles. `_reference_observation` calculates `cycles_per_year`, annual delivered sales `sold` in MWh, and reference holding time `dwell_periods` in model periods:
+Reference annual sales use the smaller of lifetime cycles per year and physically possible charge-discharge cycles. `_reference_observation` calculates `life_cycles_per_year` from cycle life, `physical_cycles_per_year` from charge-discharge duration, and their minimum `cycles_per_year`. It then obtains annual delivered sales `sold` in MWh and holding time `dwell_periods` in model periods:
 
-```python
-cycles_per_year = min(
-    spec.maximum_cycles / spec.economic_lifetime_years,
-    8760 / (2 * spec.duration_hours)
-)
-sold = energy_capacity_mwh * discharge_efficiency * cycles_per_year
+```text
+life_cycles_per_year = spec.maximum_cycles / spec.economic_lifetime_years
+physical_cycles_per_year = 8760 / max(2 * spec.duration_hours, 1e-9)
+cycles_per_year = min(life_cycles_per_year, physical_cycles_per_year)
+sold = (max(energy_capacity_mwh, 0) * max(discharge_efficiency, 0)
+        * cycles_per_year)
 dwell_periods = max(spec.duration_hours / period_hours, 2)
 ```
-
 
 The pricing basis uses previous-year sales when positive, subject to a floor tied to reference sales. `reference` is the observation returned by `_reference_observation`; it stores `sold` in `sold_energy_mwh` and its reference holding time in `average_dwell_periods`. `previous` holds the preceding year’s observation. The selected `basis_sold` is MWh and `average_dwell` is the delivered-MWh-weighted number of holding periods:
 
@@ -827,126 +824,28 @@ holding_recovery_gbp_per_mwh_period = (
     remaining_annual_recovery / weighted_basis)
 ```
 
-The cycle formula applies where `has_cycle_depreciation` is true and both denominator terms are positive. Other cases give zero cycle depreciation. Holding recovery is zero when `weighted_basis` is zero. `bid_price_gbp_per_mwh(dwell_periods)` adds cycle depreciation to nonnegative holding age times holding recovery. The corrected default PSM supplies cycle-only bids: battery bids equal `cycle_depreciation_gbp_per_mwh`, while pumped-hydro and hydrogen bids are zero. Its oldest inventory tranche is discharged first.
+The cycle term is zero when `has_cycle_depreciation` is false or either denominator factor is zero. The holding-recovery term is zero when `weighted_basis=0`. Under Native's `cycle_only` bid setting, `bid_price_gbp_per_mwh` returns `cycle_depreciation_gbp_per_mwh`: the three battery types bid their cycle wear, while pumped hydro and hydrogen bid zero. Equal-priced storage batches are released in charging order, oldest first.
 
-The staged caller passes `dwell_periods=0` and records sale ages as zero; its report labels the age source `not_tracked_staged_single_pool`. The holding component therefore contributes zero to its dynamic bid. General holding-recovery quantities remain available as investment-adequacy diagnostics. The fixed-fee alternative uses `storage_fee_gbp_per_mwh+dwell_periods×holding_fee_gbp_per_mwh_period`. The doctoral reproduction profile uses its legacy tariff configuration.
+The storage-cost calculation also reports recovery per holding period. The linear holding-price calculation is `cycle_depreciation_gbp_per_mwh + max(dwell_periods,0)×holding_recovery_gbp_per_mwh_period`. Staged dispatch passes `dwell_periods=0`, so its holding-price contribution is zero. The catalogue provides the life, cycle and maintenance parameters listed in Chapter 2; fixed maintenance is 13.4 GBP/kW/year for pumped hydro, 6.6 for the three battery types and 19.7 for hydrogen.
 
-Catalogue fixed-maintenance rates in 2025 GBP/kW/year are 13.4 for pumped hydro, 6.6 for each of the 1C, 0.5C and 0.25C batteries, and 19.7 for hydrogen. The pumped-hydro catalogue capital cost is 360,000 GBP/MW. These fixed costs enter annual bid-cost recovery; wind, solar and storage fixed OPEX is recorded separately as a memo in the system cost account.
-
-### Storage expansion limits
-
-Corrected storage expansion uses the surplus remaining after existing stores have charged. `corrected_storage_headroom` reads `leftover_excess_mwh` from `storage_headroom_inputs` and reads `vre_accepted_mwh`, `real_demand_mwh` and `storage_discharge_mwh` from each period summary. These fields form the period-MWh arrays `leftover`, `vre`, `demand` and `discharge` respectively. The surplus supplies `excess`; the remaining VRE gap after existing discharge supplies `deficit`:
-
-$$
-\begin{aligned}\mathtt{excess}&=\max(\mathtt{leftover},0),\\\mathtt{deficit}&=\max(\mathtt{demand}-\mathtt{vre}-\mathtt{discharge},0).\end{aligned}
-$$
-
-The virtual store begins empty and has `power_mw=10⁹` MW, `energy_cap_mwh=10⁹` MWh and charging efficiency `rte=0.98`; discharge efficiency is 1. `_simulate_virtual_pool` charges before discharging in each period. In the following update, `exc` and `dfc` are period excess and deficit, and `max_period_mwh=power_mw×PERIOD_HOURS`:
+Sales update the following year's cost basis. `record_sale` takes delivered MWh and the number of periods since charging, and accumulates sales and sales-weighted holding time in `current`. Its `average_dwell_periods` is the weighted total divided by sales when sales are positive, and zero otherwise:
 
 ```text
-ch = min(exc, max_period_mwh, (energy_cap_mwh - soc) / rte)
-soc += ch * rte
-dis = min(dfc, max_period_mwh, soc)
-soc -= dis
-charge[t] = ch
-discharge[t] = dis
+delivered = max(delivered_mwh, 0)
+dwell = max(dwell_periods, 0)
+current.sold_energy_mwh += delivered
+current.dwell_weighted_sold_mwh_periods += delivered * dwell
 ```
 
-`aligned_max_mw` finds the largest common charging and discharging power with at least `min_hours` of use. `hours_above_power(power_mw,p_mw)` counts periods strictly above the tested power and multiplies by 0.5 h. The search uses 64 bisection steps between zero and the smaller charging/discharging peak; an unattainable duration returns zero, and a nonpositive duration returns that peak.
+At year-end, `storage_cost_observations` records these quantities by storage agent. The next annual preparation takes them as `previous`, calculates the new recovery amounts and resets `current` to zero. This observation update supplies the cost calculation while the physical inventory follows the opening conditions and dispatch updates given above.
 
-`aligned_utilisation_spectrum` applies this calculation at 730, 365, 52 and 0 hours, producing `mw_730`, `mw_365`, `mw_52` and `mw_0`. Its successive MW bands are:
+## 5. National market clearing
 
-$$
-\begin{aligned}\mathtt{daily}&=\mathtt{mw\_730},\\\mathtt{interday}&=\max(\mathtt{mw\_365}-\mathtt{mw\_730},0),\\\mathtt{weekly}&=\max(\mathtt{mw\_52}-\mathtt{mw\_365},0),\\\mathtt{seasonal}&=\max(\mathtt{mw\_0}-\mathtt{mw\_52},0).\end{aligned}
-$$
-
-Each of the three battery types receives `power_cap=cap_fraction×power_room`, where `power_room=daily+intraday` and the default `cap_fraction` is 0.20. Hydrogen receives `hydrogen_cap=cap_fraction×seasonal`. Thus 1C, 0.5C and 0.25C each have a separate 0.20 share of the same power opportunity. Owners of a common technology consume its remaining limit in stable order. Prices and investment returns are evaluated separately.
-
-This calculation requires 17,520 half-hours and the post-charge surplus series. Partial years return zero with `partial_year_chronology`; a missing series returns zero with `leftover_trace_unavailable`. Native dispatch supplies the series. Staged dispatch, perfect-foresight LP, DC dispatch and the experimental national pathway receive zero corrected storage headroom under these checks. The doctoral reproduction profile instead derives surplus from accepted VRE minus demand; accepted VRE in that PSM stays within demand, yielding zero headroom.
-
-### Annual investment
-
-Investment pools assets by owner, technology and region. `adapt_market_for_investment` first assigns owner-level income to assets in proportion to their operating MW; asset-level income enters directly. `SchemeCAgentInvestmentDefinition.decide` sums `capacity_mw` into `capacity`, income into `income`, total asset CAPEX into `replacement`, and operating expenditure into `operational`.
-
-Thermal operating expenditure is generated MWh multiplied by generation, fuel, carbon and unit-time costs. The `agent_cashflow` row provides `generated_mwh`, `generation_cost_gbp_per_mwh`, `fuel_cost_gbp_per_mwh`, `carbon_cost_gbp_per_mwh` and `unit_time_cost_gbp_per_mwh`. Wind, solar and storage use zero operating deduction in this investment rule. The group’s `net` income, unit CAPEX, `roi` and payback are:
-
-$$
-\begin{aligned}\mathtt{net}&=\mathtt{income}-\mathtt{operational},\\\mathtt{cost\_per\_mw}&=\mathtt{replacement}/\mathtt{capacity},\\\mathtt{roi}&=\mathtt{net}/\mathtt{replacement},\\\mathtt{payback}&=\begin{cases}\mathtt{replacement}/\mathtt{net},&\mathtt{net}>0,\\\infty,&\mathtt{net}\le0.\end{cases}\end{aligned}
-$$
-
-`income`, `operational`, `net` and `replacement` are GBP; `cost_per_mw` is GBP/MW; `roi` is annual return and `payback` is years. Zero replacement capital gives zero `roi`. Thermal rounding differences are absorbed by setting `net` to zero when:
-
-$$
-|\mathtt{net}|\le10^{-9}\max(|\mathtt{income}|,\mathtt{operational}).
-$$
-
-Both methodology profiles use this net-income account. `preferred` takes the largest member `preferred_rate`, `life` the shortest `economic_lifetime_years`, and `target_payback` the shortest `target_payback_years`. Defaults are 0.08, 25 years and the group lifetime respectively; zero values invoke the same defaults. Investment compares undiscounted `roi` with `preferred` and undiscounted `payback` with `target_payback`, in constant start-year GBP.
-
-A loss-making group with positive unit CAPEX retires capacity in proportion to its members’ MW. Profitable groups receive `Invest_High` when `roi>preferred`, otherwise `Invest_Profit` when `payback≤target_payback`; the remaining groups receive `Do_Nothing`. Both investment classes request profit divided by unit CAPEX.
-
-$$
-\begin{aligned}\mathtt{requested\_retirement}&=\min\left(\mathtt{capacity},\frac{|\mathtt{net}|\times \mathtt{target\_payback}}{\mathtt{cost\_per\_mw}}\right),\\\mathtt{requested}&=\mathtt{net}/\mathtt{cost\_per\_mw},\\\mathtt{addition}&=\min(\max(\mathtt{requested},0),\max(\mathtt{allowed},0)).\end{aligned}
-$$
-
-For wind, solar, the three battery types and hydrogen, `allowed` is the remaining technology limit; concurrent policies use their minimum. CCGT, OCGT, gas and biomass use their requested quantity as `allowed` under the uncapped eligibility policy. At a price equal to their operating cost, thermal assets have zero net income and zero additions. Nuclear follows an exogenous construction schedule; hydro and pumped-hydro additions require site and hydrological inputs.
-
-Storage investment uses booked ahead and balancing income, including ahead remuneration retained during buy-back. Under the corrected methodology, Native dispatch settles storage at each stage’s uniform marginal price. Under the doctoral reproduction profile, storage receives its own highest accepted storage bid, and periods with an empty accepted-generator set carry zero income, as specified in Chapter 5. Surplus charging is free. The investment numerator is this recorded income before cycle depreciation and fixed OPEX; `tier_roi` remains inactive.
-
-### Construction timing and planning success
-
-Endogenous investment enters planning with the data pack’s construction timeline and regional success rate. Both methodology profiles apply this rule. `native_initial_state` uses `freeze_planning_parameters` to store `development_stage_timelines`, `repd_status_to_timeline`, `success_rates` and `timeline_statistic` in `state.extensions["planning_parameters"]`. Annual states inherit these frozen tables. Each proposed addition calls `endogenous_planning_terms` with its `technology`, `owner` and `decision_year`.
-
-Technology labels select both timeline and success-rate tables. Solar maps to Solar Photovoltaics, onshore wind to Wind Onshore, offshore wind to Wind Offshore, and ordinary battery types and electrolysers to Battery. Gas, CCGT, OCGT and biomass use Wind Onshore. `hydrogen_battery` follows the default Solar Photovoltaics mapping. These mappings apply to investment planning.
-
-The development status is Application Submitted. `_timeline_months` reads that status’s timeline type, normally total median duration; `planning.timeline_statistic=mean` selects the mean. A missing technology entry uses the solar entry, and a missing total mean falls back to total median. The resulting `months` is a nonnegative duration in months. Missing solar fallback data or invalid success rates stop proposal construction.
-
-A project-specific timing displacement is stable across runs for the same owner. `model_project_key(owner)` forms `Model Decision: <owner>`. `stable_int_hash` converts the first 64 bits of its MD5 digest to an integer; the arithmetic remainder modulo 13, minus 6, gives `jitter` between −6 and +6 months. `endogenous_planning_terms` then rounds the duration and imposes commissioning at least one year after the decision:
-
-$$
-\begin{aligned}\mathtt{rounded\_months}&=\operatorname{round}(\max(1,\mathtt{months}+\mathtt{jitter})),\\\mathtt{source\_completion}&=\mathtt{decision\_year}+\left\lfloor\frac{\mathtt{rounded\_months}}{12}\right\rfloor,\\\mathtt{completion}&=\max(\mathtt{source\_completion},\mathtt{decision\_year}+1).\end{aligned}
-$$
-
-Rounding follows Python’s ties-to-even rule, so 58.5 months becomes 58 months. The proposal stores `completion` as `expected_completion_year`, and records `timeline_months`, `timeline_jitter_months`, `timeline_months_applied` and `completion_floor_applied`. New storage inherits the group’s energy-to-power ratio.
-
-Success probability first uses the technology label and the owner’s mapped region, then the arithmetic mean across that label’s regions, then 0.75. `source_success_region` maps solar and onshore city names to their regions, names containing offshore to All Offshore, and other owners to England. Consequently battery and thermal owners usually take the table’s technology mean when England lacks an entry. The proposal records `success_probability=terms["success_rate"]` and the lookup source in `success_rate_source`. The city mapping is Nottingham–East Midlands, Ipswich–Eastern, London–London, Newcastle–North East, Manchester–North West, Edinburgh–Scotland, Portsmouth–South East, Bournemouth–South West, Cardiff–Wales, Birmingham–West Midlands and Sheffield–Yorkshire and Humber.
-
-`SchemeCPlanningPipelineDefinition.admit_projects` applies the success outcome to each proposal. In `expected_capacity`, `capacity=proposal.capacity_mw×probability`; energy capacity, total CAPEX and total annual costs receive that factor once. In `seeded_stochastic`, the first 52 bits of the SHA-256 calculation on `seed:proposal_id`, divided by 2⁵²−1, determine `draw` on [0,1]; a positive `probability` admits full capacity when `probability=1` or `draw<probability`. Retirements take effect the following year.
-
-The public2 tables give a 2025 offshore decision completion in 2033 or 2034 with success probability about 0.917; onshore decisions complete in 2029–2030 with regional probabilities about 0.22–0.71; solar completes in 2026–2027 at about 0.84–0.95; batteries complete in 2027 at about 0.873; thermal plant completes in 2030 at about 0.547. VALUE 101’s short timelines and unit success rates retain 2026 commissioning for its 2025 proposals.
-
-Annual headroom is evaluated from that year’s operation. Each year begins investment with `remaining_caps=dict(caps)` and deducts that year’s accepted additions. Earlier proposals remain in the construction pipeline, so proposals from several years can accumulate against the same expansion opportunity.
-
-### System costs and emissions
-
-The resource-cost headline combines annualised in-service capital, applicable fixed OPEX and physical operating expenditure. `build_cem_cost_ledger` reads total annual capital into `capital` and physical operating cost into `operating`. `excluded` contains wind, solar and storage fixed OPEX in both profiles and existing-stock run-of-river compatibility capital in the corrected profile. `non_network_capital` is the fleet capital after subtracting declared network CAPEX and fixed OPEX; `operating_sum` is the reconciled physical operating total. The retained quantities are:
-
-```text
-headline_fleet_capital = max(non_network_capital - excluded, 0)
-headline_capital = capital - (non_network_capital - headline_fleet_capital)
-system_cost = headline_capital + operating_sum
-served = max(demand - blackout - a2_hidden_unserved_mwh(market), 0)
-```
-
-The ledger’s `cem_system_cost_gbp` combines retained capital and physical operation; `cem_system_cost_gbp_per_mwh_served` divides by `served`. Wind, solar and storage fixed OPEX appears as a memo because the model treats it as included in levelised CAPEX. Thermal fixed OPEX remains included. Run-of-river compatibility capital is a memo under the corrected profile and included under the doctoral reproduction profile.
-
-Native physical operating cost includes final-output generation, fuel, carbon and time costs, the applicable operating start-up term, recorded blackout at VoLL, and storage cycle wear. Restart costs used to order downward bids remain in the bid calculation. Corrected VoLL comes from `market.voll_gbp_per_mwh`, default 17,000 GBP/MWh; the doctoral reproduction rule uses 17,000 GBP/MWh. `a2_hidden_unserved_mwh` deducts additional stress shortfall from served demand and returns zero for a year with no stress periods. The cost headline prices recorded blackout, while additional stress shortfall is a separate energy entry.
-
-Operating emissions multiply generated MWh by the selected kg/MWh factor and divide by 1,000 to obtain tonnes. `carbon_ledger.py` sums these into `operational`, combines them with annualised `embodied` emissions as `total`, and reports `overall_intensity=1000×total/delivered_demand_mwh`. The denominator equals served demand. Chapter 9 lists the factor values and CO₂ or CO₂e basis. Zero served demand leaves the intensities empty.
-
-Annual embodied emissions follow the factor’s declared units. A `tCO2e_per_MW_year` factor gives `emissions=capacity_mw×factor.value` directly. Battery factors in `kgCO2e_per_kWh_capacity` are numerically tonnes per MWh of capacity, giving `emissions=asset.energy_capacity_mwh×factor.value/economic_life`. Hydrogen power equipment uses the annual MW factor; hydrogen energy storage uses its `tCO2e_per_MWh_capacity` factor divided by the asset’s `economic_life`. Missing factor inputs leave the affected component unassessed.
-
-Storage-carbon tracing keeps mixed `inventory_energy` in MWh and `inventory_kg` in kilograms. Charging adds efficiency-adjusted stored energy and source carbon; discharging removes stored-side energy and carbon in the same inventory proportion. Source generation supplies the system emissions total.
-
-Network constraint costs use a matched zonal and network-free dispatch comparison with the same resource prices, storage state, export envelope and VoLL. Chapter 7 defines the resource-cost and bid-objective differences. Settlement transfers, policy expenditure, construction commitments and residual values retain separate accounts.
-
-
-## 5. National dispatch algorithms
-
-The default national power-system model, Native (`value-bid-at-cost-psm`), clears a single national node every half-hour. The methodology profile selects its market rule set: `native-corrected-v1` for the default corrected methodology and `native-doctoral-thesis-v1` for the doctoral reproduction profile. The experimental national pathway (`value-doctoral-national-psm`) has its own dispatch engine and input conventions. Its experimental annual accounts are described in Chapter 6.
+The national market clears forecast demand and then balances actual demand at one node in each half-hour. The default module `value-bid-at-cost-psm` applies `native-corrected-v1`: generators and imports offer available power, storage offers eligible energy batches, and the realised dispatch advances the physical state to the next period.
 
 ### Inputs, agents and availability
 
-Dispatch quantities are powers in MW, with `period_hours = 0.5`. The variables `forecast_demand`, `real_demand`, `capacity_limit`, `real_gen_energy` and `alter_limit` respectively describe forecast demand, actual demand, available output, realised output and the per-period ramp allowance. Asset and time subscripts index these quantities. The UTC model year has 17,520 periods. `canonical_psm_data.py` converts demand to period MWh by multiplying each MW value by `period_hours`, following Chapter 2.
+Dispatch quantities are powers in MW, with `period_hours = 0.5`. The variables `forecast_demand`, `real_demand`, `capacity_limit`, `real_gen_energy` and `alter_limit` respectively describe forecast demand, actual demand, available output, realised output and the per-period ramp allowance. The generator index is \(i\), the time index is \(t\), and other asset indices are defined with each calculation. The UTC model year has 17,520 periods. The native kernel reads demand in MW and multiplies accepted power by `period_hours` for MWh output and settlement. The `canonical_psm_data.py` chronology supplies period MWh to staged and optimisation modules, following Chapter 2.
 
 Generator bids combine operating cost with a start-up adder determined by the previous accepted set. Gas and biomass use `gen_cost + fuel_cost + carbon_price + unit_time_cost`; nuclear, renewables and natural-flow hydro use `gen_cost + unit_time_cost`. The input-row costs are summed into the runtime agent’s `gen_cost`, in GBP/MWh; `carbon_price` is already an expenditure per MWh. For bid multiplier \(\mathrm{bidding\_factor}\), composite operating cost \(\mathrm{gen\_cost}_i\) and start-up adder \(\mathrm{startup\_cost}_i\),
 
@@ -958,9 +857,9 @@ $$
 \end{aligned}
 $$
 
-The multiplier defaults to 1. Hydro and renewables have zero start-up adders; physical operating expenditure uses the composite `gen_cost` directly. In the supplied GB parameter rows, biomass has a cost of 0.2 + 80 + 4.8 = 85 £/MWh and an £83/MWh start-up adder; CCGT and OCGT have costs of £55.07/MWh and £74.92/MWh. Biomass revenue contains market receipts; CfD and ROC subsidies lie outside that revenue specification. At these costs, corrected GBP1 public2 and R029 public2 calculations produced approximately 0.01 TWh from 4,762 MW of biomass in 2025. Both revised packs are supplied with VALUE 0.7.0-alpha.1 ([data downloads](https://value.ac/en/data/)).
+The bid multiplier defaults to 1. Hydro and renewables have zero start-up adders. The GB input rows give biomass a composite cost of 0.2 + 80 + 4.8 = 85 GBP/MWh and a start-up adder of 83 GBP/MWh; CCGT and OCGT composite costs are 55.07 and 74.92 GBP/MWh. Biomass receipts follow market settlement.
 
-Native maps operating and newly commissioned assets to market agents first by name, then by technology and normalised region. Multiple matches use previously mapped capacity, constructor capacity, or equal shares in that order. `weights` and `total_weight` allocate each asset's `capacity_mw` into `generator_sources`; these capacities are MW. `_allocate_runtime_income` distributes `raw_income` into the asset account `allocated`, both in GBP, in proportion to the mapped capacities:
+The annual adapter maps operating and newly commissioned assets to market agents first by name, then by technology and normalised region. Multiple matches use previously mapped capacity, constructor capacity, or equal shares in that order. `weights` and `total_weight` allocate each asset's `capacity_mw` into `generator_sources`; these capacities are MW, with \(j\) indexing market agents and \(a\) assets. `_allocate_runtime_income` distributes `raw_income` into the asset account `allocated`, both in GBP, in proportion to the mapped capacities:
 
 $$
 \begin{aligned}
@@ -972,17 +871,15 @@ $$
 \end{aligned}
 $$
 
-Wind uses a 20 MW reference unit and multiplier \(\mathrm{capacity\_mw}_j/20\); solar uses a 1 MW reference unit and multiplier \(\mathrm{capacity\_mw}_j\). Storage power and energy are aggregated by technology. `scheme_c_native_psm.py` creates the year's agents and restores prior sales and sales-weighted holding time for bidding. Each year's physical inventory follows its new agent's initial state; the closing inventory of the preceding objects is recorded as discarded energy in `storage_year_boundary`.
+Wind uses a 20 MW reference unit and multiplier \(\mathrm{capacity\_mw}_j/20\); solar uses a 1 MW reference unit and multiplier \(\mathrm{capacity\_mw}_j\). Storage power and energy are aggregated by technology. `scheme_c_native_psm.py` creates the year's agents and restores prior sales and sales-weighted holding time for bidding. Each year creates storage agents with empty `stored_energy`; the preceding year's closing inventory is counted as discarded energy in `storage_year_boundary`.
 
-Corrected availability uses the same period arrays as the canonical input adapter. `site_weather.site_cf_by_source` computes the Chapter 3 weather, loss and plane-of-array transformations, and `kernel_injection.KernelSiteInputs` supplies the resulting capacity factors \(\mathrm{cf}_{j,t}\) to the kernel:
+Renewable availability uses the same period arrays as the canonical input adapter. `site_weather.site_cf_by_source` computes the Chapter 3 weather, loss and plane-of-array transformations, and `kernel_injection.KernelSiteInputs` supplies the resulting capacity factors \(\mathrm{cf}_{j,t}\) to the kernel:
 
 $$
 \mathrm{capacity\_limit}_{j,t}=\mathrm{capacity\_mw}_j\cdot \mathrm{cf}_{j,t}.
 $$
 
-In the doctoral reproduction profile, the kernel uses the frozen weather clock and the Chapter 3 wind and solar curves, with each hourly value serving two half-hours. Both profiles take interconnector prices and available transfer capacity from the corresponding model period.
-
-Corrected nuclear availability preserves each station's PRIS reference output when converting to model capacity. `nuclear_load_factor` reads `pris_load_factor`, `pris_reference_mw` and `capacity_mw`. `generation_end_period` supplies `end`, the first period after the announced end month; a station with year-round availability retains its factor throughout the year. `asset_availability` produces the station array `values`, and `kernel_availability` combines it by capacity:
+Nuclear availability preserves each station's PRIS reference output when converting to model capacity. `nuclear_load_factor` reads `pris_load_factor`, `pris_reference_mw` and `capacity_mw`. `generation_end_period` supplies `end`, the first period after the announced end month; a station with year-round availability retains its factor throughout the year. With \(n\) indexing stations, `asset_availability` produces the station array `values`, and `kernel_availability` combines it by capacity:
 
 $$
 \begin{aligned}
@@ -997,9 +894,9 @@ $$
 \end{aligned}
 $$
 
-The fixed 2019–2024 mean load factors are 0.668 for Heysham 1, 0.689 for Hartlepool, 0.752 for Heysham 2, 0.792 for Torness and 0.801 for Sizewell B. Station-policy inputs set the four AGR stations' availability to zero from period 4,320 of 2030, 1 April 00:00 UTC. Sizewell B retains full-year coverage until its declared retirement year. Fallback load factors are 0.801 for new PWR/EPR stations, 0.727 for an unspecified AGR and 0.723 for an undifferentiated national nuclear asset. GBP1 public2 applies the VALUE-UK nuclear station policy (`value_uk_nuclear_policy_v1.json`: five EDF stations and their declared generation ends), while its fleet input table contains one aggregate nuclear row; R029 retains a national aggregate and uses 0.723 under corrected Native dispatch. These parameters are supplied by `value_uk_firm_availability_v1.json` and `firm_availability.py`.
+The fixed 2019–2024 mean load factors are 0.668 for Heysham 1, 0.689 for Hartlepool, 0.752 for Heysham 2, 0.792 for Torness and 0.801 for Sizewell B. Station-policy inputs set the four AGR stations' availability to zero from period 4,320 of 2030, 1 April 00:00 UTC. Sizewell B retains full-year coverage until its declared retirement year. Fallback load factors are 0.801 for new PWR/EPR stations, 0.727 for an unspecified AGR and 0.723 for an undifferentiated national nuclear asset. GBP1 public2 applies the VALUE-UK nuclear station policy (`value_uk_nuclear_policy_v1.json`: five EDF stations and their declared generation ends), while its fleet input table contains one aggregate nuclear row; R029 retains a national aggregate and uses 0.723 under national dispatch. These parameters are supplied by `value_uk_firm_availability_v1.json` and `firm_availability.py`.
 
-Corrected natural-flow hydro combines the DUKES 6.3 mean annual load factor with a monthly shape derived from quarterly Energy Trends data:
+Natural-flow hydro combines the DUKES 6.3 mean annual load factor with a monthly shape derived from quarterly Energy Trends data:
 
 $$
 \mathrm{values}_t=0.3487\cdot \mathrm{monthly\_shape}_{\mathrm{month\_of\_period}(t)},
@@ -1011,13 +908,13 @@ $$
 \end{aligned}
 $$
 
-The shape has an arithmetic monthly mean of 1 and a 365-day weighted mean of 0.99883, giving a model-year availability of 0.3483. Nuclear and hydro use these fixed profiles across model years. In the doctoral reproduction profile, their availability is 1.
+The shape has an arithmetic monthly mean of 1 and a 365-day weighted mean of 0.99883, giving a model-year availability of 0.3483. Nuclear and hydro use these fixed profiles across model years.
 
-Corrected Native dispatch starts each model year with nuclear in service, so nuclear belongs to \(\mathrm{accepted\_bids\_name}_{-1}\). An accepted restart after a period outside the accepted set incurs the start-up adder for that period. Gas and biomass begin outside the accepted set. In the doctoral reproduction profile, \(\mathrm{accepted\_bids\_name}_{-1}=\varnothing\): the GBP1 nuclear bid is initially £500/MWh, then falls to its operating cost after acceptance. The 500 MW-per-period ramp allowance in the GBP1 row retains output through subsequent low-demand periods, while unaccepted nuclear memory decays by 0.99 per period. Annual nuclear output therefore depends on when the unit first enters the accepted set.
+Nuclear begins the year in service and belongs to \(\mathrm{accepted\_bids\_name}_{-1}\); gas and biomass begin outside that set. The generator parameter rows provide opening `real_gen_energy`, and nuclear initially sets it to `capacity_limit`. Hydro and biomass initialise `have_gen_energy` to their opening `real_gen_energy`. Each period adds `add_energy` to `energy_limit`, accepts generation against the remaining budget, and returns curtailed generation to that budget. The budget quantities are MW-periods; multiplication by `period_hours` gives MWh.
 
-### Native storage batches and net positions
+### Storage offers and period positions
 
-Native records each charging period's stored-side MWh in `stored_energy`. `Battery.charge` limits input by `power_capacity_mw`, `energy_capacity_mwh`, charging efficiency `n_1` and remaining power after the current period's earlier charging. For each battery, the implementation calculates
+The storage agent records each charging period's stored-side MWh in `stored_energy`, indexed by the charging period \(k\); \(t\) denotes the current period. `Battery.charge` limits input by `power_capacity_mw`, `energy_capacity_mwh`, charging efficiency `n_1` and remaining power after the current period's earlier charging. For each battery, the implementation calculates
 
 $$
 \begin{aligned}
@@ -1047,11 +944,11 @@ $$
 \end{aligned}
 $$
 
-Surplus absorption first buys back the store's discharge from the same period and returns the withdrawn energy to its original batches. Further surplus can charge the store after its remaining discharge reaches zero. A store that has charged offers zero discharge in later stages. Both profiles process forecast surplus before other available surplus and record sales at the closing net position. Ahead storage remuneration remains payable on bought-back output.
+Surplus absorption first buys back the store's discharge from the same period and returns the withdrawn energy to its original batches. Further surplus can charge the store after its remaining discharge reaches zero. A store that has charged offers zero discharge in later stages. Surplus absorption processes forecast surplus before other available surplus and record sales at the closing net position. Ahead storage remuneration remains payable on bought-back output.
 
 Self-discharge multiplies inventory by \(1-\mathrm{decay\_rate}\) each period. The values of \(\mathrm{decay\_rate}\) are 0.000021 for batteries and other default types, 0.000001 for pumped hydro and 0.000005 for hydrogen storage. Batches below 0.001 MWh are removed and included in inventory reconciliation.
 
-The default dynamic storage-cost module uses cycle depreciation in corrected bids. Batteries bid \(\mathrm{bidding\_factor}\cdot\mathrm{cycle\_depreciation\_gbp\_per\_mwh}_b\); pumped hydro and hydrogen storage bid zero. Oldest batches are offered first:
+The default dynamic storage-cost module uses cycle depreciation in storage bids. Batteries bid \(\mathrm{bidding\_factor}\cdot\mathrm{cycle\_depreciation\_gbp\_per\_mwh}_b\); pumped hydro and hydrogen storage bid zero. Oldest batches are offered first:
 
 $$
 \begin{aligned}
@@ -1063,20 +960,11 @@ $$
 \end{aligned}
 $$
 
-The module calculates cycle depreciation from the annual cost-recovery inputs in Chapter 4. Legacy tariffs, user formulas and external storage-cost modules supply their own bid functions. In the doctoral reproduction profile, the selected storage module retains its age-dependent bid; the legacy form is
+Chapter 4 defines the storage state and bid-cost calculation. Annual delivered MWh and sales-weighted holding time supply the following year's pricing inputs; Chapter 6 defines their cost treatment.
 
-$$
-\begin{aligned}
-\mathrm{price}=\mathrm{bidding\_factor}\cdot\bigl(&\mathrm{storage\_fee\_gbp\_per\_mwh}\\
-&+(t-k)\cdot \mathrm{holding\_fee\_gbp\_per\_mwh\_period}\bigr).
-\end{aligned}
-$$
+### Forecast clearing and balancing
 
-Positive holding fees make newer batches cheaper, and equal prices preserve batch order. Annual observations retain delivered MWh and MWh multiplied by age for the following year's pricing inputs.
-
-### Native forecast clearing and balancing
-
-Corrected Native dispatch orders generator, import and storage-batch offers by a stable key. Within the same 0.01 £/MWh band, generation and imports precede storage; unrounded price and input order resolve further ties:
+Market clearing orders generator, import and storage-batch offers by a stable key. Within the same 0.01 £/MWh band, generation and imports precede storage; unrounded price and input order resolve further ties:
 
 $$
 \mathrm{merit\_key}(\mathrm{offer})=
@@ -1093,37 +981,50 @@ $$
 
 Hydro and biomass also obey their remaining cumulative budget \(\mathrm{energy\_limit}_i-\mathrm{have\_gen\_energy}_i\), expressed in MW-periods and converted to MWh by \(\mathrm{period\_hours}\). Nuclear acceptance can exceed residual demand \(\mathrm{forecast\_demand}\): when its upper limit is larger than \(\mathrm{forecast\_demand}\), it supplies \(\max(\mathrm{real\_gen\_energy}_{i,t-1}-\mathrm{alter\_limit}_i,\mathrm{forecast\_demand})\). This excess becomes already-generated, inflexible surplus. Renewable availability above accepted demand is retained as available surplus.
 
-Corrected interconnectors offer positive available import capacity into the ahead market at the external price multiplied by \(\mathrm{bidding\_factor}\). Their offers carry capacity limits with zero ramp and start-up adders. Balancing offers only \(\max(\mathrm{transfer\_constraint}_{k,t}-\mathrm{accepted\_mw}_{k,t},0)\). Negative transfer capacity represents export capability, accepted at positive external prices. In the doctoral reproduction profile, imports enter only the upward-balancing branch and serve the remaining actual-minus-forecast requirement.
+Interconnectors offer positive available import capacity into the ahead market at the external price multiplied by \(\mathrm{bidding\_factor}\). Their offers carry capacity limits with zero ramp and start-up adders. Balancing offers only \(\max(\mathrm{transfer\_constraint}_{k,t}-\mathrm{accepted\_mw}_{k,t},0)\). Negative transfer capacity represents export capability, accepted at positive external prices.
 
-Corrected surplus accounting rebuilds renewable surplus from availability minus accepted output after the ahead stage. Already-generated nuclear surplus is used first. When renewable surplus supplies storage, exports or flexible demand, it enters gross renewable generation. Recorded `vre_accepted` is therefore gross VRE output, `curtailed` is available VRE minus gross output, and `excess` is non-VRE spill. Nuclear surplus already included in ahead supply and settlement serves balancing demand once; renewable surplus entering supply during balancing receives balancing settlement.
+Surplus accounting rebuilds renewable surplus from availability minus accepted output after the ahead stage. Already-generated nuclear surplus is used first. When renewable surplus supplies storage, exports or flexible demand, it enters gross renewable generation. Recorded `vre_accepted` is therefore gross VRE output, `curtailed` is available VRE minus gross output, and `excess` is non-VRE spill. Nuclear surplus already included in ahead supply and settlement serves balancing demand once; renewable surplus entering supply during balancing receives balancing settlement.
 
-The real-time branch compares actual and forecast demand. A lower actual value invokes surplus absorption and downward dispatch; a higher or equal value invokes upward balancing. This comparison also applies when ahead supply falls short of the forecast. In that case, the lower-demand branch still requests a reduction of \(\mathrm{forecast\_demand}_t-\mathrm{real\_demand}_t\); any resulting unmet demand is recorded by the stress-event account below.
+Ahead clearing accepts successive offers until residual forecast demand reaches zero or all offers are exhausted. An ahead period with no accepted nuclear generator multiplies nuclear `real_gen_energy` by 0.99 before balancing. At the end of realisation, each generator with zero final dispatch sets `real_gen_energy` to zero; dispatched generators carry their final output into the next period.
+
+The real-time branch compares actual and forecast demand. A lower actual value invokes surplus absorption and downward dispatch; a higher or equal value invokes upward balancing. This comparison also applies when ahead supply falls short of the forecast. In that case, the lower-demand branch still requests a reduction of \(\mathrm{forecast\_demand}_t-\mathrm{real\_demand}_t\); any remaining unmet demand enters the energy account below.
 
 ```text
-for each half-hour:
-    Read availability, demand and boundary inputs
-    Update budgets and self-discharge
-    Form generator, import and eligible storage-batch offers
-    ahead_market_bidding(...): clear forecast demand in merit order
-    rebuild_surplus(...): reconstruct renewable and already-generated surplus
-    if actual demand < forecast demand:
-        Buy back storage discharge using forecast surplus, then existing surplus
-        Charge storage after its net discharge reaches zero
-        Accept positive-price exports in descending external-price order
-        Supply flexible electrolysis
-        economic_downward_stack(...): reduce remaining output
-    else:
-        Use existing surplus for demand and offer the remainder to storage
-        Merge remaining generation, eligible batches and residual imports
-        balancing_market_bidding(...): serve upward demand; record blackout
-    close_battery_period(...); uniform_income(...); physical_cost_terms(...)
+accepted_bids = initial_running_rows(generators)
+for period in range(periods):
+    Read availability, forecast_demands[period], real_demands[period]
+    Read period external_price and transfer_constraint
+    ahead_market_bidding(...):
+        Add add_energy to each hydro/biomass energy_limit
+        Apply storage self-discharge; construct offers
+        Sort by merit_key; accept forecast demand subject to physical bounds
+        rebuild_surplus(...); uniform_income(...)
+    realise_period(...):
+        if real_demand < forecast_demand:
+            curtailment_market_bidding(...):
+                Buy back discharge, charge, export, supply electrolysis
+                economic_downward_stack(...): reduce remaining output
+        else:
+            balancing_market_bidding(...):
+                Use surplus; buy back discharge and charge
+                Offer eligible batches, generation and residual imports
+                Export remaining surplus and supply electrolysis
+                Clear upward demand; record remaining blackout
+        Set real_gen_energy to zero for generators with zero final output
+    battery.close_period(period) for each battery
+    physical_cost_terms(...): record period expenditure components
+return period dispatch, prices, income, inventory and annual totals
 ```
 
-The common electrolyser is flexible demand, with source defaults of 10 MW, a 0.125 MW-per-period ramp and efficiency 0.65; data-pack parameters may replace these values. The corrected pathway routes available VRE through clearing and subsequent surplus allocation. In the doctoral reproduction profile, each VRE agent first diverts \(\min(\mathrm{real\_energy}+\mathrm{rampup\_rate},\mathrm{electrolyzer\_limit})\) to direct electrolysis. The diversion and any amount exceeding available VRE are recorded separately. This profile also uses stable unrounded-price sorting and its surplus-node balance boundary.
+Surplus absorption visits storage in ascending order of `storage_fee`, `per_storage_fee` and `n_1 * n_2` in the lower-demand branch, and in input order in upward balancing. Within each store it buys back current-period discharge before charging. Positive-price exports follow descending external price in the lower-demand branch and ascending external price in upward balancing, each bounded by the absolute negative `transfer_constraint`.
+
+Upward clearing starts from the last ahead-accepted generator and includes later generator offers, storage batches at least two periods old, and unused import capacity. For that marginal generator, `valid_energy` is its current ramp-limited output bound less ahead-accepted MW; later generators use their full ramp-limited bounds. Hydro and biomass also retain their remaining budgets. Each accepted quantity reduces `energy_provided`, initially `real_demand - forecast_demand`; clearing ends at zero or after the final offer, and the remaining quantity becomes `blackout`.
+
+The common electrolyser absorbs surplus as flexible demand. Its source parameters are 10 MW capacity, a 0.125 MW-per-period ramp and conversion efficiency 0.65; the data-pack parameter row supplies the selected values. Available wind and solar enter market clearing first, followed by surplus allocation to storage, exports and electrolysis. The electrolyser limit for this period is `energy_cell = min(real_energy + rampup_rate, capacity_limit)`, in MW. Its accepted `min_value` is the smaller of this limit and remaining surplus: `excess_energy + need_curtailed_energy` in the lower-demand branch, or `excess_energy` in upward balancing. It updates `real_energy = min_value` and `green_hy = min_value * energy_efficiency`.
 
 ### Economic downward order
 
-Corrected downward dispatch compares avoided operating expenditure after storage, exports and flexible demand absorb surplus. `ramp_floor_mw` returns the larger of zero and previous `real_gen_energy` less `alter_limit`; VRE and imports have zero floor. `avoided_cost` uses the asset's composite `gen_cost`, subtracting `NUCLEAR_DEC_PREMIUM_GBP_PER_MWH = 100` for nuclear; imports use `external_price`. Ordinary rows follow descending avoided cost rounded to two decimal places.
+Downward dispatch compares avoided operating expenditure after storage, exports and flexible demand absorb surplus. `ramp_floor_mw` returns the larger of zero and previous `real_gen_energy` less `alter_limit`; VRE and imports have zero floor. `avoided_cost` uses the asset's composite `gen_cost`, subtracting `NUCLEAR_DEC_PREMIUM_GBP_PER_MWH = 100` for nuclear; imports use `external_price`. Ordinary rows follow descending avoided cost rounded to two decimal places.
 
 Gas and biomass split their accepted ahead output \(\mathrm{power}_k\) into a running range and a shutdown segment. Here \(\mathrm{power}_k\) represents the aggregate's online capacity for this ordering rule, and \(\mathrm{min\_stable\_fraction}_k\) is the minimum stable fraction:
 
@@ -1135,7 +1036,7 @@ $$
 \end{aligned}
 $$
 
-The running range avoids \(\mathrm{cost}_k\) £/MWh. The shutdown segment compares avoided expenditure over expected downtime \(\mathrm{horizon\_h}\) with restart expenditure \(\mathrm{restart\_cost}(\mathrm{horizon\_h})\), measured per MW of capacity per start:
+The running segment avoids \(\mathrm{cost}_k\) £/MWh. The shutdown segment compares avoided expenditure over expected downtime \(\mathrm{horizon\_h}\) with restart expenditure \(\mathrm{restart\_cost}(\mathrm{horizon\_h})\), measured per MW of capacity per start:
 
 $$
 \begin{aligned}
@@ -1170,13 +1071,11 @@ $$
 \end{aligned}
 $$
 
-`limit` is the segment's reducible MW, `item[2]` is its remaining accepted output, and `remaining` is the outstanding downward requirement. Hydro and biomass reductions return energy to cumulative budgets. Output held by the ramp floor becomes in-dispatch spill. `native_corrected.economic_downward_stack` applies these reductions.
-
-In the doctoral reproduction profile, downward rows follow ascending `curtail_cost`, placing zero-cost wind ahead of gas. Hydro reductions return to its budget. Both profiles stop reductions when the remaining requirement reaches zero.
+`limit` is the segment's reducible MW, `item[2]` is its remaining accepted output, and `remaining` is the outstanding downward requirement. Hydro and biomass reductions return energy to cumulative budgets. Output held by the ramp floor becomes in-dispatch spill. `native_corrected.economic_downward_stack` applies these reductions. Reduction stops when `remaining` is at most \(10^{-9}\) MW or every reducible segment is exhausted.
 
 ### Settlement, displayed price and physical cost
 
-Corrected Native dispatch pays every accepted supply category the same marginal price within each stage. Ahead settlement takes the highest accepted offer including imports and storage. `uniform_income` multiplies accepted `power_mw` by period length and the stage's `price_gbp_per_mwh`; the balancing price also includes accepted import prices:
+The market dispatch pays every accepted supply category the same marginal price within each stage. Ahead settlement takes the highest accepted offer including imports and storage. `uniform_income` multiplies accepted `power_mw` by period length and the stage's `price_gbp_per_mwh`; the balancing price also includes accepted import prices. `income` is GBP, `power_mw` is MW and the price is GBP/MWh; an empty accepted category contributes zero to the maximum:
 
 $$
 \mathrm{income}_{i,t}=\mathrm{power\_mw}_{i,t}\cdot
@@ -1188,9 +1087,9 @@ $$
 \max_{k\in\mathrm{imports}}\mathrm{price}_{k,t}).
 $$
 
-Storage charges are settled within the current period. In the doctoral reproduction profile, generation and storage each use their own highest accepted bid; an empty accepted generator set yields an empty income mapping, including periods supplied solely by storage. Its final balancing storage fee also enters subsequent downward-period expenditure.
+Storage charges are settled within the current period. Bought-back storage output retains its ahead-stage remuneration, while the physical dispatch and annual delivered-energy totals use the closing net position.
 
-The displayed Native price is labelled “Average period cost (£/MWh demand)”. If \(\mathrm{total\_gen\_cost}_t\) is the accumulator of accepted-offer, storage, downward and upward charges, its value and associated period expenditure are
+The displayed market price is labelled “Average period cost (£/MWh demand)”. If \(\mathrm{total\_gen\_cost}_t\) is the accumulator of accepted-offer, storage, downward and upward charges, its unit is GBP/hour. The price in GBP/MWh and associated period expenditure in GBP are
 
 $$
 \begin{aligned}
@@ -1203,26 +1102,13 @@ $$
 \end{aligned}
 $$
 
-This statistic describes expenditure per MWh of actual demand. Generator and storage income are calculated from the settlement accounts above. Corrected \(\mathrm{total\_gen\_cost}_t\) includes the current period's storage fee only. Final boundary supply enters the annual generation statistic, while Native reports storage discharge separately.
+This statistic describes expenditure per MWh of actual demand. Generator and storage income are calculated from the settlement accounts above. \(\mathrm{total\_gen\_cost}_t\) includes the current period's storage fee only. Final boundary supply enters the annual generation statistic, with storage discharge reported separately.
 
-Physical operating expenditure values realised generation at composite `gen_cost`, imports at `external_price`, and qualifying starts at `startup_cost` times generated MWh. `physical_cost_terms` returns `generation_variable_gbp`, `import_variable_gbp` and `startup_adder_gbp`; the annual account adds recorded-blackout cost and current storage cycle depreciation. The year index is \(y\); `operating` and `cycle_wear` are the implementation's annual totals in GBP:
+Physical operating expenditure values realised generation at composite `gen_cost`, imports at `external_price`, and accepted starts at `startup_cost` times generated MWh. `physical_cost_terms` returns `generation_variable_gbp`, `import_variable_gbp` and `startup_adder_gbp` for each period. Chapter 6 combines these components with storage depreciation, shortage valuation and annual capital costs.
 
-$$
-\begin{aligned}
-\mathrm{operating}_y={}&
-\sum_t(\mathrm{generation\_variable\_gbp}_t
-+\mathrm{import\_variable\_gbp}_t\\
-&\qquad+\mathrm{startup\_adder\_gbp}_t)\\
-&+\mathrm{voll\_gbp\_per\_mwh}\cdot\sum_t\mathrm{blackout\_mwh}_t
-+\mathrm{cycle\_wear}_y.
-\end{aligned}
-$$
+### Energy balance and annual outputs
 
-Here \(\mathrm{import\_mwh}_{k,t}\) is imported MWh, \(\mathrm{blackout\_mwh}_t\) is recorded blackout MWh, and \(\mathrm{cycle\_wear}_y\) is the sum of each storage asset's `current_cycle_depreciation_gbp`. Market settlement transfers are reported separately from these resource components. The cost account uses \(\mathrm{voll\_gbp\_per\_mwh}=17{,}000\) £/MWh, equivalent to £8,500 per MW-half-hour. Corrected Native reads `market.voll_gbp_per_mwh`, with an allowed range of 0–1,000,000; the doctoral reproduction rule set uses the constant 17,000. In Native this parameter values recorded blackout in the cost account. Stress shortfalls are reported separately and reduce the served-energy denominator used in Chapter 4.
-
-### Energy balance and result qualification
-
-The corrected Native balance includes gross accepted supply, charging, exports, flexible demand and non-VRE spill. All quantities in this section are MWh. With accepted supply \(\mathrm{accepted\_supply\_mwh}_t\), recorded blackout \(\mathrm{blackout\_mwh}_t\), actual demand \(\mathrm{real\_demand\_mwh}_t\), storage charge \(\mathrm{storage\_charge\_mwh}_t\), exports \(\mathrm{export\_mwh}_t\), flexible demand \(\mathrm{flexible\_demand\_mwh}_t\) and non-VRE spill \(\mathrm{non\_vre\_spill\_mwh}_t\), the `native_corrected_full_node_v1` residual is
+The period energy balance includes gross accepted supply, charging, exports, flexible demand and non-VRE spill. All quantities in this section are MWh. With accepted supply \(\mathrm{accepted\_supply\_mwh}_t\), recorded blackout \(\mathrm{blackout\_mwh}_t\), actual demand \(\mathrm{real\_demand\_mwh}_t\), storage charge \(\mathrm{storage\_charge\_mwh}_t\), exports \(\mathrm{export\_mwh}_t\), flexible demand \(\mathrm{flexible\_demand\_mwh}_t\) and non-VRE spill \(\mathrm{non\_vre\_spill\_mwh}_t\), the period residual is
 
 $$
 \begin{aligned}
@@ -1233,19 +1119,7 @@ $$
 \end{aligned}
 $$
 
-The doctoral reproduction profile uses `default_psm_surplus_node_v1`. Its out-of-dispatch renewable surplus supplied to storage, exports or electrolysis is \(\mathrm{u\_out\_mwh}_t\), and its already-accepted surplus finally spilled is \(\mathrm{w\_in\_mwh}_t\):
-
-$$
-\begin{aligned}
-\mathrm{residual\_mwh}_t={}&\mathrm{accepted\_supply\_mwh}_t
-+\mathrm{blackout\_mwh}_t\\
-&+\mathrm{u\_out\_mwh}_t-\mathrm{w\_in\_mwh}_t\\
-&-\mathrm{real\_demand\_mwh}_t-\mathrm{storage\_charge\_mwh}_t\\
-&-\mathrm{export\_mwh}_t-\mathrm{flexible\_demand\_mwh}_t.
-\end{aligned}
-$$
-
-The compatibility adjustment absorbs numerical noise within the declared tolerance. Native uses
+The energy account absorbs small floating-point residuals through `compatibility_adjustment_mwh`. This numerical term is applied only within the period tolerance:
 
 $$
 \begin{aligned}
@@ -1259,9 +1133,7 @@ $$
 \end{aligned}
 $$
 
-The corresponding LP tolerances are \(10^{-5}\) and \(10^{-7}\). Residuals outside this tolerance remain in the physical balance. `native_balance_audit.py`, `energy_balance_contract.py` and `energy_balance_oracle.py` connect the ledger's supply boundary to these checks.
-
-The energy account books the full unmet-demand quantity before distinguishing recorded blackout from additional stress shortfall:
+The energy account measures total unmet demand from the physical residual and the dispatch branch's recorded blackout:
 
 $$
 \begin{aligned}
@@ -1271,294 +1143,260 @@ $$
 \end{aligned}
 $$
 
-A period whose sole imbalance is unmet demand closes with \(\mathrm{closing\_residual\_mwh}_t=0\) and is recorded as a stress period. Consecutive stress periods within a year form one event. Annual reporting gives event count, period count and shortfall MWh. The additional stress quantity used with recorded blackout follows the account's separation, so Chapter 4 subtracts each unmet-demand component once from demand.
+A period with unmet demand alone closes at \(\mathrm{closing\_residual\_mwh}_t=0\). Consecutive periods with a shortfall form one event within the year. Annual outputs contain event count, period count and unserved MWh; Chapter 6 uses served demand after subtracting each shortfall component once.
 
-Annual qualification checks three groups: run invariants; energy balance and ledger consistency, including surplus conservation and \(\sum_t|\mathrm{compatibility\_adjustment\_mwh}_t|/\sum_t\mathrm{real\_demand\_mwh}_t\le10^{-6}\); and storage throughput, inventory bounds and batch reconciliation. Corrected annual economic results require all three groups to pass. Doctoral reproduction results require all raw invariants to pass for display on result pages. Stress events are reported as reliability outcomes. The annual state record also retains the Native inventory reset and the profile's surplus-boundary definition.
+The annual output aggregates generator and import MWh, storage charge and discharge, renewable curtailment, non-renewable spill, exports, flexible demand, period prices, asset income and unserved energy. Period states carry realised generation and storage batches forward; the annual model then applies the account and investment rules in Chapter 6.
 
-### Experimental pathway inputs
+## 6. Annual accounting and investment
 
-The experimental national pathway uses frozen v1 weather, unit availability for nuclear and natural-flow hydro, and raw boundary prices under either methodology profile. The weather transformation uses its original radiation convention and unity loss factors. `doctoral_market_factory.py` builds agents from complete rows of costs, efficiencies, ramps, opening output, downward prices and natural budgets. A new asset may reuse a row through `doctoral_parameter_source_id`, retaining the row's ramp and budget values. Direct renewable electrolysis and the common electrolyser have zero capacity in this pathway.
+VALUE updates operating capacity once per model year. Annual dispatch supplies electricity sales, operating costs and renewable surplus; these quantities determine investment and retirement. Accepted additions enter a construction pipeline and become operating assets in their completion year. The annual calculation therefore links the current fleet, market income, construction time and future capacity.
 
-The module supports fixed-year dispatch and experimental annual cash accounts. It records `scientific_release_eligible=false` and `doctoral_annual_cem_ready=false`. Integration with `agent-investment` requires the `value.agent-cashflow/v1` account contract for eligible thermal decisions; this experimental PSM currently publishes `doctoral_cashflow_inputs`, so that combination stops at the investment-account requirement. The following equations describe the implemented period engine.
+### Annual inputs and calculation order
 
-### Experimental batch inventory
+The annual input `YearState` contains the year, operating assets, planning projects and storage-cost observations. Each asset has `capacity_mw` in MW, optional `energy_capacity_mwh` in MWh, technology, region and investment owner. Its economic fields contain total capital `total_capex_gbp`, annual fixed cost `annual_fixed_opex_gbp`, annualised capital `annualized_capital_cost_gbp`, lifetime `economic_lifetime_years`, required annual return `preferred_rate` and target payback `target_payback_years`. Chapter 2 specifies the initial fleet, project list and input values.
 
-The experimental kernel stores batches in `stored_energy` as raw power-equivalent quantities: multiplying a batch by `period_hours = 0.5` gives internal MWh. `pool_limit` bounds the sum of these raw quantities, `per_pool_limit` is delivered MW, and `n_1`, `n_2` are charge and discharge efficiencies. Self-discharge uses the rates above. A batch charged at `charge_period` and offered at `period` has price
+Projects enter operation before that year's dispatch. `SchemeCPlanningPipelineDefinition.advance_year` takes each successful project whose `expected_completion_year≤state.year`, adds its capacity and economic fields to the fleet, and removes it from the active pipeline. Later projects remain in the pipeline. Hydro projects enter operation when their site and hydrological inputs are complete. Failed projects contribute zero operating capacity.
+
+Dispatch produces `market`, the annual `MarketYearResult`. Its period summaries contain actual demand, accepted VRE, storage charge and discharge, blackout energy and prices; its asset accounts contain generated MWh and market income. The annual algorithm then computes technology expansion limits, investment quantities, planning admission and the next state in this order:
+
+```text
+advanced = planning.advance_year(run, state)
+model_input = psm_input_factory(run, advanced.operating_state)
+market = psm.run(model_input)
+headroom = []
+for slot in sorted(expansion_policies):
+    policy = expansion_policies[slot]
+    headroom.append(policy.evaluate(run, advanced.operating_state, market))
+investment_market = adapt_market_for_investment(
+    market, advanced.operating_state)
+decision = investment.decide(
+    run, advanced.operating_state, investment_market, tuple(headroom))
+decision = inherit_frozen_zone_shares(decision, advanced.operating_state)
+admission = planning.admit_projects(
+    run, advanced.operating_state, decision.proposals)
+```
+
+Here `advanced.operating_state` is the fleet available for the year, `headroom` contains permitted additions in MW by technology, `decision` contains new proposals and asset retirements, and `admission.next_pipeline` contains continuing and newly admitted projects. The input factory applies Chapters 2–3 to the updated fleet; Chapters 4–5 and 7–8 define the selected dispatch calculation. The final state update is given below.
+
+### Asset capital and annual system cost
+
+Asset capital is annualised over its economic lifetime with a capital-recovery factor. `build_asset_economic_extensions` reads `total_capex` in GBP, `life` in years and `discount_rate`, then sets `annualized_capital_cost_gbp=total_capex×crf`. The factor `crf=capital_recovery_factor(discount_rate,life)` uses the equation in Chapter 4; the default rate is 0.05. Generation capital is capacity times GBP/MW. Storage capital and fixed maintenance follow the technology catalogue and its declared power or energy basis in Chapter 2.
+
+Annual system cost sums the resource costs of operating assets. The dispatch result supplies `total_levelized_capital_cost_gbp`, containing annualised capital and fixed maintenance, and `total_operational_cost_gbp`, containing physical operation. For Native, physical operation comprises the generation and import cost terms in Chapter 5, recorded blackout energy valued at `market.voll_gbp_per_mwh` (default 17,000 GBP/MWh), and storage cycle depreciation. The restart cost used to rank a downward bid enters that bid's price calculation. Network asset capital and fixed maintenance enter the annual resource account when network expansion is selected.
+
+The system-cost account treats wind, solar and storage fixed maintenance as included in their levelised capital. Their separately recorded maintenance amounts are retained as memorandum items. Existing run-of-river capital recorded under `existing_stock_compatibility_capital_gbp` is also a memorandum item. Thermal fixed maintenance and commissioned network resource costs enter the cost total.
+
+`build_cem_cost_ledger` reads the supplied capital total as `capital` and subtracts the two memorandum amounts as `excluded`. `network_capex` and `network_fom` are annual network capital and maintenance; `operating_sum` is the sum of the named physical operating components. All costs below are GBP per model year. `demand`, `blackout` and `served` are annual MWh:
+
+```text
+network_resource_cost = network_capex + network_fom
+non_network_capital = max(capital - network_resource_cost, 0)
+excluded = vre_storage_fom + compatibility
+headline_fleet_capital = max(non_network_capital - excluded, 0)
+headline_capital = capital - (non_network_capital - headline_fleet_capital)
+system_cost = headline_capital + operating_sum
+served = max(demand - blackout - a2_hidden_unserved_mwh(market), 0)
+```
+
+The variables `vre_storage_fom` and `compatibility` hold the wind/solar/storage maintenance memorandum and the existing run-of-river capital memorandum respectively. `a2_hidden_unserved_mwh` reads additional unserved energy from the annual energy-balance account; it is zero when that account records zero additional shortfall. The output `cem_system_cost_gbp=system_cost`, and `cem_system_cost_gbp_per_mwh_served=system_cost/served` for positive served demand. At zero served demand, cost per MWh is left empty. Market payments, policy transfers, construction commitments and residual values have separate accounts; the operating-resource sum uses the physical expenditure terms above.
+
+### Annual income and investment groups
+
+Investment groups combine positive-capacity assets with the same owner, technology and region. Owner identity comes from `investment_owner_id`, then `source_agent_id`, then the existing asset's identifier. An asset marked `investment_eligible=False` remains in dispatch and contributes zero endogenous investment. `SchemeCAgentInvestmentDefinition.decide` processes groups in sorted `(owner,technology,region)` order.
+
+The investment calculation uses the annual market income attributable to each asset. Native distributes an agent's income over its mapped assets as specified in Chapter 5. For an owner-level settlement, `adapt_market_for_investment` allocates the owner's `income` in proportion to operating MW: `allocated[asset.asset_id]=income×asset.capacity_mw/capacity`, where `capacity` is that owner's summed MW. Direct asset-level accounts enter the investment calculation as supplied.
+
+Thermal investment income deducts generated electricity times generation, fuel, carbon and unit-time cost. The asset's `agent_cashflow` row supplies `generated_mwh` and the four costs in GBP/MWh. Their product gives `operating_cost_gbp`; `operational` is the sum over the group's assets. Wind, solar and the three battery types and hydrogen use `operational=0`. Thus storage investment uses booked ahead and balancing income, including ahead remuneration retained during buy-back. Surplus charging has zero purchase cost, and cycle depreciation and fixed maintenance enter their respective resource-cost accounts above.
+
+For each group, `capacity` sums operating MW, `income` sums annual GBP income and `replacement` sums `total_capex_gbp`. Unit capital cost `cost_per_mw` is GBP/MW, `roi` is annual net income divided by capital, and `payback` is years:
 
 $$
 \begin{aligned}
-\mathrm{price}=\mathrm{bidding\_factor}\cdot\bigl(&\mathrm{storage\_fee}\\
-&+(\mathrm{period}-\mathrm{charge\_period})\cdot \mathrm{per\_storage\_fee}\bigr).
+\mathtt{net}&=\mathtt{income}-\mathtt{operational},\\
+\mathtt{cost\_per\_mw}&=\mathtt{replacement}/\mathtt{capacity},\\
+\mathtt{roi}&=\mathtt{net}/\mathtt{replacement},\\
+\mathtt{payback}&=\begin{cases}
+\mathtt{replacement}/\mathtt{net},&\mathtt{net}>0,\\
+\infty,&\mathtt{net}\le0.
+\end{cases}
 \end{aligned}
 $$
 
-The prototype values are supplied by `config.py`, with complete parameter rows bound for each run by `doctoral_market_factory.py`:
+Zero replacement capital gives `roi=0`. Thermal `net` is set to zero when `abs(net)≤10⁻⁹×max(abs(income),operational)`, absorbing the difference between sums of the same cashflows. `preferred` is the largest member `preferred_rate`, `life` is the shortest member `economic_lifetime_years`, and `target_payback` is the shortest member `target_payback_years`. Missing or zero values use 0.08, 25 years and `life` respectively. The initial default asset construction sets biomass, CCGT and OCGT target payback to 25 years. Other initial values are given in Chapter 2. The decision compares the annual input amounts directly through `roi` and `payback`.
 
-|Prototype technology|`n_1`|`n_2`|`storage_fee`|`per_storage_fee`|
-|---|---:|---:|---:|---:|
-|Pumped hydro|0.87|0.87|0|1.1008|
-|1C battery|0.81|0.81|0|1.0558|
-|0.25C battery|0.81|0.81|0|0.7369|
-|0.5C battery|0.98|0.98|135.26|0.1736|
-|Hydrogen storage|0.57|0.57|884.4|0.0055|
+### Annual wind and solar expansion limits
 
-All batches and both clearing stages share the battery's delivered-power limit. Ahead clearing reads the already delivered MW as `delivered` from `gen_list`, then limits the offered raw batch quantity `item[3]` by the remaining power divided by `n_2`. A smaller remaining `forecast_demand` withdraws that demand divided by `n_2`; balancing applies the same rule to `energy_provided`. Ahead offers use all existing batches, while balancing uses batches aged at least two periods. Raw balances below 0.001 are removed, corresponding to at most 0.0005 MWh per batch.
-
-Charging orders batteries by `storage_fee`, `per_storage_fee` and the product `n_1 * n_2`. For each battery, `store_service_three` first absorbs forecast surplus `need_curtailed_energy`, then other `excess_energy`. Its first pass uses
+Wind and solar expansion is bounded by peak demand and the technology's available-output profile. In `canonical_psm_data`, `demand` is the half-hour energy demand in MWh, `period_hours=0.5`, `availability` is the dimensionless technology profile, and `capacity_by_technology[technology]` is its operating MW. The input uses the investment profiles prepared in Chapter 3. The maximum profile value is `peak`, and additional capacity headroom is:
 
 $$
 \begin{aligned}
-\mathrm{limit}&=\max(0,\mathrm{per\_pool\_limit}-\mathrm{stored\_energy}_t/\mathrm{n\_1}),\\
-\mathrm{energy}&=\min(\mathrm{limit},\mathrm{need\_curtailed\_energy},
-\mathrm{pool\_limit}-\sum_k\mathrm{stored\_energy}_k),\\
-\mathrm{stored\_energy}_t&\leftarrow\mathrm{stored\_energy}_t+\mathrm{n\_1}\cdot \mathrm{energy}.
+\mathtt{peak}&=\max_t\mathtt{availability}[t],\\
+\mathtt{headroom}[\mathtt{technology}]&=\max\left(0,
+\frac{\max_t\mathtt{demand}[t]}
+{\mathtt{period\_hours}\times\max(\mathtt{peak},10^{-12})}
+\right.\\
+&\qquad\left.-\mathtt{capacity\_by\_technology}[\mathtt{technology}]
+\right),\\
+\mathtt{limits}[\mathtt{technology}]&=
+\mathtt{fraction}\times\mathtt{headroom}[\mathtt{technology}].
 \end{aligned}
 $$
 
-The second pass substitutes `excess_energy` for the forecast surplus. Raw inventory room directly limits grid-side charging power. For the 0.5C prototype, four periods of holding give a price of 135.26 + 4 × 0.1736 = 135.9544 GBP/MWh. A 10 MWh batch has raw quantity 20; delivery of 10 MW over 0.5 h withdraws 5 / 0.98 = 5.1020408 MWh and earns £679.772 when settled at that price. Raw expenditure diagnostics use raw withdrawal times bid price; cash settlement uses delivered MWh.
+`SchemeCVREExpansionPolicyDefinition.evaluate` reads `fraction` from `expansion.vre_cap_fraction`, default 0.20, and returns `limits` in MW. For a 1,000 MW peak demand, `peak=0.8` and 300 MW operating capacity, `headroom=950` MW and the annual limit is 190 MW. A zero profile peak uses the denominator floor 10⁻¹². These limits are calculated separately for solar, onshore wind and offshore wind.
 
-### Experimental planning and realisation
+### Annual storage expansion limits
 
-`DoctoralPeriodEngine` forms the ahead plan on a copy of opening physical state. It updates natural budgets and self-discharge, then calls `ahead_market_bidding`. Generator and storage offers follow stable price order. Conventional generation obeys ramp limits; hydro and biomass also obey remaining budgets. Nuclear retains output down to previous `real_gen_energy` less `alter_limit` when that exceeds remaining forecast demand. Nuclear memory decays by 0.99 in a period without acceptance. The engine records unaccepted renewable availability separately from already-generated nuclear surplus.
-
-Realisation compares actual demand with scheduled supply after removing the ahead stage's already-generated non-renewable surplus. In `realise_period`, `actual` and `scheduled_load` are MW:
-
-$$
-\mathrm{scheduled\_load}
-=\sum_{(\mathrm{generator},\mathrm{amount})\in\mathrm{ahead}[10]}
-\mathrm{amount}-\mathrm{already\_generated\_surplus}.
-$$
-
-When `actual < scheduled_load`, the difference enters `curtailment_market_bidding`. It charges storage, processes existing surplus, accepts positive-price exports in descending price order, then reduces generation in configured downward-price order. `_curtail_thermal_bid` limits each reduction using the accepted MW `bid[2]`, the earlier `previous_energy` and `generator.alter_limit`:
-
-```text
-if bid[2] - previous_energy == generator.alter_limit:
-    max_curtail_energy = min(2 * generator.alter_limit, bid[2])
-elif previous_energy >= generator.alter_limit:
-    max_curtail_energy = bid[2] - (previous_energy - generator.alter_limit)
-else:
-    max_curtail_energy = bid[2]
-curtailed = min(need_curtailed_energy,
-                max(0, min(bid[2], max_curtail_energy)))
-bid[2] -= curtailed
-```
-
-Hydro and biomass return the reduction to their used budgets, and previous output is read by generator object identity. Remaining non-renewable output held by ramp constraints becomes `non_vre_spill`.
-
-When `actual >= scheduled_load`, `balancing_market_bidding` first uses existing surplus and offers the remainder to storage. It then combines the last ahead-accepted generator and subsequent generators with eligible storage batches and imports. With an empty ahead generator set, this search starts at the first offer. The marginal generator's `valid_energy` is its ramp-limited available output less its ahead-accepted MW; later generators offer their full ramp-limited availability. Hydro and biomass retain budget limits. Imports use `external_price`; this branch accepts positive-price exports in ascending price order. Remaining demand becomes blackout.
-
-The engine checks final physical balance before advancing state. `total`, `actual`, `charge`, `exported`, `non_vre_spill` and `blackout` are MW in this calculation; `residual` is MWh:
+Storage expansion uses the renewable surplus remaining after the operating stores have charged. `corrected_storage_headroom` reads `leftover_excess_mwh` from `storage_headroom_inputs` into `leftover`, and each period's `vre_accepted_mwh`, `real_demand_mwh` and `storage_discharge_mwh` into `vre`, `demand` and `discharge`. These arrays are MWh per period. Surplus available to an additional store and the remaining demand gap are:
 
 $$
 \begin{aligned}
-\mathrm{missing}&=\mathrm{actual}+\mathrm{charge}+\mathrm{exported}
-+\mathrm{non\_vre\_spill}-\mathrm{total},\\
-\mathrm{blackout}&=\max(0,\mathrm{missing}),\\
-\mathrm{residual}&=0.5(\mathrm{total}+\mathrm{blackout}-\mathrm{actual}
--\mathrm{charge}-\mathrm{exported}-\mathrm{non\_vre\_spill}).
+\mathtt{excess}&=\max(\mathtt{leftover},0),\\
+\mathtt{deficit}&=\max(\mathtt{demand}-\mathtt{vre}-\mathtt{discharge},0).
 \end{aligned}
 $$
 
-State advancement requires an absolute `residual` at most \(10^{-7}\) MWh, nonnegative generation and renewable output within availability. The storage calculation separately reconciles `opening`, grid-side `charged`, grid-side `delivered`, self-discharge `decay`, conversion loss `conversion` and small-batch removal `discard`, all in MWh:
+A virtual store converts these series into charging and discharging profiles. `_simulate_virtual_pool` begins with `soc=0`, has `power_mw=10⁹` MW and `energy_cap_mwh=10⁹` MWh, and places the round-trip efficiency `rte=0.98` entirely on charging. `PERIOD_HOURS=0.5`; `exc`, `dfc`, `ch` and `dis` are period MWh. Charging precedes discharging in each period:
+
+```text
+max_period_mwh = power_mw * PERIOD_HOURS
+soc = 0
+charge = zeros(len(excess))
+discharge = zeros(len(excess))
+for t in range(len(excess)):
+    exc = excess[t]
+    dfc = deficit[t]
+    if exc > 1e-9 and soc < energy_cap_mwh - 1e-9:
+        ch = min(exc, max_period_mwh, (energy_cap_mwh - soc) / max(rte, 1e-9))
+        soc += ch * rte
+        charge[t] = ch
+    if dfc > 1e-9 and soc > 1e-9:
+        dis = min(dfc, max_period_mwh, soc)
+        soc -= dis
+        discharge[t] = dis
+```
+
+Charging and discharging energy divided by 0.5 h give `charge_mw` and `discharge_mw`. `aligned_max_mw` finds the largest power exceeded for at least `min_hours` in both profiles. `hours_above_power(power_mw,p_mw)` counts values strictly above `p_mw` and multiplies by 0.5 h. The upper search bound `peak` is the smaller charging/discharging peak. Zero peak or insufficient hours above zero gives a zero result; `min_hours≤0` gives `peak`. For positive attainable duration, the search starts at `lo=0`, `hi=peak` and performs 64 bisection steps:
+
+```text
+for _ in range(64):
+    mid = 0.5 * (lo + hi)
+    if (hours_above_power(charge_mw, mid) >= min_hours
+            and hours_above_power(discharge_mw, mid) >= min_hours):
+        lo = mid
+    else:
+        hi = mid
+return lo
+```
+
+`aligned_utilisation_spectrum` applies the search at 730, 365, 52 and 0 hours, producing `mw_730`, `mw_365`, `mw_52` and `mw_0`. The successive capacity bands, all in MW, are:
 
 $$
 \begin{aligned}
-&\mathrm{conversion}=\mathrm{charged}\cdot(1-\mathrm{n\_1})
-+\mathrm{delivered}\cdot(1/\mathrm{n\_2}-1),\\
-&\mathrm{next\_state.storage\_energy\_mwh}(\mathrm{battery.name})\\
-&\quad=\mathrm{opening}+\mathrm{charged}-\mathrm{delivered}\\
-&\qquad-\mathrm{decay}-\mathrm{conversion}-\mathrm{discard}.
+\mathtt{daily}&=\mathtt{mw\_730},\\
+\mathtt{interday}&=\max(\mathtt{mw\_365}-\mathtt{mw\_730},0),\\
+\mathtt{weekly}&=\max(\mathtt{mw\_52}-\mathtt{mw\_365},0),\\
+\mathtt{seasonal}&=\max(\mathtt{mw\_0}-\mathtt{mw\_52},0).
 \end{aligned}
 $$
 
-`commit_period` passes closing storage batches, generator memory and the accepted-generator set to the next period. Generation routed to storage and exports is allocated back to its renewable source.
+The output stores `daily` under `daily_loop` and `interday` under `intraday`. `corrected_storage_headroom` reads the latter into `intraday`, calculates `power_room=max(daily+intraday,0)`, and sets `power_cap=fraction×power_room`. Each of `1c_battery`, `0.5c_battery` and `0.25c_battery` receives this separate technology limit. Hydrogen receives `hydrogen_cap=fraction×max(seasonal,0)`. Here `fraction` comes from `expansion.storage_cap_fraction`, default 0.20; the weekly band remains a reported quantity. The same year's groups consume their technology's remaining limit in the order defined above.
 
-### Experimental settlement and annual expenditure
+The storage calculation takes a complete 17,520-period year and its post-charge surplus series. Native dispatch supplies this series. The returned storage limits are zero for a shorter chronology, a period length other than 0.5 h, or an absent post-charge series. This zero rule also defines the storage-investment result when staged, LP or DC dispatch supplies the annual operating result without that series.
 
-The experimental engine settles generators and storage at their separate highest accepted bids in ahead and upward markets. `acm_income` books ahead cash before downward realisation changes dispatch, multiplying accepted MW by `period_hours` and either `max_gen_price` or `max_bat_price`. Storage-only supply receives its storage settlement. `acm_income_balance` applies the same category prices to upward supply.
+### Investment quantities and retirement
 
-Downward cash retains the sign of the configured price. For each accepted action, `quantity` is MW and `price` is GBP/MWh. The engine computes `raw_gbp = quantity * 0.5 * price`, adding it to `down_cash` for thermal, biomass and hydro assets; nuclear, wind, solar and storage amounts enter `legacy_down` as diagnostic values. Each asset's `income_balance` is its `income_up` plus `down_cash`, while `income_ahead` remains separate.
+Each technology follows the eligibility mode in `investment_eligibility.json`. Solar, onshore wind, offshore wind, the three battery types and hydrogen use `headroom_required`. CCGT, OCGT, `gas` and `bio_and_waste` use `explicit_uncapped`. Nuclear capacity follows the external project and retirement schedule. Pumped hydro and run-of-river hydro follow site-based projects; the generic profit rule supplies zero proposals for these technologies.
 
-Variable operating expenditure values final generation at `gen_cost` and imports at `external_price`; storage variable operating expenditure is zero. Fuel, carbon and other costs divide this total into components. Export receipts and import procurement retain their separate cash directions.
+Concurrent expansion rules combine through the smallest limit for each technology. `caps` holds that minimum, and each year starts with `remaining_caps=dict(caps)`. Earlier projects remain in the construction pipeline; only additions proposed in the current year's investment pass reduce `remaining_caps`. Several decision years can consequently retain pending projects against the same capacity opportunity.
 
-Annual system expenditure adds variable expenditure, explicit fixed costs, annualised capital and shortage valuation. `DoctoralNationalPSM` uses the variables `variable`, `fixed` and `capital` from asset records and period totals:
+A group with `net<0` and positive `cost_per_mw` retires capacity. Its retirement is limited by the group's existing MW and allocated to members in proportion to their MW. For other groups, `roi>preferred` selects `Invest_High`; otherwise `payback≤target_payback` selects `Invest_Profit`; the remaining groups receive `Do_Nothing`. Both investment classes request `net/cost_per_mw`. The requested retirement and permitted positive addition are:
 
 $$
-\mathrm{total\_system\_cost\_gbp}
-=\mathrm{variable}+\mathrm{fixed}+\mathrm{capital}
-+\mathrm{blackout\_mwh}\cdot \mathrm{voll\_gbp\_per\_mwh}.
+\begin{aligned}
+\mathtt{requested\_retirement}&=\min\left(\mathtt{capacity},
+\frac{|\mathtt{net}|\times\mathtt{target\_payback}}
+{\mathtt{cost\_per\_mw}}\right),\\
+\mathtt{requested}&=\mathtt{net}/\mathtt{cost\_per\_mw},\\
+\mathtt{addition}&=\min\left(\max(\mathtt{requested},0),
+\max(\mathtt{allowed},0)\right).
+\end{aligned}
 $$
 
-Fixed and capital expenditure enter complete 17,520-period annual summaries; both are zero in shorter diagnostic runs. Annual generation includes storage discharge and boundary supply. The displayed “Ahead settlement price” uses the ahead generator price. The reliability coefficient reads `market.voll_gbp_per_mwh`, default £17,000/MWh. Chapter 6 describes the annual account and investment helpers that can use these complete experimental cash records.
+For `headroom_required`, `allowed=remaining_caps.get(technology,0)` and a positive `addition` reduces that remaining limit. For `explicit_uncapped`, `allowed=requested`. `Do_Nothing`, nonpositive unit capital cost and nonpositive `addition` produce zero new capacity. As a numerical example, a 100 MW group with £100 million total capital, £10 million net income, `preferred=0.08` and 20 MW remaining headroom has `roi=0.10`, `payback=10` years and `requested=10` MW; the resulting proposal is 10 MW before planning success is applied.
 
+New storage retains the group's energy-to-power ratio. For members with energy capacity, `duration=sum(asset.energy_capacity_mwh)/capacity` hours and `proposal_energy=addition×duration` MWh. The proposal's economic fields are constructed from technology capital parameters and `life`; non-storage fixed maintenance is allocated as `fixed_om×addition/capacity`. Storage capital and maintenance use the catalogue. The proposal retains its investment owner, so its later dispatch income joins that owner's group. In zonal runs, `inherit_frozen_zone_shares` assigns the new proposal the members' capacity-weighted zone shares.
 
-## 6. Experimental annual accounts and investment
+### Construction timing and planning success
 
-The experimental national pathway supplies period cash and physical states to separate annual-account and investment functions. The `doctoral.investment_basis=thesis_final9.6` selection uses `build_thesis96_asset_accounts` and `evaluate_thesis96_investment_accounts` with the policy and planning rules below. Chapter 4 defines the default investment rule. The experimental PSM supports fixed-year dispatch, and its results retain `scientific_release_eligible=false` and `doctoral_annual_cem_ready=false`.
+Each endogenous addition enters planning at the Application Submitted stage. Initial loading copies `development_stage_timelines`, `repd_status_to_timeline`, `success_rates` and `timeline_statistic` into `state.extensions["planning_parameters"]`; subsequent years use the same tables. `endogenous_planning_terms` reads these tables with the proposal's `technology`, `owner` and `decision_year`.
 
-R029 names the national study and its input family. Public1 contains 8,761 hourly solar values and lacks the required interval declaration; its eligibility excludes the corrected reader and doctoral reproduction whitelist. The public2 revision removes the value at 2023-01-01 00:00 UTC and declares all three VRE curves hourly. Public2 is supplied with the VALUE 0.7.0-alpha.1 release through the [website data page](https://value.ac/en/data/) and has been used with corrected Native dispatch. The experimental calculations here take explicitly supplied annual accounts, traces and parameters.
+Technology determines the planning-table labels. Solar uses Solar Photovoltaics, onshore wind uses Wind Onshore, offshore wind uses Wind Offshore, and ordinary batteries and electrolysers use Battery. Gas, CCGT, OCGT and biomass use Wind Onshore. `hydrogen_battery` uses Solar Photovoltaics. The corresponding timeline keys are `solar`, `onshore`, `offshore` and `battery`.
 
-### Annual accounts and decision groups
+The stage table supplies development duration `months`. `_timeline_months` normally reads total median duration for Application Submitted; `planning.timeline_statistic=mean` selects the corresponding mean. A missing technology timeline uses the `solar` entry, and an absent total mean uses total median. Required durations are finite and nonnegative. The data and initial-project timing rules are specified in Chapter 2.
 
-An asset’s operating surplus combines ahead, balancing and policy receipts, then deducts variable and fixed OPEX. `build_thesis96_asset_accounts` requires a complete year of 17,520 half-hours. Each asset supplies `annual_fixed_opex_gbp` and `annualized_capital_cost_gbp`; the period ledger supplies market income and operating cost. All amounts in the following account are GBP for that year:
+The duration includes an owner-specific displacement from −6 to +6 months. `model_project_key(owner)` returns `Model Decision: <owner>`, and `stable_int_hash` converts its MD5 result to an integer using the first 16 hexadecimal digits. The following implemented arithmetic gives the completed year. `round` uses ties to even, so 58.5 months rounds to 58:
 
 ```text
-operating_surplus_gbp = (
-    market_income_gbp + balancing_income_gbp
-    + cm_income_gbp + decarb_income_gbp + ancillary_income_gbp
-    - variable_operating_cost_gbp - annual_fixed_opex_gbp)
-annual_profit_gbp = operating_surplus_gbp - annualized_capital_cost_gbp
+key = model_project_key(owner)
+jitter = (stable_int_hash(key) % 13) - 6
+rounded_months = int(round(max(1, months + jitter)))
+year = int(decision_year)
+source_completion = year + rounded_months // 12
+completion = max(source_completion, year + 1)
 ```
 
-The account stores operating surplus in `net_revenue_gbp` and post-capital profit in `net_profit_gbp`. Here the explicitly supplied fixed expenditure is deducted once. Chapter 4 gives the default wind, solar and storage treatment, where fixed OPEX is included in levelised CAPEX.
+The proposal stores `completion` as `expected_completion_year`. Thus the earliest endogenous commissioning is the year after the investment decision. For the public2 tables, 2025 offshore proposals complete in 2033 or 2034, onshore in 2029–2030, solar in 2026–2027, ordinary batteries in 2027, and thermal plant in 2030. The VALUE 101 tables use shorter durations, giving 2026 commissioning for 2025 proposals.
 
-`decide_doctoral_investment` pools active positive-capacity assets by investment owner and technology. It sums annual surplus and capital, calculates capacity-weighted CAPEX per MW, takes the largest preferred rate and shortest retirement target, then allocates additions across regions by operating MW shares. Nuclear and direct electrolysis follow exogenous treatment; new natural hydro and pumped hydro require site inputs.
+Success probability is read by technology label and region. `source_success_region` maps the solar and onshore owner names' cities to regions: Nottingham–East Midlands, Ipswich–Eastern, London–London, Newcastle–North East, Manchester–North West, Edinburgh–Scotland, Portsmouth–South East, Bournemouth–South West, Cardiff–Wales, Birmingham–West Midlands and Sheffield–Yorkshire and Humber. An owner name containing offshore maps to All Offshore; other owners map to England. `_success_rate` first takes the matching region, then the arithmetic mean across that technology's regional entries, then 0.75. Probabilities lie in [0,1].
 
-The evaluator reads `surplus` from `operating_surplus_gbp`, `annual_capital` from `annualized_capital_cost_gbp`, `capex` from `capital_cost_per_mw_gbp`, and `preferred` from `preferred_rate`. Positive annual capital and unit CAPEX are required. Its `profit`, annual profit rate `rate` and recommendation are:
+The public2 offshore probability is approximately 0.917; onshore regional values are approximately 0.22–0.71 and solar values 0.84–0.95. Ordinary battery owners use approximately 0.873 and thermal owners approximately 0.547 through the technology-mean fallback. VALUE 101 uses success probability 1. These probabilities apply when the new proposal is admitted into planning.
 
-$$
-\mathtt{profit}=\mathtt{surplus}-\mathtt{annual\_capital},\qquad\mathtt{rate}=\frac{\mathtt{profit}}{\mathtt{annual\_capital}}.
-$$
+The default `planning.success_mode=expected` selects `mode=expected_capacity` and admits `capacity=proposal.capacity_mw×probability`. Energy capacity, total capital, annualised capital and annual fixed cost receive the same factor once; unit prices, lifetime and return parameters retain their values. A zero probability gives zero admission. Subsequent years commission the admitted capacity at its scheduled time.
+
+`planning.success_mode=stochastic` selects `mode=seeded_stochastic` and admits the full proposal when a deterministic draw is below its probability. `seed` comes from `planning.random_seed`, default 0. The proposal identifier combines `run.run_id`, the decision year, owner and the zero-based index of the sorted investment group. The same input fields yield the same draw; changing the run identifier changes it:
 
 ```text
-if surplus > annual_capital * (1 + preferred):
-    recommendation = "Invest_High"
-elif profit > 0:
-    recommendation = "Invest_Profit"
-elif surplus < 0:
-    recommendation = "Deplete"
-else:
-    recommendation = "Do_Nothing"
+proposal_id = f"{run.run_id}:{market.year}:{owner}:{index}"
+digest = hashlib.sha256(f"{seed}:{proposal_id}".encode("utf-8")).hexdigest()
+draw = int(digest[:13], 16) / float(16 ** 13 - 1)
+success = probability > 0 and (probability == 1 or draw < probability)
+capacity = proposal.capacity_mw if success else 0
 ```
 
-Equality at the high-return threshold enters `Invest_Profit` when profit is positive. Nonnegative surplus with nonpositive post-capital profit retains capacity. `thesis_final96_contract.json` specifies preferred rates of 0.076 for solar and onshore wind, 0.089 for offshore wind and 0.12 for storage. The evaluator uses the rate supplied in each account.
+`SchemeCPlanningPipelineDefinition.admit_projects` appends admitted projects to the active pipeline. At the start of a later year, a due project becomes an asset named `commissioned:<project_id>`, carrying its admitted MW, MWh, owner and economic fields. Run-of-river projects require `hydrology_profile_id`, `capital_cost_scope=new_build` and `new_build_cost_source_id`; pumped hydro additionally requires `site_constraint_id` and `energy_capacity_mwh`. A due project with missing site fields remains deferred in the pipeline.
 
-Loss-based retirement uses the explicit `target_payback_years`. The default targets are 25 years for solar, CCGT, OCGT and hydrogen storage; 30 for onshore and offshore wind; 20 for biomass; and 10 for the three battery types. The literal technology `gas` uses 20 years.
+### State update and annual outputs
 
-### Expansion limits and investment quantities
-
-Experimental VRE expansion limits the number of periods in which operational VRE plus a candidate addition exceeds demand. `thesis96_vre_annual_expansion_cap` reads `demand_mwh`, `operational_vre_available_mwh` and `generation_per_mw_mwh` into `demand`, `available` and `profile`. The first two arrays are period MWh; `profile` is period MWh per MW of candidate capacity. It calculates:
-
-$$
-\mathtt{net}=\mathtt{demand}-\mathtt{available},\qquad\mathtt{already\_negative}=\#\{\mathtt{net}<0\}.
-$$
-
-`negative_threshold` defaults to 200 periods and `cap_fraction` to 0.20. When `already_negative` reaches 200, the addition limit is zero. Otherwise, positive-profile periods with nonnegative net demand provide `transitions=net/profile`. The `needed=negative_threshold−already_negative` smallest-order position gives `critical` MW, and the limit is `cap_fraction×critical`. Fewer than `needed` transitions gives zero.
-
-Storage uses an explicit annual technology allowance in `annual_caps`. `storage_expansion_from_traces` reads accepted VRE, actual demand, charging, post-charge surplus and discharge, then applies Chapter 4’s utilisation calculation. In the standard corrected lifecycle, the experimental PSM receives zero storage headroom with `leftover_trace_unavailable`; its standalone account analysis therefore requires the selected allowance and complete traces as inputs. The account threshold for storage is 12%, and annual storage price-and-profit-cap integration remains pending in the experimental PSM’s result record.
-
-Retained profit defines `profit_floor_mw=max(profit,0)/capex`. Here `capacity` is the group’s `current_capacity_mw`, `capacity_by_tech[tech]` is the summed MW of parsed accounts for that technology, and `caps` contains the `annual_caps` input in MW. VRE groups receive a share of their technology allowance proportional to operating capacity: `share=capacity/capacity_by_tech[tech]` and `cap_share=caps[tech]×share`. `evaluate_thesis96_investment_accounts` sets `requested_addition_mw` as follows:
-
-|Recommendation and technology|Requested MW|
-|---|---|
-|`Invest_High`, VRE|`cap_share`|
-|`Invest_Profit`, VRE|`min(cap_share,profit_floor_mw)`|
-|`Invest_High`, CCGT, OCGT or biomass|`0.01×capacity`|
-|`Invest_High`, storage|`max(caps[tech],profit_floor_mw)`|
-|`Invest_Profit`, other eligible technology|`profit_floor_mw`|
-|`Deplete` or `Do_Nothing`|0|
-
-High-return storage accounts share the same technology allowance subject to their retained-profit floors. Here `high` is the set of eligible `Invest_High` accounts for one technology, and `total` sums their requested MW. The allocator first calculates:
+Retirements change the following year's capacity and economic quantities. `SchemeCStateTransitionDefinition.apply` sets `next_year=current_state.year+1`. If an asset's declared `model_unavailable_from_year` has been reached, the full asset retires; otherwise the requested retirement applies. `resize_asset_economics` limits capacity at zero and scales energy capacity, fixed maintenance and capital with the surviving asset:
 
 ```text
-allowed = max(
-    sum(row["profit_floor_mw"] for row in high),
-    min(total, caps.get(tech, 0)))
+new_capacity = max(capacity_mw, 0)
+ratio = new_capacity / old_capacity
+new_energy = old_energy * ratio
+total_capex = (capital_cost_per_mw * new_capacity
+               + capital_cost_per_mwh * new_energy)
+annual_fixed_opex_gbp *= ratio
+annualized_capital_cost_gbp = total_capex * capital_recovery_factor(
+    capital_discount_rate, economic_lifetime_years)
 ```
 
-The allocator distributes `allowed` in proportion to requested MW. Accounts whose proportional allocation falls below `profit_floor_mw` receive that floor; the remaining budget is redistributed over the other requests until every bound is met. Profit-class storage directly receives its retained-profit quantity. A loss-making account sets `retirement_mw=min(capacity,−operating_surplus_gbp×target_payback_years/capital_cost_per_mw_gbp)`.
+Here `capacity_mw` is old capacity less requested retirement, `old_capacity` and `new_capacity` are MW, and `old_energy` and `new_energy` are MWh for storage. For a project-level capital amount with both unit capital fields equal to zero, `total_capex` is its previous capital multiplied by `ratio`. A zero remaining capacity sets the asset status to `retired`. Economic lifetime determines annualisation and the investment payback fallback; scheduled retirement uses the declared unavailable year or the loss-based retirement quantity above.
 
-Accepted additions determine planned retained-profit and external funding. `spent` is the capital required for `accepted_addition_mw`; `retained` is the smaller of positive annual profit and that expenditure. The remainder becomes `externally_funded_capital_gbp`:
+The next `YearState` contains surviving assets, `admission.next_pipeline` and the year's storage-cost observations. `transition_state` supplies the commissioned operating fleet, continuing projects and updated observations to `transition.apply`; its output year advances by one. Physical storage restarts from the Chapter 4 opening conditions, while sales observations feed the next annual cost calculation.
 
-```text
-spent = accepted_addition_mw * capital_cost_per_mw_gbp
-retained = min(max(annual_profit_gbp, 0), spent)
-profit_funded_addition_mw = retained / capital_cost_per_mw_gbp
-externally_funded_capital_gbp = spent - retained
-```
-
-The adapter allocates `addition` to each region as `region_addition=addition×region_capacity/capacity`. Storage energy follows that region’s aggregate energy-to-power ratio, and `life` takes the minimum member economic lifetime. The resulting funding record uses a 0.05 loan rate and a tenor equal to `life`; separate equity recovery and loan-draw schedules are the remaining funding-interface work.
-
-Endogenous timing and success use the same frozen tables as Chapter 4. `decide_doctoral_investment` calls `endogenous_planning_terms(state.extensions["planning_parameters"],technology,owner,decision_year)` for each regional proposal, then records `expected_completion_year`, `success_probability`, `timeline_months` and `success_rate_source`. Gas, CCGT, OCGT and biomass use onshore-wind planning parameters; hydrogen storage uses solar parameters. Ordinary batteries use Battery parameters.
-
-```text
-terms = endogenous_planning_terms(
-    state.extensions["planning_parameters"],
-    technology=technology, owner=owner, decision_year=market.year)
-expected_completion_year = terms["completion_year"]
-success_probability = terms["success_rate"]
-```
-
-For example, a 100 MW VRE group in a 1,000 MW technology fleet has a 0.10 capacity share. At a 200 MW technology allowance, £1m/MW unit CAPEX, £10m annual capital, £11m operating surplus and 7.6% preferred rate, annual profit is £1m and the rate is 10%. The group enters `Invest_High`, requests 20 MW and records £1m retained-profit funding plus £19m external funding.
-
-### Policy transfers and expenditure
-
-Policy scenarios distribute declared annual budgets across eligible assets. `basic` sets transfers to zero. `with_cm`, `decarbonisation_base`, `subsidy_as_usual` and `governmental_target` activate capacity-market and ancillary-service transfers; the latter three include existing decarbonisation support in policy expenditure. Budgets are explicit inputs in 2025 GBP.
-
-`allocate_thesis96_policy` weights capacity-market receipts by de-rated capacity. For asset `name`, `cm_weights[name]=power×factor`, where `power` is operating MW and `factor` is the technology de-rating factor. The annual capacity-market budget is £5.44bn and is divided in proportion to these weights.
-
-|Technology|De-rating factor|
-|---|---:|
-|CCGT, OCGT, biomass|0.95|
-|Nuclear|0.85|
-|Pumped hydro|0.95|
-|1C battery|0.05|
-|0.5C battery|0.15|
-|0.25C battery|0.60|
-
-Hydrogen storage supplies a scenario-specific de-rating factor. Ancillary payments follow operating MW among thermal, nuclear and storage assets. `subsidy_as_usual` and `governmental_target` allocate additional decarbonisation support by eligible VRE MW; under the latter, reaching a declared technology target ends eligibility. Existing support enters policy expenditure, and additional support enters eligible investment income. A zero eligible-capacity total leaves the budget unallocated.
-
-`build_system_cost_views` keeps resource and historical expenditure views. The resource view adds supplied capital, operation and reliability expenditure and divides by served energy. The historical view adds capital, operation, policy levies and deficit at £17,000/MWh, then divides by non-battery generation, including eligible imports. The resource reliability input follows the run’s VoLL, default £17,000/MWh.
-
-`legacy_carbon_metric` retains supplied historical carbon scalars under `unknown_source_scalar`. `physical_carbon_view` multiplies generation MWh by explicitly supplied kgCO₂e/MWh factors and divides by 1,000 to report operational tCO₂e. Storage-carbon inventories require their own charging, discharge and source-intensity inputs. Chapter 9 gives the current factor catalogue and gas labels.
-
-### REPD projects and exogenous schedules
-
-REPD preprocessing builds a construction pipeline from project status, capacity, region and milestone dates. `lookup_regional_success_rate` first reads the technology-region entry, then its technology’s regional mean, then 0.75. The status table determines whether success probability applies. Expected-capacity mode scales project MW once; seeded-stochastic mode draws a project-specific outcome from name, region and technology. The planner retains this preprocessing outcome.
-
-For REPD projects, `resolve_repd_success` determines the stochastic outcome from `project_name`, `region` and the success-technology `label`. The comparison includes equality. The configured seed is retained as metadata; the draw is fixed by those three project fields:
-
-```text
-draw = (stable_int_hash(f"{project_name}|{region}|{label}") % 1_000_000) / 1_000_000
-succeeds = draw <= rate
-```
-
-`completion_year_from_months` uses `base_year`, development duration `months` and `project_key`. A project-specific `jitter` is the remainder of `stable_int_hash(project_key)` modulo 13, minus 6 months; an empty key gives zero displacement. The returned year is:
-
-$$
-\begin{aligned}\mathtt{rounded\_months}&=\operatorname{round}(\max(1,\mathtt{months}+\mathtt{jitter})),\\\mathtt{completion\_year\_from\_months}&=\mathtt{base\_year}+\left\lfloor\frac{\mathtt{rounded\_months}}{12}\right\rfloor.\end{aligned}
-$$
-
-Granted projects combine pre-construction and construction durations; dates use day-first parsing. The forward schedule also respects full development time from application, the model start year and the initial snapshot’s start-year-plus-one floor. External projects that complete exactly in the start year can receive a deterministic one-to-three-year deferral. Endogenous proposals use the decision-year-plus-one floor specified in Chapter 4.
-
-`preprocess_doctoral_project_records` retains eligible projects of at least 1 MW with completion by 2040. Its filters cover terminal, already-operational, past-completion and stagnant records. The default stale-status year is 2015, and construction has a two-year grace period. The output provides each retained project’s timing, probability and effective capacity.
-
-The experimental pumped-hydro schedule specifies aggregate power, energy and already-annual expenditure. `apply_thesis96_pumped_schedule` reads the following rows from `thesis_final96_contract.json` for the named pumped-hydro asset. The annual capital amount and the selected capital-recovery factor define an equivalent total capital solely for the asset's economic fields.
-
-|Model year|MW|MWh|Annual OPEX, million GBP|Annual capital, million GBP|
-|---|---:|---:|---:|---:|
-|2025|2,828|26,700|85.4|377.9|
-|2026–2027|2,927.9|27,400|87.8|388.5|
-|2028|3,377.9|30,200|96.1|425.1|
-|2029|3,587.9|31,800|99.9|441.5|
-|2030|4,187.9|40,800|112.4|496.8|
-|2031–2034|5,687.9|70,800|134.9|596.4|
-|2035|11,387.9|195,800|241.9|1,070.8|
-
-Nuclear follows the frozen `value_uk_nuclear_policy_v1.json` schedule. Heysham 1, Hartlepool, Heysham 2 and Torness have 1,155, 1,185, 1,230 and 1,190 MW and leave the annual asset schedule from 2031. Sizewell B has 1,198 MW and leaves from 2056. Hinkley C's two 1,630 MW units enter full model-year operation in 2031 and 2032, while Sizewell C's 3,200 MW is retained in the 2035 pipeline. In default corrected Native dispatch, a station-policy data pack additionally applies the Chapter 5 load factors and the AGR cutoff at period 4,320 of 2030.
-
-### Physical state between experimental years
-
-The experimental period engine carries batch ages and generator memory across a completed year. Its absolute period index continues through the year boundary, retaining each surviving batch's charging index. Existing generator memory, including cumulative natural-resource budgets, is transferred; newly introduced generators use their supplied initial states. New storage begins with empty batches.
-
-`DoctoralPeriodEngine.advance_year` requires consecutive complete model years and storage capacities sufficient for retained inventory. Retirement of a nonempty store or a reduction below its inventory requires an explicit disposition rule supplied through a further integration step. The implemented transition therefore preserves the inventory of continuing stores without an automatic retirement write-off. Annual account preparation, physical-state continuation and investment proposals remain separate interfaces with the input requirements described above.
-
+Annual outputs contain dispatch energy, income, system cost, technology limits, investment proposals, planning admissions and next-year capacity. Cost per served MWh uses the account above. Chapter 9 defines operational and embodied emissions, storage-carbon tracing and the construction emissions of optional network additions. At the study horizon, `report_only` returns the final state, `pipeline_tail` advances projects already in the pipeline, and `full_extension` continues annual operation and investment.
 
 ## 7. Transmission and network constraints
 
 ### Spatial representation of zonal redispatch
 
-Zonal redispatch adds spatial constraints to a national ahead schedule. Each half-hour accepts upward and downward bids so that final injections satisfy zonal demand, corridor capacities and geographical boundary limits. Flow follows a lossless transport formulation with conservation and capacity constraints. The 23-zone configuration and 11-zone experiment use this representation; DC dispatch and AC feasibility use the separate methods below. These network modules operate under the corrected methodology with an eligible dataset.
+Zonal redispatch determines generation adjustments, storage operation and transfers that serve each zone after a national ahead market. Each half-hour uses a lossless transport model: final injections satisfy zonal demand, corridor limits and geographical boundary capacities. The British input contains 23 zones and 22 computational corridors. The DC and AC formulations below use bus and branch inputs.
+
+The British network inputs are supplied in `value-uk-research-suite-v1-public2`. The `zones` table defines the regions, `corridors` gives directed connections, `cutsets` assigns corridors to geographical boundaries, `ratings` supplies time-dependent limits, `asset-map` assigns resources to zones, `demand` supplies zonal MWh, and `interconnector-landings` assigns import/export assets to landing zones. B6 and B7a have symmetric capacities of 6,700 and 9,400 MW. The supplied 2025–2034 configuration holds these capacities fixed.
+
+Asset location follows a fixed precedence. `_zone_shares_with_source` first uses `frozen_zone_shares`, then matches `asset_id` in `asset-map`, then matches it in `interconnector-landings`, and finally assigns the asset to the single zone marked `is_unconstrained_fallback`. Shares sum to 1 within a tolerance of \(10^{-8}\). An asset occupying several zones becomes a physical unit in each zone with capacity, storage power, energy and opening inventory multiplied by its share; all units retain their original investment owner.
+
+The supplied mapping places wind and solar by site and assigns CCGT, OCGT, biomass, run-of-river hydro, nuclear, storage and imports to `ENGLAND_FALLBACK`. The fallback node connects to the declared central transport zone. Nuclear stations created from the station policy enter through that fallback, including Torness, whose geographical location is north of B6. Import resource names use `import:<country>`, while landing-table names use `interconnector:<line>`; exact identifier matching therefore sends these imports to the fallback node. These assignments determine the injections subject to the B6 and B7a constraints.
 
 Demand follows the spatial rule selected for the case. `align_zonal_demand` preserves the network pack's zonal shares for the 23-zone study and scales them to national scenario demand. Its arrays `aligned`, `output_real`, `network_demand_mwh_by_zone` and `network_national_mwh` are MWh; zone and period indices are \(z,t\):
 
@@ -1569,17 +1407,26 @@ $$
 \end{aligned}
 $$
 
-The last zone receives national demand less the sum allocated to the preceding zones, preserving the total. The 11-zone experiment instead selects absolute network demand and retains the forecast-to-actual ratio from the base series:
+The last zone receives national demand less the sum allocated to the preceding zones. When both national totals are zero, the scale is 1; a positive scenario demand requires a positive network total. The resulting `demand_mwh_by_zone` enters the period problem with asset locations, realised availability and interconnector import/export envelopes.
 
-$$
-\begin{aligned}
-\mathrm{output\_real}_t&=\mathrm{network\_national\_mwh}_t,\\
-\mathrm{output\_forecast}_t&=\mathrm{output\_real}_t\cdot
-\frac{\mathrm{research\_forecast\_mwh}_t}{\mathrm{research\_real\_mwh}_t}.
-\end{aligned}
-$$
+### Ahead schedule and adjustment bids
 
-A zero denominator with positive required demand is an input error. The resulting `demand_mwh_by_zone` accompanies asset locations, realised availability and interconnector import/export envelopes into `build_single_period_problem`.
+The network module builds its ahead schedule from period resource availability and opening storage inventory. `_ahead_offers` gives each resource `capacity_mw * availability * period_hours` MWh at its period marginal cost multiplied by `market.bid_multiplier`, default 1. Storage offers the smaller of its discharge-power limit over the period and `soc * discharge_efficiency`, at `bid_price_gbp_per_mwh(0.0)` multiplied by the same factor. `clear_ahead` orders by `price_gbp_per_mwh` and then `offer_id`, accepts the smaller of available and remaining forecast MWh, and stops when the remaining requirement is at most `1e-12` MWh or all offers are exhausted. The last accepted price settles the ahead schedule.
+
+Resource adjustment volumes are measured relative to `schedule_mwh_by_asset`. `_flexibility_bids` offers upward MWh equal to the positive part of available MWh less scheduled MWh and downward MWh up to the scheduled quantity. Upward prices use marginal cost times `market.bid_multiplier`. The `network-economic-v2` downward rules use `market.dec_multiplier`, default 1, and the per-technology support and nuclear-premium inputs:
+
+|Resource|Downward price, GBP/MWh|
+|---|---|
+|Fuel generation|Marginal cost × downward multiplier − policy support|
+|Imports|Period import price × downward multiplier|
+|Wind, solar and run-of-river hydro|− policy support|
+|Nuclear|Marginal cost × downward multiplier − policy support − inflexibility premium|
+
+`resource_dec_price` reads policy support from `market.policy_support_gbp_per_mwh_by_technology`, default zero, and the premium from `network.inflexible_dec_premium_gbp_per_mwh_by_technology`, default 100 GBP/MWh for nuclear. Gas and biomass split scheduled MWh into `running_mwh` and `shutdown_mwh`: the latter equals scheduled MWh times `min_stable_fraction`. `thermal_dec_segments` retains the running price and gives the shutdown segment the `net_saving` calculation and restart table in Chapter 5. The downtime forecast includes the current period and consecutive subsequent periods whose forecast demand is covered by declared wind, solar and nuclear availability, each lasting `period_hours`. A shutdown shorter than `min_down_time_h` receives the smaller of its net saving and a price 0.01 GBP/MWh below every other downward price band.
+
+Storage adjustment bids cover the change from scheduled discharge to final discharge or charging. `maximum_discharge` is the smaller of `discharge_power_mw * period_hours` and `soc * discharge_efficiency`; upward volume is `max(maximum_discharge - scheduled, 0)`. Downward volume is scheduled MWh plus the smaller of charging power over the period and remaining internal capacity divided by charging efficiency. `storage_dec_price` takes the minimum of the storage upward price, that price times round-trip efficiency, and the lowest available upward price in the period when such a bid exists. A declared export envelope adds a downward withdrawal bid at the nonnegative part of its export price.
+
+Storage starts at `initial_soc_mwh`; each solved final inventory becomes the next period's opening inventory. Generation follows the period availability and accepted adjustment bounds below. The algorithm processes the supplied chronology once in time order, returning final injections, charge, discharge, inventory, corridor flows, unmet demand and settlement for every period.
 
 ### Adjustment objectives and operating constraints
 
@@ -1613,7 +1460,7 @@ The second objective sums accepted bid MWh and shortage MWh. The third assigns w
 |Nuclear|4|
 |Fuel shutdown before its minimum downtime|5|
 
-Within a zone and at an exact primary-price tie, storage charging precedes run-of-river, wind, solar and nuclear reductions; fuel shutdown follows wind and solar and precedes nuclear. Across zones, class weights also trade against corridor-flow MWh. The primary LP uses exact prices, while copperplate balancing groups downward prices in 0.01 GBP/MWh bands. The fourth objective weights successive variables by 1, 2, … in the fixed order of bid, corridor, zone and storage identifiers.
+Within a zone and at an exact primary-price tie, storage charging precedes run-of-river, wind, solar and nuclear reductions; fuel shutdown follows wind and solar and precedes nuclear. Across zones, class weights also trade against corridor-flow MWh. The primary LP uses exact prices. The fourth objective weights successive variables by 1, 2, … in the fixed order of bid, corridor, zone and storage identifiers.
 
 Final asset injection adds signed accepted bids to the ahead schedule. `final_dispatch_mwh_by_asset` and `schedule_mwh_by_asset` are MWh. The index \(k\) identifies a bid; its `asset_id` selects asset \(a\), and `asset_zone_id_by_asset` selects the zone \(z\):
 
@@ -1659,7 +1506,7 @@ $$
 \le\mathrm{forward\_capacity}_b.
 $$
 
-All boundary constraints apply together. A corridor-specific limit additionally bounds its own flow; `absolute-flow` is at least both positive and negative signed flow. Thus 6,700 MW at B6 becomes 3,350 MWh per half-hour, and 2,200 MW on Western Link becomes 1,100 MWh. Corridors without individual limits remain constrained by zonal conservation and their boundary memberships.
+All boundary constraints apply together. A corridor-specific limit additionally bounds its own flow; `absolute-flow` is at least both positive and negative signed flow. Thus 6,700 MW at B6 becomes 3,350 MWh per half-hour. Corridors without individual limits remain constrained by zonal conservation and their boundary memberships.
 
 Storage redispatch determines final internal inventory from realised charge and discharge. `opening` is `initial_soc_mwh_by_asset`; `capacity` is `energy_capacity_mwh`. For each store,
 
@@ -1692,7 +1539,7 @@ $$
 
 Network constraint cost compares this result with the same LP collapsed to one node, removing corridors and boundaries. `solve_network_free_counterfactual` retains bids, export arbitrage, import/export envelopes, storage physics, shortage valuation and solver settings. Both cases use the same period unit-cost table: supplied time-varying resource cost, otherwise annual marginal cost, storage cycle depreciation and zero export resource cost. Negative import prices can give negative period resource expenditure.
 
-The primary-objective difference is recorded separately as `network_constraint_bid_objective_gbp`. Forecast-error attribution compares actual-forecast and perfect-forecast network-free cases. Each comparison changes its stated spatial or forecast inputs within the same optimisation formulation.
+The primary-objective difference is returned as `network_constraint_bid_objective_gbp`. It measures the change in accepted bid payments and shortage valuation; `physical_resource_cost_gbp` measures resource expenditure.
 
 ### Numerical solution and boundary marginal values
 
@@ -1727,8 +1574,9 @@ for period in the half-hour chronology:
         minimise physical_tie_objective; retain its objective bound
         minimise stable_tie_objective; validate_solution(...)
     solve_network_free_counterfactual(...): compute matched comparison
-    return actual injections, storage inventory, flows, shortage and costs
+    record actual injections, storage inventory, flows, shortage and costs
     pass final_soc_mwh_by_asset to the next period
+return all period results
 ```
 
 Boundary marginal values measure the primary objective's response to transfer capacity. `boundary_marginal_values` reads the forward and reverse constraint-row duals before objective locks are added:
@@ -1739,46 +1587,7 @@ $$
 -\mathrm{marginals}_{\mathrm{forward\_row}_b}.
 $$
 
-A positive value corresponds to a binding forward limit and a negative value to a binding reverse limit. Status is `computed`, `degenerate_dual` for a binding limit with zero dual, or `shared_member` when binding boundaries share a corridor and the dual allocation is non-unique. The annual sum of absolute boundary value times transfer is reported as a congestion diagnostic, separately from zonal prices, cash flows and system cost. A ledger without this calculation displays “Not computed”.
-
-### The two zonal cases
-
-The British 23-zone study uses the GBP1 public2 research suite, `value-uk-research-suite-v1-public2`, supplied with VALUE 0.7.0-alpha.1 through the [data page](https://value.ac/en/data/). It contains 22 computational corridors and the B6 and B7a boundaries, rated at 6,700 MW and 9,400 MW in each direction. The 2025–2034 study design holds network capacity fixed while annual demand and assets may change.
-
-The 23-zone pack locates wind and solar by site; CCGT, OCGT, biomass, run-of-river hydro, nuclear, storage and imports are allocated to `ENGLAND_FALLBACK`. Nuclear stations created by the public2 policy enter that zone through the runtime fallback, including Torness north of B6. Import resources are named `import:<country>`, while the landing table uses `interconnector:<line>`; this mismatch also places imports in the fallback zone. `runtime_fallback_audit` records these allocations, and the resulting spatial distribution is indicative.
-
-Staged and zonal runs declare the ledger balance boundary `full_node_v1`, enabling energy-balance assessment. The independent checks `generation_cross_path` and `demand_input_reconciliation` retain status `not_evaluated`. The default `summary` trace omits per-period solver diagnostics; the result therefore displays “Not recorded”.
-
-The 11-zone experiment represents British regions as T1–T11 and compares transmission outcomes for a single year with fixed assets. The regions are N. Scotland, S. Scotland, N. England, N. Wales/the Mersey/the Humber, Midlands, Central England, E. Anglia, S. Wales/the Severn, S.W. England, S. England and South-East England. It uses 2022 demand and weather over 17,520 half-hours with a 2025 model background. Asset capacities remain fixed throughout the experiment, with annual investment outside its execution path.
-
-The 11-zone network combines 13 computational corridors classified as AC assets with Western Link. Ordinary corridors connect 1–2, 2–3, 3–4, 4–5, 5–6, 5–8, 6–7, 6–8, 6–11, 8–9, 8–10, 9–10 and 10–11; Western Link connects T2→T4. The table gives geographical boundary capacities and the separate Western Link limit. The 2029 values form an independent sensitivity input, while base cases use 2025 capacities.
-
-| Boundary | 2025 capacity in each direction, MW | 2029 sensitivity capacity, MW | Positive-flow members |
-|---|---:|---:|---|
-| B4 | 4,002 | 4,923 | f12 |
-| B6 | 6,700 | 11,456 | f23 + fWL |
-| B7a | 9,400 | 10,609 | f34 + fWL |
-| B8 | 11,000 | 14,005 | f45 |
-| B9 | 11,500 | 12,900 | f56 + f58 |
-| EC5 | 3,300 | 5,925 | −f67 |
-| LE1 | 11,223 | 13,917 | f6,11 + f10,11 |
-| B13 | 3,500 | 6,575 | −f89 + f9,10 |
-| Western Link | 2,200 | 2,200 | fWL |
-
-Western Link flow consumes the stated capacity of both B6 and B7a. The 8 geographical boundaries use symmetric reverse capacities, while the Western Link input specifies a bidirectional rating. In the base reduced network, T6, T8 and T10 have identical boundary memberships, leaving modelled transfer between them without a finite upper bound. In its 14-dimensional corridor space, the nodal incidence matrix has rank 10, the geographical boundary matrix rank 8, and the matrix including the HVDC limit rank 9. The 5-dimensional constraint null space contains 3 circulation directions and 2 directions that alter nodal net transfers.
-
-The thermal-capacity sensitivity adds separate limits to 8 southern corridors while retaining geographical boundaries. Its construction contracts known substations within each zone to the zone node, retains unknown intermediate nodes, excludes other known zones, and calculates corridor capacity by network maximum flow/minimum cut. Parallel line capacities add, while serial paths are limited by their bottlenecks; MVA is converted to MW at an assumed power factor of 1. The ordinary summer and winter inputs are shown below; separate upper-bound sensitivities use their own files.
-
-| Corridor | Summer MW | Winter MW |
-|---|---:|---:|
-| T5–T6 | 19,086 | 21,052 |
-| T5–T8 | 3,424 | 3,934 |
-| T6–T8 | 4,436 | 5,558 |
-| T6–T11 | 16,684 | 19,849 |
-| T8–T9 | 8,088 | 9,217 |
-| T8–T10 | 6,470 | 7,834 |
-| T9–T10 | 4,434 | 5,558 |
-| T10–T11 | 6,587 | 7,500 |
+A positive boundary value corresponds to a binding forward limit and a negative value to a binding reverse limit. Where binding boundaries share a corridor, several dual allocations can represent the same optimum. The annual output also sums absolute boundary value multiplied by transferred MWh as a congestion measure.
 
 ### DC network dispatch
 
@@ -1835,11 +1644,11 @@ $$
 
 Circuit count scales thermal capacity; the declared equivalent reactance sets the angle equation. Each connected island has one reference bus at zero angle, with other angles bounded by \([-\pi,\pi]\). Out-of-service branches have zero flow. DC links enter nodal balance as controllable flows within their declared bounds.
 
-HiGHS solves all periods in one linear programme with primal and dual tolerances of \(10^{-8}\) and an equality-residual limit of \(10^{-7}\). Nodal energy-balance duals provide marginal operating prices in GBP/MWh; the displayed system price is demand weighted. Fixed assets, continuous dispatch, storage and the linear network define this full-horizon comparison.
+HiGHS solves all periods in one linear programme with primal and dual tolerances of \(10^{-8}\). Completion requires an optimal solver status and an equality-residual limit of \(10^{-7}\). Nodal energy-balance duals provide marginal operating prices in GBP/MWh; the displayed system price is demand weighted. The output contains period dispatch, storage inventory, nodal prices and branch flows for the complete horizon.
 
 ### AC feasibility calculation
 
-The AC module calculates steady-state power flow for a given active-power schedule. Inputs contain active and reactive demand, generator active and reactive limits, voltage setpoints, branch impedances and charging susceptance, fixed taps and phase shifts, voltage bounds and MVA ratings. Each connected island has one slack balancing asset; PV and slack buses require generation, with a common voltage setpoint for generators at one bus. Storage follows its supplied active charging and discharging schedule.
+The AC module calculates steady-state power flow for a given active-power schedule. Inputs contain active and reactive demand, generator active and reactive limits, voltage setpoints, branch impedances and charging susceptance, fixed taps and phase shifts, voltage bounds and MVA ratings. Each connected island has one slack balancing asset; PV and slack buses require generation, with a common voltage setpoint for generators at one bus. Storage follows its supplied active charging and discharging schedule. PQ buses solve for voltage magnitude and angle from specified active and reactive injections; PV buses hold voltage magnitude and active power; each slack bus holds its voltage magnitude and zero angle while balancing the island.
 
 Nodal complex injection follows the solved voltage and nodal admittance matrix. `vm` is per-unit voltage magnitude, `theta` is radians, `voltage` is complex per-unit voltage, and `injection` contains MW and Mvar. `ybus` is per-unit admittance on the `base_mva` base, and \(j^2=-1\):
 
@@ -1876,7 +1685,9 @@ $$
 
 Apparent power at both terminals is limited by `apparent_power_rating_mva` times `circuits`. Every in-service branch enters the admittance matrix with its declared impedance. Topology and device settings remain fixed.
 
-Nonlinear least squares solves from several initial voltage conditions. Converged solutions are checked for agreement, followed by generator active and reactive bounds, bus voltages, branch ratings and system balance among supply, charging, demand and losses. `ReferenceACFeasibilityPSM` returns the local steady-state trajectory and feasibility checks for that schedule.
+The AC solve starts from flat voltage and from an alternative state with angles spread from 0.01 to 0.03 radians and PQ voltages at the midpoint of their bounds; a declared initial voltage adds a third start. Each start is clipped to the angle and voltage bounds. `least_squares` uses `xtol = ftol = gtol = 1e-12` and `max_nfev = 2000`. A solution requires successful termination and maximum mismatch at most `residual_tolerance`, default \(10^{-7}\) MW or Mvar; the acceptable start with the smallest residual is selected.
+
+Accepted AC solutions have start-to-start voltage/angle differences at most \(10^{-5}\) and Jacobian condition number at most \(10^{12}\). Active and reactive generation, voltage and terminal apparent power remain within declared limits to `equipment_tolerance`, default \(10^{-6}\) in their respective units. Each period returns voltages, generation, terminal flows and losses. Solving continues through the chronology; an unsuccessful period terminates the calculation.
 
 ### Optional line expansion
 
@@ -1893,7 +1704,7 @@ $$
 \end{aligned}
 $$
 
-The capital-recovery function `_crf` uses its arguments `rate` and `life`:
+The capital-recovery function `_crf` uses annual discount fraction `rate` and lifetime `life` in years; `annual_cost` is GBP/year, `total_capex_gbp_per_build` is GBP, and `ratio` is dimensionless:
 
 $$
 \operatorname{\_crf}(\mathrm{rate},\mathrm{life})=
@@ -1904,18 +1715,20 @@ $$
 \end{cases}
 $$
 
-Candidates are ordered by descending `ratio` and ascending identifier. Earliest decision year, minimum trigger utilisation, minimum benefit-cost ratio, total budget and budget-group allowance determine admission; zero annual cost gives an infinite ratio. The registered parameter defaults are 0 GBP for total annual funding and \(10^{13}\) GBP per group. Each accepted proposal deducts its complete construction cost. Expected commissioning is the decision year plus `lead_time_years` and `delay_years`.
+Candidates already commissioned or in the planning queue are excluded from the next decision. Remaining candidates are ordered by descending `ratio` and ascending identifier. Earliest decision year, minimum trigger utilisation, minimum benefit-cost ratio, total budget and budget-group allowance determine admission; zero annual cost gives an infinite ratio. The registered parameter defaults are 0 GBP for total annual funding and \(10^{13}\) GBP per group. Each accepted proposal deducts its complete construction cost. Expected commissioning is the decision year plus `lead_time_years` and `delay_years`.
 
-Planning success compares a reproducible uniform draw with `success_probability`. The default seed is 0; the proposal identifier includes the run identifier, and together they define the draw. At each year's start, completed projects commission and active lines retire at commissioning year plus the ceiling of `economic_life_years`. `apply_commissioned_network_assets` inserts commissioned branches into the annual network. The 23-zone and 11-zone cases retain fixed networks; line expansion is a separately selected method.
+Planning success in `ReferenceTransmissionExpansion.admit` accepts a proposal when its reproducible draw `draw` is at most `success_probability`. `seed` reads `network.expansion.random_seed`, default 0. The proposal identifier is `network-proposal:{run_id}:{year}:{candidate_id}`. These inputs determine `draw` through the following calculation:
 
-### Data and implementation
+```text
+digest = hashlib.sha256(
+    f"{seed}:{proposal.proposal_id}".encode()
+).hexdigest()
+draw = int(digest[:13], 16) / float(16 ** 13 - 1)
+if draw <= candidate.success_probability:
+    admit the proposal into the planning queue
+```
 
-Zonal inputs comprise `zones`, `corridors`, `cutsets`, `asset-map`, `demand`, `ratings` and `interconnector-landings`. `align_zonal_demand` applies the two demand rules, `build_single_period_problem` constructs redispatch constraints, `solve_lexicographic` solves the 4 objectives sequentially, and `ZonalRedispatchBalancing` returns actual injections, inventory and costs. The 11-zone study uses the external research scripts `build_network_data.py` and `fixed_fleet_runner.py`, with `cutsets_2025.json`, `cutsets_2029.json` and summer/winter thermal files defining its scenarios. These scripts belong to the separate fixed-asset experiment described above; the packaged British network study uses the 23-zone suite.
-
-`network_method_rules.py` defines `network-economic-v2`. The network-free comparison is identified by `value.network-free-lp/v1`, while `zonal_results.py` assembles zonal outcomes. Each year records downward-bid assumptions in `extensions.downward_restart_economics`, using schema `value.network-downward-restart-economics/v1`; missing inputs and the resulting fallback basis accompany the calculation record.
-
-The independent network modules use buses, branches, asset-to-bus mappings and period demand. `ReferenceDCNetworkPSM` and `validate_dc_solution` implement linear dispatch and its physical checks; `load_ac_data_from_pack`, `ReferenceACFeasibilityPSM` and `validate_ac_result` implement AC inputs, power flow and feasibility checks. `ReferenceTransmissionExpansion` reads candidates and budgets and advances construction states, while `apply_commissioned_network_assets` inserts active new lines into the network.
-
+At each year's start, completed projects commission and active lines retire at commissioning year plus the ceiling of `economic_life_years`. `apply_commissioned_network_assets` inserts commissioned branches into the annual network. Line expansion is selected with its candidate table and annual budgets; the supplied 23-zone configuration keeps its network fixed.
 
 ## 8. Perfect-foresight dispatch and natural hydrology
 
@@ -1923,7 +1736,9 @@ The independent network modules use buses, branches, asset-to-bus mappings and p
 
 The perfect-foresight module schedules generation, imports and storage jointly over the complete input chronology at fixed asset capacities. `PerfectForesightPSM.run` reads `PSMInput.chronology`; the outer annual model supplies investment and the resulting capacities. Each period contains demand, resource availability and marginal costs. Storage inputs give power, energy capacity, efficiencies and initial inventory.
 
-The objective minimises operating resource expenditure, storage degradation and shortage cost. The equations retain the implementation names: `resource_period`, `charge_period`, `discharge_period`, `soc_period` and `blackout` are MWh arrays, indexed by resource \(i\), storage asset \(s\) and period \(t\). `resource_marginal_costs` and `variable_degradation_gbp_per_mwh_discharged` are GBP/MWh. With `voll_gbp_per_mwh` as the shortage valuation, the objective is
+Resource availability accepts a single-element series or a complete series, with finite values in \([0,1]\). Marginal cost accepts a scalar, a single-element series or a complete series, with finite nonnegative values. Demand is finite nonnegative MWh, period identifiers are unique and all full series follow that chronology. Charging and discharging efficiencies lie in \((0,1]\); initial and fixed terminal inventories lie within energy capacity. Hydro supplied here is a resource with declared electrical availability. The hydrological functions below construct availability from inflow or optimise a conventional reservoir.
+
+The objective minimises operating resource expenditure, storage degradation and shortage cost. `resource_period`, `charge_period`, `discharge_period`, `soc_period` and `blackout` are MWh arrays, indexed by resource \(i\), storage asset \(s\) and period \(t\). `resource_marginal_costs` and `variable_degradation_gbp_per_mwh_discharged` are GBP/MWh. With `voll_gbp_per_mwh` as the shortage valuation, the objective is
 
 $$
 \begin{aligned}
@@ -1982,9 +1797,9 @@ $$
 \end{aligned}
 $$
 
-Both stages use HiGHS with primal and dual feasibility tolerances of \(10^{-8}\). The returned physical trajectory is `secondary.x`. The maximum simultaneous charge and discharge, `simultaneous`, must be at most \(10^{-6}\) MWh. Unused renewable energy is availability less accepted resource supply.
+Both stages use HiGHS with primal and dual feasibility tolerances of \(10^{-8}\), and each requires a successful optimal termination before the calculation advances. The returned physical trajectory is `secondary.x`. The maximum simultaneous charge and discharge, `simultaneous`, must be at most \(10^{-6}\) MWh. Unused renewable energy is availability less accepted resource supply.
 
-The displayed “Balance shadow price” is the first-stage marginal operating cost of period demand. Revenue multiplies the demand-balance dual in GBP/MWh by accepted MWh; storage earns the dual multiplied by discharge less charge. Consumer payment uses supplied demand. System cost adds annualised capital and the fixed operation and maintenance of non-wind, non-solar and non-storage assets to variable expenditure, degradation and shortage cost. The fixed-cost input is `annual_fixed_opex_gbp`; wind, solar and storage fixed operation and maintenance remains a memo line under Chapter 4.
+The demand-balance dual of the first optimum gives the marginal operating cost of period demand, displayed as “Balance shadow price”. Revenue multiplies the demand-balance dual in GBP/MWh by accepted MWh; storage earns the dual multiplied by discharge less charge. Consumer payment uses supplied demand. System cost adds annualised capital and the fixed operation and maintenance of non-wind, non-solar and non-storage assets to variable expenditure, degradation and shortage cost. The fixed-cost input is `annual_fixed_opex_gbp`; wind, solar and storage fixed operation and maintenance remains a memo line under Chapter 6.
 
 ```text
 PerfectForesightPSM.run(model_input):
@@ -2005,8 +1820,6 @@ PerfectForesightPSM.run(model_input):
     check balance and simultaneous storage operation
     return costs and demand duals
 ```
-
-Resource availability accepts a single-element series or a complete series, with finite values in \([0,1]\). Marginal cost accepts a scalar, a single-element series or a complete series, with finite nonnegative values. The adapter checks chronology length and requires charging and discharging efficiencies in \((0,1]\). Hydro supplied here is a resource with declared electrical availability. The hydrological functions below construct availability from inflow or optimise a conventional reservoir.
 
 ### Available run-of-river electricity
 
@@ -2075,12 +1888,12 @@ $$
 \end{aligned}
 $$
 
-The ordinary-release bound and ecological minimum apply to turbine release plus bypass; spill enters water balance separately. A supplied `terminal_volume` fixes final inventory. The parameter check requires maximum total release to be at least maximum turbine release and electricity from maximum turbine release to be at most `turbine_capacity_mw` multiplied by `interval_hours`, with tolerance \(10^{-9}\) MWh.
+The ordinary-release bound and ecological minimum apply to turbine release plus bypass; spill enters water balance separately. A supplied `terminal_volume` fixes final inventory; otherwise final inventory remains within `min_volume` and `max_volume`. The parameter check requires maximum total release to be at least maximum turbine release and electricity from maximum turbine release to be at most `turbine_capacity_mw` multiplied by `interval_hours`, with tolerance \(10^{-9}\) MWh.
 
-The solver reads the complete inflow and value series, solves one SciPy/HiGHS linear programme and returns water trajectories, generation and conservation residuals. `objective_gbp` includes the small spill penalty. The input labels `myopic`, `rolling_horizon` and `perfect_foresight` all call this full-horizon algorithm and are returned as metadata.
+The solver reads the complete inflow and value series and solves one SciPy/HiGHS linear programme. A successful solution returns water trajectories, generation and conservation residuals; `objective_gbp` is generation value less the spill penalty. An infeasible problem ends with the solver's failure result. The supplied inflow and electricity-value series determine the complete optimisation horizon.
 
 ```text
-reservoir_dispatch(parameters, inflow, energy_value_gbp_per_mwh):
+reservoir_dispatch(parameters, inflow, *, energy_value_gbp_per_mwh):
     inflow.validate(); parameters.validate(inflow.interval_hours)
     conversion = (parameters.conversion_mwh_per_water_unit
                   * parameters.turbine_efficiency)
@@ -2094,18 +1907,17 @@ reservoir_dispatch(parameters, inflow, energy_value_gbp_per_mwh):
     return generation, water trajectories and residuals
 ```
 
-### Hydrological inputs and module connection
+### Hydrological input assembly
 
 Natural-hydrology inputs comprise the site table, asset-to-site mapping, run-of-river inflow, reservoir inflow and reservoir parameters. Sites declare technology, capacity, turbine efficiency, bus, source and licence. Pumped storage uses the electrical-storage model. Each asset is assigned to a site, with mapping shares in \((0,1]\) and total shares per asset at most 1.
 
 Inflow CSV files provide timezone-aware timestamps, interval length, site identifiers, values and water or electrical-availability units. The adapter requires finite nonnegative values, unique timestamps and consistent units; a supplied expected chronology is checked period by period. Site, mapping and parameter tables accept JSON or CSV. The declared missing-value treatment is `none`.
 
-The input and operating functions can be called independently. `load_hydrology_inputs_from_pack` assembles inputs, `adapt_hydrology_csv` reads inflow, `validate_site_mapping` checks mapping, `run_of_river_dispatch` calculates run-of-river electricity and `reservoir_dispatch` optimises reservoir releases. An annual market application requires an adapter connecting these inputs and outputs to its dispatch workflow, together with the relevant site, inflow, abstraction, conversion, storage and terminal parameters.
-
+`load_hydrology_inputs_from_pack` joins the site, mapping, inflow and parameter tables by `site_id`; `adapt_hydrology_csv` preserves the declared interval and units. The independent function `run_of_river_dispatch` accepts site and inflow records and returns `available_energy_mwh`, `accepted_generation_mwh` and `curtailed_energy_mwh`, all in MWh. `reservoir_dispatch` accepts reservoir parameters, inflow and electricity values, returning `generation_mwh` in MWh and water trajectories in the declared water unit.
 
 ## 9. Carbon accounting parameters
 
-VALUE calculates operational emissions and equipment-construction emissions separately before combining them under the selected accounting scenario. Operational emissions vary with generation and imported electricity, while construction emissions vary with installed capacity and the annualisation rule. Current physical accounting uses the `value_current_authoritative_v1` factor set. The doctoral-reproduction reference configuration selects `doctoral_reproduction_2026_07_18`, retaining historical storage scalars in their original units and recording the carbon result as `not_physically_interpretable`.
+VALUE calculates operational emissions and equipment-construction emissions separately before combining them under the selected accounting scenario. Operational emissions vary with generation and imported electricity, while construction emissions vary with installed capacity and the annualisation rule. The `value_current_authoritative_v1` factor set supplies the accounting factors.
 
 ### Generation and imported electricity
 
@@ -2149,7 +1961,7 @@ $$
 \end{aligned}
 $$
 
-The following annual factors are those used in the research postprocessing input `embodied_factors_desnz_unece.csv`. The study configuration fixes the factor selection. Open-cycle gas uses the combined-cycle gas construction factor, and the electrolyser uses the literature proxy recorded in that input table.
+Annual construction factors come from `embodied_factors_desnz_unece.csv`. Open-cycle gas uses the combined-cycle gas construction factor, and the electrolyser uses the proxy recorded in that table.
 
 |Technology|Annual factor tCO₂e/(MW·year)|
 |---|---|
@@ -2175,71 +1987,66 @@ $$
 \quad\mathrm{tCO_2e/year}.
 $$
 
-Hydrogen storage accounts separately for power equipment and energy storage. The energy-storage component uses a lifetime factor of 0.0006 tCO₂e/MWh of capacity, annualised over the asset's declared economic life. It is stored as `ch4_h2_store_lifetime` in `factor_catalog.csv`, with the original thesis Chapter 4 storage parameters and their 10-year source lifetime retained in the factor record. The electrolyser power component uses the annual factor in the preceding section.
+Hydrogen storage accounts separately for power equipment and energy storage. The energy-storage component uses a lifetime factor of 0.0006 tCO₂e/MWh of capacity, annualised over the asset's declared economic life. It is stored as `ch4_h2_store_lifetime` in `factor_catalog.csv`. The electrolyser power component uses the annual factor in the preceding section.
+
+### Carbon carried by stored electricity
+
+Battery discharge enters `storage_carried_transfer` as a transfer of stored electricity, with zero additional operational emissions. Pumped hydro uses the zero operational factor in the table. Emissions from the charging source enter the generation or imported-electricity account. When `storage_trace` is supplied, a mixed-inventory calculation also tracks the emissions held in storage. Its inputs are period `charge_mwh`, `discharge_mwh`, `charge_source_kgco2e_per_mwh` and charge and discharge efficiencies.
+
+The carbon inventory starts at zero. Charging adds emissions at the source intensity; discharging removes the fraction associated with the withdrawn inventory energy. In the calculation below, `inventory_energy` is in MWh and `inventory_kg` in kg; `ending_inventory` converts the closing carbon inventory to tonnes. Each period checks `withdrawn` against available inventory; an excess above \(10^{-7}\) MWh terminates the calculation with `ValueError`.
+
+```text
+inventory_energy = 0.0
+inventory_kg = 0.0
+for charge, discharge, intensity in zip(
+    storage_trace["charge_mwh"],
+    storage_trace["discharge_mwh"],
+    storage_trace["charge_source_kgco2e_per_mwh"]):
+    admitted = charge * storage_trace["charge_efficiency"][0]
+    inventory_energy += admitted
+    inventory_kg += charge * intensity
+    withdrawn = discharge / storage_trace["discharge_efficiency"][0]
+    if withdrawn > inventory_energy + 1e-7:
+        raise ValueError("Storage withdrawal exceeds available inventory")
+    share = withdrawn / inventory_energy if inventory_energy > 0 else 0.0
+    inventory_kg *= 1.0 - share
+    inventory_energy -= withdrawn
+ending_inventory = inventory_kg / 1000.0
+```
+
+Hydrogen-storage operation enters `unresolved` in the current ledger. `_normalise_technology` maps `hydrogen_battery` to `hydrogen_storage`, whose operational factor is empty; this activity makes `operational` and `total` return `None`. Hydrogen-storage construction emissions still use the power- and energy-capacity factors specified above.
+
+### Annual emissions and intensity
+
+Annual emissions `total` sum operational emissions `operational` and annualised construction emissions `embodied`. Aggregation requires a matching factor for each activity and energy capacity and a positive economic life for storage. `delivered_demand_mwh` is served electricity; a positive value supplies the denominator for the following kg/MWh intensities:
+
+$$
+\begin{aligned}
+\mathtt{total}&=\mathtt{operational}+\mathtt{embodied},\\
+\mathtt{operational\_intensity}
+&=\frac{1000\times\mathtt{operational}}{\mathtt{delivered\_demand\_mwh}},\\
+\mathtt{overall\_intensity}
+&=\frac{1000\times\mathtt{total}}{\mathtt{delivered\_demand\_mwh}}.
+\end{aligned}
+$$
+
+### Construction emissions from line expansion
+
+Line construction enters `network_construction_embodied` once in the commissioning year and is added to that year's `total`. `adjust_carbon_ledger_for_network` selects network assets with `commissioning_year == year` and `status == "commissioned"`. For each selected asset, `rating` is MW, `factor` reads `asset.embodied_carbon_factor_tco2e_per_mw` in tCO₂e/MW, and `emissions` is tonnes:
+
+$$
+\begin{aligned}
+\mathtt{rating}
+&=\mathtt{asset.thermal\_rating\_mw\_per\_circuit}\\
+&\qquad\times\mathtt{asset.circuits},\\
+\mathtt{emissions}&=\mathtt{rating}\times\mathtt{factor},\\
+\mathtt{network\_total}&=\sum\mathtt{emissions},\\
+\mathtt{total}&\leftarrow\mathtt{total}+\mathtt{network\_total}.
+\end{aligned}
+$$
+
+The updated total supplies `overall_kgco2e_per_mwh` and `delivered_demand_kgco2e_per_mwh`, using served electricity as `denominator` when it is positive. A selected line with a missing factor receives an unresolved construction entry and makes the total return `None`. The supplied fixed 23-zone network retains its declared branches; this additional calculation accompanies the optional line-expansion module.
 
 ### Data and implementation
 
 `factor_catalog.csv` stores the factors, units, accounting boundaries and source locations, while `sources.csv` stores source names. `CarbonFactorDatabase` reads `value_carbon_factors.sqlite`. `build_operational_carbon_ledger` connects dispatched electricity and operating assets to the selected factor set, and `_asset_embodied_lines` calculates annualised equipment-construction emissions.
-
-
-## Ensemble interpretation
-
-Weather, demand and planning seeds define child runs with fixed inputs. Aggregation reports completed members, missing members and their statistics. A comparison identifies the units, denominator, horizon, terminal policy and factor scenario for each case. Probability statements require a specified sampling design; a small set of chosen scenarios describes those scenarios.
-
-
-## Executable module inventory
-
-The 18 shipped manifest identifiers are:
-
-- `agent-investment`
-- `dynamic-annual-storage-cost`
-- `planning-pipeline`
-- `reference-transmission-expansion`
-- `user-formula-storage-cost`
-- `value-annual-state-transition`
-- `value-bid-at-cost-psm`
-- `value-copperplate-balancing`
-- `value-doctoral-national-psm`
-- `value-legacy-storage-tariff`
-- `value-perfect-foresight-lp`
-- `value-reference-dc-network`
-- `value-repd-era5-aggregated-weather`
-- `value-representative-point-weather`
-- `value-staged-bid-at-cost-psm`
-- `value-storage-expansion-policy`
-- `value-zonal-redispatch-balancing`
-- `vre-expansion-cap`
-
-[generated/MODULES.md](generated/MODULES.md) gives versions and entry points; [generated/PARAMETERS.md](generated/PARAMETERS.md) gives parameter defaults and fixed or editable classifications. Natural hydrology uses independent domain functions. The experimental AC method remains unregistered by default.
-
-
-## Solver-contract notation
-
-The solver contract expresses the Chapter 7 objective lock with its published
-notation. `U_k` is `absolute_term_scale`, `C_k` is `coefficient_one_norm`, `n` is
-`nonzero_terms`, `epsilon_effective` is the effective `solver_tolerance`, and
-`tau_k` is the returned `tolerance` in `compute_lock_tolerance`. `c_i` and
-`x_i*` are the entries of `coefficients` and `optimum`; `unit_floor_k` is
-`unit_floor`. The numerical relationships are:
-
-```text
-U_k     = sum(abs(c_i * x_i*))
-C_k     = sum(abs(c_i))
-gamma_n = n * epsilon / (1 - n * epsilon)
-epsilon_effective = max(solver_tolerance_k, bound_canonicalisation_tolerance)
-tau_k   = max(unit_floor_k, epsilon_effective * max(1, U_k), gamma_n * U_k, C_k * epsilon_effective)
-objective_k(x) <= objective_k(x*) + tau_k
-```
-
-Here `solver_tolerance_k` is the applicable phase tolerance and `objective_k`
-is the dot product for the locked objective. Energy balance, inventory, transfer
-capacity and settlement identities remain hard constraints. The solver-contract
-requirement is “numerical tolerance does not relax physical feasibility”.
-
-The validated ceilings per half-hour are `1.0 GBP`, `0.001 MWh` schedule
-deviation and `0.001 MWh` throughput. Recorded reference thresholds are
-`1.0 GBP`, `0.01 MWh` and `0.01 MWh` respectively. Classification uses
-`max(computed_tolerance, observed_degradation) / validated_ceiling`: up to 10%
-is `GO`; above 10% and up to 100% is `GO_WITH_NUMERICAL_WARNING`; above 100%
-is `COMPLETED_WITH_NUMERICAL_WARNING`. These thresholds classify numerical
-evidence; each declared physical feasibility constraint still applies.

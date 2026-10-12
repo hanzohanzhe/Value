@@ -32,7 +32,7 @@ def draw_page(canvas: object, doc: object) -> None:
     canvas.line(20 * mm, 14 * mm, width - 20 * mm, 14 * mm)
     canvas.setFont("Value101Sans", 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(20 * mm, 9.5 * mm, "VALUE 0.7.0-alpha.1 | 9 October 2026")
+    canvas.drawString(20 * mm, 9.5 * mm, "VALUE 0.7.0-alpha.1 | 12 October 2026")
     canvas.drawRightString(width - 20 * mm, 9.5 * mm, str(doc.page))
     canvas.restoreState()
 
@@ -75,8 +75,8 @@ def build(output: Path) -> None:
                 [Paragraph("Model clock", styles["small"]), Paragraph("30-minute UTC periods; fixed 365-day model year; 17,520 periods", styles["body"])],
                 [Paragraph("Core market", styles["small"]), Paragraph("National bid at cost with current-period balancing", styles["body"])],
                 [Paragraph("Annual chain", styles["small"]), Paragraph("PSM, expansion headroom, owner investment, planning and state transition", styles["body"])],
-                [Paragraph("Network option", styles["small"]), Paragraph("Post-thesis fixed-zonal transport and pay-as-bid redispatch", styles["body"])],
-                [Paragraph("Document boundary", styles["small"]), Paragraph("Edition 0.4.1; corrected profile by default; compatibility settings stated alongside", styles["body"])],
+                [Paragraph("Network option", styles["small"]), Paragraph("Fixed-zonal transport and pay-as-bid redispatch", styles["body"])],
+                [Paragraph("Document boundary", styles["small"]), Paragraph("Edition 0.5; inputs, operating rules, annual accounts and network constraints", styles["body"])],
             ],
             colWidths=[38 * mm, 117 * mm],
             style=TableStyle([

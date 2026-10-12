@@ -1973,12 +1973,12 @@
     "website/publication.py",
     "website/release_candidate.py",
     "website/site.json",
-    "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-09.docx",
-    "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-09.pdf",
-    "website/static/assets/methodology/VALUE_methodology_EN_2026-10-09.html",
-    "website/static/assets/methodology/VALUE_methodology_ZH_2026-10-09.html",
-    "website/static/assets/methodology/VALUE_模型方法学_2026-10-09.docx",
-    "website/static/assets/methodology/VALUE_模型方法学_2026-10-09.pdf",
+    "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-12.docx",
+    "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-12.pdf",
+    "website/static/assets/methodology/VALUE_methodology_EN_2026-10-12.html",
+    "website/static/assets/methodology/VALUE_methodology_ZH_2026-10-12.html",
+    "website/static/assets/methodology/VALUE_模型方法学_2026-10-12.docx",
+    "website/static/assets/methodology/VALUE_模型方法学_2026-10-12.pdf",
     "website/static/assets/methodology/math-en/eq-001.svg",
     "website/static/assets/methodology/math-en/eq-002.svg",
     "website/static/assets/methodology/math-en/eq-003.svg",
@@ -2164,18 +2164,6 @@
     "website/static/assets/methodology/math-en/eq-183.svg",
     "website/static/assets/methodology/math-en/eq-184.svg",
     "website/static/assets/methodology/math-en/eq-185.svg",
-    "website/static/assets/methodology/math-en/eq-186.svg",
-    "website/static/assets/methodology/math-en/eq-187.svg",
-    "website/static/assets/methodology/math-en/eq-188.svg",
-    "website/static/assets/methodology/math-en/eq-189.svg",
-    "website/static/assets/methodology/math-en/eq-190.svg",
-    "website/static/assets/methodology/math-en/eq-191.svg",
-    "website/static/assets/methodology/math-en/eq-192.svg",
-    "website/static/assets/methodology/math-en/eq-193.svg",
-    "website/static/assets/methodology/math-en/eq-194.svg",
-    "website/static/assets/methodology/math-en/eq-195.svg",
-    "website/static/assets/methodology/math-en/eq-196.svg",
-    "website/static/assets/methodology/math-en/eq-197.svg",
     "website/static/assets/methodology/math/eq-001.svg",
     "website/static/assets/methodology/math/eq-002.svg",
     "website/static/assets/methodology/math/eq-003.svg",
@@ -2360,19 +2348,6 @@
     "website/static/assets/methodology/math/eq-182.svg",
     "website/static/assets/methodology/math/eq-183.svg",
     "website/static/assets/methodology/math/eq-184.svg",
-    "website/static/assets/methodology/math/eq-185.svg",
-    "website/static/assets/methodology/math/eq-186.svg",
-    "website/static/assets/methodology/math/eq-187.svg",
-    "website/static/assets/methodology/math/eq-188.svg",
-    "website/static/assets/methodology/math/eq-189.svg",
-    "website/static/assets/methodology/math/eq-190.svg",
-    "website/static/assets/methodology/math/eq-191.svg",
-    "website/static/assets/methodology/math/eq-192.svg",
-    "website/static/assets/methodology/math/eq-193.svg",
-    "website/static/assets/methodology/math/eq-194.svg",
-    "website/static/assets/methodology/math/eq-195.svg",
-    "website/static/assets/methodology/math/eq-196.svg",
-    "website/static/assets/methodology/math/eq-197.svg",
     "website/static/assets/release-2026-10-09-a1/CITATION.bib",
     "website/static/assets/release-2026-10-09-a1/CITATION.cff",
     "website/static/assets/site.css",
@@ -2515,9 +2490,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "9b0710d29f2a1a0d2f8b50db1317cf72ac1f528d3b1947982c99a8c99bb04a63",
-      "bytes": 4076,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "fd4a414db2628ac57f3908577fc511166f0e88ac66ab72582d4f6c67f2bfc100",
+      "bytes": 4074,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "README_BILINGUAL.md",
@@ -5143,9 +5118,9 @@
     },
     {
       "path": "docs/MATHEMATICAL_REFERENCE.md",
-      "sha256": "d1d04dd82758ff52aaa7f68f96894624e3a96944586295c6bbffc84c63fc0d83",
-      "bytes": 189356,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c89684d73f0132fff389f026970193cc700237d0f6d36410aa9d184ec468bad9",
+      "bytes": 170581,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/MODULE_DEVELOPER_101.md",
@@ -5461,141 +5436,141 @@
     },
     {
       "path": "docs/methodology/README.md",
-      "sha256": "6ac83bda2a83c34bde47b655a0e1dfdcd8557467a1fadcb982f0321e719c704c",
-      "bytes": 2801,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "82bf2bf68203d85648a485fd300407634a902a20d24d4ea5b4306e32a54fffef",
+      "bytes": 2770,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/VALUE_METHODOLOGY.md",
-      "sha256": "89615e7820c5de9f849985990c398fd8140d1150123858b3e7af1e117bc30a29",
-      "bytes": 19089,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "865ceaeac1eb25b404e83681e6d9345101cbed6a8990e7aa9af6e5692e7a1161",
+      "bytes": 7335,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/artifacts.json",
-      "sha256": "f168a5e0f5ddcec566c4a0d477f3b53b37277b4c4bf75159d907fb42653fe863",
-      "bytes": 2026,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c055684e82304e25c457301866566cd03d26101c19c38aac6ffa4a15ada249f9",
+      "bytes": 2024,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/edition.json",
-      "sha256": "efa693709f1603910c6c7f8cdc55a20b214f0d0499ae18b7d2495bbbf84203e9",
-      "bytes": 565,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b85f5c4ed6da03ee96d3ac891bf65e707c85a5807ae0e1d8eaa850f2234a97cd",
+      "bytes": 561,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/appendix.md",
-      "sha256": "a45b95f6d6ace7a3b01bc0569b21a281f535bc692b55859c2b30191c4afb54c1",
-      "bytes": 5259,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "78b17f99593b7072f4f567284eab200fa77b17128df19a4d3ce7738d8228a47d",
+      "bytes": 8746,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/core.md",
-      "sha256": "59c063ccddef1fed82c6caf07bc3ac7fcd5b250488dd921eb9aefb477c4fcbc9",
-      "bytes": 29505,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "90b52666e50c4f0dbce45097f0832bbd64761e3d33e549a574fe32b8a9362afe",
+      "bytes": 14324,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/core_weather.md",
-      "sha256": "022e244e5ab6371483f29cc6e2ee4c94042f1e703ad1db900962c357994422ba",
-      "bytes": 22843,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c5ca04405041672dd7c01e7997d5a14729c88c4c1c3235ba08c56a34dbd476c7",
+      "bytes": 20336,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/datasets.md",
-      "sha256": "2094feade8e2c7d62215be175a4ab245e9d5bfb5ac32fa932a1cabba25e8eee1",
-      "bytes": 26953,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "43d5a0aa4f17f384d4c84ed35f5f76b3ede975ff417cbcd0c5e39bf3ec8e7f5d",
+      "bytes": 30802,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/introduction.md",
-      "sha256": "d08c0b5e542c570c04ca100224967a6d9ee6b47ad9e3c852b2ac961f87fe4f3a",
-      "bytes": 7712,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3ec38def408171a7508119146647dfa647a771a29c848e7375e4e9e27717755c",
+      "bytes": 5745,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/national_alternatives.md",
-      "sha256": "e628a8f3f828753123742859fb0e7a026096fcf512c33a4d7003f4526973b82c",
-      "bytes": 37725,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1d5c76ba7034d8e9f7ff2a175ee88c5507fddaf729a6542f1d4b756c1d9455d4",
+      "bytes": 25851,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/optional_modules.md",
-      "sha256": "42f00a5d056dc5181046f006dd3413e094e36fa3fbaaa734921e8fb7aa341989",
-      "bytes": 11945,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2415045b32fdefd9b491e1259eb90861ca5bf1476f9c8c723499fbcdbd90dafd",
+      "bytes": 12259,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/r029_cem.md",
-      "sha256": "c12fd13ac8721f3b5e7fe09087d225bc7db3212905edd7dd84795accf8122028",
-      "bytes": 15871,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "817bdedee07702ca152535488d4c9ac61f506e2d5019167b485e0ba353ba0f42",
+      "bytes": 24036,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/en/transmission.md",
-      "sha256": "bbe9b84443893def57a155cef151297bd1a3b13f964576c0f8f5b56e1f5ec86b",
-      "bytes": 28105,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d0605c79cf34d3afc90d4a20510cd2a669b465d036250b779d048e3b6dd53746",
+      "bytes": 28045,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/generation.json",
-      "sha256": "5720d0d06d470615d2dd4f571e441d837b75353aca32d0b16cef436dfc14160f",
-      "bytes": 1293,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "931e3e40324527b4d3662883123fb2eb2429abbb14cf11a2009fe58558c25ef8",
+      "bytes": 1182,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/appendix.md",
-      "sha256": "1a1364c007e0725cf202d111e029140c56e56d2de6a43fc9912712c3d8254ddc",
-      "bytes": 4493,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f08a7be18ce9691412aa5a895c3cfc4dfa4496d9ac6d1f9d34bb8d857ec52282",
+      "bytes": 7703,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/core.md",
-      "sha256": "e91c4e66de21b9df84ae5e13ff84760d8169a7f38efca71e80743a050b02745f",
-      "bytes": 26847,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f5dcded03a6196b8eca666750982ae3db6019522abd00a1be0ce008be806e843",
+      "bytes": 13114,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/core_weather.md",
-      "sha256": "71ef8ee5f73a8869cb4264c12ff79d6ef00213b20313f36bfe64d63caf1e8d3c",
-      "bytes": 20437,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "dc6a0896b082ae2bc278b61863f4d4d08947f0463332794b2b10bd5c66f5eca2",
+      "bytes": 18030,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/datasets.md",
-      "sha256": "774a36b1a5a98f96605b34360209cc7aa0fb944008c6265b7bc684a1411174ae",
-      "bytes": 23617,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f2722be46a18e75b03b1fb4530e120ebced957dad0693b729c76ded8aca91bee",
+      "bytes": 27538,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/introduction.md",
-      "sha256": "7232e7261987a4a55c58ca24cfb7cea49881df65d1c6d10507b641221ba281af",
-      "bytes": 6471,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "fbffb9767ced2c7368d3bd9b294619ff8d070d80faf9c104e63262a1859586bb",
+      "bytes": 4703,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/national_alternatives.md",
-      "sha256": "5058d5e496b7cc0a2fc488284556f3bb3b65d4bfd974e33d9196d532200d6adb",
-      "bytes": 33641,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c6f94fb8b8a60c0b402cf813d3512f823e0d455c28c22f3031c10d5d55f16d7e",
+      "bytes": 23336,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/optional_modules.md",
-      "sha256": "0453e9ba700f135e5ead060b48152ce9d400324ed72ab6a06fd4ddd16beaf08d",
-      "bytes": 10730,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "63f05fc6eb1f2ac13f69cf547572a9eb793bbb9d8adeab967cd09bdc573faa22",
+      "bytes": 11003,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/r029_cem.md",
-      "sha256": "7ca55df87df6909313e702d3c28821765dc487a7e2dc76ab681e48e23f27ef59",
-      "bytes": 13806,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "cceb97351af4c8e5276eba5450239e02f2bd1f1a6b1a33fc188675fbe9c17ef7",
+      "bytes": 21236,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/methodology/zh/transmission.md",
-      "sha256": "ed3da327a58c078a39cccc906a3b113c1f7b0238433d5c2f43cdb02990b7d068",
-      "bytes": 25055,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "87e85666fdb354053320e075c86290f379398e3b6dc052159aa01b131620b7d0",
+      "bytes": 24765,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "docs/release/P0_ACCEPTANCE.md",
@@ -9532,9 +9507,9 @@
     },
     {
       "path": "output/pdf/VALUE_Methodology.pdf",
-      "sha256": "5a4dd48cdb18834c1f7e132bd70dd62b05f3257f41e0df41d2ec162e5e067a6b",
-      "bytes": 61331,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "827d01e5b88e35b346268878edc3b1f5f83130b8527f53ea6400e51d0156fbe6",
+      "bytes": 49565,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "package-lock.json",
@@ -9892,9 +9867,9 @@
     },
     {
       "path": "publication-scope.json",
-      "sha256": "879dec9912a625a7a22851d55f4535447c2d69f45befc21e6730a22bca9b2099",
-      "bytes": 1615,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "82c5d10c0010ffc7c27a02299d9fa5f38ba49d618695429bed2adbd40f4ea2ba",
+      "bytes": 1613,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "publication/RUNTIME_PARAMETER_NOTICES.md",
@@ -10202,9 +10177,9 @@
     },
     {
       "path": "scripts/build_value_methodology_pdf.py",
-      "sha256": "128f3fe4b8e54ba2f6da20fec619b096bff57943dd25fe17e8ee20a5e11d790a",
-      "bytes": 5102,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6ba1b95067050de978cb6915dc5bd996b81bb01ab7a40674476a63d180da66e9",
+      "bytes": 5084,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "scripts/build_value_uk_pack_revision.py",
@@ -10394,9 +10369,9 @@
     },
     {
       "path": "scripts/methodology/build_document.py",
-      "sha256": "848a49cb75c5855e417998ef23c9c65d464df1d6916102b99cd5590625862ecf",
-      "bytes": 9718,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "29400e729c2db1866c777eaea8ef6187ce2b468375319bc3c671ed6c1437efc1",
+      "bytes": 9897,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "scripts/methodology/package.json",
@@ -12482,9 +12457,9 @@
     },
     {
       "path": "tests/test_documentation_consistency.py",
-      "sha256": "996613f9fd95f21779f214230a9969a115092cfcf0159dc911e734d71dae96ba",
-      "bytes": 30109,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "9b34b658432b8eaef03804773541a210b350bce491776aa11767cc68c894d397",
+      "bytes": 29674,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "tests/test_dynamic_storage_cost.py",
@@ -14018,9 +13993,9 @@
     },
     {
       "path": "tests/test_value_methodology.py",
-      "sha256": "a06564f13a856b7259e104bc829ca7040841321376e6ae24b6e866a364c32399",
-      "bytes": 1751,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "294583f2c5df43796948b274927805b51964ccf116d36c57753f7553f2f4cffa",
+      "bytes": 1788,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "tests/test_verify_local_security_boundary.py",
@@ -14174,39 +14149,39 @@
     },
     {
       "path": "website/methodology-sync.json",
-      "sha256": "cdf77350a6306cf50cf9cee7d10479d7f82dcd9889b39126f50b39b996a75bac",
-      "bytes": 774,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "649a228998d0db93338f5b25cde874ceecaeea7e8f7f4c11cbb970562fec6696",
+      "bytes": 772,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/methodology/artifacts.json",
-      "sha256": "f168a5e0f5ddcec566c4a0d477f3b53b37277b4c4bf75159d907fb42653fe863",
-      "bytes": 2026,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c055684e82304e25c457301866566cd03d26101c19c38aac6ffa4a15ada249f9",
+      "bytes": 2024,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/methodology/chapters-en.json",
-      "sha256": "de099c100c5eba4e0cb05729d64809cbc8a463cf5c722eaa9a38cbbffb080a4a",
-      "bytes": 432919,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7a734755fa2d542257ce29e83e3520516c57adc6151e735b65c6623061592689",
+      "bytes": 397385,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/methodology/chapters.json",
-      "sha256": "7502bfb9fc9717a58b7ba17b6d40414e89d006d247e6f7f933c0b37ab772b4ad",
-      "bytes": 390428,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "da91ca0940d498c9c06ede3c8ac8a06f86aebe57b873f2e1e1ea49ceb2965e5c",
+      "bytes": 358881,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/methodology/edition.json",
-      "sha256": "efa693709f1603910c6c7f8cdc55a20b214f0d0499ae18b7d2495bbbf84203e9",
-      "bytes": 565,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b85f5c4ed6da03ee96d3ac891bf65e707c85a5807ae0e1d8eaa850f2234a97cd",
+      "bytes": 561,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/methodology_page.py",
-      "sha256": "e48fda268021e8543f6e819d8ecc9bf30a26d93d91259964c6b589b4764ccfb3",
-      "bytes": 4133,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6d81b4d71954f00dc6d82ffc1bcda663cf8c79c52c892bfd9aab0c691c2e6be8",
+      "bytes": 4011,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/presentation.py",
@@ -14228,45 +14203,45 @@
     },
     {
       "path": "website/site.json",
-      "sha256": "05d0df76edadf657db2c74aa06cfa23eb0a47fd6976adf5f0540ff303741c552",
-      "bytes": 10032,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5a639360789d15cdf0c20057875d7157aa612d32b840fa2da906fce01a9340d5",
+      "bytes": 10030,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
-      "path": "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-09.docx",
-      "sha256": "c5762c6f5504ff3894ee3de80dd81b16865f6581afb6b719678506f981c3d80a",
-      "bytes": 7254711,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "path": "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-12.docx",
+      "sha256": "44fa4a9a03cea37881ed31bf8f5aafacbf4ff6ef59d096a78e6bab7a9e1864fc",
+      "bytes": 6467380,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
-      "path": "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-09.pdf",
-      "sha256": "88681b7b13665798a9b3be34fe230b9578f555ba50d2fc4f311a873649fe0dd2",
-      "bytes": 8122390,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "path": "website/static/assets/methodology/VALUE_Model_Methodology_EN_2026-10-12.pdf",
+      "sha256": "463fba8b87c9f6f861c7c39263e77b9b42c6f02f0e0a04328205a38f7ea5291c",
+      "bytes": 7226524,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
-      "path": "website/static/assets/methodology/VALUE_methodology_EN_2026-10-09.html",
-      "sha256": "4e62e77c4091687905843fb56b83f05216e8295d74bc2d0ba6ecd221c9fbf8d9",
-      "bytes": 8745189,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "path": "website/static/assets/methodology/VALUE_methodology_EN_2026-10-12.html",
+      "sha256": "d05d16903b8a5f309d2fe044bf93dca88da65cd3ed450cd8fd479d98bc135ded",
+      "bytes": 7795387,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
-      "path": "website/static/assets/methodology/VALUE_methodology_ZH_2026-10-09.html",
-      "sha256": "35a700f3525c9b2fbc438124f0695ff68d929989f3bfb319db7b05bf11527273",
-      "bytes": 8723824,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "path": "website/static/assets/methodology/VALUE_methodology_ZH_2026-10-12.html",
+      "sha256": "bab6882e3fcc56b907cbde35dc4e2f7b6569e59ee26d319c218c9aadc1023dd3",
+      "bytes": 7769497,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
-      "path": "website/static/assets/methodology/VALUE_模型方法学_2026-10-09.docx",
-      "sha256": "454d4216f30f733cdf810743f2393b5114aaa73c54ecc89efbd8ab7ba2a272a4",
-      "bytes": 7258557,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "path": "website/static/assets/methodology/VALUE_模型方法学_2026-10-12.docx",
+      "sha256": "989cdc21233f6cb375a41342b2cac8785b49072ba48026b5592119a6a12fd1c7",
+      "bytes": 6471155,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
-      "path": "website/static/assets/methodology/VALUE_模型方法学_2026-10-09.pdf",
-      "sha256": "02fbf3129a12fae52c989bb63000d316387be5244276467dc0d225a1f983240d",
-      "bytes": 9117724,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "path": "website/static/assets/methodology/VALUE_模型方法学_2026-10-12.pdf",
+      "sha256": "bd444cf8db5fdd855864771a98395efddbc30157d795d4c7c9ae8f6f50d6ea79",
+      "bytes": 8173566,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-001.svg",
@@ -14408,9 +14383,9 @@
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-024.svg",
-      "sha256": "950e091feaca4bb5149a94d7804384c7b0bc6f14ff65ec71ae2503ff68349625",
-      "bytes": 150925,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "194c5d7881afa9e75530142a6eca5c6f7e1ffc9c089735342c638cf5667b7444",
+      "bytes": 161889,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-025.svg",
@@ -14438,393 +14413,393 @@
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-029.svg",
-      "sha256": "7d653bbd69a8376ce3f21b979912e70b11812243d251e6bdfc429e9c0993bccc",
-      "bytes": 92204,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e18364b4466c611db7096fa087f17929b661ef3e740029f376e6b874af3682a2",
+      "bytes": 18548,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-030.svg",
-      "sha256": "e18364b4466c611db7096fa087f17929b661ef3e740029f376e6b874af3682a2",
-      "bytes": 18548,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7285a318a0a11f8c391d33bbcf4a19bd20965da990860d337b6b401d24224520",
+      "bytes": 52811,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-031.svg",
-      "sha256": "7285a318a0a11f8c391d33bbcf4a19bd20965da990860d337b6b401d24224520",
-      "bytes": 52811,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5a5d8dace6327c9bebe9f0f7ba9be1dfc66ff20b26618887a5eaae8c2d640ba7",
+      "bytes": 32143,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-032.svg",
-      "sha256": "5a5d8dace6327c9bebe9f0f7ba9be1dfc66ff20b26618887a5eaae8c2d640ba7",
-      "bytes": 32143,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4f8844e1bafd3c6a7b5e367ff1673aee9e7db4abb0c20a9fdb7c86f8775b4b7a",
+      "bytes": 45275,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-033.svg",
-      "sha256": "4f8844e1bafd3c6a7b5e367ff1673aee9e7db4abb0c20a9fdb7c86f8775b4b7a",
-      "bytes": 45275,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "71b9861c515cb17304b8a81c255463d5a7732d189da571be8ccfc00fce0269f6",
+      "bytes": 50019,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-034.svg",
-      "sha256": "71b9861c515cb17304b8a81c255463d5a7732d189da571be8ccfc00fce0269f6",
-      "bytes": 50019,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6b56f815110b02e3c46f66e0cb5837e37fdd3cd5d606b31136fc6e728841517f",
+      "bytes": 43772,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-035.svg",
-      "sha256": "6b56f815110b02e3c46f66e0cb5837e37fdd3cd5d606b31136fc6e728841517f",
-      "bytes": 43772,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ed9c3ef87658f3df1e6651f62dc1820f02e976f75286da65622491d323661bfc",
+      "bytes": 869,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-036.svg",
-      "sha256": "c38e270f8f57dc848e0bc7ff0a59663ff8ec1cc03515576f1a3b0c791efab687",
-      "bytes": 29621,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
+      "bytes": 832,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-037.svg",
-      "sha256": "d292bb08fc790eb38f07275c64522910cb6d5e5e28eb81296c5cf2b659929bcf",
-      "bytes": 50704,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
+      "bytes": 7169,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-038.svg",
-      "sha256": "9e74a7e5baee07fa2a854a8c1a36982a8e4c6640aab29c421e4ae9618ea3aeea",
-      "bytes": 55145,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "87f36d14710c5476e21e476cb9b30de731e954f74ec7112f363e09ae6dd7ee81",
+      "bytes": 4788,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-039.svg",
-      "sha256": "60de2c76581e9d9b0443ef6a90cd036171f6b862cf1d9b75d92d7946292cccdf",
-      "bytes": 16236,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
+      "bytes": 6317,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-040.svg",
-      "sha256": "1987712ce3da252b3bd3e1989772d5f9418dbcf145ddcd432a239b6cc124c05c",
-      "bytes": 69252,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b726991fef03124c6c89fb96c479e5565a6ee72e529d9069a27397e2a0d84447",
+      "bytes": 35439,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-041.svg",
-      "sha256": "1077f7f6078c481bc7c5b8c143496a086e5fde2d0dfc19b58617d05e29e6421a",
-      "bytes": 66342,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3aadb270aaea4345aaab3047084f39bb5eecf8a3fa9d3b3bb17a14783638f53b",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-042.svg",
-      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
-      "bytes": 7169,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "bcf6e7fd0b96adc43c4680ece2a34bdbf504443e3162cae2ca7ec5d891ab93fc",
+      "bytes": 884,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-043.svg",
-      "sha256": "87f36d14710c5476e21e476cb9b30de731e954f74ec7112f363e09ae6dd7ee81",
-      "bytes": 4788,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1d1da15ba949e20f853780995b92bcf0d7a338f30c3648c6683be66b39ec70e7",
+      "bytes": 73904,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-044.svg",
-      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
-      "bytes": 6317,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "878566819d3ca55c088083d82b0558f1fe83a171a452d6c3231235cb5eb10365",
+      "bytes": 8175,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-045.svg",
-      "sha256": "b726991fef03124c6c89fb96c479e5565a6ee72e529d9069a27397e2a0d84447",
-      "bytes": 35439,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b14436851bc03659773c0dda487bb27d8ccc89e7f3b0caecf1074cafd37a4d99",
+      "bytes": 6963,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-046.svg",
-      "sha256": "1d1da15ba949e20f853780995b92bcf0d7a338f30c3648c6683be66b39ec70e7",
-      "bytes": 73904,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e53a09749e676bbe6a7ada76ab28ef3392d97aecb106215dc324e5f30486a6f9",
+      "bytes": 2838,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-047.svg",
-      "sha256": "878566819d3ca55c088083d82b0558f1fe83a171a452d6c3231235cb5eb10365",
-      "bytes": 8175,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e3cd626d2f76027fda1b1404395b33b576e2e66c50022e54519a37944709d140",
+      "bytes": 18651,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-048.svg",
-      "sha256": "b14436851bc03659773c0dda487bb27d8ccc89e7f3b0caecf1074cafd37a4d99",
-      "bytes": 6963,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "48887cd7e814cf8ffc9f4464cd13931481949ad8b44c2db380a32e08ddde0b02",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-049.svg",
-      "sha256": "e53a09749e676bbe6a7ada76ab28ef3392d97aecb106215dc324e5f30486a6f9",
-      "bytes": 2838,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f0d57c115f7fd7cca4ef6a1b7db90d717af35412e7e111f751391a3d14614054",
+      "bytes": 99047,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-050.svg",
-      "sha256": "e3cd626d2f76027fda1b1404395b33b576e2e66c50022e54519a37944709d140",
-      "bytes": 18651,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "851d2cb984a6c692a2bbc388127db3efb312fa2531e377e1fab64d877d4d03e2",
+      "bytes": 23047,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-051.svg",
-      "sha256": "f0d57c115f7fd7cca4ef6a1b7db90d717af35412e7e111f751391a3d14614054",
-      "bytes": 99047,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b95681c1b8a6d98a94f4fff430dfa9d67ac5febf04782842bd16aeb4d0f20514",
+      "bytes": 43536,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-052.svg",
-      "sha256": "851d2cb984a6c692a2bbc388127db3efb312fa2531e377e1fab64d877d4d03e2",
-      "bytes": 23047,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "58b2055fcc016713a8c3a08ceb22e92755fbce31047a3d6191ca580374bce033",
+      "bytes": 9791,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-053.svg",
-      "sha256": "b95681c1b8a6d98a94f4fff430dfa9d67ac5febf04782842bd16aeb4d0f20514",
-      "bytes": 43536,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a7259e92b0cd45048a138ec2e63ac29280607c02a8bdbe60cda5c00264e886ff",
+      "bytes": 1128,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-054.svg",
-      "sha256": "58b2055fcc016713a8c3a08ceb22e92755fbce31047a3d6191ca580374bce033",
-      "bytes": 9791,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
+      "bytes": 832,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-055.svg",
-      "sha256": "082fde5c4cd8b81d235114fa7478d4646f54321eb6bd89bb2449477322c77ee3",
-      "bytes": 10847,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "35b9e152a49ff94586da8aa804807e362ca25d735f284cc14203741820eae4a3",
+      "bytes": 190684,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-056.svg",
-      "sha256": "35b9e152a49ff94586da8aa804807e362ca25d735f284cc14203741820eae4a3",
-      "bytes": 190684,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "994a31e479ff15206d4b1aaaffa3ab4940e698235657fd55118d66b24fb64444",
+      "bytes": 66669,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-057.svg",
-      "sha256": "994a31e479ff15206d4b1aaaffa3ab4940e698235657fd55118d66b24fb64444",
-      "bytes": 66669,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "313fb2a98c89da84502b60617ef65beb14ee445601c152a20d9af33a8bdf34f0",
+      "bytes": 5543,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-058.svg",
-      "sha256": "313fb2a98c89da84502b60617ef65beb14ee445601c152a20d9af33a8bdf34f0",
-      "bytes": 5543,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1056cbe1c17f27c6198fa3414378cad20e1f764a8319157fcd306ccc6f2613ad",
+      "bytes": 5042,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-059.svg",
-      "sha256": "1056cbe1c17f27c6198fa3414378cad20e1f764a8319157fcd306ccc6f2613ad",
-      "bytes": 5042,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "15de6e250bd3c2f9dc7457f69ec5c24a6f8be689b32c59512a113e0bd73c98c7",
+      "bytes": 22681,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-060.svg",
-      "sha256": "15de6e250bd3c2f9dc7457f69ec5c24a6f8be689b32c59512a113e0bd73c98c7",
-      "bytes": 22681,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ced7a0a5ff761ee69d55add87c3c002e541bb2fdacad2ff914ca4bc289e822dd",
+      "bytes": 44027,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-061.svg",
-      "sha256": "ced7a0a5ff761ee69d55add87c3c002e541bb2fdacad2ff914ca4bc289e822dd",
-      "bytes": 44027,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6e7fec117dcd69be2e11638fede846255f5f9f64d5d6914f2840c4215fe3edb2",
+      "bytes": 30071,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-062.svg",
-      "sha256": "bc376cfd1204661d8d9ec963f2800fd1c3c7119101e4d05285e625802930747a",
-      "bytes": 40895,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "475472a4ac354132f0e268a1648501853a346fbb0550605a5dc50f075cffddc2",
+      "bytes": 28364,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-063.svg",
-      "sha256": "6e7fec117dcd69be2e11638fede846255f5f9f64d5d6914f2840c4215fe3edb2",
-      "bytes": 30071,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "70227de62f36a6788df07922f6a28bc76860531c5aad014aee0c980409cca25c",
+      "bytes": 16429,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-064.svg",
-      "sha256": "475472a4ac354132f0e268a1648501853a346fbb0550605a5dc50f075cffddc2",
-      "bytes": 28364,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "66281997a63582245bd5b01cc5462f122b56620a42390d11818402e4387ed781",
+      "bytes": 6015,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-065.svg",
-      "sha256": "70227de62f36a6788df07922f6a28bc76860531c5aad014aee0c980409cca25c",
-      "bytes": 16429,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
+      "bytes": 8033,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-066.svg",
-      "sha256": "66281997a63582245bd5b01cc5462f122b56620a42390d11818402e4387ed781",
-      "bytes": 6015,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
+      "bytes": 8033,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-067.svg",
-      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
-      "bytes": 8033,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0a82fa352afa401294c741b8b460411e8634ed380a8ea6f0ab0b9f61f15c6427",
+      "bytes": 27721,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-068.svg",
-      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
-      "bytes": 8033,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
+      "bytes": 7169,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-069.svg",
-      "sha256": "0a82fa352afa401294c741b8b460411e8634ed380a8ea6f0ab0b9f61f15c6427",
-      "bytes": 27721,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aff004b29f8552bf7bdb89bf496969ae1e62b4efd68d8ec94f74f9f34ccd6b27",
+      "bytes": 23110,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-070.svg",
-      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
-      "bytes": 7169,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6b7bde784a1170498b19fc2aede2981db031744385501c3572c57bc1d34c95d4",
+      "bytes": 15509,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-071.svg",
-      "sha256": "aff004b29f8552bf7bdb89bf496969ae1e62b4efd68d8ec94f74f9f34ccd6b27",
-      "bytes": 23110,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
+      "bytes": 3856,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-072.svg",
-      "sha256": "6b7bde784a1170498b19fc2aede2981db031744385501c3572c57bc1d34c95d4",
-      "bytes": 15509,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
+      "bytes": 3856,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-073.svg",
-      "sha256": "7a6fadc5f09fd22b04b3c168b6bd6cc2c842b13412ac629706cefc9cc1356977",
-      "bytes": 23979,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "181160d94776acfb5086f2ecb2aef5ad026fb8c9cdb1c7ccdb90c50d6975c74f",
+      "bytes": 10456,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-074.svg",
-      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
-      "bytes": 3856,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1e0e222523c9ead2911da6c3dbad2c8e9b14a6186691751ada8d73741c9fc39c",
+      "bytes": 55556,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-075.svg",
-      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
-      "bytes": 3856,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b56267c7b8c0b0a29e4888651855708b26465ae0676b339e917d7c6a6eb0bdc8",
+      "bytes": 2896,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-076.svg",
-      "sha256": "181160d94776acfb5086f2ecb2aef5ad026fb8c9cdb1c7ccdb90c50d6975c74f",
-      "bytes": 10456,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ce2e6c1027753c7756d4e56b2e9008ea0e35b5868b18c838624ac1c47637fb2e",
+      "bytes": 4532,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-077.svg",
-      "sha256": "1e0e222523c9ead2911da6c3dbad2c8e9b14a6186691751ada8d73741c9fc39c",
-      "bytes": 55556,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "81f733ea9bb65f7e3e7a9b389b06e6af1fa5c8cbdd056fd45fb44c81e67f9e62",
+      "bytes": 10488,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-078.svg",
-      "sha256": "b56267c7b8c0b0a29e4888651855708b26465ae0676b339e917d7c6a6eb0bdc8",
-      "bytes": 2896,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5b3930ca16c0b350576a5523da5da22d0824aebe734d2017c02fadea69710d9b",
+      "bytes": 56435,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-079.svg",
-      "sha256": "ce2e6c1027753c7756d4e56b2e9008ea0e35b5868b18c838624ac1c47637fb2e",
-      "bytes": 4532,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4fc0f976ea48d18eeac9387d9094824ec7e76c9b6bce8101c5fbd159b5c8972c",
+      "bytes": 13537,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-080.svg",
-      "sha256": "81f733ea9bb65f7e3e7a9b389b06e6af1fa5c8cbdd056fd45fb44c81e67f9e62",
-      "bytes": 10488,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6356d0511d6090a948e7f1c1ec86fca9f09ff1b62f8ca73a474454d6a5757c35",
+      "bytes": 4930,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-081.svg",
-      "sha256": "5b3930ca16c0b350576a5523da5da22d0824aebe734d2017c02fadea69710d9b",
-      "bytes": 56435,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6356d0511d6090a948e7f1c1ec86fca9f09ff1b62f8ca73a474454d6a5757c35",
+      "bytes": 4930,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-082.svg",
-      "sha256": "4fc0f976ea48d18eeac9387d9094824ec7e76c9b6bce8101c5fbd159b5c8972c",
-      "bytes": 13537,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a5f9567b306b799de2a9be159b00e009fa23577e85d829cf4fb2d3a3c10a7a8a",
+      "bytes": 13419,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-083.svg",
-      "sha256": "6356d0511d6090a948e7f1c1ec86fca9f09ff1b62f8ca73a474454d6a5757c35",
-      "bytes": 4930,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
+      "bytes": 6317,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-084.svg",
-      "sha256": "6356d0511d6090a948e7f1c1ec86fca9f09ff1b62f8ca73a474454d6a5757c35",
-      "bytes": 4930,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3d99b1d31e6f00b34bdc788c3fa216b6e534740c70167bf972947045bbe26c90",
+      "bytes": 5683,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-085.svg",
-      "sha256": "a5f9567b306b799de2a9be159b00e009fa23577e85d829cf4fb2d3a3c10a7a8a",
-      "bytes": 13419,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "417e15efffcab12a6db275fec6000554259f07fb35b80e2004a755ec7b680d04",
+      "bytes": 7200,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-086.svg",
-      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
-      "bytes": 6317,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "13c5fd46cb2587257d00a4b27ea76cd8cf3b658e809b8bb41657a3c168c28b1f",
+      "bytes": 5897,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-087.svg",
-      "sha256": "3d99b1d31e6f00b34bdc788c3fa216b6e534740c70167bf972947045bbe26c90",
-      "bytes": 5683,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "46d9ed4c430c790e56fc25967556f7311e382697779f2a0291d4e134cf53121f",
+      "bytes": 5225,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-088.svg",
-      "sha256": "417e15efffcab12a6db275fec6000554259f07fb35b80e2004a755ec7b680d04",
-      "bytes": 7200,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "14b7371be571fc1a99602a5e44746ff91bc7fa98614b127ca129b457b4992d63",
+      "bytes": 42684,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-089.svg",
-      "sha256": "13c5fd46cb2587257d00a4b27ea76cd8cf3b658e809b8bb41657a3c168c28b1f",
-      "bytes": 5897,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-090.svg",
-      "sha256": "46d9ed4c430c790e56fc25967556f7311e382697779f2a0291d4e134cf53121f",
-      "bytes": 5225,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7174066bc48c771d2eb2c7a29d4814cfe631322c875b74ed1588bd971994df5e",
+      "bytes": 27695,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-091.svg",
-      "sha256": "14b7371be571fc1a99602a5e44746ff91bc7fa98614b127ca129b457b4992d63",
-      "bytes": 42684,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f6770254172a47c133de91296a57e88d0d68aefa36630ca56da44b8d17a2030c",
+      "bytes": 47313,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-092.svg",
-      "sha256": "7174066bc48c771d2eb2c7a29d4814cfe631322c875b74ed1588bd971994df5e",
-      "bytes": 27695,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aaf5f343e4485db03a03db74455a41aee390a0e1767023e27170922e74a8dcba",
+      "bytes": 6854,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-093.svg",
-      "sha256": "f6770254172a47c133de91296a57e88d0d68aefa36630ca56da44b8d17a2030c",
-      "bytes": 47313,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5eb9b2d7aa58508e8616bb8f38fc2051944a080edeea0009aab56861f4f86adb",
+      "bytes": 61988,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-094.svg",
@@ -14834,285 +14809,285 @@
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-095.svg",
-      "sha256": "5eb9b2d7aa58508e8616bb8f38fc2051944a080edeea0009aab56861f4f86adb",
-      "bytes": 61988,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "12a38c126614af24b6e08d1ac11ec00b1446b5704fcad96bb897d00c315dddcc",
+      "bytes": 10700,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-096.svg",
-      "sha256": "aaf5f343e4485db03a03db74455a41aee390a0e1767023e27170922e74a8dcba",
-      "bytes": 6854,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0c5d309249d302c7e577939e1936d5494a5a6403cdfce5d53fa51a3a51184bed",
+      "bytes": 7287,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-097.svg",
-      "sha256": "bac8f8acf6587be875589703cbf73f45cd5845dea082a192513d839f22882432",
-      "bytes": 1088,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "52676c5937256426e55b2078efd7651054b6de34fe69b475103f60d85f390c56",
+      "bytes": 9479,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-098.svg",
-      "sha256": "c68a93b53a30078f22013e82b8795d4493058659a8fff6f460d427ba7b6997ce",
-      "bytes": 64686,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "8a5725fb99cc765e3bb721f3a3f8ff5a3a599edf7a92fc75109996e8e16a438e",
+      "bytes": 11048,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-099.svg",
-      "sha256": "e17761f2cbcb1af92cc6c74bf3bdacacef2c3b9b04048e95b937248c031c63c8",
-      "bytes": 8030,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "dddeadffebd454a7cfa5fa0aff4ac722b0c6a40b997a2db289c6e66b52be19bb",
+      "bytes": 6512,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-100.svg",
-      "sha256": "0c5d309249d302c7e577939e1936d5494a5a6403cdfce5d53fa51a3a51184bed",
-      "bytes": 7287,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f7839eb707691d3f9b5689cce02c0f07cc166675d0d33af4a271529c667d9127",
+      "bytes": 11295,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-101.svg",
-      "sha256": "c6d176d451840b3cac6589b8a482e27228bf91cc62e8bf44ef5357bef7e887da",
-      "bytes": 5931,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a90dd3731ed1760fc562f554c739368ed8ce61d215ed7f1eef57a855f2780657",
+      "bytes": 9290,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-102.svg",
-      "sha256": "968bc35653f03bb5288293cb1936897489f80035f859b95fe95fb24f754292d6",
-      "bytes": 10835,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "983cea9e03df962d6d3d2677fbdd45a0113f5120bd9d3da73aede62a558ac23f",
+      "bytes": 73459,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-103.svg",
-      "sha256": "12a38c126614af24b6e08d1ac11ec00b1446b5704fcad96bb897d00c315dddcc",
-      "bytes": 10700,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4aa53356e1fe9b4fb47b4e236fad40f9d21306cb59ea73b73ca81a190c6b089a",
+      "bytes": 86379,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-104.svg",
-      "sha256": "0c5d309249d302c7e577939e1936d5494a5a6403cdfce5d53fa51a3a51184bed",
-      "bytes": 7287,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "79bb75b77d1719d86d9b74f58df92278cbeab176b2e63fbc63988de9d5c1d7fb",
+      "bytes": 61412,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-105.svg",
-      "sha256": "52676c5937256426e55b2078efd7651054b6de34fe69b475103f60d85f390c56",
-      "bytes": 9479,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7ccdd092dc489e4365f9ca674193c85cd01aa2fecd91979f1e4de1427f67fea9",
+      "bytes": 12094,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-106.svg",
-      "sha256": "8a5725fb99cc765e3bb721f3a3f8ff5a3a599edf7a92fc75109996e8e16a438e",
-      "bytes": 11048,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "53f0305bcbdda7c82fd88917ce8497859f395213ae34055169569f1c09df447b",
+      "bytes": 55153,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-107.svg",
-      "sha256": "dddeadffebd454a7cfa5fa0aff4ac722b0c6a40b997a2db289c6e66b52be19bb",
-      "bytes": 6512,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b5ef42e6acd1a6e7b481c3a6b7a15794d63389c3225e6c8d4fe8d5014ca8c80c",
+      "bytes": 86203,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-108.svg",
-      "sha256": "f7839eb707691d3f9b5689cce02c0f07cc166675d0d33af4a271529c667d9127",
-      "bytes": 11295,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6df73890ef0b607fb24e5705c39448d39fc04a6ff122578bea54dcc711adf1c3",
+      "bytes": 29624,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-109.svg",
-      "sha256": "a90dd3731ed1760fc562f554c739368ed8ce61d215ed7f1eef57a855f2780657",
-      "bytes": 9290,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "75053fc6fbc7dc2d6e7a3b034ba97e40af2af8e77cb742eba2f7336e25db5e0a",
+      "bytes": 50709,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-110.svg",
-      "sha256": "983cea9e03df962d6d3d2677fbdd45a0113f5120bd9d3da73aede62a558ac23f",
-      "bytes": 73459,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "de006dfd2066560bb73205d40e808f5c4a95a5ce960bf48218cf3d9722666f47",
+      "bytes": 69277,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-111.svg",
-      "sha256": "d24be6410ca24857388e49fba2e5d565181f00d4aa1884bf280dd3eb867ef29b",
-      "bytes": 5250,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-112.svg",
-      "sha256": "1cd2a386acc0a3098d51685a7792940141c62fd1bdc907ca13feb9064124b53c",
-      "bytes": 5362,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d1cc73e8803ca4dbbe89e56844b6eebaf5d1bab6a623d6b6d9fe31acd6c25567",
+      "bytes": 1819,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-113.svg",
-      "sha256": "58b62bea7766d0281e1709e581f1dc8b90c2bde15e3c25390dafd5da7cdb0080",
-      "bytes": 74984,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "10891433e7ebed270f3ad50c675b0cc575e92b2e15c466a79b69e500e42512aa",
+      "bytes": 45700,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-114.svg",
-      "sha256": "4aa53356e1fe9b4fb47b4e236fad40f9d21306cb59ea73b73ca81a190c6b089a",
-      "bytes": 86379,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "8e2e33345b3e89faf8d392f808b71f2470fc11f800f6e27d58f166cf4b87268b",
+      "bytes": 82293,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-115.svg",
-      "sha256": "952ae584d44c5efc8dfbb7d099155090f2575074dc6e596cbe63484389eac98c",
-      "bytes": 1834,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a7259e92b0cd45048a138ec2e63ac29280607c02a8bdbe60cda5c00264e886ff",
+      "bytes": 1128,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-116.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "bcf6e7fd0b96adc43c4680ece2a34bdbf504443e3162cae2ca7ec5d891ab93fc",
+      "bytes": 884,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-117.svg",
-      "sha256": "79bb75b77d1719d86d9b74f58df92278cbeab176b2e63fbc63988de9d5c1d7fb",
-      "bytes": 61412,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f7c068c9ecfde5475d50bb406007616a8f84f6f20674fcb7b10a4adeeb6a2b34",
+      "bytes": 940,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-118.svg",
-      "sha256": "7ccdd092dc489e4365f9ca674193c85cd01aa2fecd91979f1e4de1427f67fea9",
-      "bytes": 12094,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c36d061da32d0a21d9cf60e84db1edd601f5e4953b6f0832b794f0f67c84ad33",
+      "bytes": 66627,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-119.svg",
-      "sha256": "66f22d43089973c8a3697a44b3055fb5b904f42fd0c0fa3a3965615a9f5e09a6",
-      "bytes": 29871,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f7b2667c2cc6cdaf27e18dc3fe21d9b99a2449d8cba4c269d1b1be64c2b68e2b",
+      "bytes": 76353,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-120.svg",
-      "sha256": "3905d65ec505d3aa9d5f4d9abccb149d9b2ba4cf2f5247294651e9e984d387f0",
-      "bytes": 34760,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2a0ebad0a92d73cc4753354a8d9e8bfe90f42e273b7153f1bd1d9ed27cab421d",
+      "bytes": 59846,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-121.svg",
-      "sha256": "5c68eebf9ea0c57dde229934ede53460acce222c3150594104c5d29af470a6e9",
-      "bytes": 78203,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c3364604649ef2a7e7b620e0fab1f4424541d9c48b18e717a3a7656cab647718",
+      "bytes": 32993,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-122.svg",
-      "sha256": "09adbbdcc980a9655abbc1e94d22a722cf880442b40d3961d205a65c7ab3736f",
-      "bytes": 38512,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1ac6966d6032ce4a7cacc0dfa7e2c46ada82db75d8de81202594ae75eec56793",
+      "bytes": 103639,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-123.svg",
-      "sha256": "e5c81c5978389488e4caa757c483fe04cd0c10bc23ec0e521f9c458a74eec8a8",
-      "bytes": 68762,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-124.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-125.svg",
-      "sha256": "763b29dbd09761a7ccffab68c8f0cd86346173eaf62d713f337fa8e6b579b38e",
-      "bytes": 68350,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7ccb27da0f70514a4d153d1b9bcac85b58ef9d93819378a99b7ce44242112346",
+      "bytes": 71304,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-126.svg",
-      "sha256": "e400263780518650a70ec01153679b2dad5994918077ec7e6a2391ed040a9896",
-      "bytes": 36350,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0e16f85b5fe95a03a18985a911e387fe8e37f12cc2738e356b0871e357992c03",
+      "bytes": 133630,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-127.svg",
-      "sha256": "7f6ceed446efb1ded7ac3202c1c877d49ec7117b2173c6bce1a1f1158b0bb1a1",
-      "bytes": 26034,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-128.svg",
-      "sha256": "9ae1b9c6242f3e330566316b63a13650b4ffb02f9e966f20922771a56781c3db",
-      "bytes": 22967,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-129.svg",
-      "sha256": "6ffce906823a00873e1cf87ca7a5daeb0dd385071f06b90d4e5499bf897162d5",
-      "bytes": 46988,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-130.svg",
-      "sha256": "d1cc73e8803ca4dbbe89e56844b6eebaf5d1bab6a623d6b6d9fe31acd6c25567",
-      "bytes": 1819,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-131.svg",
-      "sha256": "10891433e7ebed270f3ad50c675b0cc575e92b2e15c466a79b69e500e42512aa",
-      "bytes": 45700,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-132.svg",
-      "sha256": "40d6d540ca011e961f114be684b791f4a2c0893036bf506d1c8911bc95242a04",
-      "bytes": 52184,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-133.svg",
-      "sha256": "8e2e33345b3e89faf8d392f808b71f2470fc11f800f6e27d58f166cf4b87268b",
-      "bytes": 82293,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "22d210b7bd53086e8dba2020b31bd9b871e07fd4c0a2ed30a6b8a172708880d4",
+      "bytes": 34731,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-134.svg",
-      "sha256": "a7259e92b0cd45048a138ec2e63ac29280607c02a8bdbe60cda5c00264e886ff",
-      "bytes": 1128,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e35837ce69af0d2c851445309130b195168192d5cfb01d6a33716bc67d52cce5",
+      "bytes": 4469,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-135.svg",
-      "sha256": "bcf6e7fd0b96adc43c4680ece2a34bdbf504443e3162cae2ca7ec5d891ab93fc",
-      "bytes": 884,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "76478215c1d7f7575b37ca30590ba0b522f9cdd842737518f0c39b6cfb352138",
+      "bytes": 71124,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-136.svg",
-      "sha256": "f7c068c9ecfde5475d50bb406007616a8f84f6f20674fcb7b10a4adeeb6a2b34",
-      "bytes": 940,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "48887cd7e814cf8ffc9f4464cd13931481949ad8b44c2db380a32e08ddde0b02",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-137.svg",
-      "sha256": "c36d061da32d0a21d9cf60e84db1edd601f5e4953b6f0832b794f0f67c84ad33",
-      "bytes": 66627,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b990f658e70f3d6720b6feb2131892420005fc4721a7291385761bd1a0503dbb",
+      "bytes": 74168,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-138.svg",
-      "sha256": "f7b2667c2cc6cdaf27e18dc3fe21d9b99a2449d8cba4c269d1b1be64c2b68e2b",
-      "bytes": 76353,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4eef3ff5d2c75a3c7c6352b36b93c45243e73f6c4817c396705341567566693d",
+      "bytes": 40720,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-139.svg",
-      "sha256": "2a0ebad0a92d73cc4753354a8d9e8bfe90f42e273b7153f1bd1d9ed27cab421d",
-      "bytes": 59846,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
+      "bytes": 1585,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-140.svg",
-      "sha256": "c3364604649ef2a7e7b620e0fab1f4424541d9c48b18e717a3a7656cab647718",
-      "bytes": 32993,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aaa9bf4d749777ae32b0de49c6b3ef395921cd704c3147d2b39c8b100c73f554",
+      "bytes": 70583,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-141.svg",
-      "sha256": "1ac6966d6032ce4a7cacc0dfa7e2c46ada82db75d8de81202594ae75eec56793",
-      "bytes": 103639,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "525a4ad3c538fd3b3ff4e7ccc9e74e942fd14b3edfdcf02d74dce972490724c3",
+      "bytes": 2097,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-142.svg",
@@ -15122,333 +15097,261 @@
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-143.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-144.svg",
-      "sha256": "7ccb27da0f70514a4d153d1b9bcac85b58ef9d93819378a99b7ce44242112346",
-      "bytes": 71304,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2e1f758558f9947ef1f0d66153edd37fc3fcd5f7e44b3a126b527f1bfa3a7543",
+      "bytes": 2241,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-145.svg",
-      "sha256": "0e16f85b5fe95a03a18985a911e387fe8e37f12cc2738e356b0871e357992c03",
-      "bytes": 133630,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "07ec8acb9b752cafa4a282bdde862bacdfd4047998cff1934e5cff18cfd8411f",
+      "bytes": 37428,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-146.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3aadb270aaea4345aaab3047084f39bb5eecf8a3fa9d3b3bb17a14783638f53b",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-147.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e6bd84163a46206ca2a98317cdacbb75ba3c11105e77be1466f706944b96792e",
+      "bytes": 40808,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-148.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0f8d8722522ca4714af0b3c783ee16d4e30212fa9ac81655c40c17954c849966",
+      "bytes": 1882,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-149.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "bb50e13364afc19120b64454248bbf5534ead091c6d5dbea7500e4b89395da29",
+      "bytes": 60660,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-150.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-151.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "952ae584d44c5efc8dfbb7d099155090f2575074dc6e596cbe63484389eac98c",
+      "bytes": 1834,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-152.svg",
-      "sha256": "22d210b7bd53086e8dba2020b31bd9b871e07fd4c0a2ed30a6b8a172708880d4",
-      "bytes": 34731,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e2046cde0e9134c88c3567c575646aa89d56990f0fb73283fba4175be7f01abc",
+      "bytes": 1944,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-153.svg",
-      "sha256": "e35837ce69af0d2c851445309130b195168192d5cfb01d6a33716bc67d52cce5",
-      "bytes": 4469,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d335c910fbb5af3e0ce51aa0bd6d3448f6ac21349106416cd861827422f9c2d3",
+      "bytes": 1848,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-154.svg",
-      "sha256": "76478215c1d7f7575b37ca30590ba0b522f9cdd842737518f0c39b6cfb352138",
-      "bytes": 71124,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "319bd0b98c420040106018a30b67acb3eabdf52087765efbfa2b3e233edb6bd1",
+      "bytes": 116052,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-155.svg",
-      "sha256": "48887cd7e814cf8ffc9f4464cd13931481949ad8b44c2db380a32e08ddde0b02",
-      "bytes": 902,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d74ee56b09e04d3b6984a35032bf1c9dc17cc90efd30fcb3900b21f063cceef6",
+      "bytes": 31466,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-156.svg",
-      "sha256": "b990f658e70f3d6720b6feb2131892420005fc4721a7291385761bd1a0503dbb",
-      "bytes": 74168,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "dd317ce9c63ca7db52db6ac18fde5006a50f328bcf261e4860a760b6e6f03087",
+      "bytes": 2132,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-157.svg",
-      "sha256": "4eef3ff5d2c75a3c7c6352b36b93c45243e73f6c4817c396705341567566693d",
-      "bytes": 40720,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
+      "bytes": 1585,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-158.svg",
-      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
-      "bytes": 1585,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
+      "bytes": 1785,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-159.svg",
-      "sha256": "aaa9bf4d749777ae32b0de49c6b3ef395921cd704c3147d2b39c8b100c73f554",
-      "bytes": 70583,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ed9c3ef87658f3df1e6651f62dc1820f02e976f75286da65622491d323661bfc",
+      "bytes": 869,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-160.svg",
-      "sha256": "525a4ad3c538fd3b3ff4e7ccc9e74e942fd14b3edfdcf02d74dce972490724c3",
-      "bytes": 2097,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6561cd1e5769cd3a9be49cc83a6bab8e92a12ce4c8097e77328fb40d0623824a",
+      "bytes": 879,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-161.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
+      "bytes": 832,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-162.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "9a984e5f993a3f8d9c02ab4102ea95a19fa921d732f295b5aa90e5632ea76f59",
+      "bytes": 77617,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-163.svg",
-      "sha256": "2e1f758558f9947ef1f0d66153edd37fc3fcd5f7e44b3a126b527f1bfa3a7543",
-      "bytes": 2241,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a61db5fa91853b4196c5111ac85dca56600399f9d3081854cd4ad2aa0bcc2015",
+      "bytes": 43913,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-164.svg",
-      "sha256": "07ec8acb9b752cafa4a282bdde862bacdfd4047998cff1934e5cff18cfd8411f",
-      "bytes": 37428,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "202ffb06c061021fb49fe5db6b9c729b6b0689b5c5dea063ecfc818d680b979c",
+      "bytes": 52636,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-165.svg",
-      "sha256": "3aadb270aaea4345aaab3047084f39bb5eecf8a3fa9d3b3bb17a14783638f53b",
-      "bytes": 902,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "11f39fc6ce0d8d787743d5206d1776ce76f1baa9e4feb037e293d8cf4ef0d89b",
+      "bytes": 102439,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-166.svg",
-      "sha256": "e6bd84163a46206ca2a98317cdacbb75ba3c11105e77be1466f706944b96792e",
-      "bytes": 40808,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d00cacd4dae428bbc29b650ed537d537ff9409b972065638df0a7957bc4172b5",
+      "bytes": 72040,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-167.svg",
-      "sha256": "0f8d8722522ca4714af0b3c783ee16d4e30212fa9ac81655c40c17954c849966",
-      "bytes": 1882,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-168.svg",
-      "sha256": "bb50e13364afc19120b64454248bbf5534ead091c6d5dbea7500e4b89395da29",
-      "bytes": 60660,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d335c910fbb5af3e0ce51aa0bd6d3448f6ac21349106416cd861827422f9c2d3",
+      "bytes": 1848,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-169.svg",
-      "sha256": "319bd0b98c420040106018a30b67acb3eabdf52087765efbfa2b3e233edb6bd1",
-      "bytes": 116052,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
+      "bytes": 1585,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-170.svg",
-      "sha256": "d74ee56b09e04d3b6984a35032bf1c9dc17cc90efd30fcb3900b21f063cceef6",
-      "bytes": 31466,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2c387c181850b4f7c7eccef9b6ea9ee4062f5149a1caeef98fc3f5f9cf59af23",
+      "bytes": 38129,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-171.svg",
-      "sha256": "dd317ce9c63ca7db52db6ac18fde5006a50f328bcf261e4860a760b6e6f03087",
-      "bytes": 2132,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "59a5bc9f21d6574416929a288b78d7d0f4e27c0bfe3520bf8b8508a1f217407a",
+      "bytes": 44739,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-172.svg",
-      "sha256": "ed9c3ef87658f3df1e6651f62dc1820f02e976f75286da65622491d323661bfc",
-      "bytes": 869,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a05a60fafef2f53bb9a5ed647a9f541df912ba103ab4197435f7e496518640bf",
+      "bytes": 3013,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-173.svg",
-      "sha256": "6561cd1e5769cd3a9be49cc83a6bab8e92a12ce4c8097e77328fb40d0623824a",
-      "bytes": 879,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c2f9343da4fcee5988a0f23a2c577ba8da002fbc2d98f3bfc52a87b35ffff44a",
+      "bytes": 3386,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-174.svg",
-      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
-      "bytes": 832,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3f2d49c93b6f64d945724fb6572ea088be0146cc6cd0aec5c7d6fd7208cdad73",
+      "bytes": 41233,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-175.svg",
-      "sha256": "9a984e5f993a3f8d9c02ab4102ea95a19fa921d732f295b5aa90e5632ea76f59",
-      "bytes": 77617,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "fb86560c153626e3c7f5d471f04eed48a683e988c4ebbb748a2933af61d077f7",
+      "bytes": 30476,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-176.svg",
-      "sha256": "a61db5fa91853b4196c5111ac85dca56600399f9d3081854cd4ad2aa0bcc2015",
-      "bytes": 43913,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d053e84f14df6290442c7682016d489039875c39dccefa9c2f87dada092989c2",
+      "bytes": 43949,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-177.svg",
-      "sha256": "202ffb06c061021fb49fe5db6b9c729b6b0689b5c5dea063ecfc818d680b979c",
-      "bytes": 52636,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "447dae378a28b5216c7dc6ff3023770d3127fef655dac75659592bbedf15cde6",
+      "bytes": 82151,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-178.svg",
-      "sha256": "11f39fc6ce0d8d787743d5206d1776ce76f1baa9e4feb037e293d8cf4ef0d89b",
-      "bytes": 102439,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-179.svg",
-      "sha256": "d00cacd4dae428bbc29b650ed537d537ff9409b972065638df0a7957bc4172b5",
-      "bytes": 72040,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
+      "bytes": 1785,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-180.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7c3830bd983edce37958e1b01efbe7a892c061723fe7575f82acd2ee1b68ea62",
+      "bytes": 51248,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-181.svg",
-      "sha256": "d335c910fbb5af3e0ce51aa0bd6d3448f6ac21349106416cd861827422f9c2d3",
-      "bytes": 1848,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a022fc3c49525ddc7a19d6bab72148f4760f8e3a9c630f62d2b291965d7e830a",
+      "bytes": 31914,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-182.svg",
-      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
-      "bytes": 1585,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aa2ddf853e1c738c985fe754178abe393443f858120c400ff4bfea871e28abfe",
+      "bytes": 31371,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-183.svg",
-      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
-      "bytes": 1785,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-184.svg",
-      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
-      "bytes": 1585,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "80d31f1d8d12fe5a1ec4b0c25c612d61c22eb7d3e0b5fe69c728b442147ebd26",
+      "bytes": 61412,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math-en/eq-185.svg",
-      "sha256": "2c387c181850b4f7c7eccef9b6ea9ee4062f5149a1caeef98fc3f5f9cf59af23",
-      "bytes": 38129,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-186.svg",
-      "sha256": "59a5bc9f21d6574416929a288b78d7d0f4e27c0bfe3520bf8b8508a1f217407a",
-      "bytes": 44739,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-187.svg",
-      "sha256": "a05a60fafef2f53bb9a5ed647a9f541df912ba103ab4197435f7e496518640bf",
-      "bytes": 3013,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-188.svg",
-      "sha256": "c2f9343da4fcee5988a0f23a2c577ba8da002fbc2d98f3bfc52a87b35ffff44a",
-      "bytes": 3386,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-189.svg",
-      "sha256": "3f2d49c93b6f64d945724fb6572ea088be0146cc6cd0aec5c7d6fd7208cdad73",
-      "bytes": 41233,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-190.svg",
-      "sha256": "fb86560c153626e3c7f5d471f04eed48a683e988c4ebbb748a2933af61d077f7",
-      "bytes": 30476,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-191.svg",
-      "sha256": "d053e84f14df6290442c7682016d489039875c39dccefa9c2f87dada092989c2",
-      "bytes": 43949,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-192.svg",
-      "sha256": "447dae378a28b5216c7dc6ff3023770d3127fef655dac75659592bbedf15cde6",
-      "bytes": 82151,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-193.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-194.svg",
-      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
-      "bytes": 1785,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-195.svg",
-      "sha256": "7c3830bd983edce37958e1b01efbe7a892c061723fe7575f82acd2ee1b68ea62",
-      "bytes": 51248,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-196.svg",
-      "sha256": "a022fc3c49525ddc7a19d6bab72148f4760f8e3a9c630f62d2b291965d7e830a",
-      "bytes": 31914,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math-en/eq-197.svg",
-      "sha256": "aa2ddf853e1c738c985fe754178abe393443f858120c400ff4bfea871e28abfe",
-      "bytes": 31371,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f185332e37b1bae398bac54fd6c3238164febd23e0d966ce1fcebf70d205155e",
+      "bytes": 66000,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-001.svg",
@@ -15590,9 +15493,9 @@
     },
     {
       "path": "website/static/assets/methodology/math/eq-024.svg",
-      "sha256": "950e091feaca4bb5149a94d7804384c7b0bc6f14ff65ec71ae2503ff68349625",
-      "bytes": 150925,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "194c5d7881afa9e75530142a6eca5c6f7e1ffc9c089735342c638cf5667b7444",
+      "bytes": 161889,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-025.svg",
@@ -15620,1017 +15523,939 @@
     },
     {
       "path": "website/static/assets/methodology/math/eq-029.svg",
-      "sha256": "7d653bbd69a8376ce3f21b979912e70b11812243d251e6bdfc429e9c0993bccc",
-      "bytes": 92204,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e18364b4466c611db7096fa087f17929b661ef3e740029f376e6b874af3682a2",
+      "bytes": 18548,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-030.svg",
-      "sha256": "e18364b4466c611db7096fa087f17929b661ef3e740029f376e6b874af3682a2",
-      "bytes": 18548,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7285a318a0a11f8c391d33bbcf4a19bd20965da990860d337b6b401d24224520",
+      "bytes": 52811,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-031.svg",
-      "sha256": "7285a318a0a11f8c391d33bbcf4a19bd20965da990860d337b6b401d24224520",
-      "bytes": 52811,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5a5d8dace6327c9bebe9f0f7ba9be1dfc66ff20b26618887a5eaae8c2d640ba7",
+      "bytes": 32143,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-032.svg",
-      "sha256": "5a5d8dace6327c9bebe9f0f7ba9be1dfc66ff20b26618887a5eaae8c2d640ba7",
-      "bytes": 32143,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4f8844e1bafd3c6a7b5e367ff1673aee9e7db4abb0c20a9fdb7c86f8775b4b7a",
+      "bytes": 45275,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-033.svg",
-      "sha256": "4f8844e1bafd3c6a7b5e367ff1673aee9e7db4abb0c20a9fdb7c86f8775b4b7a",
-      "bytes": 45275,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "71b9861c515cb17304b8a81c255463d5a7732d189da571be8ccfc00fce0269f6",
+      "bytes": 50019,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-034.svg",
-      "sha256": "71b9861c515cb17304b8a81c255463d5a7732d189da571be8ccfc00fce0269f6",
-      "bytes": 50019,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6b56f815110b02e3c46f66e0cb5837e37fdd3cd5d606b31136fc6e728841517f",
+      "bytes": 43772,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-035.svg",
-      "sha256": "6b56f815110b02e3c46f66e0cb5837e37fdd3cd5d606b31136fc6e728841517f",
-      "bytes": 43772,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ed9c3ef87658f3df1e6651f62dc1820f02e976f75286da65622491d323661bfc",
+      "bytes": 869,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-036.svg",
-      "sha256": "c38e270f8f57dc848e0bc7ff0a59663ff8ec1cc03515576f1a3b0c791efab687",
-      "bytes": 29621,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
+      "bytes": 832,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-037.svg",
-      "sha256": "d292bb08fc790eb38f07275c64522910cb6d5e5e28eb81296c5cf2b659929bcf",
-      "bytes": 50704,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
+      "bytes": 7169,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-038.svg",
-      "sha256": "9e74a7e5baee07fa2a854a8c1a36982a8e4c6640aab29c421e4ae9618ea3aeea",
-      "bytes": 55145,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "87f36d14710c5476e21e476cb9b30de731e954f74ec7112f363e09ae6dd7ee81",
+      "bytes": 4788,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-039.svg",
-      "sha256": "60de2c76581e9d9b0443ef6a90cd036171f6b862cf1d9b75d92d7946292cccdf",
-      "bytes": 16236,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
+      "bytes": 6317,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-040.svg",
-      "sha256": "1987712ce3da252b3bd3e1989772d5f9418dbcf145ddcd432a239b6cc124c05c",
-      "bytes": 69252,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b726991fef03124c6c89fb96c479e5565a6ee72e529d9069a27397e2a0d84447",
+      "bytes": 35439,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-041.svg",
-      "sha256": "1077f7f6078c481bc7c5b8c143496a086e5fde2d0dfc19b58617d05e29e6421a",
-      "bytes": 66342,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3aadb270aaea4345aaab3047084f39bb5eecf8a3fa9d3b3bb17a14783638f53b",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-042.svg",
-      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
-      "bytes": 7169,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "bcf6e7fd0b96adc43c4680ece2a34bdbf504443e3162cae2ca7ec5d891ab93fc",
+      "bytes": 884,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-043.svg",
-      "sha256": "87f36d14710c5476e21e476cb9b30de731e954f74ec7112f363e09ae6dd7ee81",
-      "bytes": 4788,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1d1da15ba949e20f853780995b92bcf0d7a338f30c3648c6683be66b39ec70e7",
+      "bytes": 73904,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-044.svg",
-      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
-      "bytes": 6317,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "878566819d3ca55c088083d82b0558f1fe83a171a452d6c3231235cb5eb10365",
+      "bytes": 8175,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-045.svg",
-      "sha256": "b726991fef03124c6c89fb96c479e5565a6ee72e529d9069a27397e2a0d84447",
-      "bytes": 35439,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b14436851bc03659773c0dda487bb27d8ccc89e7f3b0caecf1074cafd37a4d99",
+      "bytes": 6963,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-046.svg",
-      "sha256": "87f36d14710c5476e21e476cb9b30de731e954f74ec7112f363e09ae6dd7ee81",
-      "bytes": 4788,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e53a09749e676bbe6a7ada76ab28ef3392d97aecb106215dc324e5f30486a6f9",
+      "bytes": 2838,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-047.svg",
-      "sha256": "1d1da15ba949e20f853780995b92bcf0d7a338f30c3648c6683be66b39ec70e7",
-      "bytes": 73904,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e3cd626d2f76027fda1b1404395b33b576e2e66c50022e54519a37944709d140",
+      "bytes": 18651,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-048.svg",
-      "sha256": "878566819d3ca55c088083d82b0558f1fe83a171a452d6c3231235cb5eb10365",
-      "bytes": 8175,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "48887cd7e814cf8ffc9f4464cd13931481949ad8b44c2db380a32e08ddde0b02",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-049.svg",
-      "sha256": "b14436851bc03659773c0dda487bb27d8ccc89e7f3b0caecf1074cafd37a4d99",
-      "bytes": 6963,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f0d57c115f7fd7cca4ef6a1b7db90d717af35412e7e111f751391a3d14614054",
+      "bytes": 99047,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-050.svg",
-      "sha256": "e53a09749e676bbe6a7ada76ab28ef3392d97aecb106215dc324e5f30486a6f9",
-      "bytes": 2838,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "851d2cb984a6c692a2bbc388127db3efb312fa2531e377e1fab64d877d4d03e2",
+      "bytes": 23047,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-051.svg",
-      "sha256": "e3cd626d2f76027fda1b1404395b33b576e2e66c50022e54519a37944709d140",
-      "bytes": 18651,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b95681c1b8a6d98a94f4fff430dfa9d67ac5febf04782842bd16aeb4d0f20514",
+      "bytes": 43536,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-052.svg",
-      "sha256": "f0d57c115f7fd7cca4ef6a1b7db90d717af35412e7e111f751391a3d14614054",
-      "bytes": 99047,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "58b2055fcc016713a8c3a08ceb22e92755fbce31047a3d6191ca580374bce033",
+      "bytes": 9791,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-053.svg",
-      "sha256": "851d2cb984a6c692a2bbc388127db3efb312fa2531e377e1fab64d877d4d03e2",
-      "bytes": 23047,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a7259e92b0cd45048a138ec2e63ac29280607c02a8bdbe60cda5c00264e886ff",
+      "bytes": 1128,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-054.svg",
-      "sha256": "b95681c1b8a6d98a94f4fff430dfa9d67ac5febf04782842bd16aeb4d0f20514",
-      "bytes": 43536,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
+      "bytes": 832,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-055.svg",
-      "sha256": "58b2055fcc016713a8c3a08ceb22e92755fbce31047a3d6191ca580374bce033",
-      "bytes": 9791,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "35b9e152a49ff94586da8aa804807e362ca25d735f284cc14203741820eae4a3",
+      "bytes": 190684,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-056.svg",
-      "sha256": "082fde5c4cd8b81d235114fa7478d4646f54321eb6bd89bb2449477322c77ee3",
-      "bytes": 10847,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "994a31e479ff15206d4b1aaaffa3ab4940e698235657fd55118d66b24fb64444",
+      "bytes": 66669,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-057.svg",
-      "sha256": "35b9e152a49ff94586da8aa804807e362ca25d735f284cc14203741820eae4a3",
-      "bytes": 190684,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "313fb2a98c89da84502b60617ef65beb14ee445601c152a20d9af33a8bdf34f0",
+      "bytes": 5543,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-058.svg",
-      "sha256": "994a31e479ff15206d4b1aaaffa3ab4940e698235657fd55118d66b24fb64444",
-      "bytes": 66669,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1056cbe1c17f27c6198fa3414378cad20e1f764a8319157fcd306ccc6f2613ad",
+      "bytes": 5042,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-059.svg",
-      "sha256": "313fb2a98c89da84502b60617ef65beb14ee445601c152a20d9af33a8bdf34f0",
-      "bytes": 5543,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "15de6e250bd3c2f9dc7457f69ec5c24a6f8be689b32c59512a113e0bd73c98c7",
+      "bytes": 22681,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-060.svg",
-      "sha256": "1056cbe1c17f27c6198fa3414378cad20e1f764a8319157fcd306ccc6f2613ad",
-      "bytes": 5042,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ced7a0a5ff761ee69d55add87c3c002e541bb2fdacad2ff914ca4bc289e822dd",
+      "bytes": 44027,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-061.svg",
-      "sha256": "15de6e250bd3c2f9dc7457f69ec5c24a6f8be689b32c59512a113e0bd73c98c7",
-      "bytes": 22681,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6e7fec117dcd69be2e11638fede846255f5f9f64d5d6914f2840c4215fe3edb2",
+      "bytes": 30071,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-062.svg",
-      "sha256": "ced7a0a5ff761ee69d55add87c3c002e541bb2fdacad2ff914ca4bc289e822dd",
-      "bytes": 44027,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "475472a4ac354132f0e268a1648501853a346fbb0550605a5dc50f075cffddc2",
+      "bytes": 28364,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-063.svg",
-      "sha256": "bc376cfd1204661d8d9ec963f2800fd1c3c7119101e4d05285e625802930747a",
-      "bytes": 40895,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "70227de62f36a6788df07922f6a28bc76860531c5aad014aee0c980409cca25c",
+      "bytes": 16429,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-064.svg",
-      "sha256": "6e7fec117dcd69be2e11638fede846255f5f9f64d5d6914f2840c4215fe3edb2",
-      "bytes": 30071,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "66281997a63582245bd5b01cc5462f122b56620a42390d11818402e4387ed781",
+      "bytes": 6015,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-065.svg",
-      "sha256": "475472a4ac354132f0e268a1648501853a346fbb0550605a5dc50f075cffddc2",
-      "bytes": 28364,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
+      "bytes": 8033,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-066.svg",
-      "sha256": "70227de62f36a6788df07922f6a28bc76860531c5aad014aee0c980409cca25c",
-      "bytes": 16429,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
+      "bytes": 8033,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-067.svg",
-      "sha256": "66281997a63582245bd5b01cc5462f122b56620a42390d11818402e4387ed781",
-      "bytes": 6015,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0a82fa352afa401294c741b8b460411e8634ed380a8ea6f0ab0b9f61f15c6427",
+      "bytes": 27721,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-068.svg",
-      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
-      "bytes": 8033,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
+      "bytes": 7169,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-069.svg",
-      "sha256": "b2a8701c3cd983af60807b30857afe8444a277d96d2d985d21bcd938517ac46e",
-      "bytes": 8033,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aff004b29f8552bf7bdb89bf496969ae1e62b4efd68d8ec94f74f9f34ccd6b27",
+      "bytes": 23110,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-070.svg",
-      "sha256": "0a82fa352afa401294c741b8b460411e8634ed380a8ea6f0ab0b9f61f15c6427",
-      "bytes": 27721,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6b7bde784a1170498b19fc2aede2981db031744385501c3572c57bc1d34c95d4",
+      "bytes": 15509,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-071.svg",
-      "sha256": "301e2886453353fcb98f77740f9cca66835ebaf264cd6e18793edf9b817c24fa",
-      "bytes": 7169,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
+      "bytes": 3856,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-072.svg",
-      "sha256": "aff004b29f8552bf7bdb89bf496969ae1e62b4efd68d8ec94f74f9f34ccd6b27",
-      "bytes": 23110,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
+      "bytes": 3856,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-073.svg",
-      "sha256": "6b7bde784a1170498b19fc2aede2981db031744385501c3572c57bc1d34c95d4",
-      "bytes": 15509,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "181160d94776acfb5086f2ecb2aef5ad026fb8c9cdb1c7ccdb90c50d6975c74f",
+      "bytes": 10456,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-074.svg",
-      "sha256": "7a6fadc5f09fd22b04b3c168b6bd6cc2c842b13412ac629706cefc9cc1356977",
-      "bytes": 23979,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1e0e222523c9ead2911da6c3dbad2c8e9b14a6186691751ada8d73741c9fc39c",
+      "bytes": 55556,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-075.svg",
-      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
-      "bytes": 3856,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b56267c7b8c0b0a29e4888651855708b26465ae0676b339e917d7c6a6eb0bdc8",
+      "bytes": 2896,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-076.svg",
-      "sha256": "acfc67c259798f7772d6c29dfc07ea981785e2b15c36fd4e77b28009440edf1d",
-      "bytes": 3856,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ce2e6c1027753c7756d4e56b2e9008ea0e35b5868b18c838624ac1c47637fb2e",
+      "bytes": 4532,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-077.svg",
-      "sha256": "181160d94776acfb5086f2ecb2aef5ad026fb8c9cdb1c7ccdb90c50d6975c74f",
-      "bytes": 10456,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "81f733ea9bb65f7e3e7a9b389b06e6af1fa5c8cbdd056fd45fb44c81e67f9e62",
+      "bytes": 10488,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-078.svg",
-      "sha256": "1e0e222523c9ead2911da6c3dbad2c8e9b14a6186691751ada8d73741c9fc39c",
-      "bytes": 55556,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5b3930ca16c0b350576a5523da5da22d0824aebe734d2017c02fadea69710d9b",
+      "bytes": 56435,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-079.svg",
-      "sha256": "b56267c7b8c0b0a29e4888651855708b26465ae0676b339e917d7c6a6eb0bdc8",
-      "bytes": 2896,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4fc0f976ea48d18eeac9387d9094824ec7e76c9b6bce8101c5fbd159b5c8972c",
+      "bytes": 13537,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-080.svg",
-      "sha256": "ce2e6c1027753c7756d4e56b2e9008ea0e35b5868b18c838624ac1c47637fb2e",
-      "bytes": 4532,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6356d0511d6090a948e7f1c1ec86fca9f09ff1b62f8ca73a474454d6a5757c35",
+      "bytes": 4930,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-081.svg",
-      "sha256": "81f733ea9bb65f7e3e7a9b389b06e6af1fa5c8cbdd056fd45fb44c81e67f9e62",
-      "bytes": 10488,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a5f9567b306b799de2a9be159b00e009fa23577e85d829cf4fb2d3a3c10a7a8a",
+      "bytes": 13419,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-082.svg",
-      "sha256": "5b3930ca16c0b350576a5523da5da22d0824aebe734d2017c02fadea69710d9b",
-      "bytes": 56435,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
+      "bytes": 6317,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-083.svg",
-      "sha256": "4fc0f976ea48d18eeac9387d9094824ec7e76c9b6bce8101c5fbd159b5c8972c",
-      "bytes": 13537,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3d99b1d31e6f00b34bdc788c3fa216b6e534740c70167bf972947045bbe26c90",
+      "bytes": 5683,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-084.svg",
-      "sha256": "6356d0511d6090a948e7f1c1ec86fca9f09ff1b62f8ca73a474454d6a5757c35",
-      "bytes": 4930,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "417e15efffcab12a6db275fec6000554259f07fb35b80e2004a755ec7b680d04",
+      "bytes": 7200,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-085.svg",
-      "sha256": "a5f9567b306b799de2a9be159b00e009fa23577e85d829cf4fb2d3a3c10a7a8a",
-      "bytes": 13419,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "13c5fd46cb2587257d00a4b27ea76cd8cf3b658e809b8bb41657a3c168c28b1f",
+      "bytes": 5897,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-086.svg",
-      "sha256": "958ce38507355e510541b87dab61af519eb919b23287db94cfde33e579ee0e15",
-      "bytes": 6317,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "46d9ed4c430c790e56fc25967556f7311e382697779f2a0291d4e134cf53121f",
+      "bytes": 5225,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-087.svg",
-      "sha256": "3d99b1d31e6f00b34bdc788c3fa216b6e534740c70167bf972947045bbe26c90",
-      "bytes": 5683,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "14b7371be571fc1a99602a5e44746ff91bc7fa98614b127ca129b457b4992d63",
+      "bytes": 42684,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-088.svg",
-      "sha256": "417e15efffcab12a6db275fec6000554259f07fb35b80e2004a755ec7b680d04",
-      "bytes": 7200,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-089.svg",
-      "sha256": "13c5fd46cb2587257d00a4b27ea76cd8cf3b658e809b8bb41657a3c168c28b1f",
-      "bytes": 5897,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7174066bc48c771d2eb2c7a29d4814cfe631322c875b74ed1588bd971994df5e",
+      "bytes": 27695,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-090.svg",
-      "sha256": "46d9ed4c430c790e56fc25967556f7311e382697779f2a0291d4e134cf53121f",
-      "bytes": 5225,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f6770254172a47c133de91296a57e88d0d68aefa36630ca56da44b8d17a2030c",
+      "bytes": 47313,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-091.svg",
-      "sha256": "14b7371be571fc1a99602a5e44746ff91bc7fa98614b127ca129b457b4992d63",
-      "bytes": 42684,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aaf5f343e4485db03a03db74455a41aee390a0e1767023e27170922e74a8dcba",
+      "bytes": 6854,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-092.svg",
-      "sha256": "7174066bc48c771d2eb2c7a29d4814cfe631322c875b74ed1588bd971994df5e",
-      "bytes": 27695,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "5eb9b2d7aa58508e8616bb8f38fc2051944a080edeea0009aab56861f4f86adb",
+      "bytes": 61988,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-093.svg",
-      "sha256": "f6770254172a47c133de91296a57e88d0d68aefa36630ca56da44b8d17a2030c",
-      "bytes": 47313,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aaf5f343e4485db03a03db74455a41aee390a0e1767023e27170922e74a8dcba",
+      "bytes": 6854,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-094.svg",
-      "sha256": "aaf5f343e4485db03a03db74455a41aee390a0e1767023e27170922e74a8dcba",
-      "bytes": 6854,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "12a38c126614af24b6e08d1ac11ec00b1446b5704fcad96bb897d00c315dddcc",
+      "bytes": 10700,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-095.svg",
-      "sha256": "5eb9b2d7aa58508e8616bb8f38fc2051944a080edeea0009aab56861f4f86adb",
-      "bytes": 61988,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0c5d309249d302c7e577939e1936d5494a5a6403cdfce5d53fa51a3a51184bed",
+      "bytes": 7287,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-096.svg",
-      "sha256": "aaf5f343e4485db03a03db74455a41aee390a0e1767023e27170922e74a8dcba",
-      "bytes": 6854,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "52676c5937256426e55b2078efd7651054b6de34fe69b475103f60d85f390c56",
+      "bytes": 9479,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-097.svg",
-      "sha256": "bac8f8acf6587be875589703cbf73f45cd5845dea082a192513d839f22882432",
-      "bytes": 1088,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "8a5725fb99cc765e3bb721f3a3f8ff5a3a599edf7a92fc75109996e8e16a438e",
+      "bytes": 11048,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-098.svg",
-      "sha256": "c68a93b53a30078f22013e82b8795d4493058659a8fff6f460d427ba7b6997ce",
-      "bytes": 64686,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "dddeadffebd454a7cfa5fa0aff4ac722b0c6a40b997a2db289c6e66b52be19bb",
+      "bytes": 6512,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-099.svg",
-      "sha256": "e17761f2cbcb1af92cc6c74bf3bdacacef2c3b9b04048e95b937248c031c63c8",
-      "bytes": 8030,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f7839eb707691d3f9b5689cce02c0f07cc166675d0d33af4a271529c667d9127",
+      "bytes": 11295,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-100.svg",
-      "sha256": "0c5d309249d302c7e577939e1936d5494a5a6403cdfce5d53fa51a3a51184bed",
-      "bytes": 7287,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a90dd3731ed1760fc562f554c739368ed8ce61d215ed7f1eef57a855f2780657",
+      "bytes": 9290,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-101.svg",
-      "sha256": "c6d176d451840b3cac6589b8a482e27228bf91cc62e8bf44ef5357bef7e887da",
-      "bytes": 5931,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "983cea9e03df962d6d3d2677fbdd45a0113f5120bd9d3da73aede62a558ac23f",
+      "bytes": 73459,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-102.svg",
-      "sha256": "968bc35653f03bb5288293cb1936897489f80035f859b95fe95fb24f754292d6",
-      "bytes": 10835,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4aa53356e1fe9b4fb47b4e236fad40f9d21306cb59ea73b73ca81a190c6b089a",
+      "bytes": 86379,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-103.svg",
-      "sha256": "12a38c126614af24b6e08d1ac11ec00b1446b5704fcad96bb897d00c315dddcc",
-      "bytes": 10700,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "79bb75b77d1719d86d9b74f58df92278cbeab176b2e63fbc63988de9d5c1d7fb",
+      "bytes": 61412,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-104.svg",
-      "sha256": "0c5d309249d302c7e577939e1936d5494a5a6403cdfce5d53fa51a3a51184bed",
-      "bytes": 7287,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7ccdd092dc489e4365f9ca674193c85cd01aa2fecd91979f1e4de1427f67fea9",
+      "bytes": 12094,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-105.svg",
-      "sha256": "52676c5937256426e55b2078efd7651054b6de34fe69b475103f60d85f390c56",
-      "bytes": 9479,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "53f0305bcbdda7c82fd88917ce8497859f395213ae34055169569f1c09df447b",
+      "bytes": 55153,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-106.svg",
-      "sha256": "8a5725fb99cc765e3bb721f3a3f8ff5a3a599edf7a92fc75109996e8e16a438e",
-      "bytes": 11048,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b5ef42e6acd1a6e7b481c3a6b7a15794d63389c3225e6c8d4fe8d5014ca8c80c",
+      "bytes": 86203,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-107.svg",
-      "sha256": "dddeadffebd454a7cfa5fa0aff4ac722b0c6a40b997a2db289c6e66b52be19bb",
-      "bytes": 6512,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6df73890ef0b607fb24e5705c39448d39fc04a6ff122578bea54dcc711adf1c3",
+      "bytes": 29624,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-108.svg",
-      "sha256": "f7839eb707691d3f9b5689cce02c0f07cc166675d0d33af4a271529c667d9127",
-      "bytes": 11295,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "75053fc6fbc7dc2d6e7a3b034ba97e40af2af8e77cb742eba2f7336e25db5e0a",
+      "bytes": 50709,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-109.svg",
-      "sha256": "a90dd3731ed1760fc562f554c739368ed8ce61d215ed7f1eef57a855f2780657",
-      "bytes": 9290,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "de006dfd2066560bb73205d40e808f5c4a95a5ce960bf48218cf3d9722666f47",
+      "bytes": 69277,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-110.svg",
-      "sha256": "983cea9e03df962d6d3d2677fbdd45a0113f5120bd9d3da73aede62a558ac23f",
-      "bytes": 73459,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-111.svg",
-      "sha256": "d24be6410ca24857388e49fba2e5d565181f00d4aa1884bf280dd3eb867ef29b",
-      "bytes": 5250,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d1cc73e8803ca4dbbe89e56844b6eebaf5d1bab6a623d6b6d9fe31acd6c25567",
+      "bytes": 1819,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-112.svg",
-      "sha256": "1cd2a386acc0a3098d51685a7792940141c62fd1bdc907ca13feb9064124b53c",
-      "bytes": 5362,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "10891433e7ebed270f3ad50c675b0cc575e92b2e15c466a79b69e500e42512aa",
+      "bytes": 45700,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-113.svg",
-      "sha256": "58b62bea7766d0281e1709e581f1dc8b90c2bde15e3c25390dafd5da7cdb0080",
-      "bytes": 74984,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "8e2e33345b3e89faf8d392f808b71f2470fc11f800f6e27d58f166cf4b87268b",
+      "bytes": 82293,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-114.svg",
-      "sha256": "4aa53356e1fe9b4fb47b4e236fad40f9d21306cb59ea73b73ca81a190c6b089a",
-      "bytes": 86379,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a7259e92b0cd45048a138ec2e63ac29280607c02a8bdbe60cda5c00264e886ff",
+      "bytes": 1128,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-115.svg",
-      "sha256": "952ae584d44c5efc8dfbb7d099155090f2575074dc6e596cbe63484389eac98c",
-      "bytes": 1834,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "bcf6e7fd0b96adc43c4680ece2a34bdbf504443e3162cae2ca7ec5d891ab93fc",
+      "bytes": 884,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-116.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f7c068c9ecfde5475d50bb406007616a8f84f6f20674fcb7b10a4adeeb6a2b34",
+      "bytes": 940,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-117.svg",
-      "sha256": "79bb75b77d1719d86d9b74f58df92278cbeab176b2e63fbc63988de9d5c1d7fb",
-      "bytes": 61412,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c36d061da32d0a21d9cf60e84db1edd601f5e4953b6f0832b794f0f67c84ad33",
+      "bytes": 66627,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-118.svg",
-      "sha256": "7ccdd092dc489e4365f9ca674193c85cd01aa2fecd91979f1e4de1427f67fea9",
-      "bytes": 12094,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f7b2667c2cc6cdaf27e18dc3fe21d9b99a2449d8cba4c269d1b1be64c2b68e2b",
+      "bytes": 76353,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-119.svg",
-      "sha256": "66f22d43089973c8a3697a44b3055fb5b904f42fd0c0fa3a3965615a9f5e09a6",
-      "bytes": 29871,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2a0ebad0a92d73cc4753354a8d9e8bfe90f42e273b7153f1bd1d9ed27cab421d",
+      "bytes": 59846,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-120.svg",
-      "sha256": "3905d65ec505d3aa9d5f4d9abccb149d9b2ba4cf2f5247294651e9e984d387f0",
-      "bytes": 34760,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c3364604649ef2a7e7b620e0fab1f4424541d9c48b18e717a3a7656cab647718",
+      "bytes": 32993,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-121.svg",
-      "sha256": "5c68eebf9ea0c57dde229934ede53460acce222c3150594104c5d29af470a6e9",
-      "bytes": 78203,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "1ac6966d6032ce4a7cacc0dfa7e2c46ada82db75d8de81202594ae75eec56793",
+      "bytes": 103639,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-122.svg",
-      "sha256": "09adbbdcc980a9655abbc1e94d22a722cf880442b40d3961d205a65c7ab3736f",
-      "bytes": 38512,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-123.svg",
-      "sha256": "e5c81c5978389488e4caa757c483fe04cd0c10bc23ec0e521f9c458a74eec8a8",
-      "bytes": 68762,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-124.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7ccb27da0f70514a4d153d1b9bcac85b58ef9d93819378a99b7ce44242112346",
+      "bytes": 71304,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-125.svg",
-      "sha256": "763b29dbd09761a7ccffab68c8f0cd86346173eaf62d713f337fa8e6b579b38e",
-      "bytes": 68350,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0e16f85b5fe95a03a18985a911e387fe8e37f12cc2738e356b0871e357992c03",
+      "bytes": 133630,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-126.svg",
-      "sha256": "e400263780518650a70ec01153679b2dad5994918077ec7e6a2391ed040a9896",
-      "bytes": 36350,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-127.svg",
-      "sha256": "7f6ceed446efb1ded7ac3202c1c877d49ec7117b2173c6bce1a1f1158b0bb1a1",
-      "bytes": 26034,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-128.svg",
-      "sha256": "9ae1b9c6242f3e330566316b63a13650b4ffb02f9e966f20922771a56781c3db",
-      "bytes": 22967,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-129.svg",
-      "sha256": "6ffce906823a00873e1cf87ca7a5daeb0dd385071f06b90d4e5499bf897162d5",
-      "bytes": 46988,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-130.svg",
-      "sha256": "d1cc73e8803ca4dbbe89e56844b6eebaf5d1bab6a623d6b6d9fe31acd6c25567",
-      "bytes": 1819,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-131.svg",
-      "sha256": "10891433e7ebed270f3ad50c675b0cc575e92b2e15c466a79b69e500e42512aa",
-      "bytes": 45700,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-132.svg",
-      "sha256": "40d6d540ca011e961f114be684b791f4a2c0893036bf506d1c8911bc95242a04",
-      "bytes": 52184,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "22d210b7bd53086e8dba2020b31bd9b871e07fd4c0a2ed30a6b8a172708880d4",
+      "bytes": 34731,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-133.svg",
-      "sha256": "8e2e33345b3e89faf8d392f808b71f2470fc11f800f6e27d58f166cf4b87268b",
-      "bytes": 82293,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e35837ce69af0d2c851445309130b195168192d5cfb01d6a33716bc67d52cce5",
+      "bytes": 4469,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-134.svg",
-      "sha256": "a7259e92b0cd45048a138ec2e63ac29280607c02a8bdbe60cda5c00264e886ff",
-      "bytes": 1128,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "76478215c1d7f7575b37ca30590ba0b522f9cdd842737518f0c39b6cfb352138",
+      "bytes": 71124,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-135.svg",
-      "sha256": "bcf6e7fd0b96adc43c4680ece2a34bdbf504443e3162cae2ca7ec5d891ab93fc",
-      "bytes": 884,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "48887cd7e814cf8ffc9f4464cd13931481949ad8b44c2db380a32e08ddde0b02",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-136.svg",
-      "sha256": "f7c068c9ecfde5475d50bb406007616a8f84f6f20674fcb7b10a4adeeb6a2b34",
-      "bytes": 940,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "b990f658e70f3d6720b6feb2131892420005fc4721a7291385761bd1a0503dbb",
+      "bytes": 74168,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-137.svg",
-      "sha256": "c36d061da32d0a21d9cf60e84db1edd601f5e4953b6f0832b794f0f67c84ad33",
-      "bytes": 66627,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "4eef3ff5d2c75a3c7c6352b36b93c45243e73f6c4817c396705341567566693d",
+      "bytes": 40720,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-138.svg",
-      "sha256": "f7b2667c2cc6cdaf27e18dc3fe21d9b99a2449d8cba4c269d1b1be64c2b68e2b",
-      "bytes": 76353,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
+      "bytes": 1585,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-139.svg",
-      "sha256": "2a0ebad0a92d73cc4753354a8d9e8bfe90f42e273b7153f1bd1d9ed27cab421d",
-      "bytes": 59846,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aaa9bf4d749777ae32b0de49c6b3ef395921cd704c3147d2b39c8b100c73f554",
+      "bytes": 70583,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-140.svg",
-      "sha256": "c3364604649ef2a7e7b620e0fab1f4424541d9c48b18e717a3a7656cab647718",
-      "bytes": 32993,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "525a4ad3c538fd3b3ff4e7ccc9e74e942fd14b3edfdcf02d74dce972490724c3",
+      "bytes": 2097,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-141.svg",
-      "sha256": "1ac6966d6032ce4a7cacc0dfa7e2c46ada82db75d8de81202594ae75eec56793",
-      "bytes": 103639,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-142.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-143.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2e1f758558f9947ef1f0d66153edd37fc3fcd5f7e44b3a126b527f1bfa3a7543",
+      "bytes": 2241,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-144.svg",
-      "sha256": "7ccb27da0f70514a4d153d1b9bcac85b58ef9d93819378a99b7ce44242112346",
-      "bytes": 71304,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "07ec8acb9b752cafa4a282bdde862bacdfd4047998cff1934e5cff18cfd8411f",
+      "bytes": 37428,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-145.svg",
-      "sha256": "0e16f85b5fe95a03a18985a911e387fe8e37f12cc2738e356b0871e357992c03",
-      "bytes": 133630,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3aadb270aaea4345aaab3047084f39bb5eecf8a3fa9d3b3bb17a14783638f53b",
+      "bytes": 902,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-146.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e6bd84163a46206ca2a98317cdacbb75ba3c11105e77be1466f706944b96792e",
+      "bytes": 40808,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-147.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "0f8d8722522ca4714af0b3c783ee16d4e30212fa9ac81655c40c17954c849966",
+      "bytes": 1882,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-148.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "bb50e13364afc19120b64454248bbf5534ead091c6d5dbea7500e4b89395da29",
+      "bytes": 60660,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-149.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-150.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "952ae584d44c5efc8dfbb7d099155090f2575074dc6e596cbe63484389eac98c",
+      "bytes": 1834,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-151.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e2046cde0e9134c88c3567c575646aa89d56990f0fb73283fba4175be7f01abc",
+      "bytes": 1944,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-152.svg",
-      "sha256": "22d210b7bd53086e8dba2020b31bd9b871e07fd4c0a2ed30a6b8a172708880d4",
-      "bytes": 34731,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d335c910fbb5af3e0ce51aa0bd6d3448f6ac21349106416cd861827422f9c2d3",
+      "bytes": 1848,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-153.svg",
-      "sha256": "e35837ce69af0d2c851445309130b195168192d5cfb01d6a33716bc67d52cce5",
-      "bytes": 4469,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "319bd0b98c420040106018a30b67acb3eabdf52087765efbfa2b3e233edb6bd1",
+      "bytes": 116052,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-154.svg",
-      "sha256": "76478215c1d7f7575b37ca30590ba0b522f9cdd842737518f0c39b6cfb352138",
-      "bytes": 71124,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d74ee56b09e04d3b6984a35032bf1c9dc17cc90efd30fcb3900b21f063cceef6",
+      "bytes": 31466,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-155.svg",
-      "sha256": "48887cd7e814cf8ffc9f4464cd13931481949ad8b44c2db380a32e08ddde0b02",
-      "bytes": 902,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "dd317ce9c63ca7db52db6ac18fde5006a50f328bcf261e4860a760b6e6f03087",
+      "bytes": 2132,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-156.svg",
-      "sha256": "b990f658e70f3d6720b6feb2131892420005fc4721a7291385761bd1a0503dbb",
-      "bytes": 74168,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
+      "bytes": 1585,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-157.svg",
-      "sha256": "4eef3ff5d2c75a3c7c6352b36b93c45243e73f6c4817c396705341567566693d",
-      "bytes": 40720,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
+      "bytes": 1785,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-158.svg",
-      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
-      "bytes": 1585,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "ed9c3ef87658f3df1e6651f62dc1820f02e976f75286da65622491d323661bfc",
+      "bytes": 869,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-159.svg",
-      "sha256": "aaa9bf4d749777ae32b0de49c6b3ef395921cd704c3147d2b39c8b100c73f554",
-      "bytes": 70583,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "6561cd1e5769cd3a9be49cc83a6bab8e92a12ce4c8097e77328fb40d0623824a",
+      "bytes": 879,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-160.svg",
-      "sha256": "525a4ad3c538fd3b3ff4e7ccc9e74e942fd14b3edfdcf02d74dce972490724c3",
-      "bytes": 2097,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
+      "bytes": 832,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-161.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "9a984e5f993a3f8d9c02ab4102ea95a19fa921d732f295b5aa90e5632ea76f59",
+      "bytes": 77617,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-162.svg",
-      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
-      "bytes": 1693,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a61db5fa91853b4196c5111ac85dca56600399f9d3081854cd4ad2aa0bcc2015",
+      "bytes": 43913,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-163.svg",
-      "sha256": "2e1f758558f9947ef1f0d66153edd37fc3fcd5f7e44b3a126b527f1bfa3a7543",
-      "bytes": 2241,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "202ffb06c061021fb49fe5db6b9c729b6b0689b5c5dea063ecfc818d680b979c",
+      "bytes": 52636,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-164.svg",
-      "sha256": "07ec8acb9b752cafa4a282bdde862bacdfd4047998cff1934e5cff18cfd8411f",
-      "bytes": 37428,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "11f39fc6ce0d8d787743d5206d1776ce76f1baa9e4feb037e293d8cf4ef0d89b",
+      "bytes": 102439,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-165.svg",
-      "sha256": "3aadb270aaea4345aaab3047084f39bb5eecf8a3fa9d3b3bb17a14783638f53b",
-      "bytes": 902,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d00cacd4dae428bbc29b650ed537d537ff9409b972065638df0a7957bc4172b5",
+      "bytes": 72040,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-166.svg",
-      "sha256": "e6bd84163a46206ca2a98317cdacbb75ba3c11105e77be1466f706944b96792e",
-      "bytes": 40808,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
+      "bytes": 1970,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-167.svg",
-      "sha256": "0f8d8722522ca4714af0b3c783ee16d4e30212fa9ac81655c40c17954c849966",
-      "bytes": 1882,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d335c910fbb5af3e0ce51aa0bd6d3448f6ac21349106416cd861827422f9c2d3",
+      "bytes": 1848,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-168.svg",
-      "sha256": "bb50e13364afc19120b64454248bbf5534ead091c6d5dbea7500e4b89395da29",
-      "bytes": 60660,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
+      "bytes": 1585,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-169.svg",
-      "sha256": "319bd0b98c420040106018a30b67acb3eabdf52087765efbfa2b3e233edb6bd1",
-      "bytes": 116052,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "2c387c181850b4f7c7eccef9b6ea9ee4062f5149a1caeef98fc3f5f9cf59af23",
+      "bytes": 38129,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-170.svg",
-      "sha256": "d74ee56b09e04d3b6984a35032bf1c9dc17cc90efd30fcb3900b21f063cceef6",
-      "bytes": 31466,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "59a5bc9f21d6574416929a288b78d7d0f4e27c0bfe3520bf8b8508a1f217407a",
+      "bytes": 44739,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-171.svg",
-      "sha256": "dd317ce9c63ca7db52db6ac18fde5006a50f328bcf261e4860a760b6e6f03087",
-      "bytes": 2132,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a05a60fafef2f53bb9a5ed647a9f541df912ba103ab4197435f7e496518640bf",
+      "bytes": 3013,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-172.svg",
-      "sha256": "ed9c3ef87658f3df1e6651f62dc1820f02e976f75286da65622491d323661bfc",
-      "bytes": 869,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "c2f9343da4fcee5988a0f23a2c577ba8da002fbc2d98f3bfc52a87b35ffff44a",
+      "bytes": 3386,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-173.svg",
-      "sha256": "6561cd1e5769cd3a9be49cc83a6bab8e92a12ce4c8097e77328fb40d0623824a",
-      "bytes": 879,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "3f2d49c93b6f64d945724fb6572ea088be0146cc6cd0aec5c7d6fd7208cdad73",
+      "bytes": 41233,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-174.svg",
-      "sha256": "255b9914188caf933621125442fc45a795433336cb2ca6e50c7d03fbbe0cb622",
-      "bytes": 832,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "fb86560c153626e3c7f5d471f04eed48a683e988c4ebbb748a2933af61d077f7",
+      "bytes": 30476,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-175.svg",
-      "sha256": "9a984e5f993a3f8d9c02ab4102ea95a19fa921d732f295b5aa90e5632ea76f59",
-      "bytes": 77617,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "d053e84f14df6290442c7682016d489039875c39dccefa9c2f87dada092989c2",
+      "bytes": 43949,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-176.svg",
-      "sha256": "a61db5fa91853b4196c5111ac85dca56600399f9d3081854cd4ad2aa0bcc2015",
-      "bytes": 43913,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "447dae378a28b5216c7dc6ff3023770d3127fef655dac75659592bbedf15cde6",
+      "bytes": 82151,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-177.svg",
-      "sha256": "202ffb06c061021fb49fe5db6b9c729b6b0689b5c5dea063ecfc818d680b979c",
-      "bytes": 52636,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
+      "bytes": 1873,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-178.svg",
-      "sha256": "11f39fc6ce0d8d787743d5206d1776ce76f1baa9e4feb037e293d8cf4ef0d89b",
-      "bytes": 102439,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
+      "bytes": 1785,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-179.svg",
-      "sha256": "d00cacd4dae428bbc29b650ed537d537ff9409b972065638df0a7957bc4172b5",
-      "bytes": 72040,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "7c3830bd983edce37958e1b01efbe7a892c061723fe7575f82acd2ee1b68ea62",
+      "bytes": 51248,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-180.svg",
-      "sha256": "d26f2402ae457e8df46d51b4e72a3e4ce8ddb41f608b1047da2587d99014593c",
-      "bytes": 1970,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "a022fc3c49525ddc7a19d6bab72148f4760f8e3a9c630f62d2b291965d7e830a",
+      "bytes": 31914,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-181.svg",
-      "sha256": "d335c910fbb5af3e0ce51aa0bd6d3448f6ac21349106416cd861827422f9c2d3",
-      "bytes": 1848,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "aa2ddf853e1c738c985fe754178abe393443f858120c400ff4bfea871e28abfe",
+      "bytes": 31371,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-182.svg",
-      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
-      "bytes": 1585,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "122fd8b18bb8e4641e01b12e75d43fad4d5e1d6ba9d8c24124cc8a892c497047",
+      "bytes": 1693,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-183.svg",
-      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
-      "bytes": 1785,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "80d31f1d8d12fe5a1ec4b0c25c612d61c22eb7d3e0b5fe69c728b442147ebd26",
+      "bytes": 61412,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/methodology/math/eq-184.svg",
-      "sha256": "e20ed78104b3194e081df8090668a582e178e436e4017d5f99f1d355f49a3799",
-      "bytes": 1585,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-185.svg",
-      "sha256": "2c387c181850b4f7c7eccef9b6ea9ee4062f5149a1caeef98fc3f5f9cf59af23",
-      "bytes": 38129,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-186.svg",
-      "sha256": "59a5bc9f21d6574416929a288b78d7d0f4e27c0bfe3520bf8b8508a1f217407a",
-      "bytes": 44739,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-187.svg",
-      "sha256": "a05a60fafef2f53bb9a5ed647a9f541df912ba103ab4197435f7e496518640bf",
-      "bytes": 3013,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-188.svg",
-      "sha256": "c2f9343da4fcee5988a0f23a2c577ba8da002fbc2d98f3bfc52a87b35ffff44a",
-      "bytes": 3386,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-189.svg",
-      "sha256": "3f2d49c93b6f64d945724fb6572ea088be0146cc6cd0aec5c7d6fd7208cdad73",
-      "bytes": 41233,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-190.svg",
-      "sha256": "fb86560c153626e3c7f5d471f04eed48a683e988c4ebbb748a2933af61d077f7",
-      "bytes": 30476,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-191.svg",
-      "sha256": "d053e84f14df6290442c7682016d489039875c39dccefa9c2f87dada092989c2",
-      "bytes": 43949,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-192.svg",
-      "sha256": "447dae378a28b5216c7dc6ff3023770d3127fef655dac75659592bbedf15cde6",
-      "bytes": 82151,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-193.svg",
-      "sha256": "144696df4381f5fb7855fbe31988f5d951f3b4ec9c3c40c27256d8ff0c07caa9",
-      "bytes": 1873,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-194.svg",
-      "sha256": "7a603fa4dafad26f705aa5db47475156d327a21140d9d56d581305c5b053b6bf",
-      "bytes": 1785,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-195.svg",
-      "sha256": "7c3830bd983edce37958e1b01efbe7a892c061723fe7575f82acd2ee1b68ea62",
-      "bytes": 51248,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-196.svg",
-      "sha256": "a022fc3c49525ddc7a19d6bab72148f4760f8e3a9c630f62d2b291965d7e830a",
-      "bytes": 31914,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
-    },
-    {
-      "path": "website/static/assets/methodology/math/eq-197.svg",
-      "sha256": "aa2ddf853e1c738c985fe754178abe393443f858120c400ff4bfea871e28abfe",
-      "bytes": 31371,
-      "transform": "VALUE P0 review fixes (fix/review-2026-10-04)"
+      "sha256": "f185332e37b1bae398bac54fd6c3238164febd23e0d966ce1fcebf70d205155e",
+      "bytes": 66000,
+      "transform": "VALUE methodology 0.5 publication"
     },
     {
       "path": "website/static/assets/release-2026-10-09-a1/CITATION.bib",
